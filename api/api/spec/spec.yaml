@@ -835,9 +835,6 @@ components:
           description: "Agent name used at the registration process"
         status:
           $ref: '#/components/schemas/AgentStatus'
-        configSum:
-          type: string
-          description: "MD5 checksum of the group configuration file (agent.conf)"
         group:
           type: array
           description: "List of groups the agent belongs to"
@@ -853,9 +850,6 @@ components:
         registerIP:
           type: string
           description: "IP used at agent the registration process"
-        manager:
-          type: string
-          description: "Hostname of the manager the agent is reporting to"
         node_name:
           type: string
           description: "ID of the node the agent is reporting to"
@@ -872,13 +866,9 @@ components:
               type: string
             name:
               type: string
-            uname:
-              type: string
             platform:
               type: string
             version:
-              type: string
-            codename:
               type: string
             arch:
               type: string
@@ -3627,13 +3617,6 @@ components:
       schema:
         type: string
         format: alphanumeric
-    manager_host:
-      in: query
-      name: manager
-      description: "Filter by manager hostname where agents are connected to"
-      schema:
-        type: string
-        format: alphanumeric
     mitre_mitigation_ids:
       in: query
       name: 'mitigation_ids'
@@ -4323,7 +4306,6 @@ paths:
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
         - $ref: '#/components/parameters/os.name'
-        - $ref: '#/components/parameters/manager_host'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
         - $ref: '#/components/parameters/node_name'
@@ -4387,7 +4369,6 @@ paths:
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
         - $ref: '#/components/parameters/os.name'
-        - $ref: '#/components/parameters/manager_host'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
         - $ref: '#/components/parameters/node_name'
@@ -4413,19 +4394,14 @@ paths:
                   affected_items:
                     - os:
                         arch: x86_64
-                        codename: Focal Fossa
                         major: '20'
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        uname: Linux |ac7cb188d538 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
-                          23 13:46:31 UTC 2021 |x86_64
                         version: 20.04.2 LTS
                       lastKeepAlive: '2021-05-26T12:40:40Z'
                       id: '001'
                       dateAdd: 2021-05-26T12:40:08Z
-                      configSum: ab73af41699f13fdd81903b5f23d8d00
-                      manager: wazuh-worker2
                       group: [default]
                       registerIP: any
                       ip: 172.25.0.6
@@ -4438,19 +4414,14 @@ paths:
                       status_code: 0
                     - os:
                         arch: x86_64
-                        codename: Focal Fossa
                         major: '20'
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        uname: Linux |ac7cb188d538 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
-                          23 13:46:31 UTC 2021 |x86_64
                         version: 20.04.2 LTS
                       lastKeepAlive: '2021-05-26T12:40:40Z'
                       id: '002'
                       dateAdd: 2021-05-26T12:40:10Z
-                      configSum: ab73af41699f13fdd81903b5f23d8d00
-                      manager: wazuh-worker2
                       group: [default]
                       registerIP: any
                       ip: 172.25.0.11
@@ -4463,19 +4434,14 @@ paths:
                       status_code: 0
                     - os:
                         arch: x86_64
-                        codename: Focal Fossa
                         major: '20'
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        uname: Linux |ac7cb188d538 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
-                          23 13:46:31 UTC 2021 |x86_64
                         version: 20.04.2 LTS
                       lastKeepAlive: '2021-05-26T12:40:40Z'
                       id: '003'
                       dateAdd: 2021-05-26T12:40:10Z
-                      configSum: ab73af41699f13fdd81903b5f23d8d00
-                      manager: wazuh-worker2
                       group: [default]
                       registerIP: any
                       ip: 172.25.0.10
@@ -5059,7 +5025,6 @@ paths:
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
         - $ref: '#/components/parameters/os.name'
-        - $ref: '#/components/parameters/manager_host'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
         - $ref: '#/components/parameters/node_name'
@@ -5115,7 +5080,6 @@ paths:
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
         - $ref: '#/components/parameters/os.name'
-        - $ref: '#/components/parameters/manager_host'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
         - $ref: '#/components/parameters/node_name'
@@ -5169,7 +5133,6 @@ paths:
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
         - $ref: '#/components/parameters/os.name'
-        - $ref: '#/components/parameters/manager_host'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
         - $ref: '#/components/parameters/node_name'
@@ -5666,19 +5629,14 @@ paths:
                   affected_items:
                     - os:
                         arch: x86_64
-                        codename: Focal Fossa
                         major: '20'
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        uname: Linux |ac7cb188d538 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
-                          23 13:46:31 UTC 2021 |x86_64
                         version: 20.04.2 LTS
                       lastKeepAlive: '2024-02-26T12:40:40Z'
                       id: '001'
                       dateAdd: 2024-02-26T12:40:08Z
-                      configSum: ab73af41699f13fdd81903b5f23d8d00
-                      manager: wazuh-worker2
                       group: [default]
                       registerIP: any
                       ip: 172.25.0.6
@@ -5691,19 +5649,14 @@ paths:
                       status_code: 0
                     - os:
                         arch: x86_64
-                        codename: Focal Fossa
                         major: '20'
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        uname: Linux |ac7cb188d538 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
-                          23 13:46:31 UTC 2021 |x86_64
                         version: 20.04.2 LTS
                       lastKeepAlive: '2024-02-26T12:40:40Z'
                       id: '002'
                       dateAdd: 2024-02-26T12:40:10Z
-                      configSum: ab73af41699f13fdd81903b5f23d8d00
-                      manager: wazuh-worker2
                       group: [default]
                       registerIP: any
                       ip: 172.25.0.11
@@ -6221,24 +6174,19 @@ paths:
                   affected_items:
                     - os:
                         arch: x86_64
-                        codename: Focal Fossa
                         major: '20'
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        uname: Linux |b2497efbf876 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
-                          23 13:46:31 UTC 2021 |x86_64
                         version: 20.04.2 LTS
                       mergedSum: 2c769b2ea138d472ee8f1ba23412b5d4
                       node_name: worker1
                       ip: 172.20.0.7
                       id: 004
-                      manager: wazuh-worker1
                       group:
                         - default
                         - group1
                       name: b2497efbf876
-                      configSum: 052374472f3a0d5c8508241dcc455ea7
                       status: active
                       dateAdd: 2021-05-27T09:14:19Z
                       registerIP: any
@@ -6247,24 +6195,19 @@ paths:
                       status_code: 0
                     - os:
                         arch: x86_64
-                        codename: Focal Fossa
                         major: '20'
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        uname: Linux |600e27371700 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
-                          23 13:46:31 UTC 2021 |x86_64
                         version: 20.04.2 LTS
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       node_name: worker1
                       ip: 172.20.0.9
                       id: 005
-                      manager: wazuh-worker1
                       group:
                         - default
                         - group2
                       name: 600e27371700
-                      configSum: ab73af41699f13fdd81903b5f23d8d00
                       status: active
                       dateAdd: 2021-05-27T09:14:19Z
                       registerIP: any
@@ -6273,24 +6216,19 @@ paths:
                       status_code: 0
                     - os:
                         arch: x86_64
-                        codename: Focal Fossa
                         major: '20'
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        uname: Linux |4bdac19ce5e3 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
-                          23 13:46:31 UTC 2021 |x86_64
                         version: 20.04.2 LTS
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       node_name: worker2
                       ip: 172.20.0.10
                       id: 006
-                      manager: wazuh-worker2
                       group:
                         - default
                         - group3
                       name: 4bdac19ce5e3
-                      configSum: ab73af41699f13fdd81903b5f23d8d00
                       status: active
                       dateAdd: 2021-05-27T09:14:19Z
                       registerIP: any
@@ -10462,17 +10400,13 @@ paths:
                   last_registered_agent:
                     - os:
                         arch: "x86_64"
-                        codename: "Focal Fossa"
                         major: '20'
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        uname: "Linux |77000bae7bd0 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
-                         23 13:46:31 UTC 2021 |x86_64"
                         version: "20.04.02 LTS"
                       node_name: worker1
                       lastKeepAlive: "2021-05-31T10:56:52Z"
-                      configSum: "ab73af41699f13fdd81903b5f23d8d00"
                       status: active
                       ip: "172.18.0.7"
                       group:
@@ -10480,7 +10414,6 @@ paths:
                       name: "77000bae7bd0"
                       registerIP: "any"
                       dateAdd: "2021-05-31T09:49:28Z"
-                      manager: "wazuh-worker1"
                       id: "004"
                       mergedSum: "9a016508cea1e997ab8569f5cfab30f5"
                       version: "v4.3.0"

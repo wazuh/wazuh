@@ -54,7 +54,6 @@ async def test_delete_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
                 'filters': {
                     'status': None,
                     'older_than': None,
-                    'manager': None,
                     'version': None,
                     'group': None,
                     'node_name': None,
@@ -99,7 +98,6 @@ async def test_get_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp
                 'filters': {
                     'status': None,
                     'older_than': None,
-                    'manager': None,
                     'version': None,
                     'group': None,
                     'node_name': None,
@@ -424,7 +422,6 @@ async def test_put_upgrade_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
                 'force': False,
                 'package_type': None,
                 'filters': {
-                    'manager': None,
                     'version': None,
                     'group': None,
                     'node_name': None,
@@ -476,7 +473,6 @@ async def test_put_upgrade_custom_agents(mock_exc, mock_dapi, mock_remove, mock_
                 'file_path': file_path,
                 'installer': None,
                 'filters': {
-                    'manager': None,
                     'version': None,
                     'group': None,
                     'node_name': None,
@@ -570,7 +566,6 @@ async def test_get_agent_upgrade(mock_exc, mock_dapi, mock_remove, mock_dfunc,
     result = await get_agent_upgrade()
     f_kwargs = {'agent_list': None,
                 'filters': {
-                    'manager': None,
                     'version': None,
                     'group': None,
                     'node_name': None,

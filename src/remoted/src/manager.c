@@ -684,12 +684,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
                 return;
             }
 
-            os_calloc(HOST_NAME_MAX, sizeof(char), agent_data->manager_host);
-
-            if (gethostname(agent_data->manager_host, HOST_NAME_MAX) < 0) {
-                mwarn("Unable to get hostname due to: '%s'", strerror(errno));
-            }
-
             if (node_name) {
                 os_strdup(node_name, agent_data->node_name);
             }

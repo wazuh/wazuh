@@ -78,9 +78,9 @@ class InitAgent:
 
         self.never_connected_fields = {'status', 'name', 'ip', 'registerIP', 'node_name', 'dateAdd', 'id',
                                        'group_config_status', 'status_code'}
-        self.pending_fields = self.never_connected_fields | {'manager', 'lastKeepAlive'}
+        self.pending_fields = self.never_connected_fields | {'lastKeepAlive'}
         self.manager_fields = self.pending_fields | {'version', 'os', 'group'}
-        self.active_fields = self.manager_fields | {'group', 'mergedSum', 'configSum'}
+        self.active_fields = self.manager_fields | {'group', 'mergedSum'}
         self.disconnected_fields = self.active_fields | {'disconnection_time'}
         self.manager_fields -= {'registerIP'}
 
@@ -104,7 +104,6 @@ def send_msg_to_wdb(msg, raw=False):
         'register_ip': 'registerIP',
         'last_keepalive': 'lastKeepAlive',
         'date_add': 'dateAdd',
-        'manager_host': 'manager',
     }
     for row in result:
         for old, new in list(key_map.items()):
@@ -197,16 +196,16 @@ def test_WazuhDBQueryAgents_add_search_to_query(mock_socket_conn):
 
 
 @pytest.mark.parametrize('data', [
-    [{'id': 0, 'status': 'active', 'group': 'default,group1,group2', 'manager': 'master', 'dateAdd': 1000000000,
+    [{'id': 0, 'status': 'active', 'group': 'default,group1,group2', 'dateAdd': 1000000000,
       'disconnection_time': 0}],
-    [{'id': 3, 'status': 'disconnected', 'group': 'default', 'manager': 'worker1', 'dateAdd': 1000000000,
+    [{'id': 3, 'status': 'disconnected', 'group': 'default', 'dateAdd': 1000000000,
       'disconnection_time': 19345809}]
 ])
 @patch('socket.socket.connect')
 def test_WazuhDBQueryAgents_format_data_into_dictionary(mock_socket_conn, data):
     """Tests _format_data_into_dictionary of WazuhDBQueryAgents returns expected data"""
     query_agent = WazuhDBQueryAgents(offset=0, limit=1, sort=None,
-                                     search=None, select={'id', 'status', 'group', 'dateAdd', 'manager',
+                                     search=None, select={'id', 'status', 'group', 'dateAdd',
                                                           'disconnection_time'},
                                      default_sort_field=None, query=None, count=5,
                                      get_data=None, min_select_fields={'os.version'})
@@ -224,7 +223,6 @@ def test_WazuhDBQueryAgents_format_data_into_dictionary(mock_socket_conn, data):
     assert isinstance(res["group"], list) and len(res["group"]) == len(d["group"].split(",")), \
         "'group' has different type or length than expected"
     assert isinstance(res["dateAdd"], datetime), "Not date type"
-    assert res["manager"] == d["manager"]
     assert "disconnection_time" not in res if d["disconnection_time"] == 0 \
         else isinstance(res["disconnection_time"], datetime)
 
@@ -357,8 +355,9 @@ def test_WazuhDBQueryGroupByAgents_format_data_into_dictionary(mock_socket_conn)
 
 
 @pytest.mark.parametrize('filter_fields, expected_response', [
-    (['os.codename'], [{'os': {'codename': 'Bionic Beaver'}, 'count': 2}, {'os': {'codename': 'Xenial'}, 'count': 1},
-                       {'os': {'codename': 'N/A'}, 'count': 2}, {'os': {'codename': 'XP'}, 'count': 3}]),
+    (['os.major'], [{'os': {'major': '18'}, 'count': 2}, {'os': {'major': '16'}, 'count': 1},
+                    {'os': {'major': 'N/A'}, 'count': 2}, {'os': {'major': '5'}, 'count': 2},
+                    {'os': {'major': '7'}, 'count': 1}]),
     (['node_name'], [{'count': 6, 'node_name': 'node01'}, {'count': 2, 'node_name': 'unknown'}]),
     (['status', 'os.version'], [{'os': {'version': '18.04.1 LTS'}, 'count': 1, 'status': 'active'},
                                 {'os': {'version': '16.04.1 LTS'}, 'count': 1, 'status': 'active'},
@@ -476,13 +475,13 @@ def test_agent_to_dict():
     assert isinstance(agent.to_dict(), dict), 'Result is not a dict'
 
 
-@pytest.mark.parametrize('id, expected_ip, expected_name, expected_codename', [
-    ('001', '172.17.0.202', 'agent-1', 'Bionic Beaver'),
-    ('002', '172.17.0.201', 'agent-2', 'Xenial'),
+@pytest.mark.parametrize('id, expected_ip, expected_name, expected_major', [
+    ('001', '172.17.0.202', 'agent-1', '18'),
+    ('002', '172.17.0.201', 'agent-2', '16'),
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_load_info_from_db(socket_mock, send_mock, id, expected_ip, expected_name, expected_codename):
+def test_agent_load_info_from_db(socket_mock, send_mock, id, expected_ip, expected_name, expected_major):
     """Tests if method load_info_from_db of Agent returns a correct info.
 
     Parameters
@@ -493,15 +492,15 @@ def test_agent_load_info_from_db(socket_mock, send_mock, id, expected_ip, expect
         Ip expected on the returned agent.
     expected_name : str
         Name expected on the returned agent.
-    expected_codename : str
-        OS codename expected on the returned agent.
+    expected_major : str
+        OS major version expected on the returned agent.
     """
     agent = Agent(id=id)
     agent.load_info_from_db()
     result = agent.to_dict()
 
     assert result['id'] == id and result['name'] == expected_name and result['ip'] == expected_ip and \
-           result['os']['codename'] == expected_codename
+           result['os']['major'] == expected_major
 
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
@@ -516,7 +515,7 @@ def test_agent_load_info_from_db_ko(socket_mock, send_mock):
 @pytest.mark.parametrize('id, select', [
     (3, None),
     (5, {'id', 'ip', 'version'}),
-    (2, {'status', 'manager', 'node_name', 'dateAdd', 'lastKeepAlive'})
+    (2, {'status', 'node_name', 'dateAdd', 'lastKeepAlive'})
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
@@ -859,7 +858,7 @@ def test_agent_get_agents_overview_select(socket_mock, send_mock, select, status
     ({'value': 'any', 'negation': 1}, 5),
     ({'value': 'Windows', 'negation': 0}, 3),
     ({'value': 'Windows', 'negation': 1}, 5),
-    ({'value': 'master', 'negation': 1}, 2),
+    ({'value': 'master', 'negation': 1}, 8),
     ({'value': '停', 'negation': 0}, 0)
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)

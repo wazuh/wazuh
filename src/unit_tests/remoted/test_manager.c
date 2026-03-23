@@ -4690,7 +4690,6 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void** state)
     agent_info_data* agent_data;
     os_calloc(1, sizeof(agent_info_data), agent_data);
     agent_data->id = 1;
-    os_strdup("managerHost", agent_data->manager_host);
     os_strdup("10.2.2.2", agent_data->agent_ip);
     os_strdup("version 4.3", agent_data->version);
     os_strdup("112358", agent_data->merged_sum);
@@ -4719,7 +4718,6 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void** state)
     os_free(group->name);
     os_free(group);
 
-    os_free(agent_data->manager_host);
     os_free(agent_data);
 
     os_free(node_name);
@@ -4771,7 +4769,6 @@ void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
     agent_info_data *agent_data;
     os_calloc(1, sizeof(agent_info_data), agent_data);
     agent_data->id = 1;
-    os_strdup("manager_host", agent_data->manager_host);
     os_strdup("10.2.2.2", agent_data->agent_ip);
     os_strdup("version 4.3", agent_data->version);
     os_strdup("112358", agent_data->merged_sum);
@@ -4790,7 +4787,6 @@ void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
 
     save_controlmsg(&key, r_msg, &wdb_sock, &post_startup, is_startup, is_shutdown);
 
-    os_free(agent_data->manager_host);
     os_free(agent_data);
 
     free_keyentry(&key);

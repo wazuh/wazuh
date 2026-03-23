@@ -27,7 +27,7 @@ logger = logging.getLogger('wazuh-api')
 
 async def delete_agents(pretty: bool = False, wait_for_complete: bool = False, agents_list: str = None,
                         purge: bool = False, status: str = None, q: str = None, older_than: str = None,
-                        manager: str = None, version: str = None, group: str = None, node_name: str = None,
+                        version: str = None, group: str = None, node_name: str = None,
                         name: str = None, ip: str = None) -> ConnexionResponse:
     """Delete all agents or a list of them based on optional criteria.
 
@@ -48,8 +48,6 @@ async def delete_agents(pretty: bool = False, wait_for_complete: bool = False, a
     older_than : str
         Filter out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
         ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, use the register date.
-    manager : str
-        Filter by the name of the manager to which agents are connected.
     version : str
         Filter by agents version.
     group : str
@@ -73,7 +71,6 @@ async def delete_agents(pretty: bool = False, wait_for_complete: bool = False, a
                 'filters': {
                     'status': status,
                     'older_than': older_than,
-                    'manager': manager,
                     'version': version,
                     'group': group,
                     'node_name': node_name,
@@ -104,7 +101,7 @@ async def delete_agents(pretty: bool = False, wait_for_complete: bool = False, a
 
 async def get_agents(pretty: bool = False, wait_for_complete: bool = False, agents_list: str = None,
                      offset: int = 0, limit: int = DATABASE_LIMIT, select: str = None, sort: str = None,
-                     search: str = None, status: str = None, q: str = None, older_than: str = None, manager: str = None,
+                     search: str = None, status: str = None, q: str = None, older_than: str = None,
                      version: str = None, group: str = None, node_name: str = None, name: str = None, ip: str = None,
                      group_config_status: str = None, distinct: bool = False) -> ConnexionResponse:
     """Get information about all agents or a list of them.
@@ -135,8 +132,6 @@ async def get_agents(pretty: bool = False, wait_for_complete: bool = False, agen
     older_than : str
         Filter out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
         ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, use the register date.
-    manager : str
-        Filter by manager hostname to which agents are connected.
     version : str
         Filter by agents version.
     group : str
@@ -166,7 +161,6 @@ async def get_agents(pretty: bool = False, wait_for_complete: bool = False, agen
                 'filters': {
                     'status': status,
                     'older_than': older_than,
-                    'manager': manager,
                     'version': version,
                     'group': group,
                     'node_name': node_name,
@@ -558,8 +552,8 @@ async def restart_agent(agent_id: str, pretty: bool = False, wait_for_complete: 
 
 async def put_upgrade_agents(agents_list: str = None, pretty: bool = False, wait_for_complete: bool = False,
                              wpk_repo: str = None, upgrade_version: str = None, use_http: bool = False,
-                             force: bool = False, package_type: str = None, q: str = None, manager: str = None,
-                             version: str = None, group: str = None, node_name: str = None, name: str = None,
+                             force: bool = False, package_type: str = None, q: str = None, version: str = None,
+                             group: str = None, node_name: str = None, name: str = None,
                              ip: str = None) -> ConnexionResponse:
     """Upgrade agents using a WPK file from an online repository.
 
@@ -583,8 +577,6 @@ async def put_upgrade_agents(agents_list: str = None, pretty: bool = False, wait
         Default package type (rpm, deb).
     q : str
         Query to filter agents by.
-    manager : str
-        Filter by manager hostname to which agents are connected.
     version : str
         Filter by agents version.
     group : str
@@ -612,7 +604,6 @@ async def put_upgrade_agents(agents_list: str = None, pretty: bool = False, wait
                 'force': force,
                 'package_type': package_type,
                 'filters': {
-                    'manager': manager,
                     'version': version,
                     'group': group,
                     'node_name': node_name,
@@ -644,7 +635,7 @@ async def put_upgrade_agents(agents_list: str = None, pretty: bool = False, wait
 
 async def put_upgrade_custom_agents(agents_list: str = None, pretty: bool = False,
                                     wait_for_complete: bool = False, file_path: str = None, installer: str = None,
-                                    q: str = None, manager: str = None, version: str = None, group: str = None,
+                                    q: str = None, version: str = None, group: str = None,
                                     node_name: str = None, name: str = None, ip: str = None) -> ConnexionResponse:
     """Upgrade agents using a local WPK file.
 
@@ -662,8 +653,6 @@ async def put_upgrade_custom_agents(agents_list: str = None, pretty: bool = Fals
         Installation file.
     q : str
         Query to filter agents by.
-    manager : str
-        Filter by manager hostname to which agents are connected.
     version : str
         Filter by agents version.
     group : str
@@ -688,7 +677,6 @@ async def put_upgrade_custom_agents(agents_list: str = None, pretty: bool = Fals
                 'file_path': file_path,
                 'installer': installer,
                 'filters': {
-                    'manager': manager,
                     'version': version,
                     'group': group,
                     'node_name': node_name,
@@ -719,7 +707,7 @@ async def put_upgrade_custom_agents(agents_list: str = None, pretty: bool = Fals
 
 
 async def get_agent_upgrade(agents_list: str = None, pretty: bool = False, wait_for_complete: bool = False,
-                            q: str = None, manager: str = None, version: str = None, group: str = None,
+                            q: str = None, version: str = None, group: str = None,
                             node_name: str = None, name: str = None, ip: str = None) -> ConnexionResponse:
     """Get upgrade results from agents.
 
@@ -733,8 +721,6 @@ async def get_agent_upgrade(agents_list: str = None, pretty: bool = False, wait_
         List of agent IDs.
     q : str
         Query to filter agents by.
-    manager : str
-        Filter by manager hostname to which agents are connected.
     version : str
         Filter by agents version.
     group : str
@@ -753,7 +739,6 @@ async def get_agent_upgrade(agents_list: str = None, pretty: bool = False, wait_
     """
     f_kwargs = {'agent_list': agents_list,
                 'filters': {
-                    'manager': manager,
                     'version': version,
                     'group': group,
                     'node_name': node_name,

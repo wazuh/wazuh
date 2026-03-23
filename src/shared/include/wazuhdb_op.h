@@ -36,10 +36,7 @@ typedef struct os_data
     char* os_version;
     char* os_major;
     char* os_minor;
-    char* os_codename;
     char* os_platform;
-    char* os_build;
-    char* os_uname;
     char* os_arch;
     char* os_type;
     char* hostname;
@@ -51,9 +48,7 @@ typedef struct agent_info_data
     int id;
     os_data* osd;
     char* version;
-    char* config_sum;
     char* merged_sum;
-    char* manager_host;
     char* node_name;
     char* agent_ip;
     char* connection_status;

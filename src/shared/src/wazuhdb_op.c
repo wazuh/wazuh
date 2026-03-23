@@ -299,9 +299,7 @@ int wdbc_close(int* sock) {
 void wdb_free_agent_info_data(agent_info_data *agent_data) {
     if (agent_data) {
         os_free(agent_data->version);
-        os_free(agent_data->config_sum);
         os_free(agent_data->merged_sum);
-        os_free(agent_data->manager_host);
         os_free(agent_data->node_name);
         os_free(agent_data->agent_ip);
         os_free(agent_data->connection_status);
@@ -312,10 +310,7 @@ void wdb_free_agent_info_data(agent_info_data *agent_data) {
             os_free(agent_data->osd->os_version);
             os_free(agent_data->osd->os_major);
             os_free(agent_data->osd->os_minor);
-            os_free(agent_data->osd->os_codename);
             os_free(agent_data->osd->os_platform);
-            os_free(agent_data->osd->os_build);
-            os_free(agent_data->osd->os_uname);
             os_free(agent_data->osd->os_arch);
             os_free(agent_data->osd->os_type);
             os_free(agent_data->osd->hostname);

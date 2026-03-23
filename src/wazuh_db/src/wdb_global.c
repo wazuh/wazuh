@@ -15,20 +15,15 @@
 // List of agent information fields in global DB
 // The ":" is used for parameter binding
 static const char *global_db_agent_fields[] = {
-    ":config_sum",
     ":ip",
-    ":manager_host",
     ":merged_sum",
     ":name",
     ":node_name",
     ":os_arch",
-    ":os_build",
-    ":os_codename",
     ":os_major",
     ":os_minor",
     ":os_name",
     ":os_platform",
-    ":os_uname",
     ":os_version",
     ":version",
     ":last_keepalive",
@@ -122,15 +117,10 @@ int wdb_global_update_agent_version(wdb_t *wdb,
                                     const char *os_version,
                                     const char *os_major,
                                     const char *os_minor,
-                                    const char *os_codename,
                                     const char *os_platform,
-                                    const char *os_build,
-                                    const char *os_uname,
                                     const char *os_arch,
                                     const char *version,
-                                    const char *config_sum,
                                     const char *merged_sum,
-                                    const char *manager_host,
                                     const char *node_name,
                                     const char *agent_ip,
                                     const char *connection_status,
@@ -168,19 +158,7 @@ int wdb_global_update_agent_version(wdb_t *wdb,
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
-    if (sqlite3_bind_text(stmt, index++, os_codename, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
     if (sqlite3_bind_text(stmt, index++, os_platform, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
-    if (sqlite3_bind_text(stmt, index++, os_build, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
-    if (sqlite3_bind_text(stmt, index++, os_uname, -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
@@ -192,15 +170,7 @@ int wdb_global_update_agent_version(wdb_t *wdb,
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
-    if (sqlite3_bind_text(stmt, index++, config_sum, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
     if (sqlite3_bind_text(stmt, index++, merged_sum, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
-    if (sqlite3_bind_text(stmt, index++, manager_host, -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }

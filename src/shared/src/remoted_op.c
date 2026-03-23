@@ -107,13 +107,6 @@ void parse_uname_string (char *uname,
             snprintf(osd->os_minor, match_size + 1, "%.*s", match_size, str_tmp + match[1].rm_so);
         }
 
-        // Get os_build
-        if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+(\\.[0-9]+)*)\\.*", str_tmp, 2, match)) {
-            match_size = match[1].rm_eo - match[1].rm_so;
-            os_malloc(match_size +1, osd->os_build);
-            snprintf(osd->os_build, match_size + 1, "%.*s", match_size, str_tmp + match[1].rm_so);
-        }
-
         os_strdup(str_tmp, osd->os_version);
         os_strdup("windows", osd->os_platform);
     } else {
@@ -138,13 +131,9 @@ void parse_uname_string (char *uname,
                     size_t ver_len = strlen(osd->os_version);
                     if (ver_len > 0 && osd->os_version[ver_len - 1] == ']') osd->os_version[ver_len - 1] = '\0';
 
-                // os_major.os_minor (os_codename)
+                // Strip codename suffix from version string e.g. "22.04 (Jammy Jellyfish)"
                 if (str_tmp = strstr(osd->os_version, " ("), str_tmp) {
                     *str_tmp = '\0';
-                    str_tmp += 2;
-                    os_strdup(str_tmp, osd->os_codename);
-                        size_t cod_len = strlen(osd->os_codename);
-                        if (cod_len > 0 && osd->os_codename[cod_len - 1] == ')') osd->os_codename[cod_len - 1] = '\0';
                 }
 
                 // Get os_major
@@ -233,14 +222,11 @@ int parse_agent_update_msg (char *msg,
 
                 os_calloc(1, sizeof(os_data), agent_data->osd);
                 parse_uname_string(line, agent_data->osd);
-                os_strdup(line, agent_data->osd->os_uname);
 
                 line = str_tmp;
                 if (str_tmp = strstr(line, " / "), str_tmp) {
                     *str_tmp = '\0';
-                    str_tmp += 3;
                     os_strdup(line, agent_data->version);
-                    os_strdup(str_tmp, agent_data->config_sum);
                 }
                 else if (str_tmp = strstr(line, __wazuh_name), str_tmp) {
                     // If for some reason the separator between Wazuh version and config sum is
@@ -285,12 +271,6 @@ int parse_json_keepalive(const char *json_str, agent_info_data *agent_data, char
         os_strdup(version->valuestring, agent_data->version);
     }
 
-    // Extract agent config_sum
-    cJSON *config_sum = cJSON_GetObjectItem(agent, "config_sum");
-    if (config_sum && cJSON_IsString(config_sum)) {
-        os_strdup(config_sum->valuestring, agent_data->config_sum);
-    }
-
     // Extract agent merged_sum
     cJSON *merged_sum = cJSON_GetObjectItem(agent, "merged_sum");
     if (merged_sum && cJSON_IsString(merged_sum)) {
@@ -303,27 +283,8 @@ int parse_json_keepalive(const char *json_str, agent_info_data *agent_data, char
         os_strdup(agent_ip->valuestring, agent_data->agent_ip);
     }
 
-    // Extract agent uname
-    cJSON *agent_uname = cJSON_GetObjectItem(agent, "uname");
-
     // Allocate os_data structure
     os_calloc(1, sizeof(os_data), agent_data->osd);
-
-    // Parse uname FIRST to get ALL fields (major, minor, codename, build)
-    if (agent_uname && cJSON_IsString(agent_uname)) {
-        char *uname_copy = NULL;
-        os_strdup(agent_uname->valuestring, uname_copy);
-
-        // Strip " - Wazuh vX.X.X" suffix before parsing (same cleanup as parse_agent_update_msg)
-        char *dash_separator = strstr(uname_copy, " - ");
-        if (dash_separator) {
-            *dash_separator = '\0';
-        }
-
-        os_strdup(uname_copy, agent_data->osd->os_uname);
-        parse_uname_string(uname_copy, agent_data->osd);
-        os_free(uname_copy);
-    }
 
     // Extract host info
     cJSON *host = cJSON_GetObjectItem(root, "host");
@@ -332,7 +293,7 @@ int parse_json_keepalive(const char *json_str, agent_info_data *agent_data, char
         cJSON *os = cJSON_GetObjectItem(host, "os");
         if (os) {
 
-            // THEN overwrite with more accurate JSON fields
+            // Extract OS fields
             cJSON *os_name = cJSON_GetObjectItem(os, "name");
             if (os_name && cJSON_IsString(os_name)) {
                 os_free(agent_data->osd->os_name);
@@ -343,6 +304,29 @@ int parse_json_keepalive(const char *json_str, agent_info_data *agent_data, char
             if (os_version && cJSON_IsString(os_version)) {
                 os_free(agent_data->osd->os_version);
                 os_strdup(os_version->valuestring, agent_data->osd->os_version);
+
+                // Derive os_major and os_minor from os_version
+                regmatch_t match[2] = {{.rm_so = 0}};
+                int match_size = 0;
+                const char *ver = agent_data->osd->os_version;
+
+                os_free(agent_data->osd->os_major);
+                if (w_regexec("^([0-9]+)\\.*", ver, 2, match)) {
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    os_malloc(match_size + 1, agent_data->osd->os_major);
+                    snprintf(agent_data->osd->os_major, match_size + 1, "%.*s", match_size, ver + match[1].rm_so);
+                }
+
+                os_free(agent_data->osd->os_minor);
+                if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", ver, 2, match)) {
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    os_malloc(match_size + 1, agent_data->osd->os_minor);
+                    snprintf(agent_data->osd->os_minor, match_size + 1, "%.*s", match_size, ver + match[1].rm_so);
+                } else if (w_regexec("^[0-9]+-[Ss][Pp]([0-9]+)\\.*", ver, 2, match)) {
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    os_malloc(match_size + 1, agent_data->osd->os_minor);
+                    snprintf(agent_data->osd->os_minor, match_size + 1, "%.*s", match_size, ver + match[1].rm_so);
+                }
             }
 
             cJSON *os_platform = cJSON_GetObjectItem(os, "platform");
@@ -358,14 +342,14 @@ int parse_json_keepalive(const char *json_str, agent_info_data *agent_data, char
             }
         }
 
-        // Extract architecture (after uname parsing, to overwrite if present)
+        // Extract architecture
         cJSON *architecture = cJSON_GetObjectItem(host, "architecture");
         if (architecture && cJSON_IsString(architecture)) {
             os_free(agent_data->osd->os_arch);
             os_strdup(architecture->valuestring, agent_data->osd->os_arch);
         }
 
-        // Extract hostname (after uname parsing, to overwrite if present)
+        // Extract hostname
         cJSON *hostname = cJSON_GetObjectItem(host, "hostname");
         if (hostname && cJSON_IsString(hostname)) {
             os_free(agent_data->osd->hostname);

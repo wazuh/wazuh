@@ -108,7 +108,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             self._normalize_retrieved_versions(result)
 
         return result
-    
+
     def _normalize_retrieved_versions(self, query_results: dict):
         """Normalize the agents' versions retrieved from the database.
 
@@ -116,9 +116,9 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         ----------
         query_results : dict
             Query results.
-        
+
         """
-    
+
         for item in query_results['items']:
             if 'version' in item:
                 item['version'] = str(WazuhVersion(item['version'], treat_as_empty=[None, 'N/A']))
@@ -498,10 +498,10 @@ class Agent:
     """Wazuh Agent object."""
     fields = {'id': 'id', 'name': 'name', 'ip': 'coalesce(ip,register_ip)', 'status': 'connection_status',
               'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
-              'version': 'version', 'manager': 'manager_host', 'dateAdd': 'date_add',
-              'group': '`group`', 'mergedSum': 'merged_sum', 'configSum': 'config_sum',
-              'os.codename': 'os_codename', 'os.major': 'os_major', 'os.minor': 'os_minor',
-              'os.uname': 'os_uname', 'os.arch': 'os_arch', 'os.build': 'os_build',
+              'version': 'version', 'dateAdd': 'date_add',
+              'group': '`group`', 'mergedSum': 'merged_sum',
+              'os.major': 'os_major', 'os.minor': 'os_minor',
+              'os.arch': 'os_arch',
               'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'internal_key': 'internal_key',
               'registerIP': 'register_ip', 'disconnection_time': 'disconnection_time',
               'group_config_status': 'group_config_status', 'status_code': 'status_code'}
@@ -539,10 +539,8 @@ class Agent:
         self.lastKeepAlive = None
         self.status = None
         self.key = None
-        self.configSum = None
         self.mergedSum = None
         self.group = None
-        self.manager = None
         self.node_name = None
         self.registerIP = ip
         self.disconnection_time = None
@@ -560,8 +558,8 @@ class Agent:
     def to_dict(self) -> dict:
         dictionary = {'id': self.id, 'name': self.name, 'ip': self.ip, 'internal_key': self.internal_key, 'os': self.os,
                       'version': self.version, 'dateAdd': self.dateAdd, 'lastKeepAlive': self.lastKeepAlive,
-                      'status': self.status, 'key': self.key, 'configSum': self.configSum, 'mergedSum': self.mergedSum,
-                      'group': self.group, 'manager': self.manager, 'node_name': self.node_name,
+                      'status': self.status, 'key': self.key, 'mergedSum': self.mergedSum, 'group': self.group,
+                      'node_name': self.node_name,
                       'disconnection_time': self.disconnection_time, 'group_config_status': self.group_config_status,
                       'status_code': self.status_code}
 

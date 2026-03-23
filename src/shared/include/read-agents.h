@@ -29,7 +29,6 @@ typedef struct _agent_info {
     char *syscheck_endtime;
     char *os;
     char *version;
-    char *config_sum;
     char *merged_sum;
     agent_status_t connection_status;
 } agent_info;
