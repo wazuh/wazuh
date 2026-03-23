@@ -212,6 +212,9 @@ class Monitoring final
     }
 
 public:
+    /**
+     * @brief Class destructor.
+     */
     ~Monitoring()
     {
         m_stop = true;

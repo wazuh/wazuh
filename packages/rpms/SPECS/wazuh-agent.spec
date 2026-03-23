@@ -287,6 +287,11 @@ if [ $1 = 1 ]; then
   %{_localstatedir}/packages_files/agent_installation_scripts/src/init/register_configure_agent.sh %{_localstatedir} > /dev/null || :
 fi
 
+if [ -r /etc/SuSE-release ] && grep -q "VERSION = 11" /etc/SuSE-release 2>/dev/null; then
+    cp -p %{_localstatedir}/packages_files/agent_installation_scripts/src/init/ossec-hids-suse.init /etc/init.d/wazuh-agent
+    chmod 755 /etc/init.d/wazuh-agent
+fi
+
 if [[ -d /run/systemd/system ]]; then
   rm -f %{_initrddir}/wazuh-agent
 fi
@@ -802,6 +807,8 @@ rm -fr %{buildroot}
 %endif
 
 %changelog
+* Sat Apr 11 2026 support <info@wazuh.com> - 4.14.5
+- More info: https://documentation.wazuh.com/current/release-notes/release-4-14-5.html
 * Tue Mar 17 2026 support <info@wazuh.com> - 4.14.4
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-4.html
 * Wed Feb 11 2026 support <info@wazuh.com> - 4.14.3

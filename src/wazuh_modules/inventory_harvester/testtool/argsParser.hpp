@@ -85,8 +85,7 @@ public:
                   << "\t-h \t\t\tShow this help message\n"
                   << "\t-i <file1,file2,...> \tSpecify the input files\n"
                   << "\t-c <file> \t\tSpecify the configuration file\n"
-                  << "\nExample:"
-                  << "\n\t./inventory_harvester_tool -c config.json\n"
+                  << "\nExample:" << "\n\t./inventory_harvester_tool -c config.json\n"
                   << "\n\t./inventory_harvester_tool -c config.json -i file1.json,file2.json\n";
     }
 

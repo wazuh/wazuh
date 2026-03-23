@@ -365,6 +365,8 @@ if("${TARGET}" STREQUAL "winagent")
 else()
     list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 endif()
+list(APPEND shared_tests_names "test_hash_op")
+list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 
 # Compiling tests
 list(LENGTH shared_tests_names count)

@@ -26,6 +26,7 @@ cluster_enabled = not read_cluster_config(from_import=True)['disabled']
 node_id = get_node().get('node') if cluster_enabled else 'manager'
 
 
+@expose_resources(actions=['rules:read'], resources=['rule:file:*'])
 def get_rules(rule_ids: list = None, status: str = None, group: str = None, pci_dss: str = None, gpg13: str = None,
               gdpr: str = None, hipaa: str = None, nist_800_53: str = None, tsc: str = None, mitre: str = None,
               relative_dirname: str = None, filename: list = None, level: str = None, offset: int = 0,
@@ -225,6 +226,7 @@ def get_rules_files(status: str = None, relative_dirname: str = None, filename: 
     return result
 
 
+@expose_resources(actions=['rules:read'], resources=['rule:file:*'])
 def get_groups(offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None, sort_ascending: bool = True,
                search_text: str = None, complementary_search: bool = False,
                search_in_fields: list = None) -> AffectedItemsWazuhResult:
@@ -268,6 +270,7 @@ def get_groups(offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dic
     return result
 
 
+@expose_resources(actions=['rules:read'], resources=['rule:file:*'])
 def get_requirement(requirement: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort_by: dict = None,
                     sort_ascending: bool = True, search_text: str = None, complementary_search: bool = False,
                     search_in_fields: list = None) -> AffectedItemsWazuhResult:
@@ -353,6 +356,7 @@ def get_rule_file_path(filename: str = None, relative_dirname: str = None) -> st
         return normpath(join(common.WAZUH_PATH, rules[0]['relative_dirname'], filename))
 
 
+@expose_resources(actions=['rules:read'], resources=['rule:file:*'])
 def get_rule_file(filename: str = None, raw: bool = False,
                   relative_dirname: str = None) -> Union[str, AffectedItemsWazuhResult]:
     """Read content of specified file.
