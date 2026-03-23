@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, timezone
+
 from wazuh.core.agent import WazuhDBQueryAgents
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.indexer.indexer import get_indexer_client
@@ -120,9 +121,17 @@ class MetricsSnapshotTasks:
     async def _collect_and_index(self):
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        agent_docs = await self._collect_agents(timestamp)
-        comms_docs = await self._collect_comms_all_nodes(timestamp)
+        agent_docs, comms_docs = await asyncio.gather(
+            self._collect_agents(timestamp),
+            self._collect_comms_all_nodes(timestamp),
+        )
 
         async with get_indexer_client() as indexer:
-            await indexer.metrics.bulk_index("wazuh-metrics-agents", agent_docs, self.bulk_size)
-            await indexer.metrics.bulk_index("wazuh-metrics-comms", comms_docs, self.bulk_size)
+            await asyncio.gather(
+                indexer.metrics.bulk_index(
+                    "wazuh-metrics-agents", agent_docs, self.bulk_size
+                ),
+                indexer.metrics.bulk_index(
+                    "wazuh-metrics-comms", comms_docs, self.bulk_size
+                ),
+            )
