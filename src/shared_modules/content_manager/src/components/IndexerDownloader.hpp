@@ -17,9 +17,14 @@
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include "utils/timeHelper.h"
+#include <atomic>
+#include <chrono>
 #include <memory>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <tuple>
+#include <vector>
 
 /**
  * @class IndexerDownloader
@@ -52,6 +57,7 @@ class IndexerDownloader final : public AbstractHandler<std::shared_ptr<UpdaterCo
 {
 private:
     nlohmann::json m_config;
+    mutable std::mutex m_callbackMutex; ///< Serializes processPage calls across parallel slices.
 
     /**
      * @brief Persists the cursor to RocksDB after each page so that a restart can resume
@@ -148,7 +154,11 @@ private:
             message["data"].push_back(std::move(resource));
         }
 
-        const auto result = context.spUpdaterBaseContext->fileProcessingCallback(message.dump());
+        FileProcessingResult result;
+        {
+            std::lock_guard<std::mutex> lock(m_callbackMutex);
+            result = context.spUpdaterBaseContext->fileProcessingCallback(message.dump());
+        }
         if (!std::get<2>(result))
         {
             throw std::runtime_error("IndexerDownloader: fileProcessingCallback returned failure");
@@ -230,6 +240,164 @@ private:
     }
 
     /**
+     * @brief Paginate through the index using a single shared PIT with N parallel slices.
+     *
+     * Each slice gets a disjoint subset of documents via OpenSearch's slice API
+     * (hash-modulo on _id). Each slice paginates independently with search_after.
+     * The callback is serialized via m_callbackMutex.
+     *
+     * Cursor is only persisted after all slices complete (crash = full restart).
+     *
+     * @param context    Updater context.
+     * @param query      Elasticsearch query object.
+     * @param startCursor Starting cursor value.
+     * @param numSlices  Number of parallel slices.
+     * @return Total number of documents processed across all slices.
+     */
+    size_t fetchWithSlicedPit(UpdaterContext& context,
+                              const nlohmann::json& query,
+                              const std::string& startCursor,
+                              size_t numSlices) const
+    {
+        static constexpr std::string_view PIT_KEEP_ALIVE {"5m"};
+
+        const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
+        const size_t pageSize = m_config.at("indexer").value("pageSize", 1000u);
+
+        const nlohmann::json sort =
+            nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
+
+        IndexerConnectorSync syncConnector(m_config.at("indexer"));
+
+        auto pit = syncConnector.createPointInTime({indexName}, PIT_KEEP_ALIVE);
+        auto pitGuard = std::unique_ptr<PointInTime, std::function<void(PointInTime*)>>(
+            &pit,
+            [&syncConnector](auto* p)
+            {
+                try
+                {
+                    syncConnector.deletePointInTime(*p);
+                }
+                catch (const IndexerConnectorException& e)
+                {
+                    logWarn(WM_CONTENTUPDATER, "IndexerDownloader: Failed to delete PIT: %s", e.what());
+                }
+            });
+
+        std::atomic<size_t> totalProcessed {0};
+        std::string maxCursor = startCursor;
+        std::mutex cursorMutex;
+        std::vector<std::thread> threads;
+        std::vector<std::string> errors;
+        std::mutex errorsMutex;
+
+        logInfo(WM_CONTENTUPDATER,
+                "IndexerDownloader: Starting sliced PIT download with %zu slices, pageSize=%zu",
+                numSlices,
+                pageSize);
+
+        auto sliceWorker = [&](size_t sliceId)
+        {
+            try
+            {
+                const nlohmann::json sliceParam = {{"id", sliceId}, {"max", numSlices}};
+                std::optional<nlohmann::json> searchAfter = std::nullopt;
+                size_t sliceProcessed = 0;
+                std::string sliceCursor = startCursor;
+                auto t0 = std::chrono::steady_clock::now();
+
+                while (true)
+                {
+                    const auto hitsObj =
+                        syncConnector.search(pit, pageSize, query, sort, searchAfter, std::nullopt, sliceParam);
+                    const auto& hitArray = hitsObj.at("hits");
+
+                    if (!hitArray.is_array() || hitArray.empty())
+                    {
+                        break;
+                    }
+
+                    const auto& lastHit = hitArray.back();
+                    if (lastHit.contains("_source") && lastHit.at("_source").contains("offset"))
+                    {
+                        sliceCursor = std::to_string(lastHit.at("_source").at("offset").get<uint64_t>());
+                    }
+
+                    processPage(context, hitArray, sliceCursor);
+                    sliceProcessed += hitArray.size();
+
+                    if (hitArray.size() < pageSize)
+                    {
+                        break;
+                    }
+
+                    searchAfter = lastHit.at("sort");
+                }
+
+                totalProcessed += sliceProcessed;
+
+                // Update global max cursor
+                {
+                    std::lock_guard<std::mutex> lock(cursorMutex);
+                    if (!sliceCursor.empty())
+                    {
+                        try
+                        {
+                            auto sliceVal = std::stoull(sliceCursor);
+                            auto currentMax = maxCursor.empty() ? 0ULL : std::stoull(maxCursor);
+                            if (sliceVal > currentMax)
+                            {
+                                maxCursor = sliceCursor;
+                            }
+                        }
+                        catch (...)
+                        {
+                        }
+                    }
+                }
+
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                   std::chrono::steady_clock::now() - t0)
+                                   .count();
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Slice %zu/%zu complete — %zu docs in %ldms",
+                        sliceId,
+                        numSlices,
+                        sliceProcessed,
+                        elapsed);
+            }
+            catch (const std::exception& e)
+            {
+                std::lock_guard<std::mutex> lock(errorsMutex);
+                errors.push_back("Slice " + std::to_string(sliceId) + ": " + e.what());
+                logError(WM_CONTENTUPDATER, "IndexerDownloader: Slice %zu failed: %s", sliceId, e.what());
+            }
+        };
+
+        for (size_t i = 0; i < numSlices; ++i)
+        {
+            threads.emplace_back(sliceWorker, i);
+        }
+
+        for (auto& t : threads)
+        {
+            t.join();
+        }
+
+        if (!errors.empty())
+        {
+            throw std::runtime_error("IndexerDownloader: " + std::to_string(errors.size()) + " slice(s) failed: " +
+                                     errors.front());
+        }
+
+        // Persist cursor only after all slices complete
+        context.data["cursor"] = maxCursor;
+        persistCursor(context, maxCursor);
+
+        return totalProcessed.load();
+    }
+
+    /**
      * @brief Full initial load using PIT + search_after (match_all, sorted by offset).
      *
      * Retries every INITIAL_LOAD_RETRY_INTERVAL seconds if the Indexer returns 0 documents
@@ -243,13 +411,16 @@ private:
         static constexpr std::chrono::seconds INITIAL_LOAD_RETRY_INTERVAL {30};
 
         const nlohmann::json query = {{"match_all", nlohmann::json::object()}};
+        const size_t numSlices = m_config.at("indexer").value("numSlices", 1u);
         size_t attempt = 0;
 
         while (true)
         {
             if (attempt == 0)
             {
-                logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Starting initial full load");
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Starting initial full load (slices=%zu)",
+                        numSlices);
             }
             else
             {
@@ -262,7 +433,14 @@ private:
 
             try
             {
-                totalProcessed = fetchWithPit(context, query, "");
+                if (numSlices > 1)
+                {
+                    totalProcessed = fetchWithSlicedPit(context, query, "", numSlices);
+                }
+                else
+                {
+                    totalProcessed = fetchWithPit(context, query, "");
+                }
             }
             catch (const std::exception& e)
             {

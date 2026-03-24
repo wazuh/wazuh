@@ -68,9 +68,10 @@ public:
                           const nlohmann::json& query,
                           const nlohmann::json& sort,
                           const std::optional<nlohmann::json>& searchAfter = std::nullopt,
-                          const std::optional<nlohmann::json>& source = std::nullopt)
+                          const std::optional<nlohmann::json>& source = std::nullopt,
+                          const std::optional<nlohmann::json>& slice = std::nullopt)
     {
-        return m_impl.search(pit, size, query, sort, searchAfter, source);
+        return m_impl.search(pit, size, query, sort, searchAfter, source, slice);
     }
 
     void bulkDelete(std::string_view id, std::string_view index)
@@ -159,9 +160,10 @@ nlohmann::json IndexerConnectorSync::search(const PointInTime& pit,
                                             const nlohmann::json& query,
                                             const nlohmann::json& sort,
                                             const std::optional<nlohmann::json>& searchAfter,
-                                            const std::optional<nlohmann::json>& source)
+                                            const std::optional<nlohmann::json>& source,
+                                            const std::optional<nlohmann::json>& slice)
 {
-    return m_impl->search(pit, size, query, sort, searchAfter, source);
+    return m_impl->search(pit, size, query, sort, searchAfter, source, slice);
 }
 
 void IndexerConnectorSync::bulkDelete(std::string_view id, std::string_view index)
