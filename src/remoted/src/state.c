@@ -110,7 +110,7 @@ static void rem_inc_agents_send_discarded(const char *agent_id);
 
 void * rem_state_main() {
     if (!state_interval) {
-        minfo("State file is disabled.");
+        mdebug1("State file is disabled.");
         return NULL;
     }
 

@@ -1325,7 +1325,7 @@ STATIC int validate_shared_files(const char *src_path, FILE *finalfp, OSHash **_
                     } else {
                         os_free(modify_time);
                         OSHash_Delete(invalid_files, file);
-                        minfo("File '%s' is valid after last modification.", file);
+                        mdebug1("File '%s' is valid after last modification.", file);
                         ignored = 0;
                     }
                 }

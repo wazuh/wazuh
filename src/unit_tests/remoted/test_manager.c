@@ -3159,7 +3159,7 @@ void test_validate_shared_files_valid_now(void **state)
     expect_string(__wrap_OSHash_Delete, key, "etc/shared/test_default/test-file");
     will_return(__wrap_OSHash_Delete, NULL);
 
-    expect_string(__wrap__minfo, formatted_msg, "File 'etc/shared/test_default/test-file' is valid after last modification.");
+    expect_string(__wrap__mdebug1, formatted_msg, "File 'etc/shared/test_default/test-file' is valid after last modification.");
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
