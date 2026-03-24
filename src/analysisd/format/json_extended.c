@@ -614,6 +614,12 @@ int match_regex(regex_t* r, const char* to_match, char* results[MAX_MATCHES])
     int totalResults = 0;
     while(1) {
         int i = 0;
+
+        if (totalResults >= MAX_MATCHES) {
+            mdebug1("Reached maximum number of regex matches (%d), stopping.", MAX_MATCHES);
+            return totalResults;
+        }
+
         int nomatch = regexec(r, p, n_matches, m, 0);
         if(nomatch) {
             // printf ("No more matches.\n");
@@ -622,14 +628,29 @@ int match_regex(regex_t* r, const char* to_match, char* results[MAX_MATCHES])
         for(i = 0; i < n_matches; i++) {
             int start;
             int finish;
+            int match_len;
+
             if(m[i].rm_so == -1) {
                 break;
             }
             start = m[i].rm_so + (p - to_match);
             finish = m[i].rm_eo + (p - to_match);
             if(i > 0) {
-                sprintf(results[totalResults], "%.*s", (finish - start), to_match + start);
+                match_len = finish - start;
+                if (match_len >= MAX_STRING_LESS) {
+                    mdebug1("Match length (%d) exceeds buffer size, truncating to %d.",
+                           match_len, MAX_STRING_LESS - 1);
+                    match_len = MAX_STRING_LESS - 1;
+                }
+
+                snprintf(results[totalResults], MAX_STRING_LESS, "%.*s", match_len, to_match + start);
+                results[totalResults][MAX_STRING_LESS - 1] = '\0';
                 totalResults = totalResults + 1;
+
+                if (totalResults >= MAX_MATCHES) {
+                    mdebug1("Maximum results reached (%d), stopping.", MAX_MATCHES);
+                    return totalResults;
+                }
             }
         }
         p += m[0].rm_eo;
