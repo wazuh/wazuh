@@ -133,7 +133,7 @@
      os_calloc(1, sizeof(wmodule), module);
      module->context = &WM_INVENTORY_SYNC_CONTEXT;
      module->tag = strdup(module->context->name);
-     mtinfo(WM_INVENTORY_SYNC_LOGTAG, "Loaded Inventory sync module.");
+     mtdebug1(WM_INVENTORY_SYNC_LOGTAG, "Loaded Inventory sync module.");
      return module;
  }
 

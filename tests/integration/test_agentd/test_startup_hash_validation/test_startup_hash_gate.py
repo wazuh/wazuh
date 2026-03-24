@@ -100,7 +100,8 @@ ALL_DAEMONS = ('wazuh-agentd',) + MODULE_DAEMONS
 # Log patterns emitted by the startup gate C code.
 GATE_BLOCKING_PATTERN = (
     r".*Startup hash gate is blocking "
-    r"'wazuh-(modulesd|syscheckd|logcollector|execd)' \(waiting_hash_match\)\."
+    r"'wazuh-(modulesd|syscheckd|logcollector|execd)' "
+    r"\((waiting_hash_match|waiting for agentd startup gate status)\)\."
 )
 GATE_RELEASED_PATTERN = (
     r".*Startup hash gate released for "

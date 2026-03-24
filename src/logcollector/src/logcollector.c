@@ -1942,7 +1942,7 @@ void * w_output_thread(void * args){
                 // Retry to connect infinitely.
                 logr_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
-                minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
+                mdebug1("Successfully reconnected to '%s'", DEFAULTQUEUE);
 
                 if (result = SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target),
                     result != 0) {
