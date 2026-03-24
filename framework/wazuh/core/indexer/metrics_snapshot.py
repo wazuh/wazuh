@@ -11,6 +11,7 @@ from wazuh.stats import get_daemons_stats
 class MetricsSnapshotTasks:
     DEFAULT_METRICS_FREQUENCY = 600
     DEFAULT_METRICS_BULK_SIZE = 100
+    SCHEMA_VERSION = "1"
 
     def __init__(self, server, cluster_items: dict):
         self.server = server
@@ -166,7 +167,7 @@ class MetricsSnapshotTasks:
             "wazuh.agent.host.os.full": os_fields.get("uname"),
             "wazuh.cluster.name": doc.get("wazuh.cluster.name"),
             "wazuh.cluster.node": doc.get("wazuh.cluster.node"),
-            "wazuh.schema.version": None,
+            "wazuh.schema.version": MetricsSnapshotTasks.SCHEMA_VERSION,
         })
 
     @staticmethod
@@ -189,7 +190,7 @@ class MetricsSnapshotTasks:
             "@timestamp": doc.get("@timestamp"),
             "wazuh.cluster.name": doc.get("wazuh.cluster.name"),
             "wazuh.cluster.node": doc.get("wazuh.cluster.node"),
-            "wazuh.schema.version": None,
+            "wazuh.schema.version": MetricsSnapshotTasks.SCHEMA_VERSION,
             "events.module": "remoted",
             "queue.usage": str(raw_queue_size) if raw_queue_size is not None else None,
             "queue.capacity": doc.get("total_queue_size"),
