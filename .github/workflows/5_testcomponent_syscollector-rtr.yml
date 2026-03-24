@@ -20,7 +20,6 @@ jobs:
           matrix:
               module: [wazuh_modules/syscollector, shared_modules/dbsync, data_provider]
               target: [agent, winagent]
-    # We don't use wz-linux-amd64 because the install_build_deps action adds a fixed repository for Wine
     runs-on: wz-linux-amd64
     steps:
       - name: Checkout Repo
