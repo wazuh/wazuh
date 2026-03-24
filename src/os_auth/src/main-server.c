@@ -256,10 +256,6 @@ int main(int argc, char **argv)
                     auto_method = 1;
                     break;
 
-                case 'L':
-                    mwarn("This option no longer applies. The agent limit has been removed.");
-                    break;
-
                 case 'C':
                     if (!optarg) {
                         merror_exit("-%c needs an argument", c);
@@ -434,7 +430,7 @@ int main(int argc, char **argv)
 
     /* Exit here if disabled */
     if (config.flags.disabled) {
-        minfo("Daemon is disabled. Closing.");
+        mdebug1("Daemon is disabled. Closing.");
         exit(0);
     }
 
@@ -579,17 +575,17 @@ int main(int argc, char **argv)
             }
 
             if (buf[0] != '\0') {
-                minfo("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHD_PASS);
+                mdebug1("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHD_PASS);
             } else {
                 /* Getting temporary pass. */
                 if (authpass = w_generate_random_pass(), authpass) {
-                    minfo("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
+                    mdebug1("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
                 } else {
                     merror_exit("Unable to generate random password. Exiting.");
                 }
             }
         } else {
-            minfo("Accepting connections on port %hu. No password required.", config.port);
+            mdebug1("Accepting connections on port %hu. No password required.", config.port);
         }
     }
 
@@ -871,7 +867,7 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
     authd_sigblock();
 
     if (config.timeout_sec || config.timeout_usec) {
-        minfo("Setting network timeout to %.6f sec.", config.timeout_sec + config.timeout_usec / 1000000.);
+        mdebug1("Setting network timeout to %.6f sec.", config.timeout_sec + config.timeout_usec / 1000000.);
     } else {
         mdebug1("Network timeout is disabled.");
     }

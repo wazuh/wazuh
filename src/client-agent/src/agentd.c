@@ -66,15 +66,15 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     }
 
     /* Read private keys */
-    minfo(ENC_READ);
+    mdebug1(ENC_READ);
     OS_ReadKeys(&keys, W_DUAL_KEY, 0);
 
-    minfo("Using notify time: %d", agt->notify_time);
+    mdebug1("Using notify time: %d", agt->notify_time);
 
     if (!getuname()) {
         merror(MEM_ERROR, errno, strerror(errno));
     } else {
-        minfo("Version detected -> %s", getuname());
+        mdebug1("Version detected -> %s", getuname());
     }
 
     /* Try to connect to server */

@@ -84,7 +84,7 @@ wmodule* wm_content_manager_read()
     module->context = &WM_CONTENT_MANAGER_CONTEXT;
     module->tag = strdup(module->context->name);
 
-    mtinfo(WM_CONTENT_MANAGER_LOGTAG, "Loaded content_manager module.");
+    mtdebug1(WM_CONTENT_MANAGER_LOGTAG, "Loaded content_manager module.");
     return module;
 }
 

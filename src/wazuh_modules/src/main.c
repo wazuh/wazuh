@@ -177,7 +177,7 @@ void wm_setup()
     wm_setGroupID(gid);
 
     if (wm_check() < 0) {
-        minfo("No configuration defined. Exiting...");
+        mdebug1("No configuration defined. Exiting...");
         exit(EXIT_SUCCESS);
     }
 
@@ -249,7 +249,7 @@ void wm_handler(int signum)
     case SIGTERM:
         // For the moment only gracefull shutdown will be for syscollector, in the future
         // it will be modified for all wmodules, modifying the mainloop of each thread.
-        minfo("Shutting down Wazuh modules.");
+        mdebug1("Shutting down Wazuh modules.");
         for (cur_module = wmodules; cur_module && cur_module->context && cur_module->context->name; cur_module = cur_module->next) {
             if (cur_module->context->stop) {
                 cur_module->context->stop(cur_module->data);
