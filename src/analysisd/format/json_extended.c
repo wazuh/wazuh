@@ -8,9 +8,7 @@
 #include "config.h"
 #include <regex.h>
 
-#define MAX_MATCHES 10
 #define MAX_STRING 1024
-#define MAX_STRING_LESS 30
 
 static const char *pattern = "^[A-Z][a-z][a-z] [ 0123][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9] ([^ ]+)";
 static regex_t * regexCompiled; // Shared regex between write thread, AR thread and logtest thread

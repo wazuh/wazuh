@@ -185,6 +185,9 @@ list(APPEND analysisd_flags "-Wl,--wrap,asys_create_state_json -Wl,--wrap,OS_Bin
 LIST(APPEND analysisd_names "test_limits")
 LIST(APPEND analysisd_flags "-Wl,--wrap,_minfo -Wl,--wrap,_mwarn")
 
+list(APPEND analysisd_names "test_json_extended")
+list(APPEND analysisd_flags "${DEBUG_OP_WRAPPERS}")
+
 list(LENGTH analysisd_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})
