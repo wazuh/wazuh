@@ -231,6 +231,76 @@ def test_aws_guardduty_bucket_reformat_msg(mock_custom_bucket, mock_type, mock_r
         assert [event] == formatted_event
 
 
+@pytest.mark.parametrize('guardduty_type, start_after, expected_start_after', [
+    ("GuardDutyNative",
+     "AWSLogs/123456789123/GuardDuty/us-east-1/2026/03/19/9f7b0b8c-5ec8-32ec-8e77-c738515b4f6f.jsonl.gz",
+     "AWSLogs/123456789123/GuardDuty/us-east-1/2026/03/19/"),
+    ("GuardDutyNative",
+     "prefix/AWSLogs/123456789123/GuardDuty/us-east-1/2026/01/05/1a2b3c4d-aaaa-bbbb-cccc-dddddddddddd.jsonl.gz",
+     "prefix/AWSLogs/123456789123/GuardDuty/us-east-1/2026/01/05/"),
+    ("GuardDutyKinesis",
+     "some/kinesis/path/2026/03/19/file.gz",
+     "some/kinesis/path/2026/03/19/file.gz"),
+    ("GuardDutyNative",
+     "AWSLogs/123456789123/GuardDuty/us-east-1/",
+     "AWSLogs/123456789123/GuardDuty/us-east-1/"),
+])
+@patch('aws_bucket.AWSCustomBucket.build_s3_filter_args')
+@patch('guardduty.AWSGuardDutyBucket.check_guardduty_type')
+@patch('aws_bucket.AWSCustomBucket.__init__')
+def test_aws_guardduty_bucket_build_s3_filter_args(mock_custom_bucket, mock_type, mock_parent_build,
+                                                    guardduty_type, start_after, expected_start_after):
+    """Test 'build_s3_filter_args' rewinds the marker to the day folder for GuardDutyNative."""
+    mock_parent_build.return_value = {
+        'Bucket': utils.TEST_BUCKET,
+        'MaxKeys': 1000,
+        'Prefix': 'test/',
+        'StartAfter': start_after
+    }
+    instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)
+    instance.type = guardduty_type
+
+    result = instance.build_s3_filter_args(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+    assert result['StartAfter'] == expected_start_after
+
+
+@patch('aws_bucket.AWSCustomBucket.build_s3_filter_args')
+@patch('guardduty.AWSGuardDutyBucket.check_guardduty_type')
+@patch('aws_bucket.AWSCustomBucket.__init__')
+def test_aws_guardduty_bucket_build_s3_filter_args_no_rewind_when_iterating(mock_custom_bucket, mock_type,
+                                                                             mock_parent_build):
+    """Test 'build_s3_filter_args' does not rewind the marker when iterating (pagination)."""
+    original_start_after = "AWSLogs/123456789123/GuardDuty/us-east-1/2026/03/19/9f7b0b8c-xxxx.jsonl.gz"
+    mock_parent_build.return_value = {
+        'Bucket': utils.TEST_BUCKET,
+        'MaxKeys': 1000,
+        'Prefix': 'test/',
+        'StartAfter': original_start_after
+    }
+    instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)
+    instance.type = "GuardDutyNative"
+
+    result = instance.build_s3_filter_args(utils.TEST_ACCOUNT_ID, utils.TEST_REGION, iterating=True)
+    assert result['StartAfter'] == original_start_after
+
+
+@patch('aws_bucket.AWSCustomBucket.build_s3_filter_args')
+@patch('guardduty.AWSGuardDutyBucket.check_guardduty_type')
+@patch('aws_bucket.AWSCustomBucket.__init__')
+def test_aws_guardduty_bucket_build_s3_filter_args_no_start_after(mock_custom_bucket, mock_type, mock_parent_build):
+    """Test 'build_s3_filter_args' handles cases where StartAfter is not present in filter args."""
+    mock_parent_build.return_value = {
+        'Bucket': utils.TEST_BUCKET,
+        'MaxKeys': 1000,
+        'Prefix': 'test/',
+    }
+    instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)
+    instance.type = "GuardDutyNative"
+
+    result = instance.build_s3_filter_args(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+    assert 'StartAfter' not in result
+
+
 @pytest.mark.parametrize('log_key, json_file_content, result',
                          [('file.jsonl.gz',
                            '{"detail": {"schemaVersion": "2.0"}, "service": {"serviceName": "guardduty"}}',
