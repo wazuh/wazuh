@@ -445,7 +445,7 @@ EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
-	EXTERNAL_RES += $(CPYTHON) jemalloc flatbuffers simdjson spdlog yaml-cpp pugixml libmaxminddb date fmt abseil-cpp re2 protobuf rapidjson taskflow RxCpp concurrentqueue fast_float geo_db
+	EXTERNAL_RES += $(CPYTHON) jemalloc flatbuffers simdjson spdlog yaml-cpp pugixml libmaxminddb date fmt abseil-cpp re2 protobuf rapidjson taskflow RxCpp concurrentqueue fast_float geo_db tzdata
 endif
 endif
 
@@ -556,6 +556,14 @@ external/$(CPYTHON).tar.gz:
 	 @echo "[+] Dependency $(notdir $(patsubst %.tar.gz,%,$@)) installed successfully"
 endif
 
+# Explicit rule for tzdata - always download from sources URL
+external/tzdata.tar.gz:
+	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/tzdata.tar.gz
+	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
+	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
+	rm $(patsubst %.gz,%,$@)
+	rm -f external/tzdata/tzdata.tar.gz
+
 # Remaining dependencies
 ifneq (,$(PRECOMPILED_RES))
 external/%.tar.gz: external-precompiled/%.tar.gz
@@ -615,7 +623,8 @@ $(INDEXER_PLUGINS_DIR)/alerts.json: | $(INDEXER_PLUGINS_DIR)
 	 @success=0; \
 	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(INDEXER_PLUGINS_STREAMS_PATH)/$(notdir $@)"; \
-		if curl -f -s -o $@ "$$url" 2>/dev/null; then \
+		echo "$(CURL) $@ $(CACERT_OPT) -f $$url"; \
+		if $(CURL) $@ $(CACERT_OPT) -f "$$url" 2>/dev/null; then \
 			success=1; \
 			break; \
 		fi; \
@@ -632,7 +641,8 @@ $(INDEXER_PLUGINS_DIR)/%.json: | $(INDEXER_PLUGINS_DIR)
 	 @success=0; \
 	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(INDEXER_PLUGINS_STATES_PATH)/$(notdir $@)"; \
-		if curl -f -s -o $@ "$$url" 2>/dev/null; then \
+		echo "$(CURL) $@ $(CACERT_OPT) -f $$url"; \
+		if $(CURL) $@ $(CACERT_OPT) -f "$$url" 2>/dev/null; then \
 			success=1; \
 			break; \
 		fi; \
@@ -653,7 +663,8 @@ $(WCS_FLAT_DIR)/wcs_flat.yml: | $(WCS_FLAT_DIR)
 	 @success=0; \
 	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(WCS_FLAT_STATELESS_PATH)/$(notdir $@)"; \
-		if curl -f -s -o $@ "$$url" 2>/dev/null; then \
+		echo "$(CURL) $@ $(CACERT_OPT) -f $$url"; \
+		if $(CURL) $@ $(CACERT_OPT) -f "$$url" 2>/dev/null; then \
 			success=1; \
 			break; \
 		fi; \

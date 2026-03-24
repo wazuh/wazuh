@@ -53,7 +53,7 @@ jobs:
   indexerconnector-asan:
     strategy:
       matrix:
-        os: [ wz-linux-amd64, wz-linux-amd64 ]
+        os: [ wz-linux-amd64 ]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
