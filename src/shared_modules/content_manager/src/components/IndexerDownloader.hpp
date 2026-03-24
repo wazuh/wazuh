@@ -186,6 +186,48 @@ private:
         const nlohmann::json sort =
             nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
 
+        // Exclude CVE5 fields that are stored in the FlatBuffer but never read by the
+        // scan pipeline (descriptions, references, credits, etc.).  This cuts ~34% of the
+        // JSON transfer per CVE document, reducing network, parsing, and memory costs.
+        // Note: an _source.includes approach is ~15% faster per query but breaks non-CVE
+        // documents (FEED-GLOBAL, OSCPE-GLOBAL, CNA-MAPPING-GLOBAL, TID-*) whose document
+        // structure doesn't match CVE5 paths.  Excludes is safe for all document types
+        // because non-CVE docs simply don't have containers.cna/adp fields.
+        const nlohmann::json sourceFilter = {
+            {"excludes",
+             nlohmann::json::array({"document.containers.cna.descriptions",
+                                    "document.containers.cna.references",
+                                    "document.containers.cna.solutions",
+                                    "document.containers.cna.rejectedReasons",
+                                    "document.containers.cna.credits",
+                                    "document.containers.cna.timeline",
+                                    "document.containers.cna.impacts",
+                                    "document.containers.cna.workarounds",
+                                    "document.containers.cna.exploits",
+                                    "document.containers.cna.configurations",
+                                    "document.containers.cna.source",
+                                    "document.containers.cna.tags",
+                                    "document.containers.cna.taxonomyMappings",
+                                    "document.containers.cna.datePublic",
+                                    "document.containers.cna.title",
+                                    "document.containers.cna.dateAssigned",
+                                    "document.containers.cna.replacedBy",
+                                    "document.containers.adp.descriptions",
+                                    "document.containers.adp.references",
+                                    "document.containers.adp.solutions",
+                                    "document.containers.adp.rejectedReasons",
+                                    "document.containers.adp.credits",
+                                    "document.containers.adp.timeline",
+                                    "document.containers.adp.impacts",
+                                    "document.containers.adp.workarounds",
+                                    "document.containers.adp.exploits",
+                                    "document.containers.adp.configurations",
+                                    "document.containers.adp.source",
+                                    "document.containers.adp.tags",
+                                    "document.containers.adp.taxonomyMappings",
+                                    "document.containers.adp.datePublic",
+                                    "document.containers.adp.title"})}};
+
         IndexerConnectorSync syncConnector(m_config.at("indexer"));
 
         auto pit = syncConnector.createPointInTime({indexName}, PIT_KEEP_ALIVE);
@@ -209,7 +251,7 @@ private:
 
         while (true)
         {
-            const auto hitsObj = syncConnector.search(pit, pageSize, query, sort, searchAfter);
+            const auto hitsObj = syncConnector.search(pit, pageSize, query, sort, searchAfter, sourceFilter);
             const auto& hitArray = hitsObj.at("hits");
 
             if (!hitArray.is_array() || hitArray.empty())
