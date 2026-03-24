@@ -19,12 +19,12 @@ services:
       # Default configuration
       - ./wazuh-server/wazuh-server.yml:/tmp/wazuh-server.yml
       # Source code mappings
-      - ../../../framework/scripts/wazuh_server.py:/usr/share/wazuh-server/framework/scripts/wazuh-server.py
-      - ../../server_management/scripts/wazuh_server_management_apid.py:/usr/share/wazuh-server/apis/scripts/wazuh-server-management-apid.py
-      - ../../communications/scripts/wazuh_comms_apid.py:/usr/share/wazuh-server/apis/scripts/wazuh-comms-apid.py
-      - ../../../framework/wazuh:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
-      - ../../server_management/server_management_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/server_management_api
-      - ../../communications/comms_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api
+      - ./../../../framework/scripts/wazuh_server.py:/usr/share/wazuh-server/framework/scripts/wazuh-server.py
+      - ./../../server_management/scripts/wazuh_server_management_apid.py:/usr/share/wazuh-server/apis/scripts/wazuh-server-management-apid.py
+      - ./../../communications/scripts/wazuh_comms_apid.py:/usr/share/wazuh-server/apis/scripts/wazuh-comms-apid.py
+      - ./../../../framework/wazuh:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
+      - ./../../server_management/server_management_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/server_management_api
+      - ./../../communications/comms_api:/usr/share/wazuh-server/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/comms_api
       # Vulnerability Detector feed
       - vd_feed:/var/lib/wazuh-server/queue
     ports:
@@ -39,6 +39,8 @@ services:
       - manager
     depends_on:
       - wazuh-indexer
+    networks:
+      - opensearch-net
 
   wazuh-indexer:
     build:
@@ -51,6 +53,8 @@ services:
       - ./certs/wazuh-indexer.pem:/usr/share/opensearch/config/indexer.pem
       - ./certs/wazuh-indexer.key:/usr/share/opensearch/config/indexer.key
       - ./certs/wazuh-indexer-key.pem:/usr/share/opensearch/config/indexer-key.pem
+      - ./wazuh-indexer/wazuh-indexer-setup-6.0.0.0.zip:/usr/share/opensearch/wazuh-indexer-setup-6.0.0.0.zip
+      - ./wazuh-indexer/wazuh-indexer-command-manager-6.0.0.0.zip:/usr/share/opensearch/wazuh-indexer-command-manager-6.0.0.0.zip
     ports:
       - 9200:9200
     environment:
@@ -69,6 +73,9 @@ services:
       - cluster.blocks.create_index=false
       # Prevent execution of bundled demo script which installs demo certificates and security configurations to OpenSearch
       - DISABLE_INSTALL_DEMO_CONFIG=true
+    networks:
+      - opensearch-net
+
 
   nginx-lb:
     build:
@@ -80,6 +87,8 @@ services:
       - /scripts/entrypoint.sh
     depends_on:
       - wazuh-manager
+    networks:
+      - opensearch-net
 
   wazuh-agent:
     build:
@@ -98,3 +107,8 @@ services:
 
 volumes:
   vd_feed:
+
+networks:
+  opensearch-net:
+    driver: bridge
+

@@ -12,6 +12,8 @@ cp /tmp/wazuh-server.yml /etc/wazuh-server/wazuh-server.yml
 
 chown -R wazuh-server:wazuh-server /etc/wazuh-server/certs
 
+chown -R wazuh-server:wazuh-server /usr/share/wazuh-server/framework/scripts
+
 # Create default RBAC resources
 /scripts/rbac-setup.sh
 
