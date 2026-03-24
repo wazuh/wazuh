@@ -24,6 +24,7 @@ from wazuh.core.cluster.utils import context_tag, log_subprocess_execution, safe
 from wazuh.core.common import DECIMALS_DATE_FORMAT
 from wazuh.core.utils import get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
+from wazuh.core.indexer.active_response import ActiveResponseFetchTask
 from wazuh.core.indexer.disconnected_agents import DisconnectedAgentSyncTasks
 
 
@@ -1024,9 +1025,10 @@ class Master(server.AbstractServer):
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
         self.disconnected_agent_sync = DisconnectedAgentSyncTasks(server=self,
                                                                   cluster_items=self.cluster_items)
-
+        self.active_response_task = ActiveResponseFetchTask(self)
         self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update, self.agent_groups_update,
-                          self.disconnected_agent_sync.run_agent_groups_sync, self.disconnected_agent_sync.run_cluster_name_sync])
+                          self.disconnected_agent_sync.run_agent_groups_sync, self.disconnected_agent_sync.run_cluster_name_sync,
+                          self.active_response_task.run])
         # pending API requests waiting for a response
         self.pending_api_requests = {}
 

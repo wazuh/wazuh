@@ -1332,7 +1332,8 @@ async def test_worker_init(api_request_queue, event_loop):
 @pytest.mark.asyncio
 @patch("wazuh.core.cluster.client.AbstractClientManager.add_tasks", return_value=["task"])
 @patch("wazuh.core.cluster.worker.dapi.APIRequestQueue", return_value="APIRequestQueue object")
-async def test_worker_add_tasks(api_request_queue, acm_mock, event_loop):
+@patch("wazuh.core.cluster.worker.ActiveResponseFetchTask", return_value="ActiveResponseFetchTask object")
+async def test_worker_add_tasks(ar_task, api_request_queue, acm_mock, event_loop):
     """Check if the tasks that the worker will run are defined."""
 
     class DapiMock:
@@ -1348,6 +1349,12 @@ async def test_worker_add_tasks(api_request_queue, acm_mock, event_loop):
             self.sync_integrity = "0101"
             self.sync_agent_info = "info"
 
+    class ActiveResponseTaskMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self.run = "True"
+
     task_pool = {'task_pool': ''}
 
     nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items, enable_ssl=False,
@@ -1356,7 +1363,9 @@ async def test_worker_add_tasks(api_request_queue, acm_mock, event_loop):
 
     nested_worker.client = ClientMock()
     nested_worker.dapi = DapiMock()
-    assert nested_worker.add_tasks() == ['task', ('0101', ()), ('info', ()), ('True', ())]
+    nested_worker.active_response_task = ActiveResponseTaskMock()
+
+    assert nested_worker.add_tasks() == ['task', ('0101', ()), ('info', ()), ('True', ()), ('True', ())]
 
 
 @pytest.mark.asyncio

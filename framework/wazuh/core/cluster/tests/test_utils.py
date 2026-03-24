@@ -356,6 +356,9 @@ def test_get_cluster_items():
                 "max_failed_keepalive_attempts": 2,
                 "agent_groups_mismatch_limit": 5,
             },
+            "common":{
+                "active_response_polling": 60
+            },
             "master": {
                 "timeout_extra_valid": 40,
                 "recalculate_integrity": 8,

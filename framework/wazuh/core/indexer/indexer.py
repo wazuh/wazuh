@@ -168,6 +168,46 @@ class Indexer:
         getLogger("wazuh").debug("Closing the indexer client session.")
         await self._client.close()
 
+    async def search(self, *args, **kwargs):
+        """
+        Perform a search query against the Wazuh Indexer.
+
+        This method is a wrapper around the OpenSearch client's `search` method,
+        allowing for direct query execution.
+
+        Parameters
+        ----------
+        *args
+            Positional arguments to pass to the OpenSearch client's `search` method.
+        **kwargs
+            Keyword arguments to pass to the OpenSearch client's `search` method.
+        Returns
+        -------
+        dict
+            The search results returned by the OpenSearch client.
+        """
+        return await self._client.search(*args, **kwargs)
+
+    async def mget(self, *args, **kwargs):
+        """
+        Perform a multi-get query against the Wazuh Indexer.
+
+        This method is a wrapper around the OpenSearch client's `mget` method,
+        allowing for retrieval of multiple documents by ID.
+
+        Parameters
+        ----------
+        *args
+            Positional arguments to pass to the OpenSearch client's `mget` method.
+        **kwargs
+            Keyword arguments to pass to the OpenSearch client's `mget` method.
+        Returns
+        -------
+        dict
+            The multi-get results returned by the OpenSearch client.
+        """
+        return await self._client.mget(*args, **kwargs)
+
 
 async def create_indexer(retries: int = 5, backoff: int = 1, **kwargs) -> Indexer:
     """
