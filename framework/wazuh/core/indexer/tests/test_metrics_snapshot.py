@@ -13,12 +13,17 @@ TestMetadataInjection                        – @timestamp, wazuh.cluster.node,
 TestRunMetricsSnapshot                       – frequency=0 early-exit; frequency<600 clamped to 600
 TestDisconnectionTimeOmission                – wazuh.agent.disconnected_at absent when disconnection_time is 0
 TestBulkActionShape                          – _op_type: create on every action sent to async_bulk
+TestFlattenOpensearchProperties              – nested property flattening to dotted keys
+TestOpensearchTemplateToJsonschema           – OpenSearch template to JSON Schema conversion
+TestLoadSchema                               – schema loading, caching, and missing-file handling
+TestValidateDocuments                        – per-document validation and invalid-doc filtering
 """
 
 import asyncio
+import json
 import sys
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 import pytest
 
@@ -53,7 +58,11 @@ mocked_modules = {
 
 with patch.dict(sys.modules, mocked_modules):
     import wazuh.core.indexer.metrics_snapshot as _metrics_snapshot_module
-    from wazuh.core.indexer.metrics_snapshot import MetricsSnapshotTasks
+    from wazuh.core.indexer.metrics_snapshot import (
+        MetricsSnapshotTasks,
+        _flatten_opensearch_properties,
+        _opensearch_template_to_jsonschema,
+    )
     import wazuh.core.indexer.metrics as _metrics_module
     from wazuh.core.indexer.metrics import MetricsIndex
 
@@ -86,6 +95,42 @@ REMOTED_STATS = {
 
 CLUSTER_ITEMS = {
     "intervals": {"master": {"metrics_frequency": 600, "metrics_bulk_size": 100}}
+}
+
+# Minimal OpenSearch template fixture used across schema tests.
+SAMPLE_TEMPLATE = {
+    "index_patterns": ["wazuh-metrics-agents*"],
+    "priority": 1,
+    "data_stream": {},
+    "template": {
+        "settings": {},
+        "mappings": {
+            "dynamic": "strict",
+            "date_detection": False,
+            "properties": {
+                "@timestamp": {"type": "date"},
+                "wazuh": {
+                    "properties": {
+                        "agent": {
+                            "properties": {
+                                "id": {"type": "keyword"},
+                                "name": {"type": "keyword"},
+                                "status": {"type": "keyword"},
+                                "status_code": {"type": "integer"},
+                                "version": {"type": "keyword"},
+                            }
+                        },
+                        "cluster": {
+                            "properties": {
+                                "name": {"type": "keyword"},
+                                "node": {"type": "keyword"},
+                            }
+                        },
+                    }
+                },
+            },
+        },
+    },
 }
 
 
@@ -1140,3 +1185,425 @@ class TestCollectAndIndex:
         ts = captured_timestamps[0]
         parsed = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
         assert parsed is not None
+
+
+# ---------------------------------------------------------------------------
+# _flatten_opensearch_properties
+# ---------------------------------------------------------------------------
+
+
+class TestFlattenOpensearchProperties:
+    """Unit tests for the _flatten_opensearch_properties helper."""
+
+    def test_flat_properties_unchanged(self):
+        """Top-level keyword fields are returned as-is."""
+        props = {
+            "field_a": {"type": "keyword"},
+            "field_b": {"type": "integer"},
+        }
+        result = _flatten_opensearch_properties(props)
+        assert result == props
+
+    def test_nested_properties_are_flattened(self):
+        """Nested objects produce dotted keys."""
+        props = {
+            "wazuh": {
+                "properties": {
+                    "agent": {
+                        "properties": {
+                            "id": {"type": "keyword"},
+                        }
+                    }
+                }
+            }
+        }
+        result = _flatten_opensearch_properties(props)
+        assert "wazuh.agent.id" in result
+        assert result["wazuh.agent.id"] == {"type": "keyword"}
+
+    def test_deep_nesting(self):
+        """Three levels of nesting produce the correct dotted key."""
+        props = {
+            "a": {
+                "properties": {
+                    "b": {
+                        "properties": {
+                            "c": {"type": "long"}
+                        }
+                    }
+                }
+            }
+        }
+        result = _flatten_opensearch_properties(props)
+        assert result == {"a.b.c": {"type": "long"}}
+
+    def test_mixed_flat_and_nested(self):
+        """Both flat and nested properties are included in the result."""
+        props = {
+            "@timestamp": {"type": "date"},
+            "wazuh": {
+                "properties": {
+                    "cluster": {
+                        "properties": {
+                            "name": {"type": "keyword"},
+                        }
+                    }
+                }
+            },
+        }
+        result = _flatten_opensearch_properties(props)
+        assert "@timestamp" in result
+        assert "wazuh.cluster.name" in result
+
+    def test_empty_properties(self):
+        """An empty properties dict returns an empty dict."""
+        assert _flatten_opensearch_properties({}) == {}
+
+
+# ---------------------------------------------------------------------------
+# _opensearch_template_to_jsonschema
+# ---------------------------------------------------------------------------
+
+
+class TestOpensearchTemplateToJsonschema:
+    """Unit tests for _opensearch_template_to_jsonschema."""
+
+    def test_basic_conversion(self):
+        """keyword fields become string in JSON Schema."""
+        schema = _opensearch_template_to_jsonschema(SAMPLE_TEMPLATE)
+        assert schema["type"] == "object"
+        assert "wazuh.agent.id" in schema["properties"]
+        assert schema["properties"]["wazuh.agent.id"] == {"type": "string"}
+
+    def test_integer_type_mapping(self):
+        """integer OpenSearch type maps to JSON Schema integer."""
+        schema = _opensearch_template_to_jsonschema(SAMPLE_TEMPLATE)
+        assert schema["properties"]["wazuh.agent.status_code"] == {"type": "integer"}
+
+    def test_strict_mode_sets_additional_properties_false(self):
+        """dynamic=strict in the template sets additionalProperties: false."""
+        schema = _opensearch_template_to_jsonschema(SAMPLE_TEMPLATE)
+        assert schema.get("additionalProperties") is False
+
+    def test_non_strict_mode_no_additional_properties_constraint(self):
+        """dynamic!=strict does not set additionalProperties."""
+        template = {
+            "template": {
+                "mappings": {
+                    "dynamic": "true",
+                    "properties": {"field": {"type": "keyword"}},
+                }
+            }
+        }
+        schema = _opensearch_template_to_jsonschema(template)
+        assert "additionalProperties" not in schema
+
+    def test_missing_template_key_returns_empty(self):
+        """A template without the expected structure returns an empty dict."""
+        assert _opensearch_template_to_jsonschema({}) == {}
+        assert _opensearch_template_to_jsonschema({"template": {}}) == {}
+        assert _opensearch_template_to_jsonschema({"template": {"mappings": {}}}) == {}
+
+    def test_unknown_opensearch_type_becomes_empty_schema(self):
+        """Unknown OpenSearch types map to an empty JSON Schema (any value allowed)."""
+        template = {
+            "template": {
+                "mappings": {
+                    "properties": {"field": {"type": "geo_point"}},
+                }
+            }
+        }
+        schema = _opensearch_template_to_jsonschema(template)
+        assert schema["properties"]["field"] == {}
+
+    def test_date_type_maps_to_string(self):
+        """date OpenSearch type is represented as string in JSON Schema."""
+        schema = _opensearch_template_to_jsonschema(SAMPLE_TEMPLATE)
+        assert schema["properties"]["@timestamp"] == {"type": "string"}
+
+
+# ---------------------------------------------------------------------------
+# _load_schema
+# ---------------------------------------------------------------------------
+
+
+class TestLoadSchema:
+    """Tests for MetricsSnapshotTasks._load_schema."""
+
+    def test_missing_file_returns_none_and_logs_warning(self):
+        """When the schema file does not exist, None is returned and a warning is logged."""
+        tasks = _make_tasks()
+
+        with patch("wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=False):
+            result = tasks._load_schema("wazuh-metrics-agents.json")
+
+        assert result is None
+        tasks.logger.warning.assert_called()
+
+    def test_missing_file_result_is_cached(self):
+        """A None result from a missing file is cached so the filesystem is not re-checked."""
+        tasks = _make_tasks()
+
+        with patch("wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=False) as mock_isfile:
+            tasks._load_schema("wazuh-metrics-agents.json")
+            tasks._load_schema("wazuh-metrics-agents.json")
+
+        # isfile should only be called once; second call uses the cache.
+        assert mock_isfile.call_count == 1
+
+    def test_valid_schema_file_is_loaded_and_returned(self):
+        """A valid schema file is loaded, converted, and returned as a dict."""
+        tasks = _make_tasks()
+        schema_content = json.dumps(SAMPLE_TEMPLATE)
+
+        with (
+            patch("wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=True),
+            patch("builtins.open", mock_open(read_data=schema_content)),
+        ):
+            result = tasks._load_schema("wazuh-metrics-agents.json")
+
+        assert result is not None
+        assert result["type"] == "object"
+        assert "wazuh.agent.id" in result["properties"]
+
+    def test_valid_schema_is_cached_after_first_load(self):
+        """A successfully loaded schema is cached so the file is not re-opened."""
+        tasks = _make_tasks()
+        schema_content = json.dumps(SAMPLE_TEMPLATE)
+
+        with (
+            patch("wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=True),
+            patch("builtins.open", mock_open(read_data=schema_content)) as mock_file,
+        ):
+            tasks._load_schema("wazuh-metrics-agents.json")
+            tasks._load_schema("wazuh-metrics-agents.json")
+
+        assert mock_file.call_count == 1
+
+    def test_invalid_json_returns_none_and_logs_exception(self):
+        """A file with invalid JSON returns None and logs an exception."""
+        tasks = _make_tasks()
+
+        with (
+            patch("wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=True),
+            patch("builtins.open", mock_open(read_data="not valid json {")),
+        ):
+            result = tasks._load_schema("wazuh-metrics-agents.json")
+
+        assert result is None
+        tasks.logger.exception.assert_called()
+
+    def test_template_without_mappings_returns_none_and_logs_warning(self):
+        """A JSON file that does not contain mappings returns None with a warning."""
+        tasks = _make_tasks()
+        bad_template = json.dumps({"index_patterns": ["wazuh-metrics-agents*"]})
+
+        with (
+            patch("wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=True),
+            patch("builtins.open", mock_open(read_data=bad_template)),
+        ):
+            result = tasks._load_schema("wazuh-metrics-agents.json")
+
+        assert result is None
+        tasks.logger.warning.assert_called()
+
+
+# ---------------------------------------------------------------------------
+# _validate_documents
+# ---------------------------------------------------------------------------
+
+
+class TestValidateDocuments:
+    """Tests for MetricsSnapshotTasks._validate_documents."""
+
+    def _make_flat_schema(self):
+        """Return a minimal flat JSON Schema for agent documents."""
+        return {
+            "type": "object",
+            "properties": {
+                "id": {"type": "string"},
+                "@timestamp": {"type": "string"},
+                "wazuh.cluster.node_name": {"type": "string"},
+            },
+            "additionalProperties": False,
+        }
+
+    def test_valid_document_is_kept(self):
+        """A document conforming to the schema passes through unchanged."""
+        tasks = _make_tasks()
+        schema = self._make_flat_schema()
+        docs = [{"id": "001", "@timestamp": TIMESTAMP, "wazuh.cluster.node_name": "n"}]
+
+        result = tasks._validate_documents(docs, schema, "wazuh-metrics-agents")
+
+        assert result == docs
+
+    def test_invalid_document_is_filtered_and_logged(self):
+        """A document that violates the schema is removed and an error is logged."""
+        tasks = _make_tasks()
+        schema = self._make_flat_schema()
+        valid_doc = {"id": "001", "@timestamp": TIMESTAMP, "wazuh.cluster.node_name": "n"}
+        # "unknown_field" is not in the schema and additionalProperties is False.
+        invalid_doc = {
+            "id": "002",
+            "@timestamp": TIMESTAMP,
+            "wazuh.cluster.node_name": "n",
+            "unknown_field": "value",
+        }
+
+        result = tasks._validate_documents(
+            [valid_doc, invalid_doc], schema, "wazuh-metrics-agents"
+        )
+
+        assert result == [valid_doc]
+        tasks.logger.error.assert_called_once()
+
+    def test_type_mismatch_triggers_validation_error(self):
+        """A document with a wrong type for a field is filtered out."""
+        tasks = _make_tasks()
+        schema = self._make_flat_schema()
+        # id should be string but we pass an integer.
+        bad_doc = {"id": 123, "@timestamp": TIMESTAMP, "wazuh.cluster.node_name": "n"}
+
+        result = tasks._validate_documents([bad_doc], schema, "wazuh-metrics-agents")
+
+        assert result == []
+        tasks.logger.error.assert_called_once()
+
+    def test_empty_document_list_returns_empty_list(self):
+        """An empty input list returns an empty list without logging."""
+        tasks = _make_tasks()
+        schema = self._make_flat_schema()
+
+        result = tasks._validate_documents([], schema, "wazuh-metrics-agents")
+
+        assert result == []
+        tasks.logger.error.assert_not_called()
+
+    def test_multiple_invalid_documents_each_logged(self):
+        """Each invalid document produces a separate error log entry."""
+        tasks = _make_tasks()
+        schema = self._make_flat_schema()
+        docs = [
+            {"id": 1, "@timestamp": TIMESTAMP, "wazuh.cluster.node_name": "n"},
+            {"id": 2, "@timestamp": TIMESTAMP, "wazuh.cluster.node_name": "n"},
+        ]
+
+        result = tasks._validate_documents(docs, schema, "wazuh-metrics-agents")
+
+        assert result == []
+        assert tasks.logger.error.call_count == 2
+
+    def test_all_valid_documents_are_returned(self):
+        """When all documents are valid, the full list is returned."""
+        tasks = _make_tasks()
+        schema = {"type": "object", "properties": {"id": {"type": "string"}}}
+        docs = [{"id": "001"}, {"id": "002"}, {"id": "003"}]
+
+        result = tasks._validate_documents(docs, schema, "wazuh-metrics-agents")
+
+        assert result == docs
+
+
+# ---------------------------------------------------------------------------
+# _collect_and_index with schema validation
+# ---------------------------------------------------------------------------
+
+
+class TestCollectAndIndexWithValidation:
+    """Tests for schema validation integration in _collect_and_index."""
+
+    @pytest.mark.asyncio
+    async def test_no_schema_skips_validation_and_indexes_all(self):
+        """When no schema is available, all documents are indexed without validation."""
+        agent_docs = [{"id": "001"}, {"id": "002"}]
+        comms_docs = [dict(REMOTED_STATS)]
+
+        mock_indexer = AsyncMock()
+        mock_indexer.metrics.bulk_index = AsyncMock()
+        tasks = _make_tasks()
+
+        with _patch_collect_and_index(tasks, mock_indexer, agent_docs, comms_docs):
+            with patch.object(tasks, "_load_schema", return_value=None):
+                with patch.object(tasks, "_validate_documents") as mock_validate:
+                    await tasks._collect_and_index()
+
+        mock_validate.assert_not_called()
+        mock_indexer.metrics.bulk_index.assert_any_await(
+            "wazuh-metrics-agents", agent_docs, tasks.bulk_size
+        )
+
+    @pytest.mark.asyncio
+    async def test_with_schema_validates_agent_docs(self):
+        """When agent schema is loaded, _validate_documents is called for agents."""
+        agent_docs = [{"id": "001"}]
+        comms_docs = []
+
+        mock_indexer = AsyncMock()
+        mock_indexer.metrics.bulk_index = AsyncMock()
+        tasks = _make_tasks()
+
+        fake_schema = {"type": "object", "properties": {"id": {"type": "string"}}}
+
+        def _fake_load_schema(name):
+            return fake_schema if "agents" in name else None
+
+        with _patch_collect_and_index(tasks, mock_indexer, agent_docs, comms_docs):
+            with patch.object(tasks, "_load_schema", side_effect=_fake_load_schema):
+                with patch.object(
+                    tasks, "_validate_documents", return_value=agent_docs
+                ) as mock_validate:
+                    await tasks._collect_and_index()
+
+        mock_validate.assert_called_once_with(
+            agent_docs, fake_schema, "wazuh-metrics-agents"
+        )
+
+    @pytest.mark.asyncio
+    async def test_with_schema_validates_comms_docs(self):
+        """When comms schema is loaded, _validate_documents is called for comms."""
+        agent_docs = []
+        comms_docs = [dict(REMOTED_STATS)]
+
+        mock_indexer = AsyncMock()
+        mock_indexer.metrics.bulk_index = AsyncMock()
+        tasks = _make_tasks()
+
+        fake_schema = {"type": "object"}
+
+        def _fake_load_schema(name):
+            return fake_schema if "comms" in name else None
+
+        with _patch_collect_and_index(tasks, mock_indexer, agent_docs, comms_docs):
+            with patch.object(tasks, "_load_schema", side_effect=_fake_load_schema):
+                with patch.object(
+                    tasks, "_validate_documents", return_value=comms_docs
+                ) as mock_validate:
+                    await tasks._collect_and_index()
+
+        mock_validate.assert_called_once_with(
+            comms_docs, fake_schema, "wazuh-metrics-comms"
+        )
+
+    @pytest.mark.asyncio
+    async def test_invalid_docs_are_not_indexed(self):
+        """Documents rejected by _validate_documents are not passed to bulk_index."""
+        agent_docs = [{"id": "001"}, {"id": "002"}]
+        valid_only = [{"id": "001"}]
+
+        mock_indexer = AsyncMock()
+        mock_indexer.metrics.bulk_index = AsyncMock()
+        tasks = _make_tasks()
+
+        fake_schema = {"type": "object"}
+
+        with _patch_collect_and_index(tasks, mock_indexer, agent_docs, []):
+            with patch.object(tasks, "_load_schema", return_value=fake_schema):
+                with patch.object(
+                    tasks, "_validate_documents", return_value=valid_only
+                ):
+                    await tasks._collect_and_index()
+
+        mock_indexer.metrics.bulk_index.assert_any_await(
+            "wazuh-metrics-agents", valid_only, tasks.bulk_size
+        )

@@ -495,7 +495,9 @@ INDEXER_TEMPLATES_BASE := \
 INDEXER_TEMPLATES_SERVER_STATES := \
 	vulnerabilities.json
 
-INDEXER_TEMPLATES_SERVER_STREAMS :=
+INDEXER_TEMPLATES_SERVER_STREAMS := \
+	wazuh-metrics-agents.json \
+	wazuh-metrics-comms.json
 
 # WCS flat files
 WCS_FLAT_DIR := external/wcs-flat-files
@@ -605,7 +607,7 @@ endif
 $(INDEXER_PLUGINS_DIR):
 	mkdir -p $(INDEXER_PLUGINS_DIR)
 
-# Rule for streams templates (alerts.json)
+# Rule for streams templates (hard-fail if unavailable)
 $(INDEXER_PLUGINS_DIR)/alerts.json: | $(INDEXER_PLUGINS_DIR)
 	@success=0; \
 	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
@@ -619,6 +621,23 @@ $(INDEXER_PLUGINS_DIR)/alerts.json: | $(INDEXER_PLUGINS_DIR)
 	if [ $$success -eq 0 ]; then \
 		echo "ERROR: Failed to download $(notdir $@) from any reference" >&2; \
 		exit 1; \
+	fi
+
+# Rules for metrics schemas (non-fatal: schema not yet published in wazuh-indexer-plugins)
+$(INDEXER_PLUGINS_DIR)/wazuh-metrics-agents.json \
+$(INDEXER_PLUGINS_DIR)/wazuh-metrics-comms.json: | $(INDEXER_PLUGINS_DIR)
+	@success=0; \
+	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
+		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(INDEXER_PLUGINS_STREAMS_PATH)/$(notdir $@)"; \
+		echo "$(CURL) $@ $(CACERT_OPT) -f $$url"; \
+		if $(CURL) $@ $(CACERT_OPT) -f "$$url" 2>/dev/null; then \
+			success=1; \
+			break; \
+		fi; \
+	done; \
+	if [ $$success -eq 0 ]; then \
+		echo "WARNING: Could not download $(notdir $@) from any reference. Schema validation will be skipped at runtime." >&2; \
+		touch $@; \
 	fi
 
 # Rule for states templates (all other .json files)
