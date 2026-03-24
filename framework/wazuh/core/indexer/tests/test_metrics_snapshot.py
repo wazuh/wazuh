@@ -8,10 +8,10 @@ Unit tests for MetricsSnapshotTasks.
 Covered cases
 -------------
 _collect_agents / _collect_comms_all_nodes  (pre-existing)
-TestAgentFieldMapping                        – all 25 agent fields present and typed correctly
-TestMetadataInjection                        – @timestamp, wazuh.cluster.* in every document
+TestAgentFieldMapping                        – all normalized agent fields present and typed correctly
+TestMetadataInjection                        – @timestamp, wazuh.cluster.node, wazuh.cluster.name in every document
 TestRunMetricsSnapshot                       – frequency=0 early-exit; frequency<600 clamped to 600
-TestDisconnectionTimeOmission                – disconnection_time absent when value is 0
+TestDisconnectionTimeOmission                – wazuh.agent.disconnected_at absent when disconnection_time is 0
 TestBulkActionShape                          – _op_type: create on every action sent to async_bulk
 """
 
@@ -24,10 +24,8 @@ import pytest
 
 # opensearchpy must be mocked before any wazuh.core.indexer module is imported
 # because wazuh.core.indexer.indexer imports AsyncOpenSearch at the top level.
-# We mock the entire opensearchpy package tree as a spec-less MagicMock so that
-# attribute access like `opensearchpy.exceptions.ImproperlyConfigured` works.
 _mock_opensearchpy = MagicMock()
-_mock_opensearchpy.__path__ = []  # mark as package so sub-module imports resolve
+_mock_opensearchpy.__path__ = []
 
 mocked_modules = {
     "opensearchpy": _mock_opensearchpy,
@@ -59,10 +57,6 @@ with patch.dict(sys.modules, mocked_modules):
     import wazuh.core.indexer.metrics as _metrics_module
     from wazuh.core.indexer.metrics import MetricsIndex
 
-# Ensure the modules are accessible as attributes of their parent package so
-# that unittest.mock.patch can resolve dotted targets like
-# "wazuh.core.indexer.metrics_snapshot.DistributedAPI" and
-# "wazuh.core.indexer.metrics.async_bulk".
 import wazuh.core.indexer as _indexer_pkg
 
 _indexer_pkg.metrics_snapshot = _metrics_snapshot_module
@@ -95,7 +89,11 @@ CLUSTER_ITEMS = {
 def _make_server(node_name="master-node", node_type="master", workers=None):
     """Build a minimal mock server object."""
     server = MagicMock()
-    server.configuration = {"node_name": node_name, "node_type": node_type}
+    server.configuration = {
+        "node_name": node_name,
+        "node_type": node_type,
+        "cluster_name": "wazuh-cluster",  # required for wazuh.cluster.name injection
+    }
     server.clients = workers or {}
     server.setup_task_logger.return_value = MagicMock()
     return server
@@ -125,10 +123,7 @@ def _make_dapi_result(items):
 @pytest.mark.asyncio
 @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
 async def test_collect_agents(mock_wazuh_db_query_agents):
-    mock_server = MagicMock()
-    mock_server.configuration.get.side_effect = lambda k, d: (
-        "test_node" if k == "node_name" else "worker"
-    )
+    mock_server = _make_server(node_name="test_node", node_type="worker")
 
     mock_query_instance = MagicMock()
     mock_query_instance.run.return_value = {
@@ -149,15 +144,38 @@ async def test_collect_agents(mock_wazuh_db_query_agents):
     assert len(result) == 2
     for agent_doc in result:
         assert agent_doc["@timestamp"] == TEST_TIMESTAMP
-        assert agent_doc["wazuh.cluster.node_name"] == "test_node"
-        assert agent_doc["wazuh.cluster.node_type"] == "worker"
-        assert "id" in agent_doc
-        assert "name" in agent_doc
+        # Post-normalization: metadata fields use wazuh.cluster.node / wazuh.cluster.name
+        assert agent_doc["wazuh.cluster.node"] == "test_node"
+        assert agent_doc["wazuh.cluster.name"] == "wazuh-cluster"
+        # Post-normalization: identity fields use wazuh.agent.* namespace
+        assert "wazuh.agent.id" in agent_doc
+        assert "wazuh.agent.name" in agent_doc
 
 
 # ---------------------------------------------------------------------------
 # _collect_comms_all_nodes
 # ---------------------------------------------------------------------------
+
+# Normalized field names expected in every comms document
+EXPECTED_COMMS_FIELDS = {
+    "queue.usage",
+    "queue.capacity",
+    "tcp.sessions",
+    "discarded.total",
+    "events.total",
+    "network.egress.bytes",
+    "network.ingress.bytes",
+    "messages.total",
+    "messages.control.dropped_on_close.total",
+    "messages.control.usage",
+    "messages.control.received.total",
+    "messages.control.replaced.total",
+    "messages.control.processed.total",
+    "events.module",
+    "@timestamp",
+    "wazuh.cluster.name",
+    "wazuh.cluster.node",
+}
 
 
 class TestCollectCommsAllNodes:
@@ -183,12 +201,13 @@ class TestCollectCommsAllNodes:
         assert len(docs) == 1
         doc = docs[0]
         assert doc["@timestamp"] == TIMESTAMP
-        assert doc["wazuh.cluster.node_name"] == "master-node"
-        assert doc["wazuh.cluster.node_type"] == "master"
+        # Post-normalization metadata keys
+        assert doc["wazuh.cluster.node"] == "master-node"
+        assert doc["wazuh.cluster.name"] == "wazuh-cluster"
 
     @pytest.mark.asyncio
     async def test_stats_fields_are_included_in_document(self):
-        """All remoted stats fields are present in the returned document."""
+        """All normalized comms fields are present in the returned document."""
         tasks = _make_tasks()
 
         dapi_result = _make_dapi_result([dict(REMOTED_STATS)])
@@ -202,12 +221,12 @@ class TestCollectCommsAllNodes:
             docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
 
         assert len(docs) == 1
-        for field, value in REMOTED_STATS.items():
-            assert docs[0][field] == value
+        for field in EXPECTED_COMMS_FIELDS:
+            assert field in docs[0], f"Missing normalized field: {field}"
 
     @pytest.mark.asyncio
     async def test_worker_node_type_injected(self):
-        """Worker node type comes from the worker handler, not the master configuration."""
+        """Worker node documents carry the correct wazuh.cluster.node value."""
         worker_handler = MagicMock()
         worker_handler.get_node.return_value = {"type": "worker"}
 
@@ -231,12 +250,10 @@ class TestCollectCommsAllNodes:
             docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
 
         assert len(docs) == 2
-        node_types = {
-            doc["wazuh.cluster.node_name"]: doc["wazuh.cluster.node_type"]
-            for doc in docs
-        }
-        assert node_types["master-node"] == "master"
-        assert node_types["worker-node"] == "worker"
+        # Post-normalization: node identification is via wazuh.cluster.node
+        node_names = {doc["wazuh.cluster.node"] for doc in docs}
+        assert "master-node" in node_names
+        assert "worker-node" in node_names
 
     @pytest.mark.asyncio
     async def test_empty_affected_items_produces_no_document(self):
@@ -284,7 +301,8 @@ class TestCollectCommsAllNodes:
             docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
 
         assert len(docs) == 1
-        assert docs[0]["wazuh.cluster.node_name"] == "worker-node"
+        # Post-normalization: identify document by wazuh.cluster.node
+        assert docs[0]["wazuh.cluster.node"] == "worker-node"
         tasks.logger.exception.assert_called_once()
 
     @pytest.mark.asyncio
@@ -315,10 +333,8 @@ class TestCollectCommsAllNodes:
 # Agent field mapping
 # ---------------------------------------------------------------------------
 
-# Representative agent document as returned by WazuhDBQueryAgents.run()["items"].
-# Contains all 25 fields defined in Agent.fields (internal_key and registerIP are
-# stripped by WazuhDBQueryAgents when remove_extra_fields=True, so they are absent;
-# the remaining 25 keys below reflect what _collect_agents actually receives).
+# Representative raw agent document as returned by WazuhDBQueryAgents.run()["items"].
+# Contains all relevant fields defined in Agent.fields (internal_key excluded by default).
 AGENT_DOC_FULL = {
     "id": "001",
     "name": "ubuntu-agent",
@@ -344,49 +360,46 @@ AGENT_DOC_FULL = {
     "node_name": "master-node",
     "lastKeepAlive": "2026-03-17T10:00:00Z",
     "disconnection_time": 12345,
+    "registerIP": "10.0.1.5",
     "group_config_status": "synced",
     "status_code": 0,
 }
 
-# Flat list of all top-level and nested keys expected in the output document.
-# The 22 agent data fields (after WazuhDBQueryAgents processing) + 3 metadata fields = 25.
+# Normalized field names expected in the output document after _normalize_agent_doc().
+# Fields dropped by agreement (os.major, os.minor, os.codename, os.build, manager, host): excluded.
 EXPECTED_AGENT_FIELDS = {
-    # Core identity
-    "id",
-    "name",
-    "ip",
-    "status",
-    # OS (nested dict — present as a single "os" key in the returned document)
-    "os",
-    # Software / versioning
-    "version",
-    "manager",
-    "dateAdd",
-    "group",
-    "mergedSum",
-    "configSum",
-    # Cluster
-    "node_name",
-    # Timestamps
-    "lastKeepAlive",
-    "disconnection_time",
-    # Group config
-    "group_config_status",
-    "status_code",
-    # Injected metadata
     "@timestamp",
-    "wazuh.cluster.node_name",
-    "wazuh.cluster.node_type",
+    "wazuh.agent.id",
+    "wazuh.agent.name",
+    "wazuh.agent.version",
+    "wazuh.agent.groups",
+    "wazuh.agent.host.ip",
+    "wazuh.agent.register.ip",
+    "wazuh.agent.status",
+    "wazuh.agent.status_code",
+    "wazuh.agent.registered_at",
+    "wazuh.agent.last_seen",
+    "wazuh.agent.disconnected_at",
+    "wazuh.agent.config.hash.md5",
+    "wazuh.agent.config.group.synced",
+    "wazuh.agent.config.group.hash.md5",
+    "wazuh.agent.host.architecture",
+    "wazuh.agent.host.os.name",
+    "wazuh.agent.host.os.version",
+    "wazuh.agent.host.os.platform",
+    "wazuh.agent.host.os.full",
+    "wazuh.cluster.name",
+    "wazuh.cluster.node",
 }
 
 
 class TestAgentFieldMapping:
-    """TC-1 – All expected agent fields are present and correctly typed in every document."""
+    """TC-1 – All expected normalized agent fields are present and correctly typed."""
 
     @pytest.mark.asyncio
     @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
     async def test_all_fields_present(self, mock_wazuh_db_query_agents):
-        """Every expected field key exists in the output document."""
+        """Every normalized field key exists in the output document."""
         mock_wazuh_db_query_agents.return_value.run.return_value = {
             "items": [dict(AGENT_DOC_FULL)]
         }
@@ -397,12 +410,12 @@ class TestAgentFieldMapping:
         assert len(docs) == 1
         doc = docs[0]
         missing = EXPECTED_AGENT_FIELDS - doc.keys()
-        assert not missing, f"Missing fields: {missing}"
+        assert not missing, f"Missing normalized fields: {missing}"
 
     @pytest.mark.asyncio
     @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
     async def test_field_types(self, mock_wazuh_db_query_agents):
-        """Spot-check field types: id/name/ip/status are strings, os is a dict."""
+        """Spot-check field types: normalized string/bool/list fields have correct types."""
         mock_wazuh_db_query_agents.return_value.run.return_value = {
             "items": [dict(AGENT_DOC_FULL)]
         }
@@ -411,21 +424,22 @@ class TestAgentFieldMapping:
         docs = await tasks._collect_agents(TIMESTAMP)
 
         doc = docs[0]
-        assert isinstance(doc["id"], str)
-        assert isinstance(doc["name"], str)
-        assert isinstance(doc["ip"], str)
-        assert isinstance(doc["status"], str)
-        assert isinstance(doc["os"], dict)
+        # Post-normalization field names
+        assert isinstance(doc["wazuh.agent.id"], str)
+        assert isinstance(doc["wazuh.agent.name"], str)
+        assert isinstance(doc["wazuh.agent.status"], str)
+        assert isinstance(doc["wazuh.agent.config.group.synced"], bool)
+        assert isinstance(doc["wazuh.agent.groups"], list)
         assert isinstance(doc["@timestamp"], str)
-        assert isinstance(doc["wazuh.cluster.node_name"], str)
-        assert isinstance(doc["wazuh.cluster.node_type"], str)
+        assert isinstance(doc["wazuh.cluster.node"], str)
+        assert isinstance(doc["wazuh.cluster.name"], str)
 
     @pytest.mark.asyncio
     @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
     async def test_multiple_agents_all_have_expected_fields(
         self, mock_wazuh_db_query_agents
     ):
-        """Field mapping applies to every document in a multi-agent result."""
+        """Normalization applies to every document in a multi-agent result."""
         mock_wazuh_db_query_agents.return_value.run.return_value = {
             "items": [
                 dict(AGENT_DOC_FULL),
@@ -439,7 +453,96 @@ class TestAgentFieldMapping:
         assert len(docs) == 2
         for doc in docs:
             missing = EXPECTED_AGENT_FIELDS - doc.keys()
-            assert not missing, f"Missing fields in doc {doc.get('id')}: {missing}"
+            assert not missing, (
+                f"Missing normalized fields in doc {doc.get('wazuh.agent.id')}: {missing}"
+            )
+
+    @pytest.mark.asyncio
+    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
+    async def test_register_ip_any_converted_to_cidr(self, mock_wazuh_db_query_agents):
+        """registerIP='any' is converted to '0.0.0.0/0' for the ip field type."""
+        mock_wazuh_db_query_agents.return_value.run.return_value = {
+            "items": [{**AGENT_DOC_FULL, "registerIP": "any"}]
+        }
+
+        tasks = _make_tasks()
+        docs = await tasks._collect_agents(TIMESTAMP)
+
+        assert docs[0]["wazuh.agent.register.ip"] == "0.0.0.0/0"
+
+    @pytest.mark.asyncio
+    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
+    async def test_register_ip_real_value_preserved(self, mock_wazuh_db_query_agents):
+        """A real IP for registerIP passes through unchanged."""
+        mock_wazuh_db_query_agents.return_value.run.return_value = {
+            "items": [{**AGENT_DOC_FULL, "registerIP": "10.0.1.5"}]
+        }
+
+        tasks = _make_tasks()
+        docs = await tasks._collect_agents(TIMESTAMP)
+
+        assert docs[0]["wazuh.agent.register.ip"] == "10.0.1.5"
+
+    @pytest.mark.asyncio
+    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
+    async def test_register_ip_empty_field_omitted(self, mock_wazuh_db_query_agents):
+        """An empty/missing registerIP does not produce an empty string in the output."""
+        mock_wazuh_db_query_agents.return_value.run.return_value = {
+            "items": [{**AGENT_DOC_FULL, "registerIP": ""}]
+        }
+
+        tasks = _make_tasks()
+        docs = await tasks._collect_agents(TIMESTAMP)
+
+        # Empty registerIP should be omitted (None -> dropped by _drop_none)
+        assert "wazuh.agent.register.ip" not in docs[0]
+
+    @pytest.mark.asyncio
+    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
+    async def test_group_config_status_synced_maps_to_true(
+        self, mock_wazuh_db_query_agents
+    ):
+        """group_config_status='synced' maps to boolean True."""
+        mock_wazuh_db_query_agents.return_value.run.return_value = {
+            "items": [{**AGENT_DOC_FULL, "group_config_status": "synced"}]
+        }
+
+        tasks = _make_tasks()
+        docs = await tasks._collect_agents(TIMESTAMP)
+
+        assert docs[0]["wazuh.agent.config.group.synced"] is True
+
+    @pytest.mark.asyncio
+    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
+    async def test_group_config_status_not_synced_maps_to_false(
+        self, mock_wazuh_db_query_agents
+    ):
+        """group_config_status='not synced' maps to boolean False."""
+        mock_wazuh_db_query_agents.return_value.run.return_value = {
+            "items": [{**AGENT_DOC_FULL, "group_config_status": "not synced"}]
+        }
+
+        tasks = _make_tasks()
+        docs = await tasks._collect_agents(TIMESTAMP)
+
+        assert docs[0]["wazuh.agent.config.group.synced"] is False
+
+    @pytest.mark.asyncio
+    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
+    async def test_redundant_raw_fields_dropped(self, mock_wazuh_db_query_agents):
+        """Dropped fields (os.major, os.minor, os.codename, manager, node_name) are absent."""
+        mock_wazuh_db_query_agents.return_value.run.return_value = {
+            "items": [dict(AGENT_DOC_FULL)]
+        }
+
+        tasks = _make_tasks()
+        docs = await tasks._collect_agents(TIMESTAMP)
+
+        doc = docs[0]
+        for dropped in ("manager", "node_name", "id", "name", "ip", "status",
+                        "group", "mergedSum", "configSum", "dateAdd",
+                        "lastKeepAlive", "group_config_status", "status_code"):
+            assert dropped not in doc, f"Raw field '{dropped}' should have been normalized away"
 
 
 # ---------------------------------------------------------------------------
@@ -448,7 +551,7 @@ class TestAgentFieldMapping:
 
 
 class TestMetadataInjection:
-    """TC-2 – @timestamp, wazuh.cluster.node_name, wazuh.cluster.node_type present in every document."""
+    """TC-2 – @timestamp, wazuh.cluster.node, wazuh.cluster.name in every document."""
 
     @pytest.mark.asyncio
     @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
@@ -466,8 +569,8 @@ class TestMetadataInjection:
 
         for doc in docs:
             assert "@timestamp" in doc, f"@timestamp missing in doc {doc}"
-            assert "wazuh.cluster.node_name" in doc
-            assert "wazuh.cluster.node_type" in doc
+            assert "wazuh.cluster.node" in doc
+            assert "wazuh.cluster.name" in doc
 
     @pytest.mark.asyncio
     @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
@@ -485,8 +588,8 @@ class TestMetadataInjection:
 
         doc = docs[0]
         assert doc["@timestamp"] == TIMESTAMP
-        assert doc["wazuh.cluster.node_name"] == "prod-master"
-        assert doc["wazuh.cluster.node_type"] == "master"
+        assert doc["wazuh.cluster.node"] == "prod-master"
+        assert doc["wazuh.cluster.name"] == "wazuh-cluster"
 
     @pytest.mark.asyncio
     async def test_comms_docs_have_all_metadata_fields(self):
@@ -506,8 +609,8 @@ class TestMetadataInjection:
 
         for doc in docs:
             assert "@timestamp" in doc
-            assert "wazuh.cluster.node_name" in doc
-            assert "wazuh.cluster.node_type" in doc
+            assert "wazuh.cluster.node" in doc
+            assert "wazuh.cluster.name" in doc
 
     @pytest.mark.asyncio
     async def test_comms_metadata_values_match_server_config(self):
@@ -527,8 +630,24 @@ class TestMetadataInjection:
 
         doc = docs[0]
         assert doc["@timestamp"] == TIMESTAMP
-        assert doc["wazuh.cluster.node_name"] == "edge-node"
-        assert doc["wazuh.cluster.node_type"] == "master"
+        assert doc["wazuh.cluster.node"] == "edge-node"
+        assert doc["wazuh.cluster.name"] == "wazuh-cluster"
+
+    @pytest.mark.asyncio
+    async def test_events_module_is_remoted_in_comms(self):
+        """events.module is always set to 'remoted' in comms documents."""
+        tasks = _make_tasks()
+        dapi_result = _make_dapi_result([dict(REMOTED_STATS)])
+
+        with patch(
+            "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
+            return_value=AsyncMock(
+                distribute_function=AsyncMock(return_value=dapi_result)
+            ),
+        ):
+            docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
+
+        assert docs[0]["events.module"] == "remoted"
 
 
 # ---------------------------------------------------------------------------
@@ -603,7 +722,7 @@ class TestRunMetricsSnapshot:
     @pytest.mark.asyncio
     async def test_frequency_at_minimum_is_not_changed(self):
         """Boundary: asyncio.sleep receives exactly 600 when frequency=600."""
-        tasks = _make_tasks()  # default cluster_items has metrics_frequency=600
+        tasks = _make_tasks()
 
         assert tasks.frequency == 600
 
@@ -675,14 +794,13 @@ class TestRunMetricsSnapshot:
 
 
 class TestDisconnectionTimeOmission:
-    """TC-5 – disconnection_time is absent from agent documents when value is 0."""
+    """TC-5 – wazuh.agent.disconnected_at is absent when disconnection_time is 0."""
 
     @pytest.mark.asyncio
     @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
     async def test_disconnection_time_zero_is_absent(self, mock_wazuh_db_query_agents):
-        """TC-5: WazuhDBQueryAgents strips disconnection_time=0; document must not contain it."""
+        """TC-5: WazuhDBQueryAgents strips disconnection_time=0; normalized field must not appear."""
         # WazuhDBQueryAgents.run() already removes disconnection_time when it is 0.
-        # The mock replicates that behaviour by not including the key.
         mock_wazuh_db_query_agents.return_value.run.return_value = {
             "items": [{"id": "001", "name": "agent-active", "status": "active"}]
         }
@@ -690,14 +808,15 @@ class TestDisconnectionTimeOmission:
         tasks = _make_tasks()
         docs = await tasks._collect_agents(TIMESTAMP)
 
-        assert "disconnection_time" not in docs[0]
+        # Post-normalization: field should be wazuh.agent.disconnected_at
+        assert "wazuh.agent.disconnected_at" not in docs[0]
 
     @pytest.mark.asyncio
     @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
     async def test_nonzero_disconnection_time_is_preserved(
         self, mock_wazuh_db_query_agents
     ):
-        """A non-zero disconnection_time passes through unmodified."""
+        """A non-zero disconnection_time maps to wazuh.agent.disconnected_at."""
         mock_wazuh_db_query_agents.return_value.run.return_value = {
             "items": [
                 {
@@ -712,7 +831,8 @@ class TestDisconnectionTimeOmission:
         tasks = _make_tasks()
         docs = await tasks._collect_agents(TIMESTAMP)
 
-        assert docs[0]["disconnection_time"] == 19345809
+        # Post-normalization: raw disconnection_time maps to wazuh.agent.disconnected_at
+        assert docs[0]["wazuh.agent.disconnected_at"] == 19345809
 
     @pytest.mark.asyncio
     @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
@@ -722,23 +842,24 @@ class TestDisconnectionTimeOmission:
         """Active (no key) and disconnected (non-zero value) agents are handled independently."""
         mock_wazuh_db_query_agents.return_value.run.return_value = {
             "items": [
-                {"id": "001", "status": "active"},  # no key
+                {"id": "001", "status": "active"},
                 {
                     "id": "002",
                     "status": "disconnected",
                     "disconnection_time": 5000,
-                },  # non-zero
+                },
             ]
         }
 
         tasks = _make_tasks()
         docs = await tasks._collect_agents(TIMESTAMP)
 
-        active_doc = next(d for d in docs if d["id"] == "001")
-        disconnected_doc = next(d for d in docs if d["id"] == "002")
+        # Post-normalization: identify documents by normalized id field
+        active_doc = next(d for d in docs if d.get("wazuh.agent.id") == "001")
+        disconnected_doc = next(d for d in docs if d.get("wazuh.agent.id") == "002")
 
-        assert "disconnection_time" not in active_doc
-        assert disconnected_doc["disconnection_time"] == 5000
+        assert "wazuh.agent.disconnected_at" not in active_doc
+        assert disconnected_doc["wazuh.agent.disconnected_at"] == 5000
 
 
 # ---------------------------------------------------------------------------
@@ -756,9 +877,9 @@ class TestBulkActionShape:
         metrics_index = MetricsIndex(client=mock_client)
 
         docs = [
-            {"id": "001", "@timestamp": TIMESTAMP, "wazuh.cluster.node_name": "n1"},
-            {"id": "002", "@timestamp": TIMESTAMP, "wazuh.cluster.node_name": "n1"},
-            {"id": "003", "@timestamp": TIMESTAMP, "wazuh.cluster.node_name": "n1"},
+            {"wazuh.agent.id": "001", "@timestamp": TIMESTAMP, "wazuh.cluster.node": "n1"},
+            {"wazuh.agent.id": "002", "@timestamp": TIMESTAMP, "wazuh.cluster.node": "n1"},
+            {"wazuh.agent.id": "003", "@timestamp": TIMESTAMP, "wazuh.cluster.node": "n1"},
         ]
 
         captured_actions = []
@@ -782,7 +903,7 @@ class TestBulkActionShape:
         mock_client = AsyncMock()
         metrics_index = MetricsIndex(client=mock_client)
 
-        docs = [{"id": "001"}]
+        docs = [{"wazuh.agent.id": "001"}]
         captured_actions = []
 
         async def _capture_bulk(client, actions, **kwargs):
@@ -802,8 +923,8 @@ class TestBulkActionShape:
         metrics_index = MetricsIndex(client=mock_client)
 
         docs = [
-            {"id": "001", "@timestamp": TIMESTAMP},
-            {"id": "002", "@timestamp": TIMESTAMP},
+            {"wazuh.agent.id": "001", "@timestamp": TIMESTAMP},
+            {"wazuh.agent.id": "002", "@timestamp": TIMESTAMP},
         ]
         captured_actions = []
 
@@ -819,7 +940,7 @@ class TestBulkActionShape:
 
 
 # ---------------------------------------------------------------------------
-# __init__ fallback paths  (lines 19, 23, 28)
+# __init__ fallback paths
 # ---------------------------------------------------------------------------
 
 
@@ -827,11 +948,9 @@ class TestInit:
     """Tests for MetricsSnapshotTasks.__init__ fallback and warning paths."""
 
     def test_no_setup_task_logger_uses_logging_getLogger(self):
-        """Line 19: server without setup_task_logger falls back to logging.getLogger."""
-        server = MagicMock(
-            spec=[]
-        )  # spec=[] → no attributes at all, incl. setup_task_logger
-        server.configuration = {"node_name": "n", "node_type": "master"}
+        """server without setup_task_logger falls back to logging.getLogger."""
+        server = MagicMock(spec=[])
+        server.configuration = {"node_name": "n", "node_type": "master", "cluster_name": "c"}
 
         with patch("wazuh.core.indexer.metrics_snapshot.logging") as mock_logging:
             tasks = MetricsSnapshotTasks(server=server, cluster_items=CLUSTER_ITEMS)
@@ -840,7 +959,7 @@ class TestInit:
         assert tasks.logger is mock_logging.getLogger.return_value
 
     def test_none_server_uses_logging_getLogger(self):
-        """Line 19: server=None also triggers the getLogger fallback."""
+        """server=None also triggers the getLogger fallback."""
         with patch("wazuh.core.indexer.metrics_snapshot.logging") as mock_logging:
             tasks = MetricsSnapshotTasks(server=None, cluster_items=CLUSTER_ITEMS)
 
@@ -848,7 +967,7 @@ class TestInit:
         assert tasks.logger is mock_logging.getLogger.return_value
 
     def test_missing_metrics_frequency_logs_warning(self):
-        """Line 23: a warning is emitted when metrics_frequency is absent from config."""
+        """A warning is emitted when metrics_frequency is absent from config."""
         cluster_items_no_freq = {"intervals": {"master": {"metrics_bulk_size": 100}}}
         tasks = _make_tasks(cluster_items=cluster_items_no_freq)
 
@@ -859,7 +978,7 @@ class TestInit:
         assert tasks.frequency == MetricsSnapshotTasks.DEFAULT_METRICS_FREQUENCY
 
     def test_missing_metrics_bulk_size_logs_warning(self):
-        """Line 28: a warning is emitted when metrics_bulk_size is absent from config."""
+        """A warning is emitted when metrics_bulk_size is absent from config."""
         cluster_items_no_bulk = {"intervals": {"master": {"metrics_frequency": 600}}}
         tasks = _make_tasks(cluster_items=cluster_items_no_bulk)
 
@@ -879,28 +998,13 @@ class TestInit:
 
 
 # ---------------------------------------------------------------------------
-# _collect_and_index  (lines 121-128)
+# _collect_and_index
 # ---------------------------------------------------------------------------
 
 
 def _patch_collect_and_index(
     tasks, mock_indexer, agent_docs=None, comms_docs=None, collect_agents_override=None
 ):
-    """Return a combined context manager that patches both collectors and get_indexer_client.
-
-    Parameters
-    ----------
-    tasks : MetricsSnapshotTasks
-        Instance whose collectors will be patched.
-    mock_indexer : AsyncMock
-        Mock indexer returned by the ``get_indexer_client`` context manager.
-    agent_docs : list | None
-        Documents returned by ``_collect_agents``.  Ignored when *collect_agents_override* is set.
-    comms_docs : list | None
-        Documents returned by ``_collect_comms_all_nodes``.
-    collect_agents_override : callable | None
-        When provided, used as ``side_effect`` for ``_collect_agents`` instead of a fixed return value.
-    """
     from contextlib import contextmanager
 
     @contextmanager
@@ -940,8 +1044,8 @@ class TestCollectAndIndex:
     @pytest.mark.asyncio
     async def test_collects_agents_and_comms_then_bulk_indexes_both(self):
         """_collect_and_index calls both collectors and bulk-indexes their results."""
-        agent_docs = [{"id": "001", "@timestamp": TIMESTAMP}]
-        comms_docs = [dict(REMOTED_STATS) | {"@timestamp": TIMESTAMP}]
+        agent_docs = [{"wazuh.agent.id": "001", "@timestamp": TIMESTAMP}]
+        comms_docs = [{"events.total": 1000, "@timestamp": TIMESTAMP}]
 
         mock_indexer = AsyncMock()
         mock_indexer.metrics.bulk_index = AsyncMock()
@@ -958,8 +1062,8 @@ class TestCollectAndIndex:
 
     @pytest.mark.asyncio
     async def test_bulk_index_called_for_agents_index(self):
-        """bulk_index is called with 'wazuh-metrics-agents' and the agent docs."""
-        agent_docs = [{"id": "001"}]
+        """bulk_index is called with 'wazuh-metrics-agents' and the normalized agent docs."""
+        agent_docs = [{"wazuh.agent.id": "001"}]
 
         mock_indexer = AsyncMock()
         mock_indexer.metrics.bulk_index = AsyncMock()
@@ -974,8 +1078,8 @@ class TestCollectAndIndex:
 
     @pytest.mark.asyncio
     async def test_bulk_index_called_for_comms_index(self):
-        """bulk_index is called with 'wazuh-metrics-comms' and the comms docs."""
-        comms_docs = [dict(REMOTED_STATS)]
+        """bulk_index is called with 'wazuh-metrics-comms' and the normalized comms docs."""
+        comms_docs = [{"events.total": 1000}]
 
         mock_indexer = AsyncMock()
         mock_indexer.metrics.bulk_index = AsyncMock()
@@ -1008,6 +1112,5 @@ class TestCollectAndIndex:
 
         assert len(captured_timestamps) == 1
         ts = captured_timestamps[0]
-        # Must match %Y-%m-%dT%H:%M:%SZ  e.g. "2026-03-19T12:00:00Z"
         parsed = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
         assert parsed is not None
