@@ -38,8 +38,8 @@ struct Context
     std::string stageName;           ///< Name of the current stage being built.
     std::string opName;              ///< Name of the current operation being built.
     std::optional<std::unordered_map<std::string, bool>>
-        availableKvdbs;              ///< Available KVDBs: nullopt = no validation, value = validate with this map.
-    bool indexDiscardedEvents;       ///< Policy configuration: whether to index discarded events.
+        availableKvdbs;        ///< Available KVDBs: nullopt = no validation, value = validate with this map.
+    bool indexDiscardedEvents; ///< Policy configuration: whether to index discarded events.
 };
 
 /**
@@ -190,7 +190,7 @@ public:
      *
      * @return bool True if discarded events should be indexed, false otherwise
      */
-    virtual bool getIndexDiscardedEvents() const = 0 ;
+    virtual bool getIndexDiscardedEvents() const = 0;
 };
 
 } // namespace builder::builders

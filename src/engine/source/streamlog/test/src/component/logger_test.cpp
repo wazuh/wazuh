@@ -9,4 +9,3 @@ TEST(LoggerTest, LoggerInitialization)
 {
     GTEST_SKIP() << "Logger initialization test is skipped for now.";
 }
-

@@ -185,8 +185,7 @@ INSTANTIATE_TEST_SUITE_P(
                 return req;
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionPost(tester); },
-            []()
-            {
+            []() {
                 return userErrorResponse<eEngine::GenericStatus_Response>(
                     "Invalid policy name: Invalid namespace ID: ");
             },
@@ -205,8 +204,7 @@ INSTANTIATE_TEST_SUITE_P(
                 return req;
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionPost(tester); },
-            []()
-            {
+            []() {
                 return userErrorResponse<eEngine::GenericStatus_Response>(
                     "Invalid policy name: Invalid namespace ID: not-valid");
             },
@@ -467,8 +465,7 @@ INSTANTIATE_TEST_SUITE_P(
                 // Handler should fail before calling ingestTest
                 EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0);
             },
-            []()
-            {
+            []() {
                 return userErrorResponse<eEngine::tester::RunPost_Response>(
                     "queue is required and must be non-zero (1..255)");
             },
@@ -508,8 +505,7 @@ INSTANTIATE_TEST_SUITE_P(
                 return protoReq;
             },
             [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
-            []()
-            {
+            []() {
                 return userErrorResponse<eEngine::tester::RunPost_Response>(
                     "Metadata is required and must be a JSON object");
             },

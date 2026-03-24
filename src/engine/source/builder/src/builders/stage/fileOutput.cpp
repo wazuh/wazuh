@@ -38,20 +38,19 @@ base::Expression fileOutputBuilder(const json::Json& definition,
     const auto successTrace = fmt::format("{} -> Success", name);
     const auto failureTrace = fmt::format("{} -> Could not write event to output", name);
 
-    return base::Term<base::EngineOp>::create(
-        name,
-        [writer, successTrace, failureTrace, runState = buildCtx->runState()](
-            base::Event event) -> base::result::Result<base::Event>
-        {
-            if ((*writer)(event->str()))
-            {
-                RETURN_SUCCESS(runState, event, successTrace);
-            }
-            else
-            {
-                RETURN_FAILURE(runState, event, failureTrace);
-            }
-        });
+    return base::Term<base::EngineOp>::create(name,
+                                              [writer, successTrace, failureTrace, runState = buildCtx->runState()](
+                                                  base::Event event) -> base::result::Result<base::Event>
+                                              {
+                                                  if ((*writer)(event->str()))
+                                                  {
+                                                      RETURN_SUCCESS(runState, event, successTrace);
+                                                  }
+                                                  else
+                                                  {
+                                                      RETURN_FAILURE(runState, event, failureTrace);
+                                                  }
+                                              });
 }
 
 StageBuilder getFileOutputBuilder(const std::shared_ptr<streamlog::ILogManager>& logManager)

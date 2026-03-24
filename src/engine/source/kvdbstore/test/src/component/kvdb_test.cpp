@@ -256,8 +256,7 @@ TEST_F(KVDB_Component, InvalidPayload_Throws)
     EXPECT_CALL(badArr, getKVDBByName("kv"))
         .Times(1)
         .WillOnce(::testing::InvokeWithoutArgs(
-            []() -> cm::store::dataType::KVDB
-            {
+            []() -> cm::store::dataType::KVDB {
                 return cm::store::dataType::KVDB {
                     "4aa06596-5ba9-488c-8354-2475705e1257", "kv", json::Json {"[1,2,3]"}, true};
             }));

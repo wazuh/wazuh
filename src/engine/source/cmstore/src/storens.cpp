@@ -107,8 +107,7 @@ void CMStoreNS::rebuildCacheFromStorage()
 
                 // If resource type is DECODER, OUTPUT or FILTER, revert only the first and last '_' to '/'
                 // TODO: Find a better way to handle this case, this is a workaround for legacy naming
-                if (rType == ResourceType::DECODER || rType == ResourceType::OUTPUT
-                    || rType == ResourceType::FILTER)
+                if (rType == ResourceType::DECODER || rType == ResourceType::OUTPUT || rType == ResourceType::FILTER)
                 {
                     // Revert only the first and last '_' to '/'
                     size_t firstUnderscore = resourceName.find('_');
@@ -221,8 +220,8 @@ std::filesystem::path CMStoreNS::getResourcePaths(const std::string& name, Resou
     std::filesystem::path rPath = m_storagePath;
 
     auto fileName = name;
-    if (type == ResourceType::DECODER || type == ResourceType::OUTPUT
-        || type == ResourceType::FILTER || type == ResourceType::INTEGRATION || type == ResourceType::KVDB)
+    if (type == ResourceType::DECODER || type == ResourceType::OUTPUT || type == ResourceType::FILTER
+        || type == ResourceType::INTEGRATION || type == ResourceType::KVDB)
     {
         // Replace '/' with '_' to avoid directory traversal on assets names
         std::replace(fileName.begin(), fileName.end(), '/', '_');

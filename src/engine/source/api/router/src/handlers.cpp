@@ -30,7 +30,8 @@ inline int64_t currentTime()
  * @param entry to convert
  * @return eRouter::Entry
  */
-eRouter::Entry eRouteEntryFromEntry(const ::router::prod::Entry& entry, const std::weak_ptr<cm::store::ICMStore>& wStore)
+eRouter::Entry eRouteEntryFromEntry(const ::router::prod::Entry& entry,
+                                    const std::weak_ptr<cm::store::ICMStore>& wStore)
 {
     eRouter::Entry eEntry;
     eEntry.set_name(entry.name());
@@ -87,7 +88,10 @@ adapter::RouteHandler routePost(const std::shared_ptr<::router::IRouterAPI>& rou
         }
 
         auto namespaceId = tryGetProperty<ResponseType, cm::store::NamespaceId>(
-            true, [&protoRoute]() { return cm::store::NamespaceId(adapter::getRes(protoRoute).namespaceid()); }, "namespace", "id");
+            true,
+            [&protoRoute]() { return cm::store::NamespaceId(adapter::getRes(protoRoute).namespaceid()); },
+            "namespace",
+            "id");
         if (adapter::isError(namespaceId))
         {
             res = adapter::getErrorResp(namespaceId);
@@ -95,9 +99,8 @@ adapter::RouteHandler routePost(const std::shared_ptr<::router::IRouterAPI>& rou
         }
 
         // Add the route
-        ::router::prod::EntryPost entryPost(protoReq.route().name(),
-                                            adapter::getRes(namespaceId),
-                                            protoReq.route().priority());
+        ::router::prod::EntryPost entryPost(
+            protoReq.route().name(), adapter::getRes(namespaceId), protoReq.route().priority());
 
         if (protoReq.route().has_description() && !protoReq.route().description().empty())
         {
@@ -156,9 +159,11 @@ adapter::RouteHandler routeDelete(const std::shared_ptr<::router::IRouterAPI>& r
     };
 }
 
-adapter::RouteHandler routeGet(const std::shared_ptr<::router::IRouterAPI>& router, const std::shared_ptr<cm::store::ICMStore>& store)
+adapter::RouteHandler routeGet(const std::shared_ptr<::router::IRouterAPI>& router,
+                               const std::shared_ptr<cm::store::ICMStore>& store)
 {
-    return [wRouter = std::weak_ptr<::router::IRouterAPI>(router), wStore = std::weak_ptr<cm::store::ICMStore>(store)](const auto& req, auto& res)
+    return [wRouter = std::weak_ptr<::router::IRouterAPI>(router),
+            wStore = std::weak_ptr<cm::store::ICMStore>(store)](const auto& req, auto& res)
     {
         using RequestType = eRouter::RouteGet_Request;
         using ResponseType = eRouter::RouteGet_Response;
@@ -265,9 +270,11 @@ adapter::RouteHandler routePatchPriority(const std::shared_ptr<::router::IRouter
     };
 }
 
-adapter::RouteHandler tableGet(const std::shared_ptr<::router::IRouterAPI>& router, const std::shared_ptr<cm::store::ICMStore>& store)
+adapter::RouteHandler tableGet(const std::shared_ptr<::router::IRouterAPI>& router,
+                               const std::shared_ptr<cm::store::ICMStore>& store)
 {
-    return [wRouter = std::weak_ptr<::router::IRouterAPI>(router), wStore = std::weak_ptr<cm::store::ICMStore>(store)](const auto& req, auto& res)
+    return [wRouter = std::weak_ptr<::router::IRouterAPI>(router),
+            wStore = std::weak_ptr<cm::store::ICMStore>(store)](const auto& req, auto& res)
     {
         using RequestType = eRouter::TableGet_Request;
         using ResponseType = eRouter::TableGet_Response;

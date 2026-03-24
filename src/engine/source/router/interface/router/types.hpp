@@ -48,7 +48,7 @@ class EntryPost
 {
 private:
     std::string m_name;                       ///< Name of the environment
-    cm::store::NamespaceId m_namespace;          ///< Namespace of the environment
+    cm::store::NamespaceId m_namespace;       ///< Namespace of the environment
     std::size_t m_priority;                   ///< Priority of the environment
     std::optional<std::string> m_description; ///< Description of the environment
 
@@ -114,7 +114,7 @@ public:
 class Entry : public EntryPost
 {
 private:
-    env::Sync m_namespaceSync;     ///< Namespace sync status
+    env::Sync m_namespaceSync;  ///< Namespace sync status
     env::State m_status;        ///< Status of the environment
     std::uint64_t m_lastUpdate; /// Last update of the environment [TODO: Review this metadata]
     std::string m_hash;         /// Hash of the namespace
@@ -155,7 +155,7 @@ class EntryPost
 {
 private:
     std::string m_name;                       ///< Name of the environment
-    cm::store::NamespaceId m_namespace;     ///< Namespace of the environment
+    cm::store::NamespaceId m_namespace;       ///< Namespace of the environment
     std::optional<std::string> m_description; ///< Description of the environment
     std::size_t m_lifetime;                   ///< Lifetime of the environment
 
@@ -209,10 +209,10 @@ public:
 class Entry : public EntryPost
 {
 private:
-    env::Sync m_namespaceSync;  ///< Namespace sync status
-    env::State m_status;     ///< Status of the environment
-    std::uint64_t m_lastUse; /// Last use of the entry.
-    std::string m_hash;      /// Hash of the namespace
+    env::Sync m_namespaceSync; ///< Namespace sync status
+    env::State m_status;       ///< Status of the environment
+    std::uint64_t m_lastUse;   /// Last use of the entry.
+    std::string m_hash;        /// Hash of the namespace
 
 public:
     Entry(const EntryPost& entryPost)
@@ -256,10 +256,10 @@ public:
     {
         switch (tl)
         {
-            case TraceLevel::NONE:       return "NONE";
+            case TraceLevel::NONE: return "NONE";
             case TraceLevel::ASSET_ONLY: return "ASSET_ONLY";
-            case TraceLevel::ALL:        return "ALL";
-            default:                     return "UNKNOWN";
+            case TraceLevel::ALL: return "ALL";
+            default: return "UNKNOWN";
         }
     }
 
@@ -269,14 +269,14 @@ public:
         normalized.reserve(str.size());
 
         std::transform(
-            str.begin(), str.end(),
-            std::back_inserter(normalized),
-            [](unsigned char c) { return std::toupper(c); }
-        );
+            str.begin(), str.end(), std::back_inserter(normalized), [](unsigned char c) { return std::toupper(c); });
 
-        if (normalized == traceLevelToString(TraceLevel::NONE))       return TraceLevel::NONE;
-        if (normalized == traceLevelToString(TraceLevel::ASSET_ONLY)) return TraceLevel::ASSET_ONLY;
-        if (normalized == traceLevelToString(TraceLevel::ALL))        return TraceLevel::ALL;
+        if (normalized == traceLevelToString(TraceLevel::NONE))
+            return TraceLevel::NONE;
+        if (normalized == traceLevelToString(TraceLevel::ASSET_ONLY))
+            return TraceLevel::ASSET_ONLY;
+        if (normalized == traceLevelToString(TraceLevel::ALL))
+            return TraceLevel::ALL;
 
         return TraceLevel::UNKNOWN;
     }

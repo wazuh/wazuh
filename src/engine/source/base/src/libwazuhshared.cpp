@@ -1,14 +1,13 @@
 #include <base/libwazuhshared.hpp>
 
 #include <dlfcn.h>
+#include <fmt/format.h>
 #include <stdexcept>
 #include <string>
-#include <fmt/format.h>
-
 
 namespace
 {
-    void* g_libPtr = nullptr;
+void* g_libPtr = nullptr;
 }
 
 namespace base::libwazuhshared
@@ -68,4 +67,4 @@ std::string getJsonIndexerCnf()
     free(result);
     return jsonCnf;
 }
-}
+} // namespace base::libwazuhshared

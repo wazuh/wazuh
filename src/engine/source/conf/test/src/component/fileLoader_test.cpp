@@ -8,8 +8,7 @@
 
 static std::filesystem::path mkTempFile(const char* prefix)
 {
-    std::filesystem::path p = std::filesystem::temp_directory_path() /
-                              (std::string(prefix) + "XXXXXX");
+    std::filesystem::path p = std::filesystem::temp_directory_path() / (std::string(prefix) + "XXXXXX");
     std::string s = p.string();
     std::vector<char> buf(s.begin(), s.end());
     buf.push_back('\0');
@@ -33,10 +32,7 @@ protected:
         writeToFile(path, content);
     }
 
-    void TearDown() override
-    {
-        std::filesystem::remove(path);
-    }
+    void TearDown() override { std::filesystem::remove(path); }
 
     void writeToFile(const std::filesystem::path& p, const std::string& content)
     {

@@ -32,9 +32,9 @@ public:
     bool existsNamespace(const cm::store::NamespaceId& nsId) const override;
     void deleteNamespace(const cm::store::NamespaceId& nsId) override;
     cm::store::dataType::Policy importNamespace(const cm::store::NamespaceId& nsId,
-                         std::string_view jsonDocument,
-                         std::string_view origin,
-                         bool force) override;
+                                                std::string_view jsonDocument,
+                                                std::string_view origin,
+                                                bool force) override;
     void importNamespace(const cm::store::NamespaceId& nsId,
                          const std::vector<json::Json>& kvdbs,
                          const std::vector<json::Json>& decoders,

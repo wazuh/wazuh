@@ -262,11 +262,10 @@ base::OptError Builder::softPolicyValidate(const std::shared_ptr<cm::store::ICMS
         }
         catch (const std::exception& e)
         {
-            return base::Error {
-                fmt::format("Failed to resolve filter with uuid='{}' referenced by policy '{}': {}",
-                            filterUUID,
-                            policyName,
-                            e.what())};
+            return base::Error {fmt::format("Failed to resolve filter with uuid='{}' referenced by policy '{}': {}",
+                                            filterUUID,
+                                            policyName,
+                                            e.what())};
         }
     }
 
@@ -280,14 +279,12 @@ base::OptError Builder::softPolicyValidate(const std::shared_ptr<cm::store::ICMS
         }
         catch (const std::exception& e)
         {
-            return base::Error {
-                fmt::format("Failed to resolve output with uuid='{}' referenced by policy '{}': {}",
-                            outputUUID,
-                            policyName,
-                            e.what())};
+            return base::Error {fmt::format("Failed to resolve output with uuid='{}' referenced by policy '{}': {}",
+                                            outputUUID,
+                                            policyName,
+                                            e.what())};
         }
     }
-
 
     return base::noError();
 }

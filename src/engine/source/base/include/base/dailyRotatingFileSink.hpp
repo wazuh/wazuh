@@ -86,7 +86,8 @@ public:
     /**
      * @brief Configuration structure for daily rotating file sink.
      *
-     * This sink implements Log4j2-inspired rotation policies:───────────────────────────────────────────────────────────────────────┘
+     * This sink implements Log4j2-inspired rotation
+     * policies:───────────────────────────────────────────────────────────────────────┘
      *
      * Field mapping:
      *   - filePath               → fileName (active log file path)

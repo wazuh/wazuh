@@ -1,11 +1,11 @@
 #ifndef _COMMUNITY_ID_H
 #define _COMMUNITY_ID_H
 
+#include <base/error.hpp>
 #include <cstdint>
 #include <optional>
 #include <string>
 #include <variant>
-#include <base/error.hpp>
 namespace base::utils::CommunityId
 {
 /**
@@ -31,11 +31,11 @@ namespace base::utils::CommunityId
  * @see https://github.com/corelight/community-id-spec
  */
 base::RespOrError<std::string> getCommunityIdV1(const std::string& saddr,
-                                 const std::string& daddr,
-                                 int64_t sport,
-                                 int64_t dport,
-                                 uint8_t protoIana,
-                                 uint16_t seed = 0);
+                                                const std::string& daddr,
+                                                int64_t sport,
+                                                int64_t dport,
+                                                uint8_t protoIana,
+                                                uint16_t seed = 0);
 
 } // namespace base::utils::CommunityId
 

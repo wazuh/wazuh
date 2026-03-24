@@ -52,7 +52,6 @@
 #include "base/utils/getExceptionStack.hpp"
 #include "stackExecutor.hpp"
 
-
 volatile sig_atomic_t g_shutdown_requested = 0;
 
 void sigintHandler(const int signum)

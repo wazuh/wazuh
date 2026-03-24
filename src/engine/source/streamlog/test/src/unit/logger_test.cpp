@@ -8,8 +8,8 @@
 #include <gtest/gtest.h>
 
 #include <base/logging.hpp>
-#include <streamlog/logger.hpp>
 #include <fastqueue/iqueue.hpp>
+#include <streamlog/logger.hpp>
 
 #include <scheduler/mockScheduler.hpp>
 #include <store/mockStore.hpp>
@@ -268,7 +268,7 @@ TEST_F(LogManagerTest, UpdateConfigSuccess)
     // Create new config
     auto newConfig = defaultConfig;
     newConfig.maxSize = fastqueue::MIN_QUEUE_CAPACITY * 2; // Set to a different value
-    newConfig.bufferSize = fastqueue::MIN_QUEUE_CAPACITY; // Set to a different value
+    newConfig.bufferSize = fastqueue::MIN_QUEUE_CAPACITY;  // Set to a different value
 
     // Update config (no active writers)
     EXPECT_NO_THROW(logManager->updateConfig(channelName, newConfig, "log"));
@@ -476,8 +476,8 @@ TEST_F(LogManagerTest, ConfigurationPersistence)
 
     auto customConfig = defaultConfig;
     customConfig.maxSize = fastqueue::MIN_QUEUE_CAPACITY * 2; // Set to a different value
-    customConfig.bufferSize = fastqueue::MIN_QUEUE_CAPACITY; // Set to a different value
-    customConfig.pattern = "custom-${name}-${YYYY}.log"; // ${counter} will be added due to maxSize
+    customConfig.bufferSize = fastqueue::MIN_QUEUE_CAPACITY;  // Set to a different value
+    customConfig.pattern = "custom-${name}-${YYYY}.log";      // ${counter} will be added due to maxSize
 
     logManager->registerLog("persist-test", customConfig, "log");
 

@@ -40,7 +40,6 @@ void Scheduler::start()
     {
         m_workers.emplace_back(&Scheduler::workerThread, this);
     }
-
 }
 
 void Scheduler::stop()

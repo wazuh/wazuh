@@ -7,8 +7,7 @@
 namespace raweventindexer
 {
 
-RawEventIndexer::RawEventIndexer(std::weak_ptr<wiconnector::IWIndexerConnector> connector,
-                                 std::string_view indexName)
+RawEventIndexer::RawEventIndexer(std::weak_ptr<wiconnector::IWIndexerConnector> connector, std::string_view indexName)
     : m_enabled(false)
     , m_connector(std::move(connector))
     , m_indexName(indexName)
@@ -111,8 +110,7 @@ void RawEventIndexer::hotReloadConf(const json::Json& value)
 {
     if (!value.isBool())
     {
-        throw std::invalid_argument(
-            fmt::format("Expected boolean for 'index_raw_events', got: {}", value.str()));
+        throw std::invalid_argument(fmt::format("Expected boolean for 'index_raw_events', got: {}", value.str()));
     }
 
     value.getBool().value() ? enable() : disable();

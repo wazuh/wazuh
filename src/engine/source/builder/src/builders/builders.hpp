@@ -18,28 +18,34 @@ namespace builder::builders
 // Forward declarations for circular dependencies
 class IBuildCtx;
 
-using MapResult = base::result::Result<json::Json>;                ///< Result type for map operations.
-using MapOp = std::function<MapResult(base::ConstEvent)>;          ///< Map operation function type.
-using MapBuilder = std::function<MapOp(const std::vector<OpArg>&, const std::shared_ptr<const IBuildCtx>&)>; ///< Builder for map operations.
+using MapResult = base::result::Result<json::Json>;       ///< Result type for map operations.
+using MapOp = std::function<MapResult(base::ConstEvent)>; ///< Map operation function type.
+using MapBuilder = std::function<MapOp(const std::vector<OpArg>&,
+                                       const std::shared_ptr<const IBuildCtx>&)>; ///< Builder for map operations.
 
-using TransformResult = base::result::Result<base::Event>;         ///< Result type for transform operations.
-using TransformOp = std::function<TransformResult(base::Event)>;   ///< Transform operation function type.
-using TransformBuilder =
-    std::function<TransformOp(const Reference&, const std::vector<OpArg>&, const std::shared_ptr<const IBuildCtx>&)>; ///< Builder for transform operations.
+using TransformResult = base::result::Result<base::Event>;       ///< Result type for transform operations.
+using TransformOp = std::function<TransformResult(base::Event)>; ///< Transform operation function type.
+using TransformBuilder = std::function<TransformOp(
+    const Reference&, const std::vector<OpArg>&, const std::shared_ptr<const IBuildCtx>&)>; ///< Builder for transform
+                                                                                            ///< operations.
 
-using FilterResult = base::result::Result<bool>;                   ///< Result type for filter operations.
-using FilterOp = std::function<FilterResult(base::ConstEvent)>;    ///< Filter operation function type.
-using FilterBuilder =
-    std::function<FilterOp(const Reference&, const std::vector<OpArg>&, const std::shared_ptr<const IBuildCtx>&)>; ///< Builder for filter operations.
+using FilterResult = base::result::Result<bool>;                ///< Result type for filter operations.
+using FilterOp = std::function<FilterResult(base::ConstEvent)>; ///< Filter operation function type.
+using FilterBuilder = std::function<FilterOp(
+    const Reference&, const std::vector<OpArg>&, const std::shared_ptr<const IBuildCtx>&)>; ///< Builder for filter
+                                                                                            ///< operations.
 
-using Op = std::variant<MapOp, TransformOp, FilterOp>;             ///< Variant of all operation types.
+using Op = std::variant<MapOp, TransformOp, FilterOp>;                       ///< Variant of all operation types.
 using OpBuilder = std::variant<MapBuilder, TransformBuilder, FilterBuilder>; ///< Variant of all operation builders.
 
-using DynamicValToken = std::function<schemf::ValidationToken(const std::vector<OpArg>&, const schemf::IValidator&)>; ///< Dynamic validation token factory.
-using ValidationInfo = std::variant<schemf::ValidationToken, DynamicValToken>; ///< Validation information (static or dynamic).
-using OpBuilderEntry = std::tuple<ValidationInfo, OpBuilder>;      ///< Registry entry: validation info + builder.
+using DynamicValToken = std::function<schemf::ValidationToken(
+    const std::vector<OpArg>&, const schemf::IValidator&)>; ///< Dynamic validation token factory.
+using ValidationInfo =
+    std::variant<schemf::ValidationToken, DynamicValToken>;   ///< Validation information (static or dynamic).
+using OpBuilderEntry = std::tuple<ValidationInfo, OpBuilder>; ///< Registry entry: validation info + builder.
 
-using StageBuilder = std::function<base::Expression(const json::Json&, const std::shared_ptr<const IBuildCtx>&)>; ///< Builder for pipeline stages.
+using StageBuilder = std::function<base::Expression(
+    const json::Json&, const std::shared_ptr<const IBuildCtx>&)>; ///< Builder for pipeline stages.
 
 /**
  * @brief Function type to build an enrichment expression.
@@ -48,7 +54,8 @@ using StageBuilder = std::function<base::Expression(const json::Json&, const std
  */
 using EnrichmentBuilder = std::function<std::pair<base::Expression, std::string>(bool)>;
 
-using RegistryType = MetaRegistry<OpBuilderEntry, StageBuilder, EnrichmentBuilder>; ///< Type of the builders meta-registry.
+using RegistryType =
+    MetaRegistry<OpBuilderEntry, StageBuilder, EnrichmentBuilder>; ///< Type of the builders meta-registry.
 
 } // namespace builder::builders
 

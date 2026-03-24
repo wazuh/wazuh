@@ -17,7 +17,6 @@ public:
      * Non-throwing outward behavior: failures are handled internally.
      */
     virtual void synchronize() = 0;
-
 };
 
 } // namespace confremote

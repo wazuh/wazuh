@@ -30,7 +30,8 @@ inline Mapper noMapper()
     return [](json::Json&) {
     };
 }
-using SemParser = std::function<std::variant<Mapper, base::Error>(std::string_view)>; ///< Semantic parser: validates parsed text and returns a Mapper or Error.
+using SemParser = std::function<std::variant<Mapper, base::Error>(
+    std::string_view)>; ///< Semantic parser: validates parsed text and returns a Mapper or Error.
 
 /**
  * @brief Token produced by the syntax parsing phase.
@@ -54,9 +55,9 @@ inline SemParser noSemParser()
     };
 }
 
-using ResultT = SemToken;              ///< Result value type for HLP parsers.
-using Result = abs::Result<ResultT>;   ///< HLP parser result type.
-using Parser = abs::Parser<ResultT>;   ///< HLP parser type.
+using ResultT = SemToken;            ///< Result value type for HLP parsers.
+using Result = abs::Result<ResultT>; ///< HLP parser result type.
+using Parser = abs::Parser<ResultT>; ///< HLP parser type.
 
 /**
  * @brief Runs three steps of parsing: syntax, semantic and mapping. Returns an error if any of the steps fails at any

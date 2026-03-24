@@ -9,6 +9,7 @@
 
 TEST(ContentManagerTest, init)
 {
-    cm::sync::CmsyncNS store (cm::sync::NamespaceId("test"), std::filesystem::temp_directory_path(), std::filesystem::temp_directory_path());
+    cm::sync::CmsyncNS store(
+        cm::sync::NamespaceId("test"), std::filesystem::temp_directory_path(), std::filesystem::temp_directory_path());
     GTEST_SKIP() << "Not implemented yet.";
 }

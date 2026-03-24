@@ -11,7 +11,8 @@ class FileOutputTestHelper
 public:
     static StageBuilder getBuilder(bool callExpectations = false)
     {
-        return [callExpectations](const json::Json& definition, const std::shared_ptr<const IBuildCtx>& buildCtx) -> base::Expression
+        return [callExpectations](const json::Json& definition,
+                                  const std::shared_ptr<const IBuildCtx>& buildCtx) -> base::Expression
         {
             // Create the mock only when needed
             auto logManager = std::make_shared<testing::NiceMock<streamlog::mocks::MockILogManager>>();
@@ -20,7 +21,9 @@ public:
             {
                 // Set expectations if indicated
                 EXPECT_CALL(*logManager, getWriter(testing::_)).Times(1);
-            } else {
+            }
+            else
+            {
                 EXPECT_CALL(*logManager, getWriter(testing::_)).Times(0);
             }
             // ON_CALL(*logManager, getWriter(testing::_))

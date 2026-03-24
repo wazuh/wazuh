@@ -428,12 +428,10 @@ base::Expression buildExpression(const PolicyGraph& graph,
     // Phase 1 only fails if pre-filters fail, phase 3 only fails if post-filters fail.
     if (phase3.has_value())
     {
-        return base::And::create(
-            graph.graphName,
-            {phase1, preEnrichmentExpression, enrichmentExpression, phase3.value()});
+        return base::And::create(graph.graphName,
+                                 {phase1, preEnrichmentExpression, enrichmentExpression, phase3.value()});
     }
-    return base::And::create(graph.graphName,
-                             {phase1, preEnrichmentExpression, enrichmentExpression});
+    return base::And::create(graph.graphName, {phase1, preEnrichmentExpression, enrichmentExpression});
 }
 
 } // namespace builder::policy::factory
