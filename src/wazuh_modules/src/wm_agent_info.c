@@ -579,7 +579,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
 #endif
     g_shutting_down = 0;
 
-    minfo("Starting agent-info module.");
+    mdebug1("Starting agent-info module.");
 
     if (!agent_info)
     {
@@ -596,7 +596,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         return NULL;
     }
 
-    minfo("Agent-info message queue initialized successfully.");
+    mdebug1("Agent-info message queue initialized successfully.");
 
     // Set synchronization parameters from configuration
     agent_info_enable_synchronization = agent_info->sync.enable_synchronization;
@@ -668,7 +668,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
             if (cluster_name[0] != '\0' && agent_info_set_cluster_name_ptr)
             {
                 agent_info_set_cluster_name_ptr(cluster_name);
-                minfo("Cluster name received from agentd: %s", cluster_name);
+                mdebug1("Cluster name received from agentd: %s", cluster_name);
             }
             if (cluster_node[0] != '\0' && agent_info_set_cluster_node_ptr)
             {
@@ -690,7 +690,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
 
     if (g_shutting_down)
     {
-        minfo("Shutdown requested during handshake wait, exiting.");
+        mdebug1("Shutdown requested during handshake wait, exiting.");
         return NULL;
     }
 
@@ -698,7 +698,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     // This call will populate the agent metadata and send it to the queue
     if (agent_info_start_ptr)
     {
-        minfo("Starting agent-info module...");
+        mdebug1("Starting agent-info module...");
 
         agent_info_start_ptr(agent_info);
     }

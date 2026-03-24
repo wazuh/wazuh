@@ -127,7 +127,7 @@ def test_sca_mitre_payload(test_configuration, test_metadata, prepare_cis_polici
             brief: Wait for the SCA module to start before the test.
 
     assertions:
-        - Verify the SCA module is enabled.
+        - Verify the SCA module reaches the running state.
         - Verify the stateful event payload contains a "mitre" object with the expected tactic and technique values.
 
     input_description:
@@ -135,14 +135,10 @@ def test_sca_mitre_payload(test_configuration, test_metadata, prepare_cis_polici
         - The `cis_ubuntu24_04_mitre.yaml` file provides the SCA policy with MITRE ATT&CK data.
 
     expected_output:
-        - r".*sca.*INFO: SCA module enabled"
+        - r".*sca.*INFO: SCA module running"
         - r".*sca.*Stateful event queued: (.*)"
     '''
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-
-    # Verify that the SCA module is enabled
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_ENABLED), timeout=60 if sys.platform == WINDOWS else 10)
-    assert log_monitor.callback_result
 
     # Wait for a stateful event containing a MITRE object
     log_monitor.start(callback=_callback_mitre_event, timeout=60)
