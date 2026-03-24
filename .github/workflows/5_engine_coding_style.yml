@@ -1,0 +1,68 @@
+name: 5.X - Code Linter - Engine
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - '.github/workflows/5_engine_coding_style.yml'
+      - 'src/engine/**'
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install clang-format-18
+        shell: bash
+        run: |
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc > /dev/null
+          echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main" | sudo tee /etc/apt/sources.list.d/llvm.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y clang-format-18
+
+      - name: Engine - Coding style
+        shell: bash
+        run: |
+          arguments="--dry-run "
+          config_file=src/engine/.clang-format
+          arguments+="--style=file "
+          arguments+="-assume-filename=${config_file} "
+
+          source_files=$(find src/engine -type f \( -name "*.cpp" -o -name "*.hpp" \) | tr '\n' ' ')
+          arguments+="-i ${source_files} "
+
+          errors_file=src/engine/clang_format_errors.txt
+          clang-format-18 ${arguments} 2> "${errors_file}"
+
+          echo "Clang-format version: $(clang-format-18 --version)"
+
+          if [ -s "${errors_file}" ]; then
+            echo "---------------------------------"
+            echo "FAILED: Clang-format check failed"
+            echo "---------------------------------"
+            exit 1
+          else
+            echo "---------------------------------"
+            echo "PASSED: Clang-format check passed"
+            echo "---------------------------------"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: Clang-format errors - engine
+          path: src/engine/clang_format_errors.txt
+          retention-days: 1
