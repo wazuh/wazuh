@@ -4699,9 +4699,9 @@ checks:
       technique: ["T1036", "T1564"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:^\s*clientaliveinterval\s*\t*(\d+) compare => 1 &&  n:^\s*clientaliveinterval\s*\t*(\d+) compare <= 900'
+      - 'c:sshd -T -> n:^\s*clientaliveinterval\s*\t*(\d+) compare >= 1 &&  n:^\s*clientaliveinterval\s*\t*(\d+) compare <= 900'
       - 'c:sshd -T -> n:^\s*clientalivecountmax\s*\t*(\d+) compare == 0'
-      - 'f:/etc/ssh/sshd_config -> n:^\s*clientaliveinterval\s*\t*(\d+) compare => 1 &&  n:^\s*clientaliveinterval\s*\t*(\d+) compare <= 900'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*clientaliveinterval\s*\t*(\d+) compare >= 1 &&  n:^\s*clientaliveinterval\s*\t*(\d+) compare <= 900'
       - 'f:/etc/ssh/sshd_config -> n:^\s*clientalivecountmax\s*\t*(\d+) compare == 0'
 
   # 5.3.17 Ensure SSH LoginGraceTime is set to one minute or less. (Automated)
@@ -4726,8 +4726,8 @@ checks:
       technique: ["T1036", "T1564"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:^\s*logingracetime\s*\t*(\d+) compare => 1 &&  n:^\s*logingracetime\s*\t*(\d+) compare <= 60'
-      - 'f:/etc/ssh/sshd_config -> n:^\s*logingracetime\s*\t*(\d+) compare => 1 &&  n:^\s*logingracetime\s*\t*(\d+) compare <= 60'
+      - 'c:sshd -T -> n:^\s*logingracetime\s*\t*(\d+) compare >= 1 &&  n:^\s*logingracetime\s*\t*(\d+) compare <= 60'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*logingracetime\s*\t*(\d+) compare >= 1 &&  n:^\s*logingracetime\s*\t*(\d+) compare <= 60'
 
   # 5.3.18 Ensure SSH warning banner is configured. (Automated)
   - id: 4672

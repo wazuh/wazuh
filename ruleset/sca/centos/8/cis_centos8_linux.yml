@@ -4921,7 +4921,7 @@ checks:
       subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: any
     rules:
-      - 'f:/etc/sudoers -> n:timestamp_timeout=(\d+) compare =< 15 && n:timestamp_timeout=(\d+) compare != -1'
+      - 'f:/etc/sudoers -> n:timestamp_timeout=(\d+) compare <= 15 && n:timestamp_timeout=(\d+) compare != -1'
       - 'c:sudo -V -> r:Authentication timestamp timeout:\s*\t*5\.0 minutes'
 
   # 5.3.7 Ensure access to the su command is restricted. (Automated)
@@ -5029,7 +5029,7 @@ checks:
       subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/system-auth -> !r:^\s*\t*# && r:password\s*\t*requisite|password\s*\t*sufficient && r:pam_pwhistory\.so|pam_unix\.so && n:remember\s*\t*=\s*\t*(\d+) compare => 5'
+      - 'f:/etc/pam.d/system-auth -> !r:^\s*\t*# && r:password\s*\t*requisite|password\s*\t*sufficient && r:pam_pwhistory\.so|pam_unix\.so && n:remember\s*\t*=\s*\t*(\d+) compare >= 5'
 
   # 5.5.4 Ensure password hashing algorithm is SHA-512. (Automated)
   - id: 6690

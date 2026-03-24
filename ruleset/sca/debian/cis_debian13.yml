@@ -3423,9 +3423,9 @@ checks:
     condition: any
     rules:
       - 'f:/etc/security/faillock.conf -> n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare >= 900'
-      - 'f:/etc/security/faillock.conf -> n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare = 0'
+      - 'f:/etc/security/faillock.conf -> n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare == 0'
       - 'f:/etc/pam.d/common-auth -> !r:^# && r:pam_faillock\.so && n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare >= 900'
-      - 'f:/etc/pam.d/common-auth -> !r:^# && r:pam_faillock\.so && n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare = 0'
+      - 'f:/etc/pam.d/common-auth -> !r:^# && r:pam_faillock\.so && n:^\s*\t*unlock_time\s*\t*=\s*\t*(\d+) compare == 0'
       - 'not f:/etc/pam.d/common-auth -> !r:^# && r:pam_faillock\.so && r:^\s*\t*unlock_time\s*\t*='
 
   # 5.3.3.1.3 Ensure password failed attempts lockout includes root account. (Automated)
@@ -3478,7 +3478,7 @@ checks:
     condition: any
     rules:
       - 'f:/etc/security/pwquality.conf -> n:difok\s*\t*=\s*\t*(\d+) compare >= 2'
-      - 'd:/etc/security/pwquality.conf.d/* -> r:.+\.conf$ -> n:difok\s*\t*=\s*\t*(\d+) compare => 2'
+      - 'd:/etc/security/pwquality.conf.d/* -> r:.+\.conf$ -> n:difok\s*\t*=\s*\t*(\d+) compare >= 2'
 
   # 5.3.3.2.2 Ensure minimum password length is configured. (Automated)
   - id: 33194
@@ -3505,7 +3505,7 @@ checks:
     condition: any
     rules:
       - 'f:/etc/security/pwquality.conf -> n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
-      - 'd:/etc/security/pwquality.conf.d/* -> r:.+\.conf$ -> n:minlen\s*\t*=\s*\t*(\d+) compare => 14'
+      - 'd:/etc/security/pwquality.conf.d/* -> r:.+\.conf$ -> n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
 
   # 5.3.3.2.3 Ensure password complexity is configured. (Manual)
   - id: 33195
@@ -3559,8 +3559,8 @@ checks:
       subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: any
     rules:
-      - 'f:/etc/security/pwquality.conf -> n:maxrepeat\s*\t*=\s*\t*(\d+) compare > 0 && n:maxrepeat\s*\t*=\s*\t*(\d+) compare =< 3'
-      - 'd:/etc/security/pwquality.conf.d/* -> r:.+\.conf$ -> n:maxrepeat\s*\t*=\s*\t*(\d+) compare > 0 && n:maxrepeat\s*\t*=\s*\t*(\d+) compare =< 3'
+      - 'f:/etc/security/pwquality.conf -> n:maxrepeat\s*\t*=\s*\t*(\d+) compare > 0 && n:maxrepeat\s*\t*=\s*\t*(\d+) compare <= 3'
+      - 'd:/etc/security/pwquality.conf.d/* -> r:.+\.conf$ -> n:maxrepeat\s*\t*=\s*\t*(\d+) compare > 0 && n:maxrepeat\s*\t*=\s*\t*(\d+) compare <= 3'
 
   # 5.3.3.2.5 Ensure password maximum sequential characters is configured. (Automated)
   - id: 33197
@@ -3585,8 +3585,8 @@ checks:
       subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: any
     rules:
-      - 'f:/etc/security/pwquality.conf -> n:maxsequence\s*\t*=\s*\t*(\d+) compare > 0 && n:maxsequence\s*\t*=\s*\t*(\d+) compare =< 3'
-      - 'd:/etc/security/pwquality.conf.d/* -> r:.+\.conf$ -> n:maxsequence\s*\t*=\s*\t*(\d+) compare > 0 && n:maxsequence\s*\t*=\s*\t*(\d+) compare =< 3'
+      - 'f:/etc/security/pwquality.conf -> n:maxsequence\s*\t*=\s*\t*(\d+) compare > 0 && n:maxsequence\s*\t*=\s*\t*(\d+) compare <= 3'
+      - 'd:/etc/security/pwquality.conf.d/* -> r:.+\.conf$ -> n:maxsequence\s*\t*=\s*\t*(\d+) compare > 0 && n:maxsequence\s*\t*=\s*\t*(\d+) compare <= 3'
 
   # 5.3.3.2.6 Ensure password dictionary check is enabled. (Automated)
   - id: 33198
@@ -3612,7 +3612,7 @@ checks:
     condition: any
     rules:
       - 'f:/etc/security/pwquality.conf -> n:dictcheck\s*\t*=\s*\t*(\d+) compare != 0'
-      - 'not d:/etc/security/pwquality.conf.d/* -> r:.+\.conf$ -> n:dictcheck\s*\t*=\s*\t*(\d+) compare = 0'
+      - 'not d:/etc/security/pwquality.conf.d/* -> r:.+\.conf$ -> n:dictcheck\s*\t*=\s*\t*(\d+) compare == 0'
 
   # 5.3.3.2.7 Ensure password quality checking is enforced. (Automated)
   - id: 33199
@@ -3638,7 +3638,7 @@ checks:
     condition: any
     rules:
       - 'f:/etc/security/pwquality.conf -> n:enforcing\s*\t*=\s*\t*(\d+) compare != 0'
-      - 'not d:/etc/security/pwquality.conf.d/* -> r:.+\.conf$ -> n:enforcing\s*\t*=\s*\t*(\d+) compare = 0'
+      - 'not d:/etc/security/pwquality.conf.d/* -> r:.+\.conf$ -> n:enforcing\s*\t*=\s*\t*(\d+) compare == 0'
 
   # 5.3.3.2.8 Ensure password quality is enforced for the root user. (Automated)
   - id: 33200

@@ -759,7 +759,7 @@ checks:
     condition: all
     rules:
       - "f:/etc/dnf/dnf.conf -> r:gpgcheck=1"
-      - 'd:/etc/yum.repos.d/ -> r:. -> n:gpgcheck=(\d+) compare = 1'
+      - 'd:/etc/yum.repos.d/ -> r:. -> n:gpgcheck=(\d+) compare == 1'
 
   # 1.2.3 Ensure package manager repositories are configured. (Manual) - Not Implemented
 
@@ -3984,7 +3984,7 @@ checks:
     rules:
       - 'c:sshd -T -C user=root -> n:^\s*MaxAuthTries\s*\t*(\d+) compare <= 4'
       - 'f:/etc/ssh/sshd_config -> n:^\s*MaxAuthTries\s*\t*(\d+) compare <= 4'
-      - 'd:/etc/ssh/sshd_config.d -> r:.*\.conf -> n:^\s*MaxAuthTries\s*\t*(\d+) compare =< 4'
+      - 'd:/etc/ssh/sshd_config.d -> r:.*\.conf -> n:^\s*MaxAuthTries\s*\t*(\d+) compare <= 4'
 
   # 5.2.17 Ensure SSH MaxStartups is configured. (Automated)
   - id: 38645
@@ -4014,9 +4014,9 @@ checks:
       - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
       - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
       - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
-      - 'd:/etc/ssh/sshd_config.d -> r:.*\.conf -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare =< 10'
-      - 'd:/etc/ssh/sshd_config.d -> r:.*\.conf -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare =< 30'
-      - 'd:/etc/ssh/sshd_config.d -> r:.*\.conf -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare =< 60'
+      - 'd:/etc/ssh/sshd_config.d -> r:.*\.conf -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
+      - 'd:/etc/ssh/sshd_config.d -> r:.*\.conf -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
+      - 'd:/etc/ssh/sshd_config.d -> r:.*\.conf -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
 
   # 5.2.18 Ensure SSH MaxSessions is set to 10 or less. (Automated)
   - id: 38646
@@ -4041,8 +4041,8 @@ checks:
     condition: any
     rules:
       - 'c:sshd -T -C user=root -> n:^\s*MaxSessions\s+(\d+) compare <= 10'
-      - 'f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+(\d+) compare => 10'
-      - 'not d:/etc/ssh/sshd_config.d -> r:.*\.conf -> n:^\s*MaxSessions\s+(\d+) compare => 10'
+      - 'f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+(\d+) compare >= 10'
+      - 'not d:/etc/ssh/sshd_config.d -> r:.*\.conf -> n:^\s*MaxSessions\s+(\d+) compare >= 10'
 
   # 5.2.19 Ensure SSH LoginGraceTime is set to one minute or less. (Automated)
   - id: 38647

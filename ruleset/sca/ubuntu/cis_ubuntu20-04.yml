@@ -3645,8 +3645,8 @@ checks:
     condition: all
     rules:
       - 'c:sudo -V -> r:Authentication timestamp timeout:\s*\t*15\.0 minutes'
-      - 'f:/etc/sudoers -> n:timestamp_timeout=(\d+) compare <=15'
-      - 'd:/etc/sudoers.d -> r:.* -> n:timestamp_timeout=(\d+) compare <=15'
+      - 'f:/etc/sudoers -> n:timestamp_timeout=(\d+) compare <= 15'
+      - 'd:/etc/sudoers.d -> r:.* -> n:timestamp_timeout=(\d+) compare <= 15'
 
   # 4.3.7 Ensure access to the su command is restricted. (Automated)
   - id: 19136
@@ -3702,7 +3702,7 @@ checks:
       - 'f:/etc/security/pwquality.conf -> !r:^\s*# && r:ucredit = -1'
       - 'f:/etc/security/pwquality.conf -> !r:^\s*# && r:lcredit = -1'
       - 'f:/etc/security/pwquality.conf -> !r:^\s*# && r:ocredit = -1'
-      - 'f:/etc/pam.d/common-password -> !r:^\s*# && n:password\s*requisite\s*pam_pwquality\.so\s*retry=(\d+) compare <=3'
+      - 'f:/etc/pam.d/common-password -> !r:^\s*# && n:password\s*requisite\s*pam_pwquality\.so\s*retry=(\d+) compare <= 3'
 
   # 4.4.2 Ensure lockout for failed password attempts is configured. (Automated)
   - id: 19138
@@ -3728,7 +3728,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/pam.d/common-auth -> !r:^# && r:auth\s*\t*required\s*\t*pam_tally2\.so && r:onerr=fail && r:audit && r:silent && r:deny\s*=\s*\d+ && r:unlock_time\s*=\s*\d+'
-      - 'f:/etc/pam.d/common-auth -> n:deny\s*=\s*(\d+) compare <=5'
+      - 'f:/etc/pam.d/common-auth -> n:deny\s*=\s*(\d+) compare <= 5'
       - 'f:/etc/pam.d/common-account -> !r:^# && r:account\s*\t*requisite\s*\t*pam_deny\.so'
       - 'f:/etc/pam.d/common-account -> !r:^# && r:account\s*\t*required\s*\t*pam_tally2\.so'
 
@@ -3758,7 +3758,7 @@ checks:
       subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory\.so && n:remember\s*\t*=\s*\t*(\d+) compare => 5'
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory\.so && n:remember\s*\t*=\s*\t*(\d+) compare >= 5'
       - 'f:/etc/pam.d/common-password -> !r:^# && r:password && r:success && r:default\s*=\s*ignore && r:pam_unix\.so && r:use_authtok'
 
   # 4.4.4 Ensure strong password hashing algorithm is configured. (Automated)
@@ -3921,7 +3921,7 @@ checks:
       subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: all
     rules:
-      - 'f:/etc/security/pwquality.conf -> !r:^# && n:difok\s*\t*=\s*\t*(\d+) compare => 2'
+      - 'f:/etc/security/pwquality.conf -> !r:^# && n:difok\s*\t*=\s*\t*(\d+) compare >= 2'
 
   # 4.5.1.7 Ensure preventing the use of dictionary words for passwords is configured. (Automated)
   - id: 19146
@@ -3946,7 +3946,7 @@ checks:
       subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: all
     rules:
-      - 'f:/etc/security/pwquality.conf -> !r:^# && n:dictcheck\s*\t*=\s*\t*(\d+) compare = 1'
+      - 'f:/etc/security/pwquality.conf -> !r:^# && n:dictcheck\s*\t*=\s*\t*(\d+) compare == 1'
 
   # 4.5.2 Ensure system accounts are secured. (Automated) - Not Implemented
 
@@ -4026,8 +4026,8 @@ checks:
       subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: all
     rules:
-      - 'f:/etc/security/pwquality.conf -> !r:^# && n:maxrepeat\s*\t*=\s*\t*(\d+) compare <=3'
-      - 'not f:/etc/security/pwquality.conf -> !r:^# && n:maxrepeat\s*\t*=\s*\t*(\d+) compare =0'
+      - 'f:/etc/security/pwquality.conf -> !r:^# && n:maxrepeat\s*\t*=\s*\t*(\d+) compare <= 3'
+      - 'not f:/etc/security/pwquality.conf -> !r:^# && n:maxrepeat\s*\t*=\s*\t*(\d+) compare == 0'
 
   # 5.1.1.1.1 Ensure systemd-journal-remote is installed. (Automated)
   - id: 19150

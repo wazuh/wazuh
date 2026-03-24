@@ -4706,7 +4706,7 @@ checks:
       subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory\.so && n:remember\s*\t*=\s*\t*(\d+) compare => 5'
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory\.so && n:remember\s*\t*=\s*\t*(\d+) compare >= 5'
       - 'f:/etc/pam.d/common-password -> !r:^# && r:password && r:success && r:default\s*=\s*ignore && r:pam_unix\.so && r:use_authtok'
 
   # 5.3.3.1.1 Ensure password failed attempts lockout is configured. (Automated)
@@ -4887,8 +4887,8 @@ checks:
       subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: all
     rules:
-      - 'f:/etc/security/pwquality.conf -> !r:^# && n:maxrepeat\s*\t*=\s*\t*(\d+) compare <=3'
-      - 'not f:/etc/security/pwquality.conf -> !r:^# && n:maxrepeat\s*\t*=\s*\t*(\d+) compare =0'
+      - 'f:/etc/security/pwquality.conf -> !r:^# && n:maxrepeat\s*\t*=\s*\t*(\d+) compare <= 3'
+      - 'not f:/etc/security/pwquality.conf -> !r:^# && n:maxrepeat\s*\t*=\s*\t*(\d+) compare == 0'
 
   # 5.3.3.2.5 Ensure password maximum sequential characters is configured. (Automated)
   - id: 35683
@@ -4913,8 +4913,8 @@ checks:
       subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: all
     rules:
-      - 'f:/etc/security/pwquality.conf -> !r:^# && n:maxsequence\s*\t*=\s*\t*(\d+) compare <=3'
-      - 'not f:/etc/security/pwquality.conf -> !r:^# && n:maxsequence\s*\t*=\s*\t*(\d+) compare =0'
+      - 'f:/etc/security/pwquality.conf -> !r:^# && n:maxsequence\s*\t*=\s*\t*(\d+) compare <= 3'
+      - 'not f:/etc/security/pwquality.conf -> !r:^# && n:maxsequence\s*\t*=\s*\t*(\d+) compare == 0'
 
   # 5.3.3.2.6 Ensure password dictionary check is enabled. (Automated)
   - id: 35684
@@ -4939,7 +4939,7 @@ checks:
       subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: all
     rules:
-      - 'not f:/etc/security/pwquality.conf -> !r:^# && n:dictcheck\s*\t*=\s*\t*(\d+) compare =0'
+      - 'not f:/etc/security/pwquality.conf -> !r:^# && n:dictcheck\s*\t*=\s*\t*(\d+) compare == 0'
 
   # 5.3.3.2.7 Ensure password quality checking is enforced. (Automated)
   - id: 35685
@@ -5065,7 +5065,7 @@ checks:
       subtechnique: ["T1048.003", "T1552.001"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*requisite\s*\t*pam_pwhistory\.so && n:remember\s*\t*=\s*\t*(\d+) compare => 5'
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*requisite\s*\t*pam_pwhistory\.so && n:remember\s*\t*=\s*\t*(\d+) compare >= 5'
       - 'f:/etc/pam.d/common-password -> !r:^# && r:password && r:success && r:default\s*=\s*ignore && r:pam_unix\.so && r:use_authtok'
 
   # 5.3.3.4.1 Ensure pam_unix does not include nullok. (Automated)

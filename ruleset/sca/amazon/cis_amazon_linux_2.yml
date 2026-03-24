@@ -650,7 +650,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/yum.conf -> r:^gpgcheck\s*\t*=\s*\t*1'
-      - 'not d:/etc/yum.repos.d/ -> r:.+\.repo -> n:^gpgcheck\s*\t*=\s*\t*(\d+) compare \!= 1'
+      - 'not d:/etc/yum.repos.d/ -> r:.+\.repo -> n:^gpgcheck\s*\t*=\s*\t*(\d+) compare != 1'
 
   # 1.3.1 Ensure AIDE is installed. (Automated)
   - id: 20524
@@ -4231,8 +4231,8 @@ checks:
       subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/system-auth -> !r:^\s*\t*# && r:password\s*\t*required|password\s*\t*sufficient && r:pam_pwhistory\.so|pam_unix\.so && n:remember\s*\t*=\s*\t*(\d+) compare => 5'
-      - 'f:/etc/pam.d/password-auth -> !r:^\s*\t*# && r:password\s*\t*required|password\s*\t*sufficient && r:pam_pwhistory\.so|pam_unix\.so && n:remember\s*\t*=\s*\t*(\d+) compare => 5'
+      - 'f:/etc/pam.d/system-auth -> !r:^\s*\t*# && r:password\s*\t*required|password\s*\t*sufficient && r:pam_pwhistory\.so|pam_unix\.so && n:remember\s*\t*=\s*\t*(\d+) compare >= 5'
+      - 'f:/etc/pam.d/password-auth -> !r:^\s*\t*# && r:password\s*\t*required|password\s*\t*sufficient && r:pam_pwhistory\.so|pam_unix\.so && n:remember\s*\t*=\s*\t*(\d+) compare >= 5'
 
   # 5.5.1.1 Ensure password expiration is 365 days or less. (Automated)
   - id: 20658

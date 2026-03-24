@@ -3968,10 +3968,10 @@ checks:
       - 'c:grep pam_pwquality.so /etc/pam.d/password-auth -> r:try_first_pass && n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
       - 'c:grep pam_pwquality.so /etc/pam.d/system-auth -> r:try_first_pass && n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
       - 'f:/etc/security/pwquality.conf -> n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
-      - 'f:/etc/security/pwquality.conf -> n:dcredit\s*\t*=\s*\t*(\d+) compare = -1'
-      - 'f:/etc/security/pwquality.conf -> n:lcredit\s*\t*=\s*\t*(\d+) compare = -1'
-      - 'f:/etc/security/pwquality.conf -> n:ocredit\s*\t*=\s*\t*(\d+) compare = -1'
-      - 'f:/etc/security/pwquality.conf -> n:ucredit\s*\t*=\s*\t*(\d+) compare = -1'
+      - 'f:/etc/security/pwquality.conf -> n:dcredit\s*\t*=\s*\t*(\d+) compare == -1'
+      - 'f:/etc/security/pwquality.conf -> n:lcredit\s*\t*=\s*\t*(\d+) compare == -1'
+      - 'f:/etc/security/pwquality.conf -> n:ocredit\s*\t*=\s*\t*(\d+) compare == -1'
+      - 'f:/etc/security/pwquality.conf -> n:ucredit\s*\t*=\s*\t*(\d+) compare == -1'
 
   # 5.3.3 Ensure password reuse is limited (Scored)
   - id: 20156

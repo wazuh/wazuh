@@ -4422,7 +4422,7 @@ checks:
       - 'f:/etc/pam.d/password-auth -> !r:^\s*\t*# && r:password\s*\t*requisite\s*\t*pam_pwquality\.so\s*try_first_pass\s*local_users_only\s*enforce_for_root\s*retry=3'
       - 'f:/etc/pam.d/system-auth -> !r:^\s*\t*# && r:password\s*\t*requisite\s*\t*pam_pwquality\.so\s*try_first_pass\s*local_users_only\s*enforce_for_root\s*retry=3'
       - 'f:/etc/security/pwquality.conf -> !r:^\s*\t*# && n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
-      - 'f:/etc/security/pwquality.conf -> !r:^\s*\t*# && n:minclass\s*\t*=\s*\t*(\d+) compare >=4'
+      - 'f:/etc/security/pwquality.conf -> !r:^\s*\t*# && n:minclass\s*\t*=\s*\t*(\d+) compare >= 4'
 
   # 5.5.2 Ensure lockout for failed password attempts is configured. (Automated)
   - id: 31162
@@ -4474,8 +4474,8 @@ checks:
       subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/system-auth -> !r:^\s*\t*# && r:password\s*\t*requisite\s*\t*pam_pwhistory\.so && n:remember\s*\t*=\s*\t*(\d+) compare => 5'
-      - 'f:/etc/pam.d/system-auth -> !r:^\s*\t*# && r:password\s*\t*sufficient\s*\t*pam_unix\.so && n:remember\s*\t*=\s*\t*(\d+) compare => 5'
+      - 'f:/etc/pam.d/system-auth -> !r:^\s*\t*# && r:password\s*\t*requisite\s*\t*pam_pwhistory\.so && n:remember\s*\t*=\s*\t*(\d+) compare >= 5'
+      - 'f:/etc/pam.d/system-auth -> !r:^\s*\t*# && r:password\s*\t*sufficient\s*\t*pam_unix\.so && n:remember\s*\t*=\s*\t*(\d+) compare >= 5'
 
   # 5.5.4 Ensure password hashing algorithm is SHA-512. (Automated)
   - id: 31164
