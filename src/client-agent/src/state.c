@@ -43,7 +43,7 @@ DWORD WINAPI state_main(__attribute__((unused)) LPVOID arg) {
 void * state_main(__attribute__((unused)) void * args) {
 #endif
     if (!interval) {
-        minfo("State file is disabled.");
+        minfo("Agent state cleanup is disabled.");
 #ifdef WIN32
         return 0;
 #else
@@ -51,7 +51,7 @@ void * state_main(__attribute__((unused)) void * args) {
 #endif
     }
 
-    mdebug1("State file updating thread started.");
+    mdebug1("Agent state cleanup thread started.");
 
     while (1) {
         write_state();

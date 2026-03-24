@@ -347,6 +347,10 @@ def get_basic_info() -> AffectedItemsWazuhResult:
                                                f"{' in specified node' if node_id != 'manager' else ''}"
                                       )
 
+    try:
+        result.affected_items.append(Wazuh().to_dict())
+    except WazuhError as e:
+        result.add_failed_item(id_=node_id, error=e)
     result.total_affected_items = len(result.affected_items)
 
     return result

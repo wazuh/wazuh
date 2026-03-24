@@ -273,7 +273,6 @@ stages:
           affected_items:
             - auth: !anything
               cluster: !anything
-              command: !anything
               global: !anything
               remote: !anything
               logging: !anything
