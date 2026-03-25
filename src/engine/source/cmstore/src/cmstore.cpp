@@ -16,10 +16,7 @@ namespace cm::store
 {
 
 const std::vector<NamespaceId> FORBIDDEN_NAMESPACES = {
-    NamespaceId("output"),
-    NamespaceId("system"),
-    NamespaceId("default")
-};
+    NamespaceId("output"), NamespaceId("system"), NamespaceId("default")};
 
 CMStore::~CMStore() = default;
 

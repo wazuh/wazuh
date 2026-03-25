@@ -524,7 +524,8 @@ std::pair<std::string, bool> WIndexerConnector::getPolicyHashAndEnabled(std::str
     if (!source_data.contains("document") || !source_data["document"].contains("integrations")
         || !source_data["document"]["integrations"].is_array())
     {
-        throw IndexerConnectorException("document.integrations field not found or invalid for space: " + std::string(space));
+        throw IndexerConnectorException("document.integrations field not found or invalid for space: "
+                                        + std::string(space));
     }
 
     // If the document hasn't integrations or it's empty, we consider the policy as disabled, avoiding the need of sync
@@ -786,8 +787,8 @@ json::Json WIndexerConnector::getEngineRemoteConfig()
     if (totalHits > 1)
     {
         throw IndexerConnectorException("Multiple remote settings documents found in index "
-                                        + std::string(REMOTE_CONF_INDEX)
-                                        + " (expected 1, got " + std::to_string(totalHits) + ")");
+                                        + std::string(REMOTE_CONF_INDEX) + " (expected 1, got "
+                                        + std::to_string(totalHits) + ")");
     }
 
     const auto& hitArray = hits["hits"];

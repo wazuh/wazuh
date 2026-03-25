@@ -180,9 +180,7 @@ INSTANTIATE_TEST_SUITE_P(
         EqualsTuple({.type = Type::OBJECT, .properties = {{"a", Field({Type::TEXT})}}},
                     {.type = Type::OBJECT, .properties = {{"a", Field({Type::TEXT})}}},
                     true),
-        EqualsTuple({.type = Type::OBJECT, .properties = {{"a", Field({Type::TEXT})}}},
-                    {Type::OBJECT},
-                    false),
+        EqualsTuple({.type = Type::OBJECT, .properties = {{"a", Field({Type::TEXT})}}}, {Type::OBJECT}, false),
         EqualsTuple({.type = Type::NESTED, .properties = {{"a", Field({Type::KEYWORD})}}},
                     {.type = Type::NESTED, .properties = {{"a", Field({Type::KEYWORD})}}},
                     true)));
@@ -283,5 +281,4 @@ INSTANTIATE_TEST_SUITE_P(FieldTest,
                              BuildsParamsTuple({.type = Type::NESTED, .properties = {{}}}, true),
                              BuildsParamsTuple({.type = Type::FLAT_OBJECT, .properties = {{}}}, true),
                              BuildsParamsTuple({.type = Type::TEXT, .properties = {{}}}, false),
-                             BuildsParamsTuple({.type = Type::KEYWORD, .properties = {{}}}, false)))
-;
+                             BuildsParamsTuple({.type = Type::KEYWORD, .properties = {{}}}, false)));

@@ -143,9 +143,9 @@ void CrudService::deleteNamespace(const cm::store::NamespaceId& nsId)
 }
 
 cm::store::dataType::Policy CrudService::importNamespace(const cm::store::NamespaceId& nsId,
-                                  std::string_view jsonDocument,
-                                  std::string_view origin,
-                                  bool force)
+                                                         std::string_view jsonDocument,
+                                                         std::string_view origin,
+                                                         bool force)
 {
     auto store = getStore();
 

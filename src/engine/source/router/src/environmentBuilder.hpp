@@ -57,8 +57,9 @@ public:
      * @throws std::runtime_error if the policy has no assets or if the backend cannot be built. // TODO Move to
      * base::Error
      */
-    auto makeController(const cm::store::NamespaceId& namespaceId, const bool trace = true, const bool sandbox = true)
-        -> std::pair<std::shared_ptr<bk::IController>, std::string>
+    auto makeController(const cm::store::NamespaceId& namespaceId,
+                        const bool trace = true,
+                        const bool sandbox = true) -> std::pair<std::shared_ptr<bk::IController>, std::string>
     {
         // Build the policy and create the pipeline
         auto builder = m_builder.lock();
@@ -117,8 +118,8 @@ public:
             {
                 controller->stop();
             }
-            throw std::runtime_error {fmt::format(
-                "Failed to create environment with policy '{}': {}", namespaceId.toStr(), e.what())};
+            throw std::runtime_error {
+                fmt::format("Failed to create environment with policy '{}': {}", namespaceId.toStr(), e.what())};
         }
     }
 };

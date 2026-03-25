@@ -126,7 +126,9 @@ gid_t privSepGetGroup(const std::string& groupname)
         bufsize = 1024;
 
     std::vector<char> buffer(static_cast<size_t>(bufsize));
-    struct group grp_storage {};
+    struct group grp_storage
+    {
+    };
     struct group* result = nullptr;
 
     while (true)

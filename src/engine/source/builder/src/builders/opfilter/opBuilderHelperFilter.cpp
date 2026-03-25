@@ -1192,13 +1192,14 @@ FilterOp typeMatcher(const Reference& targetField,
 
     // Tracing
     const auto successTrace = fmt::format("[{}] -> Success", name);
-    const auto failureTrace =
-        negated ? fmt::format(
-            "[{}] -> Failure: Target field '{}' is a {}", name, targetField.dotPath(), json::Json::typeToStr(type))
-                : fmt::format("[{}] -> Failure: Target field '{}' is not a {}",
-                              name,
-                              targetField.dotPath(),
-                              json::Json::typeToStr(type));
+    const auto failureTrace = negated ? fmt::format("[{}] -> Failure: Target field '{}' is a {}",
+                                                    name,
+                                                    targetField.dotPath(),
+                                                    json::Json::typeToStr(type))
+                                      : fmt::format("[{}] -> Failure: Target field '{}' is not a {}",
+                                                    name,
+                                                    targetField.dotPath(),
+                                                    json::Json::typeToStr(type));
     const auto failureMissingValueTrace =
         fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath());
 

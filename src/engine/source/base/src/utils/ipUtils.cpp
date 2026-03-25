@@ -218,7 +218,10 @@ uint32_t IPv4MaskUInt(const std::string& maskStr)
 
 bool checkStrIsIPv4(const std::string& ip, std::array<uint8_t, 4>* outBytes)
 {
-    struct in_addr buf {0};
+    struct in_addr buf
+    {
+        0
+    };
     if (inet_pton(AF_INET, ip.c_str(), &buf) != 1)
         return false;
 
@@ -230,7 +233,10 @@ bool checkStrIsIPv4(const std::string& ip, std::array<uint8_t, 4>* outBytes)
 
 bool checkStrIsIPv6(const std::string& ip, std::array<uint8_t, 16>* outBytes)
 {
-    struct in6_addr buf {0};
+    struct in6_addr buf
+    {
+        0
+    };
     if (inet_pton(AF_INET6, ip.c_str(), &buf) != 1)
         return false;
 

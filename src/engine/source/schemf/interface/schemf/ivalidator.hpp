@@ -141,7 +141,7 @@ public:
 };
 
 using ValueValidator = std::function<base::OptError(const json::Json&)>; ///< Validates a JSON value.
-using ValidationToken = std::shared_ptr<BaseToken>;                    ///< Token describing a validation intent.
+using ValidationToken = std::shared_ptr<BaseToken>;                      ///< Token describing a validation intent.
 
 /**
  * @brief Wrap a ValueValidator so it validates each element of an array individually.

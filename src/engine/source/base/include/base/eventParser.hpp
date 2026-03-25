@@ -12,7 +12,7 @@ using ProtocolHandler = std::function<base::Event(std::string_view, const json::
 /// @brief Handler for public protocol events: (queue, location, message, agent_metadata) -> Event.
 using PublicProtocolHandler = std::function<base::Event(uint8_t, std::string&, std::string_view, const json::Json&)>;
 // TODO: Add to the schema
-constexpr char EVENT_QUEUE_ID[] {"/wazuh/protocol/queue"};     ///< JSON pointer for the queue field.
+constexpr char EVENT_QUEUE_ID[] {"/wazuh/protocol/queue"};       ///< JSON pointer for the queue field.
 constexpr char EVENT_LOCATION_ID[] {"/wazuh/protocol/location"}; ///< JSON pointer for the location field.
 constexpr char EVENT_MESSAGE_ID[] {"/event/original"};           ///< JSON pointer for the original message field.
 constexpr char EVENT_AGENT_ID[] {"/agent/id"};                   ///< JSON pointer for the agent id field.
@@ -40,10 +40,7 @@ Event parseLegacyEvent(std::string_view event, const json::Json& agentMetadata);
  * @throw std::runtime_error if the message is not a valid Wazuh public message
  * @note The message must be in the format: "queue:location:message"
  */
-Event parsePublicEvent(uint8_t queue,
-                       std::string& location,
-                       std::string_view message,
-                       const json::Json& agentMetadata);
+Event parsePublicEvent(uint8_t queue, std::string& location, std::string_view message, const json::Json& agentMetadata);
 
 } // namespace base::eventParsers
 

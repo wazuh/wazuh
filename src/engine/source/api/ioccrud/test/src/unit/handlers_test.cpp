@@ -481,12 +481,16 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_Success_UpdatesHashAndClearsError)
             [](std::string_view dbName)
             {
                 // Check if it's one of the known production DB names
-                static const std::array<std::string_view, 6> prodDBs = {
-                    "ioc_connections", "ioc_urls_full", "ioc_urls_domain",
-                    "ioc_hashes_md5", "ioc_hashes_sha1", "ioc_hashes_sha256"
-                };
-                for (const auto& prodDB : prodDBs) {
-                    if (dbName == prodDB) return true;
+                static const std::array<std::string_view, 6> prodDBs = {"ioc_connections",
+                                                                        "ioc_urls_full",
+                                                                        "ioc_urls_domain",
+                                                                        "ioc_hashes_md5",
+                                                                        "ioc_hashes_sha1",
+                                                                        "ioc_hashes_sha256"};
+                for (const auto& prodDB : prodDBs)
+                {
+                    if (dbName == prodDB)
+                        return true;
                 }
                 return false; // Temp DBs or non-existent
             });
@@ -724,16 +728,22 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_MixedValidInvalid_ProcessesValid)
 
     // Setup mocks - expect processing of valid IOCs
     EXPECT_CALL(*m_kvdbManager, exists(_))
-        .WillRepeatedly([](std::string_view dbName) {
-            static const std::array<std::string_view, 6> prodDBs = {
-                "ioc_connections", "ioc_urls_full", "ioc_urls_domain",
-                "ioc_hashes_md5", "ioc_hashes_sha1", "ioc_hashes_sha256"
-            };
-            for (const auto& prodDB : prodDBs) {
-                if (dbName == prodDB) return true;
-            }
-            return false;
-        });
+        .WillRepeatedly(
+            [](std::string_view dbName)
+            {
+                static const std::array<std::string_view, 6> prodDBs = {"ioc_connections",
+                                                                        "ioc_urls_full",
+                                                                        "ioc_urls_domain",
+                                                                        "ioc_hashes_md5",
+                                                                        "ioc_hashes_sha1",
+                                                                        "ioc_hashes_sha256"};
+                for (const auto& prodDB : prodDBs)
+                {
+                    if (dbName == prodDB)
+                        return true;
+                }
+                return false;
+            });
     EXPECT_CALL(*m_kvdbManager, add(_)).Times(AtLeast(1));
     EXPECT_CALL(*m_kvdbManager, get(_, _)).WillRepeatedly(Return(std::nullopt));
     EXPECT_CALL(*m_kvdbManager, put(_, _, _)).Times(AtLeast(3)); // 3 valid IOCs
@@ -779,16 +789,22 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_MultipleTypes_CreatesMultipleDatabases
 
     // Setup mocks - expect 6 different temp DBs to be created
     EXPECT_CALL(*m_kvdbManager, exists(_))
-        .WillRepeatedly([](std::string_view dbName) {
-            static const std::array<std::string_view, 6> prodDBs = {
-                "ioc_connections", "ioc_urls_full", "ioc_urls_domain",
-                "ioc_hashes_md5", "ioc_hashes_sha1", "ioc_hashes_sha256"
-            };
-            for (const auto& prodDB : prodDBs) {
-                if (dbName == prodDB) return true;
-            }
-            return false;
-        });
+        .WillRepeatedly(
+            [](std::string_view dbName)
+            {
+                static const std::array<std::string_view, 6> prodDBs = {"ioc_connections",
+                                                                        "ioc_urls_full",
+                                                                        "ioc_urls_domain",
+                                                                        "ioc_hashes_md5",
+                                                                        "ioc_hashes_sha1",
+                                                                        "ioc_hashes_sha256"};
+                for (const auto& prodDB : prodDBs)
+                {
+                    if (dbName == prodDB)
+                        return true;
+                }
+                return false;
+            });
 
     EXPECT_CALL(*m_kvdbManager, add(_)).Times(AtLeast(6));
     EXPECT_CALL(*m_kvdbManager, get(_, _)).WillRepeatedly(Return(std::nullopt));
@@ -900,16 +916,22 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_DuplicateIOCs_AppendsToArray)
 
     // Setup mocks
     EXPECT_CALL(*m_kvdbManager, exists(_))
-        .WillRepeatedly([](std::string_view dbName) {
-            static const std::array<std::string_view, 6> prodDBs = {
-                "ioc_connections", "ioc_urls_full", "ioc_urls_domain",
-                "ioc_hashes_md5", "ioc_hashes_sha1", "ioc_hashes_sha256"
-            };
-            for (const auto& prodDB : prodDBs) {
-                if (dbName == prodDB) return true;
-            }
-            return false;
-        });
+        .WillRepeatedly(
+            [](std::string_view dbName)
+            {
+                static const std::array<std::string_view, 6> prodDBs = {"ioc_connections",
+                                                                        "ioc_urls_full",
+                                                                        "ioc_urls_domain",
+                                                                        "ioc_hashes_md5",
+                                                                        "ioc_hashes_sha1",
+                                                                        "ioc_hashes_sha256"};
+                for (const auto& prodDB : prodDBs)
+                {
+                    if (dbName == prodDB)
+                        return true;
+                }
+                return false;
+            });
     EXPECT_CALL(*m_kvdbManager, add(_)).Times(AtLeast(1));
 
     // First get returns nullopt, subsequent gets return the stored value

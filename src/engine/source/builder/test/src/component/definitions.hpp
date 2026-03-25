@@ -68,7 +68,6 @@ auto constexpr FILTER_JSON = R"({
     ]
 })";
 
-
 auto constexpr DECODER_KEY_DEFECTIVE_JSON = R"({
     "id": "decoder/test/0"
 })";
@@ -395,8 +394,12 @@ public:
         EXPECT_CALL(*m_spMocks->m_spMockStore, readDoc(base::Name("enrichment/ioc/0")))
             .WillRepeatedly(testing::Return(base::RespOrError<store::Doc>(iocConfig)));
 
-        m_spBuilder = std::make_shared<builder::Builder>(
-            m_spMocks->m_spStore, m_spMocks->m_spSchemf, m_spMocks->m_spDefBuilder, emptyAllowedFields, builderDeps, m_spMocks->m_spMockStore);
+        m_spBuilder = std::make_shared<builder::Builder>(m_spMocks->m_spStore,
+                                                         m_spMocks->m_spSchemf,
+                                                         m_spMocks->m_spDefBuilder,
+                                                         emptyAllowedFields,
+                                                         builderDeps,
+                                                         m_spMocks->m_spMockStore);
     }
 };
 

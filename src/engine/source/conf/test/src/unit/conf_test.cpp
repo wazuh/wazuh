@@ -170,7 +170,7 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(conf::OptionMap {{"TEST.INT64", "10"}}, false),
         std::make_tuple(conf::OptionMap {{"TEST.STRING", "test"}}, false),
         std::make_tuple(conf::OptionMap {{"TEST.STRING_LIST", "hello"}}, false), // Single value on list
-        std::make_tuple(conf::OptionMap {{"TEST.STRING_LIST", "123"}}, false), // Single numeric string value on list
+        std::make_tuple(conf::OptionMap {{"TEST.STRING_LIST", "123"}}, false),   // Single numeric string value on list
         std::make_tuple(conf::OptionMap {{"TEST.STRING_LIST", "hello, world"}}, false),
         std::make_tuple(conf::OptionMap {{"TEST.BOOL", "true"}}, false),
         std::make_tuple(conf::OptionMap {{"TEST.BOOL", "false"}}, false),

@@ -159,9 +159,8 @@ bool validateMetadataLeaves(const json::Json& node,
         const auto& dotPath = DotPath(currentPath);
         if (base::isError(schemaValidator->validate(dotPath, node)))
         {
-            error =
-                fmt::format("Metadata field '{}' doesn't exist or doesn't match the expected one from the schema",
-                            dotPath.str());
+            error = fmt::format("Metadata field '{}' doesn't exist or doesn't match the expected one from the schema",
+                                dotPath.str());
             return false;
         }
     }

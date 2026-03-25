@@ -8,9 +8,8 @@
 // Clamp httplib worker threads to the [8, 16] range based on available hardware.
 #ifndef CPPHTTPLIB_THREAD_POOL_COUNT
 #define CPPHTTPLIB_THREAD_POOL_COUNT                                                                                   \
-    ((std::min)(16u,                                                                                                   \
-                (std::max)(8u,                                                                                         \
-                           std::thread::hardware_concurrency() > 0 ? std::thread::hardware_concurrency() - 1 : 8u)))
+    ((std::min)(                                                                                                       \
+        16u, (std::max)(8u, std::thread::hardware_concurrency() > 0 ? std::thread::hardware_concurrency() - 1 : 8u)))
 #endif
 
 #include <httplib.h>

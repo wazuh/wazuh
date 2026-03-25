@@ -4,11 +4,11 @@
 #include <string>
 #include <vector>
 
-
 namespace ioc::sync
 {
 
-class IIocSync {
+class IIocSync
+{
 public:
     virtual ~IIocSync() = default;
 

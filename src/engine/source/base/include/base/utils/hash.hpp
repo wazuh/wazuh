@@ -2,10 +2,10 @@
 #define _BASE_HASH_HPP
 
 #include <cstddef>
+#include <memory>
 #include <random>
 #include <string>
 #include <string_view>
-#include <memory>
 
 #include <openssl/evp.h>
 #include <openssl/md5.h>

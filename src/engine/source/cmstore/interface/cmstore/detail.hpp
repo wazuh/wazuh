@@ -14,7 +14,6 @@
 #include <base/name.hpp>
 #include <base/utils/generator.hpp>
 
-
 namespace
 {
 /**
@@ -31,7 +30,7 @@ inline void checkAssetName(const std::string& name, std::string_view prefix)
     {
         try
         {
-            return base::Name{name};
+            return base::Name {name};
         }
         catch (const std::runtime_error& e)
         {
@@ -41,7 +40,8 @@ inline void checkAssetName(const std::string& name, std::string_view prefix)
 
     if (assetName.parts().size() != 3)
     {
-        throw std::runtime_error(fmt::format("Asset name '{}' must have exactly 3 parts '{}/<name>/<version>'", name, prefix));
+        throw std::runtime_error(
+            fmt::format("Asset name '{}' must have exactly 3 parts '{}/<name>/<version>'", name, prefix));
     }
 
     if (assetName.parts()[0] != prefix)

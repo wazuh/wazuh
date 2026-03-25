@@ -24,7 +24,7 @@ class IocSync : public IIocSync
 
 private:
     std::weak_ptr<wiconnector::IWIndexerConnector> m_indexerPtr; ///< Indexer connector resource
-    std::weak_ptr<ioc::kvdb::IKVDBManager> m_kvdbiocManagerPtr;    ///< KVDB IOC manager
+    std::weak_ptr<ioc::kvdb::IKVDBManager> m_kvdbiocManagerPtr;  ///< KVDB IOC manager
     std::weak_ptr<::store::IStore> m_store;                      ///< Internal config store
 
     std::size_t m_attempts;    ///< Number of attempts to connect or retry operations before failing

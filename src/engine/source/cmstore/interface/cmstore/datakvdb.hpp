@@ -50,7 +50,6 @@ private:
     json::Json m_data;
     bool m_enabled;
 
-
 public:
     KVDB() = delete;
 
@@ -82,7 +81,6 @@ public:
             throw std::runtime_error(fmt::format("KVDB content must be a JSON object but got '{}'", data.typeName()));
         }
         m_data = std::move(data);
-
     }
 
     static KVDB fromJson(const json::Json& kvdbJson, bool requireUUID)

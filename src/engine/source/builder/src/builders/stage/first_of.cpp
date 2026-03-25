@@ -53,16 +53,17 @@ base::Expression processThenAction(const json::Json& thenDefinition,
         auto outputObj = outputItem.getObject().value();
         if (outputObj.size() != 1)
         {
-            throw std::runtime_error(fmt::format(
-                "{}: 'then' array items must have exactly one key-value pair but got {}", contextName, outputObj.size()));
+            throw std::runtime_error(
+                fmt::format("{}: 'then' array items must have exactly one key-value pair but got {}",
+                            contextName,
+                            outputObj.size()));
         }
 
         const auto& [outputType, outputDefinition] = *outputObj.begin();
         // TODO: Find a better way to filter allowed assets per stage.
         if (outputType != syntax::asset::INDEXER_OUTPUT_KEY && outputType != syntax::asset::FILE_OUTPUT_KEY)
         {
-            throw std::runtime_error(
-                fmt::format("{}: unsupported output type '{}'", contextName, outputType));
+            throw std::runtime_error(fmt::format("{}: unsupported output type '{}'", contextName, outputType));
         }
 
         auto builderResp = buildCtx->registry().get<StageBuilder>(outputType);
@@ -98,9 +99,8 @@ base::Expression processThenAction(const json::Json& thenDefinition,
  * @return base::Expression Implication(check, then)
  * @throw std::runtime_error if validation fails
  */
-base::Expression processItem(const json::Json& itemDefinition,
-                             int itemIndex,
-                             const std::shared_ptr<const IBuildCtx>& buildCtx)
+base::Expression
+processItem(const json::Json& itemDefinition, int itemIndex, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     auto itemName = fmt::format("first_of.item-{}", itemIndex);
 
@@ -174,8 +174,8 @@ base::Expression firstOfBuilder(const json::Json& definition, const std::shared_
 {
     if (!definition.isArray())
     {
-        throw std::runtime_error(
-            fmt::format("Stage '{}' expects an array but got '{}'", syntax::asset::FIRST_OF_KEY, definition.typeName()));
+        throw std::runtime_error(fmt::format(
+            "Stage '{}' expects an array but got '{}'", syntax::asset::FIRST_OF_KEY, definition.typeName()));
     }
 
     const auto items = definition.getArray().value();

@@ -107,7 +107,8 @@ TEST(ConfRemoteRefreshComponentTest, FreshInstallKeepsRawEventIndexerDisabled)
     auto rawIndexer = std::make_shared<raweventindexer::RawEventIndexer>(connector);
 
     EXPECT_CALL(*store, existsDoc(_)).WillOnce(Return(false));
-    EXPECT_CALL(*connector, getEngineRemoteConfig()).WillRepeatedly(::testing::Throw(std::runtime_error("network down")));
+    EXPECT_CALL(*connector, getEngineRemoteConfig())
+        .WillRepeatedly(::testing::Throw(std::runtime_error("network down")));
 
     confremote::ConfRemoteManager manager(connector, store);
     const auto initialValue = manager.addTrigger(
@@ -130,7 +131,8 @@ TEST(ConfRemoteRefreshComponentTest, RestartWithCachedSettingsWhenRemoteUnavaila
     EXPECT_CALL(*store, existsDoc(_)).WillOnce(Return(true));
     EXPECT_CALL(*store, readDoc(_))
         .WillOnce(Return(store::mocks::storeReadDocResp(json::Json(R"({"index_raw_events":true})"))));
-    EXPECT_CALL(*connector, getEngineRemoteConfig()).WillRepeatedly(::testing::Throw(std::runtime_error("network down")));
+    EXPECT_CALL(*connector, getEngineRemoteConfig())
+        .WillRepeatedly(::testing::Throw(std::runtime_error("network down")));
 
     confremote::ConfRemoteManager manager(connector, store);
     const auto initialValue = manager.addTrigger(

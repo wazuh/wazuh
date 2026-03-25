@@ -138,7 +138,7 @@ public:
             auto titleOpt = policyJson.getString(jsonpolicy::PATH_KEY_TITLE);
             if (!titleOpt.has_value() || titleOpt->empty())
             {
-                return std::string{"Untitled Policy"};
+                return std::string {"Untitled Policy"};
             }
             return titleOpt.value();
         }();

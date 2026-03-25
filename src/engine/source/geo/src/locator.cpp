@@ -11,7 +11,6 @@
 #include "dbInstance.hpp"
 #include "manager.hpp"
 
-
 // TODO: Improve all methods error handler, now they should return a string view or similar
 // for avoid memory allocations on each call
 namespace

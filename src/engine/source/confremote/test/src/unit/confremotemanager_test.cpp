@@ -78,8 +78,7 @@ TEST(ConfRemoteManagerUnitTest, AddTriggerReturnsPersistedValueWhenStoreHasCache
     auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
     confremote::ConfRemoteManager manager(connector, store);
 
-    const auto result =
-        manager.addTrigger(REMOTE_INDEX_RAW_EVENTS, [](const json::Json&) {}, json::Json("false"));
+    const auto result = manager.addTrigger(REMOTE_INDEX_RAW_EVENTS, [](const json::Json&) {}, json::Json("false"));
 
     EXPECT_EQ(result, json::Json("true"));
 }
@@ -92,9 +91,9 @@ TEST(ConfRemoteManagerUnitTest, AddTriggerThrowsWhenKeyIsAlreadyRegistered)
 
     manager.addTrigger(REMOTE_INDEX_RAW_EVENTS, [](const json::Json&) {}, json::Json("false"));
 
-    EXPECT_THROW(
-        manager.addTrigger(REMOTE_INDEX_RAW_EVENTS, [](const json::Json&) {}, json::Json("false")),
-        std::invalid_argument);
+    EXPECT_THROW(manager.addTrigger(
+                     REMOTE_INDEX_RAW_EVENTS, [](const json::Json&) {}, json::Json("false")),
+                 std::invalid_argument);
 }
 
 TEST(ConfRemoteManagerUnitTest, SynchronizeSkipsCallbackWhenValueDoesNotChange)
@@ -108,10 +107,7 @@ TEST(ConfRemoteManagerUnitTest, SynchronizeSkipsCallbackWhenValueDoesNotChange)
     confremote::ConfRemoteManager manager(connector, store);
 
     int calls = 0;
-    manager.addTrigger(
-        REMOTE_INDEX_RAW_EVENTS,
-        [&calls](const json::Json&) { ++calls; },
-        json::Json("false"));
+    manager.addTrigger(REMOTE_INDEX_RAW_EVENTS, [&calls](const json::Json&) { ++calls; }, json::Json("false"));
 
     manager.synchronize();
 
@@ -213,10 +209,7 @@ TEST(ConfRemoteManagerUnitTest, SynchronizeWithFetchFailureKeepsCurrentState)
     confremote::ConfRemoteManager manager(connector, store);
 
     int calls = 0;
-    manager.addTrigger(
-        REMOTE_INDEX_RAW_EVENTS,
-        [&calls](const json::Json&) { ++calls; },
-        json::Json("false"));
+    manager.addTrigger(REMOTE_INDEX_RAW_EVENTS, [&calls](const json::Json&) { ++calls; }, json::Json("false"));
 
     EXPECT_NO_THROW(manager.synchronize());
     EXPECT_EQ(calls, 0);
@@ -308,10 +301,7 @@ TEST(ConfRemoteManagerUnitTest, AddTriggerAfterFirstSynchronizeIsAppliedOnNextSy
     manager.synchronize(); // trigger not yet registered -> key ignored
 
     int calls = 0;
-    manager.addTrigger(
-        REMOTE_INDEX_RAW_EVENTS,
-        [&calls](const json::Json&) { ++calls; },
-        json::Json("false"));
+    manager.addTrigger(REMOTE_INDEX_RAW_EVENTS, [&calls](const json::Json&) { ++calls; }, json::Json("false"));
 
     manager.synchronize(); // trigger registered, value changed -> callback(true)
 

@@ -2,8 +2,8 @@
 #define ROUTER_IWORKER_HPP
 
 #include <memory>
-#include <type_traits>
 #include <stdexcept>
+#include <type_traits>
 
 namespace router
 {
@@ -23,7 +23,7 @@ public:
     /**
      * @brief Stop the worker
      */
-    virtual void stop()  = 0;
+    virtual void stop() = 0;
 
     /**
      * @brief Get the router or tester associated with the worker.

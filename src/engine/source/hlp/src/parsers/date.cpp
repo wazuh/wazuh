@@ -226,7 +226,7 @@ void initTZDB(const std::string& path, bool autoUpdate, const std::string& force
     {
         LOG_INFO("Forcing timezone database version: '{}'", forceVersion);
         rv = forceVersion;
-        autoUpdate= true;
+        autoUpdate = true;
     }
 
     if (loadTimeZoneDB(rv, autoUpdate))

@@ -274,7 +274,6 @@ void KVDBManager::add(std::string_view name)
     tryCleanRetired();
 }
 
-
 bool KVDBManager::exists(std::string_view dbName) const noexcept
 {
     std::shared_lock<std::shared_mutex> lk(m_registryMutex);

@@ -52,8 +52,7 @@ TEST(CommunityIdTest, MixedIpFamiliesReturnError)
     const auto result = getCommunityIdV1("192.168.0.1", "2001:db8::1", 12345, 80, 6);
 
     ASSERT_TRUE(base::isError(result)) << "Expected error variant but got Community ID string";
-    EXPECT_EQ("Algorithm requires both IPs to be of the same family (IPv4 or IPv6)",
-              base::getError(result).message);
+    EXPECT_EQ("Algorithm requires both IPs to be of the same family (IPv4 or IPv6)", base::getError(result).message);
 }
 
 TEST(CommunityIdTest, InvalidIpReturnsUnknownError)
@@ -61,6 +60,5 @@ TEST(CommunityIdTest, InvalidIpReturnsUnknownError)
     const auto result = getCommunityIdV1("not-an-ip", "10.0.0.5", 12345, 80, 6);
 
     ASSERT_TRUE(base::isError(result)) << "Expected error variant but got Community ID string";
-    EXPECT_EQ("Failed to compute Community ID 'Invalid IP address format: not-an-ip'",
-              base::getError(result).message);
+    EXPECT_EQ("Failed to compute Community ID 'Invalid IP address format: not-an-ip'", base::getError(result).message);
 }

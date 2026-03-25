@@ -103,9 +103,9 @@ public:
      * TODO: Change jsonDocument from string_view to json::Json
      */
     virtual cm::store::dataType::Policy importNamespace(const cm::store::NamespaceId& nsId,
-                                 std::string_view jsonDocument,
-                                 std::string_view origin,
-                                 bool force) = 0;
+                                                        std::string_view jsonDocument,
+                                                        std::string_view origin,
+                                                        bool force) = 0;
 
     /**
      * @brief Import a full namespace from individual components.

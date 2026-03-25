@@ -649,10 +649,12 @@ public:
 
 using Token = std::shared_ptr<BaseToken>; ///< Shared pointer to any token.
 
-using OpToken = details::OpToken<details::DefaultPrecedencePolicy>;           ///< Operator token with default precedence.
-using UnaryOpToken = details::UnaryOpToken<details::DefaultPrecedencePolicy>; ///< Unary operator token with default precedence.
-using BinaryOpToken = details::BinaryOpToken<details::DefaultPrecedencePolicy>; ///< Binary operator token with default precedence.
-using OrToken = details::OrToken<details::DefaultPrecedencePolicy>;   ///< OR token with default precedence.
+using OpToken = details::OpToken<details::DefaultPrecedencePolicy>; ///< Operator token with default precedence.
+using UnaryOpToken =
+    details::UnaryOpToken<details::DefaultPrecedencePolicy>; ///< Unary operator token with default precedence.
+using BinaryOpToken =
+    details::BinaryOpToken<details::DefaultPrecedencePolicy>;       ///< Binary operator token with default precedence.
+using OrToken = details::OrToken<details::DefaultPrecedencePolicy>; ///< OR token with default precedence.
 using AndToken = details::AndToken<details::DefaultPrecedencePolicy>; ///< AND token with default precedence.
 using NotToken = details::NotToken<details::DefaultPrecedencePolicy>; ///< NOT token with default precedence.
 

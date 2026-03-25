@@ -86,7 +86,6 @@ FuncType getFunction(std::string_view name)
     return func;
 }
 
-
 /**
  * @brief Set the logger tag for the shared library.
  * @param tag The tag string to set for logging purposes.

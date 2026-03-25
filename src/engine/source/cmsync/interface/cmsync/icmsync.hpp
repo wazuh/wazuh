@@ -4,11 +4,11 @@
 #include <string>
 #include <vector>
 
-
 namespace cm::sync
 {
 
-class ICMSync {
+class ICMSync
+{
 public:
     virtual ~ICMSync() = default;
 };
