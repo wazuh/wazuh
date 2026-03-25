@@ -496,8 +496,8 @@ INDEXER_TEMPLATES_SERVER_STATES := \
 	vulnerabilities.json
 
 INDEXER_TEMPLATES_SERVER_STREAMS := \
-	wazuh-metrics-agents.json \
-	wazuh-metrics-comms.json
+	metrics-agents.json \
+	metrics-comms.json
 
 # WCS flat files
 WCS_FLAT_DIR := external/wcs-flat-files
@@ -623,9 +623,9 @@ $(INDEXER_PLUGINS_DIR)/alerts.json: | $(INDEXER_PLUGINS_DIR)
 		exit 1; \
 	fi
 
-# Rules for metrics schemas (non-fatal: schema not yet published in wazuh-indexer-plugins)
-$(INDEXER_PLUGINS_DIR)/wazuh-metrics-agents.json \
-$(INDEXER_PLUGINS_DIR)/wazuh-metrics-comms.json: | $(INDEXER_PLUGINS_DIR)
+# Rules for metrics schemas (streams templates)
+$(INDEXER_PLUGINS_DIR)/metrics-agents.json \
+$(INDEXER_PLUGINS_DIR)/metrics-comms.json: | $(INDEXER_PLUGINS_DIR)
 	@success=0; \
 	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(INDEXER_PLUGINS_STREAMS_PATH)/$(notdir $@)"; \
@@ -635,9 +635,9 @@ $(INDEXER_PLUGINS_DIR)/wazuh-metrics-comms.json: | $(INDEXER_PLUGINS_DIR)
 			break; \
 		fi; \
 	done; \
-	if [ $$success -eq 0 ]; then \
-		echo "WARNING: Could not download $(notdir $@) from any reference. Schema validation will be skipped at runtime." >&2; \
-		touch $@; \
+	if [ $$success -ne 1 ]; then \
+		echo "ERROR: Failed to download $(notdir $@) from any reference" >&2; \
+		exit 1; \
 	fi
 
 # Rule for states templates (all other .json files)
