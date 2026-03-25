@@ -16,8 +16,19 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+    
+      - name: Check version skip
+        id: check_version
+        run: |
+          VERSION=$(jq -r '.version' VERSION.json)
+          if [[ $VERSION =~ \.0\.0$ ]]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Get changes
+        if: steps.check_version.outputs.skip != 'true'
         uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -28,7 +39,7 @@ jobs:
               - 'framework/wazuh/rbac/orm.py'
 
       - name: Require API RBAC DB version bump when defaults changed
-        if: steps.filter.outputs.rbac_defaults == 'true'
+        if: steps.check_version.outputs.skip != 'true' && steps.filter.outputs.rbac_defaults == 'true'
         run: |
           echo "RBAC default files and ORM handler changed. Checking DB version bump..."
           if [ "${{ steps.filter.outputs.orm_handler }}" != "true" ]; then
@@ -43,3 +54,4 @@ jobs:
           else
             echo "CURRENT_ORM_VERSION version bump detected."
           fi
+  
