@@ -25,7 +25,7 @@ static yaml_to_cjson_func g_yaml_to_cjson_func = NULL;
 
 static const char* g_module_name = NULL;
 static const char* g_sync_db_path = NULL;
-static const MQ_Functions* g_mq_functions = NULL;
+static MQ_Functions g_mq_functions = {NULL, NULL};
 static unsigned int g_sync_end_delay = 1;
 static unsigned int g_sync_timeout = 30;
 static unsigned int g_sync_retries = 3;
@@ -63,7 +63,12 @@ void sca_set_sync_parameters(const char* module_name, const char* sync_db_path, 
 {
     g_module_name = module_name;
     g_sync_db_path = sync_db_path;
-    g_mq_functions = mq_funcs;
+
+    if (mq_funcs)
+    {
+        g_mq_functions = *mq_funcs;
+    }
+
     g_sync_end_delay = sync_end_delay;
     g_sync_timeout = timeout;
     g_sync_retries = retries;
@@ -240,7 +245,7 @@ void SCA::init()
         {
             m_sca = std::make_unique<SecurityConfigurationAssessment>(SCA_DB_DISK_PATH);
 
-            m_sca->initSyncProtocol(g_module_name, g_sync_db_path, *g_mq_functions, std::chrono::seconds(g_sync_end_delay), std::chrono::seconds(g_sync_timeout), g_sync_retries, g_sync_max_eps,
+            m_sca->initSyncProtocol(g_module_name, g_sync_db_path, g_mq_functions, std::chrono::seconds(g_sync_end_delay), std::chrono::seconds(g_sync_timeout), g_sync_retries, g_sync_max_eps,
                                     std::chrono::seconds(g_integrity_interval));
 
             auto persistStatefulMessage = [](const std::string & id, Operation_t operation, const std::string & index, const std::string & message, uint64_t version) -> int
