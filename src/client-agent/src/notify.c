@@ -118,9 +118,6 @@ static char* build_json_keepalive(const char *agent_ip, const char *merged_sum) 
     if (merged_sum && merged_sum[0]) {
         cJSON_AddStringToObject(agent, "merged_sum", merged_sum);
     }
-    if (agent_ip && agent_ip[0]) {
-        cJSON_AddStringToObject(agent, "ip", agent_ip);
-    }
 
     // Add groups array if available
     if (has_metadata && metadata.groups_count > 0 && metadata.groups) {
@@ -143,6 +140,9 @@ static char* build_json_keepalive(const char *agent_ip, const char *merged_sum) 
         }
         if (metadata.architecture[0]) {
             cJSON_AddStringToObject(host, "architecture", metadata.architecture);
+        }
+        if (agent_ip && agent_ip[0]) {
+            cJSON_AddStringToObject(host, "ip", agent_ip);
         }
 
         // Host OS fields

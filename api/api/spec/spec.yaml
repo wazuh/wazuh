@@ -4711,12 +4711,6 @@ paths:
                             targets:
                               - name: agent
                                 drops: 0
-                          - location: /var/ossec/logs/active-responses.log
-                            events: 0
-                            bytes: 0
-                            targets:
-                              - name: agent
-                                drops: 0
                           - location: last -n 20
                             events: 2
                             bytes: 132
@@ -4734,12 +4728,6 @@ paths:
                               - name: agent
                                 drops: 0
                           - location: /var/log/dpkg.log
-                            events: 0
-                            bytes: 0
-                            targets:
-                              - name: agent
-                                drops: 0
-                          - location: /var/ossec/logs/active-responses.log
                             events: 0
                             bytes: 0
                             targets:
@@ -8583,12 +8571,6 @@ paths:
                           - 4
                           - 5
                           - 6
-                      - id: 6
-                        username: ossec
-                        allow_run_as: true
-                        roles:
-                          - 2
-                          - 5
                       - username: python
                         allow_run_as: true
                         roles: []
