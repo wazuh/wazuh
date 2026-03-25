@@ -142,7 +142,12 @@ class Evaluator:
         """
         if json.loads(MessageToJson(response)).get("result"):
             output = json.loads(MessageToJson(response))["result"]["output"]
-            json_response = json.loads(output).get(self.field_mapping)
+            # Parse output only if it's a string, otherwise it's already a dict
+            if isinstance(output, str):
+                output_dict = json.loads(output)
+            else:
+                output_dict = output
+            json_response = output_dict.get(self.field_mapping)
         else:
             json_response = None
 
@@ -223,7 +228,12 @@ class Evaluator:
         Execute a tester run for a map helper and evaluate the result.
         """
         self.field_mapping = field_mapping
-        request = build_run_post_request(self.input, api_tester.ALL)
+        # If input is empty dict or None, provide a minimal valid input with original field
+        if not self.input or (isinstance(self.input, dict) and not self.input):
+            input_data = {"original": "{}"}
+        else:
+            input_data = self.input
+        request = build_run_post_request(input_data, api_tester.ALL)
         response, raw_output = send_recv(api_client, request, api_tester.RunPost_Response())
         output = raw_output
 
@@ -483,7 +493,7 @@ metadata:
 hash: "helpers-test-hash"
 enrichments: []
 filters: []
-index_unclassified_events: false
+index_unclassified_events: true
 index_discarded_events: false
 default_parent: {HELPERS_DECODER_UUID}
 root_decoder: {HELPERS_DECODER_UUID}

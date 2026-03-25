@@ -8,6 +8,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 
 - [array_contains](#array_contains)
 - [array_contains_any](#array_contains_any)
+- [array_length_eq](#array_length_eq)
 - [array_not_contains](#array_not_contains)
 - [array_not_contains_any](#array_not_contains_any)
 - [binary_and](#binary_and)
@@ -15,6 +16,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [ends_with](#ends_with)
 - [exists](#exists)
 - [exists_key_in](#exists_key_in)
+- [index_unclassified_events](#index_unclassified_events)
 - [int_equal](#int_equal)
 - [int_greater](#int_greater)
 - [int_greater_or_equal](#int_greater_or_equal)
@@ -547,6 +549,211 @@ check:
 ```
 
 *The check was successful*
+
+
+
+---
+# array_length_eq
+
+## Signature
+
+```
+
+field: array_length_eq(expected_length)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| expected_length | number | value | Integers between `-2^63` and `2^63-1` |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| array | [number, string, boolean, object, array] |
+
+
+## Description
+
+Checks if an array has a specific length.
+The helper expects exactly one parameter: the expected length as a non-negative integer.
+Returns true if the target field is an array and its size matches the expected length.
+If the field doesn't exist, is not an array, or has a different length, the validation fails.
+This helper is useful for validating array sizes in event processing pipelines.
+
+
+## Keywords
+
+- `array` 
+
+## Examples
+
+### Example 1
+
+Array with one element
+
+#### Asset
+
+```yaml
+check:
+  - target_field: array_length_eq(1)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    "single_element"
+  ]
+}
+```
+
+*The check was successful*
+
+### Example 2
+
+Array with three elements
+
+#### Asset
+
+```yaml
+check:
+  - target_field: array_length_eq(3)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    "first",
+    "second",
+    "third"
+  ]
+}
+```
+
+*The check was successful*
+
+### Example 3
+
+Array with five numeric elements
+
+#### Asset
+
+```yaml
+check:
+  - target_field: array_length_eq(5)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ]
+}
+```
+
+*The check was successful*
+
+### Example 4
+
+Array length 1 does not match expected length 2
+
+#### Asset
+
+```yaml
+check:
+  - target_field: array_length_eq(2)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    "element"
+  ]
+}
+```
+
+*The check was performed with errors*
+
+### Example 5
+
+Array length 2 does not match expected length 1
+
+#### Asset
+
+```yaml
+check:
+  - target_field: array_length_eq(1)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    "first",
+    "second"
+  ]
+}
+```
+
+*The check was performed with errors*
+
+### Example 6
+
+Target field is not an array
+
+#### Asset
+
+```yaml
+check:
+  - target_field: array_length_eq(1)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": "not_an_array"
+}
+```
+
+*The check was performed with errors*
+
+### Example 7
+
+Target field is a number, not an array
+
+#### Asset
+
+```yaml
+check:
+  - target_field: array_length_eq(0)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 42
+}
+```
+
+*The check was performed with errors*
 
 
 
@@ -1391,6 +1598,181 @@ check:
 ```
 
 *The check was successful*
+
+
+
+---
+# index_unclassified_events
+
+## Signature
+
+```
+
+field: index_unclassified_events()
+```
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| array | [number, string, boolean, object, array] |
+
+
+## Description
+
+Determines whether unclassified events should be indexed based on policy configuration.
+This filter returns true if and only if:
+1. The policy flag 'indexUnclassifiedEvents' is enabled (configured at build time)
+2. The target field is an array containing exactly 1 element
+
+This helper is used in output routing to decide whether to index events that have only
+one decoder (unclassified events) when the policy allows it. If the policy flag is
+disabled or the array has a different size, the validation fails.
+
+Note: This helper does not accept any arguments and depends on the policy context
+configured at build time.
+
+
+## Keywords
+
+- `array` 
+
+- `policy` 
+
+## Examples
+
+### Example 1
+
+Array with exactly one element (unclassified event)
+
+#### Asset
+
+```yaml
+check:
+  - target_field: index_unclassified_events()
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    "single_decoder"
+  ]
+}
+```
+
+*The check was successful*
+
+### Example 2
+
+Empty array - not an unclassified event
+
+#### Asset
+
+```yaml
+check:
+  - target_field: index_unclassified_events()
+```
+
+#### Input Event
+
+```json
+{}
+```
+
+*The check was performed with errors*
+
+### Example 3
+
+Array with two elements - classified event
+
+#### Asset
+
+```yaml
+check:
+  - target_field: index_unclassified_events()
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    "decoder1",
+    "decoder2"
+  ]
+}
+```
+
+*The check was performed with errors*
+
+### Example 4
+
+Array with three elements - classified event
+
+#### Asset
+
+```yaml
+check:
+  - target_field: index_unclassified_events()
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    "d1",
+    "d2",
+    "d3"
+  ]
+}
+```
+
+*The check was performed with errors*
+
+### Example 5
+
+Target field is not an array
+
+#### Asset
+
+```yaml
+check:
+  - target_field: index_unclassified_events()
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": "not_an_array"
+}
+```
+
+*The check was performed with errors*
+
+### Example 6
+
+Target field is a number, not an array
+
+#### Asset
+
+```yaml
+check:
+  - target_field: index_unclassified_events()
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 42
+}
+```
+
+*The check was performed with errors*
 
 
 

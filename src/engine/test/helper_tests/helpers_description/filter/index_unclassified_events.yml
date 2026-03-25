@@ -1,0 +1,53 @@
+# Name of the helper function
+name: index_unclassified_events
+
+metadata:
+  description: |
+    Determines whether unclassified events should be indexed based on policy configuration.
+    This filter returns true if and only if:
+    1. The policy flag 'indexUnclassifiedEvents' is enabled (configured at build time)
+    2. The target field is an array containing exactly 1 element
+
+    This helper is used in output routing to decide whether to index events that have only
+    one decoder (unclassified events) when the policy allows it. If the policy flag is
+    disabled or the array has a different size, the validation fails.
+
+    Note: This helper does not accept any arguments and depends on the policy context
+    configured at build time.
+  keywords:
+    - array
+    - policy
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# No arguments - this helper only checks the array size and policy flag
+arguments: {}
+
+target_field:
+  type: array
+  generate: all
+
+# Note: These tests assume the policy flag 'indexUnclassifiedEvents' is enabled in the test environment.
+# In production, this flag is configured per policy and evaluated at build time.
+test:
+  - target_field: ["single_decoder"]
+    should_pass: true
+    description: Array with exactly one element (unclassified event)
+  - target_field: []
+    should_pass: false
+    description: Empty array - not an unclassified event
+  - target_field: ["decoder1", "decoder2"]
+    should_pass: false
+    description: Array with two elements - classified event
+  - target_field: ["d1", "d2", "d3"]
+    should_pass: false
+    description: Array with three elements - classified event
+  - target_field: "not_an_array"
+    should_pass: false
+    description: Target field is not an array
+  - target_field: 42
+    should_pass: false
+    description: Target field is a number, not an array
