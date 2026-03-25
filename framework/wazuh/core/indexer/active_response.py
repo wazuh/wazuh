@@ -22,6 +22,60 @@ from wazuh.core.indexer.indexer import get_indexer_client
 from wazuh.core.wazuh_queue import WazuhQueue
 
 
+AR_INDEX = "wazuh-active-responses*"
+AR_SCHEMA = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+        "wazuh": {
+            "type": "object",
+            "properties": {
+                "active_response": {
+                    "type": "object",
+                    "properties": {
+                        "agent_id": {"type": "string"},
+                        "executable": {"type": "string"},
+                        "extra_arguments": {"type": "string"},
+                        "location": {
+                            "type": "string",
+                            "enum": ["local", "all", "defined-agent"],
+                        },
+                        "name": {"type": "string"},
+                        "stateful_timeout": {"type": "integer", "minimum": 0},
+                        "type": {
+                            "type": "string",
+                            "enum": ["stateful", "stateless"],
+                        },
+                    },
+                    "required": [
+                        "executable",
+                        "extra_arguments",
+                        "location",
+                        "name",
+                        "type",
+                    ],
+                    "additionalProperties": False,
+                    "allOf": [
+                        {
+                            "if": {"properties": {"type": {"const": "stateful"}}},
+                            "then": {"required": ["stateful_timeout"]},
+                        },
+                        {
+                            "if": {
+                                "properties": {"location": {"const": "defined-agent"}}
+                            },
+                            "then": {"required": ["agent_id"]},
+                        },
+                    ],
+                }
+            },
+            "required": ["active_response"],
+            "additionalProperties": True,
+        }
+    },
+    "required": ["wazuh"],
+    "additionalProperties": True,
+}
 
 node_id = get_node().get("node")
 
@@ -64,9 +118,7 @@ class ActiveResponseBookmark:
 
 
 class ActiveResponseBookmarkFile(ActiveResponseBookmark):
-    AR_BOOKMARK_FILEPATH = os.path.join(common.CLUSTERD_WORKINGDIR, "ar_bookmark.json")
-
-    def __init__(self, path: str = AR_BOOKMARK_FILEPATH, **kwargs: Any):
+    def __init__(self, path: str = common.AR_BOOKMARK_FILEPATH, **kwargs: Any):
         """Initialize the bookmark file handler.
 
         Parameters
@@ -221,65 +273,6 @@ class ActiveResponseHelpers:
             List of OpenSearch hits matching the query.
         """
 
-        DEFAULT_AR_INDEX = "wazuh-active-responses*"
-        AR_SCHEMA = {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "type": "object",
-            "properties": {
-                "wazuh": {
-                    "type": "object",
-                    "properties": {
-                        "active_response": {
-                            "type": "object",
-                            "properties": {
-                                "agent_id": {"type": "string"},
-                                "executable": {"type": "string"},
-                                "extra_arguments": {"type": "string"},
-                                "location": {
-                                    "type": "string",
-                                    "enum": ["local", "all", "defined-agent"],
-                                },
-                                "name": {"type": "string"},
-                                "stateful_timeout": {"type": "integer", "minimum": 0},
-                                "type": {
-                                    "type": "string",
-                                    "enum": ["stateful", "stateless"],
-                                },
-                            },
-                            "required": [
-                                "executable",
-                                "extra_arguments",
-                                "location",
-                                "name",
-                                "type",
-                            ],
-                            "additionalProperties": False,
-                            "allOf": [
-                                {
-                                    "if": {
-                                        "properties": {"type": {"const": "stateful"}}
-                                    },
-                                    "then": {"required": ["stateful_timeout"]},
-                                },
-                                {
-                                    "if": {
-                                        "properties": {
-                                            "location": {"const": "defined-agent"}
-                                        }
-                                    },
-                                    "then": {"required": ["agent_id"]},
-                                },
-                            ],
-                        }
-                    },
-                    "required": ["active_response"],
-                    "additionalProperties": True,
-                }
-            },
-            "required": ["wazuh"],
-            "additionalProperties": True,
-        }
-
         query = {
             "size": max,
             "sort": bookmark.build_sort(),
@@ -300,7 +293,7 @@ class ActiveResponseHelpers:
 
         # Execute search
         async with get_indexer_client() as client:
-            resp = await client.search(index=DEFAULT_AR_INDEX, body=query)
+            resp = await client.search(index=AR_INDEX, body=query)
 
         docs = []
 

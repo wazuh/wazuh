@@ -212,6 +212,11 @@ WDB_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'db', 'wdb')
 WDB_HTTP_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wdb-http')
 WMODULES_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wmodules')
 KEY_STORE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'keystore')
+CLUSTERD_SOCKET = os.path.join(CLUSTERD_WORKINGDIR, 'c-internal.sock')
+
+# ================================================ Wazuh misc files ====================================================
+
+AR_BOOKMARK_FILEPATH = os.path.join(CLUSTERD_WORKINGDIR, "ar_bookmark.json")
 
 # ========================================== INSTALLATION UID PATH ====================================================
 SECURITY_PATH = os.path.join(WAZUH_PATH, 'api', 'configuration', 'security')
