@@ -1335,7 +1335,7 @@ class TestLoadSchema:
         tasks = _make_tasks()
 
         with patch("wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=False):
-            result = tasks._load_schema("wazuh-metrics-agents.json")
+            result = tasks._load_schema("metrics-agents.json")
 
         assert result is None
         tasks.logger.warning.assert_called()
@@ -1345,8 +1345,8 @@ class TestLoadSchema:
         tasks = _make_tasks()
 
         with patch("wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=False) as mock_isfile:
-            tasks._load_schema("wazuh-metrics-agents.json")
-            tasks._load_schema("wazuh-metrics-agents.json")
+            tasks._load_schema("metrics-agents.json")
+            tasks._load_schema("metrics-agents.json")
 
         # isfile should only be called once; second call uses the cache.
         assert mock_isfile.call_count == 1
@@ -1360,7 +1360,7 @@ class TestLoadSchema:
             patch("wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=True),
             patch("builtins.open", mock_open(read_data=schema_content)),
         ):
-            result = tasks._load_schema("wazuh-metrics-agents.json")
+            result = tasks._load_schema("metrics-agents.json")
 
         assert result is not None
         assert result["type"] == "object"
@@ -1375,8 +1375,8 @@ class TestLoadSchema:
             patch("wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=True),
             patch("builtins.open", mock_open(read_data=schema_content)) as mock_file,
         ):
-            tasks._load_schema("wazuh-metrics-agents.json")
-            tasks._load_schema("wazuh-metrics-agents.json")
+            tasks._load_schema("metrics-agents.json")
+            tasks._load_schema("metrics-agents.json")
 
         assert mock_file.call_count == 1
 
@@ -1388,7 +1388,7 @@ class TestLoadSchema:
             patch("wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=True),
             patch("builtins.open", mock_open(read_data="not valid json {")),
         ):
-            result = tasks._load_schema("wazuh-metrics-agents.json")
+            result = tasks._load_schema("metrics-agents.json")
 
         assert result is None
         tasks.logger.exception.assert_called()
@@ -1402,7 +1402,7 @@ class TestLoadSchema:
             patch("wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=True),
             patch("builtins.open", mock_open(read_data=bad_template)),
         ):
-            result = tasks._load_schema("wazuh-metrics-agents.json")
+            result = tasks._load_schema("metrics-agents.json")
 
         assert result is None
         tasks.logger.warning.assert_called()

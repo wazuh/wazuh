@@ -93,6 +93,8 @@ def _opensearch_template_to_jsonschema(template: dict) -> dict:
         return {}
 
     flat_props = _flatten_opensearch_properties(properties)
+    if not flat_props:
+        return {}
 
     json_schema_props: dict = {}
     for field, mapping in flat_props.items():
@@ -411,8 +413,8 @@ class MetricsSnapshotTasks:
             self._collect_comms_all_nodes(timestamp),
         )
 
-        agents_schema = self._load_schema("wazuh-metrics-agents.json")
-        comms_schema = self._load_schema("wazuh-metrics-comms.json")
+        agents_schema = self._load_schema("metrics-agents.json")
+        comms_schema = self._load_schema("metrics-comms.json")
 
         if agents_schema:
             agent_docs = self._validate_documents(
