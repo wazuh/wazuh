@@ -585,8 +585,7 @@ void test_parse_json_keepalive_linux_complete(void **state)
 {
     char* json = "{\"version\":\"1.0\",\"agent\":{\"id\":\"001\",\"name\":\"agent1\",\"version\":\"v5.0.0\",\
 \"config_sum\":\"ab73af41699f13fdd81903b5f23d8d00\",\"merged_sum\":\"fd756ba04d9c32c8848d4608bec41251\",\
-\"ip\":\"192.168.1.100\"},\
-\"host\":{\"hostname\":\"ubuntu-test\",\"architecture\":\"x86_64\",\
+\"host\":{\"hostname\":\"ubuntu-test\",\"architecture\":\"x86_64\",\"ip\":\"192.168.1.100\",\
 \"os\":{\"name\":\"Ubuntu\",\"version\":\"20.04\",\"platform\":\"ubuntu\",\"type\":\"linux\"}}}";
 
     agent_info_data *agent_data = NULL;
@@ -614,8 +613,7 @@ void test_parse_json_keepalive_linux_codename_with_wazuh_suffix(void **state)
 {
     char* json = "{\"version\":\"1.0\",\"agent\":{\"id\":\"002\",\"name\":\"agent2\",\"version\":\"v5.0.0\",\
 \"config_sum\":\"ab73af41699f13fdd81903b5f23d8d00\",\"merged_sum\":\"fd756ba04d9c32c8848d4608bec41251\",\
-\"ip\":\"192.168.1.101\"},\
-\"host\":{\"hostname\":\"523e34619338\",\"architecture\":\"x86_64\",\
+\"host\":{\"hostname\":\"523e34619338\",\"architecture\":\"x86_64\",\"ip\":\"192.168.1.101\",\
 \"os\":{\"name\":\"Ubuntu\",\"version\":\"24.04.4 LTS\",\"platform\":\"ubuntu\",\"type\":\"linux\"}}}";
 
     agent_info_data *agent_data = NULL;

@@ -277,12 +277,6 @@ int parse_json_keepalive(const char *json_str, agent_info_data *agent_data, char
         os_strdup(merged_sum->valuestring, agent_data->merged_sum);
     }
 
-    // Extract agent ip
-    cJSON *agent_ip = cJSON_GetObjectItem(agent, "ip");
-    if (agent_ip && cJSON_IsString(agent_ip)) {
-        os_strdup(agent_ip->valuestring, agent_data->agent_ip);
-    }
-
     // Allocate os_data structure
     os_calloc(1, sizeof(os_data), agent_data->osd);
 
@@ -354,6 +348,13 @@ int parse_json_keepalive(const char *json_str, agent_info_data *agent_data, char
         if (hostname && cJSON_IsString(hostname)) {
             os_free(agent_data->osd->hostname);
             os_strdup(hostname->valuestring, agent_data->osd->hostname);
+        }
+
+        // Extract IP
+        cJSON *host_ip = cJSON_GetObjectItem(host, "ip");
+        if (host_ip && cJSON_IsString(host_ip)) {
+            os_free(agent_data->agent_ip);
+            os_strdup(host_ip->valuestring, agent_data->agent_ip);
         }
     }
 
