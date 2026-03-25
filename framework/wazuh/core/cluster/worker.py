@@ -20,6 +20,7 @@ from wazuh.core.cluster import client, cluster, common as c_common
 from wazuh.core.cluster.utils import log_subprocess_execution, safe_join
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.exception import WazuhException
+from wazuh.core.indexer.active_response import ActiveResponseFetchTask
 from wazuh.core.utils import safe_move, get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
 
@@ -846,6 +847,7 @@ class Worker(client.AbstractClientManager):
         self.extra_args = {'cluster_name': self.cluster_name, 'version': self.version, 'node_type': self.node_type}
         self.dapi = dapi.APIRequestQueue(server=self)
         self.integrity_control = {}
+        self.active_response_task = ActiveResponseFetchTask(self)
 
     def add_tasks(self) -> List[Tuple[Awaitable[Any], Tuple]]:
         """Define the tasks that the worker will always run in an infinite loop.
@@ -858,7 +860,9 @@ class Worker(client.AbstractClientManager):
         """
         return super().add_tasks() + [(self.client.sync_integrity, tuple()),
                                       (self.client.sync_agent_info, tuple()),
-                                      (self.dapi.run, tuple())]
+                                      (self.dapi.run, tuple()),
+                                      (self.active_response_task.run, tuple())
+                                      ]
 
     def get_node(self) -> Dict:
         """Get basic information about the worker node. Used in the GET/cluster/node API call.

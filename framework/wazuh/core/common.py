@@ -195,6 +195,7 @@ BACKUP_PATH = os.path.join(WAZUH_PATH, 'backup')
 MULTI_GROUPS_PATH = os.path.join(WAZUH_PATH, 'var', 'multigroups')
 DEFAULT_RBAC_RESOURCES = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'rbac', 'default')
 WAZUH_LOCALTIME_PATH = os.path.join(WAZUH_PATH, 'etc', 'localtime')
+CLUSTERD_WORKINGDIR = os.path.join(WAZUH_PATH, 'queue', 'cluster')
 
 
 # ================================================ Wazuh path - Sockets ================================================
@@ -209,6 +210,11 @@ WDB_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'db', 'wdb')
 WDB_HTTP_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wdb-http')
 WMODULES_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wmodules')
 KEY_STORE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'keystore')
+CLUSTERD_SOCKET = os.path.join(CLUSTERD_WORKINGDIR, 'c-internal.sock')
+
+# ================================================ Wazuh misc files ====================================================
+
+AR_BOOKMARK_FILEPATH = os.path.join(CLUSTERD_WORKINGDIR, "ar_bookmark.json")
 
 # ========================================== INSTALLATION UID PATH ====================================================
 SECURITY_PATH = os.path.join(WAZUH_PATH, 'api', 'configuration', 'security')

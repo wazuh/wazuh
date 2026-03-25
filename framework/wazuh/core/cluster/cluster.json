@@ -73,6 +73,10 @@
             "sync_disconnected_agent_cluster_name_delay": 300
         },
 
+        "common":{
+            "active_response_polling": 60
+        },
+        
         "communication":{
             "timeout_cluster_request": 20,
             "timeout_dapi_request": 200,

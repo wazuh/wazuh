@@ -592,7 +592,7 @@ def clean_up(node_name=""):
             return
 
         for f in listdir(local_rm_path):
-            if f == "c-internal.sock":
+            if f == os.path.basename(common.CLUSTERD_SOCKET) or f == os.path.basename(common.AR_BOOKMARK_FILEPATH):
                 continue
             f_path = path.join(local_rm_path, f)
             try:
@@ -605,7 +605,7 @@ def clean_up(node_name=""):
                 continue
 
     try:
-        rm_path = path.join(common.WAZUH_PATH, 'queue', 'cluster', node_name)
+        rm_path = path.join(common.CLUSTERD_WORKINGDIR, node_name)
         logger.debug(f"Removing '{rm_path}'.")
         remove_directory_contents(rm_path)
         logger.debug(f"Removed '{rm_path}'.")
