@@ -60,7 +60,8 @@ After all pages are processed, the downloader signals completion via `indexer_co
                 "key": ""
             },
             "index": ".cti-cves",
-            "pageSize": 1000
+            "pageSize": 250,
+            "numSlices": 2
         }
     }
 }

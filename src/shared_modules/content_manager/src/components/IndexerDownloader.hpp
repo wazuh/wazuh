@@ -49,7 +49,8 @@
  * Configuration expected under configData["indexer"]:
  * {
  *   "index":    ".cti-cves",     // Indexer CVE index name
- *   "pageSize": 1000,            // Documents per page (optional, default 1000)
+ *   "pageSize": 250,             // Documents per page (optional, default 250)
+ *   "numSlices": 2,              // Parallel PIT slices (optional, default 2)
  *   <standard IndexerConnector SSL/auth config>
  * }
  */
@@ -230,7 +231,7 @@ private:
         static constexpr std::string_view PIT_KEEP_ALIVE {"5m"};
 
         const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
-        const size_t pageSize = m_config.at("indexer").value("pageSize", 1000u);
+        const size_t pageSize = m_config.at("indexer").value("pageSize", 250u);
 
         const nlohmann::json sort =
             nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
@@ -313,7 +314,7 @@ private:
         static constexpr std::string_view PIT_KEEP_ALIVE {"5m"};
 
         const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
-        const size_t pageSize = m_config.at("indexer").value("pageSize", 1000u);
+        const size_t pageSize = m_config.at("indexer").value("pageSize", 250u);
 
         const nlohmann::json sort =
             nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
@@ -472,7 +473,7 @@ private:
         static constexpr std::chrono::seconds INITIAL_LOAD_RETRY_INTERVAL {30};
 
         const nlohmann::json query = {{"match_all", nlohmann::json::object()}};
-        const size_t numSlices = m_config.at("indexer").value("numSlices", 1u);
+        const size_t numSlices = m_config.at("indexer").value("numSlices", 2u);
         size_t attempt = 0;
 
         while (true)

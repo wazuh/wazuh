@@ -26,7 +26,7 @@ If the range query returns zero documents, the cycle completes without triggerin
 
 Each download cycle (initial or incremental) opens a single Point-In-Time on the target index with a keep-alive of `5m`. All page requests within the cycle use this PIT, ensuring a consistent snapshot of the index throughout the download. The PIT is always deleted when the cycle finishes, even in error cases.
 
-#### Sequential fetch (`numSlices` absent or 1)
+#### Sequential fetch (`numSlices` = 1)
 
 ```
 createPointInTime(index, "5m")
@@ -56,6 +56,8 @@ createPointInTime(index, "5m")
 ```
 
 Sliced PIT works correctly on single-shard indices, producing even distribution regardless of shard count.
+
+> Increasing `numSlices` does not necessarily improve wall-clock time. In benchmark runs, higher slice counts increased memory usage noticeably and provided little or no speed benefit beyond `2` slices. Benchmark your environment before raising this value.
 
 ### Source field filtering
 
@@ -89,8 +91,8 @@ The `indexer` sub-object must be present under `configData` when `contentSource`
 | Field | Type | Description |
 |-------|------|-------------|
 | `index` | string | Target index name (e.g. `.cti-cves`) |
-| `pageSize` | integer | Documents per page. Default: `1000` |
-| `numSlices` | integer | Number of parallel PIT slices for initial load. Default: `1` (sequential). Recommended: `4` |
+| `pageSize` | integer | Documents per page. Default: `250` |
+| `numSlices` | integer | Number of parallel PIT slices for initial load. Default: `2`. Set to `1` for sequential mode. Higher values can increase memory usage with limited time savings |
 | `hosts` | array | Indexer host URLs (e.g. `["https://localhost:9200"]`) |
 | `username` | string | Indexer username |
 | `password` | string | Indexer password |
@@ -121,7 +123,7 @@ Example:
             },
             "index": ".cti-cves",
             "pageSize": 250,
-            "numSlices": 4
+            "numSlices": 2
         }
     }
 }
