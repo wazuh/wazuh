@@ -172,9 +172,10 @@ message PublicRunPost_Request
     string location = 2;
 
     // Metadata associated with the event/agent.
-    // Must be a Struct whose contents are rooted under the top-level "wazuh" key,
+    // Can be a Struct whose contents are rooted under the top-level "wazuh" key,
     // and only schema-approved fields under that root are accepted by the engine.
     // Non-approved keys or alternative roots may be rejected or ignored by validation.
+    // Can be also used with empty JSONs.
     google.protobuf.Struct metadata = 3;
 
     // Raw event payload to test.
