@@ -193,40 +193,39 @@ private:
         // documents (FEED-GLOBAL, OSCPE-GLOBAL, CNA-MAPPING-GLOBAL, TID-*) whose document
         // structure doesn't match CVE5 paths.  Excludes is safe for all document types
         // because non-CVE docs simply don't have containers.cna/adp fields.
-        const nlohmann::json sourceFilter = {
-            {"excludes",
-             nlohmann::json::array({"document.containers.cna.descriptions",
-                                    "document.containers.cna.references",
-                                    "document.containers.cna.solutions",
-                                    "document.containers.cna.rejectedReasons",
-                                    "document.containers.cna.credits",
-                                    "document.containers.cna.timeline",
-                                    "document.containers.cna.impacts",
-                                    "document.containers.cna.workarounds",
-                                    "document.containers.cna.exploits",
-                                    "document.containers.cna.configurations",
-                                    "document.containers.cna.source",
-                                    "document.containers.cna.tags",
-                                    "document.containers.cna.taxonomyMappings",
-                                    "document.containers.cna.datePublic",
-                                    "document.containers.cna.title",
-                                    "document.containers.cna.dateAssigned",
-                                    "document.containers.cna.replacedBy",
-                                    "document.containers.adp.descriptions",
-                                    "document.containers.adp.references",
-                                    "document.containers.adp.solutions",
-                                    "document.containers.adp.rejectedReasons",
-                                    "document.containers.adp.credits",
-                                    "document.containers.adp.timeline",
-                                    "document.containers.adp.impacts",
-                                    "document.containers.adp.workarounds",
-                                    "document.containers.adp.exploits",
-                                    "document.containers.adp.configurations",
-                                    "document.containers.adp.source",
-                                    "document.containers.adp.tags",
-                                    "document.containers.adp.taxonomyMappings",
-                                    "document.containers.adp.datePublic",
-                                    "document.containers.adp.title"})}};
+        const nlohmann::json sourceFilter = {{"excludes",
+                                              nlohmann::json::array({"document.containers.cna.descriptions",
+                                                                     "document.containers.cna.references",
+                                                                     "document.containers.cna.solutions",
+                                                                     "document.containers.cna.rejectedReasons",
+                                                                     "document.containers.cna.credits",
+                                                                     "document.containers.cna.timeline",
+                                                                     "document.containers.cna.impacts",
+                                                                     "document.containers.cna.workarounds",
+                                                                     "document.containers.cna.exploits",
+                                                                     "document.containers.cna.configurations",
+                                                                     "document.containers.cna.source",
+                                                                     "document.containers.cna.tags",
+                                                                     "document.containers.cna.taxonomyMappings",
+                                                                     "document.containers.cna.datePublic",
+                                                                     "document.containers.cna.title",
+                                                                     "document.containers.cna.dateAssigned",
+                                                                     "document.containers.cna.replacedBy",
+                                                                     "document.containers.adp.descriptions",
+                                                                     "document.containers.adp.references",
+                                                                     "document.containers.adp.solutions",
+                                                                     "document.containers.adp.rejectedReasons",
+                                                                     "document.containers.adp.credits",
+                                                                     "document.containers.adp.timeline",
+                                                                     "document.containers.adp.impacts",
+                                                                     "document.containers.adp.workarounds",
+                                                                     "document.containers.adp.exploits",
+                                                                     "document.containers.adp.configurations",
+                                                                     "document.containers.adp.source",
+                                                                     "document.containers.adp.tags",
+                                                                     "document.containers.adp.taxonomyMappings",
+                                                                     "document.containers.adp.datePublic",
+                                                                     "document.containers.adp.title"})}};
 
         IndexerConnectorSync syncConnector(m_config.at("indexer"));
 
@@ -398,9 +397,9 @@ private:
                     }
                 }
 
-                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                   std::chrono::steady_clock::now() - t0)
-                                   .count();
+                auto elapsed =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0)
+                        .count();
                 logInfo(WM_CONTENTUPDATER,
                         "IndexerDownloader: Slice %zu/%zu complete — %zu docs in %ldms",
                         sliceId,
@@ -428,8 +427,8 @@ private:
 
         if (!errors.empty())
         {
-            throw std::runtime_error("IndexerDownloader: " + std::to_string(errors.size()) + " slice(s) failed: " +
-                                     errors.front());
+            throw std::runtime_error("IndexerDownloader: " + std::to_string(errors.size()) +
+                                     " slice(s) failed: " + errors.front());
         }
 
         // Persist cursor only after all slices complete
@@ -460,9 +459,7 @@ private:
         {
             if (attempt == 0)
             {
-                logInfo(WM_CONTENTUPDATER,
-                        "IndexerDownloader: Starting initial full load (slices=%zu)",
-                        numSlices);
+                logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Starting initial full load (slices=%zu)", numSlices);
             }
             else
             {
