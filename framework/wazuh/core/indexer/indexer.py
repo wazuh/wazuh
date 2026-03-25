@@ -313,22 +313,22 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
         wazuh_config = get_ossec_conf(section="indexer")
         if not wazuh_config:
             raise IndexerUnavailableError(
-                code=1002, extra_message="Missing indexer configuration in Wazuh config"
+                code=2200, extra_message="Missing indexer configuration in Wazuh config"
             )
     except Exception as e:
         raise IndexerUnavailableError(
-            code=1003, extra_message=f"Failed to parse Wazuh configuration: {e}"
+            code=2200, extra_message=f"Failed to parse Wazuh configuration: {e}"
         )
 
     indexer_section = wazuh_config.get("indexer", {})
     if not indexer_section:
         raise IndexerUnavailableError(
-            code=1004, extra_message="Empty indexer section in configuration"
+            code=2200, extra_message="Empty indexer section in configuration"
         )
 
     ssl_config = indexer_section.get("ssl", {})
     if not ssl_config:
-        raise IndexerUnavailableError(code=1005, extra_message="Missing SSL configuration")
+        raise IndexerUnavailableError(code=2200, extra_message="Missing SSL configuration")
 
     try:
         with KeystoreClient() as ks_client:
@@ -337,11 +337,11 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
                 pass_response = ks_client.get("indexer", "password")
             except KeyError as e:
                 raise IndexerUnavailableError(
-                    code=1006, extra_message=f"Missing credential entry in keystore: {e}"
+                    code=2201, extra_message=f"Missing credential entry in keystore: {e}"
                 )
             except Exception as e:
                 raise IndexerUnavailableError(
-                    code=1007, extra_message=f"Keystore operation failed: {e}"
+                    code=2201, extra_message=f"Keystore operation failed: {e}"
                 )
 
             indexer_user = user_response.get("value") if user_response else None
@@ -349,24 +349,24 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
 
             if not indexer_user:
                 raise IndexerUnavailableError(
-                    code=1008, extra_message="Empty or missing username in keystore"
+                    code=2201, extra_message="Empty or missing username in keystore"
                 )
             if not indexer_pass:
                 raise IndexerUnavailableError(
-                    code=1009, extra_message="Empty or missing password in keystore"
+                    code=2201, extra_message="Empty or missing password in keystore"
                 )
     except IndexerUnavailableError:
         raise
     except Exception as e:
         raise IndexerUnavailableError(
-            code=1010, extra_message=f"Failed to retrieve indexer credentials: {e}"
+            code=2201, extra_message=f"Failed to retrieve indexer credentials: {e}"
         )
 
     # Parse host URLs
     hosts_raw = indexer_section.get("hosts", [])
     if not hosts_raw:
         raise IndexerUnavailableError(
-            code=1011, extra_message="No hosts specified in indexer configuration"
+            code=2200, extra_message="No hosts specified in indexer configuration"
         )
 
     try:
@@ -377,13 +377,13 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
         for i, p in enumerate(parsed_urls):
             if not p.hostname:
                 raise IndexerUnavailableError(
-                    code=1012,
+                    code=2200,
                     extra_message=f"Invalid host URL at position {i}: {hosts_raw[i]}",
                 )
             list_of_hosts.append(p.hostname)
             list_of_ports.append(p.port)
     except Exception as e:
-        raise IndexerUnavailableError(code=1013, extra_message=f"Failed to parse host URLs: {e}")
+        raise IndexerUnavailableError(code=2200, extra_message=f"Failed to parse host URLs: {e}")
 
     # Validate SSL certificate paths
     required_cert_paths = [
@@ -395,7 +395,7 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
     for cert_name, cert_path_list in required_cert_paths:
         if not cert_path_list or not cert_path_list[0]:
             raise IndexerUnavailableError(
-                code=1014, extra_message=f"Missing or empty {cert_name} path"
+                code=2200, extra_message=f"Missing or empty {cert_name} path"
             )
 
     # Create indexer client
@@ -414,7 +414,7 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
     except IndexerUnavailableError:
         raise
     except Exception as e:
-        raise IndexerUnavailableError(code=1015, extra_message=f"Failed to create indexer client: {e}")
+        raise IndexerUnavailableError(code=2200, extra_message=f"Failed to create indexer client: {e}")
 
     try:
         yield client
