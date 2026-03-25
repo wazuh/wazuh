@@ -276,7 +276,12 @@ class ActiveResponseHelpers:
         query = {
             "size": max,
             "sort": bookmark.build_sort(),
-            "query": {"bool": {"filter": []}},
+            "query": {
+                "bool": {
+                    "filter": [],
+                    "must_not": [{ "regexp": {"wazuh.agent.version": "v[0-4]\\..*" }}],
+                }
+            },
         }
 
         search_after = bookmark.to_search_after()
@@ -600,7 +605,7 @@ class ActiveResponseBuilder:
             for agent_id, msg, bookmark in msgs:
                 try:
                     wq.send_msg_to_agent(
-                        msg=msg, agent_id=agent_id, msg_type=WazuhQueue.AR_TYPE
+                        msg=json.dumps(msg), agent_id=agent_id, msg_type=WazuhQueue.AR_TYPE
                     )
                     msgs_sent += 1
                 except WazuhError as e:
