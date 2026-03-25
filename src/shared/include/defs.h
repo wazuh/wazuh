@@ -262,11 +262,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define FWLOGS_DAILY     "logs/firewall/firewall.log"
 #define EVENTSJSON_DAILY "logs/archives/archives.json"
 
-/* Stats directories */
-#define STATWQUEUE "stats/weekly-average"
-#define STATQUEUE  "stats/hourly-average"
-#define STATSAVED  "stats/totals"
-
 /* Authentication keys file */
 #ifndef WIN32
 #define KEYS_FILE  "etc/client.keys"

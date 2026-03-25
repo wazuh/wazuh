@@ -24,9 +24,6 @@
 remoted_state_t remoted_state = {0};
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t agents_state_mutex = PTHREAD_MUTEX_INITIALIZER;
-static int rem_write_state();
-static char *refresh_time;
-
 extern OSHash *remoted_agents_state;
 
 /**
@@ -110,26 +107,16 @@ static void rem_inc_agents_send_discarded(const char *agent_id);
 
 void * rem_state_main() {
     if (!state_interval) {
-        minfo("State file is disabled.");
+        minfo("Agent state cleanup is disabled.");
         return NULL;
     }
 
-    os_calloc(48, sizeof(char), refresh_time);
-    if (state_interval < 60) {
-        snprintf(refresh_time, 48, "Updated every %i seconds.", state_interval);
-    } else if (state_interval < 3600) {
-        snprintf(refresh_time, 48, "Updated every %i minutes.", state_interval/60);
-    } else {
-        snprintf(refresh_time, 48, "Updated every %i hours.", state_interval/3600);
-    }
-
-    mdebug1("State file updating thread started.");
+    mdebug1("Agent state cleanup thread started.");
 
     int sock = -1;
     sock = wdbc_connect();
 
     while (1) {
-        rem_write_state();
         sleep(state_interval);
         w_remoted_clean_agents_state(&sock);
     }
@@ -137,90 +124,6 @@ void * rem_state_main() {
     wdbc_close(&sock);
 
     return NULL;
-}
-
-int rem_write_state() {
-    FILE * fp;
-    char path[PATH_MAX - 8];
-    char path_temp[PATH_MAX + 1];
-    remoted_state_t state_cpy;
-
-    if (!strcmp(__local_name, "unset")) {
-        merror("At write_state(): __local_name is unset.");
-        return -1;
-    }
-
-    mdebug2("Updating state file.");
-
-    snprintf(path, sizeof(path), OS_PIDFILE "/%s.state", __local_name);
-    snprintf(path_temp, sizeof(path_temp), "%s.temp", path);
-
-    if (fp = wfopen(path_temp, "w"), !fp) {
-        merror(FOPEN_ERROR, path_temp, errno, strerror(errno));
-        return -1;
-    }
-
-    w_mutex_lock(&state_mutex);
-    memcpy(&state_cpy, &remoted_state, sizeof(remoted_state_t));
-    w_mutex_unlock(&state_mutex);
-
-    fprintf(fp,
-        "# State file for %s\n"
-        "# THIS FILE WILL BE DEPRECATED IN FUTURE VERSIONS\n"
-        "# %s\n"
-        "\n"
-        "# Queue size\n"
-        "queue_size='%zu'\n"
-        "\n"
-        "# Total queue size\n"
-        "total_queue_size='%zu'\n"
-        "\n"
-        "# TCP sessions\n"
-        "tcp_sessions='%u'\n"
-        "\n"
-        "# Events sent to Engine\n"
-        "evt_count='%lu'\n"
-        "\n"
-        "# Control messages received\n"
-        "ctrl_msg_count='%lu'\n"
-        "\n"
-        "# Discarded messages\n"
-        "discarded_count='%u'\n"
-        "\n"
-        "# Total number of bytes sent\n"
-        "sent_bytes='%lu'\n"
-        "\n"
-        "# Total number of bytes received\n"
-        "recv_bytes='%lu'\n"
-        "\n"
-        "# Messages dequeued after the agent closes the connection\n"
-        "dequeued_after_close='%u'\n"
-        "\n"
-        "# Control messages queue usage\n"
-        "ctrl_msg_queue_usage='%zu'\n"
-        "\n"
-        "# Control messages queue breakdown\n"
-        "ctrl_msg_queue_inserted='%u'\n"
-        "ctrl_msg_queue_replaced='%u'\n"
-        "ctrl_msg_queue_processed='%u'\n"
-        "\n",
-        __local_name, refresh_time, rem_get_qsize(), rem_get_tsize(), state_cpy.tcp_sessions,
-        state_cpy.recv_breakdown.evt_count, state_cpy.recv_breakdown.ctrl_count, state_cpy.recv_breakdown.discarded_count,
-        state_cpy.sent_bytes, state_cpy.recv_bytes, state_cpy.recv_breakdown.dequeued_count,
-        control_msg_queue ? indexed_queue_size(control_msg_queue) : 0,
-        state_cpy.ctrl_queue_breakdown.inserted_count, state_cpy.ctrl_queue_breakdown.replaced_count, state_cpy.ctrl_queue_breakdown.processed_count);
-
-    fclose(fp);
-
-    if (rename(path_temp, path) < 0) {
-        merror("Renaming %s to %s: %s", path_temp, path, strerror(errno));
-        if (unlink(path_temp) < 0) {
-            merror("Deleting %s: %s", path_temp, strerror(errno));
-        }
-        return -1;
-    }
-
-    return 0;
 }
 
 STATIC remoted_agent_state_t * get_node(const char *agent_id) {

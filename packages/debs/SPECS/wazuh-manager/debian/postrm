@@ -58,7 +58,7 @@ case "$1" in
             rm -rf ${DIR}/var
             rm -rf ${DIR}/logs
             rm -rf ${DIR}/wodles
-            rm -rf ${DIR}/engine
+            rm -rf ${DIR}/data
         fi
 
         # Delete audisp wazuh plugin if exists

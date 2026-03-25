@@ -12,7 +12,7 @@
   description: Check undefined state interval option
   configuration_parameters:
   metadata:
-    event_monitor: '.*State file is disabled.*'
+    event_monitor: '.*Agent state cleanup is disabled.*'
     state_file_exist: False
     agentd_ends: False
     local_internal_options:
@@ -32,7 +32,7 @@
   description: Check zero big state interval
   configuration_parameters:
   metadata:
-    event_monitor: '.*State file is disabled.*'
+    event_monitor: '.*Agent state cleanup is disabled.*'
     state_file_exist: False
     agentd_ends: False
     local_internal_options:
@@ -52,7 +52,7 @@
   description: Check default state interval
   configuration_parameters:
   metadata:
-    event_monitor: '.*State file updating thread started.*'
+    event_monitor: '.*Agent state cleanup thread started.*'
     state_file_exist: True
     agentd_ends: False
     local_internal_options:

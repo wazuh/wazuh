@@ -3,122 +3,12 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import contextlib
-import datetime
 import json
-import os
 from typing import Union
 
 from wazuh.core import common, utils
 from wazuh.core import wazuh_socket
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException
-
-DAYS = "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
-MONTHS = "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-
-
-def hourly_() -> list:
-    """Compute hourly averages.
-
-    Returns
-    -------
-    list
-        Averages and iterations.
-    """
-    averages = []
-    interactions = 0
-    for i in range(25):
-        try:
-            with open(f'{common.STATS_PATH}/hourly-average/{i}', mode='r') as hfile:
-                data = hfile.read()
-                if i == 24:
-                    interactions = int(data)
-                else:
-                    averages.append(int(data))
-        except IOError:
-            if i < 24:
-                averages.append(0)
-            else:
-                interactions = 0
-
-    return [{'averages': averages, 'interactions': interactions}]
-
-
-def weekly_() -> list:
-    """Compute weekly averages.
-
-    Returns
-    -------
-    list
-        Hours and interactions for each week day.
-    """
-    weekly_results = []
-    for i in range(7):
-        hours = []
-        interactions = 0
-        for j in range(25):
-            try:
-                with open(f'{common.STATS_PATH}/weekly-average/{i}/{j}', mode='r') as wfile:
-                    data = wfile.read()
-                    if j == 24:
-                        interactions = int(data)
-                    else:
-                        hours.append(int(data))
-            except IOError:
-                if j < 24:
-                    hours.append(0)
-                else:
-                    interactions = 0
-        weekly_results.append({DAYS[i]: {'hours': hours, 'interactions': interactions}})
-
-    return weekly_results
-
-
-def totals_(date: datetime.datetime = utils.get_utc_now()) -> list:
-    """Compute statistical information for the current or specified date.
-
-    Parameters
-    ----------
-    date: datetime
-        Date object with the date value of the stats, current date by default.
-
-    Returns
-    -------
-    list
-        array of dictionaries. Each dictionary represents an hour.
-
-    Raises
-    ------
-    WazuhError
-        Raised on `IOError`.
-    """
-    try:
-        stat_filename = os.path.join(
-            common.STATS_PATH, "totals", str(date.year), MONTHS[date.month - 1],
-            f"ossec-totals-{date.strftime('%d')}.log")
-        with open(stat_filename, mode='r') as statsf:
-            stats = statsf.readlines()
-    except IOError:
-        raise WazuhError(1308, extra_message=stat_filename)
-
-    alerts = []
-    affected = []
-    for line in stats:
-        data = line.split('-')
-        if len(data) == 4:
-            alerts.append({'sigid': int(data[1]), 'level': int(data[2]), 'times': int(data[3])})
-        else:
-            data = line.split('--')
-            if len(data) != 5:
-                if len(data) in (0, 1):
-                    continue
-                else:
-                    raise WazuhInternalError(1309)
-            affected.append({'hour': int(data[0]), 'alerts': alerts, 'totalAlerts': int(data[1]),
-                             'events': int(data[2]), 'syscheck': int(data[3]), 'firewall': int(data[4])})
-            alerts = []
-
-    return affected
-
 
 def get_daemons_stats_socket(socket: str, agents_list: Union[list[int], str] = None, last_id: int = None) -> dict:
     """Send message to Wazuh socket to get statistical information.
