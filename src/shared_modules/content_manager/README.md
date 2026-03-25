@@ -25,7 +25,7 @@ The Content Manager runs a two-stage pipeline for each scheduled or on-demand ex
 IndexerDownloader  →  UpdateIndexerCursor
 ```
 
-- **IndexerDownloader**: Fetches CVE documents from the Wazuh Indexer using Point-In-Time (PIT) pagination. Performs a full initial load on the first run and incremental updates on subsequent runs. Delivers each page directly to the `fileProcessingCallback` without writing intermediate files to disk. Sends an `indexer_complete` signal at the end of each cycle. See [INDEXER_DOWNLOADER.md](./doc/components/INDEXER_DOWNLOADER.md).
+- **IndexerDownloader**: Fetches CVE documents from the Wazuh Indexer using Point-In-Time (PIT) pagination. Performs a full initial load on the first run and incremental updates on subsequent runs. Supports parallel fetching via sliced PIT (`numSlices` config). Delivers each page as a structured `nlohmann::json` object directly to the `fileProcessingCallback`. Sends an `indexer_complete` signal at the end of each cycle. See [INDEXER_DOWNLOADER.md](./doc/components/INDEXER_DOWNLOADER.md).
 - **UpdateIndexerCursor**: Persists the final cursor value from the `indexer_complete` signal to the updater RocksDB database so the next run resumes from where the previous one ended.
 
 ## Use cases

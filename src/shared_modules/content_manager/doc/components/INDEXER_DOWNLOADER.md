@@ -4,7 +4,7 @@
 
 The [Indexer Downloader](../../src/components/IndexerDownloader.hpp) stage is part of the Content Manager orchestration and downloads content directly from the Wazuh Indexer using Point-In-Time (PIT) pagination. It is used by the Vulnerability Detection module to fetch CVE data from the `.cti-cves` index, replacing the CTI API as the CVE data source.
 
-Content is delivered synchronously to the `fileProcessingCallback` page by page, without writing intermediate files to disk.
+Content is delivered synchronously to the `fileProcessingCallback` as structured `nlohmann::json` objects page by page.
 
 ### Modes of operation
 
@@ -26,14 +26,40 @@ If the range query returns zero documents, the cycle completes without triggerin
 
 Each download cycle (initial or incremental) opens a single Point-In-Time on the target index with a keep-alive of `5m`. All page requests within the cycle use this PIT, ensuring a consistent snapshot of the index throughout the download. The PIT is always deleted when the cycle finishes, even in error cases.
 
+#### Sequential fetch (`numSlices` absent or 1)
+
 ```
 createPointInTime(index, "5m")
   → while pages remain:
-      search(pit, pageSize, query, sort, searchAfter)
-      → processPage() → fileProcessingCallback("indexer" message)
+      search(pit, pageSize, query, sort, searchAfter, sourceFilter)
+      → processPage() → fileProcessingCallback(json message)
       → persistCursor(highestOffsetSeen)
   → deletePointInTime(pit)
 ```
+
+#### Parallel fetch with sliced PIT (`numSlices` > 1)
+
+When `numSlices` is set to a value greater than 1, the downloader uses OpenSearch's slice API to divide the document set into N disjoint subsets via `hash(_id) % numSlices`. Each slice paginates independently with `search_after` on a shared PIT, and all slices run concurrently in separate threads.
+
+The `fileProcessingCallback` is serialized via a mutex (`m_callbackMutex`) so that only one thread processes a page at a time — this ensures safe writes to RocksDB and consistent global state. The speedup comes from overlapping network I/O with processing: while one thread processes its page, the others fetch their next pages concurrently.
+
+```
+createPointInTime(index, "5m")
+  → spawn N threads, each with slice {id: i, max: N}:
+      while pages remain in this slice:
+          search(pit, pageSize, query, sort, searchAfter, sourceFilter, slice)
+          → lock(m_callbackMutex)
+          → processPage() → fileProcessingCallback(json message)
+  → join all threads
+  → persistCursor(max offset across all slices)
+  → deletePointInTime(pit)
+```
+
+Sliced PIT works correctly on single-shard indices, producing even distribution regardless of shard count.
+
+### Source field filtering
+
+Each search request includes a `_source.excludes` filter that removes CVE5 fields not used by the scan pipeline (descriptions, references, credits, timeline, etc.). This reduces the JSON payload per CVE document by ~34%, lowering network transfer, JSON parsing overhead, and peak memory usage during the initial load.
 
 ### Cursor persistence
 
@@ -64,6 +90,7 @@ The `indexer` sub-object must be present under `configData` when `contentSource`
 |-------|------|-------------|
 | `index` | string | Target index name (e.g. `.cti-cves`) |
 | `pageSize` | integer | Documents per page. Default: `1000` |
+| `numSlices` | integer | Number of parallel PIT slices for initial load. Default: `1` (sequential). Recommended: `4` |
 | `hosts` | array | Indexer host URLs (e.g. `["https://localhost:9200"]`) |
 | `username` | string | Indexer username |
 | `password` | string | Indexer password |
@@ -93,7 +120,8 @@ Example:
                 "key": ""
             },
             "index": ".cti-cves",
-            "pageSize": 1000
+            "pageSize": 250,
+            "numSlices": 4
         }
     }
 }
@@ -108,4 +136,4 @@ The context fields related to this stage are:
 - `spRocksDB`: Used to read and persist the cursor (`CURRENT_OFFSET` column).
 - `spStopCondition`: Checked during the initial-load retry loop to abort cleanly on shutdown.
 - `data["cursor"]`: Set to the highest offset seen after each cycle. Read by `UpdateIndexerCursor` to persist the final cursor value.
-- `fileProcessingCallback`: Called once per page with an `"indexer"` message, and once at the end with an `"indexer_complete"` message.
+- `fileProcessingCallback`: Called once per page with an `"indexer"` JSON object, and once at the end with an `"indexer_complete"` JSON object. Messages are passed as `nlohmann::json` to avoid overhead.
