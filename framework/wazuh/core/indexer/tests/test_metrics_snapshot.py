@@ -62,6 +62,9 @@ import wazuh.core.indexer as _indexer_pkg
 _indexer_pkg.metrics_snapshot = _metrics_snapshot_module
 _indexer_pkg.metrics = _metrics_module
 
+sys.modules.setdefault("wazuh.core.indexer.metrics", _metrics_module)
+sys.modules.setdefault("wazuh.core.indexer.metrics_snapshot", _metrics_snapshot_module)
+
 
 TIMESTAMP = "2026-03-17T10:00:00Z"
 
@@ -99,8 +102,8 @@ def _make_server(node_name="node01", workers=None):
     """
     server = MagicMock()
     server.configuration = {
-        "node_name": node_name,       # node identifier → wazuh.cluster.node
-        "cluster_name": "wazuh",      # cluster name    → wazuh.cluster.name
+        "node_name": node_name,  # node identifier → wazuh.cluster.node
+        "cluster_name": "wazuh",  # cluster name    → wazuh.cluster.name
     }
     server.clients = workers or {}
     server.setup_task_logger.return_value = MagicMock()
@@ -289,7 +292,9 @@ class TestCollectCommsAllNodes:
         worker_result = _make_dapi_result([dict(REMOTED_STATS)])
 
         failing_dapi = AsyncMock()
-        failing_dapi.distribute_function.side_effect = RuntimeError("connection refused")
+        failing_dapi.distribute_function.side_effect = RuntimeError(
+            "connection refused"
+        )
         succeeding_dapi = AsyncMock()
         succeeding_dapi.distribute_function.return_value = worker_result
 
@@ -535,11 +540,23 @@ class TestAgentFieldMapping:
 
         doc = docs[0]
         for dropped in (
-            "manager", "node_name", "id", "name", "ip", "status",
-            "group", "mergedSum", "configSum", "dateAdd",
-            "lastKeepAlive", "group_config_status", "status_code",
+            "manager",
+            "node_name",
+            "id",
+            "name",
+            "ip",
+            "status",
+            "group",
+            "mergedSum",
+            "configSum",
+            "dateAdd",
+            "lastKeepAlive",
+            "group_config_status",
+            "status_code",
         ):
-            assert dropped not in doc, f"Raw field '{dropped}' should have been normalized away"
+            assert dropped not in doc, (
+                f"Raw field '{dropped}' should have been normalized away"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -862,9 +879,21 @@ class TestBulkActionShape:
         metrics_index = MetricsIndex(client=mock_client)
 
         docs = [
-            {"wazuh.agent.id": "001", "@timestamp": TIMESTAMP, "wazuh.cluster.node": "node01"},
-            {"wazuh.agent.id": "002", "@timestamp": TIMESTAMP, "wazuh.cluster.node": "node01"},
-            {"wazuh.agent.id": "003", "@timestamp": TIMESTAMP, "wazuh.cluster.node": "node01"},
+            {
+                "wazuh.agent.id": "001",
+                "@timestamp": TIMESTAMP,
+                "wazuh.cluster.node": "node01",
+            },
+            {
+                "wazuh.agent.id": "002",
+                "@timestamp": TIMESTAMP,
+                "wazuh.cluster.node": "node01",
+            },
+            {
+                "wazuh.agent.id": "003",
+                "@timestamp": TIMESTAMP,
+                "wazuh.cluster.node": "node01",
+            },
         ]
 
         captured_actions = []
@@ -873,7 +902,11 @@ class TestBulkActionShape:
             captured_actions.extend(list(actions))
             return (len(captured_actions), 0)
 
-        with patch("wazuh.core.indexer.metrics.async_bulk", side_effect=_capture_bulk):
+        with patch(
+            "wazuh.core.indexer.metrics.async_bulk",
+            new_callable=AsyncMock,
+            side_effect=_capture_bulk,
+        ):
             await metrics_index.bulk_index("wazuh-metrics-agents", docs, bulk_size=100)
 
         assert len(captured_actions) == len(docs)
@@ -895,7 +928,11 @@ class TestBulkActionShape:
             captured_actions.extend(list(actions))
             return (1, 0)
 
-        with patch("wazuh.core.indexer.metrics.async_bulk", side_effect=_capture_bulk):
+        with patch(
+            "wazuh.core.indexer.metrics.async_bulk",
+            new_callable=AsyncMock,
+            side_effect=_capture_bulk,
+        ):
             await metrics_index.bulk_index("wazuh-metrics-agents", docs, bulk_size=100)
 
         assert captured_actions[0]["_index"] == "wazuh-metrics-agents"
@@ -917,7 +954,11 @@ class TestBulkActionShape:
             captured_actions.extend(list(actions))
             return (2, 0)
 
-        with patch("wazuh.core.indexer.metrics.async_bulk", side_effect=_capture_bulk):
+        with patch(
+            "wazuh.core.indexer.metrics.async_bulk",
+            new_callable=AsyncMock,
+            side_effect=_capture_bulk,
+        ):
             await metrics_index.bulk_index("wazuh-metrics-agents", docs, bulk_size=100)
 
         for i, action in enumerate(captured_actions):
