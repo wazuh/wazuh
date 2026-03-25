@@ -118,3 +118,21 @@ Map role to user.
 4. Restart dashboard.
 
 User will only see Team_A agents.
+
+---
+
+## Agent Actions Reference
+
+The following RBAC actions control agent operations:
+
+| Action | Resources | Description |
+|--------|-----------|-------------|
+| `agent:read` | `agent:id`, `agent:group` | Read agent information |
+| `agent:create` | `*` | Register new agents |
+| `agent:delete` | `agent:id`, `agent:group` | Delete agents |
+| `agent:modify_group` | `agent:id`, `agent:group` | Assign/remove agents from groups |
+| `agent:restart` | `agent:id`, `agent:group` | Restart agents (requires agent v5.0.0+) |
+| `agent:reload` | `agent:id`, `agent:group` | Reload agent configuration without restart (requires agent v5.0.0+) |
+| `agent:upgrade` | `agent:id`, `agent:group` | Upgrade agents |
+
+The `agent:reload` action was introduced in v5.0.0 alongside the new control channel mechanism, replacing the previous Active Response-based restart approach.

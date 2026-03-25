@@ -86,6 +86,17 @@ int main(int argc, char **argv)
             return (UninstallService());
         } else if (strcmp(argv[1], "start") == 0) {
             return (local_start());
+        } else if (strcmp(argv[1], "service-restart") == 0) {
+            /* Invoked by control_run_detached() as a detached process.
+             * Sleep briefly so the calling service has time to send its "ok"
+             * response before we stop it, then perform stop + start. */
+            Sleep(1000);
+            os_stop_service();
+            while (CheckServiceRunning()) {
+                Sleep(500);
+            }
+            os_start_service();
+            return 0;
         } else if (strcmp(argv[1], "/?") == 0) {
             agent_help();
         } else if (strcmp(argv[1], "-h") == 0) {

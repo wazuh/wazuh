@@ -11,6 +11,7 @@ from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, Agent, \
     WazuhDBQueryGroup, create_upgrade_tasks, get_agents_info, get_groups, get_rbac_filters, send_restart_command, \
+    send_reload_command, \
     GROUP_FIELDS, GROUP_REQUIRED_FIELDS, GROUP_FILES_FIELDS, GROUP_FILES_REQUIRED_FIELDS
 from wazuh.core.wdb_http import get_wdb_http_client
 from wazuh.core.cluster.cluster import get_node
@@ -271,22 +272,26 @@ async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
         # Convert list of dictionaries to dictionary
         active_agents = {agent['id']: agent['version'] for agent in active_agents}
 
-        with WazuhQueue(common.AR_SOCKET) as wq:
-            for agent_id in agent_list:
-                # Add non existent and inactive agents to failed_items
-                if agent_id not in system_agents:
-                    result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
-                    continue
+        for agent_id in agent_list:
+            # Add non existent and inactive agents to failed_items
+            if agent_id not in system_agents:
+                result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
+                continue
 
-                if agent_id not in active_agents:
-                    result.add_failed_item(id_=agent_id, error=WazuhError(1707))
-                    continue
+            if agent_id not in active_agents:
+                result.add_failed_item(id_=agent_id, error=WazuhError(1707))
+                continue
 
-                try:
-                    send_restart_command(agent_id, active_agents[agent_id], wq)
-                    result.affected_items.append(agent_id)
-                except WazuhException as e:
-                    result.add_failed_item(id_=agent_id, error=e)
+            version = active_agents[agent_id]
+            if not version or WazuhVersion(version) < WazuhVersion('v5.0.0'):
+                result.add_failed_item(id_=agent_id, error=WazuhError(1761))
+                continue
+
+            try:
+                send_restart_command(agent_id)
+                result.affected_items.append(agent_id)
+            except WazuhException as e:
+                result.add_failed_item(id_=agent_id, error=e)
 
         result.total_affected_items = len(result.affected_items)
         result.affected_items.sort(key=int)
@@ -330,6 +335,105 @@ async def restart_agents_by_group(agent_list: list = None) -> AffectedItemsWazuh
         Affected items.
     """
     return await restart_agents(agent_list=agent_list)
+
+
+@expose_resources(actions=["agent:reload"], resources=["agent:id:{agent_list}"],
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]},
+                  post_proc_func=async_list_handler)
+async def reload_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
+    """Reload a list of agents.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of agents IDs.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Affected items.
+    """
+    result = AffectedItemsWazuhResult(all_msg='Reload command was sent to all agents',
+                                      some_msg='Reload command was not sent to some agents',
+                                      none_msg='Reload command was not sent to any agent'
+                                      )
+    agent_list = set(agent_list)
+
+    if agent_list:
+        system_agents = get_agents_info()
+        rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=list(agent_list))
+
+        async with get_wdb_http_client() as wdb_client:
+            active_agents = await wdb_client.get_agents_restart_info(
+                rbac_filters['filters']['rbac_ids'],
+                rbac_filters['rbac_negate']
+            )
+
+        # Convert list of dictionaries to dictionary
+        active_agents = {agent['id']: agent['version'] for agent in active_agents}
+
+        for agent_id in agent_list:
+            if agent_id not in system_agents:
+                result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
+                continue
+
+            if agent_id not in active_agents:
+                result.add_failed_item(id_=agent_id, error=WazuhError(1707))
+                continue
+
+            version = active_agents[agent_id]
+            if not version or WazuhVersion(version) < WazuhVersion('v5.0.0'):
+                result.add_failed_item(id_=agent_id, error=WazuhError(1761))
+                continue
+
+            try:
+                send_reload_command(agent_id)
+                result.affected_items.append(agent_id)
+            except WazuhException as e:
+                result.add_failed_item(id_=agent_id, error=e)
+
+        result.total_affected_items = len(result.affected_items)
+        result.affected_items.sort(key=int)
+
+    return result
+
+
+@expose_resources(actions=['cluster:read', 'agent:reload'], resources=[f'node:id:{node_id}', 'agent:id:{agent_list}'],
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707], 'force': True},
+                  post_proc_func=async_list_handler)
+async def reload_agents_by_node(agent_list: list = None) -> AffectedItemsWazuhResult:
+    """Reload all agents belonging to a node.
+
+    Parameters
+    ----------
+    agent_list : list, optional
+        List of agents. Default `None`
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Affected items.
+    """
+    return await reload_agents(agent_list=agent_list)
+
+
+@expose_resources(actions=["agent:reload"], resources=["agent:id:{agent_list}"],
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707], 'force': True},
+                  post_proc_func=async_list_handler)
+async def reload_agents_by_group(agent_list: list = None) -> AffectedItemsWazuhResult:
+    """Reload all agents belonging to a group.
+
+    Parameters
+    ----------
+    agent_list : list, optional
+        List of agents. Default `None`
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Affected items.
+    """
+    return await reload_agents(agent_list=agent_list)
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],

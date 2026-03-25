@@ -31,6 +31,7 @@ with patch('wazuh.core.common.wazuh_uid'):
             get_distinct_agents, get_file_conf, get_full_overview, get_group_files, get_outdated_agents, \
             get_upgrade_result, remove_agent_from_group, remove_agent_from_groups, remove_agents_from_group, \
             restart_agents, upgrade_agents, upload_group_file, restart_agents_by_node, reconnect_agents, \
+            reload_agents, reload_agents_by_node, \
             check_uninstall_permission, ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST, ERROR_CODES_UPGRADE_SOCKET
         from wazuh.core.agent import Agent
         from wazuh import WazuhError, WazuhException, WazuhInternalError
@@ -237,8 +238,10 @@ def test_agent_reconnect_agents(socket_mock, send_mock, agents_info_mock, reconn
 
 
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [
-    (['001', '002'], ['001', '002'], None),
-    (['001', '500'], ['001'], 1701)
+    (['010'],        ['010'], None),   # v5.0.0 - succeeds
+    (['001', '002'], [],      1761),   # v4.x agents - version guard rejects both
+    (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
+    (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
 ])
 @patch('wazuh.agent.send_restart_command')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
@@ -266,8 +269,10 @@ async def test_agent_restart_agents(socket_mock, send_http_mock, agents_info_moc
 
 
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [
-    (['001', '002'], ['001', '002'], 1703),
-    (['001', '500'], ['001'], 1701)
+    (['010'],        ['010'], None),   # v5.0.0 - succeeds
+    (['001', '002'], [],      1761),   # v4.x agents - version guard rejects both
+    (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
+    (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
 ])
 @patch('wazuh.agent.send_restart_command')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
@@ -287,6 +292,68 @@ async def test_agent_restart_agents_by_node(socket_mock, send_http_mock, agents_
         The expected error code.
     """
     result = await restart_agents_by_node(agent_list)
+    assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
+    assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
+    if result.failed_items:
+        code = next(iter(result.failed_items.keys())).code
+        assert code == error_code, f'"{error_code}" code was expected but "{code}" was received.'
+
+
+@pytest.mark.parametrize('agent_list, expected_items, error_code', [
+    (['010'],        ['010'], None),   # v5.0.0 - succeeds
+    (['001', '002'], [],      1761),   # v4.x agents - version guard rejects both
+    (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
+    (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
+])
+@patch('wazuh.agent.send_reload_command')
+@patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
+@patch('wazuh.core.wdb_http.WazuhDBHTTPClient._post', side_effect=send_msg_to_wdb_http_post_restartinfo)
+@patch('socket.socket.connect')
+async def test_agent_reload_agents(socket_mock, send_http_mock, agents_info_mock, send_reload_mock, agent_list,
+                                   expected_items, error_code):
+    """Test `reload_agents` function from agent module.
+
+    Parameters
+    ----------
+    agent_list : List of str
+        List of agent ID's.
+    expected_items : List of str
+        List of expected agent ID's returned by 'reload_agents'.
+    error_code : int
+        The expected error code.
+    """
+    result = await reload_agents(agent_list)
+    assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
+    assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
+    if result.failed_items:
+        code = next(iter(result.failed_items.keys())).code
+        assert code == error_code, f'"{error_code}" code was expected but "{code}" was received.'
+
+
+@pytest.mark.parametrize('agent_list, expected_items, error_code', [
+    (['010'],        ['010'], None),   # v5.0.0 - succeeds
+    (['001', '002'], [],      1761),   # v4.x agents - version guard rejects both
+    (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
+    (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
+])
+@patch('wazuh.agent.send_reload_command')
+@patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
+@patch('wazuh.core.wdb_http.WazuhDBHTTPClient._post', side_effect=send_msg_to_wdb_http_post_restartinfo)
+@patch('socket.socket.connect')
+async def test_agent_reload_agents_by_node(socket_mock, send_http_mock, agents_info_mock, send_reload_mock,
+                                           agent_list, expected_items, error_code):
+    """Test `reload_agents_by_node` function from agent module.
+
+    Parameters
+    ----------
+    agent_list : List of str
+        List of agent ID's.
+    expected_items : List of str
+        List of expected agent ID's returned by 'reload_agents_by_node'.
+    error_code : int
+        The expected error code.
+    """
+    result = await reload_agents_by_node(agent_list)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
     if result.failed_items:

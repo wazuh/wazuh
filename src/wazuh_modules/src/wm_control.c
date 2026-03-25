@@ -9,21 +9,17 @@
  * Foundation.
  */
 
-#ifdef WAZUH_UNIT_TESTING
-// Remove static qualifier when unit testing
-#define STATIC
-#else
-#define STATIC static
-#endif
+#if defined(__linux__) || defined(__MACH__) || defined(FreeBSD) || defined(OpenBSD)
 
-#if defined (__linux__) || defined (__MACH__) || defined(FreeBSD) || defined(OpenBSD)
 #include "wm_control.h"
 #include <cJSON.h>
 #include "file_op.h"
 #include "os_net.h"
+
 static void *wm_control_main();
 static void wm_control_destroy();
 cJSON *wm_control_dump();
+static void *process_control();
 
 const wm_context WM_CONTROL_CONTEXT = {
     .name = "control",
@@ -35,18 +31,21 @@ const wm_context WM_CONTROL_CONTEXT = {
     .query = NULL,
 };
 
-
-void *wm_control_main(){
+static void *wm_control_main() {
     mtinfo(WM_CONTROL_LOGTAG, "Starting control thread.");
+#ifdef CLIENT
+    w_create_thread(process_control, NULL);
+#else
     process_control();
+#endif
     return NULL;
 }
 
-void wm_control_destroy(){
+static void wm_control_destroy() {
 }
 
-wmodule *wm_control_read(){
-    wmodule * module;
+wmodule *wm_control_read() {
+    wmodule *module;
 
     os_calloc(1, sizeof(wmodule), module);
     module->context = &WM_CONTROL_CONTEXT;
@@ -58,118 +57,16 @@ wmodule *wm_control_read(){
 cJSON *wm_control_dump() {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_wd = cJSON_CreateObject();
-    cJSON_AddStringToObject(wm_wd,"enabled","yes");
-    cJSON_AddItemToObject(root,"wazuh_control",wm_wd);
+    cJSON_AddStringToObject(wm_wd, "enabled", "yes");
+    cJSON_AddItemToObject(root, "wazuh_control", wm_wd);
     return root;
 }
 
-void *process_control(){
-    int sock;
-    int peer;
-    char *buffer = NULL;
-    char *response = NULL;
-    ssize_t length;
-    fd_set fdset;
-
-    if (sock = OS_BindUnixDomainWithPerms(CONTROL_SOCK, SOCK_STREAM, OS_MAXSTR, getuid(), wm_getGroupID(), 0660), sock < 0) {
-        mterror(WM_CONTROL_LOGTAG, "Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
-        return NULL;
-    }
-
-    while (1) {
-
-        // Wait for socket
-        FD_ZERO(&fdset);
-        FD_SET(sock, &fdset);
-
-        switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
-        case -1:
-            if (errno != EINTR) {
-                mterror_exit(WM_CONTROL_LOGTAG, "At process_control(): select(): %s", strerror(errno));
-            }
-
-            continue;
-
-        case 0:
-            continue;
-        }
-
-        if (peer = accept(sock, NULL, NULL), peer < 0) {
-            if (errno != EINTR) {
-                mterror(WM_CONTROL_LOGTAG, "At process_control(): accept(): %s", strerror(errno));
-            }
-
-            continue;
-        }
-
-        os_calloc(OS_MAXSTR + 1, sizeof(char), buffer);
-        switch (length = OS_RecvUnix(peer, OS_MAXSTR, buffer), length) {
-        case -1:
-            mterror(WM_CONTROL_LOGTAG, "At process_control(): OS_RecvUnix(): %s", strerror(errno));
-            break;
-
-        case 0:
-            mtinfo(WM_CONTROL_LOGTAG, "Empty message from local client.");
-            close(peer);
-            break;
-
-        case OS_MAXLEN:
-            mterror(WM_CONTROL_LOGTAG, "Received message > %i", MAX_DYN_STR);
-            close(peer);
-            break;
-
-        default:
-            wm_control_dispatch(buffer, &response);
-            if(response){
-                OS_SendUnix(peer, response, 0);
-                free(response);
-            }
-            else{
-                OS_SendUnix(peer,"Err",4);
-            }
-            close(peer);
-        }
-        free(buffer);
-    }
-
-    close(sock);
-    return NULL;
-}
-
-size_t wm_control_dispatch(char *command, char **output) {
-    // Parse command and arguments
-    char *args = strchr(command, ' ');
-    if (args) {
-        *args = '\0';
-        args++;
-    }
-
-    mtdebug2(WM_CONTROL_LOGTAG, "Dispatching command: '%s'", command);
-
-    if (strcmp(command, "restart") == 0) {
-        return wm_control_execute_action("restart", output);
-
-    } else if (strcmp(command, "reload") == 0) {
-        return wm_control_execute_action("reload", output);
-
-    } else {
-        mterror(WM_CONTROL_LOGTAG, "Unknown command: '%s'", command);
-        os_strdup("Err", *output);
-        return strlen(*output);
-    }
-}
-
-/**
- * @brief Check if systemd is available as the init system
- * @return true if systemd is available, false otherwise
- */
-STATIC bool wm_control_check_systemd() {
-    // Check if systemd system directory exists
+bool wm_control_check_systemd() {
     if (access("/run/systemd/system", F_OK) != 0) {
         return false;
     }
 
-    // Check if systemd is PID 1
     FILE *fp = fopen("/proc/1/comm", "r");
     if (fp) {
         char init_name[256];
@@ -186,20 +83,15 @@ STATIC bool wm_control_check_systemd() {
     return false;
 }
 
-/**
- * @brief Wait for wazuh-manager service to be in active state
- *
- * This is needed before attempting a reload to ensure the service is ready.
- * Waits up to 60 seconds for the service to become active.
- *
- * @return true if service is active, false otherwise
- */
-STATIC bool wm_control_wait_for_service_active() {
+bool wm_control_wait_for_service_active(const char *service) {
     const int timeout = 60;
     int elapsed = 0;
+    char cmd[256];
+
+    snprintf(cmd, sizeof(cmd), "systemctl is-active %s 2>/dev/null", service);
 
     while (elapsed < timeout) {
-        FILE *fp = popen("systemctl is-active wazuh-manager 2>/dev/null", "r");
+        FILE *fp = popen(cmd, "r");
         if (fp) {
             char state[256];
             if (fgets(state, sizeof(state), fp)) {
@@ -207,7 +99,7 @@ STATIC bool wm_control_wait_for_service_active() {
 
                 if (strcmp(state, "inactive") == 0 || strcmp(state, "failed") == 0) {
                     pclose(fp);
-                    mterror(WM_CONTROL_LOGTAG, "Service wazuh-manager is in state '%s', cannot reload", state);
+                    mterror(WM_CONTROL_LOGTAG, "Service %s is in state '%s', cannot reload", service, state);
                     return false;
                 }
 
@@ -223,52 +115,168 @@ STATIC bool wm_control_wait_for_service_active() {
         elapsed++;
     }
 
-    mterror(WM_CONTROL_LOGTAG, "Service wazuh-manager is not active after waiting %d seconds", timeout);
+    mterror(WM_CONTROL_LOGTAG, "Service %s is not active after waiting %d seconds", service, timeout);
     return false;
 }
 
-size_t wm_control_execute_action(const char *action, char **output) {
+size_t wm_control_execute_action(const char *action, const char *service, char **output) {
     bool use_systemd = wm_control_check_systemd();
     char *exec_cmd[4] = {NULL};
 
     if (use_systemd) {
         exec_cmd[0] = "/usr/bin/systemctl";
         exec_cmd[1] = (char *)action;
-        exec_cmd[2] = "wazuh-manager";
-        mtinfo(WM_CONTROL_LOGTAG, "Executing '%s' on manager using systemctl", action);
+        exec_cmd[2] = (char *)service;
+        mtinfo(WM_CONTROL_LOGTAG, "Executing '%s' on %s using systemctl", action, service);
     } else {
         exec_cmd[0] = "bin/wazuh-control";
         exec_cmd[1] = (char *)action;
-        mtinfo(WM_CONTROL_LOGTAG, "Executing '%s' on manager using wazuh-control", action);
+        mtinfo(WM_CONTROL_LOGTAG, "Executing '%s' on %s using wazuh-control", action, service);
     }
 
     switch (fork()) {
         case -1:
-            // Fork failed
             mterror(WM_CONTROL_LOGTAG, "Cannot fork for %s", action);
             os_strdup("err Cannot fork", *output);
             return strlen(*output);
         case 0:
-            // Child process - this code path never returns to the caller
-
-            // For reload with systemd, wait for service to be active first
             if (use_systemd && strcmp(action, "reload") == 0) {
-                if (!wm_control_wait_for_service_active()) {
-                    mterror(WM_CONTROL_LOGTAG, "Service not active for reload");
+                if (!wm_control_wait_for_service_active(service)) {
+                    mterror(WM_CONTROL_LOGTAG, "Service %s not active for reload", service);
                     _exit(1);
                 }
             }
-
-            // Execute command - either replaces process or exits on error
             if (execv(exec_cmd[0], exec_cmd) < 0) {
                 mterror(WM_CONTROL_LOGTAG, "Error executing %s command: %s (%d)", action, strerror(errno), errno);
             }
-            _exit(1);  // Always exit if execv fails or returns
+            _exit(1);
         default:
-            // Parent process - return success immediately
             os_strdup("ok ", *output);
             return strlen(*output);
     }
+}
+
+size_t wm_control_dispatch(char *command, char **output) {
+    char *args = strchr(command, ' ');
+    if (args) {
+        *args = '\0';
+        args++;
+    }
+
+    mtdebug2(WM_CONTROL_LOGTAG, "Dispatching command: '%s'", command);
+
+#ifdef CLIENT
+    const char *service = "wazuh-agent";
+#else
+    const char *service = "wazuh-manager";
+#endif
+
+    if (strcmp(command, "restart") == 0) {
+        return wm_control_execute_action("restart", service, output);
+
+    } else if (strcmp(command, "reload") == 0) {
+        return wm_control_execute_action("reload", service, output);
+
+    } else {
+        mterror(WM_CONTROL_LOGTAG, "Unknown command: '%s'", command);
+        os_strdup("Err", *output);
+        return strlen(*output);
+    }
+}
+
+static void *process_control() {
+    int sock;
+    int peer;
+    char *buffer = NULL;
+    char *response = NULL;
+    ssize_t length;
+    fd_set fdset;
+
+    if (sock = OS_BindUnixDomainWithPerms(CONTROL_SOCK, SOCK_STREAM, OS_MAXSTR, getuid(), wm_getGroupID(), 0660), sock < 0) {
+        mterror(WM_CONTROL_LOGTAG, "Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
+        return NULL;
+    }
+
+    while (1) {
+
+        FD_ZERO(&fdset);
+        FD_SET(sock, &fdset);
+
+        switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
+        case -1:
+            if (errno != EINTR) {
+                mterror_exit(WM_CONTROL_LOGTAG, "At process_control(): select(): %s", strerror(errno));
+            }
+            continue;
+
+        case 0:
+            continue;
+        }
+
+        if (peer = accept(sock, NULL, NULL), peer < 0) {
+            if (errno != EINTR) {
+                mterror(WM_CONTROL_LOGTAG, "At process_control(): accept(): %s", strerror(errno));
+            }
+            continue;
+        }
+
+        os_calloc(OS_MAXSTR + 1, sizeof(char), buffer);
+
+#ifdef CLIENT
+        switch (length = OS_RecvSecureTCP(peer, buffer, OS_MAXSTR), length) {
+        case -1:
+            mterror(WM_CONTROL_LOGTAG, "At process_control(): OS_RecvSecureTCP(): %s", strerror(errno));
+            break;
+        case 0:
+            mtinfo(WM_CONTROL_LOGTAG, "Empty message from local client.");
+            close(peer);
+            break;
+        case OS_SOCKTERR:
+            mterror(WM_CONTROL_LOGTAG, "Received message > %i", MAX_DYN_STR);
+            close(peer);
+            break;
+        default:
+            buffer[length] = '\0';
+            wm_control_dispatch(buffer, &response);
+            if (response) {
+                OS_SendSecureTCP(peer, strlen(response), response);
+                free(response);
+            } else {
+                OS_SendSecureTCP(peer, 3, "Err");
+            }
+            close(peer);
+        }
+#else
+        switch (length = OS_RecvUnix(peer, OS_MAXSTR, buffer), length) {
+        case -1:
+            mterror(WM_CONTROL_LOGTAG, "At process_control(): OS_RecvUnix(): %s", strerror(errno));
+            break;
+        case 0:
+            mtinfo(WM_CONTROL_LOGTAG, "Empty message from local client.");
+            close(peer);
+            break;
+        case OS_MAXLEN:
+            mterror(WM_CONTROL_LOGTAG, "Received message > %i", MAX_DYN_STR);
+            close(peer);
+            break;
+        default:
+            wm_control_dispatch(buffer, &response);
+            if (response) {
+                OS_SendUnix(peer, response, 0);
+                free(response);
+            } else {
+                OS_SendUnix(peer, "Err", 4);
+            }
+            close(peer);
+        }
+#endif
+
+        free(buffer);
+        buffer = NULL;
+    }
+
+    close(sock);
+    return NULL;
 }
 
 #endif

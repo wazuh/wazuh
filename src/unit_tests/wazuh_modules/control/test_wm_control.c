@@ -78,7 +78,7 @@ static void test_dispatch_restart(void **state) {
     expect_string(__wrap__mtdebug2, formatted_msg, "Dispatching command: 'restart'");
     expect_check_systemd_not_available();
     expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
-    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on manager using wazuh-control");
+    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on wazuh-manager using wazuh-control");
     will_return(__wrap_fork, 1234);
 
     size_t ret = wm_control_dispatch(command, &output);
@@ -98,7 +98,7 @@ static void test_dispatch_reload(void **state) {
     expect_string(__wrap__mtdebug2, formatted_msg, "Dispatching command: 'reload'");
     expect_check_systemd_not_available();
     expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
-    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'reload' on manager using wazuh-control");
+    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'reload' on wazuh-manager using wazuh-control");
     will_return(__wrap_fork, 5678);
 
     size_t ret = wm_control_dispatch(command, &output);
@@ -119,7 +119,7 @@ static void test_dispatch_restart_with_args(void **state) {
     expect_string(__wrap__mtdebug2, formatted_msg, "Dispatching command: 'restart'");
     expect_check_systemd_not_available();
     expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
-    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on manager using wazuh-control");
+    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on wazuh-manager using wazuh-control");
     will_return(__wrap_fork, 1234);
 
     size_t ret = wm_control_dispatch(command, &output);
@@ -159,13 +159,13 @@ static void test_execute_action_fork_fails(void **state) {
 
     expect_check_systemd_not_available();
     expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
-    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on manager using wazuh-control");
+    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on wazuh-manager using wazuh-control");
 
     will_return(__wrap_fork, -1);
     expect_string(__wrap__mterror, tag, WM_CONTROL_TEST_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "Cannot fork for restart");
 
-    size_t ret = wm_control_execute_action("restart", &output);
+    size_t ret = wm_control_execute_action("restart", "wazuh-manager", &output);
 
     assert_non_null(output);
     assert_string_equal(output, "err Cannot fork");
@@ -179,11 +179,11 @@ static void test_execute_action_restart_no_systemd(void **state) {
 
     expect_check_systemd_not_available();
     expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
-    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on manager using wazuh-control");
+    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on wazuh-manager using wazuh-control");
 
     will_return(__wrap_fork, 1234); /* Simulate parent process */
 
-    size_t ret = wm_control_execute_action("restart", &output);
+    size_t ret = wm_control_execute_action("restart", "wazuh-manager", &output);
 
     assert_non_null(output);
     assert_string_equal(output, "ok ");
@@ -197,11 +197,11 @@ static void test_execute_action_restart_systemd(void **state) {
 
     expect_check_systemd_available();
     expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
-    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on manager using systemctl");
+    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'restart' on wazuh-manager using systemctl");
 
     will_return(__wrap_fork, 1234); /* Simulate parent process */
 
-    size_t ret = wm_control_execute_action("restart", &output);
+    size_t ret = wm_control_execute_action("restart", "wazuh-manager", &output);
 
     assert_non_null(output);
     assert_string_equal(output, "ok ");
@@ -215,11 +215,11 @@ static void test_execute_action_reload_no_systemd(void **state) {
 
     expect_check_systemd_not_available();
     expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
-    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'reload' on manager using wazuh-control");
+    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'reload' on wazuh-manager using wazuh-control");
 
     will_return(__wrap_fork, 5678); /* Simulate parent process */
 
-    size_t ret = wm_control_execute_action("reload", &output);
+    size_t ret = wm_control_execute_action("reload", "wazuh-manager", &output);
 
     assert_non_null(output);
     assert_string_equal(output, "ok ");
@@ -233,11 +233,11 @@ static void test_execute_action_reload_systemd(void **state) {
 
     expect_check_systemd_available();
     expect_string(__wrap__mtinfo, tag, WM_CONTROL_TEST_LOGTAG);
-    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'reload' on manager using systemctl");
+    expect_string(__wrap__mtinfo, formatted_msg, "Executing 'reload' on wazuh-manager using systemctl");
 
     will_return(__wrap_fork, 5678); /* Simulate parent process */
 
-    size_t ret = wm_control_execute_action("reload", &output);
+    size_t ret = wm_control_execute_action("reload", "wazuh-manager", &output);
 
     assert_non_null(output);
     assert_string_equal(output, "ok ");

@@ -1222,29 +1222,72 @@ def test_agent_get_stats_ko(socket_mock, send_mock, mock_wazuh_socket):
         agent.get_stats('logcollector')
 
 
-@pytest.mark.parametrize('agents_list, versions_list', [
-    (['001', '002', '003', '004'],
-     [{'version': ver} for ver in ['Wazuh v4.2.0', 'Wazuh v4.0.0', 'Wazuh v4.2.1', 'Wazuh v3.13.2']])
+@pytest.mark.parametrize('agent_id, mock_response, should_raise', [
+    ('001', b"ok ",                False),  # Wazuh v4.2.0 - socket succeeds
+    ('002', b"ok ",                False),  # Wazuh v4.0.0 - socket succeeds
+    ('003', b"ok ",                False),  # Wazuh v4.2.1 - socket succeeds
+    ('004', b"err Restart failed", True),   # Wazuh v3.13.2 - socket returns error
+    ('010', b"ok ",                False),  # v5.0.0 - socket succeeds
 ])
-@patch('wazuh.core.agent.WazuhQueue.send_msg_to_agent')
-@patch('wazuh.core.agent.WazuhQueue.__init__', return_value=None)
-def test_send_restart_command(wq_mock, wq_send_msg, agents_list, versions_list):
-    """Test that restart_command calls send_msg_to_agent with correct params.
+@patch('wazuh.core.agent.WazuhSocket')
+def test_send_restart_command(mock_socket_cls, agent_id, mock_response, should_raise):
+    """Test that send_restart_command sends the correct payload and handles responses.
 
     Parameters
     ----------
-    agents_list : list
-        List of agents' ids to test the send restart command with.
-    versions_list : list
-        List of agents' versions to test whether the message sent was the correct one or not.
+    agent_id : str
+        Agent ID to send the restart command to.
+    mock_response : bytes
+        Mocked response from the socket.
+    should_raise : bool
+        Whether the function should raise WazuhInternalError.
     """
-    with patch('wazuh.core.agent.Agent.get_basic_information', side_effect=versions_list):
-        for agent_id, agent_version in zip(agents_list, versions_list):
-            wq = WazuhQueue(common.AR_SOCKET)
-            send_restart_command(agent_id, agent_version['version'], wq)
-            expected_msg = WazuhQueue.RESTART_AGENTS_JSON if WazuhVersion(
-                agent_version['version']) >= WazuhVersion(common.AR_LEGACY_VERSION) else WazuhQueue.RESTART_AGENTS
-            wq_send_msg.assert_called_with(expected_msg, agent_id)
+    mock_instance = mock_socket_cls.return_value
+    mock_instance.__enter__.return_value = mock_instance
+    mock_instance.receive.return_value = mock_response
+
+    if should_raise:
+        with pytest.raises(WazuhInternalError):
+            send_restart_command(agent_id)
+    else:
+        result = send_restart_command(agent_id)
+        mock_socket_cls.assert_called_with(common.REMOTED_SOCKET)
+        mock_instance.send.assert_called_with(f"{agent_id} control restart".encode())
+        assert result == mock_response.decode()
+
+
+@pytest.mark.parametrize('agent_id, mock_response, should_raise', [
+    ('001', b"ok ",                False),  # Wazuh v4.2.0 agent - socket succeeds
+    ('002', b"ok ",                False),  # Wazuh v4.0.0 agent - socket succeeds
+    ('003', b"ok ",                False),  # Wazuh v4.2.1 agent - socket succeeds
+    ('004', b"err Reload failed",  True),   # Wazuh v3.13.2 agent - socket returns error
+    ('010', b"ok ",                False),  # v5.0.0 agent - socket succeeds
+])
+@patch('wazuh.core.agent.WazuhSocket')
+def test_send_reload_command(mock_socket_cls, agent_id, mock_response, should_raise):
+    """Test that send_reload_command sends the correct payload and handles responses.
+
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID to send the reload command to.
+    mock_response : bytes
+        Mocked response from the socket.
+    should_raise : bool
+        Whether the function should raise WazuhInternalError.
+    """
+    mock_instance = mock_socket_cls.return_value
+    mock_instance.__enter__.return_value = mock_instance
+    mock_instance.receive.return_value = mock_response
+
+    if should_raise:
+        with pytest.raises(WazuhInternalError):
+            send_reload_command(agent_id)
+    else:
+        result = send_reload_command(agent_id)
+        mock_socket_cls.assert_called_with(common.REMOTED_SOCKET)
+        mock_instance.send.assert_called_with(f"{agent_id} control reload".encode())
+        assert result == mock_response.decode()
 
 
 def test_get_agents_info():
