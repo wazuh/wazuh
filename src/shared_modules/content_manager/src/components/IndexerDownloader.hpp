@@ -157,7 +157,7 @@ private:
         FileProcessingResult result;
         {
             std::lock_guard<std::mutex> lock(m_callbackMutex);
-            result = context.spUpdaterBaseContext->fileProcessingCallback(message.dump());
+            result = context.spUpdaterBaseContext->fileProcessingCallback(std::move(message));
         }
         if (!std::get<2>(result))
         {
@@ -612,7 +612,7 @@ public:
         finalMsg["cursor"] = cursor;
         finalMsg["changed"] = (totalProcessed > 0);
         finalMsg["data"] = nlohmann::json::array();
-        const auto result = context->spUpdaterBaseContext->fileProcessingCallback(finalMsg.dump());
+        const auto result = context->spUpdaterBaseContext->fileProcessingCallback(std::move(finalMsg));
         if (!std::get<2>(result))
         {
             logWarn(WM_CONTENTUPDATER,
