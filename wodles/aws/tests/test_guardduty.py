@@ -231,6 +231,46 @@ def test_aws_guardduty_bucket_reformat_msg(mock_custom_bucket, mock_type, mock_r
         assert [event] == formatted_event
 
 
+@pytest.mark.parametrize('guardduty_type, passed_account_id, self_account_id, db_has_record, expected_result', [
+    ("GuardDutyNative", "819751203818", "999999999999", True, True),
+    ("GuardDutyNative", "819751203818", "999999999999", False, False),
+    ("GuardDutyKinesis", "819751203818", "999999999999", True, True),
+])
+@patch('aws_bucket.AWSCustomBucket.already_processed')
+@patch('guardduty.AWSGuardDutyBucket.check_guardduty_type')
+@patch('aws_bucket.AWSCustomBucket.__init__')
+def test_aws_guardduty_bucket_already_processed(mock_custom_bucket, mock_type, mock_parent_already_processed,
+                                                 guardduty_type, passed_account_id, self_account_id,
+                                                 db_has_record, expected_result):
+    """Test 'already_processed' uses the passed aws_account_id for GuardDutyNative."""
+    instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)
+    instance.type = guardduty_type
+    instance.aws_account_id = self_account_id
+    instance.db_table_name = 'guardduty'
+    instance.sql_already_processed = """SELECT count(*) FROM {table_name}
+        WHERE bucket_path=:bucket_path AND aws_account_id=:aws_account_id AND log_key=:log_key;"""
+    instance.bucket_path = 'test-bucket'
+
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = (1 if db_has_record else 0,)
+    instance.db_cursor = MagicMock()
+    instance.db_cursor.execute.return_value = mock_cursor
+
+    mock_parent_already_processed.return_value = db_has_record
+
+    log_key = "AWSLogs/819751203818/GuardDuty/us-east-1/2026/03/19/some-uuid.jsonl.gz"
+    result = instance.already_processed(log_key, passed_account_id, utils.TEST_REGION)
+    assert result == expected_result
+
+    if guardduty_type == "GuardDutyNative":
+        instance.db_cursor.execute.assert_called_once()
+        call_args = instance.db_cursor.execute.call_args
+        assert call_args[0][1]['aws_account_id'] == passed_account_id
+        mock_parent_already_processed.assert_not_called()
+    else:
+        mock_parent_already_processed.assert_called_once()
+
+
 @pytest.mark.parametrize('guardduty_type, start_after, expected_start_after', [
     ("GuardDutyNative",
      "AWSLogs/123456789123/GuardDuty/us-east-1/2026/03/19/9f7b0b8c-5ec8-32ec-8e77-c738515b4f6f.jsonl.gz",

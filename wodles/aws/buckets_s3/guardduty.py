@@ -58,6 +58,16 @@ class AWSGuardDutyBucket(AWSCustomBucket):
         else:
             return self.prefix
 
+    def already_processed(self, downloaded_file, aws_account_id, aws_region, **kwargs):
+        if self.type == "GuardDutyNative":
+            cursor = self.db_cursor.execute(
+                self.sql_already_processed.format(table_name=self.db_table_name), {
+                    'bucket_path': self.bucket_path,
+                    'aws_account_id': aws_account_id,
+                    'log_key': downloaded_file})
+            return cursor.fetchone()[0] > 0
+        return AWSCustomBucket.already_processed(self, downloaded_file, aws_account_id, aws_region, **kwargs)
+
     def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False, custom_delimiter='', **kwargs):
         filter_args = AWSCustomBucket.build_s3_filter_args(
             self, aws_account_id, aws_region, iterating, custom_delimiter, **kwargs)
