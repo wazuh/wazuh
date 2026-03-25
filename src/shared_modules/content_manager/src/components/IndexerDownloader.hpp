@@ -353,6 +353,9 @@ private:
         {
             try
             {
+                // Each slice gets its own connector to avoid sharing HTTP state across threads.
+                IndexerConnectorSync sliceConnector(m_config.at("indexer"));
+
                 const nlohmann::json sliceParam = {{"id", sliceId}, {"max", numSlices}};
                 std::optional<nlohmann::json> searchAfter = std::nullopt;
                 size_t sliceProcessed = 0;
@@ -362,7 +365,7 @@ private:
                 while (true)
                 {
                     const auto hitsObj =
-                        syncConnector.search(pit, pageSize, query, sort, searchAfter, sourceFilter, sliceParam);
+                        sliceConnector.search(pit, pageSize, query, sort, searchAfter, sourceFilter, sliceParam);
                     const auto& hitArray = hitsObj.at("hits");
 
                     if (!hitArray.is_array() || hitArray.empty())
