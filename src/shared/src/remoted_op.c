@@ -37,6 +37,39 @@ char * get_os_arch(char * os_header) {
 }
 
 /**
+ * @brief Extracts os_major and os_minor from a version string.
+ *        Handles formats like "10.0", "22.04", and SUSE "15-SP7".
+ *        Output parameters are set to allocated strings or left unchanged.
+ *
+ * @param[in] version The version string to parse.
+ * @param[out] os_major Pointer to receive the major version string.
+ * @param[out] os_minor Pointer to receive the minor version string.
+ */
+static void extract_os_version_parts(const char *version, char **os_major, char **os_minor) {
+    regmatch_t match[2] = {{.rm_so = 0}};
+    int match_size = 0;
+
+    // Get os_major
+    if (w_regexec("^([0-9]+)\\.*", version, 2, match)) {
+        match_size = match[1].rm_eo - match[1].rm_so;
+        os_malloc(match_size + 1, *os_major);
+        snprintf(*os_major, match_size + 1, "%.*s", match_size, version + match[1].rm_so);
+    }
+
+    // Get os_minor
+    if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", version, 2, match)) {
+        match_size = match[1].rm_eo - match[1].rm_so;
+        os_malloc(match_size + 1, *os_minor);
+        snprintf(*os_minor, match_size + 1, "%.*s", match_size, version + match[1].rm_so);
+    } else if (w_regexec("^[0-9]+-[Ss][Pp]([0-9]+)\\.*", version, 2, match)) {
+        // SUSE: 15-SP7, 15-SPxx
+        match_size = match[1].rm_eo - match[1].rm_so;
+        os_malloc(match_size + 1, *os_minor);
+        snprintf(*os_minor, match_size + 1, "%.*s", match_size, version + match[1].rm_so);
+    }
+}
+
+/**
  * @brief Parses an OS uname string. All the OUT parameters are pointers
  *        to allocated memory that must be de-allocated by the caller.
  *
@@ -47,8 +80,6 @@ void parse_uname_string (char *uname,
                          os_data *osd)
 {
     char *str_tmp = NULL;
-    regmatch_t match[2] = {{.rm_so = 0}};
-    int match_size = 0;
 
     if (!osd)
         return;
@@ -93,19 +124,7 @@ void parse_uname_string (char *uname,
             mwarn("Windows uname missing closing ']' in version field: '%s'", str_tmp);
         }
 
-        // Get os_major
-        if (w_regexec("^([0-9]+)\\.*", str_tmp, 2, match)) {
-            match_size = match[1].rm_eo - match[1].rm_so;
-            os_malloc(match_size +1, osd->os_major);
-            snprintf (osd->os_major, match_size + 1, "%.*s", match_size, str_tmp + match[1].rm_so);
-        }
-
-        // Get os_minor
-        if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", str_tmp, 2, match)) {
-            match_size = match[1].rm_eo - match[1].rm_so;
-            os_malloc(match_size +1, osd->os_minor);
-            snprintf(osd->os_minor, match_size + 1, "%.*s", match_size, str_tmp + match[1].rm_so);
-        }
+        extract_os_version_parts(str_tmp, &osd->os_major, &osd->os_minor);
 
         os_strdup(str_tmp, osd->os_version);
         os_strdup("windows", osd->os_platform);
@@ -136,24 +155,7 @@ void parse_uname_string (char *uname,
                     *str_tmp = '\0';
                 }
 
-                // Get os_major
-                if (w_regexec("^([0-9]+)\\.*", osd->os_version, 2, match)) {
-                    match_size = match[1].rm_eo - match[1].rm_so;
-                    os_malloc(match_size +1, osd->os_major);
-                    snprintf(osd->os_major, match_size + 1, "%.*s", match_size, osd->os_version + match[1].rm_so);
-                }
-
-                // Get os_minor
-                if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", osd->os_version, 2, match)) {
-                    match_size = match[1].rm_eo - match[1].rm_so;
-                    os_malloc(match_size +1, osd->os_minor);
-                    snprintf(osd->os_minor, match_size + 1, "%.*s", match_size, osd->os_version + match[1].rm_so);
-                } else if (w_regexec("^[0-9]+-[Ss][Pp]([0-9]+)\\.*", osd->os_version, 2, match)) {
-                    // SUSE: 15-SP7, 15-SPxx
-                    match_size = match[1].rm_eo - match[1].rm_so;
-                    os_malloc(match_size + 1, osd->os_minor);
-                    snprintf(osd->os_minor, match_size + 1, "%.*s", match_size, osd->os_version + match[1].rm_so);
-                }
+                extract_os_version_parts(osd->os_version, &osd->os_major, &osd->os_minor);
 
             } else {
                 size_t name_len = strlen(osd->os_name);
@@ -290,48 +292,24 @@ int parse_json_keepalive(const char *json_str, agent_info_data *agent_data, char
             // Extract OS fields
             cJSON *os_name = cJSON_GetObjectItem(os, "name");
             if (os_name && cJSON_IsString(os_name)) {
-                os_free(agent_data->osd->os_name);
                 os_strdup(os_name->valuestring, agent_data->osd->os_name);
             }
 
             cJSON *os_version = cJSON_GetObjectItem(os, "version");
             if (os_version && cJSON_IsString(os_version)) {
-                os_free(agent_data->osd->os_version);
                 os_strdup(os_version->valuestring, agent_data->osd->os_version);
 
                 // Derive os_major and os_minor from os_version
-                regmatch_t match[2] = {{.rm_so = 0}};
-                int match_size = 0;
-                const char *ver = agent_data->osd->os_version;
-
-                os_free(agent_data->osd->os_major);
-                if (w_regexec("^([0-9]+)\\.*", ver, 2, match)) {
-                    match_size = match[1].rm_eo - match[1].rm_so;
-                    os_malloc(match_size + 1, agent_data->osd->os_major);
-                    snprintf(agent_data->osd->os_major, match_size + 1, "%.*s", match_size, ver + match[1].rm_so);
-                }
-
-                os_free(agent_data->osd->os_minor);
-                if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", ver, 2, match)) {
-                    match_size = match[1].rm_eo - match[1].rm_so;
-                    os_malloc(match_size + 1, agent_data->osd->os_minor);
-                    snprintf(agent_data->osd->os_minor, match_size + 1, "%.*s", match_size, ver + match[1].rm_so);
-                } else if (w_regexec("^[0-9]+-[Ss][Pp]([0-9]+)\\.*", ver, 2, match)) {
-                    match_size = match[1].rm_eo - match[1].rm_so;
-                    os_malloc(match_size + 1, agent_data->osd->os_minor);
-                    snprintf(agent_data->osd->os_minor, match_size + 1, "%.*s", match_size, ver + match[1].rm_so);
-                }
+                extract_os_version_parts(agent_data->osd->os_version, &agent_data->osd->os_major, &agent_data->osd->os_minor);
             }
 
             cJSON *os_platform = cJSON_GetObjectItem(os, "platform");
             if (os_platform && cJSON_IsString(os_platform)) {
-                os_free(agent_data->osd->os_platform);
                 os_strdup(os_platform->valuestring, agent_data->osd->os_platform);
             }
 
             cJSON *os_type = cJSON_GetObjectItem(os, "type");
             if (os_type && cJSON_IsString(os_type)) {
-                os_free(agent_data->osd->os_type);
                 os_strdup(os_type->valuestring, agent_data->osd->os_type);
             }
         }
@@ -339,21 +317,18 @@ int parse_json_keepalive(const char *json_str, agent_info_data *agent_data, char
         // Extract architecture
         cJSON *architecture = cJSON_GetObjectItem(host, "architecture");
         if (architecture && cJSON_IsString(architecture)) {
-            os_free(agent_data->osd->os_arch);
             os_strdup(architecture->valuestring, agent_data->osd->os_arch);
         }
 
         // Extract hostname
         cJSON *hostname = cJSON_GetObjectItem(host, "hostname");
         if (hostname && cJSON_IsString(hostname)) {
-            os_free(agent_data->osd->hostname);
             os_strdup(hostname->valuestring, agent_data->osd->hostname);
         }
 
         // Extract IP
         cJSON *host_ip = cJSON_GetObjectItem(host, "ip");
         if (host_ip && cJSON_IsString(host_ip)) {
-            os_free(agent_data->agent_ip);
             os_strdup(host_ip->valuestring, agent_data->agent_ip);
         }
     }

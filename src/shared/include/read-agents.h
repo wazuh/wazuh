@@ -22,17 +22,6 @@ typedef enum agent_status_t {
     GA_STATUS_UNKNOWN
 } agent_status_t;
 
-/* Unique key for each agent */
-typedef struct _agent_info {
-    char *last_keepalive;
-    char *syscheck_time;
-    char *syscheck_endtime;
-    char *os;
-    char *version;
-    char *merged_sum;
-    agent_status_t connection_status;
-} agent_info;
-
 /* Delete diff folders */
 void delete_diff(const char *name);
 
