@@ -111,16 +111,16 @@ TEST_F(EndpointGetV1AgentsSyncTest, HappyPath)
 
     EXPECT_EQ(
         res.body,
-        R"({"syncreq":[{"id":1,"name":"value","ip":"value","os_name":"value","os_version":"value","os_major":"value","os_minor":"value","os_codename":"value","os_build":"value","os_platform":"value","os_uname":"value","os_arch":"value","version":"value","config_sum":"value","merged_sum":"value","manager_host":"value","node_name":"value","last_keepalive":1,"connection_status":"value","disconnection_time":1,"group_config_status":"value","status_code":1}],"syncreq_keepalive":[{"id":1,"version":"value"}],"syncreq_status":[{"id":1,"version":"value","connection_status":"value","disconnection_time":1,"status_code":1}]})");
+        R"({"syncreq":[{"id":1,"name":"value","ip":"value","os_name":"value","os_version":"value","os_major":"value","os_minor":"value","os_platform":"value","os_arch":"value","version":"value","merged_sum":"value","node_name":"value","last_keepalive":1,"connection_status":"value","disconnection_time":1,"group_config_status":"value","status_code":1}],"syncreq_keepalive":[{"id":1,"version":"value"}],"syncreq_status":[{"id":1,"version":"value","connection_status":"value","disconnection_time":1,"status_code":1}]})");
 
     ASSERT_EQ(queries->size(), 5); // 1 COUNT + 3 SELECT + 1 UPDATE
     EXPECT_EQ((*queries)[0], "SELECT COUNT(*) FROM agent WHERE id > 0 AND sync_status = ?;");
 
     EXPECT_EQ(
         (*queries)[1],
-        "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, "
-        "os_arch, version, config_sum, merged_sum, manager_host, node_name, last_keepalive, connection_status, "
-        "disconnection_time, group_config_status, status_code FROM agent WHERE id > 0 AND sync_status = 'syncreq';");
+        "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_platform, os_arch, version, merged_sum, "
+        "node_name, last_keepalive, connection_status, disconnection_time, group_config_status, status_code FROM "
+        "agent WHERE id > 0 AND sync_status = 'syncreq';");
     EXPECT_EQ((*queries)[2], "SELECT id, version FROM agent WHERE id > 0 AND sync_status = 'syncreq_keepalive';");
     EXPECT_EQ((*queries)[3],
               "SELECT id, version, connection_status, disconnection_time, status_code FROM agent WHERE id > 0 AND "

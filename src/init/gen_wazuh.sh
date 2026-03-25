@@ -16,11 +16,11 @@ cd "${SCRIPT_DIR}/../.."
 
 Use()
 {
-  echo " USE: ./gen_ossec.sh conf install_type distribution version [installation_path]"
+  echo " USE: ./gen_wazuh.sh conf install_type distribution version [installation_path]"
   echo "   - install_type: manager, agent"
   echo "   - distribution: rhel, debian, ubuntu, ..."
   echo "   - version: 6, 7, 16.04, ..."
-  echo "   - installation_path (optional): changes the default path '/var/ossec' "
+  echo "   - installation_path (optional): changes the default path '/var/wazuh-manager' for server and '/var/ossec' for agent"
 }
 
 # Read script values
@@ -47,7 +47,7 @@ if [ "$1" = "conf" ] && [ "$#" -ge "4" ]; then
 
   # Default values definition
   SERVER_IP="MANAGER_IP"
-  NEWCONFIG="./ossec.conf.temp"
+  NEWCONFIG="./wazuh.conf.temp"
   SYSCHECK="yes"
   ROOTCHECK="yes"
   SYSCOLLECTOR="yes"

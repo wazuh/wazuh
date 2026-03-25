@@ -215,9 +215,7 @@ int wdb_update_agent_data(agent_info_data *agent_data, int *sock) {
 
     cJSON_AddNumberToObject(data_in, "id", agent_data->id);
     cJSON_AddStringToObject(data_in, "version", agent_data->version);
-    cJSON_AddStringToObject(data_in, "config_sum", agent_data->config_sum);
     cJSON_AddStringToObject(data_in, "merged_sum", agent_data->merged_sum);
-    cJSON_AddStringToObject(data_in, "manager_host", agent_data->manager_host);
     cJSON_AddStringToObject(data_in, "node_name", agent_data->node_name);
     cJSON_AddStringToObject(data_in, "agent_ip", agent_data->agent_ip);
     cJSON_AddStringToObject(data_in, "connection_status", agent_data->connection_status);
@@ -229,10 +227,7 @@ int wdb_update_agent_data(agent_info_data *agent_data, int *sock) {
         cJSON_AddStringToObject(data_in, "os_version", agent_data->osd->os_version);
         cJSON_AddStringToObject(data_in, "os_major", agent_data->osd->os_major);
         cJSON_AddStringToObject(data_in, "os_minor", agent_data->osd->os_minor);
-        cJSON_AddStringToObject(data_in, "os_codename", agent_data->osd->os_codename);
         cJSON_AddStringToObject(data_in, "os_platform", agent_data->osd->os_platform);
-        cJSON_AddStringToObject(data_in, "os_build", agent_data->osd->os_build);
-        cJSON_AddStringToObject(data_in, "os_uname", agent_data->osd->os_uname);
         cJSON_AddStringToObject(data_in, "os_arch", agent_data->osd->os_arch);
     }
 
@@ -406,7 +401,7 @@ int wdb_update_agent_status_code(int id, agent_status_code_t status_code, const 
     cJSON_AddNumberToObject(data_in, "status_code", status_code);
     if (version != NULL) {
         char wazuh_version[OS_SIZE_128 + 1] = "";
-        snprintf(wazuh_version, OS_SIZE_128, "%s %s", __ossec_name, version);
+        snprintf(wazuh_version, OS_SIZE_128, "%s %s", __wazuh_name, version);
         cJSON_AddStringToObject(data_in, "version", wazuh_version);
     }
     cJSON_AddStringToObject(data_in, "sync_status", sync_status);

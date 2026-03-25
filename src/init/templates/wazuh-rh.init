@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Copyright (C) 2015, Wazuh Inc.
-# OSSEC         Controls Wazuh on Redhat-based systems
+# Wazuh         Controls Wazuh on Redhat-based systems
 # Author:       Kayvan A. Sylvan <kayvan@sylvan.com>
 # Author:       Daniel B. Cid <dcid@ossec.net>
 #
@@ -65,7 +65,7 @@ status)
     status
     ;;
 *)
-    echo "*** Usage: ossec {start|stop|restart|status}"
+    echo "*** Usage: wazuh {start|stop|restart|status}"
     exit 1
 esac
 

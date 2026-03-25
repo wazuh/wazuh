@@ -136,7 +136,7 @@ Install()
     # For updates, stop running services before replacing files.
     if [ "X${update_only}" = "Xyes" ]; then
         echo "Stopping Wazuh..."
-        UpdateStopOSSEC
+        UpdateStopWAZUH
     fi
 
     # Install selected components.
@@ -154,14 +154,14 @@ Install()
         # Compatibility migration for very old versions.
         UpdateOldVersions
         echo "Starting Wazuh..."
-        UpdateStartOSSEC
+        UpdateStartWAZUH
     fi
 
     if [ $runinit_value = 1 ]; then
         notmodified="yes"
     elif [ "X$START_WAZUH" = "Xyes" ]; then
         echo "Starting Wazuh..."
-        UpdateStartOSSEC
+        UpdateStartWAZUH
     fi
 
 }
@@ -476,7 +476,7 @@ askForDelete()
         case $ANSWER in
             $yesmatch)
                 echo "      Stopping Wazuh..."
-                UpdateStopOSSEC
+                UpdateStopWAZUH
                 rm -rf -- "$INSTALLDIR"
                 if [ $? -ne 0 ]; then
                     echo "Error deleting ${INSTALLDIR}"

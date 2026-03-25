@@ -15,9 +15,9 @@
 
 int w_is_worker(void) {
     OS_XML xml;
-    const char * xmlf[] = {OSSECCONFIG, "cluster", NULL};
-    const char * xmlf2[] = {OSSECCONFIG, "cluster", "node_type", NULL};
-    const char *cfgfile = OSSECCONF;
+    const char * xmlf[] = {WAZUHCONFIG, "cluster", NULL};
+    const char * xmlf2[] = {WAZUHCONFIG, "cluster", "node_type", NULL};
+    const char *cfgfile = WAZUHCONF;
     int is_worker = OS_INVALID;
 
     if (OS_ReadXML(cfgfile, &xml) < 0) {
@@ -49,9 +49,9 @@ int w_is_worker(void) {
 
 int w_is_single_node(int* is_worker) {
     OS_XML xml;
-    const char * xmlf[] = {OSSECCONFIG, "cluster", NULL};
-    const char * xmlf2[] = {OSSECCONFIG, "cluster", "node_type", NULL};
-    const char *cfgfile = OSSECCONF;
+    const char * xmlf[] = {WAZUHCONFIG, "cluster", NULL};
+    const char * xmlf2[] = {WAZUHCONFIG, "cluster", "node_type", NULL};
+    const char *cfgfile = WAZUHCONF;
     int _is_worker = OS_INVALID;
     int is_single_node = OS_INVALID;
 
@@ -89,8 +89,8 @@ int w_is_single_node(int* is_worker) {
 
 char *get_master_node(void) {
     OS_XML xml;
-    const char * xmlf[] = {OSSECCONFIG, "cluster", "nodes", "node", NULL};
-    const char *cfgfile = OSSECCONF;
+    const char * xmlf[] = {WAZUHCONFIG, "cluster", "nodes", "node", NULL};
+    const char *cfgfile = WAZUHCONF;
     char *master_node = NULL;
 
     if (OS_ReadXML(cfgfile, &xml) < 0) {
@@ -110,8 +110,8 @@ char *get_master_node(void) {
 
 char *get_node_name(void) {
     OS_XML xml;
-    const char * xmlf[] = {OSSECCONFIG, "cluster", "node_name", NULL};
-    const char *cfgfile = OSSECCONF;
+    const char * xmlf[] = {WAZUHCONFIG, "cluster", "node_name", NULL};
+    const char *cfgfile = WAZUHCONF;
     char *node_name = NULL;
 
     if (OS_ReadXML(cfgfile, &xml) < 0) {
@@ -131,8 +131,8 @@ char *get_node_name(void) {
 
 char *get_cluster_name(void) {
     OS_XML xml;
-    const char * xmlf[] = {OSSECCONFIG, "cluster", "name", NULL};
-    const char *cfgfile = OSSECCONF;
+    const char * xmlf[] = {WAZUHCONFIG, "cluster", "name", NULL};
+    const char *cfgfile = WAZUHCONF;
     char *cluster_name = NULL;
 
     if (OS_ReadXML(cfgfile, &xml) < 0) {

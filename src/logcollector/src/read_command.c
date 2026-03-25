@@ -34,7 +34,7 @@ void *read_command(logreader *lf, int *rc, int drop_it) {
         return (NULL);
     }
 
-    snprintf(str, 256, "ossec: output: '%s': ",
+    snprintf(str, 256, "wazuh: output: '%s': ",
              (NULL != lf->alias)
              ? lf->alias
              : lf->command);

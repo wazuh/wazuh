@@ -14,7 +14,7 @@
 #include "sha1_op.h"
 
 
-void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_it) {
+void *read_wazuhalert(logreader *lf, __attribute__((unused)) int *rc, int drop_it) {
     alert_data *al_data;
     char user_msg[256];
     char srcip_msg[256];
@@ -63,7 +63,7 @@ void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_i
     if (al_data->log[1] == NULL) {
         /* Build syslog message */
         snprintf(syslog_msg, OS_SIZE_2048,
-                 "ossec: Alert Level: %d; Rule: %d - %s; "
+                 "wazuh: Alert Level: %d; Rule: %d - %s; "
                  "Location: %s;%s%s  %s",
                  al_data->level, al_data->rule, al_data->comment,
                  al_data->location,
@@ -96,7 +96,7 @@ void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_i
             tmp_msg[1597] = '\0';
         }
         snprintf(syslog_msg, OS_SIZE_2048,
-                 "ossec: Alert Level: %d; Rule: %d - %s; "
+                 "wazuh: Alert Level: %d; Rule: %d - %s; "
                  "Location: %s;%s%s  %s",
                  al_data->level, al_data->rule, al_data->comment,
                  al_data->location,

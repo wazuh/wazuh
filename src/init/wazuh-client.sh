@@ -2,7 +2,7 @@
 
 # Copyright (C) 2015, Wazuh Inc.
 # wazuh-control        This shell script takes care of starting
-#                      or stopping ossec-hids
+#                      or stopping Wazuh
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
 LOCAL=`dirname $0`;

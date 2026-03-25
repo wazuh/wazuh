@@ -482,11 +482,11 @@ InstallCommon()
   if [ ${INSTYPE} = 'manager' ]; then
       WAZUH_GROUP='wazuh-manager'
       WAZUH_USER='wazuh-manager'
-      OSSEC_CONTROL_SRC='./init/wazuh-server.sh'
-      OSSEC_CONF_SRC='../etc/ossec-server.conf'
+      WAZUH_CONTROL_SRC='./init/wazuh-server.sh'
+      WAZUH_CONF_SRC='../etc/wazuh-manager.conf'
   elif [ ${INSTYPE} = 'agent' ]; then
-      OSSEC_CONTROL_SRC='./init/wazuh-client.sh'
-      OSSEC_CONF_SRC='../etc/ossec-agent.conf'
+      WAZUH_CONTROL_SRC='./init/wazuh-client.sh'
+      WAZUH_CONF_SRC='../etc/ossec-agent.conf'
   fi
 
   if [ ${INSTYPE} = 'manager' ]; then
@@ -757,9 +757,9 @@ InstallCommon()
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-modulesd ${INSTALLDIR}/bin/
   fi
   if [ "X${INSTYPE}" = "Xmanager" ]; then
-    ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-manager-control
+    ${INSTALL} -m 0750 -o root -g 0 ${WAZUH_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-manager-control
   else
-    ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-control
+    ${INSTALL} -m 0750 -o root -g 0 ${WAZUH_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-control
   fi
 
   ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue
@@ -819,19 +819,19 @@ InstallCommon()
     fi
 
     if [ ! -f ${INSTALLDIR}/etc/${WAZUH_CONF} ]; then
-        if [ ! -f ../etc/ossec.mc ]; then
-            echo "WARNING: missing ../etc/ossec.mc. Regenerating configuration template."
-            if ! ./init/gen_ossec.sh conf "${INSTYPE}" "${DIST_NAME}" "${DIST_VER}.${DIST_SUBVER}" "${INSTALLDIR}" > ../etc/ossec.mc; then
-                rm -f ../etc/ossec.mc
-                echo "WARNING: unable to regenerate ../etc/ossec.mc."
+        if [ ! -f ../etc/wazuh.mc ]; then
+            echo "WARNING: missing ../etc/wazuh.mc. Regenerating configuration template."
+            if ! ./init/gen_wazuh.sh conf "${INSTYPE}" "${DIST_NAME}" "${DIST_VER}.${DIST_SUBVER}" "${INSTALLDIR}" > ../etc/wazuh.mc; then
+                rm -f ../etc/wazuh.mc
+                echo "WARNING: unable to regenerate ../etc/wazuh.mc."
             fi
         fi
 
-        if [ -f ../etc/ossec.mc ]; then
-            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../etc/ossec.mc ${INSTALLDIR}/etc/${WAZUH_CONF}
+        if [ -f ../etc/wazuh.mc ]; then
+            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../etc/wazuh.mc ${INSTALLDIR}/etc/${WAZUH_CONF}
         else
-            echo "WARNING: unable to generate ossec.conf file with desired configurations, using default configurations from ${OSSEC_CONF_SRC}"
-            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ${OSSEC_CONF_SRC} ${INSTALLDIR}/etc/${WAZUH_CONF}
+            echo "WARNING: unable to generate ${WAZUH_CONF} with desired configurations, using default configurations from ${WAZUH_CONF_SRC}"
+            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ${WAZUH_CONF_SRC} ${INSTALLDIR}/etc/${WAZUH_CONF}
         fi
     fi
 

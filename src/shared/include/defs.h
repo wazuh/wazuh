@@ -67,8 +67,8 @@
 #define OS_MAX_LOG_SIZE OS_MAXSTR - OS_LOG_HEADER /* Maximum log size with a header protection */
 
 /* Some global names */
-#define __ossec_name    "Wazuh"
-#define __ossec_version "v5.0.0"
+#define __wazuh_name    "Wazuh"
+#define __wazuh_version "v5.0.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -240,16 +240,16 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Internal definitions files */
 #ifndef WIN32
 #ifdef CLIENT
-#define OSSEC_DEFINES  "etc/internal_options.conf"
-#define OSSEC_LDEFINES "etc/local_internal_options.conf"
+#define WAZUH_DEFINES  "etc/internal_options.conf"
+#define WAZUH_LDEFINES "etc/local_internal_options.conf"
 #else
 /* Manager: defaults live in code via getDefine_Int_default(); only the
- * user-overrides file is needed. OSSEC_DEFINES is intentionally not defined. */
-#define OSSEC_LDEFINES "etc/wazuh-manager-internal-options.conf"
+ * user-overrides file is needed. WAZUH_DEFINES is intentionally not defined. */
+#define WAZUH_LDEFINES "etc/wazuh-manager-internal-options.conf"
 #endif
 #else
-#define OSSEC_DEFINES  "internal_options.conf"
-#define OSSEC_LDEFINES "local_internal_options.conf"
+#define WAZUH_DEFINES  "internal_options.conf"
+#define WAZUH_LDEFINES "local_internal_options.conf"
 #endif
 
 /* Log directories */
@@ -306,32 +306,32 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Built-in defines */
 
-#ifndef OSSECCONF
+#ifndef WAZUHCONF
 #ifndef WIN32
 #ifdef CLIENT
-#define OSSECCONF "etc/ossec.conf"
+#define WAZUHCONF "etc/ossec.conf"
 #else
-#define OSSECCONF "etc/wazuh-manager.conf"
+#define WAZUHCONF "etc/wazuh-manager.conf"
 #endif
 #else
-#define OSSECCONF "ossec.conf"
+#define WAZUHCONF "ossec.conf"
 #endif
 #endif
 
-#ifndef OSSECCONFIG
+#ifndef WAZUHCONFIG
 #ifndef WIN32
 #ifdef CLIENT
-#define OSSECCONFIG       "ossec_config"
+#define WAZUHCONFIG "ossec_config"
 #else
-#define OSSECCONFIG       "wazuh_config"
+#define WAZUHCONFIG "wazuh_config"
 #endif
 #else
-#define OSSECCONFIG       "ossec_config"
+#define WAZUHCONFIG "ossec_config"
 #endif
 #endif
 
-#define SHAREDCFG_FILE      SHAREDCFG_DIR "/merged.mg"
-#define SHAREDCFG_FILENAME  "merged.mg"
+#define SHAREDCFG_FILE     SHAREDCFG_DIR "/merged.mg"
+#define SHAREDCFG_FILENAME "merged.mg"
 
 #define MAX_QUEUED_EVENTS_PATH "/proc/sys/fs/inotify/max_queued_events"
 

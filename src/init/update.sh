@@ -218,8 +218,6 @@ isWazuhInstalled()
         return 0;
     elif [ -f "${1}/bin/wazuh-control" ]; then
         return 0;
-    elif [ -f "${1}/bin/ossec-control" ]; then
-        return 0;
     else
         return 1;
     fi
@@ -294,7 +292,7 @@ getPreinstalledName()
     echo $NAME
 }
 
-UpdateStartOSSEC()
+UpdateStartWAZUH()
 {
     if [ "X$TYPE" = "X" ]; then
         getPreinstalledType
@@ -321,7 +319,7 @@ UpdateStartOSSEC()
     fi
 }
 
-UpdateStopOSSEC()
+UpdateStopWAZUH()
 {
     MAJOR_VERSION=`echo ${VERSION} | cut -f1 -d'.' | cut -f2 -d'v'`
 
@@ -347,9 +345,7 @@ UpdateStopOSSEC()
         getPreinstalledDir
     fi
 
-    if [ -f "$PREINSTALLEDDIR/bin/ossec-control" ]; then
-        $PREINSTALLEDDIR/bin/ossec-control stop > /dev/null 2>&1
-    elif [ -f "$PREINSTALLEDDIR/bin/wazuh-manager-control" ]; then
+    if [ -f "$PREINSTALLEDDIR/bin/wazuh-manager-control" ]; then
         $PREINSTALLEDDIR/bin/wazuh-manager-control stop > /dev/null 2>&1
     else
         $PREINSTALLEDDIR/bin/wazuh-control stop > /dev/null 2>&1
@@ -394,11 +390,11 @@ UpdateOldVersions()
         getPreinstalledDir
     fi
 
-    OSSEC_CONF_FILE="$PREINSTALLEDDIR/etc/${WAZUH_CONF:-ossec.conf}"
-    OSSEC_CONF_FILE_ORIG="$PREINSTALLEDDIR/etc/${WAZUH_CONF:-ossec.conf}.orig"
+    WAZUH_CONF_FILE="$PREINSTALLEDDIR/etc/${WAZUH_CONF:-ossec.conf}"
+    WAZUH_CONF_FILE_ORIG="$PREINSTALLEDDIR/etc/${WAZUH_CONF:-ossec.conf}.orig"
 
     # config file -> config file.orig
-    cp -pr $OSSEC_CONF_FILE $OSSEC_CONF_FILE_ORIG
+    cp -pr $WAZUH_CONF_FILE $WAZUH_CONF_FILE_ORIG
 
     # Delete old service
     if [ -f /etc/init.d/ossec ]; then
@@ -407,12 +403,12 @@ UpdateOldVersions()
 
     if [ ! "$INSTYPE" = "agent" ]; then
         # New manager config by default
-        ./src/init/gen_ossec.sh conf "manager" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
+        ./src/init/gen_wazuh.sh conf "manager" $DIST_NAME $DIST_VER > $WAZUH_CONF_FILE
     else
         # New agent config by default
-        ./src/init/gen_ossec.sh conf "agent" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
+        ./src/init/gen_wazuh.sh conf "agent" $DIST_NAME $DIST_VER > $WAZUH_CONF_FILE
         # Replace IP
-        ./src/init/replace_manager_ip.sh $OSSEC_CONF_FILE_ORIG $OSSEC_CONF_FILE
-        ./src/init/add_localfiles.sh $PREINSTALLEDDIR >> $OSSEC_CONF_FILE
+        ./src/init/replace_manager_ip.sh $WAZUH_CONF_FILE_ORIG $WAZUH_CONF_FILE
+        ./src/init/add_localfiles.sh $PREINSTALLEDDIR >> $WAZUH_CONF_FILE
     fi
 }

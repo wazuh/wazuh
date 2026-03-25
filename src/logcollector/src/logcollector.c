@@ -738,7 +738,7 @@ void LogCollectorStart()
 
                         char msg_alert[512 + 1];
 
-                        snprintf(msg_alert, 512, "ossec: File rotated (inode "
+                        snprintf(msg_alert, 512, "wazuh: File rotated (inode "
                                  "changed): '%s'.",
                                  current->file);
 
@@ -771,7 +771,7 @@ void LogCollectorStart()
                         current->exists = 1;
                         char msg_alert[512 + 1];
 
-                        snprintf(msg_alert, 512, "ossec: File size reduced "
+                        snprintf(msg_alert, 512, "wazuh: File size reduced "
                                  "(inode remained): '%s'.",
                                  current->file);
 
@@ -1236,8 +1236,8 @@ void set_read(logreader *current, int i, int j) {
         current->read = read_snortfull;
     }
 #ifndef WIN32
-    if (strcmp("ossecalert", current->logformat) == 0) {
-        current->read = read_ossecalert;
+    if (strcmp("wazuhalert", current->logformat) == 0) {
+        current->read = read_wazuhalert;
     }
 #endif
     else if (strcmp("nmapg", current->logformat) == 0) {

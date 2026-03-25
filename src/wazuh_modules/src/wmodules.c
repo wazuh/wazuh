@@ -90,7 +90,7 @@ int wm_config() {
 
     // Read configuration
 
-    if (ReadConfig(CWMODULE, OSSECCONF, &wmodules, &agent_cfg) < 0) {
+    if (ReadConfig(CWMODULE, WAZUHCONF, &wmodules, &agent_cfg) < 0) {
         return -1;
     }
 

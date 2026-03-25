@@ -567,7 +567,7 @@ void fim_initialize() {
 int Start_win32_Syscheck() {
     int debug_level = 0;
     int r = 0;
-    char *cfg = OSSECCONF;
+    char *cfg = WAZUHCONF;
     OSListNode *node_it;
 
     /* Read internal options */

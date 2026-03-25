@@ -7,7 +7,7 @@ namespace conf
 {
 
 using OptionMap = std::unordered_map<std::string, std::string>; // (full_key, value)
-constexpr auto OSSEC_LDEFINES = "/var/wazuh-manager/etc/wazuh-manager-internal-options.conf";
+constexpr auto WAZUH_LDEFINES = "/var/wazuh-manager/etc/wazuh-manager-internal-options.conf";
 
 struct IFileLoader
 {
@@ -38,7 +38,7 @@ private:
     std::filesystem::path m_path;
 
 public:
-    FileLoader(std::filesystem::path path = OSSEC_LDEFINES)
+    FileLoader(std::filesystem::path path = WAZUH_LDEFINES)
         : m_path(std::move(path))
     {
     }

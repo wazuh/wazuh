@@ -1,12 +1,12 @@
 #!/bin/sh
 
 # Copyright (C) 2015, Wazuh Inc.
-# OSSEC         Controls Wazuh
+# Wazuh         Controls Wazuh
 # Author:       Daniel B. Cid <dcid@ossec.net>
 # Modified for Debian by Michael Starks (patch by Costas Drogos)
 
 ### BEGIN INIT INFO
-# Provides:          ossec
+# Provides:          wazuh
 # Required-Start:    $remote_fs $syslog
 # Required-Stop:     $remote_fs $syslog
 # Should-Start:      $network

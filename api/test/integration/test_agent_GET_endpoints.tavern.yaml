@@ -191,7 +191,6 @@ stages:
           expected_os_platform: data.affected_items[0].os.platform
           expected_os_version: data.affected_items[0].os.version
           expected_os_name: data.affected_items[0].os.name
-          expected_manager_host: data.affected_items[0].manager
           expected_node_name: data.affected_items[0].node_name
           expected_name: data.affected_items[0].name
           expected_ip: data.affected_items[0].ip
@@ -745,47 +744,6 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Filter by agent ManagerHost
-    request:
-      verify: False
-      <<: *get_agents
-      params:
-        manager: "{expected_manager_host:s}"
-        limit: 1
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - manager: "{expected_manager_host:s}"
-          failed_items: []
-          total_failed_items: 0
-
-  - name: Try to show agents using a non existing ManagerHost
-    request:
-      verify: False
-      <<: *get_agents
-      params:
-        manager: test_manager
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          <<: *affected_empty_answer
-
-  - name: Try to show agents using an invalid ManagerHost
-    request:
-      verify: False
-      <<: *get_agents
-      params:
-        manager: test_manager_%
-    response:
-      status_code: 400
-      json:
-        <<: *error_spec
-
   - name: Filter by agent status
     request:
       verify: False
@@ -1124,7 +1082,7 @@ stages:
       verify: False
       <<: *get_agents
       params:
-        q: id<5;id!=2;manager~waz;(os.major=16,os.major=24)
+        q: id<5;id!=2;(os.major=16,os.major=24)
     response:
       status_code: 200
       json:
@@ -1290,17 +1248,14 @@ stages:
               id: "001"
               ip: !anystr
               lastKeepAlive: !anystr
-              manager: !anystr
               name: !anystr
               node_name: !anystr
               os:
                 arch: !anystr
-                codename: !anystr
                 major: !anystr
                 minor: !anystr
                 name: !anystr
                 platform: !anystr
-                uname: !anystr
                 version: !anystr
               registerIP: !anystr
               status: !anystr
@@ -1514,10 +1469,14 @@ stages:
           internal:
             agent:
               debug: !anyint
+              max_attempts: !anyint
               min_eps: !anyint
               normal_level: !anyint
               recv_timeout: !anyint
               remote_conf: !anyint
+              request_pool: !anyint
+              request_rto_msec: !anyint
+              request_rto_sec: !anyint
               state_interval: !anyint
               tolerance: !anyint
               warn_level: !anyint
@@ -1528,14 +1487,6 @@ stages:
               keep_log_days: !anyint
               rotate_log: !anyint
               size_rotate: !anyint
-            remoted:
-              comp_average_printout: !anyint
-              max_attempts: !anyint
-              recv_counter_flush: !anyint
-              request_pool: !anyint
-              request_rto_msec: !anyint
-              request_rto_sec: !anyint
-              verify_msg_id: !anyint
 
   - name: Get active-response configuration from com component (Agent)
     request:
@@ -2672,7 +2623,7 @@ stages:
       verify: False
       <<: *groups_id_request
       params:
-        q: id<5;id!=2;manager~waz;(os.major>14,os.major<20)
+        q: id<5;id!=2;(os.major>14,os.major<20)
     response:
       status_code: 200
       json:
@@ -2724,24 +2675,19 @@ marks:
   - parametrize:
       key: field
       vals:
-        - configSum
         - dateAdd
         - group
         - id
         - ip
         - lastKeepAlive
-        - manager
         - mergedSum
         - name
         - node_name
         - os.arch
-        - os.build
-        - os.codename
         - os.major
         - os.minor
         - os.name
         - os.platform
-        - os.uname
         - os.version
         - registerIP
         - status
@@ -3763,7 +3709,6 @@ stages:
                 - group1
                 - group2
               registerIP: any
-              configSum: !anystr
               mergedSum: !anystr
               dateAdd: !anystr
               group_config_status: synced
@@ -4050,7 +3995,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         fields: os.platform
-        search: linux
+        search: ubuntu
     response:
       status_code: 200
       json:
@@ -4231,7 +4176,7 @@ stages:
       <<: *distinct_request
       params:
         fields: status
-        q: id<5;id!=2;manager~waz;(os.major=16,os.major=24)
+        q: id<5;id!=2;(os.major=16,os.major=24)
     response:
       status_code: 200
       json:
@@ -4255,17 +4200,13 @@ marks:
         - id
         - ip
         - lastKeepAlive
-        - manager
         - name
         - node_name
         - os.arch
-        - os.build
-        - os.codename
         - os.major
         - os.minor
         - os.name
         - os.platform
-        - os.uname
         - os.version
         - registerIP
         - status

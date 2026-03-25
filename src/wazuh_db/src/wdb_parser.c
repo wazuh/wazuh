@@ -1073,15 +1073,10 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
     cJSON *j_os_version = NULL;
     cJSON *j_os_major = NULL;
     cJSON *j_os_minor = NULL;
-    cJSON *j_os_codename = NULL;
     cJSON *j_os_platform = NULL;
-    cJSON *j_os_build = NULL;
-    cJSON *j_os_uname = NULL;
     cJSON *j_os_arch = NULL;
     cJSON *j_version = NULL;
-    cJSON *j_config_sum = NULL;
     cJSON *j_merged_sum = NULL;
-    cJSON *j_manager_host = NULL;
     cJSON *j_node_name = NULL;
     cJSON *j_agent_ip = NULL;
     cJSON *j_connection_status = NULL;
@@ -1100,15 +1095,10 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
         j_os_version = cJSON_GetObjectItem(agent_data, "os_version");
         j_os_major = cJSON_GetObjectItem(agent_data, "os_major");
         j_os_minor = cJSON_GetObjectItem(agent_data, "os_minor");
-        j_os_codename = cJSON_GetObjectItem(agent_data, "os_codename");
         j_os_platform = cJSON_GetObjectItem(agent_data, "os_platform");
-        j_os_build = cJSON_GetObjectItem(agent_data, "os_build");
-        j_os_uname = cJSON_GetObjectItem(agent_data, "os_uname");
         j_os_arch = cJSON_GetObjectItem(agent_data, "os_arch");
         j_version = cJSON_GetObjectItem(agent_data, "version");
-        j_config_sum = cJSON_GetObjectItem(agent_data, "config_sum");
         j_merged_sum = cJSON_GetObjectItem(agent_data, "merged_sum");
-        j_manager_host = cJSON_GetObjectItem(agent_data, "manager_host");
         j_node_name = cJSON_GetObjectItem(agent_data, "node_name");
         j_agent_ip = cJSON_GetObjectItem(agent_data, "agent_ip");
         j_connection_status = cJSON_GetObjectItem(agent_data, "connection_status");
@@ -1122,15 +1112,10 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
             char *os_version = cJSON_IsString(j_os_version) ? j_os_version->valuestring : NULL;
             char *os_major = cJSON_IsString(j_os_major) ? j_os_major->valuestring : NULL;
             char *os_minor = cJSON_IsString(j_os_minor) ? j_os_minor->valuestring : NULL;
-            char *os_codename = cJSON_IsString(j_os_codename) ? j_os_codename->valuestring : NULL;
             char *os_platform = cJSON_IsString(j_os_platform) ? j_os_platform->valuestring : NULL;
-            char *os_build = cJSON_IsString(j_os_build) ? j_os_build->valuestring : NULL;
-            char *os_uname = cJSON_IsString(j_os_uname) ? j_os_uname->valuestring : NULL;
             char *os_arch = cJSON_IsString(j_os_arch) ? j_os_arch->valuestring : NULL;
             char *version = cJSON_IsString(j_version) ? j_version->valuestring : NULL;
-            char *config_sum = cJSON_IsString(j_config_sum) ? j_config_sum->valuestring : NULL;
             char *merged_sum = cJSON_IsString(j_merged_sum) ? j_merged_sum->valuestring : NULL;
-            char *manager_host = cJSON_IsString(j_manager_host) ? j_manager_host->valuestring : NULL;
             char *node_name = cJSON_IsString(j_node_name) ? j_node_name->valuestring : NULL;
             char *agent_ip = cJSON_IsString(j_agent_ip) ? j_agent_ip->valuestring : NULL;
             char *connection_status = cJSON_IsString(j_connection_status) ? j_connection_status->valuestring : NULL;
@@ -1139,9 +1124,9 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
 
             char *validated_sync_status = wdb_global_validate_sync_status(wdb, id, sync_status);
 
-            if (OS_SUCCESS != wdb_global_update_agent_version(wdb, id, os_name, os_version, os_major, os_minor, os_codename,
-                                                              os_platform, os_build, os_uname, os_arch, version, config_sum,
-                                                              merged_sum, manager_host, node_name, agent_ip, connection_status,
+            if (OS_SUCCESS != wdb_global_update_agent_version(wdb, id, os_name, os_version, os_major, os_minor,
+                                                              os_platform, os_arch, version,
+                                                              merged_sum, node_name, agent_ip, connection_status,
                                                               validated_sync_status, group_config_status)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));

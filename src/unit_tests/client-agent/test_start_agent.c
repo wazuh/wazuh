@@ -249,7 +249,7 @@ static void test_agent_handshake_to_server(void **state) {
     expect_any(__wrap_OS_RecvSecureTCP, size);
     will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
     will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
-    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v5.0.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
@@ -275,7 +275,7 @@ static void test_agent_handshake_to_server(void **state) {
     expect_any(__wrap_OS_RecvSecureTCP, size);
     will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
     will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
-    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v5.0.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
@@ -301,7 +301,7 @@ static void test_agent_handshake_to_server(void **state) {
     expect_any(__wrap_OS_RecvSecureTCP, size);
     will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
     will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
-    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v5.0.0\"}");
     expect_string(__wrap_send_msg, msg, "1:wazuh-agent:wazuh: Agent started: [001] (agent0).");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
@@ -338,7 +338,7 @@ static void test_agent_handshake_to_server(void **state) {
     expect_any(__wrap_OS_ConnectTCP, ipv6);
     will_return(__wrap_OS_ConnectTCP, 23);
     will_return(__wrap_wnet_select, 0);
-    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v5.0.0\"}");
 
     expect_any(__wrap__mwarn, formatted_msg);
 
@@ -360,7 +360,7 @@ static void test_agent_handshake_to_server(void **state) {
     expect_any(__wrap_OS_RecvSecureTCP, size);
     will_return(__wrap_OS_RecvSecureTCP, SERVER_WRONG_ACK);
     will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_WRONG_ACK));
-    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v5.0.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_WRONG_ACK);
     will_return(__wrap_ReadSecMSG, SERVER_WRONG_ACK);
     will_return(__wrap_ReadSecMSG, KS_CORRUPT);
@@ -387,7 +387,7 @@ static void test_agent_handshake_to_server_invalid_version(void **state) {
     expect_any(__wrap_OS_RecvSecureTCP, size);
     will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
     will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
-    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v5.0.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-err {\"message\": \"Agent version must be lower or equal to manager version\"}");
     will_return(__wrap_ReadSecMSG, KS_VALID);
@@ -416,7 +416,7 @@ static void test_agent_handshake_to_server_error_getting_msg1(void **state) {
     expect_any(__wrap_OS_RecvSecureTCP, size);
     will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
     will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
-    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v5.0.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-err \"message\": \"Agent version must be lower or equal to manager version\"}");
     will_return(__wrap_ReadSecMSG, KS_VALID);
@@ -445,7 +445,7 @@ static void test_agent_handshake_to_server_error_getting_msg2(void **state) {
     expect_any(__wrap_OS_RecvSecureTCP, size);
     will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
     will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
-    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
+    expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v5.0.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-err {\"key\": \"Agent version must be lower or equal to manager version\"}");
     will_return(__wrap_ReadSecMSG, KS_VALID);

@@ -17,7 +17,7 @@ from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.utils import get_utc_strptime, tail, load_wazuh_xml
 
-OSSEC_LOG_FIELDS = ['timestamp', 'tag', 'level', 'description']
+WAZUH_LOG_FIELDS = ['timestamp', 'tag', 'level', 'description']
 
 class LoggingFormat(Enum):
     plain = "plain"
@@ -30,7 +30,7 @@ def status() -> dict:
     return get_manager_status()
 
 
-def get_ossec_log_fields(log: str, log_format: LoggingFormat = LoggingFormat.plain) -> Union[tuple, None]:
+def get_wazuh_log_fields(log: str, log_format: LoggingFormat = LoggingFormat.plain) -> Union[tuple, None]:
     """Get wazuh-manager.log log fields.
 
     Parameters
@@ -91,7 +91,7 @@ def get_wazuh_active_logging_format() -> LoggingFormat:
     logging_config = get_ossec_conf(section='logging')['logging']
     return LoggingFormat.plain if 'plain' in logging_config.get('log_format') else LoggingFormat.json
 
-def get_ossec_logs(limit: int = 2000) -> list:
+def get_wazuh_logs(limit: int = 2000) -> list:
     """Return last <limit> lines of wazuh-manager.log file.
 
     Parameters
@@ -115,7 +115,7 @@ def get_ossec_logs(limit: int = 2000) -> list:
         raise WazuhInternalError(1020)
 
     for line in wazuh_log_content:
-        log_fields = get_ossec_log_fields(line, log_format=log_format)
+        log_fields = get_wazuh_log_fields(line, log_format=log_format)
         if log_fields:
             date, tag, level, description = log_fields
 
@@ -141,7 +141,7 @@ def get_logs_summary(limit: int = 2000) -> dict:
         Number of logs for every tag.
     """
     tags = dict()
-    logs = get_ossec_logs(limit)
+    logs = get_wazuh_logs(limit)
 
     for log in logs:
         if log['tag'] in tags:

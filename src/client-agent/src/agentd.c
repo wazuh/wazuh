@@ -194,7 +194,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             agt->execdq=-1;
 
             // Update buffer configuration
-            const char *cfg = OSSECCONF;
+            const char *cfg = WAZUHCONF;
             unsigned int current_capacity = agt->buflength;
             int current_buffer_flag = agt->buffer;
 

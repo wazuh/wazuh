@@ -1,5 +1,5 @@
 #!/sbin/runscript
-# Gentoo init script
+# Gentoo init script for Wazuh
 # Copyright (C) 2015, Wazuh Inc.
 # by gentuxx <gentuxx@gmail.com>
 

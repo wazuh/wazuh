@@ -386,7 +386,7 @@ size_t wcom_check_manager_config(char **output) {
     cJSON *response = cJSON_CreateObject();
 
     OS_XML xml_check;
-    const char *cfg = OSSECCONF;
+    const char *cfg = WAZUHCONF;
 
     if (OS_ReadXML(cfg, &xml_check) < 0) {
         snprintf(response_string, 0, "Error reading %s file", cfg);

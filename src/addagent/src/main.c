@@ -45,7 +45,7 @@ __attribute__((noreturn)) static void helpmsg()
 static void print_banner()
 {
     printf("\n");
-    printf(BANNER, __ossec_name, __ossec_version, (int)(21 - strlen(__ossec_name) - strlen(__ossec_version)), "                     ");
+    printf(BANNER, __wazuh_name, __wazuh_version, (int)(21 - strlen(__wazuh_name) - strlen(__wazuh_version)), "                     ");
 
     printf(BANNER_CLIENT);
     return;
@@ -157,11 +157,11 @@ int main(int argc, char **argv)
     w_ch_exec_dir();
 
     /* Check permissions */
-    fp = wfopen(OSSECCONF, "r");
+    fp = wfopen(WAZUHCONF, "r");
     if (fp) {
         fclose(fp);
     } else {
-        merror_exit(CONF_ERROR, OSSECCONF);
+        merror_exit(CONF_ERROR, WAZUHCONF);
     }
 #endif
 

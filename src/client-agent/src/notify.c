@@ -80,8 +80,7 @@ void clear_merged_hash_cache() {
 }
 
 /* Build JSON keepalive message from metadata_provider and additional fields */
-static char* build_json_keepalive(const char *agent_ip, const char *config_sum,
-                                   const char *merged_sum) {
+static char* build_json_keepalive(const char *agent_ip, const char *merged_sum) {
     agent_metadata_t metadata = {0};
     bool has_metadata = false;
 
@@ -116,20 +115,12 @@ static char* build_json_keepalive(const char *agent_ip, const char *config_sum,
             cJSON_AddStringToObject(agent, "version", metadata.agent_version);
         }
     }
-    if (config_sum && config_sum[0]) {
-        cJSON_AddStringToObject(agent, "config_sum", config_sum);
-    }
     if (merged_sum && merged_sum[0]) {
         cJSON_AddStringToObject(agent, "merged_sum", merged_sum);
     }
     if (agent_ip && agent_ip[0]) {
         cJSON_AddStringToObject(agent, "ip", agent_ip);
     }
-    const char *uname_str = getuname();
-    if (uname_str) {
-        cJSON_AddStringToObject(agent, "uname", uname_str);
-    }
-
 
     // Add groups array if available
     if (has_metadata && metadata.groups_count > 0 && metadata.groups) {
@@ -207,7 +198,6 @@ static char* build_json_keepalive(const char *agent_ip, const char *config_sum,
 void run_notify()
 {
     char tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 2];
-    os_md5 md5sum = {0};
     time_t curr_time;
     static char agent_ip[IPSIZE + 1] = { '\0' };
     static time_t last_update = 0;
@@ -274,15 +264,9 @@ void run_notify()
         }
     }
 
-    /* Compute client.keys MD5 sum if available */
-    if ((File_DateofChange(AGENTCONFIG) > 0) && (OS_MD5_File(AGENTCONFIG, md5sum, OS_TEXT) != 0)) {
-        md5sum[0] = '\0';  // Clear if failed
-    }
-
     /* Create JSON keepalive message */
     char *json_keepalive = build_json_keepalive(
         agent_ip[0] ? agent_ip : NULL,
-        md5sum[0] ? md5sum : NULL,
         g_shared_mg_file_hash
     );
     if (!json_keepalive) {

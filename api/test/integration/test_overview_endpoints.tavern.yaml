@@ -70,24 +70,20 @@ stages:
              mergedSum: !anystr
              name: !anystr
          last_registered_agent:
-           - configSum: !anystr
-             dateAdd: !anystr
+           - dateAdd: !anystr
              group: !anything
              id: !anystr
              ip: !anystr
              lastKeepAlive: !anystr
-             manager: !anystr
              mergedSum: !anystr
              name: !anystr
              node_name: !anystr
              os:
                arch: !anystr
-               codename: !anystr
                major: !anystr
                minor: !anystr
                name: !anystr
                platform: !anystr
-               uname: !anystr
                version: !anystr
              registerIP: any
              status: disconnected

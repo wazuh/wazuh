@@ -22,6 +22,7 @@ else()
 endif()
 
 add_executable(utils_benchmark_test ${UTIL_CXX_BENCHMARKTEST_SRC})
+add_dependencies(utils_benchmark_test benchmark_external)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_libraries(utils_benchmark_test benchmark rocksdb)

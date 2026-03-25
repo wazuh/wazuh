@@ -97,11 +97,11 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<bool>(key::STREAMLOG_SHOULD_COMPRESS, "WAZUH_STREAMLOG_SHOULD_COMPRESS", true);
     addUnit<size_t>(key::STREAMLOG_COMPRESSION_LEVEL, "WAZUH_STREAMLOG_COMPRESSION_LEVEL", 5);
     addUnit<std::string>(
-        key::STREAMLOG_ALERTS_PATTERN, "WAZUH_STREAMLOG_ALERTS_PATTERN", "${YYYY}/${MMM}/ossec-${name}-${DD}.json");
+        key::STREAMLOG_ALERTS_PATTERN, "WAZUH_STREAMLOG_ALERTS_PATTERN", "${YYYY}/${MMM}/wazuh-${name}-${DD}.json");
     addUnit<size_t>(key::STREAMLOG_ALERTS_MAX_SIZE, "WAZUH_STREAMLOG_ALERTS_MAX_SIZE", 0);
     addUnit<size_t>(key::STREAMLOG_ALERTS_BUFFER_SIZE, "WAZUH_STREAMLOG_ALERTS_BUFFER_SIZE", 0x1 << 20);
     addUnit<std::string>(
-        key::STREAMLOG_ARCHIVES_PATTERN, "WAZUH_STREAMLOG_ARCHIVES_PATTERN", "${YYYY}/${MMM}/ossec-${name}-${DD}.json");
+        key::STREAMLOG_ARCHIVES_PATTERN, "WAZUH_STREAMLOG_ARCHIVES_PATTERN", "${YYYY}/${MMM}/wazuh-${name}-${DD}.json");
     addUnit<size_t>(key::STREAMLOG_ARCHIVES_MAX_SIZE, "WAZUH_STREAMLOG_ARCHIVES_MAX_SIZE", 0);
     addUnit<size_t>(key::STREAMLOG_ARCHIVES_BUFFER_SIZE, "WAZUH_STREAMLOG_ARCHIVES_BUFFER_SIZE", 0x1 << 20);
 

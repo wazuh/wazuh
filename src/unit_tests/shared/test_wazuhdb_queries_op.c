@@ -659,15 +659,10 @@ void test_wdb_update_agent_data_error_json(void **state)
     os_strdup("osversion", agent_data->osd->os_version);
     os_strdup("osmajor", agent_data->osd->os_major);
     os_strdup("osminor", agent_data->osd->os_minor);
-    os_strdup("oscodename", agent_data->osd->os_codename);
     os_strdup("osplatform", agent_data->osd->os_platform);
-    os_strdup("osbuild", agent_data->osd->os_build);
-    os_strdup("osuname", agent_data->osd->os_uname);
     os_strdup("osarch", agent_data->osd->os_arch);
     os_strdup("version", agent_data->version);
-    os_strdup("csum", agent_data->config_sum);
     os_strdup("msum", agent_data->merged_sum);
-    os_strdup("managerhost", agent_data->manager_host);
     os_strdup("nodename", agent_data->node_name);
     os_strdup("agentip", agent_data->agent_ip);
     os_strdup("active", agent_data->connection_status);
@@ -697,15 +692,10 @@ void test_wdb_update_agent_data_error_socket(void **state)
     os_strdup("osversion", agent_data->osd->os_version);
     os_strdup("osmajor", agent_data->osd->os_major);
     os_strdup("osminor", agent_data->osd->os_minor);
-    os_strdup("oscodename", agent_data->osd->os_codename);
     os_strdup("osplatform", agent_data->osd->os_platform);
-    os_strdup("osbuild", agent_data->osd->os_build);
-    os_strdup("osuname", agent_data->osd->os_uname);
     os_strdup("osarch", agent_data->osd->os_arch);
     os_strdup("version", agent_data->version);
-    os_strdup("csum", agent_data->config_sum);
     os_strdup("msum", agent_data->merged_sum);
-    os_strdup("managerhost", agent_data->manager_host);
     os_strdup("nodename", agent_data->node_name);
     os_strdup("agentip", agent_data->agent_ip);
     os_strdup("active", agent_data->connection_status);
@@ -713,16 +703,14 @@ void test_wdb_update_agent_data_error_socket(void **state)
     os_strdup("synced", agent_data->group_config_status);
 
     const char *json_str = strdup("{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
-\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
-\"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
-\"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
-\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\
+\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_platform\":\"osplatform\",\
+\"os_arch\":\"osarch\",\"version\":\"version\",\"merged_sum\":\"msum\",\
+\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\
 \"group_config_status\":\"synced\"}");
     const char *query_str = "global update-agent-data {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
-\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
-\"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
-\"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
-\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\
+\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_platform\":\"osplatform\",\
+\"os_arch\":\"osarch\",\"version\":\"version\",\"merged_sum\":\"msum\",\
+\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\
 \"group_config_status\":\"synced\"}";
 
     const char *response = "err";
@@ -736,12 +724,8 @@ void test_wdb_update_agent_data_error_socket(void **state)
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "version");
     expect_string(__wrap_cJSON_AddStringToObject, string, "version");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "config_sum");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "csum");
     expect_string(__wrap_cJSON_AddStringToObject, name, "merged_sum");
     expect_string(__wrap_cJSON_AddStringToObject, string, "msum");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "manager_host");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "managerhost");
     expect_string(__wrap_cJSON_AddStringToObject, name, "node_name");
     expect_string(__wrap_cJSON_AddStringToObject, string, "nodename");
     expect_string(__wrap_cJSON_AddStringToObject, name, "agent_ip");
@@ -760,14 +744,8 @@ void test_wdb_update_agent_data_error_socket(void **state)
     expect_string(__wrap_cJSON_AddStringToObject, string, "osmajor");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_minor");
     expect_string(__wrap_cJSON_AddStringToObject, string, "osminor");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "os_codename");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "oscodename");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_platform");
     expect_string(__wrap_cJSON_AddStringToObject, string, "osplatform");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "os_build");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "osbuild");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "os_uname");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "osuname");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_arch");
     expect_string(__wrap_cJSON_AddStringToObject, string, "osarch");
 
@@ -786,10 +764,9 @@ void test_wdb_update_agent_data_error_socket(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-agent-data \
 {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
-\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
-\"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
-\"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
-\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\
+\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_platform\":\"osplatform\",\
+\"os_arch\":\"osarch\",\"version\":\"version\",\"merged_sum\":\"msum\",\
+\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\
 \"group_config_status\":\"synced\"}");
 
     ret = wdb_update_agent_data(agent_data, NULL);
@@ -812,15 +789,10 @@ void test_wdb_update_agent_data_error_sql_execution(void **state)
     os_strdup("osversion", agent_data->osd->os_version);
     os_strdup("osmajor", agent_data->osd->os_major);
     os_strdup("osminor", agent_data->osd->os_minor);
-    os_strdup("oscodename", agent_data->osd->os_codename);
     os_strdup("osplatform", agent_data->osd->os_platform);
-    os_strdup("osbuild", agent_data->osd->os_build);
-    os_strdup("osuname", agent_data->osd->os_uname);
     os_strdup("osarch", agent_data->osd->os_arch);
     os_strdup("version", agent_data->version);
-    os_strdup("csum", agent_data->config_sum);
     os_strdup("msum", agent_data->merged_sum);
-    os_strdup("managerhost", agent_data->manager_host);
     os_strdup("nodename", agent_data->node_name);
     os_strdup("agentip", agent_data->agent_ip);
     os_strdup("active", agent_data->connection_status);
@@ -828,16 +800,14 @@ void test_wdb_update_agent_data_error_sql_execution(void **state)
     os_strdup("synced", agent_data->group_config_status);
 
     const char *json_str = strdup("{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
-\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
-\"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
-\"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
-\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\
+\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_platform\":\"osplatform\",\
+\"os_arch\":\"osarch\",\"version\":\"version\",\"merged_sum\":\"msum\",\
+\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\
 \"group_config_status\":\"synced\"}");
     const char *query_str = "global update-agent-data {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
-\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
-\"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
-\"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
-\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\
+\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_platform\":\"osplatform\",\
+\"os_arch\":\"osarch\",\"version\":\"version\",\"merged_sum\":\"msum\",\
+\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\
 \"group_config_status\":\"synced\"}";
 
     const char *response = "err";
@@ -851,12 +821,8 @@ void test_wdb_update_agent_data_error_sql_execution(void **state)
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "version");
     expect_string(__wrap_cJSON_AddStringToObject, string, "version");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "config_sum");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "csum");
     expect_string(__wrap_cJSON_AddStringToObject, name, "merged_sum");
     expect_string(__wrap_cJSON_AddStringToObject, string, "msum");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "manager_host");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "managerhost");
     expect_string(__wrap_cJSON_AddStringToObject, name, "node_name");
     expect_string(__wrap_cJSON_AddStringToObject, string, "nodename");
     expect_string(__wrap_cJSON_AddStringToObject, name, "agent_ip");
@@ -875,14 +841,8 @@ void test_wdb_update_agent_data_error_sql_execution(void **state)
     expect_string(__wrap_cJSON_AddStringToObject, string, "osmajor");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_minor");
     expect_string(__wrap_cJSON_AddStringToObject, string, "osminor");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "os_codename");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "oscodename");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_platform");
     expect_string(__wrap_cJSON_AddStringToObject, string, "osplatform");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "os_build");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "osbuild");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "os_uname");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "osuname");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_arch");
     expect_string(__wrap_cJSON_AddStringToObject, string, "osarch");
 
@@ -901,10 +861,9 @@ void test_wdb_update_agent_data_error_sql_execution(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot execute SQL query; err database queue/db/global.db");
     expect_string(__wrap__mdebug2, formatted_msg, "Global DB SQL query: global update-agent-data \
 {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
-\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
-\"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
-\"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
-\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\
+\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_platform\":\"osplatform\",\
+\"os_arch\":\"osarch\",\"version\":\"version\",\"merged_sum\":\"msum\",\
+\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\
 \"group_config_status\":\"synced\"}");
 
     ret = wdb_update_agent_data(agent_data, NULL);
@@ -927,15 +886,10 @@ void test_wdb_update_agent_data_error_result(void **state)
     os_strdup("osversion", agent_data->osd->os_version);
     os_strdup("osmajor", agent_data->osd->os_major);
     os_strdup("osminor", agent_data->osd->os_minor);
-    os_strdup("oscodename", agent_data->osd->os_codename);
     os_strdup("osplatform", agent_data->osd->os_platform);
-    os_strdup("osbuild", agent_data->osd->os_build);
-    os_strdup("osuname", agent_data->osd->os_uname);
     os_strdup("osarch", agent_data->osd->os_arch);
     os_strdup("version", agent_data->version);
-    os_strdup("csum", agent_data->config_sum);
     os_strdup("msum", agent_data->merged_sum);
-    os_strdup("managerhost", agent_data->manager_host);
     os_strdup("nodename", agent_data->node_name);
     os_strdup("agentip", agent_data->agent_ip);
     os_strdup("active", agent_data->connection_status);
@@ -943,16 +897,14 @@ void test_wdb_update_agent_data_error_result(void **state)
     os_strdup("synced", agent_data->group_config_status);
 
     const char *json_str = strdup("{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
-\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
-\"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
-\"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
-\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\
+\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_platform\":\"osplatform\",\
+\"os_arch\":\"osarch\",\"version\":\"version\",\"merged_sum\":\"msum\",\
+\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\
 \"group_config_status\":\"synced\"}");
     const char *query_str = "global update-agent-data {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
-\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
-\"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
-\"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
-\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\
+\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_platform\":\"osplatform\",\
+\"os_arch\":\"osarch\",\"version\":\"version\",\"merged_sum\":\"msum\",\
+\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\
 \"group_config_status\":\"synced\"}";
 
     const char *response = "err";
@@ -966,12 +918,8 @@ void test_wdb_update_agent_data_error_result(void **state)
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "version");
     expect_string(__wrap_cJSON_AddStringToObject, string, "version");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "config_sum");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "csum");
     expect_string(__wrap_cJSON_AddStringToObject, name, "merged_sum");
     expect_string(__wrap_cJSON_AddStringToObject, string, "msum");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "manager_host");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "managerhost");
     expect_string(__wrap_cJSON_AddStringToObject, name, "node_name");
     expect_string(__wrap_cJSON_AddStringToObject, string, "nodename");
     expect_string(__wrap_cJSON_AddStringToObject, name, "agent_ip");
@@ -990,14 +938,8 @@ void test_wdb_update_agent_data_error_result(void **state)
     expect_string(__wrap_cJSON_AddStringToObject, string, "osmajor");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_minor");
     expect_string(__wrap_cJSON_AddStringToObject, string, "osminor");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "os_codename");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "oscodename");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_platform");
     expect_string(__wrap_cJSON_AddStringToObject, string, "osplatform");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "os_build");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "osbuild");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "os_uname");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "osuname");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_arch");
     expect_string(__wrap_cJSON_AddStringToObject, string, "osarch");
 
@@ -1037,15 +979,10 @@ void test_wdb_update_agent_data_success(void **state)
     os_strdup("osversion", agent_data->osd->os_version);
     os_strdup("osmajor", agent_data->osd->os_major);
     os_strdup("osminor", agent_data->osd->os_minor);
-    os_strdup("oscodename", agent_data->osd->os_codename);
     os_strdup("osplatform", agent_data->osd->os_platform);
-    os_strdup("osbuild", agent_data->osd->os_build);
-    os_strdup("osuname", agent_data->osd->os_uname);
     os_strdup("osarch", agent_data->osd->os_arch);
     os_strdup("version", agent_data->version);
-    os_strdup("csum", agent_data->config_sum);
     os_strdup("msum", agent_data->merged_sum);
-    os_strdup("managerhost", agent_data->manager_host);
     os_strdup("nodename", agent_data->node_name);
     os_strdup("agentip", agent_data->agent_ip);
     os_strdup("active", agent_data->connection_status);
@@ -1053,16 +990,14 @@ void test_wdb_update_agent_data_success(void **state)
     os_strdup("synced", agent_data->group_config_status);
 
     const char *json_str = strdup("{\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
-\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
-\"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
-\"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
-\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\
+\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_platform\":\"osplatform\",\
+\"os_arch\":\"osarch\",\"version\":\"version\",\"merged_sum\":\"msum\",\
+\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\
 \"group_config_status\":\"synced\"}");
     const char *query_str = "global update-agent-data {\"id\": 1,\"os_name\":\"osname\",\"os_version\":\"osversion\",\
-\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_codename\":\"oscodename\",\
-\"os_platform\":\"osplatform\",\"os_build\":\"osbuild\",\"os_uname\":\"osuname\",\
-\"os_arch\":\"osarch\",\"version\":\"version\",\"config_sum\":\"csum\",\"merged_sum\":\"msum\",\
-\"manager_host\":\"managerhost\",\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\
+\"os_major\":\"osmajor\",\"os_minor\":\"osminor\",\"os_platform\":\"osplatform\",\
+\"os_arch\":\"osarch\",\"version\":\"version\",\"merged_sum\":\"msum\",\
+\"node_name\":\"nodename\",\"agent_ip\":\"agentip\",\"connection_status\":\"active\",\"sync_status\":\"syncreq\",\
 \"group_config_status\":\"synced\"}";
     const char *response = "ok";
 
@@ -1075,12 +1010,8 @@ void test_wdb_update_agent_data_success(void **state)
     expect_value(__wrap_cJSON_AddNumberToObject, number, 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "version");
     expect_string(__wrap_cJSON_AddStringToObject, string, "version");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "config_sum");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "csum");
     expect_string(__wrap_cJSON_AddStringToObject, name, "merged_sum");
     expect_string(__wrap_cJSON_AddStringToObject, string, "msum");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "manager_host");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "managerhost");
     expect_string(__wrap_cJSON_AddStringToObject, name, "node_name");
     expect_string(__wrap_cJSON_AddStringToObject, string, "nodename");
     expect_string(__wrap_cJSON_AddStringToObject, name, "agent_ip");
@@ -1099,14 +1030,8 @@ void test_wdb_update_agent_data_success(void **state)
     expect_string(__wrap_cJSON_AddStringToObject, string, "osmajor");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_minor");
     expect_string(__wrap_cJSON_AddStringToObject, string, "osminor");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "os_codename");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "oscodename");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_platform");
     expect_string(__wrap_cJSON_AddStringToObject, string, "osplatform");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "os_build");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "osbuild");
-    expect_string(__wrap_cJSON_AddStringToObject, name, "os_uname");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "osuname");
     expect_string(__wrap_cJSON_AddStringToObject, name, "os_arch");
     expect_string(__wrap_cJSON_AddStringToObject, string, "osarch");
 
