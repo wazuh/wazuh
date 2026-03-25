@@ -35,7 +35,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiation)
 
     EXPECT_NO_THROW(std::make_shared<ActionOrchestrator>(m_parameters,
                                                          m_spStopActionCondition,
-                                                         [](const std::string& msg) -> FileProcessingResult {
+                                                         [](nlohmann::json msg) -> FileProcessingResult {
                                                              return {0, "", false};
                                                          }));
 
@@ -56,7 +56,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutConfigData)
 
     EXPECT_THROW(std::make_shared<ActionOrchestrator>(parameters,
                                                       m_spStopActionCondition,
-                                                      [](const std::string& msg) -> FileProcessingResult {
+                                                      [](nlohmann::json msg) -> FileProcessingResult {
                                                           return {0, "", false};
                                                       }),
                  std::invalid_argument);
