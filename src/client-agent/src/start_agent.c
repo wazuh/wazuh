@@ -347,7 +347,7 @@ bool connect_server(int server_id, bool verbose)
 
         if (agt->server[agt->rip_id].rip) {
             if (verbose) {
-                minfo("Closing connection to server ([%s]:%d/%s).",
+                mdebug1("Closing connection to server ([%s]:%d/%s).",
                     agt->server[agt->rip_id].rip,
                     agt->server[agt->rip_id].port,
                     "tcp");
@@ -370,16 +370,16 @@ bool connect_server(int server_id, bool verbose)
     if (ip_address == NULL || *ip_address == '\0') {
         if (agt->server[server_id].rip != NULL) {
             const int rip_l = strlen(agt->server[server_id].rip);
-            minfo("Could not resolve hostname '%.*s'", agt->server[server_id].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[server_id].rip);
+            mdebug1("Could not resolve hostname '%.*s'", agt->server[server_id].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[server_id].rip);
         } else {
-            minfo("Could not resolve hostname");
+            mdebug1("Could not resolve hostname");
         }
         os_free(ip_address);
         return false;
     }
 
     if (verbose) {
-        minfo("Trying to connect to server ([%s]:%d/%s).",
+        mdebug1("Trying to connect to server ([%s]:%d/%s).",
             agt->server[server_id].rip,
             agt->server[server_id].port,
             "tcp");
@@ -452,7 +452,7 @@ void start_agent(int is_startup)
         /* If there is a next server, try it */
         if (agt->server[current_server_id + 1].rip) {
             current_server_id++;
-            minfo("Trying next server ip in the line: '%s'.", agt->server[current_server_id].rip);
+            mdebug1("Trying next server ip in the line: '%s'.", agt->server[current_server_id].rip);
         } else {
             current_server_id = 0;
             mwarn("Unable to connect to any server.");
@@ -511,7 +511,7 @@ static void w_agentd_keys_init (void) {
 
     /* Set the crypto method for the agent */
     os_set_agent_crypto_method(&keys, W_METH_AES);
-    minfo("Using AES as encryption method.");
+    mdebug1("Using AES as encryption method.");
 }
 
 /**
@@ -551,7 +551,7 @@ static ssize_t receive_message(char *buffer, unsigned int max_lenght) {
                     break;
                 default:
                     if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
-                        minfo("Unable to receive start response: Timeout reached");
+                        mdebug1("Unable to receive start response: Timeout reached");
                     } else {
                         #ifdef WIN32
                             mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
@@ -569,7 +569,7 @@ int try_enroll_to_server(const char * server_rip, uint32_t network_interface) {
     int enroll_result = w_enrollment_request_key(agt->enrollment_cfg, server_rip, network_interface);
     if (enroll_result == 0) {
         /* Wait for key update on agent side */
-        minfo("Waiting %ld seconds before server connection", (long)agt->enrollment_cfg->delay_after_enrollment);
+        mdebug1("Waiting %ld seconds before server connection", (long)agt->enrollment_cfg->delay_after_enrollment);
         sleep(agt->enrollment_cfg->delay_after_enrollment);
         /* Successfull enroll, read keys */
         OS_UpdateKeys(&keys);
@@ -639,7 +639,7 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                                                       cluster_node_buffer, sizeof(cluster_node_buffer),
                                                       agent_groups_buffer, sizeof(agent_groups_buffer),
                                                       merged_sum_buffer, sizeof(merged_sum_buffer)) == 0) {
-                                minfo("Module limits received from manager");
+                                mdebug1("Module limits received from manager");
 
                                 mdebug2("Received FIM limits: file=%d, registry_key=%d, registry_value=%d",
                                         agent_module_limits.fim.file, agent_module_limits.fim.registry_key,
@@ -665,17 +665,17 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                                 /* Store cluster_name in global for agent-info module to query via agcom */
                                 strncpy(agent_cluster_name, cluster_name_buffer, sizeof(agent_cluster_name) - 1);
                                 agent_cluster_name[sizeof(agent_cluster_name) - 1] = '\0';
-                                minfo("Connected to cluster: %s", agent_cluster_name);
+                                mdebug1("Connected to cluster: %s", agent_cluster_name);
 
                                 /* Store cluster_node in global for agent-info module to query via agcom */
                                 strncpy(agent_cluster_node, cluster_node_buffer, sizeof(agent_cluster_node) - 1);
                                 agent_cluster_node[sizeof(agent_cluster_node) - 1] = '\0';
-                                minfo("Connected to node: %s", agent_cluster_node);
+                                mdebug1("Connected to node: %s", agent_cluster_node);
 
                                 /* Store agent_groups in global for agent-info module to query via agcom */
                                 strncpy(agent_agent_groups, agent_groups_buffer, sizeof(agent_agent_groups) - 1);
                                 agent_agent_groups[sizeof(agent_agent_groups) - 1] = '\0';
-                                minfo("Agent groups: %s", agent_agent_groups);
+                                mdebug1("Agent groups: %s", agent_agent_groups);
 
                                 startup_gate_process_handshake(is_startup, merged_sum_buffer);
 
@@ -683,10 +683,10 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                                 if (previous_limits.limits_received &&
                                     module_limits_changed(&previous_limits, &agent_module_limits)) {
                                     if (agt->flags.auto_restart) {
-                                        minfo("Agent is reloading due to document limits changes.");
+                                        mdebug1("Agent is reloading due to document limits changes.");
                                         reloadAgent();
                                     } else {
-                                        minfo("Document limits have been updated.");
+                                        mdebug1("Document limits have been updated.");
                                     }
                                 }
 
@@ -695,7 +695,7 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                                 return false;
                             }
                         } else {
-                            minfo("No handshake JSON after ACK, using defaults");
+                            mdebug1("No handshake JSON after ACK, using defaults");
                             startup_gate_process_handshake(is_startup, NULL);
                         }
 

@@ -43,7 +43,7 @@ DWORD WINAPI state_main(__attribute__((unused)) LPVOID arg) {
 void * state_main(__attribute__((unused)) void * args) {
 #endif
     if (!interval) {
-        minfo("State file is disabled.");
+        mdebug1("State file is disabled.");
 #ifdef WIN32
         return 0;
 #else

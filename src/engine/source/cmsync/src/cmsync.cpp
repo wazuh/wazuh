@@ -159,7 +159,7 @@ CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPt
         return;
     }
 
-    LOG_INFO("[CMSync] First setup detected, initializing default sync spaces");
+    LOG_DEBUG("[CMSync] First setup detected, initializing default sync spaces");
 
     addSpaceToSync("standard");
     addSpaceToSync("custom");
@@ -345,7 +345,7 @@ void CMSync::addSpaceToSync(std::string_view space)
     // SET Dummy namespace id
     m_namespacesState.back().setNamespaceId(DUMMY_NAMESPACE_ID);
 
-    LOG_INFO("[CMSync] Added space '{}' to the sync list", space);
+    LOG_DEBUG("[CMSync] Added space '{}' to the sync list", space);
 
     dumpStateToStore();
 }
@@ -532,7 +532,7 @@ void CMSync::synchronize()
             }
 
             // Cases 3 and 4: Changes detected, perform synchronization
-            LOG_INFO("[CMSync] Changes detected for space '{}', updating...", nsState.getOriginSpace());
+            LOG_DEBUG("[CMSync] Changes detected for space '{}', updating...", nsState.getOriginSpace());
 
             // Download and enrich the namespace
             const auto newNsId = downloadAndEnrichNamespace(nsState.getOriginSpace());
@@ -584,7 +584,7 @@ void CMSync::synchronize()
                 }
             }
 
-            LOG_INFO("[CMSync] Successfully synchronized space '{}'", nsState.getOriginSpace());
+            LOG_DEBUG("[CMSync] Successfully synchronized space '{}'", nsState.getOriginSpace());
         }
         catch (const std::exception& e)
         {

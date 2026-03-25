@@ -138,7 +138,7 @@ IocSync::IocSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexer
         return;
     }
 
-    LOG_INFO("[IOC::Sync] First setup detected, initializing default IOC types to sync");
+    LOG_DEBUG("[IOC::Sync] First setup detected, initializing default IOC types to sync");
 
     // Add default IOC types to sync from indexer connector policy
     for (const auto& iocType : ioc::kvdb::details::getSupportedIocTypes())
@@ -238,7 +238,7 @@ void IocSync::addIOCTypeToSync(std::string_view iocType)
     // Add the new IOC type to the sync list
     m_databasesState.emplace_back(iocType);
 
-    LOG_INFO("[IOC::Sync] Added IOC type '{}' to the sync list", iocType);
+    LOG_DEBUG("[IOC::Sync] Added IOC type '{}' to the sync list", iocType);
 
     saveStateToStore();
 }
@@ -353,7 +353,7 @@ bool IocSync::syncIOCType(SyncedIOCDatabase& dbState,
         }
         else
         {
-            LOG_INFO("[IOC::Sync] Changes detected for IOC type '{}', updating...", dbState.getIocType());
+            LOG_DEBUG("[IOC::Sync] Changes detected for IOC type '{}', updating...", dbState.getIocType());
         }
 
         // Download to temporary database
@@ -415,7 +415,7 @@ bool IocSync::syncIOCType(SyncedIOCDatabase& dbState,
         // Update state
         dbState.setLastDataHash(remoteHash);
 
-        LOG_INFO("[IOC::Sync] Synchronized IOC type '{}'", dbState.getIocType());
+        LOG_DEBUG("[IOC::Sync] Synchronized IOC type '{}'", dbState.getIocType());
         return true;
     }
     catch (const std::exception& e)

@@ -1947,7 +1947,7 @@ int wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag) {
         result = w_compress_gzfile(path, path_compressed);
         unlink(path);
         if(OS_SUCCESS == result) {
-            minfo("Created Global database backup \"%s\"", path_compressed);
+            mdebug1("Created Global database backup \"%s\"", path_compressed);
             wdb_global_remove_old_backups();
             cJSON* j_path = cJSON_CreateArray();
             cJSON_AddItemToArray(j_path, cJSON_CreateString(path_compressed));

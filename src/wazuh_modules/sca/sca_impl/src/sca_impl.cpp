@@ -271,7 +271,7 @@ void SecurityConfigurationAssessment::Setup(bool enabled,
 
 void SecurityConfigurationAssessment::Stop()
 {
-    LoggingHelper::getInstance().log(LOG_INFO, "SecurityConfigurationAssessment::Stop() called");
+    LoggingHelper::getInstance().log(LOG_DEBUG, "SecurityConfigurationAssessment::Stop() called");
     {
         std::lock_guard<std::mutex> lock(m_pauseMutex);
         m_keepRunning = false;
@@ -288,7 +288,7 @@ void SecurityConfigurationAssessment::Stop()
         m_spSyncProtocol->stop();
     }
 
-    LoggingHelper::getInstance().log(LOG_INFO, "Stopping policies");
+    LoggingHelper::getInstance().log(LOG_DEBUG, "Stopping policies");
 
     for (auto& policy : m_policies)
     {
@@ -367,7 +367,7 @@ void SecurityConfigurationAssessment::initSyncProtocol(const std::string& module
     try
     {
         m_spSyncProtocol = std::make_shared<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
-        LoggingHelper::getInstance().log(LOG_INFO, "SCA sync protocol initialized successfully with database: " + syncDbPath);
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync protocol initialized successfully with database: " + syncDbPath);
 
         // Initialize schema validator factory from embedded resources
         auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
@@ -376,7 +376,7 @@ void SecurityConfigurationAssessment::initSyncProtocol(const std::string& module
         {
             if (validatorFactory.initialize())
             {
-                LoggingHelper::getInstance().log(LOG_INFO, "Schema validator initialized successfully from embedded resources");
+                LoggingHelper::getInstance().log(LOG_DEBUG, "Schema validator initialized successfully from embedded resources");
             }
             else
             {

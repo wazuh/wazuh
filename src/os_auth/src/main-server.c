@@ -717,7 +717,7 @@ static void process_message(struct client *client) {
         snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "OSSEC K:'%s %s %s %s'", client->new_id, client->agentname, client->ip, new_key);
         client->write_len = strlen(client->write_buffer);
 
-        minfo("Agent key generated for '%s' (requested by %s)", client->agentname, client->ip);
+        mdebug1("Agent key generated for '%s' (requested by %s)", client->agentname, client->ip);
     } else {
         snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "%s. %s", response, "Unable to add agent");
         client->write_len = strlen(client->write_buffer);

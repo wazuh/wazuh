@@ -90,7 +90,7 @@ void ConfRemoteManager::synchronize()
 
     if (stateChanged)
     {
-        LOG_INFO("Remote settings synchronized: changes detected and applied.");
+        LOG_DEBUG("Remote settings synchronized: changes detected and applied.");
         try
         {
             saveSettingsToStore();

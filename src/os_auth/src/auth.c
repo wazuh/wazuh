@@ -105,7 +105,7 @@ w_err_t w_auth_parse_data(const char* buf,
                 os_malloc(len+1, *agentname);
                 memcpy(*agentname, buf-len, len);
                 (*agentname)[len] = '\0';
-                minfo("Received request for a new agent (%s) from: %s", *agentname, ip);
+                mdebug1("Received request for a new agent (%s) from: %s", *agentname, ip);
                 parseok = TRUE;
                 break;
             }

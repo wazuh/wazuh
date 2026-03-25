@@ -382,7 +382,7 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
             return;
         }
 
-        LOG_INFO("[Geo::Manager] Changes detected for {} database '{}', updating...", typeName, dbName);
+        LOG_DEBUG("[Geo::Manager] Changes detected for {} database '{}', updating...", typeName, dbName);
         auto error = processDbEntry(path, type, url.value(), md5.value(), createdAt.value());
         if (base::isError(error))
         {
@@ -393,7 +393,7 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
         }
         else
         {
-            LOG_INFO("[Geo::Manager] Successfully updated {} database '{}'", typeName, dbName);
+            LOG_DEBUG("[Geo::Manager] Successfully updated {} database '{}'", typeName, dbName);
         }
     };
 

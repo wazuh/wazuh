@@ -333,7 +333,7 @@ void LogCollectorStart()
             if (current->command) {
                 current->read = read_command;
 
-                minfo("Monitoring output of command(%d): %s", current->ign, current->command);
+                mdebug1("Monitoring output of command(%d): %s", current->ign, current->command);
                 tg = 0;
                 if (current->target) {
                     while (current->target[tg]) {
@@ -361,7 +361,7 @@ void LogCollectorStart()
             if (current->command) {
                 current->read = read_fullcommand;
 
-                minfo("Monitoring full output of command(%d): %s", current->ign, current->command);
+                mdebug1("Monitoring full output of command(%d): %s", current->ign, current->command);
                 tg = 0;
                 if (current->target){
                     while (current->target[tg]) {
@@ -426,7 +426,7 @@ void LogCollectorStart()
         else if (j < 0) {
             set_read(current, i, j);
             if (current->file) {
-                minfo(READING_FILE, current->file);
+                mdebug1(READING_FILE, current->file);
             }
             /* More tweaks for Windows. For some reason IIS places
              * some weird characters at the end of the files and getc
@@ -447,7 +447,7 @@ void LogCollectorStart()
 #endif
         } else {
             if (current->file) {
-                minfo(READING_FILE, current->file);
+                mdebug1(READING_FILE, current->file);
             }
 
         /* On Windows we need to forward the seek for wildcard files */

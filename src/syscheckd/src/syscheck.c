@@ -497,7 +497,7 @@ void fim_initialize() {
 
                 if (docs_to_promote) { // Limit has increased
                     // Send promoted documents to persistent queue as CREATE events
-                    minfo("Document limit increased from  %d to %d for index %s. Currently synced documents: %d", *synced_docs_ptr, limit, table_name, *synced_docs_ptr + cJSON_GetArraySize(docs_to_promote));
+                    mdebug1("Document limit increased from  %d to %d for index %s. Currently synced documents: %d", *synced_docs_ptr, limit, table_name, *synced_docs_ptr + cJSON_GetArraySize(docs_to_promote));
                     persist_sync_documents(table_name, docs_to_promote, OPERATION_CREATE);
 
                     OSList* pending_sync_updates = OSList_Create();
@@ -554,7 +554,7 @@ void fim_initialize() {
     // Initialize schema validator from embedded resources
     if (!schema_validator_is_initialized()) {
         if (schema_validator_initialize()) {
-            minfo("Schema validator initialized successfully from embedded resources");
+            mdebug1("Schema validator initialized successfully from embedded resources");
         } else {
             mwarn("Failed to initialize schema validator. Schema validation will be disabled.");
         }
@@ -652,7 +652,7 @@ int Start_win32_Syscheck() {
             dir_it = node_it->data;
             char optstr[ 1024 ];
 
-            minfo(FIM_MONITORING_DIRECTORY, dir_it->path, syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));
+            mdebug1(FIM_MONITORING_DIRECTORY, dir_it->path, syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));
 
             if (dir_it->tag != NULL) {
                 mdebug2(FIM_TAG_ADDED, dir_it->tag, dir_it->path);
@@ -679,47 +679,47 @@ int Start_win32_Syscheck() {
         /* Print ignores. */
         if(syscheck.ignore)
             for (r = 0; syscheck.ignore[r] != NULL; r++)
-                minfo(FIM_PRINT_IGNORE_ENTRY, "file", syscheck.ignore[r]);
+                mdebug1(FIM_PRINT_IGNORE_ENTRY, "file", syscheck.ignore[r]);
 
         /* Print sregex ignores. */
         if(syscheck.ignore_regex)
             for (r = 0; syscheck.ignore_regex[r] != NULL; r++)
-                minfo(FIM_PRINT_IGNORE_SREGEX, "file", syscheck.ignore_regex[r]->raw);
+                mdebug1(FIM_PRINT_IGNORE_SREGEX, "file", syscheck.ignore_regex[r]->raw);
 
         /* Print registry ignores. */
         if(syscheck.key_ignore)
             for (r = 0; syscheck.key_ignore[r].entry != NULL; r++)
-                minfo(FIM_PRINT_IGNORE_ENTRY, "registry", syscheck.key_ignore[r].entry);
+                mdebug1(FIM_PRINT_IGNORE_ENTRY, "registry", syscheck.key_ignore[r].entry);
 
         /* Print sregex registry ignores. */
         if(syscheck.key_ignore_regex)
             for (r = 0; syscheck.key_ignore_regex[r].regex != NULL; r++)
-                minfo(FIM_PRINT_IGNORE_SREGEX, "registry", syscheck.key_ignore_regex[r].regex->raw);
+                mdebug1(FIM_PRINT_IGNORE_SREGEX, "registry", syscheck.key_ignore_regex[r].regex->raw);
 
         if(syscheck.value_ignore)
             for (r = 0; syscheck.value_ignore[r].entry != NULL; r++)
-                minfo(FIM_PRINT_IGNORE_ENTRY, "value", syscheck.value_ignore[r].entry);
+                mdebug1(FIM_PRINT_IGNORE_ENTRY, "value", syscheck.value_ignore[r].entry);
 
         /* Print sregex registry ignores. */
         if(syscheck.value_ignore_regex)
             for (r = 0; syscheck.value_ignore_regex[r].regex != NULL; r++)
-                minfo(FIM_PRINT_IGNORE_SREGEX, "value", syscheck.value_ignore_regex[r].regex->raw);
+                mdebug1(FIM_PRINT_IGNORE_SREGEX, "value", syscheck.value_ignore_regex[r].regex->raw);
 
         /* Print registry values with nodiff. */
         if(syscheck.registry_nodiff)
             for (r = 0; syscheck.registry_nodiff[r].entry != NULL; r++)
-                minfo(FIM_NO_DIFF_REGISTRY, "registry value", syscheck.registry_nodiff[r].entry);
+                mdebug1(FIM_NO_DIFF_REGISTRY, "registry value", syscheck.registry_nodiff[r].entry);
 
         /* Print sregex registry values with nodiff. */
         if(syscheck.registry_nodiff_regex)
             for (r = 0; syscheck.registry_nodiff_regex[r].regex != NULL; r++)
-                minfo(FIM_NO_DIFF_REGISTRY, "registry sregex", syscheck.registry_nodiff_regex[r].regex->raw);
+                mdebug1(FIM_NO_DIFF_REGISTRY, "registry sregex", syscheck.registry_nodiff_regex[r].regex->raw);
 
         /* Print files with no diff. */
         if (syscheck.nodiff){
             r = 0;
             while (syscheck.nodiff[r] != NULL) {
-                minfo(FIM_NO_DIFF, syscheck.nodiff[r]);
+                mdebug1(FIM_NO_DIFF, syscheck.nodiff[r]);
                 r++;
             }
         }

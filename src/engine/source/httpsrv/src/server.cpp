@@ -243,7 +243,7 @@ void Server::start(const std::filesystem::path& socketPath, bool useThread)
         auto tid = m_thread.get_id();
         std::stringstream ss;
         ss << tid;
-        LOG_INFO("Server {} started in thread {} at {}", m_id, ss.str(), socketPath.string());
+        LOG_DEBUG("Server {} started in thread {} at {}", m_id, ss.str(), socketPath.string());
     }
     else
     {
