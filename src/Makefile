@@ -388,6 +388,14 @@ TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
+TZDATA_CURL_FLAGS := -fsS --retry 5 --retry-delay 2 --connect-timeout 20 --max-time 300
+ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-connrefused'))
+	TZDATA_CURL_FLAGS += --retry-connrefused
+endif
+ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-all-errors'))
+	TZDATA_CURL_FLAGS += --retry-all-errors
+endif
+TZDATA_CURL := curl $(TZDATA_CURL_FLAGS) -o
 DEPS_VERSION = 99-29585
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
@@ -552,10 +560,9 @@ endif
 
 # Explicit rule for tzdata - always download from sources URL
 external/tzdata.tar.gz:
-	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/tzdata.tar.gz
-	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
-	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
-	rm $(patsubst %.gz,%,$@)
+	test -d $(patsubst %.tar.gz,%,$@) ||\
+	($(TZDATA_CURL) $@ $(RESOURCES_URL)/libraries/sources/tzdata.tar.gz && \
+	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
 	rm -f external/tzdata/tzdata.tar.gz
 
 # Remaining dependencies
