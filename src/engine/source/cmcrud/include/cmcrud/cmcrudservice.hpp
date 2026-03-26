@@ -33,7 +33,7 @@ public:
     void deleteNamespace(const cm::store::NamespaceId& nsId) override;
     cm::store::dataType::Policy importNamespace(const cm::store::NamespaceId& nsId,
                          std::string_view jsonDocument,
-                         std::string_view origin,
+                         std::string_view originSpace,
                          bool force) override;
     void importNamespace(const cm::store::NamespaceId& nsId,
                          const std::vector<json::Json>& kvdbs,
