@@ -2717,10 +2717,6 @@ components:
     WazuhManagerConfiguration:
       type: object
       properties:
-        active-response:
-          type: array
-          items:
-            type: object
         alerts:
           type: object
         auth:
