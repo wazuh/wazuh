@@ -1269,10 +1269,6 @@ components:
                                     type: integer
                                     format: int32
                                     description: "Events coming from the ms-graph module (this agent)"
-                                  osquery:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from the OSQuery module (this agent)"
                                   rootcheck:
                                     type: integer
                                     format: int32
