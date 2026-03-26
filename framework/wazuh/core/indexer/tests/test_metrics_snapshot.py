@@ -1273,12 +1273,16 @@ class TestOpensearchTemplateToJsonschema:
         schema = _opensearch_template_to_jsonschema(SAMPLE_TEMPLATE)
         assert schema["type"] == "object"
         assert "wazuh.agent.id" in schema["properties"]
-        assert schema["properties"]["wazuh.agent.id"] == {"type": "string"}
+        assert schema["properties"]["wazuh.agent.id"] == {
+            "anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]
+        }
 
     def test_integer_type_mapping(self):
         """integer OpenSearch type maps to JSON Schema integer."""
         schema = _opensearch_template_to_jsonschema(SAMPLE_TEMPLATE)
-        assert schema["properties"]["wazuh.agent.status_code"] == {"type": "integer"}
+        assert schema["properties"]["wazuh.agent.status_code"] == {
+            "anyOf": [{"type": "integer"}, {"type": "array", "items": {"type": "integer"}}]
+        }
 
     def test_strict_mode_sets_additional_properties_false(self):
         """dynamic=strict in the template sets additionalProperties: false."""
@@ -1319,7 +1323,9 @@ class TestOpensearchTemplateToJsonschema:
     def test_date_type_maps_to_string(self):
         """date OpenSearch type is represented as string in JSON Schema."""
         schema = _opensearch_template_to_jsonschema(SAMPLE_TEMPLATE)
-        assert schema["properties"]["@timestamp"] == {"type": "string"}
+        assert schema["properties"]["@timestamp"] == {
+            "anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]
+        }
 
 
 # ---------------------------------------------------------------------------

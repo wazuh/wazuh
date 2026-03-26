@@ -99,7 +99,16 @@ def _opensearch_template_to_jsonschema(template: dict) -> dict:
     json_schema_props: dict = {}
     for field, mapping in flat_props.items():
         os_type = mapping.get("type", "")
-        json_schema_props[field] = _OPENSEARCH_TO_JSONSCHEMA_TYPE.get(os_type, {})
+        base_type = _OPENSEARCH_TO_JSONSCHEMA_TYPE.get(os_type)
+        if base_type:
+            json_schema_props[field] = {
+                "anyOf": [
+                    base_type,
+                    {"type": "array", "items": base_type}
+                ]
+            }
+        else:
+            json_schema_props[field] = {}
 
     schema: dict = {
         "type": "object",
@@ -324,7 +333,7 @@ class MetricsSnapshotTasks:
         ----------
         schema_filename : str
             Basename of the JSON schema file (e.g.
-            ``"wazuh-metrics-agents.json"``).
+            ``"metrics-agents.json"``).
 
         Returns
         -------

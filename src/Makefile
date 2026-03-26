@@ -607,8 +607,7 @@ endif
 $(INDEXER_PLUGINS_DIR):
 	mkdir -p $(INDEXER_PLUGINS_DIR)
 
-# Rule for streams templates (hard-fail if unavailable)
-$(INDEXER_PLUGINS_DIR)/alerts.json: | $(INDEXER_PLUGINS_DIR)
+$(INDEXER_TEMPLATES_SERVER_STREAMS:%=$(INDEXER_PLUGINS_DIR)/%): | $(INDEXER_PLUGINS_DIR)
 	@success=0; \
 	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(INDEXER_PLUGINS_STREAMS_PATH)/$(notdir $@)"; \
@@ -619,23 +618,6 @@ $(INDEXER_PLUGINS_DIR)/alerts.json: | $(INDEXER_PLUGINS_DIR)
 		fi; \
 	done; \
 	if [ $$success -eq 0 ]; then \
-		echo "ERROR: Failed to download $(notdir $@) from any reference" >&2; \
-		exit 1; \
-	fi
-
-# Rules for metrics schemas (streams templates)
-$(INDEXER_PLUGINS_DIR)/metrics-agents.json \
-$(INDEXER_PLUGINS_DIR)/metrics-comms.json: | $(INDEXER_PLUGINS_DIR)
-	@success=0; \
-	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
-		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(INDEXER_PLUGINS_STREAMS_PATH)/$(notdir $@)"; \
-		echo "$(CURL) $@ $(CACERT_OPT) -f $$url"; \
-		if $(CURL) $@ $(CACERT_OPT) -f "$$url" 2>/dev/null; then \
-			success=1; \
-			break; \
-		fi; \
-	done; \
-	if [ $$success -ne 1 ]; then \
 		echo "ERROR: Failed to download $(notdir $@) from any reference" >&2; \
 		exit 1; \
 	fi
