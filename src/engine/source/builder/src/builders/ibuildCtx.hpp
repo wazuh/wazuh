@@ -35,6 +35,7 @@ struct Context
     std::string integrationName;     ///< Name of the current integration being built.
     std::string integrationCategory; ///< Category of the current integration being built.
     std::string policyName;          ///< Name of the current policy being built.
+    std::string originSpace;         ///< Origin space of the policy (from DataPolicy, default "UNDEFINED").
     std::string stageName;           ///< Name of the current stage being built.
     std::string opName;              ///< Name of the current operation being built.
     std::optional<std::unordered_map<std::string, bool>>
@@ -191,7 +192,7 @@ public:
      *
      * @return bool True if discarded events should be indexed, false otherwise
      */
-    virtual bool getIndexDiscardedEvents() const = 0 ;
+    virtual bool getIndexDiscardedEvents() const = 0;
 };
 
 } // namespace builder::builders
