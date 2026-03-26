@@ -4,6 +4,8 @@ This document describes how helper functions (operations registered via `registe
 fields they operate on. The validation ensures type safety between the decoder/rule logic written by users
 and the underlying schema that defines the event structure.
 
+> **See also:** [`src/engine/source/schemf/README.md`](../../../schemf/README.md) — Documentation of the schema module itself (type system, field tree, `IValidator` interface, value validators).
+
 ---
 
 ## Table of Contents
