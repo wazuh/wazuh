@@ -288,7 +288,10 @@ class LocalServerHandlerMaster(LocalServerHandler):
         dict
             Dict object containing nodes information.
         """
-        return b'ok', json.dumps(self.server.node.get_health(json.loads(filter_nodes))).encode()
+        return b'ok', json.dumps(
+            self.server.node.get_health(json.loads(filter_nodes)),
+            default=str
+        ).encode()
 
     def send_file_request(self, path, node_name):
         """Send a file from the API to the cluster.

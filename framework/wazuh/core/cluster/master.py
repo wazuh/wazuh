@@ -19,9 +19,11 @@ from uuid import uuid4
 from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.agent import Agent
 from wazuh.core.cluster import server, cluster, common as c_common
+from wazuh.core.cluster.common import IndexerTaskManager
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag, log_subprocess_execution, safe_join
 from wazuh.core.common import DECIMALS_DATE_FORMAT
+from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.utils import get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
 from wazuh.core.indexer.active_response import ActiveResponseFetchTask
@@ -1023,12 +1025,29 @@ class Master(server.AbstractServer):
         self.integrity_already_executed = []
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
-        self.disconnected_agent_sync = DisconnectedAgentSyncTasks(server=self,
-                                                                  cluster_items=self.cluster_items)
-        self.active_response_task = ActiveResponseFetchTask(self)
-        self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update, self.agent_groups_update,
-                          self.disconnected_agent_sync.run_agent_groups_sync, self.disconnected_agent_sync.run_cluster_name_sync,
-                          self.active_response_task.run])
+        self.indexer_task_manager = IndexerTaskManager()
+        self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update, self.agent_groups_update])
+
+        try:
+            _indexer_conf = get_ossec_conf(section="indexer")
+            self.disconnected_agent_sync = DisconnectedAgentSyncTasks(server=self,
+                                                                      cluster_items=self.cluster_items)
+            self.active_response_task = ActiveResponseFetchTask(self)
+            indexer_tasks = [self.disconnected_agent_sync.run_agent_groups_sync,
+                             self.active_response_task.run,
+                             self.disconnected_agent_sync.run_cluster_name_sync]
+        except Exception as e:
+            self.logger.error(f"Error loading indexer configuration: {e}")
+            _indexer_conf = {}
+
+        if _indexer_conf:
+            self.tasks.append(lambda: self.indexer_task_manager.manage_indexer_tasks(indexer_tasks))
+        else:
+            self.logger.warning(
+                "Indexer is not configured in wazuh-manager.conf or it is unavailable; "
+                "Indexer tasks will not be started."
+            )
+
         # pending API requests waiting for a response
         self.pending_api_requests = {}
 
@@ -1135,7 +1154,7 @@ class Master(server.AbstractServer):
         # Get active agents by node and format last keep alive date format
         for node_name in workers_info.keys():
             active_agents = Agent.get_agents_overview(filters={'status': 'active', 'node_name': node_name}, limit=None,
-                                                      count=True, get_data=False).get('totalItems', 0)
+                                                      count=True).get('totalItems', 0)
             workers_info[node_name]["info"]["n_active_agents"] = active_agents
             if workers_info[node_name]['info']['type'] != 'master':
                 workers_info[node_name]['status']['last_keep_alive'] = str(

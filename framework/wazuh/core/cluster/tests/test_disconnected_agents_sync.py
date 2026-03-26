@@ -19,7 +19,12 @@ with patch("wazuh.core.common.wazuh_uid"), patch("wazuh.core.common.wazuh_gid"):
     wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
     from wazuh.core.cluster.master import DisconnectedAgentSyncTasks
-    from wazuh.core.exception import WazuhError
+    from wazuh.core.exception import (
+        IndexerUnavailableError,
+        WazuhError,
+        WazuhIndexerError,
+    )
+    from wazuh.core.indexer.indexer import create_indexer
     from wazuh.core.results import AffectedItemsWazuhResult
 
 
@@ -274,6 +279,8 @@ async def test_sync_agent_batch_missing_group(task):
     """
     Ensure agents with missing group data are marked as failed.
     """
+    task._get_max_versions_batch_from_indexer = AsyncMock(return_value={})
+
     agents = [{"id": "001"}]
     result = await task._sync_agent_batch(agents)
 
@@ -463,8 +470,9 @@ async def test_run_cluster_name_sync_already_done(task):
 
 
 @pytest.mark.asyncio
+@patch.object(DisconnectedAgentSyncTasks, "check_indexer", new_callable=AsyncMock)
 @patch.object(DisconnectedAgentSyncTasks, "_get_disconnected_agents", return_value=[])
-async def test_run_cluster_name_sync_no_agents(mock_get, task):
+async def test_run_cluster_name_sync_no_agents(mock_get, mock_check, task):
     """
     Verify sync behavior when no disconnected agents are found.
     """
@@ -473,6 +481,7 @@ async def test_run_cluster_name_sync_no_agents(mock_get, task):
 
 
 @pytest.mark.asyncio
+@patch.object(DisconnectedAgentSyncTasks, "check_indexer", new_callable=AsyncMock)
 @patch.object(
     DisconnectedAgentSyncTasks, "_get_disconnected_agents", return_value=[{"id": "001"}]
 )
@@ -480,7 +489,7 @@ async def test_run_cluster_name_sync_no_agents(mock_get, task):
     "wazuh.core.indexer.disconnected_agents.get_ossec_conf",
     return_value={"cluster": {}},
 )
-async def test_run_cluster_name_sync_no_cluster_name(mock_conf, mock_get, task):
+async def test_run_cluster_name_sync_no_cluster_name(mock_conf, mock_get, mock_check, task):
     """
     Verify sync behavior when no cluster name is configured in ossec.conf.
     """
@@ -489,6 +498,7 @@ async def test_run_cluster_name_sync_no_cluster_name(mock_conf, mock_get, task):
 
 
 @pytest.mark.asyncio
+@patch.object(DisconnectedAgentSyncTasks, "check_indexer", new_callable=AsyncMock)
 @patch.object(
     DisconnectedAgentSyncTasks, "_get_disconnected_agents", return_value=[{"id": "001"}]
 )
@@ -507,7 +517,7 @@ async def test_run_cluster_name_sync_no_cluster_name(mock_conf, mock_get, task):
     return_value={"cluster": {"name": "clusterA"}},
 )
 async def test_run_cluster_name_sync_no_update_needed(
-    mock_conf, mock_versions, mock_cluster, mock_agents, task
+    mock_conf, mock_versions, mock_cluster, mock_agents, mock_check, task
 ):
     """
     Verify that no update is performed if names already match.
@@ -692,11 +702,12 @@ def test_init_without_server_or_logger():
 
 
 @pytest.mark.asyncio
+@patch.object(DisconnectedAgentSyncTasks, "check_indexer", new_callable=AsyncMock)
 @patch(
     "wazuh.core.indexer.disconnected_agents.asyncio.sleep",
     side_effect=[None, asyncio.CancelledError],
 )
-async def test_run_loop_exception_handling(mock_sleep, task):
+async def test_run_loop_exception_handling(mock_sleep, mock_check, task):
     """
     Verify that exceptions inside the main loop are logged and handled.
     """
@@ -798,3 +809,79 @@ async def test_disconnected_agent_group_sync_unexpected_exception(
 
     assert len(result.failed_items) == 1
     task.logger.error.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_create_indexer_raises_indexer_unavailable_after_retries():
+    """After exhausting all retries, create_indexer must raise IndexerUnavailableError."""
+    with patch("wazuh.core.indexer.indexer.Indexer") as mock_indexer_cls:
+        mock_instance = AsyncMock()
+        mock_instance.connect.side_effect = WazuhIndexerError(2200)
+        mock_instance.close = AsyncMock()
+        mock_indexer_cls.return_value = mock_instance
+
+        with patch("wazuh.core.indexer.indexer.sleep", new_callable=AsyncMock), \
+                patch("wazuh.core.indexer.indexer.random.random", return_value=0):
+            with pytest.raises(IndexerUnavailableError):
+                await create_indexer(retries=3, backoff=0)
+
+        assert mock_instance.connect.call_count == 4  # 1 initial + 3 retries
+        mock_instance.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_create_indexer_raises_on_typeerror():
+    """A TypeError in Indexer() constructor must be converted to WazuhIndexerError."""
+    with patch("wazuh.core.indexer.indexer.Indexer", side_effect=TypeError("bad arg")):
+        with pytest.raises(WazuhIndexerError, match="Invalid arguments for Indexer"):
+            await create_indexer(hosts=["localhost"], ports=[9200])
+
+
+@pytest.mark.asyncio
+async def test_run_agent_groups_sync_warning_on_indexer_unavailable(task):
+    """run_agent_groups_sync must log a warning and not crash when indexer is unavailable."""
+    with patch.object(task, "check_indexer", new_callable=AsyncMock):
+        with patch.object(
+            task,
+            "_get_disconnected_agents_filter_by_time",
+            return_value=[{"id": "001", "group": ["default"]}],
+        ):
+            with patch.object(
+                task,
+                "_sync_agent_batch",
+                side_effect=IndexerUnavailableError(2200),
+            ):
+                with patch("wazuh.core.indexer.disconnected_agents.asyncio.sleep",
+                           side_effect=[None, asyncio.CancelledError]):
+                    with pytest.raises(asyncio.CancelledError):
+                        await task.run_agent_groups_sync()
+
+    task.logger.warning.assert_called()
+    assert "not available" in task.logger.warning.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_run_cluster_name_sync_warning_on_indexer_unavailable(task):
+    """run_cluster_name_sync must log a warning and return without crash."""
+    task.initial_delay = 0
+
+    with patch.object(task, "check_indexer", new_callable=AsyncMock):
+        with patch(
+            "wazuh.core.indexer.disconnected_agents.get_ossec_conf",
+            return_value={"cluster": {"name": "cluster-test"}},
+        ):
+            with patch.object(
+                task,
+                "_get_disconnected_agents",
+                return_value=[{"id": "001"}],
+            ):
+                with patch.object(
+                    task,
+                    "_get_max_versions_batch_from_indexer",
+                    side_effect=IndexerUnavailableError(2200),
+                ):
+                    with patch("wazuh.core.indexer.disconnected_agents.asyncio.sleep", return_value=None):
+                        await task.run_cluster_name_sync()
+
+    task.logger.warning.assert_called()
+    assert "not available" in task.logger.warning.call_args[0][0]

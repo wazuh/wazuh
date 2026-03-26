@@ -726,10 +726,10 @@ class TestActiveResponseFetchTask:
         @pytest.mark.asyncio
         @patch("wazuh.core.indexer.active_response.ActiveResponseBuilder")
         async def test_handles_exception(self, mock_builder_cls):
-            from wazuh.core.exception import WazuhException
+            from wazuh.core.exception import IndexerUnavailableError
 
             mock_builder = MagicMock()
-            mock_builder.fetch_ars = AsyncMock(side_effect=WazuhException(1))
+            mock_builder.fetch_ars = AsyncMock(side_effect=IndexerUnavailableError(2200))
 
             mock_builder_cls.return_value = mock_builder
 
@@ -741,7 +741,7 @@ class TestActiveResponseFetchTask:
 
             await task.active_response_processing()
 
-            task.logger.warning.assert_called_once()
+            task.logger.warning.assert_called_once_with("Cannot connect to Wazuh Indexer")
 
     class TestRun:
         """Tests for run."""
