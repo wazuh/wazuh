@@ -106,26 +106,45 @@ function ExtractDebugSymbols(){
 	foreach ($file in $exeFiles)
 	{
 		Write-Host "Extracting dbg symbols from" $file.FullName
-		$args = $file.FullName #source (exe/dll with debug symbols)
-		$args += " "
-		$args += $file.FullName  #destination (same as source - exe/dll is stripped of debug symbols)
-		$args += " "
-		$args += $file.BaseName
-		$args += ".pdb"
-
-		Start-Process -FilePath "cv2pdb.exe" -ArgumentList $args -WindowStyle Hidden
+        $process = Start-Process -FilePath ".\cv2pdb.exe" -ArgumentList $file.FullName, $file.FullName, "$($file.BaseName).pdb" -PassThru -Wait
+        if ($process.ExitCode -ne 0) {
+            Write-Warning "Skipping debug symbol extraction for $($file.FullName); cv2pdb exited with code $($process.ExitCode)"
+        }
+        # Small delay to ensure file handles are released before next iteration
+        Start-Sleep -Milliseconds 100
 	}
-
-  Write-Host "Waiting for processes to finish"
-  Wait-Process -Name cv2pdb -Timeout 10
 
   #compress every pdb file in current folder
 	$pdbFiles = Get-ChildItem -Filter ".\*.pdb"
+    if ($pdbFiles.Count -eq 0) {
+        Write-Warning "No debug symbols were extracted. Skipping debug symbols archive generation."
+        return
+    }
 
     $ZIP_NAME = $MSI_NAME -replace 'wazuh-agent', 'wazuh-agent-debug-symbols' -replace '\.msi$', '.zip'
 
 	Write-Host "Compressing debug symbols to $ZIP_NAME"
-	Compress-Archive -Path $pdbFiles -Force -DestinationPath "$ZIP_NAME"
+	
+	# Ensure all file handles are released before compression
+	Start-Sleep -Milliseconds 200
+	$retries = 3
+	$compressed = $false
+	while ($retries -gt 0 -and -not $compressed) {
+		try {
+			Compress-Archive -Path $pdbFiles -Force -DestinationPath "$ZIP_NAME" -ErrorAction Stop
+			$compressed = $true
+			Write-Host "Successfully compressed debug symbols to $ZIP_NAME"
+		} catch {
+			$retries--
+			if ($retries -gt 0) {
+				Write-Warning "Compression failed (attempt $([math]::Abs($retries - 3))/3), retrying in 500ms..."
+				Start-Sleep -Milliseconds 500
+			} else {
+				Write-Error "Failed to compress debug symbols after 3 attempts: $_"
+				return
+			}
+		}
+	}
 
 	Remove-Item -Path "*.pdb"
 }
