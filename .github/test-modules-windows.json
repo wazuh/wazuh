@@ -3,7 +3,7 @@
     {
       "name": "agentd",
       "pytest_target": "test_agentd\\",
-      "tiers": ["0"],
+      "tiers": ["0", "1"],
       "paths": [
         ".github/workflows/5_builderpackage_agent-windows.yml",
         ".github/test-modules-windows.json",
@@ -20,7 +20,7 @@
     {
       "name": "enrollment",
       "pytest_target": "test_enrollment\\",
-      "tiers": ["1"],
+      "tiers": ["0", "1"],
       "paths": [
         ".github/workflows/5_builderpackage_agent-windows.yml",
         ".github/test-modules-windows.json",
@@ -39,6 +39,7 @@
       "name": "execd",
       "pytest_target": "test_execd\\",
       "pytest_extra_args": "-m win32",
+      "tiers": ["0", "1"],
       "paths": [
         ".github/workflows/5_builderpackage_agent-windows.yml",
         ".github/test-modules-windows.json",
@@ -71,6 +72,7 @@
     {
       "name": "github",
       "pytest_target": "test_github\\",
+      "tiers": ["0", "1"],
       "paths": [
         ".github/workflows/5_builderpackage_agent-windows.yml",
         ".github/test-modules-windows.json",
@@ -86,7 +88,7 @@
     {
       "name": "logcollector",
       "pytest_target": "test_logcollector\\",
-      "tiers": ["0 1"],
+      "tiers": ["0", "1"],
       "paths": [
         ".github/workflows/5_builderpackage_agent-windows.yml",
         ".github/test-modules-windows.json",
@@ -101,6 +103,7 @@
     {
       "name": "office365",
       "pytest_target": "test_office365\\",
+      "tiers": ["0", "1"],
       "paths": [
         ".github/workflows/5_builderpackage_agent-windows.yml",
         ".github/test-modules-windows.json",
@@ -117,6 +120,7 @@
       "name": "sca",
       "pytest_target": "test_sca\\",
       "pytest_extra_args": "-m win32",
+      "tiers": ["0", "1"],
       "paths": [
         ".github/workflows/5_builderpackage_agent-windows.yml",
         ".github/test-modules-windows.json",
@@ -132,6 +136,7 @@
     {
       "name": "syscollector",
       "pytest_target": "test_syscollector\\",
+      "tiers": ["0", "1"],
       "paths": [
         ".github/workflows/5_builderpackage_agent-windows.yml",
         ".github/test-modules-windows.json",
