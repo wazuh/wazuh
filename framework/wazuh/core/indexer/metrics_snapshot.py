@@ -278,7 +278,6 @@ class MetricsSnapshotTasks:
             "wazuh.agent.host.os.name": os_fields.get("name"),
             "wazuh.agent.host.os.version": os_fields.get("version"),
             "wazuh.agent.host.os.platform": os_fields.get("platform"),
-            "wazuh.agent.host.os.full": os_fields.get("uname"),
             "wazuh.cluster.name": doc.get("wazuh.cluster.name"),
             "wazuh.cluster.node": doc.get("wazuh.cluster.node"),
             "wazuh.schema.version": MetricsSnapshotTasks.SCHEMA_VERSION,

@@ -96,7 +96,6 @@ AGENT_DOCS = [
         "wazuh.agent.host.os.version": "22.04",
         "wazuh.agent.host.os.platform": "ubuntu",
         "wazuh.agent.host.architecture": "x86_64",
-        "wazuh.agent.host.os.full": "Linux",
     }
 ]
 

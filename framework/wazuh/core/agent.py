@@ -662,7 +662,6 @@ class Agent:
         "mergedSum": "merged_sum",
         "os.major": "os_major",
         "os.minor": "os_minor",
-        "os.uname": "os_uname",
         "os.arch": "os_arch",
         "node_name": "node_name",
         "lastKeepAlive": "last_keepalive",
