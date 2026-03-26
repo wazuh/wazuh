@@ -495,7 +495,9 @@ INDEXER_TEMPLATES_BASE := \
 INDEXER_TEMPLATES_SERVER_STATES := \
 	vulnerabilities.json
 
-INDEXER_TEMPLATES_SERVER_STREAMS :=
+INDEXER_TEMPLATES_SERVER_STREAMS := \
+	metrics-agents.json \
+	metrics-comms.json
 
 # WCS flat files
 WCS_FLAT_DIR := external/wcs-flat-files
@@ -605,8 +607,7 @@ endif
 $(INDEXER_PLUGINS_DIR):
 	mkdir -p $(INDEXER_PLUGINS_DIR)
 
-# Rule for streams templates (alerts.json)
-$(INDEXER_PLUGINS_DIR)/alerts.json: | $(INDEXER_PLUGINS_DIR)
+$(INDEXER_TEMPLATES_SERVER_STREAMS:%=$(INDEXER_PLUGINS_DIR)/%): | $(INDEXER_PLUGINS_DIR)
 	@success=0; \
 	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(INDEXER_PLUGINS_STREAMS_PATH)/$(notdir $@)"; \
