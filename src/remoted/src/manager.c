@@ -114,22 +114,6 @@ STATIC void process_deleted_multi_groups(bool initial_scan);
 STATIC void ftime_add(OSHash **_f_time, const char *name, const time_t m_time);
 
 /**
- * @brief Find a group structure from a file name and md5
- * @param md5 MD5 of the file
- * @param group_name Array to store the group name if exists
- * @return Group structure if exists, NULL otherwise
- */
-STATIC group_t* find_group_from_sum(const char * md5, char group_name[OS_SIZE_65536]);
-
-/**
- * @brief Find a multigroup structure from a file name and md5
- * @param md5 MD5 of the file
- * @param multigroup_name Array to store the multigroup name if exists
- * @return Multigroup structure if exists, NULL otherwise
- */
-STATIC group_t* find_multi_group_from_sum(const char * md5, char multigroup_name[OS_SIZE_65536]);
-
-/**
  * @brief Compare and check if the file time has changed
  * @param old_time File time table of previous scan
  * @param new_time File time table of new scan
@@ -1457,47 +1441,6 @@ STATIC void ftime_add(OSHash **_f_time, const char *name, const time_t m_time) {
     }
 }
 
-STATIC group_t* find_group_from_sum(const char * md5, char group_name[OS_SIZE_65536]) {
-    group_t *group;
-    OSHashNode *my_node;
-    unsigned int i;
-
-    my_node = OSHash_Begin(groups, &i);
-
-    while (my_node) {
-        group = my_node->data;
-
-        if (!strcmp(group->merged_sum, md5)) {
-            snprintf(group_name, OS_SIZE_65536, "%s", group->name);
-            return group;
-        }
-
-        my_node = OSHash_Next(groups, &i, my_node);
-    }
-
-    return NULL;
-}
-
-STATIC group_t* find_multi_group_from_sum(const char * md5, char multigroup_name[OS_SIZE_65536]) {
-    group_t *multigroup;
-    OSHashNode *my_node;
-    unsigned int i;
-
-    my_node = OSHash_Begin(multi_groups, &i);
-
-    while (my_node) {
-        multigroup = my_node->data;
-
-        if (!strcmp(multigroup->merged_sum, md5)) {
-            snprintf(multigroup_name, OS_SIZE_65536, "%s", multigroup->name);
-            return multigroup;
-        }
-
-        my_node = OSHash_Next(multi_groups, &i, my_node);
-    }
-
-    return NULL;
-}
 
 STATIC bool ftime_changed(OSHash *old_time, OSHash *new_time) {
     unsigned int size_old, size_new = 0;

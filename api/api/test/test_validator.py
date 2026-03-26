@@ -17,8 +17,6 @@ from api.validator import (
     _numbers,
     _wazuh_key,
     _paths,
-    _query_param,
-    _ranges,
     _search_param,
     _sort_param,
     _timeframe_type,
@@ -71,12 +69,9 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data
         ("12h", _timeframe_type),
         ("40m", _timeframe_type),
         ("60s", _timeframe_type),
-        # query parameters
-        ("field1=3;field2!=4", _query_param),
+        # sort and search parameters
         ("sort param-", _sort_param),
         ("search param3", _search_param),
-        # ranges
-        ("5-35", _ranges),
         # paths
         ("/var/wazuh-manager/etc/internal_options", _paths),
         ("correct.wpk", _wpk_path),
@@ -124,9 +119,6 @@ def test_validation_check_exp_ok(exp, regex_name):
         # time
         ("1j", _timeframe_type),
         ("12x", _timeframe_type),
-        # ranges
-        ("5-35-32", _ranges),
-        ("param1,param2,param3", _query_param),
         # paths
         ("/var/wazuh-manager/etc/internal_options$", _paths),
         ("incorrect.txt", _wpk_path),
@@ -190,10 +182,6 @@ def test_is_safe_path():
         ("file_test-33.xml", "names"),
         ("651403650840", "numbers"),
         ("/var/wazuh/test", "path"),
-        ("field=0", "query"),
-        ("field=0,field2!=3;field3~hi", "query"),
-        ("34", "range"),
-        ("34-36", "range"),
         ("test,.", "search"),
         ("+field", "sort"),
         ("-field,+field.subfield", "sort"),
@@ -203,12 +191,6 @@ def test_is_safe_path():
         ("asdfASD0101", "wazuh_key"),
         ("2019-02-26", "date"),
         ("2020-06-24T17:02:53Z", "date-time"),
-        ("2020-06-24T17:02:53Z", "date-time_or_empty"),
-        ("8743b52063cd84097a65d1633f5c74f5", "hash_or_empty"),
-        ("test_name", "names_or_empty"),
-        ("", "names_or_empty"),
-        ("12345", "numbers_or_empty"),
-        ("", "numbers_or_empty"),
         ("group_name.test", "group_names"),
     ],
 )
@@ -233,9 +215,6 @@ def test_validation_json_ok(value, format):
         ("../../file_test-33.xml", "names"),
         ("a651403650840", "numbers"),
         ("!/var/wazuh/test", "path"),
-        ("1234", "query"),
-        ("34-", "range"),
-        ("34-36-9", "range"),
         ("test,.&", "search"),
         ("+field&", "sort"),
         ("-field;+field.subfield", "sort"),
@@ -244,10 +223,6 @@ def test_validation_json_ok(value, format):
         ("asdfASD0101!", "wazuh_key"),
         ("2019-02-26-test", "date"),
         ("2020-06-24 17:02:53.034374", "date-time"),
-        ("2020-06-24 17:02:53.034374", "date-time_or_empty"),
-        ("testtest", "hash_or_empty"),
-        ("test_name test", "names_or_empty"),
-        ("12345abc", "numbers_or_empty"),
         ("group_name.test ", "group_names"),
     ],
 )

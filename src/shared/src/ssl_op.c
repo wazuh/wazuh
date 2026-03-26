@@ -26,12 +26,6 @@
 #include "shared.h"
 #include "ssl_op.h"
 
-#define CTX_SECURITY_LEVEL_4 4
-
-/* Global variables */
-BIO *bio_err;
-
-
 /* Create an SSL context. If certificate verification is requested
  * then load the file containing the CA chain and verify the certificate
  * sent by the peer.

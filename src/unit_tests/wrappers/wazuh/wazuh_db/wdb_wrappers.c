@@ -164,10 +164,6 @@ int __wrap_wdb_create_global(const char *path) {
     return mock();
 }
 
-void __wrap_wdb_pool_append(wdb_t * wdb) {
-    check_expected(wdb);
-}
-
 sqlite3_stmt* __wrap_wdb_init_stmt_in_cache( __attribute__((unused)) wdb_t* wdb, wdb_stmt statement_index){
     check_expected(statement_index);
     return mock_ptr_type(sqlite3_stmt*);

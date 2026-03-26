@@ -27,8 +27,6 @@ typedef struct _monitor_config monitor_config;
 
 /* Prototypes */
 void Monitord(void) __attribute__((noreturn));
-void manage_files(int cday, int cmon, int cyear);
-void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext);
 int delete_old_agent(const char *agent_id);
 int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short day_wait);
 
@@ -155,22 +153,20 @@ typedef struct _monitor_time_control {
 typedef struct _monitor_config {
     short int day_wait;
     unsigned int compress:1;
-    unsigned int sign:1;
     unsigned int monitor_agents:1;
     unsigned int rotate_log:1;
     unsigned int delete_old_agents;
     int keep_log_days;
     unsigned long size_rotate;
     int daily_rotations;
-    char **agents;
 
     _Config global;
 } monitor_config;
 
 /* Global variables */
 extern monitor_config mond;
-extern bool worker_node;
 extern OSHash* agents_to_alert_hash;
+extern bool worker_node;
 
 
 #endif /* MONITORD_H */
