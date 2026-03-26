@@ -425,11 +425,11 @@ static void wm_handle_sca_disable_and_notify_data_clean()
 {
     if (w_is_file(SCA_DB_DISK_PATH))
     {
-        minfo("SCA is disabled, SCA database file exists. Proceeding with data clean notification.");
+        mdebug1("SCA is disabled, SCA database file exists. Proceeding with data clean notification.");
     }
     else
     {
-        minfo("SCA is disabled, SCA database file does not exist. Skipping data clean notification.");
+        mdebug1("SCA is disabled, SCA database file does not exist. Skipping data clean notification.");
         return;
     }
     // Load the SCA module first
@@ -509,10 +509,10 @@ void * wm_sca_main(wm_sca_t * data) {
 #endif
     // If module is disabled, exit
     if (data->enabled) {
-        minfo("SCA module enabled.");
+        mdebug1("SCA module enabled.");
     } else {
         wm_handle_sca_disable_and_notify_data_clean();
-        minfo("SCA module disabled. Exiting.");
+        mdebug1("SCA module disabled. Exiting.");
         pthread_exit(NULL);
     }
 
@@ -612,7 +612,7 @@ void * wm_sca_main(wm_sca_t * data) {
         sca_set_sync_limit_ptr(sync_limit);
     }
 
-    minfo("Starting SCA module...");
+    mdebug1("Starting SCA module...");
 
     wm_sca_start(data);
 
@@ -634,7 +634,8 @@ static int wm_sca_start(wm_sca_t *sca) {
     g_shutting_down = 0;
     atomic_int_set(&g_n_msg_sent, 0);
 
-    minfo("SCA message queue initialized successfully.");
+    mdebug1("SCA message queue initialized successfully.");
+    minfo("Started.");
 
     if (sca->max_eps) {
         g_max_eps = sca->max_eps;

@@ -287,7 +287,7 @@ void HandleSecure()
     }
 
     /* Read authentication keys */
-    minfo(ENC_READ);
+    mdebug1(ENC_READ);
 
     key_lock_write();
     OS_ReadKeys(&keys, W_ENCRYPTION_KEY, 0);

@@ -57,6 +57,7 @@ from wazuh_testing.constants.paths import WAZUH_PATH
 from wazuh_testing.constants.paths.configurations import SHARED_CONFIGURATIONS_PATH
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_TIMEOUT
+from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import callbacks
@@ -85,7 +86,8 @@ test_configuration = load_configuration_template(configs_path, config_parameters
 
 local_internal_options = {
     AGENTD_DEBUG: '2',
-    AGENTD_TIMEOUT: '5'
+    AGENTD_TIMEOUT: '5',
+    MODULESD_DEBUG: '1'
 }
 
 daemons_handler_configuration = {'all_daemons': True}
@@ -98,7 +100,8 @@ ALL_DAEMONS = ('wazuh-agentd',) + MODULE_DAEMONS
 # Log patterns emitted by the startup gate C code.
 GATE_BLOCKING_PATTERN = (
     r".*Startup hash gate is blocking "
-    r"'wazuh-(modulesd|syscheckd|logcollector|execd)' \(waiting_hash_match\)\."
+    r"'wazuh-(modulesd|syscheckd|logcollector|execd)' "
+    r"\((waiting_hash_match|waiting for agentd startup gate status)\)\."
 )
 GATE_RELEASED_PATTERN = (
     r".*Startup hash gate released for "

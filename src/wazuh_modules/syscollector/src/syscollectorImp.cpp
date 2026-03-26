@@ -592,7 +592,7 @@ void Syscollector::start()
         {
             if (m_logFunction)
             {
-                m_logFunction(LOG_INFO, "Document limits successfully configured from agentd");
+                m_logFunction(LOG_DEBUG, "Document limits successfully configured from agentd");
             }
         }
         else

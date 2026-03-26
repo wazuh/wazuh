@@ -114,7 +114,7 @@ def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policie
             brief: Wait for the sca Module to start before starting the test.
 
     assertions:
-        - Verify that when the `enabled` option is set to `yes`, the SCA module is enabled.
+        - Verify that when the `enabled` option is set to `yes`, the SCA module reaches the running state.
         - Verify the module uses the correct policy.
         - Verify the scan gets results from each rule check.
 
@@ -123,8 +123,6 @@ def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policie
         - The cis*.yaml files located in the policies folder provide the sca rules to check.
 
     expected_output:
-        - r".*sca.*INFO: SCA Module enabled"
-        - r".*sca.*INFO: Starting SCA module"
         - r".*sca.*INFO: SCA module running"
         - r".*sca.*DEBUG: Starting Policy requirements evaluation for policy \"(.*?)\""
         - r".*sca.*DEBUG: Policy requirements evaluation completed for policy \"(.*?)\", result: (Passed|Failed)"
@@ -134,10 +132,6 @@ def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policie
     '''
 
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-
-    # Verify that the SCA module is enabled
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_ENABLED), timeout=60)
-    assert log_monitor.callback_result
 
     # Wait for the SCA scan requirements to start for the specific policy
     expected_policy = Path(test_metadata['policy_file']).stem

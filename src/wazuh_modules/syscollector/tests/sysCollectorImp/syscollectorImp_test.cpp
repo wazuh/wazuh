@@ -4587,7 +4587,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_ValidInput_UnlimitedPackages)
 
     // Verify that document limits were successfully configured
     // When limit is 0 (unlimited), should log info about unlimited
-    EXPECT_TRUE(logCapture->contains(LOG_INFO, "Document limits successfully configured from agentd"))
+    EXPECT_TRUE(logCapture->contains(LOG_DEBUG, "Document limits successfully configured from agentd"))
             << "Expected success message about document limits";
 
     EXPECT_TRUE(logCapture->contains(LOG_DEBUG, "Document limit set to unlimited for index 'wazuh-states-inventory-packages'"))
@@ -4853,7 +4853,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_ValidInput_NumericLimit)
     }
 
     // Verify that document limits were successfully configured
-    EXPECT_TRUE(logCapture->contains(LOG_INFO, "Document limits successfully configured from agentd"))
+    EXPECT_TRUE(logCapture->contains(LOG_DEBUG, "Document limits successfully configured from agentd"))
             << "Expected success message about document limits";
 
     // When currentCount (0) < newLimit (100), it attempts to promote unsynced items
@@ -4945,7 +4945,7 @@ TEST_F(SyscollectorImpTest, DocumentLimits_EndToEnd_Summary)
     }
 
     // Verify that document limits were successfully configured
-    EXPECT_TRUE(logCapture->contains(LOG_INFO, "Document limits successfully configured from agentd"))
+    EXPECT_TRUE(logCapture->contains(LOG_DEBUG, "Document limits successfully configured from agentd"))
             << "Expected success message about document limits";
 
     // Verify that limits were set for each index

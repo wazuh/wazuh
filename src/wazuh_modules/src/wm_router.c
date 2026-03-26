@@ -95,7 +95,7 @@ wmodule* wm_router_read()
     os_calloc(1, sizeof(wmodule), module);
     module->context = &WM_ROUTER_CONTEXT;
     module->tag = strdup(module->context->name);
-    mtinfo(WM_ROUTER_LOGTAG, "Loaded router module.");
+    mtdebug1(WM_ROUTER_LOGTAG, "Loaded router module.");
     return module;
 }
 
