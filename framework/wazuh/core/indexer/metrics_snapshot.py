@@ -272,7 +272,6 @@ class MetricsSnapshotTasks:
             "wazuh.agent.registered_at": doc.get("dateAdd"),
             "wazuh.agent.last_seen": doc.get("lastKeepAlive"),
             "wazuh.agent.disconnected_at": doc.get("disconnection_time") or None,
-            "wazuh.agent.config.hash.md5": doc.get("configSum"),
             "wazuh.agent.config.group.synced": group_config_status == "synced",
             "wazuh.agent.config.group.hash.md5": doc.get("mergedSum"),
             "wazuh.agent.host.architecture": os_fields.get("arch"),

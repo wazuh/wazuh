@@ -85,7 +85,7 @@ AGENT_DOCS = [
         "wazuh.agent.status": "active",
         "wazuh.agent.version": "Wazuh v5.0.0",
         "wazuh.agent.groups": ["default"],
-        "wazuh.agent.config.hash.md5": "def456",
+        "wazuh.agent.config.group.hash.md5": "def456",
         "wazuh.agent.registered_at": "2026-01-01T00:00:00Z",
         "wazuh.agent.last_seen": "2026-03-19T10:00:00Z",
         "wazuh.agent.disconnected_at": 0,
