@@ -140,8 +140,7 @@ function ExtractDebugSymbols(){
 				Write-Warning "Compression failed (attempt $([math]::Abs($retries - 3))/3), retrying in 500ms..."
 				Start-Sleep -Milliseconds 500
 			} else {
-				Write-Error "Failed to compress debug symbols after 3 attempts: $_"
-				return
+				Write-Warning "Failed to compress debug symbols after 3 attempts: $_"
 			}
 		}
 	}
