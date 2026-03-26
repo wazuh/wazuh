@@ -5,6 +5,7 @@
 #include <base/process.hpp>
 #include <base/utils/timeUtils.hpp>
 #include <rawevtindexer/iraweventindexer.hpp>
+#include <fastmetrics/registry.hpp>
 
 namespace router
 {
@@ -64,7 +65,9 @@ void RouterWorker::start()
                     auto event = base::eventParsers::parseLegacyEvent(queuedEvent.second, *queuedEvent.first);
                     event->setString(timestamp, "/@timestamp");
                     m_router->ingest(std::move(event));
-                    // TODO: Log metrics
+                    
+                    // Track processed events
+                    FASTMETRICS_COUNTER("router.events.processed")->add(1);
                 }
                 catch (const std::exception& e)
                 {

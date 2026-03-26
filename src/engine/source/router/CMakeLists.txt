@@ -38,6 +38,7 @@ target_link_libraries(router_router
 
     PRIVATE
     base
+    fastmetrics::fastmetrics
     store::istore
     builder::ibuilder
 )

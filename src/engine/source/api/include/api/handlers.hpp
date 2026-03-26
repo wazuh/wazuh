@@ -7,6 +7,7 @@
 #include <api/event/ndJsonParser.hpp>
 #include <api/geo/handlers.hpp>
 #include <api/ioccrud/handlers.hpp>
+#include <api/metrics/handlers.hpp>
 #include <api/rawevtindexer/handlers.hpp>
 #include <api/router/handlers.hpp>
 #include <api/tester/handlers.hpp>
