@@ -284,6 +284,9 @@ def test_aws_guardduty_bucket_already_processed(mock_custom_bucket, mock_type, m
     ("GuardDutyNative",
      "AWSLogs/123456789123/GuardDuty/us-east-1/",
      "AWSLogs/123456789123/GuardDuty/us-east-1/"),
+    ("GuardDutyNative",
+     "backfill/2026/03/20/AWSLogs/123456789123/GuardDuty/us-east-1/2026/03/25/9f7b0b8c-xxxx.jsonl.gz",
+     "backfill/2026/03/20/AWSLogs/123456789123/GuardDuty/us-east-1/2026/03/25/"),
 ])
 @patch('aws_bucket.AWSCustomBucket.build_s3_filter_args')
 @patch('guardduty.AWSGuardDutyBucket.check_guardduty_type')

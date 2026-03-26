@@ -74,7 +74,7 @@ class AWSGuardDutyBucket(AWSCustomBucket):
 
         if self.type == "GuardDutyNative" and not iterating and 'StartAfter' in filter_args:
             start_after = filter_args['StartAfter']
-            match = re.match(r'(.*?/\d{4}/\d{2}/\d{2}/)', start_after)
+            match = re.match(r'(.*?/GuardDuty/[^/]+/\d{4}/\d{2}/\d{2}/)', start_after)
             if match:
                 filter_args['StartAfter'] = match.group(1)
                 aws_tools.debug(f"+++ GuardDuty: Rewound marker to day folder: {filter_args['StartAfter']}", 2)
