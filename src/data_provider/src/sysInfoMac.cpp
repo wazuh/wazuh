@@ -169,12 +169,13 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
             }
             else if (BREW == pkgType)
             {
-                if (!Utils::startsWith(package, "."))
+                if (fs.is_directory(package))
                 {
-                    const auto packageVersions { fs.list_directory(pkgDirectory / package) };
+                    const auto packageVersions { fs.list_directory(package) };
 
-                    for (const auto& version : packageVersions)
+                    for (const auto& versionPath : packageVersions)
                     {
+                        const std::string version = versionPath.filename();
                         if (!Utils::startsWith(version, "."))
                         {
                             try
