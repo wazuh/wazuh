@@ -1378,7 +1378,7 @@ async def test_worker_add_tasks(ar_task, api_request_queue, get_ossec_conf_mock,
     # Indexer tasks are lazily executed through the callable added to tasks.
     run_active_response_job = tasks[4][0]
     assert run_active_response_job() == ("True", ())
-    manage_indexer_tasks_mock.assert_called_once_with(["True"])
+    manage_indexer_tasks_mock.assert_called_once_with([nested_worker.active_response_task.run])
 
 
 @pytest.mark.asyncio
