@@ -1,0 +1,169 @@
+name: 5.X - Windows - Integration tests (generic)
+
+on:
+  workflow_call:
+    inputs:
+      base_branch:
+        required: true
+        type: string
+      head_sha:
+        required: false
+        type: string
+      build_run_id:
+        required: false
+        type: string
+      module_name:
+        required: false
+        type: string
+        default: 'unknown'
+      shard_name:
+        required: false
+        type: string
+        default: 'tier-0-1'
+      pytest_target:
+        required: true
+        type: string
+      pytest_extra_args:
+        required: false
+        type: string
+        default: ''
+      pytest_tier_args:
+        required: false
+        type: string
+        default: '--tier 0 --tier 1'
+      pytest_ignore_args:
+        required: false
+        type: string
+        default: ''
+      start_service:
+        required: false
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      base_branch:
+        description: 'Base branch'
+        required: true
+        default: 'main'
+      head_sha:
+        description: 'PR head SHA to download artifacts'
+        required: false
+      module_name:
+        description: 'Module name (for artifact naming)'
+        required: false
+        default: 'unknown'
+      shard_name:
+        description: 'Shard name (e.g. tier-0)'
+        required: false
+        default: 'tier-0-1'
+      pytest_target:
+        description: 'Pytest test directory (e.g. test_fim\)'
+        required: true
+      pytest_extra_args:
+        description: 'Extra pytest arguments (e.g. -m win32)'
+        required: false
+        default: ''
+      pytest_tier_args:
+        description: 'Pytest tier arguments (e.g. --tier 0 --tier 1)'
+        required: false
+        default: '--tier 0 --tier 1'
+      pytest_ignore_args:
+        description: 'Pytest ignore arguments (e.g. --ignore=test_fim\test_foo.py)'
+        required: false
+        default: ''
+      start_service:
+        description: 'Start Wazuh agent service before tests'
+        required: false
+        default: 'false'
+
+jobs:
+  run-test:
+    env:
+      BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+      BRANCH_BASE: ${{ inputs.base_branch || github.base_ref }}
+      BUILD_WORKFLOW: 5_builderpackage_agent-windows.yml
+      AGENT_PACKAGE_REGEXP: wazuh-agent.*windows.*\.msi
+      PR_HEAD_SHA: ${{ inputs.head_sha || github.event.pull_request.head.sha || github.sha }}
+    runs-on: windows-2025
+    name: Run ${{ inputs.module_name }} integration tests (${{ inputs.shard_name }})
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ env.PR_HEAD_SHA }}
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: ".github/workflows/.python-version-it"
+          architecture: x64
+      # ================= CACHE =================
+      - name: Restore MSI cache
+        id: cache-msi
+        uses: actions/cache@v4
+        with:
+          path: C:\wazuh-package
+          key: msi-${{ env.PR_HEAD_SHA }}
+      # ================= DOWNLOAD =================
+      - name: Download MSI package artifact
+        if: steps.cache-msi.outputs.cache-hit != 'true'
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: ${{ env.BUILD_WORKFLOW }}
+          run_id: ${{ inputs.build_run_id }}
+          name_is_regexp: true
+          name: ${{ env.AGENT_PACKAGE_REGEXP }}
+          path: C:\wazuh-package\
+          if_no_artifact_found: fail
+      # ================= INSTALL =================
+      - name: Install wazuh agent
+        shell: pwsh
+        run: |
+          $package = Get-ChildItem -Path "C:\wazuh-package" -Filter "wazuh-agent*windows*.msi" -File -Recurse |
+            Where-Object { $_.Name -notmatch 'debug' } | Select-Object -First 1
+          if (-not $package) {
+            Write-Host "ERROR: No MSI package found in C:\wazuh-package"
+            Get-ChildItem -Path "C:\wazuh-package" -Recurse | Format-Table Name, FullName
+            exit 1
+          }
+          Start-Process msiexec.exe -ArgumentList "/i `"$($package.FullName)`" /q WAZUH_MANAGER=`"127.0.0.1`"" -Wait -NoNewWindow
+      # ================= QA FRAMEWORK =================
+      - name: Download and install qa-integration-framework
+        shell: pwsh
+        run: |
+          $VERSION = (Get-Content -Raw VERSION.json | ConvertFrom-Json).version
+          if (git ls-remote https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_NAME) {
+              $QA_BRANCH = $env:BRANCH_NAME
+          } elseif (git ls-remote https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_BASE) {
+              $QA_BRANCH = $env:BRANCH_BASE
+          } elseif (git ls-remote https://github.com/wazuh/qa-integration-framework.git $VERSION) {
+              $QA_BRANCH = $VERSION
+          } else {
+              $QA_BRANCH = "main"
+          }
+          git clone -b $QA_BRANCH --single-branch https://github.com/wazuh/qa-integration-framework.git
+          pip install qa-integration-framework/
+          Remove-Item qa-integration-framework -Recurse -Force
+      - name: Copy integration tests to C:\wazuh
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path C:\wazuh\tests | Out-Null
+          Copy-Item -Path "$env:GITHUB_WORKSPACE\tests\*" -Destination C:\wazuh\tests -Recurse -Force
+      # ================= EXECUTION =================
+      - name: Start Wazuh agent service
+        if: ${{ inputs.start_service == true || inputs.start_service == 'true' }}
+        run: NET START wazuh
+      - name: Run ${{ inputs.module_name }} integration tests
+        shell: pwsh
+        run: |
+          cd C:\wazuh\tests\integration
+          $env:GITHUB_SHA="${{ github.sha }}"
+          $env:GITHUB_REF_NAME="$env:BRANCH_NAME"
+          python -m pytest ${{ inputs.pytest_extra_args }} ${{ inputs.pytest_tier_args }} ${{ inputs.pytest_target }} ${{ inputs.pytest_ignore_args }} --html=results.html --self-contained-html
+      # ================= RESULTS =================
+      - name: Upload failed test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.module_name }}-win-${{ inputs.shard_name }}-test-results-${{ github.run_id }}
+          path: C:\wazuh\tests\integration\results.html
+          retention-days: 7
