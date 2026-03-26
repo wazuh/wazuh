@@ -29,7 +29,7 @@
 
 ## Overview
 
-The **streamlog** module provides high-performance, named, rotating log channels with fully asynchronous writes. It is the engine's primary mechanism for writing structured logs (NDJSON) to disk — used for alerts, archives, and any other line-oriented log stream.
+The **streamlog** module provides high-performance, named, rotating log channels with fully asynchronous writes. It is the engine's primary mechanism for writing structured logs (NDJSON) to disk for event streams and any other line-oriented output.
 
 ### Key capabilities
 
@@ -51,7 +51,7 @@ The **streamlog** module provides high-performance, named, rotating log channels
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                           Application Threads                          │
 │                                                                        │
-│   auto w = logManager->getWriter("alerts");                            │
+│   auto w = logManager->ensureAndGetWriter("standard-wazuh-events-v5", cfg, "json"); │
 │   (*w)( R"({"ts":"...","msg":"hello"})" );   // enqueue (move)        │
 │                                                                        │
 └──────────────────────────┬──────────────────────────────────────────────┘
@@ -146,7 +146,7 @@ streamlog/
   │   «interface»     │          │      RotationConfig     │
   │   ILogManager     │          │ ─────────────────────── │
   │ ─────────────────│          │  basePath               │
-  │ +getWriter(name) │          │  pattern                │
+    │ +ensureAndGetWriter(...)    │  pattern                │
   └────────┬─────────┘          │  maxSize                │
            │ implements          │  bufferSize             │
            ▼                     │  shouldCompress         │
@@ -161,7 +161,7 @@ streamlog/
   │ +registerLog()   │              │  m_stateData        │
   │ +updateConfig()  │              │  m_activeWriters    │
   │ +destroyChannel()│              │  m_store            │
-  │ +getWriter()     │              │  m_scheduler (wp)   │
+    │ +ensureAndGetWriter() │         │  m_scheduler (wp)   │
   │ +hasChannel()    │              │ ──────────────────  │
   │ +getConfig()     │              │ +create() [factory] │
   │ +cleanup()       │              │ +createWriter()     │
@@ -187,7 +187,7 @@ streamlog/
 | Class | Visibility | Responsibility |
 |-------|-----------|----------------|
 | `WriterEvent` | **Public interface** | Abstract write handle. `operator()(string&&) → bool`. |
-| `ILogManager` | **Public interface** | Abstract channel registry. `getWriter(name)`. |
+| `ILogManager` | **Public interface** | Abstract channel registry. `ensureAndGetWriter(name, cfg, ext)`. |
 | `RotationConfig` | **Public** | POD-like struct describing a channel's rotation/compression policy. |
 | `LogManager` | **Public** | Concrete registry. Owns `ChannelHandler` instances. Thread-safe via `shared_mutex`. |
 | `ChannelHandler` | **Internal** | Per-channel engine: worker thread, file I/O, rotation, compression scheduling. Created via `create()` factory. |
@@ -234,7 +234,7 @@ This "lazy start / eager stop" model ensures no background threads exist when a 
 Triggered when `currentSize + messageSize >= maxSize`.
 
 1. Increment `counter`.
-2. Generate new path from pattern (e.g. `alerts-3.log`).
+2. Generate new path from pattern (e.g. `standard-wazuh-events-v5-3.log`).
 3. Create directories if needed.
 4. Close current file, open new file (`updateOutputFileAndLink()`).
 5. Update hard-link to point to the new file.
@@ -245,7 +245,7 @@ Triggered when `currentSize + messageSize >= maxSize`.
 Triggered when the **hour boundary** changes and the resolved pattern produces a **different path**.
 
 1. Reset `counter` to 0.
-2. Generate new path from pattern (e.g. `2025/Jul/alerts-15.json` → `2025/Jul/alerts-16.json`).
+2. Generate new path from pattern (e.g. `2026/Mar/standard-wazuh-events-v5-26.json` → `2026/Mar/standard-wazuh-events-v5-27.json`).
 3. Same steps 3–6 as size-based rotation.
 
 ### Rotation check frequency
@@ -331,10 +331,24 @@ This ensures that a rotated file that was not yet compressed before a crash will
 | `${MM}` | 2-digit month | `07` |
 | `${DD}` | 2-digit day | `01` |
 | `${HH}` | 2-digit hour (24h) | `14` |
-| `${name}` | Channel name | `alerts` |
+| `${name}` | Channel name | `standard-wazuh-events-v5` |
 | `${counter}` | Rotation counter | `3` |
 
-**Example:** pattern `${YYYY}/${MMM}/wazuh-${name}-${DD}.json` for channel `alerts` on July 1, 2025 → `2025/Jul/wazuh-alerts-01.json`.
+**Example:** pattern `${YYYY}/${MMM}/${name}-${DD}.json` for channel `standard-wazuh-events-v5` on March 26, 2026 → `2026/Mar/standard-wazuh-events-v5-26.json`.
+
+### Example Filesystem Layout
+
+With `basePath = "/var/wazuh-manager/logs"`, `name = "standard-wazuh-events-v5"`, `ext = "json"`, `pattern = "${YYYY}/${MMM}/${name}-${DD}.json"`, and `LogManager::isolatedBasePath(name, cfg)`, the resulting layout is:
+
+```text
+/var/wazuh-manager/logs/standard-wazuh-events-v5/
+├── standard-wazuh-events-v5.json
+└── 2026/
+  └── Mar/
+    └── standard-wazuh-events-v5-26.json
+```
+
+The file at `standard-wazuh-events-v5.json` is the hard link to the current active file.
 
 ---
 
@@ -352,17 +366,18 @@ streamlog::LogManager logManager(store, scheduler);
 
 // Register a channel
 streamlog::RotationConfig cfg {
-    "/var/wazuh-manager/logs/alerts",
-    "wazuh-${name}-${YYYY}-${MM}-${DD}.json",
+  "/var/wazuh-manager/logs",
+  "${YYYY}/${MMM}/${name}-${DD}.json",
     10 * 1024 * 1024,   // 10 MiB max size
     1 << 20,            // buffer
     true,               // compress
     5                   // compression level
 };
-logManager.registerLog("alerts", cfg, "json");
+streamlog::LogManager::isolatedBasePath("standard-wazuh-events-v5", cfg);
+logManager.registerLog("standard-wazuh-events-v5", cfg, "json");
 
 // Obtain a writer (starts the worker thread)
-auto writer = logManager.getWriter("alerts");
+auto writer = logManager.ensureAndGetWriter("standard-wazuh-events-v5", cfg, "json");
 
 // Write from any thread
 (*writer)(R"({"timestamp":"2025-07-01T12:00:00Z","level":"warning","msg":"disk 90%"})");
@@ -377,7 +392,16 @@ writer.reset();
 #include <streamlog/ilogger.hpp>
 
 void processEvent(streamlog::ILogManager& logManager) {
-    auto writer = logManager.getWriter("alerts");
+    streamlog::RotationConfig cfg {
+      "/var/wazuh-manager/logs",
+      "${YYYY}/${MMM}/${name}-${DD}.json",
+      0,
+      1 << 20,
+      true,
+      5,
+    };
+    streamlog::LogManager::isolatedBasePath("standard-wazuh-events-v5", cfg);
+    auto writer = logManager.ensureAndGetWriter("standard-wazuh-events-v5", cfg, "json");
     (*writer)(buildJsonString());
 }
 ```
@@ -386,18 +410,18 @@ void processEvent(streamlog::ILogManager& logManager) {
 
 ```cpp
 streamlog::RotationConfig cfg { /* ... */ };
-streamlog::LogManager::isolatedBasePath("alerts", cfg);
-// cfg.basePath is now "<original>/alerts/"
-logManager.registerLog("alerts", cfg, "json");
+streamlog::LogManager::isolatedBasePath("standard-wazuh-events-v5", cfg);
+// cfg.basePath is now "<original>/standard-wazuh-events-v5/"
+logManager.registerLog("standard-wazuh-events-v5", cfg, "json");
 ```
 
 ### Update config at runtime
 
 ```cpp
 // Only allowed when no writers are active
-auto newCfg = logManager.getConfig("alerts");
+auto newCfg = logManager.getConfig("standard-wazuh-events-v5");
 newCfg.maxSize = 20 * 1024 * 1024;
-logManager.updateConfig("alerts", newCfg, "json");
+logManager.updateConfig("standard-wazuh-events-v5", newCfg, "json");
 ```
 
 ---

@@ -35,8 +35,9 @@ UTILS_DIR="${SCRIPT_DIR}/utils"
 : "${BT_BATCH:=50}"         # -b  batch size
 : "${BT_INPUT:=${UTILS_DIR}/test_logs}"  # -i  input directory
 
-# Output file watched by the benchmark tool
-: "${BT_OUTPUT:=${WAZUH_HOME}/logs/alerts/alerts.json}"
+# Output file watched by the benchmark tool.
+# Streamlog output is namespace-dependent; benchmarks default to the standard namespace.
+: "${BT_OUTPUT:=${WAZUH_HOME}/logs/standard-wazuh-events-v5/standard-wazuh-events-v5.json}"
 
 # Grace period (seconds) before & after benchmark
 : "${GRACE_SECS:=5}"

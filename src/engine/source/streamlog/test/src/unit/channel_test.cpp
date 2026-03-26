@@ -377,7 +377,7 @@ INSTANTIATE_TEST_SUITE_P(ChannelNames,
                                            "withNumbers123",
                                            "MixedCase",
                                            "very-long-channel-name-with-many-characters",
-                                           "alerts",
+                                           "standard-wazuh-events-v5",
                                            "events",
                                            "audit"));
 

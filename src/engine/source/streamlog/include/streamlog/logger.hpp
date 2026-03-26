@@ -45,7 +45,7 @@
  *   ```
  *
  * - **Writer Functor**
- *   `auto writer = logManager.ensureAndGetWriter("alerts", cfg, "json");`
+ *   `auto writer = logManager.ensureAndGetWriter("standard-wazuh-events-v5", cfg, "json");`
  *   `writer(jsonString);` enqueues one line (JSON string + ‘\n’) to the log.
  *
  * - **Asynchronous I/O**
@@ -63,9 +63,9 @@
  *   The log files are named according to the `pattern` provided in the `RotationConfig`.
  *   Placeholders like `${YYYY}`, `${MMM}`, `${DD}`, and `${name}` are
  *   replaced with the current date and the log channel name.
- *   For example, if the pattern is `"${YYYY}/${MMM}/wazuh-${name}-${DD}.json"`,
- *   and the channel name is `"alerts"`, the log file might be named
- *   `"2025/Jul/wazuh-alerts-01.json"` for logs written on July 1, 2025.
+ *   For example, if the pattern is `"${YYYY}/${MMM}/${name}-${DD}.json"`,
+ *   and the channel name is `"standard-wazuh-events-v5"`, the log file might be named
+ *   `"2026/Mar/standard-wazuh-events-v5-26.json"` for logs written on March 26, 2026.
  *
  * - **Suported Patterns**
  *  The following placeholders are supported in the `pattern`:
