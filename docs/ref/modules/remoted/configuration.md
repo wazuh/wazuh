@@ -28,7 +28,7 @@ File: `/var/wazuh-manager/etc/wazuh-manager.conf`
 
 ## Internal Options
 
-File: `/var/wazuh-manager/etc/internal_options.conf` or `/var/wazuh-manager/etc/local_internal_options.conf`
+File: `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`
 
 ### Key Settings
 
@@ -118,7 +118,7 @@ remoted.sender_pool=4
 
 ## Monitoring
 
-Enable statistics in `/var/wazuh-manager/etc/internal_options.conf`:
+Enable statistics in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`:
 
 ```conf
 remoted.state_interval=5
@@ -126,11 +126,16 @@ remoted.state_interval=5
 
 View statistics: `cat /var/wazuh-manager/var/run/wazuh-manager-remoted.state`
 
-Enable debug logging:
+Enable `debug2` logging:
 
 ```conf
 remoted.debug=2
 ```
+
+Notes:
+- `remoted.debug` is read when `wazuh-manager-remoted` starts. Restart the daemon after changing the file.
+- The current debug level is exposed in `/var/wazuh-manager/var/run/wazuh-manager-remoted.state` as `debug`.
+- `wazuh-server.sh enable debug` adds a single `-d` to all manager daemons. In `remoted`, command line debug takes precedence over `remoted.debug`, so that helper forces debug level `1` and prevents `remoted.debug=2` from taking effect.
 
 ## References
 

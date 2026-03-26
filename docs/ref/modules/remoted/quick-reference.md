@@ -43,7 +43,7 @@ No changes needed. Defaults work well.
 ### High Throughput (>50K events/sec)
 
 ```conf
-# /var/wazuh-manager/etc/internal_options.conf
+# /var/wazuh-manager/etc/wazuh-manager-internal-options.conf
 remoted.control_msg_queue_size=32768
 remoted.batch_events_capacity=262144
 remoted.worker_pool=8
@@ -53,7 +53,7 @@ remoted.sender_pool=16
 ### Large Agent Count (>10K agents)
 
 ```conf
-# /var/wazuh-manager/etc/internal_options.conf
+# /var/wazuh-manager/etc/wazuh-manager-internal-options.conf
 remoted.control_msg_queue_size=32768
 ```
 
@@ -85,6 +85,10 @@ E	{"log":"Authentication successful"}
 ```bash
 cat /var/wazuh-manager/var/run/wazuh-manager-remoted.state
 ```
+
+If you enable `remoted.debug=2`, check the `debug` field in this state file after restarting `wazuh-manager-remoted`.
+
+Do not mix `remoted.debug=2` with `wazuh-server.sh enable debug` if you expect `mdebug2` output: that helper starts manager daemons with a single `-d`, which forces debug level `1` for `remoted`.
 
 ### Key Metrics
 
