@@ -270,15 +270,12 @@ paths:
         - If `location` matches the legacy agent format (`"[ID] (Name) IP->Module"`), it is parsed and may
           rewrite the final stored location to just the module.
         - If not legacy, host metadata is merged into the event before setting location/message.
-        - `metadata` is **required** and must be a **JSON object** (not a JSON-encoded string, number, or array).
-          If `metadata` is missing, not an object, contains invalid nested fields, or includes top-level keys other than `wazuh`,
+        - `metadata` is **not required** and can be an empty **JSON object**, it can't be a JSON-encoded string, number, or array.
+          If `metadata` is present and it contains invalid nested fields, or includes top-level keys other than `wazuh`,
           the request is rejected with a clear error message.
         - `metadata` is restricted to the top-level `wazuh` key. Arbitrary sibling fields such as `metadata.name` are not allowed.
         - `metadata.wazuh` must be a JSON object when present.
           Use it to provide only fields accepted by the Wazuh event schema.
-        - An empty top-level object (`{}`) is rejected because the implementation requires `metadata.wazuh`.
-        - An empty `metadata.wazuh` object is also rejected by the current validation.
-          Provide at least one schema-valid leaf field under `wazuh`, for example `{ "wazuh": { "agent": { "id": "001" } } }`.
 
       requestBody:
         required: true
@@ -341,8 +338,8 @@ paths:
                   event: "File /etc/passwd modified"
                   trace_level: "ALL"
 
-              metadata_wazuh_empty_invalid:
-                summary: INVALID - empty wazuh metadata object
+              metadata_wazuh_empty_valid:
+                summary: VALID - empty wazuh metadata object
                 value:
                   space: "test"
                   queue: 1
@@ -352,8 +349,8 @@ paths:
                   event: "File /etc/passwd modified"
                   trace_level: "ALL"
 
-              metadata_empty_object_invalid:
-                summary: INVALID - empty metadata object without `wazuh`
+              metadata_empty_object_valid:
+                summary: VALID - empty metadata object
                 value:
                   queue: 1
                   location: "syscheck"
@@ -452,24 +449,11 @@ paths:
                     status: "ERROR"
                     error: "Error parsing event: <details>"
 
-
-                metadata_required:
-                  summary: metadata must include `wazuh`
-                  value:
-                    status: "ERROR"
-                    error: "metadata is required and must be a JSON object"
-
                 metadata_wrong_type_struct:
                   summary: metadata must be an object (Struct); a string, number, or array is invalid
                   value:
                     status: "ERROR"
                     error: "metadata is required and must be a JSON object"
-
-                metadata_invalid_nested:
-                  summary: metadata contains an invalid empty object under `wazuh`
-                  value:
-                    status: "ERROR"
-                    error: "Metadata field 'wazuh' is an empty object, which is not allowed"
 
                 metadata_unknown_top_level_field:
                   summary: metadata contains unsupported top-level fields

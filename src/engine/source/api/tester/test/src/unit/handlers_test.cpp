@@ -496,7 +496,7 @@ INSTANTIATE_TEST_SUITE_P(
             []() { return makeSchemaValidator(true); },
         },
         LogtestPostCase {
-            "MissingMetadata",
+            "Ok Without Metadata",
             []()
             {
                 eEngine::tester::PublicRunPost_Request protoReq;
@@ -504,15 +504,22 @@ INSTANTIATE_TEST_SUITE_P(
                 protoReq.set_location("/var/log/test");
                 protoReq.set_event("some event");
                 protoReq.set_trace_level("NONE");
+                protoReq.set_space("test-session");
                 // No metadata set
                 return protoReq;
             },
-            [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
-            []()
+            [](auto& tester)
             {
-                return userErrorResponse<eEngine::tester::RunPost_Response>(
-                    "Metadata is required and must be a JSON object");
+                EXPECT_CALL(tester, ingestTest(testing::_, testing::_))
+                    .WillOnce(
+                        [](auto&&, auto&&)
+                        {
+                            std::promise<base::RespOrError<::router::test::Output>> p;
+                            p.set_value(makeOutput(R"({"status":"ok"})"));
+                            return p.get_future();
+                        });
             },
+            []() { return makeRunPostSuccessResponse(R"({"status":"ok"})"); },
             []() { return makeSchemaValidator(true); },
         },
         LogtestPostCase {
