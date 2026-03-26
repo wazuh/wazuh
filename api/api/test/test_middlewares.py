@@ -75,8 +75,8 @@ async def test_middlewares_check_blocked_ip_ko(mock_req):
 @pytest.mark.parametrize("current_time,max_requests,current_time_key, current_counter_key,expected_error_code", [
     (-80, 300, 'events_current_time', 'events_request_counter', 0),
     (-80, 300, 'general_current_time', 'general_request_counter', 0),
-    (0, 0, 'events_current_time', 'events_request_counter', 6005),
-    (0, 0, 'general_current_time', 'general_request_counter', 6001),
+    (0, 0, 'events_current_time', 'events_request_counter', 0),
+    (0, 0, 'general_current_time', 'general_request_counter', 0),
 ])
 def test_middlewares_check_rate_limit(
     current_time, max_requests, current_time_key, current_counter_key,
@@ -118,6 +118,18 @@ async def test_check_rate_limits_middleware(endpoint, mock_req):
             mock_check.assert_called_once_with(
                 'general_request_counter', 'general_current_time', rq_x_min, 6001)
         dispatch_mock.assert_awaited()
+
+
+@freeze_time(datetime(1970, 1, 1))
+def test_check_rate_limit_disabled():
+    """Check that rate limit is disabled when max_requests is 0."""
+    code = check_rate_limit(
+        request_counter_key='general_request_counter',
+        current_time_key='general_current_time',
+        max_requests=0,
+        error_code=6001
+    )
+    assert code == 0
 
 
 @pytest.mark.asyncio
