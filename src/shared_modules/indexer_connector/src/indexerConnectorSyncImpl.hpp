@@ -1047,7 +1047,8 @@ public:
                           const nlohmann::json& query,
                           const nlohmann::json& sort,
                           const std::optional<nlohmann::json>& searchAfter = std::nullopt,
-                          const std::optional<nlohmann::json>& source = std::nullopt)
+                          const std::optional<nlohmann::json>& source = std::nullopt,
+                          const std::optional<nlohmann::json>& slice = std::nullopt)
     {
         nlohmann::json requestBody;
         requestBody["size"] = size;
@@ -1059,6 +1060,11 @@ public:
         if (source.has_value())
         {
             requestBody["_source"] = source.value();
+        }
+
+        if (slice.has_value())
+        {
+            requestBody["slice"] = slice.value();
         }
 
         if (!searchAfter.has_value())

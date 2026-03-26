@@ -38,7 +38,7 @@ TEST_F(ActionTest, TestInstantiation)
 
     EXPECT_NO_THROW(std::make_shared<Action>(topicName,
                                              m_parameters,
-                                             [](const std::string& msg) -> FileProcessingResult {
+                                             [](nlohmann::json msg) -> FileProcessingResult {
                                                  return {10, "", true};
                                              }));
 
@@ -59,7 +59,7 @@ TEST_F(ActionTest, TestInstantiationWhitoutConfigData)
 
     EXPECT_THROW(std::make_shared<Action>(topicName,
                                           parameters,
-                                          [](const std::string& msg) -> FileProcessingResult {
+                                          [](nlohmann::json msg) -> FileProcessingResult {
                                               return {0, "", false};
                                           }),
                  std::invalid_argument);
@@ -86,7 +86,7 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForRawDataWithDeleteD
 
     auto action {std::make_shared<Action>(topicName,
                                           m_parameters,
-                                          [](const std::string& msg) -> FileProcessingResult {
+                                          [](nlohmann::json msg) -> FileProcessingResult {
                                               return {10, "", true};
                                           })};
 
@@ -121,7 +121,7 @@ TEST_F(ActionTest, TestInstantiationAndRegisterActionOnDemandForRawData)
 
     auto action {std::make_shared<Action>(topicName,
                                           m_parameters,
-                                          [](const std::string& msg) -> FileProcessingResult {
+                                          [](nlohmann::json msg) -> FileProcessingResult {
                                               return {10, "", true};
                                           })};
 
@@ -150,12 +150,12 @@ TEST_F(ActionTest, TestInstantiationOfTwoActionsWithTheSameTopicName)
 
     auto action1 {std::make_shared<Action>(topicName,
                                            m_parameters,
-                                           [](const std::string& msg) -> FileProcessingResult {
+                                           [](nlohmann::json msg) -> FileProcessingResult {
                                                return {10, "", true};
                                            })};
     auto action2 {std::make_shared<Action>(topicName,
                                            parametersWithoutDatabasePath,
-                                           [](const std::string& msg) -> FileProcessingResult {
+                                           [](nlohmann::json msg) -> FileProcessingResult {
                                                return {20, "", true};
                                            })};
 
@@ -183,7 +183,7 @@ TEST_F(ActionTest, OnDemandActionCatchException)
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
     auto action {std::make_shared<Action>(topicName,
                                           m_parameters,
-                                          [](const std::string& msg) -> FileProcessingResult {
+                                          [](nlohmann::json msg) -> FileProcessingResult {
                                               return {0, "", false};
                                           })};
 
@@ -211,7 +211,7 @@ TEST_F(ActionTest, ScheduledActionCatchException)
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
     auto action {std::make_shared<Action>(topicName,
                                           m_parameters,
-                                          [](const std::string& msg) -> FileProcessingResult {
+                                          [](nlohmann::json msg) -> FileProcessingResult {
                                               return {0, "", false};
                                           })};
 

@@ -58,7 +58,7 @@ TEST_F(ContentModuleFacadeTest, TestSingletonAndAddProvider)
 
     EXPECT_NO_THROW(contentModuleFacade.addProvider(topicName,
                                                     m_parameters,
-                                                    [](const std::string& msg) -> FileProcessingResult {
+                                                    [](nlohmann::json msg) -> FileProcessingResult {
                                                         return {0, "", false};
                                                     }));
 
@@ -80,13 +80,13 @@ TEST_F(ContentModuleFacadeTest, TestSingletonAndAddTwoProviders)
 
     EXPECT_NO_THROW(contentModuleFacade.addProvider(topicName,
                                                     m_parameters,
-                                                    [](const std::string& msg) -> FileProcessingResult {
+                                                    [](nlohmann::json msg) -> FileProcessingResult {
                                                         return {0, "", false};
                                                     }));
 
     EXPECT_THROW(contentModuleFacade.addProvider(topicName,
                                                  m_parameters,
-                                                 [](const std::string& msg) -> FileProcessingResult {
+                                                 [](nlohmann::json msg) -> FileProcessingResult {
                                                      return {0, "", false};
                                                  }),
                  std::runtime_error);
@@ -114,7 +114,7 @@ TEST_F(ContentModuleFacadeTest, TestSingletonAndChangeSchedulerIntervalForRawDat
 
     EXPECT_NO_THROW(contentModuleFacade.addProvider(topicName,
                                                     m_parameters,
-                                                    [](const std::string& msg) -> FileProcessingResult {
+                                                    [](nlohmann::json msg) -> FileProcessingResult {
                                                         return {0, "", false};
                                                     }));
 
@@ -181,7 +181,7 @@ TEST_F(ContentModuleFacadeTest, TestSingletonAndStartOnDemandForRawData)
 
     EXPECT_NO_THROW(contentModuleFacade.addProvider(topicName,
                                                     m_parameters,
-                                                    [](const std::string& msg) -> FileProcessingResult {
+                                                    [](nlohmann::json msg) -> FileProcessingResult {
                                                         return {0, "", false};
                                                     }));
 
@@ -277,7 +277,7 @@ TEST_F(ContentModuleFacadeTest,
 
     EXPECT_NO_THROW(contentModuleFacade.addProvider(topicName,
                                                     m_parameters,
-                                                    [](const std::string& msg) -> FileProcessingResult {
+                                                    [](nlohmann::json msg) -> FileProcessingResult {
                                                         return {10, "", true};
                                                     }));
 

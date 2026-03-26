@@ -197,6 +197,7 @@ public:
      * @param sort The sort array.
      * @param searchAfter Optional search_after array for pagination.
      * @param source Optional source filtering configuration.
+     * @param slice Optional slice object for parallel PIT consumption (e.g. {"id": 0, "max": 4}).
      * @return The hits object from the search response.
      * @throws IndexerConnectorException if the search fails.
      */
@@ -205,7 +206,8 @@ public:
                           const nlohmann::json& query,
                           const nlohmann::json& sort,
                           const std::optional<nlohmann::json>& searchAfter = std::nullopt,
-                          const std::optional<nlohmann::json>& source = std::nullopt);
+                          const std::optional<nlohmann::json>& source = std::nullopt,
+                          const std::optional<nlohmann::json>& slice = std::nullopt);
 
     /**
      * @brief Bulk delete.
@@ -407,7 +409,8 @@ public:
                           const nlohmann::json& query,
                           const nlohmann::json& sort,
                           const std::optional<nlohmann::json>& searchAfter = std::nullopt,
-                          const std::optional<nlohmann::json>& source = std::nullopt);
+                          const std::optional<nlohmann::json>& source = std::nullopt,
+                          const std::optional<nlohmann::json>& slice = std::nullopt);
 
     /**
      * @brief Execute a search query on an index or alias.
