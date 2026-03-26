@@ -455,32 +455,6 @@ int main(int argc, char* argv[])
                 });
 
             LOG_INFO("Stream logger initialized.");
-
-            auto regChannel =
-                [&](const std::string& name, const std::string& pattern, size_t maxSize, size_t bufferSize)
-            {
-                streamlog::RotationConfig conf = {
-                    .basePath = confManager.get<std::string>(conf::key::STREAMLOG_BASE_PATH),
-                    .pattern = pattern,
-                    .maxSize = maxSize,
-                    .bufferSize = bufferSize,
-                    .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
-                    .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
-
-                streamLogger->isolatedBasePath(name, conf);
-                streamLogger->registerLog(name, conf, "json");
-                LOG_DEBUG("Stream logger channel '{}' registered.", name);
-            };
-
-            regChannel("alerts",
-                       confManager.get<std::string>(conf::key::STREAMLOG_ALERTS_PATTERN),
-                       confManager.get<size_t>(conf::key::STREAMLOG_ALERTS_MAX_SIZE),
-                       confManager.get<size_t>(conf::key::STREAMLOG_ALERTS_BUFFER_SIZE));
-
-            regChannel("archives",
-                       confManager.get<std::string>(conf::key::STREAMLOG_ARCHIVES_PATTERN),
-                       confManager.get<size_t>(conf::key::STREAMLOG_ARCHIVES_MAX_SIZE),
-                       confManager.get<size_t>(conf::key::STREAMLOG_ARCHIVES_BUFFER_SIZE));
         }
 
         // Builder and registry
@@ -492,6 +466,13 @@ int main(int argc, char* argv[])
             builderDeps.kvdbIocManager = IOCkvdb;
             builderDeps.geoManager = geoManager;
             builderDeps.logManager = streamLogger;
+            builderDeps.fileOutputConfig = streamlog::RotationConfig {
+                .basePath = confManager.get<std::string>(conf::key::STREAMLOG_BASE_PATH),
+                .pattern = confManager.get<std::string>(conf::key::STREAMLOG_ALERTS_PATTERN),
+                .maxSize = confManager.get<size_t>(conf::key::STREAMLOG_ALERTS_MAX_SIZE),
+                .bufferSize = confManager.get<size_t>(conf::key::STREAMLOG_ALERTS_BUFFER_SIZE),
+                .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
+                .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
             builderDeps.iConnector = indexerConnector;
             auto defs = std::make_shared<defs::DefinitionsBuilder>();
 
@@ -658,8 +639,16 @@ int main(int argc, char* argv[])
         // Archiver
         if (enableProcessing)
         {
-            archiver =
-                std::make_shared<archiver::Archiver>(streamLogger, confManager.get<bool>(conf::key::ARCHIVER_ENABLED));
+            const auto archiverConfig = streamlog::RotationConfig {
+                .basePath = confManager.get<std::string>(conf::key::STREAMLOG_BASE_PATH),
+                .pattern = confManager.get<std::string>(conf::key::STREAMLOG_ARCHIVES_PATTERN),
+                .maxSize = confManager.get<size_t>(conf::key::STREAMLOG_ARCHIVES_MAX_SIZE),
+                .bufferSize = confManager.get<size_t>(conf::key::STREAMLOG_ARCHIVES_BUFFER_SIZE),
+                .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
+                .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
+
+            archiver = std::make_shared<archiver::Archiver>(
+                streamLogger, archiverConfig, confManager.get<bool>(conf::key::ARCHIVER_ENABLED));
             LOG_INFO("Archiver initialized.");
             exitHandler.add([archiver, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
                             { archiver->deactivate(); });

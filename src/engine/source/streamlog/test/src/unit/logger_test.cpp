@@ -8,8 +8,8 @@
 #include <gtest/gtest.h>
 
 #include <base/logging.hpp>
-#include <streamlog/logger.hpp>
 #include <fastqueue/iqueue.hpp>
+#include <streamlog/logger.hpp>
 
 #include <scheduler/mockScheduler.hpp>
 #include <store/mockStore.hpp>
@@ -209,23 +209,41 @@ TEST_F(LogManagerTest, GetConfigNonExistent)
     EXPECT_THROW(logManager->getConfig("non-existent"), std::runtime_error);
 }
 
-TEST_F(LogManagerTest, GetWriterSuccess)
+TEST_F(LogManagerTest, EnsureAndGetWriterRegistersChannelOnDemand)
 {
     auto logManager = createLogManager();
-    logManager->registerLog("test-channel", defaultConfig, "log");
 
-    auto writer = logManager->getWriter("test-channel");
+    auto writer = logManager->ensureAndGetWriter("test-channel", defaultConfig, "log");
     EXPECT_NE(writer, nullptr);
+
+    EXPECT_TRUE(logManager->hasChannel("test-channel"));
 
     // Verify writer count increased
     EXPECT_EQ(logManager->getActiveWritersCount("test-channel"), 1);
 }
 
-TEST_F(LogManagerTest, GetWriterNonExistent)
+TEST_F(LogManagerTest, EnsureAndGetWriterReusesExistingChannel)
+{
+    auto logManager = createLogManager();
+    logManager->registerLog("test-channel", defaultConfig, "log");
+
+    auto writer = logManager->ensureAndGetWriter("test-channel", defaultConfig, "log");
+
+    EXPECT_NE(writer, nullptr);
+    EXPECT_EQ(logManager->getActiveWritersCount("test-channel"), 1);
+}
+
+TEST_F(LogManagerTest, EnsureAndGetWriterRejectsInvalidChannelNames)
 {
     auto logManager = createLogManager();
 
-    EXPECT_THROW(logManager->getWriter("non-existent"), std::runtime_error);
+    const std::vector<std::string> invalidNames = {"invalid name", "invalid.name", "invalid/name", "invalid:name"};
+
+    for (const auto& name : invalidNames)
+    {
+        EXPECT_THROW(logManager->ensureAndGetWriter(name, defaultConfig, "log"), std::runtime_error)
+            << "Expected invalid channel name to throw: " << name;
+    }
 }
 
 TEST_F(LogManagerTest, GetActiveWritersCountSuccess)
@@ -237,10 +255,10 @@ TEST_F(LogManagerTest, GetActiveWritersCountSuccess)
     EXPECT_EQ(logManager->getActiveWritersCount("test-channel"), 0);
 
     // Create writers and verify count
-    auto writer1 = logManager->getWriter("test-channel");
+    auto writer1 = logManager->ensureAndGetWriter("test-channel", defaultConfig, "log");
     EXPECT_EQ(logManager->getActiveWritersCount("test-channel"), 1);
 
-    auto writer2 = logManager->getWriter("test-channel");
+    auto writer2 = logManager->ensureAndGetWriter("test-channel", defaultConfig, "log");
     EXPECT_EQ(logManager->getActiveWritersCount("test-channel"), 2);
 
     // Destroy writers and verify count decreases
@@ -268,7 +286,7 @@ TEST_F(LogManagerTest, UpdateConfigSuccess)
     // Create new config
     auto newConfig = defaultConfig;
     newConfig.maxSize = fastqueue::MIN_QUEUE_CAPACITY * 2; // Set to a different value
-    newConfig.bufferSize = fastqueue::MIN_QUEUE_CAPACITY; // Set to a different value
+    newConfig.bufferSize = fastqueue::MIN_QUEUE_CAPACITY;  // Set to a different value
 
     // Update config (no active writers)
     EXPECT_NO_THROW(logManager->updateConfig(channelName, newConfig, "log"));
@@ -295,7 +313,7 @@ TEST_F(LogManagerTest, UpdateConfigWithActiveWriters)
     logManager->registerLog("test-channel", defaultConfig, "log");
 
     // Create an active writer
-    auto writer = logManager->getWriter("test-channel");
+    auto writer = logManager->ensureAndGetWriter("test-channel", defaultConfig, "log");
 
     // Attempt to update config should throw
     auto newConfig = defaultConfig;
@@ -352,7 +370,7 @@ TEST_F(LogManagerTest, DestroyChannelWithActiveWriters)
     logManager->registerLog("test-channel", defaultConfig, "log");
 
     // Create an active writer
-    auto writer = logManager->getWriter("test-channel");
+    auto writer = logManager->ensureAndGetWriter("test-channel", defaultConfig, "log");
 
     // Attempt to destroy should throw
     EXPECT_THROW(logManager->destroyChannel("test-channel"), std::runtime_error);
@@ -380,10 +398,10 @@ TEST_F(LogManagerTest, MultipleChannels)
     EXPECT_TRUE(logManager->hasChannel("channel-3"));
 
     // Create writers for different channels
-    auto writer1 = logManager->getWriter("channel-1");
-    auto writer2 = logManager->getWriter("channel-2");
-    auto writer3a = logManager->getWriter("channel-3");
-    auto writer3b = logManager->getWriter("channel-3");
+    auto writer1 = logManager->ensureAndGetWriter("channel-1", defaultConfig, "log");
+    auto writer2 = logManager->ensureAndGetWriter("channel-2", defaultConfig, "log");
+    auto writer3a = logManager->ensureAndGetWriter("channel-3", defaultConfig, "log");
+    auto writer3b = logManager->ensureAndGetWriter("channel-3", defaultConfig, "log");
 
     // Verify writer counts
     EXPECT_EQ(logManager->getActiveWritersCount("channel-1"), 1);
@@ -419,7 +437,7 @@ TEST_F(LogManagerTest, ConcurrentChannelAccess)
             {
                 for (int j = 0; j < writersPerThread; ++j)
                 {
-                    writers[i].push_back(logManager->getWriter("concurrent-channel"));
+                    writers[i].push_back(logManager->ensureAndGetWriter("concurrent-channel", defaultConfig, "log"));
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
             });
@@ -451,7 +469,7 @@ TEST_F(LogManagerTest, WriterFunctionality)
     auto logManager = createLogManager();
     logManager->registerLog("write-test", defaultConfig, "log");
 
-    auto writer = logManager->getWriter("write-test");
+    auto writer = logManager->ensureAndGetWriter("write-test", defaultConfig, "log");
     ASSERT_NE(writer, nullptr);
 
     // Test writing messages
@@ -476,8 +494,8 @@ TEST_F(LogManagerTest, ConfigurationPersistence)
 
     auto customConfig = defaultConfig;
     customConfig.maxSize = fastqueue::MIN_QUEUE_CAPACITY * 2; // Set to a different value
-    customConfig.bufferSize = fastqueue::MIN_QUEUE_CAPACITY; // Set to a different value
-    customConfig.pattern = "custom-${name}-${YYYY}.log"; // ${counter} will be added due to maxSize
+    customConfig.bufferSize = fastqueue::MIN_QUEUE_CAPACITY;  // Set to a different value
+    customConfig.pattern = "custom-${name}-${YYYY}.log";      // ${counter} will be added due to maxSize
 
     logManager->registerLog("persist-test", customConfig, "log");
 
@@ -489,11 +507,11 @@ TEST_F(LogManagerTest, ConfigurationPersistence)
     EXPECT_EQ(storedConfig.bufferSize, customConfig.bufferSize);
 
     // Create and destroy writers, config should persist
-    auto writer1 = logManager->getWriter("persist-test");
+    auto writer1 = logManager->ensureAndGetWriter("persist-test", customConfig, "log");
     writer1.reset();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-    auto writer2 = logManager->getWriter("persist-test");
+    auto writer2 = logManager->ensureAndGetWriter("persist-test", customConfig, "log");
     writer2.reset();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
@@ -516,7 +534,7 @@ TEST_F(LogManagerTest, EmptyStringOperations)
 
     // All modification operations with empty string should throw
     EXPECT_THROW(logManager->registerLog("", defaultConfig, "log"), std::runtime_error);
-    EXPECT_THROW(logManager->getWriter(""), std::runtime_error);
+    EXPECT_THROW(logManager->ensureAndGetWriter("", defaultConfig, "log"), std::runtime_error);
     EXPECT_THROW(logManager->getConfig(""), std::runtime_error);
     EXPECT_THROW(logManager->getActiveWritersCount(""), std::runtime_error);
     EXPECT_THROW(logManager->updateConfig("", defaultConfig, "log"), std::runtime_error);
@@ -553,7 +571,7 @@ TEST_F(LogManagerTest, DestructorCleanup)
         auto logManager = createLogManager();
         logManager->registerLog("cleanup-test", defaultConfig, "log");
 
-        auto writer = logManager->getWriter("cleanup-test");
+        auto writer = logManager->ensureAndGetWriter("cleanup-test", defaultConfig, "log");
         EXPECT_EQ(logManager->getActiveWritersCount("cleanup-test"), 1);
 
         // LogManager destructor should clean up properly even with active writers
@@ -572,7 +590,7 @@ TEST_F(LogManagerTest, MultipleWriterLifecycles)
     for (int i = 0; i < 10; ++i)
     {
         {
-            auto writer = logManager->getWriter("lifecycle-test");
+            auto writer = logManager->ensureAndGetWriter("lifecycle-test", defaultConfig, "log");
             EXPECT_EQ(logManager->getActiveWritersCount("lifecycle-test"), 1);
 
             // Write some messages

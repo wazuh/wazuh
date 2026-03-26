@@ -72,6 +72,7 @@ protected:
         ON_CALL(*mocks->ctx, validatorPtr()).WillByDefault(testing::Return(mocks->validator));
 
         mocks->context.policyName = "policy/name/0";
+        mocks->context.originSpace = "test_space";
         mocks->context.assetName = "asset/name/0";
     }
 
