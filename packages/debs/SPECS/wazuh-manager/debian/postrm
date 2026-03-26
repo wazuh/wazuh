@@ -53,11 +53,9 @@ case "$1" in
         fi
         rm -rf ${DIR}/tmp
         if [ "$1" = "remove" ]; then
-            rm -rf ${DIR}/active-response
             rm -rf ${DIR}/ruleset
             rm -rf ${DIR}/var
             rm -rf ${DIR}/logs
-            rm -rf ${DIR}/wodles
             rm -rf ${DIR}/data
         fi
 
@@ -89,8 +87,6 @@ case "$1" in
         if getent group wazuh-manager > /dev/null 2>&1; then
             delgroup wazuh-manager  > /dev/null 2>&1
         fi
-        rm -rf ${DIR}/active-response
-        rm -rf ${DIR}/wodles
         rm -rf ${DIR}
     ;;
 
