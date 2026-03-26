@@ -398,7 +398,7 @@ class TestRegressionAgentsEndpoint:
 
     @pytest.mark.asyncio
     async def test_collect_agents_adds_metadata_fields(self):
-        """_collect_agents only adds metadata fields — it does not remove or rename existing fields."""
+        """_collect_agents correctly maps fields into the nested ECS structure and adds metadata."""
         original_agent = {"id": "001", "name": "test-agent", "status": "active"}
 
         with patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents") as MockQuery:
@@ -409,13 +409,14 @@ class TestRegressionAgentsEndpoint:
         assert len(docs) == 1
         doc = docs[0]
 
-        assert doc["wazuh.agent.id"] == original_agent["id"]
-        assert doc["wazuh.agent.name"] == original_agent["name"]
-        assert doc["wazuh.agent.status"] == original_agent["status"]
+        assert doc["wazuh"]["agent"]["id"] == original_agent["id"]
+        assert doc["wazuh"]["agent"]["name"] == original_agent["name"]
+        assert doc["wazuh"]["agent"]["status"] == original_agent["status"]
+
         assert "@timestamp" in doc
-        assert "wazuh.cluster.node" in doc
-        assert "wazuh.cluster.name" in doc
-        assert "wazuh.schema.version" in doc
+        assert doc["wazuh"]["cluster"]["node"] == "master-node"
+        assert doc["wazuh"]["cluster"]["name"] == "wazuh-cluster"
+        assert doc["wazuh"]["schema"]["version"] == "1"
 
     @pytest.mark.asyncio
     async def test_collect_agents_returns_list(self):
