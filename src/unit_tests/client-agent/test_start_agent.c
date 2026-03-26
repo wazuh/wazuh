@@ -155,7 +155,7 @@ static int teardown_test(void **state) {
 /* connect_server */
 static void test_connect_server(void **state) {
     bool connected = false;
-    expect_any(__wrap__minfo, formatted_msg);
+    expect_any(__wrap__mdebug1, formatted_msg);
     /* Connect to first server (TCP)*/
     will_return(__wrap_getDefine_Int, 5);
     expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
@@ -164,8 +164,6 @@ static void test_connect_server(void **state) {
     expect_any(__wrap_OS_ConnectTCP, _ip);
     expect_any(__wrap_OS_ConnectTCP, ipv6);
     will_return(__wrap_OS_ConnectTCP, 11);
-
-    expect_any_count(__wrap__minfo, formatted_msg, 2);
 
     connected = connect_server(0, true);
     assert_int_equal(agt->rip_id, 0);
@@ -184,7 +182,7 @@ static void test_connect_server(void **state) {
     expect_value(__wrap_OS_CloseSocket, sock, 11);
     will_return(__wrap_OS_CloseSocket, 0);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 2);
+    expect_any_count(__wrap__mdebug1, formatted_msg, 2);
 
     connected = connect_server(1, true);
     assert_int_equal(agt->rip_id, 1);
@@ -200,7 +198,7 @@ static void test_connect_server(void **state) {
     expect_value(__wrap_OS_CloseSocket, sock, 12);
     will_return(__wrap_OS_CloseSocket, 0);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 2);
+    expect_any_count(__wrap__mdebug1, formatted_msg, 2);
 
     connected = connect_server(2, true);
     assert_int_equal(agt->rip_id, 2);
@@ -212,8 +210,7 @@ static void test_connect_server(void **state) {
     expect_value(__wrap_OS_CloseSocket, sock, 13);
     will_return(__wrap_OS_CloseSocket, 0);
 
-    expect_any(__wrap__minfo, formatted_msg);
-    expect_any(__wrap__merror, formatted_msg);
+    expect_any_count(__wrap__mdebug1, formatted_msg, 2);
 
     connected = connect_server(3, true);
     assert_false(connected);
@@ -226,6 +223,8 @@ static void test_connect_server(void **state) {
     expect_any(__wrap_OS_ConnectTCP, _ip);
     expect_any(__wrap_OS_ConnectTCP, ipv6);
     will_return(__wrap_OS_ConnectTCP, -1);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__merror, formatted_msg);
     connected = connect_server(0, true);
     assert_false(connected);
 
@@ -254,7 +253,8 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 4);
+    expect_any_count(__wrap__mdebug1, formatted_msg, 2);
+    expect_any(__wrap__minfo, formatted_msg);
 
     handshaked = agent_handshake_to_server(0, false);
     assert_true(handshaked);
@@ -280,7 +280,8 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 7);
+    expect_any_count(__wrap__mdebug1, formatted_msg, 3);
+    expect_any(__wrap__minfo, formatted_msg);
 
     handshaked = agent_handshake_to_server(1, false);
     assert_true(handshaked);
@@ -307,7 +308,8 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 4);
+    expect_any_count(__wrap__mdebug1, formatted_msg, 3);
+    expect_any(__wrap__minfo, formatted_msg);
 
     handshaked = agent_handshake_to_server(1, true);
     assert_true(handshaked);
@@ -323,7 +325,7 @@ static void test_agent_handshake_to_server(void **state) {
     expect_value(__wrap_OS_CloseSocket, sock, 23);
     will_return(__wrap_OS_CloseSocket, 0);
 
-    expect_any(__wrap__minfo, formatted_msg);
+    expect_any_count(__wrap__mdebug1, formatted_msg, 2);
     expect_any(__wrap__merror, formatted_msg);
 
     handshaked = agent_handshake_to_server(0, false);
@@ -340,7 +342,7 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_wnet_select, 0);
     expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v5.0.0\"}");
 
-    expect_any(__wrap__mwarn, formatted_msg);
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     handshaked = agent_handshake_to_server(0, false);
     assert_false(handshaked);
@@ -364,6 +366,9 @@ static void test_agent_handshake_to_server(void **state) {
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_WRONG_ACK);
     will_return(__wrap_ReadSecMSG, SERVER_WRONG_ACK);
     will_return(__wrap_ReadSecMSG, KS_CORRUPT);
+
+    expect_any_count(__wrap__mdebug1, formatted_msg, 2);
+    expect_any(__wrap__mwarn, formatted_msg);
 
     handshaked = agent_handshake_to_server(0, false);
     assert_false(handshaked);
@@ -392,7 +397,7 @@ static void test_agent_handshake_to_server_invalid_version(void **state) {
     will_return(__wrap_ReadSecMSG, "#!-err {\"message\": \"Agent version must be lower or equal to manager version\"}");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 1);
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     expect_string(__wrap__mwarn, formatted_msg ,"Couldn't connect to server '127.0.0.1': 'Agent version must be lower or equal to manager version'");
 
@@ -421,7 +426,7 @@ static void test_agent_handshake_to_server_error_getting_msg1(void **state) {
     will_return(__wrap_ReadSecMSG, "#!-err \"message\": \"Agent version must be lower or equal to manager version\"}");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 1);
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     expect_string(__wrap__merror, formatted_msg ,"Error getting message from server '127.0.0.1'");
 
@@ -450,7 +455,7 @@ static void test_agent_handshake_to_server_error_getting_msg2(void **state) {
     will_return(__wrap_ReadSecMSG, "#!-err {\"key\": \"Agent version must be lower or equal to manager version\"}");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 1);
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     expect_string(__wrap__merror, formatted_msg ,"Error getting message from server '127.0.0.1'");
 

@@ -1766,7 +1766,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     will_return(__wrap_fim_db_transaction_start, &mock_handle);
 
-    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // fim_diff_folder_size
     expect_string(__wrap_IsDir, file, "queue/diff/local");
@@ -1854,7 +1854,7 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     will_return(__wrap_fim_db_transaction_start, &mock_handle);
 
-    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // fim_diff_folder_size
     expect_string(__wrap_IsDir, file, "queue/diff/local");
@@ -1918,7 +1918,7 @@ static void test_fim_scan_realtime_enabled(void **state) {
 
     syscheck.realtime = &realtime;
 
-    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // fim_diff_folder_size
     expect_string(__wrap_IsDir, file, "queue/diff/local");
@@ -1991,7 +1991,7 @@ static void test_fim_scan_no_limit(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     will_return(__wrap_fim_db_transaction_start, &mock_handle);
 
-    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // fim_diff_folder_size
     expect_string(__wrap_IsDir, file, "queue/diff/local");
@@ -2380,7 +2380,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     will_return(__wrap_fim_db_transaction_start, mock_handle);
-    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // fim_diff_folder_size
     expect_string(__wrap_IsDir, file, "queue/diff/local");
@@ -2446,7 +2446,7 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     will_return(__wrap_fim_db_transaction_start, &mock_handle);
 
-    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // fim_diff_folder_size
     expect_string(__wrap_IsDir, file, "queue/diff/local");
@@ -2509,7 +2509,7 @@ static void test_fim_scan_no_limit(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     will_return(__wrap_fim_db_transaction_start, &mock_handle);
-    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // fim_diff_folder_size
     expect_string(__wrap_IsDir, file, "queue/diff/local");

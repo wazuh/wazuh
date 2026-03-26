@@ -159,7 +159,7 @@ CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPt
         return;
     }
 
-    LOG_INFO("[CMSync] First setup detected, initializing default sync spaces");
+    LOG_DEBUG("[CMSync] First setup detected, initializing default sync spaces");
 
     addSpaceToSync("standard");
     addSpaceToSync("custom");
@@ -345,7 +345,7 @@ void CMSync::addSpaceToSync(std::string_view space)
     // SET Dummy namespace id
     m_namespacesState.back().setNamespaceId(DUMMY_NAMESPACE_ID);
 
-    LOG_INFO("[CMSync] Added space '{}' to the sync list", space);
+    LOG_DEBUG("[CMSync] Added space '{}' to the sync list", space);
 
     dumpStateToStore();
 }

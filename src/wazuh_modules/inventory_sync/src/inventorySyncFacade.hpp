@@ -493,7 +493,7 @@ public:
         {
             m_maxSessions = configuration.at("maxSessions").get<int>();
         }
-        logInfo(LOGGER_DEFAULT_TAG, "InventorySync session limit: %d", m_maxSessions);
+        logDebug1(LOGGER_DEFAULT_TAG, "InventorySync session limit: %d", m_maxSessions);
 
         logDebug2(LOGGER_DEFAULT_TAG, "Cluster name to be used in indexer: %s", m_clusterName.c_str());
 

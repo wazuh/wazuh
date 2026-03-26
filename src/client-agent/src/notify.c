@@ -215,7 +215,7 @@ void run_notify()
         /* Send sync message */
         start_agent(0);
 
-        minfo(SERVER_UP);
+        mdebug1(SERVER_UP);
         os_delwait();
         w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
     }

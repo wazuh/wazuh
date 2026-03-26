@@ -133,7 +133,7 @@ void test_fim_initialize(void **state)
     will_return(__wrap_schema_validator_is_initialized, false);
     will_return(__wrap_schema_validator_initialize, true);
 
-    expect_string(__wrap__minfo, formatted_msg, "Schema validator initialized successfully from embedded resources");
+    expect_string(__wrap__mdebug1, formatted_msg, "Schema validator initialized successfully from embedded resources");
 
     fim_initialize();
 }
@@ -228,7 +228,7 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
     // Schema validator initialization
     will_return(__wrap_schema_validator_is_initialized, false);
     will_return(__wrap_schema_validator_initialize, true);
-    expect_string(__wrap__minfo, formatted_msg, "Schema validator initialized successfully from embedded resources");
+    expect_string(__wrap__mdebug1, formatted_msg, "Schema validator initialized successfully from embedded resources");
 
     expect_string(__wrap_w_query_agentd, module, SYSCHECK);
     expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
@@ -280,7 +280,7 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
     // Schema validator initialization happens inside fim_initialize, after asp_create but before start_daemon
     will_return(__wrap_schema_validator_is_initialized, false);
     will_return(__wrap_schema_validator_initialize, true);
-    expect_string(__wrap__minfo, formatted_msg, "Schema validator initialized successfully from embedded resources");
+    expect_string(__wrap__mdebug1, formatted_msg, "Schema validator initialized successfully from embedded resources");
 
     expect_string(__wrap_w_query_agentd, module, SYSCHECK);
     expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
@@ -330,7 +330,7 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
     // Schema validator initialization happens inside fim_initialize, after asp_create but before start_daemon
     will_return(__wrap_schema_validator_is_initialized, false);
     will_return(__wrap_schema_validator_initialize, true);
-    expect_string(__wrap__minfo, formatted_msg, "Schema validator initialized successfully from embedded resources");
+    expect_string(__wrap__mdebug1, formatted_msg, "Schema validator initialized successfully from embedded resources");
 
     expect_string(__wrap_w_query_agentd, module, SYSCHECK);
     expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
@@ -417,7 +417,7 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
     // Schema validator initialization happens inside fim_initialize, after asp_create but before start_daemon
     will_return(__wrap_schema_validator_is_initialized, false);
     will_return(__wrap_schema_validator_initialize, true);
-    expect_string(__wrap__minfo, formatted_msg, "Schema validator initialized successfully from embedded resources");
+    expect_string(__wrap__mdebug1, formatted_msg, "Schema validator initialized successfully from embedded resources");
 
     expect_string(__wrap_w_query_agentd, module, SYSCHECK);
     expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
@@ -489,7 +489,7 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
     // Schema validator initialization happens inside fim_initialize, after asp_create but before start_daemon
     will_return(__wrap_schema_validator_is_initialized, false);
     will_return(__wrap_schema_validator_initialize, true);
-    expect_string(__wrap__minfo, formatted_msg, "Schema validator initialized successfully from embedded resources");
+    expect_string(__wrap__mdebug1, formatted_msg, "Schema validator initialized successfully from embedded resources");
 
     expect_string(__wrap_w_query_agentd, module, SYSCHECK);
     expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");

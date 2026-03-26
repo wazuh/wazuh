@@ -1020,8 +1020,8 @@ void test_wm_agent_upgrade_router_subscriber_thread_success(void **state)
     void *mock_handle = (void*)0x12345;
     void *mock_subscriber = (void*)0xABCDE;
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:agent-upgrade");
-    expect_string(__wrap__mtinfo, formatted_msg, "Starting router subscriber thread for upgrade notifications");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Starting router subscriber thread for upgrade notifications");
 
     // Mock initialize_router_functions success
     expect_string(__wrap_so_get_module_handle, so, "router");
@@ -1053,8 +1053,8 @@ void test_wm_agent_upgrade_router_subscriber_thread_success(void **state)
     expect_value(__wrap_router_subscriber_subscribe, handle, mock_subscriber);
     will_return(__wrap_router_subscriber_subscribe, 0);
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:agent-upgrade");
-    expect_string(__wrap__mtinfo, formatted_msg, "Successfully subscribed to router topic 'upgrade_notifications'");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Successfully subscribed to router topic 'upgrade_notifications'");
 
     will_return(__wrap_FOREVER, 1);
     expect_value(__wrap_sleep, seconds, 1);
@@ -1075,8 +1075,8 @@ void test_wm_agent_upgrade_router_subscriber_thread_success(void **state)
 
 void test_wm_agent_upgrade_router_subscriber_thread_init_failure(void **state)
 {
-    expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:agent-upgrade");
-    expect_string(__wrap__mtinfo, formatted_msg, "Starting router subscriber thread for upgrade notifications");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Starting router subscriber thread for upgrade notifications");
 
     // Mock initialize_router_functions failure
     expect_string(__wrap_so_get_module_handle, so, "router");
@@ -1096,8 +1096,8 @@ void test_wm_agent_upgrade_router_subscriber_thread_create_failure(void **state)
 {
     void *mock_handle = (void*)0x12345;
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:agent-upgrade");
-    expect_string(__wrap__mtinfo, formatted_msg, "Starting router subscriber thread for upgrade notifications");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Starting router subscriber thread for upgrade notifications");
 
     // Mock initialize_router_functions success
     expect_string(__wrap_so_get_module_handle, so, "router");
@@ -1137,8 +1137,8 @@ void test_wm_agent_upgrade_router_subscriber_thread_subscribe_failure(void **sta
     void *mock_handle = (void*)0x12345;
     void *mock_subscriber = (void*)0xABCDE;
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:agent-upgrade");
-    expect_string(__wrap__mtinfo, formatted_msg, "Starting router subscriber thread for upgrade notifications");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Starting router subscriber thread for upgrade notifications");
 
     // Mock initialize_router_functions success
     expect_string(__wrap_so_get_module_handle, so, "router");

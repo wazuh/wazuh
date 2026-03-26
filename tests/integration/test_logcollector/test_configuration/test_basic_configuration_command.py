@@ -64,6 +64,7 @@ from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
+from wazuh_testing.modules.agentd import configuration as agentd_configuration
 from wazuh_testing.modules.logcollector import configuration as logcollector_configuration
 from wazuh_testing.modules.logcollector import patterns
 from wazuh_testing.modules.logcollector import utils
@@ -78,6 +79,8 @@ pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.ma
 
 # Variables
 local_internal_options = {logcollector_configuration.LOGCOLLECTOR_DEBUG: '2', logcollector_configuration.LOGCOLLECTOR_REMOTE_COMMANDS: '1'}
+if sys.platform == WINDOWS:
+    local_internal_options.update({agentd_configuration.AGENTD_WINDOWS_DEBUG: '2'})
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_basic_configuration_command.yaml')
@@ -136,7 +139,7 @@ def test_configuration_command(test_configuration, test_metadata, configure_loca
                        the 'wazuh-logcollector' daemon.
 
     expected_output:
-        - r'INFO: Monitoring .* of command.*'
+        - r'DEBUG: Monitoring .* of command.*'
 
     tags:
         - logs

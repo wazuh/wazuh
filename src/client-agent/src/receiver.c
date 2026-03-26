@@ -117,7 +117,7 @@ int receive_msg()
             /* Force reconnect agent to the manager */
             else if (strncmp(tmp_msg, HC_FORCE_RECONNECT, strlen(HC_FORCE_RECONNECT)) == 0) {
                 /* Set lock and wait for it */
-                minfo("Wazuh Agent will be reconnected because a reconnect message was received");
+                mdebug1("Wazuh Agent will be reconnected because a reconnect message was received");
                 os_setwait();
                 w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
 
@@ -259,13 +259,13 @@ int receive_msg()
 
                                         if (agt->flags.auto_restart || gate_released) {
                                             if (gate_released && !agt->flags.auto_restart) {
-                                                minfo("Agent is reloading to apply startup hash validated configuration.");
+                                                mdebug1("Agent is reloading to apply startup hash validated configuration.");
                                             } else {
                                                 minfo("Agent is reloading due to shared configuration changes.");
                                             }
                                             reloadAgent();
                                         } else {
-                                            minfo("Shared agent configuration has been updated.");
+                                            mdebug1("Shared agent configuration has been updated.");
                                         }
                                     }
                                 }
@@ -346,7 +346,7 @@ int receiver_messages()
             merror(LOST_ERROR);
             os_setwait();
             start_agent(0);
-            minfo(SERVER_UP);
+            mdebug1(SERVER_UP);
             os_delwait();
             w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
         }

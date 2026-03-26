@@ -609,7 +609,7 @@ int main(int argc, char* argv[])
                                                                {
                                                                    iocSyncService->synchronize();
                                                                }});
-                LOG_INFO("IOC Sync task scheduled with interval: {} seconds", iocSyncInterval);
+                LOG_DEBUG("IOC Sync task scheduled with interval: {} seconds", iocSyncInterval);
             }
             else
             {
@@ -638,7 +638,7 @@ int main(int argc, char* argv[])
                                            {
                                                geoManager->remoteUpsert(manifestUrl, cityPath, asnPath);
                                            }});
-                LOG_INFO("Geo sync scheduled with interval: {} seconds.", geoSyncInterval);
+                LOG_DEBUG("Geo sync scheduled with interval: {} seconds.", geoSyncInterval);
             }
             else
             {
@@ -668,7 +668,7 @@ int main(int argc, char* argv[])
                                                            {
                                                                remoteConf->synchronize();
                                                            }});
-            LOG_INFO("Remote configuration synchronize scheduled with interval: {} seconds.", remoteConfSyncInterval);
+            LOG_DEBUG("Remote configuration synchronize scheduled with interval: {} seconds.", remoteConfSyncInterval);
         }
 
         // Create and configure the api endpoints
