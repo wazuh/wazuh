@@ -38,9 +38,13 @@ tar -tzf $BACKUP_DIR/wazuh-etc.tar.gz > /dev/null && echo "Backup successful"
 sudo sqlite3 $BACKUP_DIR/db/global.db "PRAGMA integrity_check"
 ```
 
+### Download package
+
+Download the Wazuh manager package for your platform and version. See the [Package Download](getting-started/packages.md#package-download) section for available repositories and download instructions.
+
 ### Upgrade
 
-Install the Wazuh manager package for your platform:
+Install the downloaded Wazuh manager package for your platform:
 
 **Debian-based platforms:**
 
@@ -125,7 +129,9 @@ Upgrade worker nodes one at a time to maintain service availability.
 sudo /var/wazuh-manager/bin/cluster_control -l
 ```
 
-2. Upgrade the package:
+2. Download the package (see [Package Download](getting-started/packages.md#package-download) section).
+
+3. Upgrade the package:
 
 **Debian-based platforms:**
 
@@ -139,7 +145,7 @@ sudo dpkg -i wazuh-manager_*.deb
 sudo rpm -Uvh wazuh-manager-*.rpm
 ```
 
-3. Verify the upgrade:
+4. Verify the upgrade:
 
 ```bash
 # Check service status
@@ -152,7 +158,7 @@ sudo /var/wazuh-manager/bin/cluster_control -l
 sudo tail -f /var/wazuh-manager/logs/cluster.log
 ```
 
-4. Wait for synchronization before upgrading the next worker:
+5. Wait for synchronization before upgrading the next worker:
 
 ```bash
 # Monitor synchronization status
@@ -180,7 +186,9 @@ sudo /var/wazuh-manager/bin/cluster_control -l
 sudo /var/wazuh-manager/bin/cluster_control -i
 ```
 
-2. Upgrade the package:
+2. Download the package (see [Package Download](getting-started/packages.md#package-download) section).
+
+3. Upgrade the package:
 
 **Debian-based platforms:**
 
@@ -194,7 +202,7 @@ sudo dpkg -i wazuh-manager_*.deb
 sudo rpm -Uvh wazuh-manager-*.rpm
 ```
 
-3. Verify the upgrade:
+4. Verify the upgrade:
 
 ```bash
 # Check service status
@@ -211,7 +219,7 @@ sudo tail -50 /var/wazuh-manager/logs/wazuh-manager.log
 sudo tail -50 /var/wazuh-manager/logs/cluster.log
 ```
 
-4. Verify cluster synchronization:
+5. Verify cluster synchronization:
 
 ```bash
 # Check that all workers are synchronized with the master
@@ -268,6 +276,10 @@ Before upgrading agents:
 4. Verify manager compatibility with the new agent version
 
 **Note:** Wazuh agents version 4.x and later support upgrades to version 5.x.
+
+### Download package
+
+Download the Wazuh agent package for your platform and version. See the [Package Download](getting-started/packages.md#package-download) section for available repositories and download instructions.
 
 ### Linux
 
