@@ -117,10 +117,11 @@ build_pep517 tools/api-communication
 if ! build_pep517 tools/engine-suite; then
   echo "[build] PEP517 failed for engine-suite; falling back to legacy mode..."
   build_legacy_from_copy tools/engine-suite engine-suite \
-    "engine_public engine_archiver engine_decoder engine_router engine_schema engine_private engine_test engine_test_utils helper_test health_test integration_test"
+    "engine_public engine_archiver engine_decoder engine_router engine_schema engine_private engine_test engine_test_utils helper_test engine_metrics health_test integration_test"
 fi
 
 build_pep517 test/engine-test-utils  || build_legacy_from_copy test/engine-test-utils  engine-test-utils   "engine_test_utils"
+build_pep517 tools/engine-metrics    || build_legacy_from_copy tools/engine-metrics    engine-metrics      "engine_metrics"
 build_pep517 test/helper_tests/engine-helper-test || build_legacy_from_copy test/helper_tests/engine-helper-test engine-helper-test "helper_test"
 build_pep517 test/integration_tests/engine-it     || build_legacy_from_copy test/integration_tests/engine-it     engine-it          "integration_test"
 
@@ -148,6 +149,14 @@ behave
 websocket-client>=1.6,<2
 packaging>=23
 argcomplete
+# flask + socketio (engine-metrics dashboard)
+flask==3.0.0
+flask-socketio==5.3.5
+python-socketio[client]==5.10.0
+python-engineio
+bidict
+simple-websocket
+wsproto
 EOF
 
 $PY -m pip download --only-binary=:all: --dest dist/wheels -r "$REQS"
@@ -219,6 +228,7 @@ download_manylinux() {
 }
 download_manylinux "PyYAML==6.0.1"
 download_manylinux "lxml==5.2.1"
+download_manylinux "MarkupSafe>=2.0"
 
 echo "[build] Generated wheels:"
 ls -1 dist/wheels
@@ -255,6 +265,7 @@ mk_wrapper engine-test         engine_test
 mk_wrapper engine-test-utils   engine_test_utils
 mk_wrapper engine-helper-test  helper_test
 mk_wrapper engine-it           integration_test
+mk_wrapper engine-metrics      engine_metrics
 
 # =====================
 # == POST INSTALLATION
@@ -298,6 +309,7 @@ PY
     local files=()
     for f in "$W"/api_communication-*.whl \
              "$W"/engine_suite-*.whl \
+             "$W"/engine_metrics-*.whl \
              "$W"/engine_test_utils-*.whl \
              "$W"/engine_helper_test-*.whl \
              "$W"/engine_it-*.whl; do
@@ -432,6 +444,7 @@ exit 0
 %{_bindir}/engine-test-utils
 %{_bindir}/engine-helper-test
 %{_bindir}/engine-it
+%{_bindir}/engine-metrics
 %dir %{prefix}
 %dir %{wheelsd}
 %{wheelsd}/*

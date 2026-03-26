@@ -1,6 +1,14 @@
 from enum import Enum
 from engine_test.conf.event_tester_template import TesterMessageTemplate
 
+# Default queue byte and location per collect mode (from src/shared/include/mq_op.h)
+COLLECT_MODE_DEFAULTS = {
+    "single-line": {"queue": "1", "location": "file"},
+    "multi-line": {"queue": "1", "location": "file"},
+    "dynamic-multi-line": {"queue": "1", "location": "file"},
+    "windows-eventchannel": {"queue": "f", "location": "windows-eventlog"},
+}
+
 
 class CollectModes(Enum):
     '''

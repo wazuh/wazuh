@@ -2,6 +2,8 @@
 
 #include <fmt/format.h>
 
+#include <fastmetrics/registry.hpp>
+
 #include "assetBuilder.hpp"
 #include "builders/buildCtx.hpp"
 #include "builders/enrichment/enrichment.hpp"
@@ -122,8 +124,15 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
         return enrichmentExp;
     }();
 
-    // Build the expression
-    m_expression = factory::buildExpression(policyGraph, preEnrichmentExp, enrichmentExp);
+    // Build the expression with per-space pre/post filter discard counters
+    const auto spaceName = policyData.getOriginSpace();
+    auto preFilterDiscardCounter =
+        fastmetrics::manager().getOrCreateCounter("space." + spaceName + ".events.discarded.prefilter");
+    auto postFilterDiscardCounter =
+        fastmetrics::manager().getOrCreateCounter("space." + spaceName + ".events.discarded.postfilter");
+
+    m_expression = factory::buildExpression(
+        policyGraph, preEnrichmentExp, enrichmentExp, preFilterDiscardCounter, postFilterDiscardCounter);
 }
 
 } // namespace builder::policy

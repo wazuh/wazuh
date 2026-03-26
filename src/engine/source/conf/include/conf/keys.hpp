@@ -75,7 +75,12 @@ constexpr std::string_view STREAMLOG_EVENTS_BUFFER_SIZE = "analysisd.streamlog_e
 constexpr std::string_view STREAMLOG_DUMPER_PATTERN = "analysisd.streamlog_dumper_pattern";
 constexpr std::string_view STREAMLOG_DUMPER_MAX_SIZE = "analysisd.streamlog_dumper_max_size";
 constexpr std::string_view STREAMLOG_DUMPER_BUFFER_SIZE = "analysisd.streamlog_dumper_buffer_size";
+constexpr std::string_view STREAMLOG_METRICS_PATTERN = "analysisd.streamlog_metrics_pattern";
+constexpr std::string_view STREAMLOG_METRICS_MAX_SIZE = "analysisd.streamlog_metrics_max_size";
+constexpr std::string_view STREAMLOG_METRICS_BUFFER_SIZE = "analysisd.streamlog_metrics_buffer_size";
 
+constexpr std::string_view METRICS_LOG_ENABLED = "analysisd.metrics_log_enabled";
+constexpr std::string_view METRICS_LOG_INTERVAL = "analysisd.metrics_log_interval";
 constexpr std::string_view DUMPER_ENABLED = "analysisd.dumper_enabled";
 
 constexpr std::string_view PID_FILE_PATH = "analysisd.pid_path";

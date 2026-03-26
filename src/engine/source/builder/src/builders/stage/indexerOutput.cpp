@@ -1,5 +1,7 @@
 #include "indexerOutput.hpp"
 
+#include <fastmetrics/registry.hpp>
+
 #include <memory>
 #include <regex>
 #include <stdexcept>
@@ -98,6 +100,11 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
         throw std::runtime_error("Indexer connector is not available");
     }
 
+    // Per-space output drop counter
+    const auto& spaceName = buildCtx->context().originSpace;
+    auto droppedOutputCounter =
+        fastmetrics::manager().getOrCreateCounter("space." + spaceName + ".events.dropped.output");
+
     return base::Term<base::EngineOp>::create(
         name,
         [indexName,
@@ -107,6 +114,7 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
          failureTrace,
          failureTrace2,
          failureTrace3,
+         droppedOutputCounter,
          runState = buildCtx->runState()](base::Event event) -> base::result::Result<base::Event>
         {
             std::string finalIndexName = indexName;
@@ -138,6 +146,7 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
             }
             catch (const std::exception& e)
             {
+                droppedOutputCounter->add(1);
                 RETURN_FAILURE(runState, event, failureTrace);
             }
 

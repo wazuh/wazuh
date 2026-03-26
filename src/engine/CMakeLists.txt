@@ -300,6 +300,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/cmcrud)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmsync)
 add_subdirectory(${ENGINE_SOURCE_DIR}/confremote)
 add_subdirectory(${ENGINE_SOURCE_DIR}/rawevtindexer)
+add_subdirectory(${ENGINE_SOURCE_DIR}/fastmetrics)
 
 target_link_libraries(wazuh-engine
     base

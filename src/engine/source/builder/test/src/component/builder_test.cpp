@@ -2,6 +2,7 @@
 
 #include <base/baseTypes.hpp>
 #include <base/behaviour.hpp>
+#include <fastmetrics/registry.hpp>
 #include <store/mockStore.hpp>
 
 #include "definitions.hpp"
@@ -12,6 +13,12 @@ using namespace base::test;
 
 namespace
 {
+struct FastMetricsInit
+{
+    FastMetricsInit() { fastmetrics::registerManager(); }
+};
+static FastMetricsInit fastMetricsInit_;
+
 bool evalExpression(const base::Expression& expression, const base::Event& event)
 {
     if (expression == nullptr)

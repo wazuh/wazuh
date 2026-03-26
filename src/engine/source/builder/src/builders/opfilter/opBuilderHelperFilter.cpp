@@ -10,6 +10,7 @@
 #include "syntax.hpp"
 #include <base/baseTypes.hpp>
 #include <base/utils/ipUtils.hpp>
+#include <fastmetrics/registry.hpp>
 
 namespace builder::builders::opfilter
 {
@@ -1933,6 +1934,10 @@ FilterOp opBuilderHelperIndexUnclassifiedEvents(const Reference& targetField,
     auto name = buildCtx->context().opName;
     const bool policyIndexUnclassified = buildCtx->context().indexUnclassifiedEvents;
 
+    // Per-space metric: count unclassified events in this space
+    const auto& spaceName = buildCtx->context().originSpace;
+    auto unclassifiedCounter = fastmetrics::manager().getOrCreateCounter("space." + spaceName + ".events.unclassified");
+
     // Tracing
     const std::string successTrace {
         fmt::format("[{}] -> Success: Policy index_unclassified_events=true and array has 1 element", name)};
@@ -1950,6 +1955,7 @@ FilterOp opBuilderHelperIndexUnclassifiedEvents(const Reference& targetField,
         // Check if policy flag is enabled
         if (!policyIndexUnclassified)
         {
+            unclassifiedCounter->add(1);
             RETURN_FAILURE(runState, false, failureTrace3);
         }
 
@@ -1959,17 +1965,19 @@ FilterOp opBuilderHelperIndexUnclassifiedEvents(const Reference& targetField,
             RETURN_FAILURE(runState, false, failureTrace1);
         }
 
-        // Check if field is an array
-        const auto resolvedArray {event->getArray(targetField)};
-        if (!resolvedArray.has_value())
-        {
-            RETURN_FAILURE(runState, false, failureTrace2);
-        }
-
         // Check if array has exactly 1 element
-        if (resolvedArray.value().size() == 1)
+        try
         {
-            RETURN_SUCCESS(runState, true, successTrace);
+            if (event->size(targetField) == 1)
+            {
+                unclassifiedCounter->add(1);
+                RETURN_SUCCESS(runState, true, successTrace);
+            }
+        }
+        catch (const std::exception&)
+        {
+            // size() throws if field is not an array, object, or string
+            RETURN_FAILURE(runState, false, failureTrace2);
         }
 
         RETURN_FAILURE(runState, false, failureTrace3);

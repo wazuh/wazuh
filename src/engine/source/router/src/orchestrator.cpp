@@ -7,6 +7,8 @@
 
 #include <base/json.hpp>
 #include <base/logging.hpp>
+#include <fastmetrics/registry.hpp>
+#include <fastmetrics/slidingWindowRate.hpp>
 
 #include <router/orchestrator.hpp>
 
@@ -149,8 +151,8 @@ std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::ISt
     if (base::isError(jsonEntry))
     {
         LOG_DEBUG("Router: {} table not found in store. Creating new table: {}",
-                 tableName.toStr(),
-                 base::getError(jsonEntry).message);
+                  tableName.toStr(),
+                  base::getError(jsonEntry).message);
         store->createDoc(tableName, json::Json {"[]"});
         return {};
     }
@@ -219,6 +221,10 @@ void Orchestrator::postEvent(IngestEvent&& event)
     if (!pushed)
     {
         m_droppedEventsInContention.fetch_add(1, std::memory_order_relaxed);
+        if (m_droppedInputCounter)
+        {
+            m_droppedInputCounter->add(1);
+        }
     }
 
     bool expected = false;
@@ -286,6 +292,44 @@ Orchestrator::Orchestrator(const Options& opt)
     m_envBuilder = std::make_shared<EnvironmentBuilder>(opt.m_builder, opt.m_controllerMaker);
     m_testTimeout = opt.m_testTimeout;
     m_wStore = opt.m_wStore;
+
+    // Register pull metrics for queue monitoring (zero overhead, on-demand)
+    // Captures shared_ptr to ensure queues remain valid
+    FASTMETRICS_PULL(
+        size_t, "router.queue.size", [eventQueue = m_eventQueue]() { return eventQueue ? eventQueue->size() : 0; });
+
+    // Input queue usage percentage
+    FASTMETRICS_PULL(double,
+                     "router.queue.usage.percent",
+                     [eventQueue = m_eventQueue]()
+                     {
+                         if (!eventQueue)
+                         {
+                             return 0.0;
+                         }
+                         auto size = eventQueue->size();
+                         auto freeSlots = eventQueue->aproxFreeSlots();
+                         auto total = size + freeSlots;
+                         return total > 0 ? (static_cast<double>(size) * 100.0 / total) : 0.0;
+                     });
+
+    // Total events dropped at input (never resets, unlike contention window counter)
+    m_droppedInputCounter = fastmetrics::manager().getOrCreateCounter("server.events.dropped.input");
+
+    // EPS sliding-window rates (1m, 5m, 30m) derived from the processed counter
+    {
+        auto eventsProcessedCounter = fastmetrics::manager().getOrCreateCounter("router.events.processed");
+
+        auto epsRate = std::make_shared<fastmetrics::SlidingWindowRate>([eventsProcessedCounter]() -> uint64_t
+                                                                        { return eventsProcessedCounter->get(); });
+
+        FASTMETRICS_PULL(double, "router.eps.1m", [epsRate]() { return epsRate->getRate(std::chrono::seconds(60)); });
+
+        FASTMETRICS_PULL(double, "router.eps.5m", [epsRate]() { return epsRate->getRate(std::chrono::seconds(300)); });
+
+        FASTMETRICS_PULL(
+            double, "router.eps.30m", [epsRate]() { return epsRate->getRate(std::chrono::seconds(1800)); });
+    }
 
     // Get the initial states from the store
     auto store = m_wStore.lock();

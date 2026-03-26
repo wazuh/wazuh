@@ -4,6 +4,7 @@
 #include <base/logging.hpp>
 #include <base/process.hpp>
 #include <base/utils/timeUtils.hpp>
+#include <fastmetrics/registry.hpp>
 #include <rawevtindexer/iraweventindexer.hpp>
 
 namespace router
@@ -36,6 +37,9 @@ void RouterWorker::start()
 
             base::process::setThreadName("ORProd-" + std::to_string(tID));
 
+            // Cache metric pointer before hot path loop (one-time map lookup ~50ns)
+            auto eventsProcessedCounter = fastmetrics::manager().getOrCreateCounter("router.events.processed");
+
             while (m_isRunning)
             {
                 IngestEvent queuedEvent {};
@@ -64,7 +68,9 @@ void RouterWorker::start()
                     auto event = base::eventParsers::parseLegacyEvent(queuedEvent.second, *queuedEvent.first);
                     event->setString(timestamp, "/@timestamp");
                     m_router->ingest(std::move(event));
-                    // TODO: Log metrics
+
+                    // Track processed events (hot path: direct atomic access ~3ns)
+                    eventsProcessedCounter->add(1);
                 }
                 catch (const std::exception& e)
                 {
