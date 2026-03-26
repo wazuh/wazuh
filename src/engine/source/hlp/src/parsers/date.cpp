@@ -177,7 +177,7 @@ bool loadTimeZoneDB(const std::string& version, bool autoUpdate)
     try
     {
         const auto& db = date::get_tzdb();
-        LOG_INFO("Loaded timezone database version: '{}'", db.version);
+        LOG_DEBUG("Loaded timezone database version: '{}'", db.version);
         return !(autoUpdate && db.version != version);
     }
     catch (std::exception& e)

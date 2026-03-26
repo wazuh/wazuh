@@ -1077,14 +1077,15 @@ stages:
       json:
         error: 0
         data:
-          affected_items:
-            - <<: *cluster_log
-              tag: wazuh-manager-remoted
-            - <<: *cluster_log
-              tag: wazuh-manager-remoted
+          affected_items: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "tag"
+            expected_values: "wazuh-manager-remoted"
 
   - name: Read logs with filters -> tag=wazuh-unknown-daemon {node_id}
     request:

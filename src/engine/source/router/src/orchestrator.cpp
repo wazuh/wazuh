@@ -148,7 +148,7 @@ std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::ISt
     const auto jsonEntry = store->readDoc(tableName);
     if (base::isError(jsonEntry))
     {
-        LOG_INFO("Router: {} table not found in store. Creating new table: {}",
+        LOG_DEBUG("Router: {} table not found in store. Creating new table: {}",
                  tableName.toStr(),
                  base::getError(jsonEntry).message);
         store->createDoc(tableName, json::Json {"[]"});
@@ -304,7 +304,7 @@ Orchestrator::Orchestrator(const Options& opt)
         {
             numThreads = 1; // Fallback if hardware_concurrency cannot be determined
         }
-        LOG_INFO("No thread count provided. Using {} worker threads based on system hardware.", numThreads);
+        LOG_DEBUG("No thread count provided. Using {} worker threads based on system hardware.", numThreads);
     }
 
     for (std::size_t i = 0; i < numThreads; ++i)

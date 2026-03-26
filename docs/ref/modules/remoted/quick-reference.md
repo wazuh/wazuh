@@ -86,10 +86,6 @@ E	{"log":"Authentication successful"}
 cat /var/wazuh-manager/var/run/wazuh-manager-remoted.state
 ```
 
-If you enable `remoted.debug=2`, check the `debug` field in this state file after restarting `wazuh-manager-remoted`.
-
-Do not mix `remoted.debug=2` with `wazuh-server.sh enable debug` if you expect `mdebug2` output: that helper starts manager daemons with a single `-d`, which forces debug level `1` for `remoted`.
-
 ### Key Metrics
 
 - `queue_size`: Should be <50% capacity

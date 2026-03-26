@@ -132,11 +132,6 @@ Enable `debug2` logging:
 remoted.debug=2
 ```
 
-Notes:
-- `remoted.debug` is read when `wazuh-manager-remoted` starts. Restart the daemon after changing the file.
-- The current debug level is exposed in `/var/wazuh-manager/var/run/wazuh-manager-remoted.state` as `debug`.
-- `wazuh-server.sh enable debug` adds a single `-d` to all manager daemons. In `remoted`, command line debug takes precedence over `remoted.debug`, so that helper forces debug level `1` and prevents `remoted.debug=2` from taking effect.
-
 ## References
 
 - [Stateless Metadata](stateless-metadata.md)
