@@ -40,6 +40,7 @@ struct Context
     std::optional<std::unordered_map<std::string, bool>>
         availableKvdbs;              ///< Available KVDBs: nullopt = no validation, value = validate with this map.
     bool indexDiscardedEvents;       ///< Policy configuration: whether to index discarded events.
+    bool indexUnclassifiedEvents;    ///< Policy configuration: whether to index unclassified events.
 };
 
 /**

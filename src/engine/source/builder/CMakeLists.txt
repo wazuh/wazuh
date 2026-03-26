@@ -136,6 +136,8 @@ add_executable(builder_utest
 	${UNIT_SRC_DIR}/builders/opfilter/is_ipv6_test.cpp
 	${UNIT_SRC_DIR}/builders/opfilter/ip_test.cpp
 	${UNIT_SRC_DIR}/builders/opfilter/arrayContains_test.cpp
+	${UNIT_SRC_DIR}/builders/opfilter/arrayLength_test.cpp
+	${UNIT_SRC_DIR}/builders/opfilter/indexUnclassifiedEvents_test.cpp
 	${UNIT_SRC_DIR}/builders/opfilter/types_test.cpp
 	${UNIT_SRC_DIR}/builders/opfilter/match_test.cpp
 	${UNIT_SRC_DIR}/builders/opfilter/is_test_session_test.cpp

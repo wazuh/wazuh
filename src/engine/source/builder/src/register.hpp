@@ -184,6 +184,11 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
     registry->template add<builders::OpBuilderEntry>(
         "exists_key_in",
         {schemf::JTypeToken::create(json::Json::Type::String), builders::opfilter::opBuilderHelperMatchKey});
+    registry->template add<builders::OpBuilderEntry>(
+        "array_length_eq", {schemf::elementValidationToken(), builders::opfilter::opBuilderHelperArrayLength});
+    registry->template add<builders::OpBuilderEntry>(
+        "index_unclassified_events",
+        {schemf::elementValidationToken(), builders::opfilter::opBuilderHelperIndexUnclassifiedEvents});
 
     // Map builders
     registry->template add<builders::OpBuilderEntry>("map",

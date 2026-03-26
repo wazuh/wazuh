@@ -44,6 +44,7 @@ public:
         m_allowMissingDependencies = false;
         m_context.availableKvdbs = std::nullopt;
         m_context.indexDiscardedEvents = false;
+        m_context.indexUnclassifiedEvents = false;
     }
 
     ~BuildCtx() = default;

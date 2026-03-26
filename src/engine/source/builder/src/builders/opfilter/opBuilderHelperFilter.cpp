@@ -1192,13 +1192,14 @@ FilterOp typeMatcher(const Reference& targetField,
 
     // Tracing
     const auto successTrace = fmt::format("[{}] -> Success", name);
-    const auto failureTrace =
-        negated ? fmt::format(
-            "[{}] -> Failure: Target field '{}' is a {}", name, targetField.dotPath(), json::Json::typeToStr(type))
-                : fmt::format("[{}] -> Failure: Target field '{}' is not a {}",
-                              name,
-                              targetField.dotPath(),
-                              json::Json::typeToStr(type));
+    const auto failureTrace = negated ? fmt::format("[{}] -> Failure: Target field '{}' is a {}",
+                                                    name,
+                                                    targetField.dotPath(),
+                                                    json::Json::typeToStr(type))
+                                      : fmt::format("[{}] -> Failure: Target field '{}' is not a {}",
+                                                    name,
+                                                    targetField.dotPath(),
+                                                    json::Json::typeToStr(type));
     const auto failureMissingValueTrace =
         fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath());
 
@@ -1811,6 +1812,122 @@ FilterOp opBuilderHelperKeysExistInList(const Reference& targetField,
         }
 
         RETURN_SUCCESS(runState, true, successTrace);
+    };
+}
+
+// field: +array_length/expectedLength
+FilterOp opBuilderHelperArrayLength(const Reference& targetField,
+                                    const std::vector<OpArg>& opArgs,
+                                    const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    // Assert expected number of parameters
+    utils::assertSize(opArgs, 1);
+    // Parameter type check
+    utils::assertValue(opArgs, 0);
+
+    auto name = buildCtx->context().opName;
+
+    // Get expected length
+    int64_t expectedLength {};
+    try
+    {
+        expectedLength = std::static_pointer_cast<Value>(opArgs[0])->value().getInt64().value();
+        if (expectedLength < 0)
+        {
+            throw std::runtime_error(
+                fmt::format("{} function: Expected length '{}' cannot be negative", name, expectedLength));
+        }
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(
+            fmt::format("{} function: Expected length parameter is not a valid integer: {}", name, e.what()));
+    }
+
+    // Tracing
+    const std::string successTrace {fmt::format("[{}] -> Success: Array has length {}", name, expectedLength)};
+    const std::string failureTrace1 {
+        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
+    const std::string failureTrace2 {
+        fmt::format("[{}] -> Failure: Target field '{}' is not an array", name, targetField.dotPath())};
+    const std::string failureTrace3 {
+        fmt::format("[{}] -> Failure: Array length does not match expected length {}", name, expectedLength)};
+
+    // Return Op
+    return [=, runState = buildCtx->runState(), targetField = targetField.jsonPath()](
+               base::ConstEvent event) -> FilterResult
+    {
+        if (!event->exists(targetField))
+        {
+            RETURN_FAILURE(runState, false, failureTrace1);
+        }
+
+        const auto resolvedArray {event->getArray(targetField)};
+        if (!resolvedArray.has_value())
+        {
+            RETURN_FAILURE(runState, false, failureTrace2);
+        }
+
+        if (static_cast<int64_t>(resolvedArray.value().size()) == expectedLength)
+        {
+            RETURN_SUCCESS(runState, true, successTrace);
+        }
+
+        RETURN_FAILURE(runState, false, failureTrace3);
+    };
+}
+
+// field: +index_unclassified_events
+FilterOp opBuilderHelperIndexUnclassifiedEvents(const Reference& targetField,
+                                                const std::vector<OpArg>& opArgs,
+                                                const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    // Assert expected number of parameters
+    utils::assertSize(opArgs, 0);
+
+    auto name = buildCtx->context().opName;
+    const bool policyIndexUnclassified = buildCtx->context().indexUnclassifiedEvents;
+
+    // Tracing
+    const std::string successTrace {
+        fmt::format("[{}] -> Success: Policy index_unclassified_events=true and array has 1 element", name)};
+    const std::string failureTrace1 {
+        fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
+    const std::string failureTrace2 {
+        fmt::format("[{}] -> Failure: Target field '{}' is not an array", name, targetField.dotPath())};
+    const std::string failureTrace3 {fmt::format(
+        "[{}] -> Failure: Policy index_unclassified_events=false or array does not have exactly 1 element", name)};
+
+    // Return Op
+    return [=, runState = buildCtx->runState(), targetField = targetField.jsonPath()](
+               base::ConstEvent event) -> FilterResult
+    {
+        // Check if policy flag is enabled
+        if (!policyIndexUnclassified)
+        {
+            RETURN_FAILURE(runState, false, failureTrace3);
+        }
+
+        // Check if field exists
+        if (!event->exists(targetField))
+        {
+            RETURN_FAILURE(runState, false, failureTrace1);
+        }
+
+        // Check if field is an array
+        const auto resolvedArray {event->getArray(targetField)};
+        if (!resolvedArray.has_value())
+        {
+            RETURN_FAILURE(runState, false, failureTrace2);
+        }
+
+        // Check if array has exactly 1 element
+        if (resolvedArray.value().size() == 1)
+        {
+            RETURN_SUCCESS(runState, true, successTrace);
+        }
+
+        RETURN_FAILURE(runState, false, failureTrace3);
     };
 }
 
