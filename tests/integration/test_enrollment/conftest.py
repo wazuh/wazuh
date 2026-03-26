@@ -80,7 +80,6 @@ def configure_socket_listener(request, test_metadata):
 
     yield
 
-    control_service('stop', daemon=AGENT_DAEMON)
     socket_listener.shutdown()
 
 
