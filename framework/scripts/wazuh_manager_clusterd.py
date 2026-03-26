@@ -13,9 +13,6 @@ import sys
 
 from wazuh.core.utils import clean_pid_files
 from wazuh.core.wlogging import WazuhLogger
-from wazuh.core.configuration import get_ossec_conf
-from wazuh.core.indexer.active_response import ActiveResponseFetchTask
-from wazuh.core.cluster.common import IndexerTaskManager
 
 #
 # Aux functions
@@ -149,27 +146,11 @@ async def worker_main(args: argparse.Namespace, cluster_config: dict, cluster_it
                                                          concurrency_test=args.concurrency_test, node=my_client,
                                                          configuration=cluster_config, enable_ssl=args.ssl,
                                                          cluster_items=cluster_items)
-        tasks = [my_client.start(), my_local_server.start()]
-        try:
-            _indexer_conf = get_ossec_conf(section="indexer")
-            active_response_task = ActiveResponseFetchTask(my_client)
-            indexer_task_manager = IndexerTaskManager()
-        except Exception:
-            _indexer_conf = {}
-
-        if _indexer_conf:
-            tasks.append(indexer_task_manager.manage_indexer_tasks([active_response_task.run]))
-        else:
-            main_logger.warning(
-                "Indexer is not configured in wazuh-manager.conf or it is unavailable; "
-                "Indexer tasks will not be started."
-            )
-
         # Spawn pool processes
         if my_client.task_pool is not None:
             my_client.task_pool.map(cluster_utils.process_spawn_sleep, range(my_client.task_pool._max_workers))
         try:
-            await asyncio.gather(*tasks)
+            await asyncio.gather(my_client.start(), my_local_server.start())
         except asyncio.CancelledError:
             logging.info("Connection with server has been lost. Reconnecting in 10 seconds.")
             await asyncio.sleep(cluster_items['intervals']['worker']['connection_retry'])
