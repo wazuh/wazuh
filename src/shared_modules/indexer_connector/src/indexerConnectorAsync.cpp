@@ -76,9 +76,10 @@ public:
                           const nlohmann::json& query,
                           const nlohmann::json& sort,
                           const std::optional<nlohmann::json>& searchAfter,
-                          const std::optional<nlohmann::json>& source)
+                          const std::optional<nlohmann::json>& source,
+                          const std::optional<nlohmann::json>& slice = std::nullopt)
     {
-        return m_impl.search(pit, size, query, sort, searchAfter, source);
+        return m_impl.search(pit, size, query, sort, searchAfter, source, slice);
     }
 
     nlohmann::json search(std::string_view index,
@@ -150,9 +151,10 @@ nlohmann::json IndexerConnectorAsync::search(const PointInTime& pit,
                                              const nlohmann::json& query,
                                              const nlohmann::json& sort,
                                              const std::optional<nlohmann::json>& searchAfter,
-                                             const std::optional<nlohmann::json>& source)
+                                             const std::optional<nlohmann::json>& source,
+                                             const std::optional<nlohmann::json>& slice)
 {
-    return m_impl->search(pit, size, query, sort, searchAfter, source);
+    return m_impl->search(pit, size, query, sort, searchAfter, source, slice);
 }
 
 nlohmann::json IndexerConnectorAsync::search(std::string_view index,

@@ -52,6 +52,28 @@ public:
         m_impl.executeSearchQueryWithPagination(index, query, onResponse);
     }
 
+    PointInTime
+    createPointInTime(const std::vector<std::string>& indices, std::string_view keepAlive, bool expandWildcards = false)
+    {
+        return m_impl.createPointInTime(indices, keepAlive, expandWildcards);
+    }
+
+    void deletePointInTime(const PointInTime& pit)
+    {
+        m_impl.deletePointInTime(pit);
+    }
+
+    nlohmann::json search(const PointInTime& pit,
+                          std::size_t size,
+                          const nlohmann::json& query,
+                          const nlohmann::json& sort,
+                          const std::optional<nlohmann::json>& searchAfter = std::nullopt,
+                          const std::optional<nlohmann::json>& source = std::nullopt,
+                          const std::optional<nlohmann::json>& slice = std::nullopt)
+    {
+        return m_impl.search(pit, size, query, sort, searchAfter, source, slice);
+    }
+
     void bulkDelete(std::string_view id, std::string_view index)
     {
         m_impl.bulkDelete(id, index);
@@ -119,6 +141,29 @@ void IndexerConnectorSync::executeSearchQueryWithPagination(const std::string& i
                                                             std::function<void(const nlohmann::json&)> onResponse)
 {
     m_impl->executeSearchQueryWithPagination(index, query, onResponse);
+}
+
+PointInTime IndexerConnectorSync::createPointInTime(const std::vector<std::string>& indices,
+                                                    std::string_view keepAlive,
+                                                    bool expandWildcards)
+{
+    return m_impl->createPointInTime(indices, keepAlive, expandWildcards);
+}
+
+void IndexerConnectorSync::deletePointInTime(const PointInTime& pit)
+{
+    m_impl->deletePointInTime(pit);
+}
+
+nlohmann::json IndexerConnectorSync::search(const PointInTime& pit,
+                                            std::size_t size,
+                                            const nlohmann::json& query,
+                                            const nlohmann::json& sort,
+                                            const std::optional<nlohmann::json>& searchAfter,
+                                            const std::optional<nlohmann::json>& source,
+                                            const std::optional<nlohmann::json>& slice)
+{
+    return m_impl->search(pit, size, query, sort, searchAfter, source, slice);
 }
 
 void IndexerConnectorSync::bulkDelete(std::string_view id, std::string_view index)

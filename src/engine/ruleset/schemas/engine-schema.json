@@ -5421,22 +5421,7 @@
     "vulnerability.category": {
       "type": "keyword"
     },
-    "vulnerability.classification": {
-      "type": "keyword"
-    },
-    "vulnerability.description": {
-      "type": "keyword"
-    },
-    "vulnerability.enumeration": {
-      "type": "keyword"
-    },
     "vulnerability.id": {
-      "type": "keyword"
-    },
-    "vulnerability.reference": {
-      "type": "keyword"
-    },
-    "vulnerability.report_id": {
       "type": "keyword"
     },
     "vulnerability.scanner.reference": {
@@ -5446,12 +5431,6 @@
       "type": "keyword"
     },
     "vulnerability.score.base": {
-      "type": "float"
-    },
-    "vulnerability.score.environmental": {
-      "type": "float"
-    },
-    "vulnerability.score.temporal": {
       "type": "float"
     },
     "vulnerability.score.version": {

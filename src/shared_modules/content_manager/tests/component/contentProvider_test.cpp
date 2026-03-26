@@ -25,7 +25,7 @@ TEST_F(ContentProviderTest, TestInstantiation)
 
     EXPECT_NO_THROW(std::make_shared<ContentProvider>(topicName,
                                                       m_parameters,
-                                                      [](const std::string& msg) -> FileProcessingResult {
+                                                      [](nlohmann::json msg) -> FileProcessingResult {
                                                           return {0, "", false};
                                                       }));
 
@@ -46,7 +46,7 @@ TEST_F(ContentProviderTest, TestInstantiationWithoutConfigData)
 
     EXPECT_THROW(std::make_shared<ContentProvider>(topicName,
                                                    parameters,
-                                                   [](const std::string& msg) -> FileProcessingResult {
+                                                   [](nlohmann::json msg) -> FileProcessingResult {
                                                        return {0, "", false};
                                                    }),
                  std::invalid_argument);
@@ -63,7 +63,7 @@ TEST_F(ContentProviderTest, TestInstantiationAndStartActionScheduler)
 
     auto contentProvider {std::make_shared<ContentProvider>(topicName,
                                                             m_parameters,
-                                                            [](const std::string& msg) -> FileProcessingResult {
+                                                            [](nlohmann::json msg) -> FileProcessingResult {
                                                                 return {0, "", false};
                                                             })};
 
@@ -83,7 +83,7 @@ TEST_F(ContentProviderTest, TestInstantiationAndChangeSchedulerInterval)
 
     auto contentProvider {std::make_shared<ContentProvider>(topicName,
                                                             m_parameters,
-                                                            [](const std::string& msg) -> FileProcessingResult {
+                                                            [](nlohmann::json msg) -> FileProcessingResult {
                                                                 return {0, "", false};
                                                             })};
 

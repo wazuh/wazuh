@@ -25,6 +25,7 @@
 #include <rocksdb/table.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
+#include <rocksdb/write_batch.h>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -50,6 +51,14 @@ namespace Utils
         virtual void flush() = 0;
         virtual std::vector<std::string> getAllColumns() = 0;
         virtual RocksDBIterator seek(std::string_view key, const std::string& columnName = "") = 0; // NOLINT
+        virtual void batchPut(rocksdb::WriteBatch& batch,
+                              const std::string& key,
+                              const rocksdb::Slice& value,
+                              const std::string& columnName = "") = 0;
+        virtual void batchDelete(rocksdb::WriteBatch& batch,
+                                 const std::string& key,
+                                 const std::string& columnName = "") = 0; // NOLINT
+        virtual void commitBatch(rocksdb::WriteBatch& batch) = 0;
 
         virtual ~IRocksDBWrapper() = default;
     };
@@ -341,6 +350,39 @@ namespace Utils
         void delete_(const std::string& key) override // NOLINT
         {
             delete_(key, "");
+        }
+
+        void batchPut(rocksdb::WriteBatch& batch,
+                      const std::string& key,
+                      const rocksdb::Slice& value,
+                      const std::string& columnName = "") override
+        {
+            if (key.empty())
+            {
+                throw std::invalid_argument("Key is empty");
+            }
+            batch.Put(getColumnFamilyBasedOnName(columnName).handle(), key, value);
+        }
+
+        void batchDelete(rocksdb::WriteBatch& batch,
+                         const std::string& key,
+                         const std::string& columnName = "") override // NOLINT
+        {
+            if (key.empty())
+            {
+                throw std::invalid_argument("Key is empty");
+            }
+            batch.Delete(getColumnFamilyBasedOnName(columnName).handle(), key);
+        }
+
+        void commitBatch(rocksdb::WriteBatch& batch) override
+        {
+            rocksdb::WriteOptions writeOptions;
+            writeOptions.disableWAL = !m_enableWal;
+            if (const auto status = m_db->Write(writeOptions, &batch); !status.ok())
+            {
+                throw std::runtime_error("Error committing batch: " + status.ToString());
+            }
         }
 
         /**
@@ -1009,6 +1051,26 @@ namespace Utils
         {
             // This is only permited for atomic operations.
             throw std::runtime_error("Not implemented");
+        }
+
+        void batchPut(rocksdb::WriteBatch& /*batch*/,
+                      const std::string& key,
+                      const rocksdb::Slice& value,
+                      const std::string& columnName = "") override
+        {
+            put(key, value, columnName);
+        }
+
+        void batchDelete(rocksdb::WriteBatch& /*batch*/,
+                         const std::string& key,
+                         const std::string& columnName = "") override // NOLINT
+        {
+            delete_(key, columnName);
+        }
+
+        void commitBatch(rocksdb::WriteBatch& /*batch*/) override
+        {
+            // No-op: RocksDBTransaction provides atomicity via commit().
         }
 
     private:

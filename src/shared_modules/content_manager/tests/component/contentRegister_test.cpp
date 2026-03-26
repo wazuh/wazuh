@@ -28,7 +28,7 @@ TEST_F(ContentRegisterTest, TestInstantiation)
 
     EXPECT_NO_THROW(std::make_shared<ContentRegister>(topicName,
                                                       m_parameters,
-                                                      [](const std::string& msg) -> FileProcessingResult {
+                                                      [](nlohmann::json msg) -> FileProcessingResult {
                                                           return {0, "", false};
                                                       }));
 
@@ -52,7 +52,7 @@ TEST_F(ContentRegisterTest, TestInstantiationWithOnDemandEnabled)
 
     EXPECT_NO_THROW(std::make_shared<ContentRegister>(topicName,
                                                       m_parameters,
-                                                      [](const std::string& msg) -> FileProcessingResult {
+                                                      [](nlohmann::json msg) -> FileProcessingResult {
                                                           return {0, "", false};
                                                       }));
 
@@ -75,7 +75,7 @@ TEST_F(ContentRegisterTest, TestInstantiationAndChangeSchedulerInterval)
 
     auto contentRegister {std::make_shared<ContentRegister>(topicName,
                                                             m_parameters,
-                                                            [](const std::string& msg) -> FileProcessingResult {
+                                                            [](nlohmann::json msg) -> FileProcessingResult {
                                                                 return {0, "", false};
                                                             })};
 

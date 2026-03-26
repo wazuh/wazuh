@@ -1003,41 +1003,59 @@ public:
                         if (res.context->option == Wazuh::SyncSchema::Option_VDFirst ||
                             res.context->option == Wazuh::SyncSchema::Option_VDSync)
                         {
-                            // Check if vulnerability scanner is initialized before attempting to run scan
                             if (VulnerabilityScannerFacade::instance().isInitialized())
                             {
-                                logDebug2(LOGGER_DEFAULT_TAG,
-                                          "InventorySyncFacade: Running vulnerability scanner for agent %s...",
-                                          res.context->agentId.c_str());
-
-                                // Run vulnerability scanner
-                                try
+                                // If the CVE feed initial load is still in progress, block this
+                                // session thread until it completes (or the scanner is stopped).
+                                // The agent stays in Status_Processing — already sent at End-message
+                                // time — so it will not mark its VDFirst flag prematurely.
+                                if (!VulnerabilityScannerFacade::instance().isFeedReady())
                                 {
-                                    VulnerabilityScannerFacade::instance().runScanner(*m_dataStore, *res.context);
+                                    logDebug1(LOGGER_DEFAULT_TAG,
+                                              "InventorySyncFacade: CVE feed not yet loaded — agent %s waiting.",
+                                              res.context->agentId.c_str());
+                                    VulnerabilityScannerFacade::instance().waitForFeedReady();
                                 }
-                                catch (const std::exception& e)
-                                {
-                                    logError(LOGGER_DEFAULT_TAG,
-                                             "InventorySyncFacade: Vulnerability scanner exception for agent %s: %s",
-                                             res.context->agentId.c_str(),
-                                             e.what());
-                                    m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
-                                                                     res.context->agentId,
-                                                                     res.context->sessionId,
-                                                                     res.context->moduleName);
-                                    m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
 
-                                    m_agentSessions.erase(res.context->sessionId);
+                                // Run scan only if the scanner was not stopped during the wait.
+                                if (VulnerabilityScannerFacade::instance().isFeedReady())
+                                {
+                                    logDebug2(LOGGER_DEFAULT_TAG,
+                                              "InventorySyncFacade: Running vulnerability scanner for agent %s...",
+                                              res.context->agentId.c_str());
+                                    try
+                                    {
+                                        VulnerabilityScannerFacade::instance().runScanner(*m_dataStore, *res.context);
+                                    }
+                                    catch (const std::exception& e)
+                                    {
+                                        logError(LOGGER_DEFAULT_TAG,
+                                                 "InventorySyncFacade: Vulnerability scanner exception for agent "
+                                                 "%s: %s",
+                                                 res.context->agentId.c_str(),
+                                                 e.what());
+                                        m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
+                                                                         res.context->agentId,
+                                                                         res.context->sessionId,
+                                                                         res.context->moduleName);
+                                        m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
+                                        m_agentSessions.erase(res.context->sessionId);
+                                    }
+                                }
+                                else
+                                {
+                                    logDebug1(LOGGER_DEFAULT_TAG,
+                                              "InventorySyncFacade: Scanner stopped while waiting for CVE feed — "
+                                              "skipping scan for agent %s.",
+                                              res.context->agentId.c_str());
                                 }
                             }
                             else
                             {
-                                // VD is disabled or not initialized - skip scan and continue with normal flow
-                                logDebug1(
-                                    LOGGER_DEFAULT_TAG,
-                                    "InventorySyncFacade: Vulnerability scanner is disabled or not initialized for "
-                                    "agent %s - skipping scan",
-                                    res.context->agentId.c_str());
+                                logDebug1(LOGGER_DEFAULT_TAG,
+                                          "InventorySyncFacade: Vulnerability scanner disabled — "
+                                          "skipping scan for agent %s.",
+                                          res.context->agentId.c_str());
                             }
                         }
 

@@ -868,7 +868,6 @@ public:
                                           std::function<void(const nlohmann::json&)> onResponse)
     {
         nlohmann::json currentQuery = query;
-        std::string searchAfter;
         while (true)
         {
             nlohmann::json searchResult = executeSearchQuery(index, currentQuery);
@@ -892,29 +891,6 @@ public:
             }
 
             const auto& hits = *itInner;
-            const auto& lastHit = hits.back();
-            const auto itSort = lastHit.find("sort");
-
-            if (itSort != lastHit.end() && itSort->is_array() && !itSort->empty())
-            {
-                const auto& first_sort_item = itSort->front();
-                if (first_sort_item.is_string())
-                {
-                    searchAfter = first_sort_item.get<std::string>();
-                }
-                else
-                {
-                    logDebug2(IC_NAME, "Pagination loop finished: 'sort' field's first element is not a string.");
-                    break;
-                }
-            }
-            else
-            {
-                logDebug2(IC_NAME,
-                          "Pagination loop finished: Last hit has no 'sort' field, it is not an array, or it is "
-                          "empty.");
-                break;
-            }
 
             // If we got less results than requested, this is the last page
             if (currentQuery.contains("size") && hits.size() < currentQuery["size"].template get<size_t>())
@@ -923,11 +899,229 @@ public:
                 break;
             }
 
-            // Update query for next page
-            auto& sa = currentQuery["search_after"];
-            sa = nlohmann::json::array();
-            sa.push_back(searchAfter);
+            // Advance the search_after cursor using the full sort array of the last hit.
+            // Using the complete array (rather than just the first element) correctly handles
+            // both single-field string sorts (e.g. ["_id"]) and multi-field or non-string
+            // sorts (e.g. [integer_offset, "_id"]).
+            const auto& lastHit = hits.back();
+            const auto itSort = lastHit.find("sort");
+            if (itSort != lastHit.end() && itSort->is_array() && !itSort->empty())
+            {
+                currentQuery["search_after"] = *itSort;
+            }
+            else
+            {
+                logDebug2(IC_NAME,
+                          "Pagination loop finished: Last hit has no 'sort' field, it is not an array, or it is "
+                          "empty.");
+                break;
+            }
         }
+    }
+
+    PointInTime
+    createPointInTime(const std::vector<std::string>& indices, std::string_view keepAlive, bool expandWildcards = false)
+    {
+        if (indices.empty())
+        {
+            throw IndexerConnectorException("Indices list cannot be empty for PIT creation");
+        }
+
+        if (keepAlive.empty())
+        {
+            throw IndexerConnectorException("keepAlive parameter cannot be empty for PIT creation");
+        }
+
+        std::string indicesStr;
+        for (size_t i = 0; i < indices.size(); ++i)
+        {
+            if (i > 0)
+            {
+                indicesStr += ",";
+            }
+            indicesStr += indices[i];
+        }
+
+        std::string url;
+        url += m_selector->getNext();
+        url += "/";
+        url += indicesStr;
+        url += "/_search/point_in_time?keep_alive=";
+        url += keepAlive;
+
+        if (expandWildcards)
+        {
+            url += "&expand_wildcards=all";
+        }
+
+        std::string pitId;
+        uint64_t creationTime = 0;
+        bool success = false;
+        std::string errorMessage;
+
+        const auto onSuccess = [&pitId, &creationTime, &success, &errorMessage](const std::string& response)
+        {
+            try
+            {
+                auto jsonResponse = nlohmann::json::parse(response);
+
+                if (!jsonResponse.contains("pit_id"))
+                {
+                    errorMessage = "Response does not contain 'pit_id' field";
+                    return;
+                }
+
+                if (!jsonResponse.contains("creation_time"))
+                {
+                    errorMessage = "Response does not contain 'creation_time' field";
+                    return;
+                }
+
+                pitId = jsonResponse["pit_id"].get<std::string>();
+                creationTime = jsonResponse["creation_time"].get<uint64_t>();
+                success = true;
+
+                logDebug2(
+                    IC_NAME, "PIT created successfully. PIT ID: %s, Creation time: %lu", pitId.c_str(), creationTime);
+            }
+            catch (const std::exception& e)
+            {
+                errorMessage = std::string("Failed to parse PIT response: ") + e.what();
+                logDebug1(IC_NAME, "%s", errorMessage.c_str());
+            }
+        };
+
+        const auto onError = [&errorMessage](const std::string& error, const long statusCode, const std::string&)
+        {
+            errorMessage = "Failed to create PIT. Error: " + error + ", Status code: " + std::to_string(statusCode);
+            logDebug1(IC_NAME, "%s", errorMessage.c_str());
+        };
+
+        m_httpRequest->post(RequestParameters {.url = HttpURL(url), .secureCommunication = m_secureCommunication},
+                            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                            {});
+
+        if (!success)
+        {
+            throw IndexerConnectorException(errorMessage.empty() ? "Failed to create PIT" : errorMessage);
+        }
+
+        return PointInTime(std::move(pitId), creationTime, keepAlive);
+    }
+
+    void deletePointInTime(const PointInTime& pit)
+    {
+        const std::string& pitId = pit.getPitId();
+        if (pitId.empty())
+        {
+            throw IndexerConnectorException("PIT ID is empty, cannot delete PIT");
+        }
+
+        std::string url;
+        url += m_selector->getNext();
+        url += "/_search/point_in_time";
+
+        nlohmann::json deleteBody;
+        deleteBody["pit_id"] = pitId;
+
+        const auto onSuccess = [](const std::string& response)
+        {
+            logDebug2(IC_NAME, "PIT successfully deleted. Response: %s", response.c_str());
+        };
+
+        const auto onError = [&pitId](const std::string& error, const long statusCode, const std::string&)
+        {
+            throw IndexerConnectorException("Failed to delete PIT " + pitId + ". Error: " + error +
+                                            ", Status: " + std::to_string(statusCode));
+        };
+
+        m_httpRequest->delete_(RequestParameters {.url = HttpURL(url),
+                                                  .data = deleteBody.dump(),
+                                                  .secureCommunication = m_secureCommunication},
+                               PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                               {});
+    }
+
+    nlohmann::json search(const PointInTime& pit,
+                          std::size_t size,
+                          const nlohmann::json& query,
+                          const nlohmann::json& sort,
+                          const std::optional<nlohmann::json>& searchAfter = std::nullopt,
+                          const std::optional<nlohmann::json>& source = std::nullopt,
+                          const std::optional<nlohmann::json>& slice = std::nullopt)
+    {
+        nlohmann::json requestBody;
+        requestBody["size"] = size;
+        requestBody["pit"]["id"] = pit.getPitId();
+        requestBody["pit"]["keep_alive"] = pit.getKeepAlive();
+        requestBody["query"] = query;
+        requestBody["sort"] = sort;
+
+        if (source.has_value())
+        {
+            requestBody["_source"] = source.value();
+        }
+
+        if (slice.has_value())
+        {
+            requestBody["slice"] = slice.value();
+        }
+
+        if (!searchAfter.has_value())
+        {
+            requestBody["track_total_hits"] = true;
+        }
+        else
+        {
+            requestBody["search_after"] = searchAfter.value();
+        }
+
+        std::string url;
+        url += m_selector->getNext();
+        url += "/_search";
+
+        nlohmann::json hitsResult;
+        bool success = false;
+        std::string errorMessage;
+
+        const auto onSuccess = [&hitsResult, &success](const std::string& response)
+        {
+            try
+            {
+                auto jsonResponse = nlohmann::json::parse(response);
+
+                if (!jsonResponse.contains("hits"))
+                {
+                    throw IndexerConnectorException("Response does not contain 'hits' field");
+                }
+
+                hitsResult = std::move(jsonResponse["hits"]);
+                success = true;
+            }
+            catch (const nlohmann::json::exception& e)
+            {
+                throw IndexerConnectorException(std::string("Failed to parse search response: ") + e.what());
+            }
+        };
+
+        const auto onError = [](const std::string& error, const long statusCode, const std::string&)
+        {
+            throw IndexerConnectorException("Search request failed with status " + std::to_string(statusCode) + ": " +
+                                            error);
+        };
+
+        m_httpRequest->post(RequestParameters {.url = HttpURL(url),
+                                               .data = requestBody.dump(),
+                                               .secureCommunication = m_secureCommunication},
+                            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                            {});
+
+        if (!success)
+        {
+            throw IndexerConnectorException("Search request failed");
+        }
+
+        return hitsResult;
     }
 
     void bulkDelete(std::string_view id, std::string_view index)

@@ -757,7 +757,8 @@ public:
                           const nlohmann::json& query,
                           const nlohmann::json& sort,
                           const std::optional<nlohmann::json>& searchAfter,
-                          const std::optional<nlohmann::json>& source)
+                          const std::optional<nlohmann::json>& source,
+                          const std::optional<nlohmann::json>& slice = std::nullopt)
     {
         // Build the search request body
         nlohmann::json requestBody;
@@ -770,6 +771,11 @@ public:
         if (source.has_value())
         {
             requestBody["_source"] = source.value();
+        }
+
+        if (slice.has_value())
+        {
+            requestBody["slice"] = slice.value();
         }
 
         // Add track_total_hits only if searchAfter is not provided
