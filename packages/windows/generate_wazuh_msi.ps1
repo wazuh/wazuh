@@ -106,12 +106,10 @@ function ExtractDebugSymbols(){
 	foreach ($file in $exeFiles)
 	{
 		Write-Host "Extracting dbg symbols from" $file.FullName
-        $process = Start-Process -FilePath ".\cv2pdb.exe" -ArgumentList $file.FullName, $file.FullName, "$($file.BaseName).pdb" -PassThru -Wait
-        if ($process.ExitCode -ne 0) {
-            Write-Warning "Skipping debug symbol extraction for $($file.FullName); cv2pdb exited with code $($process.ExitCode)"
+        & ".\cv2pdb.exe" $file.FullName $file.FullName "$($file.BaseName).pdb"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Skipping debug symbol extraction for $($file.FullName); cv2pdb exited with code $LASTEXITCODE"
         }
-        # Small delay to ensure file handles are released before next iteration
-        Start-Sleep -Milliseconds 100
 	}
 
   #compress every pdb file in current folder
@@ -124,26 +122,7 @@ function ExtractDebugSymbols(){
     $ZIP_NAME = $MSI_NAME -replace 'wazuh-agent', 'wazuh-agent-debug-symbols' -replace '\.msi$', '.zip'
 
 	Write-Host "Compressing debug symbols to $ZIP_NAME"
-	
-	# Ensure all file handles are released before compression
-	Start-Sleep -Milliseconds 200
-	$retries = 3
-	$compressed = $false
-	while ($retries -gt 0 -and -not $compressed) {
-		try {
-			Compress-Archive -Path $pdbFiles -Force -DestinationPath "$ZIP_NAME" -ErrorAction Stop
-			$compressed = $true
-			Write-Host "Successfully compressed debug symbols to $ZIP_NAME"
-		} catch {
-			$retries--
-			if ($retries -gt 0) {
-				Write-Warning "Compression failed (attempt $([math]::Abs($retries - 3))/3), retrying in 500ms..."
-				Start-Sleep -Milliseconds 500
-			} else {
-				Write-Warning "Failed to compress debug symbols after 3 attempts: $_"
-			}
-		}
-	}
+	Compress-Archive -Path $pdbFiles -Force -DestinationPath "$ZIP_NAME"
 
 	Remove-Item -Path "*.pdb"
 }
