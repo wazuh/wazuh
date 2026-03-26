@@ -19,6 +19,7 @@ from uuid import uuid4
 from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.agent import Agent
 from wazuh.core.cluster import server, cluster, common as c_common
+from wazuh.core.cluster.common import IndexerTaskManager
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag, log_subprocess_execution, safe_join
 from wazuh.core.common import DECIMALS_DATE_FORMAT
@@ -1024,33 +1025,31 @@ class Master(server.AbstractServer):
         self.integrity_already_executed = []
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
-        self.disconnected_agent_sync = DisconnectedAgentSyncTasks(server=self,
-                                                                  cluster_items=self.cluster_items)
-        self.active_response_task = ActiveResponseFetchTask(self)
-        self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update, self.agent_groups_update,
-                          self.active_response_task.run])
+        self.indexer_task_manager = IndexerTaskManager()
+        self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update, self.agent_groups_update])
 
         try:
             _indexer_conf = get_ossec_conf(section="indexer")
             self.disconnected_agent_sync = DisconnectedAgentSyncTasks(server=self,
                                                                       cluster_items=self.cluster_items)
-        except Exception:
+            self.active_response_task = ActiveResponseFetchTask(self)
+            indexer_tasks = [self.disconnected_agent_sync.run_agent_groups_sync,
+                             self.active_response_task.run,
+                             self.disconnected_agent_sync.run_cluster_name_sync]
+        except Exception as e:
+            self.logger.error(f"Error loading indexer configuration: {e}")
             _indexer_conf = {}
 
         if _indexer_conf:
-            self.tasks.append(self.manage_disconnected_sync_task)
+            self.tasks.append(lambda: self.indexer_task_manager.manage_indexer_tasks(indexer_tasks))
         else:
             self.logger.warning(
-                "Indexer is not configured in ossec.conf or it is unavailable; "
-                "disconnected agent sync tasks will not be started."
+                "Indexer is not configured in wazuh-manager.conf or it is unavailable; "
+                "Indexer tasks will not be started."
             )
 
         # pending API requests waiting for a response
         self.pending_api_requests = {}
-        # Container to store the tasks in charge of syncing disconnected agents when the indexer is down
-        self._disconnected_sync_tasks = []
-        # Flag to control whether the disconnected agent sync tasks are running or not
-        self.sync_task_running_flag = False
 
     def to_dict(self) -> Dict:
         """Get master's healthcheck information.
@@ -1062,71 +1061,6 @@ class Master(server.AbstractServer):
         """
         return {'info': {'name': self.configuration['node_name'], 'type': self.configuration['node_type'],
                          'version': metadata.__version__, 'ip': self.configuration['nodes'][0]}}
-
-    async def manage_disconnected_sync_task(self) -> None:
-        """
-            Manages the lifecycle of synchronization tasks for disconnected agents.
-
-            This method runs an infinite loop that periodically checks the availability
-            of the indexer. If the indexer is accessible and the synchronization tasks
-            are not already running, it initiates the agent groups and cluster name
-            sync processes.
-
-            If the indexer becomes unavailable, it stops any active sync tasks and
-            implements an exponential backoff strategy for retries.
-
-            Returns
-            -------
-            None
-        """
-        base_delay = 300
-        max_delay = 3600
-        delay = base_delay
-
-        while True:
-            try:
-                self.logger.info("Checking if the indexer is available for disconnected agent synchronization.")
-                await self.disconnected_agent_sync.check_indexer()
-                is_running = any(not t.done() for t in self._disconnected_sync_tasks) if self._disconnected_sync_tasks else False
-
-                if not is_running:
-                    await self._stop_disconnected_sync_tasks()
-                    self.logger.info("Indexer is available. Starting disconnected agent sync tasks.")
-
-                    self._disconnected_sync_tasks = [
-                        asyncio.create_task(self.disconnected_agent_sync.run_agent_groups_sync()),
-                        asyncio.create_task(self.disconnected_agent_sync.run_cluster_name_sync())
-                    ]
-                    self.sync_task_running_flag = True
-
-                delay = base_delay
-                await asyncio.sleep(base_delay)
-
-            except Exception as e:
-                self.logger.warning(f"Indexer is not configured or unavailable:\n{e}.")
-
-                if self.sync_task_running_flag:
-                    await self._stop_disconnected_sync_tasks()
-                    self.sync_task_running_flag = False
-
-                self.logger.info(f"Retrying indexer check in {delay} seconds.")
-                await asyncio.sleep(delay)
-                delay = min(delay * 2, max_delay)
-
-    async def _stop_disconnected_sync_tasks(self) -> None:
-        """Cancel and clean up any running disconnected sync tasks.
-
-        Returns
-        -------
-        None
-        """
-        self.logger.info("Indexer is not available. Stopping disconnected agent sync tasks.")
-        for task in self._disconnected_sync_tasks:
-            if not task.done():
-                task.cancel()
-        if self._disconnected_sync_tasks:
-            await asyncio.gather(*self._disconnected_sync_tasks, return_exceptions=True)
-        self._disconnected_sync_tasks.clear()
 
     async def agent_groups_update(self):
         """Obtain and broadcast agent-groups data periodically.

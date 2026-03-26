@@ -17,7 +17,7 @@ from wazuh.core import common
 from wazuh.core.agent import WazuhDBQueryAgents
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import ClusterFilter
-from wazuh.core.exception import WazuhError, WazuhException
+from wazuh.core.exception import WazuhError, IndexerUnavailableError
 from wazuh.core.indexer.indexer import get_indexer_client
 from wazuh.core.wazuh_queue import WazuhQueue
 
@@ -662,8 +662,7 @@ class ActiveResponseFetchTask:
             builder.keep_only_active_agents_ars()
             await builder.enrich_ar_with_events_info()
             builder.dispatch()
-        except WazuhException:
-            # TODO: Need specific exception for Indexer
+        except IndexerUnavailableError:
             self.logger.warning("Cannot connect to Wazuh Indexer")
 
     async def run(self) -> None:

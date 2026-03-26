@@ -285,6 +285,42 @@ async def create_indexer(retries: int = MAX_RETRIES, backoff: int = BACKOFF_TIME
             wait_time = (backoff * 2**attempt) + random.random() # nosec B311
             await sleep(wait_time)
 
+    @staticmethod
+    async def check_indexer() -> None:
+        """
+        Verify the indexer's availability by performing a health check.
+
+        This method checks whether the indexer service is reachable. If a client
+        override has been set (e.g., for testing or dependency injection), the
+        check is skipped entirely. Otherwise, it obtains an indexer client via
+        ``get_indexer_client()`` and calls its ``healthcheck()`` method. Any
+        failure to connect results in an ``IndexerUnavailableError`` being raised.
+
+        Returns
+        -------
+        None
+            Returns when the indexer is confirmed reachable or when the client
+            override bypasses the check.
+
+        Raises
+        ------
+        IndexerUnavailableError
+            If the indexer is not reachable and no client override is present.
+        """
+        if self._indexer_client_override is not None:
+            self.logger.debug(
+                "Indexer client override in use; skipping availability check"
+            )
+            return
+
+        try:
+            async with get_indexer_client() as client:
+                await client.healthcheck()
+            self.logger.debug("Indexer is available")
+        except IndexerUnavailableError:
+            self.logger.debug("Indexer not available")
+            raise
+
 
 @asynccontextmanager
 async def get_indexer_client() -> AsyncIterator[Indexer]:

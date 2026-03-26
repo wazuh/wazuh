@@ -17,16 +17,17 @@ import struct
 import time
 import traceback
 from importlib import import_module
-from typing import Tuple, Dict, Callable, List, Iterable, Union, Any
+from typing import Any, Callable, Coroutine, Dict, Iterable, List, Tuple, Union
 from uuid import uuid4
 
 import cryptography.fernet
 
 import wazuh.core.results as wresults
 from wazuh import Wazuh
-from wazuh.core import common, exception
-from wazuh.core import utils
-from wazuh.core.cluster import cluster, utils as cluster_utils
+from wazuh.core import common, exception, utils
+from wazuh.core.cluster import cluster
+from wazuh.core.cluster import utils as cluster_utils
+from wazuh.core.indexer.indexer import get_indexer_client
 from wazuh.core.wdb import AsyncWazuhDBConnection, WazuhDBConnection
 from wazuh.core.wdb_http import get_wdb_http_client
 
@@ -1916,3 +1917,108 @@ def as_wazuh_object(dct: Dict):
         raise exception.WazuhInternalError(1000,
                                            extra_message=f"Wazuh object cannot be decoded from JSON {dct}",
                                            cmd_error=True)
+class IndexerTaskManager:
+    """
+    Mixin class for managing the lifecycle of indexer-dependent tasks.
+
+    Supervises a set of asyncio tasks that require the Wazuh Indexer to be
+    available, starting them when the indexer is reachable and stopping them
+    with exponential backoff when it is not.
+
+    This class is intended to be used as a mixin alongside classes that already
+    expose a ``self.logger`` attribute (e.g. ``Master``, ``Worker``). If no
+    logger is found on the instance, a fallback logger named ``'wazuh'`` is
+    created automatically.
+    """
+
+    def __init__(self):
+        """Class constructor.
+
+        Initializes the internal task registry and sets up a fallback logger.
+        """
+        self.indexer_tasks: Dict[str, asyncio.Task] = {}
+        self.logger = logging.getLogger('wazuh')
+
+    async def manage_indexer_tasks(
+        self,
+        task_factories: List[Callable[[], Coroutine[Any, Any, None]]],
+        base_delay: int = 300,
+        max_delay: int = 3600
+    ) -> None:
+        """Manage the lifecycle of indexer-dependent asyncio tasks.
+
+        Runs an infinite loop that periodically checks indexer availability.
+        When the indexer is reachable and no tasks are running, it creates and
+        starts a task for each factory in ``task_factories``. If the indexer
+        becomes unavailable, any active tasks are cancelled and an exponential
+        backoff strategy is applied before the next retry.
+
+        Parameters
+        ----------
+        task_factories : list of callable
+            Zero-argument callables, each returning a coroutine to be wrapped
+            in an ``asyncio.Task``.
+        base_delay : int, optional
+            Seconds to wait between availability checks when the indexer is
+            reachable, by default 300.
+        max_delay : int, optional
+            Upper bound in seconds for the exponential backoff delay applied
+            when the indexer is unavailable, by default 3600.
+
+        Returns
+        -------
+        None
+        """
+        delay = base_delay
+        active_tasks: List[asyncio.Task] = []
+
+        while True:
+            try:
+                self.logger.info("Checking if the indexer is available to initiate indexer tasks.")
+                async with get_indexer_client() as client:
+                    await client.healthcheck()
+
+                is_running = any(not t.done() for t in active_tasks) if active_tasks else False
+
+                if not is_running:
+                    if active_tasks:
+                        await self._stop_indexer_tasks(active_tasks)
+                    self.logger.info("Indexer is available. Starting indexer tasks.")
+                    active_tasks = [asyncio.create_task(factory()) for factory in task_factories]
+                    self.indexer_tasks = {
+                        getattr(f, '__name__', repr(f)): t
+                        for f, t in zip(task_factories, active_tasks)
+                    }
+
+                delay = base_delay
+                await asyncio.sleep(base_delay)
+
+            except Exception as e:
+                self.logger.warning(f"Indexer is not configured or unavailable:\n{e}.")
+
+                if active_tasks:
+                    await self._stop_indexer_tasks(active_tasks)
+                    active_tasks = []
+                    self.indexer_tasks = {}
+
+                self.logger.info(f"Retrying indexer check in {delay} seconds.")
+                await asyncio.sleep(delay)
+                delay = min(delay * 2, max_delay)
+
+    async def _stop_indexer_tasks(self, tasks: List[asyncio.Task]) -> None:
+        """Cancel and await all active indexer tasks.
+
+        Parameters
+        ----------
+        tasks : list of asyncio.Task
+            Tasks to cancel and clean up.
+
+        Returns
+        -------
+        None
+        """
+        for t in tasks:
+            if not t.done():
+                t.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
