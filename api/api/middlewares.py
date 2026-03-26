@@ -27,7 +27,6 @@ from api import configuration
 from api.alogging import custom_logging
 from api.authentication import generate_keypair, JWT_ALGORITHM
 from api.api_exception import BlockedIPException, MaxRequestsException, ExpectFailedException
-from api.configuration import default_api_configuration
 
 # Default of the max event requests allowed per minute
 MAX_REQUESTS_EVENTS_DEFAULT = 30
@@ -310,7 +309,7 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
             
             if 'Content-Length' in request.headers:
                 content_length = int(request.headers["Content-Length"])
-                max_upload_size = default_api_configuration["max_upload_size"]
+                max_upload_size = configuration.api_conf["max_upload_size"]
                 if content_length > max_upload_size:
                     raise ExpectFailedException(status=417, title="Expectation failed",
                                                 detail=f"Maximum content size limit ({max_upload_size}) exceeded "

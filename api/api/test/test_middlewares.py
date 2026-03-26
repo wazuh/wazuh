@@ -405,4 +405,23 @@ async def test_check_expect_header_middleware(expect_value):
         returned_response = await middleware.dispatch(mock_request, call_next_mock)
         call_next_mock.assert_called_once_with(mock_request)
         assert returned_response == response
-        
+
+@pytest.mark.asyncio
+async def test_check_expect_header_middleware_uses_runtime_max_upload_size():
+    """Check Expect header uses current api configuration upload size limit."""
+    middleware = CheckExpectHeaderMiddleware(AsyncApp(__name__))
+
+    mock_request = MagicMock(headers={
+        'Expect': '100-continue',
+        'Content-Length': '10'
+    })
+
+    call_next_mock = AsyncMock(return_value=Response("Success"))
+
+    with patch('api.middlewares.configuration.api_conf', new={'max_upload_size': 5}):
+        with pytest.raises(ExpectFailedException) as exc_info:
+            await middleware.dispatch(mock_request, call_next_mock)
+
+    call_next_mock.assert_not_called()
+    assert exc_info.value.status == 417
+    assert "Maximum content size limit (5) exceeded" in exc_info.value.detail
