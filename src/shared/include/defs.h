@@ -252,16 +252,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WAZUH_LDEFINES "local_internal_options.conf"
 #endif
 
-/* Log directories */
-#define EVENTS           "logs/archives"
-#define EVENTS_DAILY     "logs/archives/archives.log"
-#define ALERTS           "logs/alerts"
-#define ALERTS_DAILY     "logs/alerts/alerts.log"
-#define ALERTSJSON_DAILY "logs/alerts/alerts.json"
-#define FWLOGS           "logs/firewall"
-#define FWLOGS_DAILY     "logs/firewall/firewall.log"
-#define EVENTSJSON_DAILY "logs/archives/archives.json"
-
 /* Authentication keys file */
 #ifndef WIN32
 #define KEYS_FILE  "etc/client.keys"

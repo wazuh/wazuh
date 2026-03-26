@@ -46,12 +46,9 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_remote_port = "port";
     const char *xml_remote_proto = "protocol";
     const char *xml_remote_ipv6 = "ipv6";
-    const char *xml_remote_connection = "connection";
     const char *xml_remote_lip = "local_ip";
     const char *xml_remote_agents = "agents";
     const char *xml_queue_size = "queue_size";
-    const char *xml_allowed_ips = "allowed-ips";
-    const char *xml_denied_ips = "denied-ips";
     const char *xml_rids_closing_time = "rids_closing_time";
     const char *xml_connection_overtake_time = "connection_overtake_time";
 
@@ -147,15 +144,6 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
 
             OS_ClearNode(children);
 
-        } else if (strcasecmp(node[i]->element, xml_remote_connection) == 0) {
-            merror(XML_INVELEM, node[i]->element);
-            return (OS_INVALID);
-        } else if (strcasecmp(node[i]->element, xml_allowed_ips) == 0) {
-            merror(XML_INVELEM, node[i]->element);
-            return (OS_INVALID);
-        } else if (strcasecmp(node[i]->element, xml_denied_ips) == 0) {
-            merror(XML_INVELEM, node[i]->element);
-            return (OS_INVALID);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
