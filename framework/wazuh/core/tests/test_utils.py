@@ -2505,3 +2505,32 @@ def test_parse_wazuh_agent_version(version_str, expected_tuple):
         The function correctly parses the version string into a tuple of integers.
     """
     assert utils.parse_wazuh_agent_version(version_str) == expected_tuple
+
+
+@pytest.fixture
+def nested_dict():
+    def _generate(depth: int) -> dict:
+        d = {}
+        current = d
+        for _ in range(depth):
+            current["level"] = {}
+            current = current["level"]
+        return d
+    return _generate
+
+
+@pytest.mark.parametrize(
+    "depth, max_depth, expected",
+    [
+        (3, 3, True),
+        (4, 3, True),
+        (1, 1, True),
+        (1, 0, False),
+        (10, 9, True),
+        (10, 10, True),
+        (2, 3, False),
+    ],
+)
+def test_has_reached_max_depth_nested(nested_dict, depth, max_depth, expected):
+    d = nested_dict(depth)
+    assert utils.has_reached_max_depth(d, max_depth) is expected

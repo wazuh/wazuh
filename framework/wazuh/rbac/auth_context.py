@@ -4,11 +4,15 @@
 
 import json
 import re
+import sys
 from collections import defaultdict
 from typing import Union
 
 from wazuh.rbac import orm
+from wazuh.core.utils import has_reached_max_depth
+from wazuh.core.exception import WazuhError
 
+AUTH_CONTEXT_MAX_DEPTH = sys.getrecursionlimit() / 2
 
 class RBAChecker:
     """
@@ -54,6 +58,9 @@ class RBAChecker:
             self.authorization_context = json.loads(auth_context)
         except TypeError:
             self.authorization_context = auth_context
+
+        if has_reached_max_depth(self.authorization_context, AUTH_CONTEXT_MAX_DEPTH):
+                raise WazuhError(4026)
 
         if role is None:
             # All system's roles

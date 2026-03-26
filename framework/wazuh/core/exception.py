@@ -568,6 +568,8 @@ class WazuhException(Exception):
                'remediation': 'Please, create the specified role-rules relation with the endpoint '
                               'POST /security/roles/{role_id}/rules'},
         4025: {'message': 'The specify relationship could not be removed'},
+        4026: {'message': 'The specified authentication context exceeds the maximum allowed nesting depth',
+               'remediation': 'Please, ensure that the authentication context does not exceed the maximum allowed nesting depth of.'},
         4500: {'message': 'The specified resources are invalid',
                'remediation': 'Please, make sure permissions are properly defined, '
                               f'for more information on setting up permissions please visit https://documentation.'

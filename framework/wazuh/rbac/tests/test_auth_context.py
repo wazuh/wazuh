@@ -9,6 +9,7 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy import create_engine
 
+from wazuh.core.exception import WazuhError
 from wazuh.rbac.tests.utils import init_db
 
 test_path = os.path.dirname(os.path.realpath(__file__))
@@ -104,3 +105,41 @@ def test_auth_roles(db_setup):
                     else:
                         assert len(test.get_user_roles()) == 0
         roles = values()[1]
+
+def test_auth_context_max_depth_exceeded(db_setup):
+    """Test that WazuhError is raised when authorization context exceeds max depth."""
+    
+    auth_context = {"a": {"b": {"c": "d"}}}
+
+    with patch('wazuh.rbac.auth_context.has_reached_max_depth', return_value=True):
+        with pytest.raises(WazuhError) as exc_info:
+            db_setup(json.dumps(auth_context), role=[])
+
+        assert exc_info.value.code == 4026
+
+def generate_nested_dict(depth: int) -> dict:
+    """Generate a nested dictionary with a given depth."""
+    d = {}
+    current = d
+    for i in range(depth):
+        current["level"] = {}
+        current = current["level"]
+    return d
+
+
+def test_auth_context_depth_limit_ok_and_exceeded(db_setup):
+    """Check that authorization context respects max depth and raises when exceeded."""
+
+    with patch('wazuh.rbac.auth_context.AUTH_CONTEXT_MAX_DEPTH', 3):
+
+        valid_context = generate_nested_dict(2)
+    
+        checker = db_setup(json.dumps(valid_context), role=[])
+        assert checker.authorization_context == valid_context
+
+        invalid_context = generate_nested_dict(3)
+
+        with pytest.raises(WazuhError) as exc_info:
+            db_setup(json.dumps(invalid_context), role=[])
+
+        assert exc_info.value.code == 4026

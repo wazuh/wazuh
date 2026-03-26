@@ -2470,3 +2470,30 @@ def parse_wazuh_agent_version(version_str: str) -> tuple:
     if match:
         return tuple(map(int, match.groups()))
     return 0, 0, 0
+
+
+def has_reached_max_depth(data: dict, max_depth: int) -> bool:
+    """Check whether a dictionary has reached or exceeded a maximum depth.
+
+    Parameters
+    ----------
+    data : dict
+        The dictionary to evaluate.
+    max_depth : int
+        The maximum allowed depth. This value should be lower than
+        sys.getrecursionlimit() to avoid RecursionError.
+
+    Returns
+    -------
+    bool
+        True if any nested path in the dictionary reaches or exceeds the
+        specified maximum depth, False otherwise.
+    """
+    if not isinstance(data, dict) or max_depth <= 0:
+        return False
+
+    return any(
+        max_depth == 1 or has_reached_max_depth(value, max_depth - 1)
+        for value in data.values()
+        if isinstance(value, dict)
+    )
