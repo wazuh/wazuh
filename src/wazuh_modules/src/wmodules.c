@@ -232,25 +232,6 @@ int wm_state_io(const char * tag, int op, void *state, size_t size) {
     return nmemb - 1;
 }
 
-long int wm_read_http_size(char *header) {
-    long int size;
-    char size_tag[] = "Content-Length:";
-    char *found;
-    char c_aux;
-
-    if (found = strstr(header, size_tag), !found) {
-        return 0;
-    }
-    found += strlen(size_tag);
-    for (header = found; isdigit(*found) || *found == ' '; found++);
-
-    c_aux = *found;
-    *found = '\0';
-    size = strtol(header, NULL, 10);
-    *found = c_aux;
-    return size;
-}
-
 char* wm_read_http_header_element(char *header, char *regex) {
     char *element = NULL;
     OSRegex os_regex;
@@ -619,36 +600,6 @@ int wm_sendmsg_ex(int usec, int queue, const char *message, const char *locmsg, 
         mdebug1("Unable to send message to queue: (%s)", strerror(errno));
         return -1;
     }
-
-    return 0;
-}
-
-// Check if a path is relative or absolute.
-// Returns 0 if absolute, 1 if relative or -1 on error.
-int wm_relative_path(const char * path) {
-
-    if (!path || path[0] == '\0') {
-        merror("At wm_relative_path(): Null path.");
-        return -1;
-    }
-
-#ifdef WIN32
-    if (((path[0] >= 'a' && path[0] <= 'z') || (path[0] >= 'A' && path[0] <= 'Z')) && path[1] == ':') {
-        // Is a full path
-        return 0;
-    } else if ((path[0] == '\\' && path[1] == '\\')) {
-        // Is a network resource
-        return 0;
-    } else {
-        // Relative path
-        return 1;
-    }
-#else
-    if (path[0] != '/') {
-        // Relative path
-        return 1;
-    }
-#endif
 
     return 0;
 }

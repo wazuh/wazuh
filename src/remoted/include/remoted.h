@@ -203,7 +203,6 @@ extern int request_timeout;
 extern int response_timeout;
 extern int disk_storage;
 extern rlim_t nofile;
-extern int guess_agent_group;
 extern unsigned receive_chunk;
 extern unsigned send_chunk;
 extern int buffer_relax;

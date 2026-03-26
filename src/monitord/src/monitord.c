@@ -21,9 +21,9 @@
 
 /* Global variables */
 monitor_config mond;
-bool worker_node;
 OSHash* agents_to_alert_hash;
 monitor_time_control mond_time_control;
+bool worker_node;
 
 void Monitord()
 {
@@ -88,7 +88,6 @@ cJSON *getMonitorInternalOptions(void) {
 
     cJSON_AddNumberToObject(monconf,"day_wait",mond.day_wait);
     cJSON_AddNumberToObject(monconf,"compress",mond.compress);
-    cJSON_AddNumberToObject(monconf,"sign",mond.sign);
     cJSON_AddNumberToObject(monconf,"monitor_agents",mond.monitor_agents);
     cJSON_AddNumberToObject(monconf,"keep_log_days",mond.keep_log_days);
     cJSON_AddNumberToObject(monconf,"rotate_log",mond.rotate_log);
@@ -120,15 +119,12 @@ int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short d
     /* Get config options */
     mond->day_wait = day_wait >= 0 ? day_wait : (short)getDefine_Int_default("monitord", "day_wait", 0, MAX_DAY_WAIT, 10);
     mond->compress = (unsigned int) getDefine_Int_default("monitord", "compress", 0, 1, 1);
-    mond->sign = (unsigned int) getDefine_Int_default("monitord", "sign", 0, 1, 1);
     mond->monitor_agents = no_agents ? 0 : (unsigned int) getDefine_Int_default("monitord", "monitor_agents", 0, 1, 1);
     mond->rotate_log = (unsigned int)getDefine_Int_default("monitord", "rotate_log", 0, 1, 1);
     mond->keep_log_days = getDefine_Int_default("monitord", "keep_log_days", 0, 500, 31);
     mond->size_rotate = (unsigned long) getDefine_Int_default("monitord", "size_rotate", 0, 4096, 512) * 1024 * 1024;
     mond->daily_rotations = getDefine_Int_default("monitord", "daily_rotations", 1, 256, 12);
     mond->delete_old_agents = (unsigned int)getDefine_Int_default("monitord", "delete_old_agents", 0, 9600, 0);
-
-    mond->agents = NULL;
 
     /* Setting default agent's global configuration */
     mond->global.agents_disconnection_time = 900;

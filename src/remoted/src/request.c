@@ -39,10 +39,6 @@ static pthread_cond_t pool_available = PTHREAD_COND_INITIALIZER;
 
 // Initialize request module
 void req_init() {
-    if (guess_agent_group && logr.worker_node) {
-        mwarn("The internal option guess_agent_group must be configured on the master node.");
-    }
-
     // Create hash table
     if (req_table = OSHash_Create(), !req_table) {
         merror_exit("At OSHash_Create()");

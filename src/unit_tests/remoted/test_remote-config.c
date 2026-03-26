@@ -328,7 +328,6 @@ static void test_remoted_internal_options_config(void **state) {
     will_return(__wrap_getDefine_Int_default, 79);     // rto_sec
     will_return(__wrap_getDefine_Int_default, 83);     // rto_msec
     will_return(__wrap_getDefine_Int_default, 89);     // max_attempts
-    will_return(__wrap_getDefine_Int_default, 97);     // guess_agent_group
     will_return(__wrap_getDefine_Int_default, 101);    // shared_reload_interval
     will_return(__wrap_getDefine_Int_default, 103);    // disk_storage
     will_return(__wrap_getDefine_Int_default, 107);    // _s_verify_counter
@@ -388,7 +387,6 @@ static void test_remoted_internal_options_config(void **state) {
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "request_rto_sec")->valueint, 79);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "request_rto_msec")->valueint, 83);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "max_attempts")->valueint, 89);
-    assert_int_equal(cJSON_GetObjectItem(remoted_obj, "guess_agent_group")->valueint, 97);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "shared_reload")->valueint, 101);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "disk_storage")->valueint, 103);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "verify_msg_id")->valueint, 107);

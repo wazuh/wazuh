@@ -326,12 +326,6 @@ def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = N
     return configuration
 
 
-def init_auth_worker():
-    """Set authentication pool worker to ignore SIGINT signals to avoid
-    throwing exceptions when shutting down the API in foreground mode."""
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-
 # Check if the default configuration is valid according to its jsonschema, so we are forced to update the schema if any
 # change is performed to the configuration.
 try:

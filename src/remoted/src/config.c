@@ -41,7 +41,6 @@ int max_attempts;
 int request_pool;
 int request_timeout;
 int response_timeout;
-int guess_agent_group;
 int shared_reload_interval;
 int disk_storage;
 size_t batch_events_capacity;
@@ -116,7 +115,6 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     rto_sec = getDefine_Int_default("remoted", "request_rto_sec", 0, 60, 1);
     rto_msec = getDefine_Int_default("remoted", "request_rto_msec", 0, 999, 0);
     max_attempts = getDefine_Int_default("remoted", "max_attempts", 1, 16, 4);
-    guess_agent_group = getDefine_Int_default("remoted", "guess_agent_group", 0, 1, 0);
     shared_reload_interval = getDefine_Int_default("remoted", "shared_reload", 1, 18000, 10);
     disk_storage = getDefine_Int_default("remoted", "disk_storage", 0, 1, 0);
     _s_verify_counter = getDefine_Int_default("remoted", "verify_msg_id", 0, 1, 0);
@@ -222,7 +220,6 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"disk_storage",disk_storage);
     cJSON_AddNumberToObject(remoted,"rlimit_nofile",nofile);
     cJSON_AddNumberToObject(remoted,"merge_shared",merge_shared);
-    cJSON_AddNumberToObject(remoted,"guess_agent_group",guess_agent_group);
     cJSON_AddNumberToObject(remoted,"receive_chunk",receive_chunk);
     cJSON_AddNumberToObject(remoted,"send_chunk",send_chunk);
     cJSON_AddNumberToObject(remoted,"buffer_relax",buffer_relax);

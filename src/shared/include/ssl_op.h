@@ -35,8 +35,6 @@
 #define DEFAULT_CIPHERS     "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
 #define MAX_SSL_PACKET_SIZE 16384
 
-extern BIO* bio_err;
-
 SSL_CTX* os_ssl_keys(int is_server,
                      const char* os_dir,
                      const char* ciphers,
