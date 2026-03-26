@@ -1,16 +1,146 @@
 {
   "modules": [
     {
-      "name": "fim",
-      "workflow": "5_testintegration_fim-tier-0-1-win.yml",
+      "name": "agentd",
+      "pytest_target": "test_agentd\\",
+      "tiers": ["0"],
       "paths": [
-        ".github/workflows/5_testintegration_fim-tier-0-1-win.yml",
+        ".github/workflows/5_builderpackage_agent-windows.yml",
+        ".github/test-modules-windows.json",
+        "src/client-agent/**",
+        "src/config/src/buffer-config.c",
+        "src/config/src/client-config.c",
+        "src/config/include/client-config.h",
+        "src/win32/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_agentd/**"
+      ]
+    },
+    {
+      "name": "enrollment",
+      "pytest_target": "test_enrollment\\",
+      "tiers": ["1"],
+      "paths": [
+        ".github/workflows/5_builderpackage_agent-windows.yml",
+        ".github/test-modules-windows.json",
+        "src/client-agent/**",
+        "src/config/src/buffer-config.c",
+        "src/config/src/client-config.c",
+        "src/config/include/client-config.h",
+        "src/os_auth/**",
+        "src/win32/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_enrollment/**"
+      ]
+    },
+    {
+      "name": "execd",
+      "pytest_target": "test_execd\\",
+      "pytest_extra_args": "-m win32",
+      "paths": [
+        ".github/workflows/5_builderpackage_agent-windows.yml",
+        ".github/test-modules-windows.json",
+        "src/config/src/active-response.c",
+        "src/config/include/active-response.h",
+        "src/execd/**",
+        "src/win32/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_execd/**"
+      ]
+    },
+    {
+      "name": "fim",
+      "pytest_target": "test_fim\\",
+      "tiers": ["0", "1"],
+      "exclude": ["test_fim\\test_files\\test_basic_usage\\test_rename.py"],
+      "start_service": true,
+      "paths": [
+        ".github/workflows/5_builderpackage_agent-windows.yml",
+        ".github/test-modules-windows.json",
         "src/config/src/syscheck-config.c",
         "src/config/include/syscheck-config.h",
         "src/syscheckd/**",
         "src/Makefile",
         "tests/integration/conftest.py",
         "tests/integration/test_fim/**"
+      ]
+    },
+    {
+      "name": "github",
+      "pytest_target": "test_github\\",
+      "paths": [
+        ".github/workflows/5_builderpackage_agent-windows.yml",
+        ".github/test-modules-windows.json",
+        "src/config/src/wmodules-github.c",
+        "src/wazuh_modules/src/wm_github.h",
+        "src/wazuh_modules/src/wm_github.c",
+        "src/win32/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_github/**"
+      ]
+    },
+    {
+      "name": "logcollector",
+      "pytest_target": "test_logcollector\\",
+      "tiers": ["0 1"],
+      "paths": [
+        ".github/workflows/5_builderpackage_agent-windows.yml",
+        ".github/test-modules-windows.json",
+        "src/config/src/localfile-config.c",
+        "src/config/include/localfile-config.h",
+        "src/logcollector/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_logcollector/**"
+      ]
+    },
+    {
+      "name": "office365",
+      "pytest_target": "test_office365\\",
+      "paths": [
+        ".github/workflows/5_builderpackage_agent-windows.yml",
+        ".github/test-modules-windows.json",
+        "src/config/src/wmodules-office365.c",
+        "src/wazuh_modules/src/wm_office365.h",
+        "src/wazuh_modules/src/wm_office365.c",
+        "src/win32/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_office365/**"
+      ]
+    },
+    {
+      "name": "sca",
+      "pytest_target": "test_sca\\",
+      "pytest_extra_args": "-m win32",
+      "paths": [
+        ".github/workflows/5_builderpackage_agent-windows.yml",
+        ".github/test-modules-windows.json",
+        "src/config/src/wmodules-sca.c",
+        "src/wazuh_modules/src/wm_sca.c",
+        "src/wazuh_modules/src/wm_sca.h",
+        "src/win32/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_sca/**"
+      ]
+    },
+    {
+      "name": "syscollector",
+      "pytest_target": "test_syscollector\\",
+      "paths": [
+        ".github/workflows/5_builderpackage_agent-windows.yml",
+        ".github/test-modules-windows.json",
+        "src/config/src/wmodules-syscollector.c",
+        "src/wazuh_modules/syscollector/**",
+        "src/win32/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_syscollector/**"
       ]
     }
   ]
