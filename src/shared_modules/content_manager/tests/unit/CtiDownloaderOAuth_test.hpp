@@ -128,11 +128,8 @@ protected:
         })"_json;
 
         // Create updater base context
-        m_spUpdaterBaseContext =
-            std::make_shared<UpdaterBaseContext>(m_spStopActionCondition,
-                                                 [](const std::string& msg) -> FileProcessingResult {
-                                                     return {0, "", false};
-                                                 });
+        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(
+            m_spStopActionCondition, [](const std::string& msg) -> FileProcessingResult { return {0, "", false}; });
         m_spUpdaterBaseContext->outputFolder = "/tmp/cti-oauth-tests";
         m_spUpdaterBaseContext->downloadsFolder = m_spUpdaterBaseContext->outputFolder / DOWNLOAD_FOLDER;
         m_spUpdaterBaseContext->contentsFolder = m_spUpdaterBaseContext->outputFolder / CONTENTS_FOLDER;

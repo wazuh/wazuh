@@ -9,90 +9,106 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: wz-linux-amd64
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
       - name: Install mingw
-        run: sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 -y
-      - name: "Install a compatible CMake"
-        uses: ./.github/actions/reinstall_cmake
+        run: |
+          sudo apt-get update || exit 1
+          sudo apt-get install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 -y || exit 1
+
+      - uses: ./.github/actions/reinstall_cmake
+
       - name: make deps
-        run: make -C src deps TARGET=winagent -j2
+        run: make -C src deps TARGET=winagent -j2 || exit 1
+
       - name: make
-        # We force the binary to exit when a library isn't signed because we could end up having a false
-        # positive if a Wazuh .dll is required after the verification mechanism has been enabled
-        run: make -C src TARGET=winagent -j2 IMAGE_TRUST_CHECKS=2
+        run: make -C src TARGET=winagent -j2 IMAGE_TRUST_CHECKS=2 || exit 1
+
       - name: Copy executables
         run: |
-          mkdir -p src/exe_files
-          # Copy executables from build/bin
-          cp src/build/bin/*.exe src/exe_files/
-          # Remove test tools and examples that aren't distributed
-          rm -f src/exe_files/*_test_tool.exe
-          rm -f src/exe_files/*_example.exe
-          # Copy DLL dependencies required by the executables
+          mkdir -p src/exe_files || exit 1
+          cp src/build/bin/*.exe src/exe_files/ || exit 1
+          rm -f src/exe_files/*_test_tool.exe || exit 1
+          rm -f src/exe_files/*_example.exe || exit 1
           cp src/build/bin/*.dll src/exe_files/ 2>/dev/null || true
           cp src/build/lib/*.dll src/exe_files/ 2>/dev/null || true
-      - name: Upload Artifact executables
-        uses: actions/upload-artifact@v4
+
+      - uses: actions/upload-artifact@v4
         with:
           name: executables
           path: src/exe_files
+
       - name: Copy configuration files
         run: |
-          mkdir -p src/configuration_files
-          # We want to test if the logging calls an external library
-          sed -i 's+<log_format>plain</log_format>+<log_format>plain,json</log_format>+g' src/win32/ossec.conf
-          cp src/win32/ossec.conf src/configuration_files/
-          sed -i 's+windows.debug=0+windows.debug=2+g' etc/internal_options.conf
-          cp src/win32/internal_options.conf src/configuration_files/
-      - name: Upload Artifact configuration files
-        uses: actions/upload-artifact@v4
+          mkdir -p src/configuration_files || exit 1
+          sed -i 's+<log_format>plain</log_format>+<log_format>plain,json</log_format>+g' src/win32/ossec.conf || exit 1
+          cp src/win32/ossec.conf src/configuration_files/ || exit 1
+          sed -i 's+windows.debug=0+windows.debug=2+g' etc/internal_options.conf || exit 1
+          cp etc/internal_options.conf src/configuration_files/internal_options.conf || exit 1
+
+      - uses: actions/upload-artifact@v4
         with:
           name: configuration
           path: src/configuration_files
+
   check_dll_on_windows:
     strategy:
-          matrix:
-              os: [windows-2025, windows-2022]
+      fail-fast: false
+      matrix:
+        os: [windows-2025, windows-2022]
     runs-on: ${{ matrix.os }}
     needs: build
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
         with:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
-      - name: Download Artifact executables
-        uses: actions/download-artifact@v4
+
+      - uses: actions/download-artifact@v4
         with:
           name: executables
           path: C:\executables\
-      - name: Download Artifact configuration files
-        uses: actions/download-artifact@v4
+
+      - uses: actions/download-artifact@v4
         with:
           name: configuration
           path: C:\configuration_files\
+
       - name: Copy configuration files
+        shell: pwsh
         run: |
-          copy C:\configuration_files\*.conf C:\executables\
+          $ErrorActionPreference = 'Stop'
+          Copy-Item C:\configuration_files\*.conf C:\executables\ -Force
+
       - name: Install dependencies
+        shell: pwsh
         run: |
-          pip install -r src/win32/qa/requirements.txt
+          $ErrorActionPreference = 'Stop'
+          python -m pip install --upgrade pip
+          python -m pip install -r src/win32/qa/requirements.txt
+
       - name: Download Process Monitor
+        shell: pwsh
         run: |
-          python -m wget https://download.sysinternals.com/files/ProcessMonitor.zip -o C:\ProcessMonitor.zip
-          Expand-Archive C:\ProcessMonitor.zip -DestinationPath C:\ProcessMonitor
+          $ErrorActionPreference = 'Stop'
+          Invoke-WebRequest -Uri "https://download.sysinternals.com/files/ProcessMonitor.zip" -OutFile "C:\ProcessMonitor.zip"
+          Expand-Archive -Path "C:\ProcessMonitor.zip" -DestinationPath "C:\ProcessMonitor" -Force
+
       - name: Run tests
+        shell: pwsh
         run: |
-          cd src/win32/qa
-          Copy-Item *.pmc C:\executables\
+          $ErrorActionPreference = 'Stop'
+          Set-Location -Path src/win32/qa
+          Copy-Item *.pmc C:\executables\ -Force
           python -m pytest -vv ./test_dll_hijack.py
-      - name: Upload .csv files
-        if: always()
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: csv_files ${{ matrix.os }}
+          name: csv_files_${{ matrix.os }}
           path: C:\executables\*.csv
