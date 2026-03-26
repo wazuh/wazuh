@@ -101,6 +101,8 @@
   - [RBAC](ref/modules/rbac/README.md)
   - [Cluster](ref/modules/cluster/README.md)
     - [Load balancers](ref/modules/cluster/lb.md)
+  - [Router](ref/modules/router/README.md)
+    - [Architecture](ref/modules/router/architecture.md)
 - [Upgrade](ref/upgrade.md)
 - [Uninstall](ref/uninstall.md)
 - [Back Up and Restore](ref/backup-restore.md)
