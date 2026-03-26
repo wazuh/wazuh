@@ -872,7 +872,7 @@ class Worker(client.AbstractClientManager):
 
         if _indexer_conf:
             self.run_active_response_job = lambda: self.indexer_task_manager.manage_indexer_tasks(
-                [self.active_response_task.run()]
+                [self.active_response_task.run]
             )
         else:
             self.logger.warning(
