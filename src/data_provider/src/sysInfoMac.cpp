@@ -154,7 +154,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                 try
                 {
                     nlohmann::json jsPackage;
-                    FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package.filename(), ""}, pkgType))->buildPackageData(jsPackage);
+                    FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package.filename().string(), ""}, pkgType))->buildPackageData(jsPackage);
 
                     if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                     {
@@ -175,13 +175,13 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
 
                     for (const auto& versionPath : packageVersions)
                     {
-                        const std::string version = versionPath.filename();
+                        const std::string version = versionPath.filename().string();
                         if (!Utils::startsWith(version, "."))
                         {
                             try
                             {
                                 nlohmann::json jsPackage;
-                                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package.filename(), version}, pkgType))->buildPackageData(jsPackage);
+                                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package.filename().string(), version}, pkgType))->buildPackageData(jsPackage);
 
                                 if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                                 {
