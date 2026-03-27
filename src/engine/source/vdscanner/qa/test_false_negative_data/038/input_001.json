@@ -1,0 +1,38 @@
+{
+    "type": "packagelist",
+    "agent": {
+        "id": "001"
+    },
+    "packages": [
+        {
+            "vendor": "Wazuh, Inc <info@wazuh.com>",
+            "priority": "extra",
+            "install_time": " ",
+            "version": "4.2.0-1",
+            "location": " ",
+            "format": "deb",
+            "section": "admin",
+            "source": " ",
+            "size": 33225,
+            "architecture": "amd64",
+            "name": "wazuh-agent"
+        }
+    ],
+    "hotfixes": [],
+    "os": {
+        "scan_time": "2024/07/04 19:22:05",
+        "hostname": "jammy",
+        "architecture": "x86_64",
+        "name": "Ubuntu",
+        "version": "22.04.1 LTS (Jammy Jellyfish)",
+        "codename": "jammy",
+        "major_version": "22",
+        "minor_version": "04",
+        "patch": "1",
+        "platform": "ubuntu",
+        "kernel_name": "Linux",
+        "kernel_release": "5.15.0-113-generic",
+        "kernel_version": "#123-Ubuntu SMP Mon Jun 10 08:16:17 UTC 2024",
+        "checksum": "1720120924514870169"
+    }
+}
