@@ -757,9 +757,6 @@ stages:
 ---
 test_name: GET /cluster/configuration/validation
 
-marks:
-  - xfail #https://github.com/wazuh/wazuh/issues/34733
-
 stages:
   - name: Try to request cluster validation (generic)
     request:
@@ -781,11 +778,10 @@ stages:
       method: GET
       params:
         nodes_list: master-node
+        wait_for_complete: true
       headers:
         Authorization: "Bearer {test_login_token}"
       timeout: 20
-      params:
-        wait_for_complete: true
     response:
       <<: *permission_denied
 

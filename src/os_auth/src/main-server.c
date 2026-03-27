@@ -90,7 +90,6 @@ static void help_authd(char * home_path)
     print_out("    -x <path>   Full path to server certificate. Default: %s.", CERTFILE);
     print_out("    -k <path>   Full path to server key. Default: %s.", KEYFILE);
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
-    print_out("    -L          Force insertion though agent limit reached.");
     print_out("    -C          Specify the certificate validity in days.");
     print_out("    -B          Specify the certificate key size in bits.");
     print_out("    -K          Specify the path to store the certificate key.");
@@ -135,9 +134,6 @@ int main(int argc, char **argv)
 
     // Define current working directory
     char * home_path = w_homedir(argv[0]);
-
-    /* Initialize some variables */
-    bio_err = 0;
 
     /* Change working directory */
     if (chdir(home_path) == -1) {
@@ -254,10 +250,6 @@ int main(int argc, char **argv)
 
                 case 'a':
                     auto_method = 1;
-                    break;
-
-                case 'L':
-                    mwarn("This option no longer applies. The agent limit has been removed.");
                     break;
 
                 case 'C':

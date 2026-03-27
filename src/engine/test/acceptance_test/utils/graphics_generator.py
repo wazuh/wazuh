@@ -65,14 +65,51 @@ def discover_thread_counts(results_dir: str) -> list[int]:
 
 def load_monitor(results_dir: str, threads: int) -> pd.DataFrame:
     path = os.path.join(results_dir, f"monitor-{threads}T.csv")
-    df = pd.read_csv(path)
+    df = pd.read_csv(path, parse_dates=["timestamp"])
     df["elapsed_s"] = range(len(df))
     return df
 
 
 def load_bench(results_dir: str, threads: int) -> pd.DataFrame:
     path = os.path.join(results_dir, f"bench-{threads}T.csv")
-    df = pd.read_csv(path)
+    df = pd.read_csv(path, parse_dates=["timestamp"])
+    df["elapsed_s"] = range(len(df))
+    return df
+
+
+def load_bench_full_timeline(results_dir: str, threads: int) -> pd.DataFrame | None:
+    """Concatenate warmup + grace-gap + measured bench CSVs.
+
+    Returns a single DataFrame that covers the entire benchmark timeline,
+    filling the grace period between warmup and measured with zero rows so
+    the bench x-axis matches the monitor's full duration.
+    Returns None if both files are missing.
+    """
+    warmup_path = os.path.join(results_dir, f"bench-{threads}T-warmup.csv")
+    measured_path = os.path.join(results_dir, f"bench-{threads}T.csv")
+
+    parts: list[pd.DataFrame] = []
+    if os.path.isfile(warmup_path):
+        parts.append(pd.read_csv(warmup_path, parse_dates=["timestamp"]))
+    if os.path.isfile(measured_path):
+        parts.append(pd.read_csv(measured_path, parse_dates=["timestamp"]))
+    if not parts:
+        return None
+
+    if len(parts) == 2:
+        warmup, measured = parts
+        gap_start = warmup["timestamp"].max() + pd.Timedelta(seconds=1)
+        gap_end = measured["timestamp"].min() - pd.Timedelta(seconds=1)
+        if gap_end > gap_start:
+            gap_ts = pd.date_range(gap_start, gap_end, freq="1s")
+            gap_df = pd.DataFrame({
+                "timestamp": gap_ts,
+                "sent": 0,
+                "processed": 0,
+            })
+            parts = [warmup, gap_df, measured]
+
+    df = pd.concat(parts, ignore_index=True).sort_values("timestamp").reset_index(drop=True)
     df["elapsed_s"] = range(len(df))
     return df
 
@@ -111,12 +148,17 @@ def load_all(results_dir: str, thread_counts: list[int]):
     for t in thread_counts:
         mon_path = os.path.join(results_dir, f"monitor-{t}T.csv")
         ben_path = os.path.join(results_dir, f"bench-{t}T.csv")
-        if os.path.isfile(mon_path):
-            monitors[t] = load_monitor(results_dir, t)
-        if os.path.isfile(ben_path):
+        # Try full timeline (warmup + grace + measured)
+        full_timeline = load_bench_full_timeline(results_dir, t)
+        if full_timeline is not None:
+            benches_full[t] = full_timeline
+            benches[t] = trim_drain_phase(full_timeline)
+        elif os.path.isfile(ben_path):
             full = load_bench(results_dir, t)
             benches_full[t] = full
             benches[t] = trim_drain_phase(full)
+        if os.path.isfile(mon_path):
+            monitors[t] = load_monitor(results_dir, t)
     return monitors, benches, benches_full
 
 

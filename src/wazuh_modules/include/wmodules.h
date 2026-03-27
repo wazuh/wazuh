@@ -27,8 +27,6 @@
 #define WM_IO_WRITE     0
 #define WM_IO_READ      1
 #define WM_ERROR_TIMEOUT 1                          // Error code for timeout.
-#define WM_POOL_SIZE    8                           // Child process pool size.
-#define WM_HEADER_SIZE  OS_SIZE_2048
 #define VU_WM_NAME "vulnerability-detector"
 #define AZ_WM_NAME "azure-logs"
 #define SCA_WM_NAME "sca"
@@ -45,10 +43,8 @@
 
 #define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
 #define WM_DEF_INTERVAL     86400           // Default cycle interval (1 day)
-#define WM_MIN_UPDATE_INTERVAL 3600         // Minimum cycle update interval (1 hour)
 
 #define DAY_SEC    86400
-#define WEEK_SEC   604800
 
 #define RANDOM_LENGTH  512
 #define MAX_VALUE_NAME 16383
@@ -154,9 +150,6 @@ void wm_children_pool_init();
 // Terminate every child process group
 void wm_kill_children();
 
-// Reads an HTTP header and extracts the size of the response
-long int wm_read_http_size(char *header);
-
 // Reads an HTTP header and extracts an element from a regex
 char* wm_read_http_header_element(char *header, char *regex);
 
@@ -174,10 +167,6 @@ int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, cha
 
 // Send message to a queue with a specific delay, and the option to stop the wait process.
 int wm_sendmsg_ex(int usec, int queue, const char *message, const char *locmsg, char loc, bool (*fn_prd)()) __attribute__((nonnull));
-
-// Check if a path is relative or absolute.
-// Returns 0 if absolute, 1 if relative or -1 on error.
-int wm_relative_path(const char * path);
 
 /**
  Check the binary which executes a command has the specified hash.

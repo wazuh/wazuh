@@ -31,9 +31,6 @@ stages:
 ---
 test_name: GET /cluster/healthcheck
 
-marks:
-  - xfail #https://github.com/wazuh/wazuh/issues/34666
-
 stages:
 
   - name: Get cluster healtcheck

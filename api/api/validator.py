@@ -30,8 +30,6 @@ _numbers_or_all = re.compile(r'^(\d+|all)$')
 _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
 _wazuh_version = re.compile(r'^(?:wazuh |)v?\d+\.\d+\.\d+$', re.IGNORECASE)
 _paths = re.compile(r'^[\w\-.\\/:]+$')
-_query_param = re.compile(r"^[\w.\-]+(?:=|!=|<|>|~)[\w.\- ]+(?:[;,][\w.\-]+(?:=|!=|<|>|~)[\w.\- ]+)*$")
-_ranges = re.compile(r'[\d]+$|^[\d]{1,2}-[\d]{1,2}$')
 _search_param = re.compile(r'^[^;|&^*>]+$')
 _sort_param = re.compile(r'^[\w_\-,\s+.]+$')
 _timeframe_type = re.compile(r'^(\d+[dhms]?)$')
@@ -387,16 +385,6 @@ def format_wpk_path(value):
     return check_exp(value, _wpk_path)
 
 
-@Draft4Validator.FORMAT_CHECKER.checks("query")
-def format_query(value):
-    return check_exp(value, _query_param)
-
-
-@Draft4Validator.FORMAT_CHECKER.checks("range")
-def format_range(value):
-    return check_exp(value, _ranges)
-
-
 @Draft4Validator.FORMAT_CHECKER.checks("search")
 def format_search(value):
     return check_exp(value, _search_param)
@@ -430,26 +418,6 @@ def format_date(value):
 @Draft4Validator.FORMAT_CHECKER.checks("date-time")
 def format_datetime(value):
     return check_exp(value, _iso8601_date_time)
-
-
-@Draft4Validator.FORMAT_CHECKER.checks("hash_or_empty")
-def format_hash_or_empty(value):
-    return True if value == "" else format_hash(value)
-
-
-@Draft4Validator.FORMAT_CHECKER.checks("names_or_empty")
-def format_names_or_empty(value):
-    return True if value == "" else format_names(value)
-
-
-@Draft4Validator.FORMAT_CHECKER.checks("numbers_or_empty")
-def format_numbers_or_empty(value):
-    return True if value == "" else format_numbers(value)
-
-
-@Draft4Validator.FORMAT_CHECKER.checks("date-time_or_empty")
-def format_datetime_or_empty(value):
-    return True if value == "" else format_datetime(value)
 
 
 @Draft4Validator.FORMAT_CHECKER.checks("group_names")

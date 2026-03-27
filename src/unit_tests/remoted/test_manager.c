@@ -1194,6 +1194,7 @@ void test_c_group_invalid_share_file(void **state)
 
     expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg");
     expect_string(__wrap_wfopen, mode, "w");
+    errno = 0;
     will_return(__wrap_wfopen, NULL);
 
     will_return(__wrap_strerror, "No such file or directory");
@@ -1566,114 +1567,6 @@ void test_c_multi_group_call_c_group(void **state)
 
     os_free(hash_multigroup);
     os_free(multi_group);
-}
-
-void test_find_group_from_file_found(void **state)
-{
-    char group_name[OS_SIZE_65536] = {0};
-
-    OSHashNode* node = NULL;
-    os_calloc(1, sizeof(OSHashNode), node);
-    node->data = state[0];
-
-    expect_value(__wrap_OSHash_Begin, self, groups);
-    will_return(__wrap_OSHash_Begin, node);
-
-    group_t *group = find_group_from_sum("ABCDEF1234567890", group_name);
-
-    assert_string_equal(group_name, "test_default");
-    assert_non_null(group);
-    assert_string_equal(group->name, "test_default");
-
-    os_free(node);
-}
-
-void test_find_group_from_file_not_found(void **state)
-{
-    char group_name[OS_SIZE_65536] = {0};
-
-    OSHashNode* node1 = NULL;
-    os_calloc(1, sizeof(OSHashNode), node1);
-    node1->data = state[0];
-
-    OSHashNode* node2 = NULL;
-    os_calloc(1, sizeof(OSHashNode), node2);
-    node2->data = state[1];
-
-    expect_value(__wrap_OSHash_Begin, self, groups);
-    will_return(__wrap_OSHash_Begin, node1);
-
-    expect_value(__wrap_OSHash_Next, self, groups);
-    will_return(__wrap_OSHash_Next, node2);
-
-    expect_value(__wrap_OSHash_Next, self, groups);
-    will_return(__wrap_OSHash_Next, NULL);
-
-    group_t *group = find_group_from_sum("2121212121", group_name);
-
-    assert_string_equal(group_name, "\0");
-    assert_null(group);
-
-    os_free(node1);
-    os_free(node2);
-}
-
-void test_find_multi_group_from_file_found(void **state)
-{
-    char multi_group_name[OS_SIZE_65536] = {0};
-
-    OSHashNode* node1 = NULL;
-    os_calloc(1, sizeof(OSHashNode), node1);
-    node1->data = state[0];
-
-    OSHashNode* node2 = NULL;
-    os_calloc(1, sizeof(OSHashNode), node2);
-    node2->data = state[1];
-
-    expect_value(__wrap_OSHash_Begin, self, multi_groups);
-    will_return(__wrap_OSHash_Begin, node1);
-
-    expect_value(__wrap_OSHash_Next, self, multi_groups);
-    will_return(__wrap_OSHash_Next, node2);
-
-    group_t *multi_group = find_multi_group_from_sum("1234567890ABCDFE", multi_group_name);
-
-    assert_string_equal(multi_group_name, "test_test_default2");
-    assert_non_null(multi_group);
-    assert_string_equal(multi_group->name, "test_test_default2");
-
-    os_free(node1);
-    os_free(node2);
-}
-
-void test_find_multi_group_from_file_not_found(void **state)
-{
-    char multi_group_name[OS_SIZE_65536] = {0};
-
-    OSHashNode* node1 = NULL;
-    os_calloc(1, sizeof(OSHashNode), node1);
-    node1->data = state[0];
-
-    OSHashNode* node2 = NULL;
-    os_calloc(1, sizeof(OSHashNode), node2);
-    node2->data = state[1];
-
-    expect_value(__wrap_OSHash_Begin, self, multi_groups);
-    will_return(__wrap_OSHash_Begin, node1);
-
-    expect_value(__wrap_OSHash_Next, self, multi_groups);
-    will_return(__wrap_OSHash_Next, node2);
-
-    expect_value(__wrap_OSHash_Next, self, multi_groups);
-    will_return(__wrap_OSHash_Next, NULL);
-
-    group_t *multi_group = find_multi_group_from_sum("4545454545", multi_group_name);
-
-    assert_string_equal(multi_group_name, "\0");
-    assert_null(multi_group);
-
-    os_free(node1);
-    os_free(node2);
 }
 
 void test_ftime_changed_same_fsum(void **state)
@@ -2284,6 +2177,7 @@ void test_process_groups_find_group_null(void **state)
 
     expect_string(__wrap_wfopen, path, "etc/shared/test/merged.mg");
     expect_string(__wrap_wfopen, mode, "w");
+    errno = 0;
     will_return(__wrap_wfopen, NULL);
 
     will_return(__wrap_strerror, "No such file or directory");
@@ -2386,6 +2280,7 @@ void test_process_groups_find_group_changed(void **state)
 
     expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg");
     expect_string(__wrap_wfopen, mode, "w");
+    errno = 0;
     will_return(__wrap_wfopen, NULL);
 
     will_return(__wrap_strerror, "No such file or directory");
@@ -5290,12 +5185,6 @@ int main(void)
         cmocka_unit_test(test_c_multi_group_Ignore_hidden_files),
         cmocka_unit_test(test_c_multi_group_subdir_fail),
         cmocka_unit_test(test_c_multi_group_call_c_group),
-        // Test find_group_from_sum
-        cmocka_unit_test_setup_teardown(test_find_group_from_file_found, test_find_group_setup, test_c_group_teardown),
-        cmocka_unit_test_setup_teardown(test_find_group_from_file_not_found, test_find_group_setup, test_c_group_teardown),
-        // Test find_multi_group_from_sum
-        cmocka_unit_test_setup_teardown(test_find_multi_group_from_file_found, test_find_multi_group_setup, test_c_multi_group_teardown),
-        cmocka_unit_test_setup_teardown(test_find_multi_group_from_file_not_found, test_find_multi_group_setup, test_c_multi_group_teardown),
         // Test ftime_changed
         cmocka_unit_test_setup_teardown(test_ftime_changed_same_fsum, test_ftime_changed_setup, test_ftime_changed_teardown),
         cmocka_unit_test_setup_teardown(test_ftime_changed_different_fsum_sum, test_ftime_changed_setup, test_ftime_changed_teardown),

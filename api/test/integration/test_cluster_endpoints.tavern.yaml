@@ -31,9 +31,6 @@ stages:
 ---
 test_name: GET /cluster/healthcheck
 
-marks:
-  - xfail #https://github.com/wazuh/wazuh/issues/34666
-
 stages:
 
   - name: Get cluster healtcheck
@@ -720,7 +717,6 @@ stages:
                 keep_log_days: !anyint
                 monitor_agents: !anyint
                 rotate_log: !anyint
-                sign: !anyint
                 size_rotate: !anyint
           failed_items: []
           total_affected_items: 1
@@ -765,7 +761,6 @@ stages:
                 remoted:
                   buffer_relax: !anyint
                   comp_average_printout: !anyint
-                  guess_agent_group: !anyint
                   max_attempts: !anyint
                   merge_shared: !anyint
                   pass_empty_keyfile: !anyint

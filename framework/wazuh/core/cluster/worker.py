@@ -17,8 +17,10 @@ from typing import Union
 
 from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.cluster import client, cluster, common as c_common
-from wazuh.core.cluster.utils import log_subprocess_execution, safe_join
+from wazuh.core.cluster.common import IndexerTaskManager
 from wazuh.core.cluster.dapi import dapi
+from wazuh.core.cluster.utils import log_subprocess_execution, safe_join
+from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.exception import WazuhException
 from wazuh.core.indexer.active_response import ActiveResponseFetchTask
 from wazuh.core.utils import safe_move, get_utc_now
@@ -847,7 +849,9 @@ class Worker(client.AbstractClientManager):
         self.extra_args = {'cluster_name': self.cluster_name, 'version': self.version, 'node_type': self.node_type}
         self.dapi = dapi.APIRequestQueue(server=self)
         self.integrity_control = {}
+        self.run_active_response_job = None
         self.active_response_task = ActiveResponseFetchTask(self)
+        self.indexer_task_manager = IndexerTaskManager()
 
     def add_tasks(self) -> List[Tuple[Awaitable[Any], Tuple]]:
         """Define the tasks that the worker will always run in an infinite loop.
@@ -858,11 +862,26 @@ class Worker(client.AbstractClientManager):
             The first item is the coroutine to run and the second is the arguments it needs. In this case,
             all coroutines don't need arguments.
         """
-        return super().add_tasks() + [(self.client.sync_integrity, tuple()),
+        tasks = super().add_tasks() + [(self.client.sync_integrity, tuple()),
                                       (self.client.sync_agent_info, tuple()),
-                                      (self.dapi.run, tuple()),
-                                      (self.active_response_task.run, tuple())
-                                      ]
+                                      (self.dapi.run, tuple())]
+        try:
+            _indexer_conf = get_ossec_conf(section="indexer")
+        except Exception:
+            _indexer_conf = {}
+
+        if _indexer_conf:
+            self.run_active_response_job = lambda: self.indexer_task_manager.manage_indexer_tasks(
+                [self.active_response_task.run]
+            )
+        else:
+            self.logger.warning(
+                "Indexer is not configured in wazuh-manager.conf or it is unavailable; "
+                "Indexer tasks will not be started."
+            )
+        if self.run_active_response_job:
+            tasks.append((self.run_active_response_job, tuple()))
+        return tasks
 
     def get_node(self) -> Dict:
         """Get basic information about the worker node. Used in the GET/cluster/node API call.

@@ -95,20 +95,26 @@ parseAndValidatePublicMetadata(const google::protobuf::Struct& protoMetadata)
     }
 
     const auto& metadata = std::get<json::Json>(metadataOrError);
-    if (!metadata.isObject() || metadata.isEmpty())
+    if (!metadata.isObject())
     {
-        return base::Error {"Metadata must be a non-empty JSON object"};
+        return base::Error {"Metadata must be a JSON object"};
     }
 
-    if (metadata.size() != 1)
+    if (metadata.size() > 1)
     {
-        return base::Error {"Metadata must contain only 'wazuh' as the top-level key"};
+        return base::Error {"If not empty metadata must contain only 'wazuh' as the top-level key"};
+    }
+
+    // Empty metadata is allowed, but in that case we return an empty object for the 'wazuh' metadata
+    // to avoid issues in the protocol handler
+    if (metadata.isEmpty())
+    {
+        return std::make_pair(json::Json("{}"), json::Json("{}"));
     }
 
     auto wazuhMetadataObject = metadata.getJson("/wazuh");
     auto wazuhRootObjectOpt = wazuhMetadataObject ? wazuhMetadataObject->getJson() : std::nullopt;
-    if (!wazuhMetadataObject.has_value() || !wazuhMetadataObject->isObject() || !wazuhRootObjectOpt.has_value()
-        || wazuhRootObjectOpt->isEmpty())
+    if (!wazuhMetadataObject.has_value() || !wazuhMetadataObject->isObject())
     {
         return base::Error {"Metadata should contain 'wazuh' as root"};
     }
@@ -127,11 +133,6 @@ bool validateMetadataLeaves(const json::Json& node,
         if (!objOpt.has_value())
         {
             return true;
-        }
-        else if (objOpt.value().empty())
-        {
-            error = fmt::format("Metadata field '{}' is an empty object, which is not allowed", currentPath);
-            return false;
         }
 
         for (const auto& [key, value] : objOpt.value())
@@ -159,9 +160,8 @@ bool validateMetadataLeaves(const json::Json& node,
         const auto& dotPath = DotPath(currentPath);
         if (base::isError(schemaValidator->validate(dotPath, node)))
         {
-            error =
-                fmt::format("Metadata field '{}' doesn't exist or doesn't match the expected one from the schema",
-                            dotPath.str());
+            error = fmt::format("Metadata field '{}' doesn't exist or doesn't match the expected one from the schema",
+                                dotPath.str());
             return false;
         }
     }
@@ -541,38 +541,38 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
             return;
         }
 
-        if (!protoReq.has_metadata())
+        json::Json metadata {"{}"};
+        std::string eventStr {};
+        if (protoReq.has_metadata())
         {
-            res = adapter::userErrorResponse<ResponseType>("Metadata is required and must be a JSON object");
-            return;
+            // Ensure schemaValidator is available
+            auto schemaValidatorLocked = wSchemaValidator.lock();
+            if (!schemaValidatorLocked)
+            {
+                res = adapter::userErrorResponse<ResponseType>("Schema is not available");
+                return;
+            }
+
+            auto metadataOrError = parseAndValidatePublicMetadata(protoReq.metadata());
+            if (base::isError(metadataOrError))
+            {
+                res = adapter::userErrorResponse<ResponseType>(base::getError(metadataOrError).message);
+                return;
+            }
+
+            auto [tempMetadata, wazuhMetadataObject] = base::getResponse(metadataOrError);
+            metadata = std::move(tempMetadata);
+
+            std::string badFieldMsg {};
+            std::string metadataPath {"wazuh"};
+            if (!validateMetadataLeaves(wazuhMetadataObject, schemaValidatorLocked, metadataPath, badFieldMsg))
+            {
+                res = adapter::userErrorResponse<ResponseType>(badFieldMsg);
+                return;
+            }
         }
 
-        // Ensure schemaValidator is available
-        auto schemaValidatorLocked = wSchemaValidator.lock();
-        if (!schemaValidatorLocked)
-        {
-            res = adapter::userErrorResponse<ResponseType>("Schema is not available");
-            return;
-        }
-
-        auto metadataOrError = parseAndValidatePublicMetadata(protoReq.metadata());
-        if (base::isError(metadataOrError))
-        {
-            res = adapter::userErrorResponse<ResponseType>(base::getError(metadataOrError).message);
-            return;
-        }
-
-        auto [metadata, wazuhMetadataObject] = base::getResponse(metadataOrError);
-
-        std::string badFieldMsg {};
-        std::string metadataPath {"wazuh"};
-        if (!validateMetadataLeaves(wazuhMetadataObject, schemaValidatorLocked, metadataPath, badFieldMsg))
-        {
-            res = adapter::userErrorResponse<ResponseType>(badFieldMsg);
-            return;
-        }
-
-        const std::string eventStr = protoReq.event();
+        eventStr = protoReq.event();
         if (eventStr.empty()
             || std::all_of(eventStr.begin(), eventStr.end(), [](unsigned char c) { return std::isspace(c); }))
         {

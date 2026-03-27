@@ -15,7 +15,7 @@ from wazuh.core.exception import (
     WazuhInternalError,
     WazuhResourceNotFound,
 )
-from wazuh.core.indexer.indexer import get_indexer_client
+from wazuh.core.indexer.indexer import IndexerUnavailableError, get_indexer_client
 from wazuh.core.results import AffectedItemsWazuhResult
 
 
@@ -108,6 +108,42 @@ class DisconnectedAgentSyncTasks:
         # Flag to ensure cluster-name sync runs only once per process lifecycle
         self._cluster_name_sync_done = False
 
+
+    async def check_indexer(self) -> None:
+        """
+        Verify the indexer's availability by performing a health check.
+
+        This method checks whether the indexer service is reachable. If a client
+        override has been set (e.g., for testing or dependency injection), the
+        check is skipped entirely. Otherwise, it obtains an indexer client via
+        ``get_indexer_client()`` and calls its ``healthcheck()`` method. Any
+        failure to connect results in an ``IndexerUnavailableError`` being raised.
+
+        Returns
+        -------
+        None
+            Returns when the indexer is confirmed reachable or when the client
+            override bypasses the check.
+
+        Raises
+        ------
+        IndexerUnavailableError
+            If the indexer is not reachable and no client override is present.
+        """
+        if self._indexer_client_override is not None:
+            self.logger.debug(
+                "Indexer client override in use; skipping availability check"
+            )
+            return
+
+        try:
+            async with get_indexer_client() as client:
+                await client.healthcheck()
+            self.logger.debug("Indexer is available")
+        except IndexerUnavailableError:
+            self.logger.debug("Indexer not available")
+            raise
+
     async def run_agent_groups_sync(self) -> None:
         """
         Main task loop for non-connected agent group synchronization.
@@ -122,6 +158,7 @@ class DisconnectedAgentSyncTasks:
 
         while True:
             try:
+                await self.check_indexer()
                 cycle_start_time = time.time()
                 processed_agents = 0
                 failed_agents = 0
@@ -132,7 +169,6 @@ class DisconnectedAgentSyncTasks:
                 disconnected_agents_count = len(disconnected_agents)
                 if disconnected_agents_count == 0:
                     self.logger.info("No disconnected agents found")
-                    await asyncio.sleep(self.sync_interval)
                     continue
 
                 self.logger.info(
@@ -144,6 +180,8 @@ class DisconnectedAgentSyncTasks:
                         batch_result = await self._sync_agent_batch(batch)
                         processed_agents += batch_result.get("processed", 0)
                         failed_agents += batch_result.get("failed", 0)
+                    except IndexerUnavailableError:
+                        raise
                     except Exception as e:
                         self.logger.error(
                             f"Error syncing batch of agents: {e}", exc_info=True
@@ -158,10 +196,15 @@ class DisconnectedAgentSyncTasks:
                     f"{failed_agents} agents failed."
                 )
 
+            except IndexerUnavailableError as e:
+                self._logging_indexer_not_available(e)
+                continue
             except Exception as e:
                 self.logger.error(
-                    f"Error in disconnected agent sync task: {e}", exc_info=True
+                    f"Unexpected error in group synchronization cycle: {e}",
+                    exc_info=True,
                 )
+                continue
             finally:
                 await asyncio.sleep(self.sync_interval)
 
@@ -294,6 +337,8 @@ class DisconnectedAgentSyncTasks:
             else:
                 raise Exception("Failed query to wazuh-indexer")
 
+        except IndexerUnavailableError:
+            raise
         except Exception as e:
             self.logger.exception(
                 f"Failed to query max versions for batch of {len(agent_ids)} agents: {e}"
@@ -416,6 +461,7 @@ class DisconnectedAgentSyncTasks:
             return
 
         try:
+            await self.check_indexer()
             self.logger.info(
                 f"Waiting {self.initial_delay}s before running disconnected cluster-name sync"
             )
@@ -499,8 +545,18 @@ class DisconnectedAgentSyncTasks:
                 f"({len(agents_to_update)} agents updated)"
             )
 
-        except Exception:
-            self.logger.exception("Unexpected error in run_cluster_name_sync")
+        except IndexerUnavailableError as e:
+            self.logger.warning(
+                f"Indexer is not available – cluster-name sync aborted. "
+                f"Reason: {e}"
+            )
+            return
+        except Exception as e:
+            self.logger.error(
+                f"Unexpected error in cluster-name synchronization: {e}",
+                exc_info=True,
+            )
+            return
         finally:
             self._cluster_name_sync_done = True
 
@@ -724,8 +780,28 @@ class DisconnectedAgentSyncTasks:
             )
             return agent_cluster_map
 
+        except IndexerUnavailableError:
+            raise
         except Exception:
             self.logger.exception(
                 f"Failed to resolve cluster names for agents: {agent_ids}"
             )
             return {}
+
+    def _logging_indexer_not_available(self, error: Exception) -> None:
+        """
+        Log indexer unavailability at DEBUG level.
+
+        This method is used as a callback for indexer connection errors to
+        prevent log pollution in environments where the indexer might start
+        later than the main service.
+
+        Parameters
+        ----------
+        error : Exception
+            The exception that occurred during indexer connection attempts.
+        """
+        self.logger.warning(
+            f"Indexer is not available – group sync skipped this cycle. "
+            f"Reason: {error}"
+        )

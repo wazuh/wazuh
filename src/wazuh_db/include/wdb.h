@@ -323,20 +323,6 @@ wdb_t * wdb_init(const char * id);
 
 void wdb_destroy(wdb_t * wdb);
 
-void wdb_pool_append(wdb_t * wdb);
-
-void wdb_pool_remove(wdb_t * wdb);
-
-/**
- * @brief Duplicate the database pool
- *
- * Gets a copy of the database pool. This function fills the member "id" and
- * creates the mutex only.
- *
- * @return Pointer to a database list.
- */
-wdb_t * wdb_pool_copy();
-
 void wdb_close_all();
 
 void wdb_commit_old();
@@ -448,8 +434,6 @@ int wdb_close(wdb_t * wdb, bool commit);
  * @param wdb The database struct pointer.
  */
 void wdb_finalize_all_statements(wdb_t * wdb);
-
-wdb_t * wdb_pool_find_prev(wdb_t * wdb);
 
 int wdb_stmt_cache(wdb_t * wdb, int index);
 

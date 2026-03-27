@@ -145,11 +145,6 @@ USER_NAME = 'wazuh-manager'
 WAZUH_PATH = find_wazuh_path()
 
 
-# ============================================= Wazuh constants - Commands =============================================
-CHECK_CONFIG_COMMAND = 'check-manager-configuration'
-RESTART_WAZUH_COMMAND = 'restart-wazuh'
-
-
 # =========================================== Wazuh constants - Date format ============================================
 DATE_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 DECIMALS_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
