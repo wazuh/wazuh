@@ -10,6 +10,7 @@ import os
 import sqlite3
 from pathlib import Path
 
+from wazuh_testing.constants.paths.configurations import WAZUH_CONF_PATH
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.modules.modulesd.syscollector import patterns
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
@@ -31,7 +32,7 @@ def print_db_table_sizes(db_path: str, message: str = ""):
         print(f"\n--- {message} ---")
     else:
         print("\n--- DB Table Sizes ---")
-    
+
     if not os.path.exists(db_path):
         print(f"Database file not found at: {db_path}")
         print("---------------------\n")
@@ -41,14 +42,14 @@ def print_db_table_sizes(db_path: str, message: str = ""):
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        
+
         tables = [
             'dbsync_osinfo', 'dbsync_hwinfo', 'dbsync_packages', 'dbsync_hotfixes',
-            'dbsync_processes', 'dbsync_ports', 'dbsync_network_iface', 
+            'dbsync_processes', 'dbsync_ports', 'dbsync_network_iface',
             'dbsync_network_protocol', 'dbsync_network_address', 'dbsync_groups',
             'dbsync_users', 'dbsync_services', 'dbsync_browser_extensions'
         ]
-        
+
         for table in tables:
             try:
                 count = cursor.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]

@@ -7,8 +7,9 @@ import pytest
 import os
 import sys
 
+from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.constants.daemons import AGENT_DAEMON
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, DEFAULT_AUTHD_PASS_PATH
+from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, DEFAULT_AUTHD_PASS_PATH, WAZUH_CONF_PATH
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.utils.file import write_file, remove_file
 from wazuh_testing.utils.services import control_service
@@ -86,3 +87,31 @@ def configure_socket_listener(request, test_metadata):
 @pytest.fixture(autouse=True)
 def autostart_simulators() -> None:
     yield
+
+@pytest.fixture(scope="session", autouse=True)
+def fix_ossec_conf_multiple_roots():
+    """Temporary fix: DEB/RPM packages install ossec.conf with two <ossec_config> root
+    blocks. The test framework's XML parser only supports a single root element, so we
+    merge both blocks by removing the closing tag of the first block and the opening tag
+    of the second block before the test session begins.
+    """
+    if sys.platform == WINDOWS:
+        return
+
+    try:
+        with open(WAZUH_CONF_PATH, 'r') as f:
+            content = f.read()
+
+        # Only act when two root blocks are present
+        if content.count('</ossec_config>') < 2:
+            return
+
+        # Remove the boundary between the two blocks: </ossec_config>...<ossec_config>
+        import re
+        fixed = re.sub(r'</ossec_config>\s*<ossec_config>', '', content, count=1)
+
+        with open(WAZUH_CONF_PATH, 'w') as f:
+            f.write(fixed)
+    except OSError:
+        # Not installed or no permission — tests will fail on their own if needed
+        pass
