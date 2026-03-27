@@ -170,9 +170,12 @@ def check_rate_limit(
 
     Return
     ------
-        0 if the counter is greater than max_requests
+        0 if the request is allowed
         else error_code.
     """
+    if max_requests == 0:
+        return 0
+
     if not globals()[current_time_key]:
         globals()[current_time_key] = get_utc_now().timestamp()
 
@@ -200,11 +203,12 @@ class CheckRateLimitsMiddleware(BaseHTTPMiddleware):
             max_request_per_minute,
             6001)
 
-        if request.url.path == '/events':
+        if not error_code and request.url.path == '/events':
+            events_limit = min(max_request_per_minute, MAX_REQUESTS_EVENTS_DEFAULT)
             error_code = check_rate_limit(
                 'events_request_counter',
                 'events_current_time',
-                MAX_REQUESTS_EVENTS_DEFAULT,
+                events_limit,
                 6005)
 
         if error_code:
