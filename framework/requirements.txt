@@ -62,10 +62,10 @@ proto-plus==1.26.0
 protobuf==5.29.6
 psutil==5.9.0
 pyarrow==14.0.1
-pyasn1==0.4.8
-pyasn1-modules==0.2.8
+pyasn1==0.6.3
+pyasn1-modules==0.4.2
 pycparser==2.21
-PyJWT==2.10.1
+PyJWT==2.12.1
 pyparsing==2.4.7
 python-dateutil==2.8.1
 python-json-logger==2.0.2
