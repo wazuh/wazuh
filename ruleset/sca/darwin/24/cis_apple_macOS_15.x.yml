@@ -1682,7 +1682,7 @@ checks:
       subtechnique: ["T1562.001", "T1562.002", "T1070.004"]
     condition: all
     rules:
-      - 'c:sh -c "launchctl list | grep -c com.apple.XProtect.daemon.scan" -> r:^1$'
+      - 'c:sh -c "launchctl list | grep -c com.apple.XProtect.daemon.scan$" -> r:^1$'
       - 'c:sh -c "launchctl list | grep -c com.apple.XProtect.daemon.scan.startup" -> r:^1$'
 
   # 6.1.1 Ensure Show All Filename Extensions Setting is Enabled. (Automated) - Not Implemented
