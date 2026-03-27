@@ -537,7 +537,8 @@ rm -fr %{buildroot}
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/agent-template.conf
 %attr(660, wazuh-manager, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/shared/default/*
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs
-%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/*.yml
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/default
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/default/*.yml
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework/python
 %{_localstatedir}/framework/python/*

@@ -65,7 +65,7 @@ export WAZUH_STANDALONE_LOG_MAX_ACCUMULATED_SIZE="2147483648" # 2 GB
 
 # If not exist create directories
 mkdir -p "$SOCKET_PATH" "$LOG_PATH"
-mkdir -p "${WAZUH_OUTPUTS_PATH}" # For cmsync output files
+mkdir -p "${WAZUH_OUTPUTS_PATH}/default" # Base outputs path with default/ directory
 mkdir -p "${WAZUH_CM_RULESET_PATH}" # For Ruleset store
 
 exec "${SCRIPT_DIR}/bin/wazuh-engine" -f

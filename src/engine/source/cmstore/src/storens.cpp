@@ -594,11 +594,22 @@ dataType::Integration CMStoreNS::getIntegrationByUUID(const std::string& uuid) c
     return dataType::Integration::fromJson(json, /*requireUUID:*/ true);
 }
 
-const std::vector<json::Json> CMStoreNS::getDefaultOutputs() const
+const std::vector<json::Json> CMStoreNS::getOutputsForSpace(std::string_view spaceKey) const
 {
+    auto outputsPath = m_defaultOutputsPath / pathns::DEFAULT_OUTPUTS_DIR;
+
+    if (!spaceKey.empty())
+    {
+        const auto spaceOutputsPath = m_defaultOutputsPath / std::string(spaceKey);
+        if (std::filesystem::exists(spaceOutputsPath) && std::filesystem::is_directory(spaceOutputsPath))
+        {
+            outputsPath = std::move(spaceOutputsPath);
+        }
+    }
+
     std::vector<json::Json> outputs;
 
-    for (const auto& entry : std::filesystem::directory_iterator(m_defaultOutputsPath))
+    for (const auto& entry : std::filesystem::directory_iterator(outputsPath))
     {
         if (!entry.is_regular_file())
         {

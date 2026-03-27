@@ -788,6 +788,39 @@ class BuildAssets : public testing::TestWithParam<BuildAssetsT>
 {
 };
 
+TEST(BuildAssetsOutputs, ProductionUsesOriginSpaceWhenLoadingOutputs)
+{
+    auto policy = dataType::Policy("test_policy",
+                                   true,
+                                   "550e8400-e29b-41d4-a716-446655440003",
+                                   {},
+                                   {},
+                                   {},
+                                   {},
+                                   "standard",
+                                   "",
+                                   false,
+                                   false,
+                                   true);
+
+    auto cmStoreNSReader = std::make_shared<MockICMStoreNSReader>();
+    auto buildCtx = std::make_shared<builder::builders::BuildCtx>();
+    auto registry = builder::mocks::MockMetaRegistry<builder::builders::OpBuilderEntry,
+                                                     builder::builders::StageBuilder,
+                                                     builder::builders::EnrichmentBuilder>::createMock();
+    auto definitionsBuilder = std::make_shared<defs::mocks::MockDefinitionsBuilder>();
+    buildCtx->setRegistry(registry);
+    auto assetBuilder = std::make_shared<AssetBuilder>(buildCtx, definitionsBuilder);
+
+    EXPECT_CALL(*cmStoreNSReader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
+        .WillOnce(testing::Return(std::make_tuple(std::string {"decoder/root/0"}, cm::store::ResourceType::DECODER)));
+
+    EXPECT_CALL(*cmStoreNSReader, getOutputsForSpace(testing::Eq(std::string_view {"standard"})))
+        .WillOnce(testing::Return(std::vector<json::Json> {}));
+
+    EXPECT_NO_THROW((void)factory::buildAssets(policy, cmStoreNSReader, assetBuilder, false));
+}
+
 TEST_P(BuildAssets, KVDBAvailability)
 {
     auto [policy, expected] = GetParam();
