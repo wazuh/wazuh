@@ -7325,6 +7325,66 @@
             "string"
           ]
         },
+        "rule.compliance.cmmc": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nCMMC requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.fedramp": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nFedRAMP requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.gdpr": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nGDPR requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.hipaa": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nHIPAA requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.iso_27001": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nISO 27001 requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.nis2": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nNIS2 requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.nist_800_171": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nNIST 800-171 requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.nist_800_53": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nNIST 800-53 requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.pci_dss": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nPCI DSS requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.tsc": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nTSC requirements.",
+          "type": [
+            "string"
+          ]
+        },
         "rule.description": {
           "description": "Module: ecs\nIndexerType: keyword\n\nThe description of the rule generating the event.",
           "type": [
@@ -7339,6 +7399,24 @@
         },
         "rule.license": {
           "description": "Module: ecs\nIndexerType: keyword\n\nName of the license under which the rule used to generate this event is made available.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.mitre.subtechnique": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nMITRE ATT&CK subtechniques.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.mitre.tactic": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nMITRE ATT&CK tactics.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.mitre.technique": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nMITRE ATT&CK techniques.",
           "type": [
             "string"
           ]
@@ -11871,8 +11949,38 @@
             "string"
           ]
         },
+        "vulnerability.classification": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nThe classification of the vulnerability scoring system. For example (https://www.first.org/cvss/)",
+          "type": [
+            "string"
+          ]
+        },
+        "vulnerability.description": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nThe description of the vulnerability that provides additional context of the vulnerability. For example (https://cve.mitre.org/about/faqs.html#cve_entry_descriptions_created)",
+          "type": [
+            "string"
+          ]
+        },
+        "vulnerability.enumeration": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nThe type of identifier used for this vulnerability. For example (https://cve.mitre.org/about/)",
+          "type": [
+            "string"
+          ]
+        },
         "vulnerability.id": {
           "description": "Module: ecs\nIndexerType: keyword\n\nThe identification (ID) is the number portion of a vulnerability entry. It includes a unique identification number for the vulnerability. For example (https://cve.mitre.org/about/faqs.html#what_is_cve_id)",
+          "type": [
+            "string"
+          ]
+        },
+        "vulnerability.reference": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nA resource that provides additional information, context, and mitigations for the identified vulnerability.",
+          "type": [
+            "string"
+          ]
+        },
+        "vulnerability.report_id": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nThe report or scan identification number.",
           "type": [
             "string"
           ]
@@ -11891,6 +11999,22 @@
         },
         "vulnerability.score.base": {
           "description": "Module: ecs\nIndexerType: float\n\nScores can range from 0.0 to 10.0, with 10.0 being the most severe.\nBase scores cover an assessment for exploitability metrics (attack vector, complexity, privileges, and user interaction), impact metrics (confidentiality, integrity, and availability), and scope. For example (https://www.first.org/cvss/specification-document)",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "vulnerability.score.environmental": {
+          "description": "Module: ecs\nIndexerType: float\n\nScores can range from 0.0 to 10.0, with 10.0 being the most severe.\nEnvironmental scores cover an assessment for any modified Base metrics, confidentiality, integrity, and availability requirements. For example (https://www.first.org/cvss/specification-document)",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "vulnerability.score.temporal": {
+          "description": "Module: ecs\nIndexerType: float\n\nScores can range from 0.0 to 10.0, with 10.0 being the most severe.\nTemporal scores cover an assessment for code maturity, remediation level, and confidence. For example (https://www.first.org/cvss/specification-document)",
           "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
           "type": [
             "number",
