@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 #include <chrono>
+#include <filesystem>
 
 /**
  * @brief Test fixture for AgentInfoImpl integrity check functionality
@@ -29,6 +30,10 @@ class AgentInfoIntegrityTest : public ::testing::Test
         {
             m_logOutput.clear();
             m_reportedEvents.clear();
+
+            // Create directory for shared memory file (required on Unix/macOS)
+            // The metadata provider uses "var/run/.wazuh_agent_metadata" as shared memory path
+            std::filesystem::create_directories("var/run");
 
             m_reportDiffFunc = [this](const std::string & event)
             {
