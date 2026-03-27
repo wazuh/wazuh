@@ -127,6 +127,42 @@ private:
     }
 
     /**
+     * @brief Invalidates the stored cursor so the next cycle is forced to perform a full load.
+     */
+    void invalidateCursor(UpdaterContext& context) const
+    {
+        context.data.erase("cursor");
+
+        if (!context.spUpdaterBaseContext->spRocksDB)
+        {
+            return;
+        }
+
+        logWarn(WM_CONTENTUPDATER,
+                "IndexerDownloader: invalidating stored cursor and forcing a full reload on the next attempt.");
+        context.spUpdaterBaseContext->spRocksDB->put(
+            Utils::getCompactTimestamp(std::time(nullptr)), "0", Components::Columns::CURRENT_OFFSET);
+    }
+
+    /**
+     * @brief Sends the final completion signal so the consumer can validate the downloaded feed.
+     *
+     * Returns true only when the consumer confirms that the feed is ready to be used.
+     */
+    bool sendCompletionSignal(UpdaterContext& context, const size_t totalProcessed) const
+    {
+        const auto cursor = context.data.value("cursor", std::string {});
+        nlohmann::json finalMsg;
+        finalMsg["type"] = "indexer_complete";
+        finalMsg["cursor"] = cursor;
+        finalMsg["changed"] = (totalProcessed > 0);
+        finalMsg["data"] = nlohmann::json::array();
+
+        const auto result = context.spUpdaterBaseContext->fileProcessingCallback(std::move(finalMsg));
+        return std::get<2>(result);
+    }
+
+    /**
      * @brief Returns the last cursor persisted in RocksDB, or empty string on first run.
      */
     std::string getStoredCursor(const UpdaterContext& context) const
@@ -514,7 +550,7 @@ private:
             if (totalProcessed > 0)
             {
                 logInfo(WM_CONTENTUPDATER,
-                        "IndexerDownloader: Initial load complete — %zu documents, cursor: '%s'",
+                        "IndexerDownloader: Initial load download phase complete — %zu documents, cursor: '%s'",
                         totalProcessed,
                         context.data.value("cursor", std::string {}).c_str());
                 return totalProcessed;
@@ -554,7 +590,7 @@ private:
         const size_t totalProcessed = fetchWithPit(context, query, lastCursor);
 
         logInfo(WM_CONTENTUPDATER,
-                "IndexerDownloader: Incremental update complete — %zu documents, new cursor: '%s'",
+                "IndexerDownloader: Incremental update download phase complete — %zu documents, new cursor: '%s'",
                 totalProcessed,
                 context.data.value("cursor", std::string {}).c_str());
         return totalProcessed;
@@ -579,6 +615,8 @@ public:
      */
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
+        static constexpr std::chrono::seconds COMPLETION_RETRY_INTERVAL {30};
+
         logDebug1(WM_CONTENTUPDATER, "IndexerDownloader - Starting process");
 
         auto lastCursor = getStoredCursor(*context);
@@ -602,39 +640,45 @@ public:
             }
         }
 
-        size_t totalProcessed = 0;
-        if (lastCursor.empty())
-        {
-            totalProcessed = initialLoad(*context);
-        }
-        else
-        {
-            totalProcessed = incrementalUpdate(*context, lastCursor);
-        }
+        bool forceInitialLoad = lastCursor.empty();
 
-        // If a shutdown was requested, skip the completion signal — no point reloading
-        // maps or triggering a rescan if the agent is going down.
-        if (context->spUpdaterBaseContext->spStopCondition->check())
+        while (true)
         {
-            return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
-        }
+            size_t totalProcessed = 0;
+            if (forceInitialLoad)
+            {
+                totalProcessed = initialLoad(*context);
+            }
+            else
+            {
+                totalProcessed = incrementalUpdate(*context, lastCursor);
+            }
 
-        // Signal completion to DatabaseFeedManager so it can write the feed-complete
-        // sentinel and optionally trigger a rescan.  The "changed" field tells
-        // DatabaseFeedManager whether the feed actually changed: the sentinel is written
-        // regardless, but the agent rescan is only triggered when changed=true so that a
-        // manager restart with no new CVE data does not cause an unnecessary full rescan.
-        const auto cursor = context->data.value("cursor", std::string {});
-        nlohmann::json finalMsg;
-        finalMsg["type"] = "indexer_complete";
-        finalMsg["cursor"] = cursor;
-        finalMsg["changed"] = (totalProcessed > 0);
-        finalMsg["data"] = nlohmann::json::array();
-        const auto result = context->spUpdaterBaseContext->fileProcessingCallback(std::move(finalMsg));
-        if (!std::get<2>(result))
-        {
+            // If a shutdown was requested, skip the completion signal — no point reloading
+            // maps or triggering a rescan if the agent is going down.
+            if (context->spUpdaterBaseContext->spStopCondition->check())
+            {
+                return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
+            }
+
+            if (sendCompletionSignal(*context, totalProcessed))
+            {
+                break;
+            }
+
+            invalidateCursor(*context);
+            forceInitialLoad = true;
+            lastCursor.clear();
+
             logWarn(WM_CONTENTUPDATER,
-                    "IndexerDownloader: post-download reload/rescan signal returned failure (non-fatal).");
+                    "IndexerDownloader: downloaded feed is not ready yet after completion validation. "
+                    "Retrying full reload in %zu s.",
+                    static_cast<size_t>(COMPLETION_RETRY_INTERVAL.count()));
+
+            if (context->spUpdaterBaseContext->spStopCondition->waitFor(COMPLETION_RETRY_INTERVAL))
+            {
+                return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
+            }
         }
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
