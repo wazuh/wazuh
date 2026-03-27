@@ -60,6 +60,19 @@ def test_WazuhGCloudSubscriber__init__(mock_client):
     mock_client.assert_called_once()
 
 
+@patch('pubsub.subscriber.google.auth.default')
+@patch('pubsub.subscriber.pubsub.subscriber.Client')
+def test_WazuhGCloudSubscriber__init__adc(mock_client, mock_auth_default):
+    """Test if an instance of WazuhGCloudSubscriber is created properly using Application Default Credentials."""
+    mock_credentials = MagicMock()
+    mock_auth_default.return_value = (mock_credentials, 'test_project')
+    pubsub = WazuhGCloudSubscriber(**get_wodle_config(credentials_file=None))
+    for attribute in ['logger', 'subscriber', 'subscription_path']:
+        assert hasattr(pubsub, attribute)
+    mock_auth_default.assert_called_once()
+    mock_client.assert_called_once_with(credentials=mock_credentials)
+
+
 @pytest.mark.parametrize('credentials_file, errcode', [
     ('invalid_credentials_file.json', 1000),
     ('unexistent_file', 1001)
@@ -78,6 +91,17 @@ def test_WazuhGCloudSubscriber_get_subscriber_client(mock_credentials):
     """Test get_subscriber_client attempts to create a client object using the provided credentials file."""
     WazuhGCloudSubscriber.get_subscriber_client("credentials.json")
     mock_credentials.assert_called_with("credentials.json")
+
+
+@patch('pubsub.subscriber.google.auth.default')
+@patch('pubsub.subscriber.pubsub.subscriber.Client')
+def test_WazuhGCloudSubscriber_get_subscriber_client_adc(mock_client, mock_auth_default):
+    """Test get_subscriber_client uses Application Default Credentials when no credentials file is provided."""
+    mock_credentials = MagicMock()
+    mock_auth_default.return_value = (mock_credentials, 'test_project')
+    WazuhGCloudSubscriber.get_subscriber_client(None)
+    mock_auth_default.assert_called_once()
+    mock_client.assert_called_once_with(credentials=mock_credentials)
 
 
 @patch('pubsub.subscriber.pubsub.subscriber.Client.from_service_account_file')
