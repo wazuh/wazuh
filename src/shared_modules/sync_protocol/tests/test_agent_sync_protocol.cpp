@@ -15,6 +15,7 @@
 #include "agent_sync_protocol_c_interface.h"
 #include "metadata_provider.h"
 
+#include <future>
 #include <optional>
 #include <thread>
 #include <iostream>
@@ -452,6 +453,106 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendStartFails)
                   );
 
     EXPECT_FALSE(result);
+}
+
+TEST_F(AgentSyncProtocolTest, SendStartWaitsUntilMetadataAvailable)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger,
+                                                   std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout),
+                                                   retries, maxEps, mockQueue);
+
+    protocol->persistDifferenceInMemory("id1", Operation::CREATE, "index1", "data1", 1);
+
+    // Remove metadata so provider returns -1 on the first polls
+    metadata_provider_reset();
+
+    std::atomic<bool> syncDone{false};
+    auto syncFuture = std::async(std::launch::async, [&]()
+    {
+        bool result = protocol->synchronizeModule(Mode::FULL);
+        syncDone = true;
+        return result;
+    });
+
+    // Let the thread enter the metadata polling loop
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    EXPECT_FALSE(syncDone.load()) << "Sync should be blocked waiting for metadata";
+
+    // Provide metadata - the polling loop should unblock
+    agent_metadata_t metadata = {};
+    strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
+    strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
+    strncpy(metadata.agent_version, "4.5.0", sizeof(metadata.agent_version) - 1);
+    strncpy(metadata.architecture, "x86_64", sizeof(metadata.architecture) - 1);
+    strncpy(metadata.hostname, "test-host", sizeof(metadata.hostname) - 1);
+    strncpy(metadata.os_name, "Linux", sizeof(metadata.os_name) - 1);
+    strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
+    strncpy(metadata.os_platform, "ubuntu", sizeof(metadata.os_platform) - 1);
+    strncpy(metadata.os_version, "5.10", sizeof(metadata.os_version) - 1);
+    char* groups[] = {const_cast<char*>("group1")};
+    metadata.groups = groups;
+    metadata.groups_count = 1;
+    metadata_provider_update(&metadata);
+
+    // Sync proceeds past the metadata wait and eventually times out on StartAck.
+    // Bound the wait: (retries + 1) * min_timeout for StartAck retries, plus margin.
+    constexpr auto testTimeout = std::chrono::seconds(10);
+
+    if (syncFuture.wait_for(testTimeout) == std::future_status::timeout)
+    {
+        protocol->stop();
+        syncFuture.wait();
+        FAIL() << "Sync thread did not finish in time; metadata unblocking may be broken";
+    }
+
+    EXPECT_FALSE(syncFuture.get()); // Times out on StartAck, but it did get past the metadata wait
+}
+
+TEST_F(AgentSyncProtocolTest, SendStartAbortedOnStopWhileWaitingForMetadata)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger,
+                                                   std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout),
+                                                   retries, maxEps, mockQueue);
+
+    protocol->persistDifferenceInMemory("id1", Operation::CREATE, "index1", "data1", 1);
+
+    // Remove metadata so provider returns -1 indefinitely
+    metadata_provider_reset();
+
+    auto syncFuture = std::async(std::launch::async, [&]()
+    {
+        return protocol->synchronizeModule(Mode::FULL);
+    });
+
+    // Let the thread enter the metadata polling loop
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // Request stop - cv.notify_all() wakes the wait_for immediately
+    protocol->stop();
+
+    // The thread should exit promptly; give it a generous bound to avoid CI flakiness
+    constexpr auto testTimeout = std::chrono::seconds(5);
+
+    if (syncFuture.wait_for(testTimeout) == std::future_status::timeout)
+    {
+        FAIL() << "Sync thread did not respond to stop() in time; stop handling may be broken";
+    }
+
+    EXPECT_FALSE(syncFuture.get());
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleStartFailDueToManager)
