@@ -140,6 +140,12 @@ class MetricsSnapshotTasks:
         self.frequency = master_interval.get(
             "metrics_frequency", self.DEFAULT_METRICS_FREQUENCY
         )
+        if 0 < self.frequency < self.DEFAULT_METRICS_FREQUENCY:
+            self.logger.warning(
+                f"Configured metrics_frequency ({self.frequency}s) is below the minimum allowed "
+                f"({self.DEFAULT_METRICS_FREQUENCY}s). The value will be clamped to "
+                f"{self.DEFAULT_METRICS_FREQUENCY}s (10m)."
+            )
         self.bulk_size = master_interval.get(
             "metrics_bulk_size", self.DEFAULT_METRICS_BULK_SIZE
         )
@@ -202,17 +208,20 @@ class MetricsSnapshotTasks:
         comms_data = []
         for node_name in all_node_names:
             try:
-                result = await DistributedAPI(
-                    f=get_daemons_stats,
-                    f_kwargs={
-                        "daemons_list": ["wazuh-manager-remoted"],
-                        "node_list": [node_name],
-                    },
-                    logger=self.logger,
-                    request_type="distributed_master",
-                    is_async=False,
-                    wait_for_complete=True,
-                ).distribute_function()
+                if node_name == local_node_name:
+                    result = get_daemons_stats(daemons_list=["wazuh-manager-remoted"])
+                else:
+                    result = await DistributedAPI(
+                        f=get_daemons_stats,
+                        f_kwargs={
+                            "daemons_list": ["wazuh-manager-remoted"],
+                            "node_list": [node_name],
+                        },
+                        logger=self.logger,
+                        request_type="distributed_master",
+                        is_async=False,
+                        wait_for_complete=True,
+                    ).distribute_function()
 
                 for item in getattr(result, "affected_items", []):
                     doc = dict(item)
@@ -239,6 +248,20 @@ class MetricsSnapshotTasks:
         return cleaned
 
     @staticmethod
+    def _to_iso(value) -> str | None:
+        """Convert a value to an ISO 8601 string.
+
+        Handles ``datetime`` objects returned by ``WazuhDBQueryAgents`` as
+        well as plain strings.  Returns *None* for falsy values so that
+        ``_drop_none`` can remove the field.
+        """
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value.strftime("%Y-%m-%dT%H:%M:%SZ")
+        return str(value) if value else None
+
+    @staticmethod
     def _normalize_agent_doc(doc: dict) -> dict:
         """Transform raw agent fields into the definitive index field names.
 
@@ -256,11 +279,11 @@ class MetricsSnapshotTasks:
         ip = doc.get("ip")
         raw_register_ip = doc.get("registerIP", "")
 
-        register_ip = "0.0.0.0/0" if raw_register_ip == "any" else (raw_register_ip or None)
+        register_ip = "0.0.0.0" if raw_register_ip == "any" else (raw_register_ip or None)
         group_config_status = doc.get("group_config_status", "")
 
         return MetricsSnapshotTasks._drop_none({
-            "@timestamp": doc.get("@timestamp"),
+            "@timestamp": MetricsSnapshotTasks._to_iso(doc.get("@timestamp")),
             "wazuh": {
                 "agent": {
                     "id": doc.get("id"),
@@ -269,9 +292,9 @@ class MetricsSnapshotTasks:
                     "groups": doc.get("group", []),
                     "status": doc.get("status"),
                     "status_code": doc.get("status_code"),
-                    "registered_at": doc.get("dateAdd"),
-                    "last_seen": doc.get("lastKeepAlive"),
-                    "disconnected_at": doc.get("disconnection_time") or None,
+                    "registered_at": MetricsSnapshotTasks._to_iso(doc.get("dateAdd")),
+                    "last_seen": MetricsSnapshotTasks._to_iso(doc.get("lastKeepAlive")),
+                    "disconnected_at": MetricsSnapshotTasks._to_iso(doc.get("disconnection_time")),
                     "register": {
                         "ip": register_ip
                     },
@@ -310,17 +333,25 @@ class MetricsSnapshotTasks:
         Parameters
         ----------
         doc : dict
-            Raw comms document from DAPI fan-out.
+            Raw comms document from DAPI fan-out.  Supports the v5.0 stats
+            format where metrics are nested under a ``metrics`` key.
 
         Returns
         -------
         dict
             Normalized document ready for indexing into ``wazuh-metrics-comms``.
         """
-        raw_queue_size = doc.get("queue_size")
+        # v5.0 nests stats under "metrics"; fall back to flat keys for compat
+        m = doc.get("metrics", {})
+        bytes_info = m.get("bytes", {})
+        queues = m.get("queues", {}).get("received", {})
+        msgs_recv = m.get("messages", {}).get("received_breakdown", {})
+        ctrl_bkdn = m.get("control_messages_queue_breakdown", {})
+
+        raw_queue_usage = queues.get("usage")
 
         return MetricsSnapshotTasks._drop_none({
-            "@timestamp": doc.get("@timestamp"),
+            "@timestamp": MetricsSnapshotTasks._to_iso(doc.get("@timestamp")),
             "wazuh": {
                 "cluster": {
                     "name": doc.get("wazuh.cluster.name"),
@@ -330,32 +361,37 @@ class MetricsSnapshotTasks:
                     "version": MetricsSnapshotTasks.SCHEMA_VERSION
                 }
             },
+            "event": {
+                "module": "remoted"
+            },
             "events": {
-                "module": "remoted",
-                "total": doc.get("evt_count")
+                "total": msgs_recv.get("event") or doc.get("evt_count")
             },
             "queue": {
-                "usage": str(raw_queue_size) if raw_queue_size is not None else None,
-                "capacity": doc.get("total_queue_size")
+                "size": raw_queue_usage,
+                "capacity": queues.get("size") or doc.get("total_queue_size")
             },
             "tcp": {
-                "sessions": doc.get("tcp_sessions")
+                "sessions": m.get("tcp_sessions") or doc.get("tcp_sessions")
             },
             "discarded": {
-                "total": doc.get("discarded_count")
+                "total": msgs_recv.get("discarded") or doc.get("discarded_count")
             },
             "network": {
-                "egress": {"bytes": doc.get("sent_bytes")},
-                "ingress": {"bytes": doc.get("recv_bytes")}
+                "egress": {"bytes": bytes_info.get("sent") or doc.get("sent_bytes")},
+                "ingress": {"bytes": bytes_info.get("received") or doc.get("recv_bytes")}
             },
             "messages": {
-                "total": doc.get("ctrl_msg_count"),
+                "total": m.get("messages", {}).get("received_breakdown", {}).get("control")
+                         or doc.get("ctrl_msg_count"),
                 "control": {
-                    "dropped_on_close": {"total": doc.get("dequeued_after_close")},
-                    "usage": doc.get("ctrl_msg_queue_usage"),
-                    "received": {"total": doc.get("ctrl_msg_queue_inserted")},
-                    "replaced": {"total": doc.get("ctrl_msg_queue_replaced")},
-                    "processed": {"total": doc.get("ctrl_msg_processed")}
+                    "dropped_on_close": {
+                        "total": msgs_recv.get("dequeued_after") or doc.get("dequeued_after_close")
+                    },
+                    "usage": m.get("control_messages_queue_usage") or doc.get("ctrl_msg_queue_usage"),
+                    "received": {"total": ctrl_bkdn.get("inserted") or doc.get("ctrl_msg_queue_inserted")},
+                    "replaced": {"total": ctrl_bkdn.get("replaced") or doc.get("ctrl_msg_queue_replaced")},
+                    "processed": {"total": ctrl_bkdn.get("processed") or doc.get("ctrl_msg_processed")}
                 }
             }
         })
