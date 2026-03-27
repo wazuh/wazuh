@@ -86,42 +86,26 @@ eTester::Result fromOutput(const ::router::test::Output& output)
     return result;
 }
 
-base::RespOrError<std::pair<json::Json, json::Json>>
-parseAndValidatePublicMetadata(const google::protobuf::Struct& protoMetadata)
+std::variant<std::string,json::Json> validatePublicMetadata(const json::Json& metadataObj)
 {
-    auto metadataOrError = eMessage::eStructToJson(protoMetadata);
-    if (std::holds_alternative<base::Error>(metadataOrError))
+    // Empty metadata is allowed
+    if (metadataObj.isEmpty())
     {
-        return base::Error {
-            fmt::format("Error converting metadata to JSON: {}", std::get<base::Error>(metadataOrError).message)};
+        return json::Json("{}");
     }
 
-    const auto& metadata = std::get<json::Json>(metadataOrError);
-    if (!metadata.isObject())
+    if (metadataObj.size() > 1)
     {
-        return base::Error {"Metadata must be a JSON object"};
+        return "If not empty metadata must contain only 'wazuh' as the top-level key";
     }
 
-    if (metadata.size() > 1)
+    auto wazuhMetadataObject = metadataObj.getJson("/wazuh");
+    if (!wazuhMetadataObject.has_value())
     {
-        return base::Error {"If not empty metadata must contain only 'wazuh' as the top-level key"};
+        return "Metadata should contain 'wazuh' as root";
     }
 
-    // Empty metadata is allowed, but in that case we return an empty object for the 'wazuh' metadata
-    // to avoid issues in the protocol handler
-    if (metadata.isEmpty())
-    {
-        return std::make_pair(json::Json("{}"), json::Json("{}"));
-    }
-
-    auto wazuhMetadataObject = metadata.getJson("/wazuh");
-    auto wazuhRootObjectOpt = wazuhMetadataObject ? wazuhMetadataObject->getJson() : std::nullopt;
-    if (!wazuhMetadataObject.has_value() || !wazuhMetadataObject->isObject())
-    {
-        return base::Error {"Metadata must be a non-empty object with 'wazuh' as root"};
-    }
-
-    return std::make_pair(std::move(metadata), std::move(wazuhMetadataObject.value()));
+    return wazuhMetadataObject.value();
 }
 
 bool validateMetadataLeaves(const json::Json& node,
@@ -811,6 +795,29 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
         std::string eventStr {};
         if (protoReq.has_metadata())
         {
+            // Convert protobuf Struct to json::Json
+            auto metadataOrError = eMessage::eStructToJson(protoReq.metadata());
+            if (std::holds_alternative<base::Error>(metadataOrError))
+            {
+                res = adapter::userErrorResponse<ResponseType>(fmt::format(
+                    "Error converting metadata to JSON: {}", std::get<base::Error>(metadataOrError).message));
+                return;
+            }
+
+            const auto& metadata = std::get<json::Json>(metadataOrError);
+            if (!metadata.isObject())
+            {
+                res = adapter::userErrorResponse<ResponseType>("Metadata must be a JSON object");
+                return;
+            }
+
+            auto errorOrMetadata = validatePublicMetadata(metadata);
+            if (std::holds_alternative<std::string>(errorOrMetadata))
+            {
+                res = adapter::userErrorResponse<ResponseType>(std::get<std::string>(errorOrMetadata));
+                return;
+            }
+
             // Ensure schemaValidator is available
             auto schemaValidatorLocked = wSchemaValidator.lock();
             if (!schemaValidatorLocked)
@@ -819,19 +826,10 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
                 return;
             }
 
-            auto metadataOrError = parseAndValidatePublicMetadata(protoReq.metadata());
-            if (base::isError(metadataOrError))
-            {
-                res = adapter::userErrorResponse<ResponseType>(base::getError(metadataOrError).message);
-                return;
-            }
-
-            auto [tempMetadata, wazuhMetadataObject] = base::getResponse(metadataOrError);
-            metadata = std::move(tempMetadata);
-
             std::string badFieldMsg {};
             std::string metadataPath {"wazuh"};
-            if (!validateMetadataLeaves(wazuhMetadataObject, schemaValidatorLocked, metadataPath, badFieldMsg))
+            auto metadataObj = std::get<json::Json>(errorOrMetadata);
+            if (!validateMetadataLeaves(metadataObj, schemaValidatorLocked, metadataPath, badFieldMsg))
             {
                 res = adapter::userErrorResponse<ResponseType>(badFieldMsg);
                 return;
