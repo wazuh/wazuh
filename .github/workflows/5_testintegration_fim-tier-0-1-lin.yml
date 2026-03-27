@@ -142,28 +142,6 @@ jobs:
             { print }
           ' /var/ossec/etc/ossec.conf > /tmp/ossec.conf.fixed && sudo mv /tmp/ossec.conf.fixed /var/ossec/etc/ossec.conf
 
-          sudo awk '
-            /<wodle name="syscollector">/ { in_block=1; next }
-            /<\/wodle>/ && in_block { in_block=0; next }
-            in_block { next }
-            { print }
-          ' /var/ossec/etc/ossec.conf > /tmp/ossec.conf.fixed && sudo mv /tmp/ossec.conf.fixed /var/ossec/etc/ossec.conf
-
-          sudo awk '
-            /<localfile>/ { in_block=1; buf=""; next }
-            /<\/localfile>/ && in_block {
-              in_block=0
-              if (buf !~ /journald/ && buf !~ /active-responses\.log/ && buf !~ /\/var\/log\/dpkg\.log/) {
-                print "<localfile>"
-                printf "%s", buf
-                print "  </localfile>"
-              }
-              next
-            }
-            in_block { buf = buf $0 "\n"; next }
-            { print }
-          ' /var/ossec/etc/ossec.conf > /tmp/ossec.conf.fixed && sudo mv /tmp/ossec.conf.fixed /var/ossec/etc/ossec.conf
-
           echo "AFTER"
 
           sudo cat /var/ossec/etc/ossec.conf
