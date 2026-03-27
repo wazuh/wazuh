@@ -127,6 +127,42 @@ private:
     }
 
     /**
+     * @brief Invalidates the stored cursor so the next cycle is forced to perform a full load.
+     */
+    void invalidateCursor(UpdaterContext& context) const
+    {
+        context.data.erase("cursor");
+
+        if (!context.spUpdaterBaseContext->spRocksDB)
+        {
+            return;
+        }
+
+        logWarn(WM_CONTENTUPDATER,
+                "IndexerDownloader: invalidating stored cursor and forcing a full reload on the next attempt.");
+        context.spUpdaterBaseContext->spRocksDB->put(
+            Utils::getCompactTimestamp(std::time(nullptr)), "0", Components::Columns::CURRENT_OFFSET);
+    }
+
+    /**
+     * @brief Sends the final completion signal so the consumer can validate the downloaded feed.
+     *
+     * Returns true only when the consumer confirms that the feed is ready to be used.
+     */
+    bool sendCompletionSignal(UpdaterContext& context, const size_t totalProcessed) const
+    {
+        const auto cursor = context.data.value("cursor", std::string {});
+        nlohmann::json finalMsg;
+        finalMsg["type"] = "indexer_complete";
+        finalMsg["cursor"] = cursor;
+        finalMsg["changed"] = (totalProcessed > 0);
+        finalMsg["data"] = nlohmann::json::array();
+
+        const auto result = context.spUpdaterBaseContext->fileProcessingCallback(std::move(finalMsg));
+        return std::get<2>(result);
+    }
+
+    /**
      * @brief Returns the last cursor persisted in RocksDB, or empty string on first run.
      */
     std::string getStoredCursor(const UpdaterContext& context) const
@@ -514,7 +550,7 @@ private:
             if (totalProcessed > 0)
             {
                 logInfo(WM_CONTENTUPDATER,
-                        "IndexerDownloader: Initial load complete — %zu documents, cursor: '%s'",
+                        "IndexerDownloader: Initial load download phase complete — %zu documents, cursor: '%s'",
                         totalProcessed,
                         context.data.value("cursor", std::string {}).c_str());
                 return totalProcessed;
@@ -554,7 +590,7 @@ private:
         const size_t totalProcessed = fetchWithPit(context, query, lastCursor);
 
         logInfo(WM_CONTENTUPDATER,
-                "IndexerDownloader: Incremental update complete — %zu documents, new cursor: '%s'",
+                "IndexerDownloader: Incremental update download phase complete — %zu documents, new cursor: '%s'",
                 totalProcessed,
                 context.data.value("cursor", std::string {}).c_str());
         return totalProcessed;
@@ -602,8 +638,9 @@ public:
             }
         }
 
+        const bool forceInitialLoad = lastCursor.empty();
         size_t totalProcessed = 0;
-        if (lastCursor.empty())
+        if (forceInitialLoad)
         {
             totalProcessed = initialLoad(*context);
         }
@@ -619,22 +656,12 @@ public:
             return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
         }
 
-        // Signal completion to DatabaseFeedManager so it can write the feed-complete
-        // sentinel and optionally trigger a rescan.  The "changed" field tells
-        // DatabaseFeedManager whether the feed actually changed: the sentinel is written
-        // regardless, but the agent rescan is only triggered when changed=true so that a
-        // manager restart with no new CVE data does not cause an unnecessary full rescan.
-        const auto cursor = context->data.value("cursor", std::string {});
-        nlohmann::json finalMsg;
-        finalMsg["type"] = "indexer_complete";
-        finalMsg["cursor"] = cursor;
-        finalMsg["changed"] = (totalProcessed > 0);
-        finalMsg["data"] = nlohmann::json::array();
-        const auto result = context->spUpdaterBaseContext->fileProcessingCallback(std::move(finalMsg));
-        if (!std::get<2>(result))
+        if (!sendCompletionSignal(*context, totalProcessed))
         {
+            invalidateCursor(*context);
             logWarn(WM_CONTENTUPDATER,
-                    "IndexerDownloader: post-download reload/rescan signal returned failure (non-fatal).");
+                    "IndexerDownloader: downloaded feed is not ready after completion validation. "
+                    "The stored cursor was invalidated and the next scheduler cycle will perform a full reload.");
         }
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
