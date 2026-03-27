@@ -13,17 +13,14 @@ auto BUILD_YEAR = std::string(__DATE__).substr(7);
 
 auto initAndGetDateParser() -> hlp::ParserBuilder
 {
-    return [](const hlp::Params& params)
+    logging::testInit();
+    static bool hasInitiated = false;
+    if (!hasInitiated)
     {
-        logging::testInit();
-        static bool hasInitiated = false;
-        if (!hasInitiated)
-        {
-            hlp::initTZDB(HLP_TEST_TZDB_PATH, false);
-            hasInitiated = true;
-        }
-        return hlp::parsers::getDateParser(params);
-    };
+        hlp::initTZDB(HLP_TEST_TZDB_PATH, false);
+        hasInitiated = true;
+    }
+    return hlp::parsers::getDateParser;
 };
 
 INSTANTIATE_TEST_SUITE_P(

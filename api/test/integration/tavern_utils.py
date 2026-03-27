@@ -404,7 +404,7 @@ def check_agentd_started(response, agents_list, restarted=True):
         agentd_started_regex = (
             re.compile(r"agentd.+Started")
             if restarted
-            else re.compile(r"agentd.+(Reload|Started)")
+            else re.compile(r"agentd.+(Reload|reloading|Started)")
         )
         while tries < 80:
             try:
