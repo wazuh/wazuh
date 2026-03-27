@@ -5,6 +5,7 @@
 import pytest
 import sys
 
+from wazuh_testing.constants.paths.configurations import WAZUH_CONF_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.modulesd import patterns
