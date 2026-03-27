@@ -8,6 +8,10 @@ on:
         required: true
         default: 'main'
   pull_request:
+    branches:
+      - main
+    branches:
+      - main
     paths:
         - ".github/workflows/5_testintegration_agentd-tier-0-1-win.yml"
         - "src/client-agent/**"
