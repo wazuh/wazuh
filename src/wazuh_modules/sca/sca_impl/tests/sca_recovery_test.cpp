@@ -40,6 +40,10 @@ class SCARecoveryTest : public ::testing::Test
         {
             m_logOutput.clear();
 
+            // Create directory for shared memory file (required on Unix/macOS)
+            // The metadata provider uses "var/run/.wazuh_agent_metadata" as shared memory path
+            std::filesystem::create_directories("var/run");
+
             // Set up logging callback
             LoggingHelper::setLogCallback([this](const modules_log_level_t /* level */, const std::string & log)
             {
