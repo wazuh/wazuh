@@ -210,7 +210,7 @@ int main(int argc, char **argv)
     }
     if (agt->max_time_reconnect_try <= agt->notify_time) {
         agt->max_time_reconnect_try = (agt->notify_time * 3);
-        minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
+        mdebug1("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
 
     /* Check if the user/group given are valid */

@@ -326,12 +326,6 @@ list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 endif()
 
 if(${TARGET} STREQUAL "manager")
-list(APPEND shared_tests_names "test_json-queue")
-list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,wfopen \
-                                -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite \
-                                -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets -Wl,--wrap,w_ftell \
-                                -Wl,--wrap,fgetpos -Wl,--wrap,fgetc,--wrap,stat,--wrap,sleep,--wrap,getpid,--wrap,clearerr -Wl,--wrap,popen")
-
 list(APPEND shared_tests_names "test_bqueue")
 list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug2")
 

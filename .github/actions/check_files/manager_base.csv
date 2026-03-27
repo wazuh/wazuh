@@ -102,7 +102,6 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/wazuh-manager/logs/api,wazuh-manager,wazuh-manager,750,directory,drwxr-x---,,
 /var/wazuh-manager/logs/archives,wazuh-manager,wazuh-manager,750,directory,drwxr-x---,,
 /var/wazuh-manager/logs/cluster,wazuh-manager,wazuh-manager,750,directory,drwxr-x---,,
-/var/wazuh-manager/logs/firewall,wazuh-manager,wazuh-manager,750,directory,drwxr-x---,,
 /var/wazuh-manager/logs/wazuh,wazuh-manager,wazuh-manager,750,directory,drwxr-x---,,
 /var/wazuh-manager/logs/wazuh-manager.json,wazuh-manager,wazuh-manager,660,file,-rw-rw----,,
 /var/wazuh-manager/logs/wazuh-manager.log,wazuh-manager,wazuh-manager,660,file,-rw-rw----,,

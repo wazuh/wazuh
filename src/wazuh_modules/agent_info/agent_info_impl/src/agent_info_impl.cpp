@@ -156,7 +156,7 @@ AgentInfoImpl::~AgentInfoImpl()
 
 void AgentInfoImpl::start(int interval, int integrityInterval, std::function<bool()> shouldContinue)
 {
-    m_logFunction(LOG_INFO,
+    m_logFunction(LOG_DEBUG,
                   "AgentInfo module started with interval: " + std::to_string(interval) +
                   " seconds, integrity interval: " + std::to_string(integrityInterval) + " seconds.");
 
@@ -303,7 +303,7 @@ void AgentInfoImpl::initSyncProtocol(const std::string& moduleName, const MQ_Fun
                                                                m_syncRetries,
                                                                m_syncMaxEps,
                                                                nullptr);
-        m_logFunction(LOG_INFO, "Agent-info sync protocol initialized with only in-memory synchronization");
+        m_logFunction(LOG_DEBUG, "Agent-info sync protocol initialized with only in-memory synchronization");
     }
     catch (const std::exception& ex)
     {
@@ -1847,7 +1847,7 @@ bool AgentInfoImpl::shouldPerformIntegrityCheck(const std::string& table, int in
         // Release lock before calling updateLastIntegrityTime to avoid deadlock
         lock.unlock();
         updateLastIntegrityTime(table);
-        m_logFunction(LOG_INFO, "Initialized integrity check timestamp for " + table);
+        m_logFunction(LOG_DEBUG, "Initialized integrity check timestamp for " + table);
         return false;
     }
 
@@ -1892,7 +1892,7 @@ void AgentInfoImpl::updateLastIntegrityTime(const std::string& table)
         }
 
         updateDbMetadata();
-        m_logFunction(LOG_INFO, "Updated last integrity check time for " + table);
+        m_logFunction(LOG_DEBUG, "Updated last integrity check time for " + table);
     }
     catch (const std::exception& e)
     {

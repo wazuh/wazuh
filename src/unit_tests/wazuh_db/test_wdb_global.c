@@ -6726,7 +6726,7 @@ void test_wdb_global_create_backup_success(void **state) {
     will_return(__wrap_w_compress_gzfile, OS_SUCCESS);
     expect_string(__wrap_unlink, file, "backup/db/global.db-backup-2015-11-23-12:00:00-tag");
     will_return(__wrap_unlink, OS_SUCCESS);
-    expect_string(__wrap__minfo, formatted_msg, "Created Global database backup \"backup/db/global.db-backup-2015-11-23-12:00:00-tag.gz\"");
+    expect_string(__wrap__mdebug1, formatted_msg, "Created Global database backup \"backup/db/global.db-backup-2015-11-23-12:00:00-tag.gz\"");
     cJSON* j_path = __real_cJSON_CreateArray();
     will_return(__wrap_cJSON_CreateArray, j_path);
     expect_function_call(__wrap_cJSON_Delete);

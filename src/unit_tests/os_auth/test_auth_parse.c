@@ -36,7 +36,7 @@ void set_expected_log (mocked_log* log) {
             expect_string(__wrap__mwarn, formatted_msg, log->mwarn);
     }
     if (log->minfo) {
-            expect_string(__wrap__minfo, formatted_msg, log->minfo);
+            expect_string(__wrap__mdebug1, formatted_msg, log->minfo);
     }
     if (log->mdebug) {
             expect_string(__wrap__mdebug1, formatted_msg, log->mdebug);
