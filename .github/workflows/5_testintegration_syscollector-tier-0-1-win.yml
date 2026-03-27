@@ -8,14 +8,8 @@ on:
         required: true
         default: 'main'
   pull_request:
-    paths:
-        - ".github/workflows/5_testintegration_syscollector-tier-0-1-win.yml"
-        - "src/config/src/wmodules-syscollector.c"
-        - "src/wazuh_modules/syscollector/**"
-        - "src/win32/**"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_syscollector/**"
+    branches:
+      - main
 
 jobs:
   # Build the winagent on linux.

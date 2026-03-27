@@ -8,15 +8,8 @@ on:
         required: true
         default: 'main'
   pull_request:
-    paths:
-        - ".github/workflows/5_testintegration_github-tier-0-1-win.yml"
-        - "src/config/src/wmodules-github.c"
-        - "src/wazuh_modules/src/wm_github.h"
-        - "src/wazuh_modules/src/wm_github.c"
-        - "src/win32/**"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_github/**"
+    branches:
+      - main
 
 jobs:
   # Build the winagent on linux.

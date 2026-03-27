@@ -8,14 +8,8 @@ on:
         required: true
         default: 'main'
   pull_request:
-    paths:
-        - ".github/workflows/5_testintegration_logcollector-tier-0-1-win.yml"
-        - "src/config/src/localfile-config.c"
-        - "src/config/include/localfile-config.h"
-        - "src/logcollector/**"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_logcollector/**"
+    branches:
+      - main
 
 jobs:
   # Build the winagent on linux.

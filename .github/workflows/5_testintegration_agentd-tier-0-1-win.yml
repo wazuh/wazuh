@@ -8,16 +8,8 @@ on:
         required: true
         default: 'main'
   pull_request:
-    paths:
-        - ".github/workflows/5_testintegration_agentd-tier-0-1-win.yml"
-        - "src/client-agent/**"
-        - "src/config/src/buffer-config.c"
-        - "src/config/src/client-config.c"
-        - "src/config/include/client-config.h"
-        - "src/win32/**"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_agentd/**"
+    branches:
+      - main
 
 jobs:
   # Build the winagent on linux.
