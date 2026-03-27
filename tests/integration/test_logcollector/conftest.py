@@ -4,9 +4,11 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
            This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 '''
 import pytest
+import sys
 
 from os.path import join as path_join
 
+from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.paths import WAZUH_PATH
 from wazuh_testing.constants.paths.configurations import WAZUH_CONF_PATH
@@ -93,13 +95,13 @@ def reset_ofe_status(request: pytest.FixtureRequest, test_metadata: dict):
 
         status: dict = { "timestamp": str(epoch_timestamp) }
         return status
-        
+
     # File status for logcollector
     file_status: dict = {}
 
     # Configure the file status for each logreader
     file_status['journald'] = get_ofe_journald()
-    
+
     # Write the file status
     write_json_file(LOGCOLLECTOR_OFE_PATH, file_status)
 
@@ -113,3 +115,31 @@ def pre_send_journal_logs(request: pytest.FixtureRequest, test_metadata: dict):
     else:
         for log_message in test_metadata['pre_input_logs']:
             send_log_to_journal(log_message)
+
+@pytest.fixture(scope="session", autouse=True)
+def fix_ossec_conf_multiple_roots():
+    """Temporary fix: DEB/RPM packages install ossec.conf with two <ossec_config> root
+    blocks. The test framework's XML parser only supports a single root element, so we
+    merge both blocks by removing the closing tag of the first block and the opening tag
+    of the second block before the test session begins.
+    """
+    if sys.platform == WINDOWS:
+        return
+
+    try:
+        with open(WAZUH_CONF_PATH, 'r') as f:
+            content = f.read()
+
+        # Only act when two root blocks are present
+        if content.count('</ossec_config>') < 2:
+            return
+
+        # Remove the boundary between the two blocks: </ossec_config>...<ossec_config>
+        import re
+        fixed = re.sub(r'</ossec_config>\s*<ossec_config>', '', content, count=1)
+
+        with open(WAZUH_CONF_PATH, 'w') as f:
+            f.write(fixed)
+    except OSError:
+        # Not installed or no permission — tests will fail on their own if needed
+        pass
