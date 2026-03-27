@@ -35,39 +35,49 @@ _OPENSEARCH_TO_JSONSCHEMA_TYPE: dict[str, dict] = {
 }
 
 
-def _flatten_opensearch_properties(properties: dict, prefix: str = "") -> dict:
-    """Recursively flatten nested OpenSearch mapping properties to dotted keys.
+def _build_jsonschema_properties(properties: dict) -> dict:
+    """Recursively convert OpenSearch properties to nested JSON Schema properties.
 
     Parameters
     ----------
     properties : dict
         The ``properties`` section of an OpenSearch index mapping.
-    prefix : str
-        Dot-separated path prefix accumulated during recursion.
 
     Returns
     -------
     dict
-        A flat mapping of dotted field paths to their OpenSearch field
-        definitions, e.g. ``{"wazuh.agent.id": {"type": "keyword"}}``.
+        A nested mapping of fields to their JSON Schema field definitions.
     """
-    flat: dict = {}
-    for key, value in properties.items():
-        full_key = f"{prefix}.{key}" if prefix else key
-        if "properties" in value:
-            flat.update(_flatten_opensearch_properties(value["properties"], full_key))
+    json_schema_props: dict = {}
+    for field, mapping in properties.items():
+        if "properties" in mapping:
+            nested_schema = {
+                "type": "object",
+                "properties": _build_jsonschema_properties(mapping["properties"]),
+            }
+            if mapping.get("dynamic") == "strict":
+                nested_schema["additionalProperties"] = False
+            json_schema_props[field] = nested_schema
         else:
-            flat[full_key] = value
-    return flat
+            os_type = mapping.get("type", "")
+            base_type = _OPENSEARCH_TO_JSONSCHEMA_TYPE.get(os_type)
+            if base_type:
+                json_schema_props[field] = {
+                    "anyOf": [
+                        base_type,
+                        {"type": "array", "items": base_type}
+                    ]
+                }
+            else:
+                json_schema_props[field] = {}
+    return json_schema_props
 
 
 def _opensearch_template_to_jsonschema(template: dict) -> dict:
-    """Convert an OpenSearch index template to a flat JSON Schema.
+    """Convert an OpenSearch index template to a nested JSON Schema.
 
-    The document format used by ``MetricsSnapshotTasks`` stores all fields
-    as top-level dotted keys (e.g. ``"wazuh.agent.id"``).  This function
-    flattens the nested OpenSearch mapping properties to produce a JSON
-    Schema that can validate those flat-key documents directly.
+    This function parses the nested OpenSearch mapping properties to produce a JSON
+    Schema that can validate nested document objects directly.
 
     Parameters
     ----------
@@ -92,27 +102,9 @@ def _opensearch_template_to_jsonschema(template: dict) -> dict:
     if not properties:
         return {}
 
-    flat_props = _flatten_opensearch_properties(properties)
-    if not flat_props:
-        return {}
-
-    json_schema_props: dict = {}
-    for field, mapping in flat_props.items():
-        os_type = mapping.get("type", "")
-        base_type = _OPENSEARCH_TO_JSONSCHEMA_TYPE.get(os_type)
-        if base_type:
-            json_schema_props[field] = {
-                "anyOf": [
-                    base_type,
-                    {"type": "array", "items": base_type}
-                ]
-            }
-        else:
-            json_schema_props[field] = {}
-
     schema: dict = {
         "type": "object",
-        "properties": json_schema_props,
+        "properties": _build_jsonschema_properties(properties),
     }
 
     # OpenSearch "strict" dynamic mode disallows unknown fields.
@@ -148,6 +140,12 @@ class MetricsSnapshotTasks:
         self.frequency = master_interval.get(
             "metrics_frequency", self.DEFAULT_METRICS_FREQUENCY
         )
+        if 0 < self.frequency < self.DEFAULT_METRICS_FREQUENCY:
+            self.logger.warning(
+                f"Configured metrics_frequency ({self.frequency}s) is below the minimum allowed "
+                f"({self.DEFAULT_METRICS_FREQUENCY}s). The value will be clamped to "
+                f"{self.DEFAULT_METRICS_FREQUENCY}s (10m)."
+            )
         self.bulk_size = master_interval.get(
             "metrics_bulk_size", self.DEFAULT_METRICS_BULK_SIZE
         )
@@ -210,17 +208,20 @@ class MetricsSnapshotTasks:
         comms_data = []
         for node_name in all_node_names:
             try:
-                result = await DistributedAPI(
-                    f=get_daemons_stats,
-                    f_kwargs={
-                        "daemons_list": ["wazuh-manager-remoted"],
-                        "node_list": [node_name],
-                    },
-                    logger=self.logger,
-                    request_type="distributed_master",
-                    is_async=False,
-                    wait_for_complete=True,
-                ).distribute_function()
+                if node_name == local_node_name:
+                    result = get_daemons_stats(daemons_list=["wazuh-manager-remoted"])
+                else:
+                    result = await DistributedAPI(
+                        f=get_daemons_stats,
+                        f_kwargs={
+                            "daemons_list": ["wazuh-manager-remoted"],
+                            "node_list": [node_name],
+                        },
+                        logger=self.logger,
+                        request_type="distributed_master",
+                        is_async=False,
+                        wait_for_complete=True,
+                    ).distribute_function()
 
                 for item in getattr(result, "affected_items", []):
                     doc = dict(item)
@@ -237,7 +238,28 @@ class MetricsSnapshotTasks:
 
     @staticmethod
     def _drop_none(doc: dict) -> dict:
-        return {k: v for k, v in doc.items() if v is not None}
+        """Recursively drop None values from a dictionary."""
+        cleaned = {}
+        for k, v in doc.items():
+            if isinstance(v, dict):
+                v = MetricsSnapshotTasks._drop_none(v)
+            if v is not None:
+                cleaned[k] = v
+        return cleaned
+
+    @staticmethod
+    def _to_iso(value) -> str | None:
+        """Convert a value to an ISO 8601 string.
+
+        Handles ``datetime`` objects returned by ``WazuhDBQueryAgents`` as
+        well as plain strings.  Returns *None* for falsy values so that
+        ``_drop_none`` can remove the field.
+        """
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value.strftime("%Y-%m-%dT%H:%M:%SZ")
+        return str(value) if value else None
 
     @staticmethod
     def _normalize_agent_doc(doc: dict) -> dict:
@@ -256,31 +278,52 @@ class MetricsSnapshotTasks:
         os_fields = doc.get("os", {})
         ip = doc.get("ip")
         raw_register_ip = doc.get("registerIP", "")
-        register_ip = "0.0.0.0/0" if raw_register_ip == "any" else (raw_register_ip or None)
+
+        register_ip = "0.0.0.0" if raw_register_ip == "any" else (raw_register_ip or None)  # nosec B104
         group_config_status = doc.get("group_config_status", "")
 
         return MetricsSnapshotTasks._drop_none({
-            "@timestamp": doc.get("@timestamp"),
-            "wazuh.agent.id": doc.get("id"),
-            "wazuh.agent.name": doc.get("name"),
-            "wazuh.agent.version": doc.get("version"),
-            "wazuh.agent.groups": doc.get("group", []),
-            "wazuh.agent.host.ip": [ip] if ip else [],
-            "wazuh.agent.register.ip": register_ip,
-            "wazuh.agent.status": doc.get("status"),
-            "wazuh.agent.status_code": doc.get("status_code"),
-            "wazuh.agent.registered_at": doc.get("dateAdd"),
-            "wazuh.agent.last_seen": doc.get("lastKeepAlive"),
-            "wazuh.agent.disconnected_at": doc.get("disconnection_time") or None,
-            "wazuh.agent.config.group.synced": group_config_status == "synced",
-            "wazuh.agent.config.group.hash.md5": doc.get("mergedSum"),
-            "wazuh.agent.host.architecture": os_fields.get("arch"),
-            "wazuh.agent.host.os.name": os_fields.get("name"),
-            "wazuh.agent.host.os.version": os_fields.get("version"),
-            "wazuh.agent.host.os.platform": os_fields.get("platform"),
-            "wazuh.cluster.name": doc.get("wazuh.cluster.name"),
-            "wazuh.cluster.node": doc.get("wazuh.cluster.node"),
-            "wazuh.schema.version": MetricsSnapshotTasks.SCHEMA_VERSION,
+            "@timestamp": MetricsSnapshotTasks._to_iso(doc.get("@timestamp")),
+            "wazuh": {
+                "agent": {
+                    "id": doc.get("id"),
+                    "name": doc.get("name"),
+                    "version": doc.get("version"),
+                    "groups": doc.get("group", []),
+                    "status": doc.get("status"),
+                    "status_code": doc.get("status_code"),
+                    "registered_at": MetricsSnapshotTasks._to_iso(doc.get("dateAdd")),
+                    "last_seen": MetricsSnapshotTasks._to_iso(doc.get("lastKeepAlive")),
+                    "disconnected_at": doc.get("disconnection_time") or None,
+                    "register": {
+                        "ip": register_ip
+                    },
+                    "host": {
+                        "ip": [ip] if ip else [],
+                        "architecture": os_fields.get("arch"),
+                        "os": {
+                            "name": os_fields.get("name"),
+                            "version": os_fields.get("version"),
+                            "platform": os_fields.get("platform"),
+                            "full": os_fields.get("uname")
+                        }
+                    },
+                    "config": {
+                        "hash": {"md5": doc.get("configSum")},
+                        "group": {
+                            "synced": group_config_status == "synced",
+                            "hash": {"md5": doc.get("mergedSum")}
+                        }
+                    }
+                },
+                "cluster": {
+                    "name": doc.get("wazuh.cluster.name"),
+                    "node": doc.get("wazuh.cluster.node")
+                },
+                "schema": {
+                    "version": MetricsSnapshotTasks.SCHEMA_VERSION
+                }
+            }
         })
 
     @staticmethod
@@ -290,34 +333,67 @@ class MetricsSnapshotTasks:
         Parameters
         ----------
         doc : dict
-            Raw comms document from DAPI fan-out.
+            Raw comms document from DAPI fan-out.  Supports the v5.0 stats
+            format where metrics are nested under a ``metrics`` key.
 
         Returns
         -------
         dict
             Normalized document ready for indexing into ``wazuh-metrics-comms``.
         """
-        raw_queue_size = doc.get("queue_size")
+        # v5.0 nests stats under "metrics"; fall back to flat keys for compat
+        m = doc.get("metrics", {})
+        bytes_info = m.get("bytes", {})
+        queues = m.get("queues", {}).get("received", {})
+        msgs_recv = m.get("messages", {}).get("received_breakdown", {})
+        ctrl_bkdn = m.get("control_messages_queue_breakdown", {})
+
+        raw_queue_usage = queues.get("usage")
 
         return MetricsSnapshotTasks._drop_none({
-            "@timestamp": doc.get("@timestamp"),
-            "wazuh.cluster.name": doc.get("wazuh.cluster.name"),
-            "wazuh.cluster.node": doc.get("wazuh.cluster.node"),
-            "wazuh.schema.version": MetricsSnapshotTasks.SCHEMA_VERSION,
-            "events.module": "remoted",
-            "queue.usage": str(raw_queue_size) if raw_queue_size is not None else None,
-            "queue.capacity": doc.get("total_queue_size"),
-            "tcp.sessions": doc.get("tcp_sessions"),
-            "discarded.total": doc.get("discarded_count"),
-            "events.total": doc.get("evt_count"),
-            "network.egress.bytes": doc.get("sent_bytes"),
-            "network.ingress.bytes": doc.get("recv_bytes"),
-            "messages.total": doc.get("ctrl_msg_count"),
-            "messages.control.dropped_on_close.total": doc.get("dequeued_after_close"),
-            "messages.control.usage": doc.get("ctrl_msg_queue_usage"),
-            "messages.control.received.total": doc.get("ctrl_msg_queue_inserted"),
-            "messages.control.replaced.total": doc.get("ctrl_msg_queue_replaced"),
-            "messages.control.processed.total": doc.get("ctrl_msg_processed"),
+            "@timestamp": MetricsSnapshotTasks._to_iso(doc.get("@timestamp")),
+            "wazuh": {
+                "cluster": {
+                    "name": doc.get("wazuh.cluster.name"),
+                    "node": doc.get("wazuh.cluster.node")
+                },
+                "schema": {
+                    "version": MetricsSnapshotTasks.SCHEMA_VERSION
+                }
+            },
+            "event": {
+                "module": "remoted"
+            },
+            "events": {
+                "total": msgs_recv.get("event") or doc.get("evt_count")
+            },
+            "queue": {
+                "size": raw_queue_usage if raw_queue_usage is not None else doc.get("queue_size"),
+                "capacity": queues.get("size") or doc.get("total_queue_size")
+            },
+            "tcp": {
+                "sessions": m.get("tcp_sessions") or doc.get("tcp_sessions")
+            },
+            "discarded": {
+                "total": msgs_recv.get("discarded") or doc.get("discarded_count")
+            },
+            "network": {
+                "egress": {"bytes": bytes_info.get("sent") or doc.get("sent_bytes")},
+                "ingress": {"bytes": bytes_info.get("received") or doc.get("recv_bytes")}
+            },
+            "messages": {
+                "total": m.get("messages", {}).get("received_breakdown", {}).get("control")
+                         or doc.get("ctrl_msg_count"),
+                "control": {
+                    "dropped_on_close": {
+                        "total": msgs_recv.get("dequeued_after") or doc.get("dequeued_after_close")
+                    },
+                    "usage": m.get("control_messages_queue_usage") or doc.get("ctrl_msg_queue_usage"),
+                    "received": {"total": ctrl_bkdn.get("inserted") or doc.get("ctrl_msg_queue_inserted")},
+                    "replaced": {"total": ctrl_bkdn.get("replaced") or doc.get("ctrl_msg_queue_replaced")},
+                    "processed": {"total": ctrl_bkdn.get("processed") or doc.get("ctrl_msg_processed")}
+                }
+            }
         })
 
     def _load_schema(self, schema_filename: str) -> dict | None:
