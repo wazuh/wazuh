@@ -415,7 +415,7 @@ bool IocSync::syncIOCType(SyncedIOCDatabase& dbState,
         // Update state
         dbState.setLastDataHash(remoteHash);
 
-        LOG_DEBUG("[IOC::Sync] Synchronized IOC type '{}'", dbState.getIocType());
+        LOG_INFO("[IOC::Sync] Synchronized IOC type '{}'", dbState.getIocType());
         return true;
     }
     catch (const std::exception& e)

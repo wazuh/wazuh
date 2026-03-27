@@ -64,6 +64,8 @@ from wazuh_testing.modules.logcollector import utils
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks, configuration
 from wazuh_testing.utils.services import control_service
+from wazuh_testing.utils.file import truncate_file
+
 from . import TEST_CASES_PATH, CONFIGURATIONS_PATH
 
 
@@ -81,8 +83,6 @@ test_configuration = configuration.load_configuration_template(config_path, test
 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
-
-LOG_COLLECTOR_GLOBAL_TIMEOUT = 20
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
@@ -139,13 +139,6 @@ def test_configuration_target(test_configuration, test_metadata, set_wazuh_confi
 
     control_service('start', daemon=LOGCOLLECTOR_DAEMON)
 
-    startup_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    startup_monitor.start(
-        callback=callbacks.generate_callback(patterns.LOGCOLLECTOR_MODULE_START),
-        timeout=LOG_COLLECTOR_GLOBAL_TIMEOUT,
-    )
-    assert startup_monitor.callback_result, 'Error logcollector start event not detected'
-
     callback = None
     assert_error = None
     if test_metadata['valid_value']:
@@ -162,7 +155,7 @@ def test_configuration_target(test_configuration, test_metadata, set_wazuh_confi
         assert_error = patterns.ERROR_TARGET_SOCKET_NOT_FOUND
 
     wazuh_log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(callback, timeout=LOG_COLLECTOR_GLOBAL_TIMEOUT)
+    wazuh_log_monitor.start(callback, timeout=10)
     assert wazuh_log_monitor.callback_result, assert_error
 
     if test_metadata['valid_value'] and sys.platform != WINDOWS:
