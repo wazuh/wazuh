@@ -215,7 +215,7 @@ async def test_collect_agents(mock_wazuh_db_query_agents):
 
 # Normalized dotted-path field names expected in every comms document
 EXPECTED_COMMS_FIELDS = {
-    "queue.usage",
+    "queue.size",
     "queue.capacity",
     "tcp.sessions",
     "discarded.total",
@@ -228,7 +228,7 @@ EXPECTED_COMMS_FIELDS = {
     "messages.control.received.total",
     "messages.control.replaced.total",
     "messages.control.processed.total",
-    "events.module",
+    "event.module",
     "@timestamp",
     "wazuh.cluster.name",
     "wazuh.cluster.node",
@@ -244,13 +244,11 @@ class TestCollectCommsAllNodes:
         """Master-only cluster: metadata fields are injected into the document."""
         tasks = _make_tasks(server=_make_server(node_name="node01"))
 
-        dapi_result = _make_dapi_result([dict(REMOTED_STATS)])
+        local_result = _make_dapi_result([dict(REMOTED_STATS)])
 
         with patch(
-            "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
-            return_value=AsyncMock(
-                distribute_function=AsyncMock(return_value=dapi_result)
-            ),
+            "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
+            return_value=local_result,
         ):
             docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
 
@@ -265,13 +263,11 @@ class TestCollectCommsAllNodes:
         """All normalized comms fields are present in the returned document."""
         tasks = _make_tasks()
 
-        dapi_result = _make_dapi_result([dict(REMOTED_STATS)])
+        local_result = _make_dapi_result([dict(REMOTED_STATS)])
 
         with patch(
-            "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
-            return_value=AsyncMock(
-                distribute_function=AsyncMock(return_value=dapi_result)
-            ),
+            "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
+            return_value=local_result,
         ):
             docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
 
@@ -295,11 +291,13 @@ class TestCollectCommsAllNodes:
         worker_result = _make_dapi_result([dict(REMOTED_STATS)])
 
         with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
+            return_value=master_result,
+        ), patch(
             "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
-            side_effect=[
-                AsyncMock(distribute_function=AsyncMock(return_value=r))
-                for r in [master_result, worker_result]
-            ],
+            return_value=AsyncMock(
+                distribute_function=AsyncMock(return_value=worker_result)
+            ),
         ):
             docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
 
@@ -310,16 +308,14 @@ class TestCollectCommsAllNodes:
 
     @pytest.mark.asyncio
     async def test_empty_affected_items_produces_no_document(self):
-        """If DAPI returns no items for a node, no document is added."""
+        """If stats return no items for the local node, no document is added."""
         tasks = _make_tasks()
 
-        dapi_result = _make_dapi_result([])
+        local_result = _make_dapi_result([])
 
         with patch(
-            "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
-            return_value=AsyncMock(
-                distribute_function=AsyncMock(return_value=dapi_result)
-            ),
+            "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
+            return_value=local_result,
         ):
             docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
 
@@ -327,7 +323,7 @@ class TestCollectCommsAllNodes:
 
     @pytest.mark.asyncio
     async def test_node_failure_is_logged_and_skipped(self):
-        """If DAPI raises for one node, the error is logged and remaining nodes are collected."""
+        """If local stats raise, the error is logged and remaining nodes are collected."""
         worker_handler = MagicMock()
 
         server = _make_server(
@@ -338,16 +334,15 @@ class TestCollectCommsAllNodes:
 
         worker_result = _make_dapi_result([dict(REMOTED_STATS)])
 
-        failing_dapi = AsyncMock()
-        failing_dapi.distribute_function.side_effect = RuntimeError(
-            "connection refused"
-        )
         succeeding_dapi = AsyncMock()
         succeeding_dapi.distribute_function.return_value = worker_result
 
         with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
+            side_effect=RuntimeError("connection refused"),
+        ), patch(
             "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
-            side_effect=[failing_dapi, succeeding_dapi],
+            return_value=succeeding_dapi,
         ):
             docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
 
@@ -356,24 +351,31 @@ class TestCollectCommsAllNodes:
         tasks.logger.exception.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_dapi_called_with_correct_kwargs(self):
-        """DistributedAPI is called with the correct f, f_kwargs, and request_type."""
-        tasks = _make_tasks(server=_make_server(node_name="node01"))
+    async def test_dapi_called_for_worker_not_master(self):
+        """DistributedAPI is used for worker nodes; local node calls get_daemons_stats directly."""
+        worker_handler = MagicMock()
+        server = _make_server(node_name="node01", workers={"node02": worker_handler})
+        tasks = _make_tasks(server=server)
 
-        dapi_result = _make_dapi_result([dict(REMOTED_STATS)])
+        local_result = _make_dapi_result([dict(REMOTED_STATS)])
+        worker_result = _make_dapi_result([dict(REMOTED_STATS)])
 
         with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
+            return_value=local_result,
+        ) as mock_local, patch(
             "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
             return_value=AsyncMock(
-                distribute_function=AsyncMock(return_value=dapi_result)
+                distribute_function=AsyncMock(return_value=worker_result)
             ),
         ) as MockDAPI:
             await tasks._collect_comms_all_nodes(TIMESTAMP)
 
+        mock_local.assert_called_once_with(daemons_list=["wazuh-manager-remoted"])
         MockDAPI.assert_called_once()
         call_kwargs = MockDAPI.call_args.kwargs
         assert call_kwargs["f_kwargs"]["daemons_list"] == ["wazuh-manager-remoted"]
-        assert call_kwargs["f_kwargs"]["node_list"] == ["node01"]
+        assert call_kwargs["f_kwargs"]["node_list"] == ["node02"]
         assert call_kwargs["request_type"] == "distributed_master"
 
 
@@ -506,7 +508,7 @@ class TestAgentFieldMapping:
     @pytest.mark.asyncio
     @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
     async def test_register_ip_any_converted_to_cidr(self, mock_wazuh_db_query_agents):
-        """registerIP='any' is converted to '0.0.0.0/0' for the ip field type."""
+        """registerIP='any' is converted to '0.0.0.0' for the ip field type."""
         mock_wazuh_db_query_agents.return_value.run.return_value = {
             "items": [{**AGENT_DOC_FULL, "registerIP": "any"}]
         }
@@ -514,7 +516,7 @@ class TestAgentFieldMapping:
         tasks = _make_tasks()
         docs = await tasks._collect_agents(TIMESTAMP)
 
-        assert docs[0]["wazuh"]["agent"]["register"]["ip"] == "0.0.0.0/0"
+        assert docs[0]["wazuh"]["agent"]["register"]["ip"] == "0.0.0.0"
 
     @pytest.mark.asyncio
     @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
@@ -676,13 +678,11 @@ class TestMetadataInjection:
     async def test_comms_metadata_values_match_server_config(self):
         """Comms metadata values are sourced from server.configuration."""
         tasks = _make_tasks(server=_make_server(node_name="node01"))
-        dapi_result = _make_dapi_result([dict(REMOTED_STATS)])
+        local_result = _make_dapi_result([dict(REMOTED_STATS)])
 
         with patch(
-            "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
-            return_value=AsyncMock(
-                distribute_function=AsyncMock(return_value=dapi_result)
-            ),
+            "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
+            return_value=local_result,
         ):
             docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
 
@@ -693,19 +693,17 @@ class TestMetadataInjection:
 
     @pytest.mark.asyncio
     async def test_events_module_is_remoted_in_comms(self):
-        """events.module is always set to 'remoted' in comms documents."""
+        """event.module is always set to 'remoted' in comms documents."""
         tasks = _make_tasks()
-        dapi_result = _make_dapi_result([dict(REMOTED_STATS)])
+        local_result = _make_dapi_result([dict(REMOTED_STATS)])
 
         with patch(
-            "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
-            return_value=AsyncMock(
-                distribute_function=AsyncMock(return_value=dapi_result)
-            ),
+            "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
+            return_value=local_result,
         ):
             docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
 
-        assert docs[0]["events"]["module"] == "remoted"
+        assert docs[0]["event"]["module"] == "remoted"
 
 
 # ---------------------------------------------------------------------------

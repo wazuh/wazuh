@@ -279,7 +279,7 @@ class MetricsSnapshotTasks:
         ip = doc.get("ip")
         raw_register_ip = doc.get("registerIP", "")
 
-        register_ip = "0.0.0.0" if raw_register_ip == "any" else (raw_register_ip or None)
+        register_ip = "0.0.0.0" if raw_register_ip == "any" else (raw_register_ip or None)  # nosec B104
         group_config_status = doc.get("group_config_status", "")
 
         return MetricsSnapshotTasks._drop_none({
@@ -294,7 +294,7 @@ class MetricsSnapshotTasks:
                     "status_code": doc.get("status_code"),
                     "registered_at": MetricsSnapshotTasks._to_iso(doc.get("dateAdd")),
                     "last_seen": MetricsSnapshotTasks._to_iso(doc.get("lastKeepAlive")),
-                    "disconnected_at": MetricsSnapshotTasks._to_iso(doc.get("disconnection_time")),
+                    "disconnected_at": doc.get("disconnection_time") or None,
                     "register": {
                         "ip": register_ip
                     },
@@ -368,7 +368,7 @@ class MetricsSnapshotTasks:
                 "total": msgs_recv.get("event") or doc.get("evt_count")
             },
             "queue": {
-                "size": raw_queue_usage,
+                "size": raw_queue_usage if raw_queue_usage is not None else doc.get("queue_size"),
                 "capacity": queues.get("size") or doc.get("total_queue_size")
             },
             "tcp": {
