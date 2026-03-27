@@ -17,10 +17,12 @@
 #include <mock_filesystem_wrapper.hpp>
 #include "logging_helper.hpp"
 #include "timeHelper.h"
+#include <metadata_provider.h>
 
 #include <chrono>
 #include <memory>
 #include <string>
+#include <filesystem>
 
 /**
  * @brief Test fixture for SCA recovery functionality
@@ -39,6 +41,26 @@ class SCARecoveryTest : public ::testing::Test
         void SetUp() override
         {
             m_logOutput.clear();
+
+            // Create directory for shared memory file (required on Unix/macOS)
+            // The metadata provider uses "var/run/.wazuh_agent_metadata" as shared memory path
+            std::filesystem::create_directories("var/run");
+
+            // Initialize metadata provider manually to ensure it's available before initSyncProtocol
+            agent_metadata_t metadata = {};
+            strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
+            strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
+            strncpy(metadata.agent_version, "4.5.0", sizeof(metadata.agent_version) - 1);
+            strncpy(metadata.architecture, "x86_64", sizeof(metadata.architecture) - 1);
+            strncpy(metadata.hostname, "test-host", sizeof(metadata.hostname) - 1);
+            strncpy(metadata.os_name, "Linux", sizeof(metadata.os_name) - 1);
+            strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
+            strncpy(metadata.os_platform, "ubuntu", sizeof(metadata.os_platform) - 1);
+            strncpy(metadata.os_version, "20.04", sizeof(metadata.os_version) - 1);
+            char* groups[] = {const_cast<char*>("default")};
+            metadata.groups = groups;
+            metadata.groups_count = 1;
+            metadata_provider_update(&metadata);
 
             // Set up logging callback
             LoggingHelper::setLogCallback([this](const modules_log_level_t /* level */, const std::string & log)
