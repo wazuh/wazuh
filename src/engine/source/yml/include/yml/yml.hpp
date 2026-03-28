@@ -1,6 +1,7 @@
 #ifndef _YML_H
 #define _YML_H
 
+#include <base/json.hpp>
 #include <iostream>
 
 #include <rapidjson/document.h>
@@ -89,6 +90,15 @@ namespace utils
  * @throw std::runtime_error if the YML string is invalid.
  */
 std::string ymlToPrettyYaml(const std::string& ymlStr, bool sort = false);
+
+/**
+ * @brief Convert a json::Json object to a YAML string.
+ *
+ * @param jsonObj JSON object to convert.
+ * @return std::string Converted YAML string.
+ * @throw std::runtime_error if the JSON cannot be converted.
+ */
+std::string jsonToYamlString(const json::Json& jsonObj);
 } // namespace utils
 
 } // namespace yml

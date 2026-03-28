@@ -35,10 +35,10 @@ def run(args):
 
 def configure(subparsers):
     parser_upsert = subparsers.add_parser(
-        'policy-upsert', help='Upsert a new policy.')
+        'policy-upsert', help='Upsert a policy from JSON content.')
 
     parser_upsert.add_argument('-c', '--content', type=str, default='',
-                               help='Content of the policy, can be passed as argument or '
+                               help='JSON content of the policy, can be passed as argument or '
                                'redirected from a file using the "|" operator or the "<" '
                                'operator.')
 

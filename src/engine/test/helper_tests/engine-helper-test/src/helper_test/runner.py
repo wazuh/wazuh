@@ -390,12 +390,10 @@ def build_asset_request(asset: dict) -> api_crud.resourcePost_Request:
     asset["id"] = HELPERS_DECODER_UUID
     asset["enabled"] = True
 
-    yml = yaml.safe_dump(asset, sort_keys=False)
-
     req = api_crud.resourcePost_Request()
     req.space = POLICY_NS
     req.type = "decoder"
-    req.ymlContent = yml
+    req.ymlContent = json.dumps(asset, separators=(",", ":"))
     return req
 
 
@@ -457,22 +455,22 @@ def create_helpers_integration(api_client: APIClient):
     and associates the KVDB resource.
     The policy will be built solely from integrations.
     """
-    integration_yaml = f"""\
-id: {HELPERS_INTEG_UUID}
-metadata:
-  title: helpers-test
-enabled: true
-category: other
-default_parent: {HELPERS_DECODER_UUID}
-decoders:
-  - "{HELPERS_DECODER_UUID}"
-kvdbs:
-  - "{KVDB_RESOURCE_UUID}"
-"""
+    integration_json = json.dumps(
+        {
+            "id": HELPERS_INTEG_UUID,
+            "metadata": {"title": "helpers-test"},
+            "enabled": True,
+            "category": "other",
+            "default_parent": HELPERS_DECODER_UUID,
+            "decoders": [HELPERS_DECODER_UUID],
+            "kvdbs": [KVDB_RESOURCE_UUID],
+        },
+        separators=(",", ":"),
+    )
     req = api_crud.resourcePost_Request()
     req.space = POLICY_NS
     req.type = "integration"
-    req.ymlContent = integration_yaml
+    req.ymlContent = integration_json
     response = send_recv(api_client, req, api_engine.GenericStatus_Response())
     assert response.status == api_engine.OK, f"{response.error}"
 
@@ -485,25 +483,26 @@ def create_policy(api_client: APIClient):
       - default_parent and root_decoder point to the helpers decoder (ASSET_NAME),
       - the integrations list contains HELPERS_INTEG_UUID.
     """
-    policy_yaml = f"""\
-type: policy
-enabled: true
-metadata:
-  title: Helpers Testing Policy
-hash: "helpers-test-hash"
-enrichments: []
-filters: []
-index_unclassified_events: true
-index_discarded_events: false
-default_parent: {HELPERS_DECODER_UUID}
-root_decoder: {HELPERS_DECODER_UUID}
-cleanup_decoder_variables: false
-integrations:
-  - "{HELPERS_INTEG_UUID}"
-"""
+    policy_json = json.dumps(
+        {
+            "type": "policy",
+            "enabled": True,
+            "metadata": {"title": "Helpers Testing Policy"},
+            "hash": "helpers-test-hash",
+            "enrichments": [],
+            "filters": [],
+            "index_unclassified_events": True,
+            "index_discarded_events": False,
+            "default_parent": HELPERS_DECODER_UUID,
+            "root_decoder": HELPERS_DECODER_UUID,
+            "cleanup_decoder_variables": False,
+            "integrations": [HELPERS_INTEG_UUID],
+        },
+        separators=(",", ":"),
+    )
     req = api_crud.policyPost_Request()
     req.space = POLICY_NS
-    req.ymlContent = policy_yaml
+    req.ymlContent = policy_json
     response = send_recv(api_client, req, api_engine.GenericStatus_Response())
     assert response.status == api_engine.OK, f"{response.error}"
 
@@ -589,7 +588,7 @@ def create_kvdb_resource(api_client: APIClient):
     req = api_crud.resourcePost_Request()
     req.space = POLICY_NS
     req.type = "kvdb"
-    # api_crud.resourcePost_Request expects YAML/JSON as string in ymlContent
+    # api_crud.resourcePost_Request currently receives JSON as string in ymlContent
     req.ymlContent = json.dumps(kvdb_json, separators=(",", ":"))
 
     response = send_recv(api_client, req, api_engine.GenericStatus_Response())
