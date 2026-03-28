@@ -106,21 +106,18 @@ function ExtractDebugSymbols(){
 	foreach ($file in $exeFiles)
 	{
 		Write-Host "Extracting dbg symbols from" $file.FullName
-		$args = $file.FullName #source (exe/dll with debug symbols)
-		$args += " "
-		$args += $file.FullName  #destination (same as source - exe/dll is stripped of debug symbols)
-		$args += " "
-		$args += $file.BaseName
-		$args += ".pdb"
-
-		Start-Process -FilePath "cv2pdb.exe" -ArgumentList $args -WindowStyle Hidden
+        & ".\cv2pdb.exe" $file.FullName $file.FullName "$($file.BaseName).pdb"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Skipping debug symbol extraction for $($file.FullName); cv2pdb exited with code $LASTEXITCODE"
+        }
 	}
-
-  Write-Host "Waiting for processes to finish"
-  Wait-Process -Name cv2pdb -Timeout 10
 
   #compress every pdb file in current folder
 	$pdbFiles = Get-ChildItem -Filter ".\*.pdb"
+    if ($pdbFiles.Count -eq 0) {
+        Write-Warning "No debug symbols were extracted. Skipping debug symbols archive generation."
+        return
+    }
 
     $ZIP_NAME = $MSI_NAME -replace 'wazuh-agent', 'wazuh-agent-debug-symbols' -replace '\.msi$', '.zip'
 
