@@ -12,6 +12,7 @@ from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.exception import WazuhIndexerError, IndexerUnavailableError
 from wazuh.core.indexer.credential_manager import KeystoreClient
 from wazuh.core.indexer.max_version_components import MaxVersionIndex
+from wazuh.core.indexer.metrics import MetricsIndex
 
 MAX_RETRIES = 3
 BACKOFF_TIMEOUT = 60
@@ -53,6 +54,8 @@ class Indexer:
         The list of configured ports.
     max_version_components : MaxVersionIndex
         Component to manage index versioning.
+    metrics : MetricsIndex
+        Component to handle metrics snapshot bulk indexing.
 
     Raises
     ------
@@ -73,7 +76,7 @@ class Indexer:
     ) -> None:
         if len(hosts) != len(ports):
             raise WazuhIndexerError(
-                2001, extra_message="Hosts and ports lists must have the same length"
+                2001, None, "Hosts and ports lists must have the same length"
             )
 
         self.hosts = hosts
@@ -88,6 +91,7 @@ class Indexer:
 
         self._client = self._get_opensearch_client()
         self.max_version_components = MaxVersionIndex(client=self._client)
+        self.metrics = MetricsIndex(client=self._client)
 
     def _get_opensearch_client(self) -> AsyncOpenSearch:
         """
@@ -119,7 +123,7 @@ class Indexer:
             parameters["http_auth"] = (self.user, self.password)
         else:
             raise WazuhIndexerError(
-                2201, extra_message="'user' and 'password' are required"
+                2201, None, "'user' and 'password' are required"
             )
 
         if self.use_ssl:
@@ -130,7 +134,7 @@ class Indexer:
             else:
                 raise WazuhIndexerError(
                     2201,
-                    extra_message="SSL certificates paths missing",
+                    None, "SSL certificates paths missing",
                 )
 
         return AsyncOpenSearch(**parameters)
@@ -153,14 +157,13 @@ class Indexer:
         try:
             return await self.healthcheck()
         except (ConnectionError, TransportError) as e:
-            raise WazuhIndexerError(2200, extra_message=e.error)
+            raise WazuhIndexerError(2200, None, e.error)
         except ssl.SSLError as e:
-            raise WazuhIndexerError(2200, extra_message=e.reason)
+            raise WazuhIndexerError(2200, None, e.reason)
         except ImproperlyConfigured as e:
             raise WazuhIndexerError(
                 2200,
-                extra_message=f"{e}. Check your indexer configuration"
-                f"and SSL certificates",
+                None, f"{e}. Check your indexer configuration and SSL certificates"
             )
 
     async def close(self) -> None:
