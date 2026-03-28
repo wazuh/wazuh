@@ -602,6 +602,67 @@ async def test_handler_send_request_ko():
         await handler.send_request(b'some bytes', b'some data')
 
 
+def test_handler_data_received_max_concurrent_divided_msgs():
+    """
+    Validate that error 3051 is raised if the maximum number of
+    concurrent divided messages is exceeded (DoS mitigation).
+    """
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+
+    handler.div_msg_box = {i: b"data" for i in range(cluster_common.MAX_CONCURRENT_DIVIDED_MSGS)}
+    handler.logger = MagicMock()
+
+    new_counter = 999
+    with patch.object(handler, 'get_messages', return_value=[(b'cmd', new_counter, b'payload', cluster_common.InBuffer.divide_flag)]):
+        with pytest.raises(cluster_common.WazuhClusterError, match=r'.* 3051 .*'):
+            handler.data_received(b"raw_data_trigger")
+
+
+def test_handler_data_received_payload_limit_warning():
+    """
+    Validate that if accumulating fragments exceeds MAX_TOTAL_SIZE,
+    a warning is logged and the connection is closed (Error 3050).
+    """
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler.transport = MagicMock()
+    handler.logger = MagicMock()
+
+    counter = 5
+    handler.div_msg_box[counter] = b"A" * (cluster_common.MAX_TOTAL_SIZE - 5)
+
+    payload_extra = b"B" * 10
+
+    with patch.object(handler, 'get_messages', return_value=[(b'cmd', counter, payload_extra, cluster_common.InBuffer.divide_flag)]):
+        handler.data_received(b"trigger")
+
+        handler.logger.warning.assert_called()
+        assert "Payload too large" in handler.logger.warning.call_args[0][0]
+
+        handler.transport.close.assert_called_once()
+
+
+def test_handler_receive_str_ko():
+    """Test if the proper error message is returned when requested size exceeds the maximum limit."""
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+
+    requested_size = str(cluster_common.MAX_TOTAL_SIZE + 1).encode()
+    reply, name = handler.receive_str(requested_size)
+
+    assert reply == b"error"
+    assert name == b"Requested size exceeds maximum allowed limit"
+
+
+def test_handler_msg_parse_updated():
+    """Test to validate parsing with struct pack according to the Handler requirements."""
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+
+    assert handler.msg_parse() is False
+
+    handler.in_buffer = struct.pack(handler.header_format, 1, 10, b"command")
+    assert len(handler.in_buffer) >= handler.header_len
+    assert handler.msg_parse() is True
+
+
 @pytest.mark.asyncio
 @patch('wazuh.core.cluster.common.Handler.send_request')
 async def test_handler_get_chunks_in_task_id(send_request_mock):
