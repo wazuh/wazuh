@@ -87,7 +87,9 @@ TEST_F(CMStoreNSTest, JsonResourcesOnDiskAreLoadedDuringStoreInitialization)
 
 TEST_F(CMStoreNSTest, DefaultOutputsYamlAreConvertedToJson)
 {
-    std::ofstream outputFile(m_outputs / "stdout.yml");
+    std::filesystem::create_directories(m_outputs / "default");
+
+    std::ofstream outputFile(m_outputs / "default" / "stdout.yml");
     ASSERT_TRUE(outputFile.is_open());
     outputFile << "name: output/stdout\n";
     outputFile << "enabled: true\n";
@@ -96,7 +98,7 @@ TEST_F(CMStoreNSTest, DefaultOutputsYamlAreConvertedToJson)
 
     cm::store::CMStoreNS store {cm::store::NamespaceId("test"), m_root, m_outputs};
 
-    const auto outputs = store.getDefaultOutputs();
+    const auto outputs = store.getOutputsForSpace("");
     ASSERT_EQ(outputs.size(), 1u);
     EXPECT_EQ(outputs[0].getString("/name").value_or(""), "output/stdout");
     ASSERT_TRUE(outputs[0].getBool("/enabled").has_value());

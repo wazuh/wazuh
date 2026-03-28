@@ -341,6 +341,53 @@ TEST(CrudService_Unit, UpsertPolicy_TopLevelArrayIsRejected)
     }
 }
 
+TEST(CrudService_Unit, UpsertPolicy_InvalidOriginSpaceIsRejected)
+{
+    auto store = std::make_shared<NiceMock<MockICMstore>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
+    CrudService service {store, validator};
+
+    const NamespaceId nsId {"dev"};
+    auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
+
+    constexpr auto kPolicyWithInvalidOriginSpace = R"({
+  "type": "policy",
+  "enabled": true,
+  "metadata": {
+    "title": "Development 0.0.1"
+  },
+  "hash": "cmcrud-unit-test-hash",
+  "default_parent": "decoder/integration/0",
+  "root_decoder": "decoder/wazuh-core-message/0",
+  "origin_space": "../bad-space",
+  "integrations": [
+    "42e28392-4f5e-473d-89e8-c9030e6fedc2"
+  ],
+  "filters": [],
+  "enrichments": [],
+  "index_unclassified_events": false,
+  "index_discarded_events": false
+})";
+
+    EXPECT_CALL(*store, getNS(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
+        .Times(1)
+        .WillOnce(Return(nsPtr));
+
+    EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(0);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(0);
+
+    try
+    {
+        service.upsertPolicy(nsId, kPolicyWithInvalidOriginSpace);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("origin_space"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("invalid characters"));
+    }
+}
+
 // ---------------------------------------------------------------------
 // deletePolicy
 // ---------------------------------------------------------------------
