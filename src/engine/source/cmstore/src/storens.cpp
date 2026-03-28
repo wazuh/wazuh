@@ -90,8 +90,7 @@ void CMStoreNS::rebuildCacheFromStorage()
 
             try
             {
-                // Read file content
-                auto fileContent = fileutils::readFileAsString(fileEntry.path());
+                auto fileContent = fileutils::readJsonFile(fileEntry.path());
 
                 // Extract UUID
                 auto uuid = upsertUUID(fileContent);
@@ -138,42 +137,16 @@ void CMStoreNS::rebuildCacheFromStorage()
     flushCacheToDisk();
 }
 
-std::string CMStoreNS::upsertUUID(std::string& ymlContent)
+std::string CMStoreNS::upsertUUID(json::Json& content)
 {
-    json::Json jsonContent;
-    bool isJson = false;
-
-    // Try to parse as JSON first, fallback to YAML
-    try
+    if (!content.isObject())
     {
-        jsonContent = json::Json(ymlContent.c_str());
-        if (!jsonContent.isObject())
-        {
-            throw std::runtime_error("Content is not a valid JSON object");
-        }
-        isJson = true;
-    }
-    catch (const std::exception&)
-    {
-        // Try parsing as YAML
-        try
-        {
-            jsonContent = json::Json(yml::Converter::loadYMLfromString(ymlContent));
-            if (!jsonContent.isObject())
-            {
-                throw std::runtime_error("YAML content is not a valid JSON object");
-            }
-            isJson = false;
-        }
-        catch (const std::exception& e)
-        {
-            throw std::runtime_error("Content is neither valid JSON nor valid YAML: " + std::string(e.what()));
-        }
+        throw std::runtime_error("Content is not a valid JSON object");
     }
 
     // Check if UUID field exists and validate it
     std::string uuid;
-    if (auto ret = jsonContent.getString(uuid, pathns::JSON_ID_PATH); ret == json::RetGet::Success)
+    if (auto ret = content.getString(uuid, pathns::JSON_ID_PATH); ret == json::RetGet::Success)
     {
         if (!base::utils::generators::isValidUUIDv4(uuid))
         {
@@ -184,33 +157,7 @@ std::string CMStoreNS::upsertUUID(std::string& ymlContent)
 
     // Generate new UUID and add it to content
     uuid = base::utils::generators::generateUUIDv4();
-
-    if (isJson)
-    {
-        // Handle JSON format
-        jsonContent.setString(uuid, pathns::JSON_ID_PATH);
-        ymlContent = jsonContent.prettyStr();
-    }
-    else
-    {
-        // Handle YAML format - append UUID at the end
-        if (!ymlContent.empty() && ymlContent.back() != '\n')
-        {
-            ymlContent += '\n';
-        }
-        ymlContent += fmt::format(pathns::YML_PAIR_FMT, uuid);
-
-        // Re-parse to ensure correctness and add UUID field
-        try
-        {
-            jsonContent = json::Json(yml::Converter::loadYMLfromString(ymlContent));
-        }
-        catch (const std::exception& e)
-        {
-            // This never should happen, just in case log the error
-            throw std::runtime_error(fmt::format("Failed to validate YML after inserting UUID: {}", e.what()));
-        }
-    }
+    content.setString(uuid, pathns::JSON_ID_PATH);
 
     return uuid;
 }
@@ -312,7 +259,7 @@ bool CMStoreNS::assetExistsByUUID(const std::string& uuid) const
 
 /*********************************** General Resource ************************************/
 
-std::string CMStoreNS::createResource(const std::string& name, ResourceType type, const std::string& ymlContent)
+std::string CMStoreNS::createResource(const std::string& name, ResourceType type, const json::Json& content)
 {
     // Fast check if name already exists
     {
@@ -329,8 +276,8 @@ std::string CMStoreNS::createResource(const std::string& name, ResourceType type
 
     // Get the UUID from content, adding it if missing
     // Will throw if YML/Resource is invalid
-    std::string modifiableYml = ymlContent;
-    auto uuid = upsertUUID(modifiableYml);
+    auto contentToStore = content;
+    auto uuid = upsertUUID(contentToStore);
 
     std::unique_lock lock(m_mutex); // Acquire write cache and file lock
 
@@ -348,7 +295,7 @@ std::string CMStoreNS::createResource(const std::string& name, ResourceType type
     }
 
     // Store resource to disk
-    auto error = fileutils::upsertFile(resourcePath, modifiableYml);
+    auto error = fileutils::upsertFile(resourcePath, contentToStore.str());
     if (error.has_value())
     {
         throw std::runtime_error(fmt::format("Failed to create resource file '{}' of type '{}': {}",
@@ -364,15 +311,14 @@ std::string CMStoreNS::createResource(const std::string& name, ResourceType type
     return uuid;
 }
 
-void CMStoreNS::updateResourceByName(const std::string& name, ResourceType type, const std::string& ymlContent)
+void CMStoreNS::updateResourceByName(const std::string& name, ResourceType type, const json::Json& content)
 {
     // Generate the file path, will throw if name/type invalid
     auto resourcePath = getResourcePaths(name, type);
 
     // Get the UUID from content (Throws if missing/invalid)
-    json::Json jsonContent = json::Json(yml::Converter::loadYMLfromString(ymlContent));
     std::string contentUUID;
-    if (jsonContent.getString(contentUUID, pathns::JSON_ID_PATH) != json::RetGet::Success)
+    if (content.getString(contentUUID, pathns::JSON_ID_PATH) != json::RetGet::Success)
     {
         throw std::runtime_error("UUID field (/id) is missing in the provided content");
     }
@@ -395,7 +341,7 @@ void CMStoreNS::updateResourceByName(const std::string& name, ResourceType type,
     }
 
     // Store updated resource to disk
-    auto error = fileutils::upsertFile(resourcePath, ymlContent);
+    auto error = fileutils::upsertFile(resourcePath, content.str());
     if (error.has_value())
     {
         throw std::runtime_error(fmt::format("Failed to update resource file '{}' of type '{}': {}",
@@ -407,12 +353,11 @@ void CMStoreNS::updateResourceByName(const std::string& name, ResourceType type,
     flushCacheToDisk();
 }
 
-void CMStoreNS::updateResourceByUUID(const std::string& uuid, const std::string& ymlContent)
+void CMStoreNS::updateResourceByUUID(const std::string& uuid, const json::Json& content)
 {
     // Get the UUID from content (Throws if missing/invalid)
-    json::Json jsonContent = json::Json(yml::Converter::loadYMLfromString(ymlContent));
     std::string contentUUID;
-    if (jsonContent.getString(contentUUID, pathns::JSON_ID_PATH) != json::RetGet::Success)
+    if (content.getString(contentUUID, pathns::JSON_ID_PATH) != json::RetGet::Success)
     {
         throw std::runtime_error("UUID field (/id) is missing in the provided content");
     }
@@ -430,7 +375,7 @@ void CMStoreNS::updateResourceByUUID(const std::string& uuid, const std::string&
     // Generate the file path
     auto resourcePath = getResourcePaths(name, type);
     // Store updated resource to disk
-    auto error = fileutils::upsertFile(resourcePath, ymlContent);
+    auto error = fileutils::upsertFile(resourcePath, content.str());
     if (error.has_value())
     {
         throw std::runtime_error(fmt::format("Failed to update resource file '{}' of type '{}': {}",
@@ -566,7 +511,7 @@ dataType::Integration CMStoreNS::getIntegrationByName(const std::string& name) c
 
     // Load integration from disk
     const auto path = getResourcePaths(name, ResourceType::INTEGRATION);
-    auto json = fileutils::readYMLFileAsJson(path);
+    auto json = fileutils::readJsonFile(path);
 
     return dataType::Integration::fromJson(json, /*requireUUID:*/ true);
 }
@@ -589,7 +534,7 @@ dataType::Integration CMStoreNS::getIntegrationByUUID(const std::string& uuid) c
 
     // Load integration from disk
     const auto path = getResourcePaths(name, ResourceType::INTEGRATION);
-    auto json = fileutils::readYMLFileAsJson(path);
+    auto json = fileutils::readJsonFile(path);
     return dataType::Integration::fromJson(json, /*requireUUID:*/ true);
 }
 
@@ -658,7 +603,7 @@ dataType::KVDB CMStoreNS::getKVDBByName(const std::string& name) const
 
     // Load KVDB from disk
     auto resourcePath = getResourcePaths(name, ResourceType::KVDB);
-    auto json = fileutils::readYMLFileAsJson(resourcePath);
+    auto json = fileutils::readJsonFile(resourcePath);
     return dataType::KVDB::fromJson(json, /*requireUUID:*/ true);
 }
 
@@ -682,7 +627,7 @@ dataType::KVDB CMStoreNS::getKVDBByUUID(const std::string& uuid) const
 
     // Load KVDB from disk
     auto resourcePath = getResourcePaths(name, ResourceType::KVDB);
-    auto json = fileutils::readYMLFileAsJson(resourcePath);
+    auto json = fileutils::readJsonFile(resourcePath);
     return dataType::KVDB::fromJson(json, /*requireUUID:*/ true);
 }
 
@@ -709,7 +654,7 @@ json::Json CMStoreNS::getAssetByName(const base::Name& name) const
     // Load asset from disk
     auto resourcePath = getResourcePaths(nameStr, rType);
 
-    return fileutils::readYMLFileAsJson(resourcePath);
+    return fileutils::readJsonFile(resourcePath);
 }
 
 json::Json CMStoreNS::getAssetByUUID(const std::string& uuid) const
@@ -725,7 +670,7 @@ json::Json CMStoreNS::getAssetByUUID(const std::string& uuid) const
 
     // Load asset from disk
     auto resourcePath = getResourcePaths(name, type);
-    return fileutils::readYMLFileAsJson(resourcePath);
+    return fileutils::readJsonFile(resourcePath);
 }
 
 } // namespace cm::store

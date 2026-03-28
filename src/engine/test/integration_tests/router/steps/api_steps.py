@@ -1,4 +1,5 @@
 import os
+import json
 import subprocess
 import time
 from pathlib import Path
@@ -57,37 +58,29 @@ def send_recv(request, expected_response_type) -> Tuple[Optional[str], object]:
 #  CMCRUD helpers: policy and filter
 # ===================================================================
 
-def build_policy_yaml(default_parent: str, root_decoder: str, integration_uuids):
-    """
-    Policy YAML according to the new model:
-      type: policy
-      title: Development 0.0.1
-      default_parent: ...
-      root_decoder: ...
-      integrations: [ ... ]
-    """
-    integrations_block = "\n".join(f'  - "{u}"' for u in integration_uuids)
-    return f"""\
-type: policy
-enabled: true
-metadata:
-  title: Development 0.0.1
-hash: "router-test-hash"
-enrichments: []
-filters: []
-index_unclassified_events: false
-index_discarded_events: false
-default_parent: {default_parent}
-root_decoder: {root_decoder}
-integrations:
-{integrations_block}
-"""
+def build_policy_json(default_parent: str, root_decoder: str, integration_uuids):
+    return json.dumps(
+        {
+            "type": "policy",
+            "enabled": True,
+            "metadata": {"title": "Development 0.0.1"},
+            "hash": "router-test-hash",
+            "enrichments": [],
+            "filters": [],
+            "index_unclassified_events": False,
+            "index_discarded_events": False,
+            "default_parent": default_parent,
+            "root_decoder": root_decoder,
+            "integrations": list(integration_uuids),
+        },
+        separators=(",", ":"),
+    )
 
 
-def cm_policy_upsert(space: str, yml: str):
+def cm_policy_upsert(space: str, payload: str):
     req = api_crud.policyPost_Request()
     req.space = space
-    req.ymlContent = yml
+    req.ymlContent = payload
     err, resp = send_recv(req, api_engine.GenericStatus_Response())
     assert err is None, f"Error upserting policy in '{space}': {err}"
     assert resp.status == api_engine.OK, f"{resp}"
@@ -135,12 +128,12 @@ def setup_policy_with_integrations(initial_integration: str):
     else:
         raise AssertionError(f"Unsupported integration name: {initial_integration}")
 
-    policy_yaml = build_policy_yaml(
+    policy_json = build_policy_json(
         default_parent=DECODER_TEST_UUID,
         root_decoder=DECODER_TEST_UUID,
         integration_uuids=integ_list,
     )
-    cm_policy_upsert(POLICY_NS, policy_yaml)
+    cm_policy_upsert(POLICY_NS, policy_json)
 
 
 def add_integration_to_policy(integration_name: str, policy_name: str):
@@ -154,12 +147,12 @@ def add_integration_to_policy(integration_name: str, policy_name: str):
     )
 
     integ_list = [INTEG_WAZUH_CORE_UUID, INTEG_OTHER_WAZUH_CORE_UUID]
-    policy_yaml = build_policy_yaml(
+    policy_json = build_policy_json(
         default_parent=DECODER_TEST_UUID,
         root_decoder=DECODER_TEST_UUID,
         integration_uuids=integ_list,
     )
-    cm_policy_upsert(POLICY_NS, policy_yaml)
+    cm_policy_upsert(POLICY_NS, policy_json)
 
 
 def delete_policy(policy_name: str):

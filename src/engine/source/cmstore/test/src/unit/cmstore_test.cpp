@@ -4,6 +4,9 @@
 #include <memory>
 #include <unistd.h>
 
+#include <base/name.hpp>
+#include <base/utils/generator.hpp>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <cmstore/cmstore.hpp>

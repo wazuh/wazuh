@@ -27,7 +27,7 @@ struct ResourceSummary
  *
  * Implementations are responsible for:
  *  - Resolving namespaces using cm::store::ICMStore.
- *  - Parsing resource documents (typically YAML) into the corresponding
+ *  - Parsing resource documents (JSON payloads) into the corresponding
  *    data types (Policy, Integration, KVDB, assets).
  *  - Delegating structural checks to an builder::IValidator before mutating
  *    the underlying store.
@@ -137,7 +137,7 @@ public:
      *  - The resulting policy is validated before being stored.
      *
      * @param nsId       Target namespace identifier.
-     * @param document   Policy document (typically YAML).
+     * @param document   Policy document as JSON text.
      *
      * @throws std::runtime_error on parse errors, validation failures
      *         or storage errors.
@@ -180,11 +180,11 @@ public:
      * The implementation must:
      *  - Resolve the UUID to its logical name and type.
      *  - Load the underlying object from the store.
-     *  - Serialize it back to a document string (typically YAML).
+     *  - Serialize it back to a JSON document string.
      *
      * @param nsId   Target namespace identifier.
      * @param uuid   Resource UUID.
-     * @param asJSon Get with json format
+     * @param asJson Legacy compatibility flag. Resources are returned as JSON.
      *
      * @return Document representing the resource.
      *
@@ -207,7 +207,7 @@ public:
      *
      * @param nsId       Target namespace identifier.
      * @param type       Resource type.
-     * @param document   Resource document (typically YAML).
+     * @param document   Resource document as JSON text.
      *
      * @throws std::runtime_error on parse errors, validation failures
      *         or storage errors.

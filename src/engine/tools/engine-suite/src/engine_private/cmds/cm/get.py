@@ -11,7 +11,7 @@ def run(args):
     req = crud.resourceGet_Request()
     req.space = args['space']
     req.uuid = args['uuid']
-    req.asJson = args['json']
+    req.asJson = True
 
     # Create the api request
     try:
@@ -31,11 +31,9 @@ def run(args):
 
 def configure(subparsers):
     parser_get = subparsers.add_parser(
-        'get', help='get type[/name[/version]]: Get a resource.')
+        'get', help='Get a resource as JSON.')
 
     parser_get.add_argument('uuid', type=str,
                             help=f'UUID of the resource to get.')
-
-    parser_get.add_argument('--json', action='store_true', help='Json format', default=False)
 
     parser_get.set_defaults(func=run)
