@@ -125,15 +125,15 @@ TransformBuilder filterToTransform(const FilterBuilder& builder)
         auto filterOp = builder(targetField, opArgs, buildCtx);
 
         // Wrapper TransformOp
-        return [filterOp](base::Event event) -> TransformResult
+        return [filterOp, rs = buildCtx->runState()](base::Event event) -> TransformResult
         {
             auto filterRes = filterOp(event);
             if (filterRes.failure())
             {
-                return base::result::makeFailure<base::Event>(event, filterRes.popTrace());
+                RETURN_FAILURE(rs, event, filterRes.popTrace());
             }
 
-            return base::result::makeSuccess(std::move(event), filterRes.popTrace());
+            RETURN_SUCCESS(rs, event, filterRes.popTrace());
         };
     };
 }
@@ -157,17 +157,17 @@ TransformBuilder mapToTransform(const MapBuilder& builder, const Reference& targ
         auto mapOp = builder(opArgs, buildCtx);
 
         // Wrapper TransformOp
-        return [mapOp, targetField](base::Event event) -> TransformResult
+        return [mapOp, targetField, rs = buildCtx->runState()](base::Event event) -> TransformResult
         {
             auto mapRes = mapOp(event);
             if (mapRes.failure())
             {
-                return base::result::makeFailure<base::Event>(event, mapRes.popTrace());
+                RETURN_FAILURE(rs, event, mapRes.popTrace());
             }
 
             event->set(targetField.jsonPath(), mapRes.popPayload());
 
-            return base::result::makeSuccess(event, mapRes.popTrace());
+            RETURN_SUCCESS(rs, event, mapRes.popTrace());
         };
     };
 }
