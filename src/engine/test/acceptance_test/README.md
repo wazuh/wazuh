@@ -83,7 +83,7 @@ Python packages are auto-installed by the script if missing.
 | `--rate EPS` | `0` | Target EPS (`0` = unlimited) |
 | `--batch SIZE` | `50` | Events per HTTP request |
 | `--input DIR` | `utils/test_logs` | Directory with `.txt` / `.log` input files |
-| `--output FILE` | `$WAZUH_HOME/logs/alerts/alerts.json` | Output file to watch for processed events |
+| `--output FILE` | `$WAZUH_HOME/logs/standard-wazuh-events-v5/standard-wazuh-events-v5.json` | Output file to watch for processed events |
 | `--grace SECS` | `5` | Grace period before & after benchmark |
 | `--monitor-interval SECS` | `1` | Monitor sampling interval |
 | `--results DIR` | `./results` | Directory for output CSVs |
@@ -153,7 +153,7 @@ go run utils/benchmark_tool.go -h
 | `-r` | `1000` | Target EPS (`0` = unlimited) |
 | `-b` | `50` | Batch size (events per request) |
 | `-i` | `./test_logs` | Input directory with log files |
-| `-o` | `alerts.json` | Output file to watch |
+| `-o` | `/var/wazuh-manager/logs/standard-wazuh-events-v5/standard-wazuh-events-v5.json` | Output file to watch |
 | `-T` | `false` | Truncate output file before test |
 | `-csv` | *(none)* | Path to CSV report output |
 

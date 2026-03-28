@@ -15,17 +15,24 @@
 namespace archiver
 {
 
+constexpr auto EVENT_DUMP_CHANNEL_NAME = "event-dumps";
+constexpr auto EVENT_DUMP_CHANNEL_EXTENSION = "json";
+
 class Archiver final : public IArchiver
 {
 private:
     // Shared mutex
     mutable std::shared_mutex m_loggerMutex;             ///< Mutex for thread-safe access to the logger
     std::weak_ptr<streamlog::ILogManager> m_logger;      ///< Logger for archiving events
+    streamlog::RotationConfig m_channelConfig;           ///< Lazy-created streamlog channel configuration
     std::shared_ptr<streamlog::WriterEvent> m_logWriter; ///< Writer for logging events
 
 public:
-    explicit Archiver(std::weak_ptr<streamlog::ILogManager> logManager, bool isActive = false)
+    explicit Archiver(std::weak_ptr<streamlog::ILogManager> logManager,
+                      streamlog::RotationConfig channelConfig,
+                      bool isActive = false)
         : m_logger(std::move(logManager))
+        , m_channelConfig(std::move(channelConfig))
         , m_logWriter()
     {
         auto logger = m_logger.lock();
@@ -36,7 +43,8 @@ public:
 
         if (isActive)
         {
-            m_logWriter = logger->getWriter("archives");
+            m_logWriter =
+                logger->ensureAndGetWriter(EVENT_DUMP_CHANNEL_NAME, m_channelConfig, EVENT_DUMP_CHANNEL_EXTENSION);
         }
     }
 
@@ -68,7 +76,8 @@ public:
             {
                 throw std::runtime_error("Logger for archive is not available");
             }
-            m_logWriter = logger->getWriter("archives");
+            m_logWriter =
+                logger->ensureAndGetWriter(EVENT_DUMP_CHANNEL_NAME, m_channelConfig, EVENT_DUMP_CHANNEL_EXTENSION);
         }
     }
 

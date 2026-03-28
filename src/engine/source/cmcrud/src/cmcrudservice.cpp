@@ -144,7 +144,7 @@ void CrudService::deleteNamespace(const cm::store::NamespaceId& nsId)
 
 cm::store::dataType::Policy CrudService::importNamespace(const cm::store::NamespaceId& nsId,
                                   std::string_view jsonDocument,
-                                  std::string_view origin,
+                                  std::string_view originSpace,
                                   bool force)
 {
     auto store = getStore();
@@ -332,11 +332,10 @@ cm::store::dataType::Policy CrudService::importNamespace(const cm::store::Namesp
                     validatePolicy(nsReader, policy);
                 }
                 // Only set origin space if provided
-                if (!origin.empty())
+                if (!originSpace.empty())
                 {
-                    policy.setOriginSpace(origin);
+                    policy.setOriginSpace(originSpace);
                 }
-                policy.setOriginSpace(origin);
                 ns->upsertPolicy(policy);
             }
         }

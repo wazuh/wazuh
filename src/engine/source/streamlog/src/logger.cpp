@@ -84,28 +84,6 @@ void LogManager::updateConfig(const std::string& name, const RotationConfig& cfg
 }
 
 /**
- * @brief Retrieves a writer functor for the specified log channel.
- *
- * @param name The name of the log channel for which to retrieve the writer.
- * @return A function that takes a string (the log entry) and writes it to the log channel asynchronously.
- * @throws std::runtime_error if the log channel does not exist.
- */
-std::shared_ptr<WriterEvent> LogManager::getWriter(const std::string& name)
-{
-    std::shared_lock lock(m_channelsMutex);
-
-    // Find the channel
-    auto it = m_channels.find(name);
-    if (it == m_channels.end())
-    {
-        throw std::runtime_error("Log channel '" + name + "' does not exist");
-    }
-
-    // Create and return a new writer for the channel
-    return it->second->createWriter();
-}
-
-/**
  * @brief Gets the current configuration of a log channel.
  *
  * @param name The name of the log channel.
@@ -205,5 +183,38 @@ void LogManager::cleanup()
 {
     std::unique_lock lock(m_channelsMutex);
     m_channels.clear();
+}
+
+std::shared_ptr<WriterEvent>
+LogManager::ensureAndGetWriter(const std::string& name, const RotationConfig& cfg, std::string_view ext)
+{
+    std::shared_ptr<ChannelHandler> handler;
+
+    // Fast path
+    {
+        std::shared_lock lock(m_channelsMutex);
+        auto it = m_channels.find(name);
+        if (it != m_channels.end())
+        {
+            handler = it->second;
+        }
+    }
+
+    if (!handler)
+    {
+        std::unique_lock lock(m_channelsMutex);
+        auto it = m_channels.find(name);
+        if (it == m_channels.end())
+        {
+            auto config = cfg;
+            isolatedBasePath(name, config);
+            auto newHandler = ChannelHandler::create(config, name, m_store, m_scheduler, ext);
+            it = m_channels.emplace(name, std::move(newHandler)).first;
+            LOG_DEBUG("Log channel '{}' created on demand", name);
+        }
+        handler = it->second;
+    }
+
+    return handler->createWriter();
 }
 } // namespace streamlog

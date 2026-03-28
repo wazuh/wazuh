@@ -2,11 +2,32 @@
 #ifndef STREAMLOG_ILOGGER_HPP
 #define STREAMLOG_ILOGGER_HPP
 
+#include <filesystem>
 #include <memory>
 #include <string>
+#include <string_view>
 
 namespace streamlog
 {
+
+/**
+ * @brief Configuration for a single log channel's rotation and compression policy.
+ *
+ * Describes **where** log files are written, **how** they are named, and **when**
+ * they are rotated and optionally compressed.
+ *
+ * @see ILogManager::ensureChannel
+ * @ingroup StreamlogModule
+ */
+struct RotationConfig
+{
+    std::filesystem::path basePath; ///< Absolute directory where log files are written. Must exist and be writable.
+    std::string pattern;            ///< File-name pattern with placeholders (see namespace docs for the full list).
+    size_t maxSize;              ///< Maximum file size in bytes before size-based rotation. `0` disables size rotation.
+    size_t bufferSize = 1 << 20; ///< Queue capacity in events (default 1 Mi). `0` is promoted to the default.
+    bool shouldCompress {true};  ///< Compress rotated files with gzip when `true`.
+    size_t compressionLevel {5}; ///< Gzip compression level: 1 (fastest) – 9 (best). Only used when `shouldCompress`.
+};
 
 /**
  * @brief Abstract base class for writer event handlers.
@@ -25,7 +46,7 @@ namespace streamlog
  * The writer holds a weak reference to its channel handler. Destroying the writer
  * decrements the channel's active-writer count and may trigger worker-thread shutdown.
  *
- * @see ILogManager::getWriter
+ * @see ILogManager::ensureAndGetWriter
  * @ingroup StreamlogModule
  */
 class WriterEvent
@@ -56,8 +77,8 @@ public:
  *
  * ### Typical Usage
  * @code
- * // Obtain a writer (channel must already be registered)
- * auto writer = logManager->getWriter("alerts");
+ * // Ensure the channel exists and obtain a writer in one call
+ * auto writer = logManager->ensureAndGetWriter("mySpace-wazuh-events-v5", cfg, "json");
  *
  * // Write log entries from any thread
  * (*writer)(R"({"level":"warning","msg":"disk usage 90%"})");
@@ -72,17 +93,21 @@ public:
     virtual ~ILogManager() = default;
 
     /**
-     * @brief Retrieve a writer handle for the specified log channel.
+     * @brief Ensure the channel exists and return a writer in a single operation.
      *
+     * Creates the channel on first use and otherwise reuses the existing one.
      * The returned `WriterEvent` can be used from any thread to enqueue messages.
      * The caller owns the shared pointer; when the last copy is destroyed the channel's
      * active-writer count is decremented.
      *
-     * @param name The unique name of a previously registered log channel.
+     * @param name   Unique channel name.
+     * @param cfg    Rotation and compression configuration (used only on first creation).
+     * @param ext    File extension for the "latest" hard-link (e.g. `"json"`).
      * @return A shared pointer to a `WriterEvent` bound to the channel.
-     * @throws std::runtime_error If the channel does not exist.
+     * @throws std::runtime_error If the configuration is invalid or directory creation fails.
      */
-    virtual std::shared_ptr<WriterEvent> getWriter(const std::string& name) = 0;
+    [[nodiscard]] virtual std::shared_ptr<WriterEvent>
+    ensureAndGetWriter(const std::string& name, const RotationConfig& cfg, std::string_view ext) = 0;
 };
 
 } // namespace streamlog

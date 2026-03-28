@@ -377,7 +377,7 @@ INSTANTIATE_TEST_SUITE_P(ChannelNames,
                                            "withNumbers123",
                                            "MixedCase",
                                            "very-long-channel-name-with-many-characters",
-                                           "alerts",
+                                           "standard-wazuh-events-v5",
                                            "events",
                                            "audit"));
 
@@ -751,6 +751,27 @@ TEST_F(ChannelHandlerTest, PlaceholderReplacement)
     }
 
     EXPECT_TRUE(foundValidFile) << "File with correct placeholder replacement not found";
+}
+
+TEST_F(ChannelHandlerTest, GeneratedFileNameMatchesResolvedPatternExactly)
+{
+    auto config = defaultConfig;
+    config.pattern = "generated/${YYYY}/${MM}/${DD}/${name}.json";
+
+    auto handler = createBasicHandler("exact-name", config);
+    auto writer = handler->createWriter();
+
+    (*writer)("test message");
+    ASSERT_TRUE(waitFor([&handler]() { return std::filesystem::exists(handler->getCurrentFilePath()); }));
+
+    char buffer[128];
+    const auto now = std::time(nullptr);
+    const auto tm = *std::localtime(&now);
+    std::strftime(buffer, sizeof(buffer), "generated/%Y/%m/%d/exact-name.json", &tm);
+
+    const auto expectedPath = tmpDir / buffer;
+    EXPECT_EQ(handler->getCurrentFilePath(), expectedPath);
+    EXPECT_TRUE(std::filesystem::exists(expectedPath));
 }
 
 // Test counter placeholder with size rotation
@@ -1261,6 +1282,33 @@ TEST_F(ChannelHandlerTest, ExistingFileWithRotation)
 
     auto newFileSize = std::filesystem::file_size(rotatedFilePath);
     EXPECT_EQ(newFileSize, newContent.size() + 1); // +1 for newline
+}
+
+TEST_F(ChannelHandlerTest, RotatedFileNameMatchesIncrementedCounterExactly)
+{
+    auto config = defaultConfig;
+    config.maxSize = 0x1 << 20;
+    config.pattern = "rotated-exact-${counter}.log";
+
+    auto initialFilePath = tmpDir / "rotated-exact-0.log";
+    {
+        std::ofstream initialFile(initialFilePath);
+        initialFile << std::string(config.maxSize - 20, 'X');
+    }
+
+    auto handler = createBasicHandler("rotated-exact", config);
+    auto writer = handler->createWriter();
+
+    (*writer)(std::string(25, 'Y'));
+    ASSERT_TRUE(waitFor([&]() { return std::filesystem::exists(tmpDir / "rotated-exact-1.log"); }));
+
+    const auto rotatedFilePath = tmpDir / "rotated-exact-1.log";
+    const auto latestLinkPath = tmpDir / "rotated-exact.log";
+
+    EXPECT_EQ(handler->getCurrentFilePath(), rotatedFilePath);
+    EXPECT_TRUE(std::filesystem::exists(rotatedFilePath));
+    EXPECT_TRUE(std::filesystem::exists(latestLinkPath));
+    EXPECT_TRUE(std::filesystem::equivalent(rotatedFilePath, latestLinkPath));
 }
 
 // Test file size tracking accuracy with multiple writes
