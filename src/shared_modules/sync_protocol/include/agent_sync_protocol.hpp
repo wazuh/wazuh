@@ -13,7 +13,7 @@
 #include "agent_sync_protocol_c_interface_types.h"
 #include "agent_sync_protocol_types.hpp"
 #include "iagent_sync_protocol.hpp"
-#include "isync_message_transport.hpp"
+#include "mqueue_transport.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -105,8 +105,8 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Name of the module associated with this instance.
         std::string m_moduleName;
 
-        /// @brief The message transport (MQueue or Router).
-        std::unique_ptr<ISyncMessageTransport> m_transport;
+        /// @brief The MQueue message transport.
+        std::unique_ptr<MQueueTransport> m_transport;
 
         /// @brief Persistent message queue used to store and replay differences for synchronization.
         std::shared_ptr<IPersistentQueue> m_persistentQueue;

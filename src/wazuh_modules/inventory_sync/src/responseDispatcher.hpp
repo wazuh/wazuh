@@ -15,7 +15,6 @@
 #include "asyncValueDispatcher.hpp"
 #include "flatbuffers/include/inventorySync_generated.h"
 #include "loggerHelper.h"
-#include "routerProvider.hpp"
 #include "socketClient.hpp"
 #include <memory>
 
