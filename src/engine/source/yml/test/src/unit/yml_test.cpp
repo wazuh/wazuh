@@ -47,21 +47,42 @@ TEST_F(YmlTest, ParseScalarTest)
 {
     rapidjson::Value stringNode("hello");
     rapidjson::Value intNode(42);
+    rapidjson::Value int64Node(static_cast<int64_t>(std::numeric_limits<int64_t>::max()));
+    rapidjson::Value uint64Node(std::numeric_limits<uint64_t>::max());
     rapidjson::Value doubleNode(3.14);
     rapidjson::Value boolNode(true);
     rapidjson::Value invalidNode;
 
     auto stringResult = yml::Converter::parseScalar(stringNode);
     auto intResult = yml::Converter::parseScalar(intNode);
+    auto int64Result = yml::Converter::parseScalar(int64Node);
+    auto uint64Result = yml::Converter::parseScalar(uint64Node);
     auto doubleResult = yml::Converter::parseScalar(doubleNode);
     auto boolResult = yml::Converter::parseScalar(boolNode);
     auto invalidResult = yml::Converter::parseScalar(invalidNode);
 
     EXPECT_EQ(stringResult.Scalar(), "hello");
     EXPECT_EQ(intResult.as<int>(), 42);
+    EXPECT_EQ(int64Result.as<int64_t>(), std::numeric_limits<int64_t>::max());
+    EXPECT_EQ(uint64Result.as<uint64_t>(), std::numeric_limits<uint64_t>::max());
     EXPECT_EQ(doubleResult.as<double>(), 3.14);
     EXPECT_EQ(boolResult.as<bool>(), true);
     EXPECT_TRUE(invalidResult.IsNull());
+}
+
+TEST_F(YmlTest, JsonToYamlStringPreservesLargeIntegerScalars)
+{
+    json::Json document;
+    document.setObject();
+    document.setInt64(std::numeric_limits<int64_t>::max(), "/big_signed");
+    document.setUint64(std::numeric_limits<uint64_t>::max(), "/big_unsigned");
+    document.setDouble(1.5, "/ratio");
+
+    const auto yaml = yml::utils::jsonToYamlString(document);
+
+    EXPECT_NE(yaml.find("big_signed: 9223372036854775807"), std::string::npos);
+    EXPECT_NE(yaml.find("big_unsigned: 18446744073709551615"), std::string::npos);
+    EXPECT_NE(yaml.find("ratio: 1.5"), std::string::npos);
 }
 
 TEST_F(YmlTest, JsonToYamlTest)

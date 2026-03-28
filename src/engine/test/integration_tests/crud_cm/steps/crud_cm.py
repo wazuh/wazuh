@@ -1,4 +1,5 @@
 import os
+import json
 from typing import List
 
 from behave import given, when, then
@@ -88,11 +89,11 @@ def delete_namespace(space: str):
     _, _ = send_recv(req, api_engine.GenericStatus_Response())
 
 
-def request_resource_upsert(space: str, rtype: str, yml: str):
+def request_resource_upsert(space: str, rtype: str, payload: str):
     req = api_crud.resourcePost_Request()
     req.space = space
     req.type = rtype
-    req.ymlContent = yml
+    req.ymlContent = payload
     return send_recv(req, api_engine.GenericStatus_Response())
 
 
@@ -120,123 +121,124 @@ def request_resource_get(space: str, uuid: str, as_json: bool = False):
 
 
 # ============================================================
-# YAML builders for decoder assets
+# JSON builders for decoder assets
 # ============================================================
 
-def build_good_decoder_yaml(name: str) -> str:
-    """
-    Build a valid decoder asset YAML, following the expected structure.
-    """
-    return f"""\
-name: {name}
-enabled: true
-check: contains($event.original, "test-pattern")
-
-parse|event.original:
-  - |-
-    <_tmp_value.metric> <_test.metric.value/long>
-  - |-
-    <_tmp_other.metric> <_test.metric.other/long>
-
-normalize:
-  - map:
-    - event.category: array_append(_test)
-    - event.kind: metric
-    - event.type: array_append(info)
-    - _test.value: to_int($_tmp_value.metric, 'truncate')
-
-  - check: $_tmp_other.metric > 0
-    map:
-    - _test.other.is_positive: true
-"""
-
-
-def build_decoder_yaml_without_name() -> str:
-    """
-    Build a decoder YAML without 'name' field.
-    """
-    return """\
-check: contains($event.original, "test-pattern")
-enabled: true
-parse|event.original:
-  - |-
-    <_tmp_value.metric> <_test.metric.value/long>
-
-normalize:
-  - map:
-    - event.category: array_append(_test)
-"""
+def build_good_decoder_json(name: str) -> str:
+    return json.dumps(
+        {
+            "name": name,
+            "enabled": True,
+            "check": 'contains($event.original, "test-pattern")',
+            "parse|event.original": [
+                "<_tmp_value.metric> <_test.metric.value/long>",
+                "<_tmp_other.metric> <_test.metric.other/long>",
+            ],
+            "normalize": [
+                {
+                    "map": [
+                        {"event.category": "array_append(_test)"},
+                        {"event.kind": "metric"},
+                        {"event.type": "array_append(info)"},
+                        {"_test.value": "to_int($_tmp_value.metric, 'truncate')"},
+                    ]
+                },
+                {
+                    "check": "$_tmp_other.metric > 0",
+                    "map": [
+                        {"_test.other.is_positive": True},
+                    ],
+                },
+            ],
+        },
+        separators=(",", ":"),
+    )
 
 
-def build_decoder_yaml_with_invalid_name(bad_name: str) -> str:
-    """
-    Build a decoder YAML with an invalid 'name'.
-    """
-    return f"""\
-name: {bad_name}
-enabled: true
-check: contains($event.original, "test-pattern")
+def build_decoder_json_without_name() -> str:
+    return json.dumps(
+        {
+            "check": 'contains($event.original, "test-pattern")',
+            "enabled": True,
+            "parse|event.original": [
+                "<_tmp_value.metric> <_test.metric.value/long>",
+            ],
+            "normalize": [
+                {
+                    "map": [
+                        {"event.category": "array_append(_test)"},
+                    ]
+                }
+            ],
+        },
+        separators=(",", ":"),
+    )
 
-parse|event.original:
-  - |-
-    <_tmp_value.metric> <_test.metric.value/long>
 
-normalize:
-  - map:
-    - event.category: array_append(_test)
-"""
+def build_decoder_json_with_invalid_name(bad_name: str) -> str:
+    return json.dumps(
+        {
+            "name": bad_name,
+            "enabled": True,
+            "check": 'contains($event.original, "test-pattern")',
+            "parse|event.original": [
+                "<_tmp_value.metric> <_test.metric.value/long>",
+            ],
+            "normalize": [
+                {
+                    "map": [
+                        {"event.category": "array_append(_test)"},
+                    ]
+                }
+            ],
+        },
+        separators=(",", ":"),
+    )
 
 
-def build_decoder_yaml_with_id(name: str, uuid: str, updated: bool = False) -> str:
-    """
-    YAML for updating/creating a decoder resource, including the 'id' field.
-    """
+def build_decoder_json_with_id(name: str, uuid: str, updated: bool = False) -> str:
+    payload = {
+        "name": name,
+        "enabled": True,
+        "id": uuid,
+        "check": 'contains($event.original, "test-pattern")',
+        "parse|event.original": [
+            "<_tmp_value.metric> <_test.metric.value/long>",
+        ],
+        "normalize": [
+            {
+                "map": [
+                    {"event.category": "array_append(_test)"},
+                ]
+            }
+        ],
+    }
+
     if updated:
-        return f"""\
-name: {name}
-id: {uuid}
-enabled: true
-check: contains($event.original, "test-pattern")
+        payload["normalize"] = [
+            {
+                "map": [
+                    {"event.category": "array_append(_test)"},
+                    {"_test.value": "to_int($_tmp_value.metric, 'truncate')"},
+                    {"_test.updated": True},
+                ]
+            }
+        ]
 
-parse|event.original:
-  - |-
-    <_tmp_value.metric> <_test.metric.value/long>
-
-normalize:
-  - map:
-    - event.category: array_append(_test)
-    - _test.value: to_int($_tmp_value.metric, 'truncate')
-    - _test.updated: true
-"""
-    else:
-        return f"""\
-name: {name}
-enabled: true
-id: {uuid}
-
-check: contains($event.original, "test-pattern")
-
-parse|event.original:
-  - |-
-    <_tmp_value.metric> <_test.metric.value/long>
-
-normalize:
-  - map:
-    - event.category: array_append(_test)
-"""
+    return json.dumps(payload, separators=(",", ":"))
 
 
 # ============================================================
 # POLICY HELPERS
 # ============================================================
 
-def request_policy_upsert(space: str, yml: str):
+def request_policy_upsert(space: str, payload: str):
     """
     Calls policyPost handler.
     """
     req = api_crud.policyPost_Request()
     req.space = space
-    req.ymlContent = yml
+    req.ymlContent = payload
     return send_recv(req, api_engine.GenericStatus_Response())
 
 
@@ -249,125 +251,97 @@ def request_policy_delete(space: str):
     return send_recv(req, api_engine.GenericStatus_Response())
 
 
-def build_valid_policy_yaml() -> str:
-    """
-    Minimal valid policy YAML for tests where we only care about
-    handler/namespace errors (focus on 'integrations' array).
-    """
-    return """\
-metadata:
-  title: bar
-enabled: true
-hash: "crud-cm-test-hash"
-root_decoder: "00000000-0000-0000-0000-000000000001"
-integrations:
-  - "dummy-integration-uuid"
-enrichments: []
-filters: []
-index_unclassified_events: false
-index_discarded_events: false
-"""
+def build_valid_policy_json() -> str:
+    return json.dumps(
+        {
+            "metadata": {"title": "bar"},
+            "enabled": True,
+            "hash": "crud-cm-test-hash",
+            "root_decoder": "00000000-0000-0000-0000-000000000001",
+            "integrations": ["dummy-integration-uuid"],
+            "enrichments": [],
+            "filters": [],
+            "index_unclassified_events": False,
+            "index_discarded_events": False,
+        },
+        separators=(",", ":"),
+    )
 
 
-def build_policy_yaml_missing_integrations() -> str:
-    """
-    Policy YAML without 'integrations' key.
-    """
-    return """\
-metadata:
-  title: bar
-enabled: true
-hash: "crud-cm-test-hash"
-root_decoder: "00000000-0000-0000-0000-000000000001"
-enrichments: []
-filters: []
-index_unclassified_events: false
-index_discarded_events: false
-"""
+def build_policy_json_missing_integrations() -> str:
+    return json.dumps(
+        {
+            "metadata": {"title": "bar"},
+            "enabled": True,
+            "hash": "crud-cm-test-hash",
+            "root_decoder": "00000000-0000-0000-0000-000000000001",
+            "enrichments": [],
+            "filters": [],
+            "index_unclassified_events": False,
+            "index_discarded_events": False,
+        },
+        separators=(",", ":"),
+    )
 
 
-def build_policy_yaml_with_unexists_root_decoder() -> str:
-    """
-    Policy YAML with an empty 'integrations' array.
-    """
-    return """\
-metadata:
-  title: bar
-enabled: true
-hash: "crud-cm-test-hash"
-root_decoder: "00000000-0000-0000-0000-000000000001"
-integrations: []
-enrichments: []
-filters: []
-index_unclassified_events: false
-index_discarded_events: false
-"""
+def build_policy_json_with_unexists_root_decoder() -> str:
+    return json.dumps(
+        {
+            "metadata": {"title": "bar"},
+            "enabled": True,
+            "hash": "crud-cm-test-hash",
+            "root_decoder": "00000000-0000-0000-0000-000000000001",
+            "integrations": [],
+            "enrichments": [],
+            "filters": [],
+            "index_unclassified_events": False,
+            "index_discarded_events": False,
+        },
+        separators=(",", ":"),
+    )
 
 
-def build_full_valid_policy_yaml(default_parent: str,
+def build_full_valid_policy_json(default_parent: str,
                                  root_decoder: str,
                                  integration_uuid: str) -> str:
-    """
-    Full valid policy YAML, with mandatory fields and at least one integration UUID.
-    Matches the shape:
-
-      {
-        "type": "policy",
-        "title": "...",
-        "default_parent": "...",
-        "root_decoder": "...",
-        "integrations": [ "<uuid>" ]
-      }
-    """
-    return f"""\
-type: policy
-enabled: true
-metadata:
-  title: Development 0.0.1
-hash: "crud-cm-test-hash"
-default_parent: {default_parent}
-root_decoder: {root_decoder}
-integrations:
-  - "{integration_uuid}"
-enrichments: []
-filters: []
-index_unclassified_events: false
-index_discarded_events: false
-"""
+    return json.dumps(
+        {
+            "type": "policy",
+            "enabled": True,
+            "metadata": {"title": "Development 0.0.1"},
+            "hash": "crud-cm-test-hash",
+            "default_parent": default_parent,
+            "root_decoder": root_decoder,
+            "integrations": [integration_uuid],
+            "enrichments": [],
+            "filters": [],
+            "index_unclassified_events": False,
+            "index_discarded_events": False,
+        },
+        separators=(",", ":"),
+    )
 
 
-def build_integration_yaml_for_policy(name: str,
+def build_integration_json_for_policy(name: str,
                                       integ_uuid: str,
                                       default_parent: str,
                                       decoder_uuid: str) -> str:
-    """
-    Integration YAML for policy tests, matching (in JSON):
-
-      {
-        "id": "...",
-        "title": "...",
-        "enabled": true,
-        "category": "other",
-        "default_parent": "...",
-        "decoders": [ "<decoder_uuid>" ],
-        "kvdbs": []
-      }
-    """
-    return f"""\
-id: {integ_uuid}
-metadata:
-  title: {name}
-enabled: true
-enrichments: []
-filters: []
-index_unclassified_events: false
-index_discarded_events: false
-category: other
-default_parent: {default_parent}
-decoders:
-  - "{decoder_uuid}"
-kvdbs: []
-"""
+    return json.dumps(
+        {
+            "id": integ_uuid,
+            "metadata": {"title": name},
+            "enabled": True,
+            "enrichments": [],
+            "filters": [],
+            "index_unclassified_events": False,
+            "index_discarded_events": False,
+            "category": "other",
+            "default_parent": default_parent,
+            "decoders": [decoder_uuid],
+            "kvdbs": [],
+        },
+        separators=(",", ":"),
+    )
 
 
 # ============================================================
@@ -407,8 +381,8 @@ def step_impl(context, rtype, space):
 
 @given('I have created a "decoder" resource named "{name}" in namespace "{space}"')
 def step_impl(context, name, space):
-    yml = build_good_decoder_yaml(name)
-    err, resp = request_resource_upsert(space, "decoder", yml)
+    payload = build_good_decoder_json(name)
+    err, resp = request_resource_upsert(space, "decoder", payload)
     assert err is None, f"Error creating decoder resource: {err}"
     assert resp.status == api_engine.OK, f"{resp}"
 
@@ -440,29 +414,29 @@ def step_impl(context, space):
       - validateIntegration / getIntegrationByUUID work with that integration UUID.
     """
     # 1) Decoder used as default_parent (requires name + id)
-    yml_default_parent = build_decoder_yaml_with_id(
+    default_parent_payload = build_decoder_json_with_id(
         POLICY_DEFAULT_PARENT_NAME,
         POLICY_DECODER_UUID,
         updated=False,
     )
-    err, resp = request_resource_upsert(space, "decoder", yml_default_parent)
+    err, resp = request_resource_upsert(space, "decoder", default_parent_payload)
     assert err is None, f"Error creating default_parent decoder: {err}"
     assert resp.status == api_engine.OK, f"{resp}"
 
     # 2) Root decoder (only needs to exist by name)
-    yml_root_decoder = build_good_decoder_yaml(POLICY_ROOT_DECODER_NAME)
-    err, resp = request_resource_upsert(space, "decoder", yml_root_decoder)
+    root_decoder_payload = build_good_decoder_json(POLICY_ROOT_DECODER_NAME)
+    err, resp = request_resource_upsert(space, "decoder", root_decoder_payload)
     assert err is None, f"Error creating root decoder: {err}"
     assert resp.status == api_engine.OK, f"{resp}"
 
     # 3) Integration resource, referencing the decoder UUID
-    integ_yaml = build_integration_yaml_for_policy(
+    integration_payload = build_integration_json_for_policy(
         name=POLICY_INTEGRATION_NAME,
         integ_uuid=POLICY_INTEGRATION_UUID,
         default_parent=POLICY_DECODER_UUID,
         decoder_uuid=POLICY_DECODER_UUID,
     )
-    err, resp = request_resource_upsert(space, "integration", integ_yaml)
+    err, resp = request_resource_upsert(space, "integration", integration_payload)
     assert err is None, f"Error creating integration for policy: {err}"
     assert resp.status == api_engine.OK, f"{resp}"
 
@@ -473,8 +447,8 @@ def step_impl(context, space):
 
 @when('I send a request to create a "decoder" resource named "{name}" in namespace "{space}"')
 def step_impl(context, name, space):
-    yml = build_good_decoder_yaml(name)
-    context.res_error_msg, context.res_response = request_resource_upsert(space, "decoder", yml)
+    payload = build_good_decoder_json(name)
+    context.res_error_msg, context.res_response = request_resource_upsert(space, "decoder", payload)
 
 
 @when('I request the list of "{rtype}" resources in namespace "{space}"')
@@ -484,14 +458,14 @@ def step_impl(context, rtype, space):
 
 @when('I send a request to create a "decoder" resource named "{name}" in an empty space')
 def step_impl(context, name):
-    yml = build_good_decoder_yaml(name)
-    context.res_error_msg, context.res_response = request_resource_upsert("", "decoder", yml)
+    payload = build_good_decoder_json(name)
+    context.res_error_msg, context.res_response = request_resource_upsert("", "decoder", payload)
 
 
 @when('I send a request to create a resource with empty type in namespace "{space}" and name "{name}"')
 def step_impl(context, space, name):
-    yml = build_good_decoder_yaml(name)
-    context.res_error_msg, context.res_response = request_resource_upsert(space, "", yml)
+    payload = build_good_decoder_json(name)
+    context.res_error_msg, context.res_response = request_resource_upsert(space, "", payload)
 
 
 @when('I send a request to create a "decoder" resource with empty YAML in namespace "{space}"')
@@ -501,8 +475,8 @@ def step_impl(context, space):
 
 @when('I send a request to create a resource with type "{rtype}" in namespace "{space}" and name "{name}"')
 def step_impl(context, rtype, space, name):
-    yml = build_good_decoder_yaml(name)
-    context.res_error_msg, context.res_response = request_resource_upsert(space, rtype, yml)
+    payload = build_good_decoder_json(name)
+    context.res_error_msg, context.res_response = request_resource_upsert(space, rtype, payload)
 
 
 @when('I send a request to delete the resource with that UUID in namespace "{space}"')
@@ -529,14 +503,14 @@ def step_impl(context, uuid, space):
 
 @when('I send a request to create a "decoder" resource without a name in namespace "{space}"')
 def step_impl(context, space):
-    yml = build_decoder_yaml_without_name()
-    context.res_error_msg, context.res_response = request_resource_upsert(space, "decoder", yml)
+    payload = build_decoder_json_without_name()
+    context.res_error_msg, context.res_response = request_resource_upsert(space, "decoder", payload)
 
 
 @when('I send a request to create a "decoder" resource with invalid name "{bad_name}" in namespace "{space}"')
 def step_impl(context, bad_name, space):
-    yml = build_decoder_yaml_with_invalid_name(bad_name)
-    context.res_error_msg, context.res_response = request_resource_upsert(space, "decoder", yml)
+    payload = build_decoder_json_with_invalid_name(bad_name)
+    context.res_error_msg, context.res_response = request_resource_upsert(space, "decoder", payload)
 
 
 @when('I send a request to update that decoder resource with modified YAML in namespace "{space}"')
@@ -551,8 +525,8 @@ def step_impl(context, space):
     assert matches, f"Resource with UUID '{uuid}' not found when updating"
     name = matches[0]
 
-    yml = build_decoder_yaml_with_id(name, uuid, updated=True)
-    context.res_error_msg, context.res_response = request_resource_upsert(space, "decoder", yml)
+    payload = build_decoder_json_with_id(name, uuid, updated=True)
+    context.res_error_msg, context.res_response = request_resource_upsert(space, "decoder", payload)
 
 
 # ============================================================
@@ -653,8 +627,8 @@ def step_impl(context, space):
 
 @when('I send a request to upsert a policy in an empty space with valid policy YAML')
 def step_impl(context):
-    yml = build_valid_policy_yaml()
-    context.pol_error_msg, context.pol_response = request_policy_upsert("", yml)
+    payload = build_valid_policy_json()
+    context.pol_error_msg, context.pol_response = request_policy_upsert("", payload)
 
 
 @when('I send a request to upsert a policy in namespace "{space}" with empty policy YAML')
@@ -664,20 +638,20 @@ def step_impl(context, space):
 
 @when('I send a request to upsert a policy in namespace "{space}" with valid policy YAML')
 def step_impl(context, space):
-    yml = build_valid_policy_yaml()
-    context.pol_error_msg, context.pol_response = request_policy_upsert(space, yml)
+    payload = build_valid_policy_json()
+    context.pol_error_msg, context.pol_response = request_policy_upsert(space, payload)
 
 
 @when('I send a request to upsert a policy in namespace "{space}" with YAML missing the integrations array')
 def step_impl(context, space):
-    yml = build_policy_yaml_missing_integrations()
-    context.pol_error_msg, context.pol_response = request_policy_upsert(space, yml)
+    payload = build_policy_json_missing_integrations()
+    context.pol_error_msg, context.pol_response = request_policy_upsert(space, payload)
 
 
 @when('I send a request to upsert a policy in namespace "{space}" with YAML having an invalid root decoder')
 def step_impl(context, space):
-    yml = build_policy_yaml_with_unexists_root_decoder()
-    context.pol_error_msg, context.pol_response = request_policy_upsert(space, yml)
+    payload = build_policy_json_with_unexists_root_decoder()
+    context.pol_error_msg, context.pol_response = request_policy_upsert(space, payload)
 
 
 @when('I send a request to upsert a valid policy in namespace "{space}"')
@@ -686,12 +660,12 @@ def step_impl(context, space):
     Success path: uses the prepared decoders + integration for this namespace
     and builds a full, valid policy YAML.
     """
-    yml = build_full_valid_policy_yaml(
+    payload = build_full_valid_policy_json(
         default_parent=POLICY_DECODER_UUID,
         root_decoder=POLICY_DECODER_UUID,
         integration_uuid=POLICY_INTEGRATION_UUID,
     )
-    context.pol_error_msg, context.pol_response = request_policy_upsert(space, yml)
+    context.pol_error_msg, context.pol_response = request_policy_upsert(space, payload)
 
 
 @when('I send a request to delete a policy in an empty space')

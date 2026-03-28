@@ -163,7 +163,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 eContent::policyPost_Request protoReq;
                 protoReq.set_space("draft");
-                protoReq.set_ymlcontent("policy: test");
+                protoReq.set_ymlcontent(R"({"policy":"test"})");
                 return createRequest<eContent::policyPost_Request>(protoReq);
             },
             [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return policyUpsert(crud); },
@@ -299,7 +299,7 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 eContent::resourceGet_Response protoRes;
                 protoRes.set_status(eEngine::ReturnStatus::OK);
-                protoRes.set_content("yml: content");
+                protoRes.set_content(R"({"id":"uuid-1","name":"decoder/test"})");
                 return userResponse<eContent::resourceGet_Response>(protoRes);
             },
             [](auto& mock)
@@ -309,7 +309,7 @@ INSTANTIATE_TEST_SUITE_P(
                                                                { return nsId.toStr() == "draft"; }),
                                               "uuid-1",
                                               false))
-                    .WillOnce(::testing::Return("yml: content"));
+                    .WillOnce(::testing::Return(R"({"id":"uuid-1","name":"decoder/test"})"));
             }),
         // Wrong request type
         CmCrudHandlerT(
@@ -334,7 +334,7 @@ INSTANTIATE_TEST_SUITE_P(
                 eContent::resourcePost_Request protoReq;
                 protoReq.set_space("draft");
                 protoReq.set_type("decoder");
-                protoReq.set_ymlcontent("some: yaml");
+                protoReq.set_ymlcontent(R"({"name":"decoder/test","id":"11111111-1111-4111-8111-111111111111"})");
                 return createRequest<eContent::resourcePost_Request>(protoReq);
             },
             [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceUpsert(crud); },

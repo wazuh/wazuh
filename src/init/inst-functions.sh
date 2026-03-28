@@ -923,10 +923,10 @@ installEngineStore()
     # Copy default output configuration files
     local OUTPUTS_PATH=${INSTALLDIR}/etc/outputs
     local DEFAULT_OUTPUTS_PATH=${OUTPUTS_PATH}/default
-    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${DEFAULT_OUTPUTS_PATH}
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${DEFAULT_OUTPUTS_PATH}
     cp "${ENGINE_SRC_PATH}/ruleset/outputs/"*.yml "${DEFAULT_OUTPUTS_PATH}/"
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${OUTPUTS_PATH}
-    find ${OUTPUTS_PATH} -type d -exec chmod 770 {} \; -o -type f -exec chmod 660 {} \;
+    find ${OUTPUTS_PATH} -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
 
     # Create /var/wazuh-manager/data/ruleset
     install -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/data/ruleset

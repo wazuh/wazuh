@@ -36,13 +36,13 @@ def run(args):
 
 def configure(subparsers):
     parser_upsert = subparsers.add_parser(
-        'upsert', help='Upsert a new resource.')
+        'upsert', help='Upsert a resource from JSON content.')
 
     parser_upsert.add_argument('type', type=str,
                                help=f'Type of resource to upsert.')
 
     parser_upsert.add_argument('-c', '--content', type=str, default='',
-                               help='Content of the item, can be passed as argument or '
+                               help='JSON content of the item, can be passed as argument or '
                                'redirected from a file using the "|" operator or the "<" '
                                'operator.')
 

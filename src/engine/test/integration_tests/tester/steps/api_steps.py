@@ -81,40 +81,29 @@ def send_recv(request, expected_response_type) -> Tuple[Optional[str], object, d
 # ===================================================================
 
 
-def build_policy_yaml(default_parent: str, root_decoder: str, integration_uuids):
-    """
-    Policy YAML according to the model:
-
-      {
-        "type": "policy",
-        "title": "Development 0.0.1",
-        "default_parent": "...",
-        "root_decoder": "...",
-        "integrations": [ ... ]
-      }
-    """
-    integrations_block = "\n".join(f'  - "{u}"' for u in integration_uuids)
-    return f"""\
-type: policy
-enabled: true
-metadata:
-  title: Development 0.0.1
-hash: "tester-test-hash"
-enrichments: []
-filters: []
-index_unclassified_events: true
-index_discarded_events: false
-default_parent: {default_parent}
-root_decoder: {root_decoder}
-integrations:
-{integrations_block}
-"""
+def build_policy_json(default_parent: str, root_decoder: str, integration_uuids):
+    return json.dumps(
+        {
+            "type": "policy",
+            "enabled": True,
+            "metadata": {"title": "Development 0.0.1"},
+            "hash": "tester-test-hash",
+            "enrichments": [],
+            "filters": [],
+            "index_unclassified_events": True,
+            "index_discarded_events": False,
+            "default_parent": default_parent,
+            "root_decoder": root_decoder,
+            "integrations": list(integration_uuids),
+        },
+        separators=(",", ":"),
+    )
 
 
-def cm_policy_upsert(space: str, yml: str):
+def cm_policy_upsert(space: str, payload: str):
     req = api_crud.policyPost_Request()
     req.space = space
-    req.ymlContent = yml
+    req.ymlContent = payload
     err, resp, _ = send_recv(req, api_engine.GenericStatus_Response())
     assert err is None, f"Error upserting policy in '{space}': {err}"
     assert resp.status == api_engine.OK, f"{resp}"
@@ -137,12 +126,12 @@ def add_integration_to_policy(integration_name: str, policy_name: str):
     assert policy_name == POLICY_NS, "This step is intended for policy 'testing'"
 
     integ_list = [INTEG_WAZUH_CORE_UUID, INTEG_OTHER_WAZUH_CORE_UUID]
-    policy_yaml = build_policy_yaml(
+    policy_json = build_policy_json(
         default_parent=DECODER_TEST_UUID,
         root_decoder=DECODER_TEST_UUID,
         integration_uuids=integ_list,
     )
-    cm_policy_upsert(POLICY_NS, policy_yaml)
+    cm_policy_upsert(POLICY_NS, policy_json)
 
 
 def delete_policy(policy_name: str):
@@ -218,12 +207,12 @@ def step_impl(context, policy_name: str, integration_name: str):
     else:
         raise AssertionError(f"Unsupported integration name: {integration_name}")
 
-    policy_yaml = build_policy_yaml(
+    policy_json = build_policy_json(
         default_parent=default_parent,
         root_decoder=root_decoder,
         integration_uuids=integ_list,
     )
-    cm_policy_upsert(POLICY_NS, policy_yaml)
+    cm_policy_upsert(POLICY_NS, policy_json)
 
 
 @given("I have no tester sessions")
