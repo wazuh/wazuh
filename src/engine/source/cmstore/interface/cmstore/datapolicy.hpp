@@ -1,6 +1,7 @@
 #ifndef _ICMSTORE_DATA_POLICY
 #define _ICMSTORE_DATA_POLICY
 
+#include <regex>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -66,7 +67,23 @@ constexpr std::string_view PATH_KEY_CLEANUP_DECODER_VARIABLES = "/cleanup_decode
 namespace
 {
 constexpr std::string_view DEFAULT_ORIGIN_SPACE = "UNDEFINED"; ///< Default origin space when not specified
+
+inline void validateOriginSpace(std::string_view originSpace)
+{
+    if (originSpace.empty())
+    {
+        throw std::runtime_error("origin_space cannot be empty");
+    }
+
+    if (!std::regex_match(originSpace.begin(), originSpace.end(), std::regex("^[a-zA-Z0-9_-]+$")))
+    {
+        throw std::runtime_error(fmt::format(
+            "'origin_space' contains invalid characters: '{}'. Only alphanumeric, hyphens and underscores are "
+            "allowed.",
+            originSpace));
+    }
 }
+} // namespace
 
 /**
  * @brief Policy class representing a policy in wazuh-engine
@@ -138,7 +155,7 @@ public:
             std::string title;
             if (policyJson.getString(title, jsonpolicy::PATH_KEY_TITLE) != json::RetGet::Success || title.empty())
             {
-                return std::string {"Untitled Policy"};
+                return std::string{"Untitled Policy"};
             }
             return title;
         }();
@@ -276,7 +293,9 @@ public:
             {
                 return std::string(DEFAULT_ORIGIN_SPACE);
             }
-            return originSpace;
+
+            validateOriginSpace(originSpaceOpt.value());
+            return originSpaceOpt.value();
         }();
 
         auto policyHash = [&]() -> std::string
@@ -389,7 +408,11 @@ public:
 
     // Getters and setters of optional values
     const std::string& getOriginSpace() const { return m_originSpace; }
-    void setOriginSpace(std::string_view originSpace) { m_originSpace = originSpace; }
+    void setOriginSpace(std::string_view originSpace)
+    {
+        validateOriginSpace(originSpace);
+        m_originSpace = originSpace;
+    }
     bool shouldIndexUnclassifiedEvents() const { return m_indexUnclassifiedEvents; }
     bool shouldIndexDiscardedEvents() const { return m_indexDiscardedEvents; }
     bool shouldCleanupDecoderVariables() const { return m_cleanupDecoderVariables; }
