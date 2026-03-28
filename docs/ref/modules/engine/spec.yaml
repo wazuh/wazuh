@@ -319,7 +319,19 @@ paths:
                   metadata:
                     wazuh:
                       host:
-                        name: "test-host"
+                        ip: "192.168.1.10"
+                  event: "File /etc/passwd modified"
+                  trace_level: "ALL"
+
+              metadata_wazuh_wrong_type:
+                summary: INVALID - metadata with type missmatch
+                value:
+                  queue: 1
+                  location: "syscheck"
+                  metadata:
+                    wazuh:
+                      host:
+                        ip: "notAnIpAddress"
                   event: "File /etc/passwd modified"
                   trace_level: "ALL"
 
@@ -459,7 +471,7 @@ paths:
                   summary: metadata contains unsupported top-level fields
                   value:
                     status: "ERROR"
-                    error: "Metadata should contain 'wazuh' as root"
+                    error: "Metadata must be a non-empty object with 'wazuh' as root"
 
         "500":
           $ref: "#/components/responses/InternalServerError_500"

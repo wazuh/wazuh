@@ -33,9 +33,16 @@ public:
      *
      * Loads the last persisted runtime settings from store, registers per-key
      * callbacks, and synchronizes updated values from wazuh-indexer.
+     *
+     * @param indexerConnector Shared pointer to the indexer connector for fetching remote settings.
+     * @param store Shared pointer to the internal store for persisting settings.
+     * @param attempts Number of attempts to connect or retry operations before failing.
+     * @param waitSeconds Seconds to wait between attempts.
      */
     explicit ConfRemoteManager(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerConnector,
-                               const std::shared_ptr<store::IStore>& store);
+                               const std::shared_ptr<store::IStore>& store,
+                               const size_t attempts,
+                               const size_t waitSeconds);
 
     /**
      * @brief Synchronizes runtime settings from wazuh-indexer.

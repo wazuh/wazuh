@@ -17,11 +17,11 @@ const base::Name REMOTE_CONF_CACHE_DOC {"remote-config/engine-cnf/0"};
 }
 
 ConfRemoteManager::ConfRemoteManager(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerConnector,
-                                     const std::shared_ptr<store::IStore>& store)
+                                     const std::shared_ptr<store::IStore>& store, const size_t attempts, const size_t waitSeconds)
     : m_indexerConnector(indexerConnector)
     , m_store(store)
-    , m_attempts(3)
-    , m_waitSeconds(5)
+    , m_attempts(attempts)
+    , m_waitSeconds(waitSeconds)
 {
     if (store->existsDoc(REMOTE_CONF_CACHE_DOC))
     {

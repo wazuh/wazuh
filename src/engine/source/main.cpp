@@ -402,9 +402,11 @@ int main(int argc, char* argv[])
                 json::Json jsonCnf(baseJsonCnf);
                 const auto maxQueueSize = confManager.get<size_t>(conf::key::INDEXER_QUEUE_MAX_EVENTS);
                 jsonCnf.setUint64(maxQueueSize, "/max_queue_size");
+                const auto maxHitsPerRequest =
+                    confManager.get<std::size_t>(conf::key::INDEXER_CONNECTOR_MAX_HITS_PER_REQUEST);
 
                 // Create indexer connector with enhanced configuration
-                indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf.str());
+                indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf.str(), maxHitsPerRequest);
 
                 // Log pending events from previous sessions
                 const auto pendingEvents = indexerConnector->getQueueSize();
@@ -525,7 +527,9 @@ int main(int argc, char* argv[])
         // Remote runtime settings manager
         if (enableProcessing)
         {
-            remoteConf = std::make_shared<confremote::ConfRemoteManager>(indexerConnector, store);
+            auto maxRetries = confManager.get<size_t>(conf::key::REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES);
+            auto retryInterval = confManager.get<size_t>(conf::key::REMOTE_CONF_INDEXER_CONNECTOR_RETRY_INTERVAL);
+            remoteConf = std::make_shared<confremote::ConfRemoteManager>(indexerConnector, store, maxRetries, retryInterval);
         }
 
         // Raw Event Indexer
@@ -575,7 +579,9 @@ int main(int argc, char* argv[])
         // CMsync
         if (enableProcessing)
         {
-            cmSyncService = std::make_shared<cm::sync::CMSync>(indexerConnector, cmCrudService, store, orchestrator);
+            auto maxRetries = confManager.get<size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_MAX_RETRIES);
+            auto retryInterval = confManager.get<size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL);
+            cmSyncService = std::make_shared<cm::sync::CMSync>(indexerConnector, cmCrudService, store, orchestrator, maxRetries, retryInterval);
             LOG_INFO("Content Manager Sync Service initialized.");
 
             // Add sync to scheduler
@@ -594,7 +600,11 @@ int main(int argc, char* argv[])
         if (enableProcessing)
         {
             // Create IOC Sync Service
-            iocSyncService = std::make_shared<ioc::sync::IocSync>(indexerConnector, IOCkvdb, store);
+            auto maxRetries = confManager.get<size_t>(conf::key::IOC_INDEXER_CONNECTOR_MAX_RETRIES);
+            auto retryInterval = confManager.get<size_t>(conf::key::IOC_INDEXER_CONNECTOR_RETRY_INTERVAL);
+            auto iocSyncBatchSize = confManager.get<size_t>(conf::key::IOC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE);
+            iocSyncService = std::make_shared<ioc::sync::IocSync>(
+                indexerConnector, IOCkvdb, store, maxRetries, retryInterval, iocSyncBatchSize);
             LOG_INFO("IOC Sync Service initialized.");
 
             // Add IOC sync to scheduler
@@ -609,7 +619,12 @@ int main(int argc, char* argv[])
                                                                {
                                                                    iocSyncService->synchronize();
                                                                }});
-                LOG_INFO("IOC Sync task scheduled with interval: {} seconds", iocSyncInterval);
+                LOG_INFO("IOC Sync task scheduled with interval: {} seconds, {} max retries, {} seconds for retry "
+                         "interval and {} for batch size",
+                         iocSyncInterval,
+                         maxRetries,
+                         retryInterval,
+                         iocSyncBatchSize);
             }
             else
             {
