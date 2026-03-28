@@ -28,6 +28,7 @@
 #include <confremote/confremotemanager.hpp>
 #include <defs/defs.hpp>
 #include <eMessages/eMessage.h>
+#include <fastmetrics/registry.hpp>
 #include <fastqueue/cqueue.hpp>
 #include <fastqueue/stdqueue.hpp>
 #include <geo/downloader.hpp>
@@ -51,7 +52,6 @@
 
 #include "base/utils/getExceptionStack.hpp"
 #include "stackExecutor.hpp"
-
 
 volatile sig_atomic_t g_shutdown_requested = 0;
 
@@ -236,6 +236,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<kvdbstore::IKVDBManager> kvdbManager;
     std::shared_ptr<ioc::kvdb::IKVDBManager> IOCkvdb;
     std::shared_ptr<geo::Manager> geoManager;
+    std::shared_ptr<fastmetrics::IManager> metricsManager;
     std::shared_ptr<schemf::Schema> schemaValidator;
     std::shared_ptr<scheduler::Scheduler> scheduler;
     std::shared_ptr<streamlog::LogManager> streamLogger;
@@ -328,6 +329,12 @@ int main(int argc, char* argv[])
             auto geoDownloader = std::make_shared<geo::Downloader>();
             geoManager = std::make_shared<geo::Manager>(store, geoDownloader);
             LOG_INFO("Geo initialized.");
+        }
+
+        // Fast Metrics
+        {
+            fastmetrics::registerManager();
+            LOG_INFO("Fast metrics initialized.");
         }
 
         // Schema
@@ -708,7 +715,13 @@ int main(int argc, char* argv[])
                     eMessage::ShutdownEMessageLibrary();
                 });
 
-            // TODO Add Metrics API registration
+            // Metrics - create non-owning shared_ptr to singleton
+            metricsManager = std::shared_ptr<fastmetrics::IManager>(&fastmetrics::manager(),
+                                                                    [](fastmetrics::IManager*) {
+                                                                    } // Empty deleter - singleton is owned elsewhere
+            );
+            api::metrics::handlers::registerHandlers(metricsManager, apiServer);
+            LOG_DEBUG("Metrics API registered.");
 
             // Geo
             api::geo::handlers::registerHandlers(geoManager, apiServer);
