@@ -3,8 +3,7 @@ server:
     level: debug2
 indexer:
   hosts:
-    - host: wazuh-indexer
-      port: 9200
+    - https://wazuh-indexer:9200
   username: admin
   password: admin
   ssl:
