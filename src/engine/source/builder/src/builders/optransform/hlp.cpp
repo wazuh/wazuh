@@ -161,7 +161,7 @@ TransformOp specificHLPBuilder(const Reference& targetField,
         }
 
         // Parse source
-        auto error = hlp::parser::run(parser, sourceValue.value(), *event);
+        auto error = hlp::parser::run(parser, sourceValue.value(), *event, runState->trace);
         if (error)
         {
             RETURN_FAILURE(runState, event, failureTrace + error.value().message);

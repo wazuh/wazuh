@@ -2,6 +2,7 @@
 
 #include <base/json.hpp>
 
+#include "../utils.hpp"
 #include "syntax.hpp"
 
 namespace builder::builders
@@ -70,36 +71,31 @@ StageBuilder getParseBuilder(std::shared_ptr<hlp::logpar::Logpar> logpar, size_t
 
             // field to be parsed not exists
             const std::string failureTrace1 =
-                fmt::format(R"([{}] -> Failure: Parameter "{}" reference not found)", name, field);
+                fmt::format(R"([{}] -> Failure: Parameter "{}" reference not found or is not a string)", name, field);
             // Parsing failed
             const std::string failureTrace2 = fmt::format("[{}] -> Failure: Parse operation failed: ", name);
-            // Parsing ok, mapping failed
-            const std::string failureTrace3 = fmt::format("[{}] -> Failure: field [{}] is not a string", name, field);
 
             base::Expression parseExpression;
             try
             {
                 parseExpression = base::Term<base::EngineOp>::create(
                     logparExpr,
-                    [=, parser = std::move(parser)](base::Event event)
+                    [=, runState = buildCtx->runState(), parser = std::move(parser)](base::Event event)
                     {
-                        if (!event->exists(field))
+                        const auto evOpt = event->getString(field);
+                        if (!evOpt.has_value())
                         {
-                            return base::result::makeFailure(std::move(event), failureTrace1);
-                        }
-                        if (!event->isString(field))
-                        {
-                            return base::result::makeFailure(std::move(event), failureTrace3);
+                            RETURN_FAILURE(runState, event, failureTrace1);
                         }
 
-                        auto ev = event->getString(field).value();
-                        auto error = hlp::parser::run(parser, ev, *event);
+                        const auto& ev = evOpt.value();
+                        auto error = hlp::parser::run(parser, ev, *event, runState->trace);
                         if (error)
                         {
-                            return base::result::makeFailure(std::move(event), failureTrace2 + error.value().message);
+                            RETURN_FAILURE(runState, event, failureTrace2 + error.value().message);
                         }
 
-                        return base::result::makeSuccess(std::move(event), successTrace);
+                        RETURN_SUCCESS(runState, event, successTrace);
                     });
             }
             catch (const std::exception& e)

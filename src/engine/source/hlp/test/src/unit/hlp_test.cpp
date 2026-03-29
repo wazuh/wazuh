@@ -45,7 +45,7 @@ void parseTest(
     {
         ASSERT_TRUE(result.success()) << result.trace() << "failed at: '" << result.remaining() << "'";
         ASSERT_TRUE(result.hasValue());
-        auto mapper = result.value().semParser(result.value().parsed);
+        auto mapper = result.value().semParser(result.value().parsed, true);
         ASSERT_TRUE(std::holds_alternative<hlp::parser::Mapper>(mapper))
             << "SemParser failed: " << std::get<base::Error>(mapper).message;
         auto event = json::Json {};
@@ -58,7 +58,7 @@ void parseTest(
         if (result.success())
         {
             ASSERT_TRUE(result.hasValue());
-            auto mapper = result.value().semParser(result.value().parsed);
+            auto mapper = result.value().semParser(result.value().parsed, true);
             ASSERT_TRUE(std::holds_alternative<base::Error>(mapper)) << "Parser succeeded";
         }
     }
