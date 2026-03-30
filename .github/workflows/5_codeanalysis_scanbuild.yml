@@ -8,7 +8,7 @@ on:
 
 jobs:
   scan-build-linux:
-    runs-on: wz-linux-amd64
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -41,7 +41,7 @@ jobs:
         run: exit 1
 
   scan-build-ubuntu-mingw-windows:
-    runs-on: wz-linux-amd64
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
         with:

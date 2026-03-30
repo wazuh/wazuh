@@ -18,7 +18,7 @@ env:
 jobs:
   build:
     name: Build Manager
-    runs-on: wz-linux-amd64
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
