@@ -52,7 +52,6 @@
 #include "base/utils/getExceptionStack.hpp"
 #include "stackExecutor.hpp"
 
-
 volatile sig_atomic_t g_shutdown_requested = 0;
 
 void sigintHandler(const int signum)
@@ -529,7 +528,8 @@ int main(int argc, char* argv[])
         {
             auto maxRetries = confManager.get<size_t>(conf::key::REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES);
             auto retryInterval = confManager.get<size_t>(conf::key::REMOTE_CONF_INDEXER_CONNECTOR_RETRY_INTERVAL);
-            remoteConf = std::make_shared<confremote::ConfRemoteManager>(indexerConnector, store, maxRetries, retryInterval);
+            remoteConf =
+                std::make_shared<confremote::ConfRemoteManager>(indexerConnector, store, maxRetries, retryInterval);
         }
 
         // Raw Event Indexer
@@ -581,7 +581,8 @@ int main(int argc, char* argv[])
         {
             auto maxRetries = confManager.get<size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_MAX_RETRIES);
             auto retryInterval = confManager.get<size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL);
-            cmSyncService = std::make_shared<cm::sync::CMSync>(indexerConnector, cmCrudService, store, orchestrator, maxRetries, retryInterval);
+            cmSyncService = std::make_shared<cm::sync::CMSync>(
+                indexerConnector, cmCrudService, store, orchestrator, maxRetries, retryInterval);
             LOG_INFO("Content Manager Sync Service initialized.");
 
             // Add sync to scheduler
@@ -590,10 +591,7 @@ int main(int argc, char* argv[])
                 scheduler::TaskConfig {.interval = confManager.get<std::size_t>(conf::key::CM_SYNC_INTERVAL),
                                        .CPUPriority = 0,
                                        .timeout = 0,
-                                       .taskFunction = [cmSyncService]()
-                                       {
-                                           cmSyncService->synchronize();
-                                       }});
+                                       .taskFunction = [cmSyncService]() { cmSyncService->synchronize(); }});
         }
 
         // IOCSync
@@ -611,20 +609,18 @@ int main(int argc, char* argv[])
             auto iocSyncInterval = confManager.get<std::size_t>(conf::key::IOC_SYNC_INTERVAL);
             if (iocSyncInterval > 0)
             {
-                scheduler->scheduleTask("ioc-sync-task",
-                                        scheduler::TaskConfig {.interval = iocSyncInterval,
-                                                               .CPUPriority = 0,
-                                                               .timeout = 0,
-                                                               .taskFunction = [iocSyncService]()
-                                                               {
-                                                                   iocSyncService->synchronize();
-                                                               }});
-                LOG_INFO("IOC Sync task scheduled with interval: {} seconds, {} max retries, {} seconds for retry "
-                         "interval and {} for batch size",
-                         iocSyncInterval,
-                         maxRetries,
-                         retryInterval,
-                         iocSyncBatchSize);
+                scheduler->scheduleTask(
+                    "ioc-sync-task",
+                    scheduler::TaskConfig {.interval = iocSyncInterval,
+                                           .CPUPriority = 0,
+                                           .timeout = 0,
+                                           .taskFunction = [iocSyncService]() { iocSyncService->synchronize(); }});
+                LOG_DEBUG("IOC Sync task scheduled with interval: {} seconds, {} max retries, {} seconds for retry "
+                          "interval and {} for batch size",
+                          iocSyncInterval,
+                          maxRetries,
+                          retryInterval,
+                          iocSyncBatchSize);
             }
             else
             {
@@ -650,10 +646,8 @@ int main(int argc, char* argv[])
                                            .CPUPriority = 0,
                                            .timeout = 0,
                                            .taskFunction = [geoManager, manifestUrl, cityPath, asnPath]()
-                                           {
-                                               geoManager->remoteUpsert(manifestUrl, cityPath, asnPath);
-                                           }});
-                LOG_INFO("Geo sync scheduled with interval: {} seconds.", geoSyncInterval);
+                                           { geoManager->remoteUpsert(manifestUrl, cityPath, asnPath); }});
+                LOG_DEBUG("Geo sync scheduled with interval: {} seconds.", geoSyncInterval);
             }
             else
             {
@@ -675,15 +669,13 @@ int main(int argc, char* argv[])
         if (enableProcessing)
         {
             const auto remoteConfSyncInterval = confManager.get<std::size_t>(conf::key::REMOTE_CONF_SYNC_INTERVAL);
-            scheduler->scheduleTask("remote-conf-sync",
-                                    scheduler::TaskConfig {.interval = remoteConfSyncInterval,
-                                                           .CPUPriority = 0,
-                                                           .timeout = 0,
-                                                           .taskFunction = [remoteConf]()
-                                                           {
-                                                               remoteConf->synchronize();
-                                                           }});
-            LOG_INFO("Remote configuration synchronize scheduled with interval: {} seconds.", remoteConfSyncInterval);
+            scheduler->scheduleTask(
+                "remote-conf-sync",
+                scheduler::TaskConfig {.interval = remoteConfSyncInterval,
+                                       .CPUPriority = 0,
+                                       .timeout = 0,
+                                       .taskFunction = [remoteConf]() { remoteConf->synchronize(); }});
+            LOG_DEBUG("Remote configuration synchronize scheduled with interval: {} seconds.", remoteConfSyncInterval);
         }
 
         // Create and configure the api endpoints

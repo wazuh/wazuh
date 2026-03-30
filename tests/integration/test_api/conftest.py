@@ -95,7 +95,7 @@ def wait_for_api_start(test_configuration: dict) -> None:
         return
 
     last_exception = None
-    for _ in range(5):
+    for _ in range(15):
         try:
             login(host='localhost', port=str(port), protocol=protocol, timeout=2, login_attempts=1, backoff_factor=0)
             return

@@ -96,7 +96,7 @@ list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread
                                 -Wl,--wrap=fim_db_teardown -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap,w_query_agentd")
 else()
 list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
-                                -Wl,--wrap,getDefine_Int -Wl,--wrap,_minfo -Wl,--wrap,_mwarn")
+                                -Wl,--wrap,getDefine_Int -Wl,--wrap,_mdebug1 -Wl,--wrap,_minfo -Wl,--wrap,_mwarn")
 endif()
 
 list(APPEND client-agent_names "test_agcom")

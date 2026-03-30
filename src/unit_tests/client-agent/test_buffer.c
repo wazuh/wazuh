@@ -52,15 +52,6 @@ int __wrap_getDefine_Int(const char *category, const char *name, int min, int ma
 }
 #endif
 
-void __wrap__minfo(const char *file, int line, const char *func, const char *format, ...) {
-        function_called();
-}
-
-void __wrap__mwarn(const char *file, int line, const char *func, const char *format, ...) {
-        function_called();
-}
-
-
 /* tests */
 
 /* w_agentd_get_buffer_lenght */
@@ -144,6 +135,8 @@ void test_buffer_append(void **state)
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
+
     buffer_init();
     buffer_append("Testing", -1);
 
@@ -154,7 +147,7 @@ void test_buffer_append(void **state)
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     // expect_function_call(__wrap__mwarn);
-    expect_function_call(__wrap__minfo);
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     w_agentd_buffer_free(agt->buflength);
 
@@ -177,6 +170,8 @@ void test_w_agentd_buffer_resize_shrink(void **state)
     expect_function_call(__wrap_getDefine_Int);
     will_return(__wrap_getDefine_Int, 15);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
+
     buffer_init();
 
     for (int k = 0; k < agt->buflength; k++) {
@@ -194,14 +189,14 @@ void test_w_agentd_buffer_resize_shrink(void **state)
     expect_function_call(__wrap_pthread_mutex_unlock);
     expect_function_call(__wrap_pthread_mutex_lock);
 
-    expect_function_call(__wrap__mwarn);
-    expect_function_call(__wrap__minfo);
+    expect_any(__wrap__mwarn, formatted_msg);
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     // Loock, unloock the mutex for the w_agentd_state_update
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap__minfo);
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     int new_capacity = 2;
     int retval = w_agentd_buffer_resize(agt->buflength, new_capacity);
@@ -218,7 +213,7 @@ void test_w_agentd_buffer_resize_shrink(void **state)
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call(__wrap__minfo);
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     w_agentd_buffer_free(new_capacity);
     os_free(agt);
@@ -240,6 +235,8 @@ void test_w_agentd_buffer_resize_grow_continue(void **state)
     expect_function_call(__wrap_getDefine_Int);
     will_return(__wrap_getDefine_Int, 15);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
+
     buffer_init();
 
     for (int k = 0; k < agt->buflength; k++) {
@@ -258,7 +255,7 @@ void test_w_agentd_buffer_resize_grow_continue(void **state)
     expect_function_call(__wrap_pthread_mutex_lock);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap__minfo);
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     int new_capacity = 5;
     int retval = w_agentd_buffer_resize(agt->buflength, new_capacity);
@@ -276,7 +273,7 @@ void test_w_agentd_buffer_resize_grow_continue(void **state)
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     // expect_function_call(__wrap__mwarn);
-    expect_function_call(__wrap__minfo);
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     w_agentd_buffer_free(new_capacity);
     os_free(agt);
@@ -298,6 +295,8 @@ void test_w_agentd_buffer_resize_grow_two_parts(void **state)
     expect_function_call(__wrap_getDefine_Int);
     will_return(__wrap_getDefine_Int, 15);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
+
     buffer_init();
 
     for (int k = 0; k < agt->buflength; k++) {
@@ -317,7 +316,7 @@ void test_w_agentd_buffer_resize_grow_two_parts(void **state)
 
     // Loock, unloock the mutex for the w_agentd_state_update
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap__minfo);
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     int new_capacity = 5;
     int retval = w_agentd_buffer_resize(agt->buflength, new_capacity);
@@ -334,7 +333,7 @@ void test_w_agentd_buffer_resize_grow_two_parts(void **state)
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call(__wrap__minfo);
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     w_agentd_buffer_free(new_capacity);
     os_free(agt);
@@ -356,6 +355,8 @@ void test_w_agentd_buffer_free(void **state)
     expect_function_call(__wrap_getDefine_Int);
     will_return(__wrap_getDefine_Int, 15);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
+
     buffer_init();
 
     for (int k = 0; k < agt->buflength; k++) {
@@ -371,7 +372,7 @@ void test_w_agentd_buffer_free(void **state)
 
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap__minfo);
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     w_agentd_buffer_free(agt->buflength);
 
