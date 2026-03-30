@@ -42,7 +42,7 @@ int DecodeCiscat(Eventinfo *lf, int *socket)
     char *msg_type = NULL;
 
     // Decode JSON
-    JSON_Decoder_Exec(lf, NULL);
+    JSON_Decoder_Exec(lf, NULL, NULL);
 
     lf->decoder_info = ciscat_decoder;
 

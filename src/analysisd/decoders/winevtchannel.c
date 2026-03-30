@@ -720,7 +720,7 @@ int DecodeWinevt(Eventinfo *lf){
     lf->log = lf->full_log;
     lf->decoder_info = winevt_decoder;
 
-    JSON_Decoder_Exec(lf, NULL);
+    JSON_Decoder_Exec(lf, NULL, NULL);
 
 cleanup:
     os_free(level);
