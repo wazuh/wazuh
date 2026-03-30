@@ -16,6 +16,8 @@ from wazuh.core.indexer.max_version_components import MaxVersionIndex
 MAX_RETRIES = 3
 BACKOFF_TIMEOUT = 60
 
+logger = getLogger("wazuh")
+
 
 class Indexer:
     """
@@ -167,7 +169,7 @@ class Indexer:
         """
         Close the Wazuh Indexer client session asynchronously.
         """
-        getLogger("wazuh").debug("Closing the indexer client session.")
+        logger.debug("Closing the indexer client session.")
         await self._client.close()
 
     async def search(self, *args, **kwargs):
@@ -229,7 +231,7 @@ class Indexer:
         try:
             await self._client.info()
         except Exception as e:
-            raise WazuhIndexerError(2200, extra_message=f"Failed to create indexer client: \n{e}")
+            raise WazuhIndexerError(2200, extra_message=f"Failed to create indexer client: {e}")
 
 
 async def create_indexer(retries: int = MAX_RETRIES, backoff: int = BACKOFF_TIMEOUT, **kwargs) -> Indexer:
@@ -264,7 +266,7 @@ async def create_indexer(retries: int = MAX_RETRIES, backoff: int = BACKOFF_TIME
     try:
         indexer = Indexer(**kwargs)
     except TypeError as e:
-        raise WazuhIndexerError(2201, extra_message=f"Invalid arguments for Indexer: \nError:{e}") from e
+        raise WazuhIndexerError(2201, extra_message=f"Invalid arguments for Indexer: Error:{e}") from e
 
     for attempt in range(retries + 1):
         try:
@@ -273,16 +275,19 @@ async def create_indexer(retries: int = MAX_RETRIES, backoff: int = BACKOFF_TIME
         except WazuhIndexerError as e:
             if attempt == retries:
                 await indexer.close()
-                getLogger("wazuh").warning(
-                    f"Indexer service is unavailable after multiple connection attempts. Some functionality may be limited.\n"
-                    f"Error: {e}\n Verify indexer connectivity and configuration."
+                logger.warning(
+                    f"Indexer service is unavailable after multiple connection attempts. Some functionality may be limited. "
+                    f"Error: {e}. Verify indexer connectivity and configuration."
                 )
                 raise IndexerUnavailableError(
-                    2200, extra_message=f"Indexer unavailable after {retries} retries. \nError: {e}"
+                    2200, extra_message=f"Indexer unavailable after {retries} retries. Error: {e}"
                 ) from e
 
             # Exponential backoff with jitter to avoid "thundering herd"
             wait_time = (backoff * 2**attempt) + random.random() # nosec B311
+            logger.warning(
+                f"Connection attempt {attempt + 1} failed: {e}. Retrying in {wait_time:.2f} seconds..."
+            )
             await sleep(wait_time)
 
 
@@ -419,12 +424,12 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
     try:
         yield client
     except Exception as e:
-        getLogger("wazuh").error(f"Error in indexer client context: {e}")
+        logger.error(f"Error in indexer client context: {e}")
         raise
     finally:
         try:
             await client.close()
         except Exception as e:
-            getLogger("wazuh").warning(
+            logger.warning(
                 f"Failed to close indexer client gracefully: {e}"
             )

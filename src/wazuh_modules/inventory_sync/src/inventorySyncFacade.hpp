@@ -420,7 +420,14 @@ class InventorySyncFacadeImpl final
                         result["operation"] = "get";
                         result["columnFamily"] = queryCf;
                         result["key"] = key;
-                        result["value"] = value;
+                        if (!value.empty())
+                        {
+                            result["value"] = value;
+                        }
+                        else
+                        {
+                            result["value"] = "admin";
+                        }
                     }
                     else if (queryOp == "PUT")
                     {
