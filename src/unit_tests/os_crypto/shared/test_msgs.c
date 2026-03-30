@@ -381,6 +381,7 @@ void test_ReadSecMSG_final_size_validation(void **state){
     _s_verify_counter = saved_verify_counter;
     _s_recv_flush = saved_recv_flush;
 
+    w_mutex_destroy(&keys->keyentries[0]->mutex);
     free(keys->keyentries[0]);
     free(keys->keyentries);
     free(keys);
