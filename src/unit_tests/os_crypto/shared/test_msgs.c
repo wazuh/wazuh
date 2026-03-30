@@ -16,6 +16,7 @@
 
 #include "../headers/shared.h"
 #include "../../os_crypto/blowfish/bf_op.h"
+#include "../headers/sec.h"
 
 /* Forward declarations */
 int doEncryptByMethod(const char *input, char *output, const char *charkey,
@@ -328,6 +329,57 @@ void test_set_agent_crypto_method(void **state){
     free(keys);
 }
 
+void test_ReadSecMSG_final_size_validation(void **state){
+    extern unsigned int _s_recv_flush;
+    extern int _s_verify_counter;
+
+    keystore *keys;
+
+    os_calloc(1, sizeof(keystore), keys);
+    os_calloc(1, sizeof(keyentry *), keys->keyentries);
+    keys->keysize = 1;
+    keys->flags.key_mode = W_ENCRYPTION_KEY;
+
+    os_calloc(1, sizeof(keyentry), keys->keyentries[0]);
+    keys->keyentries[0]->keyid = 0;
+    keys->keyentries[0]->id = "001";
+    keys->keyentries[0]->name = "agent1";
+    keys->keyentries[0]->encryption_key =
+        "778823d0b0886be37049bdf01cc703f72fa8dc7bb499303";
+    keys->keyentries[0]->crypto_method = W_METH_AES;
+
+    const unsigned char msg[] = {
+        0x23, 0x41, 0x45, 0x53, 0x3a, 0x0a, 0x0e, 0x1b,
+        0xcd, 0x62, 0xfd, 0xa8, 0x2d, 0x59, 0x64, 0xc8,
+        0xb8, 0xe1, 0x05, 0xf7, 0x94, 0x94, 0x5c, 0x94,
+        0x67, 0xa5, 0xc6, 0x72, 0x16, 0x6f, 0x66, 0xeb,
+        0xa0, 0x11, 0x6f, 0x8a, 0x3d, 0xa2, 0xe1, 0xc9,
+        0x42, 0x94, 0x97, 0x6c, 0x89, 0xf8, 0xca, 0x73,
+        0xc1, 0x23, 0x2f, 0x82, 0x00, 0x87, 0x5c, 0x63,
+        0x01, 0x9a, 0x78, 0xc6, 0x6a, 0xf6, 0x8e, 0x69,
+        0x32, 0xc3, 0x2c, 0xf5, 0x87, 0x28, 0x70, 0x05,
+        0x1a, 0xb0, 0x52, 0xbf, 0xdf, 0x5e, 0xe5, 0xc3,
+        0x5d, 0x75, 0x83, 0x67, 0x00
+    };
+
+    char cleartext[1024];
+    size_t final_size = 0;
+    char *output = NULL;
+
+    _s_verify_counter = 0;
+    _s_recv_flush = 1;
+
+    assert_int_equal(ReadSecMSG(keys, (char *)msg, cleartext, 0,
+                                sizeof(msg) - 1, &final_size, "127.0.0.1", &output), KS_VALID);
+
+    // Verifying that the final_size value, underflowed, is set to (size_t)-1.
+    assert_true(final_size == (size_t)-1);
+
+    free(keys->keyentries[0]);
+    free(keys->keyentries);
+    free(keys);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -340,6 +392,7 @@ int main(void)
         cmocka_unit_test(test_encrypt_by_method_aes),
         cmocka_unit_test(test_encrypt_by_method_default),
         cmocka_unit_test(test_set_agent_crypto_method),
+        cmocka_unit_test(test_ReadSecMSG_final_size_validation)
         };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
