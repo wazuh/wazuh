@@ -381,18 +381,23 @@ stages:
           agents_list: ["001", "002", "003", "004", "005", "006", "007", "008"]
       status_code: 200
       json:
-        error: 0
+        error: 2
         data:
           affected_items:
             - "001"
             - "002"
             - "003"
             - "004"
-            - "005"
-            - "006"
-            - "007"
-            - "008"
-          total_affected_items: 8
+          failed_items:
+            - error:
+                code: 1761
+              id:
+                - "005"
+                - "006"
+                - "007"
+                - "008"
+          total_affected_items: 4
+          total_failed_items: 4
 
   # PUT /groups/not_exists/restart (Group does not exist)
   - name: Restart all agents from a group which does not exist
@@ -622,20 +627,21 @@ stages:
           agents_list: ["001", "002", "003", "004", "005", "006", "007", "008"]
       status_code: 200
       json:
-        error: 0
+        error: 2
         data:
           affected_items:
             - "001"
             - "002"
             - "003"
             - "004"
-            - "005"
-            - "006"
-            - "007"
-            - "008"
-          failed_items: !anything
-          total_affected_items: 8
-          total_failed_items: 0
+          failed_items:
+            - error:
+                code: 1761
+              id:
+                - "005"
+                - "006"
+                - "007"
+                - "008"
 
 ---
 test_name: PUT /agents/{agent_id}/group/{group_id}
@@ -816,11 +822,12 @@ stages:
     response:
       status_code: 200
       json:
-        error: 0
+        error: 2
       verify_response_with:
         - function: tavern_utils:test_validate_restart_by_node
           extra_kwargs:
-            data: "{response_data}"
+            node_connected_agents_response: "{response_data}"
+            non_restartable_agents: ["005", "006", "007", "008"]
 
   - name: Restart all agents belonging to a node (it does not exist)
     request:
