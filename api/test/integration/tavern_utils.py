@@ -300,8 +300,7 @@ def test_validate_restart_by_node(response, node_connected_agents_response , non
     healthcheck_agent_restart(response, expected_affected_items)
 
 
-def test_validate_restart_by_node_rbac(response, permitted_agents, non_restartable_agents : list = None):
-    
+def test_validate_restart_by_node_rbac(response, permitted_agents):
     data = response.json().get('data', None)
     if data:
         if data['affected_items']:
