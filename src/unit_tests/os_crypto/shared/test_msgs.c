@@ -367,6 +367,9 @@ void test_ReadSecMSG_final_size_validation(void **state){
     size_t final_size = 0;
     char *output = NULL;
 
+    int saved_verify_counter = _s_verify_counter;
+    unsigned int saved_recv_flush = _s_recv_flush;
+
     _s_verify_counter = 0;
     _s_recv_flush = 1;
 
@@ -374,6 +377,9 @@ void test_ReadSecMSG_final_size_validation(void **state){
 
     assert_int_equal(ReadSecMSG(keys, (char *)msg, cleartext, 0,
                                 sizeof(msg) - 1, &final_size, "127.0.0.1", &output), KS_CORRUPT);
+
+    _s_verify_counter = saved_verify_counter;
+    _s_recv_flush = saved_recv_flush;
 
     free(keys->keyentries[0]);
     free(keys->keyentries);
