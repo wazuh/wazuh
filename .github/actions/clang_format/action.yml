@@ -9,29 +9,121 @@ inputs:
   id:
     required: true
     description: "Module identifier, used to name the artifact"
+  clang_format_version:
+    required: false
+    description: "Pinned clang-format version to execute"
+    default: "14"
+  deps_version:
+    required: false
+    description: "Wazuh deps version used to resolve the default internal clang-format URL"
+    default: "51"
+  resources_url:
+    required: false
+    description: "Optional base URL for Wazuh-hosted tools. Defaults to https://packages.wazuh.com/deps/<deps_version>"
+    default: ""
+  clang_format_url:
+    required: false
+    description: "Optional full URL to a prebuilt clang-format tarball"
+    default: ""
 
 runs:
   using: "composite"
   steps:
-      - name: Dependencies for local execution
-        if: env.ACT # Only run for local execution
+      - name: Resolve clang-format
         shell: bash
+        env:
+          CLANG_FORMAT_VERSION: ${{ inputs.clang_format_version }}
+          DEPS_VERSION: ${{ inputs.deps_version }}
+          RESOURCES_URL: ${{ inputs.resources_url }}
+          CLANG_FORMAT_URL: ${{ inputs.clang_format_url }}
         run: |
-          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
-          echo "deb http://deb.debian.org/debian/ testing main" >>  /etc/apt/sources.conf
-          sudo apt update
+          set -euo pipefail
 
-      # Dependencies for testing:
-      # - clang-format (system default, v18 on Ubuntu 24.04)
-      - name: Install dependencies
-        uses: awalsh128/cache-apt-pkgs-action@v1.4.3
-        with:
-          packages: clang-format
-          version: 1.0
+          OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+          ARCH="$(uname -m)"
+          MAJOR_VERSION="${CLANG_FORMAT_VERSION%%.*}"
+
+          case "${ARCH}" in
+            x86_64|amd64)
+              ARCH="amd64"
+              ;;
+            aarch64|arm64)
+              ARCH="arm64"
+              ;;
+            *)
+              echo "Unsupported architecture for clang-format: ${ARCH}"
+              exit 1
+              ;;
+          esac
+
+          TOOL_ROOT="${HOME}/.cache/wazuh-ci-tools/clang-format/${CLANG_FORMAT_VERSION}/${OS}/${ARCH}"
+          TOOL_BIN="${TOOL_ROOT}/bin/clang-format"
+
+          if [ ! -x "${TOOL_BIN}" ]; then
+            if [ -n "${CLANG_FORMAT_URL}" ]; then
+              DOWNLOAD_URL="${CLANG_FORMAT_URL}"
+            else
+              if [ -z "${RESOURCES_URL}" ]; then
+                RESOURCES_URL="https://packages.wazuh.com/deps/${DEPS_VERSION}"
+              fi
+
+              # Tentative layout aligned with the existing deps resource scheme.
+              DOWNLOAD_URL="${RESOURCES_URL%/}/tools/clang-format/${CLANG_FORMAT_VERSION}/${OS}/${ARCH}/clang-format.tar.gz"
+            fi
+
+            echo "Attempting to download clang-format ${CLANG_FORMAT_VERSION} from ${DOWNLOAD_URL}"
+
+            TMP_DIR="$(mktemp -d)"
+            trap 'rm -rf "${TMP_DIR}"' EXIT
+
+            if curl -fsSL "${DOWNLOAD_URL}" -o "${TMP_DIR}/clang-format.tar.gz"; then
+              mkdir -p "${TMP_DIR}/extract" "${TOOL_ROOT}/bin"
+              tar -xzf "${TMP_DIR}/clang-format.tar.gz" -C "${TMP_DIR}/extract"
+
+              FOUND_BIN="$(find "${TMP_DIR}/extract" -type f \( -name "clang-format" -o -name "clang-format-${MAJOR_VERSION}" \) | head -n 1)"
+
+              if [ -z "${FOUND_BIN}" ]; then
+                echo "Downloaded archive does not contain a clang-format executable"
+                exit 1
+              fi
+
+              install -Dm755 "${FOUND_BIN}" "${TOOL_BIN}"
+            else
+              echo "Unable to download clang-format from ${DOWNLOAD_URL}"
+              echo "Falling back to distro package clang-format-${MAJOR_VERSION}"
+
+              if command -v "clang-format-${MAJOR_VERSION}" >/dev/null 2>&1; then
+                TOOL_BIN="$(command -v "clang-format-${MAJOR_VERSION}")"
+              else
+                if ! command -v apt-get >/dev/null 2>&1; then
+                  echo "apt-get is not available on this runner and no prebuilt clang-format binary could be downloaded"
+                  exit 1
+                fi
+
+                INSTALL_PREFIX=()
+                if command -v sudo >/dev/null 2>&1; then
+                  INSTALL_PREFIX=(sudo)
+                fi
+
+                "${INSTALL_PREFIX[@]}" apt-get update
+                "${INSTALL_PREFIX[@]}" apt-get install -y "clang-format-${MAJOR_VERSION}"
+                TOOL_BIN="$(command -v "clang-format-${MAJOR_VERSION}")"
+              fi
+            fi
+          fi
+
+          if [ ! -x "${TOOL_BIN}" ]; then
+            echo "Unable to resolve a usable clang-format binary"
+            exit 1
+          fi
+
+          echo "CLANG_FORMAT_BIN=${TOOL_BIN}" >> "${GITHUB_ENV}"
+          "${TOOL_BIN}" --version
 
       - name: Check Coding style
         shell: bash
         run: |
+          set -euo pipefail
 
           # Don't apply changes, just check
           arguments="--dry-run "
@@ -41,7 +133,7 @@ runs:
           arguments+="-i $sourceFiles "
 
           ERRORS_FILE=${{ inputs.path }}/clang_format_errors.txt
-          clang-format $arguments 2> ${ERRORS_FILE}
+          "${CLANG_FORMAT_BIN}" $arguments 2> ${ERRORS_FILE}
 
           # Check if there are errors
           if [ -s "${ERRORS_FILE}" ]; then
