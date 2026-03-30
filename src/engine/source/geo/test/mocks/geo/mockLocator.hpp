@@ -1,5 +1,5 @@
-#ifndef _GEO_MOCK_LOCATOR_HPP
-#define _GEO_MOCK_LOCATOR_HPP
+#ifndef GEO_MOCK_LOCATOR_HPP
+#define GEO_MOCK_LOCATOR_HPP
 
 #include <gmock/gmock.h>
 
@@ -10,11 +10,11 @@ namespace geo::mocks
 class MockLocator : public ILocator
 {
 public:
-    MOCK_METHOD(base::RespOrError<std::string>, getString, (const std::string& ip, const DotPath& path), (override));
-    MOCK_METHOD(base::RespOrError<uint32_t>, getUint32, (const std::string& ip, const DotPath& path), (override));
-    MOCK_METHOD(base::RespOrError<double>, getDouble, (const std::string& ip, const DotPath& path), (override));
-    MOCK_METHOD(base::RespOrError<json::Json>, getAsJson, (const std::string& ip, const DotPath& path), (override));
-    MOCK_METHOD(base::RespOrError<json::Json>, getAll, (const std::string& ip), (override));
+    MOCK_METHOD(Result<std::string>, getString, (const std::string& ip, const DotPath& path), (override));
+    MOCK_METHOD(Result<uint32_t>, getUint32, (const std::string& ip, const DotPath& path), (override));
+    MOCK_METHOD(Result<double>, getDouble, (const std::string& ip, const DotPath& path), (override));
+    MOCK_METHOD(Result<json::Json>, getAsJson, (const std::string& ip, const DotPath& path), (override));
+    MOCK_METHOD(Result<json::Json>, getAll, (const std::string& ip), (override));
 };
 } // namespace geo::mocks
-#endif // _GEO_MOCK_LOCATOR_HPP
+#endif // GEO_MOCK_LOCATOR_HPP

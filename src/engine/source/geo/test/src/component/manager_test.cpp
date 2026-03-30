@@ -146,18 +146,18 @@ TEST_F(GeoManagerTest, MultithreadLookup)
             }
 
             auto res = locator->getString(g_ipFullData, "test_map.test_str1");
-            if (base::isError(res))
+            if (res.isError())
             {
-                setError(error, errorMsg, base::getError(res).message);
+                setError(error, errorMsg, res.readableStr());
             }
             else
             {
-                if (base::getResponse(res) != "Wazuh")
+                if (res.value() != "Wazuh")
                 {
                     setError(
                         error,
                         errorMsg,
-                        fmt::format("Locator thread got response '{}' which is not 'Wazuh'", base::getResponse(res)));
+                        fmt::format("Locator thread got response '{}' which is not 'Wazuh'", res.value()));
                 }
             }
         }
@@ -167,8 +167,8 @@ TEST_F(GeoManagerTest, MultithreadLookup)
     for (int i = 0; i < nThreads; i++)
     {
         auto locatorResp = manager->getLocator(type);
-        ASSERT_FALSE(base::isError(locatorResp));
-        auto locator = base::getResponse(locatorResp);
+        ASSERT_FALSE(locatorResp.isError()) << locatorResp.error();
+        auto locator = locatorResp.value();
 
         threads.emplace_back(locatorFn, locator);
     }
@@ -201,18 +201,18 @@ TEST_F(GeoManagerTest, MultithreadListLookup)
             }
 
             auto res = locator->getString(g_ipFullData, "test_map.test_str1");
-            if (base::isError(res))
+            if (res.isError())
             {
-                setError(error, errorMsg, base::getError(res).message);
+                setError(error, errorMsg, res.readableStr());
             }
             else
             {
-                if (base::getResponse(res) != "Wazuh")
+                if (res.value() != "Wazuh")
                 {
                     setError(
                         error,
                         errorMsg,
-                        fmt::format("Locator thread got response '{}' which is not 'Wazuh'", base::getResponse(res)));
+                        fmt::format("Locator thread got response '{}' which is not 'Wazuh'", res.value()));
                 }
             }
         }
@@ -222,8 +222,8 @@ TEST_F(GeoManagerTest, MultithreadListLookup)
     for (int i = 0; i < nThreads - 1; i++)
     {
         auto locatorResp = manager->getLocator(type);
-        ASSERT_FALSE(base::isError(locatorResp));
-        auto locator = base::getResponse(locatorResp);
+        ASSERT_FALSE(locatorResp.isError()) << locatorResp.error();
+        auto locator = locatorResp.value();
 
         threads.emplace_back(locatorFn, locator);
     }
@@ -276,10 +276,10 @@ TEST_F(GeoManagerTest, MultithreadGetLocator)
             }
 
             auto locatorResp = manager->getLocator(type);
-            if (base::isError(locatorResp))
+            if (locatorResp.isError())
             {
                 setError(
-                    error, errorMsg, fmt::format("Error getting locator: {}", base::getError(locatorResp).message));
+                    error, errorMsg, fmt::format("Error getting locator: {}", locatorResp.readableStr()));
             }
         }
     };
@@ -316,27 +316,27 @@ TEST_F(GeoManagerTest, ComplexUseCase)
         for (auto i = 0; i < times; i++)
         {
             auto locatorResp = manager->getLocator(type);
-            if (base::isError(locatorResp))
+            if (locatorResp.isError())
             {
                 setError(
-                    error, errorMsg, fmt::format("Error getting locator: {}", base::getError(locatorResp).message));
+                    error, errorMsg, fmt::format("Error getting locator: {}", locatorResp.readableStr()));
             }
             else
             {
-                auto locator = base::getResponse(locatorResp);
+                auto locator = locatorResp.value();
                 auto res = locator->getString(g_ipFullData, "test_map.test_str1");
-                if (base::isError(res))
+                if (res.isError())
                 {
-                    setError(error, errorMsg, base::getError(res).message);
+                    setError(error, errorMsg, res.readableStr());
                 }
                 else
                 {
-                    if (base::getResponse(res) != "Wazuh")
+                    if (res.value() != "Wazuh")
                     {
                         setError(error,
                                  errorMsg,
                                  fmt::format("Locator thread got response '{}' which is not 'Wazuh'",
-                                             base::getResponse(res)));
+                                             res.value()));
                     }
                 }
             }

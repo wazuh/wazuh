@@ -103,9 +103,9 @@ bool mapGeoToECS(const std::string& ip,
     auto mapStringField = [&](const std::string& geoPath, const std::string& ecsField)
     {
         auto result = locator->getString(ip, geoPath);
-        if (!base::isError(result))
+        if (!result.isError())
         {
-            event.setString(getResponse(result), ecsPath + ecsField);
+            event.setString(result.value(), ecsPath + ecsField);
             mapCity = true;
         }
     };
@@ -114,9 +114,9 @@ bool mapGeoToECS(const std::string& ip,
     auto mapDoubleField = [&](const std::string& geoPath, const std::string& ecsField)
     {
         auto result = locator->getDouble(ip, geoPath);
-        if (!base::isError(result))
+        if (!result.isError())
         {
-            event.setDouble(getResponse(result), ecsPath + ecsField);
+            event.setDouble(result.value(), ecsPath + ecsField);
             mapCity = true;
         }
     };
@@ -157,9 +157,9 @@ bool mapAStoECS(const std::string& ip,
     auto mapUint32Field = [&](const std::string& geoPath, const std::string& ecsField)
     {
         auto result = locator->getUint32(ip, geoPath);
-        if (!base::isError(result))
+        if (!result.isError())
         {
-            event.setInt64(getResponse(result), ecsPath + ecsField);
+            event.setInt64(result.value(), ecsPath + ecsField);
             mapAS = true;
         }
     };
@@ -168,9 +168,9 @@ bool mapAStoECS(const std::string& ip,
     auto mapStringField = [&](const std::string& geoPath, const std::string& ecsField)
     {
         auto result = locator->getString(ip, geoPath);
-        if (!base::isError(result))
+        if (!result.isError())
         {
-            event.setString(getResponse(result), ecsPath + ecsField);
+            event.setString(result.value(), ecsPath + ecsField);
             mapAS = true;
         }
     };
@@ -343,18 +343,18 @@ std::pair<base::Expression, std::string> geoEnrichmentBuilder(const std::shared_
     auto as = geoManager->getLocator(geo::Type::ASN);
     auto city = geoManager->getLocator(geo::Type::CITY);
 
-    if (base::isError(as))
+    if (as.isError())
     {
-        throw std::runtime_error("Error getting geo asn locator: " + base::getError(as).message);
+        throw std::runtime_error("Error getting geo asn locator: " + std::to_string(static_cast<int>(as.error())));
     }
-    if (base::isError(city))
+    if (city.isError())
     {
-        throw std::runtime_error("Error getting geo city locator: " + base::getError(city).message);
+        throw std::runtime_error("Error getting geo city locator: " + std::to_string(static_cast<int>(city.error())));
     }
 
     // Create locators
-    auto& asLocator = base::getResponse(as);
-    auto& cityLocator = base::getResponse(city);
+    auto& asLocator = as.value();
+    auto& cityLocator = city.value();
 
     // Shared flag to track if any enrichment was applied
     auto enrichmentApplied = std::make_shared<bool>(false);
