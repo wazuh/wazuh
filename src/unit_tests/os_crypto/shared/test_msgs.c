@@ -347,6 +347,7 @@ void test_ReadSecMSG_final_size_validation(void **state){
     keys->keyentries[0]->encryption_key =
         "778823d0b0886be37049bdf01cc703f72fa8dc7bb499303";
     keys->keyentries[0]->crypto_method = W_METH_AES;
+    w_mutex_init(&keys->keyentries[0]->mutex, NULL);
 
     const unsigned char msg[] = {
         0x23, 0x41, 0x45, 0x53, 0x3a, 0x0a, 0x0e, 0x1b,
@@ -369,11 +370,10 @@ void test_ReadSecMSG_final_size_validation(void **state){
     _s_verify_counter = 0;
     _s_recv_flush = 1;
 
-    assert_int_equal(ReadSecMSG(keys, (char *)msg, cleartext, 0,
-                                sizeof(msg) - 1, &final_size, "127.0.0.1", &output), KS_VALID);
+    expect_string(__wrap__mwarn, formatted_msg, "Decompressed message too short from agent '001'");
 
-    // Verifying that the final_size value, underflowed, is set to (size_t)-1.
-    assert_true(final_size == (size_t)-1);
+    assert_int_equal(ReadSecMSG(keys, (char *)msg, cleartext, 0,
+                                sizeof(msg) - 1, &final_size, "127.0.0.1", &output), KS_CORRUPT);
 
     free(keys->keyentries[0]);
     free(keys->keyentries);
