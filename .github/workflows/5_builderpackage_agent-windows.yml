@@ -12,7 +12,6 @@ on:
       - "src/**"
       - "packages/**"
       - ".github/workflows/5_builderpackage_agent-windows.yml"
-      - ".github/workflows/5_testintegration_fim-tier-0-1-win.yml"
       - ".github/test-modules-windows.json"
   workflow_dispatch:
     inputs:
