@@ -349,7 +349,7 @@ void test_ReadSecMSG_final_size_validation(void **state){
     keys->keyentries[0]->crypto_method = W_METH_AES;
     w_mutex_init(&keys->keyentries[0]->mutex, NULL);
 
-    const unsigned char msg[] = {
+    const unsigned char msg_data[] = {
         0x23, 0x41, 0x45, 0x53, 0x3a, 0x0a, 0x0e, 0x1b,
         0xcd, 0x62, 0xfd, 0xa8, 0x2d, 0x59, 0x64, 0xc8,
         0xb8, 0xe1, 0x05, 0xf7, 0x94, 0x94, 0x5c, 0x94,
@@ -362,6 +362,8 @@ void test_ReadSecMSG_final_size_validation(void **state){
         0x1a, 0xb0, 0x52, 0xbf, 0xdf, 0x5e, 0xe5, 0xc3,
         0x5d, 0x75, 0x83, 0x67, 0x00
     };
+    char msg_buf[sizeof(msg_data)];
+    memcpy(msg_buf, msg_data, sizeof(msg_data));
 
     char cleartext[1024];
     size_t final_size = 0;
@@ -375,8 +377,8 @@ void test_ReadSecMSG_final_size_validation(void **state){
 
     expect_string(__wrap__mwarn, formatted_msg, "Decompressed message too short from agent '001'");
 
-    assert_int_equal(ReadSecMSG(keys, (char *)msg, cleartext, 0,
-                                sizeof(msg) - 1, &final_size, "127.0.0.1", &output), KS_CORRUPT);
+    assert_int_equal(ReadSecMSG(keys, msg_buf, cleartext, 0,
+                                sizeof(msg_buf) - 1, &final_size, "127.0.0.1", &output), KS_CORRUPT);
 
     _s_verify_counter = saved_verify_counter;
     _s_recv_flush = saved_recv_flush;
