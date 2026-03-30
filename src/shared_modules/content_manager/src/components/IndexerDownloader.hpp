@@ -21,7 +21,9 @@
 #include <chrono>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <tuple>
 #include <vector>
@@ -48,15 +50,26 @@
  *
  * Configuration expected under configData["indexer"]:
  * {
- *   "index":    ".cti-cves",     // Indexer CVE index name
- *   "pageSize": 250,             // Documents per page (optional, default 250)
- *   "numSlices": 2,              // Parallel PIT slices (optional, default 2)
+ *   "index":               ".cti-cves",               // Indexer CVE index name
+ *   "consumerStatusIndex": ".cti-consumers",          // Consumer status index (optional)
+ *   "consumerStatusId":    "vd_1.0.0_vd_4.8.0",       // Consumer status document id (optional)
+ *   "pageSize":            250,                       // Documents per page (optional, default 250)
+ *   "numSlices":           2,                         // Parallel PIT slices (optional, default 2)
  *   <standard IndexerConnector SSL/auth config>
  * }
  */
 class IndexerDownloader final : public AbstractHandler<std::shared_ptr<UpdaterContext>>
 {
 private:
+    enum class ConsumerStatus
+    {
+        Missing,
+        Empty,
+        Updating,
+        Idle,
+        Unknown
+    };
+
     nlohmann::json m_config;
     mutable std::mutex m_callbackMutex; ///< Serializes processPage calls across parallel slices.
 
@@ -107,6 +120,162 @@ private:
                                                                       "document.containers.adp.datePublic",
                                                                       "document.containers.adp.title"})}};
         return filter;
+    }
+
+    /**
+     * @brief Reads the current consumer status document from `.cti-consumers`.
+     *
+     * The indexer-side contract guarantees that the document status is:
+     *   - empty / missing while the consumer is not ready yet,
+     *   - "updating" while the feed is still being indexed,
+     *   - "idle" only when the consumer can be queried safely.
+     */
+    ConsumerStatus readConsumerStatus(IndexerConnectorSync& syncConnector,
+                                      std::string_view consumerStatusIndex,
+                                      std::string_view consumerStatusId) const
+    {
+        const auto query =
+            nlohmann::json {{"ids", {{"values", nlohmann::json::array({std::string {consumerStatusId}})}}}};
+        const auto sourceFilter =
+            nlohmann::json {{"includes", nlohmann::json::array({"status"})}, {"excludes", nlohmann::json::array()}};
+        const auto searchQuery = nlohmann::json {{"size", 1}, {"query", query}, {"_source", sourceFilter}};
+
+        const auto searchResult = syncConnector.executeSearchQuery(std::string {consumerStatusIndex}, searchQuery);
+        if (!searchResult.contains("hits") || !searchResult.at("hits").is_object() ||
+            !searchResult.at("hits").contains("hits") || !searchResult.at("hits").at("hits").is_array() ||
+            searchResult.at("hits").at("hits").empty())
+        {
+            return ConsumerStatus::Missing;
+        }
+
+        const auto& hit = searchResult.at("hits").at("hits").front();
+        if (!hit.contains("_source") || !hit.at("_source").is_object())
+        {
+            return ConsumerStatus::Empty;
+        }
+
+        const auto& source = hit.at("_source");
+        if (!source.contains("status") || !source.at("status").is_string())
+        {
+            return ConsumerStatus::Empty;
+        }
+
+        std::string status;
+        source.at("status").get_to(status);
+        if (status.empty())
+        {
+            return ConsumerStatus::Empty;
+        }
+        if (status == "idle")
+        {
+            return ConsumerStatus::Idle;
+        }
+        if (status == "updating")
+        {
+            return ConsumerStatus::Updating;
+        }
+
+        return ConsumerStatus::Unknown;
+    }
+
+    /**
+     * @brief Waits until the consumer status document becomes `idle`.
+     *
+     * If the consumer status settings are not configured, the wait is skipped so
+     * non-VD users of IndexerDownloader keep the previous behaviour.
+     */
+    bool waitUntilConsumerIdle(UpdaterContext& context) const
+    {
+        static constexpr auto CONSUMER_STATUS_POLL_INTERVAL {std::chrono::minutes {1}};
+
+        const auto consumerStatusIndex = m_config.at("indexer").value("consumerStatusIndex", std::string {});
+        const auto consumerStatusId = m_config.at("indexer").value("consumerStatusId", std::string {});
+
+        if (consumerStatusIndex.empty() || consumerStatusId.empty())
+        {
+            return true;
+        }
+
+        IndexerConnectorSync syncConnector(m_config.at("indexer"));
+
+        while (true)
+        {
+            try
+            {
+                switch (readConsumerStatus(syncConnector, consumerStatusIndex, consumerStatusId))
+                {
+                    case ConsumerStatus::Idle:
+                        logInfo(WM_CONTENTUPDATER,
+                                "IndexerDownloader: Consumer '%s' in index '%s' is idle. Starting feed download.",
+                                consumerStatusId.c_str(),
+                                consumerStatusIndex.c_str());
+                        return true;
+
+                    case ConsumerStatus::Missing:
+                        logInfo(WM_CONTENTUPDATER,
+                                "IndexerDownloader: Consumer '%s' not found in '%s'. Waiting %zu s before retrying.",
+                                consumerStatusId.c_str(),
+                                consumerStatusIndex.c_str(),
+                                static_cast<size_t>(
+                                    std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL)
+                                        .count()));
+                        break;
+
+                    case ConsumerStatus::Empty:
+                        logInfo(WM_CONTENTUPDATER,
+                                "IndexerDownloader: Consumer '%s' has empty status in '%s'. Waiting %zu s before "
+                                "retrying.",
+                                consumerStatusId.c_str(),
+                                consumerStatusIndex.c_str(),
+                                static_cast<size_t>(
+                                    std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL)
+                                        .count()));
+                        break;
+
+                    case ConsumerStatus::Updating:
+                        logInfo(WM_CONTENTUPDATER,
+                                "IndexerDownloader: Consumer '%s' is still updating in '%s'. Waiting %zu s before "
+                                "retrying.",
+                                consumerStatusId.c_str(),
+                                consumerStatusIndex.c_str(),
+                                static_cast<size_t>(
+                                    std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL)
+                                        .count()));
+                        break;
+
+                    case ConsumerStatus::Unknown:
+                        logWarn(WM_CONTENTUPDATER,
+                                "IndexerDownloader: Consumer '%s' in '%s' returned an unknown status. Waiting %zu s "
+                                "before retrying.",
+                                consumerStatusId.c_str(),
+                                consumerStatusIndex.c_str(),
+                                static_cast<size_t>(
+                                    std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL)
+                                        .count()));
+                        break;
+                }
+            }
+            catch (const std::exception& e)
+            {
+                logWarn(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Failed to query consumer '%s' in '%s' (%s). Waiting %zu s before "
+                        "retrying.",
+                        consumerStatusId.c_str(),
+                        consumerStatusIndex.c_str(),
+                        e.what(),
+                        static_cast<size_t>(
+                            std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL).count()));
+            }
+
+            if (context.spUpdaterBaseContext->spStopCondition->waitFor(
+                    std::chrono::duration_cast<std::chrono::milliseconds>(CONSUMER_STATUS_POLL_INTERVAL)))
+            {
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Stop requested while waiting for consumer '%s' to become idle.",
+                        consumerStatusId.c_str());
+                return false;
+            }
+        }
     }
 
     /**
@@ -639,6 +808,11 @@ public:
         }
 
         const bool forceInitialLoad = lastCursor.empty();
+        if (!waitUntilConsumerIdle(*context))
+        {
+            return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
+        }
+
         size_t totalProcessed = 0;
         if (forceInitialLoad)
         {
