@@ -176,6 +176,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                     for (const auto& versionPath : packageVersions)
                     {
                         const std::string version = versionPath.filename().string();
+
                         if (!Utils::startsWith(version, "."))
                         {
                             try
