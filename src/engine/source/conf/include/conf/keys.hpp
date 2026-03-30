@@ -32,12 +32,11 @@ constexpr std::string_view INDEXER_SSL_CA_BUNDLE = "analysisd.indexer_ssl_certif
 constexpr std::string_view INDEXER_SSL_CERTIFICATE = "analysisd.indexer_ssl_certificate";
 constexpr std::string_view INDEXER_SSL_KEY = "analysisd.indexer_ssl_key";
 constexpr std::string_view INDEXER_QUEUE_MAX_EVENTS = "analysisd.indexer_queue_max_events";
-constexpr std::string_view INDEXER_CONNECTOR_MAX_HITS_PER_REQUEST = "analysisd.indexer_connector_max_hits_per_request";
 
 constexpr std::string_view IOC_INDEXER_CONNECTOR_MAX_RETRIES = "analysisd.ioc_indexer_connector_max_retries";
 constexpr std::string_view IOC_INDEXER_CONNECTOR_RETRY_INTERVAL = "analysisd.ioc_indexer_connector_retry_interval";
-constexpr std::string_view IOC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE =
-    "analysisd.ioc_indexer_connector_ioc_sync_batch_size";
+constexpr std::string_view CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE =
+    "analysisd.cmsync_indexer_connector_sync_batch_size";
 constexpr std::string_view CMSYNC_INDEXER_CONNECTOR_MAX_RETRIES = "analysisd.cmsync_indexer_connector_max_retries";
 constexpr std::string_view CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL =
     "analysisd.cmsync_indexer_connector_retry_interval";
