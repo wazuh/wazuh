@@ -69,6 +69,36 @@ int main (int argc, char **argv) {
     }
 
     if (!strcmp("Linux", uname_buffer.sysname)) {
+        if (action == ADD_COMMAND) {
+            char *pkill_path = NULL;
+
+            if (get_binary_path("pkill", &pkill_path) == 0) {
+                char *exec_pkill[6] = { pkill_path, "-KILL", "-u", (char *)user, ".*", NULL };
+
+                wfd_t *wfd_pkill = wpopenv(pkill_path, exec_pkill, W_BIND_STDERR);
+                if (wfd_pkill) {
+                    int result = wpclose(wfd_pkill);
+                    if (WIFEXITED(result) && WEXITSTATUS(result) == 0) {
+                        write_debug_file(argv[0], "Terminated active user sessions");
+                    } else if (WIFEXITED(result) && WEXITSTATUS(result) == 1) {
+                        write_debug_file(argv[0], "No active sessions to terminate");
+                    } else {
+                        memset(log_msg, '\0', OS_MAXSTR);
+                        snprintf(log_msg, OS_MAXSTR -1, "Warning: pkill failed with exit code %d",
+                                 WIFEXITED(result) ? WEXITSTATUS(result) : -1);
+                        write_debug_file(argv[0], log_msg);
+                    }
+                } else {
+                    memset(log_msg, '\0', OS_MAXSTR);
+                    snprintf(log_msg, OS_MAXSTR -1, "Warning: Could not execute pkill: %s", strerror(errno));
+                    write_debug_file(argv[0], log_msg);
+                }
+                os_free(pkill_path);
+            } else {
+                write_debug_file(argv[0], "Warning: pkill not found, active sessions will not be terminated");
+            }
+        }
+
         // Checking if passwd is present
         if (get_binary_path("passwd", &cmd_path) < 0) {
             memset(log_msg, '\0', OS_MAXSTR);
