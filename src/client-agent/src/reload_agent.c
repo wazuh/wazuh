@@ -46,9 +46,7 @@ void * reloadAgent() {
 		}
 
 		if (errno == ENOENT || errno == ECONNREFUSED) {
-			if (attempt == 0) {
-				mdebug1("Control socket '%s' not yet available, retrying...", sockname);
-			}
+			mdebug1("Control socket '%s' not yet available (attempt %d/%d), retrying...", sockname, attempt + 1, max_retries);
 			sleep(retry_delay_s);
 		} else {
 			merror("At reloadAgent(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
