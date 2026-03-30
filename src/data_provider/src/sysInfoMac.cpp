@@ -169,7 +169,8 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
             }
             else if (BREW == pkgType)
             {
-                if (fs.is_directory(package))
+                if (fs.is_directory(package) && !Utils::startsWith(package.filename().string(), "."))
+
                 {
                     const auto packageVersions { fs.list_directory(package) };
 
