@@ -31,7 +31,13 @@
  * additional counters, or formatting changes), this value must be reviewed
  * and updated accordingly so that size checks remain correct.
  */
-#define MSG_OVERHEAD 53
+
+#define MD5_CHECKSUM_SIZE 32
+#define RANDOM_DATA_SIZE 5
+#define GLOBAL_COUNTER_SIZE 10
+#define LOCAL_COUNTER_SIZE 4
+#define COUNTER_FORMAT_SIZE 1 /* For the ':' character */
+#define MSG_OVERHEAD (MD5_CHECKSUM_SIZE + RANDOM_DATA_SIZE + GLOBAL_COUNTER_SIZE + LOCAL_COUNTER_SIZE + 2 * COUNTER_FORMAT_SIZE)
 
 /* Prototypes */
 static void StoreSenderCounter(const keystore *keys, unsigned int global, unsigned int local) __attribute((nonnull));
@@ -368,7 +374,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         /* Uncompress */
         *final_size = os_zlib_uncompress(cleartext, buffer, buffer_size, OS_MAXSTR);
 #ifdef CLIENT
-        if (*final_size == 0 || *final_size < MSG_OVERHEAD) {
+        if (*final_size < MSG_OVERHEAD) {
             merror(UNCOMPRESS_ERR);
             return KS_CORRUPT;
         }
@@ -405,7 +411,15 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         f_msg++;
 
         msg_local = (unsigned int) atoi(f_msg);
-        f_msg += 5;
+        f_msg += 4;
+
+        /* Check for the right message format */
+        if (*f_msg != ':') {
+            merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
+            return KS_CORRUPT;
+        }
+        f_msg++;
+
         *final_size -= (f_msg - buffer);
 
         w_mutex_lock(&keys->keyentries[id]->mutex);
