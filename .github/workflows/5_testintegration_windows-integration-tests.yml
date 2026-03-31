@@ -160,12 +160,11 @@ jobs:
           $env:GITHUB_REF_NAME="$env:BRANCH_NAME"
           python -m pytest ${{ inputs.pytest_extra_args }} ${{ inputs.pytest_tier_args }} ${{ inputs.pytest_target }} ${{ inputs.pytest_ignore_args }} --html=results.html --self-contained-html 2>&1 | Tee-Object -FilePath pytest.log
           $pytestExitCode = $LASTEXITCODE
-
+          if ($pytestExitCode -eq 5) {
+            Write-Host "No tests were selected for this configuration. Skipping."
+            exit 0
+          }
           if ($pytestExitCode -ne 0) {
-            if (Select-String -Path pytest.log -Pattern "deselected / 0 selected|collected 0 items" -Quiet) {
-              Write-Host "No tests selected for this shard/tier. Marking as success."
-              exit 0
-            }
             exit $pytestExitCode
           }
       # ================= RESULTS =================
