@@ -239,6 +239,11 @@ void initTZDB(const std::string& path, bool autoUpdate, const std::string& force
         return;
     }
 
+    if (!autoUpdate)
+    {
+        throw std::runtime_error("Timezone database not found and auto-update is disabled");
+    }
+
     downloadAndInstallTimeZoneDB(rv);
     const auto& db = date::get_tzdb(); // Check if the database is loaded correctly
     LOG_INFO("Timezone database updated to version: '{}'", db.version);
