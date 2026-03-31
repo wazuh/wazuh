@@ -21,7 +21,7 @@ from wazuh_testing.constants.paths.configurations import WAZUH_CONF_PATH
 from wazuh_testing.constants.paths.databases import FIM_DB_PATH, FIM_SYNC_DB_DIR, FIM_SYNC_DB_FILES
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS, MACOS, CENTOS, UBUNTU, DEBIAN
-from wazuh_testing.modules.fim.patterns import MONITORING_PATH, FIM_SCAN_END
+from wazuh_testing.modules.fim.patterns import MONITORING_PATH, FIM_SCAN_END, PATH_MONITORED_REALTIME
 from wazuh_testing.modules.fim.utils import create_registry, delete_registry
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import file, services
@@ -216,8 +216,12 @@ def create_registry_key(test_metadata: dict) -> None:
 
 @pytest.fixture()
 def detect_end_scan(test_metadata: dict) -> None:
+    fim_mode = test_metadata.get('fim_mode', '')
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(timeout=60, callback=generate_callback(FIM_SCAN_END))
+    if fim_mode == 'realtime':
+        wazuh_log_monitor.start(timeout=120, callback=generate_callback(PATH_MONITORED_REALTIME))
+    else:
+        wazuh_log_monitor.start(timeout=120, callback=generate_callback(FIM_SCAN_END))
     assert wazuh_log_monitor.callback_result
 
 
