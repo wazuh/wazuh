@@ -660,6 +660,29 @@ void expect_get_data (char *user, char *group, char *file_path, int calculate_ch
 }
 
 /* tests */
+
+/* fim_epoch_to_iso8601 */
+static void test_fim_epoch_to_iso8601_known_date(void **state) {
+    (void)state;
+    char buffer[25];
+    // 2019-10-04T10:17:03 UTC
+    assert_true(fim_epoch_to_iso8601(1570184223, buffer, sizeof(buffer)));
+    assert_string_equal(buffer, "2019-10-04T10:17:03.000Z");
+}
+
+static void test_fim_epoch_to_iso8601_epoch_zero(void **state) {
+    (void)state;
+    char buffer[25];
+    assert_true(fim_epoch_to_iso8601(0, buffer, sizeof(buffer)));
+    assert_string_equal(buffer, "1970-01-01T00:00:00.000Z");
+}
+
+static void test_fim_epoch_to_iso8601_buffer_too_small(void **state) {
+    (void)state;
+    char buffer[5];
+    assert_false(fim_epoch_to_iso8601(1570184223, buffer, sizeof(buffer)));
+}
+
 static void test_fim_attributes_json(void **state) {
     fim_data_t *fim_data = *state;
     directory_t configuration = { .options = -1 };
@@ -695,7 +718,7 @@ static void test_fim_attributes_json(void **state) {
     assert_string_equal(inode->valuestring, "606060");
     cJSON *mtime = cJSON_GetObjectItem(fim_data->json, "mtime");
     assert_non_null(mtime);
-    assert_int_equal(mtime->valueint, 1570184223);
+    assert_string_equal(mtime->valuestring, "2019-10-04T10:17:03.000Z");
     cJSON *hash = cJSON_GetObjectItem(fim_data->json, "hash");
     assert_non_null(hash);
     cJSON *hash_md5 = cJSON_GetObjectItem(hash, "md5");
@@ -3800,7 +3823,7 @@ void test_fim_calculate_dbsync_difference(void **state){
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "gid")->valuestring, "1000");
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "owner")->valuestring, "root");
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "group")->valuestring, "root");
-    assert_int_equal(cJSON_GetObjectItem(old_attributes, "mtime")->valueint, 123456789);
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "mtime")->valuestring, "1973-11-29T21:33:09.000Z");
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "inode")->valuestring, "1");
     cJSON* hash = cJSON_GetObjectItem(old_attributes, "hash");
     assert_non_null(hash);
@@ -3903,7 +3926,7 @@ static void test_dbsync_attributes_json(void **state) {
     directory_t configuration = { .options = -1, .tag = "tag_name" };
     json_struct_t *data = *state;
 #ifndef TEST_WINAGENT
-    const char *result_str = "{\"size\":11,\"permissions\":[\"rw-r--r--\"],\"uid\":\"0\",\"owner\":\"root\",\"gid\":\"0\",\"group\":\"root\",\"inode\":\"271017\",\"device\":\"64768\",\"mtime\":1646124392,\"hash\":{\"md5\":\"d73b04b0e696b0945283defa3eee4538\",\"sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\"}}";
+    const char *result_str = "{\"size\":11,\"permissions\":[\"rw-r--r--\"],\"uid\":\"0\",\"owner\":\"root\",\"gid\":\"0\",\"group\":\"root\",\"inode\":\"271017\",\"device\":\"64768\",\"mtime\":\"2022-03-01T08:46:32.000Z\",\"hash\":{\"md5\":\"d73b04b0e696b0945283defa3eee4538\",\"sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\"}}";
     cJSON *dbsync_event = cJSON_Parse("{\"attributes\":\"\",\"checksum\":\"c0edc82c463da5f4ab8dd420a778a9688a923a72\",\"device\":64768,\"gid\":\"0\",\"group_\":\"root\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"inode\":\"271017\",\"mtime\":1646124392,\"path\":\"/etc/testfile\",\"permissions\":\"rw-r--r--\",\"size\":11,\"uid\":\"0\",\"owner\":\"root\"}");
 #else
     cJSON *dbsync_event = cJSON_Parse("{\"size\":0, \"permissions\":\"{\\\"S-1-5-32-544\\\":{\\\"name\\\":\\\"Administrators\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]},\\\"S-1-5-18\\\":{\\\"name\\\":\\\"SYSTEM\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]},\\\"S-1-5-32-545\\\":{\\\"name\\\":\\\"Users\\\",\\\"allowed\\\":[\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"read_ea\\\",\\\"execute\\\",\\\"read_attributes\\\"]},\\\"S-1-5-11\\\":{\\\"name\\\":\\\"Authenticated Users\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\", \"attributes\":\"ARCHIVE\", \"uid\":\"0\", \"gid\":\"0\", \
@@ -3916,7 +3939,7 @@ static void test_dbsync_attributes_json(void **state) {
         "\"{\\\"S-1-5-18\\\":{\\\"name\\\":\\\"SYSTEM\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\","
         "\"{\\\"S-1-5-32-545\\\":{\\\"name\\\":\\\"Users\\\",\\\"allowed\\\":[\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"read_ea\\\",\\\"execute\\\",\\\"read_attributes\\\"]}}\","
         "\"{\\\"S-1-5-11\\\":{\\\"name\\\":\\\"Authenticated Users\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\"],"
-        "\"uid\":\"0\",\"owner\":\"Administrators\",\"gid\":\"0\",\"inode\":\"0\",\"mtime\":1646145212,"
+        "\"uid\":\"0\",\"owner\":\"Administrators\",\"gid\":\"0\",\"inode\":\"0\",\"mtime\":\"2022-03-01T14:33:32.000Z\","
         "\"hash\":{\"md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},"
         "\"attributes\":[\"ARCHIVE\"]}";
 
@@ -4096,9 +4119,15 @@ int main(void) {
         cmocka_unit_test(test_update_wildcards_config_remove_config),
         cmocka_unit_test(test_update_wildcards_config_list_null),
     };
+    const struct CMUnitTest epoch_to_iso8601_tests[] = {
+        cmocka_unit_test(test_fim_epoch_to_iso8601_known_date),
+        cmocka_unit_test(test_fim_epoch_to_iso8601_epoch_zero),
+        cmocka_unit_test(test_fim_epoch_to_iso8601_buffer_too_small),
+    };
     int retval;
 
-    retval = cmocka_run_group_tests(tests, setup_group, teardown_group);
+    retval = cmocka_run_group_tests(epoch_to_iso8601_tests, NULL, NULL);
+    retval += cmocka_run_group_tests(tests, setup_group, teardown_group);
     retval += cmocka_run_group_tests(fim_regex_tests, setup_fim_regex_group, teardown_group);
     retval += cmocka_run_group_tests(root_monitor_tests, setup_root_group, teardown_group);
     retval += cmocka_run_group_tests(wildcards_tests, setup_wildcards, teardown_wildcards);
