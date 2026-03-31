@@ -27,6 +27,7 @@ from api import configuration
 from api.alogging import custom_logging
 from api.authentication import generate_keypair, JWT_ALGORITHM
 from api.api_exception import BlockedIPException, MaxRequestsException, ExpectFailedException
+from api.controllers.util import build_recursion_error_response
 
 # Default of the max event requests allowed per minute
 MAX_REQUESTS_EVENTS_DEFAULT = 30
@@ -256,6 +257,10 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
                 _ = await request.json()
             except json.decoder.JSONDecodeError:
                 pass
+            except RecursionError:
+                conn_resp = build_recursion_error_response(pretty=False)
+                return Response(content=conn_resp.body, status_code=conn_resp.status_code,
+                            media_type=conn_resp.content_type)
 
         response = await call_next(request)
         await access_log(ConnexionRequest.from_starlette_request(request), response, prev_time)
@@ -321,4 +326,3 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
                 
         response = await call_next(request)
         return response
-    

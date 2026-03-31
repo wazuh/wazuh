@@ -346,6 +346,33 @@ async def test_wazuh_access_logger_middleware():
 
 
 @pytest.mark.asyncio
+async def test_wazuh_access_logger_middleware_recursion_error():
+    mock_req = AsyncMock()
+    mock_req.body = AsyncMock(return_value=b'{"a": "b"}')
+    mock_req.json = AsyncMock(side_effect=RecursionError)
+
+    dispatch_mock = AsyncMock()
+    middleware = WazuhAccessLoggerMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    mock_conn_resp = MagicMock()
+    mock_conn_resp.body = b'error'
+    mock_conn_resp.status_code = 400
+    mock_conn_resp.content_type = "application/json"
+
+    with patch('api.middlewares.build_recursion_error_response', return_value=mock_conn_resp), \
+         patch('api.middlewares.access_log') as mock_access_log:
+
+        resp = await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
+
+        dispatch_mock.assert_not_called()
+        mock_access_log.assert_not_called()
+
+        assert resp.status_code == 400
+        assert resp.body == b'error'
+        assert resp.media_type == "application/json"
+
+
+@pytest.mark.asyncio
 async def test_secure_headers_middleware(mock_req):
     """Test access logging."""
     response = MagicMock()
