@@ -1,5 +1,6 @@
 # Modules
 
+- [Active Response](active-response/) - Automated security response actions triggered by detected events
 - [Agent Management](agent-management/) - Centralized configuration and group management for agents
 - [Integrations](integrations/) - Cloud services and third-party platform integrations
 - [Control](control/) - Manager control operations (restart, reload) via wm_control module
