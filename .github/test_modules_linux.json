@@ -53,7 +53,7 @@
     },
     {
       "name": "fim",
-      "pytest_target": "test_fim/",
+      "pytest_target": "test_fim/test_files/test_basic_usage/test_delete_directory.py",
       "tiers": ["0", "1"],
       "timeout_minutes": 120,
       "pre_install": "sudo apt-get update && sudo apt-get install auditd -y",

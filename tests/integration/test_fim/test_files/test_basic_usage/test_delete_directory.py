@@ -103,7 +103,8 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_delete_dir(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-                    truncate_monitored_files, folder_to_monitor, file_to_monitor, daemons_handler, start_monitoring):
+                    truncate_monitored_files, folder_to_monitor, file_to_monitor, daemons_handler, start_monitoring,
+                    detect_end_scan):
     '''
     description: Check if the 'wazuh-syscheckd' daemon detects 'deleted' events from the files contained
                  in a folder that is being deleted.
@@ -143,6 +144,9 @@ def test_delete_dir(test_configuration, test_metadata, set_wazuh_configuration, 
         - start_monitoring:
             type: fixture
             brief: Wait FIM to start.
+        - detect_end_scan:
+            type: fixture
+            brief: Wait for the initial FIM scan to complete before the test runs.
 
     assertions:
         - Verify that when a monitored folder is deleted, the files inside it
