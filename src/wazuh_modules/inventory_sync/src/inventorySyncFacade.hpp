@@ -226,6 +226,11 @@ class InventorySyncFacadeImpl final
             {
                 // Check session limit before creating new session
                 std::unique_lock lock(m_agentSessionsMutex);
+
+                // Clean up any stale session for this agent+module combination
+                // This handles agent restart or modulesd restart scenarios
+                cleanupStaleSessionForAgentModule(std::string(agentId), std::string(moduleName));
+
                 if (m_agentSessions.size() >= static_cast<size_t>(m_maxSessions))
                 {
                     logWarn(LOGGER_DEFAULT_TAG,
@@ -1517,6 +1522,64 @@ private:
                      "InventorySyncFacade::deleteAgent: Failed to delete data for agent '%s': %s",
                      agentId.c_str(),
                      e.what());
+        }
+    }
+
+    /**
+     * @brief Clean up stale session for agent+module if one exists
+     * @param agentId Agent ID
+     * @param moduleName Module name
+     *
+     * This handles cases where agent or modulesd restarts, leaving orphaned sessions.
+     * When a new Start message arrives, we check if there's already a session for the
+     * same agent+module combination, and if so, clean it up before creating the new one.
+     *
+     * Note: Caller must hold m_agentSessionsMutex write lock
+     */
+    void cleanupStaleSessionForAgentModule(const std::string& agentId, const std::string& moduleName)
+    {
+        std::vector<uint64_t> staleSessionsToRemove;
+
+        // Find existing sessions for this agent+module combination
+        for (const auto& [existingSessionId, existingSession] : m_agentSessions)
+        {
+            const auto& existingContext = existingSession.getContext();
+            if (existingContext->agentId == agentId && existingContext->moduleName == moduleName)
+            {
+                logInfo(LOGGER_DEFAULT_TAG,
+                        "Found existing session %llu for agent %s module %s - "
+                        "cleaning up stale session",
+                        existingSessionId,
+                        agentId.c_str(),
+                        moduleName.c_str());
+                staleSessionsToRemove.push_back(existingSessionId);
+            }
+        }
+
+        // Clean up stale sessions
+        for (const auto& staleSessionId : staleSessionsToRemove)
+        {
+            auto it = m_agentSessions.find(staleSessionId);
+            if (it != m_agentSessions.end())
+            {
+                const auto& context = it->second.getContext();
+
+                // Unlock agent if this session owns the lock
+                if (context->ownsAgentLock)
+                {
+                    unlockAgent(agentId);
+                    logInfo(LOGGER_DEFAULT_TAG,
+                            "Stale session %llu owned agent lock - unlocked agent %s",
+                            staleSessionId,
+                            agentId.c_str());
+                }
+
+                // Delete data from database
+                m_dataStore->deleteByPrefix(std::to_string(staleSessionId));
+
+                // Remove session from map
+                m_agentSessions.erase(it);
+            }
         }
     }
 
