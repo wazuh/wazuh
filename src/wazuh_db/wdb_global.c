@@ -44,6 +44,25 @@ static const char *SQL_VACUUM_INTO = "VACUUM INTO ?;";
 int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* register_ip, char* internal_key, char* group, int date_add) {
     sqlite3_stmt *stmt = NULL;
 
+    // Validate group names before inserting
+    if (group && group[0] != '\0') {
+        char *tmp_groups = NULL;
+        os_strdup(group, tmp_groups);
+        char *save_ptr = NULL;
+        const char delim[] = {MULTIGROUP_SEPARATOR, '\0'};
+        char *group_name = strtok_r(tmp_groups, delim, &save_ptr);
+
+        while (group_name != NULL) {
+            if (OS_INVALID == wdb_global_validate_group_name(group_name)) {
+                merror("Invalid group name '%s' in multigroup '%s' for agent %d", group_name, group, id);
+                os_free(tmp_groups);
+                return OS_INVALID;
+            }
+            group_name = strtok_r(NULL, delim, &save_ptr);
+        }
+        os_free(tmp_groups);
+    }
+
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
         return OS_INVALID;
