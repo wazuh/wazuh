@@ -38,6 +38,7 @@ decoded_payload = {
     "aud": 'Wazuh API REST',
     "nbf": 0,
     "exp": security_conf['auth_token_exp_timeout'],
+    "nbf_ms": 0,
     "sub": '001',
     "rbac_policies": {'value': 'test', 'rbac_mode': security_conf['rbac_mode']},
     "rbac_roles": [1],
@@ -49,6 +50,7 @@ original_payload = {
     "aud": "Wazuh API REST",
     "nbf": 0,
     "exp": security_conf['auth_token_exp_timeout'],
+    "nbf_ms": 0,
     "sub": "001",
     "run_as": False,
     "rbac_roles": [1],
@@ -224,7 +226,7 @@ async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_da
     assert result == decoded_payload
 
     # Check all functions are called with expected params
-    calls = [call(f=ANY, f_kwargs={'username': original_payload['sub'], 'token_nbf_time': original_payload['nbf'],
+    calls = [call(f=ANY, f_kwargs={'username': original_payload['sub'], 'token_nbf_time': original_payload['nbf_ms'],
                                    'run_as': False, 'roles': tuple(original_payload['rbac_roles']),
                                    'origin_node_type': 'master'},
                   request_type='local_master', is_async=False, wait_for_complete=False, logger=ANY),
