@@ -640,6 +640,8 @@ rm -fr %{buildroot}
 %files -n wazuh-manager-debuginfo -f debugfiles.list
 
 %changelog
+* Tue Mar 31 2026 support <info@wazuh.com> - 5.0.2
+- More info: https://documentation.wazuh.com/current/release-notes/release-5-0-2.html
 * Tue Mar 31 2026 support <info@wazuh.com> - 5.0.1
 - More info: https://documentation.wazuh.com/current/release-notes/release-5-0-1.html
 * Sun Apr 12 2026 support <info@wazuh.com> - 5.0.0
