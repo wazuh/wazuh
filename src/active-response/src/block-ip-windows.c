@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
 
     // Setup and parse JSON input
     action = setup_and_check_message(argv, &input_json);
-    if ((action != ADD_COMMAND) && (action != DELETE_COMMAND)) {
+    if ((action != ENABLE_COMMAND) && (action != DISABLE_COMMAND)) {
         return OS_INVALID;
     }
 
@@ -45,8 +45,8 @@ int main(int argc, char **argv) {
         return OS_INVALID;
     }
 
-    // Send keys and check for abort (ADD command only)
-    if (action == ADD_COMMAND) {
+    // Send keys and check for abort (ENABLE command only)
+    if (action == ENABLE_COMMAND) {
         char **keys = NULL;
         os_calloc(2, sizeof(char *), keys);
         os_strdup(srcip, keys[0]);
@@ -146,7 +146,7 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
     // Build netsh command
     wfd_t *wfd = NULL;
 
-    if (action == ADD_COMMAND) {
+    if (action == ENABLE_COMMAND) {
         // netsh advfirewall firewall add rule name="..." interface=any dir=in action=block remoteip=<IP>/32
         char remote_ip_arg[OS_MAXSTR];
         memset(remote_ip_arg, '\0', OS_MAXSTR);
@@ -271,7 +271,7 @@ firewall_result_t try_route_windows(const char *srcip, int action, int ip_versio
         return FIREWALL_NOT_AVAILABLE;
     }
 
-    if (action == ADD_COMMAND) {
+    if (action == ENABLE_COMMAND) {
         // Need to find default gateway using ipconfig
         if (check_binary_available("ipconfig.exe", &ipconfig_path, argv0) != FIREWALL_SUCCESS) {
             log_firewall_action(argv0, LOG_LEVEL_WARNING, "route", "check",

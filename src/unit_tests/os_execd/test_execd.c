@@ -167,7 +167,7 @@ static void test_ExecdStart_ok(void **state) {
                                                                                         "\"user\":{"
                                                                                             "\"name\":\"root\""
                                                                                         "},"
-                                                                                        "\"command\":\"add\""
+                                                                                        "\"command\":\"enable\""
                                                                                     "}'");
 
     will_return(__wrap_wpopenv, wfd);
@@ -193,7 +193,7 @@ static void test_ExecdStart_ok(void **state) {
                                                     "\"user\":{"
                                                         "\"name\":\"root\""
                                                     "},"
-                                                    "\"command\":\"add\""
+                                                    "\"command\":\"enable\""
                                                 "}\n");
     will_return(__wrap_fprintf, 0);
 
@@ -325,7 +325,7 @@ static void test_ExecdStart_timeout_not_repeated(void **state) {
                                                                                         "\"user\":{"
                                                                                             "\"name\":\"root\""
                                                                                         "},"
-                                                                                        "\"command\":\"add\""
+                                                                                        "\"command\":\"enable\""
                                                                                     "}'");
 
     will_return(__wrap_wpopenv, wfd);
@@ -352,7 +352,7 @@ static void test_ExecdStart_timeout_not_repeated(void **state) {
                                                     "\"user\":{"
                                                         "\"name\":\"root\""
                                                     "},"
-                                                    "\"command\":\"add\""
+                                                    "\"command\":\"enable\""
                                                 "}\n");
     will_return(__wrap_fprintf, 0);
 
@@ -418,7 +418,7 @@ static void test_ExecdStart_timeout_not_repeated(void **state) {
                                                                                         "\"user\":{"
                                                                                             "\"name\":\"root\""
                                                                                         "},"
-                                                                                        "\"command\":\"delete\""
+                                                                                        "\"command\":\"disable\""
                                                                                     "}' to the timeout list, with a timeout of '10s'.");
 
     ExecdStart(queue);
@@ -509,7 +509,7 @@ static void test_ExecdStart_timeout_repeated(void **state) {
                                                                                         "\"user\":{"
                                                                                             "\"name\":\"root\""
                                                                                         "},"
-                                                                                        "\"command\":\"add\""
+                                                                                        "\"command\":\"enable\""
                                                                                     "}'");
 
     will_return(__wrap_wpopenv, wfd);
@@ -536,7 +536,7 @@ static void test_ExecdStart_timeout_repeated(void **state) {
                                                     "\"user\":{"
                                                         "\"name\":\"root\""
                                                     "},"
-                                                    "\"command\":\"add\""
+                                                    "\"command\":\"enable\""
                                                 "}\n");
     will_return(__wrap_fprintf, 0);
 
@@ -667,7 +667,7 @@ static void test_ExecdStart_wpopenv_err(void **state) {
                                                                                         "\"user\":{"
                                                                                             "\"name\":\"root\""
                                                                                         "},"
-                                                                                        "\"command\":\"add\""
+                                                                                        "\"command\":\"enable\""
                                                                                     "}'");
 
     will_return(__wrap_wpopenv, NULL);
@@ -759,7 +759,7 @@ static void test_ExecdStart_fgets_err(void **state) {
                                                                                         "\"user\":{"
                                                                                             "\"name\":\"root\""
                                                                                         "},"
-                                                                                        "\"command\":\"add\""
+                                                                                        "\"command\":\"enable\""
                                                                                     "}'");
 
     will_return(__wrap_wpopenv, wfd);
@@ -785,7 +785,7 @@ static void test_ExecdStart_fgets_err(void **state) {
                                                     "\"user\":{"
                                                         "\"name\":\"root\""
                                                     "},"
-                                                    "\"command\":\"add\""
+                                                    "\"command\":\"enable\""
                                                 "}\n");
     will_return(__wrap_fprintf, 0);
 
