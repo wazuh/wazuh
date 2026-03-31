@@ -158,8 +158,8 @@ class RunAsTokenBlacklist(_Base):
     __table_args__ = (UniqueConstraint('nbf_invalid_until', name='nbf_invalid_until_invalidation_rule'),)
 
     def __init__(self):
-        self.nbf_invalid_until = int(time())
-        self.is_valid_until = self.nbf_invalid_until + security_conf['auth_token_exp_timeout']
+        self.nbf_invalid_until = int(time() * 1000)
+        self.is_valid_until = self.nbf_invalid_until + (security_conf['auth_token_exp_timeout'] * 1000)
 
     def to_dict(self) -> dict:
         """Return the information of the RunAsTokenBlacklist object.
@@ -189,8 +189,8 @@ class UsersTokenBlacklist(_Base):
 
     def __init__(self, user_id):
         self.user_id = user_id
-        self.nbf_invalid_until = int(time())
-        self.is_valid_until = self.nbf_invalid_until + security_conf['auth_token_exp_timeout']
+        self.nbf_invalid_until = int(time() * 1000)
+        self.is_valid_until = self.nbf_invalid_until + (security_conf['auth_token_exp_timeout'] * 1000)
 
     def to_dict(self):
         """Return the information of the token rule
@@ -220,8 +220,8 @@ class RolesTokenBlacklist(_Base):
 
     def __init__(self, role_id):
         self.role_id = role_id
-        self.nbf_invalid_until = int(time())
-        self.is_valid_until = self.nbf_invalid_until + security_conf['auth_token_exp_timeout']
+        self.nbf_invalid_until = int(time() * 1000)
+        self.is_valid_until = self.nbf_invalid_until + (security_conf['auth_token_exp_timeout'] * 1000)
 
     def to_dict(self):
         """Return the information of the token rule
@@ -706,7 +706,7 @@ class TokenManager(RBACManager):
         """
         try:
             list_users, list_roles = list(), list()
-            current_time = int(time())
+            current_time = int(time() * 1000)
             users_tokens_in_blacklist = self.session.scalars(select(UsersTokenBlacklist)).all()
             for user_token in users_tokens_in_blacklist:
                 token_rule = self.session.query(UsersTokenBlacklist).filter_by(user_id=user_token.user_id)

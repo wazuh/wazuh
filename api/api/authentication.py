@@ -185,12 +185,14 @@ def generate_token(user_id: str = None, data: dict = None, auth_context: dict = 
                           )
     result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).dikt
     timestamp = int(core_utils.get_utc_now().timestamp())
+    timestamp_ms = int(core_utils.get_utc_now().timestamp() * 1000)
 
     payload = {
                   "iss": JWT_ISSUER,
                   "aud": "Wazuh API REST",
                   "nbf": timestamp,
                   "exp": timestamp + result['auth_token_exp_timeout'],
+                  "nbf_ms": timestamp_ms,
                   "sub": str(user_id),
                   "run_as": auth_context is not None,
                   "rbac_roles": data['roles'],
@@ -271,7 +273,7 @@ def decode_token(token: str) -> dict:
         # Check token and add processed policies in the Master node
         dapi = DistributedAPI(f=check_token,
                               f_kwargs={'username': payload['sub'],
-                                        'roles': tuple(payload['rbac_roles']), 'token_nbf_time': payload['nbf'],
+                                        'roles': tuple(payload['rbac_roles']), 'token_nbf_time': payload['nbf_ms'],
                                         'run_as': payload['run_as'], 'origin_node_type': read_config()['node_type']},
                               request_type='local_master',
                               is_async=False,
