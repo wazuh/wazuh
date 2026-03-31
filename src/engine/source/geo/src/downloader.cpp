@@ -42,7 +42,8 @@ base::RespOrError<std::string> Downloader::downloadHTTPS(const std::string& url)
             {
                 readBuffer = base::Error {fmt::format(
                     "Failed to download file from '{}', error: {}, status code: {}.", url, error.c_str(), statusCode)};
-            }});
+            }},
+        ConfigurationParameters {.timeout = m_timeout});
 
     return readBuffer;
 }

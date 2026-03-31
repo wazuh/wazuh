@@ -23,6 +23,7 @@ constexpr std::string_view IOC_SYNC_INTERVAL = "analysisd.ioc_sync_interval";
 constexpr std::string_view GEO_SYNC_INTERVAL = "analysisd.geo_sync_interval";
 constexpr std::string_view GEO_DB_PATH = "analysisd.geo_db_path";
 constexpr std::string_view GEO_MANIFEST_URL = "analysisd.geo_manifest_url";
+constexpr std::string_view GEO_DOWNLOAD_TIMEOUT = "analysisd.geo_download_timeout";
 
 constexpr std::string_view INDEXER_HOST = "analysisd.indexer_hosts";
 constexpr std::string_view INDEXER_USER = "analysisd.indexer_username";

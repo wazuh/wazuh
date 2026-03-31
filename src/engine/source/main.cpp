@@ -323,8 +323,8 @@ int main(int argc, char* argv[])
 
         // GEO
         {
-            // TODO: This is a optional right now, but it be mandatory in the future
-            auto geoDownloader = std::make_shared<geo::Downloader>();
+            auto geoDownloadTimeout = static_cast<long>(confManager.get<size_t>(conf::key::GEO_DOWNLOAD_TIMEOUT));
+            auto geoDownloader = std::make_shared<geo::Downloader>(geoDownloadTimeout);
             geoManager = std::make_shared<geo::Manager>(store, geoDownloader);
             LOG_INFO("Geo initialized.");
         }
