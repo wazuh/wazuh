@@ -284,15 +284,20 @@ def test_validate_mitre(response, data, index=0):
             assert v == response.json()['data']['affected_items'][index][k]
 
 
-def test_validate_restart_by_node(response, data):
-    data = json.loads(data.replace("'", '"'))
-    affected_items = list()
-    for item in data['affected_items']:
-        if item['status'] == 'active':
-            affected_items.append(item['id'])
-    assert response.json()['data']['affected_items'] == affected_items
-    assert not response.json()['data']['failed_items']
-    healthcheck_agent_restart(response, affected_items)
+def test_validate_restart_by_node(response, node_connected_agents_response , non_restartable_agents : list = None):
+
+    non_restartable_agents = non_restartable_agents or []
+
+    node_connected_agents_response = json.loads(node_connected_agents_response.replace("'", '"'))
+
+    expected_affected_items = list()
+    for item in node_connected_agents_response['affected_items']:
+        if item['status'] == 'active' and item['id'] not in non_restartable_agents:
+            expected_affected_items.append(item['id'])
+
+    assert response.json()['data']['affected_items'] == expected_affected_items
+
+    healthcheck_agent_restart(response, expected_affected_items)
 
 
 def test_validate_restart_by_node_rbac(response, permitted_agents):

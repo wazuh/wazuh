@@ -1065,19 +1065,21 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Read logs with filters -> tag=wazuh-manager-remoted, limit=2 {node_id}
+  - name: Read logs with filters -> tag=wazuh-manager-remoted, limit=1 {node_id}
     request:
       verify: False
       <<: *get_cluster_logs
       params:
         tag: wazuh-manager-remoted
-        limit: 2
+        limit: 1
     response:
       status_code: 200
       json:
         error: 0
         data:
-          affected_items: !anything
+          affected_items:
+            - <<: *cluster_log
+              tag: wazuh-manager-remoted
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
