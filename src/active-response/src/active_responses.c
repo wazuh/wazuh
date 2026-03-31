@@ -73,10 +73,10 @@ int setup_and_check_message(char **argv, cJSON **message) {
         return OS_INVALID;
     }
 
-    if (!strcmp("add", action)) {
-        ret = ADD_COMMAND;
-    } else if (!strcmp("delete", action)) {
-        ret = DELETE_COMMAND;
+    if (!strcmp("enable", action)) {
+        ret = ENABLE_COMMAND;
+    } else if (!strcmp("disable", action)) {
+        ret = DISABLE_COMMAND;
     } else {
         write_debug_file(argv[0], "Invalid value of 'command'");
         cJSON_Delete(input_json);
@@ -315,7 +315,7 @@ static char* build_json_keys_message(const char *ar_name, char **keys) {
 
     cJSON *message = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(message, "version", VERSION);
+    cJSON_AddNumberToObject(message, "version", AR_VERSION);
 
     _object = cJSON_CreateObject();
     cJSON_AddItemToObject(message, "origin", _object);

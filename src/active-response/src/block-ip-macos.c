@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
 
     // Setup and parse JSON input
     action = setup_and_check_message(argv, &input_json);
-    if ((action != ADD_COMMAND) && (action != DELETE_COMMAND)) {
+    if ((action != ENABLE_COMMAND) && (action != DISABLE_COMMAND)) {
         return OS_INVALID;
     }
 
@@ -41,8 +41,8 @@ int main(int argc, char **argv) {
         return OS_INVALID;
     }
 
-    // Send keys and check for abort (ADD command only)
-    if (action == ADD_COMMAND) {
+    // Send keys and check for abort (ENABLE command only)
+    if (action == ENABLE_COMMAND) {
         char **keys = NULL;
         os_calloc(2, sizeof(char *), keys);
         os_strdup(srcip, keys[0]);
@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
 
     if (result == FIREWALL_SUCCESS) {
         log_firewall_action(argv[0], LOG_LEVEL_INFO, "pf", "success",
-                          action == ADD_COMMAND ? "IP blocked successfully" : "IP unblocked successfully");
+                          action == ENABLE_COMMAND ? "IP blocked successfully" : "IP unblocked successfully");
         write_debug_file(argv[0], "Ended");
         cJSON_Delete(input_json);
         return OS_SUCCESS;
@@ -112,7 +112,7 @@ int main(int argc, char **argv) {
 
     if (result == FIREWALL_SUCCESS) {
         log_firewall_action(argv[0], LOG_LEVEL_INFO, "hostsdeny", "success",
-                          action == ADD_COMMAND ? "IP blocked successfully" : "IP unblocked successfully");
+                          action == ENABLE_COMMAND ? "IP blocked successfully" : "IP unblocked successfully");
         write_debug_file(argv[0], "Ended");
         cJSON_Delete(input_json);
         return OS_SUCCESS;
@@ -275,7 +275,7 @@ firewall_result_t try_pf_macos(const char *srcip, int action, int ip_version, co
     }
 
     // Add or delete IP from table
-    const char *table_operation = (action == ADD_COMMAND) ? "add" : "delete";
+    const char *table_operation = (action == ENABLE_COMMAND) ? "add" : "delete";
     char *exec_cmd2[] = {pfctl_path, "-t", "wazuh_fwtable", "-T", (char *)table_operation, (char *)srcip, NULL};
 
     wfd = wpopenv(pfctl_path, exec_cmd2, W_BIND_STDOUT | W_BIND_STDERR);
@@ -316,7 +316,7 @@ firewall_result_t try_pf_macos(const char *srcip, int action, int ip_version, co
     }
 
     // If adding, also kill existing connections from this IP
-    if (action == ADD_COMMAND) {
+    if (action == ENABLE_COMMAND) {
         memset(log_msg, '\0', OS_MAXSTR);
         snprintf(log_msg, OS_MAXSTR - 1, "Killing existing connections from %s", srcip);
         write_debug_file(argv0, log_msg);
@@ -370,7 +370,7 @@ firewall_result_t try_hostsdeny_macos(const char *srcip, int action, int ip_vers
         return FIREWALL_EXECUTION_FAILED;
     }
 
-    if (action == ADD_COMMAND) {
+    if (action == ENABLE_COMMAND) {
         // Open file for reading to check for duplicates
         host_deny_fp = wfopen(DEFAULT_HOSTS_DENY_PATH, "r");
         if (!host_deny_fp) {
@@ -416,7 +416,7 @@ firewall_result_t try_hostsdeny_macos(const char *srcip, int action, int ip_vers
         fclose(host_deny_fp);
 
     } else {
-        // DELETE_COMMAND: Remove IP from hosts.deny
+        // DISABLE_COMMAND: Remove IP from hosts.deny
         FILE *temp_host_deny_fp = NULL;
         char temp_hosts_deny_path[COMMANDSIZE_4096];
         bool write_fail = false;
