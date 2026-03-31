@@ -97,6 +97,21 @@ def test_nbf_invalid(db_setup):
             assert not tm.is_token_valid(role_id=role, token_nbf_time=current_timestamp)
 
 
+def test_token_valid_after_revoke_same_second_ms(db_setup):
+    with db_setup.AuthenticationManager() as am:
+        am.add_user(username='timing_user', password='testingA1!')
+        user_id = am.get_user('timing_user')['id']
+
+    # Revoke en tiempo X (en segundos, pero convertido a ms internamente)
+    with patch('wazuh.rbac.orm.time', return_value=1000.100):
+        with db_setup.TokenManager() as tm:
+            assert tm.add_user_roles_rules(users={user_id})
+
+    # Token generado justo después (mismo segundo pero mayor en ms)
+    with db_setup.TokenManager() as tm:
+        assert tm.is_token_valid(user_id=user_id, token_nbf_time=1000101)
+
+
 def test_delete_all_rules(db_setup):
     """Check that rules are correctly deleted"""
     add_token(db_setup)
