@@ -405,6 +405,27 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
             break;
         }
 
+        /* Validate group name format */
+        if (!w_regexec("^[a-zA-Z0-9_\\-]+$", group, 0, NULL)) {
+            merror("Invalid group name '%s': contains forbidden characters", group);
+            if (response) {
+                snprintf(response, OS_SIZE_2048, "ERROR: Invalid group name: %s", group);
+            }
+            ret = OS_INVALID;
+            break;
+        }
+
+        /* Additional check */
+        if (strcmp(group, ".") == 0 || strcmp(group, "..") == 0) {
+            merror("Invalid group name '%s': directory reference not allowed", group);
+            if (response) {
+                snprintf(response, OS_SIZE_2048, "ERROR: Invalid group name: %s", group);
+            }
+            ret = OS_INVALID;
+            break;
+        }
+
+        /* Verify group directory exists (after validation) */
         snprintf(dir, PATH_MAX + 1, SHAREDCFG_DIR "/%s", group);
         dp = opendir(dir);
         if (!dp) {

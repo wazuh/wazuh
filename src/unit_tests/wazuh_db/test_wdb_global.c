@@ -2156,6 +2156,149 @@ void test_wdb_global_insert_agent_success(void **state)
     assert_int_equal(result, OS_SUCCESS);
 }
 
+/* Tests wdb_global_insert_agent */
+
+void test_wdb_global_insert_agent_invalid_group_parent_dir(void **state)
+{
+    int result = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *name = "test_name";
+    char *ip = "test_ip";
+    char *register_ip = "0.0.0.0";
+    char *internal_key = "test_key";
+    char *group = "..";
+    int date_add = 100;
+
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. '..' represents the parent directory in unix systems");
+    expect_string(__wrap__merror, formatted_msg, "Invalid group name '..' in multigroup '..' for agent 1");
+
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_insert_agent_invalid_group_current_dir(void **state)
+{
+    int result = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *name = "test_name";
+    char *ip = "test_ip";
+    char *register_ip = "0.0.0.0";
+    char *internal_key = "test_key";
+    char *group = ".";
+    int date_add = 100;
+
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. '.' represents the current directory in unix systems");
+    expect_string(__wrap__merror, formatted_msg, "Invalid group name '.' in multigroup '.' for agent 1");
+
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_insert_agent_invalid_multigroup_with_parent_dir(void **state)
+{
+    int result = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *name = "test_name";
+    char *ip = "test_ip";
+    char *register_ip = "0.0.0.0";
+    char *internal_key = "test_key";
+    char *group = "..,default";
+    int date_add = 100;
+
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. '..' represents the parent directory in unix systems");
+    expect_string(__wrap__merror, formatted_msg, "Invalid group name '..' in multigroup '..,default' for agent 1");
+
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_insert_agent_invalid_group_too_long(void **state)
+{
+    int result = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *name = "test_name";
+    char *ip = "test_ip";
+    char *register_ip = "0.0.0.0";
+    char *internal_key = "test_key";
+    // Create a group name longer than MAX_GROUP_NAME (255)
+    char group[300];
+    memset(group, 'a', 256);  // 256 'a' characters
+    group[256] = '\0';
+    int date_add = 100;
+
+    expect_string(__wrap__mwarn, formatted_msg,
+        "Invalid group name. The group 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' exceeds the maximum length of 255 characters permitted");
+    expect_string(__wrap__merror, formatted_msg, "Invalid group name 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' in multigroup 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' for agent 1");
+
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_insert_agent_invalid_group_with_slash(void **state)
+{
+    int result = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *name = "test_name";
+    char *ip = "test_ip";
+    char *register_ip = "0.0.0.0";
+    char *internal_key = "test_key";
+    char *group = "group/subgroup";  // Contains path separator
+    int date_add = 100;
+
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. 'group/subgroup' contains invalid characters");
+    expect_string(__wrap__merror, formatted_msg, "Invalid group name 'group/subgroup' in multigroup 'group/subgroup' for agent 1");
+
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_insert_agent_valid_multigroup(void **state)
+{
+    int result = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *name = "test_name";
+    char *ip = "test_ip";
+    char *register_ip = "0.0.0.0";
+    char *internal_key = "test_key";
+    char *group = "web,database,prod";  // Valid multigroup
+    int date_add = 100;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_value(__wrap_sqlite3_bind_text, buffer, name);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_value(__wrap_sqlite3_bind_text, buffer, ip);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_value(__wrap_sqlite3_bind_text, buffer, register_ip);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5);
+    expect_value(__wrap_sqlite3_bind_text, buffer, internal_key);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 6);
+    expect_value(__wrap_sqlite3_bind_int, value, date_add);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 7);
+    expect_value(__wrap_sqlite3_bind_text, buffer, group);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+
+    result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
+
+    assert_int_equal(result, OS_SUCCESS);
+}
+
 /* Tests wdb_global_update_agent_name */
 
 void test_wdb_global_update_agent_name_transaction_fail(void **state)
@@ -9462,6 +9605,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_bind7_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_step_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_invalid_group_parent_dir, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_invalid_group_current_dir, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_invalid_multigroup_with_parent_dir, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_invalid_group_too_long, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_invalid_group_with_slash, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_insert_agent_valid_multigroup, test_setup, test_teardown),
         /* Tests wdb_global_update_agent_name */
         cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_name_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_update_agent_name_cache_fail, test_setup, test_teardown),
