@@ -60,7 +60,7 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
-          python3 - <<'PY'
+          python3.12 - <<'PY'
           import json
           import os
           import pathlib
