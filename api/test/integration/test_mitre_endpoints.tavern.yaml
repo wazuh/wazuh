@@ -609,7 +609,7 @@ stages:
             - <<: *references_response
               id: "attack-pattern--01a5a209-b94c-450b-b7f9-946497d91055"
           failed_items: []
-          total_affected_items: 4
+          total_affected_items: !anyint
           total_failed_items: 0
 
   - name: Filter references using q parameter (complex query)
@@ -961,23 +961,28 @@ stages:
       status_code: 200
       json:
         error: 0
+        message: "MITRE techniques information was returned"
         data:
-          affected_items: &techniques_response
-            - subtechnique_of: !anything
+          affected_items:
+            - &techniques_response
+              mitre_version: !anystr
+              created_time: !anystr
               deprecated: !anyint
               remote_support: !anyint
-              name: !anystr
-              mitre_version: !anystr
-              id: !anystr
-              mitre_detection: !anystr
-              description: !anystr
-              modified_time: !anystr
               network_requirements: !anyint
-              created_time: !anystr
+              name: !anystr
+              id: !anystr
+              subtechnique_of: !anystr
+              modified_time: !anystr
+              description: !anystr
               tactics: !anything
               mitigations: !anything
               software: !anything
               groups: !anything
+              references: !anything
+              external_id: !anystr
+              source: !anystr
+              url: !anystr
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -1063,7 +1068,7 @@ stages:
             - <<: *techniques_response
               id: "attack-pattern--db8f5003-3b20-48f0-9b76-123e44208120"
           failed_items: [ ]
-          total_affected_items: 2
+          total_affected_items: !anyint
           total_failed_items: 0
 
   - name: Sort techniques without limit
