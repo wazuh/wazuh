@@ -416,8 +416,8 @@ void registerStageBuilders(const std::shared_ptr<Registry>& registry, const Buil
                                                    builders::getParseBuilder(deps.logpar, deps.logparDebugLvl));
     registry->template add<builders::StageBuilder>(syntax::asset::OUTPUTS_KEY, builders::outputsBuilder);
     registry->template add<builders::StageBuilder>(syntax::asset::FIRST_OF_KEY, builders::firstOfBuilder);
-    registry->template add<builders::StageBuilder>(syntax::asset::FILE_OUTPUT_KEY,
-                                                   builders::getFileOutputBuilder(deps.logManager));
+    registry->template add<builders::StageBuilder>(
+        syntax::asset::FILE_OUTPUT_KEY, builders::getFileOutputBuilder(deps.logManager, deps.fileOutputConfig));
     registry->template add<builders::StageBuilder>(syntax::asset::INDEXER_OUTPUT_KEY,
                                                    builders::getIndexerOutputBuilder(deps.iConnector));
 }

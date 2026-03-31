@@ -81,7 +81,7 @@ Server::Server(const std::string& id, size_t payloadMaxBytes, bool enableDetaile
         m_srv->set_logger(
             [id, afterFnName](const auto& req, const auto& res)
             {
-                auto truncateBody = [](const std::string& body, size_t maxLen = 128) -> std::string
+                auto truncateBody = [](const std::string& body, size_t maxLen = 1024) -> std::string
                 {
                     if (body.size() <= maxLen)
                         return body;

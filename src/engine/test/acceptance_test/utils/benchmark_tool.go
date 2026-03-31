@@ -123,7 +123,7 @@ func parseFlags() Config {
 	flag.IntVar(&cfg.BatchSize, "b", 50, "Events per HTTP request (batch size)")
 	flag.StringVar(&cfg.InputDir, "i", "./test_logs", "Directory with .txt / .log input files")
 	flag.StringVar(&cfg.OutputFile, "o",
-		"/var/wazuh-manager/logs/alerts/alerts.json",
+		"/var/wazuh-manager/logs/standard-wazuh-events-v5/standard-wazuh-events-v5.json",
 		"Output file to watch for processed events")
 	flag.BoolVar(&cfg.Truncate, "T", false, "Truncate output file before the test")
 	flag.StringVar(&cfg.CSVFile, "csv", "", "Path to CSV report output file (optional)")

@@ -538,32 +538,23 @@ TEST_F(DailyRotatingFileSinkTest, RotatesByTime)
 
 TEST_F(DailyRotatingFileSinkTest, SingleRotationWhenTimeAndSizeCoincide)
 {
-    // Create sink where both conditions will be met
-    auto now = std::chrono::system_clock::now();
-    auto now_time_t = std::chrono::system_clock::to_time_t(now);
-    std::tm now_tm;
-    localtime_r(&now_time_t, &now_tm);
-
-    auto future_time_t = now_time_t + 1;
-    std::tm future_tm;
-    localtime_r(&future_time_t, &future_tm);
-
-    auto sink = std::make_shared<logging::daily_rotating_file_sink>(
-        logging::daily_rotating_file_sink::Config {.filePath = m_logFile,
-                                                   .maxFileSize = 5 * 1024, // 5KB (small to trigger quickly)
-                                                   .rotationHour = future_tm.tm_hour,
-                                                   .rotationMinute = future_tm.tm_min});
+    auto sink = std::make_shared<logging::daily_rotating_file_sink>(logging::daily_rotating_file_sink::Config {
+        .filePath = m_logFile,
+        .maxFileSize = 5 * 1024,     // 5KB
+        .rotationIntervalSeconds = 1 // Deterministic test-only time rotation
+    });
 
     auto logger = std::make_shared<spdlog::logger>("test", sink);
 
-    // Write logs to exceed size
-    writeLogsUntilRotation(logger, 6 * 1024);
+    // Stay below the size threshold so no rotation happens yet.
+    logger->info(std::string(4 * 1024, 'A'));
+    logger->flush();
 
-    // Wait for time condition
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    // Wait until the time condition is met.
+    std::this_thread::sleep_for(std::chrono::milliseconds(1100));
 
-    // Write one more log to trigger rotation check
-    logger->info("Trigger rotation");
+    // This write should trigger both time and size conditions in a single rotation.
+    logger->info(std::string(2 * 1024, 'B'));
     logger->flush();
 
     // Should have only 1 rotation (not 2)
