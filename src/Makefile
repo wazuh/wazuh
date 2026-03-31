@@ -273,7 +273,7 @@ help: failtarget
 	@echo "   make PYTHON_SOURCE=yes       						Used along the deps target. Downloads the sources needed to build the python interpreter. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make IMAGE_TRUST_CHECKS=1     					This flag controls the dll and exe files signature verification mechanism. Allowed values are 0 (disabled), 1 (warning only) and 2 (full enforce). The default value is 1."
 	@echo "   make CA_NAME="DigiCert Assured ID Root CA" 		This flag controls the CA name used to verify the dll and exe files signature. The default value is DigiCert Assured ID Root CA."
-	@echo "   make deps HTTP_REQUEST_BRANCH=main 				Build dependencies for http-request tool from selected branch/tag only if submodule isn't checked out, valid at make deps stage. Allowed values are any existing branch/tag.
+	@echo "   make deps HTTP_REQUEST_BRANCH=main 				Build dependencies for http-request tool from selected branch/tag only if submodule isn't checked out, valid at make deps stage. Allowed values are any existing branch/tag."
 	@echo
 	@echo "User options: "
 	@echo "   make WAZUH_GROUP=wazuh       Set wazuh group"
@@ -535,27 +535,33 @@ external/$(CPYTHON).tar.gz:
 ifeq (,$(filter ${PYTHON_SOURCE},YES yes y Y 1))
 ifneq (,$(PRECOMPILED_RES))
 external/$(CPYTHON).tar.gz: external-precompiled/$(CPYTHON).tar.gz
-	test -e $(patsubst %.gz,%,$@) ||\
+	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
+	@test -e $(patsubst %.gz,%,$@) ||\
 	($(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz &&\
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
-	test -d $(patsubst %.tar.gz,%,$@) || (cd external && $(GZIP) $(patsubst external/%.gz,%,$@))
+	@test -d $(patsubst %.tar.gz,%,$@) || (cd external && $(GZIP) $(patsubst external/%.gz,%,$@))
+	 @echo "[+] Dependency $(notdir $(patsubst %.tar.gz,%,$@)) installed successfully"
 
 external-precompiled/$(CPYTHON).tar.gz:
-	-$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
-	-cd external && [ -f $(patsubst external-precompiled/%,%,$@) ] && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
+	-@$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
+	-@cd external && [ -f $(patsubst external-precompiled/%,%,$@) ] && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
 else
 external/$(CPYTHON).tar.gz:
-	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz
-	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
-	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
-	rm $(patsubst %.gz,%,$@)
+	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
+	@$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz || { echo "[-] Dependency $(notdir $(patsubst %.tar.gz,%,$@)) failed installation"; exit 1; }
+	 @cd external && $(GUNZIP) $(patsubst external/%,%,$@)
+	 @cd external && $(TAR) $(patsubst external/%.gz,%,$@)
+	 @rm $(patsubst %.gz,%,$@)
+	 @echo "[+] Dependency $(notdir $(patsubst %.tar.gz,%,$@)) installed successfully"
 endif
 else
 external/$(CPYTHON).tar.gz:
-	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz
-	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
-	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
-	rm $(patsubst %.gz,%,$@)
+	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
+	@$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(CPYTHON_ARCHIVE).tar.gz || { echo "[-] Dependency $(notdir $(patsubst %.tar.gz,%,$@)) failed installation"; exit 1; }
+	 @cd external && $(GUNZIP) $(patsubst external/%,%,$@)
+	 @cd external && $(TAR) $(patsubst external/%.gz,%,$@)
+	 @rm $(patsubst %.gz,%,$@)
+	 @echo "[+] Dependency $(notdir $(patsubst %.tar.gz,%,$@)) installed successfully"
 endif
 
 # Explicit rule for tzdata - always download from sources URL
@@ -568,23 +574,27 @@ external/tzdata.tar.gz:
 # Remaining dependencies
 ifneq (,$(PRECOMPILED_RES))
 external/%.tar.gz: external-precompiled/%.tar.gz
-	test -d $(patsubst %.tar.gz,%,$@) ||\
+	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
+	@test -d $(patsubst %.tar.gz,%,$@) ||\
 	($(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@) &&\
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
+	 @echo "[+] Dependency $(notdir $(patsubst %.tar.gz,%,$@)) installed successfully"
 else
 external/%.tar.gz:
-	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
-	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
-	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
-	rm $(patsubst %.gz,%,$@)
+	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
+	@$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@) || { echo "[-] Dependency $(notdir $(patsubst %.tar.gz,%,$@)) failed installation"; exit 1; }
+	 @cd external && $(GUNZIP) $(patsubst external/%,%,$@)
+	 @cd external && $(TAR) $(patsubst external/%.gz,%,$@)
+	 @rm $(patsubst %.gz,%,$@)
+	 @echo "[+] Dependency $(notdir $(patsubst %.tar.gz,%,$@)) installed successfully"
 endif
 
 ifneq (,$(PRECOMPILED_RES))
 external-precompiled/%.tar.gz:
-	-$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
-	-cd external && [ -f $(patsubst external-precompiled/%,%,$@) ] && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
-	-cd external && [ -f $(patsubst external-precompiled/%.gz,%,$@) ] && $(TAR) $(patsubst external-precompiled/%.gz,%,$@) || true
-	-[ -f external/$(patsubst external-precompiled/%.gz,%,$@) ] && rm external/$(patsubst external-precompiled/%.gz,%,$@) || true
+	-@$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
+	-@cd external && [ -f $(patsubst external-precompiled/%,%,$@) ] && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
+	-@cd external && [ -f $(patsubst external-precompiled/%.gz,%,$@) ] && $(TAR) $(patsubst external-precompiled/%.gz,%,$@) || true
+	-@[ -f external/$(patsubst external-precompiled/%.gz,%,$@) ] && rm external/$(patsubst external-precompiled/%.gz,%,$@) || true
 endif
 
 # Shared tools
@@ -595,11 +605,13 @@ CA_BUNDLE := /etc/ssl/certs/ca-certificates.crt
 CACERT_OPT := $(shell test -f $(CA_BUNDLE) && echo "--cacert $(CA_BUNDLE)" || echo "")
 
 shared_modules/http-request.tar.gz:
-	find $(patsubst %.tar.gz,%,$@) -type f -exec false {} + &&\
+	 @echo "[-] Downloading dependency $(notdir $(patsubst %.tar.gz,%,$@)) ..."
+	@find $(patsubst %.tar.gz,%,$@) -type f -exec false {} + &&\
 	((test -e $(patsubst %.gz,%,$@) || $(CURL) $@ $(CACERT_OPT) -L $(HTTP_REQUEST_URL)) &&\
-	($(GUNZIP) $@ || (rm -f $@ && echo "Error decompressing $@ maybe wrong branch was supplied!" && false)) &&\
+	($(GUNZIP) $@ || (rm -f $@ && echo "[-] Error decompressing $@, maybe wrong branch was supplied" && false)) &&\
 	$(TAR) $(patsubst %.gz,%,$@) --strip-components=1 -C $(patsubst %.tar.gz,%,$@) &&\
 	rm $(patsubst %.gz,%,$@)) || true
+	 @echo "[+] Dependency $(notdir $(patsubst %.tar.gz,%,$@)) installed successfully"
 
 # Indexer plugin templates download
 # Get refs from get_git_refs.sh if INDEXER_PLUGINS_REFS is not set
@@ -614,7 +626,8 @@ $(INDEXER_PLUGINS_DIR):
 
 # Rule for streams templates (alerts.json)
 $(INDEXER_PLUGINS_DIR)/alerts.json: | $(INDEXER_PLUGINS_DIR)
-	@success=0; \
+	 @echo "[-] Downloading dependency $(notdir $@) ..."
+	 @success=0; \
 	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(INDEXER_PLUGINS_STREAMS_PATH)/$(notdir $@)"; \
 		echo "$(CURL) $@ $(CACERT_OPT) -f $$url"; \
@@ -627,10 +640,12 @@ $(INDEXER_PLUGINS_DIR)/alerts.json: | $(INDEXER_PLUGINS_DIR)
 		echo "ERROR: Failed to download $(notdir $@) from any reference" >&2; \
 		exit 1; \
 	fi
+	 @echo "[+] Dependency $(notdir $@) installed successfully"
 
 # Rule for states templates (all other .json files)
 $(INDEXER_PLUGINS_DIR)/%.json: | $(INDEXER_PLUGINS_DIR)
-	@success=0; \
+	 @echo "[-] Downloading dependency $(notdir $@) ..."
+	 @success=0; \
 	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(INDEXER_PLUGINS_STATES_PATH)/$(notdir $@)"; \
 		echo "$(CURL) $@ $(CACERT_OPT) -f $$url"; \
@@ -643,6 +658,7 @@ $(INDEXER_PLUGINS_DIR)/%.json: | $(INDEXER_PLUGINS_DIR)
 		echo "ERROR: Failed to download $(notdir $@) from any reference" >&2; \
 		exit 1; \
 	fi
+	 @echo "[+] Dependency $(notdir $@) installed successfully"
 
 # WCS flat files directory
 $(WCS_FLAT_DIR):
@@ -650,7 +666,8 @@ $(WCS_FLAT_DIR):
 
 # Rule for WCS flat consolidated YAML file
 $(WCS_FLAT_DIR)/wcs_flat.yml: | $(WCS_FLAT_DIR)
-	@success=0; \
+	 @echo "[-] Downloading dependency $(notdir $@) ..."
+	 @success=0; \
 	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(WCS_FLAT_STATELESS_PATH)/$(notdir $@)"; \
 		echo "$(CURL) $@ $(CACERT_OPT) -f $$url"; \
@@ -663,6 +680,7 @@ $(WCS_FLAT_DIR)/wcs_flat.yml: | $(WCS_FLAT_DIR)
 		echo "ERROR: Failed to download $(notdir $@) from any reference" >&2; \
 		exit 1; \
 	fi
+	 @echo "[+] Dependency $(notdir $@) installed successfully"
 
 ####################
 #### Python ########

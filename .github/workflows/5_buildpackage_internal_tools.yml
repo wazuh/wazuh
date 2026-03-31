@@ -39,9 +39,9 @@ jobs:
         arch: [amd64, arm64]
         include:
           - arch: amd64
-            runner: ubuntu-latest
+            runner: wz-linux-amd64
           - arch: arm64
-            runner: ubuntu-24.04-arm
+            runner: wz-linux-arm64
 
     steps:
       - name: Checkout

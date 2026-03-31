@@ -194,7 +194,7 @@ jobs:
   upload-macos-intel64-to-s3:
     needs: [build-macos-intel64, test-macos-intel64]
     if: success()
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     timeout-minutes: 15
     name: Upload PKG to S3 (intel64)
 
@@ -425,7 +425,7 @@ jobs:
   upload-macos-arm64-to-s3:
     needs: [build-macos-arm64, test-macos-arm64]
     if: success()
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     timeout-minutes: 15
     name: Upload PKG to S3 (arm64)
 
