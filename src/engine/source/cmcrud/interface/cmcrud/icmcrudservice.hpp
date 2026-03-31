@@ -184,15 +184,13 @@ public:
      *
      * @param nsId   Target namespace identifier.
      * @param uuid   Resource UUID.
-     * @param asJson Legacy compatibility flag. Resources are returned as JSON.
-     *
      * @return Document representing the resource.
      *
      * @throws std::runtime_error if the namespace or resource does not exist
      *         or if the serialization fails.
      */
     virtual std::string
-    getResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid, bool asJson) const = 0;
+    getResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid) const = 0;
 
     /**
      * @brief Upsert a resource (asset, integration or KVDB) from a document.

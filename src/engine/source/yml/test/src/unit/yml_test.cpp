@@ -70,21 +70,6 @@ TEST_F(YmlTest, ParseScalarTest)
     EXPECT_TRUE(invalidResult.IsNull());
 }
 
-TEST_F(YmlTest, JsonToYamlStringPreservesLargeIntegerScalars)
-{
-    json::Json document;
-    document.setObject();
-    document.setInt64(std::numeric_limits<int64_t>::max(), "/big_signed");
-    document.setUint64(std::numeric_limits<uint64_t>::max(), "/big_unsigned");
-    document.setDouble(1.5, "/ratio");
-
-    const auto yaml = yml::utils::jsonToYamlString(document);
-
-    EXPECT_NE(yaml.find("big_signed: 9223372036854775807"), std::string::npos);
-    EXPECT_NE(yaml.find("big_unsigned: 18446744073709551615"), std::string::npos);
-    EXPECT_NE(yaml.find("ratio: 1.5"), std::string::npos);
-}
-
 TEST_F(YmlTest, JsonToYamlTest)
 {
     const char* jsonString = R"({

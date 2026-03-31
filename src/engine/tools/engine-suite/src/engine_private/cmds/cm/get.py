@@ -11,7 +11,6 @@ def run(args):
     req = crud.resourceGet_Request()
     req.space = args['space']
     req.uuid = args['uuid']
-    req.asJson = True
 
     # Create the api request
     try:

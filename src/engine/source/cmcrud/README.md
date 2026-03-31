@@ -4,7 +4,7 @@
 
 The **cmcrud** module is the **CRUD service layer** for the Wazuh engine's Content Manager. It sits between the HTTP API handlers and the underlying `cmstore`, mediating all create / read / update / delete operations on namespaces, policies, and resources (decoders, filters, outputs, integrations, KVDBs).
 
-Before any mutation reaches the store, `cmcrud` parses the incoming document (YAML or JSON), applies type-specific adaptations (canonical field ordering for assets), and delegates structural validation to `builder::IValidator`. This guarantees that every artifact persisted in `cmstore` has already been checked for consistency.
+Before any mutation reaches the store, `cmcrud` parses the incoming document as JSON, applies type-specific adaptations (canonical field ordering for assets), and delegates structural validation to `builder::IValidator`. This guarantees that every artifact persisted in `cmstore` has already been checked for consistency.
 
 ## Architecture
 
@@ -18,7 +18,7 @@ Before any mutation reaches the store, `cmcrud` parses the incoming document (YA
   ┌──────────────────────────────────────────┐
   │              CrudService                 │
   │                                          │
-  │  • Document parsing (YAML / JSON)        │
+  │  • Document parsing (JSON)               │
   │  • Asset adaptation (canonical ordering) │
   │  • Validation delegation                 │
   │  • Import orchestration with rollback    │
@@ -142,8 +142,7 @@ public:
 
     virtual std::string
     getResourceByUUID(const cm::store::NamespaceId& nsId,
-                      const std::string& uuid,
-                      bool asJson) const = 0;
+                      const std::string& uuid) const = 0;
 
     virtual void
     upsertResource(const cm::store::NamespaceId& nsId,
@@ -204,16 +203,16 @@ private:
 | `assetUuidFromJson(json)` | Extracts the UUID string from a JSON asset document |
 | `assetNameFromJson(json)` | Extracts the logical name string from a JSON asset document |
 | `throwIfError(base::OptError)` | Converts an `OptError` into a thrown `std::runtime_error` |
-| `yamlToJson(string_view)` | Parses a YAML string into `json::Json` |
-| `policyFromDocument(string_view)` | Parses a document into `cm::store::dataType::Policy` |
-| `integrationFromDocument(json::Json)` | Parses JSON into `cm::store::dataType::Integration` |
-| `kvdbFromDocument(json::Json)` | Parses JSON into `cm::store::dataType::KVDB` |
+| `parseJsonPayload(string_view)` | Parses a JSON document into `json::Json` and enforces an object top-level |
+| `policyFromDocument(string_view)` | Parses a JSON document into `cm::store::dataType::Policy` |
+| `integrationFromDocument(string_view)` | Parses a JSON document into `cm::store::dataType::Integration` |
+| `kvdbFromDocument(string_view)` | Parses a JSON document into `cm::store::dataType::KVDB` |
 
 ### Key Flows
 
 #### `upsertResource`
 
-1. Parse the incoming document (YAML → JSON).
+1. Parse the incoming document as JSON.
 2. Branch by `ResourceType`:
    - **INTEGRATION** — parse via `integrationFromDocument()`, validate with `validateIntegration()`, call `nsStore->upsertIntegration()`.
    - **KVDB** — parse via `kvdbFromDocument()`, call `nsStore->upsertKVDB()`.
@@ -233,7 +232,7 @@ private:
 
 1. Resolve UUID to `{name, type}` via the namespace reader.
 2. Load the typed object (decoder / filter / output / integration / KVDB).
-3. Serialise to string (`asJson` flag selects JSON vs. YAML-style).
+3. Serialise the typed object back to a JSON string.
 
 #### `validateResource`
 

@@ -111,12 +111,10 @@ def request_resource_list(space: str, rtype: str):
     return send_recv(req, api_crud.resourceList_Response())
 
 
-def request_resource_get(space: str, uuid: str, as_json: bool = False):
+def request_resource_get(space: str, uuid: str):
     req = api_crud.resourceGet_Request()
     req.space = space
     req.uuid = uuid
-    if as_json:
-        req.asJson = True
     return send_recv(req, api_crud.resourceGet_Response())
 
 
@@ -596,7 +594,7 @@ def step_impl(context, space):
     uuid = getattr(context, "resource_uuid", None)
     assert uuid is not None, "No resource UUID stored in context"
 
-    err, resp = request_resource_get(space, uuid, as_json=True)
+    err, resp = request_resource_get(space, uuid)
     assert err is None, f"{err}"
     assert resp.status == api_engine.OK, f"{resp}"
 

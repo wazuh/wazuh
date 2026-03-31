@@ -242,29 +242,5 @@ std::string ymlToPrettyYaml(const std::string& ymlStr, bool sort)
     return out.c_str();
 };
 
-std::string jsonToYamlString(const json::Json& jsonObj)
-{
-    rapidjson::Document doc;
-    const auto jsonStr = jsonObj.str();
-    doc.Parse(jsonStr.c_str());
-
-    if (doc.HasParseError())
-    {
-        throw std::runtime_error("Error parsing json string for YAML conversion.");
-    }
-
-    YAML::Emitter out;
-    out.SetIndent(2);
-    out.SetMapFormat(YAML::Block);
-    out.SetSeqFormat(YAML::Block);
-    out << Converter::jsonToYaml(doc);
-
-    if (!out.good())
-    {
-        throw std::runtime_error("Error converting JSON to YAML string.");
-    }
-
-    return out.c_str();
-}
 } // namespace utils
 } // namespace yml

@@ -49,8 +49,7 @@ public:
     /***************************** Generic resources **************************/
     std::vector<ResourceSummary> listResources(const cm::store::NamespaceId& nsId,
                                                cm::store::ResourceType type) const override;
-    std::string
-    getResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid, bool asJson) const override;
+    std::string getResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid) const override;
     void upsertResource(const cm::store::NamespaceId& nsId,
                         cm::store::ResourceType type,
                         std::string_view document) override;

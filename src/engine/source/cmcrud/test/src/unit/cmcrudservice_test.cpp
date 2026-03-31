@@ -497,13 +497,13 @@ TEST(CrudService_Unit, GetResourceByUUID_Integration)
 
     EXPECT_CALL(*nsReader, getIntegrationByUUID(uuid)).Times(1).WillOnce(Return(integ));
 
-    const std::string json = service.getResourceByUUID(nsId, uuid, false);
+    const std::string json = service.getResourceByUUID(nsId, uuid);
 
     EXPECT_THAT(json, HasSubstr("\"id\": \"5c1df6b6-1458-4b2e-9001-96f67a8b12c8\""));
     EXPECT_THAT(json, HasSubstr("\"title\": \"windows\""));
 }
 
-TEST(CrudService_Unit, GetResourceByUUID_IntegrationAsJsonReturnsPrettyJson)
+TEST(CrudService_Unit, GetResourceByUUID_IntegrationReturnsPrettyJson)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
     auto validator = std::make_shared<NiceMock<MockValidator>>();
@@ -537,7 +537,7 @@ TEST(CrudService_Unit, GetResourceByUUID_IntegrationAsJsonReturnsPrettyJson)
 
     EXPECT_CALL(*nsReader, getIntegrationByUUID(uuid)).Times(1).WillOnce(Return(integ));
 
-    const std::string json = service.getResourceByUUID(nsId, uuid, true);
+    const std::string json = service.getResourceByUUID(nsId, uuid);
 
     EXPECT_THAT(json, HasSubstr("\"id\": \"5c1df6b6-1458-4b2e-9001-96f67a8b12c8\""));
     EXPECT_THAT(json, HasSubstr("\"title\": \"windows\""));
@@ -583,7 +583,7 @@ TEST(CrudService_Unit, GetResourceByUUID_KVDB)
 
     EXPECT_CALL(*nsReader, getKVDBByUUID(uuid)).Times(1).WillOnce(Return(kvdb));
 
-    const std::string json = service.getResourceByUUID(nsId, uuid, false);
+    const std::string json = service.getResourceByUUID(nsId, uuid);
 
     EXPECT_THAT(json, ::testing::HasSubstr("\"id\": \"82e215c4-988a-4f64-8d15-b98b2fc03a4f\""));
     EXPECT_THAT(json, ::testing::HasSubstr("\"title\": \"windows_kerberos_status_code_to_code_name\""));
@@ -621,7 +621,7 @@ TEST(CrudService_Unit, GetResourceByUUID_Decoder)
 
     EXPECT_CALL(*nsReader, getAssetByUUID(uuid)).Times(1).WillOnce(Return(assetJson));
 
-    const std::string json = service.getResourceByUUID(nsId, uuid, false);
+    const std::string json = service.getResourceByUUID(nsId, uuid);
 
     EXPECT_THAT(json, ::testing::HasSubstr("\"name\": \"decoder/syslog/0\""));
     EXPECT_THAT(json, ::testing::HasSubstr("\"id\": \"3f086ce2-32a4-42b0-be7e-40dcfb9c6160\""));

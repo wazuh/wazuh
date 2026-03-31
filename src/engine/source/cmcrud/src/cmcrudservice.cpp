@@ -1,6 +1,7 @@
 #include <fmt/format.h>
 
 #include <base/logging.hpp>
+#include <yml/yml.hpp>
 #include <cmstore/detail.hpp>
 #include <cmstore/types.hpp>
 
@@ -37,38 +38,30 @@ void throwIfError(base::OptError err, std::string_view context)
     }
 }
 
-json::Json parseJsonPayload(std::string_view document)
+json::Json parsePayloadAuto(std::string_view document)
 {
-    const std::string raw {document};
-
-    try
+    rapidjson::Document doc = yml::Converter::loadYMLfromString(std::string {document});
+    json::Json parsed {std::move(doc)};
+    if (!parsed.isObject())
     {
-        json::Json parsed {raw};
-        if (parsed.isObject())
-        {
-            return parsed;
-        }
         throw std::runtime_error("Payload top-level must be an object");
     }
-    catch (const std::exception& jsonError)
-    {
-        throw std::runtime_error(fmt::format("Content is not valid JSON: {}", jsonError.what()));
-    }
+    return parsed;
 }
 
 cm::store::dataType::Policy policyFromDocument(std::string_view policyDocument)
 {
-    return cm::store::dataType::Policy::fromJson(parseJsonPayload(policyDocument));
+    return cm::store::dataType::Policy::fromJson(parsePayloadAuto(policyDocument));
 }
 
 cm::store::dataType::Integration integrationFromDocument(std::string_view integrationDocument)
 {
-    return cm::store::dataType::Integration::fromJson(parseJsonPayload(integrationDocument), /*requireUUID:*/ false);
+    return cm::store::dataType::Integration::fromJson(parsePayloadAuto(integrationDocument), /*requireUUID:*/ false);
 }
 
 cm::store::dataType::KVDB kvdbFromDocument(std::string_view kvdbDocument)
 {
-    return cm::store::dataType::KVDB::fromJson(parseJsonPayload(kvdbDocument), /*requireUUID:*/ false);
+    return cm::store::dataType::KVDB::fromJson(parsePayloadAuto(kvdbDocument), /*requireUUID:*/ false);
 }
 
 base::Name assetNameFromJson(const json::Json& jsonDoc)
@@ -488,12 +481,10 @@ std::vector<ResourceSummary> CrudService::listResources(const cm::store::Namespa
     }
 }
 
-std::string
-CrudService::getResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid, bool asJson) const
+std::string CrudService::getResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid) const
 {
     try
     {
-        (void)asJson;
         auto nsView = getNamespaceStoreView(nsId);
 
         // Resolve name and type from UUID
@@ -588,7 +579,7 @@ void CrudService::upsertResource(const cm::store::NamespaceId& nsId,
             case cm::store::ResourceType::OUTPUT:
             case cm::store::ResourceType::FILTER:
             {
-                json::Json assetJson = parseJsonPayload(document);
+                json::Json assetJson = parsePayloadAuto(document);
                 auto adaptedPayload = [&assetJson, type]() -> json::Json
                 {
                     switch (type)

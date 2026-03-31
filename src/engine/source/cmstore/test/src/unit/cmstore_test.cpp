@@ -57,7 +57,7 @@ TEST_F(CMStoreNSTest, CreateResourcePersistsJsonAndGetterReadsItBack)
 
     EXPECT_EQ(uuid, "3f086ce2-32a4-42b0-be7e-40dcfb9c6160");
 
-    const auto resourcePath = m_root / "decoders" / "decoder_syslog_0.yml";
+    const auto resourcePath = m_root / "decoders" / "decoder_syslog_0.json";
     std::ifstream persistedFile(resourcePath);
     ASSERT_TRUE(persistedFile.is_open());
     const std::string persisted((std::istreambuf_iterator<char>(persistedFile)), std::istreambuf_iterator<char>());
@@ -73,7 +73,7 @@ TEST_F(CMStoreNSTest, JsonResourcesOnDiskAreLoadedDuringStoreInitialization)
 {
     std::filesystem::create_directories(m_root / "decoders");
 
-    const auto jsonPath = m_root / "decoders" / "decoder_syslog_0.yml";
+    const auto jsonPath = m_root / "decoders" / "decoder_syslog_0.json";
     std::ofstream jsonFile(jsonPath);
     ASSERT_TRUE(jsonFile.is_open());
     jsonFile << R"({"name":"decoder/syslog/0","id":"3f086ce2-32a4-42b0-be7e-40dcfb9c6160","metadata":{"module":"syslog"}})";

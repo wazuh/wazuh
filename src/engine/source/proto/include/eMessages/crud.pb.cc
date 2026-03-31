@@ -182,11 +182,9 @@ struct resourceList_ResponseDefaultTypeInternal {
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 resourceList_ResponseDefaultTypeInternal _resourceList_Response_default_instance_;
 PROTOBUF_CONSTEXPR resourceGet_Request::resourceGet_Request(
     ::_pbi::ConstantInitialized): _impl_{
-    /*decltype(_impl_._has_bits_)*/{}
-  , /*decltype(_impl_._cached_size_)*/{}
-  , /*decltype(_impl_.space_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+    /*decltype(_impl_.space_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.uuid_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.asjson_)*/false} {}
+  , /*decltype(_impl_._cached_size_)*/{}} {}
 struct resourceGet_RequestDefaultTypeInternal {
   PROTOBUF_CONSTEXPR resourceGet_RequestDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
@@ -360,7 +358,7 @@ const uint32_t TableStruct_crud_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(pro
   ~0u,
   0,
   ~0u,
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::content::resourceGet_Request, _impl_._has_bits_),
+  ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::content::resourceGet_Request, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
@@ -368,10 +366,6 @@ const uint32_t TableStruct_crud_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(pro
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::content::resourceGet_Request, _impl_.space_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::content::resourceGet_Request, _impl_.uuid_),
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::content::resourceGet_Request, _impl_.asjson_),
-  ~0u,
-  ~0u,
-  0,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::content::resourceGet_Response, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::content::resourceGet_Response, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -422,11 +416,11 @@ static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protode
   { 66, -1, -1, sizeof(::com::wazuh::api::engine::content::policyValidate_Request)},
   { 75, -1, -1, sizeof(::com::wazuh::api::engine::content::resourceList_Request)},
   { 83, 92, -1, sizeof(::com::wazuh::api::engine::content::resourceList_Response)},
-  { 95, 104, -1, sizeof(::com::wazuh::api::engine::content::resourceGet_Request)},
-  { 107, 116, -1, sizeof(::com::wazuh::api::engine::content::resourceGet_Response)},
-  { 119, -1, -1, sizeof(::com::wazuh::api::engine::content::resourcePost_Request)},
-  { 128, -1, -1, sizeof(::com::wazuh::api::engine::content::resourceDelete_Request)},
-  { 136, -1, -1, sizeof(::com::wazuh::api::engine::content::resourceValidate_Request)},
+  { 95, -1, -1, sizeof(::com::wazuh::api::engine::content::resourceGet_Request)},
+  { 103, 112, -1, sizeof(::com::wazuh::api::engine::content::resourceGet_Response)},
+  { 115, -1, -1, sizeof(::com::wazuh::api::engine::content::resourcePost_Request)},
+  { 124, -1, -1, sizeof(::com::wazuh::api::engine::content::resourceDelete_Request)},
+  { 132, -1, -1, sizeof(::com::wazuh::api::engine::content::resourceValidate_Request)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -471,18 +465,17 @@ const char descriptor_table_protodef_crud_2eproto[] PROTOBUF_SECTION_VARIABLE(pr
   "atus\030\001 \001(\0162\".com.wazuh.api.engine.Return"
   "Status\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022@\n\tresources\030"
   "\003 \003(\0132-.com.wazuh.api.engine.content.Res"
-  "ourceSummaryB\010\n\006_error\"R\n\023resourceGet_Re"
-  "quest\022\r\n\005space\030\001 \001(\t\022\014\n\004uuid\030\002 \001(\t\022\023\n\006as"
-  "Json\030\003 \001(\010H\000\210\001\001B\t\n\007_asJson\"\212\001\n\024resourceG"
-  "et_Response\0222\n\006status\030\001 \001(\0162\".com.wazuh."
-  "api.engine.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000"
-  "\210\001\001\022\024\n\007content\030\003 \001(\tH\001\210\001\001B\010\n\006_errorB\n\n\010_"
-  "content\"G\n\024resourcePost_Request\022\r\n\005space"
-  "\030\001 \001(\t\022\014\n\004type\030\002 \001(\t\022\022\n\nymlContent\030\003 \001(\t"
-  "\"5\n\026resourceDelete_Request\022\r\n\005space\030\001 \001("
-  "\t\022\014\n\004uuid\030\002 \001(\t\"S\n\030resourceValidate_Requ"
-  "est\022\014\n\004type\030\001 \001(\t\022)\n\010resource\030\002 \001(\0132\027.go"
-  "ogle.protobuf.Structb\006proto3"
+  "ourceSummaryB\010\n\006_error\"2\n\023resourceGet_Re"
+  "quest\022\r\n\005space\030\001 \001(\t\022\014\n\004uuid\030\002 \001(\t\"\212\001\n\024r"
+  "esourceGet_Response\0222\n\006status\030\001 \001(\0162\".co"
+  "m.wazuh.api.engine.ReturnStatus\022\022\n\005error"
+  "\030\002 \001(\tH\000\210\001\001\022\024\n\007content\030\003 \001(\tH\001\210\001\001B\010\n\006_er"
+  "rorB\n\n\010_content\"G\n\024resourcePost_Request\022"
+  "\r\n\005space\030\001 \001(\t\022\014\n\004type\030\002 \001(\t\022\022\n\nymlConte"
+  "nt\030\003 \001(\t\"5\n\026resourceDelete_Request\022\r\n\005sp"
+  "ace\030\001 \001(\t\022\014\n\004uuid\030\002 \001(\t\"S\n\030resourceValid"
+  "ate_Request\022\014\n\004type\030\001 \001(\t\022)\n\010resource\030\002 "
+  "\001(\0132\027.google.protobuf.Structb\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_crud_2eproto_deps[2] = {
   &::descriptor_table_engine_2eproto,
@@ -490,7 +483,7 @@ static const ::_pbi::DescriptorTable* const descriptor_table_crud_2eproto_deps[2
 };
 static ::_pbi::once_flag descriptor_table_crud_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_crud_2eproto = {
-    false, false, 1348, descriptor_table_protodef_crud_2eproto,
+    false, false, 1316, descriptor_table_protodef_crud_2eproto,
     "crud.proto",
     &descriptor_table_crud_2eproto_once, descriptor_table_crud_2eproto_deps, 2, 16,
     schemas, file_default_instances, TableStruct_crud_2eproto::offsets,
@@ -3076,10 +3069,6 @@ void resourceList_Response::InternalSwap(resourceList_Response* other) {
 
 class resourceGet_Request::_Internal {
  public:
-  using HasBits = decltype(std::declval<resourceGet_Request>()._impl_._has_bits_);
-  static void set_has_asjson(HasBits* has_bits) {
-    (*has_bits)[0] |= 1u;
-  }
 };
 
 resourceGet_Request::resourceGet_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
@@ -3092,11 +3081,9 @@ resourceGet_Request::resourceGet_Request(const resourceGet_Request& from)
   : ::PROTOBUF_NAMESPACE_ID::Message() {
   resourceGet_Request* const _this = this; (void)_this;
   new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){from._impl_._has_bits_}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.space_){}
+      decltype(_impl_.space_){}
     , decltype(_impl_.uuid_){}
-    , decltype(_impl_.asjson_){}};
+    , /*decltype(_impl_._cached_size_)*/{}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   _impl_.space_.InitDefault();
@@ -3115,7 +3102,6 @@ resourceGet_Request::resourceGet_Request(const resourceGet_Request& from)
     _this->_impl_.uuid_.Set(from._internal_uuid(), 
       _this->GetArenaForAllocation());
   }
-  _this->_impl_.asjson_ = from._impl_.asjson_;
   // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.content.resourceGet_Request)
 }
 
@@ -3124,11 +3110,9 @@ inline void resourceGet_Request::SharedCtor(
   (void)arena;
   (void)is_message_owned;
   new (&_impl_) Impl_{
-      decltype(_impl_._has_bits_){}
-    , /*decltype(_impl_._cached_size_)*/{}
-    , decltype(_impl_.space_){}
+      decltype(_impl_.space_){}
     , decltype(_impl_.uuid_){}
-    , decltype(_impl_.asjson_){false}
+    , /*decltype(_impl_._cached_size_)*/{}
   };
   _impl_.space_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -3167,14 +3151,11 @@ void resourceGet_Request::Clear() {
 
   _impl_.space_.ClearToEmpty();
   _impl_.uuid_.ClearToEmpty();
-  _impl_.asjson_ = false;
-  _impl_._has_bits_.Clear();
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
 const char* resourceGet_Request::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
 #define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
-  _Internal::HasBits has_bits{};
   while (!ctx->Done(&ptr)) {
     uint32_t tag;
     ptr = ::_pbi::ReadTag(ptr, &tag);
@@ -3199,15 +3180,6 @@ const char* resourceGet_Request::_InternalParse(const char* ptr, ::_pbi::ParseCo
         } else
           goto handle_unusual;
         continue;
-      // optional bool asJson = 3;
-      case 3:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 24)) {
-          _Internal::set_has_asjson(&has_bits);
-          _impl_.asjson_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
-          CHK_(ptr);
-        } else
-          goto handle_unusual;
-        continue;
       default:
         goto handle_unusual;
     }  // switch
@@ -3224,7 +3196,6 @@ const char* resourceGet_Request::_InternalParse(const char* ptr, ::_pbi::ParseCo
     CHK_(ptr != nullptr);
   }  // while
 message_done:
-  _impl_._has_bits_.Or(has_bits);
   return ptr;
 failure:
   ptr = nullptr;
@@ -3258,12 +3229,6 @@ uint8_t* resourceGet_Request::_InternalSerialize(
         2, this->_internal_uuid(), target);
   }
 
-  // optional bool asJson = 3;
-  if (_internal_has_asjson()) {
-    target = stream->EnsureSpace(target);
-    target = ::_pbi::WireFormatLite::WriteBoolToArray(3, this->_internal_asjson(), target);
-  }
-
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -3294,12 +3259,6 @@ size_t resourceGet_Request::ByteSizeLong() const {
         this->_internal_uuid());
   }
 
-  // optional bool asJson = 3;
-  cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000001u) {
-    total_size += 1 + 1;
-  }
-
   return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
 }
 
@@ -3324,9 +3283,6 @@ void resourceGet_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, co
   if (!from._internal_uuid().empty()) {
     _this->_internal_set_uuid(from._internal_uuid());
   }
-  if (from._internal_has_asjson()) {
-    _this->_internal_set_asjson(from._internal_asjson());
-  }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
 }
 
@@ -3346,7 +3302,6 @@ void resourceGet_Request::InternalSwap(resourceGet_Request* other) {
   auto* lhs_arena = GetArenaForAllocation();
   auto* rhs_arena = other->GetArenaForAllocation();
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
-  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.space_, lhs_arena,
       &other->_impl_.space_, rhs_arena
@@ -3355,7 +3310,6 @@ void resourceGet_Request::InternalSwap(resourceGet_Request* other) {
       &_impl_.uuid_, lhs_arena,
       &other->_impl_.uuid_, rhs_arena
   );
-  swap(_impl_.asjson_, other->_impl_.asjson_);
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata resourceGet_Request::GetMetadata() const {

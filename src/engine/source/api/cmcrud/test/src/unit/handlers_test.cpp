@@ -307,8 +307,7 @@ INSTANTIATE_TEST_SUITE_P(
                 EXPECT_CALL(mock,
                             getResourceByUUID(::testing::Truly([](const cm::store::NamespaceId& nsId)
                                                                { return nsId.toStr() == "draft"; }),
-                                              "uuid-1",
-                                              false))
+                                              "uuid-1"))
                     .WillOnce(::testing::Return(R"({"id":"uuid-1","name":"decoder/test"})"));
             }),
         // Wrong request type

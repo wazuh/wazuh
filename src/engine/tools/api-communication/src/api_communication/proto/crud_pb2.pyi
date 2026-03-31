@@ -84,14 +84,12 @@ class resourceDelete_Request(_message.Message):
     def __init__(self, space: _Optional[str] = ..., uuid: _Optional[str] = ...) -> None: ...
 
 class resourceGet_Request(_message.Message):
-    __slots__ = ["asJson", "space", "uuid"]
-    ASJSON_FIELD_NUMBER: _ClassVar[int]
+    __slots__ = ["space", "uuid"]
     SPACE_FIELD_NUMBER: _ClassVar[int]
     UUID_FIELD_NUMBER: _ClassVar[int]
-    asJson: bool
     space: str
     uuid: str
-    def __init__(self, space: _Optional[str] = ..., uuid: _Optional[str] = ..., asJson: bool = ...) -> None: ...
+    def __init__(self, space: _Optional[str] = ..., uuid: _Optional[str] = ...) -> None: ...
 
 class resourceGet_Response(_message.Message):
     __slots__ = ["content", "error", "status"]

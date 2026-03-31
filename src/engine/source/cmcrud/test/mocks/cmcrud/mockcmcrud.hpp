@@ -37,7 +37,7 @@ public:
 
     MOCK_METHOD(std::string,
                 getResourceByUUID,
-                (const cm::store::NamespaceId& nsId, const std::string& uuid, bool asJson),
+                (const cm::store::NamespaceId& nsId, const std::string& uuid),
                 (const, override));
 
     MOCK_METHOD(void,

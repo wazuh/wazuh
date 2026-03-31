@@ -2095,7 +2095,6 @@ class resourceGet_Request final :
   enum : int {
     kSpaceFieldNumber = 1,
     kUuidFieldNumber = 2,
-    kAsJsonFieldNumber = 3,
   };
   // string space = 1;
   void clear_space();
@@ -2125,19 +2124,6 @@ class resourceGet_Request final :
   std::string* _internal_mutable_uuid();
   public:
 
-  // optional bool asJson = 3;
-  bool has_asjson() const;
-  private:
-  bool _internal_has_asjson() const;
-  public:
-  void clear_asjson();
-  bool asjson() const;
-  void set_asjson(bool value);
-  private:
-  bool _internal_asjson() const;
-  void _internal_set_asjson(bool value);
-  public:
-
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.content.resourceGet_Request)
  private:
   class _Internal;
@@ -2146,11 +2132,9 @@ class resourceGet_Request final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
-    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr space_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr uuid_;
-    bool asjson_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_crud_2eproto;
@@ -4076,34 +4060,6 @@ inline void resourceGet_Request::set_allocated_uuid(std::string* uuid) {
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.resourceGet_Request.uuid)
-}
-
-// optional bool asJson = 3;
-inline bool resourceGet_Request::_internal_has_asjson() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
-  return value;
-}
-inline bool resourceGet_Request::has_asjson() const {
-  return _internal_has_asjson();
-}
-inline void resourceGet_Request::clear_asjson() {
-  _impl_.asjson_ = false;
-  _impl_._has_bits_[0] &= ~0x00000001u;
-}
-inline bool resourceGet_Request::_internal_asjson() const {
-  return _impl_.asjson_;
-}
-inline bool resourceGet_Request::asjson() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.content.resourceGet_Request.asJson)
-  return _internal_asjson();
-}
-inline void resourceGet_Request::_internal_set_asjson(bool value) {
-  _impl_._has_bits_[0] |= 0x00000001u;
-  _impl_.asjson_ = value;
-}
-inline void resourceGet_Request::set_asjson(bool value) {
-  _internal_set_asjson(value);
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.content.resourceGet_Request.asJson)
 }
 
 // -------------------------------------------------------------------

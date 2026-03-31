@@ -679,7 +679,7 @@ adapter::RouteHandler resourceGet(std::shared_ptr<cm::crud::ICrudService> crud)
         try
         {
             const cm::store::NamespaceId nsId {protoReq.space()};
-            const auto content = service->getResourceByUUID(nsId, protoReq.uuid(), protoReq.asjson());
+            const auto content = service->getResourceByUUID(nsId, protoReq.uuid());
             eResponse.set_content(content);
             eResponse.set_status(eEngine::ReturnStatus::OK);
             res = adapter::userResponse(eResponse);
