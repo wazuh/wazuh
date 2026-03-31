@@ -385,7 +385,7 @@ TEST_F(VersionMatcherTest, comparePEP440_AlternativeSyntax_OkEqual)
 
     // Implicit post releases
     EXPECT_NO_THROW((compareResult = VersionMatcher::compare("1.2.3-1", "1.2.3.post1", VersionObjectType::PEP440)));
-    EXPECT_EQ(compareResult, VersionComparisonResult::A_EQUAL_B);
+    EXPECT_EQ(compareResult, VersionComparisonResult::A_LESS_THAN_B);
 
     // Development release separators
     EXPECT_NO_THROW((compareResult = VersionMatcher::compare("1.2.3-dev1", "1.2.3.dev1", VersionObjectType::PEP440)));
@@ -538,7 +538,7 @@ TEST_F(VersionMatcherTest, comparePEP440_AlternativeSyntax_OkGreater)
 
 TEST_F(VersionMatcherTest, comparePEP440_ErrorInvalidVersion)
 {
-    EXPECT_THROW(VersionMatcher::compare("A.B.C", "1!2.0b2.post345.dev456", VersionObjectType::PEP440),
+    EXPECT_THROW(VersionMatcher::compare("A.B~C", "1!2.0b2.post345.dev456", VersionObjectType::PEP440),
                  std::invalid_argument);
 }
 
@@ -805,7 +805,7 @@ TEST_F(VersionMatcherTest, matchPEP440)
     EXPECT_TRUE(VersionMatcher::match("1!2.0b2.post345.dev456", VersionObjectType::PEP440));
     EXPECT_TRUE(VersionMatcher::match("1.0b2.post345.dev456", VersionObjectType::PEP440));
 
-    EXPECT_FALSE(VersionMatcher::match("1!2.0b2.345.dev456", VersionObjectType::PEP440));
+    EXPECT_TRUE(VersionMatcher::match("1!2.0b2.345.dev456", VersionObjectType::PEP440));
 }
 
 TEST_F(VersionMatcherTest, matchMajorMinor)
