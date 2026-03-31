@@ -175,6 +175,13 @@ static void initConfiguration(SecureCommunication& secureCommunication, const nl
         .caRootCertificate(caRootCertificate);
 }
 
+/**
+ * @brief Appends id to bulkData, JSON-escaping any characters that would produce
+ * invalid JSON if emitted raw (control bytes, backslashes, double quotes).
+ *
+ * @param bulkData Output string being built for the bulk NDJSON request.
+ * @param id Document ID to append.
+ */
 static void appendEscapedId(std::string& bulkData, std::string_view id)
 {
     if (needEscape(id))
