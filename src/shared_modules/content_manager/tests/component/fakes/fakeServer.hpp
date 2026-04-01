@@ -43,10 +43,7 @@ public:
      * @param host Host of the fake server.
      * @param port Port of the fake  server
      */
-    FakeServer(std::string host, int port)
-        : m_thread(&FakeServer::run, this)
-        , m_host(std::move(host))
-        , m_port(port)
+    FakeServer(std::string host, int port) : m_thread(&FakeServer::run, this), m_host(std::move(host)), m_port(port)
     {
         // Wait until server is ready
         while (!m_server.is_running())
@@ -55,6 +52,10 @@ public:
         }
     }
 
+    /**
+     * @brief Class destructor.
+     *
+     */
     ~FakeServer()
     {
         m_server.stop();
@@ -199,25 +200,25 @@ public:
                      });
 
         // Endpoint that responses with a snapshot file.
-        m_server.Get(
-            "/" + SNAPSHOT_FILE_NAME,
-            [this](const httplib::Request& req, httplib::Response& res)
-            {
-                // Read and file.
-                std::ifstream inputFile {INPUT_FILES_DIR / SNAPSHOT_FILE_NAME, std::ios::in | std::ios::binary};
-                if (inputFile)
-                {
-                    std::ostringstream response;
-                    response << inputFile.rdbuf();
-                    inputFile.close();
-                    res.set_content(response.str(), "application/octet-stream");
-                }
-                else
-                {
-                    res.status = 404;
-                    res.set_content("File not found", "text/plain");
-                }
-            });
+        m_server.Get("/" + SNAPSHOT_FILE_NAME,
+                     [this](const httplib::Request& req, httplib::Response& res)
+                     {
+                         // Read and file.
+                         std::ifstream inputFile {INPUT_FILES_DIR / SNAPSHOT_FILE_NAME,
+                                                  std::ios::in | std::ios::binary};
+                         if (inputFile)
+                         {
+                             std::ostringstream response;
+                             response << inputFile.rdbuf();
+                             inputFile.close();
+                             res.set_content(response.str(), "application/octet-stream");
+                         }
+                         else
+                         {
+                             res.status = 404;
+                             res.set_content("File not found", "text/plain");
+                         }
+                     });
         m_server.set_keep_alive_max_count(1);
         m_server.listen(m_host.c_str(), m_port);
     }

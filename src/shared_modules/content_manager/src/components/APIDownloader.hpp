@@ -102,10 +102,7 @@ public:
      *
      * @param urlRequest Object to perform the HTTP requests to an API.
      */
-    explicit APIDownloader(IURLRequest& urlRequest)
-        : m_urlRequest(urlRequest)
-    {
-    }
+    explicit APIDownloader(IURLRequest& urlRequest) : m_urlRequest(urlRequest) {}
 
     /**
      * @brief Download the content from the API.

@@ -172,8 +172,7 @@ public:
      *
      * @param urlRequest HTTP driver instance to use within the class.
      */
-    explicit OfflineDownloader(IURLRequest& urlRequest)
-        : m_urlRequest(urlRequest) {};
+    explicit OfflineDownloader(IURLRequest& urlRequest) : m_urlRequest(urlRequest) {};
 
     /**
      * @brief Downloads a file in offline mode in order to be processed and passes the control to the next chain
