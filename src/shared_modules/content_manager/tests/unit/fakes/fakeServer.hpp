@@ -42,8 +42,7 @@ struct ServerRecord
      * @param queryEndpoint
      */
     ServerRecord(const std::string& queryEndpoint)
-        : endpoint(queryEndpoint)
-        , timestamp(std::chrono::system_clock::now()) {};
+        : endpoint(queryEndpoint), timestamp(std::chrono::system_clock::now()) {};
 };
 
 /**
@@ -97,14 +96,15 @@ public:
      * @param host Host of the fake server.
      * @param port Port of the fake server
      */
-    FakeServer(std::string host, int port)
-        : m_thread(&FakeServer::run, this)
-        , m_host(std::move(host))
-        , m_port(port)
+    FakeServer(std::string host, int port) : m_thread(&FakeServer::run, this), m_host(std::move(host)), m_port(port)
     {
         m_server.wait_until_ready();
     }
 
+    /**
+     * @brief Class destructor.
+     *
+     */
     ~FakeServer()
     {
         m_server.stop();

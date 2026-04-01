@@ -70,10 +70,7 @@ public:
      *
      * @param urlRequest Object to perform the HTTP requests to the CTI API.
      */
-    explicit CtiSnapshotDownloader(IURLRequest& urlRequest)
-        : CtiDownloader(urlRequest, "CtiSnapshotDownloader")
-    {
-    }
+    explicit CtiSnapshotDownloader(IURLRequest& urlRequest) : CtiDownloader(urlRequest, "CtiSnapshotDownloader") {}
 };
 
 #endif // _CTI_SNAPSHOT_DOWNLOADER_HPP

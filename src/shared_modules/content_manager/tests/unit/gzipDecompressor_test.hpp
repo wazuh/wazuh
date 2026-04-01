@@ -45,11 +45,8 @@ protected:
     void SetUp() override
     {
         m_spContext = std::make_shared<UpdaterContext>();
-        m_spContext->spUpdaterBaseContext =
-            std::make_shared<UpdaterBaseContext>(m_spStopActionCondition,
-                                                 [](const std::string& msg) -> FileProcessingResult {
-                                                     return {0, "", false};
-                                                 });
+        m_spContext->spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(
+            m_spStopActionCondition, [](const std::string& msg) -> FileProcessingResult { return {0, "", false}; });
         m_spContext->spUpdaterBaseContext->outputFolder = WORKING_DIR;
     }
 
