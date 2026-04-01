@@ -122,6 +122,7 @@ build_standalone() {
         echo "Copying necessary files for Docker build..."
         cp ${WAZUH_PATH}/packages/build.sh ${DOCKERFILE_PATH}
         cp ${WAZUH_PATH}/packages/rpms/utils/* ${DOCKERFILE_PATH}
+        cp ${WAZUH_PATH}/.github/scripts/run_with_retry.sh ${DOCKERFILE_PATH}/retry.sh
 
         echo "Building Docker image ${CONTAINER_NAME}:${DOCKER_TAG}..."
         docker build -t ${CONTAINER_NAME}:${DOCKER_TAG} ${DOCKERFILE_PATH} || return 1
