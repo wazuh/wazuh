@@ -571,8 +571,6 @@ rm -fr %{buildroot}
 %attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/wazuh-manager.log
 %attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/wazuh-manager.json
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/api
-%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/archives
-%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/alerts
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/cluster
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/wazuh
 %dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files

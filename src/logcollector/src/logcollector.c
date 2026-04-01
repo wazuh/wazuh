@@ -640,7 +640,7 @@ void LogCollectorStart()
 
                     /* To help detect a file rollover, temporarily open the file a second time.
                      * Previously the fstat would work on "cached" file data, but this should
-                     * ensure it's fresh when hardlinks are used (like alerts.log).
+                     * ensure it's fresh when hardlinks are used on rotated log files.
                      */
                     FILE *tf;
                     tf = wfopen(current->file, "r");

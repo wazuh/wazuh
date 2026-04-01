@@ -1,6 +1,6 @@
 ## engine-archiver
 
-The `engine-archiver` script is part of the `engine-suite` package. It is a tool that allows you to manage the archives.json in the Engine.
+The `engine-archiver` script is part of the `engine-suite` package. It allows you to manage the Engine archiver.
 
 ## Directory structure
 
