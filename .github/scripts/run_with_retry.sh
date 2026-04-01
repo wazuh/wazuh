@@ -70,6 +70,8 @@ if [[ $# -eq 0 ]]; then
   echo "[retry] A command is required." >&2
   usage >&2
   exit 1
+else
+  echo "[retry] Command used: $1"
 fi
 
 use_timeout=false
