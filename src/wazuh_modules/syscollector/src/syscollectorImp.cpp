@@ -701,6 +701,11 @@ void Syscollector::destroy()
         m_spSyncProtocolVD->stop();
     }
 
+    // Wait for any ongoing flush() to complete before releasing resources.
+    // flush() holds m_flushMutex for its entire duration; acquiring it here
+    // ensures no thread is inside flush() when we reset m_spSyncProtocol.
+    std::lock_guard<std::mutex> flushLock(m_flushMutex);
+
     if (!scanMutexAvailable)
     {
         if (m_logFunction)
@@ -2728,6 +2733,10 @@ void Syscollector::resume()
 
 int Syscollector::flush()
 {
+    // Hold m_flushMutex for the entire flush duration so that destroy()
+    // can wait for this operation to complete before releasing resources.
+    std::lock_guard<std::mutex> flushLock(m_flushMutex);
+
     if (m_logFunction)
     {
         m_logFunction(LOG_INFO, "Syscollector flush requested - syncing pending messages");
