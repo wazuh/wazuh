@@ -1452,7 +1452,7 @@ int wdb_global_groups_number_get(wdb_t *wdb, int agent_id) {
 w_err_t wdb_global_validate_group_name(const char *group_name) {
     /* Compile regex once on first call */
     if (!wdb_global_group_regex_compiled) {
-        if (regcomp(&wdb_global_group_regex, "^[a-zA-Z0-9_\\-]+$", REG_EXTENDED | REG_NOSUB) != 0) {
+        if (regcomp(&wdb_global_group_regex, "^[a-zA-Z0-9_\\.\\-]+$", REG_EXTENDED | REG_NOSUB) != 0) {
             mwarn("Failed to compile group validation regex");
             return OS_INVALID;
         }
@@ -1465,6 +1465,15 @@ w_err_t wdb_global_validate_group_name(const char *group_name) {
     }
     if (regexec(&wdb_global_group_regex, group_name, 0, NULL, 0) != 0) {
         mwarn("Invalid group name. '%s' contains invalid characters", group_name);
+        return OS_INVALID;
+    }
+    /* Explicit check for directory references (. and ..) */
+    if (strcmp(group_name, ".") == 0) {
+        mwarn("Invalid group name. '.' represents the current directory in unix systems");
+        return OS_INVALID;
+    }
+    if (strcmp(group_name, "..") == 0) {
+        mwarn("Invalid group name. '..' represents the parent directory in unix systems");
         return OS_INVALID;
     }
 

@@ -393,7 +393,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
 
     /* Compile regex once on first call */
     if (!w_auth_group_regex_compiled) {
-        if (regcomp(&w_auth_group_regex, "^[a-zA-Z0-9_\\-]+$", REG_EXTENDED | REG_NOSUB) != 0) {
+        if (regcomp(&w_auth_group_regex, "^[a-zA-Z0-9_\\.\\-]+$", REG_EXTENDED | REG_NOSUB) != 0) {
             merror("Failed to compile group validation regex");
             if (response) {
                 snprintf(response, OS_SIZE_2048, "ERROR: Internal validation error");
@@ -424,6 +424,16 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
         /* Validate group name format */
         if (regexec(&w_auth_group_regex, group, 0, NULL, 0) != 0) {
             merror("Invalid group name '%s': contains forbidden characters", group);
+            if (response) {
+                snprintf(response, OS_SIZE_2048, "ERROR: Invalid group name: %s", group);
+            }
+            ret = OS_INVALID;
+            break;
+        }
+
+        /* Explicit check for directory references (. and ..) */
+        if (strcmp(group, ".") == 0 || strcmp(group, "..") == 0) {
+            merror("Invalid group name '%s': directory reference not allowed", group);
             if (response) {
                 snprintf(response, OS_SIZE_2048, "ERROR: Invalid group name: %s", group);
             }
