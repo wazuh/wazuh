@@ -92,6 +92,27 @@ EOF
     return 0
 }
 
+install_tzdb() {
+    local wazuh_path="$1"
+    local temp_dir="$2"
+
+    local tzdata_src="${wazuh_path}/src/external/tzdata"
+    local tzdb_dst="${temp_dir}/data/tzdb/iana"
+
+    if [ ! -d "${tzdata_src}" ]; then
+        echo "Warning: IANA tzdata not found in ${tzdata_src}. Standalone will ship without timezone database."
+        return 0
+    fi
+
+    echo "Including IANA timezone database in standalone package..."
+
+    install -d -m 0750 "${tzdb_dst}"
+    cp -r "${tzdata_src}/." "${tzdb_dst}/"
+    find "${tzdb_dst}" -type d -exec chmod 0750 {} +
+    find "${tzdb_dst}" -type f -exec chmod 0640 {} +
+
+    return 0
+}
 
 build_standalone() {
     # Determine package architecture based on input
@@ -145,6 +166,13 @@ build_standalone() {
         -e JOBS="${JOBS}" \
         -t --rm -v ${WAZUH_PATH}:/workspace/wazuh:Z \
         ${CONTAINER_NAME}:${DOCKER_TAG} || return 1
+
+    # Restore workspace permissions after Docker build (container runs as root
+    # and `:Z` SELinux relabeling can leave files unreadable by the host user)
+    echo "Restoring workspace permissions after Docker build..."
+    chmod -R a+rX "${WAZUH_PATH}/src/external" 2>/dev/null \
+        || sudo chmod -R a+rX "${WAZUH_PATH}/src/external" 2>/dev/null \
+        || echo "Warning: Could not restore permissions on src/external"
 
     # Get version
     VERSION="$(grep '"version"' ${WAZUH_PATH}/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
@@ -203,6 +231,7 @@ build_standalone() {
 
     # Copy geo dbs
     install_geoip "${WAZUH_PATH}" "${TEMP_DIR}"
+    install_tzdb "${WAZUH_PATH}" "${TEMP_DIR}"
 
     # Copy scripts and README
     cp -r ${WAZUH_PATH}/src/engine/standalone/run_engine.sh ${TEMP_DIR}/
