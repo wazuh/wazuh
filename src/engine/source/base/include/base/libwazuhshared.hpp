@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <filesystem>
 
 #include <dlfcn.h>
 
@@ -105,6 +106,13 @@ void setLoggerTag(std::string_view tag);
  */
 std::string getJsonIndexerCnf();
 
+/**
+ * @brief Get the Wazuh Home directory path
+ *
+ * @param daemon
+ * @return std::filesystem::path The path where Wazuh is installed
+ */
+std::filesystem::path getWazuhHome(char *daemon);
 } // namespace base::libwazuhshared
 
 #endif // _BASE_LIBWAZUHSHARED_HPP

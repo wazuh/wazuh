@@ -22,6 +22,7 @@
 
 #include <base/error.hpp>
 #include <base/process.hpp>
+#include <base/libwazuhshared.hpp>
 
 constexpr auto MAX_RBUFFER_SIZE = 65536;
 
@@ -172,9 +173,9 @@ void privSepSetGroup(gid_t gid)
     }
 }
 
-std::filesystem::path getWazuhHome()
+std::filesystem::path getWazuhHome(char *daemon)
 {
-    return std::filesystem::path("/var/wazuh-manager");
+    return base::libwazuhshared::getWazuhHome(daemon);
 }
 
 void setThreadName(const std::string& name)

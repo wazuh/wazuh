@@ -152,7 +152,8 @@ int main(int argc, char* argv[])
             return EXIT_FAILURE;
         }
 
-        if (chdir(base::process::getWazuhHome().string().c_str()) == -1)
+        // Standalone is not enabled, so it is being used from wazuh-manager
+        if (chdir(base::process::getWazuhHome(argv[0]).string().c_str()) == -1)
         {
             fprintf(stderr, "chdir to WAZUH_HOME failed: %s\n", strerror(errno));
             return EXIT_FAILURE;
