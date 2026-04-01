@@ -164,6 +164,9 @@ def test_max_eps(test_configuration, test_metadata, configure_local_internal_opt
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=generate_callback(regex))
+    if not wazuh_log_monitor.callback_result and sys.platform == WINDOWS:
+        # On Windows, this log can appear later after the service restart sequence.
+        wazuh_log_monitor.start(timeout=60, only_new_events=True, callback=generate_callback(regex))
     assert wazuh_log_monitor.callback_result
 
     # Wait for the first FIM synchronization cycle to complete (succeed or fail) so that the
