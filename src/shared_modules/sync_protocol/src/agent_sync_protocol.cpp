@@ -969,7 +969,14 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
             }
         }
 
-        m_logger(LOG_ERROR, "Exceeded maximum retries for End message. Exiting...");
+        if (shouldStop())
+        {
+            m_logger(LOG_INFO, "Sync End message retries exhausted because module is stopping.");
+        }
+        else
+        {
+            m_logger(LOG_ERROR, "Exceeded maximum retries for End message. Exiting...");
+        }
 
         return false;
     }
