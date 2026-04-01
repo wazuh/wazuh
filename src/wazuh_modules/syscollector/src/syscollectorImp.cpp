@@ -2768,10 +2768,17 @@ int Syscollector::flush()
     {
         if (m_logFunction)
         {
-            m_logFunction(LOG_ERROR, "Syscollector flush failed");
+            if (m_spSyncProtocol->shouldStop())
+            {
+                m_logFunction(LOG_INFO, "Syscollector flush skipped: module is stopping");
+            }
+            else
+            {
+                m_logFunction(LOG_ERROR, "Syscollector flush failed");
+            }
         }
 
-        return -1;
+        return m_spSyncProtocol->shouldStop() ? 0 : -1;
     }
 }
 
