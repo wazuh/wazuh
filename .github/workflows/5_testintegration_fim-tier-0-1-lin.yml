@@ -54,6 +54,9 @@ jobs:
           echo 'USER_AGENT_MANAGER_IP="127.0.0.1"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           sudo sh install.sh
+
+          sudo cat /var/ossec/etc/ossec.conf
+
           rm ./etc/preloaded-vars.conf
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
