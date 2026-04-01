@@ -2171,7 +2171,7 @@ void test_wdb_global_insert_agent_invalid_group_parent_dir(void **state)
     char *group = "..";
     int date_add = 100;
 
-    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. '..' contains invalid characters");
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. '..' represents the parent directory in unix systems");
     expect_string(__wrap__merror, formatted_msg, "Invalid group name '..' in multigroup '..' for agent 1");
 
     result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
@@ -2190,7 +2190,7 @@ void test_wdb_global_insert_agent_invalid_group_current_dir(void **state)
     char *group = ".";
     int date_add = 100;
 
-    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. '.' contains invalid characters");
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. '.' represents the current directory in unix systems");
     expect_string(__wrap__merror, formatted_msg, "Invalid group name '.' in multigroup '.' for agent 1");
 
     result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
@@ -2209,7 +2209,7 @@ void test_wdb_global_insert_agent_invalid_multigroup_with_parent_dir(void **stat
     char *group = "..,default";
     int date_add = 100;
 
-    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. '..' contains invalid characters");
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. '..' represents the parent directory in unix systems");
     expect_string(__wrap__merror, formatted_msg, "Invalid group name '..' in multigroup '..,default' for agent 1");
 
     result = wdb_global_insert_agent(data->wdb, 1, name, ip, register_ip, internal_key, group, date_add);
@@ -8652,7 +8652,7 @@ void test_wdb_global_validate_group_name_fail_group_name_current_directory_reser
 {
     char *group_name = ".";
 
-    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. '.' contains invalid characters");
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. '.' represents the current directory in unix systems");
 
     w_err_t result = wdb_global_validate_group_name(group_name);
 
@@ -8663,7 +8663,7 @@ void test_wdb_global_validate_group_name_fail_group_name_parent_directory_reserv
 {
     char *group_name = "..";
 
-    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. '..' contains invalid characters");
+    expect_string(__wrap__mwarn, formatted_msg, "Invalid group name. '..' represents the parent directory in unix systems");
 
     w_err_t result = wdb_global_validate_group_name(group_name);
 

@@ -309,8 +309,8 @@ static void test_w_auth_validate_groups_parent_directory(void **state) {
     w_err_t err;
     char response[2048] = {0};
 
-    /* Group name ".." should be rejected (fails regex check first) */
-    expect_string(__wrap__merror, formatted_msg, "Invalid group name '..': contains forbidden characters");
+    /* Group name ".." should be rejected (explicit check after regex) */
+    expect_string(__wrap__merror, formatted_msg, "Invalid group name '..': directory reference not allowed");
     response[0] = '\0';
     err = w_auth_validate_groups("..", response);
     assert_int_equal(err, OS_INVALID);
@@ -321,8 +321,8 @@ static void test_w_auth_validate_groups_current_directory(void **state) {
     w_err_t err;
     char response[2048] = {0};
 
-    /* Group name "." should be rejected (fails regex check first) */
-    expect_string(__wrap__merror, formatted_msg, "Invalid group name '.': contains forbidden characters");
+    /* Group name "." should be rejected (explicit check after regex) */
+    expect_string(__wrap__merror, formatted_msg, "Invalid group name '.': directory reference not allowed");
     response[0] = '\0';
     err = w_auth_validate_groups(".", response);
     assert_int_equal(err, OS_INVALID);
@@ -333,8 +333,8 @@ static void test_w_auth_validate_groups_multigroup_with_parent_dir(void **state)
     w_err_t err;
     char response[2048] = {0};
 
-    /* Multigroup "..,default" should be rejected (fails regex check first) */
-    expect_string(__wrap__merror, formatted_msg, "Invalid group name '..': contains forbidden characters");
+    /* Multigroup "..,default" should be rejected (explicit check after regex) */
+    expect_string(__wrap__merror, formatted_msg, "Invalid group name '..': directory reference not allowed");
     response[0] = '\0';
     err = w_auth_validate_groups("..,default", response);
     assert_int_equal(err, OS_INVALID);
