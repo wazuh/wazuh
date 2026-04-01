@@ -34,6 +34,10 @@ struct keynode *queue_remove = NULL;
 struct keynode * volatile *insert_tail;
 struct keynode * volatile *remove_tail;
 
+/* Static regex for group validation */
+static regex_t w_auth_group_regex;
+static bool w_auth_group_regex_compiled = false;
+
 // Append key to insertion queue
 void add_insert(const keyentry *entry,const char *group) {
     struct keynode *node;
@@ -387,6 +391,18 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
     const char delim[] = {MULTIGROUP_SEPARATOR,'\0'};
     w_err_t ret = OS_SUCCESS;
 
+    /* Compile regex once on first call */
+    if (!w_auth_group_regex_compiled) {
+        if (regcomp(&w_auth_group_regex, "^[a-zA-Z0-9_\\-]+$", REG_EXTENDED | REG_NOSUB) != 0) {
+            merror("Failed to compile group validation regex");
+            if (response) {
+                snprintf(response, OS_SIZE_2048, "ERROR: Internal validation error");
+            }
+            return OS_INVALID;
+        }
+        w_auth_group_regex_compiled = true;
+    }
+
     os_strdup(groups, tmp_groups);
     char *group = strtok_r(tmp_groups, delim, &save_ptr);
 
@@ -406,18 +422,8 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
         }
 
         /* Validate group name format */
-        if (!w_regexec("^[a-zA-Z0-9_\\-]+$", group, 0, NULL)) {
+        if (regexec(&w_auth_group_regex, group, 0, NULL, 0) != 0) {
             merror("Invalid group name '%s': contains forbidden characters", group);
-            if (response) {
-                snprintf(response, OS_SIZE_2048, "ERROR: Invalid group name: %s", group);
-            }
-            ret = OS_INVALID;
-            break;
-        }
-
-        /* Additional check */
-        if (strcmp(group, ".") == 0 || strcmp(group, "..") == 0) {
-            merror("Invalid group name '%s': directory reference not allowed", group);
             if (response) {
                 snprintf(response, OS_SIZE_2048, "ERROR: Invalid group name: %s", group);
             }
@@ -442,6 +448,13 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
     }
     os_free(tmp_groups);
     return ret;
+}
+
+void w_auth_validate_groups_cleanup(void) {
+    if (w_auth_group_regex_compiled) {
+        regfree(&w_auth_group_regex);
+        w_auth_group_regex_compiled = false;
+    }
 }
 
 char *w_generate_random_pass()

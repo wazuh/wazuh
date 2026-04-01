@@ -139,6 +139,9 @@ static int teardown_group(void **state) {
         os_free(cur);
     }
 
+    /* Cleanup compiled regex to prevent memory leaks in tests */
+    w_auth_validate_groups_cleanup();
+
     return 0;
 }
 

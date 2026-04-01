@@ -11,6 +11,10 @@
 
 #include "wdb.h"
 
+/* Static regex for group name validation */
+static regex_t wdb_global_group_regex;
+static bool wdb_global_group_regex_compiled = false;
+
 // List of agent information fields in global DB
 // The ":" is used for parameter binding
 static const char *global_db_agent_fields[] = {
@@ -1298,27 +1302,32 @@ int wdb_global_groups_number_get(wdb_t *wdb, int agent_id) {
 }
 
 w_err_t wdb_global_validate_group_name(const char *group_name) {
-    const char *current_directory = ".";
-    const char *parent_directory = "..";
+    /* Compile regex once on first call */
+    if (!wdb_global_group_regex_compiled) {
+        if (regcomp(&wdb_global_group_regex, "^[a-zA-Z0-9_\\-]+$", REG_EXTENDED | REG_NOSUB) != 0) {
+            mwarn("Failed to compile group validation regex");
+            return OS_INVALID;
+        }
+        wdb_global_group_regex_compiled = true;
+    }
 
     if (strlen(group_name) > MAX_GROUP_NAME) {
         mwarn("Invalid group name. The group '%s' exceeds the maximum length of %d characters permitted", group_name, MAX_GROUP_NAME);
         return OS_INVALID;
     }
-    if (!w_regexec("^[a-zA-Z0-9_\\.\\-]+$", group_name, 0, NULL)) {
+    if (regexec(&wdb_global_group_regex, group_name, 0, NULL, 0) != 0) {
         mwarn("Invalid group name. '%s' contains invalid characters", group_name);
-        return OS_INVALID;
-    }
-    if (!strcmp(group_name, parent_directory)) {
-        mwarn("Invalid group name. '%s' represents the parent directory in unix systems", group_name);
-        return OS_INVALID;
-    }
-    if (!strcmp(group_name, current_directory)) {
-        mwarn("Invalid group name. '%s' represents the current directory in unix systems", group_name);
         return OS_INVALID;
     }
 
     return OS_SUCCESS;
+}
+
+void wdb_global_validate_group_name_cleanup(void) {
+    if (wdb_global_group_regex_compiled) {
+        regfree(&wdb_global_group_regex);
+        wdb_global_group_regex_compiled = false;
+    }
 }
 
 w_err_t wdb_global_validate_groups(wdb_t *wdb, cJSON *j_groups, int agent_id) {
