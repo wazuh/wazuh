@@ -36,11 +36,15 @@ constexpr std::string_view INDEXER_CONNECTOR_MAX_HITS_PER_REQUEST = "analysisd.i
 
 constexpr std::string_view IOC_INDEXER_CONNECTOR_MAX_RETRIES = "analysisd.ioc_indexer_connector_max_retries";
 constexpr std::string_view IOC_INDEXER_CONNECTOR_RETRY_INTERVAL = "analysisd.ioc_indexer_connector_retry_interval";
-constexpr std::string_view IOC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE = "analysisd.ioc_indexer_connector_ioc_sync_batch_size";
+constexpr std::string_view IOC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE =
+    "analysisd.ioc_indexer_connector_ioc_sync_batch_size";
 constexpr std::string_view CMSYNC_INDEXER_CONNECTOR_MAX_RETRIES = "analysisd.cmsync_indexer_connector_max_retries";
-constexpr std::string_view CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL = "analysisd.cmsync_indexer_connector_retry_interval";
-constexpr std::string_view REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES = "analysisd.remote_conf_indexer_connector_max_retries";
-constexpr std::string_view REMOTE_CONF_INDEXER_CONNECTOR_RETRY_INTERVAL = "analysisd.remote_conf_indexer_connector_retry_interval";
+constexpr std::string_view CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL =
+    "analysisd.cmsync_indexer_connector_retry_interval";
+constexpr std::string_view REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES =
+    "analysisd.remote_conf_indexer_connector_max_retries";
+constexpr std::string_view REMOTE_CONF_INDEXER_CONNECTOR_RETRY_INTERVAL =
+    "analysisd.remote_conf_indexer_connector_retry_interval";
 
 constexpr std::string_view REMOTE_CONF_SYNC_INTERVAL = "analysisd.remote_conf_sync_interval";
 
@@ -64,14 +68,14 @@ constexpr std::string_view TZDB_FORCE_VERSION_UPDATE = "analysisd.tzdb_force_ver
 constexpr std::string_view STREAMLOG_BASE_PATH = "analysisd.streamlog_base_path";
 constexpr std::string_view STREAMLOG_SHOULD_COMPRESS = "analysisd.streamlog_compress";
 constexpr std::string_view STREAMLOG_COMPRESSION_LEVEL = "analysisd.streamlog_compression_level";
-constexpr std::string_view STREAMLOG_ALERTS_PATTERN = "analysisd.streamlog_alerts_pattern";
-constexpr std::string_view STREAMLOG_ALERTS_MAX_SIZE = "analysisd.streamlog_alerts_max_size";
-constexpr std::string_view STREAMLOG_ALERTS_BUFFER_SIZE = "analysisd.streamlog_alerts_buffer_size";
-constexpr std::string_view STREAMLOG_ARCHIVES_PATTERN = "analysisd.streamlog_archives_pattern";
-constexpr std::string_view STREAMLOG_ARCHIVES_MAX_SIZE = "analysisd.streamlog_archives_max_size";
-constexpr std::string_view STREAMLOG_ARCHIVES_BUFFER_SIZE = "analysisd.streamlog_archives_buffer_size";
+constexpr std::string_view STREAMLOG_EVENTS_PATTERN = "analysisd.streamlog_events_pattern";
+constexpr std::string_view STREAMLOG_EVENTS_MAX_SIZE = "analysisd.streamlog_events_max_size";
+constexpr std::string_view STREAMLOG_EVENTS_BUFFER_SIZE = "analysisd.streamlog_events_buffer_size";
+constexpr std::string_view STREAMLOG_DUMPER_PATTERN = "analysisd.streamlog_dumper_pattern";
+constexpr std::string_view STREAMLOG_DUMPER_MAX_SIZE = "analysisd.streamlog_dumper_max_size";
+constexpr std::string_view STREAMLOG_DUMPER_BUFFER_SIZE = "analysisd.streamlog_dumper_buffer_size";
 
-constexpr std::string_view ARCHIVER_ENABLED = "analysisd.archiver_enabled";
+constexpr std::string_view DUMPER_ENABLED = "analysisd.dumper_enabled";
 
 constexpr std::string_view PID_FILE_PATH = "analysisd.pid_path";
 constexpr std::string_view SKIP_GROUP_CHANGE = "analysisd.owner_group_change_skip";
