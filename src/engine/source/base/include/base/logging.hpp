@@ -193,6 +193,10 @@ struct LoggingConfig
     std::size_t maxAccumulatedSize {
         2147483648}; ///< Max accumulated size of all rotated files (default: 2 GB, 0 = unlimited)
                      ///< When exceeded, oldest files are deleted (Log4j2 IfAccumulatedFileSize)
+
+    // Compression configuration
+    bool compressionEnabled {true}; ///< Enable gzip compression for rotated files (default: true)
+    int compressionLevel {5};       ///< Gzip compression level (0-9, default: 5)
 };
 
 /**
@@ -243,6 +247,8 @@ void stop();
  *   - WAZUH_STANDALONE_LOG_ROTATION_MINUTE      (default: 0, Log4j2: TimeBasedTriggeringPolicy)
  *   - WAZUH_STANDALONE_LOG_MAX_FILES            (default: 7, Log4j2: DefaultRolloverStrategy max)
  *   - WAZUH_STANDALONE_LOG_MAX_ACCUMULATED_SIZE (default: 2147483648 = 2 GB, Log4j2: IfAccumulatedFileSize)
+ *   - WAZUH_STANDALONE_LOG_COMPRESSION_ENABLED  (default: true)
+ *   - WAZUH_STANDALONE_LOG_COMPRESSION_LEVEL    (default: 5, gzip level 0-9)
  *
  * See implementation for detailed Log4j2 policy mapping table.
  *

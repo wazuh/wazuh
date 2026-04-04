@@ -46,6 +46,22 @@ export WAZUH_SERVER_API_MAX_RESOURCE_KVDB_PAYLOAD_SIZE="100000"
 # │   </Delete>                                              │                                                 │
 # │ </DefaultRolloverStrategy>                               │                                                 │
 # └──────────────────────────────────────────────────────────┴─────────────────────────────────────────────────┘
+#
+# The following variables have no Log4j2 equivalent (custom extensions):
+#
+# ┌──────────────────────────────────────────────────────────┬─────────────────────────────────────────────────┐
+# │ Behaviour                                                │ Environment Variable                            │
+# ├──────────────────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+# │ Enable/disable the entire rotation subsystem             │ WAZUH_STANDALONE_LOG_ROTATION_ENABLED           │
+# │                                                          │   (default: true)                               │
+# ├──────────────────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+# │ Enable gzip compression of rotated files.                │ WAZUH_STANDALONE_LOG_COMPRESSION_ENABLED        │
+# │ Compression runs asynchronously; the active log file     │   (default: true)                               │
+# │ is never compressed.                                     │                                                 │
+# ├──────────────────────────────────────────────────────────┼─────────────────────────────────────────────────┤
+# │ zlib compression level for rotated files.                │ WAZUH_STANDALONE_LOG_COMPRESSION_LEVEL          │
+# │ 0 = store only, 1 = fastest, 9 = maximum compression.   │   (default: 5)                                  │
+# └──────────────────────────────────────────────────────────┴─────────────────────────────────────────────────┘
 
 # Auto-detect log file path based on environment
 if [ -d "/var/log/wazuh-indexer" ]; then
@@ -62,6 +78,8 @@ export WAZUH_STANDALONE_LOG_ROTATION_HOUR="0"                # midnight
 export WAZUH_STANDALONE_LOG_ROTATION_MINUTE="0"
 export WAZUH_STANDALONE_LOG_MAX_FILES="7"
 export WAZUH_STANDALONE_LOG_MAX_ACCUMULATED_SIZE="2147483648" # 2 GB
+export WAZUH_STANDALONE_LOG_COMPRESSION_ENABLED="true"
+export WAZUH_STANDALONE_LOG_COMPRESSION_LEVEL="5"
 
 # If not exist create directories
 mkdir -p "$SOCKET_PATH" "$LOG_PATH"
