@@ -53,6 +53,8 @@ jobs:
             echo "" >> ./etc/preloaded-vars.conf
             sudo sh install.sh
             rm ./etc/preloaded-vars.conf
+
+            sudo cat /Library/Ossec/etc/ossec.conf
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
