@@ -4958,3 +4958,94 @@ TEST_F(SyscollectorImpTest, DocumentLimits_EndToEnd_Summary)
     EXPECT_TRUE(logCapture->contains(LOG_DEBUG_VERBOSE, "Document limit increased from 0 to 10"))
             << "Expected hotfixes limit to be set to 10";
 }
+
+TEST_F(SyscollectorImpTest, destroyWaitsForOngoingFlush)
+{
+    // Static atomics used by the plain C function pointers in MQ_Functions.
+    // They are reset to initial values at the top of the test.
+    static std::atomic<bool> s_blockStart{false};
+    static std::atomic<bool> s_startEntered{false};
+    s_blockStart  = true;
+    s_startEntered = false;
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false, false);
+
+    MQ_Functions blockingMq{};
+    // Block inside start(), which is called unconditionally from checkStatus() at the
+    // top of synchronizeModule() — before the empty-queue early-return.  This ensures
+    // flush() still holds m_flushMutex while we verify that destroy() is waiting for it,
+    // regardless of whether the persistent queue has any data to send.
+    blockingMq.start = [](const char*, short, short) -> int
+    {
+        s_startEntered = true;
+
+        while (s_blockStart)
+        {
+            std::this_thread::yield();
+        }
+
+        return 1; // valid queue descriptor
+    };
+    blockingMq.send_binary = [](int, const void*, size_t, const char*, char) -> int
+    {
+        return 0;
+    };
+
+    Syscollector::instance().initSyncProtocol(
+        "syscollector", ":memory:", ":memory:",
+        blockingMq,
+        std::chrono::seconds(0),
+        std::chrono::seconds(1),
+        1, 100, 0);
+
+    std::atomic<bool> flushDone{false};
+    std::atomic<bool> destroyDone{false};
+
+    // flush() acquires m_flushMutex, then calls synchronizeModule() which blocks in start().
+    std::thread flushThread([&]()
+    {
+        Syscollector::instance().query(R"({"command":"flush"})");
+        flushDone = true;
+    });
+
+    // Wait until start() has been entered — flush now holds m_flushMutex.
+    while (!s_startEntered)
+    {
+        std::this_thread::yield();
+    }
+
+    // destroy() signals stop on the protocol, then blocks on m_flushMutex.
+    std::thread destroyThread([&]()
+    {
+        Syscollector::instance().destroy();
+        destroyDone = true;
+    });
+
+    // Give destroy time to start and attempt to acquire m_flushMutex.
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Both threads must still be blocked: flush inside start(), destroy on the mutex.
+    EXPECT_FALSE(flushDone)  << "flush should still be running";
+    EXPECT_FALSE(destroyDone) << "destroy should be waiting for flush to finish";
+
+    // Release the blocking start — flush completes, then destroy can proceed.
+    s_blockStart = false;
+
+    flushThread.join();
+    destroyThread.join();
+
+    EXPECT_TRUE(flushDone);
+    EXPECT_TRUE(destroyDone);
+}

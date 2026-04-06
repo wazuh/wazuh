@@ -2766,9 +2766,11 @@ int Syscollector::flush()
     }
     else
     {
+        const bool stopping = m_spSyncProtocol->shouldStop();
+
         if (m_logFunction)
         {
-            if (m_spSyncProtocol->shouldStop())
+            if (stopping)
             {
                 m_logFunction(LOG_INFO, "Syscollector flush skipped: module is stopping");
             }
@@ -2778,7 +2780,7 @@ int Syscollector::flush()
             }
         }
 
-        return m_spSyncProtocol->shouldStop() ? 0 : -1;
+        return stopping ? 0 : -1;
     }
 }
 
