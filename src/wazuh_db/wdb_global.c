@@ -14,6 +14,7 @@
 /* Static regex for group name validation */
 static regex_t wdb_global_group_regex;
 static bool wdb_global_group_regex_compiled = false;
+static pthread_mutex_t wdb_global_group_regex_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // List of agent information fields in global DB
 // The ":" is used for parameter binding
@@ -1303,13 +1304,16 @@ int wdb_global_groups_number_get(wdb_t *wdb, int agent_id) {
 
 w_err_t wdb_global_validate_group_name(const char *group_name) {
     /* Compile regex once on first call */
+    w_mutex_lock(&wdb_global_group_regex_mutex);
     if (!wdb_global_group_regex_compiled) {
         if (regcomp(&wdb_global_group_regex, "^[a-zA-Z0-9_\\.\\-]+$", REG_EXTENDED | REG_NOSUB) != 0) {
             mwarn("Failed to compile group validation regex");
+            w_mutex_unlock(&wdb_global_group_regex_mutex);
             return OS_INVALID;
         }
         wdb_global_group_regex_compiled = true;
     }
+    w_mutex_unlock(&wdb_global_group_regex_mutex);
 
     if (strlen(group_name) > MAX_GROUP_NAME) {
         mwarn("Invalid group name. The group '%s' exceeds the maximum length of %d characters permitted", group_name, MAX_GROUP_NAME);
@@ -1333,10 +1337,12 @@ w_err_t wdb_global_validate_group_name(const char *group_name) {
 }
 
 void wdb_global_validate_group_name_cleanup(void) {
+    w_mutex_lock(&wdb_global_group_regex_mutex);
     if (wdb_global_group_regex_compiled) {
         regfree(&wdb_global_group_regex);
         wdb_global_group_regex_compiled = false;
     }
+    w_mutex_unlock(&wdb_global_group_regex_mutex);
 }
 
 w_err_t wdb_global_validate_groups(wdb_t *wdb, cJSON *j_groups, int agent_id) {

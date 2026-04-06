@@ -37,6 +37,7 @@ struct keynode * volatile *remove_tail;
 /* Static regex for group validation */
 static regex_t w_auth_group_regex;
 static bool w_auth_group_regex_compiled = false;
+static pthread_mutex_t w_auth_group_regex_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Append key to insertion queue
 void add_insert(const keyentry *entry,const char *group) {
@@ -392,9 +393,11 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
     w_err_t ret = OS_SUCCESS;
 
     /* Compile regex once on first call */
+    w_mutex_lock(&w_auth_group_regex_mutex);
     if (!w_auth_group_regex_compiled) {
         if (regcomp(&w_auth_group_regex, "^[a-zA-Z0-9_\\.\\-]+$", REG_EXTENDED | REG_NOSUB) != 0) {
             merror("Failed to compile group validation regex");
+            w_mutex_unlock(&w_auth_group_regex_mutex);
             if (response) {
                 snprintf(response, OS_SIZE_2048, "ERROR: Internal validation error");
             }
@@ -402,6 +405,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
         }
         w_auth_group_regex_compiled = true;
     }
+    w_mutex_unlock(&w_auth_group_regex_mutex);
 
     os_strdup(groups, tmp_groups);
     char *group = strtok_r(tmp_groups, delim, &save_ptr);
@@ -461,10 +465,12 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
 }
 
 void w_auth_validate_groups_cleanup(void) {
+    w_mutex_lock(&w_auth_group_regex_mutex);
     if (w_auth_group_regex_compiled) {
         regfree(&w_auth_group_regex);
         w_auth_group_regex_compiled = false;
     }
+    w_mutex_unlock(&w_auth_group_regex_mutex);
 }
 
 char *w_generate_random_pass()
