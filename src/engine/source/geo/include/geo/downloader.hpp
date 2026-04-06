@@ -7,8 +7,13 @@ namespace geo
 {
 class Downloader : public IDownloader
 {
+    long m_timeout; ///< Maximum time in milliseconds for HTTP requests (0 = no timeout).
+
 public:
-    Downloader() = default;
+    explicit Downloader(long timeout = 0)
+        : m_timeout(timeout)
+    {
+    }
     virtual ~Downloader() = default;
 
     base::RespOrError<std::string> downloadHTTPS(const std::string& url) const override;
