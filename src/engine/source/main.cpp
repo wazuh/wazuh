@@ -554,7 +554,10 @@ int main(int argc, char* argv[])
             orchestrator->start();
 
             exitHandler.add([orchestrator]() { orchestrator->cleanup(); });
-            LOG_INFO("Orchestrator initialized and started.");
+            const auto epsDescription = qEps > 0 ? std::to_string(qEps) : std::string("unlimited");
+            LOG_INFO("Orchestrator initialized and started with event queue size: {}, events per second: {}.",
+                     qSize,
+                     epsDescription);
         }
 
         // CMsync
