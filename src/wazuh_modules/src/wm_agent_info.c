@@ -60,6 +60,7 @@ static bool agent_info_enable_synchronization = true;
 void* agent_info_module = NULL;
 agent_info_start_func agent_info_start_ptr = NULL;
 agent_info_stop_func agent_info_stop_ptr = NULL;
+agent_info_cleanup_func agent_info_cleanup_ptr = NULL;
 agent_info_set_log_function_func agent_info_set_log_function_ptr = NULL;
 agent_info_set_report_function_func agent_info_set_report_function_ptr = NULL;
 agent_info_init_sync_protocol_func agent_info_init_sync_protocol_ptr = NULL;
@@ -607,6 +608,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         mdebug1("Successfully loaded agent-info library");
         agent_info_start_ptr = so_get_function_sym(agent_info_module, "agent_info_start");
         agent_info_stop_ptr = so_get_function_sym(agent_info_module, "agent_info_stop");
+        agent_info_cleanup_ptr = so_get_function_sym(agent_info_module, "agent_info_cleanup");
         agent_info_set_log_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_log_function");
         agent_info_set_report_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_report_function");
         agent_info_init_sync_protocol_ptr = so_get_function_sym(agent_info_module, "agent_info_init_sync_protocol");
@@ -726,6 +728,12 @@ void wm_agent_info_destroy(wm_agent_info_t* agent_info)
         {
             agent_info_stop_ptr();
         }
+
+        if (agent_info_cleanup_ptr)
+        {
+            agent_info_cleanup_ptr();
+        }
+
         free(agent_info);
     }
 }

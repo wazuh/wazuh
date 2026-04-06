@@ -433,6 +433,7 @@ class EXPORTED Syscollector final
         std::mutex                                                               m_scan_mutex;
         std::condition_variable                                                  m_pauseCv;
         std::mutex                                                               m_pauseMutex;
+        std::mutex                                                               m_flushMutex;
         std::unique_ptr<SysNormalizer>                                           m_spNormalizer;
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocol;
         std::vector<std::string>                                                 m_disabledCollectorsIndicesWithData;
