@@ -21,47 +21,7 @@ export WAZUH_SERVER_ENABLE_EVENT_PROCESSING="false"
 export WAZUH_SERVER_API_MAX_RESOURCE_PAYLOAD_SIZE="50000"
 export WAZUH_SERVER_API_MAX_RESOURCE_KVDB_PAYLOAD_SIZE="100000"
 
-# ┌──────────────────────────────────────────────────────────┬─────────────────────────────────────────────────┐
-# │ Log4j2 Configuration                                     │ Environment Variable                            │
-# ├──────────────────────────────────────────────────────────┼─────────────────────────────────────────────────┤
-# │ <RollingFile fileName="...">                             │ WAZUH_STANDALONE_LOG_FILE_PATH                  │
-# │                                                          │   (default: /var/log/wazuh-indexer/wazuh-      │
-# │                                                          │    engine.log)                                  │
-# ├──────────────────────────────────────────────────────────┼─────────────────────────────────────────────────┤
-# │ <Policies>                                               │                                                 │
-# │   <TimeBasedTriggeringPolicy                             │ WAZUH_STANDALONE_LOG_ROTATION_HOUR              │
-# │     interval="1"                                         │   (default: 0 = midnight)                       │
-# │     modulate="true"/>                                    │ WAZUH_STANDALONE_LOG_ROTATION_MINUTE            │
-# │                                                          │   (default: 0)                                  │
-# │   <SizeBasedTriggeringPolicy                             │ WAZUH_STANDALONE_LOG_MAX_FILE_SIZE              │
-# │     size="128 MB"/>                                      │   (default: 134217728 = 128 MB)                 │
-# │ </Policies>                                              │                                                 │
-# ├──────────────────────────────────────────────────────────┼─────────────────────────────────────────────────┤
-# │ <DefaultRolloverStrategy                                 │ WAZUH_STANDALONE_LOG_MAX_FILES                  │
-# │   max="7"                                                │   (default: 7)                                  │
-# │   fileIndex="max">                                       │                                                 │
-# │   <Delete>                                               │                                                 │
-# │     <IfAccumulatedFileSize                               │ WAZUH_STANDALONE_LOG_MAX_ACCUMULATED_SIZE       │
-# │       exceeds="2 GB"/>                                   │   (default: 2147483648 = 2 GB)                  │
-# │   </Delete>                                              │                                                 │
-# │ </DefaultRolloverStrategy>                               │                                                 │
-# └──────────────────────────────────────────────────────────┴─────────────────────────────────────────────────┘
-#
-# The following variables have no Log4j2 equivalent (custom extensions):
-#
-# ┌──────────────────────────────────────────────────────────┬─────────────────────────────────────────────────┐
-# │ Behaviour                                                │ Environment Variable                            │
-# ├──────────────────────────────────────────────────────────┼─────────────────────────────────────────────────┤
-# │ Enable/disable the entire rotation subsystem             │ WAZUH_STANDALONE_LOG_ROTATION_ENABLED           │
-# │                                                          │   (default: true)                               │
-# ├──────────────────────────────────────────────────────────┼─────────────────────────────────────────────────┤
-# │ Enable gzip compression of rotated files.                │ WAZUH_STANDALONE_LOG_COMPRESSION_ENABLED        │
-# │ Compression runs asynchronously; the active log file     │   (default: true)                               │
-# │ is never compressed.                                     │                                                 │
-# ├──────────────────────────────────────────────────────────┼─────────────────────────────────────────────────┤
-# │ zlib compression level for rotated files.                │ WAZUH_STANDALONE_LOG_COMPRESSION_LEVEL          │
-# │ 0 = store only, 1 = fastest, 9 = maximum compression.   │   (default: 5)                                  │
-# └──────────────────────────────────────────────────────────┴─────────────────────────────────────────────────┘
+# See README.md for a full description of configuration variables.
 
 # Auto-detect log file path based on environment
 if [ -d "/var/log/wazuh-indexer" ]; then
