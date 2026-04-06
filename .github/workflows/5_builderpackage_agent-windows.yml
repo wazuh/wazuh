@@ -121,7 +121,7 @@ jobs:
 
   build-windows-i686:
     needs: detect-changes
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     timeout-minutes: 60
     name: Build Windows agent binaries
     outputs:
