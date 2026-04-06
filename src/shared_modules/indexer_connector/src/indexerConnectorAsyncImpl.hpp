@@ -115,6 +115,7 @@ class IndexerConnectorAsyncImpl final
     std::atomic<bool> m_stopping {false};
     std::unique_ptr<ThreadLoggerQueue> m_loggerProcessor;
     const std::string m_queueId;
+    const std::string m_dbPath;
     bool m_error413Logged {false};
     size_t m_successCount {0};
     size_t m_maxQueueSize {0};
@@ -132,6 +133,9 @@ public:
         std::string queueId = "")
         : m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
         , m_queueId(std::move(queueId))
+        , m_dbPath(config.contains("db_path") && config.at("db_path").is_string()
+                       ? config.at("db_path").get<std::string>()
+                       : DATABASE_BASE_PATH + m_queueId)
     {
         if (logFunction)
         {
@@ -474,7 +478,7 @@ public:
                                     PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
                                     {});
             },
-            DATABASE_BASE_PATH + m_queueId,
+            m_dbPath,
             ElementsPerBulk,
             m_maxQueueSize,
             RetryDelay,

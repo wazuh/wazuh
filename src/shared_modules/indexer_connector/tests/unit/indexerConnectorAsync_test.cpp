@@ -232,6 +232,70 @@ TEST_F(IndexerConnectorAsyncTest, ConstructorWithInvalidSSLPathsThrows)
     EXPECT_ANY_THROW({ IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest); });
 }
 
+// Database path configuration tests
+TEST_F(IndexerConnectorAsyncTest, ConstructorWithCustomDbPath)
+{
+    EXPECT_CALL(mockServerSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    config["db_path"] = "queue/indexer/custom-instance";
+
+    EXPECT_NO_THROW({
+        IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest);
+        EXPECT_TRUE(std::filesystem::exists("queue/indexer/custom-instance"));
+    });
+
+    std::filesystem::remove_all("queue/indexer/custom-instance");
+}
+
+TEST_F(IndexerConnectorAsyncTest, ConstructorWithAbsoluteDbPath)
+{
+    EXPECT_CALL(mockServerSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    config["db_path"] = "/tmp/wazuh-test-indexer-db";
+
+    EXPECT_NO_THROW({
+        IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest);
+        EXPECT_TRUE(std::filesystem::exists("/tmp/wazuh-test-indexer-db"));
+    });
+
+    std::filesystem::remove_all("/tmp/wazuh-test-indexer-db");
+}
+
+TEST_F(IndexerConnectorAsyncTest, ConstructorWithoutDbPathUsesDefault)
+{
+    EXPECT_CALL(mockServerSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    // No db_path in config: default path is DATABASE_BASE_PATH + queueId
+    EXPECT_NO_THROW({
+        IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest, nullptr, "test-default-path");
+        EXPECT_TRUE(std::filesystem::exists("queue/indexer/test-default-path"));
+    });
+
+    std::filesystem::remove_all("queue/indexer/test-default-path");
+}
+
+TEST_F(IndexerConnectorAsyncTest, MultipleInstancesWithDifferentDbPaths)
+{
+    EXPECT_CALL(mockServerSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    nlohmann::json config1 = config;
+    config1["db_path"] = "/tmp/wazuh-test-indexer-instance-1";
+
+    nlohmann::json config2 = config;
+    config2["db_path"] = "/tmp/wazuh-test-indexer-instance-2";
+
+    EXPECT_NO_THROW({
+        IndexerConnectorAsyncImplTest connector1(config1, nullptr, &mockHttpRequest);
+        IndexerConnectorAsyncImplTest connector2(config2, nullptr, &mockHttpRequest);
+
+        EXPECT_TRUE(std::filesystem::exists("/tmp/wazuh-test-indexer-instance-1"));
+        EXPECT_TRUE(std::filesystem::exists("/tmp/wazuh-test-indexer-instance-2"));
+    });
+
+    std::filesystem::remove_all("/tmp/wazuh-test-indexer-instance-1");
+    std::filesystem::remove_all("/tmp/wazuh-test-indexer-instance-2");
+}
+
 // Queue size limit tests
 TEST_F(IndexerConnectorAsyncTest, ConstructorWithMaxQueueSizeConfig)
 {

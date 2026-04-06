@@ -294,9 +294,11 @@ public:
     /**
      * @brief Class constructor that initializes the publisher.
      *
-     * @param config Indexer configuration, including database_path and servers.
+     * @param config Indexer configuration, including database_path, servers, and optional db_path.
+     *               If "db_path" is provided in config, it will be used as the RocksDB queue path,
+     *               allowing multiple instances to use isolated directories.
+     *               If not provided, defaults to "queue/indexer/".
      * @param logFunction Callback function to be called when trying to log a message.
-     * @param timeout Server selector time interval.
      */
     explicit IndexerConnectorAsync(
         const nlohmann::json& config,

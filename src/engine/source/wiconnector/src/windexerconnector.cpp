@@ -249,6 +249,11 @@ std::string Config::toJson() const
 
     config["max_queue_size"] = maxQueueSize;
 
+    if (!dbPath.empty())
+    {
+        config["db_path"] = dbPath;
+    }
+
     return config.dump();
 }
 
