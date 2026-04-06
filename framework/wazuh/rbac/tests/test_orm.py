@@ -110,18 +110,27 @@ def test_nbf_invalid(db_setup):
 
 
 def test_token_valid_after_revoke_same_second_ms(db_setup):
+    """Ensure tokens issued within the same second as revoke are correctly validated using ms precision."""
     with db_setup.AuthenticationManager() as am:
         am.add_user(username='timing_user', password='testingA1!')
         user_id = am.get_user('timing_user')['id']
 
-    # Revoke en tiempo X (en segundos, pero convertido a ms internamente)
     with patch('wazuh.rbac.orm.time', return_value=1000.100):
         with db_setup.TokenManager() as tm:
             assert tm.add_user_roles_rules(users={user_id})
 
-    # Token generado justo después (mismo segundo pero mayor en ms)
     with db_setup.TokenManager() as tm:
-        assert tm.is_token_valid(user_id=user_id, token_nbf_time=1000101)
+        user_rule, _, _ = tm.get_all_rules()
+        revoke_ts = user_rule[user_id]
+
+        # Token issued before revoke -> invalid
+        assert not tm.is_token_valid(user_id=user_id, token_nbf_time=revoke_ts - 1)
+
+        # Token issued exactly at revoke time -> invalid
+        assert not tm.is_token_valid(user_id=user_id, token_nbf_time=revoke_ts)
+
+        # Token issued after revoke -> valid
+        assert tm.is_token_valid(user_id=user_id, token_nbf_time=revoke_ts + 1)
 
 
 def test_delete_all_rules(db_setup):
