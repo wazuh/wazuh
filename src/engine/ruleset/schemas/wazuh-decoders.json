@@ -1727,6 +1727,12 @@
             "string"
           ]
         },
+        "enrichments.indicator.feed.name": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nName of the feed that supplied the indicator.",
+          "type": [
+            "string"
+          ]
+        },
         "enrichments.indicator.first_seen": {
           "description": "Module: ecs\nIndexerType: date\n\nDate/time indicator was first reported.",
           "type": [
