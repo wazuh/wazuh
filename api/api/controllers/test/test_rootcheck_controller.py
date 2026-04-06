@@ -47,6 +47,7 @@ async def test_put_rootcheck(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
     mock_remove.assert_called_once_with(f_kwargs)
     assert isinstance(result, ConnexionResponse)
 
+    # test comment
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("mock_request", ["rootcheck_controller"], indirect=True)

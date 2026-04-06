@@ -35,6 +35,8 @@ async def put_rootcheck(agents_list: str = '*', pretty: bool = False,
     """
     f_kwargs = {'agent_list': agents_list}
 
+    # test comment
+
     dapi = DistributedAPI(f=rootcheck.run,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
