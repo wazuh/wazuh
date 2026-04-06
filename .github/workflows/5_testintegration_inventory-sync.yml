@@ -2,13 +2,6 @@ run-name: Inventory Sync Integration Tests - ${{ github.event.pull_request.numbe
 name: 5.X - Inventory Sync - Integration tests
 
 on:
-  workflow_dispatch:
-    inputs:
-      test_manager:
-        description: "Manager IP for testing (default: 127.0.0.1)"
-        type: string
-        default: "127.0.0.1"
-        required: false
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
@@ -16,10 +9,16 @@ on:
       - 'src/shared_modules/utils/flatbuffers/**'
       - '.github/workflows/5_testintegration_inventory-sync.yml'
       - 'src/shared_modules/indexer_connector/**'
+  workflow_dispatch:
+    inputs:
+      test_manager:
+        description: "Manager IP for testing (default: 127.0.0.1)"
+        type: string
+        default: "127.0.0.1"
+        required: false
 
-# Ensures only one instance of this workflow is running per PR
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
