@@ -4,6 +4,7 @@ test_name: GET /rootcheck/001/last_scan
 stages:
 
   # GET /rootcheck/001/last_scan
+  # TEST COMMENT
   - name: Get when the last scan for agent 001 started and ended
     request:
       verify: False
