@@ -592,6 +592,11 @@ class TokenManager(RBACManager):
     This class provides all the methods needed for the administration of the TokenBlacklist objects.
     """
 
+    @staticmethod
+    def _normalize_timestamp(timestamp: int) -> int:
+        """Normalize persisted timestamps to milliseconds."""
+        return timestamp * 1000 if timestamp < 10_000_000_000 else timestamp
+
     def is_token_valid(self, token_nbf_time: int, user_id: int = None, role_id: int = None,
                        run_as: bool = False) -> bool:
         """Check if the specified token is valid.
@@ -616,9 +621,14 @@ class TokenManager(RBACManager):
             user_rule = self.session.scalars(select(UsersTokenBlacklist).filter_by(user_id=user_id).limit(1)).first()
             role_rule = self.session.scalars(select(RolesTokenBlacklist).filter_by(role_id=role_id).limit(1)).first()
             runas_rule = self.session.query(RunAsTokenBlacklist).first()
-            return (not user_rule or (token_nbf_time > user_rule.nbf_invalid_until)) and \
-                   (not role_rule or (token_nbf_time > role_rule.nbf_invalid_until)) and \
-                   (not run_as or (not runas_rule or (token_nbf_time > runas_rule.nbf_invalid_until)))
+
+            user_nbf_invalid_until = self._normalize_timestamp(user_rule.nbf_invalid_until) if user_rule else None
+            role_nbf_invalid_until = self._normalize_timestamp(role_rule.nbf_invalid_until) if role_rule else None
+            runas_nbf_invalid_until = self._normalize_timestamp(runas_rule.nbf_invalid_until) if runas_rule else None
+
+            return (not user_rule or (token_nbf_time > user_nbf_invalid_until)) and \
+                   (not role_rule or (token_nbf_time > role_nbf_invalid_until)) and \
+                   (not run_as or (not runas_rule or (token_nbf_time > runas_nbf_invalid_until)))
         except IntegrityError:
             return True
 
@@ -710,19 +720,24 @@ class TokenManager(RBACManager):
             users_tokens_in_blacklist = self.session.scalars(select(UsersTokenBlacklist)).all()
             for user_token in users_tokens_in_blacklist:
                 token_rule = self.session.query(UsersTokenBlacklist).filter_by(user_id=user_token.user_id)
-                if token_rule.first() and current_time > token_rule.first().is_valid_until:
+                rule = token_rule.first()
+                if rule and current_time > self._normalize_timestamp(rule.is_valid_until):
                     token_rule.delete()
                     self.session.commit()
                     list_users.append(user_token.user_id)
+
             roles_tokens_in_blacklist = self.session.scalars(select(RolesTokenBlacklist)).all()
             for role_token in roles_tokens_in_blacklist:
                 token_rule = self.session.query(RolesTokenBlacklist).filter_by(role_id=role_token.role_id)
-                if token_rule.first() and current_time > token_rule.first().is_valid_until:
+                rule = token_rule.first()
+                if rule and current_time > self._normalize_timestamp(rule.is_valid_until):
                     token_rule.delete()
                     self.session.commit()
                     list_roles.append(role_token.role_id)
+
             runas_token_in_blacklist = self.session.query(RunAsTokenBlacklist).first()
-            if runas_token_in_blacklist and runas_token_in_blacklist.to_dict()['is_valid_until'] < current_time:
+            if runas_token_in_blacklist and \
+                    self._normalize_timestamp(runas_token_in_blacklist.is_valid_until) < current_time:
                 self.session.delete(runas_token_in_blacklist)
                 self.session.commit()
 

@@ -184,15 +184,14 @@ def generate_token(user_id: str = None, data: dict = None, auth_context: dict = 
                           logger=logging.getLogger('wazuh-api')
                           )
     result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).dikt
-    timestamp = int(core_utils.get_utc_now().timestamp())
-    timestamp_ms = int(core_utils.get_utc_now().timestamp() * 1000)
+    now = core_utils.get_utc_now().timestamp()
+    timestamp = int(now)
 
     payload = {
                   "iss": JWT_ISSUER,
                   "aud": "Wazuh API REST",
-                  "nbf": timestamp,
+                  "nbf": now,
                   "exp": timestamp + result['auth_token_exp_timeout'],
-                  "nbf_ms": timestamp_ms,
                   "sub": str(user_id),
                   "run_as": auth_context is not None,
                   "rbac_roles": data['roles'],
@@ -216,7 +215,7 @@ def check_token(username: str, roles: tuple, token_nbf_time: int, run_as: bool) 
     roles : tuple
         Tuple of roles related with the current token.
     token_nbf_time : int
-        Issued at time of the current token.
+        Issued at time of the current token (milliseconds).
     run_as : bool
         Indicate if the token has been granted through authorization context endpoint.
 
@@ -273,7 +272,7 @@ def decode_token(token: str) -> dict:
         # Check token and add processed policies in the Master node
         dapi = DistributedAPI(f=check_token,
                               f_kwargs={'username': payload['sub'],
-                                        'roles': tuple(payload['rbac_roles']), 'token_nbf_time': payload['nbf_ms'],
+                                        'roles': tuple(payload['rbac_roles']), 'token_nbf_time': int(payload['nbf'] * 1000),
                                         'run_as': payload['run_as'], 'origin_node_type': read_config()['node_type']},
                               request_type='local_master',
                               is_async=False,
@@ -299,7 +298,7 @@ def decode_token(token: str) -> dict:
         current_rbac_mode = result['rbac_mode']
         current_expiration_time = result['auth_token_exp_timeout']
         if payload['rbac_policies']['rbac_mode'] != current_rbac_mode \
-                or (payload['exp'] - payload['nbf']) != current_expiration_time:
+                or (payload['exp'] - int(payload['nbf'])) != current_expiration_time:
             raise Unauthorized(EXPIRED_TOKEN)
 
         return payload
