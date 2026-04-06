@@ -303,8 +303,8 @@ namespace InventorySyncQueryBuilder
     /// @param agentId        Agent ID to match
     /// @param packageName    Package name to match
     /// @param packageVersion Package version to match
-    /// @param packagePath    Package path/location to match (package.path)
-    /// @param packageType    Package type/format to match (package.type)
+    /// @param packagePath    Package path/location to match (package.path). Empty means missing field.
+    /// @param packageType    Package type/format to match (package.type). Empty means missing field.
     /// @param size           Maximum number of results to return
     /// @param searchAfter    Optional search_after value for pagination [_id]
     /// @return JSON search query body with bool query and sort
@@ -316,19 +316,36 @@ namespace InventorySyncQueryBuilder
                                            std::size_t size,
                                            const std::string& searchAfter = "")
     {
-        nlohmann::json query = {// Only fetch vulnerability.id; _id is part of hit metadata
-                                {"_source", nlohmann::json::array({"vulnerability.id"})},
-                                {"size", size},
-                                {"query", {{"bool", {{"must", nlohmann::json::array()}}}}},
-                                {"sort", {{{"_id", {{"order", "asc"}}}}}}};
+        nlohmann::json query = {
+            // Only fetch vulnerability.id; _id is part of hit metadata
+            {"_source", nlohmann::json::array({"vulnerability.id"})},
+            {"size", size},
+            {"query", {{"bool", {{"must", nlohmann::json::array()}, {"must_not", nlohmann::json::array()}}}}},
+            {"sort", {{{"_id", {{"order", "asc"}}}}}}};
 
         auto& must = query["query"]["bool"]["must"];
+        auto& mustNot = query["query"]["bool"]["must_not"];
 
         must.push_back({{"term", {{"wazuh.agent.id", agentId}}}});
         must.push_back({{"term", {{"package.name", packageName}}}});
         must.push_back({{"term", {{"package.version", packageVersion}}}});
-        must.push_back({{"term", {{"package.path", packagePath}}}});
-        must.push_back({{"term", {{"package.type", packageType}}}});
+        if (packagePath.empty())
+        {
+            mustNot.push_back({{"exists", {{"field", "package.path"}}}});
+        }
+        else
+        {
+            must.push_back({{"term", {{"package.path", packagePath}}}});
+        }
+
+        if (packageType.empty())
+        {
+            mustNot.push_back({{"exists", {{"field", "package.type"}}}});
+        }
+        else
+        {
+            must.push_back({{"term", {{"package.type", packageType}}}});
+        }
 
         if (!searchAfter.empty())
         {
