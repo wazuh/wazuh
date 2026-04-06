@@ -7,10 +7,10 @@ nodes:
     - name: wazuh.master
       ip: wazuh.master
       node_type: master
-    - name: wazuh.worker
+    - name: wazuh.worker1
       ip: wazuh.worker
       node_type: worker
-    - name: wazuh2.worker
+    - name: wazuh.worker2
       ip: wazuh2.worker
       node_type: worker
   dashboard:

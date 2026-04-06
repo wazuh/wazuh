@@ -28,9 +28,9 @@ else
     python3 /scripts/xml_parser.py /var/wazuh-manager/etc/wazuh-manager.conf /scripts/worker_wazuh-manager_conf.xml
 fi
 
-sed -i "s:wazuh_db.debug=0:wazuh_db.debug=2:g" /var/wazuh-manager/etc/internal_options.conf
-sed -i "s:authd.debug=0:authd.debug=2:g" /var/wazuh-manager/etc/internal_options.conf
-sed -i "s:remoted.debug=0:remoted.debug=2:g" /var/wazuh-manager/etc/internal_options.conf
+echo "wazuh_db.debug=2" >> /var/wazuh-manager/etc/wazuh-manager-internal-options.conf
+echo "authd.debug=2" >> /var/wazuh-manager/etc/wazuh-manager-internal-options.conf
+echo "remoted.debug=2" >> /var/wazuh-manager/etc/wazuh-manager-internal-options.conf
 
 # Set proper permissions
 chmod 500 /var/wazuh-manager/etc/certs

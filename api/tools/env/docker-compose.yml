@@ -1,15 +1,15 @@
 services:
-    wazuh-base:
+    wazuh.base:
         build:
             context: ./wazuh-base
             args:
                 WAZUH_BRANCH: ${WAZUH_BRANCH}
         pull_policy: never
-        image: dev-wazuh-base
+        image: wazuh-base
         networks:
-            - wazuh-net
+            - wazuh.net
 
-    certs-generator:
+    certs.generator:
         build:
             context: ./certs-generator
         image: wazuh-certs-generator
@@ -17,10 +17,10 @@ services:
         volumes:
             - wazuh-certs:/certificates
             - ./config/wazuh_dashboard_certs:/export/dashboard
-            - ./certs-generator/config.yml:/config/config.yml:ro
+            - ./certs-generator/config.yml:/tmp/config.yml:ro
         restart: "no"
         networks:
-            - wazuh-net
+            - wazuh.net
 
     wazuh.indexer:
         image: quay.io/wazuh/wazuh-indexer:5.0.0-0
@@ -29,7 +29,7 @@ services:
         ports:
             - "9200:9200"
         networks:
-            wazuh-net:
+            wazuh.net:
                 aliases:
                     - wazuh.indexer
         volumes:
@@ -39,7 +39,7 @@ services:
         environment:
             - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
         depends_on:
-            certs-generator:
+            certs.generator:
                 condition: service_completed_successfully
         healthcheck:
             test: ["CMD", "curl", "-k", "-u", "admin:admin", "https://localhost:9200/_cluster/health"]
@@ -53,10 +53,10 @@ services:
             context: ./wazuh-manager
             target: server
         pull_policy: never
-        image: dev-wazuh-manager
+        image: wazuh-manager-img
         hostname: wazuh.master
         networks:
-            - wazuh-net
+            - wazuh.net
         ports:
             - "55050:55000"
         volumes:
@@ -76,15 +76,17 @@ services:
         depends_on:
             wazuh.indexer:
                 condition: service_healthy
-            wazuh-base:
+            wazuh.base:
                 condition: service_started
 
-    wazuh.worker:
-        image: dev-wazuh-manager
-        hostname: wazuh.worker
+    wazuh.worker1:
+        image: wazuh-manager-img
+        hostname: wazuh.worker1
         pull_policy: never
         networks:
-            - wazuh-net
+            wazuh.net:
+                aliases:
+                    - wazuh.worker
         volumes:
             - wazuh-certs:/var/wazuh-manager/etc/certs
             - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/wazuh-manager/framework/scripts
@@ -95,20 +97,22 @@ services:
             wazuh.master:
                 condition: service_started
         environment:
-            NODE_NAME: "wazuh.worker"
+            NODE_NAME: "wazuh.worker1"
         ports:
             - "55051:55000"
         entrypoint:
             - /scripts/entrypoint.sh
-            - wazuh.worker
+            - wazuh.worker1
             - worker
 
-    wazuh2.worker:
-        image: dev-wazuh-manager
-        hostname: wazuh.worker
+    wazuh.worker2:
+        image: wazuh-manager-img
+        hostname: wazuh.worker2
         pull_policy: never
         networks:
-            - wazuh-net
+            wazuh.net:
+                aliases:
+                    - wazuh2.worker
         volumes:
             - wazuh-certs:/var/wazuh-manager/etc/certs
             - ${WAZUH_LOCAL_PATH}/framework/scripts:/var/wazuh-manager/framework/scripts
@@ -119,47 +123,49 @@ services:
             wazuh.master:
                 condition: service_started
         environment:
-            NODE_NAME: "wazuh2.worker"
+            NODE_NAME: "wazuh.worker2"
         ports:
             - "55052:55000"
         entrypoint:
             - /scripts/entrypoint.sh
-            - wazuh2.worker
+            - wazuh.worker2
             - worker
 
-    nginx-lb:
+    nginx.lb:
         build:
             context: ./nginx-lb
-        image: dev-nginx-lb
+        image: nginx.lb
         pull_policy: never
         restart: on-failure:5
         ports:
             - "1514:1514"
         networks:
-            - wazuh-net
+            wazuh.net:
+                aliases:
+                    - nginx.lb
         depends_on:
             wazuh.master:
                 condition: service_started
-            wazuh.worker:
+            wazuh.worker1:
                 condition: service_started
-            wazuh2.worker:
+            wazuh.worker2:
                 condition: service_started
         entrypoint:
             - /scripts/entrypoint.sh
 
-    wazuh-agent:
+    wazuh.agent:
         build:
             context: ./wazuh-agent
-        image: dev-wazuh-agent
+        image: wazuh-agent
         pull_policy: never
         networks:
-            - wazuh-net
+            - wazuh.net
         entrypoint:
             - /scripts/entrypoint.sh
-            - nginx-lb
+            - nginx.lb
             - ${WAZUH_VERSION}
         depends_on:
-            nginx-lb:
+            nginx.lb:
                 condition: service_started
 
     wazuh.dashboard:
@@ -167,7 +173,7 @@ services:
         container_name: wazuh.dashboard
         hostname: wazuh.dashboard
         networks:
-            - wazuh-net
+            - wazuh.net
         ports:
             - "443:5601"
         volumes:
@@ -184,5 +190,5 @@ volumes:
   wazuh-dashboard-custom:
 
 networks:
-  wazuh-net:
+  wazuh.net:
     driver: bridge
