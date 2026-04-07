@@ -24,11 +24,11 @@ private:
 
 public:
     Impl(const nlohmann::json& config,
-         std::string queueId,
-         std::string basePath,
          const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
-             logFunction)
-        : m_impl(config, logFunction, std::move(queueId), std::move(basePath))
+             logFunction,
+         std::string queueId,
+         std::string basePath)
+        : m_impl(config, logFunction, std::move(queueId), nullptr, nullptr, std::move(basePath))
     {
     }
 
@@ -99,7 +99,7 @@ IndexerConnectorAsync::IndexerConnectorAsync(
     const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
         logFunction,
     std::string basePath)
-    : m_impl(std::make_unique<Impl>(config, std::move(queueId), std::move(basePath), logFunction))
+    : m_impl(std::make_unique<Impl>(config, logFunction, std::move(queueId), std::move(basePath)))
 {
 }
 

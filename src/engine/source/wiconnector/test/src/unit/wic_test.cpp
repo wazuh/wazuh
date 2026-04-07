@@ -5,7 +5,6 @@
 
 #include <base/logging.hpp>
 #include <chrono>
-#include <filesystem>
 #include <thread>
 
 class WIndexerConnectorTest : public ::testing::Test

@@ -296,10 +296,10 @@ public:
      *
      * @param config Indexer configuration, including servers and SSL settings.
      * @param queueId Identifier for this connector instance. Combined with basePath to form
-     *                the RocksDB queue directory: basePath + queueId.
+     *                the RocksDB queue directory: basePath / queueId.
      *                Must be unique per instance to guarantee queue isolation.
-     * @param basePath Base directory for the RocksDB queue. Defaults to "queue/indexer/".
      * @param logFunction Callback function to be called when trying to log a message.
+     * @param basePath Base directory for the RocksDB queue. Defaults to "queue/indexer/".
      */
     explicit IndexerConnectorAsync(
         const nlohmann::json& config,

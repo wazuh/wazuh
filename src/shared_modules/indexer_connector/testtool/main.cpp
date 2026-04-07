@@ -1,7 +1,6 @@
 #include "cmdArgParser.hpp"
 #include "logging_helper.h"
 #include <chrono>
-#include <filesystem>
 #include <indexerConnector.hpp>
 #include <iomanip>
 #include <iostream>
@@ -160,8 +159,94 @@ int main(const int argc, const char* argv[])
             }
         };
 
-        // Create IndexerConnector (sync or async)
         const bool useAsync = cmdArgParser.getAsyncMode();
+
+        // Multi-instance mode: enabled when -I is given together with -m async.
+        // Each instance gets its own isolated RocksDB queue: queue/indexer/tool-1, tool-2, ...
+        const auto& extraConfigs = cmdArgParser.getExtraConfigPaths();
+        if (useAsync && !extraConfigs.empty())
+        {
+            std::vector<std::pair<std::string, std::string>> instanceDefs; // (configPath, queueId)
+            instanceDefs.push_back({cmdArgParser.getConfigurationFilePath(), "tool-1"});
+            for (size_t i = 0; i < extraConfigs.size(); ++i)
+                instanceDefs.push_back({extraConfigs[i], "tool-" + std::to_string(i + 2)});
+
+            std::cout << "Creating " << instanceDefs.size() << " IndexerConnectorAsync instances...\n";
+
+            std::vector<std::unique_ptr<IndexerConnectorAsync>> connectors;
+            std::vector<std::string> indexNames;
+            for (const auto& [cfgPath, queueId] : instanceDefs)
+            {
+                std::ifstream cfgFile(cfgPath);
+                if (!cfgFile.is_open())
+                    throw std::runtime_error("Could not open configuration file: " + cfgPath);
+                const auto cfg = nlohmann::json::parse(cfgFile);
+
+                connectors.push_back(std::make_unique<IndexerConnectorAsync>(cfg, queueId, loggingFunction));
+
+                std::string idxName = "wazuh-test";
+                if (cfg.contains("index") && cfg["index"].is_string())
+                    idxName = cfg["index"].get<std::string>();
+                indexNames.push_back(idxName);
+
+                std::cout << "  [" << queueId << "] config=" << cfgPath << ", index=" << idxName
+                          << ", queue=queue/indexer/" << queueId << "\n";
+            }
+
+            if (!cmdArgParser.getEventsFilePath().empty())
+            {
+                std::ifstream eventsFile(cmdArgParser.getEventsFilePath());
+                if (!eventsFile.is_open())
+                    throw std::runtime_error("Could not open events file.");
+                const nlohmann::json events = nlohmann::json::parse(eventsFile);
+
+                std::cerr << "Indexing " << events.size() << " events to each of " << connectors.size()
+                          << " instances...\n";
+                for (size_t ci = 0; ci < connectors.size(); ++ci)
+                {
+                    size_t idx = 0;
+                    for (const auto& event : events)
+                        connectors[ci]->index("doc-" + std::to_string(idx++), indexNames[ci], event.dump());
+                }
+
+                std::cout << "Waiting for all async queues to drain...\n";
+                const auto waitInterval = std::chrono::milliseconds(100);
+                int retries = 1;
+                const int timeout = static_cast<int>(events.size() / 1000 * 10000);
+                const int effectiveTimeout = timeout > 0 ? timeout : 5000;
+                int cumulativeWait = 0;
+                while (true)
+                {
+                    size_t totalPending = 0;
+                    for (const auto& c : connectors) totalPending += c->getQueueSize();
+                    if (totalPending == 0)
+                        break;
+                    std::this_thread::sleep_for(waitInterval * retries);
+                    cumulativeWait += static_cast<int>(waitInterval.count()) * retries;
+                    if (cumulativeWait > effectiveTimeout)
+                    {
+                        std::cerr << "Timeout waiting for async queues. Remaining:";
+                        for (size_t ci = 0; ci < connectors.size(); ++ci)
+                            std::cerr << " " << instanceDefs[ci].second << "=" << connectors[ci]->getQueueSize();
+                        std::cerr << "\n";
+                        break;
+                    }
+                    ++retries;
+                }
+                std::cerr << "Done!\n";
+            }
+
+            if (cmdArgParser.getWaitTime() > 0)
+                std::this_thread::sleep_for(std::chrono::seconds(cmdArgParser.getWaitTime()));
+            else
+            {
+                std::cout << "Press enter to stop the indexer connector tool...\n";
+                std::cin.get();
+            }
+            return 0;
+        }
+
+        // Create IndexerConnector (sync or async) — single instance
         std::unique_ptr<IndexerConnectorSync> syncConnector;
         std::unique_ptr<IndexerConnectorAsync> asyncConnector;
 
