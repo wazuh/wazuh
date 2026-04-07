@@ -1,523 +1,513 @@
 #include <benchmark/benchmark.h>
 
+#include <filesystem>
+#include <fstream>
 #include <memory>
+#include <stdexcept>
 #include <string>
-#include <vector>
 
-#include <base/baseTypes.hpp>
-#include <base/expression.hpp>
+#include <base/dotPath.hpp>
 #include <base/json.hpp>
-#include <base/result.hpp>
 #include <geo/ilocator.hpp>
-#include <geo/imanager.hpp>
 
-#include "builders/enrichment/enrichment.hpp"
+#include "dbHandle.hpp"
+#include "dbInstance.hpp"
+#include "locator.hpp"
 
 namespace
 {
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Lightweight stub locators for benchmarking (no gmock overhead)
+// IPs present in the test MMDB
+// ─────────────────────────────────────────────────────────────────────────────
+
+constexpr const char* IP_FOUND = "1.2.3.4";
+constexpr const char* IP_FOUND2 = "1.2.3.5";
+constexpr const char* IP_NOT_FOUND = "1.2.3.6";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fixture: build a real Locator once per benchmark run
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * @brief Stub City locator that returns pre-canned geo data for a known IP.
- */
-class StubCityLocator : public geo::ILocator
-{
-public:
-    geo::Result<std::string> getString(const std::string& ip, const DotPath& path) override
-    {
-        if (ip != "1.2.3.4")
-            return geo::ErrorCode::IP_NOT_FOUND;
-
-        const auto p = path.str();
-        if (p == "city.names.en")
-            return std::string {"London"};
-        if (p == "continent.code")
-            return std::string {"EU"};
-        if (p == "continent.names.en")
-            return std::string {"Europe"};
-        if (p == "country.iso_code")
-            return std::string {"GB"};
-        if (p == "country.names.en")
-            return std::string {"United Kingdom"};
-        if (p == "postal.code")
-            return std::string {"EC1A"};
-        if (p == "location.time_zone")
-            return std::string {"Europe/London"};
-        if (p == "subdivisions.0.iso_code")
-            return std::string {"ENG"};
-        if (p == "subdivisions.0.names.en")
-            return std::string {"England"};
-
-        return geo::ErrorCode::DATA_ENTRY_EMPTY;
-    }
-
-    geo::Result<uint32_t> getUint32(const std::string& /*ip*/, const DotPath& /*path*/) override
-    {
-        return geo::ErrorCode::DATA_TYPE_MISMATCH;
-    }
-
-    geo::Result<double> getDouble(const std::string& ip, const DotPath& path) override
-    {
-        if (ip != "1.2.3.4")
-            return geo::ErrorCode::IP_NOT_FOUND;
-
-        const auto p = path.str();
-        if (p == "location.latitude")
-            return 51.5074;
-        if (p == "location.longitude")
-            return -0.1278;
-
-        return geo::ErrorCode::DATA_ENTRY_EMPTY;
-    }
-
-    geo::Result<json::Json> getAsJson(const std::string& /*ip*/, const DotPath& /*path*/) override
-    {
-        return geo::ErrorCode::DATA_TYPE_MISMATCH;
-    }
-
-    geo::Result<json::Json> getAll(const std::string& /*ip*/) override { return geo::ErrorCode::DATA_TYPE_MISMATCH; }
-};
-
-/**
- * @brief Stub ASN locator that returns pre-canned AS data for a known IP.
- */
-class StubAsnLocator : public geo::ILocator
-{
-public:
-    geo::Result<std::string> getString(const std::string& ip, const DotPath& path) override
-    {
-        if (ip != "1.2.3.4")
-            return geo::ErrorCode::IP_NOT_FOUND;
-
-        if (path.str() == "autonomous_system_organization")
-            return std::string {"Example ISP"};
-
-        return geo::ErrorCode::DATA_ENTRY_EMPTY;
-    }
-
-    geo::Result<uint32_t> getUint32(const std::string& ip, const DotPath& path) override
-    {
-        if (ip != "1.2.3.4")
-            return geo::ErrorCode::IP_NOT_FOUND;
-
-        if (path.str() == "autonomous_system_number")
-            return uint32_t {12345};
-
-        return geo::ErrorCode::DATA_ENTRY_EMPTY;
-    }
-
-    geo::Result<double> getDouble(const std::string& /*ip*/, const DotPath& /*path*/) override
-    {
-        return geo::ErrorCode::DATA_TYPE_MISMATCH_DOUBLE;
-    }
-
-    geo::Result<json::Json> getAsJson(const std::string& /*ip*/, const DotPath& /*path*/) override
-    {
-        return geo::ErrorCode::DATA_TYPE_MISMATCH;
-    }
-
-    geo::Result<json::Json> getAll(const std::string& /*ip*/) override { return geo::ErrorCode::DATA_TYPE_MISMATCH; }
-};
-
-/**
- * @brief Stub locator that always returns errors (no data for any IP).
- */
-class StubEmptyLocator : public geo::ILocator
-{
-public:
-    geo::Result<std::string> getString(const std::string& /*ip*/, const DotPath& /*path*/) override
-    {
-        return geo::ErrorCode::IP_NOT_FOUND;
-    }
-    geo::Result<uint32_t> getUint32(const std::string& /*ip*/, const DotPath& /*path*/) override
-    {
-        return geo::ErrorCode::IP_NOT_FOUND;
-    }
-    geo::Result<double> getDouble(const std::string& /*ip*/, const DotPath& /*path*/) override
-    {
-        return geo::ErrorCode::IP_NOT_FOUND;
-    }
-    geo::Result<json::Json> getAsJson(const std::string& /*ip*/, const DotPath& /*path*/) override
-    {
-        return geo::ErrorCode::IP_NOT_FOUND;
-    }
-    geo::Result<json::Json> getAll(const std::string& /*ip*/) override { return geo::ErrorCode::IP_NOT_FOUND; }
-};
-
-/**
- * @brief Stub GeoIP manager that hands out the given locators.
- */
-class StubGeoManager : public geo::IManager
-{
-    std::shared_ptr<geo::ILocator> m_city;
-    std::shared_ptr<geo::ILocator> m_asn;
-
-public:
-    StubGeoManager(std::shared_ptr<geo::ILocator> city, std::shared_ptr<geo::ILocator> asn)
-        : m_city(std::move(city))
-        , m_asn(std::move(asn))
-    {
-    }
-
-    std::vector<geo::DbInfo> listDbs() const override { return {}; }
-
-    geo::Result<std::shared_ptr<geo::ILocator>> getLocator(geo::Type type) const override
-    {
-        if (type == geo::Type::CITY)
-            return m_city;
-        if (type == geo::Type::ASN)
-            return m_asn;
-        return geo::ErrorCode::DB_TYPE_NOT_AVAILABLE;
-    }
-
-    void remoteUpsert(const std::string& /*manifestUrl*/,
-                      const std::string& /*cityPath*/,
-                      const std::string& /*asnPath*/) override
-    {
-    }
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper: create a mapping config JSON document
-// ─────────────────────────────────────────────────────────────────────────────
-
-json::Json makeMappingConfig(bool withGeo, bool withAs)
-{
-    std::string inner = "{";
-    bool first = true;
-    if (withGeo)
-    {
-        inner += R"("geo_field": "source.geo")";
-        first = false;
-    }
-    if (withAs)
-    {
-        if (!first)
-            inner += ",";
-        inner += R"("as_field": "source.as")";
-    }
-    inner += "}";
-
-    auto doc = fmt::format(R"({{"source.ip": {}}})", inner);
-    return json::Json {doc.c_str()};
-}
-
-/**
- * @brief Helper: build the enrichment expression once, then benchmark applying it.
- */
-base::Expression buildEnrichmentExpr(const std::shared_ptr<geo::IManager>& mgr, const json::Json& configDoc, bool trace)
-{
-    auto enrichBuilder = builder::builders::enrichment::getGeoEnrichmentBuilder(mgr, configDoc);
-    auto [expr, name] = enrichBuilder(trace);
-    return expr;
-}
-
-/**
- * @brief Create a sample event JSON with the given IP at "source.ip".
- */
-base::Event makeEvent(const std::string& ip)
-{
-    auto ev = std::make_shared<json::Json>(
-        fmt::format(R"({{"source":{{"ip":"{}"}}, "event":{{"original":"test"}}}})", ip).c_str());
-    return ev;
-}
-
-/**
- * @brief Create a sample event JSON with no IP field.
- */
-base::Event makeEventNoIp()
-{
-    auto ev = std::make_shared<json::Json>(R"({"source":{}, "event":{"original":"test"}})");
-    return ev;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Expression evaluator (mirrors the one used in builder component tests)
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * @brief Walk the expression graph and execute every Term on the event.
+ * @brief Creates a real geo::Locator backed by the project test MMDB file.
  *
- * This mirrors the evalExpression helper used in builder component tests.
- * It handles Term, Chain, Implication, And, Or and Broadcast node types.
+ * The database file is copied to a temporary path (required by the Locator/DbInstance
+ * implementation which uses mmap) and is cleaned up when the returned Locator is
+ * destroyed – the destructor of the DbInstance closes the MMDB handle, and the
+ * temporary file is removed by the RAII wrapper below.
  */
-bool evalExpression(const base::Expression& expression, const base::Event& event)
+struct LocatorFixture
 {
-    if (expression == nullptr)
-        return true;
+    std::string tmpPath;
+    std::shared_ptr<geo::DbHandle> handle;
+    std::shared_ptr<geo::Locator> locator;
 
-    if (expression->isTerm())
+    explicit LocatorFixture(geo::Type type = geo::Type::CITY)
     {
-        auto term = expression->getPtr<base::Term<base::EngineOp>>();
-        return term->getFn()(event).success();
-    }
+        // Copy the test database to a uniquely-named temp file
+        char tpl[] = "/tmp/geo_bench_XXXXXX";
+        int fd = mkstemp(tpl);
+        if (fd == -1)
+            throw std::runtime_error("mkstemp failed");
 
-    if (expression->isChain())
-    {
-        auto op = expression->getPtr<base::Chain>();
-        for (auto& operand : op->getOperands()) evalExpression(operand, event);
-        return true;
-    }
-
-    if (expression->isImplication())
-    {
-        auto op = expression->getPtr<base::Implication>();
-        if (evalExpression(op->getOperands()[0], event))
-            return evalExpression(op->getOperands()[1], event);
-        return false;
-    }
-
-    if (expression->isAnd())
-    {
-        auto op = expression->getPtr<base::And>();
-        for (auto& operand : op->getOperands())
+        tmpPath = std::string(tpl) + ".mmdb";
+        if (std::rename(tpl, tmpPath.c_str()) != 0)
         {
-            if (!evalExpression(operand, event))
-                return false;
+            std::remove(tpl);
+            throw std::runtime_error("rename failed");
         }
-        return true;
-    }
 
-    if (expression->isOr())
-    {
-        auto op = expression->getPtr<base::Or>();
-        for (auto& operand : op->getOperands())
         {
-            if (evalExpression(operand, event))
-                return true;
+            std::ifstream src(MMDB_PATH_TEST, std::ios::binary);
+            if (!src)
+                throw std::runtime_error("Cannot open test MMDB: " MMDB_PATH_TEST);
+            std::ofstream dst(tmpPath, std::ios::binary);
+            dst << src.rdbuf();
         }
-        return false;
+
+        // Build the handle + instance
+        handle = std::make_shared<geo::DbHandle>();
+        handle->store(std::make_shared<geo::DbInstance>(tmpPath, "bench-hash", 0, type));
+        locator = std::make_shared<geo::Locator>(handle);
     }
 
-    if (expression->isBroadcast())
+    ~LocatorFixture()
     {
-        auto op = expression->getPtr<base::Broadcast>();
-        for (auto& operand : op->getOperands()) evalExpression(operand, event);
-        return true;
+        locator.reset();
+        handle.reset();
+        std::filesystem::remove(tmpPath);
     }
 
-    return false;
-}
+    LocatorFixture(const LocatorFixture&) = delete;
+    LocatorFixture& operator=(const LocatorFixture&) = delete;
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Benchmarks
+// getString benchmarks
+// (mirrors: mapGeoToECS city_name, continent_code, country_iso_code, …)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Benchmark: Geo + AS enrichment with a known IP (both succeed), trace OFF.
+ * getString – cache hit path.
+ * The same IP is used every iteration so the MMDB lookup is performed only once;
+ * subsequent calls skip straight to field extraction.
  */
-static void BM_GeoAS_KnownIP_NoTrace(benchmark::State& state)
+static void BM_Locator_getString_CacheHit(benchmark::State& state)
 {
-    auto mgr =
-        std::make_shared<StubGeoManager>(std::make_shared<StubCityLocator>(), std::make_shared<StubAsnLocator>());
-    auto configDoc = makeMappingConfig(true, true);
-    auto expr = buildEnrichmentExpr(mgr, configDoc, false);
+    LocatorFixture fix;
+    const DotPath path {"test_map.test_str1"};
+
+    fix.locator->getString(IP_FOUND, path);
 
     for (auto _ : state)
     {
-        auto ev = makeEvent("1.2.3.4");
-        auto result = evalExpression(expr, ev);
+        auto result = fix.locator->getString(IP_FOUND, path);
         benchmark::DoNotOptimize(result);
-        benchmark::DoNotOptimize(ev);
     }
     state.SetItemsProcessed(state.iterations());
 }
-BENCHMARK(BM_GeoAS_KnownIP_NoTrace);
+BENCHMARK(BM_Locator_getString_CacheHit);
 
 /**
- * Benchmark: Geo + AS enrichment with a known IP (both succeed), trace ON.
+ * getString – cache miss path.
+ * Two IPs alternate every iteration, forcing a fresh MMDB_lookup_string call each time.
  */
-static void BM_GeoAS_KnownIP_Trace(benchmark::State& state)
+static void BM_Locator_getString_CacheMiss(benchmark::State& state)
 {
-    auto mgr =
-        std::make_shared<StubGeoManager>(std::make_shared<StubCityLocator>(), std::make_shared<StubAsnLocator>());
-    auto configDoc = makeMappingConfig(true, true);
-    auto expr = buildEnrichmentExpr(mgr, configDoc, true);
+    LocatorFixture fix;
+    const DotPath path {"test_map.test_str1"};
+    bool toggle = false;
 
     for (auto _ : state)
     {
-        auto ev = makeEvent("1.2.3.4");
-        auto result = evalExpression(expr, ev);
+        const char* ip = toggle ? IP_FOUND : IP_FOUND2;
+        toggle = !toggle;
+        auto result = fix.locator->getString(ip, path);
         benchmark::DoNotOptimize(result);
-        benchmark::DoNotOptimize(ev);
     }
     state.SetItemsProcessed(state.iterations());
 }
-BENCHMARK(BM_GeoAS_KnownIP_Trace);
+BENCHMARK(BM_Locator_getString_CacheMiss);
 
 /**
- * Benchmark: Geo-only enrichment with a known IP, trace OFF.
+ * getString – IP not found in database.
+ * Measures the cost of the not-found error path (IP_TRANSLATION / IP_NOT_FOUND).
  */
-static void BM_GeoOnly_KnownIP_NoTrace(benchmark::State& state)
+static void BM_Locator_getString_NotFound(benchmark::State& state)
 {
-    auto mgr =
-        std::make_shared<StubGeoManager>(std::make_shared<StubCityLocator>(), std::make_shared<StubAsnLocator>());
-    auto configDoc = makeMappingConfig(true, false);
-    auto expr = buildEnrichmentExpr(mgr, configDoc, false);
+    LocatorFixture fix;
+    const DotPath path {"test_map.test_str1"};
 
     for (auto _ : state)
     {
-        auto ev = makeEvent("1.2.3.4");
-        auto result = evalExpression(expr, ev);
+        auto result = fix.locator->getString(IP_NOT_FOUND, path);
         benchmark::DoNotOptimize(result);
-        benchmark::DoNotOptimize(ev);
     }
     state.SetItemsProcessed(state.iterations());
 }
-BENCHMARK(BM_GeoOnly_KnownIP_NoTrace);
+BENCHMARK(BM_Locator_getString_NotFound);
 
 /**
- * Benchmark: AS-only enrichment with a known IP, trace OFF.
+ * getString – field path not found in record (wrong path, but IP is present).
+ * Isolates the MMDB_aget_value miss path from the IP-lookup miss path.
  */
-static void BM_ASOnly_KnownIP_NoTrace(benchmark::State& state)
+static void BM_Locator_getString_FieldNotFound(benchmark::State& state)
 {
-    auto mgr =
-        std::make_shared<StubGeoManager>(std::make_shared<StubCityLocator>(), std::make_shared<StubAsnLocator>());
-    auto configDoc = makeMappingConfig(false, true);
-    auto expr = buildEnrichmentExpr(mgr, configDoc, false);
+    LocatorFixture fix;
+    const DotPath path {"nonexistent_field"};
+
+    fix.locator->getString(IP_FOUND, DotPath {"test_map.test_str1"});
 
     for (auto _ : state)
     {
-        auto ev = makeEvent("1.2.3.4");
-        auto result = evalExpression(expr, ev);
+        auto result = fix.locator->getString(IP_FOUND, path);
         benchmark::DoNotOptimize(result);
-        benchmark::DoNotOptimize(ev);
     }
     state.SetItemsProcessed(state.iterations());
 }
-BENCHMARK(BM_ASOnly_KnownIP_NoTrace);
+BENCHMARK(BM_Locator_getString_FieldNotFound);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// getDouble benchmarks
+// (mirrors: mapGeoToECS location.latitude / location.longitude)
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Benchmark: Geo + AS enrichment with an unknown IP (no data), trace OFF.
+ * getDouble – cache hit path.
  */
-static void BM_GeoAS_UnknownIP_NoTrace(benchmark::State& state)
+static void BM_Locator_getDouble_CacheHit(benchmark::State& state)
 {
-    auto mgr =
-        std::make_shared<StubGeoManager>(std::make_shared<StubCityLocator>(), std::make_shared<StubAsnLocator>());
-    auto configDoc = makeMappingConfig(true, true);
-    auto expr = buildEnrichmentExpr(mgr, configDoc, false);
+    LocatorFixture fix;
+    const DotPath path {"test_double"};
+
+    fix.locator->getDouble(IP_FOUND, path);
 
     for (auto _ : state)
     {
-        auto ev = makeEvent("9.9.9.9");
-        auto result = evalExpression(expr, ev);
+        auto result = fix.locator->getDouble(IP_FOUND, path);
         benchmark::DoNotOptimize(result);
-        benchmark::DoNotOptimize(ev);
     }
     state.SetItemsProcessed(state.iterations());
 }
-BENCHMARK(BM_GeoAS_UnknownIP_NoTrace);
+BENCHMARK(BM_Locator_getDouble_CacheHit);
 
 /**
- * Benchmark: Geo + AS enrichment with an unknown IP (no data), trace ON.
+ * getDouble – cache miss path.
  */
-static void BM_GeoAS_UnknownIP_Trace(benchmark::State& state)
+static void BM_Locator_getDouble_CacheMiss(benchmark::State& state)
 {
-    auto mgr =
-        std::make_shared<StubGeoManager>(std::make_shared<StubCityLocator>(), std::make_shared<StubAsnLocator>());
-    auto configDoc = makeMappingConfig(true, true);
-    auto expr = buildEnrichmentExpr(mgr, configDoc, true);
+    LocatorFixture fix;
+    const DotPath path {"test_double"};
+    bool toggle = false;
 
     for (auto _ : state)
     {
-        auto ev = makeEvent("9.9.9.9");
-        auto result = evalExpression(expr, ev);
+        const char* ip = toggle ? IP_FOUND : IP_FOUND2;
+        toggle = !toggle;
+        auto result = fix.locator->getDouble(ip, path);
         benchmark::DoNotOptimize(result);
-        benchmark::DoNotOptimize(ev);
     }
     state.SetItemsProcessed(state.iterations());
 }
-BENCHMARK(BM_GeoAS_UnknownIP_Trace);
+BENCHMARK(BM_Locator_getDouble_CacheMiss);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// getUint32 benchmarks
+// (mirrors: mapAStoECS autonomous_system_number)
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Benchmark: Missing IP field in event (early exit path), trace OFF.
+ * getUint32 – cache hit path.
  */
-static void BM_GeoAS_MissingIP_NoTrace(benchmark::State& state)
+static void BM_Locator_getUint32_CacheHit(benchmark::State& state)
 {
-    auto mgr =
-        std::make_shared<StubGeoManager>(std::make_shared<StubCityLocator>(), std::make_shared<StubAsnLocator>());
-    auto configDoc = makeMappingConfig(true, true);
-    auto expr = buildEnrichmentExpr(mgr, configDoc, false);
+    LocatorFixture fix;
+    const DotPath path {"test_uint32"};
+
+    fix.locator->getUint32(IP_FOUND, path);
 
     for (auto _ : state)
     {
-        auto ev = makeEventNoIp();
-        auto result = evalExpression(expr, ev);
+        auto result = fix.locator->getUint32(IP_FOUND, path);
         benchmark::DoNotOptimize(result);
-        benchmark::DoNotOptimize(ev);
     }
     state.SetItemsProcessed(state.iterations());
 }
-BENCHMARK(BM_GeoAS_MissingIP_NoTrace);
+BENCHMARK(BM_Locator_getUint32_CacheHit);
 
 /**
- * Benchmark: Missing IP field in event (early exit path), trace ON.
+ * getUint32 – cache miss path.
  */
-static void BM_GeoAS_MissingIP_Trace(benchmark::State& state)
+static void BM_Locator_getUint32_CacheMiss(benchmark::State& state)
 {
-    auto mgr =
-        std::make_shared<StubGeoManager>(std::make_shared<StubCityLocator>(), std::make_shared<StubAsnLocator>());
-    auto configDoc = makeMappingConfig(true, true);
-    auto expr = buildEnrichmentExpr(mgr, configDoc, true);
+    LocatorFixture fix;
+    const DotPath path {"test_uint32"};
+    bool toggle = false;
 
     for (auto _ : state)
     {
-        auto ev = makeEventNoIp();
-        auto result = evalExpression(expr, ev);
+        const char* ip = toggle ? IP_FOUND : IP_FOUND2;
+        toggle = !toggle;
+        auto result = fix.locator->getUint32(ip, path);
         benchmark::DoNotOptimize(result);
-        benchmark::DoNotOptimize(ev);
     }
     state.SetItemsProcessed(state.iterations());
 }
-BENCHMARK(BM_GeoAS_MissingIP_Trace);
+BENCHMARK(BM_Locator_getUint32_CacheMiss);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// getAsJson benchmarks
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Benchmark: Empty locators (DB not available scenario), known IP, trace OFF.
+ * getAsJson – cache hit path, scalar string field.
  */
-static void BM_EmptyLocators_KnownIP_NoTrace(benchmark::State& state)
+static void BM_Locator_getAsJson_Scalar_CacheHit(benchmark::State& state)
 {
-    auto mgr =
-        std::make_shared<StubGeoManager>(std::make_shared<StubEmptyLocator>(), std::make_shared<StubEmptyLocator>());
-    auto configDoc = makeMappingConfig(true, true);
-    auto expr = buildEnrichmentExpr(mgr, configDoc, false);
+    LocatorFixture fix;
+    const DotPath path {"test_map.test_str1"};
+
+    fix.locator->getAsJson(IP_FOUND, path);
 
     for (auto _ : state)
     {
-        auto ev = makeEvent("1.2.3.4");
-        auto result = evalExpression(expr, ev);
+        auto result = fix.locator->getAsJson(IP_FOUND, path);
         benchmark::DoNotOptimize(result);
-        benchmark::DoNotOptimize(ev);
     }
     state.SetItemsProcessed(state.iterations());
 }
-BENCHMARK(BM_EmptyLocators_KnownIP_NoTrace);
+BENCHMARK(BM_Locator_getAsJson_Scalar_CacheHit);
 
 /**
- * Benchmark: Geo + AS enrichment with a known IP stored as array, trace OFF.
- * Tests the fallback path: event->getString(path + "/0")
+ * getAsJson – cache miss path, scalar string field.
  */
-static void BM_GeoAS_ArrayIP_NoTrace(benchmark::State& state)
+static void BM_Locator_getAsJson_Scalar_CacheMiss(benchmark::State& state)
 {
-    auto mgr =
-        std::make_shared<StubGeoManager>(std::make_shared<StubCityLocator>(), std::make_shared<StubAsnLocator>());
-    auto configDoc = makeMappingConfig(true, true);
-    auto expr = buildEnrichmentExpr(mgr, configDoc, false);
+    LocatorFixture fix;
+    const DotPath path {"test_map.test_str1"};
+    bool toggle = false;
 
     for (auto _ : state)
     {
-        auto ev =
-            std::make_shared<json::Json>(R"({"source":{"ip":["1.2.3.4","5.6.7.8"]}, "event":{"original":"test"}})");
-        auto result = evalExpression(expr, ev);
+        const char* ip = toggle ? IP_FOUND : IP_FOUND2;
+        toggle = !toggle;
+        auto result = fix.locator->getAsJson(ip, path);
         benchmark::DoNotOptimize(result);
-        benchmark::DoNotOptimize(ev);
     }
     state.SetItemsProcessed(state.iterations());
 }
-BENCHMARK(BM_GeoAS_ArrayIP_NoTrace);
+BENCHMARK(BM_Locator_getAsJson_Scalar_CacheMiss);
 
-} // anonymous namespace
+// ─────────────────────────────────────────────────────────────────────────────
+// getAll benchmarks
+// (full-record dump – not in the enrichment hot-path but part of ILocator API)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * getAll – cache hit path.
+ * Even though the IP lookup is cached, getAll must walk the full entry-data list and
+ * build a json::Json object, so this measures the serialisation cost alone.
+ */
+static void BM_Locator_getAll_CacheHit(benchmark::State& state)
+{
+    LocatorFixture fix;
+
+    fix.locator->getAll(IP_FOUND);
+
+    for (auto _ : state)
+    {
+        auto result = fix.locator->getAll(IP_FOUND);
+        benchmark::DoNotOptimize(result);
+    }
+    state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_Locator_getAll_CacheHit);
+
+/**
+ * getAll – cache miss path.
+ * Combines a fresh MMDB lookup with a full record dump each iteration.
+ */
+static void BM_Locator_getAll_CacheMiss(benchmark::State& state)
+{
+    LocatorFixture fix;
+    bool toggle = false;
+
+    for (auto _ : state)
+    {
+        const char* ip = toggle ? IP_FOUND : IP_FOUND2;
+        toggle = !toggle;
+        auto result = fix.locator->getAll(ip);
+        benchmark::DoNotOptimize(result);
+    }
+    state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_Locator_getAll_CacheMiss);
+
+/**
+ * getAll – IP not found path.
+ */
+static void BM_Locator_getAll_NotFound(benchmark::State& state)
+{
+    LocatorFixture fix;
+
+    for (auto _ : state)
+    {
+        auto result = fix.locator->getAll(IP_NOT_FOUND);
+        benchmark::DoNotOptimize(result);
+    }
+    state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_Locator_getAll_NotFound);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Enrichment-pattern benchmarks
+// Simulate the exact call sequence executed by mapGeoToECS / mapAStoECS in geo.cpp
+// for a single IP, without the expression-graph overhead.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Full mapGeoToECS call pattern – cache hit.
+ * Calls getString for every city field and getDouble for lat/lon, matching the
+ * order in mapGeoToECS, with the same IP cached across iterations.
+ */
+static void BM_Locator_mapGeoPattern_CacheHit(benchmark::State& state)
+{
+    LocatorFixture fix;
+    const std::string ip {IP_FOUND};
+
+    fix.locator->getString(ip, "test_map.test_str1");
+
+    for (auto _ : state)
+    {
+        // getString calls (11 fields in mapGeoToECS)
+        auto r1 = fix.locator->getString(ip, "test_map.test_str1"); // city_name
+        auto r2 = fix.locator->getString(ip, "test_map.test_str1"); // continent_code
+        auto r3 = fix.locator->getString(ip, "test_map.test_str1"); // continent_name
+        auto r4 = fix.locator->getString(ip, "test_map.test_str1"); // country_iso_code
+        auto r5 = fix.locator->getString(ip, "test_map.test_str1"); // country_name
+        auto r6 = fix.locator->getString(ip, "test_map.test_str1"); // postal_code
+        auto r7 = fix.locator->getString(ip, "test_map.test_str1"); // timezone
+        auto r8 = fix.locator->getString(ip, "test_map.test_str1"); // region_iso_code
+        auto r9 = fix.locator->getString(ip, "test_map.test_str1"); // region_name
+        // getDouble calls (2 fields in mapGeoToECS)
+        auto r10 = fix.locator->getDouble(ip, "test_double"); // latitude
+        auto r11 = fix.locator->getDouble(ip, "test_double"); // longitude
+
+        benchmark::DoNotOptimize(r1);
+        benchmark::DoNotOptimize(r11);
+    }
+    state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_Locator_mapGeoPattern_CacheHit);
+
+/**
+ * Full mapGeoToECS call pattern – cache miss.
+ * Alternates IPs to force an MMDB lookup before each batch of field extractions.
+ */
+static void BM_Locator_mapGeoPattern_CacheMiss(benchmark::State& state)
+{
+    LocatorFixture fix;
+    bool toggle = false;
+
+    for (auto _ : state)
+    {
+        const char* ip = toggle ? IP_FOUND : IP_FOUND2;
+        toggle = !toggle;
+
+        auto r1 = fix.locator->getString(ip, "test_map.test_str1");
+        auto r2 = fix.locator->getString(ip, "test_map.test_str1");
+        auto r3 = fix.locator->getString(ip, "test_map.test_str1");
+        auto r4 = fix.locator->getString(ip, "test_map.test_str1");
+        auto r5 = fix.locator->getString(ip, "test_map.test_str1");
+        auto r6 = fix.locator->getString(ip, "test_map.test_str1");
+        auto r7 = fix.locator->getString(ip, "test_map.test_str1");
+        auto r8 = fix.locator->getString(ip, "test_map.test_str1");
+        auto r9 = fix.locator->getString(ip, "test_map.test_str1");
+        auto r10 = fix.locator->getDouble(ip, "test_double");
+        auto r11 = fix.locator->getDouble(ip, "test_double");
+
+        benchmark::DoNotOptimize(r1);
+        benchmark::DoNotOptimize(r11);
+    }
+    state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_Locator_mapGeoPattern_CacheMiss);
+
+/**
+ * Full mapAStoECS call pattern – cache hit.
+ * Calls getUint32 (AS number) and getString (AS organisation), matching mapAStoECS.
+ */
+static void BM_Locator_mapASPattern_CacheHit(benchmark::State& state)
+{
+    LocatorFixture fix;
+    const std::string ip {IP_FOUND};
+
+    fix.locator->getUint32(ip, "test_uint32");
+
+    for (auto _ : state)
+    {
+        auto r1 = fix.locator->getUint32(ip, "test_uint32");        // autonomous_system_number
+        auto r2 = fix.locator->getString(ip, "test_map.test_str1"); // autonomous_system_organization
+
+        benchmark::DoNotOptimize(r1);
+        benchmark::DoNotOptimize(r2);
+    }
+    state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_Locator_mapASPattern_CacheHit);
+
+/**
+ * Full mapAStoECS call pattern – cache miss.
+ */
+static void BM_Locator_mapASPattern_CacheMiss(benchmark::State& state)
+{
+    LocatorFixture fix;
+    bool toggle = false;
+
+    for (auto _ : state)
+    {
+        const char* ip = toggle ? IP_FOUND : IP_FOUND2;
+        toggle = !toggle;
+
+        auto r1 = fix.locator->getUint32(ip, "test_uint32");
+        auto r2 = fix.locator->getString(ip, "test_map.test_str1");
+
+        benchmark::DoNotOptimize(r1);
+        benchmark::DoNotOptimize(r2);
+    }
+    state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_Locator_mapASPattern_CacheMiss);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Manager::getLocator benchmark
+// (cost of obtaining a new Locator instance from the Manager)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Measures the overhead of Manager::getLocator() – i.e., creating a new
+ * geo::Locator (shared_ptr allocation + shared_lock on the map) without any
+ * subsequent lookup.  Useful to understand the cost paid when a fresh Locator
+ * is requested at pipeline build time.
+ */
+static void BM_Manager_getLocator(benchmark::State& state)
+{
+    LocatorFixture fix;
+
+    for (auto _ : state)
+    {
+        // Directly exercise DbHandle::load() + Locator construction, which is
+        // what Manager::getLocator does internally.
+        auto inst = fix.handle->load();
+        auto locator = std::make_shared<geo::Locator>(fix.handle);
+        benchmark::DoNotOptimize(locator);
+        benchmark::DoNotOptimize(inst);
+    }
+    state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_Manager_getLocator);
+
+} // namespace
 
 BENCHMARK_MAIN();
