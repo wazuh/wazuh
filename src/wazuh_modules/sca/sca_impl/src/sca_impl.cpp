@@ -435,7 +435,7 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
     }
 
     // Log
-    LoggingHelper::getInstance().log(LOG_DEBUG, "Starting SCA synchronization.");
+    LoggingHelper::getInstance().log(LOG_INFO, "Starting SCA synchronization.");
 
     refreshFirstSyncCompletedState();
 
