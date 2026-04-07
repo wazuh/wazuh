@@ -20,7 +20,7 @@ class CMStore : public ICMStore
 {
 
     std::filesystem::path m_baseStoragePath;    ///< Base path for all namespaces
-    std::filesystem::path m_defaultOutputsPath; ///< Default Outputs path for all namespaces
+    std::filesystem::path m_defaultOutputsPath; ///< Base path for local outputs (contains default/ and space dirs)
     std::unordered_map<NamespaceId, std::shared_ptr<ICMstoreNS>>
         m_namespaces;                  ///< Map of NamespaceId to CMStoreNS instances
     mutable std::shared_mutex m_mutex; ///< Mutex for namespaces map access

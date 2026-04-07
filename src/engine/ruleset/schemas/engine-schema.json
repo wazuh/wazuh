@@ -774,6 +774,9 @@
     "enrichments.indicator.confidence": {
       "type": "keyword"
     },
+    "enrichments.indicator.feed.name": {
+      "type": "keyword"
+    },
     "enrichments.indicator.first_seen": {
       "type": "date"
     },
@@ -3270,6 +3273,36 @@
     "rule.category": {
       "type": "keyword"
     },
+    "rule.compliance.cmmc": {
+      "type": "keyword"
+    },
+    "rule.compliance.fedramp": {
+      "type": "keyword"
+    },
+    "rule.compliance.gdpr": {
+      "type": "keyword"
+    },
+    "rule.compliance.hipaa": {
+      "type": "keyword"
+    },
+    "rule.compliance.iso_27001": {
+      "type": "keyword"
+    },
+    "rule.compliance.nis2": {
+      "type": "keyword"
+    },
+    "rule.compliance.nist_800_171": {
+      "type": "keyword"
+    },
+    "rule.compliance.nist_800_53": {
+      "type": "keyword"
+    },
+    "rule.compliance.pci_dss": {
+      "type": "keyword"
+    },
+    "rule.compliance.tsc": {
+      "type": "keyword"
+    },
     "rule.description": {
       "type": "keyword"
     },
@@ -3277,6 +3310,15 @@
       "type": "keyword"
     },
     "rule.license": {
+      "type": "keyword"
+    },
+    "rule.mitre.subtechnique": {
+      "type": "keyword"
+    },
+    "rule.mitre.tactic": {
+      "type": "keyword"
+    },
+    "rule.mitre.technique": {
       "type": "keyword"
     },
     "rule.name": {
@@ -5421,7 +5463,22 @@
     "vulnerability.category": {
       "type": "keyword"
     },
+    "vulnerability.classification": {
+      "type": "keyword"
+    },
+    "vulnerability.description": {
+      "type": "keyword"
+    },
+    "vulnerability.enumeration": {
+      "type": "keyword"
+    },
     "vulnerability.id": {
+      "type": "keyword"
+    },
+    "vulnerability.reference": {
+      "type": "keyword"
+    },
+    "vulnerability.report_id": {
       "type": "keyword"
     },
     "vulnerability.scanner.reference": {
@@ -5431,6 +5488,12 @@
       "type": "keyword"
     },
     "vulnerability.score.base": {
+      "type": "float"
+    },
+    "vulnerability.score.environmental": {
+      "type": "float"
+    },
+    "vulnerability.score.temporal": {
       "type": "float"
     },
     "vulnerability.score.version": {

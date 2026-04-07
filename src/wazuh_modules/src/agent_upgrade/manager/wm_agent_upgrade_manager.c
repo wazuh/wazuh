@@ -277,7 +277,7 @@ STATIC bool initialize_router_functions(void) {
 }
 
 STATIC void* wm_agent_upgrade_router_subscriber_thread(void) {
-    mtinfo(WM_AGENT_UPGRADE_LOGTAG, "Starting router subscriber thread for upgrade notifications");
+    mtdebug1(WM_AGENT_UPGRADE_LOGTAG, "Starting router subscriber thread for upgrade notifications");
 
     if (!initialize_router_functions()) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, "Failed to initialize router functions");
@@ -303,7 +303,7 @@ STATIC void* wm_agent_upgrade_router_subscriber_thread(void) {
         return NULL;
     }
 
-    mtinfo(WM_AGENT_UPGRADE_LOGTAG, "Successfully subscribed to router topic '%s'", topic_name);
+    mtdebug1(WM_AGENT_UPGRADE_LOGTAG, "Successfully subscribed to router topic '%s'", topic_name);
 
     // Register cleanup handlers for thread cancellation/exit
     pthread_cleanup_push((void(*)(void*))router_subscriber_destroy_ptr, subscriber_handle);

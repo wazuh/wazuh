@@ -196,6 +196,23 @@ def init_enrichments_store(env_path: Path):
 
     print("Initialized enrichment stores (geo + ioc)")
 
+
+def init_default_outputs(env_path: Path, test_path: Path):
+    """
+    Initialize the local outputs layout expected by the engine:
+      <env>/outputs/default/*.yml
+    """
+    outputs_base_path = env_path / "outputs"
+    default_outputs_path = outputs_base_path / "default"
+    ruleset_outputs_path = test_path.parents[1] / "ruleset" / "outputs"
+
+    default_outputs_path.mkdir(parents=True, exist_ok=True)
+
+    for output_file in ruleset_outputs_path.glob("*.yml"):
+        copy(output_file, default_outputs_path / output_file.name)
+
+    print(f"Initialized default outputs in '{default_outputs_path}'.")
+
 # ===================================================================
 #  YAML builders (decoders / integrations / filter)
 # ===================================================================
@@ -331,6 +348,9 @@ def init(env_path: Path, test_path: Path):
 
         # Init enrichments store with minimal metadata (only client.ip with as and geo fields, no actual data files)
         init_enrichments_store(env_path)
+
+        # Initialize local default outputs used by production policies
+        init_default_outputs(env_path, test_path)
 
         # Initialize geo databases and store metadata
         print("Initializing geo databases and store...")

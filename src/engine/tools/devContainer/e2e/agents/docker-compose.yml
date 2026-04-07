@@ -1,0 +1,44 @@
+services:
+  agent_4143_rocky8:
+    build:
+      context: ./rpm/4.14.3
+      network: host
+    container_name: wazuh-agent-4143-rocky8
+    hostname: wazuh-agent-4143-rocky8
+    restart: unless-stopped
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    environment:
+      MANAGER_HOST: "host.docker.internal"
+      MANAGER_PORT: "1514"
+      AUTHD_PORT: "1515"
+      AGENT_NAME: "agent-4143-rocky8"
+
+    volumes:
+      - agent_4143_rocky8_var:/var/ossec
+
+  agent_50_rocky8:
+    build:
+      context: ./rpm/5.x
+      network: host
+    container_name: wazuh-agent-50-rocky8
+    hostname: wazuh-agent-50-rocky8
+    restart: unless-stopped
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    environment:
+      MANAGER_HOST: "host.docker.internal"
+      MANAGER_PORT: "1514"
+      AUTHD_PORT: "1515"
+      AGENT_NAME: "agent-50-rocky8"
+
+    volumes:
+      - agent_50_rocky8_var:/var/ossec
+
+volumes:
+  agent_4143_rocky8_var:
+  agent_50_rocky8_var:

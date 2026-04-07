@@ -209,7 +209,7 @@ if(NOT _orig_rpath)
 endif()
 
 set(_new_paths
-  ${CMAKE_SOURCE_DIR}               # For shared libwazuhext.so
+  ${CMAKE_SOURCE_DIR}/build/lib     # For shared libwazuhext.so
   ${ROCKSDB_LIB_BUILD_DIR}          # External precompiled rocksdb lib
   ${INDEXERCONNECTOR_LIB_BUILD_DIR} # Internal precompiled indexer connector lib
   "$ORIGIN/../lib"

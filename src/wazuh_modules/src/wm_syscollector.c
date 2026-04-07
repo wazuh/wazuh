@@ -861,6 +861,12 @@ cJSON* wm_sys_dump(const wm_sys_t* sys)
 
 int wm_sync_message(const char* command, size_t command_len)
 {
+    if (shutdown_process_started)
+    {
+        mtdebug1(WM_SYS_LOGTAG, "Sync message received during shutdown, ignoring");
+        return 0;
+    }
+
     if (enable_synchronization)
     {
         bool ret = false;

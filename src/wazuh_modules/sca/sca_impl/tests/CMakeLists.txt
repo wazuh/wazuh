@@ -14,6 +14,7 @@ include_directories(
   ${SRC_FOLDER}/shared_modules/file_helper/filesystem/tests/mocks
   ${SRC_FOLDER}/shared_modules/file_helper/file_io/tests/mocks
   ${SRC_FOLDER}/shared_modules/utils/tests/mocks
+  ${SRC_FOLDER}/shared_modules/agent_metadata/include
   ${SRC_FOLDER}/data_provider/tests/mocks)
 
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
@@ -122,7 +123,7 @@ add_test(NAME SCAChecksumTest COMMAND sca_checksum_unit_test)
 set_tests_properties(SCAChecksumTest PROPERTIES LABELS "sca")
 
 add_executable(sca_recovery_unit_test sca_recovery_test.cpp)
-target_link_libraries(sca_recovery_unit_test PRIVATE SCAImpl)
+target_link_libraries(sca_recovery_unit_test PRIVATE SCAImpl agent_metadata)
 add_test(NAME SCARecoveryTest COMMAND sca_recovery_unit_test)
 
 set_tests_properties(SCARecoveryTest PROPERTIES LABELS "sca")

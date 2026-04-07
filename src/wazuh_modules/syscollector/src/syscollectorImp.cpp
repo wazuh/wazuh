@@ -537,7 +537,7 @@ void Syscollector::start()
     {
         if (m_logFunction)
         {
-            m_logFunction(LOG_INFO, "Syscollector data clean notification for disabled collectors sent successfully, proceeding to delete data.");
+            m_logFunction(LOG_DEBUG, "Syscollector data clean notification for disabled collectors sent successfully, proceeding to delete data.");
         }
 
         deleteDisableCollectorsData();
@@ -581,7 +581,7 @@ void Syscollector::start()
     // fetchDocumentLimitsFromAgentd() will retry until success or stop signal
     if (m_logFunction)
     {
-        m_logFunction(LOG_INFO, "Attempting to fetch document limits from agentd...");
+        m_logFunction(LOG_DEBUG, "Attempting to fetch document limits from agentd...");
     }
 
     auto limits = fetchDocumentLimitsFromAgentd();
@@ -700,6 +700,11 @@ void Syscollector::destroy()
     {
         m_spSyncProtocolVD->stop();
     }
+
+    // Wait for any ongoing flush() to complete before releasing resources.
+    // flush() holds m_flushMutex for its entire duration; acquiring it here
+    // ensures no thread is inside flush() when we reset m_spSyncProtocol.
+    std::lock_guard<std::mutex> flushLock(m_flushMutex);
 
     if (!scanMutexAvailable)
     {
@@ -2157,12 +2162,12 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
     {
         // Initialize regular sync protocol
         m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
-        m_logFunction(LOG_INFO, "Syscollector sync protocol initialized successfully with database: " + syncDbPath);
+        m_logFunction(LOG_DEBUG, "Syscollector sync protocol initialized successfully with database: " + syncDbPath);
 
         // Initialize VD sync protocol with different module name to avoid routing conflicts
         std::string vdModuleName = moduleName + "_vd";
         m_spSyncProtocolVD = std::make_unique<AgentSyncProtocol>(vdModuleName, syncDbPathVD, mqFuncs, logger_func_vd, syncEndDelay, timeout, retries, maxEps, nullptr);
-        m_logFunction(LOG_INFO, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD + " and module name: " + vdModuleName);
+        m_logFunction(LOG_DEBUG, "Syscollector VD sync protocol initialized successfully with database: " + syncDbPathVD + " and module name: " + vdModuleName);
 
         // Initialize schema validator factory from embedded resources
         auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
@@ -2171,7 +2176,7 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
         {
             if (validatorFactory.initialize())
             {
-                m_logFunction(LOG_INFO, "Schema validator initialized successfully from embedded resources");
+                m_logFunction(LOG_DEBUG, "Schema validator initialized successfully from embedded resources");
             }
             else
             {
@@ -2728,6 +2733,10 @@ void Syscollector::resume()
 
 int Syscollector::flush()
 {
+    // Hold m_flushMutex for the entire flush duration so that destroy()
+    // can wait for this operation to complete before releasing resources.
+    std::lock_guard<std::mutex> flushLock(m_flushMutex);
+
     if (m_logFunction)
     {
         m_logFunction(LOG_INFO, "Syscollector flush requested - syncing pending messages");
@@ -2757,12 +2766,21 @@ int Syscollector::flush()
     }
     else
     {
+        const bool stopping = m_spSyncProtocol->shouldStop();
+
         if (m_logFunction)
         {
-            m_logFunction(LOG_ERROR, "Syscollector flush failed");
+            if (stopping)
+            {
+                m_logFunction(LOG_INFO, "Syscollector flush skipped: module is stopping");
+            }
+            else
+            {
+                m_logFunction(LOG_ERROR, "Syscollector flush failed");
+            }
         }
 
-        return -1;
+        return stopping ? 0 : -1;
     }
 }
 

@@ -76,9 +76,8 @@
         },
 
         "common":{
-            "active_response_polling": 60
+            "active_response_polling": 30
         },
-        
         "communication":{
             "timeout_cluster_request": 20,
             "timeout_dapi_request": 200,

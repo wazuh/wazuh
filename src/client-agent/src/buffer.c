@@ -190,7 +190,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg) {
         }
 
         if (!agt->buffer) {
-            minfo("Dispatch buffer thread received stop signal. Exiting.");
+            mdebug1("Dispatch buffer thread received stop signal. Exiting.");
             w_mutex_unlock(&mutex_lock);
             break;
         }
@@ -262,7 +262,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg) {
         if (buff.normal) {
 
             buff.normal = 0;
-            minfo(NORMAL_BUFFER, normal_level);
+            mdebug1(NORMAL_BUFFER, normal_level);
             snprintf(normal_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", OS_NORMAL_BUFFER);
             send_msg(normal_msg, -1);
         }
@@ -338,7 +338,7 @@ void w_agentd_buffer_free(unsigned int current_capacity) {
     w_cond_signal(&cond_no_empty);
     w_mutex_unlock(&mutex_lock);
 
-    minfo("Client buffer freed successfully.");
+    mdebug1("Client buffer freed successfully.");
 }
 
 int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_capacity) {
@@ -410,7 +410,7 @@ int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_c
             }
         }
 
-        minfo("Successfully copied %u messages to the new buffer.", retained_message_count);
+        mdebug1("Successfully copied %u messages to the new buffer.", retained_message_count);
 
         // Now free everything in the old buffer
         // Loop up to and including 'current_capacity' as the buffer was sized for 'current_capacity + 1' elements.
@@ -432,7 +432,7 @@ int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_c
     os_free(buffer);
     buffer = temp_buffer;
     w_mutex_unlock(&mutex_lock);
-    minfo("Client buffer resized from %u to %u elements.",
-          current_capacity, desired_capacity);
+    mdebug1("Client buffer resized from %u to %u elements.",
+            current_capacity, desired_capacity);
     return 0;
 }

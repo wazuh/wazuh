@@ -471,16 +471,27 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         // Translate DB mode to Schema mode
         const auto protocolMode = toProtocolMode(mode);
 
-        // Try to get metadata from provider - fail if not available
-        has_metadata = (metadata_provider_get(&metadata) == 0);
-
-        // If metadata not available, abort synchronization
-        if (!has_metadata)
+        // Wait until metadata is available or stop is requested
         {
-            m_logger(LOG_WARNING,
-                     "Metadata not available from provider. Agent-info may not be initialized yet. Cannot proceed with "
-                     "synchronization.");
-            return false;
+            bool logged = false;
+            std::unique_lock<std::mutex> lock(m_syncState.mtx);
+
+            while ((has_metadata = (metadata_provider_get(&metadata) == 0)) == false)
+            {
+                if (m_stopRequested.load(std::memory_order_acquire))
+                {
+                    return false;
+                }
+
+                if (!logged)
+                {
+                    m_logger(LOG_DEBUG,
+                             "Metadata not available from provider. Agent-info may not be initialized yet. Waiting...");
+                    logged = true;
+                }
+
+                m_syncState.cv.wait_for(lock, std::chrono::seconds(1));
+            }
         }
 
         // Create groups vector from metadata
@@ -958,7 +969,14 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
             }
         }
 
-        m_logger(LOG_ERROR, "Exceeded maximum retries for End message. Exiting...");
+        if (shouldStop())
+        {
+            m_logger(LOG_INFO, "Sync End message retries exhausted because module is stopping.");
+        }
+        else
+        {
+            m_logger(LOG_ERROR, "Exceeded maximum retries for End message. Exiting...");
+        }
 
         return false;
     }

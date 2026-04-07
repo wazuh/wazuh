@@ -45,6 +45,7 @@ if(ENGINE_BUILD_TEST)
   add_executable(fastqueue_ctest
     ${TEST_SRC_COMPONENT_DIR}/cqueue_test.cpp
     ${TEST_SRC_COMPONENT_DIR}/stdqueue_test.cpp
+    ${TEST_SRC_COMPONENT_DIR}/ratelimiter_test.cpp
   )
 
   target_link_libraries(fastqueue_ctest

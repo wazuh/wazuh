@@ -436,13 +436,11 @@ if [ $1 = 0 ];then
   rm -rf %{_localstatedir}/queue/
   rm -rf %{_localstatedir}/framework/
   rm -rf %{_localstatedir}/api/
-  rm -rf %{_localstatedir}/active-response/
   rm -rf %{_localstatedir}/stats/
   rm -rf %{_localstatedir}/var/
   rm -rf %{_localstatedir}/bin/
   rm -rf %{_localstatedir}/logs/
   rm -rf %{_localstatedir}/tmp
-  rm -rf %{_localstatedir}/wodles/
   rm -rf %{_localstatedir}/data
 
   # Delete audisp wazuh plugin if exists
@@ -537,7 +535,8 @@ rm -fr %{buildroot}
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/agent-template.conf
 %attr(660, wazuh-manager, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/shared/default/*
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs
-%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/*.yml
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/default
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/default/*.yml
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework/python
 %{_localstatedir}/framework/python/*
@@ -572,10 +571,7 @@ rm -fr %{buildroot}
 %attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/wazuh-manager.log
 %attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/wazuh-manager.json
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/api
-%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/archives
-%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/alerts
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/cluster
-%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/firewall
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/wazuh
 %dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files
 %dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts

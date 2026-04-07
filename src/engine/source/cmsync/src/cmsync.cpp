@@ -143,14 +143,16 @@ public:
 CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPtr,
                const std::shared_ptr<cm::crud::ICrudService>& cmcrudPt,
                const std::shared_ptr<::store::IStore>& storePtr,
-               const std::shared_ptr<router::IRouterAPI>& routerPtr)
+               const std::shared_ptr<router::IRouterAPI>& routerPtr,
+               const size_t attemps,
+               const size_t waitSeconds)
     : m_indexerPtr(indexerPtr)
     , m_cmcrudPtr(cmcrudPt)
     , m_store(storePtr)
     , m_router(routerPtr)
     , m_mutex()
-    , m_attemps(3)
-    , m_waitSeconds(5)
+    , m_attemps(attemps)
+    , m_waitSeconds(waitSeconds)
 {
     // Check if is the first setup
     if (storePtr->existsDoc(STORE_NAME_CMSYNC))
@@ -159,7 +161,7 @@ CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPt
         return;
     }
 
-    LOG_INFO("[CMSync] First setup detected, initializing default sync spaces");
+    LOG_DEBUG("[CMSync] First setup detected, initializing default sync spaces");
 
     addSpaceToSync("standard");
     addSpaceToSync("custom");
@@ -345,7 +347,7 @@ void CMSync::addSpaceToSync(std::string_view space)
     // SET Dummy namespace id
     m_namespacesState.back().setNamespaceId(DUMMY_NAMESPACE_ID);
 
-    LOG_INFO("[CMSync] Added space '{}' to the sync list", space);
+    LOG_DEBUG("[CMSync] Added space '{}' to the sync list", space);
 
     dumpStateToStore();
 }

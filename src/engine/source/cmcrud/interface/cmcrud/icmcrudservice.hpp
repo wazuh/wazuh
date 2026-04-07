@@ -96,7 +96,7 @@ public:
      *
      * @param nsId Namespace identifier, to store the imported data.
      * @param jsonDocument JSON string with policy + resources. must end in \0
-     * @param origin Origin space name for the imported namespace.
+     * @param originSpace Origin space name for the imported namespace.
      * @param force If true, skip all validations.
      * @return The imported policy of the namespace.
      * @throws std::runtime_error on errors.
@@ -104,7 +104,7 @@ public:
      */
     virtual cm::store::dataType::Policy importNamespace(const cm::store::NamespaceId& nsId,
                                  std::string_view jsonDocument,
-                                 std::string_view origin,
+                                 std::string_view originSpace,
                                  bool force) = 0;
 
     /**

@@ -108,7 +108,7 @@ jobs:
       AWS_MAX_ATTEMPTS: "10"
       AWS_RETRY_MODE: adaptive
 
-    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'ubuntu-22.04' }}
+    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'wz-linux-amd64' }}
     timeout-minutes: 90
     name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
 
@@ -165,7 +165,7 @@ jobs:
       - name: Download docker image for package building
         timeout-minutes: 20
         run: |
-          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $CONTAINER_NAME ${{ env.TAG }}
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor }} $CONTAINER_NAME ${{ env.TAG }}
 
       - name: Append short commit to VERSION file
         run: |

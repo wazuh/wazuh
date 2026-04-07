@@ -23,6 +23,7 @@ constexpr std::string_view IOC_SYNC_INTERVAL = "analysisd.ioc_sync_interval";
 constexpr std::string_view GEO_SYNC_INTERVAL = "analysisd.geo_sync_interval";
 constexpr std::string_view GEO_DB_PATH = "analysisd.geo_db_path";
 constexpr std::string_view GEO_MANIFEST_URL = "analysisd.geo_manifest_url";
+constexpr std::string_view GEO_DOWNLOAD_TIMEOUT = "analysisd.geo_download_timeout";
 
 constexpr std::string_view INDEXER_HOST = "analysisd.indexer_hosts";
 constexpr std::string_view INDEXER_USER = "analysisd.indexer_username";
@@ -31,6 +32,15 @@ constexpr std::string_view INDEXER_SSL_CA_BUNDLE = "analysisd.indexer_ssl_certif
 constexpr std::string_view INDEXER_SSL_CERTIFICATE = "analysisd.indexer_ssl_certificate";
 constexpr std::string_view INDEXER_SSL_KEY = "analysisd.indexer_ssl_key";
 constexpr std::string_view INDEXER_QUEUE_MAX_EVENTS = "analysisd.indexer_queue_max_events";
+constexpr std::string_view INDEXER_CONNECTOR_MAX_HITS_PER_REQUEST = "analysisd.indexer_connector_max_hits_per_request";
+
+constexpr std::string_view IOC_INDEXER_CONNECTOR_MAX_RETRIES = "analysisd.ioc_indexer_connector_max_retries";
+constexpr std::string_view IOC_INDEXER_CONNECTOR_RETRY_INTERVAL = "analysisd.ioc_indexer_connector_retry_interval";
+constexpr std::string_view IOC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE = "analysisd.ioc_indexer_connector_ioc_sync_batch_size";
+constexpr std::string_view CMSYNC_INDEXER_CONNECTOR_MAX_RETRIES = "analysisd.cmsync_indexer_connector_max_retries";
+constexpr std::string_view CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL = "analysisd.cmsync_indexer_connector_retry_interval";
+constexpr std::string_view REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES = "analysisd.remote_conf_indexer_connector_max_retries";
+constexpr std::string_view REMOTE_CONF_INDEXER_CONNECTOR_RETRY_INTERVAL = "analysisd.remote_conf_indexer_connector_retry_interval";
 
 constexpr std::string_view REMOTE_CONF_SYNC_INTERVAL = "analysisd.remote_conf_sync_interval";
 
