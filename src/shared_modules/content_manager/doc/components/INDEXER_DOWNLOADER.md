@@ -136,7 +136,7 @@ Example:
             },
             "index": ".cti-cves",
             "consumerStatusIndex": ".cti-consumers",
-            "consumerStatusId": "vd_1.0.0_vd_4.8.0",
+            "consumerStatusId": "t1-vulnerabilities-5_public-vulnerabilities-5",
             "pageSize": 250,
             "numSlices": 2
         }
