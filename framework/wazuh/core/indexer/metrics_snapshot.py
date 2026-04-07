@@ -63,10 +63,7 @@ def _build_jsonschema_properties(properties: dict) -> dict:
             base_type = _OPENSEARCH_TO_JSONSCHEMA_TYPE.get(os_type)
             if base_type:
                 json_schema_props[field] = {
-                    "anyOf": [
-                        base_type,
-                        {"type": "array", "items": base_type}
-                    ]
+                    "anyOf": [base_type, {"type": "array", "items": base_type}]
                 }
             else:
                 json_schema_props[field] = {}
@@ -238,12 +235,18 @@ class MetricsSnapshotTasks:
 
     @staticmethod
     def _drop_none(doc: dict) -> dict:
-        """Recursively drop None values from a dictionary."""
+        """Recursively drop None values and empty dicts from a dictionary.
+
+        Empty dicts can arise when all child values were None and got removed
+        during recursion (e.g. ``{"hash": {"md5": None}}`` → ``{"hash": {}}``).
+        Keeping those empty objects would produce spurious empty fields in the
+        indexed document (e.g. ``wazuh.agent.config.hash = {}``).
+        """
         cleaned = {}
         for k, v in doc.items():
             if isinstance(v, dict):
                 v = MetricsSnapshotTasks._drop_none(v)
-            if v is not None:
+            if v is not None and v != {}:
                 cleaned[k] = v
         return cleaned
 
@@ -279,52 +282,56 @@ class MetricsSnapshotTasks:
         ip = doc.get("ip")
         raw_register_ip = doc.get("registerIP", "")
 
-        register_ip = "0.0.0.0" if raw_register_ip == "any" else (raw_register_ip or None)  # nosec B104
+        register_ip = (
+            "0.0.0.0" if raw_register_ip == "any" else (raw_register_ip or None)
+        )  # nosec B104
         group_config_status = doc.get("group_config_status", "")
 
-        return MetricsSnapshotTasks._drop_none({
-            "@timestamp": MetricsSnapshotTasks._to_iso(doc.get("@timestamp")),
-            "wazuh": {
-                "agent": {
-                    "id": doc.get("id"),
-                    "name": doc.get("name"),
-                    "version": doc.get("version"),
-                    "groups": doc.get("group", []),
-                    "status": doc.get("status"),
-                    "status_code": doc.get("status_code"),
-                    "registered_at": MetricsSnapshotTasks._to_iso(doc.get("dateAdd")),
-                    "last_seen": MetricsSnapshotTasks._to_iso(doc.get("lastKeepAlive")),
-                    "disconnected_at": doc.get("disconnection_time") or None,
-                    "register": {
-                        "ip": register_ip
+        return MetricsSnapshotTasks._drop_none(
+            {
+                "@timestamp": MetricsSnapshotTasks._to_iso(doc.get("@timestamp")),
+                "wazuh": {
+                    "agent": {
+                        "id": doc.get("id"),
+                        "name": doc.get("name"),
+                        "version": doc.get("version"),
+                        "groups": doc.get("group", []),
+                        "status": doc.get("status"),
+                        "status_code": doc.get("status_code"),
+                        "registered_at": MetricsSnapshotTasks._to_iso(
+                            doc.get("dateAdd")
+                        ),
+                        "last_seen": MetricsSnapshotTasks._to_iso(
+                            doc.get("lastKeepAlive")
+                        ),
+                        "disconnected_at": doc.get("disconnection_time") or None,
+                        "register": {"ip": register_ip},
+                        "host": {
+                            "ip": [ip] if ip else [],
+                            "architecture": os_fields.get("arch"),
+                            "os": {
+                                "name": os_fields.get("name"),
+                                "version": os_fields.get("version"),
+                                "platform": os_fields.get("platform"),
+                                "full": os_fields.get("uname"),
+                            },
+                        },
+                        "config": {
+                            "hash": {"md5": doc.get("configSum")},
+                            "group": {
+                                "synced": group_config_status == "synced",
+                                "hash": {"md5": doc.get("mergedSum")},
+                            },
+                        },
                     },
-                    "host": {
-                        "ip": [ip] if ip else [],
-                        "architecture": os_fields.get("arch"),
-                        "os": {
-                            "name": os_fields.get("name"),
-                            "version": os_fields.get("version"),
-                            "platform": os_fields.get("platform"),
-                            "full": os_fields.get("uname")
-                        }
+                    "cluster": {
+                        "name": doc.get("wazuh.cluster.name"),
+                        "node": doc.get("wazuh.cluster.node"),
                     },
-                    "config": {
-                        "hash": {"md5": doc.get("configSum")},
-                        "group": {
-                            "synced": group_config_status == "synced",
-                            "hash": {"md5": doc.get("mergedSum")}
-                        }
-                    }
+                    "schema": {"version": MetricsSnapshotTasks.SCHEMA_VERSION},
                 },
-                "cluster": {
-                    "name": doc.get("wazuh.cluster.name"),
-                    "node": doc.get("wazuh.cluster.node")
-                },
-                "schema": {
-                    "version": MetricsSnapshotTasks.SCHEMA_VERSION
-                }
             }
-        })
+        )
 
     @staticmethod
     def _normalize_comms_doc(doc: dict) -> dict:
@@ -348,53 +355,105 @@ class MetricsSnapshotTasks:
         msgs_recv = m.get("messages", {}).get("received_breakdown", {})
         ctrl_bkdn = m.get("control_messages_queue_breakdown", {})
 
+        # Pre-extract v5.0 values so each .get() is called only once.
+        # Use `x if x is not None else y` instead of `x or y` to correctly
+        # preserve zero values (Python's `or` treats 0 as falsy, which would
+        # cause valid zero counters to fall through to the legacy flat key and
+        # ultimately be dropped by _drop_none when that key is also absent).
         raw_queue_usage = queues.get("usage")
+        raw_queue_capacity = queues.get("size")
+        raw_tcp_sessions = m.get("tcp_sessions")
+        raw_evt_total = msgs_recv.get("event")
+        raw_discarded = msgs_recv.get("discarded")
+        raw_sent_bytes = bytes_info.get("sent")
+        raw_recv_bytes = bytes_info.get("received")
+        raw_ctrl_total = (
+            m.get("messages", {}).get("received_breakdown", {}).get("control")
+        )
+        raw_ctrl_usage = m.get("control_messages_queue_usage")
+        raw_dequeued_after = msgs_recv.get("dequeued_after")
+        raw_ctrl_inserted = ctrl_bkdn.get("inserted")
+        raw_ctrl_replaced = ctrl_bkdn.get("replaced")
+        raw_ctrl_processed = ctrl_bkdn.get("processed")
 
-        return MetricsSnapshotTasks._drop_none({
-            "@timestamp": MetricsSnapshotTasks._to_iso(doc.get("@timestamp")),
-            "wazuh": {
-                "cluster": {
-                    "name": doc.get("wazuh.cluster.name"),
-                    "node": doc.get("wazuh.cluster.node")
-                },
-                "schema": {
-                    "version": MetricsSnapshotTasks.SCHEMA_VERSION
-                }
-            },
-            "event": {
-                "module": "remoted"
-            },
-            "events": {
-                "total": msgs_recv.get("event") or doc.get("evt_count")
-            },
-            "queue": {
-                "size": raw_queue_usage if raw_queue_usage is not None else doc.get("queue_size"),
-                "capacity": queues.get("size") or doc.get("total_queue_size")
-            },
-            "tcp": {
-                "sessions": m.get("tcp_sessions") or doc.get("tcp_sessions")
-            },
-            "discarded": {
-                "total": msgs_recv.get("discarded") or doc.get("discarded_count")
-            },
-            "network": {
-                "egress": {"bytes": bytes_info.get("sent") or doc.get("sent_bytes")},
-                "ingress": {"bytes": bytes_info.get("received") or doc.get("recv_bytes")}
-            },
-            "messages": {
-                "total": m.get("messages", {}).get("received_breakdown", {}).get("control")
-                         or doc.get("ctrl_msg_count"),
-                "control": {
-                    "dropped_on_close": {
-                        "total": msgs_recv.get("dequeued_after") or doc.get("dequeued_after_close")
+        return MetricsSnapshotTasks._drop_none(
+            {
+                "@timestamp": MetricsSnapshotTasks._to_iso(doc.get("@timestamp")),
+                "wazuh": {
+                    "cluster": {
+                        "name": doc.get("wazuh.cluster.name"),
+                        "node": doc.get("wazuh.cluster.node"),
                     },
-                    "usage": m.get("control_messages_queue_usage") or doc.get("ctrl_msg_queue_usage"),
-                    "received": {"total": ctrl_bkdn.get("inserted") or doc.get("ctrl_msg_queue_inserted")},
-                    "replaced": {"total": ctrl_bkdn.get("replaced") or doc.get("ctrl_msg_queue_replaced")},
-                    "processed": {"total": ctrl_bkdn.get("processed") or doc.get("ctrl_msg_processed")}
-                }
+                    "schema": {"version": MetricsSnapshotTasks.SCHEMA_VERSION},
+                },
+                "event": {"module": "remoted"},
+                "events": {
+                    "total": raw_evt_total
+                    if raw_evt_total is not None
+                    else doc.get("evt_count")
+                },
+                "queue": {
+                    "size": raw_queue_usage
+                    if raw_queue_usage is not None
+                    else doc.get("queue_size"),
+                    "capacity": raw_queue_capacity
+                    if raw_queue_capacity is not None
+                    else doc.get("total_queue_size"),
+                },
+                "tcp": {
+                    "sessions": raw_tcp_sessions
+                    if raw_tcp_sessions is not None
+                    else doc.get("tcp_sessions")
+                },
+                "discarded": {
+                    "total": raw_discarded
+                    if raw_discarded is not None
+                    else doc.get("discarded_count")
+                },
+                "network": {
+                    "egress": {
+                        "bytes": raw_sent_bytes
+                        if raw_sent_bytes is not None
+                        else doc.get("sent_bytes")
+                    },
+                    "ingress": {
+                        "bytes": raw_recv_bytes
+                        if raw_recv_bytes is not None
+                        else doc.get("recv_bytes")
+                    },
+                },
+                "messages": {
+                    "total": raw_ctrl_total
+                    if raw_ctrl_total is not None
+                    else doc.get("ctrl_msg_count"),
+                    "control": {
+                        "dropped_on_close": {
+                            "total": raw_dequeued_after
+                            if raw_dequeued_after is not None
+                            else doc.get("dequeued_after_close")
+                        },
+                        "usage": raw_ctrl_usage
+                        if raw_ctrl_usage is not None
+                        else doc.get("ctrl_msg_queue_usage"),
+                        "received": {
+                            "total": raw_ctrl_inserted
+                            if raw_ctrl_inserted is not None
+                            else doc.get("ctrl_msg_queue_inserted")
+                        },
+                        "replaced": {
+                            "total": raw_ctrl_replaced
+                            if raw_ctrl_replaced is not None
+                            else doc.get("ctrl_msg_queue_replaced")
+                        },
+                        "processed": {
+                            "total": raw_ctrl_processed
+                            if raw_ctrl_processed is not None
+                            else doc.get("ctrl_msg_processed")
+                        },
+                    },
+                },
             }
-        })
+        )
 
     def _load_schema(self, schema_filename: str) -> dict | None:
         """Load and cache an OpenSearch index template schema.
@@ -451,9 +510,7 @@ class MetricsSnapshotTasks:
             self._schema_cache[schema_filename] = None
             return None
 
-    def _validate_documents(
-        self, docs: list, schema: dict, index_name: str
-    ) -> list:
+    def _validate_documents(self, docs: list, schema: dict, index_name: str) -> list:
         """Validate a list of documents against a JSON Schema, filtering invalid ones.
 
         Each document is validated independently.  Documents that fail
@@ -510,6 +567,10 @@ class MetricsSnapshotTasks:
 
         async with get_indexer_client() as indexer:
             await asyncio.gather(
-                indexer.metrics.bulk_index("wazuh-metrics-agents", agent_docs, self.bulk_size),
-                indexer.metrics.bulk_index("wazuh-metrics-comms", comms_docs, self.bulk_size),
+                indexer.metrics.bulk_index(
+                    "wazuh-metrics-agents", agent_docs, self.bulk_size
+                ),
+                indexer.metrics.bulk_index(
+                    "wazuh-metrics-comms", comms_docs, self.bulk_size
+                ),
             )

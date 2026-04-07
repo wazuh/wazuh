@@ -290,13 +290,16 @@ class TestCollectCommsAllNodes:
         master_result = _make_dapi_result([dict(REMOTED_STATS)])
         worker_result = _make_dapi_result([dict(REMOTED_STATS)])
 
-        with patch(
-            "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
-            return_value=master_result,
-        ), patch(
-            "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
-            return_value=AsyncMock(
-                distribute_function=AsyncMock(return_value=worker_result)
+        with (
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
+                return_value=master_result,
+            ),
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
+                return_value=AsyncMock(
+                    distribute_function=AsyncMock(return_value=worker_result)
+                ),
             ),
         ):
             docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
@@ -337,12 +340,15 @@ class TestCollectCommsAllNodes:
         succeeding_dapi = AsyncMock()
         succeeding_dapi.distribute_function.return_value = worker_result
 
-        with patch(
-            "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
-            side_effect=RuntimeError("connection refused"),
-        ), patch(
-            "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
-            return_value=succeeding_dapi,
+        with (
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
+                side_effect=RuntimeError("connection refused"),
+            ),
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
+                return_value=succeeding_dapi,
+            ),
         ):
             docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
 
@@ -360,15 +366,18 @@ class TestCollectCommsAllNodes:
         local_result = _make_dapi_result([dict(REMOTED_STATS)])
         worker_result = _make_dapi_result([dict(REMOTED_STATS)])
 
-        with patch(
-            "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
-            return_value=local_result,
-        ) as mock_local, patch(
-            "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
-            return_value=AsyncMock(
-                distribute_function=AsyncMock(return_value=worker_result)
-            ),
-        ) as MockDAPI:
+        with (
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
+                return_value=local_result,
+            ) as mock_local,
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
+                return_value=AsyncMock(
+                    distribute_function=AsyncMock(return_value=worker_result)
+                ),
+            ) as MockDAPI,
+        ):
             await tasks._collect_comms_all_nodes(TIMESTAMP)
 
         mock_local.assert_called_once_with(daemons_list=["wazuh-manager-remoted"])
@@ -935,12 +944,10 @@ class TestDisconnectionTimeOmission:
         docs = await tasks._collect_agents(TIMESTAMP)
 
         active_doc = next(
-            d for d in docs
-            if d.get("wazuh", {}).get("agent", {}).get("id") == "001"
+            d for d in docs if d.get("wazuh", {}).get("agent", {}).get("id") == "001"
         )
         disconnected_doc = next(
-            d for d in docs
-            if d.get("wazuh", {}).get("agent", {}).get("id") == "002"
+            d for d in docs if d.get("wazuh", {}).get("agent", {}).get("id") == "002"
         )
 
         assert "disconnected_at" not in active_doc.get("wazuh", {}).get("agent", {})
@@ -1239,11 +1246,17 @@ class TestBuildJsonschemaProperties:
         result = _build_jsonschema_properties(props)
         assert "field_a" in result
         assert result["field_a"] == {
-            "anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]
+            "anyOf": [
+                {"type": "string"},
+                {"type": "array", "items": {"type": "string"}},
+            ]
         }
         assert "field_b" in result
         assert result["field_b"] == {
-            "anyOf": [{"type": "integer"}, {"type": "array", "items": {"type": "integer"}}]
+            "anyOf": [
+                {"type": "integer"},
+                {"type": "array", "items": {"type": "integer"}},
+            ]
         }
 
     def test_nested_properties_produce_nested_schema(self):
@@ -1265,27 +1278,23 @@ class TestBuildJsonschemaProperties:
         assert "agent" in result["wazuh"]["properties"]
         assert "id" in result["wazuh"]["properties"]["agent"]["properties"]
         assert result["wazuh"]["properties"]["agent"]["properties"]["id"] == {
-            "anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]
+            "anyOf": [
+                {"type": "string"},
+                {"type": "array", "items": {"type": "string"}},
+            ]
         }
 
     def test_deep_nesting(self):
         """Three levels of nesting produce the correct nested schema."""
-        props = {
-            "a": {
-                "properties": {
-                    "b": {
-                        "properties": {
-                            "c": {"type": "long"}
-                        }
-                    }
-                }
-            }
-        }
+        props = {"a": {"properties": {"b": {"properties": {"c": {"type": "long"}}}}}}
         result = _build_jsonschema_properties(props)
         assert result["a"]["type"] == "object"
         assert result["a"]["properties"]["b"]["type"] == "object"
         assert result["a"]["properties"]["b"]["properties"]["c"] == {
-            "anyOf": [{"type": "integer"}, {"type": "array", "items": {"type": "integer"}}]
+            "anyOf": [
+                {"type": "integer"},
+                {"type": "array", "items": {"type": "integer"}},
+            ]
         }
 
     def test_mixed_flat_and_nested(self):
@@ -1329,7 +1338,10 @@ class TestOpensearchTemplateToJsonschema:
         agent_props = schema["properties"]["wazuh"]["properties"]["agent"]["properties"]
         assert "id" in agent_props
         assert agent_props["id"] == {
-            "anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]
+            "anyOf": [
+                {"type": "string"},
+                {"type": "array", "items": {"type": "string"}},
+            ]
         }
 
     def test_integer_type_mapping(self):
@@ -1337,7 +1349,10 @@ class TestOpensearchTemplateToJsonschema:
         schema = _opensearch_template_to_jsonschema(SAMPLE_TEMPLATE)
         agent_props = schema["properties"]["wazuh"]["properties"]["agent"]["properties"]
         assert agent_props["status_code"] == {
-            "anyOf": [{"type": "integer"}, {"type": "array", "items": {"type": "integer"}}]
+            "anyOf": [
+                {"type": "integer"},
+                {"type": "array", "items": {"type": "integer"}},
+            ]
         }
 
     def test_strict_mode_sets_additional_properties_false(self):
@@ -1380,7 +1395,10 @@ class TestOpensearchTemplateToJsonschema:
         """date OpenSearch type is represented as string in JSON Schema."""
         schema = _opensearch_template_to_jsonschema(SAMPLE_TEMPLATE)
         assert schema["properties"]["@timestamp"] == {
-            "anyOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]
+            "anyOf": [
+                {"type": "string"},
+                {"type": "array", "items": {"type": "string"}},
+            ]
         }
 
 
@@ -1396,7 +1414,9 @@ class TestLoadSchema:
         """When the schema file does not exist, None is returned and a warning is logged."""
         tasks = _make_tasks()
 
-        with patch("wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=False):
+        with patch(
+            "wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=False
+        ):
             result = tasks._load_schema("metrics-agents.json")
 
         assert result is None
@@ -1420,7 +1440,9 @@ class TestLoadSchema:
         schema_content = json.dumps(SAMPLE_TEMPLATE)
 
         with (
-            patch("wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=True),
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=True
+            ),
             patch("builtins.open", mock_open(read_data=schema_content)),
         ):
             result = tasks._load_schema("metrics-agents.json")
@@ -1435,7 +1457,9 @@ class TestLoadSchema:
         schema_content = json.dumps(SAMPLE_TEMPLATE)
 
         with (
-            patch("wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=True),
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=True
+            ),
             patch("builtins.open", mock_open(read_data=schema_content)) as mock_file,
         ):
             tasks._load_schema("metrics-agents.json")
@@ -1448,7 +1472,9 @@ class TestLoadSchema:
         tasks = _make_tasks()
 
         with (
-            patch("wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=True),
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=True
+            ),
             patch("builtins.open", mock_open(read_data="not valid json {")),
         ):
             result = tasks._load_schema("metrics-agents.json")
@@ -1462,7 +1488,9 @@ class TestLoadSchema:
         bad_template = json.dumps({"index_patterns": ["wazuh-metrics-agents*"]})
 
         with (
-            patch("wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=True),
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.os.path.isfile", return_value=True
+            ),
             patch("builtins.open", mock_open(read_data=bad_template)),
         ):
             result = tasks._load_schema("metrics-agents.json")
@@ -1668,3 +1696,274 @@ class TestCollectAndIndexWithValidation:
         mock_indexer.metrics.bulk_index.assert_any_await(
             "wazuh-metrics-agents", valid_only, tasks.bulk_size
         )
+
+
+# ---------------------------------------------------------------------------
+# _drop_none – empty dict removal (FR-1 fix)
+# ---------------------------------------------------------------------------
+
+
+class TestDropNone:
+    """Tests for MetricsSnapshotTasks._drop_none — empty dict pruning."""
+
+    def test_none_values_are_removed(self):
+        """Simple None values at the top level are dropped."""
+        result = MetricsSnapshotTasks._drop_none({"a": 1, "b": None})
+        assert result == {"a": 1}
+
+    def test_zero_integer_is_kept(self):
+        """Zero integer values are NOT removed (only None is removed)."""
+        result = MetricsSnapshotTasks._drop_none({"count": 0, "other": None})
+        assert result == {"count": 0}
+
+    def test_false_boolean_is_kept(self):
+        """False boolean values are NOT removed."""
+        result = MetricsSnapshotTasks._drop_none({"flag": False, "missing": None})
+        assert result == {"flag": False}
+
+    def test_empty_string_is_kept(self):
+        """Empty string values are NOT removed (only None and {} are removed)."""
+        result = MetricsSnapshotTasks._drop_none({"s": "", "missing": None})
+        assert result == {"s": ""}
+
+    def test_empty_dict_child_is_removed(self):
+        """A nested dict that becomes empty after recursion is dropped from the parent."""
+        result = MetricsSnapshotTasks._drop_none({"hash": {"md5": None}})
+        assert result == {}
+
+    def test_deeply_nested_empty_dict_is_removed(self):
+        """Empty dicts are pruned at all levels of nesting."""
+        result = MetricsSnapshotTasks._drop_none(
+            {"config": {"hash": {"md5": None}, "version": "1.0"}}
+        )
+        assert result == {"config": {"version": "1.0"}}
+
+    def test_non_empty_nested_dict_is_kept(self):
+        """A nested dict with at least one non-None value is preserved."""
+        result = MetricsSnapshotTasks._drop_none({"hash": {"md5": "abc123"}})
+        assert result == {"hash": {"md5": "abc123"}}
+
+    def test_mixed_top_level(self):
+        """A realistic mixed document is cleaned correctly."""
+        result = MetricsSnapshotTasks._drop_none(
+            {
+                "id": "001",
+                "gone": None,
+                "nested": {"kept": 42, "removed": None},
+                "empty_subtree": {"a": None, "b": None},
+            }
+        )
+        assert result == {
+            "id": "001",
+            "nested": {"kept": 42},
+        }
+
+
+# ---------------------------------------------------------------------------
+# _normalize_agent_doc – no empty config.hash (FR-1 fix)
+# ---------------------------------------------------------------------------
+
+
+class TestNormalizeAgentDocNoEmptyHash:
+    """config.hash must not appear when configSum is absent from the raw doc."""
+
+    @pytest.mark.asyncio
+    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
+    async def test_config_hash_absent_when_configsum_missing(
+        self, mock_wazuh_db_query_agents
+    ):
+        """wazuh.agent.config.hash is absent from the output when configSum is not in the raw doc."""
+        # AGENT_DOC_FULL does not contain 'configSum', matching real v5.0 agent rows.
+        mock_wazuh_db_query_agents.return_value.run.return_value = {
+            "items": [dict(AGENT_DOC_FULL)]
+        }
+
+        tasks = _make_tasks()
+        docs = await tasks._collect_agents(TIMESTAMP)
+
+        agent_config = docs[0].get("wazuh", {}).get("agent", {}).get("config", {})
+        assert "hash" not in agent_config, (
+            "wazuh.agent.config.hash should be absent when configSum is not in the raw doc; "
+            f"got: {agent_config.get('hash')}"
+        )
+
+    @pytest.mark.asyncio
+    @patch("wazuh.core.indexer.metrics_snapshot.WazuhDBQueryAgents")
+    async def test_config_hash_present_when_configsum_provided(
+        self, mock_wazuh_db_query_agents
+    ):
+        """wazuh.agent.config.hash.md5 is present and correct when configSum IS supplied."""
+        mock_wazuh_db_query_agents.return_value.run.return_value = {
+            "items": [{**AGENT_DOC_FULL, "configSum": "deadbeef"}]
+        }
+
+        tasks = _make_tasks()
+        docs = await tasks._collect_agents(TIMESTAMP)
+
+        agent_config = docs[0]["wazuh"]["agent"]["config"]
+        assert agent_config["hash"]["md5"] == "deadbeef"
+
+
+# ---------------------------------------------------------------------------
+# _normalize_comms_doc – zero value preservation (FR-2 fix)
+# ---------------------------------------------------------------------------
+
+# v5.0 remoted stats with every counter set to zero.
+REMOTED_STATS_V5_ALL_ZEROS = {
+    "metrics": {
+        "bytes": {"sent": 0, "received": 0},
+        "queues": {"received": {"usage": 0, "size": 0}},
+        "messages": {
+            "received_breakdown": {
+                "event": 0,
+                "discarded": 0,
+                "dequeued_after": 0,
+                "control": 0,
+            }
+        },
+        "control_messages_queue_breakdown": {
+            "inserted": 0,
+            "replaced": 0,
+            "processed": 0,
+        },
+        "tcp_sessions": 0,
+        "control_messages_queue_usage": 0,
+    }
+}
+
+# v5.0 remoted stats with every counter set to a non-zero value.
+REMOTED_STATS_V5_NONZERO = {
+    "metrics": {
+        "bytes": {"sent": 512, "received": 256},
+        "queues": {"received": {"usage": 10, "size": 100}},
+        "messages": {
+            "received_breakdown": {
+                "event": 1000,
+                "discarded": 3,
+                "dequeued_after": 1,
+                "control": 200,
+            }
+        },
+        "control_messages_queue_breakdown": {
+            "inserted": 210,
+            "replaced": 8,
+            "processed": 202,
+        },
+        "tcp_sessions": 5,
+        "control_messages_queue_usage": 0.15,
+    }
+}
+
+
+class TestNormalizeCommsDocZeroPreservation:
+    """_normalize_comms_doc must preserve zero values from v5.0 nested stats format."""
+
+    @pytest.mark.asyncio
+    async def test_v5_zero_counters_are_present_in_output(self):
+        """All zero-valued counters from a v5.0 doc appear in the normalized output."""
+        tasks = _make_tasks()
+        local_result = _make_dapi_result([dict(REMOTED_STATS_V5_ALL_ZEROS)])
+
+        with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
+            return_value=local_result,
+        ):
+            docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
+
+        assert len(docs) == 1
+        doc = docs[0]
+        flat_keys = _deep_keys(doc)
+        for field in EXPECTED_COMMS_FIELDS:
+            assert field in flat_keys, (
+                f"Field '{field}' missing from normalized comms doc with all-zero v5.0 counters"
+            )
+
+    @pytest.mark.asyncio
+    async def test_v5_zero_queue_size_is_present(self):
+        """queue.size == 0 is preserved (not dropped) from a v5.0 doc."""
+        tasks = _make_tasks()
+        local_result = _make_dapi_result([dict(REMOTED_STATS_V5_ALL_ZEROS)])
+
+        with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
+            return_value=local_result,
+        ):
+            docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
+
+        assert docs[0]["queue"]["size"] == 0
+
+    @pytest.mark.asyncio
+    async def test_v5_zero_evt_count_is_present(self):
+        """events.total == 0 is preserved (not dropped) from a v5.0 doc."""
+        tasks = _make_tasks()
+        local_result = _make_dapi_result([dict(REMOTED_STATS_V5_ALL_ZEROS)])
+
+        with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
+            return_value=local_result,
+        ):
+            docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
+
+        assert docs[0]["events"]["total"] == 0
+
+    @pytest.mark.asyncio
+    async def test_v5_zero_tcp_sessions_is_present(self):
+        """tcp.sessions == 0 is preserved (not dropped) from a v5.0 doc."""
+        tasks = _make_tasks()
+        local_result = _make_dapi_result([dict(REMOTED_STATS_V5_ALL_ZEROS)])
+
+        with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
+            return_value=local_result,
+        ):
+            docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
+
+        assert docs[0]["tcp"]["sessions"] == 0
+
+    @pytest.mark.asyncio
+    async def test_v5_nonzero_counters_are_correct(self):
+        """Non-zero v5.0 counters are mapped to the correct normalized fields."""
+        tasks = _make_tasks()
+        local_result = _make_dapi_result([dict(REMOTED_STATS_V5_NONZERO)])
+
+        with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
+            return_value=local_result,
+        ):
+            docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
+
+        doc = docs[0]
+        assert doc["queue"]["size"] == 10
+        assert doc["queue"]["capacity"] == 100
+        assert doc["tcp"]["sessions"] == 5
+        assert doc["events"]["total"] == 1000
+        assert doc["discarded"]["total"] == 3
+        assert doc["network"]["egress"]["bytes"] == 512
+        assert doc["network"]["ingress"]["bytes"] == 256
+        assert doc["messages"]["total"] == 200
+        assert doc["messages"]["control"]["usage"] == 0.15
+        assert doc["messages"]["control"]["received"]["total"] == 210
+        assert doc["messages"]["control"]["replaced"]["total"] == 8
+        assert doc["messages"]["control"]["processed"]["total"] == 202
+        assert doc["messages"]["control"]["dropped_on_close"]["total"] == 1
+
+    @pytest.mark.asyncio
+    async def test_legacy_flat_format_still_works(self):
+        """Legacy flat-format stats (pre-v5.0) continue to produce correct output."""
+        tasks = _make_tasks()
+        local_result = _make_dapi_result([dict(REMOTED_STATS)])
+
+        with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_daemons_stats",
+            return_value=local_result,
+        ):
+            docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
+
+        doc = docs[0]
+        flat_keys = _deep_keys(doc)
+        for field in EXPECTED_COMMS_FIELDS:
+            assert field in flat_keys, f"Legacy field '{field}' missing"
+
+        assert doc["queue"]["size"] == 10
+        assert doc["events"]["total"] == 1000
+        assert doc["tcp"]["sessions"] == 5
