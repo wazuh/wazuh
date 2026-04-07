@@ -282,9 +282,7 @@ class MetricsSnapshotTasks:
         ip = doc.get("ip")
         raw_register_ip = doc.get("registerIP", "")
 
-        register_ip = (
-            "0.0.0.0" if raw_register_ip == "any" else (raw_register_ip or None)
-        )  # nosec B104
+        register_ip = "0.0.0.0" if raw_register_ip == "any" else (raw_register_ip or None)  # nosec B104
         group_config_status = doc.get("group_config_status", "")
 
         return MetricsSnapshotTasks._drop_none(
