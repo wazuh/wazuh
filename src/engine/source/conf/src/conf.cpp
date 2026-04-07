@@ -23,7 +23,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     }
 
     // fs path
-    const std::filesystem::path wazuhRoot = base::process::getWazuhHome("wazuh-engine");
+    const std::filesystem::path wazuhRoot = base::process::getWazuhHome();
 
     // Register available configuration units with Default Settings
 

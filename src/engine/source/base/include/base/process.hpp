@@ -106,12 +106,26 @@ void privSepSetGroup(gid_t gid);
  * It assumes the executable is located in the "bin" subdirectory of the
  * Wazuh installation (e.g., /var/wazuh-manager/bin/executable).
  *
- * @param daemon The name used for searching wazuh home directory.
- * @return std::filesystem::path The path to the Wazuh home directory ("/var/wazuh-manager").
+ * @return std::filesystem::path The path to the Wazuh home directory.
  *
  */
-std::filesystem::path getWazuhHome(char *daemon);
+std::filesystem::path getWazuhHome();
 
+/**
+ * @brief Attempts on getting the installation path for wazuh engine standalone mode.
+ *
+ * @param bin Relative path to binary location
+ *
+ * @return std::filesystem::path The path to the standalone installation directory.
+ */
+std::filesystem::path resolveStandaloneWazuhHome(const char* bin);
+
+/**
+ * @brief Set the Wazuh Home path
+ *
+ * @param home Wazuh home installation path.
+ */
+void setWazuhHome(const std::filesystem::path& home);
 /**
  * @brief Sets the name of the current thread.
  *

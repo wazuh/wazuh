@@ -29,6 +29,8 @@ constexpr auto MAX_RBUFFER_SIZE = 65536;
 namespace base::process
 {
 
+static std::filesystem::path g_wazuhHome;
+
 void goDaemon()
 {
     pid_t pid = fork();
@@ -173,9 +175,42 @@ void privSepSetGroup(gid_t gid)
     }
 }
 
-std::filesystem::path getWazuhHome(char *daemon)
+void setWazuhHome(const std::filesystem::path& home) {
+    g_wazuhHome = home;
+}
+
+std::filesystem::path getWazuhHome()
 {
-    return base::libwazuhshared::getWazuhHome(daemon);
+    if (g_wazuhHome.empty()) {
+        throw std::runtime_error("Wazuh home not initialized. Call setWazuhHome() first.");
+    }
+    return g_wazuhHome;
+}
+
+std::filesystem::path resolveStandaloneWazuhHome(const char* bin)
+{
+    // WAZUH_HOME env var takes precedence
+    const char* env = std::getenv("WAZUH_HOME");
+    if (env && env[0] != '\0')
+    {
+        return std::filesystem::path(env);
+    }
+
+    // Derive home from binary path: .../bin/wazuh-engine -> ...
+    std::error_code ec;
+    std::filesystem::path binaryPath = std::filesystem::read_symlink("/proc/self/exe", ec);
+    if (ec && bin && bin[0] != '\0')
+    {
+        binaryPath = std::filesystem::weakly_canonical(bin, ec);
+    }
+    if (!binaryPath.empty() && binaryPath.parent_path().filename() == "bin")
+    {
+        return binaryPath.parent_path().parent_path();
+    }
+
+    throw std::runtime_error(
+        "Cannot resolve Wazuh home directory in standalone mode. "
+        "Set the WAZUH_HOME environment variable or install the engine under a 'bin/' directory.");
 }
 
 void setThreadName(const std::string& name)

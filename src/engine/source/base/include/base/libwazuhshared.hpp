@@ -109,8 +109,11 @@ std::string getJsonIndexerCnf();
 /**
  * @brief Get the Wazuh Home directory path
  *
- * @param daemon
+ * @param daemon Path to the binary location
  * @return std::filesystem::path The path where Wazuh is installed
+ *
+ * This wrapper function retrieves the current Wazuh installation path
+ * from the system.
  */
 std::filesystem::path getWazuhHome(char *daemon);
 } // namespace base::libwazuhshared

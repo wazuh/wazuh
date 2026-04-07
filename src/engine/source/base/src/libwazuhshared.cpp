@@ -51,20 +51,6 @@ void setLoggerTag(std::string_view tag)
     setNameFn(tag.data());
 }
 
-// Wrapper for getWazuhHome
-std::filesystem::path getWazuhHome(char *daemon)
-{
-    using HomeDir = char* (*)(char*);
-    const auto func = getFunction<HomeDir>("w_homedir");
-
-    if (!func)
-    {
-        throw std::runtime_error("Failed to get w_homedir function pointer.");
-    }
-
-    return std::filesystem::path(func(daemon));
-}
-
 // Wrapper for get_indexer_cnf
 std::string getJsonIndexerCnf()
 {
@@ -81,5 +67,19 @@ std::string getJsonIndexerCnf()
     std::string jsonCnf(result);
     free(result);
     return jsonCnf;
+}
+
+// Wrapper for getWazuhHome
+std::filesystem::path getWazuhHome(char *daemon)
+{
+    using HomeDir = char* (*)(char*);
+    const auto func = getFunction<HomeDir>("w_homedir");
+
+    if (!func)
+    {
+        throw std::runtime_error("Failed to get w_homedir function pointer.");
+    }
+
+    return std::filesystem::path(func(daemon));
 }
 }

@@ -2,9 +2,10 @@ add_library(conf STATIC
     src/conf.cpp
     src/fileLoader.cpp
 )
+
 target_include_directories(conf
     PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}/include
+    ${CMAKE_CURRENT_LIST_DIR}/include/
 )
 target_link_libraries(conf
     PUBLIC
