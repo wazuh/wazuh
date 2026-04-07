@@ -1258,8 +1258,13 @@ char* get_subkey(char* key) {
     char* remaining_key = NULL;
     char* subkey        = NULL;
 
-    os_strdup(strchr(key, '\\') + 1, remaining_key);
-    os_calloc(OS_SIZE_128, sizeof(char), subkey);
+    char* separator = NULL;
+    if (key == NULL || (separator = strchr(key, '\\')) == NULL) {
+        os_strdup("", remaining_key);
+    } else {
+        os_strdup(separator + 1, remaining_key);
+    }
+    os_calloc(strlen(key) + 1, sizeof(char), subkey);
 
     char* aux_token;
 
@@ -1435,16 +1440,13 @@ void w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr) {
                         // ----- Begin final path variable section -----
 
                         char* full_path = NULL;
-                        os_calloc(OS_SIZE_256, sizeof(char), full_path);
+                        size_t full_path_len = strlen(first_part) + strlen(*query_keys) + (second_part ? strlen(second_part) : 0) + 1;
+                        os_calloc(full_path_len, sizeof(char), full_path);
 
-                        //Copy first part.
-                        strcpy(full_path, first_part);
-
-                        //Add key result.
-                        strcat(full_path, *query_keys);
-
-                        //Copy second part.
-                        second_part != NULL ? strcat(full_path, second_part) : strcat(full_path,"\0");
+                        snprintf(full_path, full_path_len, "%s%s%s",
+                                first_part,
+                                *query_keys,
+                                second_part ? second_part : "");
 
                         // ----- End final path variable section -----
 
@@ -1484,16 +1486,13 @@ void w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr) {
                     // ----- Begin final path variable section -----
 
                     char* full_path = NULL;
-                    os_calloc(OS_SIZE_256, sizeof(char), full_path);
+                    size_t full_path_len = strlen(first_part) + strlen(*query_keys) + (second_part ? strlen(second_part) : 0) + 1;
+                    os_calloc(full_path_len, sizeof(char), full_path);
 
-                    //Copy first part.
-                    strcpy(full_path, first_part);
-
-                    //Add key result.
-                    strcat(full_path, *query_keys);
-
-                    //Copy second part.
-                    second_part != NULL ? strcat(full_path, second_part) : strcat(full_path, "\0");
+                    snprintf(full_path, full_path_len, "%s%s%s",
+                            first_part,
+                            *query_keys,
+                            second_part ? second_part : "");
 
                     // ----- End final path variable section -----
 
