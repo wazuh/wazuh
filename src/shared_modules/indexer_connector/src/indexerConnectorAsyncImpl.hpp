@@ -128,14 +128,13 @@ public:
         const nlohmann::json& config,
         const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
             logFunction,
+        std::string queueId,
+        std::string basePath = DATABASE_BASE_PATH,
         THttpRequest* httpRequest = nullptr,
-        std::unique_ptr<TSelector> selector = nullptr,
-        std::string queueId = "")
+        std::unique_ptr<TSelector> selector = nullptr)
         : m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
         , m_queueId(std::move(queueId))
-        , m_dbPath(config.contains("db_path") && config.at("db_path").is_string()
-                       ? config.at("db_path").get<std::string>()
-                       : DATABASE_BASE_PATH + m_queueId)
+        , m_dbPath(std::move(basePath) + m_queueId)
     {
         if (logFunction)
         {

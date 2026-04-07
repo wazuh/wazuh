@@ -294,14 +294,17 @@ public:
     /**
      * @brief Class constructor that initializes the publisher.
      *
-     * @param config Indexer configuration, including database_path, servers, and optional db_path.
-     *               If "db_path" is provided in config, it will be used as the RocksDB queue path,
-     *               allowing multiple instances to use isolated directories.
-     *               If not provided, defaults to "queue/indexer/".
+     * @param config Indexer configuration, including servers and SSL settings.
+     * @param queueId Identifier for this connector instance. Combined with basePath to form
+     *                the RocksDB queue directory: basePath + queueId.
+     *                Must be unique per instance to guarantee queue isolation.
+     * @param basePath Base directory for the RocksDB queue. Defaults to "queue/indexer/".
      * @param logFunction Callback function to be called when trying to log a message.
      */
     explicit IndexerConnectorAsync(
         const nlohmann::json& config,
+        std::string queueId,
+        std::string basePath = "queue/indexer/",
         const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
             logFunction = {});
 

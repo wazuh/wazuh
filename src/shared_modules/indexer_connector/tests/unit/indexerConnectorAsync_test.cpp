@@ -144,13 +144,13 @@ protected:
 TEST_F(IndexerConnectorAsyncTest, ConstructorWithValidConfig)
 {
     EXPECT_CALL(mockServerSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
-    EXPECT_NO_THROW({ IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest); });
+    EXPECT_NO_THROW({ IndexerConnectorAsyncImplTest connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest); });
 }
 
 TEST_F(IndexerConnectorAsyncTest, DestructorStopsThreadDispatcher)
 {
     EXPECT_CALL(mockServerSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
-    auto connector = std::make_unique<IndexerConnectorAsyncImplTest>(config, nullptr, &mockHttpRequest);
+    auto connector = std::make_unique<IndexerConnectorAsyncImplTest>(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest);
     connector.reset();
     SUCCEED();
 }
@@ -161,7 +161,7 @@ TEST_F(IndexerConnectorAsyncTest, BulkIndexAddsToQueue)
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
-    IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplTest connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
     connector.bulkIndex("id2", "index2", R"({"field":"value"})");
 
     // Give some time for async processing
@@ -175,7 +175,7 @@ TEST_F(IndexerConnectorAsyncTest, ConstructorWithMultipleHosts)
     EXPECT_CALL(mockServerSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
     config["hosts"] = nlohmann::json::array({"localhost:9200", "localhost:9201", "localhost:9202"});
     EXPECT_NO_THROW({
-        IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest);
+        IndexerConnectorAsyncImplTest connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest);
         SUCCEED();
     });
 }
@@ -183,19 +183,19 @@ TEST_F(IndexerConnectorAsyncTest, ConstructorWithMultipleHosts)
 TEST_F(IndexerConnectorAsyncTest, ConstructorWithEmptyHostsThrows)
 {
     config["hosts"] = nlohmann::json::array();
-    EXPECT_ANY_THROW({ IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest); });
+    EXPECT_ANY_THROW({ IndexerConnectorAsyncImplTest connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest); });
 }
 
 TEST_F(IndexerConnectorAsyncTest, ConstructorWithMissingHostsThrows)
 {
     config.erase("hosts");
-    EXPECT_ANY_THROW({ IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest); });
+    EXPECT_ANY_THROW({ IndexerConnectorAsyncImplTest connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest); });
 }
 
 TEST_F(IndexerConnectorAsyncTest, ConstructorWithInvalidJSONThrows)
 {
     nlohmann::json invalidConfig = "invalid";
-    EXPECT_ANY_THROW({ IndexerConnectorAsyncImplTest connector(invalidConfig, nullptr, &mockHttpRequest); });
+    EXPECT_ANY_THROW({ IndexerConnectorAsyncImplTest connector(invalidConfig, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest); });
 }
 
 // SSL Configuration Tests
@@ -215,7 +215,7 @@ TEST_F(IndexerConnectorAsyncTest, ConstructorWithSSLConfigurationValid)
     config["ssl"]["certificate"] = certFile;
     config["ssl"]["key"] = keyFile;
 
-    EXPECT_NO_THROW({ IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest); });
+    EXPECT_NO_THROW({ IndexerConnectorAsyncImplTest connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest); });
 
     // Cleanup
     std::filesystem::remove(caFile);
@@ -229,71 +229,68 @@ TEST_F(IndexerConnectorAsyncTest, ConstructorWithInvalidSSLPathsThrows)
     config["ssl"]["certificate"] = "/nonexistent/cert.pem";
     config["ssl"]["key"] = "/nonexistent/key.pem";
 
-    EXPECT_ANY_THROW({ IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest); });
+    EXPECT_ANY_THROW({ IndexerConnectorAsyncImplTest connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest); });
 }
 
-// Database path configuration tests
-TEST_F(IndexerConnectorAsyncTest, ConstructorWithCustomDbPath)
+// Queue path configuration tests
+TEST_F(IndexerConnectorAsyncTest, ConstructorWithCustomQueuePath)
 {
     EXPECT_CALL(mockServerSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
-    config["db_path"] = "queue/indexer/custom-instance";
-
     EXPECT_NO_THROW({
-        IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest);
+        IndexerConnectorAsyncImplTest connector(
+            config, nullptr, "custom-instance", DATABASE_BASE_PATH, &mockHttpRequest);
         EXPECT_TRUE(std::filesystem::exists("queue/indexer/custom-instance"));
     });
 
     std::filesystem::remove_all("queue/indexer/custom-instance");
 }
 
-TEST_F(IndexerConnectorAsyncTest, ConstructorWithAbsoluteDbPath)
+TEST_F(IndexerConnectorAsyncTest, ConstructorWithAbsoluteBasePath)
 {
     EXPECT_CALL(mockServerSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
-    config["db_path"] = "/tmp/wazuh-test-indexer-db";
-
     EXPECT_NO_THROW({
-        IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest);
-        EXPECT_TRUE(std::filesystem::exists("/tmp/wazuh-test-indexer-db"));
+        IndexerConnectorAsyncImplTest connector(
+            config, nullptr, "test-instance", "/tmp/wazuh-test-indexer/", &mockHttpRequest);
+        EXPECT_TRUE(std::filesystem::exists("/tmp/wazuh-test-indexer/test-instance"));
     });
 
-    std::filesystem::remove_all("/tmp/wazuh-test-indexer-db");
+    std::filesystem::remove_all("/tmp/wazuh-test-indexer");
 }
 
 TEST_F(IndexerConnectorAsyncTest, ConstructorWithoutDbPathUsesDefault)
 {
     EXPECT_CALL(mockServerSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
-    // No db_path in config: default path is DATABASE_BASE_PATH + queueId
+    std::filesystem::remove_all("queue/indexer/test-default-path");
+    ASSERT_FALSE(std::filesystem::exists("queue/indexer/test-default-path"));
+
+    // No explicit basePath: defaults to DATABASE_BASE_PATH, resulting path = DATABASE_BASE_PATH + queueId
     EXPECT_NO_THROW({
-        IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest, nullptr, "test-default-path");
+        IndexerConnectorAsyncImplTest connector(
+            config, nullptr, "test-default-path", DATABASE_BASE_PATH, &mockHttpRequest);
         EXPECT_TRUE(std::filesystem::exists("queue/indexer/test-default-path"));
     });
 
     std::filesystem::remove_all("queue/indexer/test-default-path");
 }
 
-TEST_F(IndexerConnectorAsyncTest, MultipleInstancesWithDifferentDbPaths)
+TEST_F(IndexerConnectorAsyncTest, MultipleInstancesWithDifferentQueuePaths)
 {
     EXPECT_CALL(mockServerSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
-    nlohmann::json config1 = config;
-    config1["db_path"] = "/tmp/wazuh-test-indexer-instance-1";
-
-    nlohmann::json config2 = config;
-    config2["db_path"] = "/tmp/wazuh-test-indexer-instance-2";
-
     EXPECT_NO_THROW({
-        IndexerConnectorAsyncImplTest connector1(config1, nullptr, &mockHttpRequest);
-        IndexerConnectorAsyncImplTest connector2(config2, nullptr, &mockHttpRequest);
+        IndexerConnectorAsyncImplTest connector1(
+            config, nullptr, "instance-1", "/tmp/wazuh-test-multi/", &mockHttpRequest);
+        IndexerConnectorAsyncImplTest connector2(
+            config, nullptr, "instance-2", "/tmp/wazuh-test-multi/", &mockHttpRequest);
 
-        EXPECT_TRUE(std::filesystem::exists("/tmp/wazuh-test-indexer-instance-1"));
-        EXPECT_TRUE(std::filesystem::exists("/tmp/wazuh-test-indexer-instance-2"));
+        EXPECT_TRUE(std::filesystem::exists("/tmp/wazuh-test-multi/instance-1"));
+        EXPECT_TRUE(std::filesystem::exists("/tmp/wazuh-test-multi/instance-2"));
     });
 
-    std::filesystem::remove_all("/tmp/wazuh-test-indexer-instance-1");
-    std::filesystem::remove_all("/tmp/wazuh-test-indexer-instance-2");
+    std::filesystem::remove_all("/tmp/wazuh-test-multi");
 }
 
 // Queue size limit tests
@@ -304,7 +301,7 @@ TEST_F(IndexerConnectorAsyncTest, ConstructorWithMaxQueueSizeConfig)
     config["max_queue_size"] = 100;
 
     EXPECT_NO_THROW({
-        IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest);
+        IndexerConnectorAsyncImplTest connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest);
         EXPECT_EQ(connector.getQueueSize(), 0); // Initially empty
     });
 }
@@ -315,7 +312,7 @@ TEST_F(IndexerConnectorAsyncTest, ConstructorWithUnlimitedQueueSizeDefault)
 
     // No max_queue_size specified, should default to unlimited (0)
     EXPECT_NO_THROW({
-        IndexerConnectorAsyncImplTest connector(config, nullptr, &mockHttpRequest);
+        IndexerConnectorAsyncImplTest connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest);
         EXPECT_EQ(connector.getQueueSize(), 0); // Initially empty
     });
 }
@@ -352,7 +349,7 @@ TEST_F(IndexerConnectorAsyncTest, QueueSizeLimitEnforcedWithSlowProcessing)
             }));
 
     // Use the small bulk implementation to trigger more frequent processing
-    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Push many documents quickly (more than max_queue_size)
     for (int i = 0; i < 20; ++i)
@@ -406,7 +403,7 @@ TEST_F(IndexerConnectorAsyncTest, UnlimitedQueueSizeAllowsAllEvents)
                 }
             }));
 
-    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Push many documents
     for (int i = 0; i < 15; ++i)
@@ -491,7 +488,7 @@ TEST_F(IndexerConnectorAsyncTest, HandleError413PayloadTooLarge)
                 }
             }));
 
-    IndexerConnectorAsyncImplSmallBulkPair connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulkPair connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Add large data to force bulk processing
     for (int i = 0; i < 2; ++i)
@@ -573,7 +570,7 @@ TEST_F(IndexerConnectorAsyncTest, HandleError413PayloadTooLargeDouble)
                 }
             }));
 
-    IndexerConnectorAsyncImplSmallBulkPair connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulkPair connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Add large data to force bulk processing
     for (int i = 0; i < 2; ++i)
@@ -655,7 +652,7 @@ TEST_F(IndexerConnectorAsyncTest, HandleError413PayloadTooLargeResetAfterSuccess
                 }
             }));
 
-    IndexerConnectorAsyncImplSmallBulkPair connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulkPair connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Add large data to force bulk processing
     for (int i = 0; i < 2; ++i)
@@ -747,7 +744,7 @@ TEST_F(IndexerConnectorAsyncTest, HandleError409VersionConflict)
                 }
             }));
 
-    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Add data to trigger processing
     for (int i = 0; i < 5; ++i)
@@ -825,7 +822,7 @@ TEST_F(IndexerConnectorAsyncTest, HandleError429TooManyRequests)
                 }
             }));
 
-    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Add data to trigger processing
     for (int i = 0; i < 5; ++i)
@@ -884,7 +881,7 @@ TEST_F(IndexerConnectorAsyncTest, HandleError500InternalServerError)
                 errorHandledPromise.set_value();
             }));
 
-    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Add data to trigger processing
     for (int i = 0; i < 5; ++i)
@@ -943,7 +940,7 @@ TEST_F(IndexerConnectorAsyncTest, HandleGenericError)
                 errorHandledPromise.set_value();
             }));
 
-    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Add data to trigger processing
     for (int i = 0; i < 5; ++i)
@@ -1005,7 +1002,7 @@ TEST_F(IndexerConnectorAsyncTest, HandleGenericError)
 //                 }
 //             }));
 
-//     IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+//     IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
 //     // Add multiple documents to create bulk operations that will be split recursively
 //     for (int i = 0; i < 8; ++i)
@@ -1157,7 +1154,7 @@ TEST_F(IndexerConnectorAsyncTest, SmallBulkSizeTriggersAsyncProcessing)
                 processingCompletedPromise.set_value();
             }));
 
-    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Add many small operations to force async bulk processing
     for (int i = 0; i < 30; ++i)
@@ -1192,7 +1189,7 @@ TEST_F(IndexerConnectorAsyncTest, VerifyAsyncDataProcessing)
                 processingCompletedPromise.set_value();
             }));
 
-    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Add specific test data
     connector.bulkIndex("test_id_1", "test_index", R"({"test":"data1"})");
@@ -1296,7 +1293,7 @@ TEST_F(IndexerConnectorAsyncTest, SplitAndProcessBulkWithAsyncDispatcher)
                 }
             }));
 
-    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Add multiple documents to create a bulk operation that will be split
     for (int i = 0; i < 8; ++i)
@@ -1363,7 +1360,7 @@ TEST_F(IndexerConnectorAsyncTest, ProcessBulkChunkRecursiveSplittingAsync)
                 }
             }));
 
-    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Add documents that will trigger recursive splitting
     for (int i = 0; i < 6; ++i)
@@ -1418,7 +1415,7 @@ TEST_F(IndexerConnectorAsyncTest, StoppingDuringAsyncProcessing)
             }));
 
     auto connector = std::make_unique<IndexerConnectorAsyncImplSmallBulk>(
-        config, nullptr, &mockHttpRequest, std::move(mockSelector));
+        config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Add data to trigger async processing
     for (int i = 0; i < 5; ++i)
@@ -1451,7 +1448,7 @@ TEST_F(IndexerConnectorAsyncTest, ConstructorWithCustomQueueId)
 
     EXPECT_NO_THROW({
         IndexerConnectorAsyncImplTest connector(
-            config, nullptr, &mockHttpRequest, std::move(mockSelector), customQueueId);
+            config, nullptr, customQueueId, DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
         SUCCEED();
     });
 }
@@ -1495,7 +1492,7 @@ TEST_F(IndexerConnectorAsyncTest, AsyncBulkDataFormatValidation)
             }));
 
     IndexerConnectorAsyncImplSmallBulkNoFlushInterval connector(
-        config, nullptr, &mockHttpRequest, std::move(mockSelector));
+        config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Add test documents
     connector.bulkIndex("doc1", "test_index", R"({"name":"document1"})");
@@ -1533,7 +1530,7 @@ TEST_F(IndexerConnectorAsyncTest, AsyncMixedOperations)
                 mixedProcessingPromise.set_value();
             }));
 
-    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Mix different types of index operations
     connector.bulkIndex("index_id_1", "test_index", R"({"type":"index","data":"value1"})");
@@ -1565,7 +1562,7 @@ TEST_F(IndexerConnectorAsyncTest, AsyncQueuePersistence)
     // First connector instance - add some data
     {
         IndexerConnectorAsyncImplTest connector(
-            config, nullptr, &mockHttpRequest, std::move(mockSelector), customQueueId);
+            config, nullptr, customQueueId, DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
         for (int i = 0; i < 3; ++i)
         {
@@ -1601,7 +1598,7 @@ TEST_F(IndexerConnectorAsyncTest, VerifyAsyncDataWithErrorProcessing)
                 processingCompletedPromise.set_value();
             }));
 
-    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     for (int i = 0; i < 5; ++i)
     {
@@ -1665,7 +1662,7 @@ TEST_F(IndexerConnectorAsyncTest, ErrorProcessingWithCreateOperation)
                 processingCompletedPromise.set_value();
             }));
 
-    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Send only 1 document to match the 1 item in response
     connector.bulkIndex("doc0", "test-data-stream", R"({"field":"value0"})");
@@ -1732,7 +1729,7 @@ TEST_F(IndexerConnectorAsyncTest, ErrorProcessingWithCausedBy)
                 processingCompletedPromise.set_value();
             }));
 
-    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Send only 1 document to match the 1 item in response
     connector.bulkIndex("test_doc", "test_index", R"({"field":"value0"})");
@@ -1798,7 +1795,7 @@ TEST_F(IndexerConnectorAsyncTest, ErrorProcessingWithCausedByTypeOnly)
                 processingCompletedPromise.set_value();
             }));
 
-    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Send 1 document to match the 1 item in response
     connector.bulkIndex("test_doc", "test_index", R"({"field":"value1"})");
@@ -1864,7 +1861,7 @@ TEST_F(IndexerConnectorAsyncTest, ErrorProcessingWithCausedByReasonOnly)
                 processingCompletedPromise.set_value();
             }));
 
-    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Send 1 document to match the 1 item in response
     connector.bulkIndex("test_doc", "test_index", R"({"field":"value1"})");
@@ -1908,7 +1905,7 @@ TEST_F(IndexerConnectorAsyncTest, BulkIndexWithVersionHandling)
                 processingCompletedPromise.set_value();
             }));
 
-    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Test with version
     connector.bulkIndex("doc1", "index1", R"({"field":"value1"})", "12345");
@@ -1968,7 +1965,7 @@ TEST_F(IndexerConnectorAsyncTest, BulkIndexEscapesSpecialCharactersInId)
                 processingCompletedPromise.set_value();
             }));
 
-    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Test various special characters that need escaping
     connector.bulkIndex("001_dum\\amy", "test_index", R"({"group":"dum\\amy"})");
@@ -2006,7 +2003,7 @@ TEST_F(IndexerConnectorAsyncTest, ErrorHandlingForInvalidInput)
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
-    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Test with empty index - should throw exception
     EXPECT_THROW(connector.bulkIndex("doc1", "", R"({"field":"value"})", "123"), IndexerConnectorException);
@@ -2057,7 +2054,7 @@ TEST_F(IndexerConnectorAsyncTest, VersionConflictHandling)
                 errorProcessedPromise.set_value();
             }));
 
-    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, "test-queue", DATABASE_BASE_PATH, &mockHttpRequest, std::move(mockSelector));
 
     // Send a document with version that will cause conflict
     connector.bulkIndex("conflict_doc", "index1", R"({"field":"conflicting_value"})", "999");

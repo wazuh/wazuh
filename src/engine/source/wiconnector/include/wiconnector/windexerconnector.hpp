@@ -27,7 +27,6 @@ struct Config
     std::string username;           ///< The username to authenticate with OpenSearch, admin by default.
     std::string password;           ///< The password to authenticate with OpenSearch, admin by default.
     size_t maxQueueSize {0};        ///< Maximum number of events in the indexer queue. 0 means unlimited.
-    std::string dbPath;             ///< RocksDB queue directory. Defaults to "queue/indexer/" if empty.
 
     struct
     {

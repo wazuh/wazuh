@@ -249,11 +249,6 @@ std::string Config::toJson() const
 
     config["max_queue_size"] = maxQueueSize;
 
-    if (!dbPath.empty())
-    {
-        config["db_path"] = dbPath;
-    }
-
     return config.dump();
 }
 
@@ -280,7 +275,7 @@ WIndexerConnector::WIndexerConnector(std::string_view jsonOssecConfig, const std
     }
 
     const auto logFunction = logging::createStandaloneLogFunction();
-    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonParsed, logFunction);
+    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonParsed, "", "queue/indexer/", logFunction);
 }
 
 WIndexerConnector::WIndexerConnector(const Config& config,
@@ -299,7 +294,7 @@ WIndexerConnector::WIndexerConnector(const Config& config,
         throw std::runtime_error("Invalid JSON configuration for IndexerConnector");
     }
 
-    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonConfig, logFunction);
+    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonConfig, "", "queue/indexer/", logFunction);
 }
 
 WIndexerConnector::~WIndexerConnector() = default;

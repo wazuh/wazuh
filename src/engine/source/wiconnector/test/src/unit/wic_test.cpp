@@ -5,6 +5,7 @@
 
 #include <base/logging.hpp>
 #include <chrono>
+#include <filesystem>
 #include <thread>
 
 class WIndexerConnectorTest : public ::testing::Test
@@ -75,28 +76,6 @@ TEST_F(ConfigTest, ConfigWithoutCredentialsToJson)
     // Should not contain username/password when empty
     EXPECT_TRUE(jsonStr.find("\"username\"") == std::string::npos);
     EXPECT_TRUE(jsonStr.find("\"password\"") == std::string::npos);
-}
-
-TEST_F(ConfigTest, ConfigWithDbPathToJson)
-{
-    wiconnector::Config config;
-    config.hosts = {"http://localhost:9200"};
-    config.dbPath = "/var/wazuh/queue/engine";
-
-    std::string jsonStr = config.toJson();
-
-    EXPECT_TRUE(jsonStr.find("\"db_path\"") != std::string::npos);
-    EXPECT_TRUE(jsonStr.find("/var/wazuh/queue/engine") != std::string::npos);
-}
-
-TEST_F(ConfigTest, ConfigWithoutDbPathOmitsField)
-{
-    wiconnector::Config config;
-    config.hosts = {"http://localhost:9200"};
-
-    std::string jsonStr = config.toJson();
-
-    EXPECT_TRUE(jsonStr.find("\"db_path\"") == std::string::npos);
 }
 
 // Test WIndexerConnector construction
