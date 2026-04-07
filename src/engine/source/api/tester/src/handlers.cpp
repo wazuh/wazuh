@@ -1,6 +1,8 @@
 #include "cmstore/icmstore.hpp"
+#include <algorithm>
 #include <memory>
 #include <sstream>
+#include <vector>
 
 #include <eMessages/tester.pb.h>
 #include <router/iapi.hpp>
@@ -172,6 +174,243 @@ bool validateMetadataLeaves(const json::Json& node,
     }
 
     return true;
+}
+
+eTester::Result_ValidationError makeValidationError(const std::string& path,
+                                                    const std::string& kind,
+                                                    const std::string& expected = {},
+                                                    const std::string& actual = {})
+{
+    eTester::Result_ValidationError err;
+    err.set_path(path);
+    err.set_kind(kind);
+    if (!expected.empty())
+    {
+        err.set_expected(expected);
+    }
+    if (!actual.empty())
+    {
+        err.set_actual(actual);
+    }
+    return err;
+}
+
+std::string joinPath(const std::string& base, const std::string& key)
+{
+    return base.empty() ? key : base + "." + key;
+}
+
+std::string appendIndexToReportPath(const std::string& base, size_t idx)
+{
+    return base.empty() ? fmt::format("[{}]", idx) : fmt::format("{}[{}]", base, idx);
+}
+
+/**
+ * @brief Classify a schema field using validateTargetField from the IValidator.
+ *
+ * @return true if the field is a SCHEMA field and traversal should continue.
+ * @return false if the field was classified as temporary or unknown (error already pushed).
+ */
+bool classifyField(const std::string& schemaPath,
+                   const std::string& reportPath,
+                   const schemf::IValidator& schema,
+                   std::vector<eTester::Result_ValidationError>& errors)
+{
+    const DotPath dotPath(schemaPath);
+    auto fieldKind = schema.validateTargetField(dotPath);
+
+    if (base::isError(fieldKind))
+    {
+        // validateTargetField returns error for fields not in schema and not temporary
+        errors.push_back(makeValidationError(reportPath, "unknown_field"));
+        return false;
+    }
+
+    if (base::getResponse(fieldKind) == schemf::TargetFieldKind::TEMPORARY)
+    {
+        errors.push_back(makeValidationError(reportPath, "temporary_field_not_allowed"));
+        return false;
+    }
+
+    return true; // SCHEMA field
+}
+
+/**
+ * @brief Recursively validate the output event against WCS.
+ *
+ * schemaPath:
+ *   - Path used for schema lookup (always index-free).
+ *
+ * reportPath:
+ *   - Path exposed in validation errors (may include array indices like foo[0].bar).
+ *
+ * isArrayItem:
+ *   - true when validating an element inside an array field.
+ *
+ * Rules:
+ *   - Temporary fields rooted at '_' are reported once and the subtree is skipped.
+ *   - Unknown fields are reported once and the subtree is skipped.
+ *   - Field classification uses IValidator::validateTargetField (no duplicated logic).
+ *   - Type validation uses IValidator::validate(DotPath, json::Json).
+ *   - Empty known objects/arrays are valid.
+ *   - Arrays reuse the same schemaPath for all items.
+ *   - Nested arrays are reported as invalid_type.
+ *   - FLAT_OBJECT fields are treated as opaque and their children are not validated.
+ */
+void collectOutputErrors(const json::Json& node,
+                         const schemf::IValidator& schema,
+                         const std::string& schemaPath,
+                         const std::string& reportPath,
+                         std::vector<eTester::Result_ValidationError>& errors,
+                         bool isArrayItem = false)
+{
+    // Root object has no schema field to classify.
+    if (!schemaPath.empty())
+    {
+        if (!classifyField(schemaPath, reportPath, schema, errors))
+        {
+            return; // temporary or unknown — subtree skipped
+        }
+    }
+
+    if (node.isObject())
+    {
+        if (!schemaPath.empty())
+        {
+            const DotPath dotPath(schemaPath);
+            try
+            {
+                auto validation = schema.validate(dotPath, node);
+                if (base::isError(validation))
+                {
+                    errors.push_back(makeValidationError(reportPath,
+                                                         "invalid_type",
+                                                         schemf::typeToStr(schema.getType(dotPath)),
+                                                         json::Json::typeToStr(node.type())));
+                    return;
+                }
+
+                if (schema.getType(dotPath) == schemf::Type::FLAT_OBJECT)
+                {
+                    return;
+                }
+            }
+            catch (const std::exception&)
+            {
+                errors.push_back(
+                    makeValidationError(reportPath, "invalid_type", {}, json::Json::typeToStr(node.type())));
+                return;
+            }
+        }
+
+        auto objOpt = node.getObject();
+        if (!objOpt.has_value())
+        {
+            return;
+        }
+
+        auto entries = std::move(objOpt.value());
+
+        for (const auto& [key, value] : entries)
+        {
+            collectOutputErrors(value, schema, joinPath(schemaPath, key), joinPath(reportPath, key), errors, false);
+        }
+
+        return;
+    }
+
+    if (node.isArray())
+    {
+        if (!schemaPath.empty() && isArrayItem)
+        {
+            // Arrays of arrays are not supported. Report as invalid_type.
+            const DotPath dotPath(schemaPath);
+            try
+            {
+                errors.push_back(makeValidationError(reportPath,
+                                                     "invalid_type",
+                                                     schemf::typeToStr(schema.getType(dotPath)),
+                                                     json::Json::typeToStr(node.type())));
+            }
+            catch (const std::exception&)
+            {
+                errors.push_back(
+                    makeValidationError(reportPath, "invalid_type", {}, json::Json::typeToStr(node.type())));
+            }
+            return;
+        }
+
+        auto arrOpt = node.getArray();
+        if (!arrOpt.has_value())
+        {
+            return;
+        }
+
+        size_t idx = 0;
+        for (const auto& item : arrOpt.value())
+        {
+            collectOutputErrors(item, schema, schemaPath, appendIndexToReportPath(reportPath, idx), errors, true);
+            ++idx;
+        }
+
+        return;
+    }
+
+    // Scalar leaf
+    if (schemaPath.empty())
+    {
+        return;
+    }
+
+    try
+    {
+        const DotPath dotPath(schemaPath);
+        auto validation = schema.validate(dotPath, node);
+        if (base::isError(validation))
+        {
+            errors.push_back(makeValidationError(reportPath,
+                                                 "invalid_type",
+                                                 schemf::typeToStr(schema.getType(dotPath)),
+                                                 json::Json::typeToStr(node.type())));
+        }
+    }
+    catch (const std::exception&)
+    {
+        errors.push_back(makeValidationError(reportPath, "invalid_type", {}, json::Json::typeToStr(node.type())));
+    }
+}
+
+/**
+ * @brief Validate the final output event from the pipeline against the WCS schema.
+ *
+ * @param outputJson The final output event as json::Json.
+ * @param schema The WCS schema validator.
+ * @return eTester::Result_Validation Validation summary with any errors found.
+ */
+eTester::Result_Validation validateOutputEvent(const json::Json& outputJson, const schemf::IValidator& schema)
+{
+    std::vector<eTester::Result_ValidationError> errors;
+    collectOutputErrors(outputJson, schema, "", "", errors, false);
+
+    // Sort errors for deterministic output
+    std::sort(errors.begin(),
+              errors.end(),
+              [](const auto& a, const auto& b)
+              {
+                  if (a.path() != b.path())
+                  {
+                      return a.path() < b.path();
+                  }
+                  return a.kind() < b.kind();
+              });
+
+    eTester::Result_Validation validation;
+    validation.set_valid(errors.empty());
+    for (auto& err : errors)
+    {
+        *validation.add_errors() = std::move(err);
+    }
+    return validation;
 }
 
 } // namespace
@@ -636,7 +875,19 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
         }
 
         ResponseType eResponse {};
-        eResponse.mutable_result()->CopyFrom(fromOutput(base::getResponse(response)));
+        auto eResult = fromOutput(base::getResponse(response));
+
+        // Validate the final output event against WCS schema (informational, non-blocking)
+        if (auto schemaValidatorLocked = wSchemaValidator.lock())
+        {
+            const auto& outputEvent = base::getResponse(response).event();
+            if (outputEvent)
+            {
+                *eResult.mutable_validation() = validateOutputEvent(*outputEvent, *schemaValidatorLocked);
+            }
+        }
+
+        eResponse.mutable_result()->CopyFrom(std::move(eResult));
         eResponse.set_status(eEngine::ReturnStatus::OK);
         res = adapter::userResponse(eResponse);
     };
