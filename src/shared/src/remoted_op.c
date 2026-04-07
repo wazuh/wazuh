@@ -380,4 +380,23 @@ int parse_json_keepalive(const char *json_str, agent_info_data *agent_data, char
     return OS_SUCCESS;
 }
 
+/* Check if JSON keepalive is complete (has host metadata) */
+bool is_keepalive_complete(const char *json_str) {
+    if (!json_str || json_str[0] != '{') {
+        return false;
+    }
+
+    cJSON *root = cJSON_Parse(json_str);
+    if (!root) {
+        return false;
+    }
+
+    // A complete keepalive must have the "host" object with metadata
+    cJSON *host = cJSON_GetObjectItem(root, "host");
+    bool is_complete = (host != NULL);
+
+    cJSON_Delete(root);
+    return is_complete;
+}
+
 #endif
