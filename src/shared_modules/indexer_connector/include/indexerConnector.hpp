@@ -304,9 +304,9 @@ public:
     explicit IndexerConnectorAsync(
         const nlohmann::json& config,
         std::string queueId,
-        std::string basePath = "queue/indexer/",
         const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
-            logFunction = {});
+            logFunction = {},
+        std::string basePath = "queue/indexer/");
 
     ~IndexerConnectorAsync();
 

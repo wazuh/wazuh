@@ -136,6 +136,12 @@ public:
         , m_queueId(std::move(queueId))
         , m_dbPath(std::move(basePath) + m_queueId)
     {
+        if (m_queueId.empty())
+        {
+            throw IndexerConnectorException("queueId cannot be empty: each IndexerConnectorAsync instance "
+                                            "must have a unique identifier (e.g. \"engine\", \"inventory-sync\").");
+        }
+
         if (logFunction)
         {
             Log::assignLogFunction(logFunction);

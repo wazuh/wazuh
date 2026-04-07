@@ -168,7 +168,7 @@ int main(const int argc, const char* argv[])
         if (useAsync)
         {
             std::cout << "Using Indexer Connector ASYNC implementation.\n";
-            asyncConnector = std::make_unique<IndexerConnectorAsync>(configuration, "", "queue/indexer/", loggingFunction);
+            asyncConnector = std::make_unique<IndexerConnectorAsync>(configuration, "tool", loggingFunction);
         }
         else
         {

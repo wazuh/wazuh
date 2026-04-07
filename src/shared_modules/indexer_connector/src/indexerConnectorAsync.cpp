@@ -96,9 +96,9 @@ public:
 IndexerConnectorAsync::IndexerConnectorAsync(
     const nlohmann::json& config,
     std::string queueId,
-    std::string basePath,
     const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
-        logFunction)
+        logFunction,
+    std::string basePath)
     : m_impl(std::make_unique<Impl>(config, std::move(queueId), std::move(basePath), logFunction))
 {
 }
