@@ -165,7 +165,7 @@ DASHBOARD_HTML = """
 
     <script>
         const socket = io();
-        const MAX_POINTS = 60;
+        const MAX_POINTS = 300;
 
         const data = {
             'server.bytes.received': {x: [], y: []},

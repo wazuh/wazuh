@@ -102,18 +102,9 @@ getDiscardedEventsFilter(const cm::store::dataType::Policy& policy,
     const bool shouldIndex = policy.shouldIndexDiscardedEvents();
     const auto discardFieldPath = json::Json::formatJsonPath(syntax::asset::discard::TARGET_FIELD);
 
-    // Per-space metric: count events marked as discarded in this space
-    std::shared_ptr<fastmetrics::ICounter> spaceDiscardedCounter = discardedCounter;
-    if (!spaceDiscardedCounter)
-    {
-        const auto spaceName = policy.getOriginSpace();
-        spaceDiscardedCounter = fastmetrics::manager().getOrCreateCounter("space." + spaceName + ".events.discarded");
-    }
-
     auto op = base::Term<base::EngineOp>::create(
         DISCARDED_EVENTS_FILTER_TRACEABLE_NAME,
-        [shouldIndex, discardFieldPath, trace, spaceDiscardedCounter](
-            base::Event event) -> base::result::Result<base::Event>
+        [shouldIndex, discardFieldPath, trace, discardedCounter](base::Event event) -> base::result::Result<base::Event>
         {
             // Policy enables indexing of discarded events
             if (shouldIndex)
@@ -129,7 +120,7 @@ getDiscardedEventsFilter(const cm::store::dataType::Policy& policy,
             auto discardValue = event->getBool(discardFieldPath);
             if (discardValue && discardValue.value())
             {
-                spaceDiscardedCounter->add(1);
+                discardedCounter->add(1);
                 if (trace)
                 {
                     return base::result::makeFailure<decltype(event)>(event,

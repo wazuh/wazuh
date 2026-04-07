@@ -731,7 +731,8 @@ int main(int argc, char* argv[])
                                                                    [](fastmetrics::Manager*) {
                                                                    } // Empty deleter - singleton is owned elsewhere
             );
-            api::metrics::handlers::registerHandlers(metricsManager, apiServer, "wazuh-manager-analysisd", engineUptimeISO);
+            api::metrics::handlers::registerHandlers(
+                metricsManager, apiServer, "wazuh-manager-analysisd", engineUptimeISO);
             LOG_DEBUG("Metrics API registered.");
 
             // Geo
@@ -800,17 +801,16 @@ int main(int argc, char* argv[])
 
                             // Get all metrics and write as JSON
                             auto metricNames = metricsManager->getAllNames();
+                            auto now = std::chrono::system_clock::now();
+                            auto timestamp =
+                                std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+
                             for (const auto& name : metricNames)
                             {
                                 auto metric = metricsManager->get(name);
-                                if (metric && metric->isEnabled())
+                                if (metric)
                                 {
-                                    auto now = std::chrono::system_clock::now();
-                                    auto timestamp =
-                                        std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch())
-                                            .count();
-
-                                    // Build JSON line: {"timestamp":1234,"name":"metric.name","value":123.45}
+                                    // Always write the value (disabled metrics return 0)
                                     std::string jsonLine = fmt::format(R"({{"timestamp":{},"name":"{}","value":{}}})",
                                                                        timestamp,
                                                                        name,

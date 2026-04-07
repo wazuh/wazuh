@@ -152,12 +152,12 @@ adapter::RouteHandler listMetrics(const std::shared_ptr<fastmetrics::IManager>& 
         // Get all metrics names
         auto names = manager->getAllNames();
 
-        ResponseType eResponse;
-        eResponse.set_status(eEngine::ReturnStatus::OK);
-
         // Filter by space if requested
         const std::string spacePrefix =
             protoReq.has_space() && !protoReq.space().empty() ? "space." + protoReq.space() + "." : "";
+
+        ResponseType eResponse;
+        eResponse.set_status(eEngine::ReturnStatus::OK);
 
         for (const auto& name : names)
         {
@@ -173,6 +173,20 @@ adapter::RouteHandler listMetrics(const std::shared_ptr<fastmetrics::IManager>& 
             {
                 eResponse.add_names(name);
             }
+        }
+
+        if (eResponse.names_size() == 0)
+        {
+            if (!spacePrefix.empty())
+            {
+                res = adapter::userErrorResponse<ResponseType>(
+                    fmt::format("No metrics found for space '{}'", protoReq.space()));
+            }
+            else
+            {
+                res = adapter::userErrorResponse<ResponseType>("No metrics registered");
+            }
+            return;
         }
 
         res = adapter::userResponse(eResponse);

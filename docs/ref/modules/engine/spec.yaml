@@ -2138,7 +2138,7 @@ paths:
                         enabled: true
                         value: 1350.0
                       - name: "router.queue.size"
-                        type: "gauge_int"
+                        type: "pull"
                         enabled: true
                         value: 42
                       - name: "router.queue.usage.percent"
@@ -2782,7 +2782,7 @@ components:
             type:
               type: string
               description: "Metric type as string"
-              enum: ["counter", "gauge_int", "gauge_dbl", "histogram", "pull"]
+              enum: ["counter", "gauge_int", "gauge_dbl", "pull"]
             enabled:
               type: boolean
               description: "Whether metric collection is currently enabled"
@@ -2818,7 +2818,7 @@ components:
         type:
           type: string
           description: "Metric type as string"
-          enum: ["counter", "gauge_int", "gauge_dbl", "histogram", "pull"]
+          enum: ["counter", "gauge_int", "gauge_dbl", "pull"]
         enabled:
           type: boolean
           description: "Whether metric collection is currently enabled"

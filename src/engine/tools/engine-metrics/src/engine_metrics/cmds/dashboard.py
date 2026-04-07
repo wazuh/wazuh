@@ -1,5 +1,6 @@
 import time
 import json
+import logging
 from collections import defaultdict
 from pathlib import Path
 from threading import Thread, Lock
@@ -95,7 +96,10 @@ def run(args):
 
     app = Flask(__name__)
     app.config['SECRET_KEY'] = 'wazuh-metrics-dashboard'
-    socketio = SocketIO(app, cors_allowed_origins="*")
+    socketio = SocketIO(app, cors_allowed_origins="*", logger=False, engineio_logger=False)
+
+    # Suppress Flask/Werkzeug startup banner
+    logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
     reader = MetricsReader(log_dir)
 

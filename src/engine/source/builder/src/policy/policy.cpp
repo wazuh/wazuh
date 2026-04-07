@@ -84,7 +84,9 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
 
         // Discarded events filter (based on policy configuration)
         {
-            auto [exp, traceable] = builders::enrichment::getDiscardedEventsFilter(policyData, trace);
+            auto discardedCounter =
+                fastmetrics::manager().getOrCreateCounter("space." + policyData.getOriginSpace() + ".events.discarded");
+            auto [exp, traceable] = builders::enrichment::getDiscardedEventsFilter(policyData, trace, discardedCounter);
             preEnrichmentOps.push_back(exp);
             m_assets.insert(base::Name(traceable));
         }

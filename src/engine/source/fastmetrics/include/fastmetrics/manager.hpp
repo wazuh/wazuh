@@ -4,6 +4,7 @@
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -31,6 +32,60 @@ private:
     std::unordered_map<std::string, std::shared_ptr<IMetric>> m_metrics;
     std::atomic_bool m_globalEnabled;
 
+    /**
+     * @brief Generic get-or-create helper for any metric type
+     *
+     * @tparam InterfaceT  The metric interface (ICounter, IGaugeInt, IGaugeDouble)
+     * @tparam ConcreteT   The concrete implementation (AtomicCounter, AtomicGaugeInt, AtomicGaugeDouble)
+     */
+    template<typename InterfaceT, typename ConcreteT>
+    std::shared_ptr<InterfaceT> getOrCreate(const std::string& name)
+    {
+        static_assert(std::is_base_of_v<IMetric, InterfaceT>, "InterfaceT must derive from IMetric");
+        static_assert(std::is_base_of_v<InterfaceT, ConcreteT>, "ConcreteT must implement InterfaceT");
+        static_assert(std::is_constructible_v<ConcreteT, std::string>,
+                      "ConcreteT must be constructible from std::string");
+
+        // Fast path: try to get existing metric with shared lock
+        {
+            std::shared_lock lock(m_mutex);
+            auto it = m_metrics.find(name);
+            if (it != m_metrics.end())
+            {
+                auto casted = std::dynamic_pointer_cast<InterfaceT>(it->second);
+                if (!casted)
+                {
+                    throw std::invalid_argument("Metric '" + name + "' already exists with a different type");
+                }
+                return casted;
+            }
+        }
+
+        // Slow path: create new metric with unique lock
+        std::unique_lock lock(m_mutex);
+
+        // Double-check after acquiring unique lock
+        auto it = m_metrics.find(name);
+        if (it != m_metrics.end())
+        {
+            auto casted = std::dynamic_pointer_cast<InterfaceT>(it->second);
+            if (!casted)
+            {
+                throw std::invalid_argument("Metric '" + name + "' already exists with a different type");
+            }
+            return casted;
+        }
+
+        auto metric = std::make_shared<ConcreteT>(name);
+        if (!m_globalEnabled.load(std::memory_order_relaxed))
+        {
+            metric->disable();
+        }
+
+        m_metrics[name] = metric;
+        return metric;
+    }
+
 public:
     Manager()
         : m_globalEnabled(true)
@@ -47,15 +102,24 @@ public:
 
     std::shared_ptr<ICounter> getOrCreateCounter(const std::string& name,
                                                  const std::string& description = "",
-                                                 const std::string& unit = "") override;
+                                                 const std::string& unit = "") override
+    {
+        return getOrCreate<ICounter, AtomicCounter>(name);
+    }
 
     std::shared_ptr<IGaugeInt> getOrCreateGaugeInt(const std::string& name,
                                                    const std::string& description = "",
-                                                   const std::string& unit = "") override;
+                                                   const std::string& unit = "") override
+    {
+        return getOrCreate<IGaugeInt, AtomicGaugeInt>(name);
+    }
 
     std::shared_ptr<IGaugeDouble> getOrCreateGaugeDouble(const std::string& name,
                                                          const std::string& description = "",
-                                                         const std::string& unit = "") override;
+                                                         const std::string& unit = "") override
+    {
+        return getOrCreate<IGaugeDouble, AtomicGaugeDouble>(name);
+    }
 
     template<typename T>
     void registerPullMetric(const std::string& name,
@@ -82,6 +146,10 @@ public:
             }
 
             auto metric = std::make_shared<PullMetric<T>>(name, std::move(getter));
+            if (!m_globalEnabled.load(std::memory_order_relaxed))
+            {
+                metric->disable();
+            }
             m_metrics[name] = metric;
         }
     }

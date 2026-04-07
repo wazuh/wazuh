@@ -86,7 +86,7 @@ EnrichmentBuilder getIocEnrichmentBuilder(const std::shared_ptr<ioc::kvdb::IKVDB
 std::pair<base::Expression, std::string>
 getDiscardedEventsFilter(const cm::store::dataType::Policy& policy,
                          bool trace,
-                         const std::shared_ptr<fastmetrics::ICounter>& discardedCounter = nullptr);
+                         const std::shared_ptr<fastmetrics::ICounter>& discardedCounter);
 
 /**
  * @brief Get the cleanup expression to remove temporary decoder variables.
