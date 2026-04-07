@@ -98,7 +98,6 @@ void SCAEventHandler::ReportPoliciesDelta(
 
     for (const auto& event : events)
     {
-        // Validate and handle stateful message
         nlohmann::json checkDataForDelete = extractCheckData(event);
         const std::string checkId = extractCheckId(checkDataForDelete);
 
@@ -125,18 +124,21 @@ void SCAEventHandler::ReportPoliciesDelta(
             }
         }
 
-        const auto [processedStatefulEvent, operation, version] = ProcessStateful(event);
-
-        const bool validationPassed = ValidateAndHandleStatefulMessage(
-                                          processedStatefulEvent,
-                                          "policy/check event",
-                                          checkDataForDelete,
-                                          &failedChecks
-                                      );
-
-        if (validationPassed && shouldPushStateful && m_allowStatefulMessages)
+        if (m_allowStatefulMessages)
         {
-            PushStateful(processedStatefulEvent, operation, version);
+            const auto [processedStatefulEvent, operation, version] = ProcessStateful(event);
+
+            const bool validationPassed = ValidateAndHandleStatefulMessage(
+                                              processedStatefulEvent,
+                                              "policy/check event",
+                                              checkDataForDelete,
+                                              &failedChecks
+                                          );
+
+            if (validationPassed && shouldPushStateful)
+            {
+                PushStateful(processedStatefulEvent, operation, version);
+            }
         }
 
         const auto processedStatelessEvent = ProcessStateless(event);
@@ -146,13 +148,16 @@ void SCAEventHandler::ReportPoliciesDelta(
             PushStateless(processedStatelessEvent);
         }
 
-        if (!promotedIds.empty())
+        if (m_allowStatefulMessages && !promotedIds.empty())
         {
             ProcessPromotedChecks(promotedIds, &failedChecks);
         }
     }
 
-    HandleFailedChecks(std::move(failedChecks));
+    if (m_allowStatefulMessages)
+    {
+        HandleFailedChecks(std::move(failedChecks));
+    }
 
     if (m_syncManager)
     {
@@ -163,7 +168,7 @@ void SCAEventHandler::ReportPoliciesDelta(
 
 void SCAEventHandler::ReportDemotedChecks(const std::vector<std::string>& demotedIds) const
 {
-    if (demotedIds.empty())
+    if (demotedIds.empty() || !m_allowStatefulMessages)
     {
         return;
     }
@@ -256,18 +261,21 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
                 shouldPushStateful = m_syncManager->shouldSyncModify(dataForDelete);
             }
 
-            const auto [stateful, operation, version] = ProcessStateful(event);
-
-            const bool validationPassed = ValidateAndHandleStatefulMessage(
-                                              stateful,
-                                              "checkId: " + checkId,
-                                              dataForDelete,
-                                              &failedChecks
-                                          );
-
-            if (validationPassed && shouldPushStateful && m_allowStatefulMessages)
+            if (m_allowStatefulMessages)
             {
-                PushStateful(stateful, operation, version);
+                const auto [stateful, operation, version] = ProcessStateful(event);
+
+                const bool validationPassed = ValidateAndHandleStatefulMessage(
+                                                  stateful,
+                                                  "checkId: " + checkId,
+                                                  dataForDelete,
+                                                  &failedChecks
+                                              );
+
+                if (validationPassed && shouldPushStateful)
+                {
+                    PushStateful(stateful, operation, version);
+                }
             }
 
             const auto stateless = ProcessStateless(event);
@@ -285,7 +293,10 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
 
     m_dBSync->syncRow(updateResultQuery.query(), callback);
 
-    HandleFailedChecks(std::move(failedChecks));
+    if (m_allowStatefulMessages)
+    {
+        HandleFailedChecks(std::move(failedChecks));
+    }
 
     if (m_syncManager)
     {
@@ -938,7 +949,7 @@ void SCAEventHandler::HandleFailedChecks(std::vector<nlohmann::json> failedCheck
 void SCAEventHandler::ProcessPromotedChecks(const std::vector<std::string>& promotedIds,
                                             std::vector<nlohmann::json>* failedChecks) const
 {
-    if (promotedIds.empty())
+    if (promotedIds.empty() || !m_allowStatefulMessages)
     {
         return;
     }
@@ -1007,7 +1018,7 @@ void SCAEventHandler::ProcessPromotedChecks(const std::vector<std::string>& prom
 void SCAEventHandler::ProcessDemotedChecks(const std::vector<std::string>& demotedIds,
                                            std::vector<nlohmann::json>* failedChecks) const
 {
-    if (demotedIds.empty())
+    if (demotedIds.empty() || !m_allowStatefulMessages)
     {
         return;
     }

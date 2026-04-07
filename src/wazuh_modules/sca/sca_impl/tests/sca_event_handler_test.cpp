@@ -1078,6 +1078,170 @@ TEST_F(SCAEventHandlerTest, ReportCheckResult_SuppressesStatefulMessagesBeforeFi
     EXPECT_EQ(statelessMessage["data"]["check"]["result"], checkResult);
 }
 
+TEST_F(SCAEventHandlerTest, ReportPoliciesDelta_BeforeFirstSyncSkipsValidationDeletion)
+{
+    auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
+
+    try
+    {
+        validatorFactory.initialize();
+    }
+    catch (const std::exception& e)
+    {
+        GTEST_SKIP() << "Schemas not available for validation test: " << e.what();
+    }
+
+    if (!validatorFactory.isInitialized() || !validatorFactory.getValidator("wazuh-states-sca"))
+    {
+        GTEST_SKIP() << "SCA schema validator not available";
+    }
+
+    std::vector<std::string> statefulMessages;
+    std::vector<std::string> statelessMessages;
+
+    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message, uint64_t) -> int
+    {
+        statefulMessages.push_back(message);
+        return 0;
+    };
+
+    auto mockPushStateless = [&statelessMessages](const std::string & message) -> int
+    {
+        statelessMessages.push_back(message);
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(
+                          mockDBSync,
+                          mockPushStateless,
+                          mockPushStateful,
+                          false);
+
+    const std::unordered_map<std::string, nlohmann::json> modifiedPolicies;
+    const std::unordered_map<std::string, nlohmann::json> modifiedChecks =
+    {
+        {
+            "test_check",
+            {
+                {
+                    "data",
+                    {
+                        {
+                            "new",
+                            {
+                                {"id", "test_check"},
+                                {"policy_id", "test_policy"},
+                                {"result", "Not run"}
+                            }
+                        }
+                    }
+                },
+                {"result", MODIFIED}
+            }
+        }
+    };
+
+    EXPECT_CALL(*newHandler, GetPolicyById("test_policy"))
+    .WillOnce(testing::Return(nlohmann::json({{"id", "test_policy"}})));
+
+    EXPECT_CALL(*mockDBSync, handle())
+    .Times(0);
+    EXPECT_CALL(*mockDBSync, deleteRows(testing::_))
+    .Times(0);
+
+    EXPECT_NO_THROW(newHandler->ReportPoliciesDelta(modifiedPolicies, modifiedChecks));
+
+    EXPECT_TRUE(statefulMessages.empty());
+    EXPECT_EQ(statelessMessages.size(), 1U);
+}
+
+TEST_F(SCAEventHandlerTest, ReportCheckResult_BeforeFirstSyncSkipsValidationDeletion)
+{
+    auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
+
+    try
+    {
+        validatorFactory.initialize();
+    }
+    catch (const std::exception& e)
+    {
+        GTEST_SKIP() << "Schemas not available for validation test: " << e.what();
+    }
+
+    if (!validatorFactory.isInitialized() || !validatorFactory.getValidator("wazuh-states-sca"))
+    {
+        GTEST_SKIP() << "SCA schema validator not available";
+    }
+
+    const std::string policyId = "test_policy";
+    const std::string checkId = "test_check";
+    const std::string checkResult = "Not applicable";
+
+    EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
+    .WillOnce([checkId, policyId, checkResult](const nlohmann::json&, const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
+    {
+        nlohmann::json returnData =
+        {
+            {
+                "old", {
+                    {"id", checkId},
+                    {"policy_id", policyId},
+                    {"result", "Not run"}
+                }
+            },
+            {
+                "new", {
+                    {"id", checkId},
+                    {"policy_id", policyId},
+                    {"result", checkResult}
+                }
+            }
+        };
+        callback(MODIFIED, returnData);
+    });
+
+    std::vector<std::string> statefulMessages;
+    std::vector<std::string> statelessMessages;
+
+    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message, uint64_t) -> int
+    {
+        statefulMessages.push_back(message);
+        return 0;
+    };
+
+    auto mockPushStateless = [&statelessMessages](const std::string & message) -> int
+    {
+        statelessMessages.push_back(message);
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(
+                          mockDBSync,
+                          mockPushStateless,
+                          mockPushStateful,
+                          false);
+
+    EXPECT_CALL(*newHandler, GetPolicyById(policyId))
+    .WillOnce(testing::Return(nlohmann::json({{"id", policyId}})));
+
+    EXPECT_CALL(*newHandler, GetPolicyCheckById(checkId))
+    .WillOnce(testing::Return(nlohmann::json(
+    {
+        {"id", checkId},
+        {"policy_id", policyId}
+    })));
+
+    EXPECT_CALL(*mockDBSync, handle())
+    .Times(0);
+    EXPECT_CALL(*mockDBSync, deleteRows(testing::_))
+    .Times(0);
+
+    EXPECT_NO_THROW(newHandler->ReportCheckResult(policyId, checkId, checkResult));
+
+    EXPECT_TRUE(statefulMessages.empty());
+    EXPECT_EQ(statelessMessages.size(), 1U);
+}
+
 TEST_F(SCAEventHandlerTest, GetPolicyCheckById_ValidId)
 {
     const std::string checkId = "check123";
