@@ -556,15 +556,23 @@ def _mask_paths_in_object(obj, dotted_path: str, mask_text: str):
         _mask_paths_in_object(obj[head], tail[0], mask_text)
 
 
-def _mask_payload(payload, mask_text: str = MASK_DEFAULT) -> None:
-    """Apply masking to any supported payload shape (in place).
+def _mask_payload(payload, mask_text: str = MASK_DEFAULT):
+    """Apply masking to any supported payload shape.
+
+    For dicts, lists and AffectedItemsWazuhResult the operation is in-place.
+    For raw XML strings a new masked string is returned.
 
     Parameters
     ----------
     payload :
-        One of: dict, list, or AffectedItemsWazuhResult. Other types are ignored.
+        One of: str, dict, list, or AffectedItemsWazuhResult. Other types are ignored.
     mask_text : str
         Replacement text used for masked values.
+
+    Returns
+    -------
+    str or None
+        Returns a masked string when payload is a str; None otherwise.
     """
     if isinstance(payload, AffectedItemsWazuhResult):
         for item in payload.affected_items:
@@ -577,6 +585,15 @@ def _mask_payload(payload, mask_text: str = MASK_DEFAULT) -> None:
     elif isinstance(payload, list):
         for el in payload:
             _mask_payload(el, mask_text)
+    elif isinstance(payload, str):
+        # Raw XML content (e.g. ossec.conf returned as plain text).
+        # Mask <key> only inside the <cluster> block.
+        return re.sub(
+            r'(<cluster>.*?<key>)[^<]*(</key>)',
+            lambda m: m.group(1) + mask_text + m.group(2),
+            payload,
+            flags=re.DOTALL
+        )
 
 
 def mask_sensitive_config(mask_text: str = MASK_DEFAULT):
@@ -599,7 +616,10 @@ def mask_sensitive_config(mask_text: str = MASK_DEFAULT):
             try:
                 # Only mask if user LACKS update-config permissions
                 if not _has_update_permissions():
-                    _mask_payload(result, mask_text=mask_text)
+                    masked = _mask_payload(result, mask_text=mask_text)
+                    # _mask_payload returns a new string for raw XML; None for in-place types
+                    if masked is not None:
+                        result = masked
             except Exception:
                 # Never break the endpoint if masking fails for any reason
                 pass
