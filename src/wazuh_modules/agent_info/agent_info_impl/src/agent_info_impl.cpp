@@ -1517,6 +1517,7 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
     // State tracking
     std::set<std::string> pausedModules;
     std::map<std::string, int> moduleVersions;
+    bool modulesResumed = false;
 
     m_logFunction(LOG_INFO, "Starting module coordination process");
 
@@ -1534,14 +1535,8 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
             return true;
         }
 
-        // Step 2: Flush all paused modules
-        if (!flushPausedModules(pausedModules))
-        {
-            resumePausedModules(pausedModules);
-            return false;
-        }
-
-        // Step 3: Get versions, calculate new version, and set it on all modules
+        // Step 2: Get versions, calculate new version, and set it on all modules
+        // Only essential IPC operations (get_version/set_version) are kept inside the pause window
         int newVersion = calculateNewVersion(pausedModules, incrementVersion, moduleVersions);
 
         if (newVersion < 0)
@@ -1550,7 +1545,21 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
             return false;
         }
 
-        // Step 4: Build indices list based on enabled modules and synchronize
+        // Step 3: Resume all modules early to minimize the pause window
+        size_t coordinatedModulesCount = pausedModules.size();
+        resumePausedModules(pausedModules);
+        modulesResumed = true;
+
+        // Step 4: Flush all modules after resume so scanning can restart immediately
+        // while pending inventory events are being sent to the indexer
+        if (!flushPausedModules(pausedModules))
+        {
+            return false;
+        }
+
+        // Step 5: Build indices list based on enabled modules and synchronize
+        // Sending global_version to manager last ensures all flushed inventory
+        // events are indexed before the manager applies group/metadata changes
         std::vector<std::string> indicesToSync;
 
         for (const auto& module : pausedModules)
@@ -1572,7 +1581,6 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
             if (!syncSuccess)
             {
                 m_logFunction(LOG_WARNING, "Failed to synchronize " + table);
-                resumePausedModules(pausedModules);
                 return false;
             }
 
@@ -1582,10 +1590,6 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
         {
             m_logFunction(LOG_WARNING, "Sync protocol not available, skipping synchronization");
         }
-
-        // Step 5: Resume all modules
-        size_t coordinatedModulesCount = pausedModules.size();
-        resumePausedModules(pausedModules);
 
         m_logFunction(LOG_INFO, "Synchronization coordination completed successfully");
         m_logFunction(LOG_DEBUG,
@@ -1597,13 +1601,23 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
     catch (const std::exception& e)
     {
         m_logFunction(LOG_ERROR, "Exception during module coordination: " + std::string(e.what()));
-        resumePausedModules(pausedModules);
+
+        if (!modulesResumed)
+        {
+            resumePausedModules(pausedModules);
+        }
+
         return false;
     }
     catch (...)
     {
         m_logFunction(LOG_ERROR, "Unknown exception during module coordination");
-        resumePausedModules(pausedModules);
+
+        if (!modulesResumed)
+        {
+            resumePausedModules(pausedModules);
+        }
+
         return false;
     }
 }
