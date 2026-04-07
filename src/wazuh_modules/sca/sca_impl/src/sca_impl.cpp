@@ -114,6 +114,8 @@ void SecurityConfigurationAssessment::Run()
         m_syncManager->initialize();
     }
 
+    refreshFirstSyncCompletedState();
+
     // Check for policies removed between agent restarts (before scan loop starts).
     // This early check uses m_policiesData (raw config) since policies haven't been loaded yet.
     bool hasEnabledPolicies =
@@ -188,7 +190,12 @@ void SecurityConfigurationAssessment::Run()
             m_remoteEnabled,
             [this](auto policyData, auto checksData)
             {
-                const SCAEventHandler eventHandler(m_dBSync, m_pushStatelessMessage, m_pushStatefulMessage, m_syncManager);
+                const SCAEventHandler eventHandler(
+                    m_dBSync,
+                    m_pushStatelessMessage,
+                    m_pushStatefulMessage,
+                    m_syncManager,
+                    m_firstSyncCompleted.load());
                 eventHandler.ReportPoliciesDelta(policyData, checksData);
             },
             m_yamlToJsonFunc
@@ -222,7 +229,12 @@ void SecurityConfigurationAssessment::Run()
 
         auto reportCheckResult = [this](const CheckResult & checkResult)
         {
-            const SCAEventHandler eventHandler(m_dBSync, m_pushStatelessMessage, m_pushStatefulMessage, m_syncManager);
+            const SCAEventHandler eventHandler(
+                m_dBSync,
+                m_pushStatelessMessage,
+                m_pushStatefulMessage,
+                m_syncManager,
+                m_firstSyncCompleted.load());
             eventHandler.ReportCheckResult(
                 checkResult.policyId, checkResult.checkId, checkResult.result, checkResult.reason);
         };
@@ -425,15 +437,30 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
     // Log
     LoggingHelper::getInstance().log(LOG_INFO, "Starting SCA synchronization.");
 
-    bool result = m_spSyncProtocol->synchronizeModule(mode);
+    refreshFirstSyncCompletedState();
+
+    const bool firstSyncPending = !m_firstSyncCompleted.load();
+
+    bool result = false;
+
+    if (firstSyncPending)
+    {
+        LoggingHelper::getInstance().log(
+            LOG_DEBUG,
+            "SCA first synchronization is pending. Sending a full snapshot after scan completion.");
+        result = synchronizeDatabaseSnapshot(false, "initial synchronization");
+    }
+    else
+    {
+        result = m_spSyncProtocol->synchronizeModule(mode);
+    }
 
     if (result)
     {
-        int64_t firstSyncCompleted = 0;
-
-        if (!getMetadataValue(SCA_FIRST_SYNC_COMPLETED_METADATA_KEY, firstSyncCompleted) || firstSyncCompleted == 0)
+        if (firstSyncPending)
         {
             updateMetadataValue(SCA_FIRST_SYNC_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
+            m_firstSyncCompleted.store(true);
         }
     }
 
@@ -476,13 +503,20 @@ bool SecurityConfigurationAssessment::parseResponseBuffer(const uint8_t* data, s
 
 void SecurityConfigurationAssessment::setSyncLimit(uint64_t syncLimit)
 {
+    refreshFirstSyncCompletedState();
+
     if (m_syncManager)
     {
         const auto limitResult = m_syncManager->updateSyncLimit(syncLimit);
 
         if (!limitResult.demotedIds.empty())
         {
-            const SCAEventHandler eventHandler(m_dBSync, m_pushStatelessMessage, m_pushStatefulMessage, m_syncManager);
+            const SCAEventHandler eventHandler(
+                m_dBSync,
+                m_pushStatelessMessage,
+                m_pushStatefulMessage,
+                m_syncManager,
+                m_firstSyncCompleted.load());
             eventHandler.ReportDemotedChecks(limitResult.demotedIds);
         }
     }
@@ -947,21 +981,33 @@ bool SecurityConfigurationAssessment::checkIfRecoveryRequired(const std::string&
 
 bool SecurityConfigurationAssessment::performRecovery()
 {
-    LoggingHelper::getInstance().log(LOG_INFO, "Starting SCA recovery process");
+    return synchronizeDatabaseSnapshot(true, "recovery");
+}
+
+bool SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason)
+{
+    LoggingHelper::getInstance().log(LOG_DEBUG, "Starting SCA " + syncReason + " full synchronization");
 
     try
     {
-        // Increase version for all entries before recovery sync
-        // This ensures our versions are higher than what's in the indexer
         if (!m_dBSync)
         {
-            LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot perform recovery");
+            LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot synchronize SCA snapshot");
             return false;
         }
 
-        m_dBSync->increaseEachEntryVersion("sca_check");
+        if (!m_spSyncProtocol)
+        {
+            LoggingHelper::getInstance().log(LOG_ERROR, "Sync protocol not initialized, cannot synchronize SCA snapshot");
+            return false;
+        }
 
-        // Get all synced checks from database (now with incremented versions)
+        if (increaseVersions)
+        {
+            // Recovery must outrank any stale versions already present in the indexer.
+            m_dBSync->increaseEachEntryVersion("sca_check");
+        }
+
         std::vector<nlohmann::json> checks;
         auto selectQuery = SelectQuery::builder()
                            .table("sca_check")
@@ -978,20 +1024,12 @@ bool SecurityConfigurationAssessment::performRecovery()
         };
 
         m_dBSync->selectRows(selectQuery.query(), selectCallback);
-        LoggingHelper::getInstance().log(LOG_DEBUG, "Retrieved " + std::to_string(checks.size()) + " checks from database");
+        LoggingHelper::getInstance().log(
+            LOG_DEBUG,
+            "Retrieved " + std::to_string(checks.size()) + " synced checks from database for SCA " + syncReason);
 
-        // Clear in-memory data before repopulating
-        if (m_spSyncProtocol)
-        {
-            m_spSyncProtocol->clearInMemoryData();
-        }
-        else
-        {
-            LoggingHelper::getInstance().log(LOG_ERROR, "Sync protocol not initialized, cannot perform recovery");
-            return false;
-        }
+        m_spSyncProtocol->clearInMemoryData();
 
-        // Persist all checks in memory for full sync
         for (const auto& check : checks)
         {
             if (!check.contains("id") || !check.contains("version") || !check.contains("policy_id"))
@@ -1000,10 +1038,9 @@ bool SecurityConfigurationAssessment::performRecovery()
                 continue;
             }
 
-            std::string checkId = check["id"].get<std::string>();
-            std::string policyId = check["policy_id"].get<std::string>();
+            const std::string checkId = check["id"].get<std::string>();
+            const std::string policyId = check["policy_id"].get<std::string>();
 
-            // Get policy data for this check
             nlohmann::json policy = sca::recovery::getPolicyById(policyId, m_dBSync);
 
             if (policy.empty())
@@ -1012,10 +1049,8 @@ bool SecurityConfigurationAssessment::performRecovery()
                 continue;
             }
 
-            // Build stateful message in the format required by the indexer
             nlohmann::json statefulMessage = sca::recovery::buildStatefulMessage(check, policy);
 
-            // Validate stateful message before persisting for recovery
             auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
             bool shouldPersist = true;
 
@@ -1029,10 +1064,9 @@ bool SecurityConfigurationAssessment::performRecovery()
 
                     if (!validationResult.isValid)
                     {
-                        // Log validation errors
-                        std::string errorMsg = "Schema validation failed for SCA recovery message (policy: " +
-                                               policyId + ", check: " + checkId + ", index: " +
-                                               std::string(SCA_SYNC_INDEX) + "). Errors: ";
+                        std::string errorMsg = "Schema validation failed for SCA " + syncReason +
+                                               " message (policy: " + policyId + ", check: " + checkId +
+                                               ", index: " + std::string(SCA_SYNC_INDEX) + "). Errors: ";
 
                         for (const auto& error : validationResult.errors)
                         {
@@ -1040,17 +1074,15 @@ bool SecurityConfigurationAssessment::performRecovery()
                         }
 
                         LoggingHelper::getInstance().log(LOG_ERROR, errorMsg);
-                        LoggingHelper::getInstance().log(LOG_ERROR, "Raw recovery event that failed validation: " + statefulMessage.dump());
-                        LoggingHelper::getInstance().log(LOG_DEBUG, "Skipping persistence of invalid recovery event for check " + checkId);
+                        LoggingHelper::getInstance().log(LOG_ERROR, "Raw event that failed validation: " + statefulMessage.dump());
+                        LoggingHelper::getInstance().log(LOG_DEBUG, "Skipping invalid SCA snapshot event for check " + checkId);
                         shouldPersist = false;
                     }
                 }
             }
 
-            // Persist only if validation passed
             if (shouldPersist)
             {
-                // Calculate SHA1 of policy_id:check_id for sync protocol (same as event handler)
                 std::string baseId = policyId + ":" + checkId;
                 Utils::HashData hash(Utils::HashType::Sha1);
                 hash.update(baseId.c_str(), baseId.length());
@@ -1064,27 +1096,28 @@ bool SecurityConfigurationAssessment::performRecovery()
                     statefulMessage.dump(),
                     check["version"].get<uint64_t>()
                 );
+
+                LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE, "Stateful event queued: " + statefulMessage.dump());
             }
         }
 
-        // Trigger full synchronization
-        LoggingHelper::getInstance().log(LOG_DEBUG, "Triggering full synchronization for recovery");
-        bool success = m_spSyncProtocol->synchronizeModule(Mode::FULL);
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Triggering full synchronization for SCA " + syncReason);
+        const bool success = m_spSyncProtocol->synchronizeModule(Mode::FULL);
 
         if (success)
         {
-            LoggingHelper::getInstance().log(LOG_INFO, "SCA recovery completed successfully");
+            LoggingHelper::getInstance().log(LOG_DEBUG, "SCA " + syncReason + " completed successfully");
         }
         else
         {
-            LoggingHelper::getInstance().log(LOG_ERROR, "SCA recovery synchronization failed");
+            LoggingHelper::getInstance().log(LOG_ERROR, "SCA " + syncReason + " failed");
         }
 
         return success;
     }
     catch (const std::exception& err)
     {
-        LoggingHelper::getInstance().log(LOG_ERROR, "Error during recovery: " + std::string(err.what()));
+        LoggingHelper::getInstance().log(LOG_ERROR, "Error during SCA " + syncReason + ": " + std::string(err.what()));
         return false;
     }
 }
@@ -1125,6 +1158,16 @@ bool SecurityConfigurationAssessment::getMetadataValue(const std::string& key, i
     {
         LoggingHelper::getInstance().log(LOG_ERROR, "Error getting metadata value: " + std::string(err.what()));
         return false;
+    }
+}
+
+void SecurityConfigurationAssessment::refreshFirstSyncCompletedState()
+{
+    int64_t firstSyncCompleted = 0;
+
+    if (getMetadataValue(SCA_FIRST_SYNC_COMPLETED_METADATA_KEY, firstSyncCompleted))
+    {
+        m_firstSyncCompleted.store(firstSyncCompleted > 0);
     }
 }
 

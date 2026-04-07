@@ -154,6 +154,9 @@ class SecurityConfigurationAssessment
         /// @brief Flag indicating if a sync operation is currently in progress
         std::atomic<bool> m_syncInProgress {false};
 
+        /// @brief Cached first-sync completion state used to gate initial stateful publication.
+        std::atomic<bool> m_firstSyncCompleted {false};
+
         /// @brief Condition variable for pause/resume coordination
         std::condition_variable m_pauseCv;
 
@@ -194,6 +197,15 @@ class SecurityConfigurationAssessment
         /// @param value Value to persist.
         /// @return true on success, false on error.
         bool updateMetadataValue(const std::string& key, int64_t value);
+
+        /// @brief Refresh the cached first-sync completion flag from metadata.
+        void refreshFirstSyncCompletedState();
+
+        /// @brief Synchronize the current DB snapshot using FULL mode.
+        /// @param increaseVersions Whether to bump versions before building the snapshot.
+        /// @param syncReason Reason used in logs.
+        /// @return true on success.
+        bool synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason);
 
         /// @brief Perform full recovery: load all checks and resync
         /// @return true on success

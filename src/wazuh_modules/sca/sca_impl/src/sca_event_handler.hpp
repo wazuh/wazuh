@@ -35,7 +35,8 @@ class SCAEventHandler
         SCAEventHandler(std::shared_ptr<IDBSync> dBSync = nullptr,
                         std::function<int(const std::string&)> pushStatelessMessage = nullptr,
                         std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> pushStatefulMessage = nullptr,
-                        std::shared_ptr<SCASyncManager> syncManager = nullptr);
+                        std::shared_ptr<SCASyncManager> syncManager = nullptr,
+                        bool allowStatefulMessages = true);
 
         /// @brief Destructor
         virtual ~SCAEventHandler() = default;
@@ -178,6 +179,9 @@ class SCAEventHandler
 
         /// @brief Sync manager for document limits.
         std::shared_ptr<SCASyncManager> m_syncManager;
+
+        /// @brief Whether stateful SCA documents may be published.
+        bool m_allowStatefulMessages {true};
 
         /// @brief Handle failed checks deletion and sync promotions.
         void HandleFailedChecks(std::vector<nlohmann::json> failedChecks) const;
