@@ -359,6 +359,23 @@ if(NOT ${TARGET} STREQUAL "winagent")
   target_include_directories(test_check_rc_sys PRIVATE ${SRC_FOLDER}/rootcheck)
   target_link_libraries(test_check_rc_sys SYSCHECK_O ${TEST_DEPS} "${CHECK_RC_SYS_FLAGS}")
   add_test(NAME test_check_rc_sys COMMAND test_check_rc_sys)
+
+  set(COMMON_FLAGS "-Wl,--wrap,wopendir \
+                    -Wl,--wrap,closedir \
+                    -Wl,--wrap,w_stat \
+                    -Wl,--wrap,waccess \
+                    -Wl,--wrap,wfopen \
+                    -Wl,--wrap,fclose \
+                    -Wl,--wrap,OS_Regex \
+                    -Wl,--wrap,OS_Match2 \
+                    -Wl,--wrap,OSList_GetFirstNode \
+                    -Wl,--wrap,OSList_GetNextNode \
+                    ${DEBUG_OP_WRAPPERS}")
+
+  add_executable(test_common test_common.c)
+  target_include_directories(test_common PRIVATE ${SRC_FOLDER}/rootcheck)
+  target_link_libraries(test_common SYSCHECK_O ${TEST_DEPS} "${COMMON_FLAGS}")
+  add_test(NAME test_common COMMAND test_common)
 endif()
 
 # create_db.c tests
