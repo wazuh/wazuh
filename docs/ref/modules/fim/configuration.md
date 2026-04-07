@@ -80,9 +80,16 @@ List of files (one per line) for which diff content must never be computed or se
 
 Same as `nodiff` but for Windows registry values. The path must include the value name.
 
+| | |
+|---|---|
+| **Allowed values** | Any registry path including the value name |
+| **Attribute: `type`** | `sregex` — use a regex pattern to match multiple registry values |
+| **Attribute: `arch`** | `32bit`, `64bit`, `both` — select the Windows registry view to monitor |
+
 ```xml
 <registry_nodiff>HKEY_LOCAL_MACHINE\SOFTWARE\test_key\value_name</registry_nodiff>
 <registry_nodiff type="sregex">password</registry_nodiff>
+<registry_nodiff arch="64bit">HKEY_LOCAL_MACHINE\SOFTWARE\test_key\value_name</registry_nodiff>
 ```
 
 ---
@@ -93,7 +100,7 @@ Defines which directories to monitor. This is the primary configuration element 
 
 | | |
 |---|---|
-| **Default** | `/etc,/usr/bin,/usr/sbin,/bin,/sbin` |
+| **Default** | <directories>/etc,/usr/bin,/usr/sbin</directories> and <directories>/bin,/sbin,/boot</directories> |
 | **Allowed values** | Any directory path or environment variable |
 
 Rules:
@@ -138,13 +145,11 @@ Rules:
 
 #### Attribute Precedence Rules
 
-When the same attribute is specified multiple times in a single `<directories>` tag, the **last** occurrence wins:
+Some `<directories>` attributes can conflict, such as `check_all` and specific `check_*` flags. Syscheck applies these attributes sequentially in the order they appear, so later attributes can override earlier ones:
 
 ```xml
-<!-- SHA-256 is enabled: check_sha256 appears after check_all -->
 <directories check_all="no" check_sha256sum="yes">/etc</directories>
 
-<!-- SHA-256 is disabled: check_all="no" appears last and overrides -->
 <directories check_sha256sum="yes" check_all="no">/etc</directories>
 ```
 
@@ -215,7 +220,7 @@ Sets how often syscheck runs a full scheduled scan, in seconds.
 
 ### `ignore`
 
-Files or directories to exclude from alert generation. They are still **scanned** but results are not reported.
+Files or directories to exclude from monitoring and scanning. Paths that match ignore are not processed by syscheck.
 
 | | |
 |---|---|
@@ -280,23 +285,6 @@ When set to `yes`, every file in the monitored directories produces an alert on 
 
 ---
 
-### `prefilter_cmd`
-
-Command run before each file check to prevent prelinking from causing false positives. Use with caution — this command is executed for every checked file and can significantly affect performance.
-
-| | |
-|---|---|
-| **Default** | N/A |
-| **Allowed values** | Any valid command |
-
-```xml
-<prefilter_cmd>/usr/sbin/prelink -y</prefilter_cmd>
-```
-
-> **Note:** Ignored in `agent.conf` unless `allow_remote_prefilter_cmd` is set to `yes` in the agent's `ossec.conf`.
-
----
-
 ### `process_priority`
 
 Sets the `nice` value for the syscheck process, controlling CPU scheduling priority.
@@ -325,7 +313,7 @@ On Linux, `-20` is highest priority and `19` is lowest. On Windows, values are m
 
 ### `registry_ignore` *(Windows only)*
 
-Registry entries to exclude from alert generation. Still scanned but results are suppressed.
+Registry entries to exclude from processing. Ignored keys and values are skipped during enumeration, so no events are generated for them and no further processing is performed.
 
 | | |
 |---|---|
@@ -462,7 +450,7 @@ Controls how the agent synchronizes its local FIM database with the manager to e
   <enabled>yes</enabled>
   <interval>300</interval>
   <response_timeout>60</response_timeout>
-  <max_eps>10</max_eps>
+  <max_eps>50</max_eps>
   <integrity_interval>86400</integrity_interval>
 </synchronization>
 ```
@@ -473,9 +461,9 @@ Controls how the agent synchronizes its local FIM database with the manager to e
 |---|---|---|---|
 | `enabled` | `yes` | `yes`, `no` | Enable or disable FIM synchronization persistence. When disabled, FIM only generates stateless events. |
 | `interval` | `300` (5 minutes) | Any integer ≥ 1, with optional suffix `s`, `m`, `h`, `d` | How often the agent initiates a sync with the manager. |
-| `response_timeout` | `60` | Any positive integer (seconds) | Seconds to wait for a manager response before marking synchronization as successful. A value that is too low causes unnecessary retries; a value that is too high delays failure detection. |
+| `response_timeout` | `60` | Any integer ≥ 1, with optional suffix `s`, `m`, `h`, `d` | Seconds to wait for a manager response before marking the synchronization attempt as failed or timed out. A value that is too low causes unnecessary retries; a value that is too high delays failure detection. |
 | `max_eps` | `50` | Integer `0`–`1000000` (`0` = unlimited) | Maximum synchronization messages per second. |
-| `integrity_interval` | `86400` (24 hours) | Any integer ≥ 1 (seconds) | How often the agent performs a full integrity validation by comparing checksums with the manager. On mismatch, a recovery mechanism is triggered. |
+| `integrity_interval` | `86400` (24h)| Any integer ≥ 1, with optional suffix `s`, `m`, `h`, `d` | How often the agent performs a full integrity validation by comparing checksums with the manager. |
 
 > **Note:** The retry logic automatically retries failed sync operations up to **3 times** before giving up. Database files are stored at fixed paths: `queue/fim/db/fim.db` and `queue/fim/db/fim_sync.db`.
 
@@ -582,42 +570,15 @@ Specific key configurations take precedence over wildcard configurations:
 <!-- File integrity monitoring -->
 <syscheck>
   <disabled>no</disabled>
-  <!-- Frequency that syscheck is executed default every 12 hours -->
   <frequency>43200</frequency>
-  <!-- Directories to check (perform all possible verifications) -->
   <directories>/etc,/usr/bin,/usr/sbin</directories>
-  <directories>/bin,/sbin,/boot</directories>
-  <!-- Files/directories to ignore -->
   <ignore>/etc/mtab</ignore>
-  <ignore>/etc/hosts.deny</ignore>
-  <ignore>/etc/mail/statistics</ignore>
-  <ignore>/etc/random-seed</ignore>
-  <ignore>/etc/random.seed</ignore>
-  <ignore>/etc/adjtime</ignore>
-  <ignore>/etc/httpd/logs</ignore>
-  <ignore>/etc/utmpx</ignore>
-  <ignore>/etc/wtmpx</ignore>
-  <ignore>/etc/cups/certs</ignore>
-  <ignore>/etc/dumpdates</ignore>
-  <ignore>/etc/svc/volatile</ignore>
-  <!-- File types to ignore -->
   <ignore type="sregex">.log$|.swp$</ignore>
-  <!-- Check the file, but never compute the diff -->
   <nodiff>/etc/ssl/private.key</nodiff>
-  <skip_nfs>yes</skip_nfs>
-  <skip_dev>yes</skip_dev>
-  <skip_proc>yes</skip_proc>
-  <skip_sys>yes</skip_sys>
-  <!-- Nice value for Syscheck process -->
   <process_priority>10</process_priority>
-  <!-- Maximum output throughput -->
   <max_eps>50</max_eps>
-  <!-- Database synchronization settings -->
   <synchronization>
-    <enabled>yes</enabled>
-    <interval>5m</interval>
     <max_eps>50</max_eps>
-    <integrity_interval>86400</integrity_interval>
   </synchronization>
 </syscheck>
 ```
@@ -628,33 +589,17 @@ Specific key configurations take precedence over wildcard configurations:
 <syscheck>
   <disabled>no</disabled>
   <frequency>43200</frequency>
-  <directories>/etc,/usr/bin,/usr/sbin</directories>
-  <directories>/bin,/sbin,/boot</directories>
-  <ignore>/etc/mtab</ignore>
-  <ignore>/etc/hosts.deny</ignore>
-  <ignore>/etc/mail/statistics</ignore>
-  <ignore>/etc/random-seed</ignore>
-  <ignore>/etc/random.seed</ignore>
-  <ignore>/etc/adjtime</ignore>
-  <ignore>/etc/httpd/logs</ignore>
-  <ignore>/etc/utmpx</ignore>
-  <ignore>/etc/wtmpx</ignore>
-  <ignore>/etc/cups/certs</ignore>
-  <ignore>/etc/dumpdates</ignore>
-  <ignore>/etc/svc/volatile</ignore>
+  <directories>/etc,/usr/bin</directories>
+
+  <directories realtime="yes">/home/alice/public_html</directories>
+  <directories whodata="yes">/home/bob/sensitive_data</directories>
+
   <ignore type="sregex">.log$|.swp$</ignore>
   <nodiff>/etc/ssl/private.key</nodiff>
-  <skip_nfs>yes</skip_nfs>
-  <skip_dev>yes</skip_dev>
-  <skip_proc>yes</skip_proc>
-  <skip_sys>yes</skip_sys>
   <process_priority>10</process_priority>
   <max_eps>50</max_eps>
   <synchronization>
-    <enabled>yes</enabled>
-    <interval>5m</interval>
     <max_eps>50</max_eps>
-    <integrity_interval>86400</integrity_interval>
   </synchronization>
 </syscheck>
 ```
@@ -665,44 +610,19 @@ Specific key configurations take precedence over wildcard configurations:
 <syscheck>
   <disabled>no</disabled>
   <frequency>43200</frequency>
-  <!-- Default files to be monitored -->
-  <directories recursion_level="0" restrict="regedit.exe$|system.ini$|win.ini$">%WINDIR%</directories>
-  <directories recursion_level="0" restrict="at.exe$|attrib.exe$|cacls.exe$|cmd.exe$|eventcreate.exe$|ftp.exe$|lsass.exe$|net.exe$|net1.exe$|netsh.exe$|reg.exe$|regedt32.exe|regsvr32.exe|runas.exe|sc.exe|schtasks.exe|sethc.exe|subst.exe$">%WINDIR%\SysNative</directories>
-  <directories recursion_level="0">%WINDIR%\SysNative\drivers\etc</directories>
-  <directories recursion_level="0" restrict="WMIC.exe$">%WINDIR%\SysNative\wbem</directories>
-  <directories recursion_level="0" restrict="powershell.exe$">%WINDIR%\SysNative\WindowsPowerShell\v1.0</directories>
-  <directories recursion_level="0" restrict="winrm.vbs$">%WINDIR%\SysNative</directories>
-  <!-- 32-bit programs -->
-  <directories recursion_level="0" restrict="at.exe$|attrib.exe$|cacls.exe$|cmd.exe$|eventcreate.exe$|ftp.exe$|lsass.exe$|net.exe$|net1.exe$|netsh.exe$|reg.exe$|regedit.exe$|regedt32.exe$|regsvr32.exe$|runas.exe$|sc.exe$|schtasks.exe$|sethc.exe$|subst.exe$">%WINDIR%\System32</directories>
+
   <directories recursion_level="0">%WINDIR%\System32\drivers\etc</directories>
-  <directories recursion_level="0" restrict="WMIC.exe$">%WINDIR%\System32\wbem</directories>
-  <directories recursion_level="0" restrict="powershell.exe$">%WINDIR%\System32\WindowsPowerShell\v1.0</directories>
-  <directories recursion_level="0" restrict="winrm.vbs$">%WINDIR%\System32</directories>
-  <directories realtime="yes">%PROGRAMDATA%\Microsoft\Windows\Start Menu\Programs\Startup</directories>
-  <ignore>%PROGRAMDATA%\Microsoft\Windows\Start Menu\Programs\Startup\desktop.ini</ignore>
-  <ignore type="sregex">.log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$</ignore>
-  <!-- Windows registry entries to monitor -->
-  <windows_registry arch="both">HKEY_LOCAL_MACHINE\Software\Classes\Protocols</windows_registry>
+  <directories realtime="yes">C:\Users\bob\Documents\Important</directories>
+  <ignore type="sregex">.log$|.tmp$|.evtx$</ignore>
+
   <windows_registry arch="both">HKEY_LOCAL_MACHINE\Software\Policies</windows_registry>
-  <windows_registry>HKEY_LOCAL_MACHINE\Security</windows_registry>
-  <windows_registry arch="both">HKEY_LOCAL_MACHINE\Software\Microsoft\Internet Explorer</windows_registry>
-  <windows_registry>HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services</windows_registry>
-  <windows_registry arch="both">HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run</windows_registry>
-  <windows_registry arch="both">HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\RunOnce</windows_registry>
-  <windows_registry arch="both">HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon</windows_registry>
-  <!-- Windows registry entries to ignore -->
   <registry_ignore>HKEY_LOCAL_MACHINE\Security\Policy\Secrets</registry_ignore>
-  <registry_ignore>HKEY_LOCAL_MACHINE\Security\SAM\Domains\Account\Users</registry_ignore>
-  <registry_ignore type="sregex">\Enum$</registry_ignore>
-  <!-- Frequency for ACL checking (seconds) -->
+
   <windows_audit_interval>300</windows_audit_interval>
   <process_priority>10</process_priority>
   <max_eps>50</max_eps>
   <synchronization>
-    <enabled>yes</enabled>
-    <interval>5m</interval>
     <max_eps>50</max_eps>
-    <integrity_interval>86400</integrity_interval>
   </synchronization>
 </syscheck>
 ```
@@ -713,33 +633,13 @@ Specific key configurations take precedence over wildcard configurations:
 <syscheck>
   <disabled>no</disabled>
   <frequency>43200</frequency>
-  <directories>/etc,/usr/bin,/usr/sbin</directories>
-  <directories>/bin,/sbin</directories>
-  <ignore>/etc/mtab</ignore>
-  <ignore>/etc/hosts.deny</ignore>
-  <ignore>/etc/mail/statistics</ignore>
-  <ignore>/etc/random-seed</ignore>
-  <ignore>/etc/random.seed</ignore>
-  <ignore>/etc/adjtime</ignore>
-  <ignore>/etc/httpd/logs</ignore>
-  <ignore>/etc/utmpx</ignore>
-  <ignore>/etc/wtmpx</ignore>
-  <ignore>/etc/cups/certs</ignore>
-  <ignore>/etc/dumpdates</ignore>
-  <ignore>/etc/svc/volatile</ignore>
+  <directories>/etc,/usr/bin</directories>
+  <directories>/Users/alice/Documents</directories>
   <ignore type="sregex">.log$|.swp$</ignore>
-  <nodiff>/etc/ssl/private.key</nodiff>
-  <skip_nfs>yes</skip_nfs>
-  <skip_dev>yes</skip_dev>
-  <skip_proc>yes</skip_proc>
-  <skip_sys>yes</skip_sys>
   <process_priority>10</process_priority>
   <max_eps>50</max_eps>
   <synchronization>
-    <enabled>yes</enabled>
-    <interval>5m</interval>
     <max_eps>50</max_eps>
-    <integrity_interval>86400</integrity_interval>
   </synchronization>
 </syscheck>
 ```
@@ -812,7 +712,7 @@ For environments that require full audit trails on critical configuration files:
     <enabled>yes</enabled>
     <interval>5m</interval>
     <response_timeout>60</response_timeout>
-    <max_eps>10</max_eps>
+    <max_eps>50</max_eps>
     <integrity_interval>86400</integrity_interval>
   </synchronization>
 </syscheck>
@@ -899,7 +799,6 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 <syscheck>
   <disabled>no</disabled>
   <frequency>60</frequency>
-  <alert_new_files>yes</alert_new_files>
   <directories>/tmp/fim-test</directories>
 </syscheck>
 ```
@@ -1161,7 +1060,7 @@ The following use cases describe concrete end-to-end test scenarios for verifyin
 
 ### `file_limit` warning in logs
 
-- The agent log will show: `syscheck: WARNING: FIM inotify file limit reached`.
+- The agent log will show a database-capacity warning such as: File database is 100% full.
 - Increase `<entries>` under `<file_limit>` to accommodate the actual monitored file count.
 - Alternatively, narrow the monitored scope by adding `<ignore>` entries or reducing `recursion_level`.
 
