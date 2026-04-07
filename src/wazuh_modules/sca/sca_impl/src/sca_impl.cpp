@@ -473,7 +473,7 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
 
     if (result)
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA synchronization finished successfully.");
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization finished successfully.");
     }
     else
     {
@@ -1096,6 +1096,8 @@ bool SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseV
                     statefulMessage.dump(),
                     check["version"].get<uint64_t>()
                 );
+
+                LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE, "Stateful event queued: " + statefulMessage.dump());
             }
         }
 
