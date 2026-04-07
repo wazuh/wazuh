@@ -37,11 +37,13 @@ static const std::map<ReturnTypeCallback, Operation_t> OPERATION_STATES_MAP
 SCAEventHandler::SCAEventHandler(std::shared_ptr<IDBSync> dBSync,
                                  std::function<int(const std::string&)> pushStatelessMessage,
                                  std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> pushStatefulMessage,
-                                 std::shared_ptr<SCASyncManager> syncManager)
+                                 std::shared_ptr<SCASyncManager> syncManager,
+                                 bool allowStatefulMessages)
     : m_pushStatelessMessage(std::move(pushStatelessMessage))
     , m_pushStatefulMessage(std::move(pushStatefulMessage))
     , m_dBSync(std::move(dBSync))
-    , m_syncManager(std::move(syncManager)) {};
+    , m_syncManager(std::move(syncManager))
+    , m_allowStatefulMessages(allowStatefulMessages) {};
 
 void SCAEventHandler::ReportPoliciesDelta(
     const std::unordered_map<std::string, nlohmann::json>& modifiedPoliciesMap,
@@ -132,7 +134,7 @@ void SCAEventHandler::ReportPoliciesDelta(
                                           &failedChecks
                                       );
 
-        if (validationPassed && shouldPushStateful)
+        if (validationPassed && shouldPushStateful && m_allowStatefulMessages)
         {
             PushStateful(processedStatefulEvent, operation, version);
         }
@@ -263,7 +265,7 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
                                               &failedChecks
                                           );
 
-            if (validationPassed && shouldPushStateful)
+            if (validationPassed && shouldPushStateful && m_allowStatefulMessages)
             {
                 PushStateful(stateful, operation, version);
             }
@@ -689,6 +691,11 @@ std::string SCAEventHandler::CalculateHashId(const nlohmann::json& data) const
 
 void SCAEventHandler::PushStateful(const nlohmann::json& event, ReturnTypeCallback operation, uint64_t version) const
 {
+    if (!m_allowStatefulMessages)
+    {
+        return;
+    }
+
     if (!m_pushStatefulMessage)
     {
         throw std::runtime_error("PushStatefulMessage function not set, cannot send message.");
