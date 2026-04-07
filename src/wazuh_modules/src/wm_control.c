@@ -175,6 +175,20 @@ size_t wm_control_dispatch(char *command, char **output) {
         return wm_control_execute_action("restart", service, output);
 
     } else if (strcmp(command, "reload") == 0) {
+#ifdef CLIENT
+        // Abort any in-progress module syncs before issuing the reload command.
+        // This prevents SCA, syscollector, and agent-info (FIM coordination) from
+        // continuing mid-sync while the service is being reloaded due to a group
+        // config change. Each module's stop handler is idempotent: if a second stop
+        // arrives via SIGTERM after the reload, it returns immediately.
+        wmodule *cur_module;
+        for (cur_module = wmodules; cur_module && cur_module->context && cur_module->context->name; cur_module = cur_module->next) {
+            if (cur_module->context->stop) {
+                mtdebug1(WM_CONTROL_LOGTAG, "Aborting sync for module '%s' before config reload.", cur_module->context->name);
+                cur_module->context->stop(cur_module->data);
+            }
+        }
+#endif
         return wm_control_execute_action("reload", service, output);
 
     } else {
