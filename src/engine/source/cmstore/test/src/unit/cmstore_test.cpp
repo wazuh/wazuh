@@ -62,8 +62,9 @@ TEST(ContentManagerTest, GetOutputsForSpaceFallsBackToDefaultDirectory)
     const auto outputs = store.getOutputsForSpace("standard");
 
     ASSERT_EQ(outputs.size(), 1U);
-    ASSERT_TRUE(outputs[0].getString("/name").has_value());
-    EXPECT_EQ(outputs[0].getString("/name").value(), "output/default/0");
+    std::string nameStr;
+    ASSERT_EQ(outputs[0].getString(nameStr, "/name"), json::RetGet::Success);
+    EXPECT_EQ(nameStr, "output/default/0");
 }
 
 TEST(ContentManagerTest, GetOutputsForSpaceUsesSpaceDirectoryWhenPresent)
@@ -81,6 +82,7 @@ TEST(ContentManagerTest, GetOutputsForSpaceUsesSpaceDirectoryWhenPresent)
     const auto outputs = store.getOutputsForSpace("standard");
 
     ASSERT_EQ(outputs.size(), 1U);
-    ASSERT_TRUE(outputs[0].getString("/name").has_value());
-    EXPECT_EQ(outputs[0].getString("/name").value(), "output/standard/0");
+    std::string nameStr;
+    ASSERT_EQ(outputs[0].getString(nameStr, "/name"), json::RetGet::Success);
+    EXPECT_EQ(nameStr, "output/standard/0");
 }

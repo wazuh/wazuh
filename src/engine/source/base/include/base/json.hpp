@@ -45,12 +45,26 @@ public:
         }
     }
 
+    // Enable direct implicit conversion from const char* and std::string
+    // (avoids the two-step implicit conversion: const char* -> string_view -> PointerPath)
+    PointerPath(const char* path)
+        : PointerPath(std::string_view(path)) {}
+    PointerPath(const std::string& path)
+        : PointerPath(std::string_view(path)) {}
+
+    // Copy and move (rapidjson::Pointer is copyable)
+    PointerPath(const PointerPath&) = default;
+    PointerPath& operator=(const PointerPath&) = default;
+    PointerPath(PointerPath&&) noexcept = default;
+    PointerPath& operator=(PointerPath&&) noexcept = default;
+
     // Implicit conversion to rapidjson::Pointer
     operator const rapidjson::Pointer&() const { return m_pointer; }
     // Explicit getter for the rapidjson::Pointer, if needed.
     const rapidjson::Pointer& getPointer() const { return m_pointer; }
 };
 
+inline const PointerPath ROOT_PP {""}; ///< Constant PointerPath representing the root of the JSON document.
 
 
 /**
@@ -399,15 +413,6 @@ public:
     /************************************************************************************/
 
     /**
-     * @brief Get the value of the string field at the given path.
-     *
-     * @param path JSON pointer path to the field (default: root).
-     * @return std::optional<std::string> The string value, or std::nullopt if not found or not a string.
-     * @throws std::runtime_error If the pointer path is invalid.
-     */
-    std::optional<std::string> getString(std::string_view path = "") const;
-
-    /**
      * @brief Get the string field at the given path, output via reference parameter.
      *
      * @tparam T Must be std::string_view (zero-copy) or std::string (copy).
@@ -420,7 +425,7 @@ public:
      * remains alive and unmodified while using the output.
      */
     template<typename T>
-    RetGet getString(T& out, const PointerPath& path) const noexcept
+    RetGet getString(T& out, const PointerPath& path = ROOT_PP) const noexcept
     {
         static_assert(std::is_same_v<T, std::string_view> || std::is_same_v<T, std::string>,
                       "T must be std::string_view or std::string");

@@ -65,15 +65,17 @@ std::vector<MappingConfig> loadMappingConfigs(const json::Json& config)
         config.originIpPath = json::Json::formatJsonPath(key);
 
         // geo_field
-        if (auto geoFieldOpt = value.getString("/geo_field"); geoFieldOpt.has_value())
+        std::string geoFieldStr;
+        if (value.getString(geoFieldStr, "/geo_field") == json::RetGet::Success)
         {
-            config.geoEcsPath = json::Json::formatJsonPath(geoFieldOpt.value());
+            config.geoEcsPath = json::Json::formatJsonPath(geoFieldStr);
         }
 
         // as_ecs_path
-        if (auto asFieldOpt = value.getString("/as_field"); asFieldOpt.has_value())
+        std::string asFieldStr;
+        if (value.getString(asFieldStr, "/as_field") == json::RetGet::Success)
         {
-            config.asEcsPath = json::Json::formatJsonPath(asFieldOpt.value());
+            config.asEcsPath = json::Json::formatJsonPath(asFieldStr);
         }
 
         mappingConfigs.push_back(std::move(config));
@@ -219,12 +221,16 @@ base::Expression getEachEnrichTerm(const std::shared_ptr<geo::ILocator>& cityLoc
         // Get source IP, can be an string o a array of strings, in that case we take the first one.
         const auto ipOpt = [&]() -> std::optional<std::string>
         {
-            auto ipStr = event->getString(mappingConfig.originIpPath);
-            if (!ipStr.has_value())
+            std::string ipStr;
+            if (event->getString(ipStr, mappingConfig.originIpPath) == json::RetGet::Success)
             {
-                ipStr = event->getString(mappingConfig.originIpPath + "/0");
+                return ipStr;
             }
-            return ipStr;
+            if (event->getString(ipStr, mappingConfig.originIpPath + "/0") == json::RetGet::Success)
+            {
+                return ipStr;
+            }
+            return std::nullopt;
         }();
 
         if (!ipOpt.has_value())

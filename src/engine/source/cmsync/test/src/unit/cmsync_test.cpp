@@ -45,13 +45,12 @@ void expectStateDocHasSpaces(const store::Doc& doc, const std::vector<std::strin
 
     for (size_t i = 0; i < expectedSpaces.size(); ++i)
     {
-        const auto origin = config->at(i).getString("/origin_space");
-        const auto nsId = config->at(i).getString("/namespace_id");
-
-        ASSERT_TRUE(origin.has_value());
-        ASSERT_TRUE(nsId.has_value());
-        EXPECT_EQ(origin.value(), expectedSpaces.at(i));
-        EXPECT_FALSE(nsId.value().empty());
+        std::string origin;
+        std::string nsId;
+        ASSERT_EQ(json::RetGet::Success, config->at(i).getString(origin, "/origin_space"));
+        ASSERT_EQ(json::RetGet::Success, config->at(i).getString(nsId, "/namespace_id"));
+        EXPECT_EQ(origin, expectedSpaces.at(i));
+        EXPECT_FALSE(nsId.empty());
     }
 }
 

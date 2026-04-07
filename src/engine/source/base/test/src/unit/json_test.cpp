@@ -204,7 +204,9 @@ TEST_F(JsonBuildtime, String)
 {
     Json str {"\"value\""};
     ASSERT_TRUE(str.isString());
-    ASSERT_EQ(str.getString(), "value");
+    std::string strTmp;
+    ASSERT_EQ(json::RetGet::Success, str.getString(strTmp));
+    ASSERT_EQ("value", strTmp);
 }
 
 TEST_F(JsonBuildtime, Array)
@@ -212,7 +214,9 @@ TEST_F(JsonBuildtime, Array)
     Json arr {"[\"value\"]"};
     ASSERT_TRUE(arr.isArray());
     ASSERT_EQ(arr.size(), 1);
-    ASSERT_EQ(arr.getArray().value()[0].getString().value(), "value");
+    std::string arrTmp;
+    ASSERT_EQ(json::RetGet::Success, arr.getArray().value()[0].getString(arrTmp));
+    ASSERT_EQ("value", arrTmp);
 }
 
 TEST_F(JsonBuildtime, Object)
@@ -221,7 +225,9 @@ TEST_F(JsonBuildtime, Object)
     ASSERT_TRUE(obj.isObject());
     ASSERT_EQ(obj.size(), 1);
     ASSERT_EQ(std::get<0>(obj.getObject().value()[0]), "key");
-    ASSERT_EQ(std::get<1>(obj.getObject().value()[0]).getString(), "value");
+    std::string objTmp;
+    ASSERT_EQ(json::RetGet::Success, std::get<1>(obj.getObject().value()[0]).getString(objTmp));
+    ASSERT_EQ("value", objTmp);
 }
 
 TEST_F(JsonRuntime, InitializeCopyMove)
@@ -862,13 +868,11 @@ TEST_F(JsonGettersTest, GetString)
         "nested": "value"
     })"};
     Json jStr {"\"value\""};
-    std::optional<std::string> got;
-    ASSERT_NO_THROW(got = jObjStr.getString("/nested"));
-    ASSERT_TRUE(got.has_value());
-    ASSERT_EQ("value", got.value());
-    ASSERT_NO_THROW(got = jStr.getString());
-    ASSERT_TRUE(got.has_value());
-    ASSERT_EQ("value", got.value());
+    std::string got;
+    ASSERT_EQ(json::RetGet::Success, jObjStr.getString(got, "/nested"));
+    ASSERT_EQ("value", got);
+    ASSERT_EQ(json::RetGet::Success, jStr.getString(got));
+    ASSERT_EQ("value", got);
 
     // Failure cases
     std::vector<Json> failureCases = {Json {R"({
@@ -910,18 +914,16 @@ TEST_F(JsonGettersTest, GetString)
     {
         if (i % 2 == 0)
         {
-            ASSERT_NO_THROW(got = failureCases[i].getString("/nested"));
-            ASSERT_FALSE(got.has_value());
+            ASSERT_NE(json::RetGet::Success, failureCases[i].getString(got, "/nested"));
         }
         else
         {
-            ASSERT_NO_THROW(got = failureCases[i].getString());
-            ASSERT_FALSE(got.has_value());
+            ASSERT_NE(json::RetGet::Success, failureCases[i].getString(got));
         }
     }
 
     // Wrong pointer
-    ASSERT_THROW(jObjStr.getString("object/key"), std::runtime_error);
+    ASSERT_THROW(json::PointerPath("object/key"), std::runtime_error);
 }
 
 TEST_F(JsonGettersTest, GetStringTemplateStringView)
@@ -971,7 +973,7 @@ TEST_F(JsonGettersTest, GetStringTemplateStringView)
         std::string_view out;
         PointerPath path("/name");
         doc.getString(out, path);
-        ASSERT_EQ(out.data(), doc.getString("/name").value().c_str() ? out.data() : nullptr);
+        ASSERT_NE(nullptr, out.data());
         ASSERT_EQ(out.size(), 5u);
     }
 }
@@ -1024,9 +1026,9 @@ TEST_F(JsonGettersTest, GetStringTemplateString)
         PointerPath path("/name");
         doc.getString(out, path);
         out[0] = 'X';
-        auto original = doc.getString("/name");
-        ASSERT_TRUE(original.has_value());
-        ASSERT_EQ("hello", original.value());
+        std::string original;
+        ASSERT_EQ(json::RetGet::Success, doc.getString(original, "/name"));
+        ASSERT_EQ("hello", original);
     }
 }
 
@@ -1445,13 +1447,18 @@ TEST_F(JsonGettersTest, GetArray)
     ASSERT_NO_THROW(got = jObjArray.getArray("/nested"));
     ASSERT_TRUE(got.has_value());
     ASSERT_EQ(2, got.value().size());
-    ASSERT_EQ("value1", got.value()[0].getString().value());
-    ASSERT_EQ("value2", got.value()[1].getString().value());
+    std::string tmp;
+    ASSERT_EQ(json::RetGet::Success, got.value()[0].getString(tmp));
+    ASSERT_EQ("value1", tmp);
+    ASSERT_EQ(json::RetGet::Success, got.value()[1].getString(tmp));
+    ASSERT_EQ("value2", tmp);
     ASSERT_NO_THROW(got = jArray.getArray());
     ASSERT_TRUE(got.has_value());
     ASSERT_EQ(2, got.value().size());
-    ASSERT_EQ("value1", got.value()[0].getString().value());
-    ASSERT_EQ("value2", got.value()[1].getString().value());
+    ASSERT_EQ(json::RetGet::Success, got.value()[0].getString(tmp));
+    ASSERT_EQ("value1", tmp);
+    ASSERT_EQ(json::RetGet::Success, got.value()[1].getString(tmp));
+    ASSERT_EQ("value2", tmp);
 
     // Failure cases
     std::vector<Json> failureCases = {Json {R"({
@@ -1523,16 +1530,21 @@ TEST_F(JsonGettersTest, GetObject)
     ASSERT_TRUE(got.has_value());
     ASSERT_EQ(2, got.value().size());
     ASSERT_EQ("key1", std::get<0>(got.value()[0]));
-    ASSERT_EQ("value1", std::get<1>(got.value()[0]).getString().value());
+    std::string tmp;
+    ASSERT_EQ(json::RetGet::Success, std::get<1>(got.value()[0]).getString(tmp));
+    ASSERT_EQ("value1", tmp);
     ASSERT_EQ("key2", std::get<0>(got.value()[1]));
-    ASSERT_EQ("value2", std::get<1>(got.value()[1]).getString().value());
+    ASSERT_EQ(json::RetGet::Success, std::get<1>(got.value()[1]).getString(tmp));
+    ASSERT_EQ("value2", tmp);
     ASSERT_NO_THROW(got = jObject.getObject());
     ASSERT_TRUE(got.has_value());
     ASSERT_EQ(2, got.value().size());
     ASSERT_EQ("key1", std::get<0>(got.value()[0]));
-    ASSERT_EQ("value1", std::get<1>(got.value()[0]).getString().value());
+    ASSERT_EQ(json::RetGet::Success, std::get<1>(got.value()[0]).getString(tmp));
+    ASSERT_EQ("value1", tmp);
     ASSERT_EQ("key2", std::get<0>(got.value()[1]));
-    ASSERT_EQ("value2", std::get<1>(got.value()[1]).getString().value());
+    ASSERT_EQ(json::RetGet::Success, std::get<1>(got.value()[1]).getString(tmp));
+    ASSERT_EQ("value2", tmp);
 
     // Failure cases
     std::vector<Json> failureCases = {Json {R"({
@@ -1669,16 +1681,22 @@ TEST_F(JsonSettersTest, SetString)
     Json jString {"\"value\""};
     Json jEmpty {};
     Json jObjEmpty {};
+    std::string tmp;
     ASSERT_NO_THROW(jObjString.setString("newValue", "/nested"));
-    ASSERT_EQ("newValue", jObjString.getString("/nested").value());
+    ASSERT_EQ(json::RetGet::Success, jObjString.getString(tmp, "/nested"));
+    ASSERT_EQ("newValue", tmp);
     ASSERT_NO_THROW(jString.setString("newValue"));
-    ASSERT_EQ("newValue", jString.getString().value());
+    ASSERT_EQ(json::RetGet::Success, jString.getString(tmp));
+    ASSERT_EQ("newValue", tmp);
     ASSERT_NO_THROW(jEmpty.setString("newValue"));
-    ASSERT_EQ("newValue", jEmpty.getString().value());
+    ASSERT_EQ(json::RetGet::Success, jEmpty.getString(tmp));
+    ASSERT_EQ("newValue", tmp);
     ASSERT_NO_THROW(jObjEmpty.setString("newValue", "/nested"));
-    ASSERT_EQ("newValue", jObjEmpty.getString("/nested").value());
+    ASSERT_EQ(json::RetGet::Success, jObjEmpty.getString(tmp, "/nested"));
+    ASSERT_EQ("newValue", tmp);
     ASSERT_NO_THROW(jObjString.setString("newValue", ""));
-    ASSERT_EQ("newValue", jObjString.getString().value());
+    ASSERT_EQ(json::RetGet::Success, jObjString.getString(tmp));
+    ASSERT_EQ("newValue", tmp);
 
     // Invalid pointer
     ASSERT_THROW(jObjString.setString("newValue", "object/key"), std::runtime_error);
@@ -1886,24 +1904,33 @@ TEST_F(JsonSettersTest, AppendString)
     Json jObjEmpty {};
     ASSERT_NO_THROW(jObjString.appendString("value2", "/nested"));
     ASSERT_EQ(jObjString.size("/nested"), 2);
-    ASSERT_EQ(jObjString.getString("/nested/0"), "value");
-    ASSERT_EQ(jObjString.getString("/nested/1"), "value2");
+    std::string tmp;
+    ASSERT_EQ(json::RetGet::Success, jObjString.getString(tmp, "/nested/0"));
+    ASSERT_EQ("value", tmp);
+    ASSERT_EQ(json::RetGet::Success, jObjString.getString(tmp, "/nested/1"));
+    ASSERT_EQ("value2", tmp);
     ASSERT_NO_THROW(jObjStringOverwrite.appendString("value2", "/nested"));
     ASSERT_EQ(jObjStringOverwrite.size("/nested"), 1);
-    ASSERT_EQ(jObjStringOverwrite.getString("/nested/0"), "value2");
+    ASSERT_EQ(json::RetGet::Success, jObjStringOverwrite.getString(tmp, "/nested/0"));
+    ASSERT_EQ("value2", tmp);
     ASSERT_NO_THROW(jString.appendString("value2"));
     ASSERT_EQ(jString.size(), 2);
-    ASSERT_EQ(jString.getString("/0"), "value");
-    ASSERT_EQ(jString.getString("/1"), "value2");
+    ASSERT_EQ(json::RetGet::Success, jString.getString(tmp, "/0"));
+    ASSERT_EQ("value", tmp);
+    ASSERT_EQ(json::RetGet::Success, jString.getString(tmp, "/1"));
+    ASSERT_EQ("value2", tmp);
     ASSERT_NO_THROW(jStringOverwrite.appendString("value2"));
     ASSERT_EQ(jStringOverwrite.size(), 1);
-    ASSERT_EQ(jStringOverwrite.getString("/0"), "value2");
+    ASSERT_EQ(json::RetGet::Success, jStringOverwrite.getString(tmp, "/0"));
+    ASSERT_EQ("value2", tmp);
     ASSERT_NO_THROW(jEmpty.appendString("value2"));
     ASSERT_EQ(jEmpty.size(), 1);
-    ASSERT_EQ(jEmpty.getString("/0"), "value2");
+    ASSERT_EQ(json::RetGet::Success, jEmpty.getString(tmp, "/0"));
+    ASSERT_EQ("value2", tmp);
     ASSERT_NO_THROW(jObjEmpty.appendString("value2", "/nested"));
     ASSERT_EQ(jObjEmpty.size("/nested"), 1);
-    ASSERT_EQ(jObjEmpty.getString("/nested/0"), "value2");
+    ASSERT_EQ(json::RetGet::Success, jObjEmpty.getString(tmp, "/nested/0"));
+    ASSERT_EQ("value2", tmp);
 
     // Invalid pointer
     ASSERT_THROW(jObjString.appendString("object/key", "value2"), std::runtime_error);
@@ -1924,10 +1951,13 @@ TEST_F(JsonSettersTest, Append)
     // String
     ASSERT_NO_THROW(source.appendJson(jString));
     ASSERT_EQ(source.size(), 1);
-    ASSERT_EQ(source.getString("/0").value(), "value");
+    std::string tmp;
+    ASSERT_EQ(json::RetGet::Success, source.getString(tmp, "/0"));
+    ASSERT_EQ("value", tmp);
     ASSERT_NO_THROW(sourceNested.appendJson(jString, "/nested"));
     ASSERT_EQ(sourceNested.size("/nested"), 1);
-    ASSERT_EQ(sourceNested.getString("/nested/0").value(), "value");
+    ASSERT_EQ(json::RetGet::Success, sourceNested.getString(tmp, "/nested/0"));
+    ASSERT_EQ("value", tmp);
 
     // Number
     ASSERT_NO_THROW(source.appendJson(jNumber));
@@ -1972,7 +2002,8 @@ TEST_F(JsonSettersTest, Append)
     // Non-existing pointer
     ASSERT_NO_THROW(source.appendJson(jString, "/non-existing"));
     ASSERT_EQ(source.size("/non-existing"), 1);
-    ASSERT_EQ(source.getString("/non-existing/0").value(), "value");
+    ASSERT_EQ(json::RetGet::Success, source.getString(tmp, "/non-existing/0"));
+    ASSERT_EQ("value", tmp);
 
     // Invalid pointer
     ASSERT_THROW(source.appendJson(jString, "invalid"), std::runtime_error);

@@ -654,8 +654,8 @@ WIndexerConnector::streamIocsByType(std::string_view iocType, std::size_t batchS
         batchSize,
         [&iocType, &onIoc, &streamedDocs](const json::Json& doc)
         {
-            auto optName = doc.getString("/document/name");
-            if (!optName.has_value() || optName->empty())
+            std::string docName;
+            if (doc.getString(docName, "/document/name") != json::RetGet::Success || docName.empty())
             {
                 LOG_WARNING("[indexer-connector] IOC document without document.name field, skipping");
                 return;
@@ -668,7 +668,7 @@ WIndexerConnector::streamIocsByType(std::string_view iocType, std::size_t batchS
                 return;
             }
 
-            onIoc(*optName, optDocument->str());
+            onIoc(docName, optDocument->str());
             ++streamedDocs;
         },
         sourceFilter);

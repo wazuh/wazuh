@@ -41,35 +41,37 @@ Manager::Manager(const std::shared_ptr<store::IStore>& store, const std::shared_
     auto doc = base::getResponse(docResp);
 
     // Load city database if present
-    auto cityPath = doc.getString("/city/path");
-    auto cityHash = doc.getString("/city/hash");
+    std::string cityPathStr, cityHashStr;
+    auto cityPathRet = doc.getString(cityPathStr, "/city/path");
+    auto cityHashRet = doc.getString(cityHashStr, "/city/hash");
     auto cityCreatedAt = doc.getInt64("/city/generated_at");
-    if (cityPath.has_value() && cityHash.has_value() && cityCreatedAt.has_value())
+    if (cityPathRet == json::RetGet::Success && cityHashRet == json::RetGet::Success && cityCreatedAt.has_value())
     {
-        auto addResp = addDbUnsafe(cityPath.value(), cityHash.value(), cityCreatedAt.value(), Type::CITY);
+        auto addResp = addDbUnsafe(cityPathStr, cityHashStr, cityCreatedAt.value(), Type::CITY);
         if (base::isError(addResp))
         {
-            LOG_ERROR("Geo cannot add city db '{}': {}", cityPath.value(), base::getError(addResp).message);
+            LOG_ERROR("Geo cannot add city db '{}': {}", cityPathStr, base::getError(addResp).message);
         }
     }
-    else if (cityPath.has_value() || cityHash.has_value() || cityCreatedAt.has_value())
+    else if (cityPathRet == json::RetGet::Success || cityHashRet == json::RetGet::Success || cityCreatedAt.has_value())
     {
         LOG_WARNING("Geo store has incomplete city database information, skipping");
     }
 
     // Load asn database if present
-    auto asnPath = doc.getString("/asn/path");
-    auto asnHash = doc.getString("/asn/hash");
+    std::string asnPathStr, asnHashStr;
+    auto asnPathRet = doc.getString(asnPathStr, "/asn/path");
+    auto asnHashRet = doc.getString(asnHashStr, "/asn/hash");
     auto asnCreatedAt = doc.getInt64("/asn/generated_at");
-    if (asnPath.has_value() && asnHash.has_value() && asnCreatedAt.has_value())
+    if (asnPathRet == json::RetGet::Success && asnHashRet == json::RetGet::Success && asnCreatedAt.has_value())
     {
-        auto addResp = addDbUnsafe(asnPath.value(), asnHash.value(), asnCreatedAt.value(), Type::ASN);
+        auto addResp = addDbUnsafe(asnPathStr, asnHashStr, asnCreatedAt.value(), Type::ASN);
         if (base::isError(addResp))
         {
-            LOG_ERROR("Geo cannot add asn db '{}': {}", asnPath.value(), base::getError(addResp).message);
+            LOG_ERROR("Geo cannot add asn db '{}': {}", asnPathStr, base::getError(addResp).message);
         }
     }
-    else if (asnPath.has_value() || asnHash.has_value() || asnCreatedAt.has_value())
+    else if (asnPathRet == json::RetGet::Success || asnHashRet == json::RetGet::Success || asnCreatedAt.has_value())
     {
         LOG_WARNING("Geo store has incomplete asn database information, skipping");
     }
@@ -118,24 +120,24 @@ bool Manager::needsUpdate(const std::string& name, const std::string& remoteHash
     auto doc = base::getResponse(internalResp);
     auto typePrefix = fmt::format("/{}", typeName(type));
 
-    auto storedHash = doc.getString(typePrefix + "/hash");
-    if (!storedHash.has_value())
+    std::string storedHash;
+    if (doc.getString(storedHash, typePrefix + "/hash") != json::RetGet::Success)
     {
         return true;
     }
 
     // Check if file exists physically
-    auto storedPath = doc.getString(typePrefix + "/path");
-    if (storedPath.has_value())
+    std::string storedPath;
+    if (doc.getString(storedPath, typePrefix + "/path") == json::RetGet::Success)
     {
-        if (!std::filesystem::exists(storedPath.value()))
+        if (!std::filesystem::exists(storedPath))
         {
             // File was deleted, needs update
             return true;
         }
     }
 
-    return storedHash.value() != remoteHash;
+    return storedHash != remoteHash;
 }
 
 base::OptError
@@ -398,10 +400,24 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
     };
 
     // Process city database if present
-    processDatabase(Type::CITY, cityPath, manifest.getString("/city/url"), manifest.getString("/city/md5"), "CITY");
+    std::string cityUrl, cityMd5;
+    auto cityUrlOpt = manifest.getString(cityUrl, "/city/url") == json::RetGet::Success
+                          ? std::optional<std::string>(cityUrl)
+                          : std::nullopt;
+    auto cityMd5Opt = manifest.getString(cityMd5, "/city/md5") == json::RetGet::Success
+                          ? std::optional<std::string>(cityMd5)
+                          : std::nullopt;
+    processDatabase(Type::CITY, cityPath, cityUrlOpt, cityMd5Opt, "CITY");
 
     // Process ASN database if present
-    processDatabase(Type::ASN, asnPath, manifest.getString("/asn/url"), manifest.getString("/asn/md5"), "ASN");
+    std::string asnUrl, asnMd5;
+    auto asnUrlOpt = manifest.getString(asnUrl, "/asn/url") == json::RetGet::Success
+                         ? std::optional<std::string>(asnUrl)
+                         : std::nullopt;
+    auto asnMd5Opt = manifest.getString(asnMd5, "/asn/md5") == json::RetGet::Success
+                         ? std::optional<std::string>(asnMd5)
+                         : std::nullopt;
+    processDatabase(Type::ASN, asnPath, asnUrlOpt, asnMd5Opt, "ASN");
 
     LOG_DEBUG("[Geo::Manager] Finished synchronization of geo databases");
 }

@@ -76,14 +76,14 @@ public:
      */
     static DBState fromJson(const json::Json& j)
     {
-        auto optName = j.getString(JPATH_NAME);
-        if (!optName.has_value() || optName->empty())
+        std::string name;
+        if (j.getString(name, JPATH_NAME) != json::RetGet::Success || name.empty())
         {
             throw std::runtime_error("DBState::fromJson: Missing/empty name field");
         }
 
-        auto optPath = j.getString(JPATH_INSTANCE_PATH);
-        if (!optPath.has_value())
+        std::string path;
+        if (j.getString(path, JPATH_INSTANCE_PATH) != json::RetGet::Success)
         {
             throw std::runtime_error("DBState::fromJson: Missing instance_path field");
         }
@@ -94,7 +94,7 @@ public:
             throw std::runtime_error("DBState::fromJson: Missing created field");
         }
 
-        return {*optName, *optPath, *optCreated};
+        return {name, path, *optCreated};
     }
 };
 

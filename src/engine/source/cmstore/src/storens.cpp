@@ -173,9 +173,9 @@ std::string CMStoreNS::upsertUUID(std::string& ymlContent)
     }
 
     // Check if UUID field exists and validate it
-    if (auto opt = jsonContent.getString(pathns::JSON_ID_PATH); opt.has_value())
+    std::string uuid;
+    if (auto ret = jsonContent.getString(uuid, pathns::JSON_ID_PATH); ret == json::RetGet::Success)
     {
-        const std::string& uuid = opt.value();
         if (!base::utils::generators::isValidUUIDv4(uuid))
         {
             throw std::runtime_error("Existing UUIDv4 is not valid: " + uuid);
@@ -184,7 +184,7 @@ std::string CMStoreNS::upsertUUID(std::string& ymlContent)
     }
 
     // Generate new UUID and add it to content
-    std::string uuid = base::utils::generators::generateUUIDv4();
+    uuid = base::utils::generators::generateUUIDv4();
 
     if (isJson)
     {
@@ -372,8 +372,8 @@ void CMStoreNS::updateResourceByName(const std::string& name, ResourceType type,
 
     // Get the UUID from content (Throws if missing/invalid)
     json::Json jsonContent = json::Json(yml::Converter::loadYMLfromString(ymlContent));
-    auto optUUID = jsonContent.getString(pathns::JSON_ID_PATH);
-    if (!optUUID.has_value())
+    std::string contentUUID;
+    if (jsonContent.getString(contentUUID, pathns::JSON_ID_PATH) != json::RetGet::Success)
     {
         throw std::runtime_error("UUID field (/id) is missing in the provided content");
     }
@@ -382,7 +382,7 @@ void CMStoreNS::updateResourceByName(const std::string& name, ResourceType type,
 
     // Resolve existing UUID from name
     auto existingUUID = resolveUUIDFromNameUnlocked(name, type);
-    auto& uuid = optUUID.value();
+    const auto& uuid = contentUUID;
 
     // Check if the UUID in content matches the existing one
     if (uuid != existingUUID)
@@ -412,17 +412,17 @@ void CMStoreNS::updateResourceByUUID(const std::string& uuid, const std::string&
 {
     // Get the UUID from content (Throws if missing/invalid)
     json::Json jsonContent = json::Json(yml::Converter::loadYMLfromString(ymlContent));
-    auto optUUID = jsonContent.getString(pathns::JSON_ID_PATH);
-    if (!optUUID.has_value())
+    std::string contentUUID;
+    if (jsonContent.getString(contentUUID, pathns::JSON_ID_PATH) != json::RetGet::Success)
     {
         throw std::runtime_error("UUID field (/id) is missing in the provided content");
     }
 
     // Check if the UUID in content matches the provided one
-    if (uuid != optUUID.value())
+    if (uuid != contentUUID)
     {
         throw std::runtime_error(
-            fmt::format("UUID '{}' in content does not match provided UUID '{}'", optUUID.value(), uuid));
+            fmt::format("UUID '{}' in content does not match provided UUID '{}'", contentUUID, uuid));
     }
 
     std::unique_lock lock(m_mutex); // Acquire write cache and file lock

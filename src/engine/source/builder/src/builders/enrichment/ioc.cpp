@@ -56,13 +56,9 @@ std::optional<std::string> readFieldAsString(base::Event event, std::string_view
 {
     // Try to read as string first, can be a string or an array of strings
     // In the latter case, we take the first element
-    auto stringValue = event->getString(path);
-    if (!stringValue.has_value())
-    {
-        stringValue = event->getString(std::string(path) + "/0");
-    }
-
-    if (stringValue.has_value())
+    std::string stringValue;
+    if (event->getString(stringValue, path) == json::RetGet::Success
+        || event->getString(stringValue, std::string(path) + "/0") == json::RetGet::Success)
     {
         return stringValue;
     }
@@ -165,7 +161,8 @@ std::vector<IocMappingConfig> loadIocMappingConfigs(const json::Json& config, st
                 throw std::runtime_error(fmt::format("Source field must be a string for IOC type '{}'", iocType));
             }
 
-            const auto fieldStr = sourceField.getString().value();
+            std::string fieldStr;
+            sourceField.getString(fieldStr);
             IocMappingConfig cfg;
             cfg.iocType = std::string(iocType);
             cfg.dbName = dbName;
@@ -192,10 +189,12 @@ std::vector<IocMappingConfig> loadIocMappingConfigs(const json::Json& config, st
         std::vector<IocMappingConfig> configs;
         for (const auto& sourceObj : *sourcesOpt)
         {
-            const auto ipFieldOpt = sourceObj.getString("/ip_field");
-            const auto portFieldOpt = sourceObj.getString("/port_field");
+            std::string ipFieldStr;
+            std::string portFieldStr;
+            const auto ipFieldRet = sourceObj.getString(ipFieldStr, "/ip_field");
+            const auto portFieldRet = sourceObj.getString(portFieldStr, "/port_field");
 
-            if (!ipFieldOpt.has_value() || !portFieldOpt.has_value())
+            if (ipFieldRet != json::RetGet::Success || portFieldRet != json::RetGet::Success)
             {
                 throw std::runtime_error("Connection source must have 'ip_field' and 'port_field'");
             }
@@ -203,11 +202,11 @@ std::vector<IocMappingConfig> loadIocMappingConfigs(const json::Json& config, st
             IocMappingConfig cfg;
             cfg.iocType = std::string(iocType);
             cfg.dbName = dbName;
-            cfg.sourceFields = fmt::format("{}, {}", *ipFieldOpt, *portFieldOpt);
+            cfg.sourceFields = fmt::format("{}, {}", ipFieldStr, portFieldStr);
 
             // Convert dot notation to JSON pointer
-            const auto ipPath = json::Json::formatJsonPath(*ipFieldOpt);
-            const auto portPath = json::Json::formatJsonPath(*portFieldOpt);
+            const auto ipPath = json::Json::formatJsonPath(ipFieldStr);
+            const auto portPath = json::Json::formatJsonPath(portFieldStr);
 
             cfg.sourcePaths.push_back(ipPath);
             cfg.sourcePaths.push_back(portPath);

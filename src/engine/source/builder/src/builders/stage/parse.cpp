@@ -52,7 +52,8 @@ StageBuilder getParseBuilder(std::shared_ptr<hlp::logpar::Logpar> logpar, size_t
 
             auto itemObj = item.getObject().value();
             auto field = json::Json::formatJsonPath(std::get<0>(itemObj[0]));
-            auto logparExpr = std::get<1>(itemObj[0]).getString().value();
+            std::string logparExpr;
+            std::get<1>(itemObj[0]).getString(logparExpr);
             logparExpr = buildCtx->definitions().replace(logparExpr);
 
             hlp::parser::Parser parser;
@@ -82,13 +83,11 @@ StageBuilder getParseBuilder(std::shared_ptr<hlp::logpar::Logpar> logpar, size_t
                     logparExpr,
                     [=, runState = buildCtx->runState(), parser = std::move(parser)](base::Event event)
                     {
-                        const auto evOpt = event->getString(field);
-                        if (!evOpt.has_value())
+                        std::string ev;
+                        if (event->getString(ev, field) != json::RetGet::Success)
                         {
                             RETURN_FAILURE(runState, event, failureTrace1);
                         }
-
-                        const auto& ev = evOpt.value();
                         auto error = hlp::parser::run(parser, ev, *event, runState->trace);
                         if (error)
                         {

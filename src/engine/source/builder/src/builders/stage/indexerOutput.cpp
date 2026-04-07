@@ -45,7 +45,8 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
                                              value.typeName()));
     }
 
-    auto indexName = value.getString().value();
+    auto indexName = std::string {};
+    value.getString(indexName);
 
     // Index name can’t contain any of the following characters:
     // ' ', ',', ':', '"', '*', '+', '/', '\', '|', '?', '#', '>', or '<'
@@ -97,12 +98,11 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
             std::string finalIndexName = indexName;
             for (const auto& [placeholder, jsonPath] : placeholderMap)
             {
-                auto opt = event->getString(jsonPath);
-                if (!opt)
+                std::string fieldValue;
+                if (event->getString(fieldValue, jsonPath) != json::RetGet::Success)
                 {
                     RETURN_FAILURE(runState, event, fmt::format(failureTrace2, jsonPath));
                 }
-                std::string fieldValue = std::move(*opt);
 
                 // Replace all occurrences of the placeholder in the indexName
                 size_t pos = 0;

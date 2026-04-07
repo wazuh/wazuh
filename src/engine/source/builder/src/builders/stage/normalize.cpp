@@ -63,7 +63,8 @@ json::Json preProcessParseStage(std::string& key, json::Json& value)
     {
         json::Json tmp;
         tmp.setObject();
-        const auto parseValue = item.getString().value();
+        std::string parseValue;
+        item.getString(parseValue);
         tmp.setString(parseValue, json::Json::formatJsonPath(targetField, true));
         stageParseValue.appendJson(tmp);
     }

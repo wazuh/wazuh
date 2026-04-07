@@ -236,24 +236,6 @@ void Json::set(std::string_view basePtrPath, std::string_view referencePtrPath)
     }
 }
 
-std::optional<std::string> Json::getString(std::string_view path) const
-{
-    std::optional<std::string> retval {std::nullopt};
-    const auto pp = rapidjson::Pointer(path.data());
-
-    if (pp.IsValid())
-    {
-        const auto* value = pp.Get(m_document);
-        if (value && value->IsString())
-        {
-            retval = std::string {value->GetString()};
-        }
-        return retval;
-    }
-
-    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
-}
-
 std::optional<int> Json::getInt(std::string_view path) const
 {
     std::optional<int> retval {std::nullopt};

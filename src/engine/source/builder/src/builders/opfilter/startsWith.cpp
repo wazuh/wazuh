@@ -42,8 +42,10 @@ startsWithValue(const Reference& targetField, const Value& value, const std::sha
             RETURN_FAILURE(runState, false, targetNotString);
         }
 
-        auto targetString = targetValue.getString().value();
-        auto valueString = value.getString().value();
+        std::string targetString;
+        targetValue.getString(targetString);
+        std::string valueString;
+        value.getString(valueString);
 
         if (!base::utils::string::startsWith(targetString, valueString))
         {
@@ -109,8 +111,10 @@ FilterOp startsWithReference(const Reference& targetField,
             RETURN_FAILURE(runState, false, referenceNotString);
         }
 
-        auto targetString = targetValue.getString().value();
-        auto referenceString = referenceValue.getString().value();
+        std::string targetString;
+        targetValue.getString(targetString);
+        std::string referenceString;
+        referenceValue.getString(referenceString);
         if (!base::utils::string::startsWith(targetString, referenceString))
         {
             RETURN_FAILURE(runState, false, failure);

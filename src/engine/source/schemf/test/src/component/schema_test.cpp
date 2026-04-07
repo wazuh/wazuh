@@ -154,7 +154,9 @@ TEST_P(LoadJson, Loads)
         for (const auto& [key, value] : jsonObj)
         {
             ASSERT_TRUE(schema.hasField(key));
-            ASSERT_EQ(schema.getType(key), strToType(value.getString("/type").value().c_str()));
+            std::string typeStr;
+            value.getString(typeStr, "/type");
+            ASSERT_EQ(schema.getType(key), strToType(typeStr.c_str()));
         }
     }
     else

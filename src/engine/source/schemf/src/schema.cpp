@@ -194,12 +194,13 @@ Field Schema::entryToField(const std::string& name, const json::Json& entry) con
 
     Field::Parameters params;
 
-    auto type = entry.getString("/type");
-    if (!type)
+    std::string typeStr;
+    auto typeRet = entry.getString(typeStr, "/type");
+    if (typeRet != json::RetGet::Success)
     {
         throw std::runtime_error(fmt::format("Field '{}' must have a type", name));
     }
-    params.type = strToType(type.value());
+    params.type = strToType(typeStr);
 
     Field field;
     try

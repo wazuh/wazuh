@@ -115,7 +115,9 @@ TransformOp specificHLPBuilder(const Reference& targetField,
             throw std::runtime_error(fmt::format("Got non 'string' parameter '{}'", value->value().str()));
         }
 
-        hlpOptionsList.emplace_back(value->value().getString().value());
+        std::string optStr;
+        value->value().getString(optStr);
+        hlpOptionsList.emplace_back(std::move(optStr));
     }
 
     hlp::parser::Parser parser;
@@ -154,14 +156,14 @@ TransformOp specificHLPBuilder(const Reference& targetField,
                base::Event event) -> TransformResult
     {
         // Check if source is a reference
-        const auto sourceValue = event->getString(source);
-        if (!sourceValue)
+        std::string sourceValue;
+        if (event->getString(sourceValue, source) != json::RetGet::Success)
         {
             RETURN_FAILURE(runState, event, failureTrace1);
         }
 
         // Parse source
-        auto error = hlp::parser::run(parser, sourceValue.value(), *event, runState->trace);
+        auto error = hlp::parser::run(parser, sourceValue, *event, runState->trace);
         if (error)
         {
             RETURN_FAILURE(runState, event, failureTrace + error.value().message);

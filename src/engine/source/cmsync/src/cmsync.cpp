@@ -124,19 +124,19 @@ public:
      */
     static SyncedNamespace fromJson(const json::Json& j)
     {
-        auto optOrigin = j.getString(JPATH_ORIGIN);
-        if (!optOrigin.has_value() || optOrigin->empty())
+        std::string origin;
+        if (j.getString(origin, JPATH_ORIGIN) != json::RetGet::Success || origin.empty())
         {
             throw std::runtime_error("NsSyncState::fromJson: Missin/empty origin_space field");
         }
 
-        auto optNsId = j.getString(JPATH_NAMESPACE_ID);
-        if (!optNsId.has_value())
+        std::string nsId;
+        if (j.getString(nsId, JPATH_NAMESPACE_ID) != json::RetGet::Success)
         {
             throw std::runtime_error("NsSyncState::fromJson: Missing namespace_id field");
         }
 
-        return {*optOrigin, cm::store::NamespaceId(*optNsId)};
+        return {origin, cm::store::NamespaceId(nsId)};
     }
 };
 

@@ -133,14 +133,14 @@ public:
         }
 
         // Get title
-        std::string title = [&]() -> auto
+        std::string title = [&]() -> std::string
         {
-            auto titleOpt = policyJson.getString(jsonpolicy::PATH_KEY_TITLE);
-            if (!titleOpt.has_value() || titleOpt->empty())
+            std::string title;
+            if (policyJson.getString(title, jsonpolicy::PATH_KEY_TITLE) != json::RetGet::Success || title.empty())
             {
                 return std::string{"Untitled Policy"};
             }
-            return titleOpt.value();
+            return title;
         }();
 
         // Get enabled
@@ -157,12 +157,12 @@ public:
         // Get root decoder
         auto rootDecoder = [&]()
         {
-            auto rootDecoderOpt = policyJson.getString(jsonpolicy::PATH_KEY_ROOT_PARENT);
-            if (!rootDecoderOpt.has_value())
+            std::string rootDecoder;
+            if (policyJson.getString(rootDecoder, jsonpolicy::PATH_KEY_ROOT_PARENT) != json::RetGet::Success)
             {
                 throw std::runtime_error("Policy JSON must have a 'root_decoder' field");
             }
-            return rootDecoderOpt.value();
+            return rootDecoder;
         }();
 
         // Get integrations
@@ -179,13 +179,13 @@ public:
 
             for (std::size_t i = 0; i < integrationCount; ++i)
             {
-                auto integrationOpt = policyJson.getString(fmt::format("{}/{}", jsonpolicy::PATH_KEY_INTEGRATIONS, i));
-                if (!integrationOpt.has_value())
+                std::string integration;
+                if (policyJson.getString(integration, fmt::format("{}/{}", jsonpolicy::PATH_KEY_INTEGRATIONS, i)) != json::RetGet::Success)
                 {
                     throw std::runtime_error(fmt::format("Integration at index {} is not a valid string", i));
                 }
 
-                integrations.push_back(integrationOpt.value());
+                integrations.push_back(std::move(integration));
             }
             return integrations;
         }();
@@ -200,12 +200,12 @@ public:
                 filters.reserve(filtersCount);
                 for (std::size_t i = 0; i < filtersCount; ++i)
                 {
-                    auto filterOpt = policyJson.getString(fmt::format("{}/{}", jsonpolicy::PATH_KEY_FILTERS, i));
-                    if (!filterOpt.has_value())
+                    std::string filter;
+                    if (policyJson.getString(filter, fmt::format("{}/{}", jsonpolicy::PATH_KEY_FILTERS, i)) != json::RetGet::Success)
                     {
                         throw std::runtime_error(fmt::format("Filter at index {} is not a valid string", i));
                     }
-                    filters.push_back(filterOpt.value());
+                    filters.push_back(std::move(filter));
                 }
             }
             else
@@ -225,13 +225,12 @@ public:
                 enrichments.reserve(enrichmentsCount);
                 for (std::size_t i = 0; i < enrichmentsCount; ++i)
                 {
-                    auto enrichmentOpt =
-                        policyJson.getString(fmt::format("{}/{}", jsonpolicy::PATH_KEY_ENRICHMENTS, i));
-                    if (!enrichmentOpt.has_value())
+                    std::string enrichment;
+                    if (policyJson.getString(enrichment, fmt::format("{}/{}", jsonpolicy::PATH_KEY_ENRICHMENTS, i)) != json::RetGet::Success)
                     {
                         throw std::runtime_error(fmt::format("Enrichment at index {} is not a valid string", i));
                     }
-                    enrichments.push_back(enrichmentOpt.value());
+                    enrichments.push_back(std::move(enrichment));
                 }
             }
             // TODO: Uncomment when enrichments are mandatory
@@ -252,13 +251,13 @@ public:
                 outputs.reserve(outputsCount);
                 for (std::size_t i = 0; i < outputsCount; ++i)
                 {
-                    auto outputOpt = policyJson.getString(fmt::format("{}/{}", jsonpolicy::PATH_KEY_OUTPUTS, i));
-                    if (!outputOpt.has_value())
+                    std::string output;
+                    if (policyJson.getString(output, fmt::format("{}/{}", jsonpolicy::PATH_KEY_OUTPUTS, i)) != json::RetGet::Success)
                     {
                         throw std::runtime_error(fmt::format("Output at index {} is not a valid string", i));
                     }
 
-                    outputs.push_back(outputOpt.value());
+                    outputs.push_back(std::move(output));
                 }
             }
             return outputs;
@@ -267,22 +266,22 @@ public:
         // optional origin_space
         auto originSpace = [&]() -> std::string
         {
-            auto originSpaceOpt = policyJson.getString(jsonpolicy::PATH_KEY_ORIGIN_SPACE);
-            if (!originSpaceOpt.has_value() || originSpaceOpt->empty())
+            std::string originSpace;
+            if (policyJson.getString(originSpace, jsonpolicy::PATH_KEY_ORIGIN_SPACE) != json::RetGet::Success || originSpace.empty())
             {
                 return std::string(DEFAULT_ORIGIN_SPACE);
             }
-            return originSpaceOpt.value();
+            return originSpace;
         }();
 
         auto policyHash = [&]() -> std::string
         {
-            auto hashOpt = policyJson.getString(jsonpolicy::PATH_KEY_HASH);
-            if (!hashOpt.has_value() || hashOpt->empty())
+            std::string hash;
+            if (policyJson.getString(hash, jsonpolicy::PATH_KEY_HASH) != json::RetGet::Success || hash.empty())
             {
                 return "";
             }
-            return hashOpt.value();
+            return hash;
         }();
 
         auto indexUnclassifiedEvents = [&]() -> bool

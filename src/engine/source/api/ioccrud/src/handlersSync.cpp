@@ -56,7 +56,8 @@ void updateIOCStatus(const std::shared_ptr<store::IStore>& storeRef,
             if (!base::isError(docResp))
             {
                 auto& doc = base::getResponse(docResp);
-                auto currentHash = doc.getString(DOC_HASH_KEY).value_or("");
+                std::string currentHash;
+                if (doc.getString(currentHash, detail::DOC_HASH_KEY) != json::RetGet::Success) { currentHash.clear(); }
                 statusDoc.setString(currentHash, DOC_HASH_KEY);
             }
             else
@@ -307,8 +308,8 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::ioc::kvdb::IKVDBManager>& 
         else
         {
             auto doc = base::getResponse(docResp);
-            auto hashOpt = doc.getString(detail::DOC_HASH_KEY);
-            storedHash = hashOpt.value_or("");
+            std::string hashStr;
+            storedHash = (doc.getString(hashStr, detail::DOC_HASH_KEY) == json::RetGet::Success) ? hashStr : "";
         }
 
         // Compare hashes - if they match, no sync needed
@@ -426,8 +427,9 @@ adapter::RouteHandler getIocState(const std::shared_ptr<store::IStore>& store)
         else
         {
             auto doc = base::getResponse(docResp);
-            currentHash = doc.getString(detail::DOC_HASH_KEY).value_or("");
-            lastError = doc.getString(detail::DOC_ERROR_KEY).value_or("");
+            std::string hashTmp, errorTmp;
+            currentHash = (doc.getString(hashTmp, detail::DOC_HASH_KEY) == json::RetGet::Success) ? hashTmp : "";
+            lastError = (doc.getString(errorTmp, detail::DOC_ERROR_KEY) == json::RetGet::Success) ? errorTmp : "";
         }
 
         // Check if synchronization is in progress

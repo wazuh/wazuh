@@ -130,7 +130,9 @@ base::Expression checkBuilder(const json::Json& definition, const std::shared_pt
     }
     else if (definition.isString())
     {
-        return checkExpressionBuilder(definition.getString().value(), buildCtx);
+        std::string strVal;
+        definition.getString(strVal);
+        return checkExpressionBuilder(strVal, buildCtx);
     }
     else
     {

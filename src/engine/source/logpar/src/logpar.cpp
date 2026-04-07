@@ -328,11 +328,13 @@ Logpar::Logpar(const json::Json& fieldParserOverrides,
             throw std::runtime_error(fmt::format("Field parser override '{}' must be a string", key));
         }
 
-        auto parserType = strToParserType(value.getString().value());
+        std::string val;
+        value.getString(val);
+        auto parserType = strToParserType(val);
         if (parserType == ParserType::ERROR_TYPE)
         {
             throw std::runtime_error(
-                fmt::format("Field parser override '{}' invalid parser type '{}'", key, value.getString().value()));
+                fmt::format("Field parser override '{}' invalid parser type '{}'", key, val));
         }
 
         m_fieldParserOverrides[key] = parserType;
