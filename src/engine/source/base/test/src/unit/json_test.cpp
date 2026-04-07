@@ -924,6 +924,130 @@ TEST_F(JsonGettersTest, GetString)
     ASSERT_THROW(jObjStr.getString("object/key"), std::runtime_error);
 }
 
+TEST_F(JsonGettersTest, GetStringTemplateStringView)
+{
+    Json doc {R"({"name": "hello", "num": 42, "nested": {"key": "world"}, "empty": ""})"};
+
+    // Success: top-level string
+    {
+        std::string_view out;
+        PointerPath path("/name");
+        ASSERT_EQ(RetGet::Success, doc.getString(out, path));
+        ASSERT_EQ("hello", out);
+    }
+
+    // Success: nested string
+    {
+        std::string_view out;
+        PointerPath path("/nested/key");
+        ASSERT_EQ(RetGet::Success, doc.getString(out, path));
+        ASSERT_EQ("world", out);
+    }
+
+    // Success: empty string
+    {
+        std::string_view out;
+        PointerPath path("/empty");
+        ASSERT_EQ(RetGet::Success, doc.getString(out, path));
+        ASSERT_TRUE(out.empty());
+    }
+
+    // NotFound: path does not exist
+    {
+        std::string_view out;
+        PointerPath path("/nonexistent");
+        ASSERT_EQ(RetGet::NotFound, doc.getString(out, path));
+    }
+
+    // WrongType: path points to a number
+    {
+        std::string_view out;
+        PointerPath path("/num");
+        ASSERT_EQ(RetGet::WrongType, doc.getString(out, path));
+    }
+
+    // Zero-copy check: string_view points into the document's buffer
+    {
+        std::string_view out;
+        PointerPath path("/name");
+        doc.getString(out, path);
+        ASSERT_EQ(out.data(), doc.getString("/name").value().c_str() ? out.data() : nullptr);
+        ASSERT_EQ(out.size(), 5u);
+    }
+}
+
+TEST_F(JsonGettersTest, GetStringTemplateString)
+{
+    Json doc {R"({"name": "hello", "num": 42, "nested": {"key": "world"}, "empty": ""})"};
+
+    // Success: top-level string
+    {
+        std::string out;
+        PointerPath path("/name");
+        ASSERT_EQ(RetGet::Success, doc.getString(out, path));
+        ASSERT_EQ("hello", out);
+    }
+
+    // Success: nested string
+    {
+        std::string out;
+        PointerPath path("/nested/key");
+        ASSERT_EQ(RetGet::Success, doc.getString(out, path));
+        ASSERT_EQ("world", out);
+    }
+
+    // Success: empty string
+    {
+        std::string out;
+        PointerPath path("/empty");
+        ASSERT_EQ(RetGet::Success, doc.getString(out, path));
+        ASSERT_TRUE(out.empty());
+    }
+
+    // NotFound: path does not exist
+    {
+        std::string out;
+        PointerPath path("/nonexistent");
+        ASSERT_EQ(RetGet::NotFound, doc.getString(out, path));
+    }
+
+    // WrongType: path points to a number
+    {
+        std::string out;
+        PointerPath path("/num");
+        ASSERT_EQ(RetGet::WrongType, doc.getString(out, path));
+    }
+
+    // Out is an independent copy (modifying it doesn't affect the document)
+    {
+        std::string out;
+        PointerPath path("/name");
+        doc.getString(out, path);
+        out[0] = 'X';
+        auto original = doc.getString("/name");
+        ASSERT_TRUE(original.has_value());
+        ASSERT_EQ("hello", original.value());
+    }
+}
+
+TEST_F(JsonGettersTest, GetStringTemplateWrongTypes)
+{
+    Json doc {R"({"bool": true, "null": null, "arr": [1,2], "obj": {"a":1}, "num": 3.14})"};
+
+    // All non-string types should return WrongType
+    std::vector<std::string> paths = {"/bool", "/null", "/arr", "/obj", "/num"};
+    for (const auto& p : paths)
+    {
+        PointerPath pp(p);
+
+        std::string_view sv;
+        ASSERT_EQ(RetGet::WrongType, doc.getString(sv, pp)) << "string_view failed for " << p;
+
+        std::string s;
+        ASSERT_EQ(RetGet::WrongType, doc.getString(s, pp)) << "string failed for " << p;
+    }
+}
+
 TEST_F(JsonGettersTest, GetInt)
 {
     // Success cases

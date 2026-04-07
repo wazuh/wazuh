@@ -158,8 +158,9 @@ std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::ISt
     auto json = base::getResponse(jsonEntry);
     if (json.isEmpty())
     {
-        LOG_WARNING("Router: {} table is empty", tableName.toStr());
+        LOG_DEBUG("Router: {} table is empty", tableName.toStr());
     }
+    // Crear tabla vacia.
 
     return EntryConverter::fromJsonArray(json);
 }
