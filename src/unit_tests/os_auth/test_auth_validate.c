@@ -139,6 +139,9 @@ static int teardown_group(void **state) {
         os_free(cur);
     }
 
+    /* Cleanup compiled regex to prevent memory leaks in tests */
+    w_auth_validate_groups_cleanup();
+
     return 0;
 }
 
@@ -298,6 +301,68 @@ static void test_w_auth_validate_groups(void **state) {
     err = w_auth_validate_groups(EXISTENT_GROUP1","EXISTENT_GROUP2","UNKNOWN_GROUP, response);
     assert_int_equal(err, OS_INVALID);
     assert_string_equal(response, "ERROR: Invalid group: "UNKNOWN_GROUP"");
+}
+
+/* Tests w_auth_validate_groups */
+
+static void test_w_auth_validate_groups_parent_directory(void **state) {
+    w_err_t err;
+    char response[2048] = {0};
+
+    /* Group name ".." should be rejected (explicit check after regex) */
+    expect_string(__wrap__merror, formatted_msg, "Invalid group name '..': directory reference not allowed");
+    response[0] = '\0';
+    err = w_auth_validate_groups("..", response);
+    assert_int_equal(err, OS_INVALID);
+    assert_string_equal(response, "ERROR: Invalid group name: ..");
+}
+
+static void test_w_auth_validate_groups_current_directory(void **state) {
+    w_err_t err;
+    char response[2048] = {0};
+
+    /* Group name "." should be rejected (explicit check after regex) */
+    expect_string(__wrap__merror, formatted_msg, "Invalid group name '.': directory reference not allowed");
+    response[0] = '\0';
+    err = w_auth_validate_groups(".", response);
+    assert_int_equal(err, OS_INVALID);
+    assert_string_equal(response, "ERROR: Invalid group name: .");
+}
+
+static void test_w_auth_validate_groups_multigroup_with_parent_dir(void **state) {
+    w_err_t err;
+    char response[2048] = {0};
+
+    /* Multigroup "..,default" should be rejected (explicit check after regex) */
+    expect_string(__wrap__merror, formatted_msg, "Invalid group name '..': directory reference not allowed");
+    response[0] = '\0';
+    err = w_auth_validate_groups("..,default", response);
+    assert_int_equal(err, OS_INVALID);
+    assert_string_equal(response, "ERROR: Invalid group name: ..");
+}
+
+static void test_w_auth_validate_groups_invalid_characters(void **state) {
+    w_err_t err;
+    char response[2048] = {0};
+
+    /* Group name with slash should be rejected */
+    expect_string(__wrap__merror, formatted_msg, "Invalid group name 'group/subgroup': contains forbidden characters");
+    response[0] = '\0';
+    err = w_auth_validate_groups("group/subgroup", response);
+    assert_int_equal(err, OS_INVALID);
+    assert_string_equal(response, "ERROR: Invalid group name: group/subgroup");
+}
+
+static void test_w_auth_validate_groups_special_characters(void **state) {
+    w_err_t err;
+    char response[2048] = {0};
+
+    /* Group name with special characters should be rejected */
+    expect_string(__wrap__merror, formatted_msg, "Invalid group name 'group@test': contains forbidden characters");
+    response[0] = '\0';
+    err = w_auth_validate_groups("group@test", response);
+    assert_int_equal(err, OS_INVALID);
+    assert_string_equal(response, "ERROR: Invalid group name: group@test");
 }
 
 static void test_w_auth_replace_agent_force_disabled(void **state) {
@@ -520,6 +585,11 @@ static void test_w_auth_replace_agent_success(void **state) {
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_w_auth_validate_groups),
+        cmocka_unit_test(test_w_auth_validate_groups_parent_directory),
+        cmocka_unit_test(test_w_auth_validate_groups_current_directory),
+        cmocka_unit_test(test_w_auth_validate_groups_multigroup_with_parent_dir),
+        cmocka_unit_test(test_w_auth_validate_groups_invalid_characters),
+        cmocka_unit_test(test_w_auth_validate_groups_special_characters),
         cmocka_unit_test_setup(test_w_auth_validate_data, setup_validate_force_disabled),
         cmocka_unit_test_setup(test_w_auth_validate_data_replace_agent, setup_validate_force_enabled),
         cmocka_unit_test_setup(test_w_auth_replace_agent_force_disabled, setup_validate_force_disabled),
