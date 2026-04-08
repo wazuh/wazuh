@@ -42,6 +42,9 @@ assignees: ''
   - [ ] Add the new system to the DTT environment configuration files.
 - [ ] Review and update the release testing issue templates.
 - [ ] Add the OS and its supported architectures to the E2E UX Tests spreadsheet (OS sheet).
+- [ ] Add the OS to the deployability tests (DTT)
+  - [ ] Run the DIT tests and verify that they pass for the new OS.
+  - [ ] Run the DUT tests and verify that they pass for the new OS.
 -->
 
 <!-- Uncomment for CPPSERVER issue
