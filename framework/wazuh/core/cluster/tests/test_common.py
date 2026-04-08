@@ -141,11 +141,25 @@ def test_inbuffer_get_info_from_header(unpack_mock):
 
 
 @patch('struct.unpack')
+def test_inbuffer_get_info_from_header_zero_size_ok(unpack_mock):
+    """Validate that zero-size payloads in header are accepted."""
+    unpack_mock.return_value = (1, 0, b'echo')
+
+    remaining_data = in_buffer.get_info_from_header(b"header", "hhl", 1)
+
+    assert remaining_data == b"eader"
+    assert in_buffer.counter == 1
+    assert in_buffer.total == 0
+    assert in_buffer.payload == bytearray(0)
+
+
+@patch('struct.unpack')
 def test_inbuffer_get_info_from_header_ko(unpack_mock):
     """Test if the exception is being properly raised when 'total' exceeds MAX_CHUNK_SIZE in InBuffer class."""
     unpack_mock.return_value = (0, cluster_common.MAX_TOTAL_SIZE + 1, b'pwd')
 
-    with pytest.raises(exception.WazuhClusterError, match=r'.* 3050 .*'):
+    with pytest.raises(exception.WazuhClusterError,
+                       match=r'.*Header total size out of range.*'):
         in_buffer.get_info_from_header(b"header", "hhl", 1)
 
 
@@ -1218,8 +1232,9 @@ def test_handler_process_error_str():
     assert handler.in_str == {}
 
     # Test return inside loop and condition
-    handler.in_str = {b"string_id": in_buffer}
-    assert handler.process_error_str(b"2048") == (b'ok', b'string_id')
+    local_in_buffer = cluster_common.InBuffer()
+    handler.in_str = {b"string_id": local_in_buffer}
+    assert handler.process_error_str(b"0") == (b'ok', b'string_id')
     assert handler.in_str == {}
 
 
