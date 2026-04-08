@@ -1145,6 +1145,8 @@ public:
                                   "InventorySyncFacade::start: Session not found, sessionId: %llu",
                                   res.context->sessionId);
                     }
+
+                    m_indexerConnector->invokePendingCallbacks();
                 }
                 catch (const std::exception& e)
                 {
@@ -1171,6 +1173,8 @@ public:
                                   "InventorySyncFacade::start: Session not found, sessionId: %llu",
                                   res.context->sessionId);
                     }
+
+                    m_indexerConnector->invokePendingCallbacks();
                 }
             },
             m_threadCount,
