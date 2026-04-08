@@ -1155,7 +1155,7 @@ MapOp opBuilderHelperStringFromHexa(const std::vector<OpArg>& opArgs, const std:
         }
 
         std::string strASCII {};
-        strASCII.resize((lenHex / 2) + 1);
+        strASCII.resize(lenHex / 2);
 
         for (int iHex = 0, iASCII = 0; iHex < lenHex; iHex += 2, iASCII++)
         {

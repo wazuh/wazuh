@@ -156,7 +156,7 @@ Json& Json::operator=(Json&& other) noexcept
 
 bool Json::exists(std::string_view ptrPath) const
 {
-    const auto fieldPtr = rapidjson::Pointer(ptrPath.data());
+    const auto fieldPtr = rapidjson::Pointer(ptrPath.data(), ptrPath.size());
     if (fieldPtr.IsValid())
     {
         return fieldPtr.Get(m_document) != nullptr;
@@ -167,7 +167,7 @@ bool Json::exists(std::string_view ptrPath) const
 
 bool Json::equals(std::string_view ptrPath, const Json& value) const
 {
-    const auto fieldPtr = rapidjson::Pointer(ptrPath.data());
+    const auto fieldPtr = rapidjson::Pointer(ptrPath.data(), ptrPath.size());
     if (fieldPtr.IsValid())
     {
         const auto got {fieldPtr.Get(m_document)};
@@ -179,8 +179,8 @@ bool Json::equals(std::string_view ptrPath, const Json& value) const
 
 bool Json::equals(std::string_view basePtrPath, std::string_view referencePtrPath) const
 {
-    const auto fieldPtr = rapidjson::Pointer(basePtrPath.data());
-    const auto referencePtr = rapidjson::Pointer(referencePtrPath.data());
+    const auto fieldPtr = rapidjson::Pointer(basePtrPath.data(), basePtrPath.size());
+    const auto referencePtr = rapidjson::Pointer(referencePtrPath.data(), referencePtrPath.size());
 
     if (!fieldPtr.IsValid())
     {
@@ -200,7 +200,7 @@ bool Json::equals(std::string_view basePtrPath, std::string_view referencePtrPat
 // TODO Invert parameters to be consistent with other methods.
 void Json::set(std::string_view ptrPath, const Json& value)
 {
-    const auto fieldPtr = rapidjson::Pointer(ptrPath.data());
+    const auto fieldPtr = rapidjson::Pointer(ptrPath.data(), ptrPath.size());
     if (fieldPtr.IsValid())
     {
         fieldPtr.Set(m_document, value.m_document);
@@ -213,8 +213,8 @@ void Json::set(std::string_view ptrPath, const Json& value)
 
 void Json::set(std::string_view basePtrPath, std::string_view referencePtrPath)
 {
-    const auto fieldPtr = rapidjson::Pointer(basePtrPath.data());
-    const auto referencePtr = rapidjson::Pointer(referencePtrPath.data());
+    const auto fieldPtr = rapidjson::Pointer(basePtrPath.data(), basePtrPath.size());
+    const auto referencePtr = rapidjson::Pointer(referencePtrPath.data(), referencePtrPath.size());
 
     if (!fieldPtr.IsValid())
     {
@@ -239,7 +239,7 @@ void Json::set(std::string_view basePtrPath, std::string_view referencePtrPath)
 std::optional<int> Json::getInt(std::string_view path) const
 {
     std::optional<int> retval {std::nullopt};
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -256,7 +256,7 @@ std::optional<int> Json::getInt(std::string_view path) const
 
 std::optional<int64_t> Json::getInt64(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -278,7 +278,7 @@ std::optional<int64_t> Json::getInt64(std::string_view path) const
 
 std::optional<uint64_t> Json::getUint64(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -300,7 +300,7 @@ std::optional<uint64_t> Json::getUint64(std::string_view path) const
 
 std::optional<int64_t> Json::getIntAsInt64(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -326,7 +326,7 @@ std::optional<int64_t> Json::getIntAsInt64(std::string_view path) const
 
 std::optional<float_t> Json::getFloat(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -349,7 +349,7 @@ std::optional<float_t> Json::getFloat(std::string_view path) const
 std::optional<double_t> Json::getDouble(std::string_view path) const
 {
     std::optional<double> retval {std::nullopt};
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -367,7 +367,7 @@ std::optional<double_t> Json::getDouble(std::string_view path) const
 std::optional<double> Json::getNumberAsDouble(std::string_view path) const
 {
     std::optional<double> retval {std::nullopt};
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -400,7 +400,7 @@ std::optional<double> Json::getNumberAsDouble(std::string_view path) const
 std::optional<bool> Json::getBool(std::string_view path) const
 {
     std::optional<bool> retval {std::nullopt};
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -418,7 +418,7 @@ std::optional<bool> Json::getBool(std::string_view path) const
 std::optional<std::vector<Json>> Json::getArray(std::string_view path) const
 {
     std::optional<std::vector<Json>> retval {std::nullopt};
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -441,7 +441,7 @@ std::optional<std::vector<Json>> Json::getArray(std::string_view path) const
 std::optional<std::vector<std::tuple<std::string, Json>>> Json::getObject(std::string_view path) const
 {
     std::optional<std::vector<std::tuple<std::string, Json>>> retval {std::nullopt};
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -504,7 +504,7 @@ std::optional<std::vector<std::string>> Json::getFields() const
 
 std::optional<std::vector<std::string>> Json::getFields(std::string_view path) const
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
     if (!pp.IsValid())
     {
         throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
@@ -545,7 +545,7 @@ std::string Json::str() const
 std::optional<std::string> Json::str(std::string_view path) const
 {
     std::optional<std::string> retval {std::nullopt};
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -572,7 +572,7 @@ std::ostream& operator<<(std::ostream& os, const Json& json)
 
 size_t Json::size(std::string_view path) const
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -603,7 +603,7 @@ size_t Json::size(std::string_view path) const
 
 bool Json::isNull(std::string_view path) const
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -621,7 +621,7 @@ bool Json::isNull(std::string_view path) const
 
 bool Json::isBool(std::string_view path) const
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -639,7 +639,7 @@ bool Json::isBool(std::string_view path) const
 
 bool Json::isNumber(std::string_view path) const
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -657,7 +657,7 @@ bool Json::isNumber(std::string_view path) const
 
 bool Json::isInt(std::string_view path) const
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -675,7 +675,7 @@ bool Json::isInt(std::string_view path) const
 
 bool Json::isUint64(std::string_view path) const
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -693,7 +693,7 @@ bool Json::isUint64(std::string_view path) const
 
 bool Json::isInt64(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -711,7 +711,7 @@ bool Json::isInt64(std::string_view path) const
 
 bool Json::isFloat(std::string_view path) const
 {
-    auto pp = rapidjson::Pointer(path.data());
+    auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -729,7 +729,7 @@ bool Json::isFloat(std::string_view path) const
 
 bool Json::isDouble(std::string_view path) const
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -747,7 +747,7 @@ bool Json::isDouble(std::string_view path) const
 
 bool Json::isString(std::string_view path) const
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -765,7 +765,7 @@ bool Json::isString(std::string_view path) const
 
 bool Json::isArray(std::string_view path) const
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -783,7 +783,7 @@ bool Json::isArray(std::string_view path) const
 
 bool Json::isObject(std::string_view path) const
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -801,7 +801,7 @@ bool Json::isObject(std::string_view path) const
 
 bool Json::isEmpty(std::string_view path) const
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -842,7 +842,7 @@ bool Json::isEmpty(std::string_view path) const
 
 std::string Json::typeName(std::string_view path) const
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -870,7 +870,7 @@ std::string Json::typeName(std::string_view path) const
 
 Json::Type Json::type(std::string_view path) const
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -888,7 +888,7 @@ Json::Type Json::type(std::string_view path) const
 
 void Json::setNull(std::string_view path)
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -901,7 +901,7 @@ void Json::setNull(std::string_view path)
 
 void Json::setBool(bool value, std::string_view path)
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -914,7 +914,7 @@ void Json::setBool(bool value, std::string_view path)
 
 void Json::setInt(int value, std::string_view path)
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -927,7 +927,7 @@ void Json::setInt(int value, std::string_view path)
 
 void Json::setInt64(int64_t value, std::string_view path)
 {
-    auto pp = rapidjson::Pointer(path.data());
+    auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -941,7 +941,7 @@ void Json::setInt64(int64_t value, std::string_view path)
 
 void Json::setUint64(uint64_t value, std::string_view path)
 {
-    auto pp = rapidjson::Pointer(path.data());
+    auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -955,7 +955,7 @@ void Json::setUint64(uint64_t value, std::string_view path)
 
 void Json::setFloat(float_t value, std::string_view path)
 {
-    auto pp = rapidjson::Pointer(path.data());
+    auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -969,7 +969,7 @@ void Json::setFloat(float_t value, std::string_view path)
 
 void Json::setDouble(double_t value, std::string_view path)
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -982,11 +982,13 @@ void Json::setDouble(double_t value, std::string_view path)
 
 void Json::setString(std::string_view value, std::string_view path)
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
-        pp.Set(m_document, std::string(value).c_str());
+        const auto* data = value.data() ? value.data() : "";
+        rapidjson::Value v(data, static_cast<rapidjson::SizeType>(value.size()), m_document.GetAllocator());
+        pp.Set(m_document, v);
         return;
     }
 
@@ -995,7 +997,7 @@ void Json::setString(std::string_view value, std::string_view path)
 
 void Json::setArray(std::string_view path)
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -1008,7 +1010,7 @@ void Json::setArray(std::string_view path)
 
 void Json::setObject(std::string_view path)
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -1021,7 +1023,7 @@ void Json::setObject(std::string_view path)
 
 void Json::appendString(std::string_view value, std::string_view path)
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -1059,7 +1061,7 @@ void Json::appendString(std::string_view value, std::string_view path)
 
 void Json::appendJson(const Json& value, std::string_view path)
 {
-    auto pp = rapidjson::Pointer(path.data());
+    auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -1096,7 +1098,7 @@ bool Json::erase(std::string_view path)
     }
     else
     {
-        const auto pp = rapidjson::Pointer(path.data());
+        const auto pp = rapidjson::Pointer(path.data(), path.size());
 
         if (pp.IsValid())
         {
@@ -1109,7 +1111,7 @@ bool Json::erase(std::string_view path)
 
 void Json::merge(const bool isRecursive, const rapidjson::Value& source, std::string_view path)
 {
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -1190,7 +1192,7 @@ void Json::merge(const bool isRecursive, const Json& other, std::string_view pat
 
 void Json::merge(const bool isRecursive, std::string_view source, std::string_view path)
 {
-    const auto pp = rapidjson::Pointer(source.data());
+    const auto pp = rapidjson::Pointer(source.data(), source.size());
 
     if (pp.IsValid())
     {
@@ -1211,7 +1213,7 @@ void Json::merge(const bool isRecursive, std::string_view source, std::string_vi
 std::optional<Json> Json::getJson(std::string_view path) const
 {
     std::optional<Json> retval {std::nullopt};
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (pp.IsValid())
     {
@@ -1300,7 +1302,7 @@ std::optional<base::Error> Json::checkDuplicateKeys() const
 bool Json::eraseIfKey(const std::function<bool(const std::string&)>& func, bool recursive, const std::string& path)
 {
     bool modified = false;
-    const auto pp = rapidjson::Pointer(path.data());
+    const auto pp = rapidjson::Pointer(path.data(), path.size());
 
     if (!pp.IsValid())
     {
