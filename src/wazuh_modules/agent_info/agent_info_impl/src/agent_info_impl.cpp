@@ -1205,86 +1205,107 @@ bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
     return false;
 }
 
-bool AgentInfoImpl::pollFimFlushCompletion(const std::string& moduleName)
+bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
 {
     constexpr int FLUSH_POLL_DELAY_MS = 10000;       // 10 seconds between polls
     constexpr int LOG_PROGRESS_EVERY_N_ATTEMPTS = 6; // Log progress every 60 seconds (6 * 10s)
-    int attempt = 0;
+    std::map<std::string, int> attempts;
 
-    m_logFunction(LOG_DEBUG_VERBOSE, "Polling " + moduleName + " for flush completion (async flush)");
-
-    // Poll until flush completes or module is stopped
-    while (!m_stopped)
+    for (const auto& moduleName : pendingModules)
     {
-        attempt++;
-        std::string isFlushCompletedMessage = createJsonCommand("is_flush_completed");
-        ModuleResponse pollResponse = queryModuleWithRetry(moduleName, isFlushCompletedMessage);
-
-        if (!pollResponse.success)
-        {
-            m_logFunction(LOG_WARNING,
-                          "Failed to poll flush status for " + moduleName + " (attempt " + std::to_string(attempt) +
-                          "), will retry...");
-            std::this_thread::sleep_for(std::chrono::milliseconds(FLUSH_POLL_DELAY_MS));
-            continue;
-        }
-
-        // Parse response to check flush status
-        try
-        {
-            nlohmann::json pollJson = nlohmann::json::parse(pollResponse.response);
-
-            if (pollJson.contains("data") && pollJson["data"].contains("status"))
-            {
-                std::string status = pollJson["data"]["status"].get<std::string>();
-
-                if (status == "in_progress")
-                {
-                    // Log progress periodically to show we're still waiting
-                    if (attempt % LOG_PROGRESS_EVERY_N_ATTEMPTS == 0)
-                    {
-                        m_logFunction(LOG_INFO,
-                                      "Waiting for " + moduleName + " module to complete synchronization (" +
-                                      std::to_string(attempt * FLUSH_POLL_DELAY_MS / 1000) + " seconds elapsed)");
-                    }
-                    else
-                    {
-                        m_logFunction(LOG_DEBUG,
-                                      moduleName + " flush still in progress (attempt " + std::to_string(attempt) +
-                                      ")");
-                    }
-                }
-                else if (status == "completed")
-                {
-                    std::string result = pollJson["data"]["result"].get<std::string>();
-                    bool flushSucceeded = (result == "success");
-
-                    m_logFunction(LOG_INFO,
-                                  moduleName + " pending operations completed with result: " + result + " (took " +
-                                  std::to_string(attempt * FLUSH_POLL_DELAY_MS / 1000) + " seconds)");
-
-                    if (!flushSucceeded)
-                    {
-                        m_logFunction(LOG_ERROR, moduleName + " flush completed with error");
-                        return false;
-                    }
-
-                    return true;
-                }
-            }
-        }
-        catch (const std::exception& e)
-        {
-            m_logFunction(LOG_WARNING,
-                          "Failed to parse flush poll response from " + moduleName + ": " + std::string(e.what()) +
-                          " - Response: " + pollResponse.response);
-        }
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(FLUSH_POLL_DELAY_MS));
+        attempts[moduleName] = 0;
+        m_logFunction(LOG_DEBUG_VERBOSE, "Polling " + moduleName + " for flush completion (async flush)");
     }
 
-    // Check if we exited due to module stopping
-    m_logFunction(LOG_INFO, "Module stopping, aborting pending operations polling for " + moduleName);
+    while (!m_stopped && !pendingModules.empty())
+    {
+        std::vector<std::string> completedModules;
+
+        for (const auto& moduleName : pendingModules)
+        {
+            auto& attempt = attempts[moduleName];
+            attempt++;
+
+            std::string isFlushCompletedMessage = createJsonCommand("is_flush_completed");
+            ModuleResponse pollResponse = queryModuleWithRetry(moduleName, isFlushCompletedMessage);
+
+            if (!pollResponse.success)
+            {
+                m_logFunction(LOG_WARNING,
+                              "Failed to poll flush status for " + moduleName + " (attempt " +
+                              std::to_string(attempt) + "), will retry...");
+                continue;
+            }
+
+            try
+            {
+                nlohmann::json pollJson = nlohmann::json::parse(pollResponse.response);
+
+                if (pollJson.contains("data") && pollJson["data"].contains("status"))
+                {
+                    std::string status = pollJson["data"]["status"].get<std::string>();
+
+                    if (status == "in_progress")
+                    {
+                        if (attempt % LOG_PROGRESS_EVERY_N_ATTEMPTS == 0)
+                        {
+                            m_logFunction(LOG_INFO,
+                                          "Waiting for " + moduleName + " module to complete synchronization (" +
+                                          std::to_string(attempt * FLUSH_POLL_DELAY_MS / 1000) +
+                                          " seconds elapsed)");
+                        }
+                        else
+                        {
+                            m_logFunction(LOG_DEBUG,
+                                          moduleName + " flush still in progress (attempt " +
+                                          std::to_string(attempt) + ")");
+                        }
+                    }
+                    else if (status == "completed")
+                    {
+                        std::string result = pollJson["data"]["result"].get<std::string>();
+                        bool flushSucceeded = (result == "success");
+
+                        m_logFunction(LOG_INFO,
+                                      moduleName + " pending operations completed with result: " + result +
+                                      " (took " + std::to_string(attempt * FLUSH_POLL_DELAY_MS / 1000) +
+                                      " seconds)");
+
+                        if (!flushSucceeded)
+                        {
+                            m_logFunction(LOG_ERROR, moduleName + " flush completed with error");
+                            return false;
+                        }
+
+                        completedModules.push_back(moduleName);
+                    }
+                }
+            }
+            catch (const std::exception& e)
+            {
+                m_logFunction(LOG_WARNING,
+                              "Failed to parse flush poll response from " + moduleName + ": " +
+                              std::string(e.what()) + " - Response: " + pollResponse.response);
+            }
+        }
+
+        for (const auto& moduleName : completedModules)
+        {
+            pendingModules.erase(moduleName);
+        }
+
+        if (!pendingModules.empty())
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(FLUSH_POLL_DELAY_MS));
+        }
+    }
+
+    if (pendingModules.empty())
+    {
+        return true;
+    }
+
+    m_logFunction(LOG_INFO, "Module stopping, aborting pending operations polling");
     return false;
 }
 
@@ -1354,6 +1375,8 @@ bool AgentInfoImpl::pauseCoordinationModules(std::set<std::string>& pausedModule
 
 bool AgentInfoImpl::flushPausedModules(const std::set<std::string>& pausedModules)
 {
+    std::set<std::string> pendingModules;
+
     for (const auto& module : pausedModules)
     {
         if (m_stopped)
@@ -1377,24 +1400,10 @@ bool AgentInfoImpl::flushPausedModules(const std::set<std::string>& pausedModule
         }
 
         m_logFunction(LOG_DEBUG, "Successfully requested flush for " + module);
-
-        // FIM-specific: Poll for flush completion (flush is async for FIM)
-        if (module == FIM_NAME)
-        {
-            if (!pollFimFlushCompletion(module))
-            {
-                m_logFunction(LOG_ERROR, module + " flush failed, timed out, or module stopped");
-                return false;
-            }
-        }
-        else
-        {
-            // Other modules: flush is synchronous, already completed
-            m_logFunction(LOG_DEBUG, "Successfully flushed " + module);
-        }
+        pendingModules.insert(module);
     }
 
-    return true;
+    return pendingModules.empty() ? true : pollFlushCompletion(std::move(pendingModules));
 }
 
 int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModules,
