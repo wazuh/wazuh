@@ -111,7 +111,7 @@ case "$1" in
     if [ -f /etc/localtime ]; then
         cp -pL /etc/localtime ${DIR}/etc/;
         chmod 640 ${DIR}/etc/localtime
-        chown root:root ${DIR}/etc/localtime
+        chown root:${GROUP} ${DIR}/etc/localtime
     fi
 
     if [ -f /etc/TIMEZONE ]; then

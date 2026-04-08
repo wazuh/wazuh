@@ -50,9 +50,10 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     // Geo module
     addUnit<size_t>(key::GEO_SYNC_INTERVAL, "WAZUH_GEO_SYNC_INTERVAL", 360);
     addUnit<std::string>(key::GEO_DB_PATH, "WAZUH_GEO_DB_PATH", (wazuhRoot / "data/mmdb").c_str());
-    addUnit<std::string>(key::GEO_MANIFEST_URL,
-                         "WAZUH_GEO_MANIFEST_URL",
-                         "https://wazuh-cloud-cti-web-components-dev.s3.us-east-2.amazonaws.com/maxmind_geoip/manifest.json");
+    addUnit<std::string>(
+        key::GEO_MANIFEST_URL,
+        "WAZUH_GEO_MANIFEST_URL",
+        "https://wazuh-cloud-cti-web-components-dev.s3.us-east-2.amazonaws.com/maxmind_geoip/manifest.json");
     addUnit<size_t>(key::GEO_DOWNLOAD_TIMEOUT, "WAZUH_GEO_DOWNLOAD_TIMEOUT", 5000);
 
     // Indexer connector
@@ -72,8 +73,10 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<size_t>(key::CMSYNC_INDEXER_CONNECTOR_MAX_RETRIES, "WAZUH_CMSYNC_INDEXER_CONNECTOR_MAX_RETRIES", 3);
     addUnit<size_t>(key::CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL, "WAZUH_CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL", 5);
     // Remote Configuration Sync
-    addUnit<size_t>(key::REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES, "WAZUH_REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES", 3);
-    addUnit<size_t>(key::REMOTE_CONF_INDEXER_CONNECTOR_RETRY_INTERVAL, "WAZUH_REMOTE_CONF_INDEXER_CONNECTOR_RETRY_INTERVAL", 5);
+    addUnit<size_t>(
+        key::REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES, "WAZUH_REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES", 3);
+    addUnit<size_t>(
+        key::REMOTE_CONF_INDEXER_CONNECTOR_RETRY_INTERVAL, "WAZUH_REMOTE_CONF_INDEXER_CONNECTOR_RETRY_INTERVAL", 5);
 
     // RemoteConfig Indexer
     addUnit<size_t>(key::REMOTE_CONF_SYNC_INTERVAL, "WAZUH_REMOTE_CONF_SYNC_INTERVAL", 120);
@@ -109,16 +112,16 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<bool>(key::STREAMLOG_SHOULD_COMPRESS, "WAZUH_STREAMLOG_SHOULD_COMPRESS", true);
     addUnit<size_t>(key::STREAMLOG_COMPRESSION_LEVEL, "WAZUH_STREAMLOG_COMPRESSION_LEVEL", 5);
     addUnit<std::string>(
-        key::STREAMLOG_ALERTS_PATTERN, "WAZUH_STREAMLOG_ALERTS_PATTERN", "${YYYY}/${MMM}/${name}-${DD}.json");
-    addUnit<size_t>(key::STREAMLOG_ALERTS_MAX_SIZE, "WAZUH_STREAMLOG_ALERTS_MAX_SIZE", 0);
-    addUnit<size_t>(key::STREAMLOG_ALERTS_BUFFER_SIZE, "WAZUH_STREAMLOG_ALERTS_BUFFER_SIZE", 0x1 << 20);
+        key::STREAMLOG_EVENTS_PATTERN, "WAZUH_STREAMLOG_EVENTS_PATTERN", "${YYYY}/${MMM}/wazuh-${name}-${DD}.json");
+    addUnit<size_t>(key::STREAMLOG_EVENTS_MAX_SIZE, "WAZUH_STREAMLOG_EVENTS_MAX_SIZE", 0);
+    addUnit<size_t>(key::STREAMLOG_EVENTS_BUFFER_SIZE, "WAZUH_STREAMLOG_EVENTS_BUFFER_SIZE", 0x1 << 20);
     addUnit<std::string>(
-        key::STREAMLOG_ARCHIVES_PATTERN, "WAZUH_STREAMLOG_ARCHIVES_PATTERN", "${YYYY}/${MMM}/${name}-${DD}.json");
-    addUnit<size_t>(key::STREAMLOG_ARCHIVES_MAX_SIZE, "WAZUH_STREAMLOG_ARCHIVES_MAX_SIZE", 0);
-    addUnit<size_t>(key::STREAMLOG_ARCHIVES_BUFFER_SIZE, "WAZUH_STREAMLOG_ARCHIVES_BUFFER_SIZE", 0x1 << 20);
+        key::STREAMLOG_DUMPER_PATTERN, "WAZUH_STREAMLOG_DUMPER_PATTERN", "${YYYY}/${MMM}/wazuh-${name}-${DD}.json");
+    addUnit<size_t>(key::STREAMLOG_DUMPER_MAX_SIZE, "WAZUH_STREAMLOG_DUMPER_MAX_SIZE", 0);
+    addUnit<size_t>(key::STREAMLOG_DUMPER_BUFFER_SIZE, "WAZUH_STREAMLOG_DUMPER_BUFFER_SIZE", 0x1 << 20);
 
-    // Archiver module
-    addUnit<bool>(key::ARCHIVER_ENABLED, "WAZUH_ARCHIVER_ENABLED", false);
+    // Dumper module
+    addUnit<bool>(key::DUMPER_ENABLED, "WAZUH_DUMPER_ENABLED", false);
 
     // Process module
     addUnit<std::string>(key::PID_FILE_PATH, "WAZUH_ENGINE_PID_FILE_PATH", (wazuhRoot / "var/run/").c_str());

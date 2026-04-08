@@ -792,7 +792,7 @@ InstallCommon()
 
     if [ -f /etc/localtime ]
     then
-         ${INSTALL} -m 0640 -o root -g 0 /etc/localtime ${INSTALLDIR}/etc
+         ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /etc/localtime ${INSTALLDIR}/etc
     fi
 
   ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/tmp

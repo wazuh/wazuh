@@ -468,9 +468,9 @@ int main(int argc, char* argv[])
             builderDeps.logManager = streamLogger;
             builderDeps.fileOutputConfig = streamlog::RotationConfig {
                 .basePath = confManager.get<std::string>(conf::key::STREAMLOG_BASE_PATH),
-                .pattern = confManager.get<std::string>(conf::key::STREAMLOG_ALERTS_PATTERN),
-                .maxSize = confManager.get<size_t>(conf::key::STREAMLOG_ALERTS_MAX_SIZE),
-                .bufferSize = confManager.get<size_t>(conf::key::STREAMLOG_ALERTS_BUFFER_SIZE),
+                .pattern = confManager.get<std::string>(conf::key::STREAMLOG_EVENTS_PATTERN),
+                .maxSize = confManager.get<size_t>(conf::key::STREAMLOG_EVENTS_MAX_SIZE),
+                .bufferSize = confManager.get<size_t>(conf::key::STREAMLOG_EVENTS_BUFFER_SIZE),
                 .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
                 .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
             builderDeps.iConnector = indexerConnector;
@@ -575,7 +575,10 @@ int main(int argc, char* argv[])
                 scheduler::TaskConfig {.interval = confManager.get<std::size_t>(conf::key::CM_SYNC_INTERVAL),
                                        .CPUPriority = 0,
                                        .timeout = 0,
-                                       .taskFunction = [cmSyncService]() { cmSyncService->synchronize(); }});
+                                       .taskFunction = [cmSyncService]()
+                                       {
+                                           cmSyncService->synchronize();
+                                       }});
         }
 
         // IOCSync
@@ -593,12 +596,14 @@ int main(int argc, char* argv[])
             auto iocSyncInterval = confManager.get<std::size_t>(conf::key::IOC_SYNC_INTERVAL);
             if (iocSyncInterval > 0)
             {
-                scheduler->scheduleTask(
-                    "ioc-sync-task",
-                    scheduler::TaskConfig {.interval = iocSyncInterval,
-                                           .CPUPriority = 0,
-                                           .timeout = 0,
-                                           .taskFunction = [iocSyncService]() { iocSyncService->synchronize(); }});
+                scheduler->scheduleTask("ioc-sync-task",
+                                        scheduler::TaskConfig {.interval = iocSyncInterval,
+                                                               .CPUPriority = 0,
+                                                               .timeout = 0,
+                                                               .taskFunction = [iocSyncService]()
+                                                               {
+                                                                   iocSyncService->synchronize();
+                                                               }});
                 LOG_DEBUG("IOC Sync task scheduled with interval: {} seconds, {} max retries, {} seconds for retry "
                           "interval and {} for batch size",
                           iocSyncInterval,
@@ -630,7 +635,9 @@ int main(int argc, char* argv[])
                                            .CPUPriority = 0,
                                            .timeout = 0,
                                            .taskFunction = [geoManager, manifestUrl, cityPath, asnPath]()
-                                           { geoManager->remoteUpsert(manifestUrl, cityPath, asnPath); }});
+                                           {
+                                               geoManager->remoteUpsert(manifestUrl, cityPath, asnPath);
+                                           }});
                 LOG_DEBUG("Geo sync scheduled with interval: {} seconds.", geoSyncInterval);
             }
             else
@@ -644,14 +651,14 @@ int main(int argc, char* argv[])
         {
             const auto archiverConfig = streamlog::RotationConfig {
                 .basePath = confManager.get<std::string>(conf::key::STREAMLOG_BASE_PATH),
-                .pattern = confManager.get<std::string>(conf::key::STREAMLOG_ARCHIVES_PATTERN),
-                .maxSize = confManager.get<size_t>(conf::key::STREAMLOG_ARCHIVES_MAX_SIZE),
-                .bufferSize = confManager.get<size_t>(conf::key::STREAMLOG_ARCHIVES_BUFFER_SIZE),
+                .pattern = confManager.get<std::string>(conf::key::STREAMLOG_DUMPER_PATTERN),
+                .maxSize = confManager.get<size_t>(conf::key::STREAMLOG_DUMPER_MAX_SIZE),
+                .bufferSize = confManager.get<size_t>(conf::key::STREAMLOG_DUMPER_BUFFER_SIZE),
                 .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
                 .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
 
             archiver = std::make_shared<archiver::Archiver>(
-                streamLogger, archiverConfig, confManager.get<bool>(conf::key::ARCHIVER_ENABLED));
+                streamLogger, archiverConfig, confManager.get<bool>(conf::key::DUMPER_ENABLED));
             LOG_INFO("Archiver initialized.");
             exitHandler.add([archiver, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
                             { archiver->deactivate(); });
@@ -661,12 +668,14 @@ int main(int argc, char* argv[])
         if (enableProcessing)
         {
             const auto remoteConfSyncInterval = confManager.get<std::size_t>(conf::key::REMOTE_CONF_SYNC_INTERVAL);
-            scheduler->scheduleTask(
-                "remote-conf-sync",
-                scheduler::TaskConfig {.interval = remoteConfSyncInterval,
-                                       .CPUPriority = 0,
-                                       .timeout = 0,
-                                       .taskFunction = [remoteConf]() { remoteConf->synchronize(); }});
+            scheduler->scheduleTask("remote-conf-sync",
+                                    scheduler::TaskConfig {.interval = remoteConfSyncInterval,
+                                                           .CPUPriority = 0,
+                                                           .timeout = 0,
+                                                           .taskFunction = [remoteConf]()
+                                                           {
+                                                               remoteConf->synchronize();
+                                                           }});
             LOG_DEBUG("Remote configuration synchronize scheduled with interval: {} seconds.", remoteConfSyncInterval);
         }
 
