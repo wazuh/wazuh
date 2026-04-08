@@ -450,7 +450,7 @@ Controls how the agent synchronizes its local FIM database with the manager to e
   <enabled>yes</enabled>
   <interval>300</interval>
   <response_timeout>60</response_timeout>
-  <max_eps>50</max_eps>
+  <max_eps>75</max_eps>
   <integrity_interval>86400</integrity_interval>
 </synchronization>
 ```
@@ -462,7 +462,7 @@ Controls how the agent synchronizes its local FIM database with the manager to e
 | `enabled` | `yes` | `yes`, `no` | Enable or disable FIM synchronization persistence. When disabled, FIM only generates stateless events. |
 | `interval` | `300` (5 minutes) | Any integer ≥ 1, with optional suffix `s`, `m`, `h`, `d` | How often the agent initiates a sync with the manager. |
 | `response_timeout` | `60` | Any integer ≥ 1, with optional suffix `s`, `m`, `h`, `d` | Seconds to wait for a manager response before marking the synchronization attempt as failed or timed out. A value that is too low causes unnecessary retries; a value that is too high delays failure detection. |
-| `max_eps` | `50` | Integer `0`–`1000000` (`0` = unlimited) | Maximum synchronization messages per second. |
+| `max_eps` | `75` | Integer `0`–`1000000` (`0` = unlimited) | Maximum synchronization messages per second. |
 | `integrity_interval` | `86400` (24h)| Any integer ≥ 1, with optional suffix `s`, `m`, `h`, `d` | How often the agent performs a full integrity validation by comparing checksums with the manager. |
 
 > **Note:** The retry logic automatically retries failed sync operations up to **3 times** before giving up. Database files are stored at fixed paths: `queue/fim/db/fim.db` and `queue/fim/db/fim_sync.db`.
@@ -578,7 +578,7 @@ Specific key configurations take precedence over wildcard configurations:
   <process_priority>10</process_priority>
   <max_eps>50</max_eps>
   <synchronization>
-    <max_eps>50</max_eps>
+    <max_eps>75</max_eps>
   </synchronization>
 </syscheck>
 ```
@@ -599,7 +599,7 @@ Specific key configurations take precedence over wildcard configurations:
   <process_priority>10</process_priority>
   <max_eps>50</max_eps>
   <synchronization>
-    <max_eps>50</max_eps>
+    <max_eps>75</max_eps>
   </synchronization>
 </syscheck>
 ```
@@ -622,7 +622,7 @@ Specific key configurations take precedence over wildcard configurations:
   <process_priority>10</process_priority>
   <max_eps>50</max_eps>
   <synchronization>
-    <max_eps>50</max_eps>
+    <max_eps>75</max_eps>
   </synchronization>
 </syscheck>
 ```
@@ -639,7 +639,7 @@ Specific key configurations take precedence over wildcard configurations:
   <process_priority>10</process_priority>
   <max_eps>50</max_eps>
   <synchronization>
-    <max_eps>50</max_eps>
+    <max_eps>75</max_eps>
   </synchronization>
 </syscheck>
 ```
@@ -712,7 +712,7 @@ For environments that require full audit trails on critical configuration files:
     <enabled>yes</enabled>
     <interval>5m</interval>
     <response_timeout>60</response_timeout>
-    <max_eps>50</max_eps>
+    <max_eps>75</max_eps>
     <integrity_interval>86400</integrity_interval>
   </synchronization>
 </syscheck>
