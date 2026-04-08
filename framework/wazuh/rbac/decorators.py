@@ -20,6 +20,10 @@ MASK_DEFAULT = "*****"
 
 integer_resources = ['user:id', 'role:id', 'rule:id', 'policy:id']
 
+# Pre‑compiled regular expression for masking the <key> value inside <cluster> blocks.
+# Compiled once at module load to avoid repeated compilation overhead.
+_MASK_XML_REGEX = re.compile(r'(<cluster>.*?<key>)[^<]*(</key>)', re.DOTALL)
+
 
 def _expand_resource(resource: str) -> set:
     """Expand a specified resource depending on its type.
@@ -583,31 +587,39 @@ def _mask_payload(payload, mask_text: str = MASK_DEFAULT):
         for path in SENSITIVE_FIELD_PATHS:
             _mask_paths_in_object(payload, path, mask_text)
     elif isinstance(payload, list):
-        for el in payload:
-            _mask_payload(el, mask_text)
-    elif isinstance(payload, str):
-        # Raw XML content (e.g. ossec.conf returned as plain text).
-        # Mask <key> only inside the <cluster> block.
-        return re.sub(
-            r'(<cluster>.*?<key>)[^<]*(</key>)',
-            lambda m: m.group(1) + mask_text + m.group(2),
-            payload,
-            flags=re.DOTALL
-        )
+        if len(payload) == 1 and isinstance(payload[0], str):
+            payload[0] = _MASK_XML_REGEX.sub(r'\1' + mask_text + r'\2', payload[0])
+        else:
+            stack = [payload]
+            while stack:
+                current_list = stack.pop()
+                for element in current_list:
+                    if isinstance(element, AffectedItemsWazuhResult):
+                        _mask_payload(element, mask_text)
+                    elif isinstance(element, dict):
+                        _mask_payload(element, mask_text)
+                    elif isinstance(element, list):
+                        stack.append(element)
 
 
 def mask_sensitive_config(mask_text: str = MASK_DEFAULT):
-    """Decorator to mask sensitive fields in config responses for users without update permissions.
+    """
+    Decorator to mask sensitive fields in config responses for users without update permissions.
+
+    The decorator post‑processes the return value of the wrapped function.
+    - If the user lacks update‑config permissions, sensitive fields are masked **in‑place**
+      (or for XML strings, a masked copy is created).
+    - If an exception occurs during masking, it is silently swallowed to avoid breaking the endpoint.
 
     Parameters
     ----------
-    mask_text : str
-        Replacement text for sensitive values. Default: '*****'.
+    mask_text : str, optional
+        Replacement text for sensitive values. Defaults to `MASK_DEFAULT`.
 
     Returns
     -------
     callable
-        Decorator that post-processes the target function's return value in place.
+        Decorated function that applies masking when necessary.
     """
     def decorator(func):
         @wraps(func)
@@ -616,10 +628,12 @@ def mask_sensitive_config(mask_text: str = MASK_DEFAULT):
             try:
                 # Only mask if user LACKS update-config permissions
                 if not _has_update_permissions():
-                    masked = _mask_payload(result, mask_text=mask_text)
-                    # _mask_payload returns a new string for raw XML; None for in-place types
-                    if masked is not None:
-                        result = masked
+                    if isinstance(result, str):
+                        string_wrapper = [result]
+                        _mask_payload(string_wrapper, mask_text=mask_text)
+                        result = string_wrapper[0]
+                    else:
+                        _mask_payload(result, mask_text=mask_text)
             except Exception:
                 # Never break the endpoint if masking fails for any reason
                 pass
