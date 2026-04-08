@@ -17,16 +17,15 @@ jobs:
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@master
         with:
-          cancel_others: 'true'
+          cancel_others: "true"
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          skip_after_successful_duplicate: 'false'
+          skip_after_successful_duplicate: "false"
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
-      # Router
       - name: Router - Coding style
         id: router_style
         continue-on-error: true
@@ -35,7 +34,6 @@ jobs:
           path: src/shared_modules/router
           id: router
 
-      # Indexer Connector
       - name: Indexer connector - Coding style
         id: indexer_connector_style
         continue-on-error: true
@@ -44,7 +42,6 @@ jobs:
           path: src/shared_modules/indexer_connector
           id: indexer_connector
 
-      # Content Manager
       - name: Content manager - Coding style
         id: content_manager_style
         continue-on-error: true
@@ -53,7 +50,6 @@ jobs:
           path: src/shared_modules/content_manager
           id: content_manager
 
-      # Inventory Sync
       - name: Inventory sync - Coding style
         id: inventory_sync_style
         continue-on-error: true
@@ -62,7 +58,6 @@ jobs:
           path: src/wazuh_modules/inventory_sync
           id: inventory_sync
 
-      # Vulnerability Scanner
       - name: Vulnerability scanner - Coding style
         id: vulnerability_scanner_style
         continue-on-error: true
@@ -71,7 +66,6 @@ jobs:
           path: src/wazuh_modules/vulnerability_scanner
           id: vulnerability_scanner
 
-      # Utils
       - name: Utils - Coding style
         id: utils_style
         continue-on-error: true

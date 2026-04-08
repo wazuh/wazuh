@@ -4,16 +4,16 @@ on:
   workflow_dispatch:
     inputs:
       wazuh-branch:
-        description: 'Wazuh branch'
+        description: "Wazuh branch"
         required: false
         type: string
-        default: 'main'
+        default: "main"
 
       build-type:
         type: choice
-        description: 'Choose the CMake build type'
+        description: "Choose the CMake build type"
         required: false
-        default: 'release'
+        default: "release"
         options:
           - debug
           - release
@@ -21,23 +21,22 @@ on:
   workflow_call:
     inputs:
       wazuh-branch:
-        description: 'Wazuh branch'
+        description: "Wazuh branch"
         required: false
         type: string
-        default: 'main'
+        default: "main"
 
       build-type:
-        description: 'Choose the CMake build type (debug or release)'
+        description: "Choose the CMake build type (debug or release)"
         required: false
         type: string
-        default: 'release'
+        default: "release"
 
       arch:
         description: 'Architecture(s) to build as JSON array: ["x64"], ["arm64"], or ["x64", "arm64"]. Leave empty for both.'
         required: false
         type: string
-        default: ''
-
+        default: ""
 
 env:
   ENGINE_DIR: ${{github.workspace}}/src/engine
@@ -56,7 +55,7 @@ jobs:
       matrix:
         arch: ${{ (inputs.arch == '' || inputs.arch == null) && fromJSON('["x64", "arm64"]') || fromJSON(inputs.arch) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           repository: wazuh/wazuh
           ref: ${{ env.WAZUH_BRANCH }}
@@ -71,12 +70,16 @@ jobs:
           # Set container name and normalize architecture
           case "${{ matrix.arch }}" in
             x64|amd64)
-              echo "CONTAINER_NAME=pkg_rpm_manager_builder_amd64" >> $GITHUB_ENV
-              echo "NORMALIZED_ARCH=amd64" >> $GITHUB_ENV
+              cat << EOF >> $GITHUB_ENV
+              CONTAINER_NAME=pkg_rpm_manager_builder_amd64
+              NORMALIZED_ARCH=amd64
+              EOF
               ;;
             arm64)
-              echo "CONTAINER_NAME=pkg_rpm_manager_builder_arm64" >> $GITHUB_ENV
-              echo "NORMALIZED_ARCH=arm64" >> $GITHUB_ENV
+              cat << EOF >> $GITHUB_ENV
+              CONTAINER_NAME=pkg_rpm_manager_builder_arm64
+              NORMALIZED_ARCH=arm64
+              EOF
               ;;
             *)
               echo "Error: Unsupported architecture '${{ matrix.arch }}'"
@@ -127,123 +130,123 @@ jobs:
         arch: ${{ (inputs.arch == '' || inputs.arch == null) && fromJSON('["x64", "arm64"]') || fromJSON(inputs.arch) }}
 
     steps:
-    - name: Set normalized architecture
-      id: set_arch
-      run: |
-        case "${{ matrix.arch }}" in
-          x64|amd64)
-            echo "NORMALIZED_ARCH=amd64" >> $GITHUB_ENV
-            ;;
-          arm64)
-            echo "NORMALIZED_ARCH=arm64" >> $GITHUB_ENV
-            ;;
-          *)
-            echo "Error: Unsupported architecture '${{ matrix.arch }}'"
-            echo "Supported architectures: x64, amd64, arm64"
-            exit 1
-            ;;
-        esac
+      - name: Set normalized architecture
+        id: set_arch
+        run: |
+          case "${{ matrix.arch }}" in
+            x64|amd64)
+              echo "NORMALIZED_ARCH=amd64" >> $GITHUB_ENV
+              ;;
+            arm64)
+              echo "NORMALIZED_ARCH=arm64" >> $GITHUB_ENV
+              ;;
+            *)
+              echo "Error: Unsupported architecture '${{ matrix.arch }}'"
+              echo "Supported architectures: x64, amd64, arm64"
+              exit 1
+              ;;
+          esac
 
-    - name: Download compressed tar.gz file
-      uses: actions/download-artifact@v4
-      with:
-        name: wazuh-engine-${{ needs.build.outputs.version }}-linux-${{ env.NORMALIZED_ARCH }}
-        path: /tmp/standalone-test
+      - name: Download compressed tar.gz file
+        uses: actions/download-artifact@v4
+        with:
+          name: wazuh-engine-${{ needs.build.outputs.version }}-linux-${{ env.NORMALIZED_ARCH }}
+          path: /tmp/standalone-test
 
-    - name: Extract standalone package
-      run: |
-        cd /tmp/standalone-test
-        tar xzf wazuh-engine-${{ needs.build.outputs.version }}-linux-${{ env.NORMALIZED_ARCH }}.tar.gz
-        mv wazuh-engine-standalone-${{ needs.build.outputs.version }} wazuh-engine-standalone
+      - name: Extract standalone package
+        run: |
+          cd /tmp/standalone-test
+          tar xzf wazuh-engine-${{ needs.build.outputs.version }}-linux-${{ env.NORMALIZED_ARCH }}.tar.gz
+          mv wazuh-engine-standalone-${{ needs.build.outputs.version }} wazuh-engine-standalone
 
-    - name: Verify artifact structure
-      run: |
-        echo "=== Artifact structure verification ==="
-        echo "Contents of /tmp/standalone-test:"
-        find /tmp/standalone-test -type f -o -type d | head -20
-        echo ""
-        echo "Looking for wazuh-engine-standalone directory..."
-        if [ -d "/tmp/standalone-test/wazuh-engine-standalone" ]; then
-          echo "✓ Found wazuh-engine-standalone directory"
-          echo "Contents of wazuh-engine-standalone:"
-          ls -la /tmp/standalone-test/wazuh-engine-standalone/
+      - name: Verify artifact structure
+        run: |
+          echo "=== Artifact structure verification ==="
+          echo "Contents of /tmp/standalone-test:"
+          find /tmp/standalone-test -type f -o -type d | head -20
           echo ""
-          echo "Checking for required files:"
-          [ -f "/tmp/standalone-test/wazuh-engine-standalone/run_engine.sh" ] && echo "✓ run_engine.sh found" || echo "✗ run_engine.sh missing"
-          [ -f "/tmp/standalone-test/wazuh-engine-standalone/bin/wazuh-engine" ] && echo "✓ wazuh-engine binary found" || echo "✗ wazuh-engine binary missing"
-          [ -d "/tmp/standalone-test/wazuh-engine-standalone/data" ] && echo "✓ data directory found" || echo "✗ data directory missing"
-          echo ""
-          echo "Checking directory permissions:"
-          if [ -d "/tmp/standalone-test/wazuh-engine-standalone/sockets" ]; then
-            echo "sockets directory permissions:"
-            ls -ld /tmp/standalone-test/wazuh-engine-standalone/sockets
+          echo "Looking for wazuh-engine-standalone directory..."
+          if [ -d "/tmp/standalone-test/wazuh-engine-standalone" ]; then
+            echo "✓ Found wazuh-engine-standalone directory"
+            echo "Contents of wazuh-engine-standalone:"
+            ls -la /tmp/standalone-test/wazuh-engine-standalone/
+            echo ""
+            echo "Checking for required files:"
+            [ -f "/tmp/standalone-test/wazuh-engine-standalone/run_engine.sh" ] && echo "✓ run_engine.sh found" || echo "✗ run_engine.sh missing"
+            [ -f "/tmp/standalone-test/wazuh-engine-standalone/bin/wazuh-engine" ] && echo "✓ wazuh-engine binary found" || echo "✗ wazuh-engine binary missing"
+            [ -d "/tmp/standalone-test/wazuh-engine-standalone/data" ] && echo "✓ data directory found" || echo "✗ data directory missing"
+            echo ""
+            echo "Checking directory permissions:"
+            if [ -d "/tmp/standalone-test/wazuh-engine-standalone/sockets" ]; then
+              echo "sockets directory permissions:"
+              ls -ld /tmp/standalone-test/wazuh-engine-standalone/sockets
+            else
+              echo "sockets directory not found"
+            fi
+            if [ -d "/tmp/standalone-test/wazuh-engine-standalone/logs" ]; then
+              echo "logs directory permissions:"
+              ls -ld /tmp/standalone-test/wazuh-engine-standalone/logs
+            else
+              echo "logs directory not found"
+            fi
+            if [ -d "/tmp/standalone-test/wazuh-engine-standalone/data/kvdb" ]; then
+              echo "kvdb directory permissions:"
+              ls -ld /tmp/standalone-test/wazuh-engine-standalone/data/kvdb
+            else
+              echo "kvdb directory not found"
+            fi
           else
-            echo "sockets directory not found"
-          fi
-          if [ -d "/tmp/standalone-test/wazuh-engine-standalone/logs" ]; then
-            echo "logs directory permissions:"
-            ls -ld /tmp/standalone-test/wazuh-engine-standalone/logs
-          else
-            echo "logs directory not found"
-          fi
-          if [ -d "/tmp/standalone-test/wazuh-engine-standalone/data/kvdb" ]; then
-            echo "kvdb directory permissions:"
-            ls -ld /tmp/standalone-test/wazuh-engine-standalone/data/kvdb
-          else
-            echo "kvdb directory not found"
-          fi
-        else
-          echo "✗ wazuh-engine-standalone directory not found!"
-          echo "Available files and directories:"
-          find /tmp/standalone-test -type f -o -type d
-          exit 1
-        fi
-
-    - name: Basic communication test
-      run: |
-        cd /tmp/standalone-test/wazuh-engine-standalone
-        chmod +x run_engine.sh
-        chmod +x bin/wazuh-engine
-        ls -la
-        ./run_engine.sh > engine_stdout.log 2> engine_stderr.log &
-        ENGINE_PID=$!
-
-        echo "Waiting for engine to start..."
-        MAX_RETRIES=15
-        RETRY_COUNT=0
-        ENGINE_READY=0
-
-        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-          sleep 2
-          echo "Attempt $((RETRY_COUNT + 1))/$MAX_RETRIES..."
-
-          if [ -S sockets/engine-api.sock ] && \
-             curl --silent --unix-socket sockets/engine-api.sock \
-                  -X POST -H "Content-Type: application/json" \
-                  -d '{"name":"default"}' \
-                  http://localhost/router/route/get; then
-            echo "Engine started successfully"
-            ENGINE_READY=1
-            break
-          fi
-
-          RETRY_COUNT=$((RETRY_COUNT + 1))
-        done
-
-        kill $ENGINE_PID 2>/dev/null || true
-
-        if [ $ENGINE_READY -eq 0 ]; then
-            echo "Engine failed to start after $MAX_RETRIES attempts"
+            echo "✗ wazuh-engine-standalone directory not found!"
+            echo "Available files and directories:"
+            find /tmp/standalone-test -type f -o -type d
             exit 1
-        fi
+          fi
 
-    - name: Upload engine logs
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: engine-logs-${{ env.NORMALIZED_ARCH }}-${{ github.run_id }}
-        path: |
-          /tmp/standalone-test/wazuh-engine-standalone/engine_stdout.log
-          /tmp/standalone-test/wazuh-engine-standalone/engine_stderr.log
-          /tmp/standalone-test/wazuh-engine-standalone/logs/
-        if-no-files-found: ignore
+      - name: Basic communication test
+        run: |
+          cd /tmp/standalone-test/wazuh-engine-standalone
+          chmod +x run_engine.sh
+          chmod +x bin/wazuh-engine
+          ls -la
+          ./run_engine.sh > engine_stdout.log 2> engine_stderr.log &
+          ENGINE_PID=$!
+
+          echo "Waiting for engine to start..."
+          MAX_RETRIES=15
+          RETRY_COUNT=0
+          ENGINE_READY=0
+
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            sleep 2
+            echo "Attempt $((RETRY_COUNT + 1))/$MAX_RETRIES..."
+
+            if [ -S sockets/engine-api.sock ] && \
+               curl --silent --unix-socket sockets/engine-api.sock \
+                    -X POST -H "Content-Type: application/json" \
+                    -d '{"name":"default"}' \
+                    http://localhost/router/route/get; then
+              echo "Engine started successfully"
+              ENGINE_READY=1
+              break
+            fi
+
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+          done
+
+          kill $ENGINE_PID 2>/dev/null || true
+
+          if [ $ENGINE_READY -eq 0 ]; then
+              echo "Engine failed to start after $MAX_RETRIES attempts"
+              exit 1
+          fi
+
+      - name: Upload engine logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: engine-logs-${{ env.NORMALIZED_ARCH }}-${{ github.run_id }}
+          path: |
+            /tmp/standalone-test/wazuh-engine-standalone/engine_stdout.log
+            /tmp/standalone-test/wazuh-engine-standalone/engine_stderr.log
+            /tmp/standalone-test/wazuh-engine-standalone/logs/
+          if-no-files-found: ignore

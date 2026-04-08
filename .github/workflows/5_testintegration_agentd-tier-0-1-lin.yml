@@ -4,19 +4,19 @@ on:
   workflow_dispatch:
     inputs:
       base_branch:
-        description: 'Base branch'
+        description: "Base branch"
         required: true
-        default: 'main'
+        default: "main"
   pull_request:
     paths:
-        - ".github/workflows/5_testintegration_agentd-tier-0-1-lin.yml"
-        - "src/client-agent/**"
-        - "src/config/src/buffer-config.c"
-        - "src/config/src/client-config.c"
-        - "src/config/include/client-config.h"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_agentd/**"
+      - ".github/workflows/5_testintegration_agentd-tier-0-1-lin.yml"
+      - "src/client-agent/**"
+      - "src/config/src/buffer-config.c"
+      - "src/config/src/client-config.c"
+      - "src/config/include/client-config.h"
+      - "src/Makefile"
+      - "tests/integration/conftest.py"
+      - "tests/integration/test_agentd/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -44,18 +44,14 @@ jobs:
           make -C src TARGET=agent -j2
       - name: Install wazuh agent for linux
         run: |
-          echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_AGENT_MANAGER_IP="127.0.0.1"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo "USER_DIR=/var/ossec" >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
+          cat << EOF > ./etc/preloaded-vars.conf
+          USER_LANGUAGE="en"
+          USER_AGENT_MANAGER_IP="127.0.0.1"
+          USER_INSTALL_TYPE="agent"
+          USER_DIR=/var/ossec
+          USER_ENABLE_SYSCHECK="n"
+          USER_ENABLE_ROOTCHECK="n"
+          EOF
           sudo sh install.sh
           rm ./etc/preloaded-vars.conf
       - name: Download and install integration tests framework

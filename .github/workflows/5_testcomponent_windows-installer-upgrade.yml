@@ -16,7 +16,7 @@ jobs:
     steps:
       - name: Install mingw
         run: sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 -y
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
       - name: make deps
@@ -45,7 +45,7 @@ jobs:
     needs: build
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       - name: Set up Python
         uses: actions/setup-python@v4
         with:

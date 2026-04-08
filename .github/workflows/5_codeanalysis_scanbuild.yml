@@ -16,9 +16,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: ['agent', 'manager']
+        target: ["agent", "manager"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
       - name: Install dependencies
@@ -47,7 +47,7 @@ jobs:
   scan-build-ubuntu-mingw-windows:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
       - name: Install dependencies
@@ -78,7 +78,7 @@ jobs:
   scan-build-macos-agent:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
       - name: Install dependencies

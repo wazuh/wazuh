@@ -14,15 +14,14 @@ on:
         default: true
         required: false
       build_deps:
-        description: Whether to build embedded Python dependencies or not.
-          Enabling build_cpython will enable this option automatically.
+        description: Whether to build embedded Python dependencies or not. Enabling build_cpython will enable this option automatically.
         type: boolean
         default: true
         required: false
 
 jobs:
   pick-architecture:
-    name: Get architectures to build
+    name: Get architectures
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
@@ -32,37 +31,22 @@ jobs:
         run: |
           set -euo pipefail
           JSON_ARRAY=$(
-            echo "${{ inputs.architecture }}" \
-            | tr ',' '\n' \
-            | while read -r raw_arch; do
-                arch=$(echo "$raw_arch" | xargs)
-
-                case "$arch" in
-                  arm64|aarch64)
-                    IMG_ARCH="arm64"
-                    ;;
-                  amd64|x86_64)
-                    IMG_ARCH="amd64"
-                    ;;
-                  "")
-                    continue
-                    ;;
-                  *)
-                    echo "Unsupported architecture: $arch" >&2
-                    exit 1
-                    ;;
-                esac
-
-                jq -c -n --arg arch "$IMG_ARCH" '{architecture: $arch}'
-              done
+            echo "${{ inputs.architecture }}" | tr ',' '\n' | while read -r raw_arch; do
+              arch=$(echo "$raw_arch" | xargs)
+              case "$arch" in
+                arm64|aarch64) IMG_ARCH="arm64" ;;
+                amd64|x86_64) IMG_ARCH="amd64" ;;
+                "") continue ;;
+                *) echo "Unsupported architecture: $arch" >&2; exit 1 ;;
+              esac
+              jq -c -n --arg arch "$IMG_ARCH" '{architecture: $arch}'
+            done
           )
-      
           JSON_ARRAY=$(echo "$JSON_ARRAY" | jq -c -s 'unique | {include: .}')
-          echo "Picked architectures: $JSON_ARRAY"
           echo "matrix=$JSON_ARRAY" >> "$GITHUB_OUTPUT"
 
-  build-embedded-python:
-    name: Build Wazuh manager embedded Python
+  build-python:
+    name: Build embedded Python (${{ matrix.architecture }})
     needs: pick-architecture
     strategy:
       matrix: ${{ fromJSON(needs.pick-architecture.outputs.matrix) }}
@@ -72,39 +56,34 @@ jobs:
       contents: read
       packages: write
     steps:
-
-      - name: Checkout Wazuh repository
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Set ARCH and PACKAGE_ARCH
+      - name: Set environment variables
         run: |
-          case "${{ matrix.architecture }}" in
-              x86_64|amd64)
-                arch="amd64"
-                pkg_arch="x86_64"
-                ;;
-              aarch64|arm64)
-                arch="arm64"
-                pkg_arch="arm64"
-                ;;
-          esac
+          arch="${{ matrix.architecture }}"
+          if [ "$arch" = "amd64" ]; then
+            pkg_arch="x86_64"
+          else
+            pkg_arch="arm64"
+          fi
 
-          echo "ARCH=$arch" >> $GITHUB_ENV
-          echo "PACKAGE_ARCH=$pkg_arch" >> $GITHUB_ENV
+          VERSION=$(jq -r '.version' VERSION.json)
 
-      - name: Set TAG and CONTAINER_NAME
-        run: |
-          VERSION=$(jq -r '.version' $GITHUB_WORKSPACE/VERSION.json)
-          echo "TAG=$VERSION" >> $GITHUB_ENV
-          echo "CONTAINER_NAME=pkg_rpm_manager_builder_${{ env.ARCH }}" >> $GITHUB_ENV
+          cat << EOF >> $GITHUB_ENV
+          ARCH=$arch
+          PACKAGE_ARCH=$pkg_arch
+          TAG=$VERSION
+          CONTAINER_NAME=pkg_rpm_manager_builder_$arch
+          EOF
 
       - name: Pull builder container image
         run: |
-          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor }} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
 
-      - name: Run embedded Python compilation
+      - name: Compile embedded Python
         working-directory: framework/cpython
         run: |
           docker run --env ARCH="${{ env.PACKAGE_ARCH }}" \
@@ -114,14 +93,14 @@ jobs:
               ${{ inputs.build_cpython == true && '--build-cpython' || '' }} \
               ${{ inputs.build_deps == true && '--build-deps' || '' }}
 
-      - name: Upload Wazuh manager embedded Python sources to GitHub
+      - name: Upload sources
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ARCH }}-sources
           path: /tmp/cpython_${{ env.PACKAGE_ARCH }}.tar.gz
           if-no-files-found: error
 
-      - name: Upload Wazuh manager out-of-the-box embedded Python to GitHub
+      - name: Upload compiled Python
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ARCH }}-compiled

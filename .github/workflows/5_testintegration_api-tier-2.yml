@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       base_branch:
-        description: 'Base branch'
+        description: "Base branch"
         required: true
-        default: 'main'
+        default: "main"
 
 jobs:
   build:
@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
@@ -25,37 +25,34 @@ jobs:
           architecture: x64
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
-      # Build wazuh manager for linux.
       - name: Build wazuh manager for linux
         run: |
           make deps -C src TARGET=manager -j2
           make -C src TARGET=manager -j2
-      # Install wazuh manager for linux.
       - name: Install wazuh manager for linux
         run: |
-          echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_INSTALL_TYPE="manager"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo "USER_DIR=$INSTALLATION_DIR" >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_AUTHD="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_AUTO_START="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
+          cat << EOF > ./etc/preloaded-vars.conf
+          USER_LANGUAGE="en"
+          USER_INSTALL_TYPE="manager"
+          USER_DIR=$INSTALLATION_DIR
+          USER_ENABLE_EMAIL="n"
+          USER_ENABLE_SYSCHECK="n"
+          USER_ENABLE_ROOTCHECK="n"
+          USER_ENABLE_SYSCOLLECTOR="n"
+          USER_ENABLE_SCA="n"
+          USER_ENABLE_AUTHD="n"
+          USER_ENABLE_UPDATE_CHECK="n"
+          USER_AUTO_START="y"
+          EOF
           sudo sh install.sh
           rm ./etc/preloaded-vars.conf
 
-          # Generate dummy SSL certificates for indexer module
           sudo mkdir -p $INSTALLATION_DIR/etc/certs
-          sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
-            -keyout $INSTALLATION_DIR/etc/certs/root-ca.pem -out $INSTALLATION_DIR/etc/certs/root-ca.pem \
-            -days 1 -subj "/CN=test" 2>/dev/null
-          sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
-            -keyout $INSTALLATION_DIR/etc/certs/manager-key.pem -out $INSTALLATION_DIR/etc/certs/manager.pem \
-            -days 1 -subj "/CN=test" 2>/dev/null
+          sudo touch $INSTALLATION_DIR/etc/certs/root-ca.pem
+          sudo touch $INSTALLATION_DIR/etc/certs/manager.pem
+          sudo touch $INSTALLATION_DIR/etc/certs/manager-key.pem
 
-      # Download and install integration tests framework.
+          sudo $INSTALLATION_DIR/bin/wazuh-manager-control restart
       - name: Download and install integration tests framework
         run: |
           VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"

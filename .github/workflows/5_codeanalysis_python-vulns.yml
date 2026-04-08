@@ -3,7 +3,7 @@ name: 5.X - 'Python vulnerability checks'
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 0'
+    - cron: "0 0 * * 0"
 jobs:
   pick-branches:
     name: Get branches to analyze
@@ -11,7 +11,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -42,16 +42,15 @@ jobs:
       actions: read
     steps:
       - name: Checkout the repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ matrix.ref }}
           fetch-depth: 0
 
       - name: Download and decompress prebuilt embedded Python
-        run:
-          make -C src external/cpython.tar.gz && tar -xzf src/external/cpython.tar.gz -C src/external --one-top-level
+        run: make -C src external/cpython.tar.gz && tar -xzf src/external/cpython.tar.gz -C src/external --one-top-level
 
-      - name: Scan prebuilt embedded Python 
+      - name: Scan prebuilt embedded Python
         uses: anchore/scan-action@v6
         id: scan
         with:

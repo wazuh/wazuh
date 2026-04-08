@@ -3,19 +3,19 @@ name: 5.X - Office365 on Linux - Integration tests - Tier 0 and 1
 on:
   pull_request:
     paths:
-        - ".github/workflows/5_testintegration_office365-tier-0-1-lin.yml"
-        - "src/config/src/wmodules-office365.c"
-        - "src/wazuh_modules/src/wm_office365.h"
-        - "src/wazuh_modules/src/wm_office365.c"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_office365/**"
+      - ".github/workflows/5_testintegration_office365-tier-0-1-lin.yml"
+      - "src/config/src/wmodules-office365.c"
+      - "src/wazuh_modules/src/wm_office365.h"
+      - "src/wazuh_modules/src/wm_office365.c"
+      - "src/Makefile"
+      - "tests/integration/conftest.py"
+      - "tests/integration/test_office365/**"
   workflow_dispatch:
     inputs:
       base_branch:
-        description: 'Base branch'
+        description: "Base branch"
         required: true
-        default: 'main'
+        default: "main"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -37,29 +37,22 @@ jobs:
           architecture: x64
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
-      # Build wazuh agent for linux.
       - name: Build wazuh agent for linux
         run: |
           make deps -C src TARGET=agent -j2
           make -C src TARGET=agent -j2
-      # Install wazuh agent for linux.
       - name: Install wazuh agent for linux
         run: |
-          echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_AGENT_MANAGER_IP="127.0.0.1"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo "USER_DIR=/var/ossec" >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
+          cat << EOF > ./etc/preloaded-vars.conf
+          USER_LANGUAGE="en"
+          USER_AGENT_MANAGER_IP="127.0.0.1"
+          USER_INSTALL_TYPE="agent"
+          USER_DIR=/var/ossec
+          USER_ENABLE_SYSCHECK="n"
+          USER_ENABLE_ROOTCHECK="n"
+          EOF
           sudo sh install.sh
           rm ./etc/preloaded-vars.conf
-      # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
           VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
@@ -75,7 +68,6 @@ jobs:
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
-      # Run office365 integration tests.
       - name: Run office365 integration tests
         run: |
           cd tests/integration

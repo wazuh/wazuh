@@ -20,12 +20,12 @@ jobs:
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@master
         with:
-          cancel_others: 'true'
+          cancel_others: "true"
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          skip_after_successful_duplicate: 'false'
+          skip_after_successful_duplicate: "false"
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
@@ -55,11 +55,11 @@ jobs:
   indexerconnector-asan:
     strategy:
       matrix:
-        os: [ ubuntu-24.04, ubuntu-22.04 ]
+        os: [ubuntu-24.04, ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 

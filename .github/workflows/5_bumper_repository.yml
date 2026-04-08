@@ -5,31 +5,31 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Target version (e.g. 1.2.3)'
-        default: ''
+        description: "Target version (e.g. 1.2.3)"
+        default: ""
         required: false
         type: string
       stage:
-        description: 'Version stage (e.g. alpha0)'
-        default: ''
+        description: "Version stage (e.g. alpha0)"
+        default: ""
         required: false
         type: string
       date:
-        description: 'Release date in format YYYY-MM-DD (e.g., 2025-04-14)'
-        default: ''
+        description: "Release date in format YYYY-MM-DD (e.g., 2025-04-14)"
+        default: ""
         required: false
         type: string
       issue-link:
-        description: 'Issue link in format https://github.com/wazuh/<REPO>/issues/<ISSUE-NUMBER>'
+        description: "Issue link in format https://github.com/wazuh/<REPO>/issues/<ISSUE-NUMBER>"
         required: true
         type: string
       set-as-main:
-        description: 'Update version values only, preserving main branch references in URLs'
+        description: "Update version values only, preserving main branch references in URLs"
         default: false
         required: false
         type: boolean
       id:
-        description: 'Optional identifier for the run'
+        description: "Optional identifier for the run"
         required: false
         type: string
 
@@ -51,8 +51,7 @@ jobs:
 
     steps:
       - name: Dump event payload
-        run: |
-          cat $GITHUB_EVENT_PATH | jq '.inputs'
+        run: jq '.inputs' "$GITHUB_EVENT_PATH"
 
       - name: Set up GPG key
         id: signing_setup
@@ -75,36 +74,27 @@ jobs:
           export GPG_TTY=$(tty)
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           # Using workflow-specific GITHUB_TOKEN because currently CI_WAZUHCI_BUMPER_TOKEN
           # doesn't have all the necessary permissions
           token: ${{ env.GH_TOKEN }}
 
-      - name: Determine branch name
+      - name: Determine branch name and parameters
         id: vars
-        env:
-          VERSION: ${{ inputs.version }}
-          STAGE: ${{ inputs.stage }}
-          DATE: ${{ inputs.date }}
-          SET_AS_MAIN: ${{ inputs.set-as-main }}
         run: |
           script_params=""
-          version=${{ env.VERSION }}
-          stage=${{ env.STAGE }}
-          date=${{ env.DATE }}
-          set_as_main=${{ env.SET_AS_MAIN }}
-
-          # Both version and stage provided
-          [[ -n "$version" ]] && script_params+="--version $version "
-          [[ -n "$stage"   ]] && script_params+="--stage $stage "
-          [[ -n "$date"    ]] && script_params+="--date $date "
-          [[ "$set_as_main" == "true" ]] && script_params+="--set-as-main "
+          [[ -n "${{ inputs.version }}" ]] && script_params+="--version ${{ inputs.version }} "
+          [[ -n "${{ inputs.stage }}" ]] && script_params+="--stage ${{ inputs.stage }} "
+          [[ -n "${{ inputs.date }}" ]] && script_params+="--date ${{ inputs.date }} "
+          [[ "${{ inputs.set-as-main }}" == "true" ]] && script_params+="--set-as-main "
 
           issue_number=$(echo "${{ inputs.issue-link }}" | awk -F'/' '{print $NF}')
-          BRANCH_NAME="enhancement/wqa${issue_number}-bump-${{ github.ref_name }}"
-          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
-          echo "script_params=${script_params}" >> $GITHUB_OUTPUT
+
+          cat << EOF >> $GITHUB_OUTPUT
+          branch_name=enhancement/wqa${issue_number}-bump-${{ github.ref_name }}
+          script_params=$script_params
+          EOF
 
       - name: Create and switch to bump branch
         run: |

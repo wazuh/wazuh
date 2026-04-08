@@ -3,20 +3,20 @@ name: 5.X - Wodles - Unit tests
 on:
   pull_request:
     paths:
-      - '.github/workflows/5_testunit_wodles.yml'
-      - 'wodles/**'
-      - 'src/Makefile'
+      - ".github/workflows/5_testunit_wodles.yml"
+      - "wodles/**"
+      - "src/Makefile"
   workflow_dispatch:
     inputs:
       generate_report:
-        description: 'Generate test report'
+        description: "Generate test report"
         required: false
         type: boolean
         default: false
       qa_branch:
-        description: 'QA repository branch'
+        description: "QA repository branch"
         required: false
-        default: 'main'
+        default: "main"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -28,19 +28,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.10']
+        python-version: ["3.10"]
     env:
       PYTHONPATH: /home/runner/work/wazuh/wazuh/api:/home/runner/work/wazuh/wazuh/framework
       TEST_REPORT_PATH: /home/runner/work/test_report.txt
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'pip'
-          cache-dependency-path: 'framework/requirements-wodles-dev.txt'
+          cache: "pip"
+          cache-dependency-path: "framework/requirements-wodles-dev.txt"
 
       - name: Install dependencies
         run: |

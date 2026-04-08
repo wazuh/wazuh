@@ -3,14 +3,14 @@ name: 5.X - Wazuh - Legacy Unit tests
 on:
   pull_request:
     paths:
-        - "src/**"
-        - ".github/workflows/5_testunit_linux-win.yml"
+      - "src/**"
+      - ".github/workflows/5_testunit_linux-win.yml"
   workflow_dispatch:
     inputs:
       base_branch:
-        description: 'Base branch'
+        description: "Base branch"
         required: true
-        default: 'main'
+        default: "main"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -19,13 +19,13 @@ concurrency:
 jobs:
   Unit-Tests:
     strategy:
-          fail-fast: false
-          matrix:
-              target: [agent, winagent, manager]
+      fail-fast: false
+      matrix:
+        target: [agent, winagent, manager]
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       - name: "Install dependencies"
         uses: ./.github/actions/install_build_deps
         with:

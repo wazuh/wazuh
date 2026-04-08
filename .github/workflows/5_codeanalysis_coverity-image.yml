@@ -9,28 +9,31 @@ on:
           Use only '-', '_', '.' and alphanumeric characters.
           Default is '5.x'.
         required: false
-        default: '5.x'
+        default: "5.x"
   push:
     paths:
-      - 'tools/testing/coverity/**'
+      - "tools/testing/coverity/**"
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: wazuh/coverity-scan
+  PROJECT: wazuh/wazuh
 
 jobs:
   build-and-push-image:
     runs-on: ubuntu-24.04
-
     permissions:
       contents: read
       packages: write
 
-    env:
-      PROJECT: wazuh/wazuh
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set image tag
+        run: |
+          TAG="${{ inputs.docker_image_tag || '5.x' }}"
+          echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
 
       - name: Download Coverity tarball
         run: |
@@ -50,4 +53,4 @@ jobs:
         with:
           context: tools/testing/coverity
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.docker_image_tag || '5.x' }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}

@@ -4,18 +4,18 @@ on:
   workflow_dispatch:
     inputs:
       base_branch:
-        description: 'Base branch'
+        description: "Base branch"
         required: true
-        default: 'main'
+        default: "main"
   pull_request:
     paths:
-        - ".github/workflows/5_testintegration_fim-tier-0-1-macos.yml"
-        - "src/config/src/syscheck-config.c"
-        - "src/config/include/syscheck-config.h"
-        - "src/syscheckd/**"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_fim/**"
+      - ".github/workflows/5_testintegration_fim-tier-0-1-macos.yml"
+      - "src/config/src/syscheck-config.c"
+      - "src/config/include/syscheck-config.h"
+      - "src/syscheckd/**"
+      - "src/Makefile"
+      - "tests/integration/conftest.py"
+      - "tests/integration/test_fim/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -29,35 +29,28 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      # Build wazuh agent for macOS.
       - name: Build wazuh agent for macOS
         run: |
           make deps -C src TARGET=agent -j2
           make -C src TARGET=agent -j2
-      # Install wazuh agent for macOS.
       - name: Install wazuh agent for macOS
         run: |
-            echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
-            echo "" >> ./etc/preloaded-vars.conf
-            echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
-            echo "" >> ./etc/preloaded-vars.conf
-            echo "USER_DIR=/Library/Ossec" >> ./etc/preloaded-vars.conf
-            echo "" >> ./etc/preloaded-vars.conf
-            echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
-            echo "" >> ./etc/preloaded-vars.conf
-            echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
-            echo "" >> ./etc/preloaded-vars.conf
-            echo 'USER_AGENT_MANAGER_IP="127.0.0.1"' >> ./etc/preloaded-vars.conf
-            echo "" >> ./etc/preloaded-vars.conf
-            sudo sh install.sh
-            rm ./etc/preloaded-vars.conf
-      # Download and install integration tests framework.
+          cat << EOF > ./etc/preloaded-vars.conf
+          USER_LANGUAGE="en"
+          USER_INSTALL_TYPE="agent"
+          USER_DIR=/Library/Ossec
+          USER_ENABLE_SYSCHECK="n"
+          USER_ENABLE_ROOTCHECK="n"
+          USER_AGENT_MANAGER_IP="127.0.0.1"
+          EOF
+          sudo sh install.sh
+          rm ./etc/preloaded-vars.conf
       - name: Download and install integration tests framework
         run: |
           VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
@@ -73,7 +66,6 @@ jobs:
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
-      # Run fim integration tests.
       - name: Run fim integration tests
         run: |
           cd tests/integration
