@@ -292,11 +292,7 @@ stages:
 ---
 test_name: GET /cluster/configuration/validation
 
-marks:
-  - xfail #https://github.com/wazuh/wazuh/issues/34733
-
 stages:
-
   - name: Request cluster validation
     request:
       verify: False
@@ -319,18 +315,17 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Request cluster validation
+  - name: Request cluster validation (with nodes_list)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/"
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
         nodes_list: 'worker1,worker2'
-      timeout: 20
-      params:
         wait_for_complete: true
+      timeout: 20
     response:
       status_code: 200
       json:
