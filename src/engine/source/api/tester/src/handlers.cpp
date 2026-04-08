@@ -618,9 +618,12 @@ adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& test
 }
 
 adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& tester,
-                              const base::eventParsers::ProtocolHandler& protocolHandler)
+                              const base::eventParsers::ProtocolHandler& protocolHandler,
+                              const std::shared_ptr<schemf::IValidator>& schemaValidator)
 {
-    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester), protocolHandler](const auto& req, auto& res)
+    return [wTester = std::weak_ptr<::router::ITesterAPI>(tester),
+            protocolHandler,
+            wSchemaValidator = std::weak_ptr<schemf::IValidator>(schemaValidator)](const auto& req, auto& res)
     {
         using RequestType = eTester::RunPost_Request;
         using ResponseType = eTester::RunPost_Response;
@@ -728,7 +731,19 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
         }
 
         ResponseType eResponse {};
-        eResponse.mutable_result()->CopyFrom(fromOutput(base::getResponse(response)));
+        auto eResult = fromOutput(base::getResponse(response));
+
+        // Validate the final output event against WCS schema (informational, non-blocking)
+        if (auto schemaValidatorLocked = wSchemaValidator.lock())
+        {
+            const auto& outputEvent = base::getResponse(response).event();
+            if (outputEvent)
+            {
+                *eResult.mutable_validation() = validateOutputEvent(*outputEvent, *schemaValidatorLocked);
+            }
+        }
+
+        eResponse.mutable_result()->CopyFrom(std::move(eResult));
         eResponse.set_status(eEngine::ReturnStatus::OK);
         res = adapter::userResponse(eResponse);
     };
