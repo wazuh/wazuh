@@ -820,7 +820,7 @@ public:
             url += serverUrl;
             url += "/";
             url += indexList;
-            url += "/_update_by_query";
+            url += "/_update_by_query?conflicts=proceed";
 
             m_httpRequest->post(RequestParameters {.url = HttpURL(url),
                                                    .data = updateQuery.dump(),
