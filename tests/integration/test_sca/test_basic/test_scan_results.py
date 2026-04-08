@@ -52,7 +52,10 @@ from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
 
-local_internal_options = {AGENTD_WINDOWS_DEBUG if sys.platform == WINDOWS else MODULESD_DEBUG: '2'}
+# On Windows, both windows.debug and wazuh_modules.debug need to be set for SCA logs
+local_internal_options = {MODULESD_DEBUG: '2'}
+if sys.platform == WINDOWS:
+    local_internal_options[AGENTD_WINDOWS_DEBUG] = '2'
 
 # Configuration and cases data
 configurations_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_sca.yaml')
@@ -134,22 +137,24 @@ def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policie
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
     # Wait for the SCA scan requirements to start for the specific policy
+    # Windows requires more time for scan completion
+    timeout = 120 if sys.platform == WINDOWS else 60
     expected_policy = Path(test_metadata['policy_file']).stem
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_REQ), timeout=60)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_REQ), timeout=timeout)
     assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
     # Wait for the SCA scan requirements to end for the specific policy
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_REQ), timeout=30)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_REQ), timeout=timeout)
     assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
     # Wait for the SCA scan checks to start for the specific policy
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=30)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=timeout)
     assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
     # Get the results for the checks obtained in the SCA scan
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=30, accumulations=int(test_metadata['results']))
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=timeout, accumulations=int(test_metadata['results']))
     assert log_monitor.callback_result is not None and all(result[1] == expected_policy for result in log_monitor.callback_result)
 
     # Wait for the SCA scan checks to end for the specific policy
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_CHECK), timeout=30)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_CHECK), timeout=timeout)
     assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy

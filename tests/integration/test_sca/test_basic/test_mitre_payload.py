@@ -56,7 +56,10 @@ from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
 
-local_internal_options = {AGENTD_WINDOWS_DEBUG if sys.platform == WINDOWS else MODULESD_DEBUG: '2'}
+# On Windows, both windows.debug and wazuh_modules.debug need to be set for SCA logs
+local_internal_options = {MODULESD_DEBUG: '2'}
+if sys.platform == WINDOWS:
+    local_internal_options[AGENTD_WINDOWS_DEBUG] = '2'
 
 # Configuration and cases data
 configurations_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_sca.yaml')
@@ -141,7 +144,9 @@ def test_sca_mitre_payload(test_configuration, test_metadata, prepare_cis_polici
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
     # Wait for a stateful event containing a MITRE object
-    log_monitor.start(callback=_callback_mitre_event, timeout=60)
+    # Stateful events are emitted after scan completion, requiring more time on Windows
+    timeout = 120 if sys.platform == WINDOWS else 60
+    log_monitor.start(callback=_callback_mitre_event, timeout=timeout)
     assert log_monitor.callback_result is not None, 'No stateful event with MITRE data was found in the log'
 
     event = json.loads(log_monitor.callback_result[0])
