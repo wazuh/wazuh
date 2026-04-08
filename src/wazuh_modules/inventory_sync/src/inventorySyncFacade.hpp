@@ -196,6 +196,65 @@ class InventorySyncFacadeImpl final
                           dataContext->session());
             }
         }
+        else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataBatch)
+        {
+            const auto dataBatch = syncMessage->content_as<Wazuh::SyncSchema::DataBatch>();
+            if (!dataBatch || !dataBatch->values())
+            {
+                throw InventorySyncException("Invalid data batch message");
+            }
+
+            logDebug2(LOGGER_DEFAULT_TAG,
+                      "InventorySyncFacade::start: Received DataBatch with %zu DataValues.",
+                      dataBatch->values()->size());
+
+            std::shared_lock lock(m_agentSessionsMutex);
+            for (const auto* dataValue : *dataBatch->values())
+            {
+                if (!dataValue)
+                    continue;
+
+                if (auto it = m_agentSessions.find(dataValue->session()); it == m_agentSessions.end())
+                {
+                    logDebug2(LOGGER_DEFAULT_TAG,
+                              "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                              dataValue->session());
+                }
+                else
+                {
+                    // Re-serialize each DataValue as a standalone Message{DataValue} FlatBuffer.
+                    // RocksDB consumers (indexer) expect individual DataValue messages per key.
+                    flatbuffers::FlatBufferBuilder dvBuilder;
+                    auto idStr = dataValue->id() ? dvBuilder.CreateString(dataValue->id())
+                                                 : dvBuilder.CreateString("");
+                    auto idxStr = dataValue->index() ? dvBuilder.CreateString(dataValue->index())
+                                                     : dvBuilder.CreateString("");
+                    auto dataVec =
+                        dataValue->data()
+                            ? dvBuilder.CreateVector(dataValue->data()->data(), dataValue->data()->size())
+                            : dvBuilder.CreateVector<int8_t>({});
+
+                    Wazuh::SyncSchema::DataValueBuilder dataValueBuilder(dvBuilder);
+                    dataValueBuilder.add_seq(dataValue->seq());
+                    dataValueBuilder.add_session(dataValue->session());
+                    dataValueBuilder.add_id(idStr);
+                    dataValueBuilder.add_index(idxStr);
+                    dataValueBuilder.add_version(dataValue->version());
+                    dataValueBuilder.add_operation(dataValue->operation());
+                    dataValueBuilder.add_data(dataVec);
+                    auto dvOffset = dataValueBuilder.Finish();
+
+                    auto msgOffset = Wazuh::SyncSchema::CreateMessage(
+                        dvBuilder, Wazuh::SyncSchema::MessageType_DataValue, dvOffset.Union());
+                    dvBuilder.Finish(msgOffset);
+
+                    it->second.handleData(dataValue, dvBuilder.GetBufferPointer(), dvBuilder.GetSize());
+                    logDebug2(LOGGER_DEFAULT_TAG,
+                              "InventorySyncFacade::start: DataBatch item handled for session %llu",
+                              dataValue->session());
+                }
+            }
+        }
         else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_Start)
         {
             const auto startMsg = syncMessage->content_as<Wazuh::SyncSchema::Start>();

@@ -104,6 +104,10 @@ table ChecksumModule {
     checksum: string;
 }
 
+table DataBatch {
+    values: [DataValue];
+}
+
 union MessageType {
     DataValue,
     DataClean,
@@ -113,7 +117,8 @@ union MessageType {
     End,
     EndAck,
     ReqRet,
-    DataContext
+    DataContext,
+    DataBatch
 }
 
 table Message {
