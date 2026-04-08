@@ -47,33 +47,20 @@ int fim_execute_pause(void) {
 int fim_execute_is_pause_completed(void) {
     mdebug2("FIM agent info: is_pause_completed command received");
 
-    // Read pause state atomically (no mutex needed)
-    int pause_requested = atomic_int_get(&syscheck.fim_pause_requested);
-    int pausing_is_allowed = atomic_int_get(&syscheck.fim_pausing_is_allowed);
-
-    // If no pause was requested, return completed successfully (not in pause)
-    if (!pause_requested) {
+    // If no pause was requested, trivially completed (not paused)
+    if (!atomic_int_get(&syscheck.fim_pause_requested)) {
         mdebug2("No pause request active");
-        return 0;  // Completed (not paused)
+        return 0;
     }
 
-    // Check if fim_run_integrity has acknowledged the pause
-    if (!pausing_is_allowed) {
-        mdebug2("Pause still in progress, waiting for fim_run_integrity to acknowledge");
-        return 1;  // In progress
-    }
-
-    // Double-check pause state under mutex
-    if (atomic_int_get(&syscheck.fim_pause_requested) && atomic_int_get(&syscheck.fim_pausing_is_allowed)) {
-        w_mutex_lock(&syscheck.fim_scan_mutex);
-        w_mutex_lock(&syscheck.fim_realtime_mutex);
-#ifdef WIN32
-        w_mutex_lock(&syscheck.fim_registry_scan_mutex);
-#endif
-
-        mdebug1("FIM scans successfully paused");
-        return 0;  // Completed
-    }
+    // Pause is acknowledged immediately — the sync thread checks fim_pause_requested at
+    // the start of each cycle and will skip new sync cycles once it sees the flag.
+    // We do NOT wait for the current scan cycle to finish here; that is the job of the
+    // flush step (which runs after coordination and waits for pending data to be sent).
+    // Keeping this acknowledgment fast is what allows coordination (version negotiation)
+    // to complete in under a second, independent of FIM scan duration.
+    mdebug1("FIM pause acknowledged (sync thread will skip next cycles)");
+    return 0;  // Completed
 
     return 1;  // State changed, still in progress
 }
@@ -177,14 +164,8 @@ int fim_execute_resume(void) {
         return 0;
     }
 
-    // Release all scan mutexes
-#ifdef WIN32
-    w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
-#endif
-    w_mutex_unlock(&syscheck.fim_realtime_mutex);
-    w_mutex_unlock(&syscheck.fim_scan_mutex);
-
-    // Clear pause flags atomically
+    // Clear pause flags atomically — no mutexes to release since the fast-pause approach
+    // acknowledges pause without acquiring scan mutexes
     atomic_int_set(&syscheck.fim_pausing_is_allowed, 0);
     atomic_int_set(&syscheck.fim_pause_requested, 0);
 

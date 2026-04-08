@@ -1137,7 +1137,9 @@ void AgentInfoImpl::resumePausedModules(const std::set<std::string>& pausedModul
 
 bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
 {
-    constexpr int MAX_PAUSE_POLL_ATTEMPTS = 30; // 30 seconds max wait
+    // FIM now acknowledges pause immediately (fast-pause: no waiting for scan cycle to finish).
+    // A few retries handle transient IPC failures; the loop is kept for robustness.
+    constexpr int MAX_PAUSE_POLL_ATTEMPTS = 10; // 10 seconds max (should complete in 1-2 polls)
     constexpr int PAUSE_POLL_DELAY_MS = 1000;   // 1 second between polls
 
     m_logFunction(LOG_DEBUG_VERBOSE, "Polling " + moduleName + " for pause completion (async pause)");
@@ -1200,114 +1202,11 @@ bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
     }
 
     m_logFunction(LOG_ERROR,
-                  moduleName + " pause did not complete within timeout (" + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) +
-                  " seconds)");
+                  moduleName + " pause IPC did not respond within " + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) +
+                  " seconds (IPC communication failure)");
     return false;
 }
 
-bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
-{
-    constexpr int FLUSH_POLL_DELAY_MS = 10000;       // 10 seconds between polls
-    constexpr int LOG_PROGRESS_EVERY_N_ATTEMPTS = 6; // Log progress every 60 seconds (6 * 10s)
-    std::map<std::string, int> attempts;
-
-    for (const auto& moduleName : pendingModules)
-    {
-        attempts[moduleName] = 0;
-        m_logFunction(LOG_DEBUG_VERBOSE, "Polling " + moduleName + " for flush completion (async flush)");
-    }
-
-    while (!m_stopped && !pendingModules.empty())
-    {
-        std::vector<std::string> completedModules;
-
-        for (const auto& moduleName : pendingModules)
-        {
-            auto& attempt = attempts[moduleName];
-            attempt++;
-
-            std::string isFlushCompletedMessage = createJsonCommand("is_flush_completed");
-            ModuleResponse pollResponse = queryModuleWithRetry(moduleName, isFlushCompletedMessage);
-
-            if (!pollResponse.success)
-            {
-                m_logFunction(LOG_WARNING,
-                              "Failed to poll flush status for " + moduleName + " (attempt " +
-                              std::to_string(attempt) + "), will retry...");
-                continue;
-            }
-
-            try
-            {
-                nlohmann::json pollJson = nlohmann::json::parse(pollResponse.response);
-
-                if (pollJson.contains("data") && pollJson["data"].contains("status"))
-                {
-                    std::string status = pollJson["data"]["status"].get<std::string>();
-
-                    if (status == "in_progress")
-                    {
-                        if (attempt % LOG_PROGRESS_EVERY_N_ATTEMPTS == 0)
-                        {
-                            m_logFunction(LOG_INFO,
-                                          "Waiting for " + moduleName + " module to complete synchronization (" +
-                                          std::to_string(attempt * FLUSH_POLL_DELAY_MS / 1000) +
-                                          " seconds elapsed)");
-                        }
-                        else
-                        {
-                            m_logFunction(LOG_DEBUG,
-                                          moduleName + " flush still in progress (attempt " +
-                                          std::to_string(attempt) + ")");
-                        }
-                    }
-                    else if (status == "completed")
-                    {
-                        std::string result = pollJson["data"]["result"].get<std::string>();
-                        bool flushSucceeded = (result == "success");
-
-                        m_logFunction(LOG_INFO,
-                                      moduleName + " pending operations completed with result: " + result +
-                                      " (took " + std::to_string(attempt * FLUSH_POLL_DELAY_MS / 1000) +
-                                      " seconds)");
-
-                        if (!flushSucceeded)
-                        {
-                            m_logFunction(LOG_ERROR, moduleName + " flush completed with error");
-                            return false;
-                        }
-
-                        completedModules.push_back(moduleName);
-                    }
-                }
-            }
-            catch (const std::exception& e)
-            {
-                m_logFunction(LOG_WARNING,
-                              "Failed to parse flush poll response from " + moduleName + ": " +
-                              std::string(e.what()) + " - Response: " + pollResponse.response);
-            }
-        }
-
-        for (const auto& moduleName : completedModules)
-        {
-            pendingModules.erase(moduleName);
-        }
-
-        if (!pendingModules.empty())
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(FLUSH_POLL_DELAY_MS));
-        }
-    }
-
-    if (pendingModules.empty())
-    {
-        return true;
-    }
-
-    m_logFunction(LOG_INFO, "Module stopping, aborting pending operations polling");
-    return false;
-}
 
 bool AgentInfoImpl::pauseCoordinationModules(std::set<std::string>& pausedModules)
 {
@@ -1373,38 +1272,36 @@ bool AgentInfoImpl::pauseCoordinationModules(std::set<std::string>& pausedModule
     return true;
 }
 
-bool AgentInfoImpl::flushPausedModules(const std::set<std::string>& pausedModules)
+bool AgentInfoImpl::triggerModuleFlush(const std::set<std::string>& pausedModules)
 {
-    std::set<std::string> pendingModules;
-
     for (const auto& module : pausedModules)
     {
         if (m_stopped)
         {
-            m_logFunction(LOG_INFO, "Agent stopping, aborting module coordination during pending operations phase");
+            m_logFunction(LOG_INFO, "Agent stopping, aborting module coordination during flush trigger phase");
             return false;
         }
 
-        m_logFunction(LOG_INFO, "Waiting for " + module + " module to complete synchronization");
+        m_logFunction(LOG_INFO, "Triggering flush for " + module + " module");
 
         std::string flushMessage = createJsonCommand("flush");
         ModuleResponse response = queryModuleWithRetry(module, flushMessage);
-        m_logFunction(LOG_DEBUG, "Response from " + module + " flush: " + response.response);
+        m_logFunction(LOG_DEBUG, "Response from " + module + " flush trigger: " + response.response);
 
         if (!response.success)
         {
             m_logFunction(LOG_ERROR,
-                          "Failed to flush " + module + " (error " + std::to_string(response.errorCode) +
+                          "Failed to trigger flush for " + module + " (error " + std::to_string(response.errorCode) +
                           "), aborting coordination");
             return false;
         }
 
-        m_logFunction(LOG_DEBUG, "Successfully requested flush for " + module);
-        pendingModules.insert(module);
+        m_logFunction(LOG_DEBUG, "Successfully triggered flush for " + module);
     }
 
-    return pendingModules.empty() ? true : pollFlushCompletion(std::move(pendingModules));
+    return true;
 }
+
 
 int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModules,
                                        bool incrementVersion,
@@ -1536,7 +1433,6 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
         }
 
         // Step 2: Get versions, calculate new version, and set it on all modules
-        // Only essential IPC operations (get_version/set_version) are kept inside the pause window
         int newVersion = calculateNewVersion(pausedModules, incrementVersion, moduleVersions);
 
         if (newVersion < 0)
@@ -1545,21 +1441,25 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
             return false;
         }
 
-        // Step 3: Resume all modules early to minimize the pause window
+        // Step 3: Trigger flush while still paused.
+        // fim_flush_in_progress is armed before resume, so FIM's sync thread will process it
+        // on its next cycle. run_check.c clears fim_flush_in_progress in both the pause+flush
+        // branch and the normal sync branch, so the flag is cleaned up regardless of timing.
+        if (!triggerModuleFlush(pausedModules))
+        {
+            resumePausedModules(pausedModules);
+            return false;
+        }
+
+        // Step 4: Resume all modules immediately. FIM restarts scanning while its pending
+        // sync completes in the background — no need to hold the pause window open.
         size_t coordinatedModulesCount = pausedModules.size();
         resumePausedModules(pausedModules);
         modulesResumed = true;
 
-        // Step 4: Flush all modules after resume so scanning can restart immediately
-        // while pending inventory events are being sent to the indexer
-        if (!flushPausedModules(pausedModules))
-        {
-            return false;
-        }
-
-        // Step 5: Build indices list based on enabled modules and synchronize
-        // Sending global_version to manager last ensures all flushed inventory
-        // events are indexed before the manager applies group/metadata changes
+        // Step 5: Build indices list based on enabled modules and synchronize.
+        // The manager version handoff and flush completion are independent — the manager's
+        // view converges as FIM events reach the indexer shortly after.
         std::vector<std::string> indicesToSync;
 
         for (const auto& module : pausedModules)

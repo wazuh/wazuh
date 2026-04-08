@@ -1024,6 +1024,15 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 mwarn("FIM synchronization failed.");
             }
 
+            // If a flush was triggered while paused but processed here (after resume),
+            // clear the flush state so pollFimFlushCompletion() can return "completed".
+            if (flush_request_detected) {
+                int result = sync_result ? 0 : -1;
+                atomic_int_set(&fim_flush_result, result);
+                atomic_int_set(&fim_flush_in_progress, 0);
+                mdebug1("Pending flush request completed via normal sync path.");
+            }
+
             // Clean up the directories snapshot
             OSList_Destroy(directories_snapshot);
             #ifdef WIN32
