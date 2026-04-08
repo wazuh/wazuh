@@ -4,7 +4,7 @@
 
 The **cmcrud** module is the **CRUD service layer** for the Wazuh engine's Content Manager. It sits between the HTTP API handlers and the underlying `cmstore`, mediating all create / read / update / delete operations on namespaces, policies, and resources (decoders, filters, outputs, integrations, KVDBs).
 
-Before any mutation reaches the store, `cmcrud` parses the incoming document as JSON, applies type-specific adaptations (canonical field ordering for assets), and delegates structural validation to `builder::IValidator`. This guarantees that every artifact persisted in `cmstore` has already been checked for consistency.
+Before any mutation reaches the store, `cmcrud` receives a structured `json::Json` payload, applies type-specific adaptations (canonical field ordering for assets), and delegates structural validation to `builder::IValidator`. This guarantees that every artifact persisted in `cmstore` has already been checked for consistency.
 
 ## Architecture
 
@@ -18,7 +18,7 @@ Before any mutation reaches the store, `cmcrud` parses the incoming document as 
   ┌──────────────────────────────────────────┐
   │              CrudService                 │
   │                                          │
-  │  • Document parsing (JSON)               │
+  │  • Structured JSON handling              │
   │  • Asset adaptation (canonical ordering) │
   │  • Validation delegation                 │
   │  • Import orchestration with rollback    │
@@ -43,7 +43,7 @@ Before any mutation reaches the store, `cmcrud` parses the incoming document as 
 | **Policy** | `IValidator::softPolicyValidate()` |
 | **Integration** | `IValidator::softIntegrationValidate()` |
 | **Asset** (decoder / filter / output) | `IValidator::validateAsset()` |
-| **KVDB** | Parsed via `kvdbFromDocument()` (structural check only) |
+| **KVDB** | Parsed via `cm::store::dataType::KVDB::fromJson()` (structural check only) |
 
 A `force` / `softValidation` flag on the import paths can relax or skip some of these checks.
 
@@ -203,19 +203,18 @@ private:
 | `assetUuidFromJson(json)` | Extracts the UUID string from a JSON asset document |
 | `assetNameFromJson(json)` | Extracts the logical name string from a JSON asset document |
 | `throwIfError(base::OptError)` | Converts an `OptError` into a thrown `std::runtime_error` |
-| `parseJsonPayload(string_view)` | Parses a JSON document into `json::Json` and enforces an object top-level |
-| `policyFromDocument(string_view)` | Parses a JSON document into `cm::store::dataType::Policy` |
-| `integrationFromDocument(string_view)` | Parses a JSON document into `cm::store::dataType::Integration` |
-| `kvdbFromDocument(string_view)` | Parses a JSON document into `cm::store::dataType::KVDB` |
+| `policyFromDocument(const json::Json&)` | Converts a JSON object into `cm::store::dataType::Policy` |
+| `integrationFromDocument(const json::Json&, bool requireUUID)` | Converts a JSON object into `cm::store::dataType::Integration` |
+| `kvdbFromDocument(const json::Json&, bool requireUUID)` | Converts a JSON object into `cm::store::dataType::KVDB` |
 
 ### Key Flows
 
 #### `upsertResource`
 
-1. Parse the incoming document as JSON.
+1. Receive the incoming payload as `json::Json`.
 2. Branch by `ResourceType`:
-   - **INTEGRATION** — parse via `integrationFromDocument()`, validate with `validateIntegration()`, call `nsStore->upsertIntegration()`.
-   - **KVDB** — parse via `kvdbFromDocument()`, call `nsStore->upsertKVDB()`.
+   - **INTEGRATION** — convert via `integrationFromDocument()`, validate with `validateIntegration()`, then create or update.
+   - **KVDB** — convert via `kvdbFromDocument()`, then create or update.
    - **DECODER / FILTER / OUTPUT** — adapt via `detail::adaptDecoder/Filter/Output()`, validate asset name prefix matches type, call `validateAsset()`, then create or update based on UUID / name existence.
 3. On any failure, throw `std::runtime_error`.
 
@@ -237,15 +236,15 @@ private:
 #### `validateResource`
 
 1. For **DECODER / FILTER**: adapt payload, validate name prefix, call `validator->validateAssetShallow()`.
-2. For **INTEGRATION**: parse from JSON via `integrationFromDocument()`.
-3. For **KVDB**: parse from JSON via `kvdbFromDocument()`.
+2. For **INTEGRATION**: convert from the provided `json::Json` via `integrationFromDocument()`.
+3. For **KVDB**: convert from the provided `json::Json` via `kvdbFromDocument()`.
 
 ## CMake Targets
 
 | Target | Type | Alias | Links |
 |---|---|---|---|
 | `cmcrud_icmcrud` | INTERFACE | `cmcrud::icmcrud` | `cmstore::icmstore` |
-| `cmcrud_cmcrud` | STATIC | `cmcrud::cmcrud` | `builder::ibuilder` (public), `yml` (private) |
+| `cmcrud_cmcrud` | STATIC | `cmcrud::cmcrud` | `builder::ibuilder` (public) |
 | `cmcrud_mocks` | INTERFACE | `cmcrud::mocks` | `cmcrud::icmcrud`, `GTest::gmock` |
 | `cmcrud_utest` | Executable | — | `cmcrud::cmcrud`, `cmstore::mocks`, `builder::mocks`, `GTest::gtest_main` |
 | `cmcrud_ctest` | Executable | — | `cmcrud::cmcrud`, `cmstore::mocks`, `builder::mocks`, `GTest::gtest_main` |

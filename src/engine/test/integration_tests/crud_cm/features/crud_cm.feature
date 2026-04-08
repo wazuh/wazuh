@@ -55,7 +55,7 @@ Feature: Resource management via cmcrud resource handlers
   Scenario: Fail to create a resource with an empty YAML content
     When I send a request to create a "decoder" resource with empty YAML in namespace "analytics"
     Then the resource request should fail
-    And the resource error message should be "Field /ymlContent cannot be empty"
+    And the resource error message should be "Field /jsonContent cannot be empty"
 
   Scenario: Fail to create a resource with an unsupported type
     When I send a request to create a resource with type "unknown_type" in namespace "analytics" and name "decoder/my_decoder/0"
@@ -126,7 +126,7 @@ Feature: Resource management via cmcrud resource handlers
   Scenario: Fail to upsert a policy with an empty YAML content
     When I send a request to upsert a policy in namespace "analytics" with empty policy YAML
     Then the policy request should fail
-    And the policy error message should be "Field /ymlContent cannot be empty"
+    And the policy error message should be "Field /jsonContent cannot be empty"
 
   Scenario: Fail to upsert a policy in a namespace that does not exist
     Given there is no namespace called "ghost"

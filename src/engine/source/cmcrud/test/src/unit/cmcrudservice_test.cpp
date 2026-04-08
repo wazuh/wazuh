@@ -116,6 +116,11 @@ static constexpr const char* kDecoderJson = R"({
   ]
 })";
 
+json::Json makeJsonPayload(const char* raw)
+{
+    return json::Json {raw};
+}
+
 // ---------------------------------------------------------------------
 // Constructor tests
 // ---------------------------------------------------------------------
@@ -260,7 +265,7 @@ TEST(CrudService_Unit, UpsertPolicy_Success)
     EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
     EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
 
-    EXPECT_NO_THROW(service.upsertPolicy(nsId, kPolicyJson));
+    EXPECT_NO_THROW(service.upsertPolicy(nsId, makeJsonPayload(kPolicyJson)));
 }
 
 TEST(CrudService_Unit, UpsertPolicy_AcceptsJsonPayload)
@@ -281,7 +286,7 @@ TEST(CrudService_Unit, UpsertPolicy_AcceptsJsonPayload)
     EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
     EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
 
-    EXPECT_NO_THROW(service.upsertPolicy(nsId, kPolicyJson));
+    EXPECT_NO_THROW(service.upsertPolicy(nsId, makeJsonPayload(kPolicyJson)));
 }
 
 TEST(CrudService_Unit, UpsertPolicy_ValidationFailureIsWrapped)
@@ -304,7 +309,7 @@ TEST(CrudService_Unit, UpsertPolicy_ValidationFailureIsWrapped)
 
     try
     {
-        service.upsertPolicy(nsId, kPolicyJson);
+        service.upsertPolicy(nsId, makeJsonPayload(kPolicyJson));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -332,12 +337,12 @@ TEST(CrudService_Unit, UpsertPolicy_TopLevelArrayIsRejected)
 
     try
     {
-        service.upsertPolicy(nsId, kArrayJSON);
+        service.upsertPolicy(nsId, makeJsonPayload(kArrayJSON));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
     {
-        EXPECT_THAT(std::string {e.what()}, ::testing::HasSubstr("Payload top-level must be an object"));
+        EXPECT_THAT(std::string {e.what()}, ::testing::HasSubstr("Policy JSON must be an object"));
     }
 }
 
@@ -378,7 +383,7 @@ TEST(CrudService_Unit, UpsertPolicy_InvalidOriginSpaceIsRejected)
 
     try
     {
-        service.upsertPolicy(nsId, kPolicyWithInvalidOriginSpace);
+        service.upsertPolicy(nsId, makeJsonPayload(kPolicyWithInvalidOriginSpace));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -463,8 +468,6 @@ TEST(CrudService_Unit, ListResources_MissingNamespaceThrows)
 
 TEST(CrudService_Unit, GetResourceByUUID_Integration)
 {
-    using ::testing::HasSubstr;
-
     auto store = std::make_shared<NiceMock<MockICMstore>>();
     auto validator = std::make_shared<NiceMock<MockValidator>>();
     CrudService service {store, validator};
@@ -497,13 +500,13 @@ TEST(CrudService_Unit, GetResourceByUUID_Integration)
 
     EXPECT_CALL(*nsReader, getIntegrationByUUID(uuid)).Times(1).WillOnce(Return(integ));
 
-    const std::string json = service.getResourceByUUID(nsId, uuid);
+    const auto result = service.getResourceByUUID(nsId, uuid);
 
-    EXPECT_THAT(json, HasSubstr("\"id\": \"5c1df6b6-1458-4b2e-9001-96f67a8b12c8\""));
-    EXPECT_THAT(json, HasSubstr("\"title\": \"windows\""));
+    EXPECT_EQ(result.getString("/id").value_or(""), "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
+    EXPECT_EQ(result.getString("/metadata/title").value_or(""), "windows");
 }
 
-TEST(CrudService_Unit, GetResourceByUUID_IntegrationReturnsPrettyJson)
+TEST(CrudService_Unit, GetResourceByUUID_Integration_ReturnsJsonObject)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
     auto validator = std::make_shared<NiceMock<MockValidator>>();
@@ -537,10 +540,11 @@ TEST(CrudService_Unit, GetResourceByUUID_IntegrationReturnsPrettyJson)
 
     EXPECT_CALL(*nsReader, getIntegrationByUUID(uuid)).Times(1).WillOnce(Return(integ));
 
-    const std::string json = service.getResourceByUUID(nsId, uuid);
+    const auto result = service.getResourceByUUID(nsId, uuid);
 
-    EXPECT_THAT(json, HasSubstr("\"id\": \"5c1df6b6-1458-4b2e-9001-96f67a8b12c8\""));
-    EXPECT_THAT(json, HasSubstr("\"title\": \"windows\""));
+    EXPECT_TRUE(result.isObject());
+    EXPECT_EQ(result.getString("/id").value_or(""), "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
+    EXPECT_EQ(result.getString("/metadata/title").value_or(""), "windows");
 }
 
 // ---------------------------------------------------------------------
@@ -583,10 +587,10 @@ TEST(CrudService_Unit, GetResourceByUUID_KVDB)
 
     EXPECT_CALL(*nsReader, getKVDBByUUID(uuid)).Times(1).WillOnce(Return(kvdb));
 
-    const std::string json = service.getResourceByUUID(nsId, uuid);
+    const auto result = service.getResourceByUUID(nsId, uuid);
 
-    EXPECT_THAT(json, ::testing::HasSubstr("\"id\": \"82e215c4-988a-4f64-8d15-b98b2fc03a4f\""));
-    EXPECT_THAT(json, ::testing::HasSubstr("\"title\": \"windows_kerberos_status_code_to_code_name\""));
+    EXPECT_EQ(result.getString("/id").value_or(""), "82e215c4-988a-4f64-8d15-b98b2fc03a4f");
+    EXPECT_EQ(result.getString("/metadata/title").value_or(""), "windows_kerberos_status_code_to_code_name");
 }
 
 // ---------------------------------------------------------------------
@@ -621,10 +625,10 @@ TEST(CrudService_Unit, GetResourceByUUID_Decoder)
 
     EXPECT_CALL(*nsReader, getAssetByUUID(uuid)).Times(1).WillOnce(Return(assetJson));
 
-    const std::string json = service.getResourceByUUID(nsId, uuid);
+    const auto result = service.getResourceByUUID(nsId, uuid);
 
-    EXPECT_THAT(json, ::testing::HasSubstr("\"name\": \"decoder/syslog/0\""));
-    EXPECT_THAT(json, ::testing::HasSubstr("\"id\": \"3f086ce2-32a4-42b0-be7e-40dcfb9c6160\""));
+    EXPECT_EQ(result.getString("/name").value_or(""), "decoder/syslog/0");
+    EXPECT_EQ(result.getString("/id").value_or(""), "3f086ce2-32a4-42b0-be7e-40dcfb9c6160");
 }
 
 // ---------------------------------------------------------------------
@@ -652,7 +656,7 @@ TEST(CrudService_Unit, UpsertIntegration_CreateWhenUUIDDoesNotExist)
     EXPECT_CALL(*nsPtr, createResource("windows", ResourceType::INTEGRATION, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::INTEGRATION, kIntegrationJson));
+    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson)));
 }
 
 TEST(CrudService_Unit, UpsertIntegration_UpdateWhenUUIDExists)
@@ -676,7 +680,7 @@ TEST(CrudService_Unit, UpsertIntegration_UpdateWhenUUIDExists)
     EXPECT_CALL(*nsPtr, updateResourceByUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", _)).Times(1);
     EXPECT_CALL(*nsPtr, createResource("windows", ResourceType::INTEGRATION, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::INTEGRATION, kIntegrationJson));
+    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson)));
 }
 
 TEST(CrudService_Unit, UpsertIntegration_AcceptsJsonPayloadAndPassesJsonToStore)
@@ -709,7 +713,7 @@ TEST(CrudService_Unit, UpsertIntegration_AcceptsJsonPayloadAndPassesJsonToStore)
         .Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::INTEGRATION, kIntegrationJson));
+    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson)));
 }
 
 // ---------------------------------------------------------------------
@@ -734,7 +738,7 @@ TEST(CrudService_Unit, UpsertKVDB_CreateWhenUUIDDoesNotExist)
     EXPECT_CALL(*nsPtr, createResource("windows_kerberos_status_code_to_code_name", ResourceType::KVDB, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::KVDB, kKVDBJson));
+    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kKVDBJson)));
 }
 
 TEST(CrudService_Unit, UpsertKVDB_UpdateWhenUUIDExists)
@@ -755,7 +759,7 @@ TEST(CrudService_Unit, UpsertKVDB_UpdateWhenUUIDExists)
     EXPECT_CALL(*nsPtr, updateResourceByUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f", _)).Times(1);
     EXPECT_CALL(*nsPtr, createResource("windows_kerberos_status_code_to_code_name", ResourceType::KVDB, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::KVDB, kKVDBJson));
+    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kKVDBJson)));
 }
 
 // ---------------------------------------------------------------------
@@ -782,7 +786,7 @@ TEST(CrudService_Unit, UpsertDecoder_CreateWhenNameDoesNotExist)
     EXPECT_CALL(*nsPtr, createResource("decoder/syslog/0", ResourceType::DECODER, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByName("decoder/syslog/0", ResourceType::DECODER, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::DECODER, kDecoderJson));
+    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::DECODER, makeJsonPayload(kDecoderJson)));
 }
 
 TEST(CrudService_Unit, UpsertDecoder_UpdateWhenNameExists)
@@ -805,7 +809,7 @@ TEST(CrudService_Unit, UpsertDecoder_UpdateWhenNameExists)
     EXPECT_CALL(*nsPtr, updateResourceByName("decoder/syslog/0", ResourceType::DECODER, _)).Times(1);
     EXPECT_CALL(*nsPtr, createResource("decoder/syslog/0", ResourceType::DECODER, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::DECODER, kDecoderJson));
+    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::DECODER, makeJsonPayload(kDecoderJson)));
 }
 
 // ---------------------------------------------------------------------

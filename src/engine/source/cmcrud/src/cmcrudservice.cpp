@@ -1,7 +1,6 @@
 #include <fmt/format.h>
 
 #include <base/logging.hpp>
-#include <yml/yml.hpp>
 #include <cmstore/detail.hpp>
 #include <cmstore/types.hpp>
 
@@ -38,30 +37,19 @@ void throwIfError(base::OptError err, std::string_view context)
     }
 }
 
-json::Json parsePayloadAuto(std::string_view document)
+cm::store::dataType::Policy policyFromDocument(const json::Json& policyDocument)
 {
-    rapidjson::Document doc = yml::Converter::loadYMLfromString(std::string {document});
-    json::Json parsed {std::move(doc)};
-    if (!parsed.isObject())
-    {
-        throw std::runtime_error("Payload top-level must be an object");
-    }
-    return parsed;
+    return cm::store::dataType::Policy::fromJson(policyDocument);
 }
 
-cm::store::dataType::Policy policyFromDocument(std::string_view policyDocument)
+cm::store::dataType::Integration integrationFromDocument(const json::Json& integrationDocument, bool requireUUID)
 {
-    return cm::store::dataType::Policy::fromJson(parsePayloadAuto(policyDocument));
+    return cm::store::dataType::Integration::fromJson(integrationDocument, requireUUID);
 }
 
-cm::store::dataType::Integration integrationFromDocument(std::string_view integrationDocument)
+cm::store::dataType::KVDB kvdbFromDocument(const json::Json& kvdbDocument, bool requireUUID)
 {
-    return cm::store::dataType::Integration::fromJson(parsePayloadAuto(integrationDocument), /*requireUUID:*/ false);
-}
-
-cm::store::dataType::KVDB kvdbFromDocument(std::string_view kvdbDocument)
-{
-    return cm::store::dataType::KVDB::fromJson(parsePayloadAuto(kvdbDocument), /*requireUUID:*/ false);
+    return cm::store::dataType::KVDB::fromJson(kvdbDocument, requireUUID);
 }
 
 base::Name assetNameFromJson(const json::Json& jsonDoc)
@@ -419,13 +407,13 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
     ns->upsertPolicy(pol);
 }
 
-void CrudService::upsertPolicy(const cm::store::NamespaceId& nsId, std::string_view policyDocument)
+void CrudService::upsertPolicy(const cm::store::NamespaceId& nsId, const json::Json& policyJson)
 {
     try
     {
         auto ns = getNamespaceStore(nsId);
 
-        auto policy = policyFromDocument(policyDocument);
+        auto policy = policyFromDocument(policyJson);
 
         std::shared_ptr<cm::store::ICMStoreNSReader> nsReader = ns;
         validatePolicy(nsReader, policy);
@@ -481,7 +469,7 @@ std::vector<ResourceSummary> CrudService::listResources(const cm::store::Namespa
     }
 }
 
-std::string CrudService::getResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid) const
+json::Json CrudService::getResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid) const
 {
     try
     {
@@ -518,7 +506,7 @@ std::string CrudService::getResourceByUUID(const cm::store::NamespaceId& nsId, c
             default: throw std::runtime_error("Unsupported resource type for getResourceByUUID");
         }
 
-        return result.prettyStr();
+        return result;
     }
     catch (const std::exception& e)
     {
@@ -529,7 +517,7 @@ std::string CrudService::getResourceByUUID(const cm::store::NamespaceId& nsId, c
 
 void CrudService::upsertResource(const cm::store::NamespaceId& nsId,
                                  cm::store::ResourceType type,
-                                 std::string_view document)
+                                 const json::Json& resource)
 {
     try
     {
@@ -540,7 +528,7 @@ void CrudService::upsertResource(const cm::store::NamespaceId& nsId,
         {
             case cm::store::ResourceType::INTEGRATION:
             {
-                auto integ = integrationFromDocument(document);
+                auto integ = integrationFromDocument(resource, /*requireUUID:*/ false);
                 validateIntegration(nsReader, integ);
 
                 const std::string& uuid = integ.getUUID();
@@ -559,7 +547,7 @@ void CrudService::upsertResource(const cm::store::NamespaceId& nsId,
 
             case cm::store::ResourceType::KVDB:
             {
-                auto kvdb = kvdbFromDocument(document);
+                auto kvdb = kvdbFromDocument(resource, /*requireUUID:*/ false);
 
                 const std::string& uuid = kvdb.getUUID();
                 const std::string& name = kvdb.getName();
@@ -579,14 +567,13 @@ void CrudService::upsertResource(const cm::store::NamespaceId& nsId,
             case cm::store::ResourceType::OUTPUT:
             case cm::store::ResourceType::FILTER:
             {
-                json::Json assetJson = parsePayloadAuto(document);
-                auto adaptedPayload = [&assetJson, type]() -> json::Json
+                auto adaptedPayload = [&resource, type]() -> json::Json
                 {
                     switch (type)
                     {
-                        case cm::store::ResourceType::DECODER: return cm::store::detail::adaptDecoder(assetJson);
-                        case cm::store::ResourceType::FILTER: return cm::store::detail::adaptFilter(assetJson);
-                        case cm::store::ResourceType::OUTPUT: return cm::store::detail::adaptOutput(assetJson);
+                        case cm::store::ResourceType::DECODER: return cm::store::detail::adaptDecoder(resource);
+                        case cm::store::ResourceType::FILTER: return cm::store::detail::adaptFilter(resource);
+                        case cm::store::ResourceType::OUTPUT: return cm::store::detail::adaptOutput(resource);
                     }
                     __builtin_unreachable();
                 }();

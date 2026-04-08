@@ -1,4 +1,5 @@
 #include <eMessages/crud.pb.h>
+#include <eMessages/eMessage.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -163,7 +164,12 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 eContent::policyPost_Request protoReq;
                 protoReq.set_space("draft");
-                protoReq.set_ymlcontent(R"({"policy":"test"})");
+                auto structOrErr = eMessage::eMessageFromJson<google::protobuf::Struct>(R"({"policy":"test"})");
+                if (std::holds_alternative<base::Error>(structOrErr))
+                {
+                    throw std::runtime_error(std::get<base::Error>(structOrErr).message);
+                }
+                protoReq.mutable_jsoncontent()->CopyFrom(std::get<google::protobuf::Struct>(structOrErr));
                 return createRequest<eContent::policyPost_Request>(protoReq);
             },
             [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return policyUpsert(crud); },
@@ -299,7 +305,13 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 eContent::resourceGet_Response protoRes;
                 protoRes.set_status(eEngine::ReturnStatus::OK);
-                protoRes.set_content(R"({"id":"uuid-1","name":"decoder/test"})");
+                auto structOrErr =
+                    eMessage::eMessageFromJson<google::protobuf::Struct>(R"({"id":"uuid-1","name":"decoder/test"})");
+                if (std::holds_alternative<base::Error>(structOrErr))
+                {
+                    throw std::runtime_error(std::get<base::Error>(structOrErr).message);
+                }
+                protoRes.mutable_jsoncontent()->CopyFrom(std::get<google::protobuf::Struct>(structOrErr));
                 return userResponse<eContent::resourceGet_Response>(protoRes);
             },
             [](auto& mock)
@@ -308,7 +320,7 @@ INSTANTIATE_TEST_SUITE_P(
                             getResourceByUUID(::testing::Truly([](const cm::store::NamespaceId& nsId)
                                                                { return nsId.toStr() == "draft"; }),
                                               "uuid-1"))
-                    .WillOnce(::testing::Return(R"({"id":"uuid-1","name":"decoder/test"})"));
+                    .WillOnce(::testing::Return(json::Json {R"({"id":"uuid-1","name":"decoder/test"})"}));
             }),
         // Wrong request type
         CmCrudHandlerT(
@@ -333,7 +345,13 @@ INSTANTIATE_TEST_SUITE_P(
                 eContent::resourcePost_Request protoReq;
                 protoReq.set_space("draft");
                 protoReq.set_type("decoder");
-                protoReq.set_ymlcontent(R"({"name":"decoder/test","id":"11111111-1111-4111-8111-111111111111"})");
+                auto structOrErr = eMessage::eMessageFromJson<google::protobuf::Struct>(
+                    R"({"name":"decoder/test","id":"11111111-1111-4111-8111-111111111111"})");
+                if (std::holds_alternative<base::Error>(structOrErr))
+                {
+                    throw std::runtime_error(std::get<base::Error>(structOrErr).message);
+                }
+                protoReq.mutable_jsoncontent()->CopyFrom(std::get<google::protobuf::Struct>(structOrErr));
                 return createRequest<eContent::resourcePost_Request>(protoReq);
             },
             [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceUpsert(crud); },

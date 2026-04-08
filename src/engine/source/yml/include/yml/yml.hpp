@@ -1,7 +1,6 @@
 #ifndef _YML_H
 #define _YML_H
 
-#include <base/json.hpp>
 #include <iostream>
 
 #include <rapidjson/document.h>

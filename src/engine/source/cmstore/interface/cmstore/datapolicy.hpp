@@ -62,28 +62,9 @@ constexpr std::string_view PATH_KEY_HASH = "/hash";
 constexpr std::string_view PATH_KEY_INDEX_DISCARDED_EVENTS = "/index_discarded_events";
 constexpr std::string_view PATH_KEY_CLEANUP_DECODER_VARIABLES = "/cleanup_decoder_variables";
 
-} // namespace jsonpolicy
-
-namespace
-{
 constexpr std::string_view DEFAULT_ORIGIN_SPACE = "UNDEFINED"; ///< Default origin space when not specified
 
-inline void validateOriginSpace(std::string_view originSpace)
-{
-    if (originSpace.empty())
-    {
-        throw std::runtime_error("origin_space cannot be empty");
-    }
-
-    if (!std::regex_match(originSpace.begin(), originSpace.end(), std::regex("^[a-zA-Z0-9_-]+$")))
-    {
-        throw std::runtime_error(fmt::format(
-            "'origin_space' contains invalid characters: '{}'. Only alphanumeric, hyphens and underscores are "
-            "allowed.",
-            originSpace));
-    }
-}
-} // namespace
+} // namespace jsonpolicy
 
 /**
  * @brief Policy class representing a policy in wazuh-engine
@@ -106,6 +87,17 @@ private:
     bool m_indexUnclassifiedEvents; ///< Flag indicating whether to index unclassified events
     bool m_indexDiscardedEvents;    ///< Flag to control discarded event indexing
     bool m_cleanupDecoderVariables; ///< Flag to control cleanup of temporary decoder variables
+
+    void validateOriginSpace(std::string_view value) const
+    {
+        if (!std::regex_match(value.begin(), value.end(), std::regex("^[a-zA-Z0-9_-]+$")))
+        {
+            throw std::runtime_error(fmt::format(
+                "'origin_space' contains invalid characters: '{}'. Only alphanumeric, hyphens and underscores are "
+                "allowed.",
+                value));
+        }
+    }
 
 public:
     ~Policy() = default;
@@ -139,6 +131,10 @@ public:
         cm::store::detail::findDuplicateOrInvalidUUID(m_integrations, "Integration");
         cm::store::detail::findDuplicateOrInvalidUUID(m_outputs, "Output");
         cm::store::detail::findDuplicateOrInvalidUUID(m_filters, "Filter");
+        if (m_originSpace != DEFAULT_ORIGIN_SPACE)
+        {
+            validateOriginSpace(m_originSpace);
+        }
     }
 
     // Dumper and loader
@@ -294,8 +290,7 @@ public:
                 return std::string(DEFAULT_ORIGIN_SPACE);
             }
 
-            validateOriginSpace(originSpaceOpt.value());
-            return originSpaceOpt.value();
+            return originSpace;
         }();
 
         auto policyHash = [&]() -> std::string

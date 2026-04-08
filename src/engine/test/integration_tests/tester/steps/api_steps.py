@@ -76,6 +76,10 @@ def send_recv(request, expected_response_type) -> Tuple[Optional[str], object, d
     return None, parsed, raw_output
 
 
+def _set_json_content(req, payload: str):
+    req.jsonContent.CopyFrom(ParseDict(json.loads(payload), Struct()))
+
+
 # ===================================================================
 #  CMCRUD helpers (policy only)
 # ===================================================================
@@ -103,7 +107,7 @@ def build_policy_json(default_parent: str, root_decoder: str, integration_uuids)
 def cm_policy_upsert(space: str, payload: str):
     req = api_crud.policyPost_Request()
     req.space = space
-    req.ymlContent = payload
+    _set_json_content(req, payload)
     err, resp, _ = send_recv(req, api_engine.GenericStatus_Response())
     assert err is None, f"Error upserting policy in '{space}': {err}"
     assert resp.status == api_engine.OK, f"{resp}"

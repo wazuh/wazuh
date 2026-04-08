@@ -1,3 +1,4 @@
+import json
 import sys
 from api_communication.client import APIClient
 import api_communication.proto.crud_pb2 as crud
@@ -20,7 +21,7 @@ def run(args):
         if error:
             sys.exit(f'Error getting asset or collection: {error}')
 
-        print(response['content'])
+        print(json.dumps(response['jsonContent'], indent=4))
 
     except Exception as e:
         sys.exit(f'Error getting asset or collection: {e}')

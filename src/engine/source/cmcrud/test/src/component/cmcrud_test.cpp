@@ -108,6 +108,11 @@ static constexpr const char* kDecoderJson = R"({
   ]
 })";
 
+json::Json makeJsonPayload(const char* raw)
+{
+    return json::Json {raw};
+}
+
 // ---------------------------------------------------------------------
 // Helper: build a CrudService + MockValidator + Mock store
 // ---------------------------------------------------------------------
@@ -146,7 +151,7 @@ TEST(CrudService_Component, UpsertPolicy_Success_EndToEnd)
     EXPECT_CALL(*stack.validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
     EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
 
-    EXPECT_NO_THROW(stack.service.upsertPolicy(nsId, kPolicyJson));
+    EXPECT_NO_THROW(stack.service.upsertPolicy(nsId, makeJsonPayload(kPolicyJson)));
 }
 
 // ---------------------------------------------------------------------
@@ -174,7 +179,7 @@ TEST(CrudService_Component, UpsertPolicy_BuilderErrorIsPropagated)
 
     try
     {
-        stack.service.upsertPolicy(nsId, kPolicyJson);
+        stack.service.upsertPolicy(nsId, makeJsonPayload(kPolicyJson));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
@@ -209,7 +214,7 @@ TEST(CrudService_Component, UpsertIntegration_Success_EndToEnd)
     EXPECT_CALL(*nsPtr, createResource("windows", ResourceType::INTEGRATION, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    EXPECT_NO_THROW(stack.service.upsertResource(nsId, ResourceType::INTEGRATION, kIntegrationJson));
+    EXPECT_NO_THROW(stack.service.upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson)));
 }
 
 // ---------------------------------------------------------------------
@@ -239,7 +244,7 @@ TEST(CrudService_Component, UpsertIntegration_BuilderErrorIsPropagated)
 
     try
     {
-        stack.service.upsertResource(nsId, ResourceType::INTEGRATION, kIntegrationJson);
+        stack.service.upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
@@ -271,7 +276,7 @@ TEST(CrudService_Component, UpsertKVDB_Success_EndToEnd)
     EXPECT_CALL(*nsPtr, createResource("windows_kerberos_status_code_to_code_name", ResourceType::KVDB, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    EXPECT_NO_THROW(stack.service.upsertResource(nsId, ResourceType::KVDB, kKVDBJson));
+    EXPECT_NO_THROW(stack.service.upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kKVDBJson)));
 }
 
 // ---------------------------------------------------------------------
@@ -301,7 +306,7 @@ TEST(CrudService_Component, UpsertDecoder_BuilderAssetErrorIsPropagated)
 
     try
     {
-        stack.service.upsertResource(nsId, ResourceType::DECODER, kDecoderJson);
+        stack.service.upsertResource(nsId, ResourceType::DECODER, makeJsonPayload(kDecoderJson));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
@@ -336,7 +341,7 @@ TEST(CrudService_Component, UpsertDecoder_Success_CreateByName)
     EXPECT_CALL(*nsPtr, createResource("decoder/syslog/0", ResourceType::DECODER, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByName(_, _, _)).Times(0);
 
-    EXPECT_NO_THROW(stack.service.upsertResource(nsId, ResourceType::DECODER, kDecoderJson));
+    EXPECT_NO_THROW(stack.service.upsertResource(nsId, ResourceType::DECODER, makeJsonPayload(kDecoderJson)));
 }
 
 TEST(CrudService_Component, UpsertDecoder_Success_UpdateByName)
@@ -359,7 +364,7 @@ TEST(CrudService_Component, UpsertDecoder_Success_UpdateByName)
     EXPECT_CALL(*nsPtr, updateResourceByName("decoder/syslog/0", ResourceType::DECODER, _)).Times(1);
     EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
 
-    EXPECT_NO_THROW(stack.service.upsertResource(nsId, ResourceType::DECODER, kDecoderJson));
+    EXPECT_NO_THROW(stack.service.upsertResource(nsId, ResourceType::DECODER, makeJsonPayload(kDecoderJson)));
 }
 
 // ---------------------------------------------------------------------
@@ -398,7 +403,7 @@ TEST(CrudService_Component, UpsertKVDB_ContentNotObject_Throws_NoMutation)
 
     try
     {
-        stack.service.upsertResource(nsId, ResourceType::KVDB, kBadKvdbYaml);
+        stack.service.upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kBadKvdbYaml));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
@@ -438,7 +443,7 @@ TEST(CrudService_Component, UpsertKVDB_InvalidUUID_Throws_NoMutation)
 
     try
     {
-        stack.service.upsertResource(nsId, ResourceType::KVDB, kBadKvdbUuidYaml);
+        stack.service.upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kBadKvdbUuidYaml));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
@@ -479,7 +484,7 @@ TEST(CrudService_Component, UpsertIntegration_InvalidCategory_Throws_NoValidator
 
     try
     {
-        stack.service.upsertResource(nsId, ResourceType::INTEGRATION, kBadCategoryIntegrationYaml);
+        stack.service.upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kBadCategoryIntegrationYaml));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
@@ -517,7 +522,9 @@ TEST(CrudService_Component, UpsertIntegration_InvalidDecoderUUID_Throws_NoValida
 
     try
     {
-        stack.service.upsertResource(nsId, ResourceType::INTEGRATION, kBadDecoderUuidIntegrationYaml);
+        stack.service.upsertResource(nsId,
+                                     ResourceType::INTEGRATION,
+                                     makeJsonPayload(kBadDecoderUuidIntegrationYaml));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
@@ -554,7 +561,7 @@ TEST(CrudService_Component, UpsertIntegration_InvalidKVDBUUID_Throws_NoValidator
 
     try
     {
-        stack.service.upsertResource(nsId, ResourceType::INTEGRATION, kBadKvdbUuidIntegrationYaml);
+        stack.service.upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kBadKvdbUuidIntegrationYaml));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)

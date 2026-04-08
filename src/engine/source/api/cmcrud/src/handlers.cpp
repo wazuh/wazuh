@@ -21,7 +21,6 @@ namespace eEngine = ::com::wazuh::api::engine;
 
 // Error messages
 constexpr auto MESSAGE_SPACE_REQUIRED = "Field /space cannot be empty";
-constexpr auto MESSAGE_YML_REQUIRED = "Field /ymlContent cannot be empty";
 constexpr auto MESSAGE_JSON_REQUIRED = "Field /jsonContent cannot be empty";
 constexpr auto MESSAGE_UUID_REQUIRED = "Field /uuid cannot be empty";
 constexpr auto MESSAGE_TYPE_REQUIRED = "Field /type is required";
@@ -233,16 +232,31 @@ adapter::RouteHandler policyUpsert(std::shared_ptr<cm::crud::ICrudService> crud)
             return;
         }
 
-        if (protoReq.ymlcontent().empty())
+        if (!protoReq.has_jsoncontent())
         {
-            res = adapter::userErrorResponse<ResponseType>(MESSAGE_YML_REQUIRED);
+            res = adapter::userErrorResponse<ResponseType>(MESSAGE_JSON_REQUIRED);
+            return;
+        }
+
+        auto payloadOrErr = eMessage::eStructToJson(protoReq.jsoncontent());
+        if (std::holds_alternative<base::Error>(payloadOrErr))
+        {
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Content is not valid JSON object: {}", std::get<base::Error>(payloadOrErr).message));
+            return;
+        }
+
+        const auto& payload = std::get<json::Json>(payloadOrErr);
+        if (!payload.isObject())
+        {
+            res = adapter::userErrorResponse<ResponseType>("Payload top-level must be an object");
             return;
         }
 
         try
         {
             const cm::store::NamespaceId nsId {protoReq.space()};
-            service->upsertPolicy(nsId, protoReq.ymlcontent());
+            service->upsertPolicy(nsId, payload);
         }
         catch (const std::exception& ex)
         {
@@ -680,7 +694,14 @@ adapter::RouteHandler resourceGet(std::shared_ptr<cm::crud::ICrudService> crud)
         {
             const cm::store::NamespaceId nsId {protoReq.space()};
             const auto content = service->getResourceByUUID(nsId, protoReq.uuid());
-            eResponse.set_content(content);
+            auto structOrErr = eMessage::eMessageFromJson<google::protobuf::Struct>(content.str());
+            if (std::holds_alternative<base::Error>(structOrErr))
+            {
+                throw std::runtime_error(fmt::format("Error converting resource JSON to protobuf Struct: {}",
+                                                     std::get<base::Error>(structOrErr).message));
+            }
+
+            *eResponse.mutable_jsoncontent() = std::get<google::protobuf::Struct>(structOrErr);
             eResponse.set_status(eEngine::ReturnStatus::OK);
             res = adapter::userResponse(eResponse);
         }
@@ -725,9 +746,9 @@ adapter::RouteHandler resourceUpsert(std::shared_ptr<cm::crud::ICrudService> cru
             return;
         }
 
-        if (protoReq.ymlcontent().empty())
+        if (!protoReq.has_jsoncontent())
         {
-            res = adapter::userErrorResponse<ResponseType>(MESSAGE_YML_REQUIRED);
+            res = adapter::userErrorResponse<ResponseType>(MESSAGE_JSON_REQUIRED);
             return;
         }
 
@@ -738,10 +759,25 @@ adapter::RouteHandler resourceUpsert(std::shared_ptr<cm::crud::ICrudService> cru
             return;
         }
 
+        auto payloadOrErr = eMessage::eStructToJson(protoReq.jsoncontent());
+        if (std::holds_alternative<base::Error>(payloadOrErr))
+        {
+            res = adapter::userErrorResponse<ResponseType>(
+                fmt::format("Content is not valid JSON object: {}", std::get<base::Error>(payloadOrErr).message));
+            return;
+        }
+
+        const auto& payload = std::get<json::Json>(payloadOrErr);
+        if (!payload.isObject())
+        {
+            res = adapter::userErrorResponse<ResponseType>("Payload top-level must be an object");
+            return;
+        }
+
         try
         {
             const cm::store::NamespaceId nsId {protoReq.space()};
-            service->upsertResource(nsId, rType, protoReq.ymlcontent());
+            service->upsertResource(nsId, rType, payload);
         }
         catch (const std::exception& ex)
         {

@@ -85,8 +85,8 @@ message namespaceImport_Request
  **************************************************/
 message policyPost_Request
 {
-    string space = 1;      // Namespace name (draft, testing, custom, wazuh)
-    string ymlContent = 2; // Policy payload as YAML string
+    string space = 1;                       // Namespace name (draft, testing, custom, wazuh)
+    google.protobuf.Struct jsonContent = 2; // Policy payload as JSON object
 }
 // message policyPost_Response -> Return a GenericStatus_Response
 
@@ -141,7 +141,7 @@ message resourceList_Response
 }
 
 /***************************************************
- * Get a resource YAML by UUID
+ * Get a resource JSON by UUID
  *
  * endpoint: POST /_internal/content/get
  *
@@ -155,9 +155,9 @@ message resourceGet_Request
 
 message resourceGet_Response
 {
-    ReturnStatus status = 1;     // Status of the query
-    optional string error = 2;   // Error message if status is ERROR
-    optional string content = 3; // JSON representation of the resource (asset/integration/kvdb)
+    ReturnStatus status = 1;                // Status of the query
+    optional string error = 2;              // Error message if status is ERROR
+    google.protobuf.Struct jsonContent = 3; // JSON representation of the resource (asset/integration/kvdb)
 }
 
 /***************************************************
@@ -169,9 +169,9 @@ message resourceGet_Response
  **************************************************/
 message resourcePost_Request
 {
-    string space = 1;      // Namespace name (must be writable, e.g. draft)
-    string type = 2;       // "decoder" | "output" | "filter" | "integration" | "kvdb"
-    string ymlContent = 3; // Raw YAML payload of the resource
+    string space = 1;                       // Namespace name (must be writable, e.g. draft)
+    string type = 2;                        // "decoder" | "output" | "filter" | "integration" | "kvdb"
+    google.protobuf.Struct jsonContent = 3; // Resource payload as JSON object
 }
 // message resourcePost_Response -> Return a GenericStatus_Response
 

@@ -1,7 +1,10 @@
 import sys
+from google.protobuf.json_format import Parse
 from api_communication.client import APIClient
 import api_communication.proto.engine_pb2 as engine
 import api_communication.proto.crud_pb2 as crud
+
+from shared.payloads import load_json_content
 
 
 def run(args):
@@ -18,7 +21,10 @@ def run(args):
     if not content:
         content = sys.stdin.read()
 
-    req.ymlContent = content
+    try:
+        Parse(load_json_content(content), req.mutable_jsonContent())
+    except Exception as e:
+        sys.exit(f'Error upserting resource: {e}')
 
     # Create the api request
     try:
@@ -42,7 +48,7 @@ def configure(subparsers):
                                help=f'Type of resource to upsert.')
 
     parser_upsert.add_argument('-c', '--content', type=str, default='',
-                               help='JSON content of the item, can be passed as argument or '
+                               help='YAML or JSON content of the item, can be passed as argument or '
                                'redirected from a file using the "|" operator or the "<" '
                                'operator.')
 

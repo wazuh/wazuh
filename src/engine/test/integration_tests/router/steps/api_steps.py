@@ -7,6 +7,7 @@ from typing import Optional, Tuple
 
 from behave import given, when, then
 from google.protobuf.json_format import ParseDict
+from google.protobuf.struct_pb2 import Struct
 
 from api_communication.client import APIClient
 from api_communication.proto import router_pb2 as api_router
@@ -54,6 +55,10 @@ def send_recv(request, expected_response_type) -> Tuple[Optional[str], object]:
     return None, parsed
 
 
+def _set_json_content(req, payload: str):
+    req.jsonContent.CopyFrom(ParseDict(json.loads(payload), Struct()))
+
+
 # ===================================================================
 #  CMCRUD helpers: policy and filter
 # ===================================================================
@@ -80,7 +85,7 @@ def build_policy_json(default_parent: str, root_decoder: str, integration_uuids)
 def cm_policy_upsert(space: str, payload: str):
     req = api_crud.policyPost_Request()
     req.space = space
-    req.ymlContent = payload
+    _set_json_content(req, payload)
     err, resp = send_recv(req, api_engine.GenericStatus_Response())
     assert err is None, f"Error upserting policy in '{space}': {err}"
     assert resp.status == api_engine.OK, f"{resp}"

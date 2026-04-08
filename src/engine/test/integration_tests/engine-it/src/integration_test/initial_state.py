@@ -7,6 +7,7 @@ from typing import Optional
 from datetime import datetime, timezone
 
 from google.protobuf.json_format import ParseDict
+from google.protobuf.struct_pb2 import Struct
 
 from engine_handler.handler import EngineHandler
 from shared.default_settings import Constants
@@ -72,6 +73,10 @@ def send_recv(api_client: APIClient, request, expected_response):
     if status == api_engine.ERROR:
         raise RuntimeError(f"Engine API returned ERROR: {parsed.error}")
     return parsed
+
+
+def _set_json_content(req, payload: str):
+    req.jsonContent.CopyFrom(ParseDict(json.loads(payload), Struct()))
 
 
 def md5_file(path: Path) -> str:
@@ -297,7 +302,7 @@ def init_cm_resources(api_client: APIClient):
         req = api_crud.resourcePost_Request()
         req.space = POLICY_NS
         req.type = "decoder"
-        req.ymlContent = payload
+        _set_json_content(req, payload)
         send_recv(api_client, req, api_engine.GenericStatus_Response())
 
     # 3) Integrations
@@ -321,7 +326,7 @@ def init_cm_resources(api_client: APIClient):
         req = api_crud.resourcePost_Request()
         req.space = POLICY_NS
         req.type = "integration"
-        req.ymlContent = payload
+        _set_json_content(req, payload)
         send_recv(api_client, req, api_engine.GenericStatus_Response())
 
     print(f"CM initialized in namespace '{POLICY_NS}' with decoders and integrations.")

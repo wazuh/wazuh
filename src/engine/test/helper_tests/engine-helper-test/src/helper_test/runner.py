@@ -10,6 +10,7 @@ from typing import Optional
 
 from google.protobuf.json_format import MessageToJson, ParseDict
 from google.protobuf.message import Message
+from google.protobuf.struct_pb2 import Struct
 
 from api_communication.client import APIClient
 from api_communication.proto import crud_pb2 as api_crud
@@ -84,6 +85,10 @@ def load_yaml(file_path: str) -> dict:
             return yaml.safe_load(stream)
         except yaml.YAMLError as exc:
             raise Exception(f"Error loading YAML file: {exc}")
+
+
+def _set_json_content(req, payload: str):
+    req.jsonContent.CopyFrom(ParseDict(json.loads(payload), Struct()))
 
 
 # ===================================================================
@@ -393,7 +398,7 @@ def build_asset_request(asset: dict) -> api_crud.resourcePost_Request:
     req = api_crud.resourcePost_Request()
     req.space = POLICY_NS
     req.type = "decoder"
-    req.ymlContent = json.dumps(asset, separators=(",", ":"))
+    _set_json_content(req, json.dumps(asset, separators=(",", ":")))
     return req
 
 
@@ -470,7 +475,7 @@ def create_helpers_integration(api_client: APIClient):
     req = api_crud.resourcePost_Request()
     req.space = POLICY_NS
     req.type = "integration"
-    req.ymlContent = integration_json
+    _set_json_content(req, integration_json)
     response = send_recv(api_client, req, api_engine.GenericStatus_Response())
     assert response.status == api_engine.OK, f"{response.error}"
 
@@ -502,7 +507,7 @@ def create_policy(api_client: APIClient):
     )
     req = api_crud.policyPost_Request()
     req.space = POLICY_NS
-    req.ymlContent = policy_json
+    _set_json_content(req, policy_json)
     response = send_recv(api_client, req, api_engine.GenericStatus_Response())
     assert response.status == api_engine.OK, f"{response.error}"
 
@@ -588,8 +593,7 @@ def create_kvdb_resource(api_client: APIClient):
     req = api_crud.resourcePost_Request()
     req.space = POLICY_NS
     req.type = "kvdb"
-    # api_crud.resourcePost_Request currently receives JSON as string in ymlContent
-    req.ymlContent = json.dumps(kvdb_json, separators=(",", ":"))
+    _set_json_content(req, json.dumps(kvdb_json, separators=(",", ":")))
 
     response = send_recv(api_client, req, api_engine.GenericStatus_Response())
     assert response.status == api_engine.OK, f"{response.error}"

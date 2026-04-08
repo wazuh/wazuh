@@ -3,7 +3,8 @@ import json
 from typing import List
 
 from behave import given, when, then
-from google.protobuf.json_format import ParseDict
+from google.protobuf.json_format import MessageToDict, ParseDict
+from google.protobuf.struct_pb2 import Struct
 
 from api_communication.client import APIClient
 from api_communication.proto import crud_pb2 as api_crud
@@ -14,6 +15,12 @@ ENV_DIR = os.environ.get("ENV_DIR", "")
 SOCKET_PATH = ENV_DIR + "/queue/sockets/engine-api.socket"
 
 api_client = APIClient(SOCKET_PATH)
+
+
+def _set_json_content(req, payload: str):
+    if not payload:
+        return
+    req.jsonContent.CopyFrom(ParseDict(json.loads(payload), Struct()))
 
 # ============================================================
 # Constants for policy success tests
@@ -93,7 +100,7 @@ def request_resource_upsert(space: str, rtype: str, payload: str):
     req = api_crud.resourcePost_Request()
     req.space = space
     req.type = rtype
-    req.ymlContent = payload
+    _set_json_content(req, payload)
     return send_recv(req, api_engine.GenericStatus_Response())
 
 
@@ -236,7 +243,7 @@ def request_policy_upsert(space: str, payload: str):
     """
     req = api_crud.policyPost_Request()
     req.space = space
-    req.ymlContent = payload
+    _set_json_content(req, payload)
     return send_recv(req, api_engine.GenericStatus_Response())
 
 
@@ -598,14 +605,12 @@ def step_impl(context, space):
     assert err is None, f"{err}"
     assert resp.status == api_engine.OK, f"{resp}"
 
-    # Parse the JSON content to verify the field exists
-    import json
-    content = json.loads(resp.content)
+    content = MessageToDict(resp.jsonContent, preserving_proto_field_name=True)
 
     # Check that normalize[0].map contains {"_test.updated": true}
-    assert "normalize" in content, f"Missing 'normalize' in response: {resp.content}"
-    assert len(content["normalize"]) > 0, f"Empty 'normalize' array: {resp.content}"
-    assert "map" in content["normalize"][0], f"Missing 'map' in normalize[0]: {resp.content}"
+    assert "normalize" in content, f"Missing 'normalize' in response: {content}"
+    assert len(content["normalize"]) > 0, f"Empty 'normalize' array: {content}"
+    assert "map" in content["normalize"][0], f"Missing 'map' in normalize[0]: {content}"
 
     # Find the _test.updated field in the map array
     map_items = content["normalize"][0]["map"]
@@ -616,7 +621,7 @@ def step_impl(context, space):
             found_updated = True
             break
 
-    assert found_updated, f"Field '_test.updated' not found in map: {resp.content}"
+    assert found_updated, f"Field '_test.updated' not found in map: {content}"
 
 
 # ============================================================
