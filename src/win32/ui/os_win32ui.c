@@ -328,12 +328,14 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
                         config_read(hwnd);
                         gen_server_info(hwnd);
 
-                        SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"Stopped");
-                        MessageBox(hwnd, "Agent stopped",
-                                   "Agent Stopped", MB_OK);
-                    } else {
-                        MessageBox(hwnd, "Agent already stopped",
-                                   "Agent Stopped", MB_OK);
+                        SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM) "Stopped");
+                        MessageBox(hwnd, "Agent stopped", "Agent Stopped", MB_OK);
+                    }
+                    else if (ret_code == -1) {
+                        MessageBox(hwnd, "Agent already stopped", "Agent Stopped", MB_OK);
+                    }
+                    else {
+                        MessageBox(hwnd, "Unable to stop agent", "Error -- Unable to Stop Agent", MB_OK);
                     }
                     break;
                 case UI_MENU_MANAGE_STATUS:
