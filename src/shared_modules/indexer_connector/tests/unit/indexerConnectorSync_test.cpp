@@ -221,16 +221,14 @@ TEST_F(IndexerConnectorSyncTest, HandleError413PayloadTooLarge)
 
 TEST_F(IndexerConnectorSyncTest, HandleError409VersionConflict)
 {
-    int errorCallCount = 0;
-
     // Create and configure mock selector
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
-        .Times(AtLeast(2))
-        .WillRepeatedly(Invoke(
-            [this, &errorCallCount](auto requestParams, auto postParams, ConfigurationParameters)
+        .Times(1)
+        .WillOnce(Invoke(
+            [this](auto requestParams, auto postParams, ConfigurationParameters)
             {
                 this->callCount++;
 
@@ -246,49 +244,35 @@ TEST_F(IndexerConnectorSyncTest, HandleError409VersionConflict)
                 }
                 this->receivedData.push_back(data);
 
-                if (errorCallCount == 0)
+                // Return 409 error - should throw exception instead of retrying
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    errorCallCount++;
-                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
-                    {
-                        std::get<TPostRequestParameters<const std::string&>>(postParams)
-                            .onError("Version Conflict", 409, "");
-                    }
-                    else
-                    {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams)
-                            .onError("Version Conflict", 409, "");
-                    }
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Version Conflict", 409, "");
                 }
                 else
                 {
-                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
-                    {
-                        std::get<TPostRequestParameters<const std::string&>>(postParams)
-                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
-                    }
-                    else
-                    {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams)
-                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
-                    }
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Version Conflict", 409, "");
                 }
             }));
 
     IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
     // Add data to force sending (using small bulk size)
-    EXPECT_NO_THROW({
-        for (int i = 0; i < 20; ++i)
+    // Now we expect an exception instead of retry
+    EXPECT_THROW(
         {
-            std::string id = "id" + std::to_string(i);
-            std::string data = R"({"field":"value)" + std::to_string(i) + R"("})";
-            connector.bulkIndex(id, "index1", data);
-        }
-    });
+            for (int i = 0; i < 20; ++i)
+            {
+                std::string id = "id" + std::to_string(i);
+                std::string data = R"({"field":"value)" + std::to_string(i) + R"("})";
+                connector.bulkIndex(id, "index1", data);
+            }
+        },
+        IndexerConnectorException);
 
-    // Verify that at least 2 calls were made (1 error + 1 success)
-    EXPECT_GE(callCount, 2);
+    // Verify that only 1 call was made (no retry)
+    EXPECT_EQ(callCount, 1);
 }
 
 TEST_F(IndexerConnectorSyncTest, HandleError429TooManyRequests)
@@ -993,13 +977,10 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError409VersionConflictWithRetr
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
-    std::promise<void> retryCompletedPromise;
-    std::future<void> retryCompletedFuture = retryCompletedPromise.get_future();
-
     int callCount = 0;
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
-        .Times(2) // Should retry once after 409 error
+        .Times(1) // Should throw exception, no retry
         .WillOnce(Invoke(
             [&callCount](RequestParamsVariant /*requestParams*/,
                          auto postParams,
@@ -1016,35 +997,14 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError409VersionConflictWithRetr
                     std::get<TPostRequestParameters<std::string&&>>(postParams)
                         .onError("Document version conflict", 409, "");
                 }
-            }))
-        .WillOnce(Invoke(
-            [&callCount, &retryCompletedPromise](RequestParamsVariant /*requestParams*/,
-                                                 auto postParams,
-                                                 const ConfigurationParameters& /*configParams*/)
-            {
-                callCount++;
-                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
-                {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
-                }
-                else
-                {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams)
-                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
-                }
-                retryCompletedPromise.set_value();
             }));
 
     IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
     connector.bulkIndex("test_id", "test_index", R"({"field":"value"})");
-    connector.flush();
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
 
-    auto status = retryCompletedFuture.wait_for(std::chrono::seconds(10));
-    ASSERT_EQ(status, std::future_status::ready) << "Timeout waiting for version conflict retry";
-
-    EXPECT_EQ(callCount, 2) << "Should have made exactly 2 calls (1 initial + 1 retry)";
+    EXPECT_EQ(callCount, 1) << "Should have made exactly 1 call (no retry on 409)";
 }
 
 // Test processBulkChunk error handling - 429 Too Many Requests with retry
@@ -1533,13 +1493,12 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413Then429ThenSuccess)
     std::atomic<int> callCount {0};
     std::atomic<bool> error413Called {false};
     std::atomic<bool> error429Called {false};
-    std::atomic<bool> error409Called {false};
     std::atomic<bool> successCalled {false};
     std::atomic<bool> finished {false};
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .WillRepeatedly(Invoke(
-            [&callCount, &error413Called, &error429Called, &error409Called, &successCalled, &finished](
+            [&callCount, &error413Called, &error429Called, &successCalled, &finished](
                 RequestParamsVariant /*requestParams*/,
                 auto postParams,
                 const ConfigurationParameters& /*configParams*/)
@@ -1571,20 +1530,6 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413Then429ThenSuccess)
                     {
                         std::get<TPostRequestParameters<std::string&&>>(postParams)
                             .onError("Too Many Requests", 429, "");
-                    }
-                }
-                else if (callCount == 3)
-                {
-                    error409Called = true;
-                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
-                    {
-                        std::get<TPostRequestParameters<const std::string&>>(postParams)
-                            .onError("Document version conflict", 409, "");
-                    }
-                    else
-                    {
-                        std::get<TPostRequestParameters<std::string&&>>(postParams)
-                            .onError("Document version conflict", 409, "");
                     }
                 }
                 else
@@ -1619,9 +1564,8 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError413Then429ThenSuccess)
 
     EXPECT_TRUE(error413Called.load()) << "Error 413 should have been called";
     EXPECT_TRUE(error429Called.load()) << "Error 429 should have been called";
-    EXPECT_TRUE(error409Called.load()) << "Error 409 should have been called";
     EXPECT_TRUE(successCalled.load()) << "Success should have been called";
-    EXPECT_GE(callCount.load(), 4) << "Should have made at least 4 calls";
+    EXPECT_GE(callCount.load(), 3) << "Should have made at least 3 calls (413, 429, success)";
     EXPECT_TRUE(finished.load()) << "Test did not finish in time (possible infinite retry)";
 }
 
@@ -2052,6 +1996,7 @@ TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQuerySuccess)
 
     // Call the generic function
     EXPECT_NO_THROW(connector.executeUpdateByQuery(indices, updateQuery));
+    connector.invokePendingCallbacks();
 
     // Verify the request was made
     EXPECT_EQ(callCount, 1);
@@ -2107,7 +2052,7 @@ TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQueryError)
     EXPECT_FALSE(notifyCalled) << "Notify callback should not have been called on error";
 }
 
-// Test with version conflict retry
+// Test with version conflict - should throw exception
 TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQueryWithRetry)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
@@ -2117,15 +2062,12 @@ TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQueryWithRetry)
 
     std::vector<std::string> indices = {"wazuh-states-sca"};
     bool notifyCalled = false;
-    int attempts = 0;
 
-    // First call fails with version conflict, second succeeds
+    // Call fails with version conflict
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
-        .Times(2)
         .WillOnce(Invoke(
-            [&attempts](auto requestParams, const auto& postParams, auto /*configParams*/)
+            [](auto requestParams, const auto& postParams, auto /*configParams*/)
             {
-                attempts++;
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
                     std::string url;
@@ -2133,12 +2075,6 @@ TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQueryWithRetry)
                     std::get<TPostRequestParameters<const std::string&>>(postParams)
                         .onError(url, 409, "Version conflict");
                 }
-            }))
-        .WillOnce(Invoke(
-            [this, &attempts](auto requestParams, const auto& postParams, auto configParams)
-            {
-                attempts++;
-                this->simulateSuccessfulPost(requestParams, postParams, configParams);
             }));
 
     connector.registerNotify([&notifyCalled]() { notifyCalled = true; });
@@ -2149,11 +2085,10 @@ TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQueryWithRetry)
     updateQuery["script"]["source"] = "ctx._source.groups = params.groups";
     updateQuery["script"]["params"]["groups"] = std::vector<std::string> {"default"};
 
-    // Call should succeed after retry
-    EXPECT_NO_THROW(connector.executeUpdateByQuery(indices, updateQuery));
+    // Call should throw exception on version conflict
+    EXPECT_THROW(connector.executeUpdateByQuery(indices, updateQuery), IndexerConnectorException);
 
-    EXPECT_EQ(attempts, 2) << "Should have retried once";
-    EXPECT_TRUE(notifyCalled) << "Notify callback should have been called after successful retry";
+    EXPECT_FALSE(notifyCalled) << "Notify callback should not have been called on error";
 }
 
 TEST_F(IndexerConnectorSyncTest, ExecuteSearchQuerySuccess)
