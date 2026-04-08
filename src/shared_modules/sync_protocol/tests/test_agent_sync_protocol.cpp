@@ -461,7 +461,10 @@ TEST_F(AgentSyncProtocolTest, SendStartWaitsUntilMetadataAvailable)
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger,
@@ -521,7 +524,10 @@ TEST_F(AgentSyncProtocolTest, SendStartAbortedOnStopWhileWaitingForMetadata)
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger,
@@ -5670,7 +5676,10 @@ TEST_F(AgentSyncProtocolTest, EndMessageRetryExhaustionDuringStopLogsInfo)
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     std::vector<std::pair<modules_log_level_t, std::string>> capturedLogs;
@@ -5682,9 +5691,9 @@ TEST_F(AgentSyncProtocolTest, EndMessageRetryExhaustionDuringStopLogsInfo)
     // syncEndDelay=0 so End is sent immediately after data, giving stop() time to be
     // called before the retry loop finishes.
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger,
-               std::chrono::seconds(0),
-               std::chrono::seconds(min_timeout),
-               retries, maxEps, mockQueue);
+                                                   std::chrono::seconds(0),
+                                                   std::chrono::seconds(min_timeout),
+                                                   retries, maxEps, mockQueue);
 
     std::vector<PersistedData> testData =
     {
@@ -5725,7 +5734,7 @@ TEST_F(AgentSyncProtocolTest, EndMessageRetryExhaustionDuringStopLogsInfo)
 
     // The "retries exhausted" message must be logged at INFO, not ERROR.
     auto it = std::find_if(capturedLogs.begin(), capturedLogs.end(),
-    [](const std::pair<modules_log_level_t, std::string>& entry)
+                           [](const std::pair<modules_log_level_t, std::string>& entry)
     {
         return entry.second.find("retries exhausted") != std::string::npos;
     });

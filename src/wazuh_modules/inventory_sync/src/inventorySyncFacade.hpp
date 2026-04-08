@@ -212,7 +212,9 @@ class InventorySyncFacadeImpl final
             for (const auto* dataValue : *dataBatch->values())
             {
                 if (!dataValue)
+                {
                     continue;
+                }
 
                 if (auto it = m_agentSessions.find(dataValue->session()); it == m_agentSessions.end())
                 {
@@ -225,14 +227,13 @@ class InventorySyncFacadeImpl final
                     // Re-serialize each DataValue as a standalone Message{DataValue} FlatBuffer.
                     // RocksDB consumers (indexer) expect individual DataValue messages per key.
                     flatbuffers::FlatBufferBuilder dvBuilder;
-                    auto idStr = dataValue->id() ? dvBuilder.CreateString(dataValue->id())
-                                                 : dvBuilder.CreateString("");
-                    auto idxStr = dataValue->index() ? dvBuilder.CreateString(dataValue->index())
-                                                     : dvBuilder.CreateString("");
-                    auto dataVec =
-                        dataValue->data()
-                            ? dvBuilder.CreateVector(dataValue->data()->data(), dataValue->data()->size())
-                            : dvBuilder.CreateVector<int8_t>({});
+                    const auto* idRaw = dataValue->id();
+                    const auto* idxRaw = dataValue->index();
+                    const auto* dataRaw = dataValue->data();
+                    auto idStr = dvBuilder.CreateString(idRaw ? idRaw->string_view() : std::string_view {});
+                    auto idxStr = dvBuilder.CreateString(idxRaw ? idxRaw->string_view() : std::string_view {});
+                    auto dataVec = dataRaw ? dvBuilder.CreateVector(dataRaw->data(), dataRaw->size())
+                                           : dvBuilder.CreateVector<int8_t>({});
 
                     Wazuh::SyncSchema::DataValueBuilder dataValueBuilder(dvBuilder);
                     dataValueBuilder.add_seq(dataValue->seq());

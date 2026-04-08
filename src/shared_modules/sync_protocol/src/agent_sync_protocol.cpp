@@ -692,7 +692,7 @@ bool AgentSyncProtocol::sendDataMessages(uint64_t session,
 
             m_logger(LOG_DEBUG_VERBOSE,
                      std::string("Sending DataBatch with ") + std::to_string(batchOffsets.size()) +
-                         " DataValues (~" + std::to_string(batchEstimatedSize) + " bytes).");
+                     " DataValues (~" + std::to_string(batchEstimatedSize) + " bytes).");
 
             if (!sendFlatBufferMessageAsString(messageVector))
             {
@@ -727,7 +727,7 @@ bool AgentSyncProtocol::sendDataMessages(uint64_t session,
             auto idStr = batchBuilder.CreateString(item.id);
             auto idxStr = batchBuilder.CreateString(item.index);
             auto dataVec = batchBuilder.CreateVector(
-                reinterpret_cast<const int8_t*>(item.data.data()), item.data.size());
+                               reinterpret_cast<const int8_t*>(item.data.data()), item.data.size());
 
             Wazuh::SyncSchema::DataValueBuilder dataValueBuilder(batchBuilder);
             dataValueBuilder.add_seq(item.seq);
@@ -738,8 +738,8 @@ bool AgentSyncProtocol::sendDataMessages(uint64_t session,
 
             // Translate DB operation to Schema operation
             const auto protocolOperation = (item.operation == Operation::DELETE_)
-                                               ? Wazuh::SyncSchema::Operation::Delete
-                                               : Wazuh::SyncSchema::Operation::Upsert;
+                                           ? Wazuh::SyncSchema::Operation::Delete
+                                           : Wazuh::SyncSchema::Operation::Upsert;
             dataValueBuilder.add_operation(protocolOperation);
             dataValueBuilder.add_data(dataVec);
             batchOffsets.push_back(dataValueBuilder.Finish());
