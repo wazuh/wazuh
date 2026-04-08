@@ -284,7 +284,7 @@ paths:
         schema type. This applies to scalar types (e.g. `keyword`), numeric types, and object
         types such as `nested` (array of objects). Only one error is reported per invalid element.
 
-        `FLAT_OBJECT` fields are treated as opaque: their children are never visited.
+        `FLAT_OBJECT` and `GEO_POINT` fields are treated as opaque: their children are never visited.
 
         `result.validation` is only present when the schema validator is available and the
         pipeline produced an output event. If absent, no validation was performed.

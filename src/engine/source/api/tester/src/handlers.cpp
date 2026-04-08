@@ -255,7 +255,7 @@ bool classifyField(const std::string& schemaPath,
  *   - Empty known objects/arrays are valid.
  *   - Arrays reuse the same schemaPath for all items.
  *   - Nested arrays are reported as invalid_type.
- *   - FLAT_OBJECT fields are treated as opaque and their children are not validated.
+ *   - FLAT_OBJECT and GEO_POINT fields are treated as opaque and their children are not validated.
  */
 void collectOutputErrors(const json::Json& node,
                          const schemf::IValidator& schema,
@@ -290,7 +290,8 @@ void collectOutputErrors(const json::Json& node,
                     return;
                 }
 
-                if (schema.getType(dotPath) == schemf::Type::FLAT_OBJECT)
+                if (schema.getType(dotPath) == schemf::Type::FLAT_OBJECT
+                    || schema.getType(dotPath) == schemf::Type::GEO_POINT)
                 {
                     return;
                 }
