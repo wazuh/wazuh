@@ -27,12 +27,26 @@ constexpr auto FMT_IOC_MATCH_TRACE = "IOC({}) -> Success: IOC match found for fi
 constexpr auto FMT_IOC_NOT_FOUND_TRACE = "IOC({}) -> Failure: IOC key '{}' not found for field '{}'";
 constexpr auto FMT_IOC_SOURCE_MISSING_TRACE = "IOC({}) -> Failure: Source field(s) not found for '{}'";
 
+struct IocSourcePath
+{
+    std::string path;              // String form (for exists/getIntAsInt64/getDouble that take string_view)
+    json::PointerPath pp;          // Pre-built pointer (for getString)
+    json::PointerPath ppFirstElem; // Pre-built pointer to first array element path + "/0"
+
+    explicit IocSourcePath(std::string pathStr)
+        : path(std::move(pathStr))
+        , pp(path)
+        , ppFirstElem(path + "/0")
+    {
+    }
+};
+
 struct IocMappingConfig
 {
     std::string iocType;
     std::string dbName;
     std::string sourceFields;
-    std::vector<std::string> sourcePaths;
+    std::vector<IocSourcePath> sourcePaths;
     std::optional<std::string> commonParentPath;
 };
 
@@ -52,26 +66,26 @@ std::string getTopLevelParentPath(std::string_view jsonPointerPath)
     return std::string(jsonPointerPath.substr(0, nextSlashPos));
 }
 
-std::optional<std::string> readFieldAsString(base::Event event, std::string_view path)
+std::optional<std::string> readFieldAsString(base::Event event, const IocSourcePath& source)
 {
     // Try to read as string first, can be a string or an array of strings
     // In the latter case, we take the first element
     std::string stringValue;
-    if (event->getString(stringValue, path) == json::RetGet::Success
-        || event->getString(stringValue, std::string(path) + "/0") == json::RetGet::Success)
+    if (event->getString(stringValue, source.pp) == json::RetGet::Success
+        || event->getString(stringValue, source.ppFirstElem) == json::RetGet::Success)
     {
         return stringValue;
     }
 
     // If not a string, try to read as int64 and convert
-    auto intValue = event->getIntAsInt64(path);
+    auto intValue = event->getIntAsInt64(source.path);
     if (intValue.has_value())
     {
         return std::to_string(*intValue);
     }
 
     // Try to read as double and convert
-    auto doubleValue = event->getDouble(path);
+    auto doubleValue = event->getDouble(source.path);
     if (doubleValue.has_value())
     {
         return std::to_string(*doubleValue);
@@ -169,7 +183,7 @@ std::vector<IocMappingConfig> loadIocMappingConfigs(const json::Json& config, st
             cfg.sourceFields = fieldStr;
 
             const auto sourcePath = json::Json::formatJsonPath(fieldStr);
-            cfg.sourcePaths.push_back(sourcePath);
+            cfg.sourcePaths.emplace_back(sourcePath);
             cfg.commonParentPath = getTopLevelParentPath(sourcePath);
 
             configs.push_back(std::move(cfg));
@@ -208,8 +222,8 @@ std::vector<IocMappingConfig> loadIocMappingConfigs(const json::Json& config, st
             const auto ipPath = json::Json::formatJsonPath(ipFieldStr);
             const auto portPath = json::Json::formatJsonPath(portFieldStr);
 
-            cfg.sourcePaths.push_back(ipPath);
-            cfg.sourcePaths.push_back(portPath);
+            cfg.sourcePaths.emplace_back(ipPath);
+            cfg.sourcePaths.emplace_back(portPath);
 
             // Check for common parent
             const auto ipParent = getTopLevelParentPath(ipPath);

@@ -218,23 +218,26 @@ base::Expression getEachEnrichTerm(const std::shared_ptr<geo::ILocator>& cityLoc
     const json::PointerPath originIpPP(mappingConfig.originIpPath);
     const json::PointerPath originIpFirstPP(mappingConfig.originIpPath + "/0");
 
-    auto opFn = [cityLocator, asLocator, mappingConfig, trace, enrichmentApplied, originIpPP, originIpFirstPP](
+    /**
+     * @brief Lambda function to extract the source IP address from the event, supporting both single string and array
+     * formats.
+     */
+    const auto getIpFn = [originIpPP, originIpFirstPP](const base::Event& e) -> std::optional<std::string>
+    {
+        std::string ipStr;
+        if ((e->getString(ipStr, originIpPP) == json::RetGet::Success)
+            || e->getString(ipStr, originIpFirstPP) == json::RetGet::Success)
+        {
+            return ipStr;
+        }
+        return std::nullopt;
+    };
+
+    auto opFn = [cityLocator, asLocator, mappingConfig, trace, getIpFn, enrichmentApplied](
                     base::Event event) -> base::result::Result<base::Event>
     {
         // Get source IP, can be an string o a array of strings, in that case we take the first one.
-        const auto ipOpt = [&]() -> std::optional<std::string>
-        {
-            std::string ipStr;
-            if (event->getString(ipStr, originIpPP) == json::RetGet::Success)
-            {
-                return ipStr;
-            }
-            if (event->getString(ipStr, originIpFirstPP) == json::RetGet::Success)
-            {
-                return ipStr;
-            }
-            return std::nullopt;
-        }();
+        const auto ipOpt = getIpFn(event);
 
         if (!ipOpt.has_value())
         {

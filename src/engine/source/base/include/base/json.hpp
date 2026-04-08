@@ -30,7 +30,6 @@ private:
     rapidjson::Pointer m_pointer; ///< RapidJSON pointer object, used for JSON access. Initialized from m_path.
 
 public:
-
     /**
      * @brief Construct a new PointerPath object from a JSON pointer path string.
      * @param path The JSON pointer path string (e.g. "/a/b/c"). Must be a valid JSON pointer according to RFC 6901.
@@ -48,9 +47,13 @@ public:
     // Enable direct implicit conversion from const char* and std::string
     // (avoids the two-step implicit conversion: const char* -> string_view -> PointerPath)
     PointerPath(const char* path)
-        : PointerPath(std::string_view(path)) {}
+        : PointerPath(std::string_view(path))
+    {
+    }
     PointerPath(const std::string& path)
-        : PointerPath(std::string_view(path)) {}
+        : PointerPath(std::string_view(path))
+    {
+    }
 
     // Copy and move (rapidjson::Pointer is copyable)
     PointerPath(const PointerPath&) = default;
@@ -66,11 +69,11 @@ public:
 
 inline const PointerPath ROOT_PP {""}; ///< Constant PointerPath representing the root of the JSON document.
 
-
 /**
  * @brief Return type for get methods that output via reference parameter.
  */
-enum class RetGet {
+enum class RetGet
+{
     Success = 0, ///< The value was successfully retrieved and assigned to the output parameter.
     NotFound,    ///< The specified path was not found in the JSON document.
     WrongType    ///< The specified path was found but the value is not of the expected type.
