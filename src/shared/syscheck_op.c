@@ -1255,11 +1255,15 @@ void expand_wildcard_registers(char* entry, char** paths) {
 }
 
 char* get_subkey(char* key) {
+    if (key == NULL) {
+        return NULL;
+    }
+
     char* remaining_key = NULL;
     char* subkey        = NULL;
 
     char* separator = NULL;
-    if (key == NULL || (separator = strchr(key, '\\')) == NULL) {
+    if ((separator = strchr(key, '\\')) == NULL) {
         os_strdup("", remaining_key);
     } else {
         os_strdup(separator + 1, remaining_key);

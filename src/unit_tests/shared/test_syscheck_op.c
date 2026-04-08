@@ -4751,6 +4751,82 @@ void test_expand_wildcard_registers_invalid_path(void **state){
 
 }
 
+/* Regression tests for issue #4287 – dynamic allocation in registry wildcard expansion */
+
+/* get_subkey: key with no backslash separator (invalid format) must not crash
+ * and must return an empty string. */
+void test_get_subkey_no_backslash(void **state) {
+    char *result = get_subkey("HKEY_LOCAL_MACHINE*");
+    assert_string_equal(result, "");
+    os_free(result);
+}
+
+/* get_subkey: NULL key must not crash and must return an empty string. */
+void test_get_subkey_null(void **state) {
+    char *result = get_subkey(NULL);
+    assert_null(result);
+}
+
+/* get_subkey: subkey component longer than OS_SIZE_128 (128 bytes) must be
+ * returned without truncation thanks to dynamic allocation. */
+void test_get_subkey_long_subkey(void **state) {
+    /* Build "HKEY_LOCAL_MACHINE\\" + 130 A's + "\\*". The subkey part between
+     * the root key and the wildcard is 130 chars, which overflowed the old
+     * fixed OS_SIZE_128 buffer. */
+    char long_subkey[131];
+    memset(long_subkey, 'A', 130);
+    long_subkey[130] = '\0';
+
+    char entry[160];
+    snprintf(entry, sizeof(entry), "HKEY_LOCAL_MACHINE\\%s\\*", long_subkey);
+
+    char *result = get_subkey(entry);
+    assert_string_equal(result, long_subkey);
+    os_free(result);
+}
+
+/* w_expand_by_wildcard (via expand_wildcard_registers): when the concatenated
+ * result (first_part + query_key + second_part) exceeds 256 characters the
+ * function must allocate enough memory and produce the full path without
+ * truncation or an overflow. */
+void test_w_expand_by_wildcard_long_path_result(void **state) {
+    /* Build an entry where:
+     *   first_part  = "HKEY_LOCAL_MACHINE\\"         (19 chars)
+     *   query_key   = "BCD00000000"                  (11 chars, mocked)
+     *   second_part = "\\" + 240 A's                 (241 chars)
+     * Total path length = 19 + 11 + 241 = 271 chars > 256.
+     */
+    char long_tail[241];
+    memset(long_tail, 'A', 240);
+    long_tail[240] = '\0';
+
+    char entry[262];
+    snprintf(entry, sizeof(entry), "HKEY_LOCAL_MACHINE\\*\\%s", long_tail);
+
+    char expected[272];
+    snprintf(expected, sizeof(expected), "HKEY_LOCAL_MACHINE\\BCD00000000\\%s", long_tail);
+
+    char **paths = NULL;
+    os_calloc(OS_SIZE_1024, sizeof(char *), paths);
+    char **orig_paths = paths;
+
+    HKEY root_key = HKEY_LOCAL_MACHINE;
+    FILETIME last_write_time = { 0, 1000 };
+
+    expect_RegOpenKeyEx_call(root_key, "", 0, KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
+    expect_RegQueryInfoKey_call(1, 0, &last_write_time, ERROR_SUCCESS);
+    expect_RegEnumKeyEx_call("BCD00000000", 12, ERROR_SUCCESS);
+
+    expand_wildcard_registers(entry, paths);
+
+    assert_non_null(*orig_paths);
+    assert_true(strlen(*orig_paths) > 256);
+    assert_string_equal(*orig_paths, expected);
+
+    os_free(*orig_paths);
+    os_free(orig_paths);
+}
+
 #endif
 
 
@@ -5014,6 +5090,12 @@ int main(int argc, char *argv[]) {
         cmocka_unit_test(test_w_switch_root_key),
         cmocka_unit_test(test_expand_wildcard_registers_star_only),
         cmocka_unit_test(test_expand_wildcard_registers_invalid_path),
+
+        /* registry wildcard dynamic allocation tests */
+        cmocka_unit_test(test_get_subkey_no_backslash),
+        cmocka_unit_test(test_get_subkey_null),
+        cmocka_unit_test(test_get_subkey_long_subkey),
+        cmocka_unit_test(test_w_expand_by_wildcard_long_path_result),
 #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
