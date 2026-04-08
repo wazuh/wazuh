@@ -945,7 +945,7 @@ nlohmann::json Syscollector::ecsPortData(const nlohmann::json& originalData, boo
 {
     nlohmann::json ret;
 
-    setJsonField(ret, originalData, "/destination/ip", "destination_ip", createFields);
+    setJsonFieldArray(ret, originalData, "/destination/ip", "destination_ip", createFields);
     setJsonField(ret, originalData, "/destination/port", "destination_port", createFields);
 
     // LCOV_EXCL_START
@@ -985,7 +985,7 @@ nlohmann::json Syscollector::ecsPortData(const nlohmann::json& originalData, boo
     setJsonField(ret, originalData, "/network/transport", "network_transport", createFields);
     setJsonField(ret, originalData, "/process/name", "process_name", createFields);
     setJsonField(ret, originalData, "/process/pid", "process_pid", createFields);
-    setJsonField(ret, originalData, "/source/ip", "source_ip", createFields);
+    setJsonFieldArray(ret, originalData, "/source/ip", "source_ip", createFields);
     setJsonField(ret, originalData, "/source/port", "source_port", createFields);
 
     return ret;
@@ -1019,7 +1019,7 @@ nlohmann::json Syscollector::ecsNetworkProtocolData(const nlohmann::json& origin
 
     setJsonField(ret, originalData, "/interface/name", "interface_name", createFields);
     setJsonField(ret, originalData, "/network/dhcp", "network_dhcp", createFields, true);
-    setJsonField(ret, originalData, "/network/gateway", "network_gateway", createFields);
+    setJsonFieldArray(ret, originalData, "/network/gateway", "network_gateway", createFields);
 
     // LCOV_EXCL_START
     // Convert metric from string to integer for ECS compliance
@@ -1070,9 +1070,9 @@ nlohmann::json Syscollector::ecsNetworkAddressData(const nlohmann::json& origina
     nlohmann::json ret;
 
     setJsonField(ret, originalData, "/interface/name", "interface_name", createFields);
-    setJsonField(ret, originalData, "/network/broadcast", "network_broadcast", createFields);
-    setJsonField(ret, originalData, "/network/ip", "network_ip", createFields);
-    setJsonField(ret, originalData, "/network/netmask", "network_netmask", createFields);
+    setJsonFieldArray(ret, originalData, "/network/broadcast", "network_broadcast", createFields);
+    setJsonFieldArray(ret, originalData, "/network/ip", "network_ip", createFields);
+    setJsonFieldArray(ret, originalData, "/network/netmask", "network_netmask", createFields);
 
     // Convert network type from number to string for ECS compliance
     if (createFields || originalData.contains("network_type"))
