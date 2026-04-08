@@ -9,6 +9,7 @@ from wazuh.core import common
 from wazuh.core.agent import Agent
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.common import as_wazuh_object, WazuhJSONEncoder
+from wazuh.core.decorators import dapi_allower
 from wazuh.core.exception import WazuhError
 from wazuh.core.utils import filter_array_by_query
 
@@ -186,6 +187,7 @@ async def get_system_nodes():
         raise e
 
 
+@dapi_allower(is_async=True)
 async def get_node_ruleset_integrity(lc: local_client.LocalClient) -> dict:
     """Retrieve custom ruleset integrity.
 

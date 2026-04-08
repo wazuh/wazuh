@@ -23,7 +23,7 @@ integer_resources = ['user:id', 'role:id', 'rule:id', 'policy:id']
 
 def _expand_resource(resource: str) -> set:
     """Expand a specified resource depending on its type.
-    
+
     Parameters
     ----------
     resource : str
@@ -504,7 +504,7 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
             else:
                 return post_proc_func(result, original=original_kwargs, allowed=allow, target=target_params,
                                       add_denied=add_denied, **post_proc_kwargs)
-
+        wrapper.__wazuh_exposed__ = True
         return wrapper
 
     return decorator

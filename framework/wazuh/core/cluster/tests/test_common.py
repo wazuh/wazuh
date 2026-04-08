@@ -1731,16 +1731,45 @@ def test_wazuh_json_encoder_default():
 def test_as_wazuh_object_ok():
     """Test the different outputs taking into account the input values."""
 
-    # Test the first condition and nested if
-    assert cluster_common.as_wazuh_object({"__callable__": {"__name__": "type", "__wazuh__": "version"}}) == "server"
+    # Test the first condition - Wazuh methods without @dapi_allower must be blocked
+    with pytest.raises(exception.WazuhInternalError) as err:
+        cluster_common.as_wazuh_object({"__callable__": {"__name__": "to_dict", "__wazuh__": "version"}})
+    assert "is not exposed with @dapi_allower decorator" in str(err.value)
 
-    # Test the first condition and nested else
-    assert isinstance(
+    # Test the first condition - non-internal callable must be blocked
+    with pytest.raises(exception.WazuhInternalError) as err:
         cluster_common.as_wazuh_object({"__callable__": {"__name__": "path", "__qualname__": "__loader__.value",
-                                                         "__module__": "os"}}), str)
+                                                        "__module__": "os"}})
+    assert "Decoding callable from module" in str(err.value)
 
-    assert cluster_common.as_wazuh_object({"__callable__": {"__name__": "__name__", "__qualname__": "value",
-                                                            "__module__": "itertools"}}) == "itertools"
+    with pytest.raises(exception.WazuhInternalError) as err:
+        cluster_common.as_wazuh_object({"__callable__": {"__name__": "__name__", "__qualname__": "value",
+                                                        "__module__": "itertools"}})
+    assert "Decoding callable from module" in str(err.value)
+
+    # Test the first condition - non-exposed callables must be blocked (no @dapi_allower)
+    with pytest.raises(exception.WazuhInternalError) as err:
+        cluster_common.as_wazuh_object({"__callable__": {"__name__": "check_user",
+                                                         "__module__": "api.authentication",
+                                                         "__qualname__": "check_user",
+                                                         "__type__": "function"}})
+    assert "is not exposed with @dapi_allower decorator" in str(err.value)
+
+    with pytest.raises(exception.WazuhInternalError) as err:
+        cluster_common.as_wazuh_object({"__callable__": {"__name__": "get_node",
+                                                         "__module__": "wazuh.core.cluster.cluster",
+                                                         "__qualname__": "get_node",
+                                                         "__type__": "function"}})
+    assert "is not exposed with @dapi_allower decorator" in str(err.value)
+
+    # Test that functions with @dapi_allower decorator are allowed
+    func =  cluster_common.as_wazuh_object({"__callable__": {"__name__": "read_config_wrapper",
+                                                             "__module__": "wazuh.cluster",
+                                                             "__qualname__": "read_config_wrapper",
+                                                             "__type__": "function"}})
+    assert callable(func)
+    assert func.__module__ == "wazuh.cluster"
+    assert func.__name__ == "read_config_wrapper"
 
     # Test the second condition
     assert isinstance(cluster_common.as_wazuh_object(
