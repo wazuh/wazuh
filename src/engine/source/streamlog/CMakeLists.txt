@@ -25,8 +25,8 @@ target_link_libraries(streamlogger_streamlogger
     scheduler::ischeduler
     streamlogger::istreamlogger
     store::istore
-    PRIVATE
-    urlrequest
+    ZLIB::ZLIB
+    Minizip::Minizip
 )
 add_library(streamlogger::streamlogger ALIAS streamlogger_streamlogger)
 

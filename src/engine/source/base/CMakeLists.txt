@@ -34,6 +34,8 @@ target_link_libraries(base
     Threads::Threads
     OpenSSL::SSL
     OpenSSL::Crypto
+    ZLIB::ZLIB
+    Minizip::Minizip
     ${CMAKE_DL_LIBS}
 )
 

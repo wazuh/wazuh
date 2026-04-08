@@ -56,9 +56,9 @@
                 //    "name": "WAZUH_TZDB_FORCE_VERSION_UPDATE",
                 //    "value": "2024a"
                 //},
-                // Arcive
+                // Dumper
                 {
-                    "name": "WAZUH_ARCHIVER_ENABLED",
+                    "name": "WAZUH_DUMPER_ENABLED",
                     "value": "false"
                 },
                 {
