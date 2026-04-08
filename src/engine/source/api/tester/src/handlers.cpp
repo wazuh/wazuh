@@ -100,7 +100,7 @@ std::variant<std::string,json::Json> validatePublicMetadata(const json::Json& me
     }
 
     auto wazuhMetadataObject = metadataObj.getJson("/wazuh");
-    if (!wazuhMetadataObject.has_value())
+    if (!wazuhMetadataObject.has_value() || !wazuhMetadataObject->isObject())
     {
         return "Metadata should contain 'wazuh' as root";
     }

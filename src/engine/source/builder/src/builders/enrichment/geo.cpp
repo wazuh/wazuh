@@ -345,11 +345,11 @@ std::pair<base::Expression, std::string> geoEnrichmentBuilder(const std::shared_
 
     if (as.isError())
     {
-        throw std::runtime_error("Error getting geo asn locator: " + std::to_string(static_cast<int>(as.error())));
+        throw std::runtime_error("Error getting geo asn locator: " + as.readableStr());
     }
     if (city.isError())
     {
-        throw std::runtime_error("Error getting geo city locator: " + std::to_string(static_cast<int>(city.error())));
+        throw std::runtime_error("Error getting geo city locator: " + city.readableStr());
     }
 
     // Create locators

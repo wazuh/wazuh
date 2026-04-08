@@ -167,7 +167,7 @@ TEST_F(GeoManagerTest, MultithreadLookup)
     for (int i = 0; i < nThreads; i++)
     {
         auto locatorResp = manager->getLocator(type);
-        ASSERT_FALSE(locatorResp.isError()) << locatorResp.error();
+        ASSERT_FALSE(locatorResp.isError()) << locatorResp;
         auto locator = locatorResp.value();
 
         threads.emplace_back(locatorFn, locator);
@@ -222,7 +222,7 @@ TEST_F(GeoManagerTest, MultithreadListLookup)
     for (int i = 0; i < nThreads - 1; i++)
     {
         auto locatorResp = manager->getLocator(type);
-        ASSERT_FALSE(locatorResp.isError()) << locatorResp.error();
+        ASSERT_FALSE(locatorResp.isError()) << locatorResp;
         auto locator = locatorResp.value();
 
         threads.emplace_back(locatorFn, locator);

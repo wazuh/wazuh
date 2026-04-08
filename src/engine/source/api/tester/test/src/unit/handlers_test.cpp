@@ -202,8 +202,7 @@ INSTANTIATE_TEST_SUITE_P(
                 return req;
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionPost(tester); },
-            []()
-            {
+            []() {
                 return userErrorResponse<eEngine::GenericStatus_Response>(
                     "Invalid policy name: Invalid namespace ID: ");
             },
@@ -222,8 +221,7 @@ INSTANTIATE_TEST_SUITE_P(
                 return req;
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionPost(tester); },
-            []()
-            {
+            []() {
                 return userErrorResponse<eEngine::GenericStatus_Response>(
                     "Invalid policy name: Invalid namespace ID: not-valid");
             },
@@ -462,7 +460,31 @@ INSTANTIATE_TEST_SUITE_P(
             []()
             {
                 return userErrorResponse<eEngine::tester::RunPost_Response>(
-                    "Metadata must be a non-empty object with 'wazuh' as root");
+                    "Metadata should contain 'wazuh' as root");
+            },
+            []() { return makeSchemaValidator(false); },
+        },
+        // Additional fail case with invalid metadata
+        LogtestPostCase {
+            "Failed metadata",
+            []()
+            {
+                eEngine::tester::PublicRunPost_Request protoReq;
+                protoReq.set_queue(1);
+                protoReq.set_location("/var/log/test");
+                protoReq.set_event("some event");
+                protoReq.set_trace_level("NONE");
+
+                google::protobuf::Struct meta;
+                (*meta.mutable_fields())["wazuh"].set_number_value(123);
+                *protoReq.mutable_metadata() = meta;
+                return protoReq;
+            },
+            [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
+            []()
+            {
+                return userErrorResponse<eEngine::tester::RunPost_Response>(
+                    "Metadata should contain 'wazuh' as root");
             },
             []() { return makeSchemaValidator(false); },
         },
@@ -487,8 +509,7 @@ INSTANTIATE_TEST_SUITE_P(
                 // Handler should fail before calling ingestTest
                 EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0);
             },
-            []()
-            {
+            []() {
                 return userErrorResponse<eEngine::tester::RunPost_Response>(
                     "queue is required and must be non-zero (1..255)");
             },

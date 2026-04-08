@@ -154,13 +154,20 @@ public:
         return os;
     }
     /**
-     * @brief Convert to human-readable OptError string
+     * @brief Convert to human-readable error messages for legacy interfaces
      *
-     * This converts the Result<T> to human-readable error messages.
+     * @return std::string Human-readable error message for legacy interfaces
      */
     std::string readableStr() const
     {
-        return {std::string {getErrorDescription(error())}};
+        if (isSuccess())
+        {
+            return "success";
+        }
+        else
+        {
+            return {std::string {getErrorDescription(error())}};
+        }
     }
 };
 
@@ -192,10 +199,19 @@ public:
 
     /**
      * @brief Convert to human-readable OptError string
+     *
+     * @return std::string Human-readable error message for legacy interfaces
      */
     std::string readableStr() const
     {
-        return {std::string {getErrorDescription(m_error)}};
+        if (isSuccess())
+        {
+            return "Success";
+        }
+        else
+        {
+            return {std::string {getErrorDescription(m_error)}};
+        }
     }
 };
 

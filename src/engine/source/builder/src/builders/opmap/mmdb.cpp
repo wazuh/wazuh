@@ -130,6 +130,11 @@ MapBuilder getMMDBGeoBuilder(const std::shared_ptr<geo::IManager>& geoManager)
         const std::string emptyDataTrace {fmt::format("{} -> Failure: Empty wcs data", name)};
 
         auto resDB = geoManager->getLocator(geo::Type::CITY);
+        if (resDB.isError())
+        {
+            throw std::runtime_error(fmt::format("{} -> Failure: Error getting geo city locator: {}", name, resDB.readableStr()));
+        }
+
         auto runstate = buildCtx->runState();
 
         return [=, locator = resDB.value(), srcRef = ipRef.jsonPath()](base::ConstEvent event) -> MapResult
@@ -179,6 +184,10 @@ MapBuilder getMMDBASNBuilder(const std::shared_ptr<geo::IManager>& geoManager)
         }
 
         auto resDB = geoManager->getLocator(geo::Type::ASN);
+        if (resDB.isError())
+        {
+            throw std::runtime_error(fmt::format("{} -> Failure: Error getting geo asn locator: {}", name, resDB.readableStr()));
+        }
         auto runstate = buildCtx->runState();
 
         return [=, locator = resDB.value(), srcRef = ipRef.jsonPath()](base::ConstEvent event) -> MapResult

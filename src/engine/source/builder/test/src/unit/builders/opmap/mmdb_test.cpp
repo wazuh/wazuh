@@ -380,7 +380,8 @@ INSTANTIATE_TEST_SUITE_P(
         MapDepsT({makeRef("ref")}, as::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::OBJECT))),
         MapDepsT({makeRef("ref")}, as::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::NESTED))),
         MapDepsT({makeRef("ref")}, as::getBuilderWLocator(), SUCCESS(customRefExpected())),
-        MapDepsT({makeRef("ref")}, as::getBuilderWLocator(), SUCCESS(expectTypeRef(schemf::Type::IP, true)))
+        MapDepsT({makeRef("ref")}, as::getBuilderWLocator(), SUCCESS(expectTypeRef(schemf::Type::IP, true))),
+        MapDepsT({makeRef("ref")}, as::getBuilderWLocator(true), FAILURE(expectTypeRef(schemf::Type::IP, true)))
         // End of test values
         ),
     testNameFormatter<MapBuilderWithDepsTest>("mmdb_asn"));
@@ -399,7 +400,8 @@ INSTANTIATE_TEST_SUITE_P(
         MapDepsT({makeRef("ref")}, city::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::OBJECT, true))),
         MapDepsT({makeRef("ref")}, city::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::NESTED, true))),
         MapDepsT({makeRef("ref")}, city::getBuilderWLocator(), SUCCESS(customRefExpected())),
-        MapDepsT({makeRef("ref")}, city::getBuilderWLocator(), SUCCESS(expectTypeRef(schemf::Type::IP, true)))
+        MapDepsT({makeRef("ref")}, city::getBuilderWLocator(), SUCCESS(expectTypeRef(schemf::Type::IP, true))),
+        MapDepsT({makeRef("ref")}, city::getBuilderWLocator(true), FAILURE(expectTypeRef(schemf::Type::IP, true)))
         // End of test values
         ),
     testNameFormatter<MapBuilderWithDepsTest>("mmdb_city"));
