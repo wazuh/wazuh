@@ -8,8 +8,13 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include <atomic>
+#include <chrono>
 #include <cstdio>
+#include <functional>
+#include <future>
 #include <sqlite3.h>
+#include <thread>
 
 #include "syscollectorImp_test.h"
 #include "syscollector.hpp"
@@ -321,6 +326,24 @@ class LogCapture
             return cnt;
         }
 };
+
+static bool waitUntil(const std::function<bool()>& predicate,
+                      const std::chrono::milliseconds timeout = std::chrono::milliseconds(1000))
+{
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+
+    while (std::chrono::steady_clock::now() < deadline)
+    {
+        if (predicate())
+        {
+            return true;
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    return predicate();
+}
 
 // Expected results for persist callback - shared across all tests
 static const auto expectedPersistHW
@@ -2764,6 +2787,137 @@ TEST_F(SyscollectorImpTest, queryCommandFlushNoSyncProtocol)
     Syscollector::instance().destroy();
 }
 
+TEST_F(SyscollectorImpTest, queryCommandFlushReportsInProgressAndThenSuccess)
+{
+    static std::atomic<bool> s_blockStart {false};
+    static std::atomic<bool> s_startEntered {false};
+    s_blockStart = true;
+    s_startEntered = false;
+
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false, false);
+
+    MQ_Functions blockingMq {};
+    blockingMq.start = [](const char*, short, short) -> int
+    {
+        s_startEntered = true;
+
+        while (s_blockStart)
+        {
+            std::this_thread::yield();
+        }
+
+        return 1;
+    };
+    blockingMq.send_binary = [](int, const void*, size_t, const char*, char) -> int
+    {
+        return 0;
+    };
+
+    Syscollector::instance().initSyncProtocol("syscollector",
+                                              ":memory:",
+                                              ":memory:",
+                                              blockingMq,
+                                              std::chrono::seconds(0),
+                                              std::chrono::seconds(1),
+                                              1,
+                                              100,
+                                              0);
+
+    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
+    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
+    EXPECT_EQ(flushResponse["data"]["action"], "flush");
+
+    EXPECT_TRUE(waitUntil([]()
+    {
+        return s_startEntered.load();
+    }));
+
+    auto inProgressResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+    EXPECT_EQ(inProgressResponse["error"], MQ_SUCCESS);
+    EXPECT_EQ(inProgressResponse["data"]["status"], "in_progress");
+
+    s_blockStart = false;
+
+    EXPECT_TRUE(waitUntil([]()
+    {
+        auto completedResponse =
+            nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+        return completedResponse["data"]["status"] == "completed";
+    }));
+
+    auto completedResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+    EXPECT_EQ(completedResponse["data"]["status"], "completed");
+    EXPECT_EQ(completedResponse["data"]["result"], "success");
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, queryCommandFlushReportsCompletedError)
+{
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false, false);
+
+    MQ_Functions failingMq {};
+    failingMq.start = [](const char*, short, short) -> int
+    {
+        return -1;
+    };
+    failingMq.send_binary = [](int, const void*, size_t, const char*, char) -> int
+    {
+        return 0;
+    };
+
+    Syscollector::instance().initSyncProtocol("syscollector",
+                                              ":memory:",
+                                              ":memory:",
+                                              failingMq,
+                                              std::chrono::seconds(0),
+                                              std::chrono::seconds(1),
+                                              1,
+                                              100,
+                                              0);
+
+    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
+    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
+    EXPECT_EQ(flushResponse["data"]["action"], "flush");
+
+    EXPECT_TRUE(waitUntil([]()
+    {
+        auto completedResponse =
+            nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+        return completedResponse["data"]["status"] == "completed";
+    }));
+
+    auto completedResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+    EXPECT_EQ(completedResponse["data"]["status"], "completed");
+    EXPECT_EQ(completedResponse["data"]["result"], "error");
+
+    Syscollector::instance().destroy();
+}
+
 TEST_F(SyscollectorImpTest, queryCommandGetVersion)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
@@ -4985,7 +5139,7 @@ TEST_F(SyscollectorImpTest, destroyWaitsForOngoingFlush)
     MQ_Functions blockingMq{};
     // Block inside start(), which is called unconditionally from checkStatus() at the
     // top of synchronizeModule() — before the empty-queue early-return.  This ensures
-    // flush() still holds m_flushMutex while we verify that destroy() is waiting for it,
+    // the async flush worker remains active while we verify that destroy() waits for it,
     // regardless of whether the persistent queue has any data to send.
     blockingMq.start = [](const char*, short, short) -> int
     {
@@ -5010,42 +5164,37 @@ TEST_F(SyscollectorImpTest, destroyWaitsForOngoingFlush)
         std::chrono::seconds(1),
         1, 100, 0);
 
-    std::atomic<bool> flushDone{false};
     std::atomic<bool> destroyDone{false};
 
-    // flush() acquires m_flushMutex, then calls synchronizeModule() which blocks in start().
-    std::thread flushThread([&]()
-    {
-        Syscollector::instance().query(R"({"command":"flush"})");
-        flushDone = true;
-    });
+    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
+    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
+    EXPECT_EQ(flushResponse["data"]["action"], "flush");
 
-    // Wait until start() has been entered — flush now holds m_flushMutex.
+    // Wait until the async worker has entered start().
     while (!s_startEntered)
     {
         std::this_thread::yield();
     }
 
-    // destroy() signals stop on the protocol, then blocks on m_flushMutex.
+    auto inProgressResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+    EXPECT_EQ(inProgressResponse["data"]["status"], "in_progress");
+
+    // destroy() signals stop on the protocol and waits for the async worker to finish.
     std::thread destroyThread([&]()
     {
         Syscollector::instance().destroy();
         destroyDone = true;
     });
 
-    // Give destroy time to start and attempt to acquire m_flushMutex.
+    // Give destroy time to start and block waiting for the worker.
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    // Both threads must still be blocked: flush inside start(), destroy on the mutex.
-    EXPECT_FALSE(flushDone)  << "flush should still be running";
-    EXPECT_FALSE(destroyDone) << "destroy should be waiting for flush to finish";
+    EXPECT_FALSE(destroyDone) << "destroy should be waiting for the async flush to finish";
 
-    // Release the blocking start — flush completes, then destroy can proceed.
+    // Release the blocking start — the worker completes, then destroy can proceed.
     s_blockStart = false;
 
-    flushThread.join();
     destroyThread.join();
 
-    EXPECT_TRUE(flushDone);
     EXPECT_TRUE(destroyDone);
 }
