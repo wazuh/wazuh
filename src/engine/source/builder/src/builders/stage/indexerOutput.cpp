@@ -71,6 +71,14 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
         placeholderMap[fullMatch] = formattedPath;
     }
 
+    // Pre-build PointerPath objects for each placeholder to avoid re-parsing per event
+    std::vector<std::pair<std::string, json::PointerPath>> placeholderPPVec;
+    placeholderPPVec.reserve(placeholderMap.size());
+    for (const auto& [placeholder, jsonPath] : placeholderMap)
+    {
+        placeholderPPVec.emplace_back(placeholder, json::PointerPath(jsonPath));
+    }
+
     auto name = fmt::format("write.output({}/{})", syntax::asset::INDEXER_OUTPUT_KEY, indexName);
     const auto successTrace = fmt::format("{} -> Success", name);
     const auto failureTrace = fmt::format("{} -> The indexer connector is disabled", name);
@@ -87,7 +95,7 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
     return base::Term<base::EngineOp>::create(
         name,
         [indexName,
-         placeholderMap,
+         placeholderPPVec,
          wic,
          successTrace,
          failureTrace,
@@ -96,12 +104,12 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
          runState = buildCtx->runState()](base::Event event) -> base::result::Result<base::Event>
         {
             std::string finalIndexName = indexName;
-            for (const auto& [placeholder, jsonPath] : placeholderMap)
+            for (const auto& [placeholder, jsonPathPP] : placeholderPPVec)
             {
                 std::string fieldValue;
-                if (event->getString(fieldValue, jsonPath) != json::RetGet::Success)
+                if (event->getString(fieldValue, jsonPathPP) != json::RetGet::Success)
                 {
-                    RETURN_FAILURE(runState, event, fmt::format(failureTrace2, jsonPath));
+                    RETURN_FAILURE(runState, event, fmt::format(failureTrace2, placeholder));
                 }
 
                 // Replace all occurrences of the placeholder in the indexName

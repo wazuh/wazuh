@@ -215,18 +215,21 @@ base::Expression getEachEnrichTerm(const std::shared_ptr<geo::ILocator>& cityLoc
                                    const std::shared_ptr<bool>& enrichmentApplied)
 {
 
-    auto opFn = [cityLocator, asLocator, mappingConfig, trace, enrichmentApplied](
+    const json::PointerPath originIpPP(mappingConfig.originIpPath);
+    const json::PointerPath originIpFirstPP(mappingConfig.originIpPath + "/0");
+
+    auto opFn = [cityLocator, asLocator, mappingConfig, trace, enrichmentApplied, originIpPP, originIpFirstPP](
                     base::Event event) -> base::result::Result<base::Event>
     {
         // Get source IP, can be an string o a array of strings, in that case we take the first one.
         const auto ipOpt = [&]() -> std::optional<std::string>
         {
             std::string ipStr;
-            if (event->getString(ipStr, mappingConfig.originIpPath) == json::RetGet::Success)
+            if (event->getString(ipStr, originIpPP) == json::RetGet::Success)
             {
                 return ipStr;
             }
-            if (event->getString(ipStr, mappingConfig.originIpPath + "/0") == json::RetGet::Success)
+            if (event->getString(ipStr, originIpFirstPP) == json::RetGet::Success)
             {
                 return ipStr;
             }

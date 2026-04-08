@@ -81,10 +81,10 @@ StageBuilder getParseBuilder(std::shared_ptr<hlp::logpar::Logpar> logpar, size_t
             {
                 parseExpression = base::Term<base::EngineOp>::create(
                     logparExpr,
-                    [=, runState = buildCtx->runState(), parser = std::move(parser)](base::Event event)
+                    [=, runState = buildCtx->runState(), parser = std::move(parser), fieldPP = json::PointerPath(field)](base::Event event)
                     {
-                        std::string ev;
-                        if (event->getString(ev, field) != json::RetGet::Success)
+                        std::string_view ev;
+                        if (event->getString(ev, fieldPP) != json::RetGet::Success)
                         {
                             RETURN_FAILURE(runState, event, failureTrace1);
                         }

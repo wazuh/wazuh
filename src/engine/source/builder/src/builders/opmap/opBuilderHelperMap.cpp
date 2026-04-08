@@ -189,6 +189,10 @@ MapOp opBuilderHelperStringTransformation(const std::vector<OpArg>& opArgs,
 
     const std::string failureTrace1 {fmt::format("[{}] -> Failure: Reference not found", name)};
 
+    const auto rightParamPP = rightParameter->isReference()
+        ? std::make_optional<json::PointerPath>(std::static_pointer_cast<Reference>(rightParameter)->jsonPath())
+        : std::nullopt;
+
     // Function that implements the helper
     return [=, runState = buildCtx->runState()](base::ConstEvent event) -> MapResult
     {
@@ -201,7 +205,7 @@ MapOp opBuilderHelperStringTransformation(const std::vector<OpArg>& opArgs,
         if (rightParameter->isReference())
         {
             std::string resolvedRValue;
-            if (event->getString(resolvedRValue, std::static_pointer_cast<Reference>(rightParameter)->jsonPath()) != json::RetGet::Success)
+            if (event->getString(resolvedRValue, *rightParamPP) != json::RetGet::Success)
             {
                 RETURN_FAILURE(runState, json::Json {}, failureTrace1);
             }
@@ -1498,7 +1502,7 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
     const std::string failureTrace = fmt::format("[{}] -> Failure: Result map is empty", traceName);
 
     return [normalizeStr,
-            keyName,
+            keyNamePP = json::PointerPath(keyName),
             fieldValue,
             skipSerializer,
             traceName,
@@ -1529,7 +1533,7 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
                 }
 
                 std::string keyStr;
-                if (element.getString(keyStr, keyName) != json::RetGet::Success || keyStr.empty())
+                if (element.getString(keyStr, keyNamePP) != json::RetGet::Success || keyStr.empty())
                 {
                     continue;
                 }
@@ -1699,7 +1703,7 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
     const std::string failureTrace = fmt::format("[{}] -> Failure: Result map is empty", traceName);
 
     return [normalizeStr,
-            keyName,
+            keyNamePP = json::PointerPath(keyName),
             newValuePath,
             oldValuePath,
             skipSerializer,
@@ -1731,7 +1735,7 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
                 }
 
                 std::string keyStr;
-                if (element.getString(keyStr, keyName) != json::RetGet::Success || keyStr.empty())
+                if (element.getString(keyStr, keyNamePP) != json::RetGet::Success || keyStr.empty())
                 {
                     continue;
                 }

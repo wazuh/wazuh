@@ -423,6 +423,7 @@ public:
      *
      * @warning When T is std::string_view, the caller must ensure the Json object
      * remains alive and unmodified while using the output.
+     * @note out its only assigned if the field is found and is a string; in all other cases it is left unchanged.
      */
     template<typename T>
     RetGet getString(T& out, const PointerPath& path = ROOT_PP) const noexcept
