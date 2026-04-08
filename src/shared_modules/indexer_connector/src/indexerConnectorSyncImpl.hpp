@@ -255,6 +255,7 @@ class IndexerConnectorSyncImpl final
     std::thread m_bulkThread;
     std::atomic<bool> m_stopping {false};
     std::vector<size_t> m_boundaries;
+    bool m_shouldNotifyAfterBulk {false};
 
     void processBulk()
     {
@@ -332,12 +333,7 @@ class IndexerConnectorSyncImpl final
                 throw IndexerConnectorException("Bulk operation had indexing failures");
             }
 
-            // All documents processed successfully (including acceptable version conflicts)
-            for (const auto& notify : m_notify)
-            {
-                notify();
-            }
-            m_notify.clear();
+            m_shouldNotifyAfterBulk = true;
             needToRetry = false;
         };
 
@@ -364,8 +360,13 @@ class IndexerConnectorSyncImpl final
             }
             else if (statusCode == HTTP_VERSION_CONFLICT)
             {
-                logDebug2(IC_NAME, "Document version conflict, retrying in 1 second.");
-                needToRetry = true;
+                logWarn(IC_NAME,
+                        "Bulk request returned 409 version conflict at request level. Document-level conflicts are "
+                        "handled by validateBulkResponse().");
+                m_bulkData.clear();
+                m_boundaries.clear();
+                m_lastBulkTime = std::chrono::steady_clock::now();
+                throw IndexerConnectorException("Bulk version conflict at request level");
             }
             else if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
@@ -411,15 +412,9 @@ class IndexerConnectorSyncImpl final
             } while (needToRetry);
         }
 
-        // If we only had deleteByQuery operations (no bulk data), trigger notify callbacks
-        // since they weren't triggered by the bulk POST onSuccess callback
         if (hasDeleteByQuery && m_bulkData.empty())
         {
-            for (const auto& notify : m_notify)
-            {
-                notify();
-            }
-            m_notify.clear();
+            m_shouldNotifyAfterBulk = true;
         }
 
         m_bulkData.clear();
@@ -476,11 +471,7 @@ class IndexerConnectorSyncImpl final
         }
         if (allProcessed)
         {
-            for (const auto& notify : m_notify)
-            {
-                notify();
-            }
-            m_notify.clear();
+            m_shouldNotifyAfterBulk = true;
         }
         m_bulkData.clear();
         m_boundaries.clear();
@@ -532,8 +523,10 @@ class IndexerConnectorSyncImpl final
             }
             else if (statusCode == HTTP_VERSION_CONFLICT)
             {
-                logDebug2(IC_NAME, "Document version conflict, retrying in 1 second.");
-                needToRetry = true;
+                logWarn(IC_NAME,
+                        "Bulk chunk returned 409 version conflict at request level. Document-level conflicts are "
+                        "handled by validateBulkResponse().");
+                throw IndexerConnectorException("Bulk version conflict at request level");
             }
             else if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
@@ -674,6 +667,21 @@ public:
                         try
                         {
                             processBulk();
+
+                            // Invoke pending callbacks after releasing mutex
+                            if (m_shouldNotifyAfterBulk)
+                            {
+                                std::vector<std::function<void()>> callbacksCopy = std::move(m_notify);
+                                m_notify.clear();
+                                m_shouldNotifyAfterBulk = false;
+
+                                timeoutLock.unlock();
+                                for (const auto& callback : callbacksCopy)
+                                {
+                                    callback();
+                                }
+                                timeoutLock.lock();
+                            }
                         }
                         catch (const IndexerConnectorException& e)
                         {
@@ -770,12 +778,7 @@ public:
                 logDebug2(IC_NAME, "Could not parse update by query response: %s", e.what());
             }
 
-            // Notify registered callbacks on success
-            for (const auto& notify : m_notify)
-            {
-                notify();
-            }
-            m_notify.clear();
+            m_shouldNotifyAfterBulk = true;
         };
 
         const auto onError =
@@ -783,8 +786,11 @@ public:
         {
             if (statusCode == HTTP_VERSION_CONFLICT)
             {
-                logDebug2(IC_NAME, "Document version conflict, retrying in 1 second.");
-                needToRetry = true;
+                logWarn(IC_NAME,
+                        "Update by query returned 409 version conflict. This indicates documents were modified by "
+                        "another process.");
+                m_notify.clear();
+                throw IndexerConnectorException("Update by query version conflict");
             }
             else if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
@@ -1220,16 +1226,54 @@ public:
 
     void flush()
     {
-        std::lock_guard lock(m_mutex);
-        if (!m_bulkData.empty() || !m_deleteByQuery.empty())
+        std::vector<std::function<void()>> callbacksCopy;
+
         {
-            processBulk();
+            std::lock_guard lock(m_mutex);
+            m_shouldNotifyAfterBulk = false;
+
+            if (!m_bulkData.empty() || !m_deleteByQuery.empty())
+            {
+                processBulk();
+            }
+
+            if (m_shouldNotifyAfterBulk)
+            {
+                callbacksCopy = std::move(m_notify);
+                m_notify.clear();
+                m_shouldNotifyAfterBulk = false;
+            }
+        }
+
+        for (const auto& callback : callbacksCopy)
+        {
+            callback();
         }
     }
 
     [[nodiscard]] std::unique_lock<std::mutex> scopeLock()
     {
         return std::unique_lock<std::mutex> {m_mutex};
+    }
+
+    void invokePendingCallbacks()
+    {
+        std::vector<std::function<void()>> callbacksCopy;
+
+        {
+            std::lock_guard lock(m_mutex);
+            if (m_shouldNotifyAfterBulk)
+            {
+                callbacksCopy = std::move(m_notify);
+                m_notify.clear();
+                m_shouldNotifyAfterBulk = false;
+            }
+        }
+
+        for (const auto& callback : callbacksCopy)
+        {
+            callback();
+        }
     }
 
     void registerNotify(std::function<void()> callback)

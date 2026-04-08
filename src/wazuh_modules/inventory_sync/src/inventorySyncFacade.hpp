@@ -1114,6 +1114,11 @@ public:
                             }
                         }
                     } // End of else block for non-MetadataDelta/GroupDelta modes
+
+                    // Invoke pending callbacks from executeUpdateByQuery operations (if any)
+                    // This must be done after releasing scopeLock to avoid deadlock
+                    lock.unlock();
+                    m_indexerConnector->invokePendingCallbacks();
                 }
                 catch (const InventorySyncException& e)
                 {
