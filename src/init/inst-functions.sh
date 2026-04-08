@@ -28,7 +28,6 @@ CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 
 VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detection.manager.template"
 INDEXER_TEMPLATE="./etc/templates/config/generic/wodle-indexer.manager.template"
-AGENT_UPGRADE_TEMPLATE="./etc/templates/config/generic/agent-upgrade.manager.template"
 
 SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca.template"
 
@@ -454,10 +453,6 @@ WriteManager()
 
     # Indexer
     cat ${INDEXER_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Agent upgrade
-    cat ${AGENT_UPGRADE_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Writting auth configuration
