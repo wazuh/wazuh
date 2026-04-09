@@ -1337,6 +1337,27 @@ public:
     }
 
     /**
+     * @brief Check if a specific agent has an active session for a specific module
+     * @param agentId Agent ID to check
+     * @param moduleName Module name to check (e.g., "syscollector_vd")
+     * @return true if the agent has an active session for the module, false otherwise
+     */
+    bool hasActiveSessionForModule(const std::string& agentId, const std::string& moduleName) const
+    {
+        std::shared_lock lock(m_agentSessionsMutex);
+
+        for (const auto& [sessionId, session] : m_agentSessions)
+        {
+            const auto& context = session.getContext();
+            if (context->agentId == agentId && context->moduleName == moduleName)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * @brief Clean up zombie sessions for an agent
      * @param agentId Agent ID to clean up sessions for
      * @param excludeSessionId Session ID to exclude from cleanup (e.g., the current session)
