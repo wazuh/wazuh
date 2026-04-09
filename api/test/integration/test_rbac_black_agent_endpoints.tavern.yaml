@@ -533,9 +533,6 @@ stages:
 ---
 test_name: GET /agents/stats/distinct
 
-marks:
-  - xfail # https://github.com/wazuh/wazuh/issues/34777
-
 stages:
 
  - name: Get the different combinations for os.platform (Partially allowed, user agnostic)
@@ -563,9 +560,6 @@ stages:
 
 ---
 test_name: GET /agents/summary
-
-marks:
-  - xfail # https://github.com/wazuh/wazuh/issues/34777
 
 stages:
 
