@@ -711,7 +711,7 @@ FilterOp opBuilderHelperStringContains(const Reference& targetField,
     return op;
 }
 
-// field: binary_and($ref, value)
+// field: binary_and(value)
 FilterOp opBuilderHelperBinaryAnd(const Reference& targetField,
                                   const std::vector<OpArg>& opArgs,
                                   const std::shared_ptr<const IBuildCtx>& buildCtx)
