@@ -180,12 +180,6 @@ UseSSLCert()
     setToggleVar "SSL_CERT" "${USER_CREATE_SSL_CERT}" "yes"
 }
 
-UseUpdateCheck()
-{
-    # Default update-check value (can be overridden by preloaded vars).
-    setToggleVar "UPDATE_CHECK" "${USER_ENABLE_UPDATE_CHECK}" "yes"
-}
-
 ##########
 # EnableAuthd()
 ##########
@@ -401,7 +395,6 @@ ConfigureServer()
         EnableAuthd "3.7"
         ConfigureBoot "3.8"
         SetupLogs "3.9"
-        UseUpdateCheck
         WriteManager
     fi
 }
@@ -596,7 +589,6 @@ setDefaultConfigByInstallType()
         setDefaultIfEmpty USER_ENABLE_ROOTCHECK "n"
         setDefaultIfEmpty USER_ENABLE_SYSCOLLECTOR "n"
         setDefaultIfEmpty USER_ENABLE_SCA "n"
-        setDefaultIfEmpty USER_ENABLE_UPDATE_CHECK "y"
         setDefaultIfEmpty USER_CREATE_SSL_CERT "y"
         return 0;
     fi
