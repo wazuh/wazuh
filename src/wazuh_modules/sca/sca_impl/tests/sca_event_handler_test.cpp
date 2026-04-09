@@ -994,7 +994,7 @@ TEST_F(SCAEventHandlerTest, ReportCheckResult_ValidInput)
     }
 }
 
-TEST_F(SCAEventHandlerTest, ReportCheckResult_SuppressesStatefulMessagesBeforeFirstSync)
+TEST_F(SCAEventHandlerTest, ReportCheckResult_SuppressesAllMessagesBeforeFirstSync)
 {
     const std::string policyId = "test_policy";
     const std::string checkId = "test_check";
@@ -1071,11 +1071,7 @@ TEST_F(SCAEventHandlerTest, ReportCheckResult_SuppressesStatefulMessagesBeforeFi
     newHandler->ReportCheckResult(policyId, checkId, checkResult, "Policy requirements not met");
 
     EXPECT_TRUE(statefulMessages.empty());
-    ASSERT_EQ(statelessMessages.size(), 1U);
-
-    const nlohmann::json statelessMessage = nlohmann::json::parse(statelessMessages[0]);
-    EXPECT_EQ(statelessMessage["module"], "sca");
-    EXPECT_EQ(statelessMessage["data"]["check"]["result"], checkResult);
+    EXPECT_TRUE(statelessMessages.empty());
 }
 
 TEST_F(SCAEventHandlerTest, ReportPoliciesDelta_BeforeFirstSyncSkipsValidationDeletion)
@@ -1152,7 +1148,7 @@ TEST_F(SCAEventHandlerTest, ReportPoliciesDelta_BeforeFirstSyncSkipsValidationDe
     EXPECT_NO_THROW(newHandler->ReportPoliciesDelta(modifiedPolicies, modifiedChecks));
 
     EXPECT_TRUE(statefulMessages.empty());
-    EXPECT_EQ(statelessMessages.size(), 1U);
+    EXPECT_TRUE(statelessMessages.empty());
 }
 
 TEST_F(SCAEventHandlerTest, ReportCheckResult_BeforeFirstSyncSkipsValidationDeletion)
@@ -1239,7 +1235,7 @@ TEST_F(SCAEventHandlerTest, ReportCheckResult_BeforeFirstSyncSkipsValidationDele
     EXPECT_NO_THROW(newHandler->ReportCheckResult(policyId, checkId, checkResult));
 
     EXPECT_TRUE(statefulMessages.empty());
-    EXPECT_EQ(statelessMessages.size(), 1U);
+    EXPECT_TRUE(statelessMessages.empty());
 }
 
 TEST_F(SCAEventHandlerTest, GetPolicyCheckById_ValidId)

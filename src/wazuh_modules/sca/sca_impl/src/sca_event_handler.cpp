@@ -38,12 +38,12 @@ SCAEventHandler::SCAEventHandler(std::shared_ptr<IDBSync> dBSync,
                                  std::function<int(const std::string&)> pushStatelessMessage,
                                  std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> pushStatefulMessage,
                                  std::shared_ptr<SCASyncManager> syncManager,
-                                 bool allowStatefulMessages)
+                                 bool allowPublishedMessages)
     : m_pushStatelessMessage(std::move(pushStatelessMessage))
     , m_pushStatefulMessage(std::move(pushStatefulMessage))
     , m_dBSync(std::move(dBSync))
     , m_syncManager(std::move(syncManager))
-    , m_allowStatefulMessages(allowStatefulMessages) {};
+    , m_allowPublishedMessages(allowPublishedMessages) {};
 
 void SCAEventHandler::ReportPoliciesDelta(
     const std::unordered_map<std::string, nlohmann::json>& modifiedPoliciesMap,
@@ -124,7 +124,7 @@ void SCAEventHandler::ReportPoliciesDelta(
             }
         }
 
-        if (m_allowStatefulMessages)
+        if (m_allowPublishedMessages)
         {
             const auto [processedStatefulEvent, operation, version] = ProcessStateful(event);
 
@@ -143,18 +143,18 @@ void SCAEventHandler::ReportPoliciesDelta(
 
         const auto processedStatelessEvent = ProcessStateless(event);
 
-        if (!processedStatelessEvent.empty())
+        if (m_allowPublishedMessages && !processedStatelessEvent.empty())
         {
             PushStateless(processedStatelessEvent);
         }
 
-        if (m_allowStatefulMessages && !promotedIds.empty())
+        if (m_allowPublishedMessages && !promotedIds.empty())
         {
             ProcessPromotedChecks(promotedIds, &failedChecks);
         }
     }
 
-    if (m_allowStatefulMessages)
+    if (m_allowPublishedMessages)
     {
         HandleFailedChecks(std::move(failedChecks));
     }
@@ -168,7 +168,7 @@ void SCAEventHandler::ReportPoliciesDelta(
 
 void SCAEventHandler::ReportDemotedChecks(const std::vector<std::string>& demotedIds) const
 {
-    if (demotedIds.empty() || !m_allowStatefulMessages)
+    if (demotedIds.empty() || !m_allowPublishedMessages)
     {
         return;
     }
@@ -261,7 +261,7 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
                 shouldPushStateful = m_syncManager->shouldSyncModify(dataForDelete);
             }
 
-            if (m_allowStatefulMessages)
+            if (m_allowPublishedMessages)
             {
                 const auto [stateful, operation, version] = ProcessStateful(event);
 
@@ -280,7 +280,7 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
 
             const auto stateless = ProcessStateless(event);
 
-            if (!stateless.empty())
+            if (m_allowPublishedMessages && !stateless.empty())
             {
                 PushStateless(stateless);
             }
@@ -293,7 +293,7 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
 
     m_dBSync->syncRow(updateResultQuery.query(), callback);
 
-    if (m_allowStatefulMessages)
+    if (m_allowPublishedMessages)
     {
         HandleFailedChecks(std::move(failedChecks));
     }
@@ -702,7 +702,7 @@ std::string SCAEventHandler::CalculateHashId(const nlohmann::json& data) const
 
 void SCAEventHandler::PushStateful(const nlohmann::json& event, ReturnTypeCallback operation, uint64_t version) const
 {
-    if (!m_allowStatefulMessages)
+    if (!m_allowPublishedMessages)
     {
         return;
     }
@@ -719,6 +719,11 @@ void SCAEventHandler::PushStateful(const nlohmann::json& event, ReturnTypeCallba
 
 void SCAEventHandler::PushStateless(const nlohmann::json& event) const
 {
+    if (!m_allowPublishedMessages)
+    {
+        return;
+    }
+
     if (!m_pushStatelessMessage)
     {
         throw std::runtime_error("PushStatelessMessage function not set, cannot send message.");
@@ -949,7 +954,7 @@ void SCAEventHandler::HandleFailedChecks(std::vector<nlohmann::json> failedCheck
 void SCAEventHandler::ProcessPromotedChecks(const std::vector<std::string>& promotedIds,
                                             std::vector<nlohmann::json>* failedChecks) const
 {
-    if (promotedIds.empty() || !m_allowStatefulMessages)
+    if (promotedIds.empty() || !m_allowPublishedMessages)
     {
         return;
     }
@@ -1018,7 +1023,7 @@ void SCAEventHandler::ProcessPromotedChecks(const std::vector<std::string>& prom
 void SCAEventHandler::ProcessDemotedChecks(const std::vector<std::string>& demotedIds,
                                            std::vector<nlohmann::json>* failedChecks) const
 {
-    if (demotedIds.empty() || !m_allowStatefulMessages)
+    if (demotedIds.empty() || !m_allowPublishedMessages)
     {
         return;
     }
