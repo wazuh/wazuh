@@ -65,6 +65,12 @@ extern ResultDefaultTypeInternal _Result_default_instance_;
 class Result_AssetTrace;
 struct Result_AssetTraceDefaultTypeInternal;
 extern Result_AssetTraceDefaultTypeInternal _Result_AssetTrace_default_instance_;
+class Result_Validation;
+struct Result_ValidationDefaultTypeInternal;
+extern Result_ValidationDefaultTypeInternal _Result_Validation_default_instance_;
+class Result_ValidationError;
+struct Result_ValidationErrorDefaultTypeInternal;
+extern Result_ValidationErrorDefaultTypeInternal _Result_ValidationError_default_instance_;
 class RunPost_Request;
 struct RunPost_RequestDefaultTypeInternal;
 extern RunPost_RequestDefaultTypeInternal _RunPost_Request_default_instance_;
@@ -108,6 +114,8 @@ template<> ::com::wazuh::api::engine::tester::LogtestDelete_Request* Arena::Crea
 template<> ::com::wazuh::api::engine::tester::PublicRunPost_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::tester::PublicRunPost_Request>(Arena*);
 template<> ::com::wazuh::api::engine::tester::Result* Arena::CreateMaybeMessage<::com::wazuh::api::engine::tester::Result>(Arena*);
 template<> ::com::wazuh::api::engine::tester::Result_AssetTrace* Arena::CreateMaybeMessage<::com::wazuh::api::engine::tester::Result_AssetTrace>(Arena*);
+template<> ::com::wazuh::api::engine::tester::Result_Validation* Arena::CreateMaybeMessage<::com::wazuh::api::engine::tester::Result_Validation>(Arena*);
+template<> ::com::wazuh::api::engine::tester::Result_ValidationError* Arena::CreateMaybeMessage<::com::wazuh::api::engine::tester::Result_ValidationError>(Arena*);
 template<> ::com::wazuh::api::engine::tester::RunPost_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::tester::RunPost_Request>(Arena*);
 template<> ::com::wazuh::api::engine::tester::RunPost_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::tester::RunPost_Response>(Arena*);
 template<> ::com::wazuh::api::engine::tester::Session* Arena::CreateMaybeMessage<::com::wazuh::api::engine::tester::Session>(Arena*);
@@ -794,6 +802,384 @@ class Result_AssetTrace final :
 };
 // -------------------------------------------------------------------
 
+class Result_ValidationError final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.tester.Result.ValidationError) */ {
+ public:
+  inline Result_ValidationError() : Result_ValidationError(nullptr) {}
+  ~Result_ValidationError() override;
+  explicit PROTOBUF_CONSTEXPR Result_ValidationError(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  Result_ValidationError(const Result_ValidationError& from);
+  Result_ValidationError(Result_ValidationError&& from) noexcept
+    : Result_ValidationError() {
+    *this = ::std::move(from);
+  }
+
+  inline Result_ValidationError& operator=(const Result_ValidationError& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline Result_ValidationError& operator=(Result_ValidationError&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const Result_ValidationError& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const Result_ValidationError* internal_default_instance() {
+    return reinterpret_cast<const Result_ValidationError*>(
+               &_Result_ValidationError_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    3;
+
+  friend void swap(Result_ValidationError& a, Result_ValidationError& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(Result_ValidationError* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(Result_ValidationError* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  Result_ValidationError* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<Result_ValidationError>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const Result_ValidationError& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const Result_ValidationError& from) {
+    Result_ValidationError::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(Result_ValidationError* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "com.wazuh.api.engine.tester.Result.ValidationError";
+  }
+  protected:
+  explicit Result_ValidationError(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kPathFieldNumber = 1,
+    kKindFieldNumber = 2,
+    kExpectedFieldNumber = 3,
+    kActualFieldNumber = 4,
+  };
+  // string path = 1;
+  void clear_path();
+  const std::string& path() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_path(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_path();
+  PROTOBUF_NODISCARD std::string* release_path();
+  void set_allocated_path(std::string* path);
+  private:
+  const std::string& _internal_path() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_path(const std::string& value);
+  std::string* _internal_mutable_path();
+  public:
+
+  // string kind = 2;
+  void clear_kind();
+  const std::string& kind() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_kind(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_kind();
+  PROTOBUF_NODISCARD std::string* release_kind();
+  void set_allocated_kind(std::string* kind);
+  private:
+  const std::string& _internal_kind() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_kind(const std::string& value);
+  std::string* _internal_mutable_kind();
+  public:
+
+  // optional string expected = 3;
+  bool has_expected() const;
+  private:
+  bool _internal_has_expected() const;
+  public:
+  void clear_expected();
+  const std::string& expected() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_expected(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_expected();
+  PROTOBUF_NODISCARD std::string* release_expected();
+  void set_allocated_expected(std::string* expected);
+  private:
+  const std::string& _internal_expected() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_expected(const std::string& value);
+  std::string* _internal_mutable_expected();
+  public:
+
+  // optional string actual = 4;
+  bool has_actual() const;
+  private:
+  bool _internal_has_actual() const;
+  public:
+  void clear_actual();
+  const std::string& actual() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_actual(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_actual();
+  PROTOBUF_NODISCARD std::string* release_actual();
+  void set_allocated_actual(std::string* actual);
+  private:
+  const std::string& _internal_actual() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_actual(const std::string& value);
+  std::string* _internal_mutable_actual();
+  public:
+
+  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.tester.Result.ValidationError)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr path_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr kind_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr expected_;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr actual_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_tester_2eproto;
+};
+// -------------------------------------------------------------------
+
+class Result_Validation final :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.tester.Result.Validation) */ {
+ public:
+  inline Result_Validation() : Result_Validation(nullptr) {}
+  ~Result_Validation() override;
+  explicit PROTOBUF_CONSTEXPR Result_Validation(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
+
+  Result_Validation(const Result_Validation& from);
+  Result_Validation(Result_Validation&& from) noexcept
+    : Result_Validation() {
+    *this = ::std::move(from);
+  }
+
+  inline Result_Validation& operator=(const Result_Validation& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline Result_Validation& operator=(Result_Validation&& from) noexcept {
+    if (this == &from) return *this;
+    if (GetOwningArena() == from.GetOwningArena()
+  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
+        && GetOwningArena() != nullptr
+  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
+    ) {
+      InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return default_instance().GetMetadata().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return default_instance().GetMetadata().reflection;
+  }
+  static const Result_Validation& default_instance() {
+    return *internal_default_instance();
+  }
+  static inline const Result_Validation* internal_default_instance() {
+    return reinterpret_cast<const Result_Validation*>(
+               &_Result_Validation_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    4;
+
+  friend void swap(Result_Validation& a, Result_Validation& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(Result_Validation* other) {
+    if (other == this) return;
+  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() != nullptr &&
+        GetOwningArena() == other->GetOwningArena()) {
+   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
+    if (GetOwningArena() == other->GetOwningArena()) {
+  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(Result_Validation* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  Result_Validation* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
+    return CreateMaybeMessage<Result_Validation>(arena);
+  }
+  using ::PROTOBUF_NAMESPACE_ID::Message::CopyFrom;
+  void CopyFrom(const Result_Validation& from);
+  using ::PROTOBUF_NAMESPACE_ID::Message::MergeFrom;
+  void MergeFrom( const Result_Validation& from) {
+    Result_Validation::MergeImpl(*this, from);
+  }
+  private:
+  static void MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg);
+  public:
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  uint8_t* _InternalSerialize(
+      uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _impl_._cached_size_.Get(); }
+
+  private:
+  void SharedCtor(::PROTOBUF_NAMESPACE_ID::Arena* arena, bool is_message_owned);
+  void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(Result_Validation* other);
+
+  private:
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "com.wazuh.api.engine.tester.Result.Validation";
+  }
+  protected:
+  explicit Result_Validation(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                       bool is_message_owned = false);
+  public:
+
+  static const ClassData _class_data_;
+  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kErrorsFieldNumber = 2,
+    kValidFieldNumber = 1,
+  };
+  // repeated .com.wazuh.api.engine.tester.Result.ValidationError errors = 2;
+  int errors_size() const;
+  private:
+  int _internal_errors_size() const;
+  public:
+  void clear_errors();
+  ::com::wazuh::api::engine::tester::Result_ValidationError* mutable_errors(int index);
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engine::tester::Result_ValidationError >*
+      mutable_errors();
+  private:
+  const ::com::wazuh::api::engine::tester::Result_ValidationError& _internal_errors(int index) const;
+  ::com::wazuh::api::engine::tester::Result_ValidationError* _internal_add_errors();
+  public:
+  const ::com::wazuh::api::engine::tester::Result_ValidationError& errors(int index) const;
+  ::com::wazuh::api::engine::tester::Result_ValidationError* add_errors();
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engine::tester::Result_ValidationError >&
+      errors() const;
+
+  // bool valid = 1;
+  void clear_valid();
+  bool valid() const;
+  void set_valid(bool value);
+  private:
+  bool _internal_valid() const;
+  void _internal_set_valid(bool value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.tester.Result.Validation)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engine::tester::Result_ValidationError > errors_;
+    bool valid_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  };
+  union { Impl_ _impl_; };
+  friend struct ::TableStruct_tester_2eproto;
+};
+// -------------------------------------------------------------------
+
 class Result final :
     public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.tester.Result) */ {
  public:
@@ -842,7 +1228,7 @@ class Result final :
                &_Result_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    3;
+    5;
 
   friend void swap(Result& a, Result& b) {
     a.Swap(&b);
@@ -913,12 +1299,15 @@ class Result final :
   // nested types ----------------------------------------------------
 
   typedef Result_AssetTrace AssetTrace;
+  typedef Result_ValidationError ValidationError;
+  typedef Result_Validation Validation;
 
   // accessors -------------------------------------------------------
 
   enum : int {
     kAssetTracesFieldNumber = 2,
     kOutputFieldNumber = 1,
+    kValidationFieldNumber = 3,
   };
   // repeated .com.wazuh.api.engine.tester.Result.AssetTrace asset_traces = 2;
   int asset_traces_size() const;
@@ -956,6 +1345,24 @@ class Result final :
       ::PROTOBUF_NAMESPACE_ID::Struct* output);
   ::PROTOBUF_NAMESPACE_ID::Struct* unsafe_arena_release_output();
 
+  // optional .com.wazuh.api.engine.tester.Result.Validation validation = 3;
+  bool has_validation() const;
+  private:
+  bool _internal_has_validation() const;
+  public:
+  void clear_validation();
+  const ::com::wazuh::api::engine::tester::Result_Validation& validation() const;
+  PROTOBUF_NODISCARD ::com::wazuh::api::engine::tester::Result_Validation* release_validation();
+  ::com::wazuh::api::engine::tester::Result_Validation* mutable_validation();
+  void set_allocated_validation(::com::wazuh::api::engine::tester::Result_Validation* validation);
+  private:
+  const ::com::wazuh::api::engine::tester::Result_Validation& _internal_validation() const;
+  ::com::wazuh::api::engine::tester::Result_Validation* _internal_mutable_validation();
+  public:
+  void unsafe_arena_set_allocated_validation(
+      ::com::wazuh::api::engine::tester::Result_Validation* validation);
+  ::com::wazuh::api::engine::tester::Result_Validation* unsafe_arena_release_validation();
+
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.tester.Result)
  private:
   class _Internal;
@@ -964,9 +1371,11 @@ class Result final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
+    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engine::tester::Result_AssetTrace > asset_traces_;
     ::PROTOBUF_NAMESPACE_ID::Struct* output_;
-    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+    ::com::wazuh::api::engine::tester::Result_Validation* validation_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_tester_2eproto;
@@ -1021,7 +1430,7 @@ class SessionPost_Request final :
                &_SessionPost_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    4;
+    6;
 
   friend void swap(SessionPost_Request& a, SessionPost_Request& b) {
     a.Swap(&b);
@@ -1179,7 +1588,7 @@ class SessionDelete_Request final :
                &_SessionDelete_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    5;
+    7;
 
   friend void swap(SessionDelete_Request& a, SessionDelete_Request& b) {
     a.Swap(&b);
@@ -1332,7 +1741,7 @@ class SessionGet_Request final :
                &_SessionGet_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    6;
+    8;
 
   friend void swap(SessionGet_Request& a, SessionGet_Request& b) {
     a.Swap(&b);
@@ -1485,7 +1894,7 @@ class SessionGet_Response final :
                &_SessionGet_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    7;
+    9;
 
   friend void swap(SessionGet_Response& a, SessionGet_Response& b) {
     a.Swap(&b);
@@ -1674,7 +2083,7 @@ class SessionReload_Request final :
                &_SessionReload_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    8;
+    10;
 
   friend void swap(SessionReload_Request& a, SessionReload_Request& b) {
     a.Swap(&b);
@@ -1826,7 +2235,7 @@ class TableGet_Request final :
                &_TableGet_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    9;
+    11;
 
   friend void swap(TableGet_Request& a, TableGet_Request& b) {
     a.Swap(&b);
@@ -1945,7 +2354,7 @@ class TableGet_Response final :
                &_TableGet_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    10;
+    12;
 
   friend void swap(TableGet_Response& a, TableGet_Response& b) {
     a.Swap(&b);
@@ -2134,7 +2543,7 @@ class RunPost_Request final :
                &_RunPost_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    11;
+    13;
 
   friend void swap(RunPost_Request& a, RunPost_Request& b) {
     a.Swap(&b);
@@ -2360,7 +2769,7 @@ class RunPost_Response final :
                &_RunPost_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    12;
+    14;
 
   friend void swap(RunPost_Response& a, RunPost_Response& b) {
     a.Swap(&b);
@@ -2549,7 +2958,7 @@ class PublicRunPost_Request final :
                &_PublicRunPost_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    13;
+    15;
 
   friend void swap(PublicRunPost_Request& a, PublicRunPost_Request& b) {
     a.Swap(&b);
@@ -2781,7 +3190,7 @@ class LogtestDelete_Request final :
                &_LogtestDelete_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    14;
+    16;
 
   friend void swap(LogtestDelete_Request& a, LogtestDelete_Request& b) {
     a.Swap(&b);
@@ -3466,6 +3875,310 @@ Result_AssetTrace::mutable_traces() {
 
 // -------------------------------------------------------------------
 
+// Result_ValidationError
+
+// string path = 1;
+inline void Result_ValidationError::clear_path() {
+  _impl_.path_.ClearToEmpty();
+}
+inline const std::string& Result_ValidationError::path() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.Result.ValidationError.path)
+  return _internal_path();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void Result_ValidationError::set_path(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.path_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.Result.ValidationError.path)
+}
+inline std::string* Result_ValidationError::mutable_path() {
+  std::string* _s = _internal_mutable_path();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.Result.ValidationError.path)
+  return _s;
+}
+inline const std::string& Result_ValidationError::_internal_path() const {
+  return _impl_.path_.Get();
+}
+inline void Result_ValidationError::_internal_set_path(const std::string& value) {
+  
+  _impl_.path_.Set(value, GetArenaForAllocation());
+}
+inline std::string* Result_ValidationError::_internal_mutable_path() {
+  
+  return _impl_.path_.Mutable(GetArenaForAllocation());
+}
+inline std::string* Result_ValidationError::release_path() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.tester.Result.ValidationError.path)
+  return _impl_.path_.Release();
+}
+inline void Result_ValidationError::set_allocated_path(std::string* path) {
+  if (path != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.path_.SetAllocated(path, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.path_.IsDefault()) {
+    _impl_.path_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.Result.ValidationError.path)
+}
+
+// string kind = 2;
+inline void Result_ValidationError::clear_kind() {
+  _impl_.kind_.ClearToEmpty();
+}
+inline const std::string& Result_ValidationError::kind() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.Result.ValidationError.kind)
+  return _internal_kind();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void Result_ValidationError::set_kind(ArgT0&& arg0, ArgT... args) {
+ 
+ _impl_.kind_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.Result.ValidationError.kind)
+}
+inline std::string* Result_ValidationError::mutable_kind() {
+  std::string* _s = _internal_mutable_kind();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.Result.ValidationError.kind)
+  return _s;
+}
+inline const std::string& Result_ValidationError::_internal_kind() const {
+  return _impl_.kind_.Get();
+}
+inline void Result_ValidationError::_internal_set_kind(const std::string& value) {
+  
+  _impl_.kind_.Set(value, GetArenaForAllocation());
+}
+inline std::string* Result_ValidationError::_internal_mutable_kind() {
+  
+  return _impl_.kind_.Mutable(GetArenaForAllocation());
+}
+inline std::string* Result_ValidationError::release_kind() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.tester.Result.ValidationError.kind)
+  return _impl_.kind_.Release();
+}
+inline void Result_ValidationError::set_allocated_kind(std::string* kind) {
+  if (kind != nullptr) {
+    
+  } else {
+    
+  }
+  _impl_.kind_.SetAllocated(kind, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.kind_.IsDefault()) {
+    _impl_.kind_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.Result.ValidationError.kind)
+}
+
+// optional string expected = 3;
+inline bool Result_ValidationError::_internal_has_expected() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
+  return value;
+}
+inline bool Result_ValidationError::has_expected() const {
+  return _internal_has_expected();
+}
+inline void Result_ValidationError::clear_expected() {
+  _impl_.expected_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000001u;
+}
+inline const std::string& Result_ValidationError::expected() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.Result.ValidationError.expected)
+  return _internal_expected();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void Result_ValidationError::set_expected(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000001u;
+ _impl_.expected_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.Result.ValidationError.expected)
+}
+inline std::string* Result_ValidationError::mutable_expected() {
+  std::string* _s = _internal_mutable_expected();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.Result.ValidationError.expected)
+  return _s;
+}
+inline const std::string& Result_ValidationError::_internal_expected() const {
+  return _impl_.expected_.Get();
+}
+inline void Result_ValidationError::_internal_set_expected(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000001u;
+  _impl_.expected_.Set(value, GetArenaForAllocation());
+}
+inline std::string* Result_ValidationError::_internal_mutable_expected() {
+  _impl_._has_bits_[0] |= 0x00000001u;
+  return _impl_.expected_.Mutable(GetArenaForAllocation());
+}
+inline std::string* Result_ValidationError::release_expected() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.tester.Result.ValidationError.expected)
+  if (!_internal_has_expected()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000001u;
+  auto* p = _impl_.expected_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.expected_.IsDefault()) {
+    _impl_.expected_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void Result_ValidationError::set_allocated_expected(std::string* expected) {
+  if (expected != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000001u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000001u;
+  }
+  _impl_.expected_.SetAllocated(expected, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.expected_.IsDefault()) {
+    _impl_.expected_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.Result.ValidationError.expected)
+}
+
+// optional string actual = 4;
+inline bool Result_ValidationError::_internal_has_actual() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
+  return value;
+}
+inline bool Result_ValidationError::has_actual() const {
+  return _internal_has_actual();
+}
+inline void Result_ValidationError::clear_actual() {
+  _impl_.actual_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000002u;
+}
+inline const std::string& Result_ValidationError::actual() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.Result.ValidationError.actual)
+  return _internal_actual();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void Result_ValidationError::set_actual(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000002u;
+ _impl_.actual_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.Result.ValidationError.actual)
+}
+inline std::string* Result_ValidationError::mutable_actual() {
+  std::string* _s = _internal_mutable_actual();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.Result.ValidationError.actual)
+  return _s;
+}
+inline const std::string& Result_ValidationError::_internal_actual() const {
+  return _impl_.actual_.Get();
+}
+inline void Result_ValidationError::_internal_set_actual(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_.actual_.Set(value, GetArenaForAllocation());
+}
+inline std::string* Result_ValidationError::_internal_mutable_actual() {
+  _impl_._has_bits_[0] |= 0x00000002u;
+  return _impl_.actual_.Mutable(GetArenaForAllocation());
+}
+inline std::string* Result_ValidationError::release_actual() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.tester.Result.ValidationError.actual)
+  if (!_internal_has_actual()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000002u;
+  auto* p = _impl_.actual_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.actual_.IsDefault()) {
+    _impl_.actual_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void Result_ValidationError::set_allocated_actual(std::string* actual) {
+  if (actual != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000002u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000002u;
+  }
+  _impl_.actual_.SetAllocated(actual, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.actual_.IsDefault()) {
+    _impl_.actual_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.Result.ValidationError.actual)
+}
+
+// -------------------------------------------------------------------
+
+// Result_Validation
+
+// bool valid = 1;
+inline void Result_Validation::clear_valid() {
+  _impl_.valid_ = false;
+}
+inline bool Result_Validation::_internal_valid() const {
+  return _impl_.valid_;
+}
+inline bool Result_Validation::valid() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.Result.Validation.valid)
+  return _internal_valid();
+}
+inline void Result_Validation::_internal_set_valid(bool value) {
+  
+  _impl_.valid_ = value;
+}
+inline void Result_Validation::set_valid(bool value) {
+  _internal_set_valid(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.tester.Result.Validation.valid)
+}
+
+// repeated .com.wazuh.api.engine.tester.Result.ValidationError errors = 2;
+inline int Result_Validation::_internal_errors_size() const {
+  return _impl_.errors_.size();
+}
+inline int Result_Validation::errors_size() const {
+  return _internal_errors_size();
+}
+inline void Result_Validation::clear_errors() {
+  _impl_.errors_.Clear();
+}
+inline ::com::wazuh::api::engine::tester::Result_ValidationError* Result_Validation::mutable_errors(int index) {
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.Result.Validation.errors)
+  return _impl_.errors_.Mutable(index);
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engine::tester::Result_ValidationError >*
+Result_Validation::mutable_errors() {
+  // @@protoc_insertion_point(field_mutable_list:com.wazuh.api.engine.tester.Result.Validation.errors)
+  return &_impl_.errors_;
+}
+inline const ::com::wazuh::api::engine::tester::Result_ValidationError& Result_Validation::_internal_errors(int index) const {
+  return _impl_.errors_.Get(index);
+}
+inline const ::com::wazuh::api::engine::tester::Result_ValidationError& Result_Validation::errors(int index) const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.Result.Validation.errors)
+  return _internal_errors(index);
+}
+inline ::com::wazuh::api::engine::tester::Result_ValidationError* Result_Validation::_internal_add_errors() {
+  return _impl_.errors_.Add();
+}
+inline ::com::wazuh::api::engine::tester::Result_ValidationError* Result_Validation::add_errors() {
+  ::com::wazuh::api::engine::tester::Result_ValidationError* _add = _internal_add_errors();
+  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.tester.Result.Validation.errors)
+  return _add;
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engine::tester::Result_ValidationError >&
+Result_Validation::errors() const {
+  // @@protoc_insertion_point(field_list:com.wazuh.api.engine.tester.Result.Validation.errors)
+  return _impl_.errors_;
+}
+
+// -------------------------------------------------------------------
+
 // Result
 
 // .google.protobuf.Struct output = 1;
@@ -3591,6 +4304,96 @@ inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::com::wazuh::api::engin
 Result::asset_traces() const {
   // @@protoc_insertion_point(field_list:com.wazuh.api.engine.tester.Result.asset_traces)
   return _impl_.asset_traces_;
+}
+
+// optional .com.wazuh.api.engine.tester.Result.Validation validation = 3;
+inline bool Result::_internal_has_validation() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
+  PROTOBUF_ASSUME(!value || _impl_.validation_ != nullptr);
+  return value;
+}
+inline bool Result::has_validation() const {
+  return _internal_has_validation();
+}
+inline void Result::clear_validation() {
+  if (_impl_.validation_ != nullptr) _impl_.validation_->Clear();
+  _impl_._has_bits_[0] &= ~0x00000001u;
+}
+inline const ::com::wazuh::api::engine::tester::Result_Validation& Result::_internal_validation() const {
+  const ::com::wazuh::api::engine::tester::Result_Validation* p = _impl_.validation_;
+  return p != nullptr ? *p : reinterpret_cast<const ::com::wazuh::api::engine::tester::Result_Validation&>(
+      ::com::wazuh::api::engine::tester::_Result_Validation_default_instance_);
+}
+inline const ::com::wazuh::api::engine::tester::Result_Validation& Result::validation() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.tester.Result.validation)
+  return _internal_validation();
+}
+inline void Result::unsafe_arena_set_allocated_validation(
+    ::com::wazuh::api::engine::tester::Result_Validation* validation) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.validation_);
+  }
+  _impl_.validation_ = validation;
+  if (validation) {
+    _impl_._has_bits_[0] |= 0x00000001u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000001u;
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.tester.Result.validation)
+}
+inline ::com::wazuh::api::engine::tester::Result_Validation* Result::release_validation() {
+  _impl_._has_bits_[0] &= ~0x00000001u;
+  ::com::wazuh::api::engine::tester::Result_Validation* temp = _impl_.validation_;
+  _impl_.validation_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::com::wazuh::api::engine::tester::Result_Validation* Result::unsafe_arena_release_validation() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.tester.Result.validation)
+  _impl_._has_bits_[0] &= ~0x00000001u;
+  ::com::wazuh::api::engine::tester::Result_Validation* temp = _impl_.validation_;
+  _impl_.validation_ = nullptr;
+  return temp;
+}
+inline ::com::wazuh::api::engine::tester::Result_Validation* Result::_internal_mutable_validation() {
+  _impl_._has_bits_[0] |= 0x00000001u;
+  if (_impl_.validation_ == nullptr) {
+    auto* p = CreateMaybeMessage<::com::wazuh::api::engine::tester::Result_Validation>(GetArenaForAllocation());
+    _impl_.validation_ = p;
+  }
+  return _impl_.validation_;
+}
+inline ::com::wazuh::api::engine::tester::Result_Validation* Result::mutable_validation() {
+  ::com::wazuh::api::engine::tester::Result_Validation* _msg = _internal_mutable_validation();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.tester.Result.validation)
+  return _msg;
+}
+inline void Result::set_allocated_validation(::com::wazuh::api::engine::tester::Result_Validation* validation) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete _impl_.validation_;
+  }
+  if (validation) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(validation);
+    if (message_arena != submessage_arena) {
+      validation = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, validation, submessage_arena);
+    }
+    _impl_._has_bits_[0] |= 0x00000001u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000001u;
+  }
+  _impl_.validation_ = validation;
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.tester.Result.validation)
 }
 
 // -------------------------------------------------------------------
@@ -4999,6 +5802,10 @@ inline void LogtestDelete_Request::set_allocated_space(std::string* space) {
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
 // -------------------------------------------------------------------
 
 // -------------------------------------------------------------------
