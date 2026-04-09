@@ -142,6 +142,20 @@ void startup_gate_refresh_from_local_hash(void) {
     }
 }
 
+bool startup_gate_check_hash_match(void) {
+    bool can_check = false;
+
+    w_mutex_lock(&startup_gate_mutex);
+    can_check = startup_gate_enabled && !startup_gate_ready && startup_gate_expected_sum[0];
+    w_mutex_unlock(&startup_gate_mutex);
+
+    if (!can_check) {
+        return false;
+    }
+
+    return startup_gate_hash_matches_local();
+}
+
 void startup_gate_get_status(bool *ready, char *reason, size_t reason_size) {
     w_mutex_lock(&startup_gate_mutex);
 
