@@ -211,12 +211,14 @@ void SecurityConfigurationAssessment::Run()
             m_remoteEnabled,
             [this](auto policyData, auto checksData)
             {
+                const bool firstSyncCompleted = m_firstSyncCompleted.load();
                 const SCAEventHandler eventHandler(
                     m_dBSync,
                     m_pushStatelessMessage,
                     m_pushStatefulMessage,
                     m_syncManager,
-                    m_firstSyncCompleted.load());
+                    firstSyncCompleted,
+                    firstSyncCompleted);
                 eventHandler.ReportPoliciesDelta(policyData, checksData);
             },
             m_yamlToJsonFunc
@@ -250,12 +252,16 @@ void SecurityConfigurationAssessment::Run()
 
         auto reportCheckResult = [this](const CheckResult & checkResult)
         {
+            // Initial scan result transitions should still reach wazuh-events,
+            // but stateful snapshots remain suppressed until the first sync completes.
+            const bool firstSyncCompleted = m_firstSyncCompleted.load();
             const SCAEventHandler eventHandler(
                 m_dBSync,
                 m_pushStatelessMessage,
                 m_pushStatefulMessage,
                 m_syncManager,
-                m_firstSyncCompleted.load());
+                firstSyncCompleted,
+                true);
             eventHandler.ReportCheckResult(
                 checkResult.policyId, checkResult.checkId, checkResult.result, checkResult.reason);
         };
