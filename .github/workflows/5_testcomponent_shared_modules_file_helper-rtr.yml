@@ -10,6 +10,10 @@ on:
       - ".github/workflows/5_testcomponent_shared_modules_file_helper-rtr.yml"
       - "src/shared_modules/file_helper/**"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   rtr:
     strategy:

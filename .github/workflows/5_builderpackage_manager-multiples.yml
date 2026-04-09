@@ -1,6 +1,16 @@
 name: 5.X - Package - Build multiple Wazuh Manager Packages
 
 on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - "api/**"
+      - "framework/**"
+      - "src/**"
+      - ".github/workflows/5_builderpackage_manager-multiples.yml"
+      - "packages/*/SPECS/wazuh-manager/**"
+      - "packages/*"
+      - "packages/*/utils/*"
   workflow_dispatch:
     inputs:
       targets:
@@ -28,16 +38,10 @@ on:
           By default: false
         type: boolean
         required: false
-  pull_request:
-    types: [synchronize, opened, reopened, ready_for_review]
-    paths:
-      - "api/**"
-      - "framework/**"
-      - "src/**"
-      - ".github/workflows/5_builderpackage_manager-multiples.yml"
-      - "packages/*/SPECS/wazuh-manager/**"
-      - "packages/*"
-      - "packages/*/utils/*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   select-targets:

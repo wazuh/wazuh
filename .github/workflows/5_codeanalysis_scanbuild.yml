@@ -6,6 +6,10 @@ on:
       - "src/**"
       - ".github/workflows/5_codeanalysis_scanbuild.yml"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   scan-build-linux:
     runs-on: ubuntu-24.04
