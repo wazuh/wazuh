@@ -175,9 +175,10 @@ def test_delete_hardlink_symlink(
     hardlink_amount = test_metadata.get("hardlink_amount")
     symlink_amount = test_metadata.get("symlink_amount")
 
-    file.delete_files_in_folder(folder_to_monitor)
     wazuh_log_monitor.start(generate_callback(INODE_ENTRIES_PATH_COUNT))
     inode_entries, path_count = wazuh_log_monitor.callback_result
 
-    assert int(inode_entries) == 1 + hardlink_amount
+    assert int(inode_entries) == 1 + symlink_amount
     assert int(path_count) == 1 + hardlink_amount + symlink_amount
+
+    file.delete_files_in_folder(folder_to_monitor)
