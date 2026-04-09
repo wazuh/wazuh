@@ -109,11 +109,26 @@ int main(int argc, char **argv)
     // triggers graceful cleanup even when modules are blocked.
     wm_signals_configure();
 
+    // wm_control provides the control socket used by agentd to trigger
+    // reloads that resolve the startup gate — start it before blocking.
+    for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+        if (cur_module->tag && strcmp(cur_module->tag, "control") == 0) {
+            if (CreateThreadJoinable(&cur_module->thread, cur_module->context->start, cur_module->data) < 0) {
+                merror_exit("CreateThreadJoinable() for '%s': %s", cur_module->tag, strerror(errno));
+            }
+            mdebug2("Created new thread for the '%s' module.", cur_module->tag);
+            break;
+        }
+    }
+
     startup_gate_wait_for_ready(ARGV0);
 
     // Run modules
 
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+        if (cur_module->tag && strcmp(cur_module->tag, "control") == 0) {
+            continue;  // already started above
+        }
         if (CreateThreadJoinable(&cur_module->thread, cur_module->context->start, cur_module->data) < 0) {
             merror_exit("CreateThreadJoinable() for '%s': %s", cur_module->tag, strerror(errno));
         }

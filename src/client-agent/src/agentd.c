@@ -222,6 +222,11 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             }
 
             mdebug2("Buffer updated, enable: %i size: %i ", agt->buffer, agt->buflength);
+
+            // wazuh-control reload sends SIGUSR1 after new processes are started.
+            // Release the startup gate now so modules blocked in
+            // startup_gate_wait_for_ready() can proceed with the new config.
+            startup_gate_refresh_from_local_hash();
         }
 
         /* Connect to the execd queue */
