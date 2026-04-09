@@ -3230,7 +3230,7 @@ bool Syscollector::setDocumentLimits(const nlohmann::json& limits)
 
                 if (m_logFunction)
                 {
-                    m_logFunction(LOG_INFO, "Document limit reduced for index '" + index +
+                    m_logFunction(LOG_DEBUG, "Document limit reduced for index '" + index +
                                   "' from " + std::to_string(currentCount) + " to " + std::to_string(newLimit) +
                                   ". Resetting " + std::to_string(excessCount) + " excess records to sync=0.");
                 }
@@ -3706,7 +3706,7 @@ size_t Syscollector::promoteUnsyncedItems(const std::string& index,
 
         if (m_logFunction)
         {
-            m_logFunction(LOG_INFO, reason + ": Successfully promoted " +
+            m_logFunction(LOG_DEBUG, reason + ": Successfully promoted " +
                           std::to_string(itemsToMarkSynced.size()) + " records for index '" + index + "'");
         }
     }

@@ -232,9 +232,10 @@ std::vector<IocMappingConfig> loadIocMappingConfigs(const json::Json& config, st
 
 base::Expression getEachIocEnrichTerm(const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbIocManager,
                                       const IocMappingConfig& config,
-                                      bool trace)
+                                      bool trace,
+                                      const std::shared_ptr<bool>& matchFound)
 {
-    auto opFn = [kvdbIocManager, config, trace](base::Event event) -> base::result::Result<base::Event>
+    auto opFn = [kvdbIocManager, config, trace, matchFound](base::Event event) -> base::result::Result<base::Event>
     {
         const auto keyOpt = buildLookupKey(event, config);
         if (!keyOpt.has_value())
@@ -266,6 +267,7 @@ base::Expression getEachIocEnrichTerm(const std::shared_ptr<ioc::kvdb::IKVDBMana
         }();
 
         event->appendJson(enrichmentMatch, IOC_ENRICHMENT_TARGET_PATH);
+        *matchFound = true;
 
         const auto traceMsg =
             trace ? fmt::format(FMT_IOC_MATCH_TRACE, config.iocType, config.sourceFields, lookupKey) : std::string {};
@@ -287,16 +289,38 @@ iocEnrichmentBuilder(const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbIocMana
         throw std::runtime_error("IOC enrichment requires a valid KVDB IOC manager");
     }
 
+    // Shared flag to track if any IOC match was found
+    auto matchFound = std::make_shared<bool>(false);
+
     std::vector<base::Expression> enrichmentTerms;
     enrichmentTerms.reserve(mappingConfigs.size());
 
     for (const auto& config : mappingConfigs)
     {
-        enrichmentTerms.push_back(getEachIocEnrichTerm(kvdbIocManager, config, trace));
+        enrichmentTerms.push_back(getEachIocEnrichTerm(kvdbIocManager, config, trace, matchFound));
     }
 
     base::Expression enrichmentExpr = base::Chain::create(traceableName, enrichmentTerms);
-    return {makeTraceableSuccessExpression(enrichmentExpr, trace), traceableName};
+
+    if (!trace)
+    {
+        return {enrichmentExpr, traceableName};
+    }
+
+    // Only emit SUCCESS if at least one IOC match was found
+    auto conditionalSuccess =
+        base::Term<base::EngineOp>::create("ConditionalAccept",
+                                           [matchFound](auto e) -> base::result::Result<base::Event>
+                                           {
+                                               if (*matchFound)
+                                               {
+                                                   *matchFound = false;
+                                                   return base::result::makeSuccess(e, "SUCCESS");
+                                               }
+                                               return base::result::makeFailure(e, std::string {});
+                                           });
+
+    return {base::Implication::create("TraceableConditional", enrichmentExpr, conditionalSuccess), traceableName};
 }
 
 } // namespace

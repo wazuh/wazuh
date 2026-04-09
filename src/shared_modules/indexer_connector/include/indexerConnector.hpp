@@ -242,6 +242,15 @@ public:
     void flush();
 
     /**
+     * @brief Invoke pending callbacks registered via registerNotify().
+     *
+     * This method executes all callbacks that were registered and are pending
+     * after bulk operations complete. It should be called after releasing any
+     * locks acquired via scopeLock() to avoid deadlocks.
+     */
+    void invokePendingCallbacks();
+
+    /**
      * @brief Acquires and returns a unique lock on the internal mutex.
      *
      * This method encapsulates the synchronization mechanism of the class by

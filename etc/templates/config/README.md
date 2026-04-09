@@ -52,7 +52,7 @@
           <!-- Agent buffer options -->
           <disabled>no</disabled>
           <queue_size>5000</queue_size>
-          <events_per_second>500</events_per_second>
+          <events_per_second>600</events_per_second>
         </client_buffer>
 
         logging.template

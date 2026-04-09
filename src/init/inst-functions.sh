@@ -28,7 +28,6 @@ CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 
 VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detection.manager.template"
 INDEXER_TEMPLATE="./etc/templates/config/generic/wodle-indexer.manager.template"
-AGENT_UPGRADE_TEMPLATE="./etc/templates/config/generic/agent-upgrade.manager.template"
 
 SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca.template"
 
@@ -350,7 +349,7 @@ WriteAgent()
     echo "    <!-- Agent buffer options -->" >> $NEWCONFIG
     echo "    <disabled>no</disabled>" >> $NEWCONFIG
     echo "    <queue_size>5000</queue_size>" >> $NEWCONFIG
-    echo "    <events_per_second>500</events_per_second>" >> $NEWCONFIG
+    echo "    <events_per_second>600</events_per_second>" >> $NEWCONFIG
     echo "  </client_buffer>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
@@ -454,10 +453,6 @@ WriteManager()
 
     # Indexer
     cat ${INDEXER_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Agent upgrade
-    cat ${AGENT_UPGRADE_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Writting auth configuration

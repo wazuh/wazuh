@@ -61,27 +61,27 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
 
     /* Read module limits from internal_options.conf */
     /* FIM limits */
-    manager_module_limits.fim.file = getDefine_Int_default("fim", "file_limit", 0, INT_MAX, 0);
-    manager_module_limits.fim.registry_key = getDefine_Int_default("fim", "registry_key_limit", 0, INT_MAX, 0);
-    manager_module_limits.fim.registry_value = getDefine_Int_default("fim", "registry_value_limit", 0, INT_MAX, 0);
+    manager_module_limits.fim.file = getDefine_Int_default("fim", "file_limit", 0, INT_MAX, 30000);
+    manager_module_limits.fim.registry_key = getDefine_Int_default("fim", "registry_key_limit", 0, INT_MAX, 30000);
+    manager_module_limits.fim.registry_value = getDefine_Int_default("fim", "registry_value_limit", 0, INT_MAX, 30000);
 
     /* Syscollector limits */
-    manager_module_limits.syscollector.hotfixes = getDefine_Int_default("syscollector", "hotfixes_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.packages = getDefine_Int_default("syscollector", "packages_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.processes = getDefine_Int_default("syscollector", "processes_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.ports = getDefine_Int_default("syscollector", "ports_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.network_iface = getDefine_Int_default("syscollector", "network_iface_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.network_protocol = getDefine_Int_default("syscollector", "network_protocol_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.network_address = getDefine_Int_default("syscollector", "network_address_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.hardware = getDefine_Int_default("syscollector", "hardware_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.os_info = getDefine_Int_default("syscollector", "os_info_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.users = getDefine_Int_default("syscollector", "users_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.groups = getDefine_Int_default("syscollector", "groups_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.services = getDefine_Int_default("syscollector", "services_limit", 0, INT_MAX, 0);
-    manager_module_limits.syscollector.browser_extensions = getDefine_Int_default("syscollector", "browser_extensions_limit", 0, INT_MAX, 0);
+    manager_module_limits.syscollector.hotfixes = getDefine_Int_default("syscollector", "hotfixes_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.packages = getDefine_Int_default("syscollector", "packages_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.processes = getDefine_Int_default("syscollector", "processes_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.ports = getDefine_Int_default("syscollector", "ports_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.network_iface = getDefine_Int_default("syscollector", "network_iface_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.network_protocol = getDefine_Int_default("syscollector", "network_protocol_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.network_address = getDefine_Int_default("syscollector", "network_address_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.hardware = getDefine_Int_default("syscollector", "hardware_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.os_info = getDefine_Int_default("syscollector", "os_info_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.users = getDefine_Int_default("syscollector", "users_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.groups = getDefine_Int_default("syscollector", "groups_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.services = getDefine_Int_default("syscollector", "services_limit", 0, INT_MAX, 30000);
+    manager_module_limits.syscollector.browser_extensions = getDefine_Int_default("syscollector", "browser_extensions_limit", 0, INT_MAX, 30000);
 
     /* SCA limits */
-    manager_module_limits.sca.checks = getDefine_Int_default("sca", "checks_limit", 0, INT_MAX, 0);
+    manager_module_limits.sca.checks = getDefine_Int_default("sca", "checks_limit", 0, INT_MAX, 30000);
 
     modules |= CREMOTE;
 

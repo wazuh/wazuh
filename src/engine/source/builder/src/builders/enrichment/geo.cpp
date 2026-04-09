@@ -209,10 +209,12 @@ bool mapAStoECS(const std::string& ip,
 base::Expression getEachEnrichTerm(const std::shared_ptr<geo::ILocator>& cityLocator,
                                    const std::shared_ptr<geo::ILocator>& asLocator,
                                    const MappingConfig& mappingConfig,
-                                   bool trace)
+                                   bool trace,
+                                   const std::shared_ptr<bool>& enrichmentApplied)
 {
 
-    auto opFn = [cityLocator, asLocator, mappingConfig, trace](base::Event event) -> base::result::Result<base::Event>
+    auto opFn = [cityLocator, asLocator, mappingConfig, trace, enrichmentApplied](
+                    base::Event event) -> base::result::Result<base::Event>
     {
         // Get source IP, can be an string o a array of strings, in that case we take the first one.
         const auto ipOpt = [&]() -> std::optional<std::string>
@@ -242,6 +244,11 @@ base::Expression getEachEnrichTerm(const std::shared_ptr<geo::ILocator>& cityLoc
 
         const bool geoSuccess =
             geoConfigured ? mapGeoToECS(ip, cityLocator, mappingConfig.geoEcsPath.value(), *event) : false;
+
+        if (asSuccess || geoSuccess)
+        {
+            *enrichmentApplied = true;
+        }
 
         // Generate trace message using lookup lambda
         const auto getTraceMessage = [&]() -> std::string
@@ -338,17 +345,39 @@ std::pair<base::Expression, std::string> geoEnrichmentBuilder(const std::shared_
     auto& asLocator = base::getResponse(as);
     auto& cityLocator = base::getResponse(city);
 
+    // Shared flag to track if any enrichment was applied
+    auto enrichmentApplied = std::make_shared<bool>(false);
+
     // Create enrichment terms for each mapping config
     std::vector<base::Expression> enrichmentTerms;
     for (const auto& config : mappingConfigs)
     {
-        enrichmentTerms.push_back(getEachEnrichTerm(cityLocator, asLocator, config, trace));
+        enrichmentTerms.push_back(getEachEnrichTerm(cityLocator, asLocator, config, trace, enrichmentApplied));
     }
 
     // Combine terms into a single expression
     base::Expression enrichmentExpr = base::Chain::create(GEO_ENRICHMENT_TRACEABLE_NAMES, enrichmentTerms);
 
-    return {makeTraceableSuccessExpression(enrichmentExpr, trace), GEO_ENRICHMENT_TRACEABLE_NAMES};
+    if (!trace)
+    {
+        return {enrichmentExpr, GEO_ENRICHMENT_TRACEABLE_NAMES};
+    }
+
+    // Only emit SUCCESS if at least one enrichment was applied
+    auto conditionalSuccess =
+        base::Term<base::EngineOp>::create("ConditionalAccept",
+                                           [enrichmentApplied](auto e) -> base::result::Result<base::Event>
+                                           {
+                                               if (*enrichmentApplied)
+                                               {
+                                                   *enrichmentApplied = false;
+                                                   return base::result::makeSuccess(e, "SUCCESS");
+                                               }
+                                               return base::result::makeFailure(e, std::string {});
+                                           });
+
+    return {base::Implication::create("TraceableConditional", enrichmentExpr, conditionalSuccess),
+            GEO_ENRICHMENT_TRACEABLE_NAMES};
 };
 
 } // namespace

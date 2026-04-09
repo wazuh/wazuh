@@ -94,6 +94,11 @@ public:
         m_impl.flush();
     }
 
+    void invokePendingCallbacks()
+    {
+        m_impl.invokePendingCallbacks();
+    }
+
     [[nodiscard]] std::unique_lock<std::mutex> scopeLock()
     {
         return m_impl.scopeLock();
@@ -187,6 +192,11 @@ void IndexerConnectorSync::bulkIndex(std::string_view id,
 void IndexerConnectorSync::flush()
 {
     m_impl->flush();
+}
+
+void IndexerConnectorSync::invokePendingCallbacks()
+{
+    m_impl->invokePendingCallbacks();
 }
 
 [[nodiscard]] std::unique_lock<std::mutex> IndexerConnectorSync::scopeLock()
