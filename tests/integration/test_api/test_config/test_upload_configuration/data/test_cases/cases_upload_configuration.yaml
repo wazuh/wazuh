@@ -1,6 +1,6 @@
 - name: UPLOAD_ONE_BLOCK_CONFIG
   description: Upload one block configuration
-  configuration_parameters:
+  configuration_parameters: null
   metadata:
     body: >
       <wazuh_config>
@@ -12,7 +12,7 @@
 
 - name: UPLOAD_TWO_BLOCKS_CONFIG
   description: Upload two blocks configuration
-  configuration_parameters:
+  configuration_parameters: null
   metadata:
     body: >
       <wazuh_config>
