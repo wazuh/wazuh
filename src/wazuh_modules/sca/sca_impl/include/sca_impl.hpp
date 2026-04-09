@@ -5,6 +5,7 @@
 #include <idbsync.hpp>
 #include <ifilesystem_wrapper.hpp>
 #include <sca_utils.hpp>
+#include "asyncFlushController.hpp"
 #include "iagent_sync_protocol.hpp"
 
 #include <json.hpp>
@@ -220,6 +221,10 @@ class SecurityConfigurationAssessment
         /// @return true if DB contains any policies or checks
         bool hasDataInDatabase();
 
+        /// @brief Execute the blocking flush work for the module.
+        /// @return 0 on success, -1 on error.
+        int executeFlushSync();
+
         /// @brief Handle the case when no policies are available (either at startup or runtime).
         /// If the database has existing data, triggers DataClean to notify the manager and clears DB.
         /// @return true if no cleanup was needed (DB was already empty), false if cleanup was performed or failed
@@ -271,6 +276,9 @@ class SecurityConfigurationAssessment
 
         /// @brief Mutex for condition variable
         std::mutex m_mutex;
+
+        /// @brief Controller for asynchronous flush requests.
+        std::unique_ptr<Utils::AsyncFlushController> m_asyncFlushController;
 
         /// @brief Commands timeout for policy execution
         int m_commandsTimeout = 0;

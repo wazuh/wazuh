@@ -404,6 +404,20 @@ Syscollector::Syscollector()
     , m_failedItems { nullptr }
     , m_itemsToUpdateSync { nullptr }
 {
+    m_asyncFlushController = std::make_unique<Utils::AsyncFlushController>(
+                                 "Syscollector",
+                                 [this]()
+    {
+        return executeFlushSync();
+    },
+    [this](modules_log_level_t level, const std::string & message)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(level, message);
+        }
+    });
+
     // Initialize document limits to 0 (unlimited) for all indices
     for (const auto& [table, index] : INDEX_MAP)
     {
@@ -701,10 +715,10 @@ void Syscollector::destroy()
         m_spSyncProtocolVD->stop();
     }
 
-    // Wait for any ongoing flush() to complete before releasing resources.
-    // flush() holds m_flushMutex for its entire duration; acquiring it here
-    // ensures no thread is inside flush() when we reset m_spSyncProtocol.
-    std::lock_guard<std::mutex> flushLock(m_flushMutex);
+    if (m_asyncFlushController)
+    {
+        m_asyncFlushController->waitForFlushToFinish();
+    }
 
     if (!scanMutexAvailable)
     {
@@ -2733,10 +2747,21 @@ void Syscollector::resume()
 
 int Syscollector::flush()
 {
-    // Hold m_flushMutex for the entire flush duration so that destroy()
-    // can wait for this operation to complete before releasing resources.
-    std::lock_guard<std::mutex> flushLock(m_flushMutex);
+    if (!m_asyncFlushController)
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Syscollector async flush controller not initialized");
+        }
 
+        return -1;
+    }
+
+    return m_asyncFlushController->startFlush() ? 0 : -1;
+}
+
+int Syscollector::executeFlushSync()
+{
     if (m_logFunction)
     {
         m_logFunction(LOG_INFO, "Syscollector flush requested - syncing pending messages");
@@ -3006,7 +3031,7 @@ std::string Syscollector::query(const std::string& jsonQuery)
             if (flushResult == 0)
             {
                 response["error"] = MQ_SUCCESS;
-                response["message"] = "Syscollector module flushed successfully";
+                response["message"] = "Syscollector module flush requested";
                 response["data"]["module"] = "syscollector";
                 response["data"]["action"] = "flush";
             }
@@ -3016,6 +3041,27 @@ std::string Syscollector::query(const std::string& jsonQuery)
                 response["message"] = "Syscollector module flush failed";
                 response["data"]["module"] = "syscollector";
                 response["data"]["action"] = "flush";
+            }
+        }
+        else if (command == "is_flush_completed")
+        {
+            const auto flushStatus = m_asyncFlushController ? m_asyncFlushController->getFlushStatus()
+                                     : Utils::AsyncFlushController::FlushStatus {false, true};
+
+            response["error"] = MQ_SUCCESS;
+            response["data"]["module"] = "syscollector";
+
+            if (flushStatus.running)
+            {
+                response["message"] = "Syscollector flush in progress";
+                response["data"]["status"] = "in_progress";
+            }
+            else
+            {
+                response["message"] = flushStatus.successful ? "Syscollector flush completed successfully"
+                                      : "Syscollector flush completed with error";
+                response["data"]["status"] = "completed";
+                response["data"]["result"] = flushStatus.successful ? "success" : "error";
             }
         }
         else if (command == "get_version")
