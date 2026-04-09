@@ -118,14 +118,11 @@ namespace Utils
 
             switch (m_workerState)
             {
-                case WorkerState::RUNNING:
-                    return {true, false};
-                case WorkerState::FAILED:
-                    return {false, false};
+                case WorkerState::RUNNING: return {true, false};
+                case WorkerState::FAILED: return {false, false};
                 case WorkerState::IDLE:
                 case WorkerState::SUCCEEDED:
-                default:
-                    return {false, true};
+                default: return {false, true};
             }
         }
 
@@ -173,8 +170,7 @@ namespace Utils
             }
             catch (const std::exception& ex)
             {
-                logMessage(LOG_ERROR,
-                           m_moduleName + " async flush failed with exception: " + std::string(ex.what()));
+                logMessage(LOG_ERROR, m_moduleName + " async flush failed with exception: " + std::string(ex.what()));
                 result = -1;
             }
             catch (...)

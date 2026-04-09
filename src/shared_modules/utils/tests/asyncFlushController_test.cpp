@@ -12,8 +12,8 @@
 #include "asyncFlushController.hpp"
 
 #include <atomic>
-#include <future>
 #include <chrono>
+#include <future>
 #include <stdexcept>
 #include <thread>
 
@@ -43,7 +43,11 @@ protected:
 
 TEST_F(AsyncFlushControllerTest, IdleStatusIsCompletedSuccess)
 {
-    Utils::AsyncFlushController controller {"test", []() { return 0; }};
+    Utils::AsyncFlushController controller {"test",
+                                            []()
+                                            {
+                                                return 0;
+                                            }};
 
     const auto flushStatus = controller.getFlushStatus();
     EXPECT_FALSE(flushStatus.running);
@@ -53,17 +57,15 @@ TEST_F(AsyncFlushControllerTest, IdleStatusIsCompletedSuccess)
 TEST_F(AsyncFlushControllerTest, FirstRequestCompletesSuccessfully)
 {
     std::atomic<int> callCount {0};
-    Utils::AsyncFlushController controller {"test", [&callCount]()
-    {
-        ++callCount;
-        return 0;
-    }};
+    Utils::AsyncFlushController controller {"test",
+                                            [&callCount]()
+                                            {
+                                                ++callCount;
+                                                return 0;
+                                            }};
 
     EXPECT_TRUE(controller.startFlush());
-    EXPECT_TRUE(waitUntil([&controller]()
-    {
-        return !controller.getFlushStatus().running;
-    }));
+    EXPECT_TRUE(waitUntil([&controller]() { return !controller.getFlushStatus().running; }));
 
     const auto flushStatus = controller.getFlushStatus();
     EXPECT_EQ(callCount.load(), 1);
@@ -79,18 +81,19 @@ TEST_F(AsyncFlushControllerTest, DuplicateRequestWhileRunningIsIdempotent)
     std::atomic<int> callCount {0};
     std::atomic<bool> firstStartSignaled {false};
 
-    Utils::AsyncFlushController controller {"test", [&]()
-    {
-        ++callCount;
+    Utils::AsyncFlushController controller {"test",
+                                            [&]()
+                                            {
+                                                ++callCount;
 
-        if (!firstStartSignaled.exchange(true))
-        {
-            started.set_value();
-        }
+                                                if (!firstStartSignaled.exchange(true))
+                                                {
+                                                    started.set_value();
+                                                }
 
-        releaseFuture.wait();
-        return 0;
-    }};
+                                                releaseFuture.wait();
+                                                return 0;
+                                            }};
 
     EXPECT_TRUE(controller.startFlush());
     started.get_future().wait();
@@ -104,25 +107,20 @@ TEST_F(AsyncFlushControllerTest, DuplicateRequestWhileRunningIsIdempotent)
 
     release.set_value();
 
-    EXPECT_TRUE(waitUntil([&controller]()
-    {
-        return !controller.getFlushStatus().running;
-    }));
+    EXPECT_TRUE(waitUntil([&controller]() { return !controller.getFlushStatus().running; }));
     EXPECT_TRUE(controller.getFlushStatus().successful);
 }
 
 TEST_F(AsyncFlushControllerTest, FailedFlushReturnsErrorStatus)
 {
-    Utils::AsyncFlushController controller {"test", []()
-    {
-        return -1;
-    }};
+    Utils::AsyncFlushController controller {"test",
+                                            []()
+                                            {
+                                                return -1;
+                                            }};
 
     EXPECT_TRUE(controller.startFlush());
-    EXPECT_TRUE(waitUntil([&controller]()
-    {
-        return !controller.getFlushStatus().running;
-    }));
+    EXPECT_TRUE(waitUntil([&controller]() { return !controller.getFlushStatus().running; }));
 
     const auto flushStatus = controller.getFlushStatus();
     EXPECT_FALSE(flushStatus.running);
@@ -131,16 +129,14 @@ TEST_F(AsyncFlushControllerTest, FailedFlushReturnsErrorStatus)
 
 TEST_F(AsyncFlushControllerTest, ExceptionMapsToErrorStatus)
 {
-    Utils::AsyncFlushController controller {"test", []() -> int
-    {
-        throw std::runtime_error("boom");
-    }};
+    Utils::AsyncFlushController controller {"test",
+                                            []() -> int
+                                            {
+                                                throw std::runtime_error("boom");
+                                            }};
 
     EXPECT_TRUE(controller.startFlush());
-    EXPECT_TRUE(waitUntil([&controller]()
-    {
-        return !controller.getFlushStatus().running;
-    }));
+    EXPECT_TRUE(waitUntil([&controller]() { return !controller.getFlushStatus().running; }));
 
     const auto flushStatus = controller.getFlushStatus();
     EXPECT_FALSE(flushStatus.running);
@@ -150,23 +146,18 @@ TEST_F(AsyncFlushControllerTest, ExceptionMapsToErrorStatus)
 TEST_F(AsyncFlushControllerTest, RepeatRequestAfterCompletionStartsNewWorker)
 {
     std::atomic<int> callCount {0};
-    Utils::AsyncFlushController controller {"test", [&callCount]()
-    {
-        ++callCount;
-        return 0;
-    }};
+    Utils::AsyncFlushController controller {"test",
+                                            [&callCount]()
+                                            {
+                                                ++callCount;
+                                                return 0;
+                                            }};
 
     EXPECT_TRUE(controller.startFlush());
-    EXPECT_TRUE(waitUntil([&controller]()
-    {
-        return !controller.getFlushStatus().running;
-    }));
+    EXPECT_TRUE(waitUntil([&controller]() { return !controller.getFlushStatus().running; }));
 
     EXPECT_TRUE(controller.startFlush());
-    EXPECT_TRUE(waitUntil([&controller]()
-    {
-        return !controller.getFlushStatus().running;
-    }));
+    EXPECT_TRUE(waitUntil([&controller]() { return !controller.getFlushStatus().running; }));
 
     EXPECT_EQ(callCount.load(), 2);
     EXPECT_TRUE(controller.getFlushStatus().successful);
@@ -179,24 +170,22 @@ TEST_F(AsyncFlushControllerTest, ShutdownWaitsForInFlightWorker)
     std::shared_future<void> releaseFuture = release.get_future().share();
     std::atomic<bool> firstStartSignaled {false};
 
-    Utils::AsyncFlushController controller {"test", [&]()
-    {
-        if (!firstStartSignaled.exchange(true))
-        {
-            started.set_value();
-        }
+    Utils::AsyncFlushController controller {"test",
+                                            [&]()
+                                            {
+                                                if (!firstStartSignaled.exchange(true))
+                                                {
+                                                    started.set_value();
+                                                }
 
-        releaseFuture.wait();
-        return 0;
-    }};
+                                                releaseFuture.wait();
+                                                return 0;
+                                            }};
 
     EXPECT_TRUE(controller.startFlush());
     started.get_future().wait();
 
-    auto waitFuture = std::async(std::launch::async, [&controller]()
-    {
-        controller.waitForFlushToFinish();
-    });
+    auto waitFuture = std::async(std::launch::async, [&controller]() { controller.waitForFlushToFinish(); });
 
     EXPECT_EQ(waitFuture.wait_for(std::chrono::milliseconds(100)), std::future_status::timeout);
 
