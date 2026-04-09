@@ -101,31 +101,18 @@ void privSepSetGroup(gid_t gid);
 /**
  * @brief Gets the Wazuh installation home directory path.
  *
- * This function determines the Wazuh home directory by reading the current
- * executable's path from /proc/self/exe and deriving the installation root.
- * It assumes the executable is located in the "bin" subdirectory of the
- * Wazuh installation (e.g., /var/wazuh-manager/bin/executable).
+ * In manager mode (libwazuhshared already loaded) delegates to w_homedir(), the
+ * canonical Wazuh function used by every other daemon. It resolves the path via
+ * /proc/self/exe (e.g. /var/wazuh-manager/bin/wazuh-engine -> /var/wazuh-manager).
  *
- * @return std::filesystem::path The path to the Wazuh home directory.
+ * In standalone mode or unit tests (libwazuhshared not loaded) returns the current
+ * working directory. The value is irrelevant in standalone: all paths are sourced
+ * from dedicated environment variables.
  *
+ * @return std::filesystem::path The resolved Wazuh home directory.
  */
 std::filesystem::path getWazuhHome();
 
-/**
- * @brief Attempts on getting the installation path for wazuh engine standalone mode.
- *
- * @param bin Relative path to binary location
- *
- * @return std::filesystem::path The path to the standalone installation directory.
- */
-std::filesystem::path resolveStandaloneWazuhHome(const char* bin);
-
-/**
- * @brief Set the Wazuh Home path
- *
- * @param home Wazuh home installation path.
- */
-void setWazuhHome(const std::filesystem::path& home);
 /**
  * @brief Sets the name of the current thread.
  *

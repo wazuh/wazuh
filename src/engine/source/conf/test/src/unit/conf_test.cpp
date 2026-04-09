@@ -441,7 +441,6 @@ TEST(ConfGet, invalidType)
 
 TEST(ConfGet, badKey)
 {
-
     conf::Conf conf(std::make_shared<conf::mocks::MockFileLoader>());
 
     EXPECT_THROW(conf.get<int>("/TEST"), std::runtime_error);

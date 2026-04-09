@@ -138,13 +138,18 @@ int main(int argc, char* argv[])
             LOG_INFO("Log file: {}", logConfig.filePath);
         }
 
+    }
+    else
+    {
+        // Use wazuh-shared logging
         try
         {
-            base::process::setWazuhHome(base::process::resolveStandaloneWazuhHome(argv[0]));
+            base::libwazuhshared::init();
+            exitHandler.add([]() { base::libwazuhshared::shutdown(); });
         }
         catch (const std::exception& e)
         {
-            fprintf(stderr, "Error resolving Wazuh home: %s\n", e.what());
+            fprintf(stderr, "Error initializing wazuh-shared: %s\n", e.what());
             return EXIT_FAILURE;
         }
 
@@ -153,31 +158,8 @@ int main(int argc, char* argv[])
             fprintf(stderr, "chdir to WAZUH_HOME failed: %s\n", strerror(errno));
             return EXIT_FAILURE;
         }
-    }
-    else
-    {
         if (opts.testConfig)
         {
-            // Use wazuh-shared logging
-            try
-            {
-                base::libwazuhshared::init();
-                exitHandler.add([]() { base::libwazuhshared::shutdown(); });
-            }
-            catch (const std::exception& e)
-            {
-                fprintf(stderr, "Error initializing wazuh-shared: %s\n", e.what());
-                return EXIT_FAILURE;
-            }
-
-            base::process::setWazuhHome(base::libwazuhshared::getWazuhHome(argv[0]));
-
-            if (chdir(base::process::getWazuhHome().string().c_str()) == -1)
-            {
-                fprintf(stderr, "chdir to WAZUH_HOME failed: %s\n", strerror(errno));
-                return EXIT_FAILURE;
-            }
-
             try
             {
                 const auto ReadXML = base::libwazuhshared::getFunction<void (*)()>("os_logging_config");

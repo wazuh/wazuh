@@ -21,15 +21,13 @@
 #include <fmt/format.h>
 
 #include <base/error.hpp>
-#include <base/process.hpp>
 #include <base/libwazuhshared.hpp>
+#include <base/process.hpp>
 
 constexpr auto MAX_RBUFFER_SIZE = 65536;
 
 namespace base::process
 {
-
-static std::filesystem::path g_wazuhHome;
 
 void goDaemon()
 {
@@ -175,42 +173,24 @@ void privSepSetGroup(gid_t gid)
     }
 }
 
-void setWazuhHome(const std::filesystem::path& home) {
-    g_wazuhHome = home;
-}
-
 std::filesystem::path getWazuhHome()
 {
-    if (g_wazuhHome.empty()) {
-        throw std::runtime_error("Wazuh home not initialized. Call setWazuhHome() first.");
-    }
-    return g_wazuhHome;
-}
-
-std::filesystem::path resolveStandaloneWazuhHome(const char* bin)
-{
-    // WAZUH_HOME env var takes precedence
-    const char* env = std::getenv("WAZUH_HOME");
-    if (env && env[0] != '\0')
+    // Manager mode: libwazuhshared is loaded before this is called (see main.cpp).
+    // Delegate to w_homedir(), the canonical function used by every other Wazuh daemon.
+    // It resolves the home via /proc/self/exe internally.
+    if (base::libwazuhshared::getLibPtr())
     {
-        return std::filesystem::path(env);
+        using WHDir = char* (*)(char*);
+        char* home = base::libwazuhshared::getFunction<WHDir>("w_homedir")(nullptr);
+        std::filesystem::path result(home);
+        free(home);
+        return result;
     }
 
-    // Derive home from binary path: .../bin/wazuh-engine -> ...
-    std::error_code ec;
-    std::filesystem::path binaryPath = std::filesystem::read_symlink("/proc/self/exe", ec);
-    if (ec && bin && bin[0] != '\0')
-    {
-        binaryPath = std::filesystem::weakly_canonical(bin, ec);
-    }
-    if (!binaryPath.empty() && binaryPath.parent_path().filename() == "bin")
-    {
-        return binaryPath.parent_path().parent_path();
-    }
-
-    throw std::runtime_error(
-        "Cannot resolve Wazuh home directory in standalone mode. "
-        "Set the WAZUH_HOME environment variable or install the engine under a 'bin/' directory.");
+    // Standalone mode / unit tests: libwazuhshared is not loaded.
+    // conf::Conf calls getWazuhHome() but all paths are overridden by env vars,
+    // so the return value is irrelevant — just don't throw.
+    return std::filesystem::current_path();
 }
 
 void setThreadName(const std::string& name)
