@@ -30,7 +30,11 @@ on:
           Default is 'false'.
         required: false
         default: false
-# ===================== JOBS =====================
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   build-windows-i686:
     runs-on: wz-linux-amd64

@@ -76,6 +76,17 @@ SecurityConfigurationAssessment::SecurityConfigurationAssessment(std::string dbP
     , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
                           : std::make_shared<file_system::FileSystemWrapper>())
 {
+    m_asyncFlushController = std::make_unique<Utils::AsyncFlushController>(
+                                 "SCA",
+                                 [this]()
+    {
+        return executeFlushSync();
+    },
+    [](modules_log_level_t level, const std::string & message)
+    {
+        LoggingHelper::getInstance().log(level, message);
+    });
+
     LoggingHelper::getInstance().log(LOG_INFO, "SCA initialized.");
 }
 
@@ -89,6 +100,16 @@ SecurityConfigurationAssessment::~SecurityConfigurationAssessment()
         m_pauseCv.notify_all();
     }
     m_cv.notify_all();
+
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->stop();
+    }
+
+    if (m_asyncFlushController)
+    {
+        m_asyncFlushController->waitForFlushToFinish();
+    }
 }
 
 void SecurityConfigurationAssessment::Run()
@@ -190,12 +211,14 @@ void SecurityConfigurationAssessment::Run()
             m_remoteEnabled,
             [this](auto policyData, auto checksData)
             {
+                const bool firstSyncCompleted = m_firstSyncCompleted.load();
                 const SCAEventHandler eventHandler(
                     m_dBSync,
                     m_pushStatelessMessage,
                     m_pushStatefulMessage,
                     m_syncManager,
-                    m_firstSyncCompleted.load());
+                    firstSyncCompleted,
+                    firstSyncCompleted);
                 eventHandler.ReportPoliciesDelta(policyData, checksData);
             },
             m_yamlToJsonFunc
@@ -229,12 +252,16 @@ void SecurityConfigurationAssessment::Run()
 
         auto reportCheckResult = [this](const CheckResult & checkResult)
         {
+            // Initial scan result transitions should still reach wazuh-events,
+            // but stateful snapshots remain suppressed until the first sync completes.
+            const bool firstSyncCompleted = m_firstSyncCompleted.load();
             const SCAEventHandler eventHandler(
                 m_dBSync,
                 m_pushStatelessMessage,
                 m_pushStatefulMessage,
                 m_syncManager,
-                m_firstSyncCompleted.load());
+                firstSyncCompleted,
+                true);
             eventHandler.ReportCheckResult(
                 checkResult.policyId, checkResult.checkId, checkResult.result, checkResult.reason);
         };
@@ -298,6 +325,11 @@ void SecurityConfigurationAssessment::Stop()
     if (m_spSyncProtocol)
     {
         m_spSyncProtocol->stop();
+    }
+
+    if (m_asyncFlushController)
+    {
+        m_asyncFlushController->waitForFlushToFinish();
     }
 
     LoggingHelper::getInstance().log(LOG_DEBUG, "Stopping policies");
@@ -683,6 +715,17 @@ void SecurityConfigurationAssessment::pause()
 
 int SecurityConfigurationAssessment::flush()
 {
+    if (!m_asyncFlushController)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "SCA async flush controller not initialized");
+        return -1;
+    }
+
+    return m_asyncFlushController->startFlush() ? 0 : -1;
+}
+
+int SecurityConfigurationAssessment::executeFlushSync()
+{
     LoggingHelper::getInstance().log(LOG_DEBUG, "SCA flush requested - syncing pending messages");
 
     if (!m_spSyncProtocol)
@@ -754,13 +797,12 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
         }
         else if (command == "flush")
         {
-            // Flush triggers immediate sync protocol synchronization
             int result = flush();
 
             if (result == 0)
             {
                 response["error"] = 0; // MQ_SUCCESS
-                response["message"] = "SCA module flushed successfully";
+                response["message"] = "SCA module flush requested";
                 response["data"]["module"] = "sca";
                 response["data"]["action"] = "flush";
             }
@@ -770,6 +812,27 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
                 response["message"] = "SCA module flush failed";
                 response["data"]["module"] = "sca";
                 response["data"]["action"] = "flush";
+            }
+        }
+        else if (command == "is_flush_completed")
+        {
+            const auto flushStatus = m_asyncFlushController ? m_asyncFlushController->getFlushStatus()
+                                     : Utils::AsyncFlushController::FlushStatus {false, true};
+
+            response["error"] = 0;
+            response["data"]["module"] = "sca";
+
+            if (flushStatus.running)
+            {
+                response["message"] = "SCA flush in progress";
+                response["data"]["status"] = "in_progress";
+            }
+            else
+            {
+                response["message"] = flushStatus.successful ? "SCA flush completed successfully"
+                                      : "SCA flush completed with error";
+                response["data"]["status"] = "completed";
+                response["data"]["result"] = flushStatus.successful ? "success" : "error";
             }
         }
         else if (command == "get_version")

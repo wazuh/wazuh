@@ -1,12 +1,6 @@
 name: 5.X - SCA on Windows - Integration tests - Tier 0 and 1
 
 on:
-  workflow_dispatch:
-    inputs:
-      base_branch:
-        description: 'Base branch'
-        required: true
-        default: 'main'
   pull_request:
     paths:
         - ".github/workflows/5_testintegration_sca-tier-0-1-win.yml"
@@ -18,7 +12,16 @@ on:
         - "src/Makefile"
         - "tests/integration/conftest.py"
         - "tests/integration/test_sca/**"
+  workflow_dispatch:
+    inputs:
+      base_branch:
+        description: 'Base branch'
+        required: true
+        default: 'main'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   # Build the winagent on linux.

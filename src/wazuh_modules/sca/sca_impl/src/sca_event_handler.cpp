@@ -38,12 +38,14 @@ SCAEventHandler::SCAEventHandler(std::shared_ptr<IDBSync> dBSync,
                                  std::function<int(const std::string&)> pushStatelessMessage,
                                  std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> pushStatefulMessage,
                                  std::shared_ptr<SCASyncManager> syncManager,
-                                 bool allowStatefulMessages)
+                                 bool allowStatefulMessages,
+                                 bool allowStatelessMessages)
     : m_pushStatelessMessage(std::move(pushStatelessMessage))
     , m_pushStatefulMessage(std::move(pushStatefulMessage))
     , m_dBSync(std::move(dBSync))
     , m_syncManager(std::move(syncManager))
-    , m_allowStatefulMessages(allowStatefulMessages) {};
+    , m_allowStatefulMessages(allowStatefulMessages)
+    , m_allowStatelessMessages(allowStatelessMessages) {};
 
 void SCAEventHandler::ReportPoliciesDelta(
     const std::unordered_map<std::string, nlohmann::json>& modifiedPoliciesMap,
@@ -143,7 +145,7 @@ void SCAEventHandler::ReportPoliciesDelta(
 
         const auto processedStatelessEvent = ProcessStateless(event);
 
-        if (!processedStatelessEvent.empty())
+        if (m_allowStatelessMessages && !processedStatelessEvent.empty())
         {
             PushStateless(processedStatelessEvent);
         }
@@ -280,7 +282,7 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
 
             const auto stateless = ProcessStateless(event);
 
-            if (!stateless.empty())
+            if (m_allowStatelessMessages && !stateless.empty())
             {
                 PushStateless(stateless);
             }
@@ -719,6 +721,11 @@ void SCAEventHandler::PushStateful(const nlohmann::json& event, ReturnTypeCallba
 
 void SCAEventHandler::PushStateless(const nlohmann::json& event) const
 {
+    if (!m_allowStatelessMessages)
+    {
+        return;
+    }
+
     if (!m_pushStatelessMessage)
     {
         throw std::runtime_error("PushStatelessMessage function not set, cannot send message.");

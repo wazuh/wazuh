@@ -6,6 +6,10 @@ on:
       - "src/**"
       - ".github/workflows/5_testcomponent_windows-files.yml"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -22,7 +26,6 @@ jobs:
       - name: Copy binaries
         run: |
           mkdir -p src/bin_files
-          # Copy executables from build/bin
           cp src/build/bin/*.exe src/bin_files/
           # Remove test tools and setup scripts that aren't distributed
           rm -f src/bin_files/setup-*.exe

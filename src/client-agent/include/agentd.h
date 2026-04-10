@@ -221,6 +221,9 @@ void startup_gate_get_status(bool *ready, char *reason, size_t reason_size);
 // Query startup gate state.
 bool startup_gate_is_ready(void);
 
+// Check if local hash matches expected without updating gate state.
+bool startup_gate_check_hash_match(void);
+
 size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);
 

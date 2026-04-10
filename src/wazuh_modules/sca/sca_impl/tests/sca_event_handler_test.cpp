@@ -1115,6 +1115,7 @@ TEST_F(SCAEventHandlerTest, ReportPoliciesDelta_BeforeFirstSyncSkipsValidationDe
                           mockDBSync,
                           mockPushStateless,
                           mockPushStateful,
+                          false,
                           false);
 
     const std::unordered_map<std::string, nlohmann::json> modifiedPolicies;
@@ -1152,7 +1153,7 @@ TEST_F(SCAEventHandlerTest, ReportPoliciesDelta_BeforeFirstSyncSkipsValidationDe
     EXPECT_NO_THROW(newHandler->ReportPoliciesDelta(modifiedPolicies, modifiedChecks));
 
     EXPECT_TRUE(statefulMessages.empty());
-    EXPECT_EQ(statelessMessages.size(), 1U);
+    EXPECT_TRUE(statelessMessages.empty());
 }
 
 TEST_F(SCAEventHandlerTest, ReportCheckResult_BeforeFirstSyncSkipsValidationDeletion)

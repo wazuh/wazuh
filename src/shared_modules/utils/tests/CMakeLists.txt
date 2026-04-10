@@ -74,7 +74,8 @@ file(
   "evpHelper_test.cpp"
   "socketServer_test.cpp"
   "reflectiveJson_test.cpp"
-  "asyncValueDispatcher_test.cpp")
+  "asyncValueDispatcher_test.cpp"
+  "asyncFlushController_test.cpp")
 
 file(COPY input_files DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
@@ -138,6 +139,7 @@ else()
     link_directories(${SRC_FOLDER}/shared_modules/file_helper/build/lib/)
 
     include_directories(${SRC_FOLDER}/shared_modules/common)
+    include_directories(${SRC_FOLDER}/shared/include)
     include_directories(${SRC_FOLDER}/shared_modules/utils)
     include_directories(
       ${SRC_FOLDER}/shared_modules/file_helper/file_io/include)

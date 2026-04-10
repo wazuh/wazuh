@@ -682,9 +682,6 @@ class APIRequestQueue(WazuhRequestQueue):
 
     async def run(self):
         while True:
-            if self.server.configuration['node_type'] == 'master':
-                await self.server.tasks_event.wait()
-
             names, request = (await self.request_queue.get()).split(' ', 1)
             names = names.split('*', 1)
             # name    -> node name the request must be sent to. None if called from a worker node.

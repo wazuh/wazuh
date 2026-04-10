@@ -41,11 +41,6 @@ variables:
     </localfile>
     </agent_config>
 
-  empty_file_xml:
-    <?xml version="1.0" ?>
-    <metadata>
-    </metadata>
-
   wrong_file_xml:
     <agent_confi>
 
@@ -145,25 +140,4 @@ variables:
       </vulnerability-detection>
 
       <remote>
-    </wazuh_config>
-
-  invalid_wazuh_xml:
-    <wazuh_config>
-      <global>
-        <agents_disconnection_time>20s</agents_disconnection_time>
-        <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
-      </global>
-
-      <logging>
-        <log_format>plain</log_format>
-      </logging>
-
-      <remote>
-        <port>1514</port>
-        <protocol>tcp</protocol>
-      </remote>
-
-      <syscheck>
-        <disabled>yes</disabled>
-      </syscheck>
     </wazuh_config>

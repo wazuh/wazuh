@@ -193,10 +193,10 @@ class AgentInfoImpl
         /// @return true if pause completed successfully, false otherwise
         bool pollFimPauseCompletion(const std::string& moduleName);
 
-        /// @brief Poll FIM module for flush completion
-        /// @param moduleName Module name (should be FIM)
-        /// @return true if flush completed successfully, false otherwise
-        bool pollFimFlushCompletion(const std::string& moduleName);
+        /// @brief Poll all requested module flushes until completion.
+        /// @param pendingModules Set of modules with an accepted flush request.
+        /// @return true if all flushes completed successfully, false otherwise.
+        bool pollFlushCompletion(std::set<std::string> pendingModules);
 
         /// @brief Pause all coordination modules
         /// @param pausedModules Output parameter for successfully paused modules

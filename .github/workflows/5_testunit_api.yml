@@ -1,6 +1,11 @@
 name: 5.X - API - Unit tests
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/5_testunit_api.yml'
+      - 'api/**'
+      - 'src/Makefile'
   workflow_dispatch:
     inputs:
       generate_report:
@@ -12,11 +17,10 @@ on:
         description: 'QA repository branch'
         required: false
         default: 'main'
-  pull_request:
-    paths:
-      - '.github/workflows/5_testunit_api.yml'
-      - 'api/**'
-      - 'src/Makefile'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   build: 
