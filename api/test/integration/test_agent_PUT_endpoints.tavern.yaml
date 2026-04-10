@@ -7,7 +7,7 @@ stages:
   - name: Try to assign all agents to a non existing group
     request: &put_agents_group
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -36,7 +36,7 @@ stages:
   - name: Try to assign all agents to an invalid group id
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -50,7 +50,7 @@ stages:
   - name: Try to assign an agent to a forbidden group id (it must count as non existent)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -64,7 +64,7 @@ stages:
   - name: Try to assign non existing agents to group default
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -90,7 +90,7 @@ stages:
   - name: Try to assign 000 and a non existing agent to group default
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -119,7 +119,7 @@ stages:
   - name: Try to assign agents 001 and 002 to group default where they already belong
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -145,7 +145,7 @@ stages:
   - name: Assign agents 003, 004 and 005 to group1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -177,7 +177,7 @@ stages:
   - name: Assign all agents to group2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -207,7 +207,7 @@ stages:
   - name: Assign all agents to group2 with force_single_group
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -249,7 +249,7 @@ stages:
   - name: Update group2 configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/group2/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/group2/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -269,7 +269,7 @@ stages:
   - name: Try to update configuration of a non existing group
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/wrong_group/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/wrong_group/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -283,7 +283,7 @@ stages:
   - name: Try to update configuration using an empty file
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/group1/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -297,7 +297,7 @@ stages:
   - name: Try to update configuration using an invalid configuration file
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/group1/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -313,7 +313,7 @@ stages:
   - name: Try to update configuration using a wrong configuration file
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/group1/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -328,7 +328,7 @@ stages:
   - name: Try to update configuration using a complex configuration file (no agents in group1)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/group1/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -341,7 +341,7 @@ stages:
   - name: Ensure the config now has the expected value
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/group1/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -369,7 +369,7 @@ stages:
   - name: Restart all agents from group1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group/group1/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group/group1/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -387,7 +387,7 @@ stages:
   - name: Restart all agents from group2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group/group2/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group/group2/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -415,7 +415,7 @@ stages:
   - name: Restart all agents from a group which does not exist
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group/not_exists/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group/not_exists/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -431,7 +431,7 @@ stages:
   - name: Try to reconnect agent with wrong_id
     request: &agent_reconnect_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reconnect"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -516,7 +516,7 @@ stages:
   - name: Try to reconnect all agents
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reconnect"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -548,7 +548,7 @@ stages:
   - name: Try to restart agent with wrong_id
     request: &agent_restart_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -636,7 +636,7 @@ stages:
   - name: Try to restart all agents
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -671,7 +671,7 @@ stages:
   - name: Assign agent 001 to group1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/group1"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/group/group1"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -693,7 +693,7 @@ stages:
   - name: Try to assign an agent with an invalid id
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/wrong_id/group/group1"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/wrong_id/group/group1"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -706,7 +706,7 @@ stages:
   - name: Try to assign a non existing agent to group3
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/999/group/group3"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/999/group/group3"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -728,7 +728,7 @@ stages:
   - name: Assign agent 002 to group3 with force_single_group
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/002/group/group3?force_single_group=true"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/002/group/group3?force_single_group=true"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -757,7 +757,7 @@ stages:
   - name: Try to restart agent 000 (manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -779,7 +779,7 @@ stages:
   - name: Try to restart a not existing agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/999/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/999/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -801,7 +801,7 @@ stages:
   - name: Try to restart an agent with an invalid id
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/wrong_id/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/wrong_id/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -814,7 +814,7 @@ stages:
   - name: Restart an agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/003/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/003/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -839,7 +839,7 @@ stages:
   - name: Get agents belonging to a node
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -856,7 +856,7 @@ stages:
   - name: Restart all agents belonging to a node (worker1)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/node/worker1/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/node/worker1/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -872,7 +872,7 @@ stages:
   - name: Restart all agents belonging to a node (it does not exist)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/node/notexists/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/node/notexists/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -896,7 +896,7 @@ stages:
   - name: Try to upgrade a non existing agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -922,7 +922,7 @@ stages:
   - name: Try to upgrade agent 000 (manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -948,7 +948,7 @@ stages:
   - name: Try to upgrade a list of agents with an invalid agents_list
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -962,7 +962,7 @@ stages:
   - name: Create task to upgrade an agent to the latest version (agent will be upgraded if the corresponding WPK exists)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -984,7 +984,7 @@ stages:
   - name: Try to upgrade an agent that is updated to the latest version
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1008,7 +1008,7 @@ stages:
   - name: Upgrade an agent using http and wpk repo
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1031,7 +1031,7 @@ stages:
   - name: Try to upgrade a list of agents that cannot be upgraded (000, not existing and non active agents)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1074,7 +1074,7 @@ stages:
   - name: Try to upgrade a list of agents expecting socket error (agent version greater or equal)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1102,7 +1102,7 @@ stages:
   - name: Try to upgrade a list of agents with filters not matching them
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1131,7 +1131,7 @@ stages:
   - name: Upgrade all agents in group group1 (only 001 is in group1)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1153,7 +1153,7 @@ stages:
   - name: Upgrade all agents with os version 18.04.5 LTS and query
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1183,7 +1183,7 @@ stages:
   - name: Try to customly upgrade a non existing agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1196,7 +1196,7 @@ stages:
   - name: Try to customly upgrade agent 000 (manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1209,7 +1209,7 @@ stages:
   - name: Try to customly upgrade an agent without parameters
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1223,7 +1223,7 @@ stages:
   - name: Try to customly upgrade an agent using default installer (WPK does not exist)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1245,7 +1245,7 @@ stages:
   - name: Try to customly upgrade an agent selecting installer (WPK does not exist)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1268,7 +1268,7 @@ stages:
   - name: Try to customly upgrade a list of agents with an invalid agents_list
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1283,7 +1283,7 @@ stages:
   - name: Try to customly upgrade a list of agents that cannot be upgraded (000, not existing and non active agents)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1296,7 +1296,7 @@ stages:
   - name: Try to customly upgrade a list of agents with filters not matching them
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"

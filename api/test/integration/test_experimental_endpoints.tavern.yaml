@@ -8,7 +8,7 @@ stages:
     request:
       verify: False
       method: DELETE
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/rootcheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/rootcheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -29,7 +29,7 @@ stages:
     request:
       verify: False
       method: DELETE
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/rootcheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/rootcheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -65,7 +65,7 @@ stages:
   - name: Try to delete syscheck scans (Some failed, agents are newer than expected)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/syscheck"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -86,7 +86,7 @@ stages:
   - name: Try to delete syscheck scans (Failed, agents are newer than expected)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/syscheck"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -117,7 +117,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/ciscat/results"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -139,7 +139,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/syscollector/hardware"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -177,7 +177,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/syscollector/hardware"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -209,7 +209,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/syscollector/netaddr"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -242,7 +242,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/syscollector/netaddr"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -274,7 +274,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/syscollector/netiface"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -318,7 +318,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/syscollector/netiface"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -350,7 +350,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netproto"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/syscollector/netproto"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -382,7 +382,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netproto"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/syscollector/netproto"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -414,7 +414,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/os"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/syscollector/os"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -455,7 +455,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/os"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/syscollector/os"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -487,7 +487,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages?wait_for_complete=true"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/syscollector/packages?wait_for_complete=true"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -504,7 +504,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages?wait_for_complete=true"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/syscollector/packages?wait_for_complete=true"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -528,7 +528,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/syscollector/ports"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -566,7 +566,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/syscollector/ports"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -595,7 +595,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/syscollector/processes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -612,7 +612,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/syscollector/processes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -636,7 +636,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hotfixes"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/syscollector/hotfixes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -655,7 +655,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hotfixes"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/experimental/syscollector/hotfixes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

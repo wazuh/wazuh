@@ -7,7 +7,7 @@ stages:
   - name: Create a new agent with a valid IPV6
     request: &agent_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -72,7 +72,7 @@ stages:
   - name: Check all registered IPV6 agents
     request: &agent_list_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -299,7 +299,7 @@ stages:
   - name: Try to create a group without body
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -312,7 +312,7 @@ stages:
   - name: Create a group called group4
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -327,7 +327,7 @@ stages:
   - name: Try to create a group that already exists
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -342,7 +342,7 @@ stages:
   - name: Try to create a group with an invalid name
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -357,7 +357,7 @@ stages:
   - name: Try to create a group with a forbidden name
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -377,7 +377,7 @@ stages:
   - name: Try to create a new agent without body
     request: &agent_insert_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/insert"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/insert"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -602,7 +602,7 @@ stages:
   - name: Create new agent specifying its name
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/insert/quick"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/insert/quick"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -621,7 +621,7 @@ stages:
   - name: Try to create agent with an invalid name (invalid_character)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/insert/quick"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/insert/quick"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -636,7 +636,7 @@ stages:
   - name: Try to create an already existing agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/insert/quick"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/insert/quick"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
