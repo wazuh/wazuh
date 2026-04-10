@@ -651,7 +651,7 @@ public:
             }
             else
             {
-                if (ret != packet.m_size)
+                if (ret != static_cast<ssize_t>(packet.m_size - packet.m_offset))
                 {
                     // In this case we need to send the rest of the data, when the next send is called.
                     packet.m_offset += ret;
