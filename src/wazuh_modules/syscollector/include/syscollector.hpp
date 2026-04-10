@@ -104,6 +104,10 @@ class EXPORTED Syscollector final
         // Mutex access for external synchronization (e.g., from wm_sync_module)
         void lockScanMutex();
         void unlockScanMutex();
+        bool isScanning() const
+        {
+            return m_scanning.load();
+        }
 
         // Recovery functions
         void runRecoveryProcess();

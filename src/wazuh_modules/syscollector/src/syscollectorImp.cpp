@@ -2211,11 +2211,11 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
 // LCOV_EXCL_START
 bool Syscollector::syncModule(Mode mode)
 {
-    if (m_paused)
+    if (m_paused || m_stopping.load())
     {
         if (m_logFunction)
         {
-            m_logFunction(LOG_DEBUG, "Syscollector module is paused, skipping synchronization");
+            m_logFunction(LOG_DEBUG, "Syscollector module is paused or stopping, skipping synchronization");
         }
 
         return false;
@@ -2244,6 +2244,13 @@ bool Syscollector::syncModule(Mode mode)
         }
     }
 
+    // Check if stopping before proceeding with VD sync
+    if (m_stopping.load())
+    {
+        m_logFunction(LOG_DEBUG, "Stop received during synchronization, skipping VD sync");
+        return false;
+    }
+
     // Sync VD data with appropriate option based on first scan status
     if (m_spSyncProtocolVD)
     {
@@ -2264,8 +2271,8 @@ bool Syscollector::syncModule(Mode mode)
 
         bool vdSuccess = m_spSyncProtocolVD->synchronizeModule(mode, vdOption);
 
-        // Create flag file after successful first sync
-        if (vdSuccess && !firstSyncDone)
+        // Create flag file after successful first sync only if not stopping
+        if (vdSuccess && !firstSyncDone && !m_stopping.load())
         {
             m_logFunction(LOG_DEBUG, "VD first sync successful, attempting to create flag file: " + std::string(VD_FIRST_SYNC_FLAG_FILE));
             std::ofstream flagFile(VD_FIRST_SYNC_FLAG_FILE);
@@ -2280,6 +2287,10 @@ bool Syscollector::syncModule(Mode mode)
             {
                 m_logFunction(LOG_ERROR, "Failed to create VD flag file: " + std::string(VD_FIRST_SYNC_FLAG_FILE));
             }
+        }
+        else if (m_stopping.load() && vdSuccess && !firstSyncDone)
+        {
+            m_logFunction(LOG_DEBUG, "VD first sync successful but module is stopping, flag file not created");
         }
         else if (!vdSuccess)
         {
