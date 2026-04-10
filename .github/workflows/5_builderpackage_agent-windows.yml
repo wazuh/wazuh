@@ -57,7 +57,7 @@ jobs:
         id: set-version
         run: |
           VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
-          cat << EOF >> $GITHUB_ENV
+          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
           VERSION=$VERSION
           EOF
           echo "version=$VERSION" >> $GITHUB_OUTPUT
@@ -112,7 +112,7 @@ jobs:
           VERSION="${{ needs.build-binaries.outputs.version }}"
           COMMIT_HASH="$(git rev-parse --short=7 HEAD)"
           REVISION="${{ inputs.revision || '0' }}"
-          cat << EOF >> $GITHUB_ENV
+          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
           VERSION=$VERSION
           PKG_NAME=wazuh-agent_${VERSION}-${REVISION}_windows_${COMMIT_HASH}
           PKG_NAME_SYMBOLS_SHORT=wazuh-agent-debug-symbols_${VERSION}-${REVISION}_windows_${COMMIT_HASH}
@@ -223,7 +223,7 @@ jobs:
 
       - name: Load metadata
         shell: bash
-        run: cat src/win32/metadata.env >> $GITHUB_ENV
+        run: tr -d '\r' < src/win32/metadata.env >> $GITHUB_ENV
 
       - name: Download package artifact
         uses: actions/download-artifact@v4
@@ -299,7 +299,7 @@ jobs:
           path: /tmp
 
       - name: Load metadata
-        run: cat /tmp/metadata.env >> $GITHUB_ENV
+        run: tr -d '\r' < /tmp/metadata.env >> $GITHUB_ENV
 
       - name: Download package artifacts
         uses: actions/download-artifact@v4

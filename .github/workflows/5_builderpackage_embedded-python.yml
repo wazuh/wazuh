@@ -72,7 +72,7 @@ jobs:
 
           VERSION=$(jq -r '.version' VERSION.json)
 
-          cat << EOF >> $GITHUB_ENV
+          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
           ARCH=$arch
           PACKAGE_ARCH=$pkg_arch
           TAG=$VERSION

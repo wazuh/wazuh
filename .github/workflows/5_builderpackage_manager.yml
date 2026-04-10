@@ -132,7 +132,7 @@ jobs:
             [ "${{ inputs.system }}" = "rpm" ] && arch="aarch64" || arch="arm64"
           fi
 
-          cat << EOF >> $GITHUB_ENV
+          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
           ARCH=$arch
           PACKAGE_ARCH=$pkg_arch
           EOF

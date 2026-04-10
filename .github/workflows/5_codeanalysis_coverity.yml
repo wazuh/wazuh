@@ -58,11 +58,11 @@ jobs:
           VERSION=$(jq -r '.version + "-" + .stage' VERSION.json)
           DESCRIPTION="Version $VERSION - Git ref ${{ github.ref_name }}"
 
-          cat << EOF >> $GITHUB_ENV
+          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
           JOBS=$JOBS
           EOF
 
-          cat << EOF >> $GITHUB_OUTPUT
+          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_OUTPUT
           PROJECT=$PROJECT
           VERSION=$VERSION
           DESCRIPTION=$DESCRIPTION

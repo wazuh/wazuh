@@ -91,7 +91,7 @@ jobs:
 
           issue_number=$(echo "${{ inputs.issue-link }}" | awk -F'/' '{print $NF}')
 
-          cat << EOF >> $GITHUB_OUTPUT
+          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_OUTPUT
           branch_name=enhancement/wqa${issue_number}-bump-${{ github.ref_name }}
           script_params=$script_params
           EOF

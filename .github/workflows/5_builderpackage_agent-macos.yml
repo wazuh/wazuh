@@ -61,7 +61,7 @@ jobs:
       - name: Set VERSION and ARCH
         run: |
           VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
-          cat << EOF >> $GITHUB_ENV
+          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
           VERSION=$VERSION
           ARCH=${{ matrix.arch }}
           EOF
@@ -89,14 +89,14 @@ jobs:
           PACKAGE_NAME=$(find packages/macos/output -maxdepth 1 -type f -name "*agent*.pkg" -exec basename {} 2>/dev/null \;)
           PACKAGE_SYMBOLS_NAME=$(find packages/macos/output -maxdepth 1 -type f -name "*agent-debug-symbols*.zip" -exec basename {} 2>/dev/null \;)
 
-          cat << EOF > packages/macos/output/metadata.env
+          cat << EOF | sed -e 's/^[[:space:]]*//' > packages/macos/output/metadata.env
           PACKAGE_NAME=$PACKAGE_NAME
           PACKAGE_SYMBOLS_NAME=$PACKAGE_SYMBOLS_NAME
           VERSION=${{ env.VERSION }}
           ARCH=${{ env.ARCH }}
           EOF
 
-          cat << EOF >> $GITHUB_ENV
+          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
           PACKAGE_NAME=$PACKAGE_NAME
           PACKAGE_SYMBOLS_NAME=$PACKAGE_SYMBOLS_NAME
           EOF
@@ -156,7 +156,7 @@ jobs:
 
       - name: Load metadata
         run: |
-          cat packages/macos/output/metadata.env >> $GITHUB_ENV
+          tr -d '\r' < packages/macos/output/metadata.env >> $GITHUB_ENV
 
       - name: Download package artifact
         uses: actions/download-artifact@v4
@@ -231,7 +231,7 @@ jobs:
 
       - name: Load metadata
         run: |
-          cat /tmp/metadata.env >> $GITHUB_ENV
+          tr -d '\r' < /tmp/metadata.env >> $GITHUB_ENV
 
       - name: Download package artifacts
         uses: actions/download-artifact@v4

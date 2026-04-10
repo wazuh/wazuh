@@ -43,7 +43,7 @@ jobs:
           make -C src TARGET=agent -j2
       - name: Install wazuh agent for linux
         run: |
-          cat << EOF > ./etc/preloaded-vars.conf
+          cat << EOF | sed -e 's/^[[:space:]]*//' > ./etc/preloaded-vars.conf
           USER_LANGUAGE="en"
           USER_INSTALL_TYPE="agent"
           USER_DIR=/var/ossec

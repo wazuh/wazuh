@@ -46,7 +46,7 @@ jobs:
           sudo touch /var/wazuh-manager/etc/certs/manager-key.pem
       - name: Install wazuh manager for linux
         run: |
-          cat << EOF > ./etc/preloaded-vars.conf
+          cat << EOF | sed -e 's/^[[:space:]]*//' > ./etc/preloaded-vars.conf
           USER_LANGUAGE="en"
           USER_INSTALL_TYPE="manager"
           USER_DIR=/var/wazuh-manager

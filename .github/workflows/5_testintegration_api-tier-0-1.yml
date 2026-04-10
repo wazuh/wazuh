@@ -42,7 +42,7 @@ jobs:
           make -C src TARGET=manager -j2
       - name: Install wazuh manager for linux
         run: |
-          cat << EOF > ./etc/preloaded-vars.conf
+          cat << EOF | sed -e 's/^[[:space:]]*//' > ./etc/preloaded-vars.conf
           USER_LANGUAGE="en"
           USER_INSTALL_TYPE="manager"
           USER_DIR=$INSTALLATION_DIR

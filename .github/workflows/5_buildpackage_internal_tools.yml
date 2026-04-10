@@ -80,9 +80,9 @@ jobs:
 
           if [ -z "$PKG" ]; then exit 1; fi
 
-          mv "$PKG" "${{ env.OUTDIR }}/$NEW_PKG"
+          sudo mv "$PKG" "${{ env.OUTDIR }}/$NEW_PKG"
 
-          cat << EOF >> $GITHUB_ENV
+          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
           PKG_NAME=$NEW_PKG
           EOF
 

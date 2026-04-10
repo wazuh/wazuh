@@ -76,7 +76,7 @@ jobs:
 
           DOCKERFILE_PATH="packages/${{ matrix.system }}s/${{ matrix.arch }}/manager"
 
-          cat << EOF >> $GITHUB_ENV
+          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
           TAG=$TAG
           DOCKERFILE_PATH=$DOCKERFILE_PATH
           CONTAINER_NAME=pkg_${{ matrix.system }}_manager_builder_${{ matrix.arch }}

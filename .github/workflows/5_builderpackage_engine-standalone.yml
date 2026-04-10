@@ -70,16 +70,16 @@ jobs:
           # Set container name and normalize architecture
           case "${{ matrix.arch }}" in
             x64|amd64)
-              cat << EOF >> $GITHUB_ENV
+              cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
               CONTAINER_NAME=pkg_rpm_manager_builder_amd64
               NORMALIZED_ARCH=amd64
-              EOF
+          EOF
               ;;
             arm64)
-              cat << EOF >> $GITHUB_ENV
+              cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
               CONTAINER_NAME=pkg_rpm_manager_builder_arm64
               NORMALIZED_ARCH=arm64
-              EOF
+          EOF
               ;;
             *)
               echo "Error: Unsupported architecture '${{ matrix.arch }}'"

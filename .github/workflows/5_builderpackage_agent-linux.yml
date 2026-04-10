@@ -75,7 +75,7 @@ jobs:
       - name: Set VERSION and CONTAINER_NAME
         run: |
           VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
-          cat << EOF >> $GITHUB_ENV
+          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
           VERSION=$VERSION
           TAG=$VERSION
           CONTAINER_NAME=pkg_${{ matrix.system }}_agent_builder_${{ matrix.arch }}
@@ -111,7 +111,7 @@ jobs:
             PACKAGE_SYMBOLS_NAME=$(find /tmp -maxdepth 1 -type f -name "*agent*.rpm" -exec basename {} 2>/dev/null \; | grep -E "^wazuh-agent-debuginfo")
           fi
 
-          cat <<EOF > /tmp/metadata.env
+          cat <<EOF | sed -e 's/^[[:space:]]*//' > /tmp/metadata.env
           PACKAGE_NAME=$PACKAGE_NAME
           PACKAGE_SYMBOLS_NAME=$PACKAGE_SYMBOLS_NAME
           VERSION=${{ env.VERSION }}
@@ -120,7 +120,7 @@ jobs:
           SYSTEM=${{ matrix.system }}
           EOF
 
-          cat <<EOF >> $GITHUB_ENV
+          cat <<EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
           PACKAGE_NAME=$PACKAGE_NAME
           PACKAGE_SYMBOLS_NAME=$PACKAGE_SYMBOLS_NAME
           EOF
@@ -186,7 +186,7 @@ jobs:
 
       - name: Load metadata
         run: |
-          cat /tmp/metadata.env >> $GITHUB_ENV
+          tr -d '\r' < /tmp/metadata.env >> $GITHUB_ENV
 
       - name: Download package artifact
         uses: actions/download-artifact@v4
@@ -216,7 +216,7 @@ jobs:
           else
             exit 1
           fi
-          cat << EOF >> $GITHUB_ENV
+          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
           WAZUH_UID=$(cat $TESTS_PATH/wazuh_uid)
           WAZUH_GID=$(cat $TESTS_PATH/wazuh_gid)
           EOF
@@ -291,7 +291,7 @@ jobs:
 
       - name: Load metadata
         run: |
-          cat /tmp/metadata.env >> $GITHUB_ENV
+          tr -d '\r' < /tmp/metadata.env >> $GITHUB_ENV
 
       - name: Download package artifacts
         uses: actions/download-artifact@v4
