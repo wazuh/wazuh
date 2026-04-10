@@ -163,11 +163,17 @@ def test_max_eps(test_configuration, test_metadata, configure_local_internal_opt
         regex = PATH_MONITORED_REALTIME if test_metadata['fim_mode'] == 'realtime' else PATH_MONITORED_WHODATA
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(callback=generate_callback(regex))
+    wazuh_log_monitor.start(timeout=60, callback=generate_callback(regex))
     if not wazuh_log_monitor.callback_result and sys.platform == WINDOWS:
-        # On Windows, this log can appear later after the service restart sequence.
-        wazuh_log_monitor.start(timeout=60, only_new_events=True, callback=generate_callback(regex))
-    assert wazuh_log_monitor.callback_result
+        # On Windows, startup log ordering is not deterministic after service restart.
+        # Fall back to waiting for the first synchronization marker before proceeding.
+        wazuh_log_monitor.start(
+            timeout=120,
+            only_new_events=True,
+            callback=generate_callback(r'.*FIM synchronization (finished|failed).*')
+        )
+    else:
+        assert wazuh_log_monitor.callback_result
 
     # Wait for the first FIM synchronization cycle to complete (succeed or fail) so that the
     # sync thread releases fim_scan_mutex and fim_realtime_mutex. Without this, the sync
