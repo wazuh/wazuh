@@ -1,3 +1,4 @@
+import datetime
 import json
 
 import yaml
@@ -18,4 +19,10 @@ def load_json_content(raw: str) -> str:
     if not isinstance(data, dict):
         raise ValueError("Payload must be a JSON object (top-level must be an object).")
 
-    return json.dumps(data, separators=(",", ":"))
+    def _default(value):
+        if isinstance(value, (datetime.date, datetime.datetime)):
+            return value.isoformat()
+
+        raise TypeError(f"YAML value of type {type(value).__name__!r} is not JSON serializable")
+
+    return json.dumps(data, separators=(",", ":"), default=_default)

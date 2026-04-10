@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include <api/adapter/baseHandler_test.hpp>
+#include <api/adapter/helpers.hpp>
 #include <api/cmcrud/handlers.hpp>
 
 #include <cmcrud/mockcmcrud.hpp>
@@ -303,16 +304,7 @@ INSTANTIATE_TEST_SUITE_P(
             [](const std::shared_ptr<cm::crud::ICrudService>& crud) { return resourceGet(crud); },
             []()
             {
-                eContent::resourceGet_Response protoRes;
-                protoRes.set_status(eEngine::ReturnStatus::OK);
-                auto structOrErr =
-                    eMessage::eMessageFromJson<google::protobuf::Struct>(R"({"id":"uuid-1","name":"decoder/test"})");
-                if (std::holds_alternative<base::Error>(structOrErr))
-                {
-                    throw std::runtime_error(std::get<base::Error>(structOrErr).message);
-                }
-                protoRes.mutable_jsoncontent()->CopyFrom(std::get<google::protobuf::Struct>(structOrErr));
-                return userResponse<eContent::resourceGet_Response>(protoRes);
+                return helpers::buildJsonContentResponse(json::Json {R"({"id":"uuid-1","name":"decoder/test"})"});
             },
             [](auto& mock)
             {

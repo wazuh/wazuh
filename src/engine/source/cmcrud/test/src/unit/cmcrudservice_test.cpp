@@ -121,6 +121,16 @@ json::Json makeJsonPayload(const char* raw)
     return json::Json {raw};
 }
 
+std::string getStringOrEmpty(const json::Json& json, std::string_view path)
+{
+    std::string value;
+    if (json.getString(value, path) != json::RetGet::Success)
+    {
+        return "";
+    }
+    return value;
+}
+
 // ---------------------------------------------------------------------
 // Constructor tests
 // ---------------------------------------------------------------------
@@ -502,8 +512,8 @@ TEST(CrudService_Unit, GetResourceByUUID_Integration)
 
     const auto result = service.getResourceByUUID(nsId, uuid);
 
-    EXPECT_EQ(result.getString("/id").value_or(""), "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
-    EXPECT_EQ(result.getString("/metadata/title").value_or(""), "windows");
+    EXPECT_EQ(getStringOrEmpty(result, "/id"), "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
+    EXPECT_EQ(getStringOrEmpty(result, "/metadata/title"), "windows");
 }
 
 TEST(CrudService_Unit, GetResourceByUUID_Integration_ReturnsJsonObject)
@@ -543,8 +553,8 @@ TEST(CrudService_Unit, GetResourceByUUID_Integration_ReturnsJsonObject)
     const auto result = service.getResourceByUUID(nsId, uuid);
 
     EXPECT_TRUE(result.isObject());
-    EXPECT_EQ(result.getString("/id").value_or(""), "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
-    EXPECT_EQ(result.getString("/metadata/title").value_or(""), "windows");
+    EXPECT_EQ(getStringOrEmpty(result, "/id"), "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
+    EXPECT_EQ(getStringOrEmpty(result, "/metadata/title"), "windows");
 }
 
 // ---------------------------------------------------------------------
@@ -589,8 +599,8 @@ TEST(CrudService_Unit, GetResourceByUUID_KVDB)
 
     const auto result = service.getResourceByUUID(nsId, uuid);
 
-    EXPECT_EQ(result.getString("/id").value_or(""), "82e215c4-988a-4f64-8d15-b98b2fc03a4f");
-    EXPECT_EQ(result.getString("/metadata/title").value_or(""), "windows_kerberos_status_code_to_code_name");
+    EXPECT_EQ(getStringOrEmpty(result, "/id"), "82e215c4-988a-4f64-8d15-b98b2fc03a4f");
+    EXPECT_EQ(getStringOrEmpty(result, "/metadata/title"), "windows_kerberos_status_code_to_code_name");
 }
 
 // ---------------------------------------------------------------------
@@ -627,8 +637,8 @@ TEST(CrudService_Unit, GetResourceByUUID_Decoder)
 
     const auto result = service.getResourceByUUID(nsId, uuid);
 
-    EXPECT_EQ(result.getString("/name").value_or(""), "decoder/syslog/0");
-    EXPECT_EQ(result.getString("/id").value_or(""), "3f086ce2-32a4-42b0-be7e-40dcfb9c6160");
+    EXPECT_EQ(getStringOrEmpty(result, "/name"), "decoder/syslog/0");
+    EXPECT_EQ(getStringOrEmpty(result, "/id"), "3f086ce2-32a4-42b0-be7e-40dcfb9c6160");
 }
 
 // ---------------------------------------------------------------------
@@ -708,7 +718,7 @@ TEST(CrudService_Unit, UpsertIntegration_AcceptsJsonPayloadAndPassesJsonToStore)
                                      {
                                          return content.isObject() && content.isBool("/enabled")
                                                 && content.isString("/metadata/title")
-                                                && content.getString("/metadata/title").value_or("") == "windows";
+                                                && getStringOrEmpty(content, "/metadata/title") == "windows";
                                      })))
         .Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);

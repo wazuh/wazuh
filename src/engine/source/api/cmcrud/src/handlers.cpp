@@ -238,15 +238,14 @@ adapter::RouteHandler policyUpsert(std::shared_ptr<cm::crud::ICrudService> crud)
             return;
         }
 
-        auto payloadOrErr = eMessage::eStructToJson(protoReq.jsoncontent());
-        if (std::holds_alternative<base::Error>(payloadOrErr))
+        auto payloadOrErr = adapter::helpers::getJsonFieldFromBody(req.body, "/jsonContent", MESSAGE_JSON_REQUIRED);
+        if (base::isError(payloadOrErr))
         {
-            res = adapter::userErrorResponse<ResponseType>(
-                fmt::format("Content is not valid JSON object: {}", std::get<base::Error>(payloadOrErr).message));
+            res = adapter::userErrorResponse<ResponseType>(base::getError(payloadOrErr).message);
             return;
         }
 
-        const auto& payload = std::get<json::Json>(payloadOrErr);
+        const auto& payload = base::getResponse(payloadOrErr);
         if (!payload.isObject())
         {
             res = adapter::userErrorResponse<ResponseType>("Payload top-level must be an object");
@@ -336,26 +335,15 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
 
         const bool loadInTester = protoReq.load_in_tester();
 
-        auto jsonOrErr = eMessage::eMessageToJson(protoReq.full_policy(), /*printPrimitiveFields=*/true);
-        if (std::holds_alternative<base::Error>(jsonOrErr))
+        auto fullPolicyOrErr =
+            adapter::helpers::getJsonFieldFromBody(req.body, {"/full_policy", "/fullPolicy"}, "Missing full policy");
+        if (base::isError(fullPolicyOrErr))
         {
-            res = adapter::userErrorResponse<ResponseType>(fmt::format(
-                "Error converting full_policy to JSON object: {}", std::get<base::Error>(jsonOrErr).message));
+            res = adapter::userErrorResponse<ResponseType>(base::getError(fullPolicyOrErr).message);
             return;
         }
 
-        const auto& fullPolicyStr = std::get<std::string>(jsonOrErr);
-        json::Json fullPolicy;
-        try
-        {
-            fullPolicy = json::Json(fullPolicyStr.c_str());
-        }
-        catch (const std::exception& e)
-        {
-            res = adapter::userErrorResponse<ResponseType>(
-                fmt::format("Error parsing full policy JSON object: {}", e.what()));
-            return;
-        }
+        const auto& fullPolicy = base::getResponse(fullPolicyOrErr);
 
         if (fullPolicy.isEmpty())
         {
@@ -452,7 +440,7 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
             // Step 1: Import into temp namespace (validates structure).
             // ============================================================
             const cm::store::dataType::Policy pol =
-                service->importNamespace(tmpNsId, fullPolicyStr, finalSessionName, /*force=*/true);
+                service->importNamespace(tmpNsId, fullPolicy.str(), finalSessionName, /*force=*/true);
             guard.namespaceOwned = true;
 
             const bool isEnabled = pol.isEnabled();
@@ -694,16 +682,7 @@ adapter::RouteHandler resourceGet(std::shared_ptr<cm::crud::ICrudService> crud)
         {
             const cm::store::NamespaceId nsId {protoReq.space()};
             const auto content = service->getResourceByUUID(nsId, protoReq.uuid());
-            auto structOrErr = eMessage::eMessageFromJson<google::protobuf::Struct>(content.str());
-            if (std::holds_alternative<base::Error>(structOrErr))
-            {
-                throw std::runtime_error(fmt::format("Error converting resource JSON to protobuf Struct: {}",
-                                                     std::get<base::Error>(structOrErr).message));
-            }
-
-            *eResponse.mutable_jsoncontent() = std::get<google::protobuf::Struct>(structOrErr);
-            eResponse.set_status(eEngine::ReturnStatus::OK);
-            res = adapter::userResponse(eResponse);
+            res = adapter::helpers::buildJsonContentResponse(content);
         }
         catch (const std::exception& ex)
         {
@@ -759,15 +738,14 @@ adapter::RouteHandler resourceUpsert(std::shared_ptr<cm::crud::ICrudService> cru
             return;
         }
 
-        auto payloadOrErr = eMessage::eStructToJson(protoReq.jsoncontent());
-        if (std::holds_alternative<base::Error>(payloadOrErr))
+        auto payloadOrErr = adapter::helpers::getJsonFieldFromBody(req.body, "/jsonContent", MESSAGE_JSON_REQUIRED);
+        if (base::isError(payloadOrErr))
         {
-            res = adapter::userErrorResponse<ResponseType>(
-                fmt::format("Content is not valid JSON object: {}", std::get<base::Error>(payloadOrErr).message));
+            res = adapter::userErrorResponse<ResponseType>(base::getError(payloadOrErr).message);
             return;
         }
 
-        const auto& payload = std::get<json::Json>(payloadOrErr);
+        const auto& payload = base::getResponse(payloadOrErr);
         if (!payload.isObject())
         {
             res = adapter::userErrorResponse<ResponseType>("Payload top-level must be an object");
@@ -909,15 +887,14 @@ adapter::RouteHandler resourceValidate(std::shared_ptr<cm::crud::ICrudService> c
             return;
         }
 
-        auto payloadOrErr = eMessage::eStructToJson(protoReq.resource());
-        if (std::holds_alternative<base::Error>(payloadOrErr))
+        auto payloadOrErr = adapter::helpers::getJsonFieldFromBody(req.body, "/resource", MESSAGE_RESOURCE_REQUIRED);
+        if (base::isError(payloadOrErr))
         {
-            res = adapter::userErrorResponse<ResponseType>(
-                fmt::format("Error converting /resource to JSON: {}", std::get<base::Error>(payloadOrErr).message));
+            res = adapter::userErrorResponse<ResponseType>(base::getError(payloadOrErr).message);
             return;
         }
 
-        const auto& payload = std::get<json::Json>(payloadOrErr);
+        const auto& payload = base::getResponse(payloadOrErr);
 
         try
         {

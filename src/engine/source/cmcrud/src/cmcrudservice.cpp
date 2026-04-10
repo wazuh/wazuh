@@ -505,7 +505,6 @@ json::Json CrudService::getResourceByUUID(const cm::store::NamespaceId& nsId, co
 
             default: throw std::runtime_error("Unsupported resource type for getResourceByUUID");
         }
-
         return result;
     }
     catch (const std::exception& e)
@@ -548,17 +547,18 @@ void CrudService::upsertResource(const cm::store::NamespaceId& nsId,
             case cm::store::ResourceType::KVDB:
             {
                 auto kvdb = kvdbFromDocument(resource, /*requireUUID:*/ false);
+                const auto kvdbJson = kvdb.toJson();
 
                 const std::string& uuid = kvdb.getUUID();
                 const std::string& name = kvdb.getName();
 
                 if (!uuid.empty() && nsReader->assetExistsByUUID(uuid))
                 {
-                    ns->updateResourceByUUID(uuid, kvdb.toJson());
+                    ns->updateResourceByUUID(uuid, kvdbJson);
                 }
                 else
                 {
-                    ns->createResource(name, type, kvdb.toJson());
+                    ns->createResource(name, type, kvdbJson);
                 }
                 break;
             }

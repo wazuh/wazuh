@@ -131,7 +131,7 @@ public:
         cm::store::detail::findDuplicateOrInvalidUUID(m_integrations, "Integration");
         cm::store::detail::findDuplicateOrInvalidUUID(m_outputs, "Output");
         cm::store::detail::findDuplicateOrInvalidUUID(m_filters, "Filter");
-        if (m_originSpace != DEFAULT_ORIGIN_SPACE)
+        if (m_originSpace != jsonpolicy::DEFAULT_ORIGIN_SPACE)
         {
             validateOriginSpace(m_originSpace);
         }
@@ -287,7 +287,7 @@ public:
             if (policyJson.getString(originSpace, jsonpolicy::PATH_KEY_ORIGIN_SPACE) != json::RetGet::Success
                 || originSpace.empty())
             {
-                return std::string(DEFAULT_ORIGIN_SPACE);
+                return std::string(jsonpolicy::DEFAULT_ORIGIN_SPACE);
             }
 
             return originSpace;

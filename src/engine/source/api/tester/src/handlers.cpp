@@ -682,15 +682,15 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
         // Use provided agent_metadata if available, otherwise use empty struct
         if (protoReq.has_agent_metadata())
         {
-            auto jsonOrErr = eMessage::eStructToJson(protoReq.agent_metadata());
-            if (std::holds_alternative<base::Error>(jsonOrErr))
+            auto jsonOrErr = getJsonFieldFromBody(
+                req.body, {"/agent_metadata", "/agentMetadata"}, "Field /agent_metadata cannot be empty");
+            if (base::isError(jsonOrErr))
             {
-                res = adapter::userErrorResponse<ResponseType>(fmt::format(
-                    "Error converting agent_metadata to JSON: {}", std::get<base::Error>(jsonOrErr).message));
+                res = adapter::userErrorResponse<ResponseType>(base::getError(jsonOrErr).message);
                 return;
             }
 
-            agentMetadata = std::move(std::get<json::Json>(jsonOrErr));
+            agentMetadata = std::move(base::getResponse(jsonOrErr));
         }
         else
         {

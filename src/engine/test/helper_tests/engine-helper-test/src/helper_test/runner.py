@@ -8,9 +8,8 @@ import yaml
 from pathlib import Path
 from typing import Optional
 
-from google.protobuf.json_format import MessageToJson, ParseDict
+from google.protobuf.json_format import MessageToDict, MessageToJson, ParseDict
 from google.protobuf.message import Message
-from google.protobuf.struct_pb2 import Struct
 
 from api_communication.client import APIClient
 from api_communication.proto import crud_pb2 as api_crud
@@ -87,8 +86,21 @@ def load_yaml(file_path: str) -> dict:
             raise Exception(f"Error loading YAML file: {exc}")
 
 
-def _set_json_content(req, payload: str):
-    req.jsonContent.CopyFrom(ParseDict(json.loads(payload), Struct()))
+def _post_json_content(api_client: APIClient, req: Message, payload_dict: dict) -> api_engine.GenericStatus_Response:
+    """
+    Send a creation request with jsonContent as a native Python dict,
+    bypassing google.protobuf.Struct (which converts integers to floats).
+    Returns a GenericStatus_Response compatible with existing callers.
+    """
+    params = MessageToDict(req)
+    params["jsonContent"] = payload_dict
+    error, response = api_client.jsend(params, req, api_engine.GenericStatus_Response())
+    if error:
+        result = api_engine.GenericStatus_Response()
+        result.status = api_engine.ERROR
+        result.error = error
+        return result
+    return ParseDict(response, api_engine.GenericStatus_Response())
 
 
 # ===================================================================
@@ -380,7 +392,7 @@ def delete_namespace(api_client: APIClient):
     assert response.status == api_engine.OK, f"{response.error}"
 
 
-def build_asset_request(asset: dict) -> api_crud.resourcePost_Request:
+def build_asset_request(asset: dict):
     """
     Build a resourcePost request for a decoder in engine-cm.
 
@@ -388,6 +400,9 @@ def build_asset_request(asset: dict) -> api_crud.resourcePost_Request:
       - name = ASSET_NAME
       - id   = HELPERS_DECODER_UUID
     so that the integration can reference the decoder by UUID.
+
+    Returns (req, payload_dict) so callers can send via _post_json_content,
+    preserving integer types in the JSON payload.
     """
     asset = dict(asset)  # copy to avoid mutating original
 
@@ -398,8 +413,7 @@ def build_asset_request(asset: dict) -> api_crud.resourcePost_Request:
     req = api_crud.resourcePost_Request()
     req.space = POLICY_NS
     req.type = "decoder"
-    _set_json_content(req, json.dumps(asset, separators=(",", ":")))
-    return req
+    return req, asset
 
 
 def create_asset_for_runtime(api_client: APIClient, result_evaluator: Evaluator) -> bool:
@@ -407,8 +421,8 @@ def create_asset_for_runtime(api_client: APIClient, result_evaluator: Evaluator)
     Create a decoder in runtime (in POLICY_NS) and evaluate the result
     according to should_pass and skipped.
     """
-    request = build_asset_request(result_evaluator.asset)
-    response = send_recv(api_client, request, api_engine.GenericStatus_Response())
+    request, payload = build_asset_request(result_evaluator.asset)
+    response = _post_json_content(api_client, request, payload)
     if response.status == api_engine.OK:
         return True
 
@@ -427,8 +441,8 @@ def create_asset_for_buildtime(api_client: APIClient, result_evaluator: Evaluato
     Create a decoder for build-time tests in POLICY_NS and classify
     the result using Evaluator.check_response.
     """
-    request = build_asset_request(result_evaluator.asset)
-    response = send_recv(api_client, request, api_engine.GenericStatus_Response())
+    request, payload = build_asset_request(result_evaluator.asset)
+    response = _post_json_content(api_client, request, payload)
     result_evaluator.check_response(response)
 
 
@@ -475,8 +489,7 @@ def create_helpers_integration(api_client: APIClient):
     req = api_crud.resourcePost_Request()
     req.space = POLICY_NS
     req.type = "integration"
-    _set_json_content(req, integration_json)
-    response = send_recv(api_client, req, api_engine.GenericStatus_Response())
+    response = _post_json_content(api_client, req, json.loads(integration_json))
     assert response.status == api_engine.OK, f"{response.error}"
 
 
@@ -507,8 +520,7 @@ def create_policy(api_client: APIClient):
     )
     req = api_crud.policyPost_Request()
     req.space = POLICY_NS
-    _set_json_content(req, policy_json)
-    response = send_recv(api_client, req, api_engine.GenericStatus_Response())
+    response = _post_json_content(api_client, req, json.loads(policy_json))
     assert response.status == api_engine.OK, f"{response.error}"
 
 
@@ -593,9 +605,7 @@ def create_kvdb_resource(api_client: APIClient):
     req = api_crud.resourcePost_Request()
     req.space = POLICY_NS
     req.type = "kvdb"
-    _set_json_content(req, json.dumps(kvdb_json, separators=(",", ":")))
-
-    response = send_recv(api_client, req, api_engine.GenericStatus_Response())
+    response = _post_json_content(api_client, req, kvdb_json)
     assert response.status == api_engine.OK, f"{response.error}"
 
 

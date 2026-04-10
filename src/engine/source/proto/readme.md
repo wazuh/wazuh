@@ -137,15 +137,17 @@ This is the only hand-written file in `include/eMessages/`. It provides template
 | Function | Signature | Description |
 |----------|-----------|-------------|
 | `eMessageFromJson<T>` | `(const string& json) → variant<Error, T>` | Parse JSON string → protobuf message. Ignores unknown fields. |
-| `eMessageToJson<T>` | `(const T& msg, bool printPrimitive = true) → variant<Error, string>` | Serialize protobuf message → JSON string. Preserves field names, prints default fields. |
+| `eMessageToJson<T>` | `(const T& msg, bool printPrimitive = true) → variant<Error, string>` | Serialize protobuf message → JSON string. Preserves field names, prints default fields. Use it for response serialization, not to rebuild request payloads in handlers. |
 | `eRepeatedFieldToJson<T>` | `(const RepeatedPtrField<T>&, ...) → variant<Error, string>` | Serialize a repeated field as a JSON array string. |
-| `eStructToJson` | `(const Struct& s) → variant<Error, json::Json>` | Convert a `google.protobuf.Struct` → `json::Json` object, recursively handling nested structs, arrays, and primitives. |
 | `ShutdownEMessageLibrary` | `() → void` | Call `google::protobuf::ShutdownProtobufLibrary()` for clean exit. |
 
 ### Parse Options
 
 - **Input** (`eMessageFromJson`): `ignore_unknown_fields = true`, `case_insensitive_enum_parsing = false`
 - **Output** (`eMessageToJson`): `always_print_primitive_fields = true`, `preserve_proto_field_names = true`, `always_print_enums_as_ints = false`
+
+> Warning
+> For request handlers, parse `req.body` into `json::Json` and extract the relevant subtree from the body when you need a `json::Json` payload. Avoid converting request payloads back out of protobuf messages.
 
 ## Code Generation
 

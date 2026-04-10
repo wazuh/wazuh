@@ -1,5 +1,5 @@
 import sys
-from google.protobuf.json_format import Parse
+import json
 from api_communication.client import APIClient
 import api_communication.proto.engine_pb2 as engine
 import api_communication.proto.crud_pb2 as crud
@@ -21,14 +21,15 @@ def run(args):
         content = sys.stdin.read()
 
     try:
-        Parse(load_json_content(content), req.mutable_jsonContent())
+        payload = json.loads(load_json_content(content))
+        json_body = {"space": req.space, "jsonContent": payload}
     except Exception as e:
         sys.exit(f'Error upserting policy: {e}')
 
     # Create the api request
     try:
         client = APIClient(api_socket)
-        error, response = client.send(req, engine.GenericStatus_Response())
+        error, response = client.jsend(json_body, req, engine.GenericStatus_Response())
 
         if error:
             sys.exit(f'Error upserting policy: {error}')
