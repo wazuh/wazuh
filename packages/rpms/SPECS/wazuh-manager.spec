@@ -973,6 +973,8 @@ rm -fr %{buildroot}
 %files -n wazuh-manager-debuginfo -f debugfiles.list
 
 %changelog
+* Thu May 14 2026 support <info@wazuh.com> - 4.14.6
+- More info: https://documentation.wazuh.com/current/release-notes/release-4-14-6.html
 * Sat Apr 11 2026 support <info@wazuh.com> - 4.14.5
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-5.html
 * Tue Mar 17 2026 support <info@wazuh.com> - 4.14.4
