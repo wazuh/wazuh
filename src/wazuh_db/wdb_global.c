@@ -1461,16 +1461,19 @@ w_err_t wdb_global_validate_group_name(const char *group_name) {
         }
         wdb_global_group_regex_compiled = true;
     }
-    w_mutex_unlock(&wdb_global_group_regex_mutex);
 
     if (strlen(group_name) > MAX_GROUP_NAME) {
         mwarn("Invalid group name. The group '%s' exceeds the maximum length of %d characters permitted", group_name, MAX_GROUP_NAME);
+        w_mutex_unlock(&wdb_global_group_regex_mutex);
         return OS_INVALID;
     }
     if (regexec(&wdb_global_group_regex, group_name, 0, NULL, 0) != 0) {
         mwarn("Invalid group name. '%s' contains invalid characters", group_name);
+        w_mutex_unlock(&wdb_global_group_regex_mutex);
         return OS_INVALID;
     }
+    w_mutex_unlock(&wdb_global_group_regex_mutex);
+
     /* Explicit check for directory references (. and ..) */
     if (strcmp(group_name, ".") == 0) {
         mwarn("Invalid group name. '.' represents the current directory in unix systems");
