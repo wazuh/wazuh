@@ -77,15 +77,31 @@ public:
     static DBState fromJson(const json::Json& j)
     {
         std::string name;
-        if (j.getString(name, JPATH_NAME) != json::RetGet::Success || name.empty())
+        auto ret = j.getString(name, JPATH_NAME);
+
+        switch (ret)
         {
-            throw std::runtime_error("DBState::fromJson: Missing/empty name field");
+            case json::RetGet::NotFound: throw std::runtime_error("DBState::fromJson: Missing name field");
+            case json::RetGet::WrongType: throw std::runtime_error("DBState::fromJson: name field is not a string");
+            case json::RetGet::Success:
+                if (name.empty())
+                    throw std::runtime_error("DBState::fromJson: name field cannot be empty");
+                break; // Continue processing
+            default: throw std::runtime_error("DBState::fromJson: Unknown error retrieving name field");
         }
 
         std::string path;
-        if (j.getString(path, JPATH_INSTANCE_PATH) != json::RetGet::Success)
+        ret = j.getString(path, JPATH_INSTANCE_PATH);
+
+        switch (ret)
         {
-            throw std::runtime_error("DBState::fromJson: Missing instance_path field");
+            case json::RetGet::NotFound: throw std::runtime_error("DBState::fromJson: Missing instance_path field");
+            case json::RetGet::WrongType: throw std::runtime_error("DBState::fromJson: instance_path field is not a string");
+            case json::RetGet::Success:
+                if (path.empty())
+                    throw std::runtime_error("DBState::fromJson: instance_path field cannot be empty");
+                break; // Continue processing
+            default: throw std::runtime_error("DBState::fromJson: Unknown error retrieving instance_path field");
         }
 
         auto optCreated = j.getInt64(JPATH_CREATED);

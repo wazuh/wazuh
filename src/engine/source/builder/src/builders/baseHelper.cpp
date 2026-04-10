@@ -319,7 +319,7 @@ baseHelperBuilder(const json::Json& definition, const std::shared_ptr<const IBui
     else if (jValue.isString())
     {
         std::string strValue;
-        jValue.getString(strValue);
+        jValue.getString(strValue); // No need to check return value since we already checked it's a string
         if (parsers::isDefaultHelper(strValue))
         {
             // Check for reference
