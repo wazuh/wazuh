@@ -918,11 +918,6 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 // Check for pause request (atomic read, no mutex needed)
                 int pause_requested = atomic_int_get(&syscheck.fim_pause_requested);
 
-                if (pause_requested) {
-                    // Acknowledge pause immediately (atomic write, no mutex needed)
-                    atomic_int_set(&syscheck.fim_pausing_is_allowed, 1);
-                }
-
                 // Check for flush request
                 if (atomic_int_get(&fim_flush_in_progress)) {
                     flush_request_detected = true;
@@ -944,18 +939,12 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 
         // Handle pause: if paused and no flush, skip this iteration
         if (pause_requested && !flush_request_detected) {
-            // Acknowledge pause (atomic write, no mutex needed)
-            atomic_int_set(&syscheck.fim_pausing_is_allowed, 1);
-
             mdebug2("FIM is paused, skipping sync iteration");
             continue;
         }
 
-        // If paused and flush requested, acknowledge pause and sync without mutexes
+        // If paused and flush requested, sync without mutexes
         if (pause_requested && flush_request_detected) {
-            // Acknowledge pause (atomic write, no mutex needed)
-            atomic_int_set(&syscheck.fim_pausing_is_allowed, 1);
-
             minfo("Starting FIM synchronization requested by agent-info.");
 
             bool sync_result = asp_sync_module(syscheck.sync_handle,

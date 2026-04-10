@@ -45,24 +45,8 @@ int fim_execute_pause(void) {
 }
 
 int fim_execute_is_pause_completed(void) {
-    mdebug2("FIM agent info: is_pause_completed command received");
-
-    // If no pause was requested, trivially completed (not paused)
-    if (!atomic_int_get(&syscheck.fim_pause_requested)) {
-        mdebug2("No pause request active");
-        return 0;
-    }
-
-    // Pause is acknowledged immediately — the sync thread checks fim_pause_requested at
-    // the start of each cycle and will skip new sync cycles once it sees the flag.
-    // We do NOT wait for the current scan cycle to finish here; that is the job of the
-    // flush step (which runs after coordination and waits for pending data to be sent).
-    // Keeping this acknowledgment fast is what allows coordination (version negotiation)
-    // to complete in under a second, independent of FIM scan duration.
     mdebug1("FIM pause acknowledged (sync thread will skip next cycles)");
-    return 0;  // Completed
-
-    return 1;  // State changed, still in progress
+    return 0;
 }
 
 int fim_execute_flush(void) {
@@ -152,21 +136,11 @@ int fim_execute_set_version(int version) {
 int fim_execute_resume(void) {
     mdebug1("FIM agent info: resume command received");
 
-    // Check if actually paused (atomic read)
     if (!atomic_int_get(&syscheck.fim_pause_requested)) {
         mdebug1("FIM scans are not paused, resume command ignored");
         return 0;
     }
 
-    // Double-check
-    if (!atomic_int_get(&syscheck.fim_pause_requested)) {
-        mdebug1("FIM scans are not paused, resume command ignored");
-        return 0;
-    }
-
-    // Clear pause flags atomically — no mutexes to release since the fast-pause approach
-    // acknowledges pause without acquiring scan mutexes
-    atomic_int_set(&syscheck.fim_pausing_is_allowed, 0);
     atomic_int_set(&syscheck.fim_pause_requested, 0);
 
     mdebug1("FIM scans successfully resumed");
