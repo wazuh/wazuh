@@ -188,10 +188,11 @@ MapOp opBuilderHelperStringTransformation(const std::vector<OpArg>& opArgs,
     const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
 
     const std::string failureTrace1 {fmt::format("[{}] -> Failure: Reference not found", name)};
-
-    const auto rightParamPP = rightParameter->isReference()
-        ? std::make_optional<json::PointerPath>(std::static_pointer_cast<Reference>(rightParameter)->jsonPath())
-        : std::nullopt;
+    const std::string failureTrace2 {fmt::format("[{}] -> Failure: Reference is not a string", name)};
+    const auto rightParamPP =
+        rightParameter->isReference()
+            ? std::make_optional<json::PointerPath>(std::static_pointer_cast<Reference>(rightParameter)->jsonPath())
+            : std::nullopt;
 
     // Function that implements the helper
     return [=, runState = buildCtx->runState()](base::ConstEvent event) -> MapResult
@@ -205,9 +206,9 @@ MapOp opBuilderHelperStringTransformation(const std::vector<OpArg>& opArgs,
         if (rightParameter->isReference())
         {
             std::string resolvedRValue;
-            if (event->getString(resolvedRValue, *rightParamPP) != json::RetGet::Success)
+            if (auto ret = event->getString(resolvedRValue, *rightParamPP); ret != json::RetGet::Success)
             {
-                RETURN_FAILURE(runState, json::Json {}, failureTrace1);
+                RETURN_FAILURE(runState, json::Json {}, ret == json::RetGet::NotFound ? failureTrace1 : failureTrace2);
             }
             else
             {
@@ -222,7 +223,11 @@ MapOp opBuilderHelperStringTransformation(const std::vector<OpArg>& opArgs,
         {
             // TODO: should we check the result?
             std::string rightParamStr;
-            std::static_pointer_cast<Value>(rightParameter)->value().getString(rightParamStr);
+            if (std::static_pointer_cast<Value>(rightParameter)->value().getString(rightParamStr)
+                != json::RetGet::Success)
+            {
+                RETURN_FAILURE(runState, json::Json {}, failureTrace2);
+            }
             const auto res {transformFunction(rightParamStr)};
             json::Json result;
             result.setString(res);
@@ -682,10 +687,7 @@ TransformOp opBuilderHelperStringTrim(const Reference& targetField,
                                              std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
     }
 
-    const char trimType = trimParam == "begin"  ? 's'
-                          : trimParam == "end"  ? 'e'
-                          : trimParam == "both" ? 'b'
-                                                : '\0';
+    const char trimType = trimParam == "begin" ? 's' : trimParam == "end" ? 'e' : trimParam == "both" ? 'b' : '\0';
     if ('\0' == trimType)
     {
         throw std::runtime_error(
@@ -715,8 +717,10 @@ TransformOp opBuilderHelperStringTrim(const Reference& targetField,
     const std::string failureTrace3 {fmt::format("[{}] -> Failure: Invalid trim type '{}'", name, trimType)};
 
     // Return Op
-    return
-        [=, runState = buildCtx->runState(), targetField = targetField.jsonPath(), targetFieldPP = json::PointerPath(targetField.jsonPath())](base::Event event) -> TransformResult
+    return [=,
+            runState = buildCtx->runState(),
+            targetField = targetField.jsonPath(),
+            targetFieldPP = json::PointerPath(targetField.jsonPath())](base::Event event) -> TransformResult
     {
         // Get field value
         if (!event->exists(targetField))
@@ -727,9 +731,9 @@ TransformOp opBuilderHelperStringTrim(const Reference& targetField,
         std::string resolvedField;
 
         // Check if field is a string
-        if (event->getString(resolvedField, targetFieldPP) != json::RetGet::Success)
+        if (auto ret = event->getString(resolvedField, targetFieldPP); ret != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, event, failureTrace2);
+            RETURN_FAILURE(runState, event, ret == json::RetGet::NotFound ? failureTrace1 : failureTrace2);
         }
 
         // Get string
@@ -783,7 +787,11 @@ MapOp opBuilderHelperToInt(const std::vector<OpArg>& opArgs, const std::shared_p
         }
 
         std::string castOpStr;
-        std::static_pointer_cast<Value>(opArgs[1])->value().getString(castOpStr);
+        if (std::static_pointer_cast<Value>(opArgs[1])->value().getString(castOpStr) != json::RetGet::Success)
+        {
+            throw std::runtime_error(fmt::format("Failed to get the string value of parameter 2 got type '{}'",
+                                                 std::static_pointer_cast<Value>(opArgs[1])->value().typeName()));
+        }
         op = strToNumCastOp(castOpStr);
     }
 
@@ -1033,7 +1041,11 @@ MapOp opBuilderHelperStringFromArray(const std::vector<OpArg>& opArgs, const std
                                              std::static_pointer_cast<Value>(opArgs[1])->value().typeName()));
     }
     std::string separator;
-    std::static_pointer_cast<Value>(opArgs[1])->value().getString(separator);
+    if (std::static_pointer_cast<Value>(opArgs[1])->value().getString(separator) != json::RetGet::Success)
+    {
+        throw std::runtime_error(fmt::format("Failed to get the string value of parameter 2 got type '{}'",
+                                             std::static_pointer_cast<Value>(opArgs[1])->value().typeName()));
+    }
 
     if (buildCtx->validator().hasField(arrayRef.dotPath()))
     {
@@ -1129,7 +1141,10 @@ MapOp opBuilderHelperStringFromHexa(const std::vector<OpArg>& opArgs, const std:
     const auto failureTrace5 = fmt::format("{} -> Found non ascii character", traceName);
 
     // Return Op
-    return [=, runState = buildCtx->runState(), sourceField = hexRef.jsonPath(), sourceFieldPP = json::PointerPath(hexRef.jsonPath())](base::ConstEvent event) -> MapResult
+    return [=,
+            runState = buildCtx->runState(),
+            sourceField = hexRef.jsonPath(),
+            sourceFieldPP = json::PointerPath(hexRef.jsonPath())](base::ConstEvent event) -> MapResult
     {
         std::string strHex {};
 
@@ -1140,9 +1155,9 @@ MapOp opBuilderHelperStringFromHexa(const std::vector<OpArg>& opArgs, const std:
         }
 
         std::string refStrHEX;
-        if (event->getString(refStrHEX, sourceFieldPP) != json::RetGet::Success)
+        if (auto ret = event->getString(refStrHEX, sourceFieldPP); ret != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, json::Json {}, failureTrace2);
+            RETURN_FAILURE(runState, json::Json {}, ret == json::RetGet::NotFound ? failureTrace1 : failureTrace2);
         }
 
         strHex = refStrHEX;
@@ -1216,18 +1231,15 @@ MapOp opBuilderHelperHexToNumber(const std::vector<OpArg>& opArgs, const std::sh
     const std::string failureTrace3 {fmt::format("[{}] -> Failure: ", traceName)};
 
     // Return Op
-    return [=, runState = buildCtx->runState(), sourceField = hexRef.jsonPath(), sourceFieldPP = json::PointerPath(hexRef.jsonPath())](base::ConstEvent event) -> MapResult
+    return [=,
+            runState = buildCtx->runState(),
+            sourceField = hexRef.jsonPath(),
+            sourceFieldPP = json::PointerPath(hexRef.jsonPath())](base::ConstEvent event) -> MapResult
     {
-        // Getting string field from a reference
-        if (!event->exists(sourceField))
-        {
-            RETURN_FAILURE(runState, json::Json {}, failureTrace1);
-        }
-
         std::string refStrHEX;
-        if (event->getString(refStrHEX, sourceFieldPP) != json::RetGet::Success)
+        if (auto ret = event->getString(refStrHEX, sourceFieldPP); ret != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, json::Json {}, failureTrace2);
+            RETURN_FAILURE(runState, json::Json {}, ret == json::RetGet::NotFound ? failureTrace1 : failureTrace2);
         }
         std::stringstream ss;
         ss << refStrHEX;
@@ -1410,7 +1422,12 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
     }
 
     std::string keyName;
-    keyValue.getString(keyName);
+    if (keyValue.getString(keyName) != json::RetGet::Success)
+    {
+        throw std::runtime_error(
+            fmt::format("Failed to get the string value of parameter 2 got type '{}'", keyValue.typeName()));
+    }
+
     if (keyName.empty() || keyName.front() != '/')
     {
         throw std::runtime_error("Key path cannot be an empty string and must start with '/' (JSON Pointer)");
@@ -1424,7 +1441,11 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
             fmt::format("Expected 'string' parameter but got type '{}'", fieldValueJson.typeName()));
     }
     std::string fieldValue;
-    fieldValueJson.getString(fieldValue);
+    if (fieldValueJson.getString(fieldValue) != json::RetGet::Success)
+    {
+        throw std::runtime_error(
+            fmt::format("Failed to get the string value of parameter 3 got type '{}'", fieldValueJson.typeName()));
+    }
     if (fieldValue.empty() || fieldValue.front() != '/')
     {
         throw std::runtime_error("Value path cannot be an empty string and must start with '/' (JSON Pointer)");
@@ -1544,8 +1565,7 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
                     continue;
                 }
 
-                const std::string normalizedKey =
-                    skipSerializer ? keyStr : normalizeStr(std::string_view {keyStr});
+                const std::string normalizedKey = skipSerializer ? keyStr : normalizeStr(std::string_view {keyStr});
                 if (normalizedKey.empty())
                 {
                     continue;
@@ -1599,7 +1619,11 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
         throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'", keyValue.typeName()));
     }
     std::string keyName;
-    keyValue.getString(keyName);
+    if (keyValue.getString(keyName) != json::RetGet::Success)
+    {
+        throw std::runtime_error(
+            fmt::format("Failed to get the string value of parameter 2 got type '{}'", keyValue.typeName()));
+    }
     if (keyName.empty() || keyName.front() != '/')
     {
         throw std::runtime_error("Key path cannot be an empty string and must start with '/' (JSON Pointer)");
@@ -1612,7 +1636,11 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
         throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'", newValueJson.typeName()));
     }
     std::string newValuePath;
-    newValueJson.getString(newValuePath);
+    if (newValueJson.getString(newValuePath) != json::RetGet::Success)
+    {
+        throw std::runtime_error(
+            fmt::format("Failed to get the string value of parameter 3 got type '{}'", newValueJson.typeName()));
+    }
     if (newValuePath.empty() || newValuePath.front() != '/')
     {
         throw std::runtime_error("New value path cannot be an empty string and must start with '/' (JSON Pointer)");
@@ -1625,7 +1653,11 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
         throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'", oldValueJson.typeName()));
     }
     std::string oldValuePath;
-    oldValueJson.getString(oldValuePath);
+    if (oldValueJson.getString(oldValuePath) != json::RetGet::Success)
+    {
+        throw std::runtime_error(
+            fmt::format("Failed to get the string value of parameter 4 got type '{}'", oldValueJson.typeName()));
+    }
     if (oldValuePath.empty() || oldValuePath.front() != '/')
     {
         throw std::runtime_error("Old value path cannot be an empty string and must start with '/' (JSON Pointer)");
@@ -1748,8 +1780,7 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
 
                 const auto oldValueOpt = oldValuePath == "/" ? element.getJson() : element.getJson(oldValuePath);
 
-                const std::string normalizedKey =
-                    skipSerializer ? keyStr : normalizeStr(std::string_view {keyStr});
+                const std::string normalizedKey = skipSerializer ? keyStr : normalizeStr(std::string_view {keyStr});
                 if (normalizedKey.empty())
                 {
                     continue;
@@ -1773,8 +1804,7 @@ MapOp opBuilderHelperArrayExtractKeyObj(const std::vector<OpArg>& opArgs,
                 if (oldValueOpt.has_value())
                 {
                     std::string oldValStr;
-                    bool skipOld = oldValueOpt->isString()
-                                   && oldValueOpt->getString(oldValStr) == json::RetGet::Success
+                    bool skipOld = oldValueOpt->isString() && oldValueOpt->getString(oldValStr) == json::RetGet::Success
                                    && base::utils::string::trim(oldValStr).empty();
                     if (!skipOld)
                     {
@@ -1831,13 +1861,23 @@ TransformOp opBuilderHelperStringReplace(const Reference& targetField,
 
     // Get values
     std::string oldSubstr;
-    std::static_pointer_cast<Value>(opArgs[0])->value().getString(oldSubstr);
+    if (std::static_pointer_cast<Value>(opArgs[0])->value().getString(oldSubstr) != json::RetGet::Success)
+    {
+        throw std::runtime_error(fmt::format("Failed to get the string value of parameter 1 got type '{}'",
+                                             std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
+    }
+
     if (oldSubstr.empty())
     {
         throw std::runtime_error("First argument cannot be an empty string");
     }
+
     std::string newSubstr;
-    std::static_pointer_cast<Value>(opArgs[1])->value().getString(newSubstr);
+    if (std::static_pointer_cast<Value>(opArgs[1])->value().getString(newSubstr) != json::RetGet::Success)
+    {
+        throw std::runtime_error(fmt::format("Failed to get the string value of parameter 2 got type '{}'",
+                                             std::static_pointer_cast<Value>(opArgs[1])->value().typeName()));
+    }
 
     // Format name for the tracer
     const auto name = buildCtx->context().opName;
@@ -1849,8 +1889,10 @@ TransformOp opBuilderHelperStringReplace(const Reference& targetField,
     const std::string failureTrace2 {fmt::format(TRACE_TARGET_TYPE_NOT_STRING, name, targetField.dotPath())};
 
     // Return Op
-    return
-        [=, runState = buildCtx->runState(), targetField = targetField.jsonPath(), targetFieldPP = json::PointerPath(targetField.jsonPath())](base::Event event) -> TransformResult
+    return [=,
+            runState = buildCtx->runState(),
+            targetField = targetField.jsonPath(),
+            targetFieldPP = json::PointerPath(targetField.jsonPath())](base::Event event) -> TransformResult
     {
         if (!event->exists(targetField))
         {
@@ -1948,7 +1990,11 @@ MapBuilder getOpBuilderHelperCalc(bool intCalc)
         }
 
         std::string opStr;
-        std::static_pointer_cast<Value>(opArgs[0])->value().getString(opStr);
+        if (std::static_pointer_cast<Value>(opArgs[0])->value().getString(opStr) != json::RetGet::Success)
+        {
+            throw std::runtime_error(fmt::format("Failed to get the string value of parameter 1 got type '{}'",
+                                                 std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
+        }
         auto op = strToOp(opStr);
 
         auto newArgs = std::vector<OpArg>(opArgs.begin() + 1, opArgs.end());
@@ -1986,7 +2032,12 @@ MapOp opBuilderHelperRegexExtract(const std::vector<OpArg>& opArgs, const std::s
                                              std::static_pointer_cast<Value>(opArgs[1])->value().typeName()));
     }
     std::string regexStr;
-    std::static_pointer_cast<Value>(opArgs[1])->value().getString(regexStr);
+    if (std::static_pointer_cast<Value>(opArgs[1])->value().getString(regexStr) != json::RetGet::Success)
+    {
+        throw std::runtime_error(fmt::format("Failed to get the string value of parameter 2 got type '{}'",
+                                             std::static_pointer_cast<Value>(opArgs[1])->value().typeName()));
+    }
+
     auto regex_ptr = std::make_shared<RE2>(regexStr);
     if (!regex_ptr->ok())
     {
@@ -2014,7 +2065,10 @@ MapOp opBuilderHelperRegexExtract(const std::vector<OpArg>& opArgs, const std::s
     const auto failureTrace3 = fmt::format("[{}] -> Regex did not match", name);
 
     // Return Op
-    return [=, runState = buildCtx->runState(), refField = refField.jsonPath(), refFieldPP = json::PointerPath(refField.jsonPath())](base::ConstEvent event) -> MapResult
+    return [=,
+            runState = buildCtx->runState(),
+            refField = refField.jsonPath(),
+            refFieldPP = json::PointerPath(refField.jsonPath())](base::ConstEvent event) -> MapResult
     {
         if (!event->exists(refField))
         {
@@ -2273,7 +2327,11 @@ TransformOp opBuilderHelperAppendSplitString(const Reference& targetField,
                                              std::static_pointer_cast<Value>(opArgs[1])->value().typeName()));
     }
     std::string separator;
-    std::static_pointer_cast<Value>(opArgs[1])->value().getString(separator);
+    if (std::static_pointer_cast<Value>(opArgs[1])->value().getString(separator) != json::RetGet::Success)
+    {
+        throw std::runtime_error(fmt::format("Failed to get the string value of parameter 2 got type '{}'",
+                                             std::static_pointer_cast<Value>(opArgs[1])->value().typeName()));
+    }
     if (separator.size() != 1)
     {
         throw std::runtime_error(fmt::format("Separator must be a single character, got '{}'", separator));
@@ -2662,17 +2720,15 @@ MapOp opBuilderHelperIPVersionFromIPStr(const std::vector<OpArg>& opArgs,
         fmt::format("{} -> Reference '{}' value is not a valid IP address", name, ipRef.dotPath());
 
     // Return Op
-    return [=, runState = buildCtx->runState(), ipStrPath = ipRef.jsonPath(), ipStrPathPP = json::PointerPath(ipRef.jsonPath())](base::ConstEvent event) -> MapResult
+    return [=,
+            runState = buildCtx->runState(),
+            ipStrPath = ipRef.jsonPath(),
+            ipStrPathPP = json::PointerPath(ipRef.jsonPath())](base::ConstEvent event) -> MapResult
     {
-        // Check if reference exists
-        if (!event->exists(ipStrPath))
-        {
-            RETURN_FAILURE(runState, json::Json {}, failureTrace1);
-        }
         std::string strIP;
-        if (event->getString(strIP, ipStrPathPP) != json::RetGet::Success)
+        if (auto ret = event->getString(strIP, ipStrPathPP); ret != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, json::Json {}, failureTrace2);
+            RETURN_FAILURE(runState, json::Json {}, ret == json::RetGet::NotFound ? failureTrace1 : failureTrace2);
         }
 
         std::string result;
@@ -2791,6 +2847,10 @@ MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
     {
         return fmt::format("{} -> Reference '{}' must be a number", name, path);
     };
+    const auto stringTrace = [name](const std::string& path)
+    {
+        return fmt::format("{} -> Reference '{}' must be a string", name, path);
+    };
 
     const auto protoOutOfRangeTrace = fmt::format("{} -> network.iana_number out of range (expected 0..255)", name);
 
@@ -2799,14 +2859,18 @@ MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
         std::string saddr;
         std::string daddr;
 
-        if (event->getString(saddr, saddrRefPathPP) != json::RetGet::Success)
+        if (auto ret = event->getString(saddr, saddrRefPathPP); ret != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, json::Json {}, missingTrace(saddrRefPath));
+            RETURN_FAILURE(runState,
+                           json::Json {},
+                           ret == json::RetGet::NotFound ? missingTrace(saddrRefPath) : stringTrace(saddrRefPath));
         }
 
-        if (event->getString(daddr, daddrRefPathPP) != json::RetGet::Success)
+        if (auto ret = event->getString(daddr, daddrRefPathPP); ret != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, json::Json {}, missingTrace(daddrRefPath));
+            RETURN_FAILURE(runState,
+                           json::Json {},
+                           ret == json::RetGet::NotFound ? missingTrace(daddrRefPath) : stringTrace(daddrRefPath));
         }
 
         uint8_t proto = 0;
@@ -3117,7 +3181,10 @@ MapOp opBuilderHelperDateToEpochTime(const std::vector<OpArg>& opArgs, const std
         {
             throw std::runtime_error("date_to_epoch format must be a string literal");
         }
-        v.getString(formatLiteral);
+        if (v.getString(formatLiteral) != json::RetGet::Success)
+        {
+            throw std::runtime_error("Failed to get date_to_epoch format string literal");
+        }
         if (formatLiteral.empty())
         {
             throw std::runtime_error("date_to_epoch format must be a non-empty string");
@@ -3278,18 +3345,14 @@ MapOp opBuilderHelperHashSHA1(const std::vector<OpArg>& opArgs, const std::share
     const auto failureTrace3 = fmt::format("{} -> Could not hash string", name);
 
     // Return Op
-    return [=, runState = buildCtx->runState(), refPath = ref.jsonPath(), refPathPP = json::PointerPath(ref.jsonPath())](base::ConstEvent event) -> MapResult
+    return
+        [=, runState = buildCtx->runState(), refPath = ref.jsonPath(), refPathPP = json::PointerPath(ref.jsonPath())](
+            base::ConstEvent event) -> MapResult
     {
-        // Check if reference exists
-        if (!event->exists(refPath))
-        {
-            RETURN_FAILURE(runState, json::Json {}, failureTrace1);
-        }
-
         std::string str;
-        if (event->getString(str, refPathPP) != json::RetGet::Success)
+        if (auto ret = event->getString(str, refPathPP); ret != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, json::Json {}, failureTrace2);
+            RETURN_FAILURE(runState, json::Json {}, ret == json::RetGet::NotFound ? failureTrace1 : failureTrace2);
         }
 
         auto resultHash = hashStringSHA1(str);
@@ -3408,15 +3471,10 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
             key = keyRef.jsonPath(),
             keyPP = json::PointerPath(keyRef.jsonPath())](base::Event event) -> TransformResult
     {
-        // Get key
-        if (!event->exists(key))
-        {
-            RETURN_FAILURE(runState, event, failureTrace1);
-        }
         std::string resolvedKey;
-        if (event->getString(resolvedKey, keyPP) != json::RetGet::Success)
+        if (auto ret = event->getString(resolvedKey, keyPP); ret != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, event, failureTrace2);
+            RETURN_FAILURE(runState, event, ret == json::RetGet::NotFound ? failureTrace1 : failureTrace2);
         }
 
         auto pointerPath = json::Json::formatJsonPath(resolvedKey);

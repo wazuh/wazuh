@@ -43,9 +43,15 @@ startsWithValue(const Reference& targetField, const Value& value, const std::sha
         }
 
         std::string targetString;
-        targetValue.getString(targetString);
+        if (auto ret = targetValue.getString(targetString); ret != json::RetGet::Success)
+        {
+            RETURN_FAILURE(runState, false, ret == json::RetGet::NotFound ? targetNotFound : targetNotString);
+        }
         std::string valueString;
-        value.getString(valueString);
+        if (auto ret = value.getString(valueString); ret != json::RetGet::Success)
+        {
+            RETURN_FAILURE(runState, false, ret == json::RetGet::NotFound ? targetNotFound : targetNotString);
+        }
 
         if (!base::utils::string::startsWith(targetString, valueString))
         {
@@ -112,9 +118,15 @@ FilterOp startsWithReference(const Reference& targetField,
         }
 
         std::string targetString;
-        targetValue.getString(targetString);
+        if (auto ret = targetValue.getString(targetString); ret != json::RetGet::Success)
+        {
+            RETURN_FAILURE(runState, false, ret == json::RetGet::NotFound ? targetNotFound : targetNotString);
+        }
         std::string referenceString;
-        referenceValue.getString(referenceString);
+        if (auto ret = referenceValue.getString(referenceString); ret != json::RetGet::Success)
+        {
+            RETURN_FAILURE(runState, false, ret == json::RetGet::NotFound ? referenceNotFound : referenceNotString);
+        }
         if (!base::utils::string::startsWith(targetString, referenceString))
         {
             RETURN_FAILURE(runState, false, failure);

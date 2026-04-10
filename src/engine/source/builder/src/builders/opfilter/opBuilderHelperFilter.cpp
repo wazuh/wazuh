@@ -804,19 +804,20 @@ FilterOp opBuilderHelperBinaryAnd(const Reference& targetField,
     };
 
     // The filter
-    return [getValue, mask, successTrace, failAndTrace](base::ConstEvent event) -> FilterResult
+    return [getValue, runState = buildCtx->runState(), mask, successTrace, failAndTrace](
+               base::ConstEvent event) -> FilterResult
     {
         auto valueResult = getValue(event);
         if (base::isError(valueResult))
         {
-            return base::result::makeFailure(false, base::getError(valueResult).message);
+            RETURN_FAILURE(runState, false, base::getError(valueResult).message);
         }
 
         if (base::getResponse(valueResult) & mask)
         {
-            return base::result::makeSuccess(true, successTrace);
+            RETURN_SUCCESS(runState, true, successTrace);
         }
-        return base::result::makeFailure(false, failAndTrace);
+        RETURN_FAILURE(runState, false, failAndTrace);
     };
 }
 

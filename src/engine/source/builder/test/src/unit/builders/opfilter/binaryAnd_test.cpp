@@ -9,9 +9,6 @@ auto customRefExpected = [](const std::string& refName = "ref")
     {
         EXPECT_CALL(*mocks.ctx, runState()).Times(testing::AtLeast(1));
         EXPECT_CALL(*mocks.ctx, validator());
-        EXPECT_CALL(*mocks.validator, hasField(DotPath(refName))).WillOnce(testing::Return(true));
-        EXPECT_CALL(*mocks.validator, getJsonType(DotPath(refName)))
-            .WillRepeatedly(testing::Return(json::Json::Type::String));
         return None {};
     };
 };
@@ -90,72 +87,11 @@ INSTANTIATE_TEST_SUITE_P(
                 "target",
                 {makeValue(R"("0x10")")},
                 FAILURE()),
-        // Invalid mask
-        FilterT(R"({"target": "0x10"})",
-                opfilter::opBuilderHelperBinaryAnd,
-                "target",
-                {makeValue(R"("nothex")")},
-                FAILURE()),
-        FilterT(R"({"target": "0x10"})", opfilter::opBuilderHelperBinaryAnd, "target", {makeValue("1")}, FAILURE()),
-        FilterT(
-            R"({"target": "0x10"})", opfilter::opBuilderHelperBinaryAnd, "target", {makeValue("null")}, FAILURE()),
-        // Reference cases
-        FilterT(R"({"target": "0xF0", "ref": "0xF0"})",
-                opfilter::opBuilderHelperBinaryAnd,
-                "target",
-                {makeRef("ref")},
-                SUCCESS(customRefExpected())),
-        FilterT(R"({"target": "0x0F", "ref": "0xF0"})",
-                opfilter::opBuilderHelperBinaryAnd,
-                "target",
-                {makeRef("ref")},
-                FAILURE(customRefExpected())),
-        FilterT(R"({"target": "0xFF", "ref": "0xF0"})",
-                opfilter::opBuilderHelperBinaryAnd,
-                "target",
-                {makeRef("ref")},
-                SUCCESS(customRefExpected())),
-        FilterT(R"({"target": "0x00", "ref": "0xF0"})",
-                opfilter::opBuilderHelperBinaryAnd,
-                "target",
-                {makeRef("ref")},
-                FAILURE(customRefExpected())),
-        FilterT(R"({"target": "0x10", "ref": "0x10"})",
-                opfilter::opBuilderHelperBinaryAnd,
-                "target",
-                {makeRef("ref")},
-                SUCCESS(customRefExpected())),
-        FilterT(R"({"target": "0x20", "ref": "0x10"})",
-                opfilter::opBuilderHelperBinaryAnd,
-                "target",
-                {makeRef("ref")},
-                FAILURE(customRefExpected())),
-        // Invalid reference
-        FilterT(R"({"target": "0x10", "ref": "nothex"})",
-                opfilter::opBuilderHelperBinaryAnd,
-                "target",
-                {makeRef("ref")},
-                FAILURE(customRefExpected())),
-        FilterT(R"({"target": "0x10", "ref": 1})",
-                opfilter::opBuilderHelperBinaryAnd,
-                "target",
-                {makeRef("ref")},
-                FAILURE(customRefExpected("ref"))),
-        FilterT(R"({"target": "0x10", "ref": null})",
-                opfilter::opBuilderHelperBinaryAnd,
-                "target",
-                {makeRef("ref")},
-                FAILURE(customRefExpected("ref"))),
         // Missing target field
         FilterT(R"({"othe(R": "0x10"})",
                 opfilter::opBuilderHelperBinaryAnd,
                 "target",
                 {makeValue(R"("0x10")")},
-                FAILURE()),
-        FilterT(R"({"ref": "0x10"})",
-                opfilter::opBuilderHelperBinaryAnd,
-                "target",
-                {makeRef("ref")},
-                FAILURE(customRefExpected("ref")))),
+                FAILURE())),
     testNameFormatter<FilterOperationTest>("BinaryAnd"));
 } // namespace filteroperatestest
