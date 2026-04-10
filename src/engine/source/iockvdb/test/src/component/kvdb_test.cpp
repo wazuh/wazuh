@@ -72,7 +72,8 @@ TEST_F(KVDBComponentTest, ConcurrentReadsDuringHotSwap)
                         auto result = manager.get("production", "status");
                         if (result.has_value())
                         {
-                            std::string state; result->getString(state, "/state");
+                            std::string state;
+                            result->getString(state, "/state");
                             if (state == "initial")
                             {
                                 readsVersion1++;
@@ -616,11 +617,16 @@ TEST_F(KVDBComponentTest, ReadFromStagingBeforeHotSwap)
                         auto r2 = manager.get("staging", "key2");
 
                         std::string r1Val;
-                    std::string r2Val;
-                        if (r1.has_value()) { r1->getString(r1Val, "/value"); }
-                        if (r2.has_value()) { r2->getString(r2Val, "/value"); }
-                        if (r1.has_value() && r1Val == "data1" && r2.has_value()
-                            && r2Val == "data2")
+                        std::string r2Val;
+                        if (r1.has_value())
+                        {
+                            r1->getString(r1Val, "/value");
+                        }
+                        if (r2.has_value())
+                        {
+                            r2->getString(r2Val, "/value");
+                        }
+                        if (r1.has_value() && r1Val == "data1" && r2.has_value() && r2Val == "data2")
                         {
                             successfulReads++;
                         }
@@ -650,7 +656,10 @@ TEST_F(KVDBComponentTest, ReadFromStagingBeforeHotSwap)
                     EXPECT_NO_THROW({
                         auto r3 = manager.get("production", "key1");
                         std::string r3Val;
-                        if (r3.has_value()) { r3->getString(r3Val, "/value"); }
+                        if (r3.has_value())
+                        {
+                            r3->getString(r3Val, "/value");
+                        }
                         if (r3.has_value() && r3Val == "data1")
                         {
                             successfulReads++;
@@ -850,7 +859,11 @@ TEST_F(KVDBComponentTest, ReadersOnSourceDuringHotSwap)
     EXPECT_NO_THROW({
         auto targetResult = manager.get("target", "data");
         EXPECT_TRUE(targetResult.has_value());
-        { std::string tmp; EXPECT_EQ(json::RetGet::Success, targetResult->getString(tmp, "/value")); EXPECT_EQ(tmp, "source-data"); }
+        {
+            std::string tmp;
+            EXPECT_EQ(json::RetGet::Success, targetResult->getString(tmp, "/value"));
+            EXPECT_EQ(tmp, "source-data");
+        }
     });
 
     // Verify source is NO LONGER readable (instance moved to target)
@@ -1040,7 +1053,11 @@ TEST_F(KVDBComponentTest, HotSwapChain)
     EXPECT_NO_THROW({
         auto bResult = manager.get("dbB", "data");
         EXPECT_TRUE(bResult.has_value());
-        { std::string tmp; EXPECT_EQ(json::RetGet::Success, bResult->getString(tmp, "/source")); EXPECT_EQ(tmp, "A"); }
+        {
+            std::string tmp;
+            EXPECT_EQ(json::RetGet::Success, bResult->getString(tmp, "/source"));
+            EXPECT_EQ(tmp, "A");
+        }
     });
 
     // Create C and swap B into C
@@ -1054,7 +1071,11 @@ TEST_F(KVDBComponentTest, HotSwapChain)
     EXPECT_NO_THROW({
         auto cResult = manager.get("dbC", "data");
         EXPECT_TRUE(cResult.has_value());
-        { std::string tmp; EXPECT_EQ(json::RetGet::Success, cResult->getString(tmp, "/source")); EXPECT_EQ(tmp, "A"); }
+        {
+            std::string tmp;
+            EXPECT_EQ(json::RetGet::Success, cResult->getString(tmp, "/source"));
+            EXPECT_EQ(tmp, "A");
+        }
     });
 }
 
@@ -1172,7 +1193,10 @@ TEST_F(KVDBComponentTest, SourceDatabaseAfterHotSwap)
                 EXPECT_NO_THROW({
                     auto result = manager.get("target", "key");
                     std::string resultVal;
-                    if (result.has_value()) { result->getString(resultVal, "/value"); }
+                    if (result.has_value())
+                    {
+                        result->getString(resultVal, "/value");
+                    }
                     if (result.has_value() && resultVal == "original")
                     {
                         correctReads++;
@@ -1260,7 +1284,11 @@ TEST_F(KVDBComponentTest, PersistenceAfterAdd)
     EXPECT_EQ(arr->size(), 1);
 
     auto dbState = (*arr)[0];
-    { std::string tmp; EXPECT_EQ(json::RetGet::Success, dbState.getString(tmp, "/name")); EXPECT_EQ(tmp, "testdb"); }
+    {
+        std::string tmp;
+        EXPECT_EQ(json::RetGet::Success, dbState.getString(tmp, "/name"));
+        EXPECT_EQ(tmp, "testdb");
+    }
     EXPECT_TRUE(dbState.exists("/instance_path"));
     EXPECT_TRUE(dbState.exists("/created"));
 }
@@ -1288,7 +1316,11 @@ TEST_F(KVDBComponentTest, PersistenceLoadStateOnRestart)
         // Verify data exists
         auto result = manager.get("persistent-db", "key1");
         EXPECT_TRUE(result.has_value());
-        { std::string tmp; EXPECT_EQ(json::RetGet::Success, result->getString(tmp, "/value")); EXPECT_EQ(tmp, "original"); }
+        {
+            std::string tmp;
+            EXPECT_EQ(json::RetGet::Success, result->getString(tmp, "/value"));
+            EXPECT_EQ(tmp, "original");
+        }
     }
 
     ASSERT_NE(savedState, nullptr);
@@ -1303,14 +1335,22 @@ TEST_F(KVDBComponentTest, PersistenceLoadStateOnRestart)
         // Should be able to read data from restored DB
         auto result = manager.get("persistent-db", "key1");
         EXPECT_TRUE(result.has_value());
-        { std::string tmp; EXPECT_EQ(json::RetGet::Success, result->getString(tmp, "/value")); EXPECT_EQ(tmp, "original"); }
+        {
+            std::string tmp;
+            EXPECT_EQ(json::RetGet::Success, result->getString(tmp, "/value"));
+            EXPECT_EQ(tmp, "original");
+        }
 
         // Should be able to write to restored DB
         EXPECT_NO_THROW(manager.put("persistent-db", "key2", R"({"value":"new"})"));
 
         auto newResult = manager.get("persistent-db", "key2");
         EXPECT_TRUE(newResult.has_value());
-        { std::string tmp; EXPECT_EQ(json::RetGet::Success, newResult->getString(tmp, "/value")); EXPECT_EQ(tmp, "new"); }
+        {
+            std::string tmp;
+            EXPECT_EQ(json::RetGet::Success, newResult->getString(tmp, "/value"));
+            EXPECT_EQ(tmp, "new");
+        }
     }
 }
 
@@ -1351,7 +1391,11 @@ TEST_F(KVDBComponentTest, PersistenceAfterHotSwap)
 
     // Should only have target DB, staging should be removed
     EXPECT_EQ(arr->size(), 1);
-    { std::string tmp; EXPECT_EQ(json::RetGet::Success, (*arr)[0].getString(tmp, "/name")); EXPECT_EQ(tmp, "target"); }
+    {
+        std::string tmp;
+        EXPECT_EQ(json::RetGet::Success, (*arr)[0].getString(tmp, "/name"));
+        EXPECT_EQ(tmp, "target");
+    }
 }
 
 // Test state is updated after remove
@@ -1385,7 +1429,11 @@ TEST_F(KVDBComponentTest, PersistenceAfterRemove)
     auto arr = finalState->getArray();
     EXPECT_TRUE(arr.has_value());
     EXPECT_EQ(arr->size(), 1);
-    { std::string tmp; EXPECT_EQ(json::RetGet::Success, (*arr)[0].getString(tmp, "/name")); EXPECT_EQ(tmp, "db2"); }
+    {
+        std::string tmp;
+        EXPECT_EQ(json::RetGet::Success, (*arr)[0].getString(tmp, "/name"));
+        EXPECT_EQ(tmp, "db2");
+    }
 }
 
 // Test manager handles missing persisted DB files gracefully
@@ -1507,7 +1555,11 @@ TEST_F(KVDBComponentTest, AddRollbackOnFailure)
     EXPECT_NO_THROW(manager.put("conflict-db", "test-key", R"({"status":"working"})"));
     auto result = manager.get("conflict-db", "test-key");
     EXPECT_TRUE(result.has_value());
-    { std::string tmp; EXPECT_EQ(json::RetGet::Success, result->getString(tmp, "/status")); EXPECT_EQ(tmp, "working"); }
+    {
+        std::string tmp;
+        EXPECT_EQ(json::RetGet::Success, result->getString(tmp, "/status"));
+        EXPECT_EQ(tmp, "working");
+    }
 }
 
 // Test add() rollback when RocksDB open fails
@@ -1549,7 +1601,11 @@ TEST_F(KVDBComponentTest, AddRollbackOnRocksDBOpenFailure)
 
     auto result = manager.get("corrupted-db", "recovery");
     EXPECT_TRUE(result.has_value());
-    { std::string tmp; EXPECT_EQ(json::RetGet::Success, result->getString(tmp, "/status")); EXPECT_EQ(tmp, "recovered"); }
+    {
+        std::string tmp;
+        EXPECT_EQ(json::RetGet::Success, result->getString(tmp, "/status"));
+        EXPECT_EQ(tmp, "recovered");
+    }
 }
 
 // Test concurrent add() attempts don't leave duplicate handles

@@ -365,11 +365,11 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
     // Lambda to process database entries
     auto processDatabase = [&](Type type,
                                const std::string& path,
-                               const std::optional<std::string>& url,
-                               const std::optional<std::string>& md5,
+                               const std::string& url,
+                               const std::string& md5,
                                const std::string& typeName)
     {
-        if (!url.has_value() || !md5.has_value() || path.empty())
+        if (url.empty() || md5.empty() || path.empty())
         {
             LOG_WARNING("[Geo::Manager] {} database not present in manifest or path not provided", typeName);
             return;
@@ -378,14 +378,14 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
         const auto dbName = std::filesystem::path(path).filename().string();
 
         // Check if database needs update
-        if (!needsUpdate(dbName, md5.value(), type))
+        if (!needsUpdate(dbName, md5, type))
         {
             LOG_DEBUG("[Geo::Manager] No changes detected for {} database '{}'", typeName, dbName);
             return;
         }
 
         LOG_INFO("[Geo::Manager] Changes detected for {} database '{}', updating...", typeName, dbName);
-        auto error = processDbEntry(path, type, url.value(), md5.value(), createdAt.value());
+        auto error = processDbEntry(path, type, url, md5, createdAt.value());
         if (base::isError(error))
         {
             LOG_ERROR("[Geo::Manager] Failed to process {} database '{}': {}",
@@ -401,23 +401,14 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
 
     // Process city database if present
     std::string cityUrl, cityMd5;
-    auto cityUrlOpt = manifest.getString(cityUrl, "/city/url") == json::RetGet::Success
-                          ? std::optional<std::string>(cityUrl)
-                          : std::nullopt;
-    auto cityMd5Opt = manifest.getString(cityMd5, "/city/md5") == json::RetGet::Success
-                          ? std::optional<std::string>(cityMd5)
-                          : std::nullopt;
-    processDatabase(Type::CITY, cityPath, cityUrlOpt, cityMd5Opt, "CITY");
-
+    manifest.getString(cityUrl, "/city/url");
+    manifest.getString(cityMd5, "/city/md5");
+    processDatabase(Type::CITY, cityPath, cityUrl, cityMd5, "CITY");
     // Process ASN database if present
     std::string asnUrl, asnMd5;
-    auto asnUrlOpt = manifest.getString(asnUrl, "/asn/url") == json::RetGet::Success
-                         ? std::optional<std::string>(asnUrl)
-                         : std::nullopt;
-    auto asnMd5Opt = manifest.getString(asnMd5, "/asn/md5") == json::RetGet::Success
-                         ? std::optional<std::string>(asnMd5)
-                         : std::nullopt;
-    processDatabase(Type::ASN, asnPath, asnUrlOpt, asnMd5Opt, "ASN");
+    manifest.getString(asnUrl, "/asn/url");
+    manifest.getString(asnMd5, "/asn/md5");
+    processDatabase(Type::ASN, asnPath, asnUrl, asnMd5, "ASN");
 
     LOG_DEBUG("[Geo::Manager] Finished synchronization of geo databases");
 }

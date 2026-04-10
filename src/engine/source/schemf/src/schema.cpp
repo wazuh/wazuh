@@ -195,8 +195,7 @@ Field Schema::entryToField(const std::string& name, const json::Json& entry) con
     Field::Parameters params;
 
     std::string typeStr;
-    auto typeRet = entry.getString(typeStr, "/type");
-    if (typeRet != json::RetGet::Success)
+    if (entry.getString(typeStr, "/type") != json::RetGet::Success)
     {
         throw std::runtime_error(fmt::format("Field '{}' must have a type", name));
     }

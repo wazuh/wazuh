@@ -160,7 +160,7 @@ std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::ISt
     {
         LOG_DEBUG("Router: {} table is empty", tableName.toStr());
     }
-    // Crear tabla vacia.
+    // Create empty table.
 
     return EntryConverter::fromJsonArray(json);
 }

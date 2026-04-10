@@ -43,7 +43,11 @@ TEST_F(HandlerUnitTest, GetReturnsValidJson)
 
     EXPECT_TRUE(result.has_value());
     EXPECT_TRUE(result->isObject());
-    { std::string tmp; EXPECT_EQ(json::RetGet::Success, result->getString(tmp, "/name")); EXPECT_EQ(tmp, "TestUser"); }
+    {
+        std::string tmp;
+        EXPECT_EQ(json::RetGet::Success, result->getString(tmp, "/name"));
+        EXPECT_EQ(tmp, "TestUser");
+    }
     EXPECT_TRUE(result->getBool("/active").value());
 }
 
@@ -66,8 +70,16 @@ TEST_F(HandlerUnitTest, GetCanReturnDifferentValuesForDifferentKeys)
     auto result1 = mockHandler.get("user:1");
     auto result2 = mockHandler.get("user:2");
 
-    { std::string tmp; EXPECT_EQ(json::RetGet::Success, result1->getString(tmp, "/name")); EXPECT_EQ(tmp, "Alice"); }
-    { std::string tmp; EXPECT_EQ(json::RetGet::Success, result2->getString(tmp, "/name")); EXPECT_EQ(tmp, "Bob"); }
+    {
+        std::string tmp;
+        EXPECT_EQ(json::RetGet::Success, result1->getString(tmp, "/name"));
+        EXPECT_EQ(tmp, "Alice");
+    }
+    {
+        std::string tmp;
+        EXPECT_EQ(json::RetGet::Success, result2->getString(tmp, "/name"));
+        EXPECT_EQ(tmp, "Bob");
+    }
 }
 
 TEST_F(HandlerUnitTest, GetCalledMultipleTimesWithSameKey)
@@ -110,7 +122,11 @@ TEST_F(HandlerUnitTest, GetReturnsComplexNestedJson)
     auto result = mockHandler.get("config:app");
 
     EXPECT_TRUE(result.has_value());
-    { std::string tmp; EXPECT_EQ(json::RetGet::Success, result->getString(tmp, "/settings/database/host")); EXPECT_EQ(tmp, "localhost"); }
+    {
+        std::string tmp;
+        EXPECT_EQ(json::RetGet::Success, result->getString(tmp, "/settings/database/host"));
+        EXPECT_EQ(tmp, "localhost");
+    }
     EXPECT_EQ(result->getInt("/settings/database/port").value(), 5432);
 }
 
@@ -181,7 +197,8 @@ TEST_F(HandlerMultiThreadTest, ConcurrentReadsSameKey)
                     {
                         auto result = mockHandler.get("user:100");
                         std::string tmp;
-                        if (result.has_value() && result->getString(tmp, "/name") == json::RetGet::Success && tmp == "TestUser")
+                        if (result.has_value() && result->getString(tmp, "/name") == json::RetGet::Success
+                            && tmp == "TestUser")
                         {
                             successCount++;
                         }
@@ -240,7 +257,8 @@ TEST_F(HandlerMultiThreadTest, ConcurrentReadsDifferentKeys)
                         totalReads++;
 
                         std::string tmp;
-                        if (!result.has_value() || result->getString(tmp, "/name") != json::RetGet::Success || tmp != expectedName)
+                        if (!result.has_value() || result->getString(tmp, "/name") != json::RetGet::Success
+                            || tmp != expectedName)
                         {
                             std::lock_guard<std::mutex> lock(resultsMutex);
                             threadResults[threadId] = false;
@@ -441,8 +459,9 @@ TEST_F(HandlerMultiThreadTest, ConcurrentComplexJsonReads)
 
                         // Validate different parts of the JSON
                         std::string tmp;
-                        if (!result.has_value() || result->getString(tmp, "/settings/database/host") != json::RetGet::Success || tmp != "localhost"
-                            || result->getInt("/settings/database/port").value() != 5432
+                        if (!result.has_value()
+                            || result->getString(tmp, "/settings/database/host") != json::RetGet::Success
+                            || tmp != "localhost" || result->getInt("/settings/database/port").value() != 5432
                             || result->getInt("/counters/requests").value() != 12345)
                         {
                             validationErrors++;
