@@ -124,7 +124,7 @@ size_t wm_control_execute_action(const char *action, const char *service, char *
     char *exec_cmd[4] = {NULL};
 
     if (use_systemd) {
-        exec_cmd[0] = "/usr/bin/systemctl";
+        exec_cmd[0] = "systemctl";
         exec_cmd[1] = (char *)action;
         exec_cmd[2] = (char *)service;
         mtinfo(WM_CONTROL_LOGTAG, "Executing '%s' on %s using systemctl", action, service);
@@ -146,7 +146,7 @@ size_t wm_control_execute_action(const char *action, const char *service, char *
                     _exit(1);
                 }
             }
-            if (execv(exec_cmd[0], exec_cmd) < 0) {
+            if (execvp(exec_cmd[0], exec_cmd) < 0) {
                 mterror(WM_CONTROL_LOGTAG, "Error executing %s command: %s (%d)", action, strerror(errno), errno);
             }
             _exit(1);
