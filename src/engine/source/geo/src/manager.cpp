@@ -39,42 +39,28 @@ Manager::Manager(const std::shared_ptr<store::IStore>& store, const std::shared_
     }
 
     auto doc = base::getResponse(docResp);
-
-    // Load city database if present
-    std::string cityPathStr, cityHashStr;
-    auto cityPathRet = doc.getString(cityPathStr, "/city/path");
-    auto cityHashRet = doc.getString(cityHashStr, "/city/hash");
-    auto cityCreatedAt = doc.getInt64("/city/generated_at");
-    if (cityPathRet == json::RetGet::Success && cityHashRet == json::RetGet::Success && cityCreatedAt.has_value())
+    auto checkAndLoadDb = [&](Type type)
     {
-        auto addResp = addDbUnsafe(cityPathStr, cityHashStr, cityCreatedAt.value(), Type::CITY);
-        if (base::isError(addResp))
+        std::string pathStr, hashStr;
+        auto pathRet = doc.getString(pathStr, fmt::format("/{}/path", typeName(type)));
+        auto hashRet = doc.getString(hashStr, fmt::format("/{}/hash", typeName(type)));
+        auto createdAt = doc.getInt64(fmt::format("/{}/generated_at", typeName(type)));
+        if (pathRet == json::RetGet::Success && hashRet == json::RetGet::Success && createdAt.has_value())
         {
-            LOG_ERROR("Geo cannot add city db '{}': {}", cityPathStr, base::getError(addResp).message);
+            auto addResp = addDbUnsafe(pathStr, hashStr, createdAt.value(), type);
+            if (base::isError(addResp))
+            {
+                LOG_ERROR("Geo cannot add {} db '{}': {}", typeName(type), pathStr, base::getError(addResp).message);
+            }
         }
-    }
-    else if (cityPathRet == json::RetGet::Success || cityHashRet == json::RetGet::Success || cityCreatedAt.has_value())
-    {
-        LOG_WARNING("Geo store has incomplete city database information, skipping");
-    }
-
-    // Load asn database if present
-    std::string asnPathStr, asnHashStr;
-    auto asnPathRet = doc.getString(asnPathStr, "/asn/path");
-    auto asnHashRet = doc.getString(asnHashStr, "/asn/hash");
-    auto asnCreatedAt = doc.getInt64("/asn/generated_at");
-    if (asnPathRet == json::RetGet::Success && asnHashRet == json::RetGet::Success && asnCreatedAt.has_value())
-    {
-        auto addResp = addDbUnsafe(asnPathStr, asnHashStr, asnCreatedAt.value(), Type::ASN);
-        if (base::isError(addResp))
+        else
         {
-            LOG_ERROR("Geo cannot add asn db '{}': {}", asnPathStr, base::getError(addResp).message);
+            LOG_WARNING("Geo store has incomplete {} database information, skipping", typeName(type));
         }
-    }
-    else if (asnPathRet == json::RetGet::Success || asnHashRet == json::RetGet::Success || asnCreatedAt.has_value())
-    {
-        LOG_WARNING("Geo store has incomplete asn database information, skipping");
-    }
+    };
+
+    checkAndLoadDb(Type::CITY);
+    checkAndLoadDb(Type::ASN);
 }
 
 base::OptError
