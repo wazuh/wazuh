@@ -48,13 +48,13 @@ services:
             retries: 20
             start_period: 120s
 
-    wazuh.master:
+    wazuh.manager:
         build:
             context: ./wazuh-manager
             target: server
         pull_policy: never
-        image: wazuh-manager-img
-        hostname: wazuh.master
+        image: wazuh-manager
+        hostname: wazuh.manager
         networks:
             - wazuh.net
         ports:
@@ -67,10 +67,10 @@ services:
             - ${WAZUH_LOCAL_PATH}/api/api:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
         environment:
             OPENDISTRO_SECURITY_ENABLED: "false"
-            NODE_NAME: "wazuh.master"
+            NODE_NAME: "wazuh.manager"
         entrypoint:
             - /scripts/entrypoint.sh
-            - wazuh.master
+            - wazuh.manager
             - master-node
             - master
         depends_on:
@@ -80,7 +80,7 @@ services:
                 condition: service_started
 
     wazuh.worker1:
-        image: wazuh-manager-img
+        image: wazuh-manager
         hostname: wazuh.worker1
         pull_policy: never
         networks:
@@ -94,7 +94,7 @@ services:
             - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
             - ${WAZUH_LOCAL_PATH}/api/api:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
         depends_on:
-            wazuh.master:
+            wazuh.manager:
                 condition: service_started
         environment:
             NODE_NAME: "wazuh.worker1"
@@ -106,7 +106,7 @@ services:
             - worker
 
     wazuh.worker2:
-        image: wazuh-manager-img
+        image: wazuh-manager
         hostname: wazuh.worker2
         pull_policy: never
         networks:
@@ -120,7 +120,7 @@ services:
             - ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh
             - ${WAZUH_LOCAL_PATH}/api/api:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api
         depends_on:
-            wazuh.master:
+            wazuh.manager:
                 condition: service_started
         environment:
             NODE_NAME: "wazuh.worker2"
@@ -144,7 +144,7 @@ services:
                 aliases:
                     - nginx.lb
         depends_on:
-            wazuh.master:
+            wazuh.manager:
                 condition: service_started
             wazuh.worker1:
                 condition: service_started
