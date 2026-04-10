@@ -22,6 +22,17 @@ Triggered on subsequent runs. Downloads only documents whose `offset` field is s
 
 If the range query returns zero documents, the cycle completes without triggering a rescan on the consumer side (see [Completion signal](#completion-signal) below).
 
+### Consumer readiness gate
+
+If `consumerStatusIndex` and `consumerStatusId` are configured, the downloader polls the consumer status document before opening the PIT on the feed index:
+
+- missing document: wait 1 minute and retry
+- empty `status`: wait 1 minute and retry
+- `status = updating`: wait 1 minute and retry
+- `status = idle`: start the download
+
+This gate answers only one question: whether it is safe to start reading from Indexer. It does not replace the consumer-side validation of the downloaded local feed.
+
 ### PIT pagination
 
 Each download cycle (initial or incremental) opens a single Point-In-Time on the target index with a keep-alive of `5m`. All page requests within the cycle use this PIT, ensuring a consistent snapshot of the index throughout the download. The PIT is always deleted when the cycle finishes, even in error cases.
@@ -91,6 +102,8 @@ The `indexer` sub-object must be present under `configData` when `contentSource`
 | Field | Type | Description |
 |-------|------|-------------|
 | `index` | string | Target index name (e.g. `.cti-cves`) |
+| `consumerStatusIndex` | string | Index containing the consumer status document to poll before downloading (optional) |
+| `consumerStatusId` | string | Consumer status document id to poll before downloading (optional) |
 | `pageSize` | integer | Documents per page. Default: `250` |
 | `numSlices` | integer | Number of parallel PIT slices for initial load. Default: `2`. Set to `1` for sequential mode. Higher values can increase memory usage with limited time savings |
 | `hosts` | array | Indexer host URLs (e.g. `["https://localhost:9200"]`) |
@@ -122,6 +135,8 @@ Example:
                 "key": ""
             },
             "index": ".cti-cves",
+            "consumerStatusIndex": ".cti-consumers",
+            "consumerStatusId": "t1-vulnerabilities-5_public-vulnerabilities-5",
             "pageSize": 250,
             "numSlices": 2
         }

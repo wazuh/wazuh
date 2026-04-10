@@ -10,8 +10,10 @@
 #include <mock_filesystem_wrapper.hpp>
 #include <mock_sysinfo.hpp>
 
+#include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 class AgentInfoCoordinationTest : public ::testing::Test
 {
@@ -769,6 +771,223 @@ TEST_F(AgentInfoCoordinationTest, CoordinationWithoutSyncProtocol)
     // Verify the "sync protocol not available" message was logged
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Sync protocol not available, skipping synchronization"));
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Synchronization coordination completed successfully"));
+}
+
+TEST_F(AgentInfoCoordinationTest, CoordinationRequestsAllFlushesBeforePollingAndPollsAcrossModules)
+{
+    int selectRowsCalls = 0;
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([&selectRowsCalls](const nlohmann::json& /* query */,
+                                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        if (selectRowsCalls++ == 0)
+        {
+            nlohmann::json flagData;
+            flagData["should_sync_metadata"] = 1;
+            flagData["should_sync_groups"] = 0;
+            flagData["last_metadata_integrity"] = 0;
+            flagData["last_groups_integrity"] = 0;
+            flagData["is_first_run"] = 0;
+            flagData["is_first_groups_run"] = 0;
+            callback(SELECTED, flagData);
+        }
+    }));
+
+    std::vector<std::string> commandLog;
+    std::map<std::string, int> flushPollCounts;
+
+    auto queryModuleFunc = [&commandLog, &flushPollCounts](const std::string & module_name,
+                                                           const std::string & query,
+                                                           char** response) -> int
+    {
+        nlohmann::json commandJson = nlohmann::json::parse(query);
+        const auto command = commandJson["command"].get<std::string>();
+
+        if (command == "flush" || command == "is_flush_completed")
+        {
+            commandLog.push_back(module_name + ":" + command);
+        }
+
+        nlohmann::json responseJson;
+        responseJson["error"] = 0;
+        responseJson["message"] = "Success";
+
+        if (command == "is_pause_completed")
+        {
+            responseJson["data"]["status"] = "completed";
+            responseJson["data"]["result"] = "success";
+        }
+        else if (command == "is_flush_completed")
+        {
+            auto& pollCount = flushPollCounts[module_name];
+
+            if (module_name == "sca" && pollCount++ == 0)
+            {
+                responseJson["data"]["status"] = "in_progress";
+            }
+            else
+            {
+                pollCount++;
+                responseJson["data"]["status"] = "completed";
+                responseJson["data"]["result"] = "success";
+            }
+        }
+        else if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        std::string responseStr = responseJson.dump();
+        * response = strdup(responseStr.c_str());
+        return 0;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    size_t firstPollIndex = commandLog.size();
+    size_t flushRequestCount = 0;
+    size_t scaSecondPollIndex = commandLog.size();
+    size_t syscollectorFirstPollIndex = commandLog.size();
+    int scaPollsSeen = 0;
+
+    for (size_t i = 0; i < commandLog.size(); ++i)
+    {
+        if (commandLog[i].find(":is_flush_completed") != std::string::npos && firstPollIndex == commandLog.size())
+        {
+            firstPollIndex = i;
+        }
+
+        if (firstPollIndex == commandLog.size() && commandLog[i].find(":flush") != std::string::npos)
+        {
+            ++flushRequestCount;
+        }
+
+        if (commandLog[i] == "sca:is_flush_completed")
+        {
+            ++scaPollsSeen;
+
+            if (scaPollsSeen == 2 && scaSecondPollIndex == commandLog.size())
+            {
+                scaSecondPollIndex = i;
+            }
+        }
+
+        if (commandLog[i] == "syscollector:is_flush_completed" && syscollectorFirstPollIndex == commandLog.size())
+        {
+            syscollectorFirstPollIndex = i;
+        }
+    }
+
+    EXPECT_EQ(flushRequestCount, 3U);
+    EXPECT_NE(firstPollIndex, commandLog.size());
+    EXPECT_NE(scaSecondPollIndex, commandLog.size());
+    EXPECT_NE(syscollectorFirstPollIndex, commandLog.size());
+    EXPECT_LT(syscollectorFirstPollIndex, scaSecondPollIndex);
+}
+
+TEST_F(AgentInfoCoordinationTest, CoordinationFlushFailureResumesPausedModules)
+{
+    int selectRowsCalls = 0;
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([&selectRowsCalls](const nlohmann::json& /* query */,
+                                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        if (selectRowsCalls++ == 0)
+        {
+            nlohmann::json flagData;
+            flagData["should_sync_metadata"] = 1;
+            flagData["should_sync_groups"] = 0;
+            flagData["last_metadata_integrity"] = 0;
+            flagData["last_groups_integrity"] = 0;
+            flagData["is_first_run"] = 0;
+            flagData["is_first_groups_run"] = 0;
+            callback(SELECTED, flagData);
+        }
+    }));
+
+    int resumeCount = 0;
+
+    auto queryModuleFunc = [&resumeCount](const std::string & module_name,
+                                          const std::string & query,
+                                          char** response) -> int
+    {
+        nlohmann::json commandJson = nlohmann::json::parse(query);
+        const auto command = commandJson["command"].get<std::string>();
+
+        nlohmann::json responseJson;
+        responseJson["error"] = 0;
+        responseJson["message"] = "Success";
+
+        if (command == "resume")
+        {
+            ++resumeCount;
+        }
+        else if (command == "is_pause_completed")
+        {
+            responseJson["data"]["status"] = "completed";
+            responseJson["data"]["result"] = "success";
+        }
+        else if (command == "is_flush_completed")
+        {
+            responseJson["data"]["status"] = "completed";
+            responseJson["data"]["result"] = (module_name == "sca") ? "error" : "success";
+        }
+        else if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        std::string responseStr = responseJson.dump();
+        * response = strdup(responseStr.c_str());
+        return 0;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    EXPECT_EQ(resumeCount, 3);
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("flush completed with error"));
 }
 
 TEST_F(AgentInfoCoordinationTest, CoordinationWithModuleResumptionSuccess)

@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 #include <regex>
 #include <thread>
+#include <unistd.h>
 
 #include <base/dailyRotatingFileSink.hpp>
 #include <base/logging.hpp>
@@ -480,11 +481,11 @@ protected:
 
 TEST_F(DailyRotatingFileSinkTest, RotatesBySize)
 {
-    // Create sink with 10KB max size
-    auto sink = std::make_shared<logging::daily_rotating_file_sink>(logging::daily_rotating_file_sink::Config {
-        .filePath = m_logFile,
-        .maxFileSize = 10 * 1024 // 10KB
-    });
+    // Create sink with 10KB max size, compression disabled for deterministic checks
+    auto sink = std::make_shared<logging::daily_rotating_file_sink>(
+        logging::daily_rotating_file_sink::Config {.filePath = m_logFile,
+                                                   .maxFileSize = 10 * 1024, // 10KB
+                                                   .compressionEnabled = false});
 
     auto logger = std::make_shared<spdlog::logger>("test", sink);
     spdlog::set_default_logger(logger);
@@ -496,7 +497,6 @@ TEST_F(DailyRotatingFileSinkTest, RotatesBySize)
     auto rotatedFiles = getRotatedFiles();
     EXPECT_GE(rotatedFiles.size(), 1) << "Expected at least one rotated file";
 
-    // Compression temporarily disabled - files should NOT be .gz
     for (const auto& file : rotatedFiles)
     {
         std::string suffix = ".log";
@@ -511,9 +511,9 @@ TEST_F(DailyRotatingFileSinkTest, RotatesByTime)
     // Create sink with time-based rotation using interval mode (2 seconds)
     auto sink = std::make_shared<logging::daily_rotating_file_sink>(logging::daily_rotating_file_sink::Config {
         .filePath = m_logFile,
-        .maxFileSize = 1024 * 1024,  // 1MB (large enough to not trigger size rotation)
-        .rotationIntervalSeconds = 2 // Rotate every 2 seconds (testing mode)
-    });
+        .maxFileSize = 1024 * 1024,   // 1MB (large enough to not trigger size rotation)
+        .rotationIntervalSeconds = 2, // Rotate every 2 seconds (testing mode)
+        .compressionEnabled = false});
 
     auto logger = std::make_shared<spdlog::logger>("test", sink);
 
@@ -538,32 +538,23 @@ TEST_F(DailyRotatingFileSinkTest, RotatesByTime)
 
 TEST_F(DailyRotatingFileSinkTest, SingleRotationWhenTimeAndSizeCoincide)
 {
-    // Create sink where both conditions will be met
-    auto now = std::chrono::system_clock::now();
-    auto now_time_t = std::chrono::system_clock::to_time_t(now);
-    std::tm now_tm;
-    localtime_r(&now_time_t, &now_tm);
-
-    auto future_time_t = now_time_t + 1;
-    std::tm future_tm;
-    localtime_r(&future_time_t, &future_tm);
-
-    auto sink = std::make_shared<logging::daily_rotating_file_sink>(
-        logging::daily_rotating_file_sink::Config {.filePath = m_logFile,
-                                                   .maxFileSize = 5 * 1024, // 5KB (small to trigger quickly)
-                                                   .rotationHour = future_tm.tm_hour,
-                                                   .rotationMinute = future_tm.tm_min});
+    auto sink = std::make_shared<logging::daily_rotating_file_sink>(logging::daily_rotating_file_sink::Config {
+        .filePath = m_logFile,
+        .maxFileSize = 5 * 1024,     // 5KB
+        .rotationIntervalSeconds = 1 // Deterministic test-only time rotation
+    });
 
     auto logger = std::make_shared<spdlog::logger>("test", sink);
 
-    // Write logs to exceed size
-    writeLogsUntilRotation(logger, 6 * 1024);
+    // Stay below the size threshold so no rotation happens yet.
+    logger->info(std::string(4 * 1024, 'A'));
+    logger->flush();
 
-    // Wait for time condition
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    // Wait until the time condition is met.
+    std::this_thread::sleep_for(std::chrono::milliseconds(1100));
 
-    // Write one more log to trigger rotation check
-    logger->info("Trigger rotation");
+    // This write should trigger both time and size conditions in a single rotation.
+    logger->info(std::string(2 * 1024, 'B'));
     logger->flush();
 
     // Should have only 1 rotation (not 2)
@@ -575,8 +566,8 @@ TEST_F(DailyRotatingFileSinkTest, ContinuesIndexingAfterRestart)
 {
     // First run: create rotated files
     {
-        auto sink = std::make_shared<logging::daily_rotating_file_sink>(
-            logging::daily_rotating_file_sink::Config {.filePath = m_logFile, .maxFileSize = 5 * 1024});
+        auto sink = std::make_shared<logging::daily_rotating_file_sink>(logging::daily_rotating_file_sink::Config {
+            .filePath = m_logFile, .maxFileSize = 5 * 1024, .compressionEnabled = false});
         auto logger = std::make_shared<spdlog::logger>("test", sink);
 
         writeLogsUntilRotation(logger, 6 * 1024);
@@ -588,8 +579,8 @@ TEST_F(DailyRotatingFileSinkTest, ContinuesIndexingAfterRestart)
 
     // Second run: should not overwrite existing files
     {
-        auto sink = std::make_shared<logging::daily_rotating_file_sink>(
-            logging::daily_rotating_file_sink::Config {.filePath = m_logFile, .maxFileSize = 5 * 1024});
+        auto sink = std::make_shared<logging::daily_rotating_file_sink>(logging::daily_rotating_file_sink::Config {
+            .filePath = m_logFile, .maxFileSize = 5 * 1024, .compressionEnabled = false});
         auto logger = std::make_shared<spdlog::logger>("test", sink);
 
         writeLogsUntilRotation(logger, 6 * 1024);
@@ -611,7 +602,8 @@ TEST_F(DailyRotatingFileSinkTest, CleanupByMaxFiles)
     auto sink = std::make_shared<logging::daily_rotating_file_sink>(
         logging::daily_rotating_file_sink::Config {.filePath = m_logFile,
                                                    .maxFileSize = 5 * 1024, // 5KB
-                                                   .maxFiles = 3});
+                                                   .maxFiles = 3,
+                                                   .compressionEnabled = false});
 
     auto logger = std::make_shared<spdlog::logger>("test", sink);
 
@@ -631,15 +623,15 @@ TEST_F(DailyRotatingFileSinkTest, CleanupByMaxFiles)
 TEST_F(DailyRotatingFileSinkTest, CleanupByMaxAccumulatedSize)
 {
     // Create sink with 20KB accumulated size limit
-    auto sink = std::make_shared<logging::daily_rotating_file_sink>(logging::daily_rotating_file_sink::Config {
-        .filePath = m_logFile,
-        .maxFileSize = 5 * 1024,        // 5KB per file
-        .maxAccumulatedSize = 20 * 1024 // max 20KB total
-    });
+    auto sink = std::make_shared<logging::daily_rotating_file_sink>(
+        logging::daily_rotating_file_sink::Config {.filePath = m_logFile,
+                                                   .maxFileSize = 5 * 1024,         // 5KB per file
+                                                   .maxAccumulatedSize = 20 * 1024, // max 20KB total
+                                                   .compressionEnabled = false});
 
     auto logger = std::make_shared<spdlog::logger>("test", sink);
 
-    // Create multiple rotations (each ~5KB, uncompressed - compression disabled)
+    // Create multiple rotations (each ~5KB, uncompressed)
     for (int i = 0; i < 10; ++i)
     {
         writeLogsUntilRotation(logger, 6 * 1024);
@@ -647,19 +639,18 @@ TEST_F(DailyRotatingFileSinkTest, CleanupByMaxAccumulatedSize)
     }
     logger->flush();
 
-    // Total size of rotated files should be <= 20KB (may be higher without compression)
     auto totalSize = getTotalRotatedSize();
-    EXPECT_LE(totalSize, 30 * 1024) << "Total size should be near limit (compression disabled, so higher)";
+    EXPECT_LE(totalSize, 30 * 1024) << "Total size should be near limit";
 }
 
 TEST_F(DailyRotatingFileSinkTest, CleanupDeletesOldestFiles)
 {
     // Create sink with max 3 files
-    auto sink = std::make_shared<logging::daily_rotating_file_sink>(logging::daily_rotating_file_sink::Config {
-        .filePath = m_logFile,
-        .maxFileSize = 5 * 1024, // 5KB per file
-        .maxFiles = 3            // max 3 files
-    });
+    auto sink = std::make_shared<logging::daily_rotating_file_sink>(
+        logging::daily_rotating_file_sink::Config {.filePath = m_logFile,
+                                                   .maxFileSize = 5 * 1024, // 5KB per file
+                                                   .maxFiles = 3,           // max 3 files
+                                                   .compressionEnabled = false});
 
     auto logger = std::make_shared<spdlog::logger>("test", sink);
     std::vector<std::string> allCreatedFiles;
@@ -713,10 +704,10 @@ TEST_F(DailyRotatingFileSinkTest, CleanupWithBothPolicies)
     // Create sink with both policies
     auto sink = std::make_shared<logging::daily_rotating_file_sink>(logging::daily_rotating_file_sink::Config {
         .filePath = m_logFile,
-        .maxFileSize = 5 * 1024,        // 5KB per file
-        .maxFiles = 5,                  // max 5 files
-        .maxAccumulatedSize = 15 * 1024 // max 15KB total (stricter than max_files)
-    });
+        .maxFileSize = 5 * 1024,         // 5KB per file
+        .maxFiles = 5,                   // max 5 files
+        .maxAccumulatedSize = 15 * 1024, // max 15KB total (stricter than max_files)
+        .compressionEnabled = false});
 
     auto logger = std::make_shared<spdlog::logger>("test", sink);
 
@@ -741,9 +732,9 @@ TEST_F(DailyRotatingFileSinkTest, CleanupBySizeDeletesOldestFiles)
     // Create sink with 15KB accumulated size limit (each file ~6KB uncompressed)
     auto sink = std::make_shared<logging::daily_rotating_file_sink>(logging::daily_rotating_file_sink::Config {
         .filePath = m_logFile,
-        .maxFileSize = 5 * 1024,        // 5KB per file
-        .maxAccumulatedSize = 15 * 1024 // max 15KB total (should keep ~2-3 files)
-    });
+        .maxFileSize = 5 * 1024,         // 5KB per file
+        .maxAccumulatedSize = 15 * 1024, // max 15KB total (should keep ~2-3 files)
+        .compressionEnabled = false});
 
     auto logger = std::make_shared<spdlog::logger>("test", sink);
     std::vector<std::string> allCreatedFiles;
@@ -800,18 +791,18 @@ TEST_F(DailyRotatingFileSinkTest, HandlesNonexistentBaseDirectory)
 
     // Should throw because directory doesn't exist
     EXPECT_ANY_THROW({
-        auto sink = std::make_shared<logging::daily_rotating_file_sink>(
-            logging::daily_rotating_file_sink::Config {.filePath = nonExistentPath, .maxFileSize = 10 * 1024});
+        auto sink = std::make_shared<logging::daily_rotating_file_sink>(logging::daily_rotating_file_sink::Config {
+            .filePath = nonExistentPath, .maxFileSize = 10 * 1024, .compressionEnabled = false});
     });
 }
 
 TEST_F(DailyRotatingFileSinkTest, MultipleRotationsSameDay)
 {
-    // Create sink with small size to trigger multiple rotations
-    auto sink = std::make_shared<logging::daily_rotating_file_sink>(logging::daily_rotating_file_sink::Config {
-        .filePath = m_logFile,
-        .maxFileSize = 3 * 1024 // 3KB
-    });
+    // Create sink with small size to trigger multiple rotations, compression disabled
+    auto sink = std::make_shared<logging::daily_rotating_file_sink>(
+        logging::daily_rotating_file_sink::Config {.filePath = m_logFile,
+                                                   .maxFileSize = 3 * 1024, // 3KB
+                                                   .compressionEnabled = false});
 
     auto logger = std::make_shared<spdlog::logger>("test", sink);
 
@@ -845,11 +836,11 @@ TEST_F(DailyRotatingFileSinkTest, MultipleRotationsSameDay)
 
 TEST_F(DailyRotatingFileSinkTest, IndexOrderingCorrectBeyond9)
 {
-    // Create sink that will generate many rotations
-    auto sink = std::make_shared<logging::daily_rotating_file_sink>(logging::daily_rotating_file_sink::Config {
-        .filePath = m_logFile,
-        .maxFileSize = 2 * 1024 // 2KB
-    });
+    // Create sink that will generate many rotations, compression disabled
+    auto sink = std::make_shared<logging::daily_rotating_file_sink>(
+        logging::daily_rotating_file_sink::Config {.filePath = m_logFile,
+                                                   .maxFileSize = 2 * 1024, // 2KB
+                                                   .compressionEnabled = false});
 
     auto logger = std::make_shared<spdlog::logger>("test", sink);
 
@@ -875,4 +866,394 @@ TEST_F(DailyRotatingFileSinkTest, IndexOrderingCorrectBeyond9)
         }
     }
     EXPECT_TRUE(foundDoubleDigit) << "Should have double-digit indices for proper ordering test";
+}
+
+// ============================================================================
+// Compression Tests
+// ============================================================================
+
+TEST_F(DailyRotatingFileSinkTest, CompressionProducesGzFiles)
+{
+    // Compression enabled by default - verify .gz files are produced after sink destruction
+    {
+        auto sink = std::make_shared<logging::daily_rotating_file_sink>(logging::daily_rotating_file_sink::Config {
+            .filePath = m_logFile,
+            .maxFileSize = 5 * 1024 // 5KB
+        });
+
+        auto logger = std::make_shared<spdlog::logger>("test", sink);
+
+        writeLogsUntilRotation(logger, 12 * 1024);
+        logger->flush();
+        // Sink destruction joins the compression thread, ensuring all files are compressed.
+    }
+
+    auto rotatedFiles = getRotatedFiles();
+    ASSERT_GE(rotatedFiles.size(), 1) << "Expected at least one rotated file";
+
+    for (const auto& file : rotatedFiles)
+    {
+        std::string suffix = ".log.gz";
+        bool ends_with_gz =
+            file.size() >= suffix.size() && file.compare(file.size() - suffix.size(), suffix.size(), suffix) == 0;
+        EXPECT_TRUE(ends_with_gz) << "Rotated file should end with .log.gz: " << file;
+    }
+}
+
+TEST_F(DailyRotatingFileSinkTest, CompressionNeverCompressesActiveFile)
+{
+    {
+        auto sink = std::make_shared<logging::daily_rotating_file_sink>(logging::daily_rotating_file_sink::Config {
+            .filePath = m_logFile,
+            .maxFileSize = 5 * 1024 // 5KB
+        });
+
+        auto logger = std::make_shared<spdlog::logger>("test", sink);
+        writeLogsUntilRotation(logger, 12 * 1024);
+        logger->flush();
+
+        // While the sink is alive, the active file must exist and NOT have a .gz version
+        EXPECT_TRUE(std::filesystem::exists(m_logFile)) << "Active file must exist";
+        EXPECT_FALSE(std::filesystem::exists(m_logFile + ".gz")) << "Active file must never be compressed";
+    }
+
+    // After destruction, active file still exists uncompressed
+    EXPECT_TRUE(std::filesystem::exists(m_logFile)) << "Active file must persist after sink destruction";
+    EXPECT_FALSE(std::filesystem::exists(m_logFile + ".gz")) << "Active file must remain uncompressed";
+}
+
+TEST_F(DailyRotatingFileSinkTest, CompressionPreservesFileOnFailure)
+{
+    // Verify that compress_file_() preserves the uncompressed rotated file when
+    // gzipCompress() throws (i.e. it must not silently discard log data).
+    //
+    // Strategy – broken symlink obstacle (race-free):
+    //
+    //   The sink names the first rotation test-DATE-1.log and enqueues it for
+    //   compression, intending to produce test-DATE-1.log.gz.
+    //
+    //   We pre-create test-DATE-1.log.gz as a BROKEN SYMLINK:
+    //
+    //     test-DATE-1.log.gz  →  /tmp/__nonexistent_dir__/file.gz
+    //
+    //   Why this works:
+    //
+    //   1) spdlog's path_exists() calls stat(), which FOLLOWS symlinks.
+    //      stat() on a broken symlink returns ENOENT → path_exists = false.
+    //      The sink therefore does NOT skip index 1 during the index search
+    //      in rotate_().  It renames test.log → test-DATE-1.log and enqueues
+    //      test-DATE-1.log for compression.
+    //
+    //   2) gzopen("test-DATE-1.log.gz", "wb") also follows the symlink and
+    //      tries to open /tmp/__nonexistent_dir__/file.gz for writing.
+    //      The parent directory does not exist → gzopen returns NULL →
+    //      gzipCompress throws → compress_file_() catches the exception,
+    //      skips std::filesystem::remove, and leaves test-DATE-1.log intact.
+    //
+    //   The obstacle is created before the sink is constructed, so there is
+    //   no timing race whatsoever.
+
+    // Derive today's date string (YYYY-MM-DD) — same format used by the sink.
+    const auto todayStr = []() -> std::string
+    {
+        const auto now = std::chrono::system_clock::now();
+        const std::time_t t = std::chrono::system_clock::to_time_t(now);
+        std::tm tm {};
+        localtime_r(&t, &tm);
+        char buf[16];
+        std::strftime(buf, sizeof(buf), "%Y-%m-%d", &tm);
+        return std::string(buf);
+    }();
+
+    const std::string rotatedLog = m_tmpDir + "/test-" + todayStr + "-1.log";
+    const std::string gzObstacle = rotatedLog + ".gz";
+
+    // Place a broken symlink at the exact path gzipCompress would write to.
+    //   stat()   → follows symlink → ENOENT → path_exists = false  (index NOT skipped)
+    //   gzopen() → follows symlink → can't create in non-existent dir → returns NULL → throws
+    ASSERT_EQ(symlink("/tmp/__nonexistent_compression_test_dir__/file.gz", gzObstacle.c_str()), 0)
+        << "symlink() failed: " << strerror(errno);
+
+    {
+        auto sink = std::make_shared<logging::daily_rotating_file_sink>(
+            logging::daily_rotating_file_sink::Config {.filePath = m_logFile, .maxFileSize = 2 * 1024});
+        auto logger = std::make_shared<spdlog::logger>("test", sink);
+
+        // Trigger exactly one size-based rotation.
+        logger->info(std::string(1500, 'A')); // fills file to ~1.5 KB (below 2 KB limit)
+        logger->flush();
+        logger->info(std::string(700, 'B')); // total > 2 KB → rotation before this write
+        logger->flush();
+
+        // Sink destructor drains the compression thread: by the time we leave
+        // this scope, compress_file_() has already attempted – and failed – to
+        // create the .gz file through the broken symlink.
+    }
+
+    // The rotated file must still exist uncompressed because gzopen() failed.
+    EXPECT_TRUE(std::filesystem::exists(rotatedLog))
+        << "compress_file_() must preserve the uncompressed rotated file when gzopen() fails";
+    EXPECT_GT(std::filesystem::file_size(rotatedLog), 0) << "Preserved rotated file must not be empty";
+
+    // The broken symlink must remain: gzopen() could not write through it,
+    // so compress_file_() must not have replaced it with a real .gz file.
+    EXPECT_TRUE(std::filesystem::is_symlink(gzObstacle))
+        << "The .gz obstacle symlink must remain intact after a failed compression";
+}
+
+TEST_F(DailyRotatingFileSinkTest, CompressionWritingDuringCompression)
+{
+    // Verify that the background compression thread does NOT hold the sink mutex
+    // (i.e. writing to the logger is not serialised behind gzip I/O).
+    //
+    // Design:
+    //   A "writer" thread continuously logs small messages and tracks both the
+    //   total number of completed writes and the worst-case latency of a single
+    //   write.  Concurrently, the main thread triggers several back-to-back
+    //   rotations, each enqueuing a file for async compression.
+    //
+    // With ASYNC compression (correct):
+    //   - compress_file_() runs in its own thread without holding the sink mutex.
+    //   - The writer thread acquires the sink mutex freely between rotations.
+    //   - Many hundreds of writes complete in the measurement window.
+    //   - No single write stalls longer than a brief rename+open inside rotate_().
+    //
+    // With SYNCHRONOUS compression (regression – compress inside rotate_()):
+    //   - Every rotation holds the sink mutex for the full gzip duration.
+    //   - The writer thread is blocked once per rotation, stalling for gzip time.
+    //   - Far fewer writes complete; max per-write latency spikes to gzip time.
+    //
+    // To make rotations detectable we generate pseudo-random (low-compressibility)
+    // content so that even fast hardware takes measurable time to compress each
+    // rotated file in the synchronous scenario.
+
+    constexpr std::size_t ROT_SIZE = 256 * 1024; // 256 KB per rotated file
+    constexpr int NUM_ROTATIONS = 5;
+    constexpr auto MEASURE_WINDOW = std::chrono::milliseconds(600);
+
+    // Pseudo-random payload: defeats zlib's LZ77 match-finder, producing output
+    // almost as large as the input and forcing full compression work per byte.
+    std::string incompressible(ROT_SIZE - 16 * 1024, '\0');
+    for (std::size_t i = 0; i < incompressible.size(); ++i)
+        incompressible[i] = static_cast<char>((i * 6364136223846793005ULL) >> 56);
+
+    auto sink = std::make_shared<logging::daily_rotating_file_sink>(
+        logging::daily_rotating_file_sink::Config {.filePath = m_logFile, .maxFileSize = ROT_SIZE});
+    auto logger = std::make_shared<spdlog::logger>("test", sink);
+
+    std::atomic<bool> stop {false};
+    std::atomic<int> writesCompleted {0};
+    std::atomic<int64_t> maxSingleWriteMs {0};
+
+    // Writer thread: tight-loop of small writes with per-write latency tracking.
+    std::thread writer(
+        [&]()
+        {
+            while (!stop.load(std::memory_order_relaxed))
+            {
+                const auto t0 = std::chrono::steady_clock::now();
+                logger->info("concurrent write {}", writesCompleted.load(std::memory_order_relaxed));
+                const int64_t dt =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0)
+                        .count();
+                writesCompleted.fetch_add(1, std::memory_order_relaxed);
+                // CAS loop to track the highest observed latency.
+                for (int64_t cur = maxSingleWriteMs.load(std::memory_order_relaxed);
+                     dt > cur && !maxSingleWriteMs.compare_exchange_weak(cur, dt, std::memory_order_relaxed);)
+                {
+                }
+            }
+        });
+
+    // Main thread: fill each active file with incompressible content, then push
+    // it over the threshold to trigger rotation and enqueue a fat file for gzip.
+    for (int i = 0; i < NUM_ROTATIONS; ++i)
+    {
+        // Fill to just below threshold.
+        logger->info(incompressible);
+        logger->flush();
+        // One more write crosses the limit → rotation.
+        logger->info(std::string(32 * 1024, 'T'));
+    }
+
+    // Let the writer run freely for a bit after all rotations are in flight.
+    std::this_thread::sleep_for(MEASURE_WINDOW);
+    stop.store(true, std::memory_order_relaxed);
+    writer.join();
+
+    const int completed = writesCompleted.load();
+    const int64_t maxLatMs = maxSingleWriteMs.load();
+
+    // With async compression >= 100 writes should finish in 600 ms.
+    // If the writer were fully serialised behind 5 × gzip(256 KB pseudo-random)
+    // it would accumulate hundreds of ms of blocked time and fall well below 100.
+    EXPECT_GT(completed, 100) << "Writer thread completed only " << completed << " messages in "
+                              << MEASURE_WINDOW.count() << " ms; expected >> 100 with async compression";
+
+    // No single write should stall for more than 5 seconds.
+    // Even a synchronous implementation that compresses inside rotate_() only
+    // blocks for compress_time(256 KB) ≈ 5–50 ms; a value above 5 s indicates
+    // a deadlock or extreme regression.
+    EXPECT_LT(maxLatMs, 5000) << "A single write stalled for " << maxLatMs
+                              << " ms, which suggests the sink mutex is held during compression I/O";
+
+    // Active file must remain intact and writable throughout.
+    logger->info("Final write after {} rotations and {} concurrent writes", NUM_ROTATIONS, completed);
+    logger->flush();
+    EXPECT_TRUE(std::filesystem::exists(m_logFile));
+    EXPECT_GT(std::filesystem::file_size(m_logFile), 0);
+}
+
+TEST_F(DailyRotatingFileSinkTest, CleanupHandlesMixedCompressedAndUncompressed)
+{
+    // Verify that delete_old_files_() applies the retention policy uniformly across
+    // both compressed (.log.gz) and uncompressed (.log) rotated files.
+    //
+    // We pre-populate the log directory with a known mix:
+    //   - two files dated 2024-01-01 (one .log, one .log.gz)  ← OLDEST
+    //   - two files dated 2024-01-02 (one .log, one .log.gz)  ← NEWER
+    //
+    // Then we create a sink with maxFiles=2 and compressionEnabled=false
+    // (so cleanup runs synchronously inside rotate_()).  After one rotation
+    // a fifth file appears (dated today), which pushes the count to 5 and
+    // triggers cleanup.  With maxFiles=2 only the two newest files survive.
+    // The test verifies that the unified count includes both .log and .log.gz.
+
+    auto createFile = [&](const std::string& name, std::size_t contentSize = 2 * 1024)
+    {
+        std::ofstream f(m_tmpDir + "/" + name);
+        ASSERT_TRUE(f.is_open()) << "Could not create pre-existing file: " << name;
+        f << std::string(contentSize, 'X');
+    };
+
+    // Oldest pair (sorted first by cleanup because date 2024-01-01 < 2024-01-02)
+    createFile("test-2024-01-01-1.log");    // uncompressed
+    createFile("test-2024-01-01-2.log.gz"); // compressed
+
+    // Newer pair
+    createFile("test-2024-01-02-1.log");    // uncompressed
+    createFile("test-2024-01-02-2.log.gz"); // compressed
+
+    // compressionEnabled=false keeps cleanup synchronous inside rotate_(), making
+    // observed state deterministic immediately after the triggering write returns.
+    auto sink = std::make_shared<logging::daily_rotating_file_sink>(logging::daily_rotating_file_sink::Config {
+        .filePath = m_logFile, .maxFileSize = 5 * 1024, .maxFiles = 2, .compressionEnabled = false});
+    auto logger = std::make_shared<spdlog::logger>("test", sink);
+
+    // Trigger one rotation.  cleanup sees 5 rotated files (4 pre-created + 1 new)
+    // and must delete the 3 oldest to honour maxFiles=2.
+    writeLogsUntilRotation(logger, 6 * 1024);
+    logger->flush();
+
+    auto rotatedFiles = getRotatedFiles();
+
+    // Only 2 rotated files must survive.
+    EXPECT_LE(rotatedFiles.size(), 2) << "Cleanup must respect max_files across the full mixed .log / .log.gz set;\n"
+                                         "found "
+                                      << rotatedFiles.size() << " files: " << [&]()
+    {
+        std::string s;
+        for (const auto& f : rotatedFiles) s += "  " + f + "\n";
+        return s;
+    }();
+
+    // The two oldest files (2024-01-01-*) must have been deleted.
+    for (const auto& f : rotatedFiles)
+    {
+        EXPECT_EQ(f.find("2024-01-01"), std::string::npos) << "Oldest file should have been deleted by cleanup: " << f;
+    }
+}
+
+TEST_F(DailyRotatingFileSinkTest, CleanupHandlesCoexistingOriginalAndCompressed)
+{
+    // When compress_file_() succeeds but std::filesystem::remove() on the original
+    // .log fails, both test-DATE-N.log and test-DATE-N.log.gz coexist on disk.
+    // The comment in compress_file_() says "cleanup will handle it."
+    // This test verifies that claim end-to-end:
+    //
+    //   1) delete_old_files_() does not crash when both files are present for the
+    //      same rotation index.
+    //   2) Both files are counted individually against the retention policy, so
+    //      the file-count limit is not silently exceeded by stale originals.
+    //   3) After cleanup the directory is in a consistent state (count ≤ maxFiles).
+    //   4) The oldest coexisting pair is removed before any newer clean rotations.
+    //
+    // The coexistence state is injected directly (bypassing the compression thread)
+    // which makes the test deterministic and free of timing races.
+
+    auto createFile = [&](const std::string& name, std::size_t sz = 2 * 1024)
+    {
+        std::ofstream f(m_tmpDir + "/" + name);
+        ASSERT_TRUE(f.is_open()) << "Could not create: " << name;
+        f << std::string(sz, 'X');
+    };
+
+    // Oldest rotation: compression succeeded AND remove failed.
+    // Both files exist simultaneously for the same rotation index.
+    createFile("test-2024-01-01-1.log");    // original (remove failed after compress)
+    createFile("test-2024-01-01-1.log.gz"); // compressed copy (successfully created)
+
+    // A clean compressed rotation at a later date — should survive if possible.
+    createFile("test-2024-01-02-1.log.gz");
+
+    // compressionEnabled=false → cleanup runs synchronously inside rotate_(),
+    // so the state is fully observable immediately after the triggering write.
+    // maxFiles=2: with 3 pre-created + 1 newly rotated = 4 total,
+    // cleanup must remove the 2 oldest (the entire coexisting pair).
+    auto sink = std::make_shared<logging::daily_rotating_file_sink>(logging::daily_rotating_file_sink::Config {
+        .filePath = m_logFile, .maxFileSize = 5 * 1024, .maxFiles = 2, .compressionEnabled = false});
+    auto logger = std::make_shared<spdlog::logger>("test", sink);
+
+    writeLogsUntilRotation(logger, 6 * 1024);
+    logger->flush();
+
+    auto rotatedFiles = getRotatedFiles();
+
+    // maxFiles=2 must be honoured even though one logical rotation occupies two slots.
+    EXPECT_LE(rotatedFiles.size(), 2)
+        << "Cleanup must respect maxFiles when a coexisting .log/.log.gz pair inflates the count;\n"
+        << "found " << rotatedFiles.size() << " files:\n"
+        << [&]()
+    {
+        std::string s;
+        for (const auto& f : rotatedFiles) s += "  " + f + "\n";
+        return s;
+    }();
+
+    // The entire coexisting pair (2024-01-01, both .log and .log.gz) must be gone.
+    for (const auto& f : rotatedFiles)
+    {
+        EXPECT_EQ(f.find("2024-01-01"), std::string::npos)
+            << "The coexisting .log/.log.gz pair must be deleted before newer clean rotations: " << f;
+    }
+}
+
+TEST_F(DailyRotatingFileSinkTest, CompressionCleanupWithGzFiles)
+{
+    // Create rotated+compressed files, then verify cleanup works on .gz files
+    {
+        auto sink = std::make_shared<logging::daily_rotating_file_sink>(logging::daily_rotating_file_sink::Config {
+            .filePath = m_logFile, .maxFileSize = 5 * 1024, .maxFiles = 3, .compressionEnabled = true});
+
+        auto logger = std::make_shared<spdlog::logger>("test", sink);
+
+        for (int i = 0; i < 6; ++i)
+        {
+            writeLogsUntilRotation(logger, 6 * 1024);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        logger->flush();
+    }
+    // Sink destroyed - all compressions complete
+
+    auto rotatedFiles = getRotatedFiles();
+    EXPECT_LE(rotatedFiles.size(), 3) << "Cleanup should respect max_files for compressed files";
+
+    for (const auto& file : rotatedFiles)
+    {
+        std::string suffix = ".log.gz";
+        bool ends_with_gz =
+            file.size() >= suffix.size() && file.compare(file.size() - suffix.size(), suffix.size(), suffix) == 0;
+        EXPECT_TRUE(ends_with_gz) << "Remaining files should be compressed: " << file;
+    }
 }

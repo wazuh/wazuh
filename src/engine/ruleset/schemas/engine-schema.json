@@ -774,6 +774,9 @@
     "enrichments.indicator.confidence": {
       "type": "keyword"
     },
+    "enrichments.indicator.feed.name": {
+      "type": "keyword"
+    },
     "enrichments.indicator.first_seen": {
       "type": "date"
     },

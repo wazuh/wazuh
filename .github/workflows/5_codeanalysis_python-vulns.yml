@@ -1,4 +1,5 @@
 name: 5.X - 'Python vulnerability checks'
+
 on:
   workflow_dispatch:
   schedule:

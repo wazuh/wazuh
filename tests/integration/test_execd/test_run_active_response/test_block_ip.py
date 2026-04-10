@@ -120,7 +120,7 @@ def test_execd_block_ip(test_configuration, test_metadata, configure_local_inter
         - Check the expected error is raised when it supposed to fail.
         - Check execd is executed correctly.
         - Check the block-ip program is used.
-        - Check the firewall rule is added and deleted with correct script.
+        - Check the active response receives the enable and disable commands with the correct IP.
     input_description:
         - The `cases_execd_block_ip.yaml` file provides the test cases.
     '''
@@ -147,9 +147,9 @@ def test_execd_block_ip(test_configuration, test_metadata, configure_local_inter
     ar_monitor.start(callback=generate_callback(r'.*block-ip.*'))
     assert ar_monitor.callback_result, 'AR `block-ip` program not used.'
 
-    ar_monitor.start(callback=generate_callback(r'.*add.*'))
-    assert ar_monitor.callback_result, 'AR `add` command not executed.'
+    ar_monitor.start(callback=generate_callback(r'.*"command":"enable".*'))
+    assert ar_monitor.callback_result, 'AR `enable` command not executed.'
     assert '"ip":"3.3.3.3"' in ar_monitor.callback_result, 'AR `source.ip` value is not correct.'
 
-    ar_monitor.start(callback=generate_callback(r'.*delete.*'))
-    assert ar_monitor.callback_result, 'AR `delete` command not executed.'
+    ar_monitor.start(callback=generate_callback(r'.*"command":"disable".*'))
+    assert ar_monitor.callback_result, 'AR `disable` command not executed.'

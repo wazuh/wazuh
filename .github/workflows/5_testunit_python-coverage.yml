@@ -1,14 +1,18 @@
 name: 5.X - Unit tests coverage - Python
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/5_testunit_python-coverage.yml'
   workflow_dispatch:
     inputs:
       base_branch:
         description: 'Base branch'
         required: true
         default: 'main'
-  pull_request:
-    paths:
-      - '.github/workflows/5_testunit_python-coverage.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   build:

@@ -61,3 +61,14 @@ int parse_json_keepalive(const char *json_str,
                          size_t *groups_count_out,
                          char **cluster_name_out,
                          char **cluster_node_out);
+
+/**
+ * @brief Check if a JSON keepalive message is complete (contains full metadata).
+ *        A minimal keepalive only has merged_sum, while a complete keepalive includes
+ *        host information (OS, hostname, architecture, etc.).
+ *
+ * @param[in] json_str The JSON keepalive message string to check.
+ * @retval true Keepalive is complete (has host metadata).
+ * @retval false Keepalive is minimal (no host metadata).
+ */
+bool is_keepalive_complete(const char *json_str);

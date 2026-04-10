@@ -15,7 +15,7 @@ public:
     MOCK_METHOD(
         cm::store::dataType::Policy,
         importNamespace,
-        (const cm::store::NamespaceId& nsId, std::string_view jsonDocument, std::string_view origin, bool force),
+        (const cm::store::NamespaceId& nsId, std::string_view jsonDocument, std::string_view originSpace, bool force),
         (override));
     MOCK_METHOD(void,
                 importNamespace,

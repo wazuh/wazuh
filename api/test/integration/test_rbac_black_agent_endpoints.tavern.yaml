@@ -1320,19 +1320,17 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      verify_response_with:
-        function: tavern_utils:healthcheck_agent_restart
-        extra_kwargs:
-          agents_list: ["005"]
       status_code: 200
       json:
-        error: 0
+        error: 1
         data:
-          affected_items:
-            - "005"
-          total_affected_items: 1
-          failed_items: []
-          total_failed_items: 0
+          failed_items:
+            - error:
+                code: 1761
+              id:
+                - '005'
+          total_affected_items: 0
+          total_failed_items: 1
 
 ---
 test_name: PUT /agents/reconnect
@@ -1425,24 +1423,22 @@ stages:
       params:
         agents_list: "001,002,005"
     response:
-      verify_response_with:
-        function: tavern_utils:healthcheck_agent_restart
-        extra_kwargs:
-          agents_list: ["005"]
       status_code: 200
       json:
-        error: 2
+        error: 1
         data:
-          affected_items:
-            - '005'
           failed_items:
+            - error:
+                code: 1761
+              id:
+                - '005'
             - error:
                 code: 4000
               id:
                 - '001'
                 - '002'
-          total_affected_items: 1
-          total_failed_items: 2
+          total_affected_items: 0
+          total_failed_items: 3
 
   - name: Try to restart all agents (Partially allowed, user agnostic)
     request:
@@ -1455,18 +1451,22 @@ stages:
       verify_response_with:
         function: tavern_utils:healthcheck_agent_restart
         extra_kwargs:
-          agents_list: ["003", "005", "007"]
+          agents_list: ["003"]
       status_code: 200
       json:
-        error: 0
+        error: 2
         data:
           affected_items:
             - '003'
-            - '005'
-            - '007'
+          failed_items:
+            - error:
+                code: 1761
+              id:
+                - '005'
+                - '007'
           failed_items: []
-          total_affected_items: 3
-          total_failed_items: 0
+          total_affected_items: 1
+          total_failed_items: 2
 
 ---
 test_name: PUT /agents/{agent_id}/group/{group_id}
@@ -1537,19 +1537,18 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      verify_response_with:
-        function: tavern_utils:healthcheck_agent_restart
-        extra_kwargs:
-          agents_list: ["005"]
       status_code: 200
       json:
-        error: 0
+        error: 1
         data:
-          affected_items:
-            - '005'
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1761
+              id:
+                - '005'
+          total_affected_items: 0
+          total_failed_items: 1
 
 ---
 test_name: PUT /agents/upgrade

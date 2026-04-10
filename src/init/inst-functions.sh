@@ -28,7 +28,6 @@ CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 
 VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detection.manager.template"
 INDEXER_TEMPLATE="./etc/templates/config/generic/wodle-indexer.manager.template"
-AGENT_UPGRADE_TEMPLATE="./etc/templates/config/generic/agent-upgrade.manager.template"
 
 SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca.template"
 
@@ -189,20 +188,17 @@ GenerateAuthCert()
 ##########
 WriteLogs()
 {
+  MODE="$1"
   LOCALFILES_TMP=`cat ${LOCALFILES_TEMPLATE}`
   HAS_JOURNALD=`command -v journalctl`
 
-  # If has journald, add journald to the configuration file
-  if [ "X$HAS_JOURNALD" != "X" ]; then
-    if [ "$1" = "echo" ]; then
-      echo "    -- journald"
-    elif [ "$1" = "add" ]; then
-      echo "  <localfile>" >> $NEWCONFIG
-      echo "    <log_format>journald</log_format>" >> $NEWCONFIG
-      echo "    <location>journald</location>" >> $NEWCONFIG
-      echo "  </localfile>" >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
-    fi
+  # If journald is available, add it to the generated configuration.
+  if [ "X$HAS_JOURNALD" != "X" ] && [ "$MODE" = "add" ]; then
+    echo "  <localfile>" >> $NEWCONFIG
+    echo "    <log_format>journald</log_format>" >> $NEWCONFIG
+    echo "    <location>journald</location>" >> $NEWCONFIG
+    echo "  </localfile>" >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
   fi
 
   OLD_IFS="$IFS"  # Save the current IFS
@@ -244,10 +240,16 @@ WriteLogs()
       # If log file present or skip file
       if [ -f "$FILE" ] || [ "X$SKIP_CHECK_FILE" = "Xyes" ]; then
         # Print
-        if [ "$1" = "echo" ]; then
-            echo "    -- $FILE"
+        if [ "$MODE" = "echo" ]; then
+            case "$FILE" in
+                */logs/active-responses.log|/var/log/dpkg.log)
+                    ;;
+                *)
+                    echo "    -- $FILE"
+                    ;;
+            esac
         # Add to the configuration file
-        elif [ "$1" = "add" ]; then
+        elif [ "$MODE" = "add" ]; then
           echo "  <localfile>" >> $NEWCONFIG
           if [ "$FILE" = "snort" ]; then
             head -n 1 $FILE|grep "\[**\] "|grep -v "Classification:" > /dev/null
@@ -347,7 +349,7 @@ WriteAgent()
     echo "    <!-- Agent buffer options -->" >> $NEWCONFIG
     echo "    <disabled>no</disabled>" >> $NEWCONFIG
     echo "    <queue_size>5000</queue_size>" >> $NEWCONFIG
-    echo "    <events_per_second>500</events_per_second>" >> $NEWCONFIG
+    echo "    <events_per_second>600</events_per_second>" >> $NEWCONFIG
     echo "  </client_buffer>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
@@ -431,10 +433,6 @@ WriteManager()
 
     GLOBAL_CONTENT=$(cat ${GLOBAL_TEMPLATE})
 
-    if [ "$UPDATE_CHECK" = "no" ]; then
-        GLOBAL_CONTENT=$(echo "$GLOBAL_CONTENT" | sed "s|<update_check>yes</update_check>|<update_check>no</update_check>|g")
-    fi
-
     echo "$GLOBAL_CONTENT" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
@@ -451,10 +449,6 @@ WriteManager()
 
     # Indexer
     cat ${INDEXER_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Agent upgrade
-    cat ${AGENT_UPGRADE_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Writting auth configuration
@@ -789,7 +783,7 @@ InstallCommon()
 
     if [ -f /etc/localtime ]
     then
-         ${INSTALL} -m 0640 -o root -g 0 /etc/localtime ${INSTALLDIR}/etc
+         ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /etc/localtime ${INSTALLDIR}/etc
     fi
 
   ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/tmp
@@ -1024,9 +1018,6 @@ InstallLocal()
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/var/multigroups
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/db
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/download
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/archives
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/alerts
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/firewall
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/api
 
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-monitord ${INSTALLDIR}/bin

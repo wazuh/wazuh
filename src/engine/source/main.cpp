@@ -52,7 +52,6 @@
 #include "base/utils/getExceptionStack.hpp"
 #include "stackExecutor.hpp"
 
-
 volatile sig_atomic_t g_shutdown_requested = 0;
 
 void sigintHandler(const int signum)
@@ -324,8 +323,8 @@ int main(int argc, char* argv[])
 
         // GEO
         {
-            // TODO: This is a optional right now, but it be mandatory in the future
-            auto geoDownloader = std::make_shared<geo::Downloader>();
+            auto geoDownloadTimeout = static_cast<long>(confManager.get<size_t>(conf::key::GEO_DOWNLOAD_TIMEOUT));
+            auto geoDownloader = std::make_shared<geo::Downloader>(geoDownloadTimeout);
             geoManager = std::make_shared<geo::Manager>(store, geoDownloader);
             LOG_INFO("Geo initialized.");
         }
@@ -456,32 +455,6 @@ int main(int argc, char* argv[])
                 });
 
             LOG_INFO("Stream logger initialized.");
-
-            auto regChannel =
-                [&](const std::string& name, const std::string& pattern, size_t maxSize, size_t bufferSize)
-            {
-                streamlog::RotationConfig conf = {
-                    .basePath = confManager.get<std::string>(conf::key::STREAMLOG_BASE_PATH),
-                    .pattern = pattern,
-                    .maxSize = maxSize,
-                    .bufferSize = bufferSize,
-                    .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
-                    .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
-
-                streamLogger->isolatedBasePath(name, conf);
-                streamLogger->registerLog(name, conf, "json");
-                LOG_DEBUG("Stream logger channel '{}' registered.", name);
-            };
-
-            regChannel("alerts",
-                       confManager.get<std::string>(conf::key::STREAMLOG_ALERTS_PATTERN),
-                       confManager.get<size_t>(conf::key::STREAMLOG_ALERTS_MAX_SIZE),
-                       confManager.get<size_t>(conf::key::STREAMLOG_ALERTS_BUFFER_SIZE));
-
-            regChannel("archives",
-                       confManager.get<std::string>(conf::key::STREAMLOG_ARCHIVES_PATTERN),
-                       confManager.get<size_t>(conf::key::STREAMLOG_ARCHIVES_MAX_SIZE),
-                       confManager.get<size_t>(conf::key::STREAMLOG_ARCHIVES_BUFFER_SIZE));
         }
 
         // Builder and registry
@@ -493,6 +466,13 @@ int main(int argc, char* argv[])
             builderDeps.kvdbIocManager = IOCkvdb;
             builderDeps.geoManager = geoManager;
             builderDeps.logManager = streamLogger;
+            builderDeps.fileOutputConfig = streamlog::RotationConfig {
+                .basePath = confManager.get<std::string>(conf::key::STREAMLOG_BASE_PATH),
+                .pattern = confManager.get<std::string>(conf::key::STREAMLOG_EVENTS_PATTERN),
+                .maxSize = confManager.get<size_t>(conf::key::STREAMLOG_EVENTS_MAX_SIZE),
+                .bufferSize = confManager.get<size_t>(conf::key::STREAMLOG_EVENTS_BUFFER_SIZE),
+                .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
+                .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
             builderDeps.iConnector = indexerConnector;
             auto defs = std::make_shared<defs::DefinitionsBuilder>();
 
@@ -529,7 +509,8 @@ int main(int argc, char* argv[])
         {
             auto maxRetries = confManager.get<size_t>(conf::key::REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES);
             auto retryInterval = confManager.get<size_t>(conf::key::REMOTE_CONF_INDEXER_CONNECTOR_RETRY_INTERVAL);
-            remoteConf = std::make_shared<confremote::ConfRemoteManager>(indexerConnector, store, maxRetries, retryInterval);
+            remoteConf =
+                std::make_shared<confremote::ConfRemoteManager>(indexerConnector, store, maxRetries, retryInterval);
         }
 
         // Raw Event Indexer
@@ -573,7 +554,10 @@ int main(int argc, char* argv[])
             orchestrator->start();
 
             exitHandler.add([orchestrator]() { orchestrator->cleanup(); });
-            LOG_INFO("Orchestrator initialized and started.");
+            const auto epsDescription = qEps > 0 ? std::to_string(qEps) : std::string("unlimited");
+            LOG_INFO("Orchestrator initialized and started with event queue size: {}, events per second: {}.",
+                     qSize,
+                     epsDescription);
         }
 
         // CMsync
@@ -581,7 +565,8 @@ int main(int argc, char* argv[])
         {
             auto maxRetries = confManager.get<size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_MAX_RETRIES);
             auto retryInterval = confManager.get<size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL);
-            cmSyncService = std::make_shared<cm::sync::CMSync>(indexerConnector, cmCrudService, store, orchestrator, maxRetries, retryInterval);
+            cmSyncService = std::make_shared<cm::sync::CMSync>(
+                indexerConnector, cmCrudService, store, orchestrator, maxRetries, retryInterval);
             LOG_INFO("Content Manager Sync Service initialized.");
 
             // Add sync to scheduler
@@ -619,12 +604,12 @@ int main(int argc, char* argv[])
                                                                {
                                                                    iocSyncService->synchronize();
                                                                }});
-                LOG_INFO("IOC Sync task scheduled with interval: {} seconds, {} max retries, {} seconds for retry "
-                         "interval and {} for batch size",
-                         iocSyncInterval,
-                         maxRetries,
-                         retryInterval,
-                         iocSyncBatchSize);
+                LOG_DEBUG("IOC Sync task scheduled with interval: {} seconds, {} max retries, {} seconds for retry "
+                          "interval and {} for batch size",
+                          iocSyncInterval,
+                          maxRetries,
+                          retryInterval,
+                          iocSyncBatchSize);
             }
             else
             {
@@ -653,7 +638,7 @@ int main(int argc, char* argv[])
                                            {
                                                geoManager->remoteUpsert(manifestUrl, cityPath, asnPath);
                                            }});
-                LOG_INFO("Geo sync scheduled with interval: {} seconds.", geoSyncInterval);
+                LOG_DEBUG("Geo sync scheduled with interval: {} seconds.", geoSyncInterval);
             }
             else
             {
@@ -664,8 +649,16 @@ int main(int argc, char* argv[])
         // Archiver
         if (enableProcessing)
         {
-            archiver =
-                std::make_shared<archiver::Archiver>(streamLogger, confManager.get<bool>(conf::key::ARCHIVER_ENABLED));
+            const auto archiverConfig = streamlog::RotationConfig {
+                .basePath = confManager.get<std::string>(conf::key::STREAMLOG_BASE_PATH),
+                .pattern = confManager.get<std::string>(conf::key::STREAMLOG_DUMPER_PATTERN),
+                .maxSize = confManager.get<size_t>(conf::key::STREAMLOG_DUMPER_MAX_SIZE),
+                .bufferSize = confManager.get<size_t>(conf::key::STREAMLOG_DUMPER_BUFFER_SIZE),
+                .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
+                .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
+
+            archiver = std::make_shared<archiver::Archiver>(
+                streamLogger, archiverConfig, confManager.get<bool>(conf::key::DUMPER_ENABLED));
             LOG_INFO("Archiver initialized.");
             exitHandler.add([archiver, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
                             { archiver->deactivate(); });
@@ -683,7 +676,7 @@ int main(int argc, char* argv[])
                                                            {
                                                                remoteConf->synchronize();
                                                            }});
-            LOG_INFO("Remote configuration synchronize scheduled with interval: {} seconds.", remoteConfSyncInterval);
+            LOG_DEBUG("Remote configuration synchronize scheduled with interval: {} seconds.", remoteConfSyncInterval);
         }
 
         // Create and configure the api endpoints

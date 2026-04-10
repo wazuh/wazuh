@@ -206,7 +206,7 @@ Stop-Service -Name wazuh
 Logs are located in `/var/wazuh-manager/logs/`:
 
 - `wazuh-manager.log` - Main Wazuh log
-- `alerts/alerts.log` - Security alerts
+- `wazuh-manager.json` - Structured Wazuh log
 - Individual component logs in `/var/wazuh-manager/logs/`
 
 To monitor logs in real-time:
@@ -220,7 +220,7 @@ tail -f /var/wazuh-manager/logs/wazuh-manager.log
 Logs are located in `/var/ossec/logs/`:
 
 - `ossec.log` - Main Wazuh log
-- `alerts/alerts.log` - Security alerts
+- `ossec.json` - Structured Wazuh log
 - Individual component logs in `/var/ossec/logs/`
 
 To monitor logs in real-time:

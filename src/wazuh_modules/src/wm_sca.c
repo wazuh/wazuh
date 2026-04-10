@@ -635,7 +635,7 @@ static int wm_sca_start(wm_sca_t *sca) {
     atomic_int_set(&g_n_msg_sent, 0);
 
     mdebug1("SCA message queue initialized successfully.");
-    minfo("Started.");
+    minfo(STARTUP_MSG, (int)getpid());
 
     if (sca->max_eps) {
         g_max_eps = sca->max_eps;

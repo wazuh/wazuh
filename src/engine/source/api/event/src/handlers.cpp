@@ -14,8 +14,6 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
             weakOrchestrator = std::move(weakOrchestrator),
             weakArchiver = std::weak_ptr(archiver)](const auto& req, auto& res)
     {
-        LOG_TRACE_L(lambdaName.c_str(), fmt::format("Received request {}", req.body));
-
         auto orchestratorRef = weakOrchestrator.lock();
         if (!orchestratorRef)
         {
@@ -48,7 +46,7 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
         }
         catch (const std::exception& e)
         {
-            LOG_ERROR_L(lambdaName.c_str(), "Failed to parse request: '{}'", e.what());
+            LOG_WARNING_L(lambdaName.c_str(), "Failed to parse request: '{}'", e.what());
             res.status = httplib::StatusCode::BadRequest_400;
             res.set_content(fmt::format("{{\"error\": \"{}\", \"code\": 400}}", e.what()), "application/json");
             return;

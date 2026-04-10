@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cctype>
 #include <chrono>
+#include <condition_variable>
 #include <cstdint>
 #include <cstring>
 #include <ctime>
@@ -11,8 +12,10 @@
 #include <limits>
 #include <mutex>
 #include <optional>
+#include <queue>
 #include <string>
 #include <sys/stat.h>
+#include <thread>
 #include <vector>
 
 #include <spdlog/details/file_helper.h>
@@ -20,8 +23,7 @@
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/sinks/base_sink.h>
 
-// Compression temporarily disabled
-// #include <zlibHelper.hpp>
+#include <zlibHelper.hpp>
 
 namespace logging
 {
@@ -37,7 +39,7 @@ namespace logging
  *   - size-based rotation
  *   - retention by file count
  *   - retention by accumulated size
- *   - gzip compression for rotated files (TEMPORARILY DISABLED)
+ *   - asynchronous gzip compression for rotated files
  *
  * Rotation occurs when:
  *
@@ -47,14 +49,15 @@ namespace logging
  *
  * Rotated files follow this naming pattern:
  *
- *     basename-YYYY-MM-DD-N.ext  (compression temporarily disabled, .gz removed)
+ *     basename-YYYY-MM-DD-N.ext.gz  (compressed, default)
+ *     basename-YYYY-MM-DD-N.ext     (uncompressed, or compression in progress)
  *
  * Example:
  *
- *     wazuh-engine.log                (active file)
- *     wazuh-engine-2026-03-09-1.log  (first rotation that day)
- *     wazuh-engine-2026-03-09-2.log  (second rotation same day)
- *     wazuh-engine-2026-03-10-1.log  (next day rotation)
+ *     wazuh-engine.log                   (active file — never compressed)
+ *     wazuh-engine-2026-03-09-1.log.gz  (first rotation that day, compressed)
+ *     wazuh-engine-2026-03-09-2.log.gz  (second rotation same day)
+ *     wazuh-engine-2026-03-10-1.log.gz  (next day rotation)
  *
  * Design notes for reviewers:
  *
@@ -63,22 +66,30 @@ namespace logging
  *
  *         rotate_by_time || rotate_by_size
  *
- *   - Cleanup is executed only during rotation, not on every log write.
- *     This avoids expensive directory scans in the hot path.
+ *   - When compression is disabled, cleanup runs during rotation.
+ *     When compression is enabled, cleanup is deferred to the
+ *     compression worker and runs after each file is compressed.
+ *     This avoids a race where cleanup could see in-transit files
+ *     with uncompressed sizes, leading to over-aggressive deletion
+ *     or non-deterministic retention.
  *
- *   - Compression is TEMPORARILY DISABLED.
- *     Previously: Compression was synchronous and happened while the sink mutex
- *     was held. This kept the implementation simple and safe, but could
- *     temporarily block logging during large rotations.
+ *   - Compression runs asynchronously in a background thread.
+ *     After rotation renames the active file, the uncompressed path is
+ *     enqueued for compression. The new active file is opened immediately,
+ *     so logging is never blocked by compression I/O.
  *
- *   - Previously: If compression failed, the rotated file was preserved uncompressed
- *     to avoid losing logs. Cleanup accounted for both compressed and
+ *   - If compression fails, the rotated file is preserved uncompressed
+ *     to avoid losing logs. Cleanup accounts for both compressed and
  *     uncompressed rotated files.
+ *
+ *   - The destructor drains the compression queue before returning,
+ *     ensuring all pending files are compressed on shutdown.
  *
  * Thread-safety:
  *
  *   This sink derives from spdlog::sinks::base_sink<std::mutex>.
  *   All sink operations are serialized by the base sink mutex.
+ *   The compression thread uses a separate mutex for its queue.
  */
 class daily_rotating_file_sink final : public spdlog::sinks::base_sink<std::mutex>
 {
@@ -86,7 +97,8 @@ public:
     /**
      * @brief Configuration structure for daily rotating file sink.
      *
-     * This sink implements Log4j2-inspired rotation policies:───────────────────────────────────────────────────────────────────────┘
+     * This sink implements Log4j2-inspired rotation
+     * policies:
      *
      * Field mapping:
      *   - filePath               → fileName (active log file path)
@@ -131,6 +143,15 @@ public:
         /// Custom extension for testing - not available in Log4j2
         /// When > 0, ignores rotationHour/rotationMinute and rotates every N seconds
         int rotationIntervalSeconds = 0;
+
+        /// Enable gzip compression for rotated files (default: true)
+        /// When enabled, rotated files are compressed asynchronously in a background thread.
+        /// The active log file is never compressed.
+        bool compressionEnabled = true;
+
+        /// Gzip compression level (0-9)
+        /// 0 = no compression, 1 = fastest, 9 = maximum compression
+        int compressionLevel = 5;
     };
 
     /**
@@ -149,11 +170,24 @@ public:
         , truncate_(config.truncate)
         , max_accumulated_size_(config.maxAccumulatedSize)
         , rotation_interval_seconds_(config.rotationIntervalSeconds)
+        , compression_enabled_(config.compressionEnabled)
+        , compression_level_(config.compressionLevel)
         , current_size_(0)
         , file_index_(1)
+        , compression_stop_(false)
     {
         validate_and_init_();
+
+        if (compression_enabled_)
+        {
+            compression_thread_ = std::thread(&daily_rotating_file_sink::compression_worker_, this);
+        }
     }
+
+    /**
+     * @brief Destructor. Drains and joins the compression thread.
+     */
+    ~daily_rotating_file_sink() override { stop_compression_thread_(); }
 
     /**
      * @brief Returns the current active filename.
@@ -308,20 +342,21 @@ private:
     std::string get_current_date() const { return get_date(spdlog::log_clock::now()); }
 
     /**
-     * @brief Build the rotated filename.
+     * @brief Build the rotated filename (uncompressed).
      *
-     * Pattern (compression temporarily disabled):
+     * Pattern:
      *
      *     basename-YYYY-MM-DD-N.ext
      *
      * Example:
      *
      *     wazuh-engine-2026-03-09-1.log
+     *
+     * Note: The .gz suffix is added later by the compression thread.
      */
     spdlog::filename_t calc_rotated_filename(const std::string& date, std::size_t index) const
     {
         auto [basename, ext] = split_filename(base_filename_);
-        // Compression temporarily disabled - removed .gz extension
         return fmt::format("{}-{}-{}{}", basename, date, index, ext);
     }
 
@@ -409,21 +444,22 @@ private:
      *   1) Close active file
      *   2) Determine rotation date
      *   3) Reset file index if the date changed
-     *   4) Find next available rotated filename
-     *   5) Rename active file to rotated filename (compression disabled)
+     *   4) Find next available rotated filename (checking both .ext and .ext.gz)
+     *   5) Rename active file to rotated filename
      *   6) Reopen fresh active file
-     *   7) Run retention cleanup
+     *   7) Enqueue rotated file for async compression (if enabled)
+     *   8) Run retention cleanup (only when compression is disabled)
+     *
+     * When compression is enabled, cleanup is deferred to the compression
+     * worker thread and runs after each file reaches its final compressed
+     * state. This avoids a race where cleanup could observe in-transit
+     * files with uncompressed sizes, leading to over-aggressive deletion
+     * or non-deterministic retention results.
      *
      * Failure handling:
      *
      *   - If rename fails:
      *       rotation is aborted and a fresh active file is opened
-     *
-     * Note:
-     *
-     *   Compression is TEMPORARILY DISABLED.
-     *   Previously: Compression was synchronous and happened under the sink mutex.
-     *   This was the main simplicity/performance trade-off in the design.
      */
     void rotate_(const spdlog::log_clock::time_point& msg_time, bool date_changed)
     {
@@ -446,11 +482,10 @@ private:
         {
             target_filename = calc_rotated_filename(current_date_, file_index_);
             ++file_index_;
-        } while (path_exists(target_filename));
+        } while (path_exists(target_filename) || path_exists(target_filename + ".gz"));
 
         if (path_exists(base_filename_))
         {
-            // Compression disabled temporarily - just rename without .gz extension
             if (rename(base_filename_, target_filename) != 0)
             {
                 // Best-effort recovery:
@@ -460,51 +495,32 @@ private:
                 return;
             }
 
-            /* Compression disabled temporarily
-            auto temp_filename = target_filename.substr(0, target_filename.size() - 3); // remove ".gz"
-
-            if (rename(base_filename_, temp_filename) != 0)
+            // Enqueue for async compression (if enabled).
+            // The new active file is opened below, so logging can continue
+            // while the background thread compresses the rotated file.
+            if (compression_enabled_)
             {
-                // Best-effort recovery:
-                // reopen the active filename and continue logging.
-                file_helper_.open(base_filename_, false);
-                current_size_ = 0;
-                return;
+                enqueue_compression_(target_filename);
             }
-
-            bool compression_successful = false;
-            try
-            {
-                Utils::ZlibHelper::gzipCompress(temp_filename, target_filename, 6);
-                compression_successful = true;
-            }
-            catch (const std::exception&)
-            {
-                // Keep the uncompressed rotated file.
-                // Better to preserve logs than lose them.
-            }
-
-            if (compression_successful)
-            {
-                std::error_code ec;
-                std::filesystem::remove(temp_filename, ec);
-            }
-            */
         }
 
         // Never truncate after rollover; we want a fresh active file.
         file_helper_.open(base_filename_, false);
         current_size_ = 0;
 
-        // NOTE:
+        // Cleanup strategy depends on whether compression is enabled:
         //
-        // Cleanup is intentionally triggered only during rotations,
-        // not on every log write. This avoids expensive filesystem
-        // scans in the hot logging path.
+        // - Compression DISABLED: run cleanup here, inside rotate_().
+        //   All rotated files are in their final state (uncompressed),
+        //   so sizes and file counts are accurate.
         //
-        // Trade-off:
-        // cleanup only happens if rotation occurs.
-        if (max_files_ > 0 || max_accumulated_size_ > 0)
+        // - Compression ENABLED: cleanup is deferred to the compression
+        //   worker thread (after each file is compressed). Running it
+        //   here would race with the background compressor: the newly
+        //   rotated file is still uncompressed (larger), so size-based
+        //   retention would be over-aggressive, and the file could be
+        //   deleted or double-counted while in transit.
+        if (!compression_enabled_ && (max_files_ > 0 || max_accumulated_size_ > 0))
         {
             delete_old_files_();
         }
@@ -617,14 +633,13 @@ private:
      *
      * This method scans the log directory for rotated files matching:
      *
-     *   basename-YYYY-MM-DD-N.ext
-     *
-     * Note: Compression is temporarily disabled.
+     *   basename-YYYY-MM-DD-N.ext      (uncompressed, compression in progress or disabled)
+     *   basename-YYYY-MM-DD-N.ext.gz   (compressed)
      *
      * Cleanup algorithm:
      *
      *   1) Scan directory
-     *   2) Match rotated file pattern
+     *   2) Match rotated file pattern (both .ext and .ext.gz)
      *   3) Parse date + index
      *   4) Sort deterministically by parsed date and numeric index
      *   5) Apply accumulated-size retention
@@ -656,10 +671,10 @@ private:
         const auto base_name = std::filesystem::path(base_filename_).filename().string();
         const auto [basename, ext] = split_filename(base_name);
 
-        // Match pattern: basename-YYYY-MM-DD-N.ext
-        // Note: Compression temporarily disabled, no .gz files expected
+        // Match pattern: basename-YYYY-MM-DD-N.ext or basename-YYYY-MM-DD-N.ext.gz
         const std::string pattern_prefix = basename + "-";
-        const std::string pattern_suffix = ext;
+        const std::string pattern_suffix_plain = ext;
+        const std::string pattern_suffix_gz = ext + ".gz";
 
         try
         {
@@ -672,19 +687,30 @@ private:
 
                 const auto filename = entry.path().filename().string();
 
-                // Check if filename matches pattern: basename-YYYY-MM-DD-N.ext
-                const bool matches =
-                    filename.find(pattern_prefix) == 0 && filename.size() >= pattern_suffix.size()
-                    && filename.compare(filename.size() - pattern_suffix.size(), pattern_suffix.size(), pattern_suffix)
-                           == 0;
-
-                if (!matches)
+                // Determine which suffix matches
+                std::string active_suffix;
+                if (filename.find(pattern_prefix) == 0 && filename.size() >= pattern_suffix_gz.size()
+                    && filename.compare(
+                           filename.size() - pattern_suffix_gz.size(), pattern_suffix_gz.size(), pattern_suffix_gz)
+                           == 0)
+                {
+                    active_suffix = pattern_suffix_gz;
+                }
+                else if (filename.find(pattern_prefix) == 0 && filename.size() >= pattern_suffix_plain.size()
+                         && filename.compare(filename.size() - pattern_suffix_plain.size(),
+                                             pattern_suffix_plain.size(),
+                                             pattern_suffix_plain)
+                                == 0)
+                {
+                    active_suffix = pattern_suffix_plain;
+                }
+                else
                 {
                     continue;
                 }
 
                 const auto middle_start = pattern_prefix.size();
-                const auto middle_end = filename.size() - pattern_suffix.size();
+                const auto middle_end = filename.size() - active_suffix.size();
                 const auto middle = filename.substr(middle_start, middle_end - middle_start);
                 const auto parsed = parse_rotated_middle(middle);
                 if (!parsed.has_value())
@@ -797,9 +823,7 @@ private:
      */
     std::time_t get_file_mtime(const std::string& filepath) const
     {
-        struct stat file_stat
-        {
-        };
+        struct stat file_stat {};
         if (stat(filepath.c_str(), &file_stat) == 0)
         {
             return file_stat.st_mtime;
@@ -822,9 +846,7 @@ private:
      */
     std::int64_t get_file_size(const std::string& filepath) const
     {
-        struct stat file_stat
-        {
-        };
+        struct stat file_stat {};
         if (stat(filepath.c_str(), &file_stat) == 0)
         {
             return static_cast<std::int64_t>(file_stat.st_size);
@@ -852,6 +874,12 @@ private:
             throw spdlog::spdlog_ex("daily_rotating_file_sink: Invalid rotation time");
         }
 
+        // Validate compression level
+        if (compression_enabled_ && (compression_level_ < 0 || compression_level_ > 9))
+        {
+            throw spdlog::spdlog_ex("daily_rotating_file_sink: Invalid compression level (must be 0-9)");
+        }
+
         // Validate that parent directory exists before attempting to open file
         auto parent_path = std::filesystem::path(base_filename_).parent_path();
         if (!parent_path.empty() && !std::filesystem::exists(parent_path))
@@ -866,6 +894,125 @@ private:
         current_size_ = file_helper_.size();
         current_date_ = get_current_date();
         rotation_tp_ = next_rotation_tp_();
+    }
+
+    // ========================================================================
+    // Background compression
+    // ========================================================================
+
+    /**
+     * @brief Enqueue a rotated file for background compression.
+     *
+     * This method is called from rotate_() while the sink mutex is held.
+     * It only takes the compression queue mutex briefly to push the path.
+     */
+    void enqueue_compression_(const std::string& filepath)
+    {
+        {
+            std::lock_guard<std::mutex> lock(compression_mutex_);
+            compression_queue_.push(filepath);
+        }
+        compression_cv_.notify_one();
+    }
+
+    /**
+     * @brief Background thread worker that processes the compression queue.
+     *
+     * Lifecycle:
+     *
+     *   - Runs until compression_stop_ is set and the queue is drained.
+     *   - Waits on the condition variable for new work.
+     *   - Compresses each file using gzip and removes the original.
+     *   - Runs retention cleanup after each compression so that cleanup
+     *     always sees files in their final (compressed) state.
+     *   - If compression fails, the uncompressed file is preserved.
+     */
+    void compression_worker_()
+    {
+        while (true)
+        {
+            std::string filepath;
+            {
+                std::unique_lock<std::mutex> lock(compression_mutex_);
+                compression_cv_.wait(lock, [this] { return compression_stop_ || !compression_queue_.empty(); });
+
+                if (compression_queue_.empty())
+                {
+                    if (compression_stop_)
+                    {
+                        return;
+                    }
+                    continue;
+                }
+
+                filepath = std::move(compression_queue_.front());
+                compression_queue_.pop();
+            }
+
+            compress_file_(filepath);
+
+            // Run retention cleanup after compression so that cleanup
+            // always sees files in their final (compressed) state.
+            //
+            // Locking rationale – no sink mutex needed here because
+            // delete_old_files_() only reads the following members, all of
+            // which are written once in the constructor and never mutated
+            // afterwards:
+            //
+            //   base_filename_        – constant after validate_and_init_()
+            //   max_files_            – constant after construction
+            //   max_accumulated_size_ – constant after construction
+            if (max_files_ > 0 || max_accumulated_size_ > 0)
+            {
+                delete_old_files_();
+            }
+        }
+    }
+
+    /**
+     * @brief Compress a single rotated file to .gz and remove the original.
+     *
+     * Reuses Utils::ZlibHelper::gzipCompress (same utility used by streamlog).
+     * If compression fails, the uncompressed file is preserved to avoid
+     * losing log data.
+     */
+    void compress_file_(const std::string& filepath)
+    {
+        const std::string gz_path = filepath + ".gz";
+
+        try
+        {
+            Utils::ZlibHelper::gzipCompress(filepath, gz_path, compression_level_);
+        }
+        catch (const std::exception&)
+        {
+            // Keep the uncompressed rotated file.
+            // Better to preserve logs than lose them.
+            return;
+        }
+
+        // Remove the original uncompressed file.
+        std::error_code ec;
+        std::filesystem::remove(filepath, ec);
+        // If remove fails, both versions co-exist; cleanup will handle it.
+    }
+
+    /**
+     * @brief Signal the compression thread to stop and join it.
+     *
+     * Drains all pending compression tasks before returning.
+     */
+    void stop_compression_thread_()
+    {
+        if (compression_thread_.joinable())
+        {
+            {
+                std::lock_guard<std::mutex> lock(compression_mutex_);
+                compression_stop_ = true;
+            }
+            compression_cv_.notify_one();
+            compression_thread_.join();
+        }
     }
 
     // Active log file path.
@@ -890,6 +1037,12 @@ private:
     // Rotation interval in seconds (0 = use hour/minute modulate mode).
     int rotation_interval_seconds_;
 
+    // Whether to compress rotated files with gzip.
+    bool compression_enabled_;
+
+    // Gzip compression level (0-9).
+    int compression_level_;
+
     // Approximate current active file size.
     // Updated after each write and reset after rotation.
     std::size_t current_size_;
@@ -905,6 +1058,13 @@ private:
 
     // spdlog helper used to manage the active file.
     spdlog::details::file_helper file_helper_;
+
+    // Background compression thread and synchronization.
+    std::thread compression_thread_;
+    std::mutex compression_mutex_;
+    std::condition_variable compression_cv_;
+    std::queue<std::string> compression_queue_;
+    bool compression_stop_;
 };
 
 } // namespace logging

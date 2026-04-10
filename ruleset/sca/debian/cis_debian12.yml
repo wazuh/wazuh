@@ -3533,8 +3533,8 @@ checks:
       subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
     condition: any
     rules:
-      - 'f:/etc/security/pwquality.conf -> n:ucredit\s*\t*=\s*\t*(\d+) compare < 0 && n:lcredit\s*\t*=\s*\t*(\d+) compare < 0 && n:dcredit\s*\t*=\s*\t*(\d+) compare < 0 && n:ocredit\s*\t*=\s*\t*(\d+) < 0'
-      - 'd:/etc/security/pwquality.conf.d/* -> r:.+\.conf$ -> n:ucredit\s*\t*=\s*\t*(\d+) compare < 0 && n:lcredit\s*\t*=\s*\t*(\d+) compare < 0 && n:dcredit\s*\t*=\s*\t*(\d+) compare < 0 && n:ocredit\s*\t*=\s*\t*(\d+) < 0'
+      - 'f:/etc/security/pwquality.conf -> n:ucredit\s*\t*=\s*\t*(\d+) compare < 0 && n:lcredit\s*\t*=\s*\t*(\d+) compare < 0 && n:dcredit\s*\t*=\s*\t*(\d+) compare < 0 && n:ocredit\s*\t*=\s*\t*(\d+) compare < 0'
+      - 'd:/etc/security/pwquality.conf.d/* -> r:.+\.conf$ -> n:ucredit\s*\t*=\s*\t*(\d+) compare < 0 && n:lcredit\s*\t*=\s*\t*(\d+) compare < 0 && n:dcredit\s*\t*=\s*\t*(\d+) compare < 0 && n:ocredit\s*\t*=\s*\t*(\d+) compare < 0'
 
   # 5.3.3.2.4 Ensure password same consecutive characters is configured. (Automated)
   - id: 33196

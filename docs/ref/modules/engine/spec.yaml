@@ -264,6 +264,33 @@ paths:
         If tracing is enabled (trace_level != NONE), the endpoint retrieves the list of policy assets
         from the specified testing session and uses them as the trace filter.
 
+        After the pipeline finishes, the final output event is validated against the Wazuh Common
+        Schema (WCS). Validation is **non-blocking**: the pipeline result is always returned
+        regardless of validation errors. The result is reported in `result.validation` when the
+        schema validator is available (see below).
+
+        Each entry in `result.validation.errors` has:
+        - `path` — field path using dot notation for nesting and `[N]` for array indices
+          (e.g. `"event.severity"`, `"tags[1]"`, `"hits[0].id"`).
+        - `kind` — one of:
+          - `unknown_field` — field is not defined in WCS and is not a temporary field.
+          - `temporary_field_not_allowed` — field is a pipeline-internal field (root starts with `_`).
+          - `invalid_type` — value does not match the WCS type for that field.
+        - `expected` / `actual` — present only for `invalid_type` errors; both are type strings
+          (e.g. `"keyword"`, `"object"`, `"number"`).
+
+        Any WCS field can hold either a single value or an array of values of the same type.
+        Arrays are always unrolled: each element is validated individually using the field's
+        schema type. This applies to scalar types (e.g. `keyword`), numeric types, and object
+        types such as `nested` (array of objects). Only one error is reported per invalid element.
+
+        `FLAT_OBJECT` and `GEO_POINT` fields are treated as opaque: their children are never visited.
+
+        `result.validation` is only present when the schema validator is available and the
+        pipeline produced an output event. If absent, no validation was performed.
+
+        Errors are sorted by path, with kind as tiebreaker.
+
         Notes about event parsing:
         - `queue` indicates the queue to which the event will be sent.
         - `location` cannot be empty.
@@ -417,6 +444,9 @@ paths:
                           success: true
                           traces:
                             - "@timestamp: get_date -> Success"
+                      validation:
+                        valid: true
+                        errors: []
 
                 ok_with_nested_wazuh_metadata:
                   summary: OK - populated `metadata.wazuh` is accepted
@@ -429,6 +459,28 @@ paths:
                           success: true
                           traces:
                             - "@timestamp: get_date -> Success"
+                      validation:
+                        valid: true
+                        errors: []
+
+                ok_with_validation_errors:
+                  summary: OK - pipeline ran but output has WCS validation errors (non-blocking)
+                  value:
+                    status: "OK"
+                    result:
+                      output: {"wazuh":{"protocol":{"queue":1,"location":"syscheck"}},"event":{"original":"...","severity":42},"_tmp":{"stage":"done"},"unknown_field":"value"}
+                      asset_traces: []
+                      validation:
+                        valid: false
+                        errors:
+                          - path: "_tmp"
+                            kind: "temporary_field_not_allowed"
+                          - path: "event.severity"
+                            kind: "invalid_type"
+                            expected: "keyword"
+                            actual: "number"
+                          - path: "unknown_field"
+                            kind: "unknown_field"
 
         "400":
           description: Bad Request
@@ -1118,11 +1170,30 @@ paths:
         - Tester
       summary: Run a test in a session
       description: |
-        This endpoint allows running a test in a specific tester session. It Injects a single event
-        into the engine using a previously created and loaded testing session.
+        Injects a single event into the engine using a previously created and loaded testing session.
+
         Additional metadata about the agent can be provided in the `agent_metadata` field, which
-        is merged into the event before ingestion, it must be a **JSON object** (not a JSON-encoded string).
+        is merged into the event before ingestion. It must be a **JSON object** (not a JSON-encoded string).
         It can be an empty JSON object (`{}`).
+
+        After the pipeline finishes, the final output event is validated against the Wazuh Common
+        Schema (WCS). Validation is **non-blocking**: the pipeline result is always returned
+        regardless of validation errors. The result is reported in `result.validation` when the
+        schema validator is available.
+
+        Each entry in `result.validation.errors` has:
+        - `path` — field path using dot notation for nesting and `[N]` for array indices
+          (e.g. `"event.severity"`, `"tags[1]"`).
+        - `kind` — one of:
+          - `unknown_field` — field is not defined in WCS and is not a temporary field.
+          - `temporary_field_not_allowed` — field is a pipeline-internal field (root starts with `_`).
+          - `invalid_type` — value does not match the WCS type for that field.
+        - `expected` / `actual` — present only for `invalid_type` errors.
+
+        `result.validation` is only present when the schema validator is available and the
+        pipeline produced an output event.
+
+        Errors are sorted by path, with kind as tiebreaker.
       requestBody:
         required: true
         content:
@@ -1136,6 +1207,40 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TesterRunPost_Response"
+              examples:
+                ok_valid:
+                  summary: OK - pipeline ran and output passes WCS validation
+                  value:
+                    status: "OK"
+                    result:
+                      output: {"wazuh":{"protocol":{"queue":49,"location":"/tmp/json"},"space":{"name":"standard"}},"event":{"original":"...","kind":"event","action":"group-created"},"cloud":{"region":"us-east-1"}}
+                      asset_traces:
+                        - asset: "decoder/aws-cloudtrail/0"
+                          success: true
+                          traces:
+                            - "event.kind: map(\"event\") -> Success"
+                      validation:
+                        valid: true
+                        errors: []
+
+                ok_with_validation_errors:
+                  summary: OK - pipeline ran but output has WCS validation errors (non-blocking)
+                  value:
+                    status: "OK"
+                    result:
+                      output: {"wazuh":{"protocol":{"queue":49,"location":"/tmp/json"}},"event":{"original":"...","severity":42},"_tmp":{"stage":"done"},"unknown_field":"value"}
+                      asset_traces: []
+                      validation:
+                        valid: false
+                        errors:
+                          - path: "_tmp"
+                            kind: "temporary_field_not_allowed"
+                          - path: "event.severity"
+                            kind: "invalid_type"
+                            expected: "keyword"
+                            actual: "number"
+                          - path: "unknown_field"
+                            kind: "unknown_field"
         "400":
           description: Bad Request
           content:
@@ -2024,6 +2129,44 @@ components:
           type: integer
           description: "Last use of the session in seconds since epoch"
 
+    Result_ValidationError:
+      type: object
+      properties:
+        path:
+          type: string
+          description: "Field path using dot notation for nesting and [N] for array indices (e.g. \"event.severity\", \"tags[1]\")"
+        kind:
+          type: string
+          enum:
+            - unknown_field
+            - invalid_type
+            - temporary_field_not_allowed
+          description: |
+            Type of validation error:
+            - `unknown_field`: field is not defined in WCS and is not a temporary field.
+            - `invalid_type`: value does not match the WCS type for that field.
+            - `temporary_field_not_allowed`: field is a pipeline-internal field (root starts with `_`).
+        expected:
+          type: string
+          nullable: true
+          description: "Expected WCS type string. Only present for `invalid_type` errors (e.g. \"keyword\", \"long\")."
+        actual:
+          type: string
+          nullable: true
+          description: "Actual JSON type string of the value. Only present for `invalid_type` errors (e.g. \"number\", \"object\")."
+
+    Result_Validation:
+      type: object
+      properties:
+        valid:
+          type: boolean
+          description: "True when the output event contains no WCS validation errors."
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/Result_ValidationError"
+          description: "List of WCS validation errors found in the output event. Empty when valid is true. Sorted by path (alphabetical); kind is used as tiebreaker when two errors share the same path."
+
     TesterResult:
       type: object
       properties:
@@ -2045,6 +2188,10 @@ components:
                 items:
                   type: string
                 description: "Traces of the asset"
+        validation:
+          $ref: "#/components/schemas/Result_Validation"
+          description: "WCS schema validation result. Present in POST /tester/run/post and POST /logtest responses, only when the schema validator is available and the pipeline produced an output event."
+          nullable: true
 
     TesterRunPost_Request:
       type: object

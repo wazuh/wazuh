@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
 
     // Setup and parse JSON input
     action = setup_and_check_message(argv, &input_json);
-    if ((action != ADD_COMMAND) && (action != DELETE_COMMAND)) {
+    if ((action != ENABLE_COMMAND) && (action != DISABLE_COMMAND)) {
         return OS_INVALID;
     }
 
@@ -70,8 +70,8 @@ int main(int argc, char **argv) {
         return OS_INVALID;
     }
 
-    // Send keys and check for abort (ADD command only)
-    if (action == ADD_COMMAND) {
+    // Send keys and check for abort (ENABLE command only)
+    if (action == ENABLE_COMMAND) {
         char **keys = NULL;
         os_calloc(2, sizeof(char *), keys);
         os_strdup(srcip, keys[0]);
@@ -184,7 +184,7 @@ firewall_result_t try_firewalld(const char *srcip, int action, int ip_version, c
 
     // Build firewall-cmd command
     const char *family = (ip_version == 4) ? "ipv4" : "ipv6";
-    const char *operation = (action == ADD_COMMAND) ? "--add-rich-rule" : "--remove-rich-rule";
+    const char *operation = (action == ENABLE_COMMAND) ? "--add-rich-rule" : "--remove-rich-rule";
 
     char rule[COMMANDSIZE_4096];
     memset(rule, '\0', COMMANDSIZE_4096);
@@ -236,8 +236,8 @@ firewall_result_t try_iptables(const char *srcip, int action, int ip_version, co
         return FIREWALL_EXECUTION_FAILED;
     }
 
-    // Determine argument for add/delete
-    const char *arg = (action == ADD_COMMAND) ? "-I" : "-D";
+    // Determine argument for enable/disable
+    const char *arg = (action == ENABLE_COMMAND) ? "-I" : "-D";
 
     firewall_result_t final_result = FIREWALL_SUCCESS;
 
@@ -343,7 +343,7 @@ firewall_result_t try_ipfw(const char *srcip, int action, int ip_version, const 
     }
 
     // Add or delete IP from table
-    const char *table_operation = (action == ADD_COMMAND) ? "add" : "delete";
+    const char *table_operation = (action == ENABLE_COMMAND) ? "add" : "delete";
     char *exec_cmd4[] = {ipfw_path, "-q", "table", "00001", (char *)table_operation, (char *)srcip, NULL};
 
     wfd = wpopenv(ipfw_path, exec_cmd4, W_BIND_STDERR);
@@ -408,7 +408,7 @@ firewall_result_t try_pf(const char *srcip, int action, int ip_version, const ch
     }
 
     // Add or delete IP from table
-    const char *table_operation = (action == ADD_COMMAND) ? "add" : "delete";
+    const char *table_operation = (action == ENABLE_COMMAND) ? "add" : "delete";
     char *exec_cmd2[] = {pfctl_path, "-t", "wazuh_fwtable", "-T", (char *)table_operation, (char *)srcip, NULL};
 
     wfd = wpopenv(pfctl_path, exec_cmd2, W_BIND_STDERR);
@@ -419,7 +419,7 @@ firewall_result_t try_pf(const char *srcip, int action, int ip_version, const ch
     wpclose(wfd);
 
     // If adding, also kill existing connections
-    if (action == ADD_COMMAND) {
+    if (action == ENABLE_COMMAND) {
         char *exec_cmd3[] = {pfctl_path, "-k", (char *)srcip, NULL};
         wfd = wpopenv(pfctl_path, exec_cmd3, W_BIND_STDERR);
         if (wfd) wpclose(wfd);
@@ -491,7 +491,7 @@ firewall_result_t try_npf(const char *srcip, int action, int ip_version, const c
     }
 
     // Add or delete IP from table
-    const char *table_operation = (action == ADD_COMMAND) ? "add" : "del";
+    const char *table_operation = (action == ENABLE_COMMAND) ? "add" : "del";
     char *exec_cmd2[] = {npfctl_path, "table", "wazuh_blacklist", (char *)table_operation, (char *)srcip, NULL};
 
     wfd = wpopenv(npfctl_path, exec_cmd2, W_BIND_STDERR);
@@ -525,7 +525,7 @@ firewall_result_t try_route(const char *srcip, int action, int ip_version, const
 
 #ifdef PLATFORM_LINUX
     // Linux: route add <ip> reject / route del <ip> reject
-    if (action == ADD_COMMAND) {
+    if (action == ENABLE_COMMAND) {
         char *exec_cmd[] = {route_path, "add", (char *)srcip, "reject", NULL};
         wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
     } else {
@@ -534,7 +534,7 @@ firewall_result_t try_route(const char *srcip, int action, int ip_version, const
     }
 #elif defined(PLATFORM_FREEBSD)
     // FreeBSD: route -q add <ip> 127.0.0.1 -blackhole
-    if (action == ADD_COMMAND) {
+    if (action == ENABLE_COMMAND) {
         char *exec_cmd[] = {route_path, "-q", "add", (char *)srcip, "127.0.0.1", "-blackhole", NULL};
         wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
     } else {
@@ -543,7 +543,7 @@ firewall_result_t try_route(const char *srcip, int action, int ip_version, const
     }
 #elif defined(PLATFORM_OPENBSD) || defined(PLATFORM_NETBSD)
     // OpenBSD/NetBSD: Similar to FreeBSD
-    if (action == ADD_COMMAND) {
+    if (action == ENABLE_COMMAND) {
         char *exec_cmd[] = {route_path, "-q", "add", (char *)srcip, "127.0.0.1", "-blackhole", NULL};
         wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
     } else {
@@ -617,7 +617,7 @@ firewall_result_t try_hostsdeny(const char *srcip, int action, int ip_version, c
         return FIREWALL_EXECUTION_FAILED;
     }
 
-    if (action == ADD_COMMAND) {
+    if (action == ENABLE_COMMAND) {
         // Open file for reading to check for duplicates
         host_deny_fp = wfopen(hosts_deny_path, "r");
         if (!host_deny_fp) {
@@ -663,7 +663,7 @@ firewall_result_t try_hostsdeny(const char *srcip, int action, int ip_version, c
         fclose(host_deny_fp);
 
     } else {
-        // DELETE_COMMAND: Remove IP from hosts.deny
+        // DISABLE_COMMAND: Remove IP from hosts.deny
         FILE *temp_host_deny_fp = NULL;
         char temp_hosts_deny_path[COMMANDSIZE_4096];
         bool write_fail = false;

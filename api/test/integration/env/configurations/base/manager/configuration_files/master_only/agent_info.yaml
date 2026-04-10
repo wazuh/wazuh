@@ -12,9 +12,6 @@
     node_name: master-node
     connection_status: disconnected
     date_add: 1625356800  # Sun, 04 Jul 2021 00:00:00 GMT
-  labels:
-    '#"_agent_ip"': 172.28.0.14
-    '#"_node_name"': master-node
   extra_params:
     agent_id: 9
     days_from_last_connection: 2
@@ -33,9 +30,6 @@
     node_name: master-node
     connection_status: disconnected
     date_add: 1625529600  # Tue, 06 Jul 2021 00:00:00 GMT
-  labels:
-    '#"_agent_ip"': 172.28.0.15
-    '#"_node_name"': master-node
   extra_params:
     agent_id: 10
     days_from_last_connection: 2

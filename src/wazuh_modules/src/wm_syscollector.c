@@ -101,6 +101,9 @@ typedef void (*syscollector_unlock_scan_mutex_func)();
 syscollector_lock_scan_mutex_func syscollector_lock_scan_mutex_ptr = NULL;
 syscollector_unlock_scan_mutex_func syscollector_unlock_scan_mutex_ptr = NULL;
 
+typedef bool (*syscollector_is_scanning_func)();
+syscollector_is_scanning_func syscollector_is_scanning_ptr = NULL;
+
 typedef void (*syscollector_run_recovery_process_func)();
 syscollector_run_recovery_process_func syscollector_run_recovery_process_ptr = NULL;
 
@@ -611,6 +614,7 @@ void* wm_sys_main(wm_sys_t* sys)
         // Get mutex access function pointers
         syscollector_lock_scan_mutex_ptr = so_get_function_sym(syscollector_module, "syscollector_lock_scan_mutex");
         syscollector_unlock_scan_mutex_ptr = so_get_function_sym(syscollector_module, "syscollector_unlock_scan_mutex");
+        syscollector_is_scanning_ptr = so_get_function_sym(syscollector_module, "syscollector_is_scanning");
 
         syscollector_run_recovery_process_ptr = so_get_function_sym(syscollector_module, "syscollector_run_recovery_process");
 
@@ -861,6 +865,12 @@ cJSON* wm_sys_dump(const wm_sys_t* sys)
 
 int wm_sync_message(const char* command, size_t command_len)
 {
+    if (shutdown_process_started)
+    {
+        mtdebug1(WM_SYS_LOGTAG, "Sync message received during shutdown, ignoring");
+        return 0;
+    }
+
     if (enable_synchronization)
     {
         bool ret = false;
@@ -962,6 +972,13 @@ void* wm_sync_module(__attribute__((unused)) void* args)
         if (!sync_module_running)
         {
             break;
+        }
+
+        // Skip synchronization if scan is in progress to avoid syncing incomplete data
+        if (syscollector_is_scanning_ptr && syscollector_is_scanning_ptr())
+        {
+            mtdebug1(WM_SYS_LOGTAG, "Scan in progress, skipping sync cycle");
+            continue;
         }
 
         if (syscollector_sync_module_ptr)

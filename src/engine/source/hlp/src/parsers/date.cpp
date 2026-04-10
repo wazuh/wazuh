@@ -177,7 +177,7 @@ bool loadTimeZoneDB(const std::string& version, bool autoUpdate)
     try
     {
         const auto& db = date::get_tzdb();
-        LOG_INFO("Loaded timezone database version: '{}'", db.version);
+        LOG_DEBUG("Loaded timezone database version: '{}'", db.version);
         return !(autoUpdate && db.version != version);
     }
     catch (std::exception& e)
@@ -218,20 +218,30 @@ void initTZDB(const std::string& path, bool autoUpdate, const std::string& force
 
 {
     date::set_install(path);
+    std::string rv {"Unknown"};
 
-    std::string rv = date::remote_version();
+    if (autoUpdate)
+    {
+        LOG_INFO("Auto-update for timezone database is enabled");
+        rv = date::remote_version();
+    }
     LOG_DEBUG("Remote timezone database version: '{}'", rv);
 
     if (!forceVersion.empty())
     {
         LOG_INFO("Forcing timezone database version: '{}'", forceVersion);
         rv = forceVersion;
-        autoUpdate= true;
+        autoUpdate = true;
     }
 
     if (loadTimeZoneDB(rv, autoUpdate))
     {
         return;
+    }
+
+    if (!autoUpdate)
+    {
+        throw std::runtime_error("Timezone database not found and auto-update is disabled");
     }
 
     downloadAndInstallTimeZoneDB(rv);

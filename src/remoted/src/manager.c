@@ -572,9 +572,14 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
     if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && msg && strcmp(data->message, msg) == 0) {
         w_mutex_unlock(&lastmsg_mutex);
 
-        char *sync_status = logr.worker_node ? (*post_startup ? "syncreq" : "syncreq_keepalive") : "synced";
+        // Only set syncreq if keepalive is complete (has full metadata)
+        bool is_complete = (msg[0] != '{') || is_keepalive_complete(msg);
+        char *sync_status = logr.worker_node ? (*post_startup && is_complete ? "syncreq" : "syncreq_keepalive") : "synced";
 
-        *post_startup = false;
+        // Only clear post_startup flag if keepalive is complete
+        if (is_complete) {
+            *post_startup = false;
+        }
 
         agent_id = atoi(key->id);
 
@@ -674,9 +679,18 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
 
             agent_data->id = atoi(key->id);
             os_strdup(AGENT_CS_ACTIVE, agent_data->connection_status);
-            os_strdup(logr.worker_node ? (*post_startup ? "syncreq" : "syncreq_keepalive") : "synced", agent_data->sync_status);
 
-            *post_startup = false;
+            // Only set syncreq if keepalive is complete (has full metadata)
+            bool is_complete = (msg[0] != '{') || is_keepalive_complete(msg);
+            if (!is_complete && *post_startup) {
+                mdebug1("Agent '%s' sent incomplete keepalive, deferring cluster sync (syncreq) until complete metadata is received", key->id);
+            }
+            os_strdup(logr.worker_node ? (*post_startup && is_complete ? "syncreq" : "syncreq_keepalive") : "synced", agent_data->sync_status);
+
+            // Only clear post_startup flag if keepalive is complete
+            if (is_complete) {
+                *post_startup = false;
+            }
 
             w_mutex_lock(&lastmsg_mutex);
 

@@ -1051,6 +1051,46 @@ static void test_parse_json_keepalive_with_cluster_and_groups(void **state)
     os_free(cluster_node);
 }
 
+/* Tests is_keepalive_complete */
+
+void test_is_keepalive_complete_minimal(void **state)
+{
+    // Minimal keepalive without host metadata
+    char* json = "{\"version\":\"1.0\",\"agent\":{\"merged_sum\":\"x\"}}";
+    bool result = is_keepalive_complete(json);
+    assert_false(result);
+}
+
+void test_is_keepalive_complete_with_host(void **state)
+{
+    // Complete keepalive with host metadata
+    char* json = "{\"version\":\"1.0\",\"agent\":{\"version\":\"v5.0.0\",\"merged_sum\":\"abc123\"},"
+                 "\"host\":{\"hostname\":\"test-host\",\"os\":{\"name\":\"Ubuntu\"}}}";
+    bool result = is_keepalive_complete(json);
+    assert_true(result);
+}
+
+void test_is_keepalive_complete_invalid_json(void **state)
+{
+    char* json = "invalid json";
+    bool result = is_keepalive_complete(json);
+    assert_false(result);
+}
+
+void test_is_keepalive_complete_null_input(void **state)
+{
+    bool result = is_keepalive_complete(NULL);
+    assert_false(result);
+}
+
+void test_is_keepalive_complete_non_json(void **state)
+{
+    // Legacy text format keepalive
+    char* msg = "some text keepalive";
+    bool result = is_keepalive_complete(msg);
+    assert_false(result);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] =
@@ -1095,7 +1135,13 @@ int main()
         cmocka_unit_test_setup_teardown(test_parse_json_keepalive_with_empty_cluster, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_json_keepalive_with_empty_cluster_strings, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_json_keepalive_cluster_null_outputs, setup_remoted_op, teardown_remoted_op),
-        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_with_cluster_and_groups, setup_remoted_op, teardown_remoted_op)
+        cmocka_unit_test_setup_teardown(test_parse_json_keepalive_with_cluster_and_groups, setup_remoted_op, teardown_remoted_op),
+        // Tests is_keepalive_complete
+        cmocka_unit_test_setup_teardown(test_is_keepalive_complete_minimal, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_is_keepalive_complete_with_host, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_is_keepalive_complete_invalid_json, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_is_keepalive_complete_null_input, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_is_keepalive_complete_non_json, setup_remoted_op, teardown_remoted_op)
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

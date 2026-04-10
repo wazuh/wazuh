@@ -6,6 +6,10 @@ on:
       - "src/**"
       - ".github/workflows/5_testcomponent_build-macos.yml"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-sonoma:
     runs-on: macos-14

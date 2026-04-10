@@ -267,6 +267,11 @@ void syscollector_unlock_scan_mutex()
     Syscollector::instance().unlockScanMutex();
 }
 
+bool syscollector_is_scanning()
+{
+    return Syscollector::instance().isScanning();
+}
+
 void syscollector_run_recovery_process()
 {
     Syscollector::instance().runRecoveryProcess();

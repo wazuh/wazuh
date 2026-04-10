@@ -26,7 +26,8 @@
  * @param output  Allocated response string set by this function.
  * @return size_t Length of *output.
  */
-static size_t control_run_detached(const char *action, char **output) {
+static size_t control_run_detached(const char *action, char **output)
+{
     STARTUPINFOA si;
     PROCESS_INFORMATION pi;
     char exe[MAX_PATH];
@@ -44,15 +45,18 @@ static size_t control_run_detached(const char *action, char **output) {
         return strlen(*output);
     }
 
-    snprintf(cmd, sizeof(cmd), "\"%s\" service-restart", exe);
+    int ret = snprintf(cmd, sizeof(cmd), "\"%s\" service-restart", exe);
+
+    if (ret < 0 || ret >= (int)sizeof(cmd)) {
+        os_strdup("err command line too long", *output);
+        return strlen(*output);
+    }
 
     ZeroMemory(&si, sizeof(si));
     si.cb = sizeof(si);
     ZeroMemory(&pi, sizeof(pi));
 
-    if (!CreateProcessA(NULL, cmd, NULL, NULL, FALSE,
-                        CREATE_NO_WINDOW | DETACHED_PROCESS,
-                        NULL, NULL, &si, &pi)) {
+    if (!CreateProcessA(NULL, cmd, NULL, NULL, FALSE, CREATE_NO_WINDOW | DETACHED_PROCESS, NULL, NULL, &si, &pi)) {
         mdebug1("CONTROL: CreateProcess failed for '%s' (error %lu).", action, GetLastError());
         os_strdup("err CreateProcess failed", *output);
         return strlen(*output);
@@ -66,7 +70,8 @@ static size_t control_run_detached(const char *action, char **output) {
     return strlen(*output);
 }
 
-size_t control_dispatch(char *command, char **output) {
+size_t control_dispatch(char *command, char **output)
+{
     char *args = strchr(command, ' ');
     if (args) {
         *args = '\0';

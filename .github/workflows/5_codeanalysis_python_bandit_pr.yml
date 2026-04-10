@@ -8,6 +8,11 @@ on:
       - 'framework/**/*.py'
       - 'api/**/*.py'
       - 'wodles/**/*.py'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   PYTHON_DIRS: "api wodles framework"
 

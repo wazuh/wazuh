@@ -38,6 +38,7 @@ The downloader automatically selects its mode based on the persisted cursor:
 
 - **Initial load** (no cursor stored): Downloads all documents from the index using `match_all`, sorted by `(offset, _id)`, paginated with PIT + `search_after`. Retries every 30 seconds if the index is empty.
 - **Incremental update** (cursor stored): Downloads only documents with `offset > lastCursor` using the same PIT + `search_after` strategy.
+- **Consumer readiness gate** (optional): If `consumerStatusIndex` and `consumerStatusId` are configured, the downloader polls the consumer status document and waits until it reaches `idle` before reading the feed index.
 
 After all pages are processed, the downloader signals completion via `indexer_complete`, including a `changed` flag that indicates whether any documents were fetched. Consumers use this flag to decide whether to trigger downstream actions (e.g. a full agent rescan).
 
@@ -60,6 +61,8 @@ After all pages are processed, the downloader signals completion via `indexer_co
                 "key": ""
             },
             "index": ".cti-cves",
+            "consumerStatusIndex": ".cti-consumers",
+            "consumerStatusId": "t1-vulnerabilities-5_public-vulnerabilities-5",
             "pageSize": 250,
             "numSlices": 2
         }

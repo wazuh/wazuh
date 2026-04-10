@@ -108,7 +108,9 @@ void start(const LoggingConfig& cfg)
                                               .rotationMinute = cfg.rotationMinute,
                                               .maxFiles = cfg.maxFiles,
                                               .maxAccumulatedSize = cfg.maxAccumulatedSize,
-                                              .truncate = cfg.truncate});
+                                              .truncate = cfg.truncate,
+                                              .compressionEnabled = cfg.compressionEnabled,
+                                              .compressionLevel = cfg.compressionLevel});
 
         logger = std::make_shared<spdlog::logger>("default", sink);
         spdlog::set_default_logger(logger);
@@ -278,6 +280,8 @@ LoggingConfig getStandaloneLoggingConfig()
         //   WAZUH_STANDALONE_LOG_ROTATION_MINUTE      (default: 0)
         //   WAZUH_STANDALONE_LOG_MAX_FILES            (default: 7)
         //   WAZUH_STANDALONE_LOG_MAX_ACCUMULATED_SIZE (default: 2147483648 = 2 GB)
+        //   WAZUH_STANDALONE_LOG_COMPRESSION_ENABLED  (default: true)
+        //   WAZUH_STANDALONE_LOG_COMPRESSION_LEVEL    (default: 5)
 
         auto verbosity = base::process::getEnvOrDefault("WAZUH_STANDALONE_LOG_LEVEL", "info");
         cfg.level = strToLevel(verbosity);
@@ -292,6 +296,10 @@ LoggingConfig getStandaloneLoggingConfig()
         cfg.maxFiles = static_cast<uint16_t>(base::process::getEnvIntOrDefault("WAZUH_STANDALONE_LOG_MAX_FILES", 7));
         cfg.maxAccumulatedSize =
             base::process::getEnvSizeOrDefault("WAZUH_STANDALONE_LOG_MAX_ACCUMULATED_SIZE", 2147483648); // 2 GB
+
+        // Compression configuration
+        cfg.compressionEnabled = base::process::getEnvBoolOrDefault("WAZUH_STANDALONE_LOG_COMPRESSION_ENABLED", true);
+        cfg.compressionLevel = base::process::getEnvIntOrDefault("WAZUH_STANDALONE_LOG_COMPRESSION_LEVEL", 5);
 
         return cfg;
     }();
