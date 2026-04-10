@@ -38,7 +38,8 @@ void RouterWorker::start()
             base::process::setThreadName("ORProd-" + std::to_string(tID));
 
             // Cache metric pointer before hot path loop (one-time map lookup ~50ns)
-            auto eventsProcessedCounter = fastmetrics::manager().getOrCreateCounter("router.events.processed");
+            auto eventsProcessedCounter =
+                fastmetrics::manager().getOrCreateCounter(fastmetrics::names::ROUTER_EVENTS_PROCESSED);
 
             while (m_isRunning)
             {

@@ -84,8 +84,8 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
 
         // Discarded events filter (based on policy configuration)
         {
-            auto discardedCounter =
-                fastmetrics::manager().getOrCreateCounter("space." + policyData.getOriginSpace() + ".events.discarded");
+            auto discardedCounter = fastmetrics::manager().getOrCreateCounter(
+                fastmetrics::names::space_events_discarded(policyData.getOriginSpace()));
             auto [exp, traceable] = builders::enrichment::getDiscardedEventsFilter(policyData, trace, discardedCounter);
             preEnrichmentOps.push_back(exp);
             m_assets.insert(base::Name(traceable));
@@ -129,12 +129,17 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
     // Build the expression with per-space pre/post filter discard counters
     const auto spaceName = policyData.getOriginSpace();
     auto preFilterDiscardCounter =
-        fastmetrics::manager().getOrCreateCounter("space." + spaceName + ".events.discarded.prefilter");
+        fastmetrics::manager().getOrCreateCounter(fastmetrics::names::space_events_discarded_prefilter(spaceName));
     auto postFilterDiscardCounter =
-        fastmetrics::manager().getOrCreateCounter("space." + spaceName + ".events.discarded.postfilter");
+        fastmetrics::manager().getOrCreateCounter(fastmetrics::names::space_events_discarded_postfilter(spaceName));
+    auto unclassifiedCounter =
+        fastmetrics::manager().getOrCreateCounter(fastmetrics::names::space_events_unclassified(spaceName));
 
-    m_expression = factory::buildExpression(
+    auto expr = factory::buildExpression(
         policyGraph, preEnrichmentExp, enrichmentExp, preFilterDiscardCounter, postFilterDiscardCounter);
+
+    auto postUnclassified = builders::enrichment::postOutputUnclassifiedCounter(spaceName, unclassifiedCounter);
+    m_expression = base::Chain::create("policy_with_post_unclassified", {expr, postUnclassified});
 }
 
 } // namespace builder::policy

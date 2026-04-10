@@ -1,5 +1,5 @@
-#ifndef _FASTMETRICS_PULL_METRIC_HPP
-#define _FASTMETRICS_PULL_METRIC_HPP
+#ifndef FASTMETRICS_PULL_METRIC_HPP
+#define FASTMETRICS_PULL_METRIC_HPP
 
 /**
  * @file pullMetric.hpp
@@ -115,4 +115,4 @@ public:
 
 } // namespace fastmetrics
 
-#endif // _FASTMETRICS_PULL_METRIC_HPP
+#endif // FASTMETRICS_PULL_METRIC_HPP

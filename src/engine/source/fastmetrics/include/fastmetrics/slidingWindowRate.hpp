@@ -1,5 +1,5 @@
-#ifndef _FASTMETRICS_SLIDING_WINDOW_RATE_HPP
-#define _FASTMETRICS_SLIDING_WINDOW_RATE_HPP
+#ifndef FASTMETRICS_SLIDING_WINDOW_RATE_HPP
+#define FASTMETRICS_SLIDING_WINDOW_RATE_HPP
 
 #include <algorithm>
 #include <chrono>
@@ -142,4 +142,4 @@ public:
 
 } // namespace fastmetrics
 
-#endif // _FASTMETRICS_SLIDING_WINDOW_RATE_HPP
+#endif // FASTMETRICS_SLIDING_WINDOW_RATE_HPP

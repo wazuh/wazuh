@@ -26,6 +26,7 @@ target_link_libraries(fastmetrics
     PUBLIC
     fastmetrics::interface
     base  # Required for SingletonLocator
+    streamlogger::streamlogger
 )
 
 # Require C++17 for if constexpr and other features
@@ -44,7 +45,7 @@ set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 ## Mocks library
 add_library(fastmetrics_mocks INTERFACE)
 target_include_directories(fastmetrics_mocks INTERFACE ${TEST_MOCK_DIR})
-target_link_libraries(fastmetrics_mocks INTERFACE 
+target_link_libraries(fastmetrics_mocks INTERFACE
     fastmetrics::interface
     GTest::gmock
 )

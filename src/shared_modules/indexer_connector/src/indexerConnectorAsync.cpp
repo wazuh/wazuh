@@ -62,6 +62,11 @@ public:
         return m_impl.getQueueSize();
     }
 
+    uint64_t getDroppedEvents() const
+    {
+        return m_impl.getDroppedEvents();
+    }
+
     PointInTime
     createPointInTime(const std::vector<std::string>& indices, std::string_view keepAlive, bool expandWildcards)
     {
@@ -136,6 +141,11 @@ bool IndexerConnectorAsync::isAvailable() const
 uint64_t IndexerConnectorAsync::getQueueSize() const
 {
     return m_impl->getQueueSize();
+}
+
+uint64_t IndexerConnectorAsync::getDroppedEvents() const
+{
+    return m_impl->getDroppedEvents();
 }
 
 PointInTime IndexerConnectorAsync::createPointInTime(const std::vector<std::string>& indices,

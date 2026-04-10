@@ -1,5 +1,5 @@
-#ifndef _FASTMETRICS_MANAGER_HPP
-#define _FASTMETRICS_MANAGER_HPP
+#ifndef FASTMETRICS_MANAGER_HPP
+#define FASTMETRICS_MANAGER_HPP
 
 #include <memory>
 #include <mutex>
@@ -8,6 +8,8 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include <streamlog/logger.hpp>
 
 #include <fastmetrics/atomicCounter.hpp>
 #include <fastmetrics/atomicGauge.hpp>
@@ -154,6 +156,12 @@ public:
         }
     }
 
+    /**
+     * @brief Write all metrics as JSON lines using the provided writer.
+     * @param metricsWriter Writer to output each JSON line.
+     */
+    void writeAllMetrics(std::shared_ptr<streamlog::WriterEvent> metricsWriter) const;
+
     std::shared_ptr<IMetric> get(const std::string& name) const override;
 
     bool exists(const std::string& name) const override;
@@ -173,4 +181,4 @@ public:
 
 } // namespace fastmetrics
 
-#endif // _FASTMETRICS_MANAGER_HPP
+#endif // FASTMETRICS_MANAGER_HPP

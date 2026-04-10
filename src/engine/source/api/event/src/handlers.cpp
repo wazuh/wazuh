@@ -12,8 +12,8 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
     auto weakOrchestrator = std::weak_ptr(orchestrator);
 
     // Cache metric pointers (one-time map lookup)
-    auto bytesReceivedCounter = fastmetrics::manager().getOrCreateCounter("server.bytes.received");
-    auto eventsReceivedCounter = fastmetrics::manager().getOrCreateCounter("server.events.received");
+    auto bytesReceivedCounter = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::SERVER_BYTES_RECEIVED);
+    auto eventsReceivedCounter = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::SERVER_EVENTS_RECEIVED);
 
     return [lambdaName = std::move(lambdaName),
             weakOrchestrator = std::move(weakOrchestrator),

@@ -325,6 +325,16 @@ uint64_t WIndexerConnector::getQueueSize()
     return m_indexerConnectorAsync->getQueueSize();
 }
 
+uint64_t WIndexerConnector::getDroppedEvents()
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        return 0;
+    }
+    return m_indexerConnectorAsync->getDroppedEvents();
+}
+
 void WIndexerConnector::index(std::string_view index, std::string_view data)
 {
     std::shared_lock lock(m_mutex);

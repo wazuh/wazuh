@@ -1,5 +1,5 @@
-#ifndef _FASTMETRICS_IMETRIC_HPP
-#define _FASTMETRICS_IMETRIC_HPP
+#ifndef FASTMETRICS_IMETRIC_HPP
+#define FASTMETRICS_IMETRIC_HPP
 
 /**
  * @file iMetric.hpp
@@ -144,4 +144,4 @@ public:
 
 } // namespace fastmetrics
 
-#endif // _FASTMETRICS_IMETRIC_HPP
+#endif // FASTMETRICS_IMETRIC_HPP

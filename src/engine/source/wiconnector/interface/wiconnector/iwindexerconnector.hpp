@@ -145,6 +145,15 @@ public:
      * @return The number of events in the queue
      */
     virtual uint64_t getQueueSize() = 0;
+
+    /**
+     * @brief Gets the number of events dropped by the indexer.
+     *
+     * Returns the number of events that were dropped and not sent to the indexer.
+     *
+     * @return The number of dropped events
+     */
+    virtual uint64_t getDroppedEvents() = 0;
 };
 
 } // namespace wiconnector

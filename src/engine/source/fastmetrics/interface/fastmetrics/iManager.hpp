@@ -1,5 +1,5 @@
-#ifndef _FASTMETRICS_IMANAGER_HPP
-#define _FASTMETRICS_IMANAGER_HPP
+#ifndef FASTMETRICS_IMANAGER_HPP
+#define FASTMETRICS_IMANAGER_HPP
 
 /**
  * @file iManager.hpp
@@ -116,4 +116,4 @@ public:
 
 } // namespace fastmetrics
 
-#endif // _FASTMETRICS_IMANAGER_HPP
+#endif // FASTMETRICS_IMANAGER_HPP

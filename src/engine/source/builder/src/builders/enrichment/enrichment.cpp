@@ -10,6 +10,7 @@ namespace
 {
 constexpr std::string_view JPATH_ORIGIN_SPACE = "/wazuh/space/name";                   ///< wazuh.space.name
 const json::PointerPath PP_INTEGRATION_CATEGORY {"/wazuh/integration/category"};       ///< wazuh.integration.category
+constexpr std::string_view JPATH_INTEGRATION_DECODERS = "/wazuh/integration/decoders"; ///< wazuh.integration.decoders
 const std::string ENRICHMENT_SPACE_TRACEABLE_NAME = "enrichment/OriginSpace";
 const std::string UNCLASSIFIED_FILTER_TRACEABLE_NAME = "filter/UnclassifiedEvents";
 const std::string DISCARDED_EVENTS_FILTER_TRACEABLE_NAME = "filter/DiscardedEvents";
@@ -137,6 +138,28 @@ getDiscardedEventsFilter(const cm::store::dataType::Policy& policy,
         });
 
     return std::make_pair(makeTraceableSuccessExpression(op, trace), DISCARDED_EVENTS_FILTER_TRACEABLE_NAME);
+}
+
+base::Expression postOutputUnclassifiedCounter(const std::string& spaceName,
+                                               std::shared_ptr<fastmetrics::ICounter> unclassifiedCounter)
+{
+    return base::Term<base::EngineOp>::create(
+        "postOutputUnclassified",
+        [unclassifiedCounter](base::Event event) -> base::result::Result<base::Event>
+        {
+            try
+            {
+                if (event->size(JPATH_INTEGRATION_DECODERS) == 1)
+                {
+                    unclassifiedCounter->add(1);
+                }
+            }
+            catch (...)
+            {
+                // Ignore size() errors
+            }
+            return base::result::makeSuccess<decltype(event)>(event);
+        });
 }
 
 std::pair<base::Expression, std::string> getCleanupDecoderVariables(bool enabled, bool trace)

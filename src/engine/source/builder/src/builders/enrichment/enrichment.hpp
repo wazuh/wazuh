@@ -32,6 +32,16 @@ inline base::Expression makeTraceableSuccessExpression(const base::Expression& e
 }
 
 /**
+ * @brief Create an expression that increments the unclassified events metric after output.
+ *
+ * @param spaceName space's name, used to create a space-specific metric.
+ * @param unclassifiedCounter Counter to increment for unclassified events.
+ * @return base::Expression The post-output expression.
+ */
+base::Expression postOutputUnclassifiedCounter(const std::string& spaceName,
+                                               std::shared_ptr<fastmetrics::ICounter> unclassifiedCounter);
+
+/**
  * @brief Get the enrichment expression and traceable name for the space defined in the policy.
  *
  * @param policy Policy data.

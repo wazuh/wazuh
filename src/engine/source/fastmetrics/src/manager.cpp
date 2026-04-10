@@ -1,5 +1,5 @@
-#include <fastmetrics/manager.hpp>
-
+#include <chrono>
+#include <fmt/format.h>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
@@ -7,7 +7,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include <base/logging.hpp>
+
 #include <fastmetrics/iManager.hpp>
+#include <fastmetrics/manager.hpp>
 
 namespace fastmetrics
 {
@@ -77,6 +80,34 @@ void Manager::clear()
 {
     std::unique_lock lock(m_mutex);
     m_metrics.clear();
+}
+
+void Manager::writeAllMetrics(std::shared_ptr<streamlog::WriterEvent> metricsWriter) const
+{
+    try
+    {
+        // Get all metrics and write as JSON
+        auto metricNames = getAllNames();
+        auto now = std::chrono::system_clock::now();
+        auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+
+        for (const auto& name : metricNames)
+        {
+            auto metric = get(name);
+            if (metric)
+            {
+                // Always write the value (disabled metrics return 0)
+                std::string jsonLine =
+                    fmt::format(R"({{"timestamp":{},"name":"{}","value":{}}})", timestamp, name, metric->value());
+
+                (*metricsWriter)(std::move(jsonLine));
+            }
+        }
+    }
+    catch (const std::exception& e)
+    {
+        LOG_WARNING("Metrics logging error: {}", e.what());
+    }
 }
 
 } // namespace fastmetrics

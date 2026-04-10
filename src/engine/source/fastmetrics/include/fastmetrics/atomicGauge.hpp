@@ -1,5 +1,5 @@
-#ifndef _FASTMETRICS_ATOMIC_GAUGE_HPP
-#define _FASTMETRICS_ATOMIC_GAUGE_HPP
+#ifndef FASTMETRICS_ATOMIC_GAUGE_HPP
+#define FASTMETRICS_ATOMIC_GAUGE_HPP
 
 #include <atomic>
 #include <string>
@@ -143,4 +143,4 @@ public:
 
 } // namespace fastmetrics
 
-#endif // _FASTMETRICS_ATOMIC_GAUGE_HPP
+#endif // FASTMETRICS_ATOMIC_GAUGE_HPP

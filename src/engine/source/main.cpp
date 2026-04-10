@@ -420,17 +420,30 @@ int main(int argc, char* argv[])
                 indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf.str(), maxHitsPerRequest);
 
                 // Register pull metric for indexer queue (output/egress)
+                std::weak_ptr<wiconnector::WIndexerConnector> wIndexer = indexerConnector;
                 FASTMETRICS_PULL(uint64_t,
-                                 "indexer.queue.size",
-                                 [connector = indexerConnector]() { return connector->getQueueSize(); });
+                                 fastmetrics::names::INDEXER_QUEUE_SIZE,
+                                 [wIndexer]()
+                                 {
+                                     auto connector = wIndexer.lock();
+                                     return connector ? connector->getQueueSize() : 0;
+                                 });
 
-                // Indexer queue usage percentage
-                auto indexerQueueUsageGetter = [connector = indexerConnector, maxQueueSize]()
+                FASTMETRICS_PULL(uint64_t,
+                                 fastmetrics::names::INDEXER_EVENTS_DROPPED,
+                                 [wIndexer]()
+                                 {
+                                     auto connector = wIndexer.lock();
+                                     return connector ? connector->getDroppedEvents() : 0;
+                                 });
+
+                auto indexerQueueUsageGetter = [wIndexer, maxQueueSize]()
                 {
-                    auto currentSize = connector->getQueueSize();
+                    auto connector = wIndexer.lock();
+                    auto currentSize = connector ? connector->getQueueSize() : 0;
                     return maxQueueSize > 0 ? (static_cast<double>(currentSize) * 100.0 / maxQueueSize) : 0.0;
                 };
-                FASTMETRICS_PULL(double, "indexer.queue.usage.percent", indexerQueueUsageGetter);
+                FASTMETRICS_PULL(double, fastmetrics::names::INDEXER_QUEUE_USAGE_PERCENT, indexerQueueUsageGetter);
 
                 // Log pending events from previous sessions
                 const auto pendingEvents = indexerConnector->getQueueSize();
@@ -788,43 +801,16 @@ int main(int argc, char* argv[])
                     .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
                     .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
 
-                auto metricsWriter = streamLogger->ensureAndGetWriter("metrics", metricsChannelConfig, "json");
+                auto metricsWriter = streamLogger->ensureAndGetWriter("engine-metrics", metricsChannelConfig, "json");
 
-                scheduler::TaskConfig metricsConfig {
-                    .interval = confManager.get<size_t>(conf::key::METRICS_LOG_INTERVAL),
-                    .CPUPriority = 0,
-                    .timeout = 0,
-                    .taskFunction = [metricsWriter, metricsManager]()
-                    {
-                        try
-                        {
-
-                            // Get all metrics and write as JSON
-                            auto metricNames = metricsManager->getAllNames();
-                            auto now = std::chrono::system_clock::now();
-                            auto timestamp =
-                                std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-
-                            for (const auto& name : metricNames)
-                            {
-                                auto metric = metricsManager->get(name);
-                                if (metric)
-                                {
-                                    // Always write the value (disabled metrics return 0)
-                                    std::string jsonLine = fmt::format(R"({{"timestamp":{},"name":"{}","value":{}}})",
-                                                                       timestamp,
-                                                                       name,
-                                                                       metric->value());
-
-                                    (*metricsWriter)(std::move(jsonLine));
-                                }
-                            }
-                        }
-                        catch (const std::exception& e)
-                        {
-                            LOG_WARNING("Metrics logging error: {}", e.what());
-                        }
-                    }};
+                scheduler::TaskConfig metricsConfig {.interval =
+                                                         confManager.get<size_t>(conf::key::METRICS_LOG_INTERVAL),
+                                                     .CPUPriority = 0,
+                                                     .timeout = 0,
+                                                     .taskFunction = [metricsWriter, metricsManager]()
+                                                     {
+                                                         metricsManager->writeAllMetrics(metricsWriter);
+                                                     }};
 
                 scheduler->scheduleTask("MetricsLogger", std::move(metricsConfig));
                 LOG_INFO("Metrics stream logging enabled (interval: {} seconds, on-demand channel creation).",

@@ -369,6 +369,13 @@ public:
     uint64_t getQueueSize() const;
 
     /**
+     * @brief Get the total number of dropped events.
+     *
+     * @return The number of events that have been dropped.
+     */
+    uint64_t getDroppedEvents() const;
+
+    /**
      * @brief Create a Point In Time (PIT) for the specified indices.
      *
      * Creates a PIT context that can be used for consistent pagination across multiple search requests.

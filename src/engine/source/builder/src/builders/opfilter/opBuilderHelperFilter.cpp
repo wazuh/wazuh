@@ -1934,10 +1934,6 @@ FilterOp opBuilderHelperIndexUnclassifiedEvents(const Reference& targetField,
     auto name = buildCtx->context().opName;
     const bool policyIndexUnclassified = buildCtx->context().indexUnclassifiedEvents;
 
-    // Per-space metric: count unclassified events in this space
-    const auto& spaceName = buildCtx->context().originSpace;
-    auto unclassifiedCounter = fastmetrics::manager().getOrCreateCounter("space." + spaceName + ".events.unclassified");
-
     // Tracing
     const std::string successTrace {
         fmt::format("[{}] -> Success: Policy index_unclassified_events=true and array has 1 element", name)};
@@ -1948,14 +1944,12 @@ FilterOp opBuilderHelperIndexUnclassifiedEvents(const Reference& targetField,
     const std::string failureTrace3 {fmt::format(
         "[{}] -> Failure: Policy index_unclassified_events=false or array does not have exactly 1 element", name)};
 
-    // Return Op
     return [=, runState = buildCtx->runState(), targetField = targetField.jsonPath()](
                base::ConstEvent event) -> FilterResult
     {
         // Check if policy flag is enabled
         if (!policyIndexUnclassified)
         {
-            unclassifiedCounter->add(1);
             RETURN_FAILURE(runState, false, failureTrace3);
         }
 
@@ -1970,7 +1964,6 @@ FilterOp opBuilderHelperIndexUnclassifiedEvents(const Reference& targetField,
         {
             if (event->size(targetField) == 1)
             {
-                unclassifiedCounter->add(1);
                 RETURN_SUCCESS(runState, true, successTrace);
             }
         }

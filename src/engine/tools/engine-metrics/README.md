@@ -18,12 +18,12 @@ last 300 data points (approximately 5 minutes at 1-second intervals).
 
 ```bash
 engine-metrics dashboard
-engine-metrics dashboard --log-dir /var/wazuh-manager/logs/metrics --port 5000
+engine-metrics dashboard --log-dir /var/wazuh-manager/logs/engine-metrics --port 5000
 ```
 
 | Option       | Default                            | Description                  |
 |--------------|------------------------------------|------------------------------|
-| `--log-dir`  | `/var/wazuh-manager/logs/metrics`  | Metrics log directory        |
+| `--log-dir`  | `/var/wazuh-manager/logs/engine-metrics`  | Metrics log directory        |
 | `--port`     | `5000`                             | Dashboard HTTP port          |
 
 ### Plot (static report server)
@@ -33,14 +33,14 @@ metrics across the entire file. Useful for post-mortem analysis.
 
 ```bash
 engine-metrics plot                                    # latest file in default log dir
-engine-metrics plot /var/wazuh-manager/logs/metrics/2026-04-08.json
+engine-metrics plot /var/wazuh-manager/logs/engine-metrics/2026-04-08.json
 engine-metrics plot --port 5001
 ```
 
 | Option       | Default                            | Description                          |
 |--------------|------------------------------------|--------------------------------------|
 | `file`       | *(latest in --log-dir)*            | Path to NDJSON metrics log file      |
-| `--log-dir`  | `/var/wazuh-manager/logs/metrics`  | Fallback directory if no file given  |
+| `--log-dir`  | `/var/wazuh-manager/logs/engine-metrics`  | Fallback directory if no file given  |
 | `--port`     | `5001`                             | Port to serve the report             |
 
 ### Dump (one-shot metrics dump via API)

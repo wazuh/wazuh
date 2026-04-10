@@ -293,20 +293,22 @@ Orchestrator::Orchestrator(const Options& opt)
     m_testTimeout = opt.m_testTimeout;
     m_wStore = opt.m_wStore;
 
-    // Register pull metrics for queue monitoring (zero overhead, on-demand)
-    // Captures shared_ptr to ensure queues remain valid
-    FASTMETRICS_PULL(
-        size_t, "router.queue.size", [eventQueue = m_eventQueue]() { return eventQueue ? eventQueue->size() : 0; });
-
-    // Input queue usage percentage
-    FASTMETRICS_PULL(double,
-                     "router.queue.usage.percent",
-                     [eventQueue = m_eventQueue]()
+    std::weak_ptr<decltype(m_eventQueue)::element_type> wEventQueue = m_eventQueue;
+    FASTMETRICS_PULL(size_t,
+                     fastmetrics::names::ROUTER_QUEUE_SIZE,
+                     [wEventQueue]()
                      {
+                         auto eventQueue = wEventQueue.lock();
+                         return eventQueue ? eventQueue->size() : 0;
+                     });
+
+    FASTMETRICS_PULL(double,
+                     fastmetrics::names::ROUTER_QUEUE_USAGE_PERCENT,
+                     [wEventQueue]()
+                     {
+                         auto eventQueue = wEventQueue.lock();
                          if (!eventQueue)
-                         {
                              return 0.0;
-                         }
                          auto size = eventQueue->size();
                          auto freeSlots = eventQueue->aproxFreeSlots();
                          auto total = size + freeSlots;
@@ -314,21 +316,26 @@ Orchestrator::Orchestrator(const Options& opt)
                      });
 
     // Total events dropped at input (never resets, unlike contention window counter)
-    m_droppedInputCounter = fastmetrics::manager().getOrCreateCounter("server.events.dropped.input");
+    m_droppedInputCounter = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::ROUTER_EVENTS_DROPPED);
 
     // EPS sliding-window rates (1m, 5m, 30m) derived from the processed counter
     {
-        auto eventsProcessedCounter = fastmetrics::manager().getOrCreateCounter("router.events.processed");
+        auto eventsProcessedCounter = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::ROUTER_EVENTS_PROCESSED);
 
         auto epsRate = std::make_shared<fastmetrics::SlidingWindowRate>([eventsProcessedCounter]() -> uint64_t
                                                                         { return eventsProcessedCounter->get(); });
 
-        FASTMETRICS_PULL(double, "router.eps.1m", [epsRate]() { return epsRate->getRate(std::chrono::seconds(60)); });
+        FASTMETRICS_PULL(double,
+                         fastmetrics::names::ROUTER_EPS_1M,
+                         [epsRate]() { return epsRate->getRate(std::chrono::seconds(60)); });
 
-        FASTMETRICS_PULL(double, "router.eps.5m", [epsRate]() { return epsRate->getRate(std::chrono::seconds(300)); });
+        FASTMETRICS_PULL(double,
+                         fastmetrics::names::ROUTER_EPS_5M,
+                         [epsRate]() { return epsRate->getRate(std::chrono::seconds(300)); });
 
-        FASTMETRICS_PULL(
-            double, "router.eps.30m", [epsRate]() { return epsRate->getRate(std::chrono::seconds(1800)); });
+        FASTMETRICS_PULL(double,
+                         fastmetrics::names::ROUTER_EPS_30M,
+                         [epsRate]() { return epsRate->getRate(std::chrono::seconds(1800)); });
     }
 
     // Get the initial states from the store

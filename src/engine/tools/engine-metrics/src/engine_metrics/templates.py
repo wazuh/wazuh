@@ -112,6 +112,10 @@ DASHBOARD_HTML = """
                 <div class="chart-title">Output Queue (indexer) - Usage %</div>
                 <div id="chart-indexer-percent"></div>
             </div>
+            <div class="chart-container">
+                <div class="chart-title">Output Queue (indexer) - Dropped Events</div>
+                <div id="chart-indexer-dropped"></div>
+            </div>
             </div>
         </div>
 
@@ -155,10 +159,6 @@ DASHBOARD_HTML = """
                     <div class="chart-title">Discarded in Post-filter</div>
                     <div id="chart-space-postfilter"></div>
                 </div>
-                <div class="chart-container">
-                    <div class="chart-title">Dropped at Output</div>
-                    <div id="chart-space-dropped-output"></div>
-                </div>
             </div>
         </div>
     </div>
@@ -171,14 +171,15 @@ DASHBOARD_HTML = """
             'server.bytes.received': {x: [], y: []},
             'server.events.received': {x: [], y: []},
             'router.events.processed': {x: [], y: []},
-            'server.events.dropped.input': {x: [], y: []},
+            'router.events.dropped': {x: [], y: []},
             'router.eps.1m': {x: [], y: []},
             'router.eps.5m': {x: [], y: []},
             'router.eps.30m': {x: [], y: []},
             'router.queue.size': {x: [], y: []},
             'router.queue.usage.percent': {x: [], y: []},
             'indexer.queue.size': {x: [], y: []},
-            'indexer.queue.usage.percent': {x: [], y: []}
+            'indexer.queue.usage.percent': {x: [], y: []},
+            'indexer.events.dropped': {x: [], y: []}
         };
 
         const allSpaceData = {};
@@ -189,16 +190,14 @@ DASHBOARD_HTML = """
             'events.unclassified': 'chart-space-unclassified',
             'events.discarded': 'chart-space-discarded',
             'events.discarded.prefilter': 'chart-space-prefilter',
-            'events.discarded.postfilter': 'chart-space-postfilter',
-            'events.dropped.output': 'chart-space-dropped-output'
+            'events.discarded.postfilter': 'chart-space-postfilter'
         };
 
         const spaceMetricColors = {
             'events.unclassified': '#ab47bc',
             'events.discarded': '#ef5350',
             'events.discarded.prefilter': '#ffa726',
-            'events.discarded.postfilter': '#42a5f5',
-            'events.dropped.output': '#e91e63'
+            'events.discarded.postfilter': '#42a5f5'
         };
 
         const layoutTemplate = {
@@ -225,7 +224,7 @@ DASHBOARD_HTML = """
         initChart('chart-bytes-received', 'server.bytes.received', '#9c27b0', 'Bytes');
         initChart('chart-events-received', 'server.events.received', '#2196f3', 'Events');
         initChart('chart-processed-total', 'router.events.processed', '#8bc34a', 'Events');
-        initChart('chart-dropped-input', 'server.events.dropped.input', '#ff5722', 'Events (total)');
+        initChart('chart-dropped-input', 'router.events.dropped', '#ff5722', 'Events (total)');
         initChart('chart-eps-1m', 'router.eps.1m', '#00bcd4', 'Events/sec');
         initChart('chart-eps-5m', 'router.eps.5m', '#0097a7', 'Events/sec');
         initChart('chart-eps-30m', 'router.eps.30m', '#00838f', 'Events/sec');
@@ -233,19 +232,21 @@ DASHBOARD_HTML = """
         initChart('chart-queue-percent', 'router.queue.usage.percent', '#ffc107', 'Usage %');
         initChart('chart-indexer', 'indexer.queue.size', '#e91e63', 'Queue Size');
         initChart('chart-indexer-percent', 'indexer.queue.usage.percent', '#795548', 'Usage %');
+        initChart('chart-indexer-dropped', 'indexer.events.dropped', '#f44336', 'Events Dropped');
 
         const metricChartMap = {
             'server.bytes.received': 'chart-bytes-received',
             'server.events.received': 'chart-events-received',
             'router.events.processed': 'chart-processed-total',
-            'server.events.dropped.input': 'chart-dropped-input',
+            'router.events.dropped': 'chart-dropped-input',
             'router.eps.1m': 'chart-eps-1m',
             'router.eps.5m': 'chart-eps-5m',
             'router.eps.30m': 'chart-eps-30m',
             'router.queue.size': 'chart-queue',
             'router.queue.usage.percent': 'chart-queue-percent',
             'indexer.queue.size': 'chart-indexer',
-            'indexer.queue.usage.percent': 'chart-indexer-percent'
+            'indexer.queue.usage.percent': 'chart-indexer-percent',
+            'indexer.events.dropped': 'chart-indexer-dropped'
         };
 
         for (const [suffix, chartId] of Object.entries(spaceSuffixes)) {

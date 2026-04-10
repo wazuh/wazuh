@@ -1,5 +1,5 @@
-#ifndef _FASTMETRICS_REGISTRY_HPP
-#define _FASTMETRICS_REGISTRY_HPP
+#ifndef FASTMETRICS_REGISTRY_HPP
+#define FASTMETRICS_REGISTRY_HPP
 
 /**
  * @file registry.hpp
@@ -35,6 +35,7 @@
 
 #include <fastmetrics/iManager.hpp>
 #include <fastmetrics/manager.hpp>
+#include <fastmetrics/metric_names.hpp>
 
 namespace fastmetrics
 {
@@ -73,4 +74,4 @@ Manager& manager();
  */
 #define FASTMETRICS_PULL(type, name, getter) fastmetrics::manager().registerPullMetric<type>(name, getter)
 
-#endif // _FASTMETRICS_REGISTRY_HPP
+#endif // FASTMETRICS_REGISTRY_HPP
