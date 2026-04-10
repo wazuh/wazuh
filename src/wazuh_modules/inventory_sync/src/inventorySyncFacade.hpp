@@ -224,35 +224,46 @@ class InventorySyncFacadeImpl final
                 }
                 else
                 {
-                    // Re-serialize each DataValue as a standalone Message{DataValue} FlatBuffer.
-                    // RocksDB consumers (indexer) expect individual DataValue messages per key.
-                    flatbuffers::FlatBufferBuilder dvBuilder;
-                    const auto* idRaw = dataValue->id();
-                    const auto* idxRaw = dataValue->index();
-                    const auto* dataRaw = dataValue->data();
-                    auto idStr = dvBuilder.CreateString(idRaw ? idRaw->string_view() : std::string_view {});
-                    auto idxStr = dvBuilder.CreateString(idxRaw ? idxRaw->string_view() : std::string_view {});
-                    auto dataVec = dataRaw ? dvBuilder.CreateVector(dataRaw->data(), dataRaw->size())
-                                           : dvBuilder.CreateVector<int8_t>({});
+                    try
+                    {
+                        // Re-serialize each DataValue as a standalone Message{DataValue} FlatBuffer.
+                        // RocksDB consumers (indexer) expect individual DataValue messages per key.
+                        flatbuffers::FlatBufferBuilder dvBuilder;
+                        const auto* idRaw = dataValue->id();
+                        const auto* idxRaw = dataValue->index();
+                        const auto* dataRaw = dataValue->data();
+                        auto idStr = dvBuilder.CreateString(idRaw ? idRaw->string_view() : std::string_view {});
+                        auto idxStr = dvBuilder.CreateString(idxRaw ? idxRaw->string_view() : std::string_view {});
+                        auto dataVec = dataRaw ? dvBuilder.CreateVector(dataRaw->data(), dataRaw->size())
+                                               : dvBuilder.CreateVector<int8_t>({});
 
-                    Wazuh::SyncSchema::DataValueBuilder dataValueBuilder(dvBuilder);
-                    dataValueBuilder.add_seq(dataValue->seq());
-                    dataValueBuilder.add_session(dataValue->session());
-                    dataValueBuilder.add_id(idStr);
-                    dataValueBuilder.add_index(idxStr);
-                    dataValueBuilder.add_version(dataValue->version());
-                    dataValueBuilder.add_operation(dataValue->operation());
-                    dataValueBuilder.add_data(dataVec);
-                    auto dvOffset = dataValueBuilder.Finish();
+                        Wazuh::SyncSchema::DataValueBuilder dataValueBuilder(dvBuilder);
+                        dataValueBuilder.add_seq(dataValue->seq());
+                        dataValueBuilder.add_session(dataValue->session());
+                        dataValueBuilder.add_id(idStr);
+                        dataValueBuilder.add_index(idxStr);
+                        dataValueBuilder.add_version(dataValue->version());
+                        dataValueBuilder.add_operation(dataValue->operation());
+                        dataValueBuilder.add_data(dataVec);
+                        auto dvOffset = dataValueBuilder.Finish();
 
-                    auto msgOffset = Wazuh::SyncSchema::CreateMessage(
-                        dvBuilder, Wazuh::SyncSchema::MessageType_DataValue, dvOffset.Union());
-                    dvBuilder.Finish(msgOffset);
+                        auto msgOffset = Wazuh::SyncSchema::CreateMessage(
+                            dvBuilder, Wazuh::SyncSchema::MessageType_DataValue, dvOffset.Union());
+                        dvBuilder.Finish(msgOffset);
 
-                    it->second.handleData(dataValue, dvBuilder.GetBufferPointer(), dvBuilder.GetSize());
-                    logDebug2(LOGGER_DEFAULT_TAG,
-                              "InventorySyncFacade::start: DataBatch item handled for session %llu",
-                              dataValue->session());
+                        it->second.handleData(dataValue, dvBuilder.GetBufferPointer(), dvBuilder.GetSize());
+                        logDebug2(LOGGER_DEFAULT_TAG,
+                                  "InventorySyncFacade::start: DataBatch item handled for session %llu",
+                                  dataValue->session());
+                    }
+                    catch (const std::exception& e)
+                    {
+                        logError(LOGGER_DEFAULT_TAG,
+                                 "InventorySyncFacade::start: DataBatch item failed for session %llu, seq %llu: %s",
+                                 dataValue->session(),
+                                 dataValue->seq(),
+                                 e.what());
+                    }
                 }
             }
         }
@@ -1254,6 +1265,12 @@ public:
                         break;
                     }
 
+                    // Release condition-variable mutex before acquiring the sessions mutex
+                    // to match the canonical lock order (m_agentSessionsMutex → m_blockedAgentsMutex)
+                    // and avoid a data race with worker threads that hold m_agentSessionsMutex.
+                    lock.unlock();
+
+                    std::unique_lock agentSessionsLock(m_agentSessionsMutex);
                     std::erase_if(m_agentSessions,
                                   [this](const auto& pair)
                                   {
