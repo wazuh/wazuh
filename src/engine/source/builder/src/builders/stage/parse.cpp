@@ -53,7 +53,13 @@ StageBuilder getParseBuilder(std::shared_ptr<hlp::logpar::Logpar> logpar, size_t
             auto itemObj = item.getObject().value();
             auto field = json::Json::formatJsonPath(std::get<0>(itemObj[0]));
             std::string logparExpr;
-            std::get<1>(itemObj[0]).getString(logparExpr);
+            if (std::get<1>(itemObj[0]).getString(logparExpr) != json::RetGet::Success)
+            {
+                throw std::runtime_error(
+                    fmt::format(R"(Invalid logpar expression type for field "{}": Expected a "string" but got "{}")",
+                                field,
+                                std::get<1>(itemObj[0]).typeName()));
+            }
             logparExpr = buildCtx->definitions().replace(logparExpr);
 
             hlp::parser::Parser parser;
@@ -81,7 +87,10 @@ StageBuilder getParseBuilder(std::shared_ptr<hlp::logpar::Logpar> logpar, size_t
             {
                 parseExpression = base::Term<base::EngineOp>::create(
                     logparExpr,
-                    [=, runState = buildCtx->runState(), parser = std::move(parser), fieldPP = json::PointerPath(field)](base::Event event)
+                    [=,
+                     runState = buildCtx->runState(),
+                     parser = std::move(parser),
+                     fieldPP = json::PointerPath(field)](base::Event event)
                     {
                         std::string_view ev;
                         if (event->getString(ev, fieldPP) != json::RetGet::Success)

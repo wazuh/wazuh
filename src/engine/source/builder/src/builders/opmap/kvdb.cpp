@@ -95,7 +95,11 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
                                              std::static_pointer_cast<Value>(opArgs[0])->value().str()));
     }
     auto dbName = std::string {};
-    std::static_pointer_cast<const Value>(opArgs[0])->value().getString(dbName);
+    if (std::static_pointer_cast<const Value>(opArgs[0])->value().getString(dbName) != json::RetGet::Success)
+    {
+        throw std::runtime_error(fmt::format("Failed to parse KVDB name from first argument: '{}'",
+                                             std::static_pointer_cast<Value>(opArgs[0])->value().str()));
+    }
 
     // Validate KVDB availability in integration/policy context
     validateKvdbAvailability(buildCtx, dbName);
@@ -234,17 +238,17 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
                 RETURN_FAILURE(runState, event, failureTrace2)
             }
 
-            std::string value;
-            if (event->getString(value, keyRef.jsonPath()) != json::RetGet::Success)
+            if (event->getString(resolvedKey, keyRef.jsonPath()) != json::RetGet::Success)
             {
                 RETURN_FAILURE(runState, event, failureTrace3)
             }
-
-            resolvedKey = std::move(value);
         }
         else
         {
-            std::static_pointer_cast<const Value>(key)->value().getString(resolvedKey);
+            if (std::static_pointer_cast<const Value>(key)->value().getString(resolvedKey) != json::RetGet::Success)
+            {
+                RETURN_FAILURE(runState, event, failureTrace3)
+            }
         }
         // Get value from KVDB
         try
@@ -354,7 +358,11 @@ FilterOp existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
     }
 
     auto dbName = std::string {};
-    std::static_pointer_cast<const Value>(opArgs[0])->value().getString(dbName);
+    if (std::static_pointer_cast<const Value>(opArgs[0])->value().getString(dbName) != json::RetGet::Success)
+    {
+        throw std::runtime_error(fmt::format("Failed to parse KVDB name from first argument: '{}'",
+                                             std::static_pointer_cast<Value>(opArgs[0])->value().str()));
+    }
 
     // Validate KVDB availability in integration/policy context
     validateKvdbAvailability(buildCtx, dbName);
@@ -472,7 +480,11 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
                                                  std::static_pointer_cast<Value>(opArgs[0])->value().str()));
         }
         auto dbName = std::string {};
-        std::static_pointer_cast<const Value>(opArgs[0])->value().getString(dbName);
+        if (std::static_pointer_cast<const Value>(opArgs[0])->value().getString(dbName) != json::RetGet::Success)
+        {
+            throw std::runtime_error(fmt::format("Failed to parse KVDB name from first argument: '{}'",
+                                                 std::static_pointer_cast<Value>(opArgs[0])->value().str()));
+        }
 
         // Validate KVDB availability in integration/policy context
         validateKvdbAvailability(buildCtx, dbName);
@@ -624,7 +636,10 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
                 try
                 {
                     std::string jKeyStr;
-                    jKey.getString(jKeyStr);
+                    if (jKey.getString(jKeyStr) != json::RetGet::Success)
+                    {
+                        RETURN_FAILURE(runState, event, failureTrace3)
+                    }
                     const json::Json& jValue = kvdbHandler->get(jKeyStr);
 
                     if (first)
@@ -781,9 +796,17 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
     }
 
     std::string dbName;
-    std::static_pointer_cast<Value>(opArgs[0])->value().getString(dbName);
+    if (std::static_pointer_cast<Value>(opArgs[0])->value().getString(dbName) != json::RetGet::Success)
+    {
+        throw std::runtime_error(fmt::format("Failed to parse KVDB name from first argument: '{}'",
+                                             std::static_pointer_cast<Value>(opArgs[0])->value().str()));
+    }
     std::string keyMap;
-    std::static_pointer_cast<Value>(opArgs[1])->value().getString(keyMap);
+    if (std::static_pointer_cast<Value>(opArgs[1])->value().getString(keyMap) != json::RetGet::Success)
+    {
+        throw std::runtime_error(fmt::format("Failed to parse key map from second argument: '{}'",
+                                             std::static_pointer_cast<Value>(opArgs[1])->value().str()));
+    }
     const auto& maskRef = *std::static_pointer_cast<const Reference>(opArgs[2]);
 
     // Validate KVDB availability in integration/policy context

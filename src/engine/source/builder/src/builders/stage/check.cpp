@@ -131,7 +131,10 @@ base::Expression checkBuilder(const json::Json& definition, const std::shared_pt
     else if (definition.isString())
     {
         std::string strVal;
-        definition.getString(strVal);
+        if (definition.getString(strVal) != json::RetGet::Success)
+        {
+            throw std::runtime_error(fmt::format("Stage 'check' expects a string but got '{}'", definition.typeName()));
+        }
         return checkExpressionBuilder(strVal, buildCtx);
     }
     else

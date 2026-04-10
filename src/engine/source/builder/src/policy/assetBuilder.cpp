@@ -170,7 +170,12 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
                     for (size_t i = 0; i < arr.size(); i++)
                     {
                         std::string parseValue;
-                        arr[i].getString(parseValue);
+                        if (arr[i].getString(parseValue) != json::RetGet::Success)
+                        {
+                            throw std::runtime_error(
+                                fmt::format("Stage parse: Expected array of strings but found value of type '{}'",
+                                            arr[i].typeName()));
+                        }
                         tmp.setString(parseValue, json::Json::formatJsonPath(targetField, true));
                         stageParseValue.appendJson(tmp);
                     }
