@@ -1,10 +1,6 @@
 run-name: Build Wazuh agent Windows i686 - ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
 name: 5.X - Build Wazuh agent Windows (MSI)
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
@@ -13,6 +9,7 @@ on:
       - "packages/**"
       - ".github/workflows/5_builderpackage_agent-windows.yml"
       - ".github/test-modules-windows.json"
+      - ".github/workflows/5_testintegration_windows-integration-tests.yml"
   workflow_dispatch:
     inputs:
       revision:
