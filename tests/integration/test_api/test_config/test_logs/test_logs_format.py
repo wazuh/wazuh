@@ -80,7 +80,7 @@ test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_logs_format.yaml')
 # Configurations
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
-daemons_handler_configuration = {'daemons': API_DAEMONS_REQUIREMENTS}
+daemons_handler_configuration = {'all_daemons': True}
 
 
 # Tests
@@ -165,7 +165,7 @@ def test_logs_formats(test_configuration, test_metadata, add_configuration, trun
         else:
             json_file_monitor.start(callback=generate_callback(API_LOGIN_REQUEST_MSG, {
                     'user': WAZUH_API_USER,
-                    'host': '::1',
+                    'host': r'(::1|127\.0\.0\.1)',
                     'login_route': LOGIN_ROUTE
                 })
             )
@@ -181,7 +181,7 @@ def test_logs_formats(test_configuration, test_metadata, add_configuration, trun
         else:
             plain_file_monitor.start(callback=generate_callback(API_LOGIN_REQUEST_MSG, {
                     'user': WAZUH_API_USER,
-                    'host': '::1',
+                    'host': r'(::1|127\.0\.0\.1)',
                     'login_route': LOGIN_ROUTE
                 })
             )
