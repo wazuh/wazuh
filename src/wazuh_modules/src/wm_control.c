@@ -99,7 +99,7 @@ bool wm_control_wait_for_service_active(const char *service) {
 
                 if (strcmp(state, "inactive") == 0 || strcmp(state, "failed") == 0) {
                     pclose(fp);
-                    mterror(WM_CONTROL_LOGTAG, "Service %s is in state '%s', cannot reload", service, state);
+                    mtwarn(WM_CONTROL_LOGTAG, "Service %s is in state '%s', systemctl cannot reload", service, state);
                     return false;
                 }
 
@@ -142,7 +142,11 @@ size_t wm_control_execute_action(const char *action, const char *service, char *
         case 0:
             if (use_systemd && strcmp(action, "reload") == 0) {
                 if (!wm_control_wait_for_service_active(service)) {
-                    mterror(WM_CONTROL_LOGTAG, "Service %s not active for reload", service);
+                    mtwarn(WM_CONTROL_LOGTAG, "Service %s not active for systemctl, falling back to wazuh-control", service);
+                    char *fallback_cmd[] = {"bin/wazuh-control", (char *)action, NULL};
+                    if (execvp(fallback_cmd[0], fallback_cmd) < 0) {
+                        mterror(WM_CONTROL_LOGTAG, "Error executing %s command via wazuh-control: %s (%d)", action, strerror(errno), errno);
+                    }
                     _exit(1);
                 }
             }
