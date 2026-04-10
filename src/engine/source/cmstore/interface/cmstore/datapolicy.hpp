@@ -138,7 +138,7 @@ public:
             std::string title;
             if (policyJson.getString(title, jsonpolicy::PATH_KEY_TITLE) != json::RetGet::Success || title.empty())
             {
-                return std::string{"Untitled Policy"};
+                return std::string {"Untitled Policy"};
             }
             return title;
         }();
@@ -180,7 +180,8 @@ public:
             for (std::size_t i = 0; i < integrationCount; ++i)
             {
                 std::string integration;
-                if (policyJson.getString(integration, fmt::format("{}/{}", jsonpolicy::PATH_KEY_INTEGRATIONS, i)) != json::RetGet::Success)
+                if (policyJson.getString(integration, fmt::format("{}/{}", jsonpolicy::PATH_KEY_INTEGRATIONS, i))
+                    != json::RetGet::Success)
                 {
                     throw std::runtime_error(fmt::format("Integration at index {} is not a valid string", i));
                 }
@@ -201,7 +202,8 @@ public:
                 for (std::size_t i = 0; i < filtersCount; ++i)
                 {
                     std::string filter;
-                    if (policyJson.getString(filter, fmt::format("{}/{}", jsonpolicy::PATH_KEY_FILTERS, i)) != json::RetGet::Success)
+                    if (policyJson.getString(filter, fmt::format("{}/{}", jsonpolicy::PATH_KEY_FILTERS, i))
+                        != json::RetGet::Success)
                     {
                         throw std::runtime_error(fmt::format("Filter at index {} is not a valid string", i));
                     }
@@ -226,7 +228,8 @@ public:
                 for (std::size_t i = 0; i < enrichmentsCount; ++i)
                 {
                     std::string enrichment;
-                    if (policyJson.getString(enrichment, fmt::format("{}/{}", jsonpolicy::PATH_KEY_ENRICHMENTS, i)) != json::RetGet::Success)
+                    if (policyJson.getString(enrichment, fmt::format("{}/{}", jsonpolicy::PATH_KEY_ENRICHMENTS, i))
+                        != json::RetGet::Success)
                     {
                         throw std::runtime_error(fmt::format("Enrichment at index {} is not a valid string", i));
                     }
@@ -252,7 +255,8 @@ public:
                 for (std::size_t i = 0; i < outputsCount; ++i)
                 {
                     std::string output;
-                    if (policyJson.getString(output, fmt::format("{}/{}", jsonpolicy::PATH_KEY_OUTPUTS, i)) != json::RetGet::Success)
+                    if (policyJson.getString(output, fmt::format("{}/{}", jsonpolicy::PATH_KEY_OUTPUTS, i))
+                        != json::RetGet::Success)
                     {
                         throw std::runtime_error(fmt::format("Output at index {} is not a valid string", i));
                     }
@@ -267,7 +271,8 @@ public:
         auto originSpace = [&]() -> std::string
         {
             std::string originSpace;
-            if (policyJson.getString(originSpace, jsonpolicy::PATH_KEY_ORIGIN_SPACE) != json::RetGet::Success || originSpace.empty())
+            if (policyJson.getString(originSpace, jsonpolicy::PATH_KEY_ORIGIN_SPACE) != json::RetGet::Success
+                || originSpace.empty())
             {
                 return std::string(DEFAULT_ORIGIN_SPACE);
             }
@@ -301,7 +306,7 @@ public:
             {
                 throw std::runtime_error("Policy JSON must have a boolean 'index_discarded_events' field");
             }
-            return indexDiscardedOpt.value_or(false);
+            return indexDiscardedOpt.value();
         }();
 
         bool cleanupDecoderVariables = [&]() -> bool

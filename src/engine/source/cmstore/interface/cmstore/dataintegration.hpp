@@ -164,7 +164,8 @@ public:
         for (std::size_t i = 0; i < decoderCount; ++i)
         {
             std::string decoder;
-            if (integrationJson.getString(decoder, fmt::format("{}/{}", jsonintegration::PATH_KEY_DECODERS, i)) != json::RetGet::Success)
+            if (integrationJson.getString(decoder, fmt::format("{}/{}", jsonintegration::PATH_KEY_DECODERS, i))
+                != json::RetGet::Success)
             {
                 throw std::runtime_error(fmt::format("Decoder at index {} is not a valid string", i));
             }
@@ -178,7 +179,8 @@ public:
         for (std::size_t i = 0; i < kvdbCount; ++i)
         {
             std::string kvdb;
-            if (integrationJson.getString(kvdb, fmt::format("{}/{}", jsonintegration::PATH_KEY_KVDBS, i)) != json::RetGet::Success)
+            if (integrationJson.getString(kvdb, fmt::format("{}/{}", jsonintegration::PATH_KEY_KVDBS, i))
+                != json::RetGet::Success)
             {
                 throw std::runtime_error(fmt::format("KVDB at index {} is not a valid string", i));
             }
@@ -187,7 +189,8 @@ public:
 
         std::optional<std::string> defaultParent = std::nullopt;
         std::string defaultParentStr;
-        if (integrationJson.getString(defaultParentStr, jsonintegration::PATH_KEY_DEFAULT_PARENT) == json::RetGet::Success)
+        if (integrationJson.getString(defaultParentStr, jsonintegration::PATH_KEY_DEFAULT_PARENT)
+            == json::RetGet::Success)
         {
             if (defaultParentStr.empty())
             {
@@ -245,7 +248,7 @@ public:
     // getters
     const std::string& getCategory() const { return m_category; }
     const std::optional<std::string>& getDefaultParent() const { return m_defaultParent; }
-    const bool hasDefaultParent() const { return m_defaultParent.has_value(); }
+    bool hasDefaultParent() const { return m_defaultParent.has_value(); }
     const std::vector<std::string>& getKVDBsByUUID() const { return m_kvdbsByUUID; }
     const std::vector<std::string>& getDecodersByUUID() const { return m_decodersByUUID; }
     const std::string& getName() const { return m_name; }
