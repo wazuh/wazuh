@@ -37,6 +37,55 @@ TEST_P(HlpBuildTest, BuildEmptyTarget)
     }
 }
 
+TEST(HlpRunTest, SyntaxFailureReturnsDetailedMessageWhenTraceEnabled)
+{
+    auto parser = getIPParser({"ipParser", "/target", {}, {}});
+    auto event = json::Json {};
+    event.setObject();
+
+    auto error = hlp::parser::run(parser, ".20.30.40", event, true);
+
+    ASSERT_TRUE(error.has_value());
+    EXPECT_FALSE(error->message.empty());
+    EXPECT_NE(error->message.find("Parser ipParser failed at:"), std::string::npos);
+}
+
+TEST(HlpRunTest, SemanticFailureReturnsDetailedMessageWhenTraceEnabled)
+{
+    auto parser = getIPParser({"ipParser", "/target", {}, {}});
+    auto event = json::Json {};
+    event.setObject();
+
+    auto error = hlp::parser::run(parser, "256.168.0.1", event, true);
+
+    ASSERT_TRUE(error.has_value());
+    EXPECT_EQ(error->message, "Invalid IPv4 or IPv6 address");
+}
+
+TEST(HlpRunTest, SyntaxFailureSuppressesMessageWhenTraceDisabled)
+{
+    auto parser = getIPParser({"ipParser", "/target", {}, {}});
+    auto event = json::Json {};
+    event.setObject();
+
+    auto error = hlp::parser::run(parser, ".20.30.40", event, false);
+
+    ASSERT_TRUE(error.has_value());
+    EXPECT_TRUE(error->message.empty());
+}
+
+TEST(HlpRunTest, SemanticFailureSuppressesMessageWhenTraceDisabled)
+{
+    auto parser = getIPParser({"ipParser", "/target", {}, {}});
+    auto event = json::Json {};
+    event.setObject();
+
+    auto error = hlp::parser::run(parser, "256.168.0.1", event, false);
+
+    ASSERT_TRUE(error.has_value());
+    EXPECT_TRUE(error->message.empty());
+}
+
 void parseTest(
     bool success, std::string_view input, const json::Json& expected, size_t index, const hlp::parser::Parser& parser)
 {
