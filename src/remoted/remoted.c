@@ -15,6 +15,10 @@
 #include "shared.h"
 #include "os_net/os_net.h"
 #include "remoted.h"
+#include "os_auth/auth.h"
+
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
 #define WM_STRCAT_NO_SEPARATOR 0
 
@@ -22,6 +26,114 @@
 keystore keys;
 remoted logr;
 char* node_name;
+
+/* Forward declaration of the local helper used by load_remoted_tls_contexts(). */
+static SSL_CTX *build_syslog_tls_context(const char *cert,
+                                         const char *key,
+                                         const char *ca_cert,
+                                         int min_version,
+                                         int block_index);
+
+int load_remoted_tls_contexts(remoted *logr_cfg)
+{
+    int i;
+    int any_failed = 0;
+
+    if (logr_cfg == NULL || logr_cfg->conn == NULL) {
+        return 0;
+    }
+
+    for (i = 0; logr_cfg->conn[i] != 0; i++) {
+        if (logr_cfg->conn[i] != SYSLOG_CONN || !logr_cfg->tls_enabled[i]) {
+            continue;
+        }
+
+        logr_cfg->ssl_ctx[i] = build_syslog_tls_context(logr_cfg->tls_cert[i],
+                                                        logr_cfg->tls_key[i],
+                                                        logr_cfg->tls_ca_cert[i],
+                                                        logr_cfg->tls_min_version[i],
+                                                        i);
+        if (logr_cfg->ssl_ctx[i] == NULL) {
+            any_failed = 1;
+        }
+    }
+
+    return any_failed ? -1 : 0;
+}
+
+void free_remoted_tls_contexts(remoted *logr_cfg)
+{
+    int i;
+
+    if (logr_cfg == NULL || logr_cfg->ssl_ctx == NULL || logr_cfg->conn == NULL) {
+        return;
+    }
+
+    for (i = 0; logr_cfg->conn[i] != 0; i++) {
+        if (logr_cfg->ssl_ctx[i] != NULL) {
+            SSL_CTX_free(logr_cfg->ssl_ctx[i]);
+            logr_cfg->ssl_ctx[i] = NULL;
+        }
+    }
+}
+
+static SSL_CTX *build_syslog_tls_context(const char *cert,
+                                         const char *key,
+                                         const char *ca_cert,
+                                         int min_version,
+                                         int block_index)
+{
+    SSL_CTX *ctx;
+    int verify_client = (ca_cert != NULL) ? 1 : 0;
+
+    /* Reuse the same helper that wazuh-authd uses for agent enrollment so every
+     * TLS endpoint in the Wazuh manager shares identical cipher and protocol
+     * policy. auto_method=0 pins the minimum protocol version to TLS 1.2.
+     */
+    ctx = os_ssl_keys(1,                /* is_server */
+                      NULL,             /* os_dir (paths below are already resolvable) */
+                      DEFAULT_CIPHERS,
+                      cert,
+                      key,
+                      ca_cert,          /* NULL disables client cert verification */
+                      0);               /* auto_method=0 -> TLS 1.2 floor */
+    if (ctx == NULL) {
+        merror("Failed to build TLS context for syslog listener block %d. "
+               "Check that the certificate and key files exist and are readable: "
+               "cert='%s', key='%s'.",
+               block_index, cert, key);
+        return NULL;
+    }
+
+    /* Promote the minimum protocol version to TLS 1.3 if the user asked for it.
+     * Older versions of OpenSSL lack SSL_CTX_set_min_proto_version; we require
+     * at least OpenSSL 1.1.0 via the existing authd dependency chain so this
+     * call is always available on supported platforms.
+     */
+    if (min_version >= 13) {
+        if (SSL_CTX_set_min_proto_version(ctx, TLS1_3_VERSION) != 1) {
+            char err_buf[256];
+            ERR_error_string_n(ERR_get_error(), err_buf, sizeof(err_buf));
+            merror("Failed to enforce TLS 1.3 minimum on syslog listener block %d: %s",
+                   block_index, err_buf);
+            SSL_CTX_free(ctx);
+            return NULL;
+        }
+    }
+
+    /* When a CA bundle is supplied, enforce mutual TLS: any client that cannot
+     * present a certificate signed by one of the trusted CAs is rejected during
+     * the handshake. There is no "optional" client cert mode by design — a
+     * half-verified client is a footgun.
+     */
+    if (verify_client) {
+        SSL_CTX_set_verify(ctx,
+                           SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+                           NULL);
+    }
+
+    return ctx;
+}
 
 /* Handle remote connections */
 void HandleRemote(int uid)
@@ -114,19 +226,29 @@ void HandleRemote(int uid)
         merror_exit(REMOTED_NET_PROTOCOL_NOT_SET);
     }
 
-    minfo(STARTUP_MSG " Listening on port %d/%s (%s).",
+    minfo(STARTUP_MSG " Listening on port %d/%s (%s%s).",
         (int)getpid(),
         logr.port[position],
         str_protocol,
-        logr.conn[position] == SECURE_CONN ? "secure" : "syslog");
+        logr.conn[position] == SECURE_CONN ? "secure" : "syslog",
+        (logr.conn[position] == SYSLOG_CONN && logr.tls_enabled[position]) ? " - TLS" : "");
     os_free(str_protocol);
+
+    if (logr.conn[position] == SYSLOG_CONN && logr.tls_enabled[position]) {
+        const char *min_ver = (logr.tls_min_version[position] >= 13) ? "1.3" : "1.2";
+        const char *ca = logr.tls_ca_cert[position];
+        minfo("Syslog TLS ready on port %d (min protocol TLS %s, client cert %s).",
+              logr.port[position],
+              min_ver,
+              ca ? "required (mutual TLS)" : "not required");
+    }
 
     /* If secure connection, deal with it */
     if (logr.conn[position] == SECURE_CONN) {
         HandleSecure();
     }
     else if (logr.proto[position] == REMOTED_NET_PROTOCOL_TCP) {
-        HandleSyslogTCP();
+        HandleSyslogTCP(logr.ssl_ctx[position]);
     }
     else { /* If not, deal with syslog */
         HandleSyslog();
