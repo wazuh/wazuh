@@ -160,8 +160,20 @@ int main(int argc, char **argv)
         merror_exit("Remoted connection is not configured.");
     }
 
+    /* Build TLS contexts for any syslog listener with <tls>yes</tls> set.
+     * This runs before daemonize, chroot, and privilege drop so that
+     * certificate, key, and CA paths can be normal filesystem paths
+     * (absolute or relative to the current working directory). The
+     * resulting SSL_CTX objects survive chroot and fork.
+     */
+    if (load_remoted_tls_contexts(&logr) < 0) {
+        merror_exit("Failed to initialize TLS for one or more syslog listeners. "
+                    "Refusing to start in a degraded state.");
+    }
+
     /* Exit if test_config is set */
     if (test_config) {
+        free_remoted_tls_contexts(&logr);
         exit(0);
     }
 

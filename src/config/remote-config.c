@@ -63,6 +63,13 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_rids_closing_time = "rids_closing_time";
     const char *xml_connection_overtake_time = "connection_overtake_time";
 
+    /* TLS options for syslog input (per-block) */
+    const char *xml_tls = "tls";
+    const char *xml_tls_cert = "tls_cert";
+    const char *xml_tls_key = "tls_key";
+    const char *xml_tls_ca_cert = "tls_ca_cert";
+    const char *xml_tls_min_version = "tls_min_version";
+
     logr = (remoted *)d1;
 
     /* Getting allowed-ips */
@@ -118,7 +125,15 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     logr->proto = (int *) realloc(logr->proto, sizeof(int) * (pl + 2));
     logr->ipv6 = (int *) realloc(logr->ipv6, sizeof(int) * (pl + 2));
     logr->lip = (char **) realloc(logr->lip, sizeof(char *) * (pl + 2));
-    if (!logr->port || !logr->conn || !logr->proto || !logr->ipv6 || !logr->lip) {
+    logr->tls_enabled = (int *) realloc(logr->tls_enabled, sizeof(int) * (pl + 2));
+    logr->tls_cert = (char **) realloc(logr->tls_cert, sizeof(char *) * (pl + 2));
+    logr->tls_key = (char **) realloc(logr->tls_key, sizeof(char *) * (pl + 2));
+    logr->tls_ca_cert = (char **) realloc(logr->tls_ca_cert, sizeof(char *) * (pl + 2));
+    logr->tls_min_version = (int *) realloc(logr->tls_min_version, sizeof(int) * (pl + 2));
+    logr->ssl_ctx = (SSL_CTX **) realloc(logr->ssl_ctx, sizeof(SSL_CTX *) * (pl + 2));
+    if (!logr->port || !logr->conn || !logr->proto || !logr->ipv6 || !logr->lip ||
+        !logr->tls_enabled || !logr->tls_cert || !logr->tls_key || !logr->tls_ca_cert ||
+        !logr->tls_min_version || !logr->ssl_ctx) {
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
 
@@ -127,12 +142,24 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     logr->proto[pl] = 0;
     logr->ipv6[pl] = 0;
     logr->lip[pl] = NULL;
+    logr->tls_enabled[pl] = 0;
+    logr->tls_cert[pl] = NULL;
+    logr->tls_key[pl] = NULL;
+    logr->tls_ca_cert[pl] = NULL;
+    logr->tls_min_version[pl] = 12;     /* Default: TLS 1.2 floor */
+    logr->ssl_ctx[pl] = NULL;
 
     logr->port[pl + 1] = 0;
     logr->conn[pl + 1] = 0;
     logr->proto[pl + 1] = 0;
     logr->ipv6[pl + 1] = 0;
     logr->lip[pl + 1] = NULL;
+    logr->tls_enabled[pl + 1] = 0;
+    logr->tls_cert[pl + 1] = NULL;
+    logr->tls_key[pl + 1] = NULL;
+    logr->tls_ca_cert[pl + 1] = NULL;
+    logr->tls_min_version[pl + 1] = 12;
+    logr->ssl_ctx[pl + 1] = NULL;
 
     logr->rids_closing_time = DEFAULT_RIDS_CLOSING_TIME;
 
@@ -269,6 +296,46 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
 
             OS_ClearNode(children);
 
+        } else if (strcasecmp(node[i]->element, xml_tls) == 0) {
+            if (strcasecmp(node[i]->content, "yes") == 0) {
+                logr->tls_enabled[pl] = 1;
+            } else if (strcasecmp(node[i]->content, "no") == 0) {
+                logr->tls_enabled[pl] = 0;
+            } else {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+        } else if (strcasecmp(node[i]->element, xml_tls_cert) == 0) {
+            if (strlen(node[i]->content) == 0) {
+                merror("Empty value for element '%s'.", node[i]->element);
+                return (OS_INVALID);
+            }
+            os_free(logr->tls_cert[pl]);
+            os_strdup(node[i]->content, logr->tls_cert[pl]);
+        } else if (strcasecmp(node[i]->element, xml_tls_key) == 0) {
+            if (strlen(node[i]->content) == 0) {
+                merror("Empty value for element '%s'.", node[i]->element);
+                return (OS_INVALID);
+            }
+            os_free(logr->tls_key[pl]);
+            os_strdup(node[i]->content, logr->tls_key[pl]);
+        } else if (strcasecmp(node[i]->element, xml_tls_ca_cert) == 0) {
+            if (strlen(node[i]->content) == 0) {
+                merror("Empty value for element '%s'.", node[i]->element);
+                return (OS_INVALID);
+            }
+            os_free(logr->tls_ca_cert[pl]);
+            os_strdup(node[i]->content, logr->tls_ca_cert[pl]);
+        } else if (strcasecmp(node[i]->element, xml_tls_min_version) == 0) {
+            if (strcmp(node[i]->content, "1.2") == 0) {
+                logr->tls_min_version[pl] = 12;
+            } else if (strcmp(node[i]->content, "1.3") == 0) {
+                logr->tls_min_version[pl] = 13;
+            } else {
+                merror("Invalid value for '<%s>': '%s'. Allowed values are '1.2' or '1.3'.",
+                       node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -305,6 +372,38 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     if (logr->conn[pl] == SYSLOG_CONN && defined_queue_size) {
         merror("Invalid option <%s> for Syslog remote connection.", xml_queue_size);
         return OS_INVALID;
+    }
+
+    /* TLS validation: enforce constraints on this block only. */
+    if (logr->tls_enabled[pl]) {
+        if (logr->conn[pl] != SYSLOG_CONN) {
+            merror("<tls> is only supported on syslog listeners. "
+                   "Agent communication is already encrypted by the Wazuh secure protocol.");
+            return OS_INVALID;
+        }
+
+        if (!(logr->proto[pl] & REMOTED_NET_PROTOCOL_TCP)) {
+            merror("<tls>yes</tls> requires <protocol>tcp</protocol>. "
+                   "TLS over UDP (DTLS) is not supported.");
+            return OS_INVALID;
+        }
+
+        if (logr->proto[pl] & REMOTED_NET_PROTOCOL_UDP) {
+            merror("<tls>yes</tls> cannot be combined with UDP. "
+                   "Use a dedicated <protocol>tcp</protocol> listener for TLS.");
+            return OS_INVALID;
+        }
+
+        if (!logr->tls_cert[pl] || !logr->tls_key[pl]) {
+            merror("<tls>yes</tls> requires both <tls_cert> and <tls_key> to be set.");
+            return OS_INVALID;
+        }
+    } else {
+        /* TLS is off: reject orphaned tls_* elements so typos don't go unnoticed. */
+        if (logr->tls_cert[pl] || logr->tls_key[pl] || logr->tls_ca_cert[pl]) {
+            merror("<tls_cert>, <tls_key>, and <tls_ca_cert> require <tls>yes</tls>.");
+            return OS_INVALID;
+        }
     }
 
     return (0);

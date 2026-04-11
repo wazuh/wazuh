@@ -15,6 +15,8 @@
 #define ARGV0 "wazuh-remoted"
 #endif
 
+#include <openssl/ssl.h>
+
 #include "../config/config.h"
 #include "../config/remote-config.h"
 #include "../config/global-config.h"
@@ -73,11 +75,34 @@ void HandleRemote(int uid) __attribute__((noreturn));
 /* Handle Syslog */
 void HandleSyslog(void) __attribute__((noreturn));
 
-/* Handle Syslog TCP */
-void HandleSyslogTCP(void) __attribute__((noreturn));
+/* Handle Syslog TCP. If ssl_ctx is non-NULL, each accepted connection
+ * will perform a TLS handshake before any application data is read. */
+void HandleSyslogTCP(SSL_CTX *ssl_ctx) __attribute__((noreturn));
 
 /* Handle Secure connections */
 void HandleSecure() __attribute__((noreturn));
+
+/**
+ * @brief Build OpenSSL contexts for every syslog listener block that has TLS enabled.
+ *
+ * Must be called before chroot so that certificate, key, and CA bundle files can be
+ * located using natural filesystem paths (absolute or relative to the current working
+ * directory). The resulting SSL_CTX objects are stored on logr->ssl_ctx[] and survive
+ * chroot and fork.
+ *
+ * @param logr Remoted configuration structure populated by Read_Remote().
+ * @return 0 on success, -1 if any TLS-enabled listener failed to build a context.
+ */
+int load_remoted_tls_contexts(remoted *logr);
+
+/**
+ * @brief Release every SSL_CTX owned by logr and clear the pointers.
+ *
+ * Safe to call at any time; skips NULL entries.
+ *
+ * @param logr Remoted configuration structure.
+ */
+void free_remoted_tls_contexts(remoted *logr);
 
 /* Forward active response events */
 void *AR_Forward(void *arg) __attribute__((noreturn));
