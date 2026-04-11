@@ -16,6 +16,7 @@
 
 #include <chrono>
 #include <condition_variable>
+#include <future>
 #include <map>
 #include <mutex>
 #include <set>
@@ -273,6 +274,13 @@ void AgentInfoImpl::stop()
             m_dBSync.reset();
             m_logFunction(LOG_DEBUG, "DBSync connection closed");
         }
+    }
+
+    // Wait for any background flush monitor to finish — m_stopped is already true so the
+    // polling loop inside pollFlushCompletion() will exit on its next iteration.
+    if (m_flushMonitorFuture.valid())
+    {
+        m_flushMonitorFuture.wait();
     }
 
     // Signal sync protocol to stop any ongoing operations AFTER DBSync is cleaned up
@@ -1207,6 +1215,132 @@ bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
     return false;
 }
 
+bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
+{
+    constexpr int FLUSH_POLL_DELAY_MS = 10000;       // 10 seconds between polls
+    constexpr int LOG_PROGRESS_EVERY_N_ATTEMPTS = 6; // Log progress every 60 seconds (6 * 10s)
+    std::map<std::string, int> attempts;
+
+    for (const auto& moduleName : pendingModules)
+    {
+        attempts[moduleName] = 0;
+        m_logFunction(LOG_DEBUG_VERBOSE, "Polling " + moduleName + " for flush completion (async flush)");
+    }
+
+    while (!m_stopped && !pendingModules.empty())
+    {
+        std::vector<std::string> completedModules;
+
+        for (const auto& moduleName : pendingModules)
+        {
+            auto& attempt = attempts[moduleName];
+            attempt++;
+
+            std::string isFlushCompletedMessage = createJsonCommand("is_flush_completed");
+            ModuleResponse pollResponse = queryModuleWithRetry(moduleName, isFlushCompletedMessage);
+
+            if (!pollResponse.success)
+            {
+                m_logFunction(LOG_WARNING,
+                              "Failed to poll flush status for " + moduleName + " (attempt " +
+                              std::to_string(attempt) + "), will retry...");
+                continue;
+            }
+
+            try
+            {
+                nlohmann::json pollJson = nlohmann::json::parse(pollResponse.response);
+
+                if (pollJson.contains("data") && pollJson["data"].contains("status"))
+                {
+                    std::string status = pollJson["data"]["status"].get<std::string>();
+
+                    if (status == "in_progress")
+                    {
+                        if (attempt % LOG_PROGRESS_EVERY_N_ATTEMPTS == 0)
+                        {
+                            m_logFunction(LOG_INFO,
+                                          "Waiting for " + moduleName + " module to complete synchronization (" +
+                                          std::to_string(attempt * FLUSH_POLL_DELAY_MS / 1000) +
+                                          " seconds elapsed)");
+                        }
+                        else
+                        {
+                            m_logFunction(LOG_DEBUG,
+                                          moduleName + " flush still in progress (attempt " +
+                                          std::to_string(attempt) + ")");
+                        }
+                    }
+                    else if (status == "completed")
+                    {
+                        std::string result = pollJson["data"]["result"].get<std::string>();
+                        bool flushSucceeded = (result == "success");
+
+                        m_logFunction(LOG_INFO,
+                                      moduleName + " pending operations completed with result: " + result +
+                                      " (took " + std::to_string(attempt * FLUSH_POLL_DELAY_MS / 1000) +
+                                      " seconds)");
+
+                        if (!flushSucceeded)
+                        {
+                            m_logFunction(LOG_ERROR, moduleName + " flush completed with error");
+                            return false;
+                        }
+
+                        completedModules.push_back(moduleName);
+                    }
+                }
+            }
+            catch (const std::exception& e)
+            {
+                m_logFunction(LOG_WARNING,
+                              "Failed to parse flush poll response from " + moduleName + ": " +
+                              std::string(e.what()) + " - Response: " + pollResponse.response);
+            }
+        }
+
+        for (const auto& moduleName : completedModules)
+        {
+            pendingModules.erase(moduleName);
+        }
+
+        if (!pendingModules.empty())
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(FLUSH_POLL_DELAY_MS));
+        }
+    }
+
+    if (pendingModules.empty())
+    {
+        return true;
+    }
+
+    m_logFunction(LOG_INFO, "Module stopping, aborting pending flush monitoring");
+    return false;
+}
+
+void AgentInfoImpl::monitorFlushCompletion(std::set<std::string> pendingModules)
+{
+    // Join any previous monitor before launching a new one
+    if (m_flushMonitorFuture.valid())
+    {
+        m_flushMonitorFuture.wait();
+    }
+
+    m_logFunction(LOG_DEBUG,
+                  "Background flush monitoring started for " +
+                  std::to_string(pendingModules.size()) + " module(s)");
+
+    m_flushMonitorFuture = std::async(std::launch::async,
+                                      [this, modules = std::move(pendingModules)]() mutable -> bool
+    {
+        bool result = pollFlushCompletion(std::move(modules));
+        m_logFunction(result ? LOG_INFO : LOG_WARNING,
+                      result ? "Background flush monitoring: all module flushes completed successfully"
+                      : "Background flush monitoring: one or more module flushes failed or were interrupted");
+        return result;
+    });
+}
 
 bool AgentInfoImpl::pauseCoordinationModules(std::set<std::string>& pausedModules)
 {
@@ -1495,6 +1629,11 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
         m_logFunction(LOG_DEBUG,
                       "Coordinated modules: " + std::to_string(coordinatedModulesCount) +
                       ", New version: " + std::to_string(newVersion));
+
+        // Step 6: Monitor flush completion in background — modules are already resumed and the
+        // manager has the new version. This does not block coordination; it observes and logs
+        // when each module's pending events have finished reaching the indexer.
+        monitorFlushCompletion(pausedModules);
 
         return true;
     }

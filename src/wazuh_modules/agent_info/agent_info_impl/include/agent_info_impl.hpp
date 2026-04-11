@@ -13,6 +13,7 @@
 
 #include <condition_variable>
 #include <functional>
+#include <future>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -193,6 +194,17 @@ class AgentInfoImpl
         /// @return true if pause completed successfully, false otherwise
         bool pollFimPauseCompletion(const std::string& moduleName);
 
+        /// @brief Poll all requested module flushes until completion.
+        /// @param pendingModules Set of modules with an accepted flush request.
+        /// @return true if all flushes completed successfully, false otherwise.
+        bool pollFlushCompletion(std::set<std::string> pendingModules);
+
+        /// @brief Launch a background thread to monitor flush completion and log results.
+        /// Non-blocking: returns immediately after spawning the monitor thread.
+        /// Any previous monitor is joined first to avoid overlapping monitors.
+        /// @param pendingModules Set of modules whose flush should be observed.
+        void monitorFlushCompletion(std::set<std::string> pendingModules);
+
         /// @brief Pause all coordination modules
         /// @param pausedModules Output parameter for successfully paused modules
         /// @return true if at least one module was paused successfully
@@ -250,6 +262,10 @@ class AgentInfoImpl
 
         /// @brief Flag to track if module has been stopped
         bool m_stopped = false;
+
+        /// @brief Future for the background flush monitor thread launched after each coordination.
+        /// Joined in stop() before cleanup to ensure safe shutdown.
+        std::future<bool> m_flushMonitorFuture;
 
         /// @brief Condition variable for efficient sleep/wake mechanism
         std::condition_variable m_cv;
