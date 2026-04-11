@@ -915,9 +915,6 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
         } else {
             // Wait for sync_interval, checking for pause and flush requests
             for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++) {
-                // Check for pause request (atomic read, no mutex needed)
-                int pause_requested = atomic_int_get(&syscheck.fim_pause_requested);
-
                 // Check for flush request
                 if (atomic_int_get(&fim_flush_in_progress)) {
                     flush_request_detected = true;
