@@ -143,7 +143,7 @@ inline ValueValidator getDateValidator()
             return base::Error {"Value is not a string"};
         }
 
-        std::string val;
+        std::string_view val;
         value.getString(val);
         auto res = dateParser(val);
         if (!res.success())
@@ -166,7 +166,7 @@ inline ValueValidator getIpValidator()
             return base::Error {"Value is not a string"};
         }
 
-        std::string val;
+        std::string_view val;
         value.getString(val);
         auto res = ipParser(val);
 
@@ -190,7 +190,7 @@ inline ValueValidator getBinaryValidator()
             return base::Error {"Value is not a string"};
         }
 
-        std::string val;
+        std::string_view val;
         value.getString(val);
         auto res = binaryParser(val);
 
