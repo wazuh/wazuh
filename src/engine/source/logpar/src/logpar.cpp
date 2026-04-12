@@ -323,13 +323,13 @@ Logpar::Logpar(const json::Json& fieldParserOverrides,
             throw std::runtime_error(fmt::format("Field parser override '{}' not found in schema", key));
         }
 
-        if (!value.isString())
+        std::string_view val;
+        const auto ret = value.getString(val);
+        if (ret != json::RetGet::Success)
         {
             throw std::runtime_error(fmt::format("Field parser override '{}' must be a string", key));
         }
 
-        std::string val;
-        value.getString(val);
         auto parserType = strToParserType(val);
         if (parserType == ParserType::ERROR_TYPE)
         {

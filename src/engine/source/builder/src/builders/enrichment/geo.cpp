@@ -57,28 +57,27 @@ std::vector<MappingConfig> loadMappingConfigs(const json::Json& config)
     std::vector<MappingConfig> mappingConfigs {};
     mappingConfigs.reserve(collection.size());
 
+    const auto parseEcsPath = [](const json::Json& value,
+                                  const std::string& jsonField,
+                                  std::optional<std::string>& dest)
+    {
+        std::string fieldStr;
+        if (value.getString(fieldStr, jsonField) == json::RetGet::Success)
+        {
+            dest = json::Json::formatJsonPath(fieldStr);
+        }
+    };
+
     for (const auto& [key, value] : collection)
     {
+        MappingConfig cfg {};
+        cfg.dotPath = key;
+        cfg.originIpPath = json::Json::formatJsonPath(key);
 
-        MappingConfig config {};
-        config.dotPath = key;
-        config.originIpPath = json::Json::formatJsonPath(key);
+        parseEcsPath(value, "/geo_field", cfg.geoEcsPath);
+        parseEcsPath(value, "/as_field", cfg.asEcsPath);
 
-        // geo_field
-        std::string geoFieldStr;
-        if (value.getString(geoFieldStr, "/geo_field") == json::RetGet::Success)
-        {
-            config.geoEcsPath = json::Json::formatJsonPath(geoFieldStr);
-        }
-
-        // as_ecs_path
-        std::string asFieldStr;
-        if (value.getString(asFieldStr, "/as_field") == json::RetGet::Success)
-        {
-            config.asEcsPath = json::Json::formatJsonPath(asFieldStr);
-        }
-
-        mappingConfigs.push_back(std::move(config));
+        mappingConfigs.push_back(std::move(cfg));
     }
 
     return mappingConfigs;

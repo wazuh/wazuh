@@ -24,13 +24,18 @@ EntryConverter::EntryConverter(const prod::Entry& entry)
 
 EntryConverter::EntryConverter(const json::Json& jEntry)
 {
-    if (jEntry.getString(m_name, NAME_PATH) != json::RetGet::Success
-        || jEntry.getString(m_namespace, NAMESPACE_PATH) != json::RetGet::Success)
+    std::string name, namespaceId, desc;
+    const auto nameRes = jEntry.getString(name, NAME_PATH);
+    const auto namespaceRes = jEntry.getString(namespaceId, NAMESPACE_PATH);
+
+    if (nameRes != json::RetGet::Success || namespaceRes != json::RetGet::Success)
     {
         throw std::runtime_error {"Cannot load the entry: name or namespace is missing"};
     }
 
-    std::string desc;
+    m_name = std::move(name);
+    m_namespace = std::move(namespaceId);
+
     if (jEntry.getString(desc, DESCRIPTION_PATH) == json::RetGet::Success)
     {
         m_description = std::move(desc);

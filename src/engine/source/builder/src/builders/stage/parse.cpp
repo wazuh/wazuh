@@ -97,6 +97,8 @@ StageBuilder getParseBuilder(std::shared_ptr<hlp::logpar::Logpar> logpar, size_t
                         {
                             RETURN_FAILURE(runState, event, failureTrace1);
                         }
+                        // The parser modify the event, but rapidjson use MemoryPoolAllocator,
+                        // so the string_view is still valid after parsing
                         auto error = hlp::parser::run(parser, ev, *event, runState->trace);
                         if (error)
                         {

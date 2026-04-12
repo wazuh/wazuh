@@ -42,12 +42,12 @@ startsWithValue(const Reference& targetField, const Value& value, const std::sha
             RETURN_FAILURE(runState, false, targetNotString);
         }
 
-        std::string targetString;
+        std::string_view targetString;
         if (auto ret = targetValue.getString(targetString); ret != json::RetGet::Success)
         {
             RETURN_FAILURE(runState, false, ret == json::RetGet::NotFound ? targetNotFound : targetNotString);
         }
-        std::string valueString;
+        std::string_view valueString;
         if (auto ret = value.getString(valueString); ret != json::RetGet::Success)
         {
             RETURN_FAILURE(runState, false, ret == json::RetGet::NotFound ? targetNotFound : targetNotString);
@@ -117,12 +117,12 @@ FilterOp startsWithReference(const Reference& targetField,
             RETURN_FAILURE(runState, false, referenceNotString);
         }
 
-        std::string targetString;
+        std::string_view targetString;
         if (auto ret = targetValue.getString(targetString); ret != json::RetGet::Success)
         {
             RETURN_FAILURE(runState, false, ret == json::RetGet::NotFound ? targetNotFound : targetNotString);
         }
-        std::string referenceString;
+        std::string_view referenceString;
         if (auto ret = referenceValue.getString(referenceString); ret != json::RetGet::Success)
         {
             RETURN_FAILURE(runState, false, ret == json::RetGet::NotFound ? referenceNotFound : referenceNotString);
