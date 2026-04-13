@@ -870,9 +870,9 @@ checks:
       technique: ["T1036", "T1564"]
     condition: all
     rules:
-      - "c:systemctl is-enabled apport.service -> r:disabled"
-      - "not f:/etc/default/apport -> n:enabled=(\\d+) compare != 0"
-      - "not c:systemctl is-active apport.service -> r:active"
+      - 'c:sh -c "systemctl is-enabled apport.service 2>&1" -> r:disabled|masked|No such file'
+      - 'not f:/etc/default/apport -> r:^enabled=1'
+      - 'c:sh -c "systemctl is-active apport.service 2>&1" -> r:inactive|failed|No such file'
 
   # 1.6.1 Ensure message of the day is configured properly. (Automated)
   - id: 28537
