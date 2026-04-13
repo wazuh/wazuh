@@ -478,7 +478,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
-    name: IT Windows
+    name: IT Windows - ${{ matrix.name }} (${{ matrix.shard_name }})
     uses: ./.github/workflows/5_testintegration_windows-integration-tests.yml
     with:
       base_branch: ${{ github.event.pull_request.base.ref }}
