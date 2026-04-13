@@ -122,8 +122,8 @@ class InBuffer:
 
         # Command is the first 11 B of command without dashes (in case they were added)
         self.cmd = cmd[:-1].split(b' ')[0]
-        if self.total <= 0 or self.total > MAX_TOTAL_SIZE :
-            raise exception.WazuhClusterError(3050, extra_message=str(self.total))
+        if self.total > MAX_TOTAL_SIZE :
+            raise exception.WazuhClusterError(3050, extra_message=f"Header total size out of range: {self.total}")
         self.payload = bytearray(self.total)
         return header[header_size:]
 
@@ -793,7 +793,6 @@ class Handler(asyncio.Protocol):
             Received data.
         """
         self.in_buffer += message
-
         try:
             for command, counter, payload, flag_divided in self.get_messages():
                 # If the message is a divided one

@@ -7,7 +7,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/001"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rootcheck/001"
       headers:
         Authorization: "Bearer {test_login_token}"
     response: &permission_denied
@@ -19,7 +19,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/002"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rootcheck/002"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -41,7 +41,7 @@ stages:
     request:
       verify: False
       method: DELETE
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/002"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rootcheck/002"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -58,7 +58,7 @@ stages:
     request:
       verify: False
       method: DELETE
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/001"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rootcheck/001"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -73,7 +73,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/001/last_scan"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rootcheck/001/last_scan"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -83,7 +83,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/002/last_scan"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rootcheck/002/last_scan"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -107,7 +107,7 @@ stages:
     request:
       verify: False
       method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rootcheck"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -124,7 +124,7 @@ stages:
     request:
       verify: False
       method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rootcheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -149,7 +149,7 @@ stages:
     request:
       verify: False
       method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rootcheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
