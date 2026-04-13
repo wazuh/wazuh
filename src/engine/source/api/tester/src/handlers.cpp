@@ -904,12 +904,14 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
         ResponseType eResponse {};
         auto eResult = fromOutput(base::getResponse(response));
 
-        // Validate the final output event against WCS schema (informational, non-blocking)
+        // Validate the final output event against WCS schema (informational, non-blocking).
+        // Temporary fields (_...) are cleaned before validation.
         if (auto schemaValidatorLocked = wSchemaValidator.lock())
         {
             const auto& outputEvent = base::getResponse(response).event();
             if (outputEvent)
             {
+                outputEvent->eraseRootKeysByPrefix("_");
                 *eResult.mutable_validation() = validateOutputEvent(*outputEvent, *schemaValidatorLocked);
             }
         }
