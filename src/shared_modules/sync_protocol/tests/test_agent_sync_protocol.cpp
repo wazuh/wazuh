@@ -5702,6 +5702,8 @@ TEST_F(AgentSyncProtocolTest, EndMessageRetryExhaustionDuringStopLogsInfo)
         capturedLogs.push_back({level, msg});
     };
 
+    // syncEndDelay=0 so End is sent immediately after data, giving stop() time to be
+    // called before the retry loop finishes.
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger,
                std::chrono::seconds(0),
                std::chrono::seconds(min_timeout),
@@ -5721,11 +5723,13 @@ TEST_F(AgentSyncProtocolTest, EndMessageRetryExhaustionDuringStopLogsInfo)
         EXPECT_FALSE(result);
     });
 
+    // Wait for the Start message to be sent.
     {
         std::unique_lock<std::mutex> lock(END_RETRY_TEST_MTX);
         END_RETRY_TEST_CV.wait(lock, [] { return END_RETRY_TEST_MSG_COUNT >= 1; });
     }
 
+    // Send StartAck so the protocol advances past the start phase.
     {
         flatbuffers::FlatBufferBuilder builder;
         Wazuh::SyncSchema::StartAckBuilder startAckBuilder(builder);
@@ -5737,11 +5741,13 @@ TEST_F(AgentSyncProtocolTest, EndMessageRetryExhaustionDuringStopLogsInfo)
         protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
     }
 
+    // Wait for the protocol to enter the End-message retry loop.
     {
         std::unique_lock<std::mutex> lock(END_RETRY_TEST_MTX);
         END_RETRY_TEST_CV.wait(lock, [] { return END_RETRY_TEST_MSG_COUNT >= 3; });
     }
 
+    // Stop while waiting for EndAck — wakes the internal cv so retries exhaust quickly.
     protocol->stop();
 
     syncThread.join();
