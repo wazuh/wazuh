@@ -150,18 +150,18 @@ void _getLocalfilesListJSON(logreader* reader, cJSON* array, const char *gpath)
         cJSON_AddItemToObject(file, "query", query);
     }
     // Invalid configuration for journal logs
-    if (reader->journal_log == NULL)
+    if (reader->journal_log == NULL && (!reader->logformat || strcmp(reader->logformat, SOCKET_LOG) != 0))
     {
         cJSON_AddStringToObject(file, "ignore_binaries", reader->filter_binary ? "yes" : "no");
     }
 
-    if (reader->age_str)
+    if (reader->age_str && (!reader->logformat || strcmp(reader->logformat, SOCKET_LOG) != 0))
         cJSON_AddStringToObject(file, "age", reader->age_str);
     if (reader->exclude)
         cJSON_AddStringToObject(file, "exclude", reader->exclude);
 
     if (reader->logformat != NULL && strcmp(reader->logformat, EVENTLOG) != 0 && strcmp(reader->logformat, "command") != 0 &&
-        strcmp(reader->logformat, "full_command") != 0)
+        strcmp(reader->logformat, "full_command") != 0 && strcmp(reader->logformat, SOCKET_LOG) != 0)
     {
 
         if (reader->future == 1)

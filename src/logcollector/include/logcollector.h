@@ -183,6 +183,11 @@ void* read_djbmultilog(logreader* lf, int* rc, int drop_it);
 void* read_command(logreader* lf, int* rc, int drop_it);
 void* read_fullcommand(logreader* lf, int* rc, int drop_it);
 
+#ifndef WIN32
+/* Read datagrams from a UNIX datagram socket */
+void* read_socket(logreader* lf, int* rc, int drop_it);
+#endif
+
 /* Read auditd events */
 void* read_audit(logreader* lf, int* rc, int drop_it);
 

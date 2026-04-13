@@ -92,6 +92,78 @@ Restart the agent to apply the configuration.
 
 ---
 
+## Monitoring UNIX datagram sockets
+
+On UNIX platforms, Logcollector can bind a UNIX datagram socket and receive log messages sent to it by external processes, by using `log_format` set to `socket`.
+
+```xml
+<localfile>
+  <location>/var/run/app.sock</location>
+  <log_format>socket</log_format>
+  <target>agent</target>
+  <out_format target="agent">$(timestamp) $(log)</out_format>
+  <label key="source">app</label>
+  <ignore>healthcheck</ignore>
+  <restrict>ERROR|WARN</restrict>
+</localfile>
+```
+
+The `location` value is a UNIX socket path where Logcollector will create a datagram socket. External processes send log messages as datagrams using `SOCK_DGRAM`. Each datagram is treated as a single log message. If the socket file is removed, Logcollector will detect this and re-create it. Date-based paths and wildcard expansion follow the same resolution flow used by file-backed `localfile` entries.
+
+### Socket-specific options
+
+| Option         | Default       | Description                                                         |
+|----------------|---------------|---------------------------------------------------------------------|
+| `socket_mode`  | `0660`        | Octal permission bits for the socket file.                          |
+| `socket_group` | Process group | Group name for the socket file, resolved at creation time.          |
+| `recv_buffer`  | `65536` (64K) | Minimum kernel receive buffer size (`SO_RCVBUF`). Accepts K/M/G suffixes. Maximum 16M. |
+
+!!! note
+    `recv_buffer` sets a minimum value for `SO_RCVBUF`. If the kernel default is already larger, no change is made. For high-volume sources, increase this to absorb bursts (e.g. `1M`). The value must be between 65536 (the maximum datagram size) and 16M.
+
+### rsyslog integration example
+
+A common use case is forwarding syslog messages from rsyslog to Logcollector via a local UNIX socket. Logcollector creates and owns the socket; rsyslog writes to it.
+
+**Wazuh agent** (`ossec.conf`):
+
+```xml
+<localfile>
+  <location>/var/run/wazuh-rsyslog.sock</location>
+  <log_format>socket</log_format>
+  <socket_mode>0660</socket_mode>
+  <socket_group>syslog</socket_group>
+  <recv_buffer>1M</recv_buffer>
+</localfile>
+```
+
+**rsyslog** (`/etc/rsyslog.d/wazuh.conf`):
+
+```
+# rsyslog v8.24+ (RainerScript)
+module(load="omuxsock")
+action(type="omuxsock" socket="/var/run/wazuh-rsyslog.sock"
+       template="RSYSLOG_TraditionalFileFormat")
+
+# rsyslog legacy syntax (v8.21 and earlier)
+# $ModLoad omuxsock
+# $OMUxSockSocket /var/run/wazuh-rsyslog.sock
+# *.* :omuxsock:
+```
+
+Ensure the rsyslog user belongs to the configured `socket_group`, or set `socket_mode` to `0666`.
+
+!!! note
+    - This log format is available only on UNIX platforms.
+    - Messages must be valid UTF-8 text. Binary payloads and invalid UTF-8 are dropped.
+    - Logcollector creates and owns the socket file — it is removed when the source is closed.
+    - The `age` option is accepted for compatibility but ignored for `log_format=socket`.
+    - Socket readers do not use `file_status.json`, bookmarks, or file rotation and truncation semantics.
+
+Restart the agent after applying the configuration.
+
+---
+
 ## Monitoring log files with environment variables
 
 !!! note

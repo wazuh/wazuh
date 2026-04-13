@@ -11,6 +11,7 @@
 #include "shared.h"
 #include "localfile-config.h"
 #include "config.h"
+#include "os_net.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
@@ -42,6 +43,13 @@ STATIC int w_logcollector_get_macos_log_type(const char * content);
  */
 w_exp_type_t w_check_regex_type(xml_node * node, const char * element);
 
+STATIC void w_logcollector_socket_release(logreader *logf);
+STATIC void w_logreader_release_runtime_entry(logreader *logf);
+STATIC void w_logcollector_validate_socket(logreader *logf,
+                                           const char *xml_localfile_age,
+                                           const char *xml_localfile_future,
+                                           const char *xml_localfile_binaries);
+
 int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     unsigned int pl = 0;
@@ -70,6 +78,9 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_restrict = "restrict";
     const char *xml_localfile_multiline_regex =  "multiline_regex";
     const char *xml_localfile_filter = "filter";
+    const char *xml_localfile_socket_mode = "socket_mode";
+    const char *xml_localfile_socket_group = "socket_group";
+    const char *xml_localfile_recv_buffer = "recv_buffer";
 
     logreader *logf;
     logreader_config *log_config;
@@ -115,6 +126,9 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logf[pl].exists = 1;
     logf[pl].future = 1;
     logf[pl].reconnect_time = DEFAULT_EVENTCHANNEL_REC_TIME;
+#ifndef WIN32
+    logf[pl].socket_fd = -1;
+#endif
     logf[pl].regex_ignore = NULL;
     logf[pl].regex_restrict = NULL;
 
@@ -406,6 +420,11 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 }
 #endif
             } else if (strcmp(logf[pl].logformat, JOURNALD_LOG) == 0) {
+            } else if (strcmp(logf[pl].logformat, SOCKET_LOG) == 0) {
+#ifdef WIN32
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+#endif
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
@@ -556,6 +575,34 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 w_clean_logreader(&logf[pl]);
                 return (0);
             }
+        } else if (strcmp(node[i]->element, xml_localfile_socket_mode) == 0) {
+#ifndef WIN32
+            char *endptr;
+            unsigned long mode_val = strtoul(node[i]->content, &endptr, 0);
+            if (endptr == node[i]->content || *endptr != '\0' || mode_val > 07777) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+            logf[pl].socket_mode = (mode_t)mode_val;
+#endif
+        } else if (strcmp(node[i]->element, xml_localfile_socket_group) == 0) {
+#ifndef WIN32
+            if (strlen(node[i]->content) == 0) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+            os_free(logf[pl].socket_group);
+            os_strdup(node[i]->content, logf[pl].socket_group);
+#endif
+        } else if (strcmp(node[i]->element, xml_localfile_recv_buffer) == 0) {
+#ifndef WIN32
+            long long value = w_validate_bytes(node[i]->content);
+            if (value <= 0 || value > SOCKET_RECV_BUFFER_MAX) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+            logf[pl].socket_recv_buffer = (int)value;
+#endif
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -677,6 +724,32 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             mwarn(LOGCOLLECTOR_OPTION_IGNORED, MACOS, xml_localfile_alias);
         }
     }
+
+    if (strcmp(logf[pl].logformat, SOCKET_LOG) == 0) {
+        w_logcollector_validate_socket(&logf[pl],
+                                       xml_localfile_age,
+                                       xml_localfile_future,
+                                       xml_localfile_binaries);
+    }
+
+#ifndef WIN32
+    /* Warn if socket-specific options are used on non-socket log formats */
+    if (strcmp(logf[pl].logformat, SOCKET_LOG) != 0) {
+        if (logf[pl].socket_mode != 0) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, logf[pl].logformat, xml_localfile_socket_mode);
+            logf[pl].socket_mode = 0;
+        }
+        if (logf[pl].socket_group != NULL) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, logf[pl].logformat, xml_localfile_socket_group);
+            os_free(logf[pl].socket_group);
+        }
+        if (logf[pl].socket_recv_buffer != 0) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, logf[pl].logformat, xml_localfile_recv_buffer);
+            logf[pl].socket_recv_buffer = 0;
+        }
+    }
+#endif
+
     /* Verify Multiline Regex Config */
     if (strcmp(logf[pl].logformat, MULTI_LINE_REGEX) == 0) {
 
@@ -883,7 +956,7 @@ void Free_Localfile(logreader_config * config){
                 if (config->globs[i].gfiles->file) {
                     Free_Logreader(config->globs[i].gfiles);
                     for (j = 1; config->globs[i].gfiles[j].file; j++) {
-                        free(config->globs[i].gfiles[j].file);
+                        w_logreader_release_runtime_entry(&config->globs[i].gfiles[j]);
                     }
                 }
                 free(config->globs[i].gfiles);
@@ -899,7 +972,79 @@ void w_clean_logreader(logreader * logf) {
     if (logf != NULL) {
         Free_Logreader(logf);
         memset(logf, 0, sizeof(logreader));
+#ifndef WIN32
+        logf->socket_fd = -1;
+#endif
     }
+}
+
+STATIC void w_logcollector_socket_release(logreader *logf) {
+#ifndef WIN32
+    if (logf == NULL) {
+        return;
+    }
+
+    if (logf->socket_path != NULL) {
+        OS_CloseSocket(logf->socket_fd);
+        unlink(logf->socket_path);
+        os_free(logf->socket_path);
+        logf->socket_fd = -1;
+    }
+#else
+    (void)logf;
+#endif
+}
+
+STATIC void w_logreader_release_runtime_entry(logreader *logf) {
+    if (logf == NULL) {
+        return;
+    }
+
+    os_free(logf->file);
+    w_multiline_log_config_free(&(logf->multiline));
+
+    if (logf->fp) {
+        fclose(logf->fp);
+        logf->fp = NULL;
+    }
+
+    w_logcollector_socket_release(logf);
+}
+
+STATIC void w_logcollector_validate_socket(logreader *logf,
+                                           const char *xml_localfile_age,
+                                           const char *xml_localfile_future,
+                                           const char *xml_localfile_binaries) {
+    if (logf == NULL) {
+        return;
+    }
+
+    if (logf->age != 0) {
+        mwarn(LOGCOLLECTOR_OPTION_IGNORED, SOCKET_LOG, xml_localfile_age);
+        logf->age = 0;
+        os_free(logf->age_str);
+    }
+
+    if (logf->filter_binary != 0) {
+        mwarn(LOGCOLLECTOR_OPTION_IGNORED, SOCKET_LOG, xml_localfile_binaries);
+        logf->filter_binary = 0;
+    }
+
+    /* diff_max_size is only set when <only-future-events> is explicitly parsed,
+     * so a nonzero value means the user configured it. */
+    if (logf->diff_max_size != 0) {
+        mwarn(LOGCOLLECTOR_OPTION_IGNORED, SOCKET_LOG, xml_localfile_future);
+    }
+    logf->future = 1;
+    logf->diff_max_size = DIFF_DEFAULT_SIZE;
+
+#ifndef WIN32
+    if (logf->socket_recv_buffer != 0 && logf->socket_recv_buffer < OS_MAXSTR) {
+        mwarn("recv_buffer value '%d' is below the minimum (%d). Default will be used.",
+              logf->socket_recv_buffer, OS_MAXSTR);
+        logf->socket_recv_buffer = 0;
+    }
+#endif
 }
 
 void Free_Logreader(logreader * logf) {
@@ -944,6 +1089,11 @@ void Free_Logreader(logreader * logf) {
             fclose(logf->fp);
         }
 
+        w_logcollector_socket_release(logf);
+#ifndef WIN32
+        os_free(logf->socket_group);
+#endif
+
         if (logf->out_format) {
             for (i = 0; logf->out_format[i]; ++i) {
                 free(logf->out_format[i]->target);
@@ -968,12 +1118,7 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *gl
             if (fr) {
                 Free_Logreader(&(*logf)[i]);
             } else {
-                free((*logf)[i].file);
-                // If is a glob entry and multiline is set, we need to free the multiline config
-                w_multiline_log_config_free(&(*logf)[i].multiline);
-                if((*logf)[i].fp) {
-                    fclose((*logf)[i].fp);
-                }
+                w_logreader_release_runtime_entry(&(*logf)[i]);
             #ifdef WIN32
                 pthread_mutex_destroy(&(*logf)[i].mutex);
             #endif

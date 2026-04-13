@@ -759,6 +759,199 @@ void test_w_journal_filter_list_as_json_success(void ** state) {
 }
 
 // ------------------------------------------------
+/* Read_Localfile socket */
+void test_Read_Localfile_socket_age_ignored(void ** state) {
+    logreader_config config = {0};
+    xml_node location = { .element = "location", .content = "/tmp/socket.sock" };
+    xml_node log_format = { .element = "log_format", .content = SOCKET_LOG };
+    xml_node age = { .element = "age", .content = "5m" };
+    xml_node *nodes[] = { &location, &log_format, &age, NULL };
+
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "(8004): log_format 'socket' does not support 'age' option. Option will be ignored.");
+
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
+    assert_non_null(config.config);
+    assert_string_equal(config.config[0].logformat, SOCKET_LOG);
+    assert_string_equal(config.config[0].file, "/tmp/socket.sock");
+    assert_int_equal(config.config[0].age, 0);
+    assert_null(config.config[0].age_str);
+
+    Free_Localfile(&config);
+}
+
+void test_Read_Localfile_socket_target_and_filters(void ** state) {
+    logreader_config config = {0};
+    xml_node location = { .element = "location", .content = "/tmp/socket.sock" };
+    xml_node log_format = { .element = "log_format", .content = SOCKET_LOG };
+    xml_node target = { .element = "target", .content = "custom-target" };
+    xml_node ignore = { .element = "ignore", .content = "drop me" };
+    xml_node restrict_node = { .element = "restrict", .content = "keep me" };
+    xml_node *nodes[] = { &location, &log_format, &target, &ignore, &restrict_node, NULL };
+
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
+    assert_non_null(config.config);
+    assert_string_equal(config.config[0].logformat, SOCKET_LOG);
+    assert_non_null(config.config[0].target);
+    assert_string_equal(config.config[0].target[0], "custom-target");
+    assert_null(config.config[0].target[1]);
+    assert_non_null(config.config[0].regex_ignore);
+    assert_non_null(config.config[0].regex_restrict);
+
+    Free_Localfile(&config);
+}
+
+void test_Read_Localfile_socket_date_location(void ** state) {
+    logreader_config config = {0};
+    char expected_file[OS_FLSIZE + 1] = {0};
+    time_t now = time(NULL);
+    struct tm tm_result = { .tm_sec = 0 };
+    xml_node location = { .element = "location", .content = "/tmp/socket-%Y-%m-%d.sock" };
+    xml_node log_format = { .element = "log_format", .content = SOCKET_LOG };
+    xml_node *nodes[] = { &location, &log_format, NULL };
+
+    localtime_r(&now, &tm_result);
+    assert_true(strftime(expected_file, sizeof(expected_file), location.content, &tm_result) > 0);
+
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
+    assert_non_null(config.config);
+    assert_string_equal(config.config[0].logformat, SOCKET_LOG);
+    assert_string_equal(config.config[0].ffile, location.content);
+    assert_string_equal(config.config[0].file, location.content);
+
+    Free_Localfile(&config);
+}
+
+void test_Read_Localfile_socket_mode_valid(void ** state) {
+    logreader_config config = {0};
+    xml_node location = { .element = "location", .content = "/tmp/socket.sock" };
+    xml_node log_format = { .element = "log_format", .content = SOCKET_LOG };
+    xml_node socket_mode = { .element = "socket_mode", .content = "0640" };
+    xml_node *nodes[] = { &location, &log_format, &socket_mode, NULL };
+
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
+    assert_non_null(config.config);
+    assert_string_equal(config.config[0].logformat, SOCKET_LOG);
+    assert_int_equal(config.config[0].socket_mode, 0640);
+
+    Free_Localfile(&config);
+}
+
+void test_Read_Localfile_socket_mode_invalid(void ** state) {
+    logreader_config config = {0};
+    xml_node location = { .element = "location", .content = "/tmp/socket.sock" };
+    xml_node log_format = { .element = "log_format", .content = SOCKET_LOG };
+    xml_node socket_mode = { .element = "socket_mode", .content = "99999" };
+    xml_node *nodes[] = { &location, &log_format, &socket_mode, NULL };
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1235): Invalid value for element 'socket_mode': 99999.");
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), OS_INVALID);
+
+    Free_Localfile(&config);
+}
+
+void test_Read_Localfile_socket_group_valid(void ** state) {
+    logreader_config config = {0};
+    xml_node location = { .element = "location", .content = "/tmp/socket.sock" };
+    xml_node log_format = { .element = "log_format", .content = SOCKET_LOG };
+    xml_node socket_group = { .element = "socket_group", .content = "syslog" };
+    xml_node *nodes[] = { &location, &log_format, &socket_group, NULL };
+
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
+    assert_non_null(config.config);
+    assert_string_equal(config.config[0].socket_group, "syslog");
+
+    Free_Localfile(&config);
+}
+
+void test_Read_Localfile_socket_group_empty(void ** state) {
+    logreader_config config = {0};
+    xml_node location = { .element = "location", .content = "/tmp/socket.sock" };
+    xml_node log_format = { .element = "log_format", .content = SOCKET_LOG };
+    xml_node socket_group = { .element = "socket_group", .content = "" };
+    xml_node *nodes[] = { &location, &log_format, &socket_group, NULL };
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1235): Invalid value for element 'socket_group': .");
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), OS_INVALID);
+
+    Free_Localfile(&config);
+}
+
+void test_Read_Localfile_recv_buffer_valid(void ** state) {
+    logreader_config config = {0};
+    xml_node location = { .element = "location", .content = "/tmp/socket.sock" };
+    xml_node log_format = { .element = "log_format", .content = SOCKET_LOG };
+    xml_node recv_buffer = { .element = "recv_buffer", .content = "1M" };
+    xml_node *nodes[] = { &location, &log_format, &recv_buffer, NULL };
+
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
+    assert_non_null(config.config);
+    assert_int_equal(config.config[0].socket_recv_buffer, 1048576);
+
+    Free_Localfile(&config);
+}
+
+void test_Read_Localfile_recv_buffer_too_small(void ** state) {
+    logreader_config config = {0};
+    xml_node location = { .element = "location", .content = "/tmp/socket.sock" };
+    xml_node log_format = { .element = "log_format", .content = SOCKET_LOG };
+    xml_node recv_buffer = { .element = "recv_buffer", .content = "1024" };
+    xml_node *nodes[] = { &location, &log_format, &recv_buffer, NULL };
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "recv_buffer value '1024' is below the minimum (65536). Default will be used.");
+
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
+    assert_non_null(config.config);
+    assert_int_equal(config.config[0].socket_recv_buffer, 0);
+
+    Free_Localfile(&config);
+}
+
+void test_Read_Localfile_socket_opts_on_non_socket(void ** state) {
+    logreader_config config = {0};
+    xml_node location = { .element = "location", .content = "/var/log/syslog" };
+    xml_node log_format = { .element = "log_format", .content = "syslog" };
+    xml_node socket_mode = { .element = "socket_mode", .content = "0640" };
+    xml_node socket_group = { .element = "socket_group", .content = "syslog" };
+    xml_node recv_buffer = { .element = "recv_buffer", .content = "1M" };
+    xml_node *nodes[] = { &location, &log_format, &socket_mode, &socket_group, &recv_buffer, NULL };
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(8004): log_format 'syslog' does not support 'socket_mode' option. Option will be ignored.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(8004): log_format 'syslog' does not support 'socket_group' option. Option will be ignored.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(8004): log_format 'syslog' does not support 'recv_buffer' option. Option will be ignored.");
+
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
+    assert_non_null(config.config);
+    assert_int_equal(config.config[0].socket_mode, 0);
+    assert_null(config.config[0].socket_group);
+    assert_int_equal(config.config[0].socket_recv_buffer, 0);
+
+    Free_Localfile(&config);
+}
+
+void test_Read_Localfile_socket_defaults(void ** state) {
+    logreader_config config = {0};
+    xml_node location = { .element = "location", .content = "/tmp/socket.sock" };
+    xml_node log_format = { .element = "log_format", .content = SOCKET_LOG };
+    xml_node *nodes[] = { &location, &log_format, NULL };
+
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
+    assert_non_null(config.config);
+    assert_int_equal(config.config[0].socket_mode, 0);
+    assert_null(config.config[0].socket_group);
+    assert_int_equal(config.config[0].socket_recv_buffer, 0);
+
+    Free_Localfile(&config);
+}
+
+// ------------------------------------------------
 /* journald_add_condition_to_filter */
 void test_journald_add_condition_to_filter_invalid_params(void ** state) {
 
@@ -1259,6 +1452,18 @@ int main(void) {
         cmocka_unit_test(test_w_journal_filter_list_as_json_null_params),
         cmocka_unit_test(test_w_journal_filter_list_as_json_fail_array),
         cmocka_unit_test(test_w_journal_filter_list_as_json_success),
+        // Test Read_Localfile socket configuration
+        cmocka_unit_test(test_Read_Localfile_socket_age_ignored),
+        cmocka_unit_test(test_Read_Localfile_socket_target_and_filters),
+        cmocka_unit_test(test_Read_Localfile_socket_date_location),
+        cmocka_unit_test(test_Read_Localfile_socket_mode_valid),
+        cmocka_unit_test(test_Read_Localfile_socket_mode_invalid),
+        cmocka_unit_test(test_Read_Localfile_socket_group_valid),
+        cmocka_unit_test(test_Read_Localfile_socket_group_empty),
+        cmocka_unit_test(test_Read_Localfile_recv_buffer_valid),
+        cmocka_unit_test(test_Read_Localfile_recv_buffer_too_small),
+        cmocka_unit_test(test_Read_Localfile_socket_opts_on_non_socket),
+        cmocka_unit_test(test_Read_Localfile_socket_defaults),
         // Test journald_add_condition_to_filter
         cmocka_unit_test(test_journald_add_condition_to_filter_invalid_params),
         cmocka_unit_test(test_journald_add_condition_to_filter_non_field),

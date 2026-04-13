@@ -14,6 +14,7 @@
 #define EVENTLOG     "eventlog"
 #define EVENTCHANNEL "eventchannel"
 #define MACOS        "macos"
+#define SOCKET_LOG   "socket"
 #define JOURNALD_LOG                  "journald"
 #define MULTI_LINE_REGEX              "multi-line-regex"
 #define MULTI_LINE_REGEX_TIMEOUT      5
@@ -23,6 +24,7 @@
 #define DIFF_DEFAULT_SIZE (10 * 1024 * 1024)
 #define DEFAULT_FREQUENCY_SECS  360
 #define DIFF_MAX_SIZE (2 * 1024 * 1024 * 1024LL)
+#define SOCKET_RECV_BUFFER_MAX (16 * 1024 * 1024)  /* 16 MB — hard cap for SO_RCVBUF */
 
 /* macOS log command configurations */
 
@@ -249,6 +251,14 @@ typedef struct _logreader {
 
     FILE *fp;
     fpos_t position; // Pointer offset when closed
+
+#ifndef WIN32
+    int socket_fd;
+    char *socket_path;
+    char *socket_group;
+    mode_t socket_mode;
+    int socket_recv_buffer;
+#endif
 } logreader;
 
 typedef struct _logreader_glob {

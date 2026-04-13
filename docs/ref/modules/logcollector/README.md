@@ -14,3 +14,5 @@ Wazuh collects, analyzes, and stores logs from endpoints, network devices, and a
 ## How it works
 
 Wazuh uses the Logcollector module to collect logs from monitored endpoints, applications, and network devices. The Wazuh server then analyzes the collected logs in real-time using decoders and rules, and extracts relevant information from the logs and maps them to appropriate fields , generating alerts when the logs meets certain criteria.
+
+On UNIX platforms, Logcollector can also receive UTF-8 log messages on UNIX datagram sockets by configuring a `localfile` block with `log_format` set to `socket`. Logcollector binds the socket and external processes send datagrams to it.
