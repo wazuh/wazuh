@@ -49,6 +49,6 @@ wazuh_core.hosts:
   default:
     url: https://wazuh.manager
     port: 55000
-    username: wazuh
-    password: wazuh
+    username: wazuh-wui
+    password: wazuh-wui
     run_as: true
