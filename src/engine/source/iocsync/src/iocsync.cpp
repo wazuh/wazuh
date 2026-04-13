@@ -104,19 +104,19 @@ public:
      */
     static SyncedIOCDatabase fromJson(const json::Json& j)
     {
-        auto optIocType = j.getString(JPATH_IOC_TYPE);
-        if (!optIocType.has_value() || optIocType->empty())
+        std::string iocType;
+        if (j.getString(iocType, JPATH_IOC_TYPE) != json::RetGet::Success || iocType.empty())
         {
             throw std::runtime_error("SyncedIOCDatabase::fromJson: Missing/empty ioc_type field");
         }
 
-        auto optLastHash = j.getString(JPATH_LAST_DATA_HASH);
-        if (!optLastHash.has_value())
+        std::string lastHash;
+        if (j.getString(lastHash, JPATH_LAST_DATA_HASH) != json::RetGet::Success)
         {
             throw std::runtime_error("SyncedIOCDatabase::fromJson: Missing last_data_hash field");
         }
 
-        return {*optIocType, *optLastHash};
+        return {iocType, lastHash};
     }
 };
 

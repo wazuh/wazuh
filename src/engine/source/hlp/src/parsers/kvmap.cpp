@@ -26,7 +26,7 @@ Mapper getMapper(const json::Json& doc, std::string_view targetField)
 SemParser
 getSemParser(const std::string& targetField, const std::string& delim, const std::string& sep, char quote, char esc)
 {
-    return [=](std::string_view input)
+    return [=](std::string_view input, bool)
     {
         json::Json doc {};
         size_t start = 0;

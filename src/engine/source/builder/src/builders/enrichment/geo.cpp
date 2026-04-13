@@ -57,26 +57,27 @@ std::vector<MappingConfig> loadMappingConfigs(const json::Json& config)
     std::vector<MappingConfig> mappingConfigs {};
     mappingConfigs.reserve(collection.size());
 
+    const auto parseEcsPath = [](const json::Json& value,
+                                  const std::string& jsonField,
+                                  std::optional<std::string>& dest)
+    {
+        std::string fieldStr;
+        if (value.getString(fieldStr, jsonField) == json::RetGet::Success)
+        {
+            dest = json::Json::formatJsonPath(fieldStr);
+        }
+    };
+
     for (const auto& [key, value] : collection)
     {
+        MappingConfig cfg {};
+        cfg.dotPath = key;
+        cfg.originIpPath = json::Json::formatJsonPath(key);
 
-        MappingConfig config {};
-        config.dotPath = key;
-        config.originIpPath = json::Json::formatJsonPath(key);
+        parseEcsPath(value, "/geo_field", cfg.geoEcsPath);
+        parseEcsPath(value, "/as_field", cfg.asEcsPath);
 
-        // geo_field
-        if (auto geoFieldOpt = value.getString("/geo_field"); geoFieldOpt.has_value())
-        {
-            config.geoEcsPath = json::Json::formatJsonPath(geoFieldOpt.value());
-        }
-
-        // as_ecs_path
-        if (auto asFieldOpt = value.getString("/as_field"); asFieldOpt.has_value())
-        {
-            config.asEcsPath = json::Json::formatJsonPath(asFieldOpt.value());
-        }
-
-        mappingConfigs.push_back(std::move(config));
+        mappingConfigs.push_back(std::move(cfg));
     }
 
     return mappingConfigs;
@@ -213,19 +214,29 @@ base::Expression getEachEnrichTerm(const std::shared_ptr<geo::ILocator>& cityLoc
                                    const std::shared_ptr<bool>& enrichmentApplied)
 {
 
-    auto opFn = [cityLocator, asLocator, mappingConfig, trace, enrichmentApplied](
+    const json::PointerPath originIpPP(mappingConfig.originIpPath);
+    const json::PointerPath originIpFirstPP(mappingConfig.originIpPath + "/0");
+
+    /**
+     * @brief Lambda function to extract the source IP address from the event, supporting both single string and array
+     * formats.
+     */
+    const auto getIpFn = [originIpPP, originIpFirstPP](const base::Event& e) -> std::optional<std::string>
+    {
+        std::string ipStr;
+        if ((e->getString(ipStr, originIpPP) == json::RetGet::Success)
+            || e->getString(ipStr, originIpFirstPP) == json::RetGet::Success)
+        {
+            return ipStr;
+        }
+        return std::nullopt;
+    };
+
+    auto opFn = [cityLocator, asLocator, mappingConfig, trace, getIpFn, enrichmentApplied](
                     base::Event event) -> base::result::Result<base::Event>
     {
         // Get source IP, can be an string o a array of strings, in that case we take the first one.
-        const auto ipOpt = [&]() -> std::optional<std::string>
-        {
-            auto ipStr = event->getString(mappingConfig.originIpPath);
-            if (!ipStr.has_value())
-            {
-                ipStr = event->getString(mappingConfig.originIpPath + "/0");
-            }
-            return ipStr;
-        }();
+        const auto ipOpt = getIpFn(event);
 
         if (!ipOpt.has_value())
         {

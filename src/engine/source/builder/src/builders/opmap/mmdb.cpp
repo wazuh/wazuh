@@ -148,13 +148,13 @@ MapBuilder getMMDBGeoBuilder(const std::shared_ptr<geo::IManager>& geoManager)
         return [=, locator = base::getResponse(resDB), srcRef = ipRef.jsonPath()](base::ConstEvent event) -> MapResult
         {
             // Get the ip
-            auto ipStr = event->getString(srcRef);
-            if (!ipStr)
+            std::string ipStr;
+            if (event->getString(ipStr, srcRef) != json::RetGet::Success)
             {
                 RETURN_FAILURE(runstate, json::Json {}, notFoundTrace);
             }
 
-            auto geo = mapGeoToECS(ipStr.value(), locator);
+            auto geo = mapGeoToECS(ipStr, locator);
 
             if (geo.size() == 0)
             {
@@ -202,13 +202,13 @@ MapBuilder getMMDBASNBuilder(const std::shared_ptr<geo::IManager>& geoManager)
         return [=, locator = base::getResponse(resDB), srcRef = ipRef.jsonPath()](base::ConstEvent event) -> MapResult
         {
             // Get the ip
-            auto ipStr = event->getString(srcRef);
-            if (!ipStr)
+            std::string ipStr;
+            if (event->getString(ipStr, srcRef) != json::RetGet::Success)
             {
                 RETURN_FAILURE(runstate, json::Json {}, notFoundTrace);
             }
 
-            auto as = mapAStoECS(ipStr.value(), locator);
+            auto as = mapAStoECS(ipStr, locator);
 
             if (as.size() == 0)
             {

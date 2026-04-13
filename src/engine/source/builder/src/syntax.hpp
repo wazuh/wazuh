@@ -68,13 +68,19 @@ constexpr auto ASSET_NAME = "asset"; ///< Name of the asset expression to be dis
  */
 inline auto getAssetName(const json::Json& assetJson) -> std::string
 {
-    auto nameJson = assetJson.getString(json::Json::formatJsonPath(NAME_KEY));
-    if (!nameJson)
+    std::string nameStr;
+    const auto ret = assetJson.getString(nameStr, json::Json::formatJsonPath(NAME_KEY));
+
+    // TODO: Improve error message with asset identification.
+    switch (ret)
     {
-        // TODO: Improve error message with asset identification.
-        throw std::runtime_error("Asset is missing the 'name' field");
+        case json::RetGet::NotFound: throw std::runtime_error("Asset is missing the 'name' field");
+        case json::RetGet::WrongType: throw std::runtime_error("Asset 'name' field is not a string");
+        case json::RetGet::Success: break; // Continue to return the name string
+        default: throw std::runtime_error("Unknown error retrieving asset name");
     }
-    return nameJson.value();
+
+    return nameStr;
 }
 
 /**
@@ -148,12 +154,18 @@ inline FilterType strToFilterType(const std::string_view str)
  */
 inline FilterType getFilterType(const json::Json& filterJson)
 {
-    auto typeJson = filterJson.getString(json::Json::formatJsonPath(TYPE_KEY));
-    if (!typeJson)
+    std::string typeStr;
+
+    const auto ret = filterJson.getString(typeStr, json::Json::formatJsonPath(TYPE_KEY));
+    switch (ret)
     {
-        throw std::runtime_error("Filter is missing the 'type' field");
+        case json::RetGet::NotFound: throw std::runtime_error("Filter is missing the 'type' field");
+        case json::RetGet::WrongType: throw std::runtime_error("Filter 'type' field is not a string");
+        case json::RetGet::Success: break; // Continue to convert the type string to FilterType
+        default: throw std::runtime_error("Unknown error retrieving filter type");
     }
-    return strToFilterType(typeJson.value());
+
+    return strToFilterType(typeStr);
 }
 } // namespace filter
 

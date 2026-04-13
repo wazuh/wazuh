@@ -24,6 +24,61 @@
 namespace json
 {
 
+class PointerPath
+{
+private:
+    rapidjson::Pointer m_pointer; ///< RapidJSON pointer object, used for JSON access. Initialized from m_path.
+
+public:
+    /**
+     * @brief Construct a new PointerPath object from a JSON pointer path string.
+     * @param path The JSON pointer path string (e.g. "/a/b/c"). Must be a valid JSON pointer according to RFC 6901.
+     * @throws std::runtime_error If the provided path is not a valid JSON pointer.
+     */
+    PointerPath(std::string_view path)
+        : m_pointer(path.data(), static_cast<rapidjson::SizeType>(path.size()))
+    {
+        if (!m_pointer.IsValid())
+        {
+            throw std::runtime_error(fmt::format("Invalid pointer path '{}'", std::string(path)));
+        }
+    }
+
+    // Enable direct implicit conversion from const char* and std::string
+    // (avoids the two-step implicit conversion: const char* -> string_view -> PointerPath)
+    PointerPath(const char* path)
+        : PointerPath(std::string_view(path))
+    {
+    }
+    PointerPath(const std::string& path)
+        : PointerPath(std::string_view(path))
+    {
+    }
+
+    // Copy and move (rapidjson::Pointer is copyable)
+    PointerPath(const PointerPath&) = default;
+    PointerPath& operator=(const PointerPath&) = default;
+    PointerPath(PointerPath&&) noexcept = default;
+    PointerPath& operator=(PointerPath&&) noexcept = default;
+
+    // Implicit conversion to rapidjson::Pointer
+    operator const rapidjson::Pointer&() const { return m_pointer; }
+    // Explicit getter for the rapidjson::Pointer, if needed.
+    const rapidjson::Pointer& getPointer() const { return m_pointer; }
+};
+
+inline const PointerPath ROOT_PP {""}; ///< Constant PointerPath representing the root of the JSON document.
+
+/**
+ * @brief Return type for get methods that output via reference parameter.
+ */
+enum class RetGet
+{
+    Success = 0, ///< The value was successfully retrieved and assigned to the output parameter.
+    NotFound,    ///< The specified path was not found in the JSON document.
+    WrongType    ///< The specified path was found but the value is not of the expected type.
+};
+
 constexpr bool RECURSIVE {true};
 constexpr bool NOT_RECURSIVE {false};
 
@@ -251,10 +306,25 @@ public:
     /************************************************************************************/
 
     /**
-     * @brief Transform dot path string to pointer path string.
+     * @brief Convert a dot-notation path or a raw field name into a JSON Pointer string (RFC 6901).
      *
-     * @param dotPath The dot path string.
-     * @return std::string The pointer path string.
+     * When @p skipDot is false (default), the input is interpreted as a dot-separated path
+     * (e.g. "a.b.c" → "/a/b/c"). The special value "." represents the root document and
+     * is converted to an empty string. Literal dots can be escaped with a backslash ("a\\.b"
+     * → "/a.b"), and a literal backslash is written as "\\\\".
+     *
+     * When @p skipDot is true, dots are **not** treated as separators; the input is taken as
+     * a single raw field name. Only JSON Pointer escaping is applied ('~' → '~0', '/' → '~1')
+     * and a leading '/' is prepended. This is useful when a field name itself contains dots
+     * (e.g. "host.name" → "/host.name").
+     *
+     * In both modes the JSON Pointer special characters '~' and '/' in the input are escaped
+     * to '~0' and '~1' respectively before any other transformation.
+     *
+     * @param dotPath The input path: a dot-separated path (skipDot=false) or a raw field name (skipDot=true).
+     * @param skipDot If true, skip dot-to-slash conversion and the root "." shortcut, treating the input
+     *                as a literal field name rather than a hierarchical dot path. Defaults to false.
+     * @return std::string The resulting JSON Pointer string (e.g. "/a/b/c").
      */
     static std::string formatJsonPath(std::string_view dotPath, bool skipDot = false);
 
@@ -346,13 +416,42 @@ public:
     /************************************************************************************/
 
     /**
-     * @brief Get the value of the string field at the given path.
+     * @brief Get the string field at the given path, output via reference parameter.
      *
-     * @param path JSON pointer path to the field (default: root).
-     * @return std::optional<std::string> The string value, or std::nullopt if not found or not a string.
-     * @throws std::runtime_error If the pointer path is invalid.
+     * @tparam T Must be std::string_view (zero-copy) or std::string (copy).
+     * @param out Output parameter to store the string value.
+     * @param path JSON pointer path to the field.
+     *
+     * @return RetGet::Success, RetGet::NotFound, or RetGet::WrongType.
+     *
+     * @warning When T is std::string_view, the caller must ensure the Json object
+     * remains alive and unmodified while using the output.
+     * @note out its only assigned if the field is found and is a string; in all other cases it is left unchanged.
      */
-    std::optional<std::string> getString(std::string_view path = "") const;
+    template<typename T>
+    RetGet getString(T& out, const PointerPath& path = ROOT_PP) const noexcept
+    {
+        static_assert(std::is_same_v<T, std::string_view> || std::is_same_v<T, std::string>,
+                      "T must be std::string_view or std::string");
+        const auto* value = path.getPointer().Get(m_document);
+        if (!value)
+        {
+            return RetGet::NotFound;
+        }
+        if (!value->IsString())
+        {
+            return RetGet::WrongType;
+        }
+        if constexpr (std::is_same_v<T, std::string_view>)
+        {
+            out = std::string_view(value->GetString(), value->GetStringLength());
+        }
+        else
+        {
+            out.assign(value->GetString(), value->GetStringLength());
+        }
+        return RetGet::Success;
+    }
 
     /**
      * @brief Get the value of the int field at the given path.

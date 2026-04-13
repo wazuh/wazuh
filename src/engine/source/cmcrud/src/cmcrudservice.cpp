@@ -13,20 +13,20 @@ constexpr std::string_view PATH_KEY_ID = "/id";
 
 std::string assetUuidFromJson(const json::Json& jsonDoc, const base::Name& assetName)
 {
-    auto uuidOpt = jsonDoc.getString(PATH_KEY_ID);
-    if (!uuidOpt.has_value() || uuidOpt->empty())
+    std::string uuid;
+    if (jsonDoc.getString(uuid, PATH_KEY_ID) != json::RetGet::Success || uuid.empty())
     {
         throw std::runtime_error(
             fmt::format("Asset '{}' is missing required UUID at JSON path '{}'", assetName.toStr(), PATH_KEY_ID));
     }
 
-    if (!base::utils::generators::isValidUUIDv4(*uuidOpt))
+    if (!base::utils::generators::isValidUUIDv4(uuid))
     {
         throw std::runtime_error(fmt::format(
-            "Asset '{}' has an invalid UUIDv4 '{}' at JSON path '{}'", assetName.toStr(), *uuidOpt, PATH_KEY_ID));
+            "Asset '{}' has an invalid UUIDv4 '{}' at JSON path '{}'", assetName.toStr(), uuid, PATH_KEY_ID));
     }
 
-    return uuidOpt.value();
+    return uuid;
 }
 
 void throwIfError(base::OptError err, std::string_view context)
@@ -61,12 +61,12 @@ cm::store::dataType::KVDB kvdbFromDocument(std::string_view kvdbDocument)
 
 base::Name assetNameFromJson(const json::Json& jsonDoc)
 {
-    auto optName = jsonDoc.getString("/name");
-    if (!optName.has_value() || optName->empty())
+    std::string name;
+    if (jsonDoc.getString(name, "/name") != json::RetGet::Success || name.empty())
     {
         throw std::runtime_error("Missing or empty asset name at JSON path '/name'");
     }
-    return base::Name {optName.value()};
+    return base::Name {name};
 }
 } // namespace
 
