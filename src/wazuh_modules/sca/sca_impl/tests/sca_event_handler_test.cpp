@@ -669,7 +669,8 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_NormalizesMitreAndKeepsCheckFields)
             }
         },
         {"collector", "check"},
-        {"result", 1} };
+        {"result", 1}
+    };
 
     const nlohmann::json output = handler->ProcessStateless(input);
 
@@ -699,15 +700,19 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_InvalidInput)
 TEST_F(SCAEventHandlerTest, ProcessStateless_NormalizesTitleInChangedFields)
 {
     const nlohmann::json input = {{"check",
-            {{"new", {{"id", "chk1"}, {"title", "New check title"}, {"result", "passed"}}},
-             {"old", {{"id", "chk1"}, {"title", "Old check title"}}}}
+            {   {"new", {{"id", "chk1"}, {"title", "New check title"}, {"result", "passed"}}},
+                {"old", {{"id", "chk1"}, {"title", "Old check title"}}}
+            }
         },
-        {"policy",
-            {{"new", {{"id", "pol1"}, {"title", "New policy title"}, {"file", "policy.yml"}}},
-             {"old", {{"id", "pol1"}, {"title", "Old policy title"}}}}
+        {
+            "policy",
+            {   {"new", {{"id", "pol1"}, {"title", "New policy title"}, {"file", "policy.yml"}}},
+                {"old", {{"id", "pol1"}, {"title", "Old policy title"}}}
+            }
         },
         {"collector", "check"},
-        {"result", 0}}
+        {"result", 0}
+    }
     ;
 
     const nlohmann::json output = handler->ProcessStateless(input);
@@ -1906,7 +1911,7 @@ TEST_F(SCAEventHandlerTest, ReportPoliciesDelta_ValidationFailure_ExecutesBatchD
                 },
                 {"result", MODIFIED}
             }
-            }
+        }
     };
 
     std::unordered_map<std::string, nlohmann::json> modifiedChecks;
