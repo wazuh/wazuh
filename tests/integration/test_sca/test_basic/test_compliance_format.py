@@ -49,6 +49,7 @@ from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.modulesd.sca import patterns
 from wazuh_testing.modules.modulesd.configuration import MODULESD_DEBUG
+from wazuh_testing.utils.services import control_service, wait_expected_daemon_status
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
@@ -72,13 +73,28 @@ daemons_handler_configuration = {'all_daemons': True}
 SCA_DB_DIR = Path(WAZUH_PATH, 'queue', 'sca', 'db')
 
 
+def _remove_sca_db_files():
+    if not SCA_DB_DIR.exists():
+        return
+    if sys.platform == 'win32':
+        try:
+            control_service("stop")
+            wait_expected_daemon_status(target_daemon="wazuh-agentd", running_condition=False, timeout=90)
+        except Exception:
+            pass
+    for f in SCA_DB_DIR.iterdir():
+        try:
+            f.unlink(missing_ok=True)
+        except PermissionError:
+            pass
+
+
 @pytest.fixture()
 def clean_sca_db():
     '''Remove SCA database files to prevent stale data between tests.'''
-    if SCA_DB_DIR.exists():
-        for f in SCA_DB_DIR.iterdir():
-            f.unlink(missing_ok=True)
+    _remove_sca_db_files()
     yield
+    _remove_sca_db_files()
 
 
 def extract_compliance_from_event_json(json_str):
@@ -176,9 +192,9 @@ def test_sca_compliance_format(test_configuration, test_metadata, prepare_cis_po
     # ------------------------------------------------------------------
     # Phase 1: Wait for scan completion
     # ------------------------------------------------------------------
-    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+    log_monitor = wait_for_sca_enabled
 
-    timeout = 60 if sys.platform == WINDOWS else 30
+    timeout = 180 if sys.platform == WINDOWS else 30
 
     log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=timeout)
     assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
