@@ -7,6 +7,7 @@
 #include <stringHelper.h>
 #include <timeHelper.h>
 
+#include <array>
 #include <sstream>
 
 #include "logging_helper.hpp"
@@ -662,8 +663,9 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
                         continue;
                     }
 
-                    previous[key] = value;
-                    changedFields.push_back("check." + key);
+                    const auto normalizedKey = (key == "title") ? "name" : key;
+                    previous[normalizedKey] = value;
+                    changedFields.push_back("check." + normalizedKey);
                 }
 
                 if (!previous.empty())
@@ -701,8 +703,9 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
                         continue;
                     }
 
-                    previous[key] = value;
-                    changedFields.push_back("policy." + key);
+                    const auto normalizedKey = (key == "title") ? "name" : key;
+                    previous[normalizedKey] = value;
+                    changedFields.push_back("policy." + normalizedKey);
                 }
 
                 policy["previous"] = previous;
@@ -817,6 +820,16 @@ nlohmann::json SCAEventHandler::StringToJsonArray(const std::string& input) cons
 
 void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
 {
+    if (!check.contains("name") && check.contains("title") && check["title"].is_string())
+    {
+        check["name"] = check["title"];
+    }
+
+    if (check.contains("title"))
+    {
+        check.erase("title");
+    }
+
     if (check.contains("refs") && check["refs"].is_string())
     {
         check["references"] = StringToJsonArray(check["refs"].get<std::string>());
@@ -842,6 +855,36 @@ void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
             check["mitre"] = nlohmann::json::parse(check["mitre"].get<std::string>());
         }
         catch (const nlohmann::json::parse_error&)
+        {
+            check.erase("mitre");
+        }
+    }
+
+    if (check.contains("mitre") && check["mitre"].is_object())
+    {
+        static const std::array<const char*, 3> MITRE_FIELDS = {"tactic", "technique", "subtechnique"};
+
+        for (const auto* field : MITRE_FIELDS)
+        {
+            if (!check["mitre"].contains(field))
+            {
+                continue;
+            }
+
+            auto& mitreField = check["mitre"][field];
+
+            if (mitreField.is_string())
+            {
+                mitreField = StringToJsonArray(mitreField.get<std::string>());
+            }
+            else if (!mitreField.is_array())
+            {
+                // Keep schema alignment by dropping invalid mitre subfield types.
+                check["mitre"].erase(field);
+            }
+        }
+
+        if (check["mitre"].empty())
         {
             check.erase("mitre");
         }
@@ -878,6 +921,16 @@ void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
 
 void SCAEventHandler::NormalizePolicy(nlohmann::json& policy) const
 {
+    if (!policy.contains("name") && policy.contains("title") && policy["title"].is_string())
+    {
+        policy["name"] = policy["title"];
+    }
+
+    if (policy.contains("title"))
+    {
+        policy.erase("title");
+    }
+
     if (policy.contains("refs") && policy["refs"].is_string())
     {
         policy["references"] = StringToJsonArray(policy["refs"].get<std::string>());

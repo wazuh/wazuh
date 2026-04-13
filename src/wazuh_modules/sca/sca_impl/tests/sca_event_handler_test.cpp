@@ -651,6 +651,42 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_ValidInput2)
     ASSERT_GE(data["event"]["changed_fields"].size(), 0);
 }
 
+TEST_F(SCAEventHandlerTest, ProcessStateless_NormalizesMitreAndKeepsCheckFields)
+{
+    const nlohmann::json input = { {"check",
+            {   {"id", "chk2"},
+                {"result", "passed"},
+                {"refs", "RefA, RefB"},
+                {"mitre", R"({"tactic":"TA0005, TA0006","technique":"T1548","subtechnique":"T1548.001"})"}
+            }
+        },
+        {
+            "policy",
+            {   {"id", "pol2"},
+                {"description", "Some policy"},
+                {"name", "Policy name"},
+                {"file", "policy.yml"}
+            }
+        },
+        {"collector", "check"},
+        {"result", 1} };
+
+    const nlohmann::json output = handler->ProcessStateless(input);
+
+    ASSERT_EQ(output["module"], "sca");
+    ASSERT_TRUE(output["data"].contains("check"));
+
+    const auto check = output["data"]["check"];
+    ASSERT_TRUE(check.contains("result"));
+    EXPECT_EQ(check["result"], "passed");
+    ASSERT_TRUE(check.contains("references"));
+    EXPECT_EQ(check["references"], nlohmann::json::array({"RefA", "RefB"}));
+    ASSERT_TRUE(check.contains("mitre"));
+    EXPECT_EQ(check["mitre"]["tactic"], nlohmann::json::array({"TA0005", "TA0006"}));
+    EXPECT_EQ(check["mitre"]["technique"], nlohmann::json::array({"T1548"}));
+    EXPECT_EQ(check["mitre"]["subtechnique"], nlohmann::json::array({"T1548.001"}));
+}
+
 TEST_F(SCAEventHandlerTest, ProcessStateless_InvalidInput)
 {
     const nlohmann::json input = {{"policy", {{"new", {{"id", "pol1"}}}}}};
@@ -658,6 +694,41 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_InvalidInput)
     const nlohmann::json output = handler->ProcessStateless(input);
 
     EXPECT_TRUE(output.empty());
+}
+
+TEST_F(SCAEventHandlerTest, ProcessStateless_NormalizesTitleInChangedFields)
+{
+    const nlohmann::json input = {{"check",
+            {{"new", {{"id", "chk1"}, {"title", "New check title"}, {"result", "passed"}}},
+             {"old", {{"id", "chk1"}, {"title", "Old check title"}}}}
+        },
+        {"policy",
+            {{"new", {{"id", "pol1"}, {"title", "New policy title"}, {"file", "policy.yml"}}},
+             {"old", {{"id", "pol1"}, {"title", "Old policy title"}}}}
+        },
+        {"collector", "check"},
+        {"result", 0}}
+    ;
+
+    const nlohmann::json output = handler->ProcessStateless(input);
+
+    ASSERT_TRUE(output.contains("data"));
+    ASSERT_TRUE(output["data"].contains("event"));
+    ASSERT_TRUE(output["data"]["event"].contains("changed_fields"));
+
+    const auto changedFields = output["data"]["event"]["changed_fields"];
+    EXPECT_NE(std::find(changedFields.begin(), changedFields.end(), "check.name"), changedFields.end());
+    EXPECT_NE(std::find(changedFields.begin(), changedFields.end(), "policy.name"), changedFields.end());
+    EXPECT_EQ(std::find(changedFields.begin(), changedFields.end(), "check.title"), changedFields.end());
+    EXPECT_EQ(std::find(changedFields.begin(), changedFields.end(), "policy.title"), changedFields.end());
+
+    ASSERT_TRUE(output["data"].contains("check"));
+    ASSERT_TRUE(output["data"]["check"].contains("name"));
+    EXPECT_EQ(output["data"]["check"]["name"], "New check title");
+
+    ASSERT_TRUE(output["data"].contains("policy"));
+    ASSERT_TRUE(output["data"]["policy"].contains("name"));
+    EXPECT_EQ(output["data"]["policy"]["name"], "New policy title");
 }
 
 TEST_F(SCAEventHandlerTest, CalculateHashId_ReturnsValidHash)
@@ -759,6 +830,42 @@ TEST_F(SCAEventHandlerTest, NormalizeCheck_InvalidComplianceJson)
     ASSERT_TRUE(check.contains("rules"));
 }
 
+TEST_F(SCAEventHandlerTest, NormalizeCheck_MitreSubfieldsToArrays)
+{
+    nlohmann::json check = {{"id", "1234"},
+        {"mitre", {{"tactic", "TA0005, TA0006"}, {"technique", "T1548"}, {"subtechnique", "T1548.001"}}}
+    };
+
+    handler->NormalizeCheck(check);
+
+    ASSERT_TRUE(check.contains("mitre"));
+    EXPECT_EQ(check["mitre"]["tactic"], nlohmann::json::array({"TA0005", "TA0006"}));
+    EXPECT_EQ(check["mitre"]["technique"], nlohmann::json::array({"T1548"}));
+    EXPECT_EQ(check["mitre"]["subtechnique"], nlohmann::json::array({"T1548.001"}));
+}
+
+TEST_F(SCAEventHandlerTest, NormalizeCheck_TitleToName)
+{
+    nlohmann::json check = {{"id", "1234"}, {"title", "Legacy check title"}};
+
+    handler->NormalizeCheck(check);
+
+    ASSERT_FALSE(check.contains("title"));
+    ASSERT_TRUE(check.contains("name"));
+    EXPECT_EQ(check["name"], "Legacy check title");
+}
+
+TEST_F(SCAEventHandlerTest, NormalizeCheck_NameHasPriorityOverTitle)
+{
+    nlohmann::json check = {{"id", "1234"}, {"name", "Canonical name"}, {"title", "Legacy check title"}};
+
+    handler->NormalizeCheck(check);
+
+    ASSERT_FALSE(check.contains("title"));
+    ASSERT_TRUE(check.contains("name"));
+    EXPECT_EQ(check["name"], "Canonical name");
+}
+
 TEST_F(SCAEventHandlerTest, NormalizePolicy)
 {
     nlohmann::json policy =
@@ -771,6 +878,28 @@ TEST_F(SCAEventHandlerTest, NormalizePolicy)
     ASSERT_FALSE(policy.contains("refs"));
     ASSERT_TRUE(policy.contains("references"));
     EXPECT_EQ(policy["references"], nlohmann::json::array({"https://cis.org", "https://example.com"}));
+}
+
+TEST_F(SCAEventHandlerTest, NormalizePolicy_TitleToName)
+{
+    nlohmann::json policy = {{"id", "cis_001"}, {"title", "Legacy policy title"}};
+
+    handler->NormalizePolicy(policy);
+
+    ASSERT_FALSE(policy.contains("title"));
+    ASSERT_TRUE(policy.contains("name"));
+    EXPECT_EQ(policy["name"], "Legacy policy title");
+}
+
+TEST_F(SCAEventHandlerTest, NormalizePolicy_NameHasPriorityOverTitle)
+{
+    nlohmann::json policy = {{"id", "cis_001"}, {"name", "Canonical policy name"}, {"title", "Legacy policy title"}};
+
+    handler->NormalizePolicy(policy);
+
+    ASSERT_FALSE(policy.contains("title"));
+    ASSERT_TRUE(policy.contains("name"));
+    EXPECT_EQ(policy["name"], "Canonical policy name");
 }
 
 
@@ -1777,7 +1906,7 @@ TEST_F(SCAEventHandlerTest, ReportPoliciesDelta_ValidationFailure_ExecutesBatchD
                 },
                 {"result", MODIFIED}
             }
-        }
+            }
     };
 
     std::unordered_map<std::string, nlohmann::json> modifiedChecks;
