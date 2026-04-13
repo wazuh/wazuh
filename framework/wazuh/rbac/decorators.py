@@ -14,7 +14,7 @@ from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.rbac.utils import expand_rules, expand_lists, expand_decoders
 from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager, RulesManager
 
-SENSITIVE_FIELD_PATHS = ("authd.pass",)
+SENSITIVE_FIELD_PATHS = ("authd.pass", "cluster.key")
 
 MASK_DEFAULT = "*****"
 
@@ -586,6 +586,11 @@ def _mask_payload(payload, mask_text: str = MASK_DEFAULT):
     if isinstance(payload, dict):
         for path in SENSITIVE_FIELD_PATHS:
             _mask_paths_in_object(payload, path, mask_text)
+
+        # Active cluster config endpoint may expose the secret as a top-level `key` field.
+        # Example shape: {"name": ..., "node_type": ..., "key": ..., "port": ..., "nodes": [...]}.
+        if 'key' in payload and 'nodes' in payload and 'port' in payload and 'node_type' in payload:
+            payload['key'] = mask_text
     elif isinstance(payload, list):
         if len(payload) == 1 and isinstance(payload[0], str):
             payload[0] = _MASK_XML_REGEX.sub(r'\1' + mask_text + r'\2', payload[0])
