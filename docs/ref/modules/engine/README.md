@@ -1,11 +1,21 @@
 # Engine
 
+>[!NOTE]
+> This documentation uses the term “engine” to refer to the decoding and enrichment engine;
+> this is the `wazuh-manager-analysisd` daemon.
+
 ## Introduction
-The engine is responsible for transforming raw data into standardized schema documents, enriching it with threat intelligence, and forwarding it to designated destinations.
+The engine is responsible for transforming raw data into standardized schema documents, enriching it with threat
+intelligence, and forwarding it to designated destinations (`wazuh-indexer`).
 
 ## Data flow
-The data flow begins when an event enters the orchestrator and continues until it is processed by the security policy. Below is a high-level flowchart illustrating this process.
 
+Events are received from `wazuh-manager-remoted`, which is responsible for receiving events from the agents.
+The data flow begins when an event enters the orchestrator and continues until it is processed by the security policy.
+Below is a high-level flowchart illustrating this process.
+
+
+TODO: Update this graph
 
 ```mermaid
 flowchart LR
@@ -13,37 +23,25 @@ flowchart LR
 classDef EventBoxClass font-size: 15px,stroke-width:2px, color:#fff, fill:#3f51b5
 
 %% Router Table
-subgraph routerTable["Router Table"]
-  direction TB
-
-  routeC
-  routeB
-  routeA
-
-
-  subgraph routeA["Route prod"]
-   direction LR
-   policyA("Security Policy")
-  end
-
-  subgraph routeB["Route QA"]
-   direction LR
-   policyB("Security Policy")
-  end
-
-  subgraph routeC["Route Dev"]
-   direction LR
-   policyC("Security Policy")
-  end
+subgraph routeA["Standard Space"]
+ direction LR
+ policyA("Security Policy")
 end
+
+subgraph routeB["Custom Space"]
+ direction LR
+ policyB("Security Policy")
+end
+
 
 %% Orchestrator
 subgraph orchestrator["Orchestrator (Simplified)"]
   direction LR
   %% Router Table
 
-  routeSelector("Route</br>selector")
-  routerTable
+  routeSelector("Event</br>forwarder")
+  routeA
+  routeB
 end
 
 
@@ -51,130 +49,256 @@ end
 eventA@{ shape: doc, label: "Incoming</br>event" }
 eventA:::EventBoxClass
 eventA-->routeSelector
-routeSelector-.->policyA & policyB & policyC
+routeSelector-.->policyA & policyB
+
 
 
 ```
 
-To understand how the engine is structured, it's important to identify the key components involved in this process. When a new event arrives, the engine directs it to different policies for processing. The orchestrator manages these policies at runtime.
+To understand how the engine is structured, it is important to identify the key components involved in this process.
 
-The orchestrator routes events to a policy and is composed of the following elements:
-- Route: Identifies the events that must be processed by a specific Policy.
-- Policy: Processes the events.
-- Priority: Determines the order in which the orchestrator attempt to route events.
+The **orchestrator** is the central runtime component that manages active security policies. When a new event arrives,
+the orchestrator forwards an independent copy of it to each active policy for processing. Because each policy receives
+its own copy of the raw event, a single incoming event can produce multiple output documents — one per active policy.
 
-A policy defines the processing pipeline of the events and is composed of:
-- Decoders: Normalize and extract information from the events into a common schema.
-- Rules: Analyze security threats (primarily IoCs) and enrich the events.
-- Outputs: Send normalized and enriched events to the indexer and other defined outputs.
+Wazuh ships with a built-in **standard** policy that covers all supported log sources and integrations. Users can
+additionally define a **custom** policy to extend or adapt the processing pipeline for their specific needs.
 
-Each policy can be tailored to specific use cases.
+Each event travels through the following ordered stages inside a policy:
+
+1. **Pre-filter** *(optional)*: Evaluated before decoding. If configured, events that do not satisfy the filter
+   conditions are discarded immediately, avoiding unnecessary decoding work. If no pre-filter is configured,
+   all events proceed to the decoding stage unconditionally.
+2. **Decoders**: Normalize and extract fields from the raw event, mapping them to the [Wazuh Common Schema](#).
+   This stage is mandatory — every event must traverse the decoder tree.
+3. **Enrichment** *(optional)*: Plugins that augment the normalized event with additional context after decoding.
+   Built-in plugins include GeoIP geolocation and Indicator of Compromise (IOC) matching. Enrichment can be
+   fully disabled at the policy level; when disabled, the normalized event is passed directly to the next stage.
+4. **Post-filter** *(optional)*: Evaluated after enrichment (or after decoding if enrichment is disabled).
+   If configured, events that do not satisfy the filter conditions are discarded before reaching the outputs.
+   If no post-filter is configured, all events are forwarded unconditionally.
+5. **Outputs**: Send the final processed events to configured destinations, such as `wazuh-indexer` or other
+   downstream components.
+
 
 ### Event
-The purpose of the Engine is to convert unstructured or semi-structured logs into normalized and enriched events. The agent transmits logs within a JSON payload, which includes additional metadata such as OS information, log source, and other relevant details. The Engine processes these logs and generates a structured JSON event, incorporating all relevant information in accordance with the defined [schema](#).
+The purpose of the Engine is to convert unstructured or semi-structured logs into normalized and enriched events.
+The agent transmits the logs to `wazuh-manager-remoted` in plain text; `remoted` adds information about the agent, 
+including additional metadata such as operating system information, the log source, and other relevant details.
+The Engine processes these logs and generates a structured JSON event, incorporating all relevant information in 
+accordance with the defined wazuh [schema](#).
+
+Event collected on agent:
+
+```log
+{"version":"1.100000","account_id":"123456789023","region":"us-east-1","vpc_id":"vpc-0000000","query_timestamp":"2025-12-11T22:22:22Z","query_name":"amazonlinux-2-repos-us-east-1.s3.dualstack.us-east-1.amazonaws.com.","query_type":"AAAA","query_class":"IN","rcode":"NOERROR","answers":[{"Rdata":"s3-r-w.dualstack.us-east-1.amazonaws.com.","Type":"CNAME","Class":"IN"},{"Rdata":"2a02:cf40:add:4444:9191:a9a9:aaaa:cccc","Type":"AAAA","Class":"IN"}],"srcaddr":"8.8.8.8","srcport":"8010","transport":"UDP","srcids":{}}
+```
 
 Input event example:
 ```json
 {
-  "@timestamp": "2025-01-23T17:40:37Z",
-  "agent": {
-    "groups": [
-      "group1",
-      "group2"
-    ],
-    "host": {
-      "architecture": "x86_64",
-      "hostname": "wazuh-endpoint-linux",
-      "ip": [
-        "192.168.1.2"
-      ],
-      "os": {
-        "name": "Amazon Linux 2",
-        "platform": "Linux"
-      }
+  "wazuh": {
+    "protocol": {
+      "queue": 49,
+      "location": "/var/ossec/logs/active-responses.log"
     },
-    "id": "2887e1cf-9bf2-431a-b066-a46860080f56",
-    "name": "wazuh-agent-name",
-    "type": "endpoint",
-    "version": "5.0.0"
-  },
-  "event": {
-    "collector": "file",
-    "module": "logcollector",
-    "original": "Dec 13 11:35:28 a-mac-with-esc-key GoogleSoftwareUpdateAgent[21412]: 2016-12-13 11:35:28.421 GoogleSoftwareUpdateAgent[21412/0x700007399000] [lvl=2] -[KSUpdateEngine updateAllExceptProduct:] KSUpdateEngine updating all installed products, except:'com.google.Keystone'."
-  },
-  "log": {
-    "file": {
-      "path": "/var/log/syslog.log"
+    "agent": {
+      "host": {
+        "os": {
+          "name": "Rocky Linux",
+          "version": "8.10",
+          "platform": "rocky",
+          "type": "linux"
+        },
+        "architecture": "x86_64",
+        "hostname": "wazuh-agent-50-rocky8"
+      },
+      "id": "002",
+      "name": "wazuh-agent-50-rocky8",
+      "version": "v5.0.0",
+      "groups": [
+        "default"
+      ]
+    },
+    "cluster": {
+      "name": "wazuh",
+      "node": "node01"
     }
   },
+  "event": {
+    "original": "{\"version\":\"1.100000\",\"account_id\":\"123456789023\",\"region\":\"us-east-1\",\"vpc_id\":\"vpc-0000000\",\"query_timestamp\":\"2025-12-11T22:22:22Z\",\"query_name\":\"amazonlinux-2-repos-us-east-1.s3.dualstack.us-east-1.amazonaws.com.\",\"query_type\":\"AAAA\",\"query_class\":\"IN\",\"rcode\":\"NOERROR\",\"answers\":[{\"Rdata\":\"s3-r-w.dualstack.us-east-1.amazonaws.com.\",\"Type\":\"CNAME\",\"Class\":\"IN\"},{\"Rdata\":\"2a02:cf40:add:4444:9191:a9a9:aaaa:cccc\",\"Type\":\"AAAA\",\"Class\":\"IN\"}],\"srcaddr\":\"8.8.8.8\",\"srcport\":\"8010\",\"transport\":\"UDP\",\"srcids\":{}}",
+  }
 }
+
 ```
 
 Processed event:
 ```json
 {
-  "@timestamp": "2025-01-23T17:40:37Z",
-  "agent": {
-    "groups": [
-      "group1",
-      "group2"
-    ],
-    "host": {
-      "architecture": "x86_64",
-      "hostname": "wazuh-endpoint-linux",
-      "ip": [
-        "192.168.1.2"
-      ],
-      "os": {
-        "name": "Amazon Linux 2",
-        "platform": "Linux"
-      }
+  "wazuh": {
+    "protocol": {
+      "queue": 49,
+      "location": "/var/ossec/logs/active-responses.log"
     },
-    "id": "2887e1cf-9bf2-431a-b066-a46860080f56",
-    "name": "wazuh-agent-name",
-    "type": "endpoint",
-    "version": "5.0.0"
-  },
-  "event": {
-    "collector": "file",
-    "created": "2024-11-22T02:00:00Z",
-    "kind": "event",
-    "module": "logcollector",
-    "original": "Dec 13 11:35:28 a-mac-with-esc-key GoogleSoftwareUpdateAgent[21412]: 2016-12-13 11:35:28.421 GoogleSoftwareUpdateAgent[21412/0x700007399000] [lvl=2] -[KSUpdateEngine updateAllExceptProduct:] KSUpdateEngine updating all installed products, except:'com.google.Keystone'.",
-    "start": "2025-12-13T11:35:28.000Z"
-  },
-  "host": {
-    "hostname": "a-mac-with-esc-key"
-  },
-  "log": {
-    "file": {
-      "path": "/var/log/syslog.log"
+    "agent": {
+      "host": {
+        "os": {
+          "name": "Rocky Linux",
+          "version": "8.10",
+          "platform": "rocky",
+          "type": "linux"
+        },
+        "architecture": "x86_64",
+        "hostname": "wazuh-agent-50-rocky8"
+      },
+      "id": "002",
+      "name": "wazuh-agent-50-rocky8",
+      "version": "v5.0.0",
+      "groups": [
+        "default"
+      ]
+    },
+    "cluster": {
+      "name": "wazuh",
+      "node": "node01"
+    },
+    "integration": {
+      "category": "cloud-services",
+      "name": "aws",
+      "decoders": [
+        "decoder/core-wazuh-message/0",
+        "decoder/aws-route53-resolver-logs/0"
+      ]
+    },
+    "space": {
+      "name": "standard"
     }
   },
-  "message": "2016-12-13 11:35:28.421 GoogleSoftwareUpdateAgent[21412/0x700007399000] [lvl=2] -[KSUpdateEngine updateAllExceptProduct:] KSUpdateEngine updating all installed products, except:'com.google.Keystone'.",
-  "process": {
-    "name": "GoogleSoftwareUpdateAgent",
-    "pid": 21412
+  "event": {
+    "original": "{\"version\":\"1.100000\",\"account_id\":\"123456789023\",\"region\":\"us-east-1\",\"vpc_id\":\"vpc-0000000\",\"query_timestamp\":\"2025-12-11T22:22:22Z\",\"query_name\":\"amazonlinux-2-repos-us-east-1.s3.dualstack.us-east-1.amazonaws.com.\",\"query_type\":\"AAAA\",\"query_class\":\"IN\",\"rcode\":\"NOERROR\",\"answers\":[{\"Rdata\":\"s3-r-w.dualstack.us-east-1.amazonaws.com.\",\"Type\":\"CNAME\",\"Class\":\"IN\"},{\"Rdata\":\"2a02:cf40:add:4444:9191:a9a9:aaaa:cccc\",\"Type\":\"AAAA\",\"Class\":\"IN\"}],\"srcaddr\":\"8.8.8.8\",\"srcport\":\"8010\",\"transport\":\"UDP\",\"srcids\":{}}",
+    "kind": "event",
+    "action": "dns-query",
+    "category": [
+      "network"
+    ],
+    "start": "2021-12-11T22:46:26.000Z",
+    "type": [
+      "protocol"
+    ],
+    "outcome": "success"
   },
-  "related": {
-    "hosts": [
-      "a-mac-with-esc-key"
+  "@timestamp": "2026-04-14T19:29:51.105Z",
+  "cloud": {
+    "provider": "aws",
+    "account": {
+      "id": "123456789023"
+    },
+    "region": "us-east-1"
+  },
+  "dns": {
+    "question": {
+      "name": "amazonlinux-2-repos-us-east-1.s3.dualstack.us-east-1.amazonaws.com.",
+      "class": "IN",
+      "type": "AAAA"
+    },
+    "response_code": "NOERROR",
+    "answers": [
+      {
+        "data": "s3-r-w.dualstack.us-east-1.amazonaws.com.",
+        "type": "CNAME",
+        "class": "IN"
+      },
+      {
+        "Rdata": "2a02:cf40:add:4444:9191:a9a9:aaaa:cccc",
+        "Type": "AAAA",
+        "Class": "IN"
+      }
     ]
   },
-  "tags": [
-    "production-server"
-  ],
-  "wazuh": {
-    "decoders": [
-      "syslog"
+  "network": {
+    "transport": "udp",
+    "protocol": "dns",
+    "type": "IPv4"
+  },
+  "source": {
+    "address": "8.8.8.8",
+    "ip": "8.8.8.8",
+    "port": 8010,
+    "as": {
+      "number": 55990,
+      "organization": {
+        "name": "Huawei Cloud Service data center"
+      }
+    },
+    "geo": {
+      "city_name": "Shanghai",
+      "continent_code": "AS",
+      "continent_name": "Asia",
+      "country_iso_code": "CN",
+      "country_name": "China",
+      "location": {
+        "lat": 31.2222,
+        "lon": 121.4581
+      },
+      "timezone": "Asia/Shanghai",
+      "region_iso_code": "SH",
+      "region_name": "Shanghai"
+    }
+  },
+  "related": {
+    "ip": [
+      "8.8.8.8"
+    ],
+    "hosts": [
+      "amazonlinux-2-repos-us-east-1.s3.dualstack.us-east-1.amazonaws.com."
+    ]
+  },
+  "threat": {
+    "enrichments": [
+      {
+        "indicator": {
+          "confidence": 100,
+          "feed": {
+            "name": "dyingbreeds_"
+          },
+          "first_seen": "2026-01-13T00:35:01.000Z",
+          "id": "1718594",
+          "last_seen": "2026-01-13T00:35:01.000Z",
+          "name": "8.8.8.8:8010",
+          "provider": "threat-fox",
+          "software": {
+            "alias": [
+              "Unknown malware"
+            ],
+            "name": "unknown",
+            "type": "botnet_cc"
+          },
+          "tags": [
+            "AS55990",
+            "Botnet",
+            "byob",
+            "C2",
+            "censys"
+          ],
+          "type": "connection"
+        },
+        "matched": {
+          "field": "source.ip, source.port"
+        }
+      }
     ]
   }
 }
+
 ```
 
 ### Policy processing
-The policy is the operational graph applied to each event, structured into decoders, rules, and outputs, each related to normalizing, enriching, and delivery respectively.
+
+The policy is the operational graph applied to each event. It defines an ordered pipeline of stages:
+pre-filtering, decoding, enrichment, post-filtering, and output delivery. Not all stages are mandatory:
+pre-filter, enrichment, and post-filter are **optional** and may be omitted or disabled depending on
+the policy configuration. The following diagram shows the full pipeline when all stages are active;
+optional stages are highlighted in yellow.
 
 
 ```mermaid
@@ -183,106 +307,80 @@ title: Security policy dataflow
 ---
 flowchart LR
 
-classDef EventBoxClass font-size: 15px,stroke-width:2px, color:#fff, fill:#3f51b5
-classDef TreeBoxClass font-size: 15px,stroke-width:2px,stroke-dasharray: 5 5
+classDef EventBoxClass fill:#ffffff,stroke:#666666,stroke-width:2px,color:#d9534f
+classDef ProcessBoxClass fill:#ffffff,stroke:#5b9bd5,stroke-width:2px,color:#2f6db3
+classDef DecisionBoxClass fill:#ffffff,stroke:#e6a23c,stroke-width:2px,color:#c77d00
+classDef DiscardBoxClass fill:#ffffff,stroke:#d9534f,stroke-width:2px,color:#d9534f
+classDef MergeClass fill:#ffffff,stroke:#999999,stroke-width:1px,color:#666666
+classDef TreeBoxClass stroke:#5b9bd5,stroke-width:2px,fill:#ffffff,color:#2f6db3
+classDef OptionalProcessClass fill:#fffbe6,stroke:#5b9bd5,stroke-width:2px,color:#2f6db3
+classDef OptionalDecisionClass fill:#fffbe6,stroke:#e6a23c,stroke-width:2px,color:#c77d00
 
- subgraph decoTree["Decoders"]
+rawEvent((Raw<br/>event)):::EventBoxClass
+preFilter{"Pre-filter<br/>(optional)"}:::OptionalDecisionClass
+discardPre((Discarded)):::DiscardBoxClass
+
+subgraph decoTree["Decoders tree"]
   direction TB
 
-  deco01(" ")
-  deco02(" ")
-  deco03(" ")
-  deco04(" ")
-  deco05(" ")
-  deco06(" ")
-  deco07(" ")
-  deco08(" ")
+  deco01["Root decoder"]:::ProcessBoxClass
+  deco02["Decoder A"]:::ProcessBoxClass
+  deco03["Decoder B"]:::ProcessBoxClass
+  deco04["Decoder C"]:::ProcessBoxClass
+  deco05["Decoder A.1"]:::ProcessBoxClass
+  deco06["Decoder B.1"]:::ProcessBoxClass
+  deco07["Decoder B.2"]:::ProcessBoxClass
+  deco08["Decoder C.1"]:::ProcessBoxClass
+  decoOut(( )):::MergeClass
 
   deco01 --> deco02 & deco03 & deco04
   deco02 --> deco05
   deco03 --> deco06 & deco07
   deco04 --> deco08
- end
 
- subgraph ruleTree["Rules"]
-  direction TB
+  deco05 --> decoOut
+  deco06 --> decoOut
+  deco07 --> decoOut
+  deco08 --> decoOut
+end
 
-  rule01(" ")
-  rule02(" ")
-  rule03(" ")
-  rule04(" ")
-  rule05(" ")
-  rule06(" ")
-  rule07(" ")
-  rule08(" ")
+normalizedEvent((Normalized<br/>event)):::EventBoxClass
+enrichment["Enrichment<br/>IOCs + Geo<br/>(optional)"]:::OptionalProcessClass
+postFilter{"Post-filter<br/>(optional)"}:::OptionalDecisionClass
+discardPost((Discarded)):::DiscardBoxClass
+outputs["Outputs"]:::ProcessBoxClass
 
-  rule01 --> rule02 & rule03 & rule04
-  rule02 --> rule05
-  rule03 --> rule06 & rule07
-  rule04 --> rule08
- end
+decoTree:::TreeBoxClass
 
- subgraph outputTree["Outputs"]
-  direction TB
+rawEvent --> preFilter
+preFilter -->|accept| deco01
+preFilter -->|discard| discardPre
 
-  output01(" ")
-  output02(" ")
-  output03(" ")
-  output04(" ")
-  output05(" ")
-  output06(" ")
-  output07(" ")
-  output08(" ")
-
-  output01 --> output02 & output03 & output04
-  output02 --> output05
-  output03 --> output06 & output07
-  output04 --> output08
-
- end
-
- decoTree:::TreeBoxClass
- ruleTree:::TreeBoxClass
- outputTree:::TreeBoxClass
- eventInput:::EventBoxClass
- eventOutput:::EventBoxClass
-
- %% Pipeline
- eventInput@{shape: doc, label: "Event</br>Input"}==>decoTree==>ruleTree==>outputTree==>eventOutput@{shape: doc, label: "Enriched</br>Event"}
-
+decoOut --> normalizedEvent
+normalizedEvent --> enrichment --> postFilter
+postFilter -->|pass| outputs
+postFilter -->|discard| discardPost
 ```
 
-Wazuh comes with a predefined policy that enables all its components to work properly and it is structured on top of Wazuh-supported log sources.
+Wazuh ships with a predefined **standard** policy that covers all supported log sources and enables all its
+components to work out of the box. It includes pre-configured decoders, enrichments, and outputs for every
+Wazuh-supported integration.
 
-Each source does have a particular way to format and send logs to the engine. The default policy takes care of that, allowing the users to focus on their integrations and not on the nuances of the logs transports for each source.
+Each log source has its own format and transport specifics. The standard policy encapsulates those details,
+allowing users to focus on their own integrations and rules without dealing with the underlying log transport
+mechanics for each source. Optional stages such as pre-filters, enrichment, and post-filters can be enabled
+or disabled per policy depending on the use case.
 
-```mermaid
-graph LR;
-    subgraph Endpoint
-        Service["Service"]
-        WazuhAgent["Wazuh agent"]
-        Service --- WazuhAgent
-    end
-
-    WazuhAgent -.-> Orchestrator["Orchestrator: Router"]
-
-    subgraph WazuhServer["Wazuh server"]
-
-        subgraph Engine
-            Orchestrator --> Route["Route"]
-            Route --> Decoding["Decoding Stage"]
-            subgraph SecurityPolicy["Security Policy"]
-                Decoding --> Rule["Rule Stage"]
-                Rule --> OutputStage["Output Stage"]
-            end
-        end
-    end
-```
 
 ### Decoding process
-The decoding process converts unstructured data received by the engine into schema-based JSON events.
+The decoding process converts the unstructured or semi-structured raw event received by the engine into a
+schema-based JSON document aligned with the Wazuh Common Schema.
 
-All events enter the pipeline through the root decoder, which determines the appropriate decoder for processing. Each subsequent decoder processes the event as much as possible before passing it to the next suitable decoder. This continues until no further processing can be performed.
+All events enter the decoder stage through the **root decoder**, which acts as the entry point of the decoder
+tree. The root decoder evaluates the event and, upon matching, passes it down to the appropriate child decoders
+for progressively more specialized processing. Each decoder in the tree applies its own field mappings and
+transformations; if an event does not match a decoder's conditions, the next sibling decoder at the same level
+is tried instead. This continues until no further applicable decoder is found.
 
 A closer examination of the predefined decoders reveals the following structure:
 
@@ -323,73 +421,19 @@ linkStyle 0 stroke:#f50057,stroke-width:2px
 
 ```
 
-The event is evaluated by a decoder to determine if it matches the conditions defined within the decoder. If the decoder rejects the event, it is passed to the next sibling decoder within the same hierarchy for evaluation. This process continues until a decoder accepts the event or no more sibling decoders are available.
+When a decoder evaluates an event, it checks whether the event satisfies its match conditions. If the conditions
+are not met, the event is passed to the next sibling decoder in the same hierarchy. This continues until a
+decoder accepts the event or no more sibling decoders remain at that level — in which case the event is
+considered fully decoded by that branch.
 
-When a decoder accepts an event, it may modify the event by normalizing or enriching its data. After this, the event is passed to the child decoders of the accepted decoder for further processing. Each child decoder evaluates the event using the same logic, ensuring a hierarchical and iterative approach to event processing.
+Once a decoder accepts an event, it applies its transformations: normalizing fields, extracting values, or
+mapping data to schema fields. The transformed event is then forwarded to that decoder's child decoders for
+additional, more specialized processing. Each child decoder follows the same evaluation logic, making the
+overall process both hierarchical and iterative.
 
-This hierarchical evaluation ensures that events are processed efficiently and routed through the appropriate decoders based on their structure and content.
+This tree-based evaluation ensures that events are efficiently routed to the most specific applicable decoder
+based on their structure and content, without requiring explicit routing rules.
 
-The following diagram illustrates the event flow on the decoder tree of default policy:
-
-```mermaid
----
-title: Event flow on decoder tree
----
-flowchart LR
-
- classDef EventBoxClass font-size: 15px,stroke-width:2px, color:#fff, fill:#3f51b5
- classDef TreeBoxClass font-size: 15px,stroke-width:2px,stroke-dasharray: 5 5
-
- subgraph decoTree["First layer - Internal decoders"]
-    direction TB
-    deco01(" ")
-    deco02(" ")
-    deco03(" ")
-    deco04("Integration Decoder")
-    deco05(" ")
-    deco06(" ")
-    deco07(" ")
-
-    deco01 --> deco02 & deco03 & deco04
-    deco02 --> deco05
-    deco03 --> deco06 & deco07
-  end
-
-  deco04 -..-> decoIntegration["Integration Decoder"]:::TreeBoxClass
-  eventInput@{shape: doc, label: "Event</br>Input"} ==> decoTree
-  decoTree:::TreeBoxClass
-
- subgraph userDecoTree["Integrations & User decoders"]
-    direction TB
-    userDeco01(" ")
-    userDeco02(" ")
-    userDeco03(" ")
-    userDeco04(" ")
-    userDeco05(" ")
-    userDeco06(" ")
-    userDeco07(" ")
-    userDeco08(" ")
-
-    userDeco01 --> userDeco02 & userDeco03 & userDeco04
-    userDeco02 --> userDeco05
-    userDeco03 --> userDeco06 & userDeco07
-    userDeco04 --> userDeco08
-  end
-
-
-
-%% decoIntegration --> userDecoTree
-decoIntegration --> userDeco01
-userDecoTree ----> eventOutput@{shape: doc, label: "Normalized</br>event"}
-
-userDecoTree:::TreeBoxClass
-eventInput:::EventBoxClass
-eventOutput:::EventBoxClass
-```
-
-In the default policy, the first layer is for internal decoders, which are responsible for normalizing events.
-The second layer is for integrations and user-defined decoders, which are used to process events from specific
-sources or applications.
 
 ### Security enrichment process
 The analysis process evaluates all event fields to identify potential security concerns, which are represented as threat
