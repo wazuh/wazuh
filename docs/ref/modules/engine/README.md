@@ -486,12 +486,11 @@ space["Space enrichment"]:::op
 discard["Discarded events filter"]:::op
 cleanup["Cleanup decoder temporary variables"]:::op
 success["Continue to enrichment stage"]:::ok
-failure["Stop pipeline"]:::fail
+discarded["Discarded event"]:::fail
 
 pre --> space --> discard --> cleanup --> success
-space -->|failure| failure
-discard -->|failure| failure
-cleanup -->|failure| failure
+discard -->|discarded| discarded
+cleanup -->|failure| discarded
 ```
 
 ##### Space enrichment
@@ -506,7 +505,7 @@ Conceptually:
 {
   "wazuh": {
     "space": {
-      "name": "my-space"
+      "name": "standard|custom"
     }
   }
 }
@@ -524,6 +523,9 @@ This behavior depends on the policy configuration:
 
 This makes the discarded-events decision part of pre-enrichment, before any configured enrichment is evaluated.
 
+> [!NOTE]
+> See the [helper functions reference](ref-helper-functions.md#discard_events) for the condition used to determine whether discarded events should continue in the pipeline.
+
 ```mermaid
 flowchart TD
 
@@ -536,7 +538,7 @@ cfg["Discarded events indexing enabled?"]:::cond
 discarded["Event marked as discarded?"]:::cond
 pass1["Continue"]:::yes
 pass2["Continue"]:::yes
-drop["Drop event"]:::no
+drop["Discarded event"]:::no
 
 start --> cfg
 cfg -->|yes| pass1
@@ -728,7 +730,7 @@ match -->|no| nomatch
 
 Unclassified-events handling is not part of pre-enrichment or enrichment.
 
-It is handled later in the pipeline during output selection. In that stage, a dedicated helper determines whether the event should be indexed as an unclassified event.
+It is handled later in the pipeline during output selection. In that stage, a dedicated [helper](ref-helper-functions.md#index_unclassified_events) determines whether the event should be indexed as an unclassified event.
 
 This decision is based on the event decoder information and is used to route matching events to the dedicated unclassified data stream:
 
@@ -781,7 +783,7 @@ classDef next fill:#2196f3,stroke-width:2px,color:#fff
 
 pre["Pre-enrichment"]:::pre
 enr["Enrichment"]:::enr
-stop["Pipeline stops"]:::stop
+stop["Discarded event"]:::stop
 next["Pipeline continues"]:::next
 
 pre -->|may stop event| stop
