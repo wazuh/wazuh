@@ -987,7 +987,7 @@ TEST_F(AgentInfoCoordinationTest, CoordinationFlushFailureResumesPausedModules)
     });
 
     EXPECT_EQ(resumeCount, 3);
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("flush completed with error"));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("flush timed out — data will be retried in the next sync cycle"));
 }
 
 TEST_F(AgentInfoCoordinationTest, CoordinationWithModuleResumptionSuccess)

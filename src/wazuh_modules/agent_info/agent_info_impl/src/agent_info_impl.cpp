@@ -1220,6 +1220,7 @@ bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
     constexpr int FLUSH_POLL_DELAY_MS = 10000;       // 10 seconds between polls
     constexpr int LOG_PROGRESS_EVERY_N_ATTEMPTS = 6; // Log progress every 60 seconds (6 * 10s)
     std::map<std::string, int> attempts;
+    bool anyFailed = false;
 
     for (const auto& moduleName : pendingModules)
     {
@@ -1283,8 +1284,12 @@ bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
 
                         if (!flushSucceeded)
                         {
-                            m_logFunction(LOG_ERROR, moduleName + " flush completed with error");
-                            return false;
+                            // The sync protocol timed out on this module. Modules are already
+                            // resumed at this point; the data will be retried in the next
+                            // regular sync cycle. Log as a warning, not an error, and continue
+                            // monitoring the remaining modules rather than aborting early.
+                            m_logFunction(LOG_WARNING, moduleName + " flush timed out — data will be retried in the next sync cycle");
+                            anyFailed = true;
                         }
 
                         completedModules.push_back(moduleName);
@@ -1312,7 +1317,7 @@ bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
 
     if (pendingModules.empty())
     {
-        return true;
+        return !anyFailed;
     }
 
     m_logFunction(LOG_INFO, "Module stopping, aborting pending flush monitoring");
