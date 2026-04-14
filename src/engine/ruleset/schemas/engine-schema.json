@@ -780,6 +780,9 @@
     "enrichments.indicator.first_seen": {
       "type": "date"
     },
+    "enrichments.indicator.id": {
+      "type": "keyword"
+    },
     "enrichments.indicator.last_seen": {
       "type": "date"
     },
@@ -790,6 +793,21 @@
       "type": "keyword"
     },
     "enrichments.indicator.reference": {
+      "type": "keyword"
+    },
+    "enrichments.indicator.software": {
+      "type": "object"
+    },
+    "enrichments.indicator.software.alias": {
+      "type": "keyword"
+    },
+    "enrichments.indicator.software.name": {
+      "type": "keyword"
+    },
+    "enrichments.indicator.software.type": {
+      "type": "keyword"
+    },
+    "enrichments.indicator.tags": {
       "type": "keyword"
     },
     "enrichments.indicator.type": {
@@ -3672,6 +3690,9 @@
     "threat.enrichments.indicator.email.address": {
       "type": "keyword"
     },
+    "threat.enrichments.indicator.feed.name": {
+      "type": "keyword"
+    },
     "threat.enrichments.indicator.file.accessed": {
       "type": "date"
     },
@@ -4092,6 +4113,9 @@
     "threat.enrichments.indicator.geo.timezone": {
       "type": "keyword"
     },
+    "threat.enrichments.indicator.id": {
+      "type": "keyword"
+    },
     "threat.enrichments.indicator.ip": {
       "type": "ip"
     },
@@ -4145,6 +4169,21 @@
     },
     "threat.enrichments.indicator.sightings": {
       "type": "long"
+    },
+    "threat.enrichments.indicator.software": {
+      "type": "object"
+    },
+    "threat.enrichments.indicator.software.alias": {
+      "type": "keyword"
+    },
+    "threat.enrichments.indicator.software.name": {
+      "type": "keyword"
+    },
+    "threat.enrichments.indicator.software.type": {
+      "type": "keyword"
+    },
+    "threat.enrichments.indicator.tags": {
+      "type": "keyword"
     },
     "threat.enrichments.indicator.type": {
       "type": "keyword"
@@ -5469,11 +5508,17 @@
     "vulnerability.description": {
       "type": "keyword"
     },
+    "vulnerability.detected_at": {
+      "type": "date"
+    },
     "vulnerability.enumeration": {
       "type": "keyword"
     },
     "vulnerability.id": {
       "type": "keyword"
+    },
+    "vulnerability.published_at": {
+      "type": "date"
     },
     "vulnerability.reference": {
       "type": "keyword"
@@ -5481,7 +5526,13 @@
     "vulnerability.report_id": {
       "type": "keyword"
     },
+    "vulnerability.scanner.condition": {
+      "type": "keyword"
+    },
     "vulnerability.scanner.reference": {
+      "type": "keyword"
+    },
+    "vulnerability.scanner.source": {
       "type": "keyword"
     },
     "vulnerability.scanner.vendor": {
@@ -5501,6 +5552,9 @@
     },
     "vulnerability.severity": {
       "type": "keyword"
+    },
+    "vulnerability.under_evaluation": {
+      "type": "boolean"
     },
     "wazuh.agent.build.original": {
       "type": "keyword"
