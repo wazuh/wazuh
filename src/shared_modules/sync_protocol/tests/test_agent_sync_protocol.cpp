@@ -5667,19 +5667,39 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleProcessingAckThenEndAckError)
     syncThread.join();
 }
 
+namespace
+{
+    std::mutex END_RETRY_TEST_MTX;
+    std::condition_variable END_RETRY_TEST_CV;
+    int END_RETRY_TEST_MSG_COUNT = 0;
+
+    int endRetryTestSendBinary(int, const void*, size_t, const char*, char)
+    {
+        {
+            std::lock_guard<std::mutex> lock(END_RETRY_TEST_MTX);
+            ++END_RETRY_TEST_MSG_COUNT;
+        }
+        END_RETRY_TEST_CV.notify_all();
+        return 0;
+    }
+} // namespace
+
 // Verifies that when End-message retries are exhausted while the module is stopping,
 // the event is logged at INFO (not ERROR), because retry exhaustion during shutdown
 // is expected and should not appear as an anomaly in the logs.
 TEST_F(AgentSyncProtocolTest, EndMessageRetryExhaustionDuringStopLogsInfo)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
+
+    {
+        std::lock_guard<std::mutex> lock(END_RETRY_TEST_MTX);
+        END_RETRY_TEST_MSG_COUNT = 0;
+    }
+
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char)
-        {
-            return 0;
-        }
+        .send_binary = endRetryTestSendBinary
     };
 
     std::vector<std::pair<modules_log_level_t, std::string>> capturedLogs;
@@ -5709,8 +5729,29 @@ TEST_F(AgentSyncProtocolTest, EndMessageRetryExhaustionDuringStopLogsInfo)
         EXPECT_FALSE(result);
     });
 
-    // Wait for the Start message to be sent.
-    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    // Helper: always stop + join on early exit (prevents std::terminate on ASSERT failure).
+    auto stopAndJoin = [&]()
+    {
+        protocol->stop();
+        if (syncThread.joinable())
+        {
+            syncThread.join();
+        }
+    };
+
+    // Wait for the Start message to be sent (with timeout to prevent indefinite hang).
+    bool startSent;
+    {
+        std::unique_lock<std::mutex> lock(END_RETRY_TEST_MTX);
+        startSent = END_RETRY_TEST_CV.wait_for(lock, std::chrono::seconds(10),
+                                                [] { return END_RETRY_TEST_MSG_COUNT >= 1; });
+    }
+
+    if (!startSent)
+    {
+        stopAndJoin();
+        FAIL() << "Timed out waiting for Start message to be sent";
+    }
 
     // Send StartAck so the protocol advances past the start phase.
     {
@@ -5724,8 +5765,19 @@ TEST_F(AgentSyncProtocolTest, EndMessageRetryExhaustionDuringStopLogsInfo)
         protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
     }
 
-    // Wait for the protocol to enter the End-message retry loop.
-    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    // Wait for the protocol to enter the End-message retry loop (with timeout).
+    bool endSent;
+    {
+        std::unique_lock<std::mutex> lock(END_RETRY_TEST_MTX);
+        endSent = END_RETRY_TEST_CV.wait_for(lock, std::chrono::seconds(10),
+                                              [] { return END_RETRY_TEST_MSG_COUNT >= 3; });
+    }
+
+    if (!endSent)
+    {
+        stopAndJoin();
+        FAIL() << "Timed out waiting for End message to be sent";
+    }
 
     // Stop while waiting for EndAck — wakes the internal cv so retries exhaust quickly.
     protocol->stop();
