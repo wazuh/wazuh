@@ -1950,134 +1950,257 @@ Aditionally we define some types for the purpose to use specific parsers, normal
 
 ## Debugging
 
-By default, the Engine's log information is recorded in journald when launching the wazuh-manager service.
+### Where to find the logs
 
-### Filtering Logs by Executable Name
-You can retrieve logs specifically for the Engine using journald’s _COMM field:
+The Engine writes its logs to the Wazuh manager log file, alongside the rest of the
+Wazuh components:
 
-```bash
-journalctl _COMM=wazuh-engine
+```
+/var/wazuh-manager/logs/wazuh-manager.log
 ```
 
-For real-time monitoring of errors:
-```bash
-journalctl -f _COMM=wazuh-engine
+Each log line follows the format `YYYY/MM/DD HH:MM:SS <component>: LEVEL: message`.
+Most Engine messages use the `wazuh-manager-analysisd` component tag, but some subsystems
+(such as the Indexer Connector) use their own tag:
+
+```
+2026/04/14 20:07:43 IndexerConnector: WARNING: No username and password found in the keystore, using default values.
+2026/04/14 20:07:44 wazuh-manager-analysisd: INFO: Indexer Connector initialized.
+2026/04/14 20:09:16 wazuh-manager-analysisd: INFO: Archiver initialized.
+2026/04/14 20:09:16 wazuh-manager-analysisd: INFO: Remote engine's server initialized and started.
+2026/04/14 20:09:16 wazuh-manager-analysisd: INFO: Engine started and ready to process events.
 ```
 
-### Filtering Logs by Severity
-To refine logs based on severity levels you can combine grep:
-```bash
-journalctl _COMM=wazuh-engine | grep info
+Warning and error lines include a context tag in brackets that identifies the internal
+component that produced the message:
 
-Dec 18 14:59:22 WazPc env[12974]: 2024-12-18 14:59:22.663 12974:12974 info: Logging initialized.
-Dec 18 14:59:22 WazPc env[12974]: 2024-12-18 14:59:22.668 12974:12974 fileDriver.cpp:231 at readCol(): debug: FileDriver readCol name: 'namespaces/system/decoder/core-hostinfo'.
-Dec 18 14:59:22 WazPc env[12974]: 2024-12-18 14:59:22.669 12974:12974 main.cpp:166 at main(): info: Store initialized.
-Dec 18 14:59:22 WazPc env[12974]: 2024-12-18 14:59:22.669 12974:12974 main.cpp:172 at main(): info: RBAC initialized.
+```
+2026/04/14 20:09:16 wazuh-manager-analysisd: WARNING: [CMSync::exist()] Check 'standard' space in wazuh-indexer - Attempt 1/3: No available server
+2026/04/14 20:09:26 wazuh-manager-analysisd: WARNING: [CMSync] Failed to synchronize namespace for space 'standard': No available server
+2026/04/14 20:09:46 wazuh-manager-analysisd: WARNING: [IOC::Sync] Synchronization cycle failed: No available server
 ```
 
-Available severity levels:
-- **trace** – Provides highly detailed debugging information, useful for deep troubleshooting.
-- **debug** – Contains diagnostic messages intended for developers to track execution flow.
-- **info** – General operational logs that indicate normal Engine activity.
-- **warning** – Highlights potential issues that do not impact functionality but may require attention.
-- **error** – Reports issues that may cause incorrect behavior but do not stop the Engine.
-- **critical** – Indicates severe failures that may result in the Engine stopping or becoming unstable.
+When debug level is active, additional diagnostic messages appear with the same format:
+
+```
+2026/04/14 20:09:16 wazuh-manager-analysisd: DEBUG: Geo sync scheduled with interval: 360 seconds.
+2026/04/14 20:09:16 wazuh-manager-analysisd: DEBUG: Remote configuration synchronize scheduled with interval: 120 seconds.
+2026/04/14 20:09:16 wazuh-manager-analysisd: DEBUG: IOC Sync task scheduled with interval: 360 seconds, 3 max retries.
+```
+
+### Log types
+
+The Engine supports six severity levels. Only messages at the configured level or above
+are written to the log file.
+
+| Type       | Description |
+|:----------:|:------------|
+| `TRACE`    | Extremely detailed — every step of every operation. Use only for deep troubleshooting. |
+| `DEBUG`    | Diagnostic messages useful for day-to-day troubleshooting. |
+| `INFO`     | Normal activity: modules starting, tasks running, sync results. **Default.** |
+| `WARNING`  | Something unexpected happened but the Engine kept working. |
+| `ERROR`    | Something went wrong and may have affected event processing. |
+| `CRITICAL` | A serious failure. The Engine may have stopped. |
+
+### How to enable debug logging
+
+Open the file `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf` and find
+(or add) the `analysisd.debug` line:
+
+```ini
+# Log verbosity for the Engine
+# 0 = normal (info)  ← default
+# 1 = debug
+# 2 = trace (most detailed)
+analysisd.debug=1
+```
+
+Save the file and restart the `wazuh-manager` service for the change to take effect.
+
+> [!NOTE]
+> Use `debug` (1) for day-to-day troubleshooting. Only switch to `trace` (2) when
+> you need to follow a specific event step by step — it produces a large volume of
+> output.
+
+### Internal options reference
+
+All of the following settings live in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`.
+Edit the file and restart the `wazuh-manager` service for changes to take effect.
+
+#### Logging
+
+| Setting | Description | Default |
+|:--------|:------------|:-------:|
+| `analysisd.debug` | Log verbosity level. `0` = normal, `1` = debug, `2` = trace. | `0` |
+
+#### Event queue
+
+| Setting | Description | Default |
+|:--------|:------------|:-------:|
+| `analysisd.event_queue_size` | Maximum number of events waiting in the router input queue. Events can be dropped when this queue is full. | `131072` |
+| `analysisd.event_queue_eps` | Maximum event ingestion rate. `0` means unlimited. | `0` |
+
+#### Indexer connector
+
+| Setting | Description | Default |
+|:--------|:------------|:-------:|
+| `analysisd.indexer_queue_max_events` | Maximum number of events waiting in the indexer output queue. Events can be dropped when this queue is full. | `131072` |
+| `analysisd.indexer_connector_max_hits_per_request` | Maximum number of documents requested per indexer query. | `100` |
+
+#### Sync intervals
+
+| Setting | Description | Default |
+|:--------|:------------|:-------:|
+| `analysisd.remote_conf_sync_interval` | Seconds between remote engine configuration synchronization cycles. | `120` |
+| `analysisd.remote_conf_indexer_connector_max_retries` | Maximum retry attempts for remote configuration requests to the Wazuh Indexer. | `3` |
+| `analysisd.remote_conf_indexer_connector_retry_interval` | Seconds between retry attempts for remote configuration synchronization. | `5` |
+| `analysisd.cm_sync_interval` | Seconds between content synchronization cycles from the Wazuh Indexer. | `120` |
+| `analysisd.cmsync_indexer_connector_max_retries` | Maximum retry attempts for content synchronization requests to the Wazuh Indexer. | `3` |
+| `analysisd.cmsync_indexer_connector_retry_interval` | Seconds between retry attempts for content synchronization. | `5` |
+| `analysisd.ioc_sync_interval` | Seconds between IoC database synchronization cycles. `0` disables IoC sync. | `360` |
+| `analysisd.ioc_indexer_connector_max_retries` | Maximum retry attempts for IoC synchronization requests to the Wazuh Indexer. | `3` |
+| `analysisd.ioc_indexer_connector_retry_interval` | Seconds between retry attempts for IoC synchronization. | `5` |
+| `analysisd.ioc_indexer_connector_ioc_sync_batch_size` | Number of IoC records requested per synchronization batch. | `1000` |
+| `analysisd.geo_sync_interval` | Seconds between GeoIP database synchronization cycles. `0` disables GeoIP sync. | `360` |
 
 ### Traces
-Traces allow you to inspect the operational graph behavior, providing insights into how events are processed within the Engine. By using the tester endpoint (refer to the API documentation for details), you can specify several options to debug event processing effectively.
 
-Available trace options:
-- **Namespaces** – Filters traces to show only the assets under a specified namespace.
-- **Graph History** – Displays all assets that processed a given event, allowing a complete view of its journey.
-- **Traces** – Provides a detailed history of all operations performed by each asset (or a specified set of assets).
+Traces let you test how the Engine processes a specific event without sending it
+through production. A trace is a detailed report of what happened inside the
+selected policy while the event was evaluated.
 
-Here is a test example showing the graph history:
+There are three levels of detail:
+
+- **Graph history** — shows the assets and policy phases that evaluated the event,
+  including filters, decoders, enrichment, and outputs when they are part of the
+  selected policy. Good for understanding where an event was accepted, rejected,
+  or discarded.
+- **Full traces** — adds a step-by-step breakdown of every operation inside each
+  asset. Use this level when you need to understand exactly where parsing, checks,
+  mapping, or enrichment failed.
+- **Asset filtering** — limits the output to a specific group of assets, to reduce
+  noise when you already know which area to investigate.
+
+The policy flow is evaluated in phases. Pre-filter assets are evaluated before
+decoders. If a pre-filter fails, the event does not continue to decoder evaluation.
+After decoding, the Engine runs internal cleanup and enrichment logic. Post-filter
+assets are evaluated before outputs; if a post-filter fails, the event does not
+continue to output delivery.
+
+In traces, filters appear with their asset names, such as `filter/DiscardedEvents`.
+Some policies do not print a separate `pre-filter` or `post-filter` wrapper; the
+filter asset itself shows the decision that was made.
+
+**Generic trace structure** — a trace follows the event through the policy. Not
+every policy prints every phase, but the usual order is:
+
 ```
 traces:
-[🔴] decoder/zeek-x509/0 -> failed
-[🔴] decoder/zeek-weird/0 -> failed
-[🔴] decoder/zeek-traceroute/0 -> failed
-[🔴] decoder/zeek-stats/0 -> failed
-[🔴] decoder/zeek-software/0 -> failed
-[🔴] decoder/zeek-socks/0 -> failed
-[🔴] decoder/zeek-snmp/0 -> failed
-[🔴] decoder/zeek-smb_mapping/0 -> failed
-[🔴] decoder/zeek-smb_files/0 -> failed
-[🔴] decoder/apache-error/0 -> failed
-[🔴] decoder/zeek-smb_cmd/0 -> failed
-[🔴] decoder/zeek-ssl/0 -> failed
-[🔴] decoder/snort-json/0 -> failed
-[🔴] decoder/squid-access/0 -> failed
-[🔴] decoder/zeek-known_certs/0 -> failed
-[🔴] decoder/suricata/0 -> failed
-[🔴] decoder/zeek-irc/0 -> failed
-[🔴] decoder/microsoft-exchange-server-smtp/0 -> failed
-[🔴] decoder/snort-plaintext/0 -> failed
-[🔴] decoder/pfsense-firewall/0 -> failed
-[🔴] decoder/pfsense-dhcp/0 -> failed
-[🔴] decoder/apache-access/0 -> failed
-[🔴] decoder/snort-plaintext-csv/0 -> failed
-[🔴] decoder/zeek-sip/0 -> failed
-[🔴] decoder/pfsense-unbound/0 -> failed
-[🔴] decoder/iis/0 -> failed
-[🔴] decoder/zeek-signature/0 -> failed
-[🔴] decoder/modsecurity-nginx/0 -> failed
-[🔴] decoder/microsoft-dhcpv6/0 -> failed
-[🔴] decoder/zeek-conn/0 -> failed
-[🔴] decoder/zeek-modbus/0 -> failed
-[🔴] decoder/microsoft-exchange-server-imap4-pop3/0 -> failed
-[🔴] decoder/pfsense-php-fpm/0 -> failed
-[🔴] decoder/microsoft-exchange-server-messagetracking/0 -> failed
-[🔴] decoder/microsoft-exchange-server-httpproxy/0 -> failed
-[🔴] decoder/zeek-kerberos/0 -> failed
-[🔴] decoder/modsecurity-apache/0 -> failed
-[🔴] decoder/microsoft-dhcp/0 -> failed
-[🔴] decoder/zeek-pe/0 -> failed
-[🔴] decoder/windows-event/0 -> failed
-[🔴] decoder/zeek-capture_loss/0 -> failed
-[🔴] decoder/zeek-dhcp/0 -> failed
-[🔴] decoder/zeek-dnp3/0 -> failed
-[🔴] decoder/zeek-dns/0 -> failed
-[🔴] decoder/zeek-smtp/0 -> failed
-[🔴] decoder/zeek-http/0 -> failed
-[🔴] decoder/zeek-rfb/0 -> failed
-[🔴] decoder/zeek-files/0 -> failed
-[🔴] decoder/zeek-ftp/0 -> failed
-[🔴] decoder/zeek-ssh/0 -> failed
-[🔴] decoder/zeek-ocsp/0 -> failed
-[🔴] decoder/zeek-dce_rpc/0 -> failed
-[🔴] decoder/zeek-intel/0 -> failed
-[🔴] decoder/zeek-syslog/0 -> failed
-[🔴] decoder/zeek-known_hosts/0 -> failed
-[🔴] decoder/zeek-dpd/0 -> failed
-[🔴] decoder/zeek-known_services/0 -> failed
-[🔴] decoder/zeek-mysql/0 -> failed
-[🔴] decoder/zeek-ntlm/0 -> failed
-[🔴] decoder/zeek-tunnel/0 -> failed
-[🔴] decoder/zeek-notice/0 -> failed
-[🔴] decoder/zeek-ntp/0 -> failed
-[🔴] decoder/zeek-radius/0 -> failed
-[🟢] decoder/syslog/0 -> success
-[🔴] decoder/sysmon-linux/0 -> failed
-[🔴] decoder/system-auth/0 -> failed
-[🔴] decoder/snort-plaintext-syslog/0 -> failed
-[🔴] decoder/wazuh-dashboard/0 -> failed
+[🟢] filter/<pre-filter-name>/0 -> success
+  ↳ [check: <condition>] -> Success
+[🟢] decoder/<decoder-name>/0 -> success
+  ↳ <field>: <operation> -> Success
+[🟢] cleanup/DecoderTemporaryVariables -> success
+  ↳ cleanupDecoderTemporaryVariables() -> Success
+[🟢] enrichment/<enrichment-name> -> success
+  ↳ <enrichment operation> -> Success
+[🟢] filter/<post-filter-name>/0 -> success
+  ↳ <filter operation> -> Success
+[🟢] output/<output-name>/0 -> success
+  ↳ <output operation> -> Success
 ```
 
-Showing full traces:
+Pre-filters are used to decide whether an event should enter the decoder phase.
+When a pre-filter fails, the event is rejected before any decoder runs. Decoders
+parse and normalize the event. Cleanup assets remove temporary fields created
+during decoding. Enrichment assets add derived context, such as GeoIP, AS, or IoC
+matches. Post-filters run after decoding and enrichment, before outputs, and decide
+whether the processed event should continue to delivery.
+
+**Trace example** — this reduced example shows the relevant parts of a successful
+event. A 🔴 means the asset did not apply to this event. A 🟢 means the asset
+applied and processed it:
+
 ```
 traces:
-[🟢] decoder/syslog/0 -> success
-  ↳ [/event/original: <event.start/Jun 14 15:16:01> <host.hostname> <TAG/alphanumeric/->[<process.pid>]:<~/ignore/ ><message>] -> Failure: Parse operation failed: Parser <event.start/Jun 14 15:16:01> failed at: 2018-08-14T14:30:02.203151+02:00 linux-sqrz systemd[4179]: Stopped target Basic System.
-  ↳ [/event/original: <event.start/Jun 14 15:16:01> <host.hostname> <TAG/alphanumeric/->:<~/ignore/ ><message>] -> Failure: Parse operation failed: Parser <event.start/Jun 14 15:16:01> failed at: 2018-08-14T14:30:02.203151+02:00 linux-sqrz systemd[4179]: Stopped target Basic System.
-  ↳ [/event/original: <event.start/2018-08-14T14:30:02.203151+02:00> <host.hostname> <TAG/alphanumeric/->[<process.pid>]: <message>] -> Success
-  ↳ event.kind: map("event") -> Success
-  ↳ wazuh.decoders: array_append("syslog") -> Success
-  ↳ related.hosts: array_append($host.hostname) -> Success
-  ↳ process.name: rename($TAG) -> Success
-  ↳ host.ip: array_append($tmp.host_ip) -> Failure: 'tmp.host_ip' not found
+[🟢] decoder/core-wazuh-message/0 -> success
+  ↳ @timestamp: get_date -> Success
+[🟢] decoder/integrations/0 -> success
+  ↳ event.original: exists -> Success
+  ↳ _tmp_json: parse_json($event.original) -> Success
+[🔴] decoder/syslog/0 -> failed
+  ↳ [/event/original: <event.start/ISO8601Z> <_tmp.hostname/fqdn> <_TAG/alphanumeric/->: <message>] -> Failure
+[🟢] decoder/aws-cloudtrail/0 -> success
+  ↳ [check: is_object($_tmp_json.userIdentity) OR is_array($_tmp_json.logFiles) OR exists($_tmp_json.insightDetails) OR exists($_tmp_json.insightSource)] -> Success
+  ↳ event.provider: map($_tmp_json.eventSource) -> Success
+  ↳ cloud.region: map($_tmp_json.awsRegion) -> Success
+  ↳ event.action: map($_tmp_json.eventName) -> Success
+  ↳ event.start: parse_date($_tmp_json.eventTime, "%FT%TZ") -> Success
+  ↳ source.ip: map($_tmp_json.sourceIPAddress) -> Success
+  ↳ user.name: map($_tmp_json.userIdentity.userName) -> Success
+  ↳ event.outcome: map("success") -> Success
+  ↳ [_tmp_json: delete] -> Success
+[🟢] filter/DiscardedEvents -> success
+  ↳ Discard_event() -> Success: Event will be indexed (wazuh.space.event_discarded=false)
+[🟢] cleanup/DecoderTemporaryVariables -> success
+  ↳ cleanupDecoderTemporaryVariables() -> Success: Removed root keys prefixed with '_'
+[🟢] enrichment/Geo -> success
+  ↳ Geo(89.160.20.156)|AS(89.160.20.156) -> Success: Geo and AS enrichment applied for IP at field 'source.ip'
+[🔴] enrichment/Ioc/connection -> failed
+  ↳ IOC(connection) -> Failure: Source field(s) not found for 'source.ip, source.port'
+```
+
+The first successful decoder, `decoder/core-wazuh-message/0`, prepares the event
+and sets `@timestamp`. The `decoder/integrations/0` asset verifies that the raw
+event exists and parses it into `_tmp_json`. Decoders that do not match the event
+return failures and the Engine continues evaluating the next candidates.
+
+The matched decoder maps the event fields to the normalized schema. The
+`filter/DiscardedEvents` asset decides whether the event
+should be indexed. In this example, the event is kept because
+`wazuh.space.event_discarded=false`.
+
+After decoding and filtering, the Engine removes temporary fields with
+`cleanup/DecoderTemporaryVariables` and runs enrichment assets. `enrichment/Geo`
+adds geolocation data because `source.ip` is present. The IoC enrichment fails for
+`connection` because the event does not include a port field. This is normal and
+does not mean that the event was rejected.
+
+The resulting event contains the normalized fields and the selected space:
+
+```yaml
+output:
+  cloud:
+    account:
+      id: '123456789012'
+    region: us-east-2
+  event:
+    action: CreateKeyPair
+    kind: event
+    outcome: success
+    provider: ec2.amazonaws.com
+    start: '2014-03-06T17:10:34.000Z'
+    type:
+      - info
+  source:
+    address: 89.160.20.156
+    ip: 89.160.20.156
+  user:
+    id: EX_PRINCIPAL_ID
+    name: Alice
+  wazuh:
+    integration:
+      category: cloud-services
+      decoders:
+        - decoder/core-wazuh-message/0
+        - decoder/integrations/0
+        - decoder/aws-cloudtrail/0
+      name: aws
+    protocol:
+      location: test
+      queue: 49
+    space:
+      name: standard
 ```
 
 ## F.A.Q
-- A explanation of the time zone and how it works in the engine.
-- A explanation of diferent timestamp fields and how they are used.
