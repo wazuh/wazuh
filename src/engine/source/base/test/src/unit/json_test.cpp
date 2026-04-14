@@ -1702,6 +1702,64 @@ TEST_F(JsonSettersTest, SetString)
     ASSERT_THROW(jObjString.setString("newValue", "object/key"), std::runtime_error);
 }
 
+TEST_F(JsonSettersTest, SetStringStripsTrailingNullBytes)
+{
+    Json doc {};
+    std::string tmp;
+
+    // Single trailing \0 (the most common case: OS_SendUnix sends strlen+1 bytes)
+    {
+        std::string_view withNull {"hello\0", 6}; // size=6, includes the \0
+        doc.setString(withNull, "/field");
+        ASSERT_EQ(json::RetGet::Success, doc.getString(tmp, "/field"));
+        ASSERT_EQ("hello", tmp);
+        ASSERT_EQ(5u, tmp.size()); // no null byte stored
+        // Serialised JSON must not contain \u0000
+        ASSERT_EQ(std::string::npos, doc.str().find("\\u0000"));
+    }
+
+    // Multiple trailing \0 bytes (e.g. padded buffer)
+    {
+        std::string_view multiNull {"abc\0\0\0", 6};
+        doc.setString(multiNull, "/field2");
+        ASSERT_EQ(json::RetGet::Success, doc.getString(tmp, "/field2"));
+        ASSERT_EQ("abc", tmp);
+        ASSERT_EQ(3u, tmp.size());
+    }
+
+    // String that is all null bytes must become an empty string
+    {
+        std::string_view allNull {"\0\0", 2};
+        doc.setString(allNull, "/field3");
+        ASSERT_EQ(json::RetGet::Success, doc.getString(tmp, "/field3"));
+        ASSERT_TRUE(tmp.empty());
+    }
+
+    // Normal string without any \0 must be stored unchanged
+    {
+        doc.setString("normal", "/field4");
+        ASSERT_EQ(json::RetGet::Success, doc.getString(tmp, "/field4"));
+        ASSERT_EQ("normal", tmp);
+    }
+
+    // Empty string must remain empty
+    {
+        doc.setString("", "/field5");
+        ASSERT_EQ(json::RetGet::Success, doc.getString(tmp, "/field5"));
+        ASSERT_TRUE(tmp.empty());
+    }
+
+    // \0 embedded in the MIDDLE is not stripped (only trailing ones are)
+    {
+        std::string_view embeddedNull {"a\0b", 3}; // \0 is in the middle
+        doc.setString(embeddedNull, "/field6");
+        ASSERT_EQ(json::RetGet::Success, doc.getString(tmp, "/field6"));
+        // Only the trailing-strip loop runs; the mid-string \0 followed by 'b' means
+        // no trailing \0 is stripped — the full 3-byte string is stored.
+        ASSERT_EQ(3u, tmp.size());
+    }
+}
+
 TEST_F(JsonSettersTest, SetInt)
 {
     Json jObjInt {R"({
