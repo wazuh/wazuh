@@ -20,10 +20,6 @@ MASK_DEFAULT = "*****"
 
 integer_resources = ['user:id', 'role:id', 'rule:id', 'policy:id']
 
-# Pre‑compiled regular expression for masking the <key> value inside <cluster> blocks.
-# Compiled once at module load to avoid repeated compilation overhead.
-_MASK_XML_REGEX = re.compile(r'(<cluster>.*?<key>)[^<]*(</key>)', re.DOTALL)
-
 
 def _expand_resource(resource: str) -> set:
     """Expand a specified resource depending on its type.
@@ -529,6 +525,83 @@ def _has_update_permissions() -> bool:
     return False
 
 
+def _build_xml_mask_pattern(path: str) -> re.Pattern:
+    """Build a compiled regex pattern to locate a value in a nested XML structure.
+
+    The dotted ``path`` is converted into a sequence of nested XML tags. The
+    resulting pattern captures three groups:
+
+    - Group 1: opening tags up to and including the innermost tag.
+    - Group 2: the text content to be replaced (between the innermost tags).
+    - Group 3: the closing tag of the innermost element.
+
+    Parameters
+    ----------
+    path : str
+        Dotted path representing nested XML tags, e.g. ``"cluster.key"``
+        maps to ``<cluster>...<key>value</key>``.
+
+    Returns
+    -------
+    re.Pattern
+        Compiled regular expression with ``re.DOTALL`` flag enabled so that
+        ``.*?`` matches across newlines.
+    """
+    tags = path.split('.')
+    prefix_pattern = ''.join(f'<{tag}>.*?' for tag in tags[:-1]) + f'<{tags[-1]}>'
+    full_pattern = rf'({prefix_pattern})([^<]*)(</{tags[-1]}>)'
+    return re.compile(full_pattern, re.DOTALL)
+
+
+def _mask_xml_by_path(text: str, path: str, mask_text: str) -> str:
+    """Replace the value at a nested XML path with a mask string.
+
+    Builds a pattern via `_build_xml_mask_pattern` and substitutes the text
+    content found between the innermost tags with ``mask_text``. If the pattern
+    is not present in ``text``, the original string is returned unchanged.
+
+    Parameters
+    ----------
+    text : str
+        Input XML string to process.
+    path : str
+        Dotted path representing nested XML tags, e.g. ``"cluster.key"``.
+    mask_text : str
+        Replacement string to place between the innermost tags.
+
+    Returns
+    -------
+    str
+        A new string with the matched content replaced by ``mask_text``.
+    """
+    pattern = _build_xml_mask_pattern(path)
+    return pattern.sub(rf'\1{mask_text}\3', text)
+
+def _mask_all_sensitive_fields(text: str, mask_text: str = "***") -> str:
+    """Apply XML masking for every path defined in ``SENSITIVE_FIELD_PATHS``.
+
+    Iterates over all sensitive field paths and delegates each substitution to
+    `_mask_xml_by_path`, chaining the results so that every sensitive field in
+    the string is masked.
+
+    Parameters
+    ----------
+    text : str
+        Input XML string that may contain one or more sensitive fields.
+    mask_text : str, optional
+        Replacement string for all matched values. Defaults to ``"***"``.
+
+    Returns
+    -------
+    str
+        A new string with all sensitive XML field values replaced by
+        ``mask_text``.
+    """
+    for path in SENSITIVE_FIELD_PATHS:
+        text = _mask_xml_by_path(text, path, mask_text)
+    return text
+
+
 def _mask_paths_in_object(obj, dotted_path: str, mask_text: str):
     """Mask a value at a dotted path inside dict/list.
 
@@ -561,50 +634,45 @@ def _mask_paths_in_object(obj, dotted_path: str, mask_text: str):
 
 
 def _mask_payload(payload, mask_text: str = MASK_DEFAULT):
-    """Apply masking to any supported payload shape.
+    """
+    Recursively mask sensitive data in a payload in-place.
 
-    For dicts, lists and AffectedItemsWazuhResult the operation is in-place.
-    For raw XML strings a new masked string is returned.
+    The function traverses dictionaries, lists, and AffectedItemsWazuhResult
+    objects, applying masking to:
+    - Paths defined in the global `SENSITIVE_FIELD_PATHS` (via `_mask_paths_in_object`).
+    - The literal key ``'key'`` (its value is replaced entirely by `mask`).
+    - Any string element that matches the XML pattern handled by `_mask_xml_string`
+      (the content between `<key>` tags is replaced by `mask`).
+
+    The operation modifies the input object directly; it does not return a value.
+    Unsupported types (e.g., int, str, None) are silently ignored.
 
     Parameters
     ----------
-    payload :
-        One of: str, dict, list, or AffectedItemsWazuhResult. Other types are ignored.
-    mask_text : str
-        Replacement text used for masked values.
+    payload : dict, list, AffectedItemsWazuhResult, or other
+        Data structure to be masked. Only dict, list, and AffectedItemsWazuhResult
+        are processed; other types are ignored.
+    mask : str
+        Replacement text used for all masked values.
 
     Returns
     -------
-    str or None
-        Returns a masked string when payload is a str; None otherwise.
+    None
     """
-    if isinstance(payload, AffectedItemsWazuhResult):
-        for item in payload.affected_items:
-            _mask_payload(item, mask_text)
-        return
-
     if isinstance(payload, dict):
         for path in SENSITIVE_FIELD_PATHS:
             _mask_paths_in_object(payload, path, mask_text)
-
-        # Active cluster config endpoint may expose the secret as a top-level `key` field.
-        # Example shape: {"name": ..., "node_type": ..., "key": ..., "port": ..., "nodes": [...]}.
-        if 'key' in payload and 'nodes' in payload and 'port' in payload and 'node_type' in payload:
-            payload['key'] = mask_text
+        if "key" in payload:
+            payload["key"] = mask_text
     elif isinstance(payload, list):
-        if len(payload) == 1 and isinstance(payload[0], str):
-            payload[0] = _MASK_XML_REGEX.sub(r'\1' + mask_text + r'\2', payload[0])
-        else:
-            stack = [payload]
-            while stack:
-                current_list = stack.pop()
-                for element in current_list:
-                    if isinstance(element, AffectedItemsWazuhResult):
-                        _mask_payload(element, mask_text)
-                    elif isinstance(element, dict):
-                        _mask_payload(element, mask_text)
-                    elif isinstance(element, list):
-                        stack.append(element)
+        for i, item in enumerate(payload):
+            if isinstance(item, str):
+                payload[i] = _mask_all_sensitive_fields(item, mask_text)
+            else:
+                _mask_payload(item, mask_text)
+    elif isinstance(payload, AffectedItemsWazuhResult):
+        for item in payload.affected_items:
+            _mask_payload(item, mask_text)
 
 
 def mask_sensitive_config(mask_text: str = MASK_DEFAULT):

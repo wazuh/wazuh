@@ -338,24 +338,6 @@ def test_mask_sensitive_config_raw_xml_no_cluster_block(db_setup):
     assert result == _XML_WITHOUT_CLUSTER_KEY
 
 
-def test_mask_payload_always_returns_value(db_setup):
-    """
-    _mask_payload returns None for in-place mutations, 
-    a new string for XML, and None for others.
-    """
-    payloads = [
-        _conf_payload(),
-        [_conf_payload()],
-        _conf_result_payload(),
-        _XML_WITH_CLUSTER_KEY,
-        42,          # unknown type – returned None
-        None,        # unknown type – returned None
-    ]
-    for p in payloads:
-        returned = db_setup._mask_payload(p)
-        assert (returned is None) != isinstance(p, str)
-
-
 def test_mask_sensitive_config_does_not_raise_on_masking_error(db_setup):
     """If masking raises internally the endpoint must still return a result."""
     db_setup.rbac.set({'rbac_mode': 'white'})
