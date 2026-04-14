@@ -646,35 +646,34 @@ For example, a network event log structured according to the schema might look l
 ```
 
 ### Configuration
-The schema configuration for the engine follows a structured format where each field is defined with specific attributes. The schema consists of a JSON object with the following key elements:
+The schema configuration for the engine follows a structured format where each field is defined. It's called the Wazuh Common Schema (WCS) and it's fetched (synched) from the wazuh indexer ([original yaml source](https://raw.githubusercontent.com/wazuh/wazuh-indexer-plugins/refs/heads/main/wcs/stateless/events/main/docs/wcs_flat.yml)). It's not inteded to be modified by the user and it consists of a JSON object with the following key elements:
 
 - Fields Definition:
   - The fields object contains a list of field names as keys.
-  - Each field has a corresponding object defining its properties.
-- Field Properties:
-  Each field in the schema contains two primary properties:
-  - `type`: Specifies the OpenSearch field type, such as date, keyword, text, integer, etc.
-  - `array`: A boolean value (true or false) indicating whether the field can store multiple values (i.e., an array) or just a single value.
+  - Each field has a corresponding object defining his type.
+    - `type`: Specifies the wazuh indexer field type, such as date, keyword, text, integer, etc.
 
 ```json
 {
   "name": "schema/engine-schema/0",
   "fields": {
     "@timestamp": {
-      "type": "date",
-      "array": false
+      "type": "date"
     },
     "agent.build.original": {
-      "type": "keyword",
-      "array": false
+      "type": "keyword"
     },
     "agent.ephemeral_id": {
-      "type": "keyword",
-      "array": false
+      "type": "keyword"
+    },
+    "agent.groups": {
+      "type": "keyword"
     },
     "agent.id": {
-      "type": "keyword",
-      "array": false
+      "type": "keyword"
+    },
+    "agent.name": {
+      "type": "keyword"
     }
   }
 }
@@ -682,7 +681,7 @@ The schema configuration for the engine follows a structured format where each f
 
 ### Implications
 - Operational Graph and Consistency Enforcement
-  - The schema is used during the construction of the operational graph to ensure that all operations are valid based on the defined field types and structures.
+  - The schema is used during the construction of the operational graph to ensure that all operations are valid based on the defined field types.
   - Whenever possible, schema validation is performed at build time to prevent misconfigurations before execution.
   - If an operation's consistency cannot be fully validated at build time, additional runtime checks are applied to ensure adherence to the schema.
 - Consistency and Normalization in Dashboards
@@ -690,62 +689,44 @@ The schema configuration for the engine follows a structured format where each f
   - This enables seamless aggregation, filtering, and visualization by maintaining a predictable and normalized data format.
 
 ## Managing the Engine's processing
-Now that we've explored what the Engine does and how its processing works, we’ll introduce key elements involved in managing and defining the operational graph—specifically, routes, policies, and assets.
 
-All management is performed through the API (refer to the API documentation for a complete list of available calls). Before defining the operational graph, all policies and assets must first be loaded into the Engine’s catalog. This ensures that all assets are validated and ready for use before they are referenced in processing.
+Although the Engine stores all assets and policy configurations locally for runtime execution, **the source of truth
+for all content management resides in the Wazuh Indexer**. Creating custom decoders and integrations, enabling or
+disabling them, and modifying policy-related settings are all actions performed through the Wazuh Indexer — not
+directly on the Engine.
 
-### Namespaces
-To organize assets efficiently, the Engine categorizes them into namespaces. Internally, assets are stored directly under a specific namespace, allowing for structured management and role-based segregation of policies.
+Before building the operational graph, the Engine must ensure that its local state reflects the latest configuration
+available in the Wazuh Indexer. This is achieved through a periodic synchronization process managed by **CMSync**
+(the indexer connector). CMSync is responsible for pulling content from the Wazuh Indexer and applying any detected
+changes to the Engine's local store.
 
-The default policy asset namespaces in the Engine are:
-- `system` – Core assets responsible for handling internal event processing and ensuring basic event normalization.
-- `wazuh` – Default integrations developed and maintained by Wazuh.
-- `user` – A default namespace for end-user-defined assets.
+### Synchronization process
 
-While these are the predefined namespaces, the Engine allows creating as many namespaces as needed, enabling flexibility in asset management.
+The Engine periodically checks whether its locally stored security policies match the current state in the Wazuh
+Indexer. During each synchronization cycle, it compares the local assets — including decoders, rules, filters, and
+policy configurations — against the versions stored in the indexer. If any differences are detected (e.g., a decoder
+was added, modified, or removed; a policy configuration changed; or an asset was enabled or disabled), the Engine
+synchronizes those changes locally and rebuilds the affected operational graphs accordingly.
 
-### Assets Catalog
+This synchronization covers both the **Standard** and **Custom** spaces. If any asset within either space has been
+modified, activated, deactivated, or had its configuration changed in the Wazuh Indexer, the Engine will detect and
+apply those updates during the next synchronization cycle.
 
-The Catalog is responsible for managing the Engine’s assets, organizing them under namespaces. Each asset is uniquely identified by its name, following the convention:
-```
-<type>/<name>/<version>
-```
+### Spaces
 
-This naming structure ensures clear versioning and categorization of assets. The following asset types are defined:
-- **decoders** – Responsible for normalizing events, transforming raw data into a structured format.
-- **rules** – Handle security analysis and event enrichment, identifying threats and adding contextual information.
-- **outputs** – Define storage policies for processed events, determining how and where data is stored.
-- **filters** – Used in event processing pipelines, applied as pre-filters and post-filters within assets.
-- **integrations** – Serve as manifests for other assets, grouping related assets that support a common goal. Typically used to bundle all assets required for specific services.
+To organize assets efficiently, the Engine categorizes them into spaces. Internally, assets are stored directly
+under a specific space, allowing for structured management.
 
-All API calls to the Catalog support name-path operations, allowing users to manage specific assets or entire groups efficiently. (Refer to the API documentation for a full list of available catalog operations.)
+The default spaces in the Engine are:
+- `Standard` – Default integrations developed and maintained by Wazuh CTI.
+- `Custom` – Independent space for custom or user-modified content.
 
-### Policies and Routes
+On a fresh start, the Engine triggers an initial synchronization to pull the Standard and Custom spaces from the
+Wazuh Indexer, ensuring that all assets are available before building policies and defining routes. After this
+initial load, subsequent synchronization cycles run periodically to keep the local state up to date.
 
-With all assets defined and stored in the Catalog, the next step is to define policies, specifying exactly what functionality we want to apply. A policy organizes assets hierarchically, defining how events are processed.
-
-The API allows users to configure all decoders, rules, and outputs for a policy, along with default management settings—such as defining default asset parents for specific namespaces. (For a complete list of API calls, refer to the documentation.)
-
-Each policy contains references to asset names, and during the building process, the Engine retrieves these assets from the Catalog. The graph is then built following the parent relationships defined in the assets, ensuring a valid structure. If the relationships are invalid or incomplete, the build process will fail, preventing misconfigurations.
-
-Following the same Catalog-first approach, policies are stored before they are actually used. Policies are only referenced when defining routes, ensuring that all assets and relationships are pre-validated before execution.
-
-The Orchestrator is responsible for managing routes that pair namespaces with policies, ensuring that events are processed by the appropriate policies. It also manages loaded policies, routing priority and some event processing configuration.
-
-The Engine also introduces the concept of testing sessions, which are specialized policies designed for processing test events via the API. These sessions allow users to validate how their policies will behave before deploying them in production, ensuring correctness and expected functionality.
-
-For a complete list of API calls related to routing and policy management, refer to the documentation.
-
-#### Architecture
-
-The Engine is composed of distinct modules, each responsible for managing a specific aspect of event processing:
-- Catalog → Manages assets (decoders, rules, filters, outputs, integrations).
-- Policy → Manages policies, defining how assets are organized and processed.
-- Orchestrator → Manages routes, mapping namespaces to policies to control event processing.
-
-All modules follow the same naming convention, ensuring that every item—whether an asset, policy, or route—can be stored and identified homogeneously by the Store module.
-
-For more information on the Engine’s architecture and how the modules interact, refer to [architecture documentation](architecture.md).
+When both spaces are available and synchronized, the Engine processes all incoming events through each active
+operational graph.
 
 ## Assets
 In the Wazuh Engine, assets represent the fundamental components of security policies and are the smallest unit within such a policy.
