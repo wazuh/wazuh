@@ -436,117 +436,377 @@ based on their structure and content, without requiring explicit routing rules.
 
 
 ### Security enrichment process
-The analysis process evaluates all event fields to identify potential security concerns, which are represented as threat
-indicators within the common schema. These indicators are later stored in the Wazuh Indexer, where they can be used for
-threat hunting and detecting security issues.
 
-All decoded events pass through the analysis pipeline, starting with the root rule. The root rule determines the next
-appropriate rule for processing the event. If a rule matches, it triggers all its child rules for evaluation in a
-broadcast manner. Each child rule is independently evaluated, contributing additional threat indicators to the event's
-analysis. If a rule does not match, its child rules are not evaluated, ensuring efficient processing.
+The security enrichment process is divided into two consecutive stages in the policy pipeline:
 
-This hierarchical and broadcast-based evaluation allows the analysis pipeline to enrich events with relevant security
-context while maintaining performance and scalability.
+1. **Pre-enrichment**
+2. **Enrichment**
 
+The pre-enrichment stage performs preliminary event adjustments and filtering before the enrichment stage is executed. After that, the enrichment stage applies the enrichments configured in the policy, such as geo/ASN or IOC enrichments.
+
+This section focuses exclusively on these two stages.
 
 ```mermaid
----
-title: Rules tree
----
-flowchart TD
-
-%% Style
-  classDef AssetSuccessClass fill:#2196f3,stroke-width:2px,fill-opacity:0.8
-  classDef AssetFailClass fill:#f50057,stroke-width:2px,fill-opacity:0.8
-  classDef AssetNotExecutedClass fill:#90a4ae,stroke-width:2px,fill-opacity:0.8
-  ruleR("root rule") --x rule1("rule 1")
-  rule1 -.-> rule11("rule 1-1") & rule12("rule 1-2")
-  ruleR --> rule2("rule 2")
-  rule2 --> rule21("rule 2-1")
-  rule2 --x rule22("rule 2-2")
-  rule2 --> rule23("rule 2-3")
-  ruleR --> rule3("rule 3")
-  rule3 --> rule31("rule 3-1")
-
-  ruleR:::AssetSuccessClass
-  rule1:::AssetFailClass
-  rule11:::AssetNotExecutedClass
-  rule12:::AssetNotExecutedClass
-  rule2:::AssetSuccessClass
-  rule21:::AssetSuccessClass
-  rule22:::AssetFailClass
-  rule23:::AssetSuccessClass
-  rule3:::AssetSuccessClass
-  rule31:::AssetSuccessClass
-  linkStyle 0,5 stroke:#f50057,stroke-width:2px
-
-
-```
-
-The following diagram illustrates the event flow on the rules tree of the default policy:
-
-```mermaid
----
-title: Event flow on rules
----
 flowchart LR
 
-classDef EventBoxClass font-size: 15px,stroke-width:2px, color:#fff, fill:#3f51b5
-classDef TreeBoxClass font-size: 15px,stroke-width:2px,stroke-dasharray: 5 5
+classDef phase fill:#3f51b5,stroke-width:2px,color:#fff
+classDef data fill:#f5f5f5,stroke-width:1px
+classDef enrich fill:#2196f3,stroke-width:2px,color:#fff
 
- subgraph wazuhRulesTree["Wazuh Rules"]
-  direction TB
+event["Event after previous processing stages"]:::data
+pre["Pre-enrichment"]:::phase
+enrichStage["Enrichment"]:::phase
+done["Event continues in pipeline"]:::enrich
 
-  wazuhRules01(" ")
-  wazuhRules02(" ")
-  wazuhRules03(" ")
-  wazuhRules04(" ")
-  wazuhRules05(" ")
-  wazuhRules06(" ")
-  wazuhRules07(" ")
-  wazuhRules08(" ")
-
-  wazuhRules01 --> wazuhRules02 & wazuhRules03 & wazuhRules04
-  wazuhRules02 --> wazuhRules05
-  wazuhRules03 --> wazuhRules06 & wazuhRules07
-  wazuhRules04 --> wazuhRules08
- end
-
- subgraph userRulesTree["User rules"]
-  direction TB
-
-  userRules01(" ")
-  userRules02(" ")
-  userRules03(" ")
-  userRules04(" ")
-  userRules05(" ")
-  userRules06(" ")
-  userRules07(" ")
-  userRules08(" ")
-
-  userRules01 --> userRules02 & userRules03 & userRules04
-  userRules02 --> userRules05
-  userRules03 --> userRules06 & userRules07
-  userRules04 --> userRules08
-
- end
-
- wazuhRulesTree:::TreeBoxClass
- userRulesTree:::TreeBoxClass
- eventInput:::EventBoxClass
- eventOutput:::EventBoxClass
-
- %% Pipeline
- eventInput@{shape: doc, label: "Normalized</br>Event"}==>wazuhRulesTree & userRulesTree-.->eventOutput@{shape: doc, label: "Security</br>event"}
-
+event --> pre --> enrichStage --> done
 ```
 
-The analysis pipeline is divided into two layers:
+#### Pre-enrichment
 
-- **Wazuh Rules**: Contains the default rules provided by Wazuh.
-- **User Rules**: Contains user-defined rules.
+The pre-enrichment stage prepares the event before the configured enrichments are evaluated.
 
-Then both the Wazuh and user rules are applied to the event.
+Its purpose is to apply preliminary event adjustments and enforce filtering decisions that must be resolved before enrichment begins. In practice, this stage is responsible for preparing the event context and ensuring that events that should not continue do not reach the enrichment stage.
+
+In the current implementation, the pre-enrichment stage includes:
+
+- **Space enrichment**
+- **Discarded events filter**
+- **Cleanup of decoder temporary variables**
+
+```mermaid
+flowchart TD
+
+classDef stage fill:#3f51b5,stroke-width:2px,color:#fff
+classDef op fill:#eeeeee,stroke-width:1px
+classDef fail fill:#f44336,stroke-width:2px,color:#fff
+classDef ok fill:#2196f3,stroke-width:2px,color:#fff
+
+pre["Pre-enrichment"]:::stage
+space["Space enrichment"]:::op
+discard["Discarded events filter"]:::op
+cleanup["Cleanup decoder temporary variables"]:::op
+success["Continue to enrichment stage"]:::ok
+failure["Stop pipeline"]:::fail
+
+pre --> space --> discard --> cleanup --> success
+space -->|failure| failure
+discard -->|failure| failure
+cleanup -->|failure| failure
+```
+
+##### Space enrichment
+
+The first pre-enrichment operation maps the policy space into the event.
+
+Its purpose is to annotate the event with the space from which the policy is being executed. This allows the event to carry the policy space context as part of its own data before enrichment is applied.
+
+Conceptually:
+
+```json
+{
+  "wazuh": {
+    "space": {
+      "name": "my-space"
+    }
+  }
+}
+```
+
+##### Discarded events filter
+
+The discarded events filter evaluates whether discarded events should continue in the pipeline.
+
+This behavior depends on the policy configuration:
+
+- If discarded events indexing is enabled, the event continues even if it was marked as discarded.
+- If discarded events indexing is disabled and the event is marked as discarded, the event is rejected and the pipeline stops.
+- Otherwise, the event continues normally.
+
+This makes the discarded-events decision part of pre-enrichment, before any configured enrichment is evaluated.
+
+```mermaid
+flowchart TD
+
+classDef cond fill:#eeeeee,stroke-width:1px
+classDef yes fill:#2196f3,stroke-width:2px,color:#fff
+classDef no fill:#f44336,stroke-width:2px,color:#fff
+
+start["Discarded events filter"]:::cond
+cfg["Discarded events indexing enabled?"]:::cond
+discarded["Event marked as discarded?"]:::cond
+pass1["Continue"]:::yes
+pass2["Continue"]:::yes
+drop["Drop event"]:::no
+
+start --> cfg
+cfg -->|yes| pass1
+cfg -->|no| discarded
+discarded -->|no| pass2
+discarded -->|yes| drop
+```
+
+##### Cleanup of decoder temporary variables
+
+The cleanup step removes temporary decoder variables from the event when this behavior is enabled by policy.
+
+These temporary fields are useful during decoding, but they are not meant to remain in the event after the preprocessing stage has finished. When cleanup is enabled, these temporary values are removed before the event reaches the enrichment stage.
+
+Examples of temporary fields that may be removed include root keys prefixed with `_`.
+
+If cleanup is disabled by policy, the event continues unchanged.
+
+#### Enrichment
+
+After pre-enrichment, the event enters the enrichment stage.
+
+The enrichments to be applied are defined in the policy document as an array. Each configured enrichment is evaluated in sequence as part of the event processing flow.
+
+Typical enrichments include:
+
+- **Geo enrichment**
+- **IOC enrichment**
+
+Unlike pre-enrichment, the enrichment stage does not decide whether the event should continue in the pipeline. Its purpose is to add context to the event when applicable.
+
+```mermaid
+flowchart LR
+
+classDef stage fill:#3f51b5,stroke-width:2px,color:#fff
+classDef plugin fill:#eeeeee,stroke-width:1px
+classDef out fill:#2196f3,stroke-width:2px,color:#fff
+
+enrichment["Enrichment stage"]:::stage
+geo["Geo enrichment"]:::plugin
+ioc["IOC enrichment"]:::plugin
+next["Continue to next pipeline stage"]:::out
+
+enrichment --> geo --> ioc --> next
+```
+
+##### Enrichment source definitions generated during installation
+
+During installation, the Engine generates enrichment source definition files for both **geo/ASN** and **IOC** enrichment.
+
+These files define which event fields will be observed at runtime to decide whether enrichment should be applied. They are generated automatically based on predefined rules that indicate which fields from the **Wazuh Common Schema (WCS)** should be observed for each type of enrichment.
+
+This means the set of fields inspected by enrichment is not decided dynamically for every event. Instead, it is determined beforehand through these generated definitions, which ensures a controlled and consistent enrichment process.
+
+```mermaid
+flowchart TD
+
+classDef src fill:#eeeeee,stroke-width:1px
+classDef proc fill:#3f51b5,stroke-width:2px,color:#fff
+classDef out fill:#2196f3,stroke-width:2px,color:#fff
+
+wcs["Wazuh Common Schema (WCS)"]:::src
+rules["Predefined enrichment rules"]:::src
+install["Installation process"]:::proc
+geoDef["Generated geo/ASN observed-fields file"]:::out
+iocDef["Generated IOC observed-fields file"]:::out
+
+wcs --> install
+rules --> install
+install --> geoDef
+install --> iocDef
+```
+
+##### Geo enrichment
+
+Geo enrichment evaluates the event fields defined for geo/ASN observation and, when applicable, adds location and autonomous system context to the event.
+
+The fields observed for this enrichment are determined from the generated geo enrichment definitions based on the WCS. These typically include fields that may contain IP addresses relevant for enrichment.
+
+When a valid source value is found, geo enrichment may add information such as:
+
+- geographic location data
+- country or city data
+- ASN number
+- ASN organization
+
+Conceptually:
+
+```json
+{
+  "source": {
+    "ip": "8.8.8.8",
+    "geo": {
+      "country_name": "United States",
+      "location": {
+        "lat": 37.751,
+        "lon": -97.822
+      }
+    },
+    "as": {
+      "number": 15169,
+      "organization": {
+        "name": "Google LLC"
+      }
+    }
+  }
+}
+```
+
+```mermaid
+flowchart TD
+
+classDef field fill:#eeeeee,stroke-width:1px
+classDef step fill:#3f51b5,stroke-width:2px,color:#fff
+classDef ok fill:#2196f3,stroke-width:2px,color:#fff
+classDef miss fill:#9e9e9e,stroke-width:2px,color:#fff
+
+src["Observed field for geo/ASN"]:::field
+read["Read source value"]:::step
+lookup["Lookup geo/ASN data"]:::step
+map["Append enrichment data to the event"]:::step
+applied["Enrichment applied"]:::ok
+none["No enrichment for this field"]:::miss
+
+src --> read --> lookup --> map
+map -->|success| applied
+map -->|no match| none
+```
+
+##### IOC enrichment
+
+IOC enrichment evaluates the event fields defined for IOC observation and checks whether their values match known indicators of compromise.
+
+The observed fields are determined from the generated IOC enrichment definitions based on the WCS and the predefined observation rules.
+
+Depending on the observed field and the configured IOC types, this enrichment may evaluate values such as:
+
+- connection-based indicators represented as `ip:port`
+- domains
+- URLs
+- hashes
+- other supported indicator values
+
+In particular, network IOC matching is not limited to plain IP values. For connection-based enrichment, the observed value is built from the relevant event fields as a connection key, typically combining IP address and port.
+
+If a match is found, the event is enriched with threat-related context associated with the matched indicator.
+
+Conceptually:
+
+```json
+{
+  "threat": {
+    "indicator": {
+      "type": "ipv4-addr",
+      "ip": "203.0.113.10"
+    },
+    "enrichments": [
+      {
+        "matched": {
+          "field": "destination.ip"
+        }
+      }
+    ]
+  }
+}
+```
+
+```mermaid
+flowchart TD
+
+classDef field fill:#eeeeee,stroke-width:1px
+classDef step fill:#3f51b5,stroke-width:2px,color:#fff
+classDef ok fill:#2196f3,stroke-width:2px,color:#fff
+classDef miss fill:#9e9e9e,stroke-width:2px,color:#fff
+
+src["Observed field for IOC"]:::field
+read["Read source value"]:::step
+query["Check against IOC data"]:::step
+match["IOC match found?"]:::step
+append["Append threat enrichment"]:::ok
+nomatch["No enrichment added"]:::miss
+
+src --> read --> query --> match
+match -->|yes| append
+match -->|no| nomatch
+```
+
+#### Notes about unclassified events
+
+Unclassified-events handling is not part of pre-enrichment or enrichment.
+
+It is handled later in the pipeline during output selection. In that stage, a dedicated helper determines whether the event should be indexed as an unclassified event.
+
+This decision is based on the event decoder information and is used to route matching events to the dedicated unclassified data stream:
+
+- `wazuh-events-v5-unclassified`
+
+If the event does not match that condition, the output logic continues with the regular category-based routing and sends the event to the data stream associated with its integration category.
+
+Conceptually, the output decision works as follows:
+
+```mermaid
+flowchart TD
+
+classDef cond fill:#eeeeee,stroke-width:1px
+classDef yes fill:#2196f3,stroke-width:2px,color:#fff
+classDef alt fill:#3f51b5,stroke-width:2px,color:#fff
+
+start["Output stage"]:::cond
+check["Unclassified indexing condition"]:::cond
+unclassified["Send to wazuh-events-v5-unclassified"]:::yes
+regular["Send to wazuh-events-v5-${wazuh.integration.category}"]:::alt
+
+start --> check
+check -->|true| unclassified
+check -->|false| regular
+```
+
+This means unclassified-events handling is a separate output-routing concern and is intentionally excluded from the enrichment stages described in this section.
+
+#### Relationship between pre-enrichment and enrichment
+
+The two stages have different responsibilities:
+
+- **Pre-enrichment** prepares and filters the event before enrichments are evaluated.
+- **Enrichment** applies optional context providers such as geo and IOC.
+
+The main behavioral difference is:
+
+- **Pre-enrichment can stop the pipeline**
+- **Enrichment does not decide pipeline continuity**
+
+This makes pre-enrichment part of event control flow, while enrichment is dedicated to contextual data augmentation.
+
+```mermaid
+flowchart LR
+
+classDef pre fill:#673ab7,stroke-width:2px,color:#fff
+classDef enr fill:#3f51b5,stroke-width:2px,color:#fff
+classDef stop fill:#f44336,stroke-width:2px,color:#fff
+classDef next fill:#2196f3,stroke-width:2px,color:#fff
+
+pre["Pre-enrichment"]:::pre
+enr["Enrichment"]:::enr
+stop["Pipeline stops"]:::stop
+next["Pipeline continues"]:::next
+
+pre -->|may stop event| stop
+pre -->|success| enr
+enr --> next
+```
+
+#### Summary
+
+In the current processing model, the security enrichment process is composed of two distinct stages:
+
+1. **Pre-enrichment**
+   - maps the policy space into the event
+   - filters discarded events according to policy configuration
+   - removes decoder temporary variables when enabled
+   - may stop the pipeline if filtering conditions require it
+
+2. **Enrichment**
+   - evaluates the enrichments listed in the policy document
+   - relies on generated observed-fields definitions for geo/ASN and IOC enrichment
+   - uses connection-based IOC values such as `ip:port` for network indicators
+   - adds contextual information to the event when matches or lookups succeed
+   - does not determine whether the pipeline continues
+
+This design keeps event control decisions in pre-enrichment, leaves the enrichment stage dedicated to contextual event augmentation based on predefined WCS-driven observation rules, and handles unclassified-event routing later as part of output selection.
 
 
 ### Output process
