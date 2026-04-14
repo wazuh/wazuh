@@ -1420,12 +1420,26 @@ public:
     }
 
     /**
-     * @brief Check if a specific agent has an active session for a specific module
-     * @param agentId Agent ID to check
+     * @brief Check if a specific agent has an active session for a specific module.
+     *
+     * When called from a feed-update scan context (timeout > 0):
+     *   - VDFirst session: returns true immediately so the caller can skip the redundant
+     *     feed-update scan (the first-scan itself will cover the updated feed).
+     *   - VDSync session:  blocks until the session ends or the timeout expires, then
+     *     returns false so the caller proceeds with the feed-update scan.
+     *
+     * When called without a timeout (default): behaves as a plain existence check and
+     * returns true if any session matches, regardless of the session option.
+     *
+     * @param agentId    Agent ID to check
      * @param moduleName Module name to check (e.g., "syscollector_vd")
-     * @return true if the agent has an active session for the module, false otherwise
+     * @param timeout    How long to wait for a VDSync session to finish (0 = no wait)
+     * @return true if a VDFirst session is active (caller should skip the scan);
+     *         false in all other cases (no session, or VDSync finished/timed out)
      */
-    bool hasActiveSessionForModule(const std::string& agentId, const std::string& moduleName) const
+    bool hasActiveSessionForModule(const std::string& agentId,
+                                   const std::string& moduleName,
+                                   std::chrono::seconds timeout) const
     {
         std::shared_lock lock(m_agentSessionsMutex);
 
@@ -1434,75 +1448,51 @@ public:
             const auto& context = session.getContext();
             if (context->agentId == agentId && context->moduleName == moduleName)
             {
-                return true;
+                if (context->option == Wazuh::SyncSchema::Option_VDFirst)
+                {
+                    return true; // VDFirst: caller should skip
+                }
+
+                if (timeout > std::chrono::seconds(0))
+                {
+                    // VDSync: wait for the session to finish before the feed-update scan reads
+                    // the indexer, so all packages are in a consistent state.
+                    logInfo(LOGGER_DEFAULT_TAG,
+                            "Feed update scan waiting for VDSync session to complete for agent %s (timeout: %lds).",
+                            agentId.c_str(),
+                            static_cast<long>(timeout.count()));
+
+                    const bool completed =
+                        m_sessionCompletedCV.wait_for(lock,
+                                                      timeout,
+                                                      [&]()
+                                                      {
+                                                          for (const auto& [sId, s] : m_agentSessions)
+                                                          {
+                                                              if (s.getContext()->agentId == agentId
+                                                                  && s.getContext()->moduleName == moduleName)
+                                                              {
+                                                                  return false; // still active
+                                                              }
+                                                          }
+                                                          return true; // session gone
+                                                      });
+
+                    if (!completed)
+                    {
+                        logWarn(LOGGER_DEFAULT_TAG,
+                                "Feed update scan timeout waiting for VDSync session for agent %s (%lds). "
+                                "Proceeding with current indexer data.",
+                                agentId.c_str(),
+                                static_cast<long>(timeout.count()));
+                    }
+                }
+
+                return false; // VDSync: proceed with the scan (waited or no-wait requested)
             }
         }
-        return false;
-    }
 
-    /**
-     * @brief Information about an active session for a given agent and module
-     */
-    struct ActiveSessionInfo
-    {
-        bool active {false};   ///< Whether a session exists
-        bool isVDFirst {false}; ///< Whether the session option is VDFirst
-    };
-
-    /**
-     * @brief Check if a specific agent has an active session for a specific module and return its type
-     * @param agentId Agent ID to check
-     * @param moduleName Module name to check (e.g., "syscollector_vd")
-     * @return ActiveSessionInfo with active=false when no session exists, or active=true with the session type
-     */
-    ActiveSessionInfo getActiveSessionInfoForModule(const std::string& agentId,
-                                                    const std::string& moduleName) const
-    {
-        std::shared_lock lock(m_agentSessionsMutex);
-
-        for (const auto& [sessionId, session] : m_agentSessions)
-        {
-            const auto& context = session.getContext();
-            if (context->agentId == agentId && context->moduleName == moduleName)
-            {
-                return {true, context->option == Wazuh::SyncSchema::Option_VDFirst};
-            }
-        }
-        return {false, false};
-    }
-
-    /**
-     * @brief Wait until the active syscollector_vd session for an agent finishes.
-     *
-     * Blocks the calling thread using a condition variable that is notified every time a
-     * session is removed from m_agentSessions. The wait returns as soon as the session
-     * for the given agent+module is gone, or when the timeout expires.
-     *
-     * @param agentId Agent ID to wait for
-     * @param moduleName Module name (e.g., "syscollector_vd")
-     * @param timeout Maximum time to wait
-     * @return true if the session completed before the timeout, false if timed out
-     */
-    bool waitForSessionCompletion(const std::string& agentId,
-                                  const std::string& moduleName,
-                                  std::chrono::seconds timeout) const
-    {
-        std::shared_lock lock(m_agentSessionsMutex);
-        return m_sessionCompletedCV.wait_for(lock,
-                                             timeout,
-                                             [&]()
-                                             {
-                                                 for (const auto& [sessionId, session] : m_agentSessions)
-                                                 {
-                                                     const auto& context = session.getContext();
-                                                     if (context->agentId == agentId
-                                                         && context->moduleName == moduleName)
-                                                     {
-                                                         return false; // still active
-                                                     }
-                                                 }
-                                                 return true; // session gone
-                                             });
+        return false; // no session
     }
 
     /**
