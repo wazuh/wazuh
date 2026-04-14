@@ -461,7 +461,10 @@ TEST_F(AgentSyncProtocolTest, SendStartWaitsUntilMetadataAvailable)
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger,
@@ -521,7 +524,10 @@ TEST_F(AgentSyncProtocolTest, SendStartAbortedOnStopWhileWaitingForMetadata)
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger,
@@ -5705,9 +5711,9 @@ TEST_F(AgentSyncProtocolTest, EndMessageRetryExhaustionDuringStopLogsInfo)
     // syncEndDelay=0 so End is sent immediately after data, giving stop() time to be
     // called before the retry loop finishes.
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger,
-               std::chrono::seconds(0),
-               std::chrono::seconds(min_timeout),
-               retries, maxEps, mockQueue);
+                                                   std::chrono::seconds(0),
+                                                   std::chrono::seconds(min_timeout),
+                                                   retries, maxEps, mockQueue);
 
     std::vector<PersistedData> testData =
     {
@@ -5723,10 +5729,28 @@ TEST_F(AgentSyncProtocolTest, EndMessageRetryExhaustionDuringStopLogsInfo)
         EXPECT_FALSE(result);
     });
 
-    // Wait for the Start message to be sent.
+    // Helper: always stop + join on early exit (prevents std::terminate on ASSERT failure).
+    auto stopAndJoin = [&]()
+    {
+        protocol->stop();
+        if (syncThread.joinable())
+        {
+            syncThread.join();
+        }
+    };
+
+    // Wait for the Start message to be sent (with timeout to prevent indefinite hang).
+    bool startSent;
     {
         std::unique_lock<std::mutex> lock(END_RETRY_TEST_MTX);
-        END_RETRY_TEST_CV.wait(lock, [] { return END_RETRY_TEST_MSG_COUNT >= 1; });
+        startSent = END_RETRY_TEST_CV.wait_for(lock, std::chrono::seconds(10),
+                                                [] { return END_RETRY_TEST_MSG_COUNT >= 1; });
+    }
+
+    if (!startSent)
+    {
+        stopAndJoin();
+        FAIL() << "Timed out waiting for Start message to be sent";
     }
 
     // Send StartAck so the protocol advances past the start phase.
@@ -5741,10 +5765,18 @@ TEST_F(AgentSyncProtocolTest, EndMessageRetryExhaustionDuringStopLogsInfo)
         protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
     }
 
-    // Wait for the protocol to enter the End-message retry loop.
+    // Wait for the protocol to enter the End-message retry loop (with timeout).
+    bool endSent;
     {
         std::unique_lock<std::mutex> lock(END_RETRY_TEST_MTX);
-        END_RETRY_TEST_CV.wait(lock, [] { return END_RETRY_TEST_MSG_COUNT >= 3; });
+        endSent = END_RETRY_TEST_CV.wait_for(lock, std::chrono::seconds(10),
+                                              [] { return END_RETRY_TEST_MSG_COUNT >= 3; });
+    }
+
+    if (!endSent)
+    {
+        stopAndJoin();
+        FAIL() << "Timed out waiting for End message to be sent";
     }
 
     // Stop while waiting for EndAck — wakes the internal cv so retries exhaust quickly.
@@ -5754,7 +5786,7 @@ TEST_F(AgentSyncProtocolTest, EndMessageRetryExhaustionDuringStopLogsInfo)
 
     // The "retries exhausted" message must be logged at INFO, not ERROR.
     auto it = std::find_if(capturedLogs.begin(), capturedLogs.end(),
-    [](const std::pair<modules_log_level_t, std::string>& entry)
+                           [](const std::pair<modules_log_level_t, std::string>& entry)
     {
         return entry.second.find("retries exhausted") != std::string::npos;
     });

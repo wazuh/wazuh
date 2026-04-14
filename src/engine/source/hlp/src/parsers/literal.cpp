@@ -22,7 +22,7 @@ Mapper getMapper(const std::string& parsed, const std::string& targetField)
 
 SemParser getSemParser(const Mapper& mapper)
 {
-    return [mapper](std::string_view)
+    return [mapper](std::string_view, bool)
     {
         return mapper;
     };

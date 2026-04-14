@@ -176,6 +176,15 @@ bool validateMetadataLeaves(const json::Json& node,
     return true;
 }
 
+/**
+ * @brief Build a Result_ValidationError protobuf message.
+ *
+ * @param path Field path in the output event (dot notation, may include array indices like `foo[0].bar`).
+ * @param kind Error kind string: `"unknown_field"`, `"temporary_field_not_allowed"`, or `"invalid_type"`.
+ * @param expected Expected WCS type string. Only set for `invalid_type` errors (e.g. `"keyword"`, `"long"`).
+ * @param actual Actual JSON type string of the value. Only set for `invalid_type` errors (e.g. `"number"`, `"string"`).
+ * @return eTester::Result_ValidationError Populated validation error message.
+ */
 eTester::Result_ValidationError makeValidationError(const std::string& path,
                                                     const std::string& kind,
                                                     const std::string& expected = {},
@@ -208,6 +217,10 @@ std::string appendIndexToReportPath(const std::string& base, size_t idx)
 /**
  * @brief Classify a schema field using validateTargetField from the IValidator.
  *
+ * @param schemaPath Index-free dot path used for schema lookup (e.g. `"event.category"`).
+ * @param reportPath Path exposed in validation errors, may include array indices (e.g. `"event.category[1]"`).
+ * @param schema The WCS schema validator.
+ * @param errors Output vector where a validation error is appended when the field is temporary or unknown.
  * @return true if the field is a SCHEMA field and traversal should continue.
  * @return false if the field was classified as temporary or unknown (error already pushed).
  */
@@ -236,25 +249,23 @@ bool classifyField(const std::string& schemaPath,
 }
 
 /**
- * @brief Recursively validate the output event against WCS.
+ * @brief Recursively validate the output event against WCS and collect validation errors.
  *
- * schemaPath:
- *   - Path used for schema lookup (always index-free).
+ * @param node The JSON node to validate.
+ * @param schema The WCS schema validator.
+ * @param schemaPath Index-free dot path used for schema lookup (always without array indices).
+ * @param reportPath Path exposed in validation errors (may include array indices like `foo[0].bar`).
+ * @param errors Output vector where validation errors are appended.
+ * @param isArrayItem Whether the current node is an element inside an array field.
  *
- * reportPath:
- *   - Path exposed in validation errors (may include array indices like foo[0].bar).
- *
- * isArrayItem:
- *   - true when validating an element inside an array field.
- *
- * Rules:
- *   - Temporary fields rooted at '_' are reported once and the subtree is skipped.
+ * @note Rules applied during traversal:
+ *   - Temporary fields rooted at `_` are reported once and the subtree is skipped.
  *   - Unknown fields are reported once and the subtree is skipped.
  *   - Field classification uses IValidator::validateTargetField (no duplicated logic).
  *   - Type validation uses IValidator::validate(DotPath, json::Json).
  *   - Empty known objects/arrays are valid.
  *   - Arrays reuse the same schemaPath for all items.
- *   - Nested arrays are reported as invalid_type.
+ *   - Nested arrays are reported as `invalid_type`.
  *   - FLAT_OBJECT and GEO_POINT fields are treated as opaque and their children are not validated.
  */
 void collectOutputErrors(const json::Json& node,

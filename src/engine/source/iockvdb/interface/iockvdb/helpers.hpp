@@ -99,12 +99,12 @@ inline std::vector<std::string_view> getSupportedIocTypes()
  */
 inline std::string getKeyFromIOC(const json::Json& iocDoc)
 {
-    auto name = iocDoc.getString(IOC_NAME_KEY); // Get the name field as the key
-    if (!name.has_value() || name->empty())
+    std::string name;
+    if (iocDoc.getString(name, IOC_NAME_KEY) != json::RetGet::Success || name.empty())
     {
         throw std::runtime_error("IOC document is missing a valid 'name' field");
     }
-    return name.value();
+    return name;
 }
 
 /**
@@ -115,12 +115,12 @@ inline std::string getKeyFromIOC(const json::Json& iocDoc)
  */
 inline std::string getTypeFromIOC(const json::Json& iocDoc)
 {
-    auto type = iocDoc.getString(IOC_TYPE_KEY); // Get the type field for type inference
-    if (!type.has_value() || type->empty())
+    std::string type;
+    if (iocDoc.getString(type, IOC_TYPE_KEY) != json::RetGet::Success || type.empty())
     {
         throw std::runtime_error("IOC document is missing a valid 'type' field");
     }
-    return type.value();
+    return type;
 }
 
 /**

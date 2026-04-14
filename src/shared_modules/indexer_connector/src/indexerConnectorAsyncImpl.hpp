@@ -115,6 +115,7 @@ class IndexerConnectorAsyncImpl final
     std::atomic<bool> m_stopping {false};
     std::unique_ptr<ThreadLoggerQueue> m_loggerProcessor;
     const std::string m_queueId;
+    const std::string m_dbPath;
     bool m_error413Logged {false};
     size_t m_successCount {0};
     size_t m_maxQueueSize {0};
@@ -127,12 +128,28 @@ public:
         const nlohmann::json& config,
         const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
             logFunction,
+        std::string queueId,
         THttpRequest* httpRequest = nullptr,
         std::unique_ptr<TSelector> selector = nullptr,
-        std::string queueId = "")
+        std::string basePath = DATABASE_BASE_PATH)
         : m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
         , m_queueId(std::move(queueId))
+        , m_dbPath((std::filesystem::path(std::move(basePath)) / m_queueId).string())
     {
+        if (m_queueId.empty())
+        {
+            throw IndexerConnectorException("queueId cannot be empty: each IndexerConnectorAsync instance "
+                                            "must have a unique identifier (e.g. \"engine\", \"inventory-sync\").");
+        }
+
+        if (m_queueId.find('/') != std::string::npos || m_queueId.find('\\') != std::string::npos ||
+            m_queueId.find("..") != std::string::npos)
+        {
+            throw IndexerConnectorException(
+                "queueId must not contain path separators ('/', '\\') or traversal sequences ('..'): \"" + m_queueId +
+                "\".");
+        }
+
         if (logFunction)
         {
             Log::assignLogFunction(logFunction);
@@ -474,7 +491,7 @@ public:
                                     PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
                                     {});
             },
-            DATABASE_BASE_PATH + m_queueId,
+            m_dbPath,
             ElementsPerBulk,
             m_maxQueueSize,
             RetryDelay,

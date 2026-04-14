@@ -403,7 +403,9 @@ TEST_F(LocatorTest, GetAllReturnsCompleteJson)
 
     // Verify data types and values match those from GetAsJson test
     ASSERT_EQ(jsonData.getBool("/test_boolean").value(), true);
-    ASSERT_EQ(jsonData.getString("/test_map/test_str1").value(), "Wazuh");
+    std::string tmpStr;
+    ASSERT_EQ(json::RetGet::Success, jsonData.getString(tmpStr, "/test_map/test_str1"));
+    ASSERT_EQ(tmpStr, "Wazuh");
     ASSERT_EQ(jsonData.getInt("/test_uint32").value(), 94043);
 }
 

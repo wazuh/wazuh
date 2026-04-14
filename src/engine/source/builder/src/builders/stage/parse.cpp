@@ -2,6 +2,7 @@
 
 #include <base/json.hpp>
 
+#include "../utils.hpp"
 #include "syntax.hpp"
 
 namespace builder::builders
@@ -51,7 +52,14 @@ StageBuilder getParseBuilder(std::shared_ptr<hlp::logpar::Logpar> logpar, size_t
 
             auto itemObj = item.getObject().value();
             auto field = json::Json::formatJsonPath(std::get<0>(itemObj[0]));
-            auto logparExpr = std::get<1>(itemObj[0]).getString().value();
+            std::string logparExpr;
+            if (std::get<1>(itemObj[0]).getString(logparExpr) != json::RetGet::Success)
+            {
+                throw std::runtime_error(
+                    fmt::format(R"(Invalid logpar expression type for field "{}": Expected a "string" but got "{}")",
+                                field,
+                                std::get<1>(itemObj[0]).typeName()));
+            }
             logparExpr = buildCtx->definitions().replace(logparExpr);
 
             hlp::parser::Parser parser;
@@ -70,36 +78,34 @@ StageBuilder getParseBuilder(std::shared_ptr<hlp::logpar::Logpar> logpar, size_t
 
             // field to be parsed not exists
             const std::string failureTrace1 =
-                fmt::format(R"([{}] -> Failure: Parameter "{}" reference not found)", name, field);
+                fmt::format(R"([{}] -> Failure: Parameter "{}" reference not found or is not a string)", name, field);
             // Parsing failed
             const std::string failureTrace2 = fmt::format("[{}] -> Failure: Parse operation failed: ", name);
-            // Parsing ok, mapping failed
-            const std::string failureTrace3 = fmt::format("[{}] -> Failure: field [{}] is not a string", name, field);
 
             base::Expression parseExpression;
             try
             {
                 parseExpression = base::Term<base::EngineOp>::create(
                     logparExpr,
-                    [=, parser = std::move(parser)](base::Event event)
+                    [=,
+                     runState = buildCtx->runState(),
+                     parser = std::move(parser),
+                     fieldPP = json::PointerPath(field)](base::Event event)
                     {
-                        if (!event->exists(field))
+                        std::string_view ev;
+                        if (event->getString(ev, fieldPP) != json::RetGet::Success)
                         {
-                            return base::result::makeFailure(std::move(event), failureTrace1);
+                            RETURN_FAILURE(runState, event, failureTrace1);
                         }
-                        if (!event->isString(field))
-                        {
-                            return base::result::makeFailure(std::move(event), failureTrace3);
-                        }
-
-                        auto ev = event->getString(field).value();
-                        auto error = hlp::parser::run(parser, ev, *event);
+                        // The parser modify the event, but rapidjson use MemoryPoolAllocator,
+                        // so the string_view is still valid after parsing
+                        auto error = hlp::parser::run(parser, ev, *event, runState->trace);
                         if (error)
                         {
-                            return base::result::makeFailure(std::move(event), failureTrace2 + error.value().message);
+                            RETURN_FAILURE(runState, event, failureTrace2 + error.value().message);
                         }
 
-                        return base::result::makeSuccess(std::move(event), successTrace);
+                        RETURN_SUCCESS(runState, event, successTrace);
                     });
             }
             catch (const std::exception& e)

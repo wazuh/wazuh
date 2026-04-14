@@ -8,7 +8,7 @@
 namespace
 {
 constexpr std::string_view JPATH_ORIGIN_SPACE = "/wazuh/space/name";                   ///< wazuh.space.name
-constexpr std::string_view JPATH_INTEGRATION_CATEGORY = "/wazuh/integration/category"; ///< wazuh.integration.category
+const json::PointerPath PP_INTEGRATION_CATEGORY {"/wazuh/integration/category"};       ///< wazuh.integration.category
 const std::string ENRICHMENT_SPACE_TRACEABLE_NAME = "enrichment/OriginSpace";
 const std::string UNCLASSIFIED_FILTER_TRACEABLE_NAME = "filter/UnclassifiedEvents";
 const std::string DISCARDED_EVENTS_FILTER_TRACEABLE_NAME = "filter/DiscardedEvents";
@@ -64,8 +64,9 @@ std::pair<base::Expression, std::string> getUnclassifiedFilter(const cm::store::
             // Get the integration category
             const auto isUnclassified = [&]() -> bool
             {
-                auto categoryOpt = event->getString(JPATH_INTEGRATION_CATEGORY);
-                return categoryOpt.has_value() && categoryOpt.value() == cm::store::categories::UNCLASSIFIED_CATEGORY;
+                std::string_view categoryStr;
+                return event->getString(categoryStr, PP_INTEGRATION_CATEGORY) == json::RetGet::Success
+                       && categoryStr == cm::store::categories::UNCLASSIFIED_CATEGORY;
             }();
 
             // If category is unclassified and indexing is disabled, drop the event

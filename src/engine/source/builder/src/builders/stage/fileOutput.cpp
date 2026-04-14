@@ -21,12 +21,11 @@ base::Expression fileOutputBuilder(const json::Json& definition,
             "Stage '{}' expects a string but got '{}'", syntax::asset::FILE_OUTPUT_KEY, definition.typeName()));
     }
 
-    auto optChannelBase = definition.getString();
-    if (!optChannelBase.has_value() || optChannelBase->empty())
+    std::string channelBase;
+    if (definition.getString(channelBase) != json::RetGet::Success || channelBase.empty())
     {
         throw std::runtime_error(fmt::format("Stage '{}' expects a non-empty string", syntax::asset::FILE_OUTPUT_KEY));
     }
-    const auto& channelBase = optChannelBase.value();
 
     // Derive the effective channel name: {originSpace}-{channelBase}
     const auto& originSpace = buildCtx->context().originSpace;

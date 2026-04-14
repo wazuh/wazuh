@@ -90,7 +90,7 @@ The target namespace gets a unique random ID (`cmsync_<space>_<hex4>`) to avoid 
 
 ### Retry With Back-off
 
-Remote operations (`existsPolicy`, `getPolicy`, `getPolicyHashAndEnabled`) are wrapped in `base::utils::executeWithRetry()`, which retries up to `m_attemps` times with `m_waitSeconds` between each attempt.
+Remote operations (`existsPolicy`, `getPolicy`, `getPolicyHashAndEnabled`) are wrapped in `base::utils::executeWithRetry()`, which retries up to `m_attempts` times with `m_waitSeconds` between each attempt.
 
 ### Weak-Pointer Resource Model
 
@@ -145,7 +145,7 @@ public:
            const std::shared_ptr<cm::crud::ICrudService>& cmcrudPtr,
            const std::shared_ptr<store::IStore>& storePtr,
            const std::shared_ptr<router::IRouterAPI>& routerPtr,
-           size_t attemps,
+           size_t attempts,
            size_t waitSeconds);
     ~CMSync() override;
 
@@ -200,7 +200,6 @@ for each SyncedNamespace in m_namespacesState:
 
 | Helper | Purpose |
 |---|---|
-| `generateRouteName(space)` | Returns `"cmsync_<space>"` |
 | `generateNamespaceId(space)` | Returns `"cmsync_<space>_<random_hex4>"` |
 
 ## CMake Targets
@@ -218,7 +217,7 @@ Component tests (`cmsync_ctest`) are defined but currently commented out in the 
 
 - **Unit tests** (`test/src/unit/cmsync_test.cpp`) — test the full lifecycle with all four dependencies mocked (strict mocks): constructor initialisation (first-setup vs. restore), state serialisation to/from store, and the `synchronize()` flow for each of the four cases.
 - **Component tests** (`test/src/component/cmsync_test.cpp`) — exist in the tree but are currently disabled in the build.
-- **Mock** (`test/mocks/cmsync/mockcmsync.hpp`) — provides `MockICmsync`, `MockICmsyncNSReader`, `MockICmsyncNS` for downstream consumers (the mock covers a broader store-oriented interface used in legacy code paths).
+- **Mock** (`test/mocks/cmsync/mockcmsync.hpp`) — provides `MockICMSync` for downstream consumers that need to mock the `ICMSync` interface.
 
 ## Consumers
 

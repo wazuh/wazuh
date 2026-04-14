@@ -61,7 +61,7 @@ Mapper getMapper(const std::string& targetField, T val)
 template<typename T>
 SemParser getSemParser(const std::string& targetField)
 {
-    return [targetField](std::string_view parsed) -> std::variant<Mapper, base::Error>
+    return [targetField](std::string_view parsed, bool enableTrace) -> std::variant<Mapper, base::Error>
     {
         T val {};
         const auto [ptr, ec] {utils::from_chars(parsed.begin(), parsed.end(), val)};
@@ -76,10 +76,18 @@ SemParser getSemParser(const std::string& targetField)
         }
         else if (ec == std::errc::result_out_of_range)
         {
-            return base::Error {"Number is out of range"};
+            if (enableTrace)
+            {
+                return base::Error {"Number is out of range"};
+            }
+            return base::Error {};
         }
 
-        return base::Error {"Expected a number"};
+        if (enableTrace)
+        {
+            return base::Error {"Expected a number"};
+        }
+        return base::Error {};
     };
 }
 
