@@ -1123,6 +1123,7 @@ public:
                                                                          res.context->moduleName);
                                         m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
                                         m_agentSessions.erase(res.context->sessionId);
+                                        m_sessionCompletedCV.notify_all();
                                     }
                                 }
                                 else
@@ -1162,6 +1163,7 @@ public:
                                                   "InventorySyncFacade::start: Session not found, sessionId: %llu",
                                                   ctx->sessionId);
                                     }
+                                    m_sessionCompletedCV.notify_all();
                                 });
                         }
                         else
@@ -1183,6 +1185,7 @@ public:
                                           "InventorySyncFacade::start: Session not found, sessionId: %llu",
                                           res.context->sessionId);
                             }
+                            m_sessionCompletedCV.notify_all();
                         }
                     } // End of else block for non-MetadataDelta/GroupDelta modes
 
@@ -1216,6 +1219,7 @@ public:
                                   "InventorySyncFacade::start: Session not found, sessionId: %llu",
                                   res.context->sessionId);
                     }
+                    m_sessionCompletedCV.notify_all();
 
                     m_indexerConnector->invokePendingCallbacks();
                 }
@@ -1244,6 +1248,7 @@ public:
                                   "InventorySyncFacade::start: Session not found, sessionId: %llu",
                                   res.context->sessionId);
                     }
+                    m_sessionCompletedCV.notify_all();
 
                     m_indexerConnector->invokePendingCallbacks();
                 }
@@ -1295,6 +1300,7 @@ public:
                                       }
                                       return false;
                                   });
+                    m_sessionCompletedCV.notify_all();
                 }
             });
 
@@ -1432,6 +1438,71 @@ public:
             }
         }
         return false;
+    }
+
+    /**
+     * @brief Information about an active session for a given agent and module
+     */
+    struct ActiveSessionInfo
+    {
+        bool active {false};   ///< Whether a session exists
+        bool isVDFirst {false}; ///< Whether the session option is VDFirst
+    };
+
+    /**
+     * @brief Check if a specific agent has an active session for a specific module and return its type
+     * @param agentId Agent ID to check
+     * @param moduleName Module name to check (e.g., "syscollector_vd")
+     * @return ActiveSessionInfo with active=false when no session exists, or active=true with the session type
+     */
+    ActiveSessionInfo getActiveSessionInfoForModule(const std::string& agentId,
+                                                    const std::string& moduleName) const
+    {
+        std::shared_lock lock(m_agentSessionsMutex);
+
+        for (const auto& [sessionId, session] : m_agentSessions)
+        {
+            const auto& context = session.getContext();
+            if (context->agentId == agentId && context->moduleName == moduleName)
+            {
+                return {true, context->option == Wazuh::SyncSchema::Option_VDFirst};
+            }
+        }
+        return {false, false};
+    }
+
+    /**
+     * @brief Wait until the active syscollector_vd session for an agent finishes.
+     *
+     * Blocks the calling thread using a condition variable that is notified every time a
+     * session is removed from m_agentSessions. The wait returns as soon as the session
+     * for the given agent+module is gone, or when the timeout expires.
+     *
+     * @param agentId Agent ID to wait for
+     * @param moduleName Module name (e.g., "syscollector_vd")
+     * @param timeout Maximum time to wait
+     * @return true if the session completed before the timeout, false if timed out
+     */
+    bool waitForSessionCompletion(const std::string& agentId,
+                                  const std::string& moduleName,
+                                  std::chrono::seconds timeout) const
+    {
+        std::shared_lock lock(m_agentSessionsMutex);
+        return m_sessionCompletedCV.wait_for(lock,
+                                             timeout,
+                                             [&]()
+                                             {
+                                                 for (const auto& [sessionId, session] : m_agentSessions)
+                                                 {
+                                                     const auto& context = session.getContext();
+                                                     if (context->agentId == agentId
+                                                         && context->moduleName == moduleName)
+                                                     {
+                                                         return false; // still active
+                                                     }
+                                                 }
+                                                 return true; // session gone
+                                             });
     }
 
     /**
@@ -1693,6 +1764,7 @@ private:
     std::string m_clusterName;
     int m_maxSessions {1000}; // Maximum concurrent sessions (configured from internal_options)
     mutable std::shared_mutex m_agentSessionsMutex;
+    mutable std::condition_variable_any m_sessionCompletedCV; ///< Notified whenever a session is removed
     std::mutex m_sessionTimeoutMutex;
     std::condition_variable m_sessionTimeoutCv;
     std::atomic<bool> m_stopping {false};
