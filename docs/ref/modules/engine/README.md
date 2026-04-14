@@ -2045,9 +2045,8 @@ Edit the file and restart the `wazuh-manager` service for changes to take effect
 | Setting | Description | Default |
 |:--------|:------------|:-------:|
 | `analysisd.indexer_queue_max_events` | Maximum number of events waiting in the indexer output queue. Events can be dropped when this queue is full. | `131072` |
-| `analysisd.indexer_connector_max_hits_per_request` | Maximum number of documents requested per indexer query. | `100` |
 
-#### Sync intervals
+#### Synchronization settings
 
 | Setting | Description | Default |
 |:--------|:------------|:-------:|
@@ -2055,12 +2054,13 @@ Edit the file and restart the `wazuh-manager` service for changes to take effect
 | `analysisd.remote_conf_indexer_connector_max_retries` | Maximum retry attempts for remote configuration requests to the Wazuh Indexer. | `3` |
 | `analysisd.remote_conf_indexer_connector_retry_interval` | Seconds between retry attempts for remote configuration synchronization. | `5` |
 | `analysisd.cm_sync_interval` | Seconds between content synchronization cycles from the Wazuh Indexer. | `120` |
+| `analysisd.cmsync_indexer_connector_sync_batch_size` | Maximum number of content documents requested per Wazuh Indexer page during content synchronization. | `100` |
 | `analysisd.cmsync_indexer_connector_max_retries` | Maximum retry attempts for content synchronization requests to the Wazuh Indexer. | `3` |
 | `analysisd.cmsync_indexer_connector_retry_interval` | Seconds between retry attempts for content synchronization. | `5` |
 | `analysisd.ioc_sync_interval` | Seconds between IoC database synchronization cycles. `0` disables IoC sync. | `360` |
 | `analysisd.ioc_indexer_connector_max_retries` | Maximum retry attempts for IoC synchronization requests to the Wazuh Indexer. | `3` |
 | `analysisd.ioc_indexer_connector_retry_interval` | Seconds between retry attempts for IoC synchronization. | `5` |
-| `analysisd.ioc_indexer_connector_ioc_sync_batch_size` | Number of IoC records requested per synchronization batch. | `1000` |
+| `analysisd.ioc_indexer_connector_ioc_sync_batch_size` | Maximum number of IoC documents streamed per Wazuh Indexer page while synchronizing IoC databases. | `1000` |
 | `analysisd.geo_sync_interval` | Seconds between GeoIP database synchronization cycles. `0` disables GeoIP sync. | `360` |
 
 ### Traces
