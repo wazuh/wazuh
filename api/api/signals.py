@@ -50,6 +50,7 @@ async def clean_auth_keys_cache():
         inotify.add_watch(SECURITY_PATH, Mask.MODIFY | Mask.CREATE )
         async for event in inotify:
             if event.path and event.path.as_posix() in FILES:
+                logger.info(f'Clearing authentication keys cache due to change in {event.path.as_posix()}.')
                 generate_keypair.cache_clear()
 
 
