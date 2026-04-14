@@ -860,6 +860,12 @@ TEST_F(SCAEventHandlerTest, ReportPoliciesDelta_ValidInput)
                                 {"name", "Check 3"},
                                 {"result", "passed"}
                             }
+                        },
+                        {
+                            "old", {
+                                {"id", "check3"},
+                                {"name", "Check 3 old name"}
+                            }
                         }
                     }
                 },
@@ -994,7 +1000,7 @@ TEST_F(SCAEventHandlerTest, ReportCheckResult_ValidInput)
     }
 }
 
-TEST_F(SCAEventHandlerTest, ReportCheckResult_SuppressesStatefulMessagesBeforeFirstSync)
+TEST_F(SCAEventHandlerTest, ReportCheckResult_SuppressesFirstScanNotRunTransitions)
 {
     const std::string policyId = "test_policy";
     const std::string checkId = "test_check";
@@ -1008,15 +1014,13 @@ TEST_F(SCAEventHandlerTest, ReportCheckResult_SuppressesStatefulMessagesBeforeFi
             {
                 "old", {
                     {"id", "test_check"},
-                    {"result", "Not run"},
-                    {"name", "Test Check"}
+                    {"result", "Not run"}
                 }
             },
             {
                 "new", {
                     {"id", "test_check"},
-                    {"result", checkResult},
-                    {"name", "Test Check"}
+                    {"result", checkResult}
                 }
             }
         };
@@ -1071,11 +1075,89 @@ TEST_F(SCAEventHandlerTest, ReportCheckResult_SuppressesStatefulMessagesBeforeFi
     newHandler->ReportCheckResult(policyId, checkId, checkResult, "Policy requirements not met");
 
     EXPECT_TRUE(statefulMessages.empty());
+    EXPECT_TRUE(statelessMessages.empty());
+}
+
+TEST_F(SCAEventHandlerTest, ReportCheckResult_EmitsRealResultTransitions)
+{
+    const std::string policyId = "test_policy";
+    const std::string checkId = "test_check";
+    const std::string checkResult = "Failed";
+
+    EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
+    .WillOnce([checkResult](const nlohmann::json&, const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
+    {
+        nlohmann::json returnData =
+        {
+            {
+                "old", {
+                    {"id", "test_check"},
+                    {"result", "Passed"}
+                }
+            },
+            {
+                "new", {
+                    {"id", "test_check"},
+                    {"result", checkResult}
+                }
+            }
+        };
+        callback(MODIFIED, returnData);
+    });
+
+    std::vector<std::string> statefulMessages;
+    std::vector<std::string> statelessMessages;
+
+    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message, uint64_t) -> int
+    {
+        statefulMessages.push_back(message);
+        return 0;
+    };
+
+    auto mockPushStateless = [&statelessMessages](const std::string & message) -> int
+    {
+        statelessMessages.push_back(message);
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(
+                          mockDBSync,
+                          mockPushStateless,
+                          mockPushStateful);
+
+    const nlohmann::json mockPolicy =
+    {
+        {"id", policyId},
+        {"name", "Test Policy"},
+        {"description", "Test Description"},
+        {"file", "test.yml"},
+        {"refs", "https://example.com"}
+    };
+
+    EXPECT_CALL(*newHandler, GetPolicyById(policyId))
+    .WillOnce(testing::Return(mockPolicy));
+
+    const nlohmann::json mockCheck =
+    {
+        {"id", checkId},
+        {"policy_id", policyId},
+        {"name", "Test Check"},
+        {"description", "Test Check Description"},
+        {"result", "Passed"}
+    };
+
+    EXPECT_CALL(*newHandler, GetPolicyCheckById(checkId))
+    .WillOnce(testing::Return(mockCheck));
+
+    newHandler->ReportCheckResult(policyId, checkId, checkResult);
+
+    EXPECT_EQ(statefulMessages.size(), 1U);
     ASSERT_EQ(statelessMessages.size(), 1U);
 
     const nlohmann::json statelessMessage = nlohmann::json::parse(statelessMessages[0]);
-    EXPECT_EQ(statelessMessage["module"], "sca");
+    EXPECT_EQ(statelessMessage["data"]["event"]["changed_fields"], nlohmann::json::array({"check.result"}));
     EXPECT_EQ(statelessMessage["data"]["check"]["result"], checkResult);
+    EXPECT_EQ(statelessMessage["data"]["check"]["previous"]["result"], "Passed");
 }
 
 TEST_F(SCAEventHandlerTest, ReportPoliciesDelta_BeforeFirstSyncSkipsValidationDeletion)
@@ -1176,7 +1258,7 @@ TEST_F(SCAEventHandlerTest, ReportCheckResult_BeforeFirstSyncSkipsValidationDele
 
     const std::string policyId = "test_policy";
     const std::string checkId = "test_check";
-    const std::string checkResult = "Not applicable";
+    const std::string checkResult = "Failed";
 
     EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
     .WillOnce([checkId, policyId, checkResult](const nlohmann::json&, const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
@@ -1187,7 +1269,7 @@ TEST_F(SCAEventHandlerTest, ReportCheckResult_BeforeFirstSyncSkipsValidationDele
                 "old", {
                     {"id", checkId},
                     {"policy_id", policyId},
-                    {"result", "Not run"}
+                    {"result", "Passed"}
                 }
             },
             {
@@ -1722,9 +1804,15 @@ TEST_F(SCAEventHandlerTest, ReportCheckResult_RowDataWithoutNew_UsesRowDataDirec
     EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
     .WillOnce([checkResult](const nlohmann::json&, const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
     {
-        // Simulate rowData WITHOUT "new" field (e.g., for a DELETED operation or simple update)
+        // Simulate rowData wrapped with "old" so the stateless path has a real delta to report.
         nlohmann::json returnData =
         {
+            {
+                "old", {
+                    {"id", "test_check"},
+                    {"result", "failed"}
+                }
+            },
             {"id", "test_check"},
             {"result", checkResult},
             {"name", "Test Check"},

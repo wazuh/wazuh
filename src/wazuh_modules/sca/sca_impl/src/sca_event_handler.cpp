@@ -604,20 +604,36 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
             if (event["check"].contains("old") && event["check"]["old"].is_object())
             {
                 const auto& old = event["check"]["old"];
-                nlohmann::json previous;
 
-                for (auto& [key, value] : old.items())
+                // "Not run" is the DB default placeholder, not a user-observable state.
+                // A transition from it is a first observation, not a real delta — any
+                // sibling fields in the diff (e.g. `reason` populated for "Not applicable")
+                // are also first-time values, so the whole stateless event is dropped.
+                const auto oldResult = old.find("result");
+                const bool transitionFromNotRun = oldResult != old.end() &&
+                                                  oldResult->is_string() &&
+                                                  oldResult->get<std::string>() == "Not run";
+
+                if (!transitionFromNotRun)
                 {
-                    if (key == "id" || key == "sync")
+                    nlohmann::json previous;
+
+                    for (auto& [key, value] : old.items())
                     {
-                        continue;
+                        if (key == "id" || key == "sync")
+                        {
+                            continue;
+                        }
+
+                        previous[key] = value;
+                        changedFields.push_back("check." + key);
                     }
 
-                    previous[key] = value;
-                    changedFields.push_back("check." + key);
+                    if (!previous.empty())
+                    {
+                        check["previous"] = previous;
+                    }
                 }
-
-                check["previous"] = previous;
             }
         }
         else
@@ -659,6 +675,13 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
         else
         {
             LoggingHelper::getInstance().log(LOG_ERROR, "Stateless event does not contain policy");
+            return {};
+        }
+
+        // Drop MODIFIED events whose only pseudo-change was the "Not run" default
+        // being replaced by a real scan result: nothing user-visible changed.
+        if (static_cast<ReturnTypeCallback>(event["result"]) == MODIFIED && changedFields.empty())
+        {
             return {};
         }
 
