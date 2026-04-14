@@ -1375,29 +1375,99 @@ It extracts:
 
 Parsers are also available as helper functions for use in map and check operations. For a detailed explanation, see the Parser Stage and Parser Helper Functions sections.
 
-### Key Value Databases
-The engine allows the definition of JSON key-value databases, making them available in the assets through helper functions. These databases can be used to map large serializable data and check Indicators of Compromise (IoCs) or extensive key databases that require constant management. This approach separates the maintenance of such data from the decoder, streamlining the process and ensuring efficient data handling.
+### Key Value Databases (KVDBs)
 
-For more details on managing kvdbs, refer to the How to Manage kvdb section and the kvdb Library helper functions.
+Key Value Databases (KVDBs) let the engine store reusable key-value maps that decoders and other assets can query through helper functions. They are intended for lookup data that changes independently from parsing logic, such as normalization tables, default field sets, or reference tables.
 
-#### Use cases
-**Normalizing Large Serializable Data**: Maps event IDs to predefined categorization fields using a kvdb, simplifying event classification. Example:
+A KVDB is a named dictionary of entries where:
+
+- each key is a string
+- each value is a JSON value
+
+This keeps large or frequently updated lookup data outside the decoder itself, making assets easier to maintain and reuse.
+
+#### Common use cases
+
+**Event enrichment and normalization**
+
+Use a KVDB to store default values that should be merged into an event based on a code, type, or other field.
+
+**Indicator matching**
+
+Use a KVDB as a lookup set to check whether a field value is known, trusted, blocked, or suspicious.
+
+**Reusable reference tables**
+
+Use a KVDB to keep mappings such as status codes, protocol names, or bitmask tables that are shared by multiple assets.
+
+#### KVDB structure
+
+At a high level, helpers identify a KVDB by name and then resolve keys inside its `content` map.
+
+For example:
+
+```yaml
+kvdbs:
+  - id: b162e527-c155-43a3-8780-854350880f54
+    metadata:
+      title: example_kvdb
+      description: description of the kvdb
+    enabled: true
+    content:
+      key_1: value_1
+      key_2: 123
+      key_3: true
+      key_4:
+        nested_field: nested_value
+      key_5:
+        - item_1
+        - item_2
+```
+
+In this example:
+
+- the KVDB name is `example_kvdb`
+- the lookup keys are `key_1`, `key_2`, `key_3`, `key_4`, and `key_5`
+- each key stores a JSON value that can later be retrieved, matched, or merged by a helper
+
+Additional descriptive metadata can be included when useful, but the important part for helper resolution is the KVDB name and its `content` entries.
+
+#### Example: merge defaults into an event
+
+This pattern is useful when the event already contains a code and you want to enrich it with default fields from the KVDB.
+
 ```yaml
 normalize:
   - map:
-      - event: kvdb_get_merge(windows_security_eventid_to_category_type_action, $event.code)
+      - event: kvdb_get_merge('event_defaults_by_code', $event.code)
 ```
 
-This retrieves event categories, types, and actions based on the event ID.
+If `event.code` is `http`, the value stored under `content.http` is merged into `event`.
 
-**Checking Indicators of Compromise (IoCs)**: Compares log entries against a kvdb of known malicious IPs to identify potential threats. Example:
+#### Example: check whether a value exists in a KVDB
+
+This pattern is useful for allowlists, blocklists, or IoC-style checks.
+
 ```yaml
-normalize:
-  - check:
-      - source.ip: kvdb_match(known_malicious_ips)
+check:
+  - source.ip: kvdb_match('known_malicious_ips')
 ```
 
-If a match is found, security-related data is mapped to the event.
+The check succeeds only if the current value of `source.ip` exists as a key in the KVDB.
+
+#### Available helper functions
+
+The KVDB helper reference includes functions for direct lookups, array lookups, merges, recursive merges, membership checks, and bitmask decoding:
+
+- [`kvdb_get`](ref-helper-functions.md#kvdb_get)
+- [`kvdb_get_array`](ref-helper-functions.md#kvdb_get_array)
+- [`kvdb_get_merge`](ref-helper-functions.md#kvdb_get_merge)
+- [`kvdb_get_merge_recursive`](ref-helper-functions.md#kvdb_get_merge_recursive)
+- [`kvdb_match`](ref-helper-functions.md#kvdb_match)
+- [`kvdb_not_match`](ref-helper-functions.md#kvdb_not_match)
+- [`kvdb_decode_bitmask`](ref-helper-functions.md#kvdb_decode_bitmask)
+
+Use this section as the conceptual overview of the asset itself, and refer to the helper reference for function-specific behavior and examples.
 
 ### Dates and Timestamps
 Assets are capable of handling dates in various formats and time zones. This flexibility is achieved through configurable
