@@ -139,9 +139,18 @@ def test_sca_mitre_payload(test_configuration, test_metadata, prepare_cis_polici
         - r".*sca.*Stateful event queued: (.*)"
     '''
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+    scan_timeout = 200 if sys.platform == WINDOWS else 60
+
+    # Anchor the monitor to the module startup before waiting for the queued stateful event.
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_ENABLED), timeout=scan_timeout)
+    assert log_monitor.callback_result
 
     # Wait for a stateful event containing a MITRE object
+<<<<<<< HEAD
     log_monitor.start(callback=_callback_mitre_event, timeout=120)
+=======
+    log_monitor.start(callback=_callback_mitre_event, timeout=scan_timeout)
+>>>>>>> c5f837e171 (test(sca): wait for module startup before scan assertions)
     assert log_monitor.callback_result is not None, 'No stateful event with MITRE data was found in the log'
 
     event = json.loads(log_monitor.callback_result[0])
