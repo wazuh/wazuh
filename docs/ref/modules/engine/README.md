@@ -549,14 +549,45 @@ The analysis pipeline is divided into two layers:
 Then both the Wazuh and user rules are applied to the event.
 
 
-### Archiving and alerting process
+### Output process
 
-Once an event has completed processing through the decoder and rule pipelines, it enters the output pipeline.
-Similar to previous stages, the event first passes through the root output, which determines the appropriate output(s)
-for further processing. Multiple outputs can be selected, enabling flexible storage and distribution policies.
+Once an event has completed the full processing pipeline — decoding, optional enrichment, and optional post-filter —
+it is forwarded to the **output stage**. Outputs are responsible for delivering the decoded event to one or more
+configured destinations, such as the Wazuh Indexer or a local file.
 
-The output process in Wazuh is designed to efficiently distribute alerts through broadcasting, with each output capable
-of filtering alerts to support customized distribution:
+Unlike decoders and enrichment assets, which are downloaded from the content distribution infrastructure,
+**outputs are bundled with the `wazuh-manager` installation** and stored locally on the manager host. They do not
+originate from the Wazuh Indexer.
+
+#### Output directory structure
+
+Outputs are stored under `/var/wazuh-manager/etc/outputs/` and organized by space name:
+
+```
+/var/wazuh-manager/etc/outputs/
+├── default/                          # Fallback outputs, applied to all spaces unless overridden
+│   ├── indexer.yml                   # Sends decoded events to the Wazuh Indexer (enabled)
+│   └── file-output-integrations.yml  # Writes decoded events to a local file (disabled)
+├── standard/                         # (Optional) Outputs specific to the standard space
+└── custom/                           # (Optional) Outputs specific to the custom space
+```
+
+When building the output stage for a given security policy, the engine looks for a folder whose name matches the
+policy's space (e.g., `standard` or `custom`). If that folder exists, only its outputs are loaded for that policy.
+If no space-specific folder is found, the engine falls back to `default/`, ensuring every policy has a working
+set of outputs from the start.
+
+#### Default outputs
+
+The two outputs included in the default installation are:
+
+| File | Description | Default state |
+|------|-------------|---------------|
+| `indexer.yml` | Forwards decoded events to the configured `wazuh-indexer` | Enabled |
+| `file-output-integrations.yml` | Writes decoded events to a local file on the manager | Disabled |
+
+The output stage operates as a broadcaster: the decoded event is dispatched independently to every active output,
+allowing multiple destinations to receive the same processed event:
 
 ```mermaid
 ---
@@ -564,200 +595,19 @@ title: Event flow on outputs
 ---
 flowchart TD
 
-    outputR --> output1("Indexer alert output") & output2("File alerts output")
-    outputR("Broadcaster output") --x output3("File archive output")
-    outputR("Broadcaster output") --x output4("Other output")
+    outputR --> output1("indexer.yml") & output2("file-output-integrations.yml (disabled)")
+    outputR("Broadcaster output") --x output3("Custom output A (not configured)")
+    outputR("Broadcaster output") --> output4("Custom output B")
 
      outputR:::AssetSuccessClass
      output1:::AssetSuccessClass
-     output2:::AssetSuccessClass
+     output2:::AssetFailClass
      output3:::AssetFailClass
      output4:::AssetSuccessClass
     classDef AssetSuccessClass fill:#3f51b5,stroke-width:2px,fill-opacity:0.5
     classDef AssetFailClass fill:#f44336,stroke-width:2px,fill-opacity:0.5
     classDef AssetNotExecutedClass fill:#9e9e9e,stroke-width:2px,fill-opacity:0.5
-    linkStyle 2 stroke:#D50000,fill:none
-```
-
-
-### Full pipeline
-
-The following diagram illustrates the full pipeline of the default policy, including the decoding, rule, and output
-stages:
-
-```mermaid
-flowchart TD
-
- classDef EventBoxClass font-size: 15px,stroke-width:2px, color:#fff, fill:#3f51b5
- classDef TreeBoxClass font-size: 15px,stroke-width:2px,stroke-dasharray: 5 5
- classDef ModuleArchClass fill:#673ab7,stroke-width:2px,fill-opacity:0.5, font-size: 20px
- classDef SubModuleArchClass fill:#673ab7,stroke-width:2px,fill-opacity:0.5, font-size: 15px
-
-%% --------------------------------------
-%%           Decoding Stage
-%% --------------------------------------
-
- subgraph decoTree["First layer - Internal decoders"]
-    direction TB
-    decoInputRoot(" ")
-    deco02(" ")
-    deco03(" ")
-    integrationDecoder("Integration Decoder")
-    deco05(" ")
-    deco06(" ")
-    deco07(" ")
-
-    decoInputRoot --> deco02 & deco03 & integrationDecoder
-    deco02 --> deco05
-    deco03 --> deco06 & deco07
-  end
-
-  integrationDecoder -..-> userDecoRoot:::TreeBoxClass
-
-
- subgraph userDecoTree["Integrations & User decoders"]
-    direction TB
-    userDecoRoot(" ")
-    userDeco02(" ")
-    userDeco03(" ")
-    userDeco04(" ")
-    userDeco05(" ")
-    userDeco06(" ")
-    userDeco07(" ")
-    userDeco08(" ")
-
-    userDecoRoot --> userDeco02 & userDeco03 & userDeco04
-    userDeco02 --> userDeco05
-    userDeco03 --> userDeco06 & userDeco07
-    userDeco04 --> userDeco08
-  end
-
-%% Stage block
-subgraph decoderStage["Decoding Stage"]
-    decoTree:::TreeBoxClass
-    userDecoTree:::TreeBoxClass
-end
-
-
-
-%% Output decoder stage
-eventNormalized@{shape: doc, label: "Normalized</br>event"}
-eventNormalized:::EventBoxClass
-
-%% Pipieline
-routeSelector ==> decoInputRoot
-userDecoTree ====> eventNormalized
-
-%% --------------------------------------
-%%           Rules Stage
-%% --------------------------------------
-
- subgraph wazuhRulesTree["Wazuh Rules"]
-  direction TB
-
-  wazuhRules01(" ")
-  wazuhRules02(" ")
-  wazuhRules03(" ")
-  wazuhRules04(" ")
-  wazuhRules05(" ")
-  wazuhRules06(" ")
-  wazuhRules07(" ")
-  wazuhRules08(" ")
-
-  wazuhRules01 --> wazuhRules02 & wazuhRules03 & wazuhRules04
-  wazuhRules02 --> wazuhRules05
-  wazuhRules03 --> wazuhRules06 & wazuhRules07
-  wazuhRules04 --> wazuhRules08
- end
-
- subgraph userRulesTree["User rules"]
-  direction TB
-
-  userRules01(" ")
-  userRules02(" ")
-  userRules03(" ")
-  userRules04(" ")
-  userRules05(" ")
-  userRules06(" ")
-  userRules07(" ")
-  userRules08(" ")
-
-  userRules01 --> userRules02 & userRules03 & userRules04
-  userRules02 --> userRules05
-  userRules03 --> userRules06 & userRules07
-  userRules04 --> userRules08
-
- end
-
-
-
-subgraph ruleStage["Rules Stage"]
- wazuhRulesTree:::TreeBoxClass
- userRulesTree:::TreeBoxClass
-end
-
-%% Output stage rules
-securityEvent@{shape: doc, label: "Security</br>event"}
-securityEvent:::EventBoxClass
-
-%% Pipieline
-eventNormalized==>wazuhRulesTree & userRulesTree-.->securityEvent
-
-%% --------------------------------------
-%%           Output Stage
-%% --------------------------------------
- subgraph outputTree["Outputs"]
-  direction TB
-
-  output01(" ")
-  output02(" ")
-  output03(" ")
-  output04(" ")
-  output05(" ")
-  output06(" ")
-  output07(" ")
-  output08(" ")
-
-  output01 --> output02 & output03 & output04
-  output02 --> output05
-  output03 --> output06 & output07
-  output04 --> output08
-
- end
- outputTree:::TreeBoxClass
-
-%% Pipieline output
- securityEvent ==> outputTree
-
-
-%% --------------------------------------
-%%           Default Policy
-%% --------------------------------------
-subgraph defaultPolicy["Default policy"]
-  decoderStage
-  eventNormalized
-  ruleStage
-  securityEvent
-  outputTree
-end
-defaultPolicy:::SubModuleArchClass
-
-
-%% --------------------------------------
-%%           Engine
-%% --------------------------------------
-%% Input Decodeing Stage
-eventInput@{shape: doc, label: "Incoming event</br>from endpoint"}
-eventInput:::EventBoxClass
-
-subgraph engine["engine"]
-  defaultPolicy
-  routeSelector(["Orchestrator: Router (Route selector)"])
-end
-engine:::ModuleArchClass
-
-eventInput ===> routeSelector
-
+    linkStyle 2,3 stroke:#D50000,fill:none
 ```
 
 
