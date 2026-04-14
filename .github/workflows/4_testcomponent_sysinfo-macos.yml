@@ -39,7 +39,7 @@ jobs:
       - name: Install port
         run: |
           sudo /opt/local/bin/port selfupdate
-          sudo /opt/local/bin/port -b install nano
+          sudo /opt/local/bin/port -b install nano || sudo /opt/local/bin/port install nano
       - name: Run tests
         run: |
           cd src/data_provider
