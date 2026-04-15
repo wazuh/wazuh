@@ -83,12 +83,12 @@ def clean_sca_db():
 
     if SCA_DB_DIR.exists():
         for f in SCA_DB_DIR.iterdir():
-            for attempt in range(5):
+            for attempt in range(10):
                 try:
                     f.unlink(missing_ok=True)
                     break
                 except PermissionError:
-                    if attempt == 4:
+                    if attempt == 9:
                         raise
                     time.sleep(2)
     yield

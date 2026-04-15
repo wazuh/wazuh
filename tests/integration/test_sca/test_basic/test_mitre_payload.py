@@ -69,6 +69,43 @@ configurations = configuration.load_configuration_template(configurations_path, 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
+
+def _find_mitre(check_obj):
+    """Return the MITRE object from a check payload in any supported shape."""
+    if not isinstance(check_obj, dict):
+        return None
+
+    if check_obj.get('mitre'):
+        return check_obj.get('mitre')
+
+    for key in ('new', 'old', 'data'):
+        nested = check_obj.get(key)
+        if isinstance(nested, dict):
+            mitre = _find_mitre(nested)
+            if mitre:
+                return mitre
+
+    return None
+
+
+def _extract_mitre_from_event(event):
+    """Extract MITRE data from stateful or stateless event payloads."""
+    if not isinstance(event, dict):
+        return None
+
+    candidates = [
+        event.get('check'),
+        event.get('data', {}).get('check') if isinstance(event.get('data'), dict) else None,
+    ]
+
+    for candidate in candidates:
+        mitre = _find_mitre(candidate)
+        if mitre:
+            return mitre
+
+    return None
+
+
 def _callback_mitre_event(line):
     """Return the parsed event JSON when an SCA event containing a MITRE object is found."""
     for pattern in (patterns.SCA_STATEFUL_EVENT_QUEUED, patterns.SCA_SENDING_EVENT):
@@ -78,8 +115,7 @@ def _callback_mitre_event(line):
 
         try:
             event = json.loads(match.group(1))
-            check = event.get('data', {}).get('check', {}) or event.get('check', {})
-            if check.get('mitre'):
+            if _extract_mitre_from_event(event):
                 return (match.group(1),)
         except (json.JSONDecodeError, KeyError):
             continue
@@ -159,10 +195,16 @@ def test_sca_mitre_payload(test_configuration, test_metadata, prepare_cis_polici
     assert log_monitor.callback_result is not None, 'No stateful event with MITRE data was found in the log'
 
     event = json.loads(log_monitor.callback_result[0])
-    check = event.get('data', {}).get('check', {}) or event.get('check', {})
-    mitre = check['mitre']
+    mitre = _extract_mitre_from_event(event)
+    assert mitre is not None, 'MITRE object was not found in the captured SCA event'
 
-    assert set(mitre.get('tactic', [])) == set(test_metadata['mitre_tactics']), \
-        f"Expected MITRE tactics {test_metadata['mitre_tactics']}, got {mitre.get('tactic')}"
-    assert set(mitre.get('technique', [])) == set(test_metadata['mitre_techniques']), \
-        f"Expected MITRE techniques {test_metadata['mitre_techniques']}, got {mitre.get('technique')}"
+    # Keep compatibility if payload stores a single tactic/technique as string.
+    tactic = mitre.get('tactic', [])
+    technique = mitre.get('technique', [])
+    tactic = [item.strip() for item in tactic.split(',')] if isinstance(tactic, str) else tactic
+    technique = [item.strip() for item in technique.split(',')] if isinstance(technique, str) else technique
+
+    assert set(tactic) == set(test_metadata['mitre_tactics']), \
+        f"Expected MITRE tactics {test_metadata['mitre_tactics']}, got {tactic}"
+    assert set(technique) == set(test_metadata['mitre_techniques']), \
+        f"Expected MITRE techniques {test_metadata['mitre_techniques']}, got {technique}"
