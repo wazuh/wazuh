@@ -1,0 +1,36 @@
+name: "Install QA Integration Framework"
+description: "Resolves the correct branch and clones (and optionally pip-installs) the wazuh/qa-integration-framework"
+
+inputs:
+  branch_name:
+    required: true
+    description: "Current branch name (head branch)"
+  branch_base:
+    required: true
+    description: "Base branch name"
+  install:
+    required: false
+    description: "If 'true', pip-installs the framework and removes the cloned directory"
+    default: "true"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Download and install integration tests framework
+      shell: bash
+      run: |
+        VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
+        if [ "X$(git ls-remote https://github.com/wazuh/qa-integration-framework.git ${{ inputs.branch_name }})" != "X" ]; then
+            QA_BRANCH=${{ inputs.branch_name }}
+        elif [ "X$(git ls-remote https://github.com/wazuh/qa-integration-framework.git ${{ inputs.branch_base }})" != "X" ]; then
+            QA_BRANCH=${{ inputs.branch_base }}
+        elif [ "X$(git ls-remote https://github.com/wazuh/qa-integration-framework.git ${VERSION})" != "X" ]; then
+            QA_BRANCH=${VERSION}
+        else
+            QA_BRANCH="main"
+        fi
+        git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
+        if [[ "${{ inputs.install }}" == "true" ]]; then
+          sudo pip install qa-integration-framework/
+          sudo rm -rf qa-integration-framework/
+        fi

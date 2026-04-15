@@ -29,27 +29,14 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Project dependencies
-        uses: ./.github/actions/build_external_deps
-
-      - name: Indexer connector - Build tests
-        uses: ./.github/actions/build_target_cpp
+      - name: C++ test pipeline
+        uses: ./.github/actions/cpp_test_pipeline
         with:
           target: "indexer_connector_utest"
-          test: "true"
           asan: "false"
-
-      - name: Indexer connector - Run tests
-        uses: ./.github/actions/test_cpp
-        with:
-          valgrind: "true"
-          target: "indexer_connector_utest"
-
-      - name: Indexer connector - Coverage
-        uses: ./.github/actions/coverage_cpp
-        with:
-          path: src/shared_modules/indexer_connector
-          id: indexer_connector
+          with_coverage: "true"
+          coverage_path: src/shared_modules/indexer_connector
+          coverage_id: indexer_connector
           validate_function_coverage: "false"
 
   indexerconnector-asan:
@@ -63,18 +50,8 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Project dependencies
-        uses: ./.github/actions/build_external_deps
-
-      - name: Indexer connector - Build tests
-        uses: ./.github/actions/build_target_cpp
+      - name: C++ test pipeline (ASAN)
+        uses: ./.github/actions/cpp_test_pipeline
         with:
           target: "indexer_connector_utest"
-          test: "true"
           asan: "true"
-
-      - name: Indexer connector - Run tests
-        uses: ./.github/actions/test_cpp
-        with:
-          target: "indexer_connector_utest"
-          valgrind: "false"

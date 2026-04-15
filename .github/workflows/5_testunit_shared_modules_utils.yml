@@ -28,27 +28,14 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Project dependencies
-        uses: ./.github/actions/build_external_deps
-
-      - name: Shared modules utils - Build tests
-        uses: ./.github/actions/build_target_cpp
+      - name: C++ test pipeline
+        uses: ./.github/actions/cpp_test_pipeline
         with:
           target: "utils_utest"
-          test: "true"
           asan: "false"
-
-      - name: Shared modules utils - Run tests
-        uses: ./.github/actions/test_cpp
-        with:
-          valgrind: "true"
-          target: "utils_utest"
-
-      - name: Shared modules utils - Coverage
-        uses: ./.github/actions/coverage_cpp
-        with:
-          path: src/shared_modules/utils
-          id: utils_utest
+          with_coverage: "true"
+          coverage_path: src/shared_modules/utils
+          coverage_id: utils_utest
           validate_function_coverage: "false"
 
   shared_modules_utils-asan:
@@ -62,18 +49,8 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Project dependencies
-        uses: ./.github/actions/build_external_deps
-
-      - name: Shared modules utils - Build tests
-        uses: ./.github/actions/build_target_cpp
+      - name: C++ test pipeline (ASAN)
+        uses: ./.github/actions/cpp_test_pipeline
         with:
           target: "utils_utest"
-          test: "true"
           asan: "true"
-
-      - name: Shared modules utils - Run tests
-        uses: ./.github/actions/test_cpp
-        with:
-          target: "utils_utest"
-          valgrind: "false"

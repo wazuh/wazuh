@@ -23,12 +23,12 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      - name: "Install a compatible CMake"
+      - name: Install a compatible CMake
         uses: ./.github/actions/reinstall_cmake
-      - name: Build wazuh manager for linux
-        run: |
-          make deps -C src TARGET=manager -j2
-          make -C src TARGET=manager -j2
+      - name: Build wazuh manager
+        uses: ./.github/actions/build_wazuh
+        with:
+          target: manager
       - name: Install wazuh manager for linux
         run: |
           echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
@@ -52,21 +52,11 @@ jobs:
             -keyout $INSTALLATION_DIR/etc/certs/manager-key.pem -out $INSTALLATION_DIR/etc/certs/manager.pem \
             -days 1 -subj "/CN=test" 2>/dev/null
 
-      - name: Download and install integration tests framework
-        run: |
-          VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
-          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
-              QA_BRANCH=${BRANCH_NAME}
-          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
-              QA_BRANCH=${BRANCH_BASE}
-          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${VERSION}`" != "X" ]; then
-              QA_BRANCH=${VERSION}
-          else
-              QA_BRANCH="main"
-          fi
-          git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
-          sudo pip install qa-integration-framework/
-          sudo rm -rf qa-integration-framework/
+      - name: Install QA integration framework
+        uses: ./.github/actions/install_qa_framework
+        with:
+          branch_name: ${{ env.BRANCH_NAME }}
+          branch_base: ${{ env.BRANCH_BASE }}
       - name: Run API tests
         run: |
           mkdir -p /tmp/wazuh-logs
@@ -74,7 +64,7 @@ jobs:
           sudo tail -F $INSTALLATION_DIR/logs/wazuh-manager.log >> /tmp/wazuh-logs/wazuh-manager.log 2>/dev/null &
           sudo tail -F $INSTALLATION_DIR/logs/cluster.log >> /tmp/wazuh-logs/cluster.log 2>/dev/null &
           cd tests/integration
-          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest --tier 2 test_api/ --html=results.html --self-contained-html
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${{ env.BRANCH_NAME }}" python3 -m pytest --tier 2 test_api/ --html=results.html --self-contained-html
       - name: Collect logs on failure
         if: failure()
         run: |

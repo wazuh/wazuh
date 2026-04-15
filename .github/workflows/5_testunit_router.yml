@@ -29,27 +29,14 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Project dependencies
-        uses: ./.github/actions/build_external_deps
-
-      - name: Router - Build tests
-        uses: ./.github/actions/build_target_cpp
+      - name: C++ test pipeline
+        uses: ./.github/actions/cpp_test_pipeline
         with:
           target: "librouter_utest"
-          test: "true"
           asan: "false"
-
-      - name: Router - Run tests
-        uses: ./.github/actions/test_cpp
-        with:
-          valgrind: "true"
-          target: "librouter_utest"
-
-      - name: Router - Coverage
-        uses: ./.github/actions/coverage_cpp
-        with:
-          path: src/shared_modules/router
-          id: router
+          with_coverage: "true"
+          coverage_path: src/shared_modules/router
+          coverage_id: router
           validate_function_coverage: "false"
 
   router-asan:
@@ -63,18 +50,8 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Project dependencies
-        uses: ./.github/actions/build_external_deps
-
-      - name: Router - Build tests
-        uses: ./.github/actions/build_target_cpp
+      - name: C++ test pipeline (ASAN)
+        uses: ./.github/actions/cpp_test_pipeline
         with:
           target: "librouter_utest"
-          test: "true"
           asan: "true"
-
-      - name: Router - Run tests
-        uses: ./.github/actions/test_cpp
-        with:
-          target: "librouter_utest"
-          valgrind: "false"
