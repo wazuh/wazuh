@@ -23,7 +23,7 @@ Mapper getMapper(std::string_view parsed, std::string_view targetField)
 
 SemParser getSemParser(const std::string& targetField, const std::string& startToken, const std::string& endToken)
 {
-    return [targetField, startToken, endToken](std::string_view parsed)
+    return [targetField, startToken, endToken](std::string_view parsed, bool)
     {
         auto between = parsed.substr(startToken.size(), parsed.size() - startToken.size() - endToken.size());
         return getMapper(between, targetField);

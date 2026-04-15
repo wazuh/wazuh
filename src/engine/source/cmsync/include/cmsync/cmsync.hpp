@@ -27,7 +27,7 @@ private:
     std::weak_ptr<::store::IStore> m_store;                      ///< Internal config store
     std::weak_ptr<router::IRouterAPI> m_router;                  ///< Router API for event injection
 
-    std::size_t m_attemps;     ///< Number of attempts to connect or retry operations before failing
+    std::size_t m_attempts;    ///< Number of attempts to connect or retry operations before failing
     std::size_t m_waitSeconds; ///< Seconds to wait between attempts
 
     mutable std::shared_mutex m_mutex; ///< Mutex to protect access to m_namespacesState and sync operations
@@ -104,7 +104,7 @@ public:
            const std::shared_ptr<cm::crud::ICrudService>& cmcrudPtr,
            const std::shared_ptr<::store::IStore>& storePtr,
            const std::shared_ptr<router::IRouterAPI>& routerPtr,
-           const size_t attemps,
+           const size_t attempts,
            const size_t waitSeconds);
     ~CMSync() override;
 

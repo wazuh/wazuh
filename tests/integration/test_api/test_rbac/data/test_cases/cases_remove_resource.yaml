@@ -1,6 +1,6 @@
 - name: REMOVE_RULE
   description: Check if relationships between security resources stay the same after removing the linked rule.
-  configuration_parameters:
+  configuration_parameters: null
   metadata:
     resources:
       rule_ids:
@@ -21,7 +21,7 @@
 
 - name: REMOVE_POLICY
   description: Check if relationships between security resources stay the same after removing the linked policy.
-  configuration_parameters:
+  configuration_parameters: null
   metadata:
     resources:
       policy_ids:
@@ -45,7 +45,7 @@
 
 - name: REMOVE_USER
   description: Check if relationships between security resources stay the same after removing the linked user.
-  configuration_parameters:
+  configuration_parameters: null
   metadata:
     resources:
       user_ids:
@@ -64,7 +64,7 @@
 
 - name: REMOVE_ROLE
   description: Check if relationships between security resources stay the same after removing the linked role.
-  configuration_parameters:
+  configuration_parameters: null
   metadata:
     resources:
       role_ids:

@@ -45,7 +45,14 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
                                              value.typeName()));
     }
 
-    auto indexName = value.getString().value();
+    auto indexName = std::string {};
+    if (value.getString(indexName) != json::RetGet::Success || indexName.empty())
+    {
+        throw std::runtime_error(fmt::format("Stage '{}' expects an object with key '{}' to be a non-empty string but got '{}'",
+                                             syntax::asset::INDEXER_OUTPUT_KEY,
+                                             syntax::asset::INDEXER_OUTPUT_INDEX_KEY,
+                                             value.typeName()));
+    }
 
     // Index name can’t contain any of the following characters:
     // ' ', ',', ':', '"', '*', '+', '/', '\', '|', '?', '#', '>', or '<'
@@ -70,6 +77,14 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
         placeholderMap[fullMatch] = formattedPath;
     }
 
+    // Pre-build PointerPath objects for each placeholder to avoid re-parsing per event
+    std::vector<std::pair<std::string, json::PointerPath>> placeholderPPVec;
+    placeholderPPVec.reserve(placeholderMap.size());
+    for (const auto& [placeholder, jsonPath] : placeholderMap)
+    {
+        placeholderPPVec.emplace_back(placeholder, json::PointerPath(jsonPath));
+    }
+
     auto name = fmt::format("write.output({}/{})", syntax::asset::INDEXER_OUTPUT_KEY, indexName);
     const auto successTrace = fmt::format("{} -> Success", name);
     const auto failureTrace = fmt::format("{} -> The indexer connector is disabled", name);
@@ -86,7 +101,7 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
     return base::Term<base::EngineOp>::create(
         name,
         [indexName,
-         placeholderMap,
+         placeholderPPVec,
          wic,
          successTrace,
          failureTrace,
@@ -95,14 +110,13 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
          runState = buildCtx->runState()](base::Event event) -> base::result::Result<base::Event>
         {
             std::string finalIndexName = indexName;
-            for (const auto& [placeholder, jsonPath] : placeholderMap)
+            for (const auto& [placeholder, jsonPathPP] : placeholderPPVec)
             {
-                auto opt = event->getString(jsonPath);
-                if (!opt)
+                std::string fieldValue;
+                if (event->getString(fieldValue, jsonPathPP) != json::RetGet::Success)
                 {
-                    RETURN_FAILURE(runState, event, fmt::format(failureTrace2, jsonPath));
+                    RETURN_FAILURE(runState, event, fmt::format(failureTrace2, placeholder));
                 }
-                std::string fieldValue = std::move(*opt);
 
                 // Replace all occurrences of the placeholder in the indexName
                 size_t pos = 0;

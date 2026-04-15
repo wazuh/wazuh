@@ -433,10 +433,6 @@ WriteManager()
 
     GLOBAL_CONTENT=$(cat ${GLOBAL_TEMPLATE})
 
-    if [ "$UPDATE_CHECK" = "no" ]; then
-        GLOBAL_CONTENT=$(echo "$GLOBAL_CONTENT" | sed "s|<update_check>yes</update_check>|<update_check>no</update_check>|g")
-    fi
-
     echo "$GLOBAL_CONTENT" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 

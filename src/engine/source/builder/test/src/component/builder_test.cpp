@@ -1210,9 +1210,9 @@ TEST_F(BuildPolicyAdvancedTest, ParentTemporaryVariableIsAvailableInChildDecoder
     auto event = std::make_shared<json::Json>(R"({"event": {"code": "PARENT"}})");
     EXPECT_TRUE(evalExpression(builtPolicy->expression(), event));
 
-    auto reason = event->getString("/event/reason");
-    ASSERT_TRUE(reason.has_value());
-    EXPECT_EQ(reason.value(), "child-hit");
+    std::string reason;
+    ASSERT_EQ(json::RetGet::Success, event->getString(reason, "/event/reason"));
+    EXPECT_EQ(reason, "child-hit");
     EXPECT_FALSE(event->exists("/_tmp"));
     EXPECT_FALSE(event->exists("/_tmp/shared"));
 }

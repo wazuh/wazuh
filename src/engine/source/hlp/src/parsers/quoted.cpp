@@ -23,7 +23,7 @@ Mapper getMapper(const std::string& parsed, std::string_view targetField)
 
 SemParser getSemParser(const std::string& targetField, char escape)
 {
-    return [targetField, escape](std::string_view parsed)
+    return [targetField, escape](std::string_view parsed, bool)
     {
         std::string tr(parsed.begin() + 1, parsed.end() - 1);
         tr.erase(std::remove(tr.begin(), tr.end(), escape), tr.end());

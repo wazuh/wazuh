@@ -796,11 +796,10 @@ std::optional<std::filesystem::path> ChannelHandler::getPreviousCurrentFilePathF
 
         // Get the path if it exists
         const auto& jState = base::getResponse(state);
-        const auto path = jState.getString(STORE_POSFIX_PATH_TO_CURRENT);
-
-        if (path)
+        std::string pathStr;
+        if (jState.getString(pathStr, STORE_POSFIX_PATH_TO_CURRENT) == json::RetGet::Success)
         {
-            return std::filesystem::path(*path);
+            return std::filesystem::path(pathStr);
         }
         LOG_DEBUG("No previous current file path found in store for channel '{}'", m_channelName);
     }

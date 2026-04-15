@@ -153,13 +153,13 @@ def test_delete_multiple_files(test_configuration, test_metadata, set_wazuh_conf
     fim_mode = test_metadata.get('fim_mode')
     files_amount = test_metadata.get('files_amount')
 
-    file.delete_files_in_folder(folder_to_monitor)
-
     # Assert
     wazuh_log_monitor.start(generate_callback(INODE_ENTRIES_PATH_COUNT))
     inode_entries, path_count = wazuh_log_monitor.callback_result
     assert inode_entries == path_count
     assert int(path_count) == files_amount
+
+    file.delete_files_in_folder(folder_to_monitor)
 
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
     assert get_fim_event_data(wazuh_log_monitor.callback_result)['file']['mode'] == fim_mode

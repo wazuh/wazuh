@@ -43,6 +43,17 @@ auto builderArrayRefWrongElement(const std::string& refName)
     };
 }
 
+auto builderArrayRefTyped(const std::string& refName, json::Json::Type jType)
+{
+    return [=](const BuildersMocks& mocks)
+    {
+        expectValidatorAccess(mocks);
+        EXPECT_CALL(*mocks.validator, hasField(DotPath(refName))).WillRepeatedly(testing::Return(true));
+        EXPECT_CALL(*mocks.validator, getJsonType(DotPath(refName))).WillRepeatedly(testing::Return(jType));
+        return None {};
+    };
+}
+
 auto opArrayRefNotInSchemaSuccess(const std::string& refName, const json::Json& expectedJson)
 {
     return [=](const BuildersMocks& mocks)
@@ -129,7 +140,44 @@ INSTANTIATE_TEST_SUITE_P(
               makeValue(R"("/NewValue")"),
               makeValue(R"("/OldValue")")},
              opBuilderHelperArrayExtractKeyObj,
-             FAILURE(builderArrayRefWrongElement("ModifiedProperties")))),
+             FAILURE(builderArrayRefWrongElement("ModifiedProperties"))),
+        /*** Array ref type validation (getJsonType -> Object) ***/
+        MapT({makeRef("ModifiedProperties"),
+              makeValue(R"("/Name")"),
+              makeValue(R"("/NewValue")"),
+              makeValue(R"("/OldValue")")},
+             opBuilderHelperArrayExtractKeyObj,
+             SUCCESS(builderArrayRefTyped("ModifiedProperties", json::Json::Type::Object))),
+        MapT({makeRef("ModifiedProperties"),
+              makeValue(R"("/Name")"),
+              makeValue(R"("/NewValue")"),
+              makeValue(R"("/OldValue")")},
+             opBuilderHelperArrayExtractKeyObj,
+             FAILURE(builderArrayRefTyped("ModifiedProperties", json::Json::Type::String))),
+        MapT({makeRef("ModifiedProperties"),
+              makeValue(R"("/Name")"),
+              makeValue(R"("/NewValue")"),
+              makeValue(R"("/OldValue")")},
+             opBuilderHelperArrayExtractKeyObj,
+             FAILURE(builderArrayRefTyped("ModifiedProperties", json::Json::Type::Number))),
+        MapT({makeRef("ModifiedProperties"),
+              makeValue(R"("/Name")"),
+              makeValue(R"("/NewValue")"),
+              makeValue(R"("/OldValue")")},
+             opBuilderHelperArrayExtractKeyObj,
+             FAILURE(builderArrayRefTyped("ModifiedProperties", json::Json::Type::Boolean))),
+        MapT({makeRef("ModifiedProperties"),
+              makeValue(R"("/Name")"),
+              makeValue(R"("/NewValue")"),
+              makeValue(R"("/OldValue")")},
+             opBuilderHelperArrayExtractKeyObj,
+             FAILURE(builderArrayRefTyped("ModifiedProperties", json::Json::Type::Array))),
+        MapT({makeRef("ModifiedProperties"),
+              makeValue(R"("/Name")"),
+              makeValue(R"("/NewValue")"),
+              makeValue(R"("/OldValue")")},
+             opBuilderHelperArrayExtractKeyObj,
+             FAILURE(builderArrayRefTyped("ModifiedProperties", json::Json::Type::Null)))),
     testNameFormatter<MapBuilderTest>("ArrayExtractKeyObj"));
 } // namespace mapbuildtest
 
