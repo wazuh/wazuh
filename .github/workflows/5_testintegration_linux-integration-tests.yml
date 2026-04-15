@@ -1,0 +1,189 @@
+name: 5.X - Linux - Integration tests (generic)
+
+on:
+  workflow_call:
+    inputs:
+      base_branch:
+        required: true
+        type: string
+      build_run_id:
+        required: false
+        type: string
+        default: ''
+      module_name:
+        required: true
+        type: string
+      shard_name:
+        required: false
+        type: string
+        default: 'tier-0-1'
+      pytest_target:
+        required: true
+        type: string
+      pytest_extra_args:
+        required: false
+        type: string
+        default: ''
+      pytest_tier_args:
+        required: false
+        type: string
+        default: '--tier 0 --tier 1'
+      pre_install:
+        required: false
+        type: string
+        default: ''
+      timeout_minutes:
+        required: false
+        type: number
+        default: 120
+  workflow_dispatch:
+    inputs:
+      base_branch:
+        description: 'Base branch'
+        required: true
+        default: 'main'
+      build_run_id:
+        description: 'Run ID of the build workflow to download artifacts from (optional)'
+        required: false
+        default: ''
+      module_name:
+        description: 'Module name (used in artifact names)'
+        required: true
+        default: 'unknown'
+      shard_name:
+        description: 'Shard name (e.g. tier-0)'
+        required: false
+        default: 'tier-0-1'
+      pytest_target:
+        description: 'pytest target directory (e.g. test_fim/)'
+        required: true
+      pytest_extra_args:
+        description: 'Additional pytest arguments (e.g. -m linux)'
+        required: false
+        default: ''
+      pytest_tier_args:
+        description: 'Tier arguments for pytest (e.g. --tier 0 --tier 1)'
+        required: false
+        default: '--tier 0 --tier 1'
+      pre_install:
+        description: 'Shell command to run before tests (e.g. install auditd)'
+        required: false
+        default: ''
+
+# Note: Github will force this by default in June 2026, but we set it explicitly to avoid any issues with JavaScript actions in the meantime.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  run-test:
+    timeout-minutes: ${{ inputs.timeout_minutes || 120 }}
+    name: ${{ inputs.module_name }} integration tests (${{ inputs.shard_name }})
+    env:
+      BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+      BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
+      BUILD_WORKFLOW: 5_builderpackage_agent-linux.yml
+      PACKAGES_PATH: /tmp/packages
+      AGENT_PACKAGE_REGEXP: wazuh-agent.*amd64.*\.deb
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: ".github/workflows/.python-version-it"
+          architecture: x64
+
+      - name: Download package artifact
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: ${{ env.BUILD_WORKFLOW }}
+          run_id: ${{ inputs.build_run_id }}
+          workflow_conclusion: success
+          name_is_regexp: true
+          name: ${{ env.AGENT_PACKAGE_REGEXP }}
+          path: ${{ env.PACKAGES_PATH }}
+          if_no_artifact_found: fail
+          check_artifacts: true
+          search_artifacts: true
+
+      - name: Install and configure wazuh agent
+        run: |
+          PACKAGE_PATH=$(find "${PACKAGES_PATH}" -maxdepth 2 -type f -name "wazuh-agent*amd64*.deb" | grep -v -E "wazuh-agent-dbg" | head -n 1)
+          if [ -z "$PACKAGE_PATH" ]; then
+            echo "No agent package found in ${PACKAGES_PATH}"
+            exit 1
+          fi
+
+          sudo WAZUH_MANAGER="127.0.0.1" dpkg -i "${PACKAGE_PATH}" || sudo apt-get install -f -y
+
+          sudo awk '
+            /<rootcheck>/ { in_block=1; print; next }
+            /<\/rootcheck>/ && in_block { in_block=0; print "    <disabled>yes</disabled>"; print; next }
+            in_block { next }
+            { print }
+          ' /var/ossec/etc/ossec.conf > /tmp/ossec.conf.fixed && sudo mv /tmp/ossec.conf.fixed /var/ossec/etc/ossec.conf
+
+          sudo awk '
+            /<syscheck>/ { in_block=1; print; next }
+            /<\/syscheck>/ && in_block { in_block=0; print "    <disabled>yes</disabled>"; print; next }
+            in_block { next }
+            { print }
+          ' /var/ossec/etc/ossec.conf > /tmp/ossec.conf.fixed && sudo mv /tmp/ossec.conf.fixed /var/ossec/etc/ossec.conf
+
+          sudo awk '
+            /<sca>/ { in_block=1; next }
+            /<\/sca>/ && in_block { in_block=0; next }
+            in_block { next }
+            { print }
+          ' /var/ossec/etc/ossec.conf > /tmp/ossec.conf.fixed && sudo mv /tmp/ossec.conf.fixed /var/ossec/etc/ossec.conf
+
+      - name: Download and install integration tests framework
+        run: |
+          VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
+          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
+              QA_BRANCH=${BRANCH_NAME}
+          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
+              QA_BRANCH=${BRANCH_BASE}
+          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${VERSION}`" != "X" ]; then
+              QA_BRANCH=${VERSION}
+          else
+              QA_BRANCH="main"
+          fi
+          git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
+          sudo pip install qa-integration-framework/
+          sudo rm -rf qa-integration-framework/
+
+      - name: Run pre-install steps
+        if: inputs.pre_install != ''
+        run: ${{ inputs.pre_install }}
+
+      - name: Run ${{ inputs.module_name }} integration tests
+        run: |
+          cd tests/integration
+          set +e
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" \
+            python -m pytest ${{ inputs.pytest_extra_args }} ${{ inputs.pytest_tier_args }} ${{ inputs.pytest_target }} \
+            --html=results.html --self-contained-html
+          EXIT_CODE=$?
+          set -e
+          if [ $EXIT_CODE -eq 5 ]; then
+            echo "No tests were selected for this configuration. Skipping."
+            exit 0
+          fi
+          exit $EXIT_CODE
+
+      - name: Dump wazuh-agent logs on failure
+        if: failure()
+        run: |
+          sudo journalctl -xeu wazuh-agent.service || true
+          sudo tail -n 200 /var/ossec/logs/ossec.log || true
+
+      - name: Upload failed test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.module_name }}-lin-${{ inputs.shard_name }}-test-results-${{ github.run_id }}
+          path: ./tests/integration/results.html
+          retention-days: 7

@@ -36,10 +36,9 @@
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], symlink]
-    FREQUENCY: 43200 # As default 12 hs
+    FREQUENCY: 43200
     FIM_MODE:
-      realtime: 'yes'
-      # whodata: 'yes'
+      whodata: 'yes'
   metadata:
     symlink:  !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], symlink]
@@ -53,7 +52,7 @@
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], symlink]
-    FREQUENCY: 43200 # As default 12 hs
+    FREQUENCY: 43200
     FIM_MODE:
       whodata: 'yes'
   metadata:
