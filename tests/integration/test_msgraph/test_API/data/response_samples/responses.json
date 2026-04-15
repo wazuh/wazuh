@@ -50,16 +50,6 @@
       }
     },
     {
-      "url": "http://graph.microsoft.com/v1.0/security/cases/eDiscoveryCases?$top=*&$filter=createdDateTime+ge+*+and+createdDateTime+lt+*",
-      "method": "GET",
-      "responseCode": 200,
-      "responseBody": {
-        "value": [
-          "microsoft.graph.security.ediscoveryCase"
-        ]
-      }
-    },
-    {
       "url": "http://graph.microsoft.com/v1.0/auditLogs/signIns?$top=*&$filter=createdDateTime+ge+*+and+createdDateTime+lt+*",
       "method": "GET",
       "responseCode": 429,
