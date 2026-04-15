@@ -279,9 +279,16 @@ class InventorySyncFacadeImpl final
             auto agentId = startMsg->agentid() ? startMsg->agentid()->string_view() : std::string_view();
             auto moduleName = startMsg->module_() ? startMsg->module_()->string_view() : std::string_view();
 
-            // Check if agent is locked
+            // Check if agent is locked.
+            // syscollector_vd sessions (VDFirst/VDSync) are exempt from the feed-update lock:
+            // they read package data from their RocksDB session store, not from the OpenSearch
+            // package index, so they cannot produce dirty reads during a feed-update full scan.
+            // Per-agent serialisation with the feed-update scan is handled by the wait in
+            // hasActiveSessionForModule instead.
             std::string agentIdStr(agentId.data(), agentId.size());
-            if (isAgentLocked(agentIdStr))
+            const std::string moduleNameStr(moduleName.data(), moduleName.size());
+            const bool isVDModule = (moduleNameStr == "syscollector_vd");
+            if (!isVDModule && isAgentLocked(agentIdStr))
             {
                 logDebug2(LOGGER_DEFAULT_TAG,
                           "InventorySyncFacade::start: Agent %s is locked, rejecting new session",
@@ -1427,19 +1434,23 @@ public:
      *     feed-update scan (the first-scan itself will cover the updated feed).
      *   - VDSync session:  blocks until the session ends or the timeout expires, then
      *     returns false so the caller proceeds with the feed-update scan.
+     *     If the session does not finish within the timeout, the wait is retried up to
+     *     maxRetries additional times before giving up.
      *
      * When called without a timeout (default): behaves as a plain existence check and
      * returns true if any session matches, regardless of the session option.
      *
      * @param agentId    Agent ID to check
      * @param moduleName Module name to check (e.g., "syscollector_vd")
-     * @param timeout    How long to wait for a VDSync session to finish (0 = no wait)
+     * @param timeout    How long to wait per attempt for a VDSync session to finish (0 = no wait)
+     * @param maxRetries Maximum number of extra wait attempts after the first timeout (0 = no retry)
      * @return true if a VDFirst session is active (caller should skip the scan);
      *         false in all other cases (no session, or VDSync finished/timed out)
      */
     bool hasActiveSessionForModule(const std::string& agentId,
                                    const std::string& moduleName,
-                                   std::chrono::seconds timeout) const
+                                   std::chrono::seconds timeout,
+                                   uint32_t maxRetries) const
     {
         std::shared_lock lock(m_agentSessionsMutex);
 
@@ -1458,33 +1469,52 @@ public:
                     // VDSync: wait for the session to finish before the feed-update scan reads
                     // the indexer, so all packages are in a consistent state.
                     logInfo(LOGGER_DEFAULT_TAG,
-                            "Feed update scan waiting for VDSync session to complete for agent %s (timeout: %lds).",
+                            "Feed update scan waiting for VDSync session to complete for agent %s "
+                            "(timeout: %lds, max retries: %u).",
                             agentId.c_str(),
-                            static_cast<long>(timeout.count()));
+                            static_cast<long>(timeout.count()),
+                            maxRetries);
 
-                    const bool completed =
-                        m_sessionCompletedCV.wait_for(lock,
-                                                      timeout,
-                                                      [&]()
-                                                      {
-                                                          for (const auto& [sId, s] : m_agentSessions)
-                                                          {
-                                                              if (s.getContext()->agentId == agentId
-                                                                  && s.getContext()->moduleName == moduleName)
-                                                              {
-                                                                  return false; // still active
-                                                              }
-                                                          }
-                                                          return true; // session gone
-                                                      });
-
-                    if (!completed)
+                    const auto isSessionGone = [&]()
                     {
-                        logWarn(LOGGER_DEFAULT_TAG,
-                                "Feed update scan timeout waiting for VDSync session for agent %s (%lds). "
-                                "Proceeding with current indexer data.",
-                                agentId.c_str(),
-                                static_cast<long>(timeout.count()));
+                        for (const auto& [sId, s] : m_agentSessions)
+                        {
+                            if (s.getContext()->agentId == agentId && s.getContext()->moduleName == moduleName)
+                            {
+                                return false; // still active
+                            }
+                        }
+                        return true; // session gone
+                    };
+
+                    uint32_t attemptsLeft = maxRetries + 1;
+                    while (attemptsLeft > 0)
+                    {
+                        --attemptsLeft;
+                        const bool completed = m_sessionCompletedCV.wait_for(lock, timeout, isSessionGone);
+
+                        if (completed)
+                        {
+                            break;
+                        }
+
+                        if (attemptsLeft > 0)
+                        {
+                            logWarn(LOGGER_DEFAULT_TAG,
+                                    "Feed update scan timeout waiting for VDSync session for agent %s (%lds). "
+                                    "Retrying (%u retries left).",
+                                    agentId.c_str(),
+                                    static_cast<long>(timeout.count()),
+                                    attemptsLeft);
+                        }
+                        else
+                        {
+                            logWarn(LOGGER_DEFAULT_TAG,
+                                    "Feed update scan timeout waiting for VDSync session for agent %s (%lds). "
+                                    "Proceeding with current indexer data.",
+                                    agentId.c_str(),
+                                    static_cast<long>(timeout.count()));
+                        }
                     }
                 }
 
@@ -1548,6 +1578,7 @@ public:
 
         if (cleanedCount > 0)
         {
+            m_sessionCompletedCV.notify_all();
             logInfo(LOGGER_DEFAULT_TAG,
                     "Cleaned up %zu zombie session(s) for agent %s",
                     cleanedCount,
@@ -1747,6 +1778,7 @@ private:
 
                 // Remove session from map
                 m_agentSessions.erase(it);
+                m_sessionCompletedCV.notify_all();
             }
         }
     }
