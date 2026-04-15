@@ -43,7 +43,7 @@ assignees: ''
 - [ ] Review and update the release testing issue templates.
 - [ ] Add the OS and its supported architectures to the E2E UX Tests spreadsheet (OS sheet).
 - [ ] Add the OS to the Deployability Testing Tool (DTT).
-  - [ ] Run the Deployability Install Tests (DIT) and verify that they pass for the new OS.
+  - [ ] Run the Deployability Installation Tests (DIT) and verify that they pass for the new OS.
   - [ ] Run the Deployability Upgrade Tests (DUT) and verify that they pass for the new OS.
 -->
 
