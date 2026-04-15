@@ -1702,6 +1702,155 @@ kanban
   `map` sub-stages. A failed block inside `normalize` does not cause the decoder to fail — it is skipped and the
   next block is evaluated. See the [Normalize/Enrichment stage](#normalizeenrichment) for details.
 
+#### Example Decoder
+
+The following decoder handles Linux authentication logs (`/var/log/auth.log` style). It is a child of
+`decoder/syslog/0` and matches events produced by common authentication processes (sshd, sudo, PAM, etc.).
+
+Key aspects to note:
+
+- The top-level `check` uses a **definition** (`$isAuthProcess`) to keep the long OR condition readable.
+- The first `normalize` block unconditionally (`map` only, no `check`) sets the base event fields.
+- Subsequent blocks each have their own `check` to handle specific sub-events: SSH sessions, sudo commands,
+  PAM actions, and user/group management. A block whose `check` fails is simply skipped.
+- Temporary variables (prefixed `_`, e.g., `_system.auth.ssh.event`) carry intermediate parsed values
+  through the decoder tree and are cleaned up before enrichment.
+
+```yaml
+name: "decoder/system-auth/0"
+metadata:
+  author: "Wazuh, Inc."
+  date: "2023-05-15"
+  description: "Decoder for system authenticated action logs."
+  modified: "2026-03-20"
+  references:
+    - "https://www.loggly.com/ultimate-guide/linux-logging-basics/"
+  title: "system-auth logs"
+id: "38add1bc-5bbc-4259-b06d-29069956b038"
+enabled: true
+parents:
+  - "decoder/syslog/0"
+definitions:
+  isAuthProcess: >-
+    $process.name == sshd OR $process.name == sudo OR $process.name == groupadd
+    OR $process.name == useradd OR $process.name == groupdel OR $process.name == groupmod
+    OR $process.name == userdel OR $process.name == usermod OR $process.name == CRON
+check: "$isAuthProcess"
+normalize:
+  # --- Block 1: set base event fields unconditionally ---
+  - map:
+      - event.dataset: "system-auth"
+      - event.kind: "event"
+      - event.outcome: "success"
+
+  # --- Block 2: parse SSH-specific messages ---
+  - check:
+      - process.name: "sshd"
+    parse|message:
+      - "<_system.auth.ssh.event> <_system.auth.ssh.method> for (?invalid user )<user.name> from <source.ip> port <source.port> ssh2(?:<~>)"
+      - "<_system.auth.ssh.event> user <user.name> from <source.ip>(? port <source.port>)"
+      - "Did not receive identification string from <source.ip>"
+      - "subsystem request for <_system.auth.ssh.subsystem> by user <user.name>"
+
+  # --- Block 3: SSH login success / new session ---
+  - check: "$_system.auth.ssh.event == Accepted OR $_system.auth.ssh.event == USER_PROCESS"
+    map:
+      - event.action: "logged-in"
+      - event.category: "array_append(authentication, session)"
+      - event.outcome: "success"
+      - event.type: "array_append(info)"
+
+  # --- Block 4: SSH logout / session end ---
+  - check: "$_system.auth.ssh.event == DEAD_PROCESS OR $_system.auth.ssh.event == disconnect"
+    map:
+      - event.action: "logged-out"
+      - event.category: "array_append(authentication, session)"
+      - event.outcome: "success"
+      - event.type: "array_append(end)"
+
+  # --- Block 5: SSH authentication failure ---
+  - check: "$_system.auth.ssh.event == Invalid OR $_system.auth.ssh.event == Failed OR $_system.auth.ssh.event == failures OR $_system.auth.ssh.event == fatal"
+    map:
+      - event.action: "authentication-failure"
+      - event.category: "array_append(authentication)"
+      - event.outcome: "failure"
+      - event.type: "array_append(info)"
+
+  # --- Block 6: sudo commands ---
+  - check:
+      - process.name: "sudo"
+    map:
+      - event.action: "sudo"
+      - event.category: "array_append(authentication, process)"
+      - event.type: "array_append(start)"
+    parse|message:
+      - "<user.name> : <_system.auth.sudo.error> ; TTY=<_system.auth.sudo.tty> ; PWD=<_system.auth.sudo.pwd> ; USER=<user.effective.name> ; COMMAND=<_system.auth.sudo.command>"
+      - "<user.name> : TTY=<_system.auth.sudo.tty> ; PWD=<_system.auth.sudo.pwd> ; USER=<user.effective.name> ; COMMAND=<_system.auth.sudo.command>"
+
+  # --- Block 7–8: session open / close (generic) ---
+  - check:
+      - message: "contains(\"session opened\")"
+    map:
+      - event.action: "logged-in"
+      - event.type: "array_append(start)"
+  - check:
+      - message: "contains(\"session closed\")"
+    map:
+      - event.action: "logged-out"
+      - event.type: "array_append(end)"
+
+  # --- Block 9: PAM authentication ---
+  - check:
+      - message: "contains(pam_unix)"
+    map:
+      - event.category: "array_append(authentication)"
+      - event.type: "array_append(info)"
+    parse|message:
+      - "pam_unix\\(<~>:<~>\\): authentication <_system.auth.pam.session.action>; logname=<?_system.auth.pam.foruser.name> uid=<?user.id> euid=<?user.effective.id> tty=<?_system.auth.pam.tty> ruser=<?_system.auth.pam.remote.user> rhost=<?source.ip>  user=<?user.name>"
+
+  # --- Block 10: PAM session open/close ---
+  - check:
+      - message: "contains(pam_unix)"
+    map:
+      - event.category: "array_append(session)"
+    parse|message:
+      - "pam_unix\\(<~>:<~>\\): session <_system.auth.pam.session.action> for user <_system.auth.pam.foruser.name> by <_system.auth.pam.byuser.name>\\(uid=<user.id>\\)"
+      - "pam_unix\\(<~>:<~>\\): session <_system.auth.pam.session.action> for user <_system.auth.pam.foruser.name>"
+
+  # --- Block 11: user/group management ---
+  - check: "$process.name == groupadd OR $process.name == useradd"
+    parse|message:
+      - "new group: name=<group.name>, GID=<group.id>"
+      - "new user: name=<user.name>, UID=<user.id>, GID=<group.id>, home=<_system.auth.useradd.home>, shell=<_system.auth.useradd.shell>(?,<~>)"
+  - check: "$process.name == userdel OR $process.name == usermod"
+    parse|message:
+      - "<~> user '<user.name>'"
+  - check: "$process.name == groupadd OR $process.name == groupdel OR $process.name == groupmod OR $process.name == useradd OR $process.name == userdel OR $process.name == usermod"
+    map:
+      - event.category: "array_append(iam)"
+  - check: "$process.name == useradd OR $process.name == userdel OR $process.name == usermod"
+    map:
+      - event.type: "array_append(user)"
+  - check: "$process.name == groupadd OR $process.name == groupdel OR $process.name == groupmod"
+    map:
+      - event.type: "array_append(group)"
+
+  # --- Block 12: final field cleanup and catch-all mappings ---
+  - map:
+      - user.name: "replace(\", '')"
+      - user.name: "replace(\"'\", '')"
+      - user.effective.name: "replace(\", '')"
+      - user.effective.name: "replace(\"'\", '')"
+      - source.address: "$source.ip"
+      - related.user: "array_append_any($user.name, $user.effective.name)"
+      - related.ip: "array_append($source.ip)"
+      - process.command_line: "$_system.auth.sudo.command"
+      - process.working_directory: "$_system.auth.sudo.pwd"
+  - check: "exists($source.address) AND NOT is_ipv4($source.address) AND NOT is_ipv6($source.address) AND contains($source.address, \".\")"
+    map:
+      - source.domain: "parse_fqdn($source.address)"
+```
+
 ### Outputs
 
 Outputs are the last stage of the policy pipeline. They receive the fully decoded and enriched event and deliver it
