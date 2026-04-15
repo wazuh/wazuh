@@ -104,8 +104,7 @@ protected:
 
         manager = std::make_shared<Manager>(mockStore, mockDownloader);
 
-        locator = std::static_pointer_cast<Locator>(
-            base::getResponse<std::shared_ptr<ILocator>>(manager->getLocator(Type::CITY)));
+        locator = std::static_pointer_cast<Locator>((manager->getLocator(Type::CITY).value()));
     }
 
     void deleteDbs()
@@ -188,24 +187,32 @@ protected:
 
         if (success)
         {
-            ASSERT_FALSE(base::isError(resStr)) << base::getError(resStr).message;
-            ASSERT_EQ("Wazuh", base::getResponse<std::string>(resStr));
+            ASSERT_FALSE(resStr.isError());
+            // TODO: recheck the need of this overloading
+            //<< resStr.error();
+            ASSERT_EQ("Wazuh", resStr.value());
 
-            ASSERT_FALSE(base::isError(resUint)) << base::getError(resUint).message;
-            ASSERT_EQ(94043, base::getResponse<uint32_t>(resUint));
+            ASSERT_FALSE(resUint.isError());
+            // TODO: recheck the need of this overloading
+            //<< resUint.error();
+            ASSERT_EQ(94043, resUint.value());
 
-            ASSERT_FALSE(base::isError(resDouble)) << base::getError(resDouble).message;
-            ASSERT_EQ(37.386, base::getResponse<double>(resDouble));
+            ASSERT_FALSE(resDouble.isError());
+            // TODO: recheck the need of this overloading
+            //<< resDouble.error();
+            ASSERT_EQ(37.386, resDouble.value());
 
-            ASSERT_FALSE(base::isError(resJson)) << base::getError(resJson).message;
-            ASSERT_EQ(json::Json(R"("Wazuh")"), base::getResponse<json::Json>(resJson));
+            ASSERT_FALSE(resJson.isError());
+            // TODO: recheck the need of this overloading
+            //<< resJson.error();
+            ASSERT_EQ(json::Json(R"("Wazuh")"), resJson.value());
         }
         else
         {
-            ASSERT_TRUE(base::isError(resStr));
-            ASSERT_TRUE(base::isError(resUint));
-            ASSERT_TRUE(base::isError(resDouble));
-            ASSERT_TRUE(base::isError(resJson));
+            ASSERT_TRUE(resStr.isError());
+            ASSERT_TRUE(resUint.isError());
+            ASSERT_TRUE(resDouble.isError());
+            ASSERT_TRUE(resJson.isError());
         }
     }
 };
@@ -286,33 +293,33 @@ TEST_F(LocatorTest, GetString)
 {
     decltype(locator->getString({}, {})) res;
     ASSERT_NO_THROW(res = locator->getString(g_ipFullData, "not_found"));
-    ASSERT_TRUE(base::isError(res));
+    ASSERT_TRUE(res.isError());
 
     ASSERT_NO_THROW(res = locator->getString(g_ipFullData, "test_uint32"));
-    ASSERT_TRUE(base::isError(res));
+    ASSERT_TRUE(res.isError());
 }
 
 TEST_F(LocatorTest, GetUint32)
 {
     decltype(locator->getUint32({}, {})) res;
     ASSERT_NO_THROW(res = locator->getUint32(g_ipFullData, "not_found"));
-    ASSERT_TRUE(base::isError(res));
+    ASSERT_TRUE(res.isError());
 
     ASSERT_NO_THROW(res = locator->getUint32(g_ipFullData, "test_map.test_str1"));
-    ASSERT_TRUE(base::isError(res));
+    ASSERT_TRUE(res.isError());
 }
 
 TEST_F(LocatorTest, GetDouble)
 {
     decltype(locator->getDouble({}, {})) res;
     ASSERT_NO_THROW(res = locator->getDouble(g_ipFullData, "not_found"));
-    ASSERT_TRUE(base::isError(res));
+    ASSERT_TRUE(res.isError());
 
     ASSERT_NO_THROW(res = locator->getDouble(g_ipFullData, "test_map.test_str1"));
-    ASSERT_TRUE(base::isError(res));
+    ASSERT_TRUE(res.isError());
 
     ASSERT_NO_THROW(res = locator->getDouble(g_ipFullData, "test_uint32"));
-    ASSERT_TRUE(base::isError(res));
+    ASSERT_TRUE(res.isError());
 }
 
 TEST_F(LocatorTest, GetAsJson)
@@ -321,68 +328,68 @@ TEST_F(LocatorTest, GetAsJson)
     json::Json expected;
 
     ASSERT_NO_THROW(res = locator->getAsJson(g_ipFullData, "not_found"));
-    ASSERT_TRUE(base::isError(res));
+    ASSERT_TRUE(res.isError());
 
     ASSERT_NO_THROW(res = locator->getAsJson(g_ipFullData, "test_map.test_str1"));
-    ASSERT_FALSE(base::isError(res));
+    ASSERT_FALSE(res.isError());
     expected.setString("Wazuh");
-    ASSERT_EQ(expected, base::getResponse<json::Json>(res));
+    ASSERT_EQ(expected, res.value());
 
     ASSERT_NO_THROW(res = locator->getAsJson(g_ipFullData, "test_map")); // Complex type
-    ASSERT_TRUE(base::isError(res));
+    ASSERT_TRUE(res.isError());
 
     ASSERT_NO_THROW(res = locator->getAsJson(g_ipFullData, "test_array")); // Complex type
-    ASSERT_TRUE(base::isError(res));
+    ASSERT_TRUE(res.isError());
 
     ASSERT_NO_THROW(res = locator->getAsJson(g_ipFullData, "test_uint32"));
-    ASSERT_FALSE(base::isError(res));
+    ASSERT_FALSE(res.isError());
     expected.setInt(94043);
-    ASSERT_EQ(expected, base::getResponse<json::Json>(res));
+    ASSERT_EQ(expected, res.value());
 
     ASSERT_NO_THROW(res = locator->getAsJson(g_ipFullData, "test_double"));
-    ASSERT_FALSE(base::isError(res));
+    ASSERT_FALSE(res.isError());
     expected.setDouble(37.386);
-    ASSERT_EQ(expected, base::getResponse<json::Json>(res));
+    ASSERT_EQ(expected, res.value());
 
     ASSERT_NO_THROW(res = locator->getAsJson(g_ipFullData, "test_float"));
-    ASSERT_FALSE(base::isError(res));
+    ASSERT_FALSE(res.isError());
     expected.setFloat(122.0838);
-    ASSERT_EQ(expected, base::getResponse<json::Json>(res));
+    ASSERT_EQ(expected, res.value());
 
     ASSERT_NO_THROW(res = locator->getAsJson(g_ipFullData, "test_bytes"));
-    ASSERT_FALSE(base::isError(res));
+    ASSERT_FALSE(res.isError());
     expected.setString("abcd");
-    ASSERT_EQ(expected, base::getResponse<json::Json>(res));
+    ASSERT_EQ(expected, res.value());
 
     ASSERT_NO_THROW(res = locator->getAsJson(g_ipFullData, "test_uint16"));
-    ASSERT_FALSE(base::isError(res));
+    ASSERT_FALSE(res.isError());
     expected.setInt(123);
-    ASSERT_EQ(expected, base::getResponse<json::Json>(res));
+    ASSERT_EQ(expected, res.value());
 
     ASSERT_NO_THROW(res = locator->getAsJson(g_ipFullData, "test_uint64"));
-    ASSERT_FALSE(base::isError(res));
+    ASSERT_FALSE(res.isError());
     expected.setString("1234567890");
-    ASSERT_EQ(expected, base::getResponse<json::Json>(res));
+    ASSERT_EQ(expected, res.value());
 
     ASSERT_NO_THROW(res = locator->getAsJson(g_ipFullData, "test_uint128"));
-    ASSERT_FALSE(base::isError(res));
+    ASSERT_FALSE(res.isError());
     expected.setString("0x0000000000000000ab54a98ceb1f0ad2");
-    ASSERT_EQ(expected, base::getResponse<json::Json>(res));
+    ASSERT_EQ(expected, res.value());
 
     ASSERT_NO_THROW(res = locator->getAsJson(g_ipFullData, "test_boolean"));
-    ASSERT_FALSE(base::isError(res));
+    ASSERT_FALSE(res.isError());
     expected.setBool(true);
-    ASSERT_EQ(expected, base::getResponse<json::Json>(res));
+    ASSERT_EQ(expected, res.value());
 }
 
 TEST_F(LocatorTest, GetAllReturnsCompleteJson)
 {
     // Test getAll returns complete JSON structure for IP with all data
-    base::RespOrError<json::Json> res;
+    geo::Result<json::Json> res;
     ASSERT_NO_THROW(res = locator->getAll(g_ipFullData));
-    ASSERT_FALSE(base::isError(res)) << base::getError(res).message;
+    ASSERT_FALSE(res.isError()) << res.error();
 
-    auto jsonData = base::getResponse<json::Json>(res);
+    auto jsonData = res.value();
 
     // Verify it contains the expected top-level keys from test database
     ASSERT_TRUE(jsonData.exists("/test_array"));
@@ -412,30 +419,32 @@ TEST_F(LocatorTest, GetAllReturnsCompleteJson)
 TEST_F(LocatorTest, GetAllWithIpNoData)
 {
     // Test getAll with IP that has no data (IP not found in database)
-    base::RespOrError<json::Json> res;
+    geo::Result<json::Json> res;
     ASSERT_NO_THROW(res = locator->getAll(g_ipNotFound));
-    ASSERT_TRUE(base::isError(res));
+    ASSERT_TRUE(res.isError());
     // IP not found in database should return "No data found" error
-    ASSERT_NE(base::getError(res).message.find("No data found"), std::string::npos);
+    ASSERT_STREQ(res.readableStr().c_str(), "No data found for the IP address");
 }
 
 TEST_F(LocatorTest, GetAllWithInvalidIp)
 {
     // Test getAll with invalid IP returns error
-    base::RespOrError<json::Json> res;
+    geo::Result<json::Json> res;
     ASSERT_NO_THROW(res = locator->getAll("invalid_ip"));
-    ASSERT_TRUE(base::isError(res));
-    ASSERT_NE(base::getError(res).message.find("Error translating IP address"), std::string::npos);
+    ASSERT_TRUE(res.isError());
+    ASSERT_STREQ(res.readableStr().c_str(), "Error translating IP address");
 }
 
 TEST_F(LocatorTest, GetAllReturnsCompleteStructure)
 {
     // Test that getAll returns the complete nested structure
-    base::RespOrError<json::Json> res;
+    geo::Result<json::Json> res;
     ASSERT_NO_THROW(res = locator->getAll(g_ipFullData));
-    ASSERT_FALSE(base::isError(res)) << base::getError(res).message;
+    // TODO: recheck the need of this overloading
+    //  << res.error();
+    ASSERT_FALSE(res.isError());
 
-    auto jsonData = base::getResponse<json::Json>(res);
+    auto jsonData = res.value();
 
     // Verify array structure
     ASSERT_TRUE(jsonData.isArray("/test_array"));
