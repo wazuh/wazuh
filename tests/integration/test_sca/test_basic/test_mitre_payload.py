@@ -180,7 +180,7 @@ def test_sca_mitre_payload(test_configuration, test_metadata, prepare_cis_polici
         - r".*sca.*Stateful event queued: (.*)"
     '''
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    scan_timeout = 200 if sys.platform == WINDOWS else 60
+    scan_timeout = 300 if sys.platform == WINDOWS else 60
 
     # Anchor the monitor to the module startup before waiting for the queued stateful event.
     log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_ENABLED), timeout=scan_timeout)

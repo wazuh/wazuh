@@ -77,20 +77,26 @@ SCA_DB_DIR = Path(WAZUH_PATH, 'queue', 'sca', 'db')
 @pytest.fixture()
 def clean_sca_db():
     '''Remove SCA database files to prevent stale data between tests.'''
-    if sys.platform == WINDOWS:
-        services.control_service('stop')
-        time.sleep(2)
+    def _remove_db_files():
+        if not SCA_DB_DIR.exists():
+            return
+        for db_file in SCA_DB_DIR.iterdir():
+            db_file.unlink(missing_ok=True)
 
-    if SCA_DB_DIR.exists():
-        for f in SCA_DB_DIR.iterdir():
-            for attempt in range(10):
-                try:
-                    f.unlink(missing_ok=True)
-                    break
-                except PermissionError:
-                    if attempt == 9:
-                        raise
-                    time.sleep(2)
+    if sys.platform == WINDOWS:
+        for attempt in range(30):
+            try:
+                services.control_service('stop')
+                time.sleep(2)
+                _remove_db_files()
+                break
+            except PermissionError:
+                if attempt == 29:
+                    raise
+                time.sleep(2)
+    else:
+        _remove_db_files()
+
     yield
 
 
