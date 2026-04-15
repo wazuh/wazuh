@@ -982,7 +982,7 @@ It's not inteded to be modified by the user and it consists of a JSON object wit
   - The schema ensures that data displayed in dashboards follows a consistent structure.
   - This enables seamless aggregation, filtering, and visualization by maintaining a predictable and normalized data format.
 
-## Managing the Engine's processing (Engine Content Management)
+## Content Management: Managing the Engine's processing
 
 Although the Engine stores all assets and policy configurations locally for runtime execution, **the source of truth
 for all content management resides in the Wazuh Indexer**. Creating custom decoders and integrations, enabling or
@@ -990,34 +990,50 @@ disabling them, and modifying policy-related settings are all actions performed 
 directly on the Engine.
 
 Before building the operational graph, the Engine must ensure that its local state reflects the latest configuration
-available in the Wazuh Indexer. This is achieved through a periodic synchronization process managed by **CMSync**.
-CMSync is responsible for pulling content from the Wazuh Indexer and applying any detected
-changes to the Engine's local store.
+available in the Wazuh Indexer. This is achieved through **CMSync**, an internal submodule of the Engine responsible
+for periodically pulling content from the Wazuh Indexer and applying any detected changes to the Engine's local store.
 
 ### Synchronization process
 
-The Engine periodically checks whether its locally stored security policies match the current state in the Wazuh
-Indexer. During each synchronization cycle, it compares the local assets — including decoders, rules, filters, and
-policy configurations — against the versions stored in the indexer. If any differences are detected (e.g., a decoder
-was added, modified, or removed; a policy configuration changed; or an asset was enabled or disabled), the Engine
-synchronizes those changes locally and rebuilds the affected operational graphs accordingly.
+CMSync synchronizes content independently for each space — **Standard** and **Custom** — following the same
+two-step process for each:
 
-This synchronization covers both the **Standard** and **Custom** spaces. If any asset within either space has been
-modified, activated, deactivated, or had its configuration changed in the Wazuh Indexer, the Engine will detect and
-apply those updates during the next synchronization cycle.
+1. **Hash comparison**: CMSync retrieves the content hash stored in the Wazuh Indexer for the space and compares
+   it against the locally stored hash. This check is lightweight and allows CMSync to determine quickly whether
+   the space content has changed at all.
+2. **Content fetch**: If the hashes differ, CMSync downloads the full content for that space from the Wazuh
+   Indexer and applies it to the Engine's local store. The Engine then rebuilds the affected operational graphs.
+
+The content synchronized per space includes:
+
+- **Policy configuration** — List of integration (order by priority of evaluation) and policy-level settings
+- **Integrations** — integration manifests grouping the assets for each log source
+- **Decoders** — normalization and field-extraction assets
+- **Filters** — pre-filter and post-filter assets
+- **KVDBs** — key-value databases used by decoders and filters during event processing
+
+> [!NOTE]
+> **IOC and geo/ASN databases are not part of this synchronization.** They are shared across all spaces and
+> are managed by a dedicated synchronization system independent of the per-space content sync described above.
 
 ### Spaces
 
-To organize assets efficiently, the Engine categorizes them into spaces. Internally, assets are stored directly
-under a specific space, allowing for structured management.
+Spaces are a concept that originates in the **Wazuh Indexer**, where content is organized and stored under
+named spaces. The Engine mirrors this structure: when CMSync pulls content from the Wazuh Indexer, assets are
+kept separated by the same space they belong to in the indexer. The Engine's space separation is therefore a
+direct reflection of the Wazuh Indexer's organization, not an independent concept.
 
-The default spaces in the Engine are:
-- `Standard` – Default integrations developed and maintained by Wazuh CTI.
-- `Custom` – Independent space for custom or user-modified content.
+The two spaces are:
 
-On a fresh start, the Engine triggers an initial synchronization to pull the Standard and Custom spaces from the
-Wazuh Indexer, ensuring that all assets are available before building policies and defining routes. After this
-initial load, subsequent synchronization cycles run periodically to keep the local state up to date.
+- **Standard** — Contains the default integrations curated and maintained by Wazuh CTI. The Wazuh Indexer
+  is responsible for downloading and hosting this content from the CTI feed; the Engine never communicates
+  with CTI directly. CMSync synchronizes the Engine's local copy from the Wazuh Indexer.
+- **Custom** — An independent space for user-defined or user-modified content. Users manage this space
+  through the Wazuh Indexer, and CMSync propagates any changes to the Engine.
+
+On a fresh start, the Engine triggers an initial synchronization to pull both spaces from the Wazuh Indexer,
+ensuring all assets are available before building policies and defining routes. After this initial load,
+subsequent synchronization cycles run periodically to keep the local state up to date.
 
 When both spaces are available and synchronized, the Engine processes all incoming events through each active
 operational graph.
