@@ -910,6 +910,7 @@ The Engine ensures that all operationsâ€”parsing, normalization, and enrichmentâ
 
 - Consistency: Standardized field names prevent discrepancies when integrating data from different sources.
 - Interoperability: Facilitates integration with various tools and analytics platforms.
+- Rule Creation: Enables users to write rules based on a predictable data structure.
 - Efficient Querying: Optimizes indexing and search performance.
 - Data Enrichment: Enables meaningful correlations by aligning logs with predefined categories (e.g., network, process, user activity).
 
@@ -936,7 +937,10 @@ For example, a network event log structured according to the schema might look l
 ```
 
 ### Configuration
-The schema configuration for the engine follows a structured format where each field is defined. It's called the Wazuh Common Schema (WCS) and it's fetched (synched) from the wazuh indexer ([original yaml source](https://raw.githubusercontent.com/wazuh/wazuh-indexer-plugins/refs/heads/main/wcs/stateless/events/main/docs/wcs_flat.yml)). It's not inteded to be modified by the user and it consists of a JSON object with the following key elements:
+The schema configuration for the engine follows a structured format where each field is defined.
+It's called the Wazuh Common Schema (WCS) and it's fetched (synched) from the wazuh indexer repository
+([original yaml source](https://raw.githubusercontent.com/wazuh/wazuh-indexer-plugins/refs/heads/main/wcs/stateless/events/main/docs/wcs_flat.yml)).
+It's not inteded to be modified by the user and it consists of a JSON object with the following key elements:
 
 - Fields Definition:
   - The fields object contains a list of field names as keys.
@@ -978,7 +982,7 @@ The schema configuration for the engine follows a structured format where each f
   - The schema ensures that data displayed in dashboards follows a consistent structure.
   - This enables seamless aggregation, filtering, and visualization by maintaining a predictable and normalized data format.
 
-## Managing the Engine's processing
+## Managing the Engine's processing (Engine Content Management)
 
 Although the Engine stores all assets and policy configurations locally for runtime execution, **the source of truth
 for all content management resides in the Wazuh Indexer**. Creating custom decoders and integrations, enabling or
@@ -986,8 +990,8 @@ disabling them, and modifying policy-related settings are all actions performed 
 directly on the Engine.
 
 Before building the operational graph, the Engine must ensure that its local state reflects the latest configuration
-available in the Wazuh Indexer. This is achieved through a periodic synchronization process managed by **CMSync**
-(the indexer connector). CMSync is responsible for pulling content from the Wazuh Indexer and applying any detected
+available in the Wazuh Indexer. This is achieved through a periodic synchronization process managed by **CMSync**.
+CMSync is responsible for pulling content from the Wazuh Indexer and applying any detected
 changes to the Engine's local store.
 
 ### Synchronization process
