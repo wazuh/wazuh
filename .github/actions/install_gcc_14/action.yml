@@ -7,36 +7,27 @@ runs:
     - name: Install GCC 14.3
       shell: bash
       run: |
-        echo "Download GCC 14.3 package"
-        cd /tmp
-        for i in {1..3}; do
-          if wget --timeout=30 --tries=3 https://packages.wazuh.com/utils/gcc/gcc_14.3-1_amd64.deb; then
-            break
-          fi
-          echo "Download attempt $i failed, retrying..."
-          sleep 2
-        done
+        ARCH=$(dpkg --print-architecture)
+        GCC_PKG="gcc_14.3-1_${ARCH}.deb"
+        URL="https://packages.wazuh.com/utils/gcc/${GCC_PKG}"
 
-        echo "Verify download succeeded"
-        if [ ! -f gcc_14.3-1_amd64.deb ]; then
-          echo "Failed to download GCC package after 3 attempts"
+        echo "Downloading GCC 14.3 package (${ARCH})..."
+        wget --timeout=30 --tries=3 -O "/tmp/${GCC_PKG}" "${URL}" || {
+          echo "Failed to download GCC package"
           exit 1
-        fi
-
-        sudo dpkg -i gcc_14.3-1_amd64.deb || {
-          echo "Package installation failed, trying to fix dependencies"
-          sudo apt-get update && sudo apt-get install -f -y
-          sudo dpkg -i gcc_14.3-1_amd64.deb
         }
 
-        # Create symlinks with backup of original
-        sudo mv /usr/bin/gcc /usr/bin/gcc.bak 2>/dev/null || true
-        sudo mv /usr/bin/g++ /usr/bin/g++.bak 2>/dev/null || true
-        sudo mv /usr/bin/c++ /usr/bin/c++.bak 2>/dev/null || true
+        sudo dpkg -i "/tmp/${GCC_PKG}" || {
+          echo "Package installation failed, trying to fix dependencies"
+          sudo apt-get update
+          sudo apt-get install -f -y
+          sudo dpkg -i "/tmp/${GCC_PKG}"
+        }
+
+        for cmd in gcc g++ c++; do
+          sudo mv /usr/bin/${cmd} /usr/bin/${cmd}.bak 2>/dev/null || true
+        done
+
         sudo ln -sf /opt/gcc-14/bin/gcc /usr/bin/gcc
         sudo ln -sf /opt/gcc-14/bin/g++ /usr/bin/g++
         sudo ln -sf /opt/gcc-14/bin/g++ /usr/bin/c++
-
-        # Verify compiler works
-        gcc --version
-        g++ --version
