@@ -1492,10 +1492,12 @@ Key characteristics:
 - **Removed before enrichment** — Variables do not reach the enrichment stage or the output stage. They are cleaned up
   as part of the mandatory pre-enrichment cleanup step.
 - **Runtime modifiable** — Unlike definitions, which are resolved at build time, variables can be written and
-  overwritten during event processing.
+overwritten during event processing.
 
 ### Log Parsing
-Log parsing transforms raw log entries into structured data using parser expressions. These expressions serve as an alternative to Grok, eliminating the need for explicit type declarations by leveraging predefined schema-based parsing. Instead of regular expressions, they use specialized parsers for improved accuracy and efficiency.
+Log parsing transforms raw log entries into structured data using parser expressions. These expressions serve as an
+alternative to regex, eliminating the need for explicit type declarations by leveraging predefined schema-based parsing.
+Instead of regular expressions, they use specialized parsers for improved accuracy and efficiency.
 
 Key Components:
 - Literals: Direct character matches with escape rules for special characters.
@@ -1530,7 +1532,8 @@ It extracts:
 }
 ```
 
-Parsers are also available as helper functions for use in map and check operations. For a detailed explanation, see the Parser Stage and Parser Helper Functions sections.
+Parsers are also available as helper functions for use in map and check operations. For a detailed explanation, see
+the Parser Stage and Parser Helper Functions sections.
 
 ### Key Value Databases (KVDBs)
 
@@ -1643,9 +1646,9 @@ geolocation enrichment. For more information on how to configure these databases
 
 ### Decoders
 
-Decoders are the first layer of assets that pass through the event when it is processed by a security policy. They are responsible for normalizing the event, transforming it into a structured event.
+Decoders are the assets responsible for normalizing raw events into structured documents that conform to the [Wazuh Common Schema](#). All events enter the decoder tree through the root decoder and traverse a branch of child decoders, each contributing progressively more specialized field extraction and normalization.
 
-All events enter the pipeline through the root decoder, which selects the appropriate decoder to process the event. Each subsequent decoder processes the event as much as it can and then passes it to the next suitable decoder. This continues until no more decoders can process the event. A decoder can only select one next decoder from the available ones.
+The decoder tree is evaluated depth-first. After a decoder successfully processes an event, the engine evaluates that decoder's child decoders in order; only the first child that accepts the event is followed (logical OR among siblings). See [Execution Graph Summary](#execution-graph-summary) for traversal order details.
 
 
 ```mermaid
@@ -1657,97 +1660,53 @@ kanban
     assetName["name"]@{ priority: 'Very Low'}
     assetMetadata["metadata"]@{ priority: 'Very Low'}
     assetParents["parents"]
-    assetChecks["checks"]
-    decoParsers["parser"]
+    assetChecks["check"]
+    decoParsers["parse|<field>"]
     decoNormalize["normalize"]
 ```
 
-- **Name**: Identifies the decoder and follows the pattern `<asset_type>/<name>/<version>`. The name is unique and cannot
-  be repeated. The naming convention for components is `<type>/<name>/<version>`. The component type is `decoder`, and
-  the version must be 0, since versioning is not implemented:
+- **Name**: Identifies the decoder and follows the pattern `<asset_type>/<name>/<version>`. The component type is
+  `decoder`, and the version must be 0, since versioning is not implemented.
 
-- **Metadata**: Each decoder has metadata that provides information about the decoder, such as the supported products,
-  versions, and formats. This metadata does not affect the processing stages.
-    The metadata fields are:
-    - `module` (string): The module that the decoder is associated with. I.e., `syslog`, `windows`, `apache`, etc.
-    - `title` (string): The title of the decoder. I.e., `Windows Event Log Decoder`, `Linux audit system log decoder`, etc.
-    - `description` (string): A brief description of the decoder.
-    - `compatibility` (string): A description of the compatibility of the decoder with different products, versions, and formats.
-      i.e `The Apache datasets were tested with Apache 2.4.12 and 2.4.46 and are expected to work with all versions >= 2.2.31 and >= 2.4.16 (independent from operating system)`
-    - `version` (array): A list of versions for which the logs have been tested and supported. I.e., `2.2.x`, `3.x`, etc.
-    - `author` (object): The author of the decoder, ie:
+- **Metadata**: Provides descriptive information about the decoder. Common fields include:
+    - `module` (string): The associated module (e.g., `syslog`, `windows`, `apache`).
+    - `title` (string): Human-readable label (e.g., `Windows Event Log Decoder`).
+    - `description` (string): Brief description of the decoder.
+    - `compatibility` (string): Compatible products, versions, and formats.
+    - `version` (array): Tested and supported versions (e.g., `2.2.x`, `3.x`).
+    - `author` (object): Author information:
         ```yaml
         name: Wazuh, Inc.
         email: info@wazuh.com
         url: https://wazuh.com
         date: 2022-11-15
         ```
-    - `reference` (array): A list of references to the documentation, i.e.:
+    - `reference` (array): Links to product documentation:
       ```yaml
       - https://httpd.apache.org/docs/2.2/logs.html
       - https://httpd.apache.org/docs/2.4/logs.html
       ```
 
-- **Parents**: Defines the order in the decoder graph, establishing the parent-child relationship between decoders.
-  A decoder can have multiple parents, when an event is successfully processed in a decoder, it will evaluate the
-  children, one by one, until it finds a decoder that successfully processes the event.
+- **Parents**: Defines the position of this decoder in the decoder tree. A decoder can declare multiple parents,
+  meaning it can appear as a potential child under each of them. The engine evaluates sibling decoders under a parent
+  as a logical OR — the first one that accepts the event is selected and the rest are skipped.
 
-> [!IMPORTANT]
-> There is no order of priority when evaluating the children, and it cannot be assumed that a sibling decoder will be evaluated before another one.
+- **Check**: Evaluates conditions against the event without modifying it. If the check fails, the decoder rejects the
+  event and the engine moves to the next sibling. See the [Check/Allow stage](#checkallow) for syntax details.
 
-- **Checks**: The checks stage is a preliminary stage in the asset processing sequence, designed to assess whether an
-  event meets specific conditions without modifying the event itself.
-  More information on the checks stage can be found in the [Check section](#checkallow).
+- **Parse|`<field>`**: Parses the raw value of `<field>` using an ordered list of parser expressions. The first
+  matching expression writes its extracted values to the event; if none match, the decoder fails. See the
+  [Parse stage](#parse) for syntax details.
 
-
-### Rules
-
-Rules are the second layer of assets that process events in a security policy. They are responsible for analyzing the
-normalized event, when the decoding stage is finished, to add context, security indicators, and threat intelligence.
-Unlike decoders,  the rule cannot modify the decoded event, but it can add new certain fields to enrich the event, this
-prevents the rules from being used to decode events.
-
-
-
-```mermaid
----
-title: Rule schema
----
-kanban
-  Rule[Rule schema]
-    assetName["name"]@{ priority: 'Very Low'}
-    assetMetadata["metadata"]@{ priority: 'Very Low'}
-    assetParents["parents"]
-    assetChecks["checks"]
-    ruleNormalize["rule_enrichment"]
-```
-
-- **Name**: Identifies the rule and follows the pattern `<asset_type>/<name>/<version>`. The name is unique and cannot
-  be repeated. The naming convention for components is `<type>/<name>/<version>`. The component type is `rule`, and
-  the version must be 0, since versioning is not implemented:
-
-- **Metadata**: Each rule has metadata that provides information about the rule, such as the supported products,
-  versions, and formats. This metadata does not affect the processing stages.
-    The metadata fields are:
-    - `description` (string): A brief description of the rule.
-    - `TODO: Add more fields when the metadata is defined.`
-
-- **Parents**: Defines the order in the rule graph, establishing the parent-child relationship between rules, a rule can
-  have multiple parents, when an event is successfully processed in a rule (rule matches), it will evaluate all the
-  children. Unlike decoders, and all children will be evaluated.
-
-- **Checks**: The checks stage is a preliminary stage in the asset processing sequence, designed to assess whether an
-  event meets specific conditions. On the rules, the checks stage is used to evaluate the conditions that the event must
-  meet to be considered a security event. More information on the checks stage can be found in the [Check section](#checkallow).
-
-- **Rule Enrichment**: The rule enrichment stage is used to add context, security indicators, and threat intelligence to
-  the normalized event. This stage is used to add new fields to the event, but it cannot modify the normalized event, it
-  like the `map` stage, but with the restriction that it cannot modify the normalized event, only rule fields can be added.
+- **Normalize**: An ordered array of normalization blocks, each containing optional `check`, `parse|<field>`, and
+  `map` sub-stages. A failed block inside `normalize` does not cause the decoder to fail — it is skipped and the
+  next block is evaluated. See the [Normalize/Enrichment stage](#normalizeenrichment) for details.
 
 ### Outputs
 
-Outputs are the last layer of assets that process events in a security policy. They are responsible for storing the
-security events in a storage system, sending them to a wazuh-indexer, a file, or sending them to a third-party system.
+Outputs are the last stage of the policy pipeline. They receive the fully decoded and enriched event and deliver it
+to one or more configured destinations (e.g., `wazuh-indexer`, a file, or an external system). All active output
+assets receive the event simultaneously — the broadcaster pattern described in [Output process](#output-process).
 
 
 ```mermaid
@@ -1759,25 +1718,22 @@ kanban
     assetName["name"]@{ priority: 'Very Low'}
     assetMetadata["metadata"]@{ priority: 'Very Low'}
     assetParents["parents"]
-    assetChecks["checks"]
-    OutputNormalize["output stage"]
+    OutputOutputs["outputs"]
 ```
-- **Name**: Identifies the output and follows the pattern `<asset_type>/<name>/<version>`. The name is unique and cannot
-  be repeated. The naming convention for components is `<type>/<name>/<version>`. The component type is `output`, and
-  the version must be 0, since versioning is not implemented:
 
-- **Metadata**: Each output has metadata that provides information about the output, such as the destination, version,
-  and format. This metadata does not affect the processing stages.
-  The metadata fields are:
-    - `description`: A brief description of the output.
-    - TODO: Add more fields when the metadata is defined.
+- **Name**: Identifies the output and follows the pattern `<asset_type>/<name>/<version>`. The component type is
+  `output`, and the version must be 0, since versioning is not implemented.
 
-- **Parents**: Defines the order in the output graph, establishing the parent-child relationship between outputs.
-  An output can have multiple parents, when an event is successfully processed in an output, it will evaluate all the
-  children. Usually, the outputs are the last assets in the policy, so they do not have children.
+- **Metadata**: Provides descriptive information about the output. Common fields include `module`, `title`,
+  `description`, `compatibility`, `versions`, `author`, and `references`.
 
-- **Checks**: The checks stage is a stage in the output asset used to evaluate the conditions that the event must meet to
-  be sent to the output. More information on the checks stage can be found in the [Check section](#checkallow).
+- **Parents**: Defines the position of this output in the output graph. An output can declare multiple parents.
+  Unlike the decoder tree (OR traversal), all active output assets under a parent are evaluated — the event is
+  broadcast to every matching output.
+
+- **Outputs**: The delivery stage. Defines how the event is sent to its destination. Each entry can be a direct
+  output operation (e.g., `wazuh-indexer:`, `file:`) or a `first_of` block with conditional branching. Cannot
+  modify the event. See the [Outputs stage](#stages-1) for syntax details.
 
 ### Filters
 
@@ -1819,12 +1775,8 @@ kanban
 - **Metadata**: Provides descriptive information about the filter (module, title, description, compatibility, versions,
   author, references). This metadata does not affect processing stages.
 
-- **Check**: The check stage is a stage in the filter asset used to evaluate the conditions that the event must meet to
-  pass the filter. More information on the checks stage can be found in the [Check/allow section](#checkallow).
-
-- **Parents** (optional): Defines parent filters evaluated before this one.
-
-- **Definitions** (optional): Defines symbols that will be replaced throughout the document in its occurrences.
+- **Check**: Evaluates conditions against the event without modifying it. If the check fails, the event is blocked.
+  See the [Check/Allow stage](#checkallow) for syntax details.
 
 #### Example Filter
 
