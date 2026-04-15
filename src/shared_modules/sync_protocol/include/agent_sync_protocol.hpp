@@ -293,6 +293,14 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Manages the state for the current synchronization operation.
         SyncState m_syncState;
+
+        /// @brief Guards against concurrent calls to synchronizeModule().
+        ///
+        /// AsyncFlushController spawns a background thread that calls synchronizeModule()
+        /// on the same instance as the module's periodic timer thread. If a sync is already
+        /// in progress the second caller skips its cycle — the in-flight sync drains the
+        /// shared queue, making the concurrent call redundant.
+        std::atomic<bool> m_syncInProgress{false};
 };
 
 #endif // AGENT_SYNC_PROTOCOL_HPP
