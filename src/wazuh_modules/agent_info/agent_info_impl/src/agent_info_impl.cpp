@@ -16,7 +16,6 @@
 
 #include <chrono>
 #include <condition_variable>
-#include <future>
 #include <map>
 #include <mutex>
 #include <set>
@@ -274,13 +273,6 @@ void AgentInfoImpl::stop()
             m_dBSync.reset();
             m_logFunction(LOG_DEBUG, "DBSync connection closed");
         }
-    }
-
-    // Wait for any background flush monitor to finish — m_stopped is already true so the
-    // polling loop inside pollFlushCompletion() will exit on its next iteration.
-    if (m_flushMonitorFuture.valid())
-    {
-        m_flushMonitorFuture.wait();
     }
 
     // Signal sync protocol to stop any ongoing operations AFTER DBSync is cleaned up
@@ -1217,7 +1209,7 @@ bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
 
 bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
 {
-    constexpr int FLUSH_POLL_DELAY_MS = 10000;       // 10 seconds between polls
+    const int FLUSH_POLL_DELAY_MS = m_flushPollDelayMs;
     constexpr int LOG_PROGRESS_EVERY_N_ATTEMPTS = 6; // Log progress every 60 seconds (6 * 10s)
     std::map<std::string, int> attempts;
     bool anyFailed = false;
@@ -1322,29 +1314,6 @@ bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
 
     m_logFunction(LOG_INFO, "Module stopping, aborting pending flush monitoring");
     return false;
-}
-
-void AgentInfoImpl::monitorFlushCompletion(std::set<std::string> pendingModules)
-{
-    // Join any previous monitor before launching a new one
-    if (m_flushMonitorFuture.valid())
-    {
-        m_flushMonitorFuture.wait();
-    }
-
-    m_logFunction(LOG_DEBUG,
-                  "Background flush monitoring started for " +
-                  std::to_string(pendingModules.size()) + " module(s)");
-
-    m_flushMonitorFuture = std::async(std::launch::async,
-                                      [this, modules = std::move(pendingModules)]() mutable -> bool
-    {
-        bool result = pollFlushCompletion(std::move(modules));
-        m_logFunction(result ? LOG_INFO : LOG_WARNING,
-                      result ? "Background flush monitoring: all module flushes completed successfully"
-                      : "Background flush monitoring: one or more module flushes failed or were interrupted");
-        return result;
-    });
 }
 
 bool AgentInfoImpl::pauseCoordinationModules(std::set<std::string>& pausedModules)
@@ -1590,15 +1559,27 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
             return false;
         }
 
-        // Step 4: Resume all modules immediately. FIM restarts scanning while its pending
-        // sync completes in the background — no need to hold the pause window open.
+        // Step 4: Resume all modules immediately. The pause window is now minimized to:
+        // pause → get_version → trigger_flush → resume. Modules restart scanning while
+        // we wait for the flush to complete (Step 5 below).
         size_t coordinatedModulesCount = pausedModules.size();
         resumePausedModules(pausedModules);
         modulesResumed = true;
 
-        // Step 5: Build indices list based on enabled modules and synchronize.
-        // The manager version handoff and flush completion are independent — the manager's
-        // view converges as FIM events reach the indexer shortly after.
+        // Step 5: Wait for flush completion before handing the new version to the manager.
+        // Modules are already resumed, so their scans are not blocked during this wait.
+        // We must ensure the indexer has received all pending module events before the
+        // manager sees version N+1 — otherwise the manager would try to reconcile
+        // documents that have not yet arrived at the indexer.
+        if (!pollFlushCompletion(pausedModules))
+        {
+            m_logFunction(LOG_INFO,
+                          "One or more module flushes did not complete; proceeding with version sync — "
+                          "data will be retried in the next sync cycle");
+        }
+
+        // Step 6: Build indices list based on enabled modules and synchronize.
+        // The indexer is now up to date — it is safe to hand the new version to the manager.
         std::vector<std::string> indicesToSync;
 
         for (const auto& module : pausedModules)
@@ -1634,11 +1615,6 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
         m_logFunction(LOG_DEBUG,
                       "Coordinated modules: " + std::to_string(coordinatedModulesCount) +
                       ", New version: " + std::to_string(newVersion));
-
-        // Step 6: Monitor flush completion in background — modules are already resumed and the
-        // manager has the new version. This does not block coordination; it observes and logs
-        // when each module's pending events have finished reaching the indexer.
-        monitorFlushCompletion(pausedModules);
 
         return true;
     }

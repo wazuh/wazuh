@@ -851,6 +851,7 @@ TEST_F(AgentInfoCoordinationTest, CoordinationRequestsAllFlushesBeforePollingAnd
     m_agentInfo = std::make_shared<AgentInfoImpl>(
                       ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
                       m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->setFlushPollDelayMs(0);
 
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
     .WillRepeatedly(::testing::Return(false));

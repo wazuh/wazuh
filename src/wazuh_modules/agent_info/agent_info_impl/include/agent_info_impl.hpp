@@ -13,7 +13,6 @@
 
 #include <condition_variable>
 #include <functional>
-#include <future>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -58,6 +57,12 @@ class AgentInfoImpl
 
         void start(int interval, int integrityInterval = 86400, std::function<bool()> shouldContinue = nullptr);
         void stop();
+
+        /// @brief Override the flush poll delay (milliseconds). Only used in unit tests to avoid real sleeps.
+        void setFlushPollDelayMs(int delayMs)
+        {
+            m_flushPollDelayMs = delayMs;
+        }
 
         /// @brief Initialize the synchronization protocol with only in-memory synchronization
         /// @param moduleName Name of the module
@@ -199,12 +204,6 @@ class AgentInfoImpl
         /// @return true if all flushes completed successfully, false otherwise.
         bool pollFlushCompletion(std::set<std::string> pendingModules);
 
-        /// @brief Launch a background thread to monitor flush completion and log results.
-        /// Non-blocking: returns immediately after spawning the monitor thread.
-        /// Any previous monitor is joined first to avoid overlapping monitors.
-        /// @param pendingModules Set of modules whose flush should be observed.
-        void monitorFlushCompletion(std::set<std::string> pendingModules);
-
         /// @brief Pause all coordination modules
         /// @param pausedModules Output parameter for successfully paused modules
         /// @return true if at least one module was paused successfully
@@ -263,9 +262,9 @@ class AgentInfoImpl
         /// @brief Flag to track if module has been stopped
         bool m_stopped = false;
 
-        /// @brief Future for the background flush monitor thread launched after each coordination.
-        /// Joined in stop() before cleanup to ensure safe shutdown.
-        std::future<bool> m_flushMonitorFuture;
+        /// @brief Delay in milliseconds between flush completion polls (10 seconds in production).
+        /// Overridable in unit tests to avoid real sleeps.
+        int m_flushPollDelayMs = 10000;
 
         /// @brief Condition variable for efficient sleep/wake mechanism
         std::condition_variable m_cv;
