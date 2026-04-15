@@ -28,6 +28,8 @@
 
 #include "agentd.h"
 #include "module_limits.h"
+#include "metadata_provider.h"
+#include "version_op.h"
 
 extern void send_msg_on_startup(void);
 extern bool agent_handshake_to_server(int server_id, bool is_startup);
@@ -38,6 +40,23 @@ extern int parse_handshake_json(const char *json_str, module_limits_t *limits,
                                 char *cluster_node, size_t cluster_node_size,
                                 char *agent_groups, size_t agent_groups_size,
                                 char *merged_sum, size_t merged_sum_size);
+
+/* Wrappers for populate_early_metadata dependencies */
+int __wrap_metadata_provider_update(const agent_metadata_t *metadata) {
+    return (int)mock();
+}
+
+os_info *__wrap_get_unix_version(void) {
+    return (os_info *)mock_ptr_type(os_info *);
+}
+
+os_info *__wrap_get_win_version(void) {
+    return (os_info *)mock_ptr_type(os_info *);
+}
+
+void __wrap_free_osinfo(os_info *osinfo) {
+    return;
+}
 
 int __wrap_send_msg(const char *msg, ssize_t msg_length) {
     check_expected(msg);
@@ -253,7 +272,15 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    expect_any_count(__wrap__mdebug1, formatted_msg, 2);
+    /* populate_early_metadata mocks */
+#ifdef TEST_WINAGENT
+    will_return(__wrap_get_win_version, NULL);
+#else
+    will_return(__wrap_get_unix_version, NULL);
+#endif
+    will_return(__wrap_metadata_provider_update, 0);
+
+    expect_any_count(__wrap__mdebug1, formatted_msg, 3);
     expect_any(__wrap__minfo, formatted_msg);
 
     handshaked = agent_handshake_to_server(0, false);
@@ -280,7 +307,15 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    expect_any_count(__wrap__mdebug1, formatted_msg, 3);
+    /* populate_early_metadata mocks */
+#ifdef TEST_WINAGENT
+    will_return(__wrap_get_win_version, NULL);
+#else
+    will_return(__wrap_get_unix_version, NULL);
+#endif
+    will_return(__wrap_metadata_provider_update, 0);
+
+    expect_any_count(__wrap__mdebug1, formatted_msg, 4);
     expect_any(__wrap__minfo, formatted_msg);
 
     handshaked = agent_handshake_to_server(1, false);
@@ -308,7 +343,15 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    expect_any_count(__wrap__mdebug1, formatted_msg, 3);
+    /* populate_early_metadata mocks */
+#ifdef TEST_WINAGENT
+    will_return(__wrap_get_win_version, NULL);
+#else
+    will_return(__wrap_get_unix_version, NULL);
+#endif
+    will_return(__wrap_metadata_provider_update, 0);
+
+    expect_any_count(__wrap__mdebug1, formatted_msg, 4);
     expect_any(__wrap__minfo, formatted_msg);
 
     handshaked = agent_handshake_to_server(1, true);
