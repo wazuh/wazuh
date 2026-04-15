@@ -1040,7 +1040,8 @@ operational graph.
 
 ## Assets
 
-In the Wazuh Engine, assets represent the fundamental components of security policies and are the smallest unit within such a policy.
+In the Wazuh Engine, assets represent the fundamental components of security policies and are the smallest unit within
+such a policy.
 
 Each asset is organized into various stages that dictate operational procedures when processing an event.
 These stages provide a structured and semantically meaningful sequence of operations, enhancing the engine's capability
@@ -1098,17 +1099,20 @@ Attributes are configuration details and metadata about the asset. Every asset s
 - **`name`**: Uniquely identifies the asset using the pattern `<asset_type>/<name>/<version>` (e.g. `decoder/aws-cloudtrail/0`).
 - **`id`**: A UUIDv4 string that uniquely identifies the asset across the system.
 - **`enabled`**: Boolean flag. Disabled assets are ignored when building the policy operational graph.
-- **`metadata`**: Descriptive information about the asset. Common sub-fields include `module`, `title`, `description`, `compatibility`, `versions`, `author`, and `references`. The exact required sub-fields depend on the asset type.
-- **`parents`**: Lists the parent asset names that define the asset's position in the asset graph. The traversal behavior depends on the asset type.
-- **`definitions`**: Build-time typed macros. Each definition is a named value substituted wherever it is referenced in the asset document.
+- **`metadata`**: Descriptive information about the asset. Common sub-fields include `module`, `title`, `description`,
+  `compatibility`, `versions`, `author`, and `references`.
+- **`parents`**: Lists the parent asset names that define the asset's position in the asset graph.
+  The traversal behavior depends on the asset type.
+- **`definitions`**: Build-time typed macros. Each definition is a named value substituted wherever it is referenced in
+  the asset document.
 
 Filters have one additional attribute:
 
-- **`type`** *(filters only)*: Determines at which point in the policy pipeline the filter is evaluated. Accepted values are `pre-filter` (evaluated before decoding) and `post-filter` (evaluated after enrichment).
+- **`type`** *(filters only)*: Determines at which point in the policy pipeline the filter is evaluated.
+  Accepted values are `pre-filter` (evaluated before decoding) and `post-filter` (evaluated after enrichment).
 
 ### Stages
 The stages define the operation chain and flow the asset performs on events. Each stage is executed in the order of definition:
-
 
 
 ```mermaid
@@ -1206,8 +1210,41 @@ The type of asset determines which stages are allowed. The following table summa
 | Outputs | `outputs` | `outputs` array entries can be direct operations or `first_of` blocks with `check` + `then` |
 | Filters | `check` | The `type` attribute (`pre-filter`/`post-filter`) controls pipeline position |
 
+### Integrations
+
+An **integration** is a logical grouping of decoders (and optionally KVDBs) that belong to a common log source or product. Every decoder must belong to exactly one integration. Integrations are the unit at which content is organized, enabled, and ordered within a policy.
+
+Each integration has the following fields:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `id` | Yes | UUIDv4 that uniquely identifies the integration |
+| name | Yes | Human-readable title of the integration (stored under `metadata.title`) |
+| `enabled` | Yes | Boolean. Disabled integrations are skipped when building the policy |
+| `category` | Yes | One of the seven allowed categories (see below) |
+| `decoders` | Yes | Ordered list of decoder UUIDs that belong to this integration |
+| `kvdbs` | Yes | List of KVDB UUIDs used by this integration's decoders |
+| `default_parent` | No | UUID of the fallback parent decoder. Used for decoders in this integration that do not declare an explicit parent |
+
+#### Integration categories
+
+Every integration must declare one of the following seven categories:
+
+| Category | Description |
+|----------|-------------|
+| `access-management` | Authentication, authorization, identity, and access events |
+| `applications` | Application-layer events (web servers, databases, middleware, etc.) |
+| `cloud-services` | Events from cloud provider services (AWS, Azure, GCP, etc.) |
+| `network-activity` | Network-level events (firewalls, proxies, DNS, flow logs, etc.) |
+| `security` | Security platform and tooling events (EDR, SIEM feeds, scanners, etc.) |
+| `system-activity` | Operating system and host-level events (audit logs, syslog, etc.) |
+| `other` | Events that do not fit any of the above categories |
+
+The category assigned to an integration propagates to all events decoded by that integration's decoders. It is recorded in `wazuh.integration.category` on every processed event and is used by the output stage to route events to the correct data stream (e.g. `wazuh-events-v5-cloud-services`).
+
 ### Operations
-Operations are the fundamental units within the operation graph. Each operation can succeed or fail, forming the basis for defining the graph by combining operations based on their execution results.
+Operations are the fundamental units within the operation graph. Each operation can succeed or fail, forming the basis
+for defining the graph by combining operations based on their execution results.
 
 Operations are always defined as:
 ```yaml
@@ -1227,23 +1264,42 @@ These errors will be notified when trying to upload the asset to the catalog.
 
 ### Execution Graph Summary
 
-A policy is composed of subgraphs, one per asset type. The current asset types that form the pipeline are:
+A policy defines the full event-processing pipeline. It holds an **ordered list of integrations**, and each integration holds an **ordered list of decoders**. These two orderings together determine how the decoder tree is traversed.
 
-- **Decoders**
-- **Outputs**
+#### Policy and integration structure
 
-Every event traverses each subgraph in order. Each subgraph is built from assets connected by parent relationships, forming a tree.
+```
+Policy
+├── Optional pre-filter
+├── Ordered list of integrations
+│   ├── Integration A  (position 0 in policy)
+│   │   ├── Decoder A-1  (position 0 in integration)
+│   │   └── Decoder A-2  (position 1 in integration)
+│   └── Integration B  (position 1 in policy)
+│       ├── Decoder B-1
+│       └── Decoder B-2
+├── Enrichment plugins (optional)
+├── Optional post-filter
+└── Outputs
+```
 
-The traversal rules per subgraph are:
+#### Decoder tree traversal order
 
-- **Decoders**: If the current decoder accepts the event (all its stages pass), the event is forwarded to its child decoders for further processing. If it fails, the engine tries the next sibling decoder under the same parent (children are evaluated as logical OR — only the first matching branch is followed).
+The decoder tree is evaluated starting from the root decoder. When the engine evaluates the children of a node, it orders them as follows:
+
+1. **By integration position in the policy list** — decoders belonging to an integration listed earlier in the policy are evaluated first.
+2. **By decoder position within the integration** — when two candidate child decoders belong to the same integration, the one declared earlier in that integration's `decoders` list is evaluated first.
+
+This means the policy's integration order is the primary mechanism for controlling which decoder branches have priority.
+
+#### Subgraph traversal rules
+
+The policy pipeline is composed of two asset subgraphs evaluated in order for every event:
+
+- **Decoders**: If the current decoder accepts the event (all its conditional stages pass), the event is forwarded to its child decoders for further processing. If the decoder fails, the engine tries the next sibling under the same parent — child decoders under a given parent are evaluated as a logical OR; only the first matching branch is followed.
 - **Outputs**: The event is broadcast to all active output assets simultaneously.
 
-An asset is considered to have **accepted** the event when all its conditional stages (`check`, `parse|<field>`) succeed. Transformational stages (`map` inside `normalize`) do not affect acceptance — a failure in a `map` operation does not cause the asset to reject the event.
-
-A stage succeeds if the logical combination of its operations succeeds. The exact combination logic is determined by the stage itself. This ensures that each stage can apply its own logic to decide whether it has successfully processed an event.
-
-<workflow_placeholder>
+An asset is considered to have **accepted** the event when all its conditional stages (`check`, `parse|<field>`) succeed. Transformational stages (`map` inside `normalize` blocks) do not affect acceptance — a `map` failure does not cause the asset to reject the event.
 
 ### Helper functions
 Implement all the high level operations available to the user when developing the ruleset. Each function defines its signature, its mode of operation and its error management. Users cannot change the behavior of a helper function, and cannot combine two functions into a single expression.
