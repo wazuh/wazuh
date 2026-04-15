@@ -1469,14 +1469,30 @@ This approach enables text reuse within an asset. Definitions are applied at bui
 
 ### Variables
 
-Variables are temporary fields scoped to the current asset that is processing an event. They are identified by prefixing their name with an underscore `_`, following the standard field naming convention and supporting any operation just like fields.
+Variables are temporary fields that exist for the duration of the decoder tree traversal. They are identified by
+prefixing their name with an underscore `_`, following the standard field naming convention and supporting any
+operation just like regular schema fields.
+
 ```
 _field.name
 ```
 
+Because variables live on the event document while it travels through the decoder tree, they can be written by one
+decoder and read by any subsequent decoder in the same traversal — including child and sibling decoders evaluated later.
+This makes them useful for passing intermediate values between decoders without polluting the final event with
+non-schema fields.
+
+Once the decoder tree has finished processing, all variables are removed from the event before it enters the enrichment
+stage (see [Cleanup of decoder temporary variables](#cleanup-of-decoder-temporary-variables)). After this point,
+every field in the event belongs to the Wazuh Common Schema (WCS).
+
 Key characteristics:
-- Scoped to the current asset – Variables exist only within the asset processing the event and do not persist beyond it.
-- Runtime Modifiable – Unlike definitions, which are static, variables can be modified during event processing.
+- **Decoder-tree scoped** — Variables persist across the entire decoder tree traversal; any decoder that runs after the
+  one that wrote a variable can read it.
+- **Removed before enrichment** — Variables do not reach the enrichment stage or the output stage. They are cleaned up
+  as part of the mandatory pre-enrichment cleanup step.
+- **Runtime modifiable** — Unlike definitions, which are resolved at build time, variables can be written and
+  overwritten during event processing.
 
 ### Log Parsing
 Log parsing transforms raw log entries into structured data using parser expressions. These expressions serve as an alternative to Grok, eliminating the need for explicit type declarations by leveraging predefined schema-based parsing. Instead of regular expressions, they use specialized parsers for improved accuracy and efficiency.
