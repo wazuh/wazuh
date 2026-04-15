@@ -35,22 +35,28 @@ public:
     AtomicGaugeInt(AtomicGaugeInt&&) = delete;
     AtomicGaugeInt& operator=(AtomicGaugeInt&&) = delete;
 
-    // IMetric interface
+    /** @copydoc fastmetrics::IMetric::name() */
     const std::string& name() const override { return m_name; }
 
+    /** @copydoc fastmetrics::IMetric::type() */
     MetricType type() const override { return MetricType::GAUGE_INT; }
 
+    /** @copydoc fastmetrics::IMetric::isEnabled() */
     bool isEnabled() const override { return m_enabled.load(std::memory_order_relaxed); }
 
+    /** @copydoc fastmetrics::IMetric::enable() */
     void enable() override { m_enabled.store(true, std::memory_order_relaxed); }
 
+    /** @copydoc fastmetrics::IMetric::disable() */
     void disable() override { m_enabled.store(false, std::memory_order_relaxed); }
 
+    /** @copydoc fastmetrics::IMetric::reset() */
     void reset() override { m_value.store(0, std::memory_order_relaxed); }
 
+    /** @copydoc fastmetrics::IMetric::value() */
     double value() const override { return static_cast<double>(get()); }
 
-    // IGaugeInt interface
+    /** @copydoc fastmetrics::IGaugeInt::set() */
     void set(int64_t value) override
     {
         if (!m_enabled.load(std::memory_order_relaxed)) [[unlikely]]
@@ -61,6 +67,7 @@ public:
         m_value.store(value, std::memory_order_relaxed);
     }
 
+    /** @copydoc fastmetrics::IGaugeInt::add() */
     void add(int64_t delta) override
     {
         if (!m_enabled.load(std::memory_order_relaxed)) [[unlikely]]
@@ -71,6 +78,7 @@ public:
         m_value.fetch_add(delta, std::memory_order_relaxed);
     }
 
+    /** @copydoc fastmetrics::IGaugeInt::sub() */
     void sub(int64_t delta) override
     {
         if (!m_enabled.load(std::memory_order_relaxed)) [[unlikely]]
@@ -81,64 +89,8 @@ public:
         m_value.fetch_sub(delta, std::memory_order_relaxed);
     }
 
+    /** @copydoc fastmetrics::IGaugeInt::get() */
     int64_t get() const override { return m_value.load(std::memory_order_relaxed); }
-};
-
-/**
- * @brief Lock-free atomic double gauge implementation
- *
- * Note: For floating point, we use compare-and-swap since fetch_add
- * is not available for double in all platforms.
- */
-class AtomicGaugeDouble : public IGaugeDouble
-{
-private:
-    std::string m_name;
-    std::atomic<double> m_value;
-    std::atomic_bool m_enabled;
-
-public:
-    explicit AtomicGaugeDouble(std::string name)
-        : m_name(std::move(name))
-        , m_value(0.0)
-        , m_enabled(true)
-    {
-    }
-
-    ~AtomicGaugeDouble() override = default;
-
-    AtomicGaugeDouble(const AtomicGaugeDouble&) = delete;
-    AtomicGaugeDouble& operator=(const AtomicGaugeDouble&) = delete;
-    AtomicGaugeDouble(AtomicGaugeDouble&&) = delete;
-    AtomicGaugeDouble& operator=(AtomicGaugeDouble&&) = delete;
-
-    // IMetric interface
-    const std::string& name() const override { return m_name; }
-
-    MetricType type() const override { return MetricType::GAUGE_DBL; }
-
-    bool isEnabled() const override { return m_enabled.load(std::memory_order_relaxed); }
-
-    void enable() override { m_enabled.store(true, std::memory_order_relaxed); }
-
-    void disable() override { m_enabled.store(false, std::memory_order_relaxed); }
-
-    void reset() override { m_value.store(0.0, std::memory_order_relaxed); }
-
-    double value() const override { return get(); }
-
-    // IGaugeDouble interface
-    void set(double value) override
-    {
-        if (!m_enabled.load(std::memory_order_relaxed)) [[unlikely]]
-        {
-            return;
-        }
-
-        m_value.store(value, std::memory_order_relaxed);
-    }
-
-    double get() const override { return m_value.load(std::memory_order_relaxed); }
 };
 
 } // namespace fastmetrics

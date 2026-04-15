@@ -1964,14 +1964,6 @@ paths:
                     type: "counter"
                     enabled: true
                     value: 123456
-                gauge_double:
-                  summary: Gauge double metric (EPS rate)
-                  value:
-                    status: "OK"
-                    name: "router.eps.1m"
-                    type: "gauge_dbl"
-                    enabled: true
-                    value: 1523.7
                 per_space:
                   summary: Per-space counter
                   value:
@@ -2125,26 +2117,10 @@ paths:
                         type: "counter"
                         enabled: true
                         value: 500000
-                      - name: "router.eps.1m"
-                        type: "gauge_dbl"
-                        enabled: true
-                        value: 1523.7
-                      - name: "router.eps.5m"
-                        type: "gauge_dbl"
-                        enabled: true
-                        value: 1480.2
-                      - name: "router.eps.30m"
-                        type: "gauge_dbl"
-                        enabled: true
-                        value: 1350.0
                       - name: "router.queue.size"
                         type: "pull"
                         enabled: true
                         value: 42
-                      - name: "router.queue.usage.percent"
-                        type: "gauge_dbl"
-                        enabled: true
-                        value: 0.42
                       - name: "server.events.dropped.input"
                         type: "counter"
                         enabled: true
@@ -2782,7 +2758,7 @@ components:
             type:
               type: string
               description: "Metric type as string"
-              enum: ["counter", "gauge_int", "gauge_dbl", "pull"]
+              enum: ["counter", "gauge_int", "pull"]
             enabled:
               type: boolean
               description: "Whether metric collection is currently enabled"
@@ -2818,7 +2794,7 @@ components:
         type:
           type: string
           description: "Metric type as string"
-          enum: ["counter", "gauge_int", "gauge_dbl", "pull"]
+          enum: ["counter", "gauge_int", "pull"]
         enabled:
           type: boolean
           description: "Whether metric collection is currently enabled"

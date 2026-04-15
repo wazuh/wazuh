@@ -53,22 +53,29 @@ public:
     PullMetric(PullMetric&&) = delete;
     PullMetric& operator=(PullMetric&&) = delete;
 
-    // IMetric interface
+
+    /// \copydoc fastmetrics::IMetric::name()
     const std::string& name() const override { return m_name; }
 
+    /// \copydoc fastmetrics::IMetric::type()
     MetricType type() const override { return MetricType::PULL; }
 
+    /// \copydoc fastmetrics::IMetric::isEnabled()
     bool isEnabled() const override { return m_enabled.load(std::memory_order_relaxed); }
 
+    /// \copydoc fastmetrics::IMetric::enable()
     void enable() override { m_enabled.store(true, std::memory_order_relaxed); }
 
+    /// \copydoc fastmetrics::IMetric::disable()
     void disable() override { m_enabled.store(false, std::memory_order_relaxed); }
 
+    /// \copydoc fastmetrics::IMetric::reset()
     void reset() override
     {
         // Pull metrics can't be reset (they're read-only views)
     }
 
+    /// \copydoc fastmetrics::IMetric::value()
     double value() const override
     {
         if (!m_enabled.load(std::memory_order_relaxed)) [[unlikely]]

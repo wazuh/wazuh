@@ -52,18 +52,6 @@ public:
     getOrCreateGaugeInt(const std::string& name, const std::string& description = "", const std::string& unit = "") = 0;
 
     /**
-     * @brief Create or get an existing double gauge
-     *
-     * @param name Metric name
-     * @param description Optional description
-     * @param unit Optional unit (e.g., "percent", "ratio")
-     * @return Shared pointer to gauge
-     */
-    virtual std::shared_ptr<IGaugeDouble> getOrCreateGaugeDouble(const std::string& name,
-                                                                 const std::string& description = "",
-                                                                 const std::string& unit = "") = 0;
-
-    /**
      * @brief Get an existing metric by name
      *
      * @param name Metric name

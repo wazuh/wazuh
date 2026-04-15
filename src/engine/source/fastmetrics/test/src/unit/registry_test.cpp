@@ -40,13 +40,10 @@ TEST_F(RegistryTest, GetOrCreateReturnsExisting)
 TEST_F(RegistryTest, CreateGauges)
 {
     auto gaugeInt = registry->getOrCreateGaugeInt("test.gauge.int");
-    auto gaugeDouble = registry->getOrCreateGaugeDouble("test.gauge.double");
 
     ASSERT_NE(gaugeInt, nullptr);
-    ASSERT_NE(gaugeDouble, nullptr);
 
     EXPECT_EQ(gaugeInt->type(), MetricType::GAUGE_INT);
-    EXPECT_EQ(gaugeDouble->type(), MetricType::GAUGE_DBL);
 }
 
 TEST_F(RegistryTest, GetMetric)

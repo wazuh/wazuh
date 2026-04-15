@@ -23,11 +23,6 @@ public:
                 (const std::string&, const std::string&, const std::string&),
                 (override));
 
-    MOCK_METHOD(std::shared_ptr<IGaugeDouble>,
-                getOrCreateGaugeDouble,
-                (const std::string&, const std::string&, const std::string&),
-                (override));
-
     MOCK_METHOD(std::shared_ptr<IMetric>, get, (const std::string&), (const, override));
 
     MOCK_METHOD(bool, exists, (const std::string&), (const, override));

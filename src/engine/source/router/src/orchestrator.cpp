@@ -8,7 +8,6 @@
 #include <base/json.hpp>
 #include <base/logging.hpp>
 #include <fastmetrics/registry.hpp>
-#include <fastmetrics/slidingWindowRate.hpp>
 
 #include <router/orchestrator.hpp>
 
@@ -319,24 +318,19 @@ Orchestrator::Orchestrator(const Options& opt)
     m_droppedInputCounter = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::ROUTER_EVENTS_DROPPED);
 
     // EPS sliding-window rates (1m, 5m, 30m) derived from the processed counter
-    {
-        auto eventsProcessedCounter = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::ROUTER_EVENTS_PROCESSED);
+    m_epsRate = std::make_shared<fastmetrics::SlidingWindowRate>();
 
-        auto epsRate = std::make_shared<fastmetrics::SlidingWindowRate>([eventsProcessedCounter]() -> uint64_t
-                                                                        { return eventsProcessedCounter->get(); });
+    FASTMETRICS_PULL(double,
+                     fastmetrics::names::ROUTER_EPS_1M,
+                     [epsRate = m_epsRate]() { return epsRate->getRate(std::chrono::seconds(60)); });
 
-        FASTMETRICS_PULL(double,
-                         fastmetrics::names::ROUTER_EPS_1M,
-                         [epsRate]() { return epsRate->getRate(std::chrono::seconds(60)); });
+    FASTMETRICS_PULL(double,
+                     fastmetrics::names::ROUTER_EPS_5M,
+                     [epsRate = m_epsRate]() { return epsRate->getRate(std::chrono::seconds(300)); });
 
-        FASTMETRICS_PULL(double,
-                         fastmetrics::names::ROUTER_EPS_5M,
-                         [epsRate]() { return epsRate->getRate(std::chrono::seconds(300)); });
-
-        FASTMETRICS_PULL(double,
-                         fastmetrics::names::ROUTER_EPS_30M,
-                         [epsRate]() { return epsRate->getRate(std::chrono::seconds(1800)); });
-    }
+    FASTMETRICS_PULL(double,
+                     fastmetrics::names::ROUTER_EPS_30M,
+                     [epsRate = m_epsRate]() { return epsRate->getRate(std::chrono::seconds(1800)); });
 
     // Get the initial states from the store
     auto store = m_wStore.lock();
@@ -361,7 +355,7 @@ Orchestrator::Orchestrator(const Options& opt)
 
     for (std::size_t i = 0; i < numThreads; ++i)
     {
-        auto r = std::make_shared<router::RouterWorker>(m_envBuilder, m_eventQueue, m_rawIndexer);
+        auto r = std::make_shared<router::RouterWorker>(m_envBuilder, m_eventQueue, m_rawIndexer, m_epsRate);
         if (auto err = initRouterWorker(r, routerEntries))
         {
             LOG_ERROR("Router: Cannot load initial states from store: {}", err->message);

@@ -1,142 +1,164 @@
 #ifndef FASTMETRICS_SLIDING_WINDOW_RATE_HPP
 #define FASTMETRICS_SLIDING_WINDOW_RATE_HPP
 
-#include <algorithm>
+#include <array>
+#include <atomic>
 #include <chrono>
-#include <deque>
-#include <functional>
-#include <mutex>
+#include <cstdint>
+#include <limits>
 
 namespace fastmetrics
 {
 
 /**
- * @brief Sliding window rate calculator for EPS (events per second)
+ * @brief Sliding window rate calculator for EPS (events per second).
  *
- * Samples a counter value on each read and computes the average
- * rate over configurable time windows (e.g., 1m, 5m, 30m).
+ * Resolution: 1 second.
+ * Maximum window: 31 minutes.
  *
- * Thread-safe. Designed for pull-metric usage (sampled on read).
+ * Design:
+ * - Uses a circular buffer of buckets, one per second.
+ * - Each bucket contains:
+ *      - timestamp of the second it belongs to
+ *      - event count for that second
+ * - When a bucket is reused for a new second, only one thread
+ *   can recycle it by temporarily marking the bucket with a sentinel timestamp.
  *
- * Usage:
- *   auto rate = std::make_shared<SlidingWindowRate>(
- *       []() { return myCounter->get(); });
- *
- *   // Read EPS over last minute:
- *   double eps1m = rate->getRate(std::chrono::minutes(1));
+ * Notes:
+ * - It is lock-free at the atomic level, but reads are "best effort":
+ *   consistent enough for metrics, not for exact accounting.
+ * - Small deviations may happen under high concurrency.
  */
 class SlidingWindowRate
 {
-    struct Sample
+private:
+    static constexpr std::size_t MAX_WINDOW_SEC = 31 * 60; // 31 minutes
+    static constexpr uint64_t RECYCLING_TS = std::numeric_limits<uint64_t>::max();
+
+    struct Bucket
     {
-        std::chrono::steady_clock::time_point time;
-        uint64_t value;
+        std::atomic<uint64_t> timestamp {0};
+        std::atomic<uint64_t> count {0};
     };
 
-    mutable std::mutex m_mutex;
-    std::deque<Sample> m_samples;
-    std::function<uint64_t()> m_valueGetter;
+    std::array<Bucket, MAX_WINDOW_SEC> m_buckets {};
 
-    static constexpr auto MAX_RETENTION = std::chrono::minutes(31); ///< Keep slightly more than max window
-
-public:
-    explicit SlidingWindowRate(std::function<uint64_t()> valueGetter)
-        : m_valueGetter(std::move(valueGetter))
+    static uint64_t currentSecond()
     {
+        using namespace std::chrono;
+        return static_cast<uint64_t>(duration_cast<seconds>(steady_clock::now().time_since_epoch()).count());
     }
 
+public:
+    SlidingWindowRate() = default;
     ~SlidingWindowRate() = default;
 
     SlidingWindowRate(const SlidingWindowRate&) = delete;
     SlidingWindowRate& operator=(const SlidingWindowRate&) = delete;
 
     /**
-     * @brief Record a sample of the current counter value
-     *
-     * Called automatically by getRate(), but can also be called
-     * externally for more frequent sampling.
+     * @brief Increments the counter for the current second.
      */
-    void sample()
+    void increment()
     {
-        auto now = std::chrono::steady_clock::now();
-        uint64_t value = 0;
-        try
-        {
-            value = m_valueGetter();
-        }
-        catch (...)
-        {
-            return;
-        }
+        const uint64_t now = currentSecond();
+        Bucket& bucket = m_buckets[now % MAX_WINDOW_SEC];
 
-        std::lock_guard<std::mutex> lock(m_mutex);
-        m_samples.push_back({now, value});
-
-        // Purge samples older than MAX_RETENTION
-        while (!m_samples.empty() && (now - m_samples.front().time) > MAX_RETENTION)
+        while (true)
         {
-            m_samples.pop_front();
+            const uint64_t ts = bucket.timestamp.load(std::memory_order_acquire);
+
+            if (ts == now)
+            {
+                bucket.count.fetch_add(1, std::memory_order_relaxed);
+                return;
+            }
+
+            // Another thread is currently recycling this bucket.
+            if (ts == RECYCLING_TS)
+            {
+                continue;
+            }
+
+            // Try to claim the bucket for recycling by moving it into a
+            // temporary "recycling" state.
+            uint64_t expected = ts;
+            if (bucket.timestamp.compare_exchange_weak(
+                    expected, RECYCLING_TS, std::memory_order_acq_rel, std::memory_order_acquire))
+            {
+                // We now own the recycle process.
+                //
+                // Publish order matters:
+                // 1. initialize count for the new second
+                // 2. publish timestamp = now
+                //
+                // Readers/writers only treat the bucket as belonging to 'now'
+                // after the timestamp is published.
+                bucket.count.store(1, std::memory_order_release);
+                bucket.timestamp.store(now, std::memory_order_release);
+                return;
+            }
+
+            // CAS failed: retry.
         }
     }
 
     /**
-     * @brief Calculate average events per second over the given window
-     *
-     * Samples the current counter value first, then computes the rate
-     * from the oldest sample within the window to the newest.
-     *
-     * @param window Time window (e.g., std::chrono::minutes(1))
-     * @return Average events per second over the window
+     * @brief Computes the average EPS over the requested window.
+     * @param window time window, for example std::chrono::seconds(60)
+     * @return average events per second over that window
      */
-    double getRate(std::chrono::seconds window)
+    double getRate(std::chrono::seconds window) const
     {
-        sample();
+        const uint64_t now = currentSecond();
 
-        std::lock_guard<std::mutex> lock(m_mutex);
-        if (m_samples.size() < 2)
+        uint64_t win = static_cast<uint64_t>(window.count());
+        if (win == 0)
         {
             return 0.0;
         }
 
-        const auto& newest = m_samples.back();
-        auto windowStart = newest.time - window;
-
-        // Find the oldest sample that is >= windowStart (binary search on sorted timestamps)
-        auto it = std::lower_bound(m_samples.begin(),
-                                   m_samples.end(),
-                                   windowStart,
-                                   [](const Sample& s, const std::chrono::steady_clock::time_point& t)
-                                   { return s.time < t; });
-
-        // If all samples are within window, use the oldest available
-        if (it == m_samples.end())
+        if (win > MAX_WINDOW_SEC)
         {
-            it = m_samples.begin();
+            win = MAX_WINDOW_SEC;
         }
 
-        // If the found sample IS the newest, try one before
-        if (it == std::prev(m_samples.end()) && m_samples.size() >= 2)
+        uint64_t sum = 0;
+
+        for (uint64_t offset = 0; offset < win; ++offset)
         {
-            it = m_samples.begin();
+            // Defensive guard against unsigned underflow in extremely early
+            // process lifetime scenarios.
+            if (offset > now)
+            {
+                break;
+            }
+
+            const uint64_t sec = now - offset;
+            const Bucket& bucket = m_buckets[sec % MAX_WINDOW_SEC];
+
+            // Stable bucket snapshot:
+            // read timestamp, then count, then timestamp again.
+            const uint64_t ts1 = bucket.timestamp.load(std::memory_order_acquire);
+
+            // Ignore buckets currently being recycled.
+            if (ts1 == RECYCLING_TS)
+            {
+                continue;
+            }
+
+            const uint64_t cnt = bucket.count.load(std::memory_order_acquire);
+            const uint64_t ts2 = bucket.timestamp.load(std::memory_order_acquire);
+
+            // Accept the bucket only if it remained stable during the read
+            // and actually corresponds to the expected second.
+            if (ts1 == ts2 && ts1 == sec)
+            {
+                sum += cnt;
+            }
         }
 
-        auto elapsedSec = std::chrono::duration<double>(newest.time - it->time).count();
-        if (elapsedSec < 0.5)
-        {
-            return 0.0;
-        }
-
-        auto delta = newest.value - it->value;
-        return static_cast<double>(delta) / elapsedSec;
-    }
-
-    /**
-     * @brief Get the number of stored samples (for testing)
-     */
-    size_t sampleCount() const
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        return m_samples.size();
+        return static_cast<double>(sum) / static_cast<double>(win);
     }
 };
 

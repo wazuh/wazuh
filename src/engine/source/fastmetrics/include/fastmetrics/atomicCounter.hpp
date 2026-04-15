@@ -46,22 +46,28 @@ public:
     AtomicCounter(AtomicCounter&&) = delete;
     AtomicCounter& operator=(AtomicCounter&&) = delete;
 
-    // IMetric interface
+    /** @copydoc fastmetrics::IMetric::name() */
     const std::string& name() const override { return m_name; }
 
+    /** @copydoc fastmetrics::IMetric::type() */
     MetricType type() const override { return MetricType::COUNTER; }
 
+    /** @copydoc fastmetrics::IMetric::isEnabled() */
     bool isEnabled() const override { return m_enabled.load(std::memory_order_relaxed); }
 
+    /** @copydoc fastmetrics::IMetric::enable() */
     void enable() override { m_enabled.store(true, std::memory_order_relaxed); }
 
+    /** @copydoc fastmetrics::IMetric::disable() */
     void disable() override { m_enabled.store(false, std::memory_order_relaxed); }
 
+    /** @copydoc fastmetrics::IMetric::reset() */
     void reset() override { m_value.store(0, std::memory_order_relaxed); }
 
+    /** @copydoc fastmetrics::IMetric::value() */
     double value() const override { return static_cast<double>(get()); }
 
-    // ICounter interface
+    /** @copydoc fastmetrics::ICounter::add() */
     void add(uint64_t delta = 1) override
     {
         if (!m_enabled.load(std::memory_order_relaxed)) [[unlikely]]
@@ -72,9 +78,11 @@ public:
         m_value.fetch_add(delta, std::memory_order_relaxed);
     }
 
+    /** @copydoc fastmetrics::ICounter::get() */
     uint64_t get() const override { return m_value.load(std::memory_order_relaxed); }
 
     /**
+     * @copydoc fastmetrics::ICounter::add()
      * @brief Convenience method: increment by 1
      */
     inline void increment() { add(1); }

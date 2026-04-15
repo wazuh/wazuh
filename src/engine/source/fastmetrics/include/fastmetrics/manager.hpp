@@ -37,8 +37,8 @@ private:
     /**
      * @brief Generic get-or-create helper for any metric type
      *
-     * @tparam InterfaceT  The metric interface (ICounter, IGaugeInt, IGaugeDouble)
-     * @tparam ConcreteT   The concrete implementation (AtomicCounter, AtomicGaugeInt, AtomicGaugeDouble)
+     * @tparam InterfaceT  The metric interface (ICounter, IGaugeInt)
+     * @tparam ConcreteT   The concrete implementation (AtomicCounter, AtomicGaugeInt)
      */
     template<typename InterfaceT, typename ConcreteT>
     std::shared_ptr<InterfaceT> getOrCreate(const std::string& name)
@@ -102,6 +102,7 @@ public:
     Manager(Manager&&) = delete;
     Manager& operator=(Manager&&) = delete;
 
+    /** @copydoc IManager::getOrCreateCounter() */
     std::shared_ptr<ICounter> getOrCreateCounter(const std::string& name,
                                                  const std::string& description = "",
                                                  const std::string& unit = "") override
@@ -109,18 +110,12 @@ public:
         return getOrCreate<ICounter, AtomicCounter>(name);
     }
 
+    /** @copydoc IManager::getOrCreateGaugeInt() */
     std::shared_ptr<IGaugeInt> getOrCreateGaugeInt(const std::string& name,
                                                    const std::string& description = "",
                                                    const std::string& unit = "") override
     {
         return getOrCreate<IGaugeInt, AtomicGaugeInt>(name);
-    }
-
-    std::shared_ptr<IGaugeDouble> getOrCreateGaugeDouble(const std::string& name,
-                                                         const std::string& description = "",
-                                                         const std::string& unit = "") override
-    {
-        return getOrCreate<IGaugeDouble, AtomicGaugeDouble>(name);
     }
 
     template<typename T>
@@ -162,20 +157,28 @@ public:
      */
     void writeAllMetrics(std::shared_ptr<streamlog::WriterEvent> metricsWriter) const;
 
+    /** @copydoc IManager::get() */
     std::shared_ptr<IMetric> get(const std::string& name) const override;
 
+    /** @copydoc IManager::exists() */
     bool exists(const std::string& name) const override;
 
+    /** @copydoc IManager::getAllNames() */
     std::vector<std::string> getAllNames() const override;
 
+    /** @copydoc IManager::count() */
     size_t count() const override;
 
+    /** @copydoc IManager::enableAll() */
     void enableAll() override;
 
+    /** @copydoc IManager::disableAll() */
     void disableAll() override;
 
+    /** @copydoc IManager::isEnabled() */
     bool isEnabled() const override;
 
+    /** @copydoc IManager::clear() */
     void clear() override;
 };
 

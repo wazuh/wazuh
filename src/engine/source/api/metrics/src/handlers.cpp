@@ -21,7 +21,6 @@ const char* metricTypeToString(fastmetrics::MetricType type)
     {
         case fastmetrics::MetricType::COUNTER: return "counter";
         case fastmetrics::MetricType::GAUGE_INT: return "gauge_int";
-        case fastmetrics::MetricType::GAUGE_DBL: return "gauge_dbl";
         case fastmetrics::MetricType::PULL: return "pull";
         default: return "unknown";
     }

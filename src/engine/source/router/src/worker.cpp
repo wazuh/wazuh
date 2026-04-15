@@ -72,6 +72,7 @@ void RouterWorker::start()
 
                     // Track processed events (hot path: direct atomic access ~3ns)
                     eventsProcessedCounter->add(1);
+                    if (m_epsRate) m_epsRate->increment();
                 }
                 catch (const std::exception& e)
                 {

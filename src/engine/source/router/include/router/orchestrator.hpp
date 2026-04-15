@@ -11,6 +11,7 @@
 #include <builder/ibuilder.hpp>
 #include <fastqueue/iqueue.hpp>
 #include <fastmetrics/iManager.hpp>
+#include <fastmetrics/slidingWindowRate.hpp>
 #include <rawevtindexer/iraweventindexer.hpp>
 #include <store/istore.hpp>
 
@@ -72,6 +73,7 @@ protected:
 
     template<typename T>
     using WorkerOp = std::function<base::OptError(const std::shared_ptr<IWorker<T>>&)>;
+    std::shared_ptr<fastmetrics::SlidingWindowRate> m_epsRate; // EPS rate shared across all workers
     base::OptError forEachRouterWorker(const WorkerOp<IRouter>& f);
     base::OptError forTesterWorker(const WorkerOp<ITester>& f);
 

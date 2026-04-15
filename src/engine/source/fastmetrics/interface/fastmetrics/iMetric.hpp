@@ -24,7 +24,6 @@ enum class MetricType
 {
     COUNTER,   ///< Monotonically increasing counter (uint64_t) - PUSH
     GAUGE_INT, ///< Gauge that can go up/down (int64_t) - PUSH
-    GAUGE_DBL, ///< Gauge with floating point (double) - PUSH
     PULL       ///< On-demand callback metric (any type) - PULL
 };
 
@@ -121,25 +120,6 @@ public:
      * @brief Get current value
      */
     virtual int64_t get() const = 0;
-};
-
-/**
- * @brief Double gauge interface (floating point values)
- */
-class IGaugeDouble : public IMetric
-{
-public:
-    ~IGaugeDouble() override = default;
-
-    /**
-     * @brief Set gauge to specific value
-     */
-    virtual void set(double value) = 0;
-
-    /**
-     * @brief Get current value
-     */
-    virtual double get() const = 0;
 };
 
 } // namespace fastmetrics
