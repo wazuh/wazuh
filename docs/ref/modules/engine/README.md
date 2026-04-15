@@ -15,7 +15,6 @@ The data flow begins when an event enters the orchestrator and continues until i
 Below is a high-level flowchart illustrating this process.
 
 
-TODO: Update this graph
 
 ```mermaid
 flowchart LR
@@ -490,7 +489,6 @@ discarded["Discarded event"]:::fail
 
 pre --> space --> discard --> cleanup --> success
 discard -->|discarded| discarded
-cleanup -->|failure| discarded
 ```
 
 ##### Space enrichment
@@ -549,13 +547,16 @@ discarded -->|yes| drop
 
 ##### Cleanup of decoder temporary variables
 
-The cleanup step removes temporary decoder variables from the event when this behavior is enabled by policy.
+Decoders can only map fields that belong to the **Wazuh Common Schema (WCS)** or to **temporary variables**.
+Temporary variables are fields whose names start with `_` (e.g., `_raw_message`, `_parsed_ts`). They provide
+a scratch space that decoders can write to and read from as an event travels through the decoder tree, enabling
+intermediate values to be shared across decoders during processing.
 
-These temporary fields are useful during decoding, but they are not meant to remain in the event after the preprocessing stage has finished. When cleanup is enabled, these temporary values are removed before the event reaches the enrichment stage.
+Once the decoding stage is complete, temporary variables have served their purpose and must be removed. This
+cleanup step is **mandatory** and always runs at the end of pre-enrichment — it is not configurable by the user.
 
-Examples of temporary fields that may be removed include root keys prefixed with `_`.
-
-If cleanup is disabled by policy, the event continues unchanged.
+After cleanup, every field present in the event is guaranteed to belong to the WCS. This invariant is what
+allows the event to be correctly indexed in the Wazuh Indexer, since only schema-conformant fields are accepted.
 
 #### Enrichment
 
@@ -726,38 +727,6 @@ match -->|yes| append
 match -->|no| nomatch
 ```
 
-#### Notes about unclassified events
-
-Unclassified-events handling is not part of pre-enrichment or enrichment.
-
-It is handled later in the pipeline during output selection. In that stage, a dedicated [helper](ref-helper-functions.md#index_unclassified_events) determines whether the event should be indexed as an unclassified event.
-
-This decision is based on the event decoder information and is used to route matching events to the dedicated unclassified data stream:
-
-- `wazuh-events-v5-unclassified`
-
-If the event does not match that condition, the output logic continues with the regular category-based routing and sends the event to the data stream associated with its integration category.
-
-Conceptually, the output decision works as follows:
-
-```mermaid
-flowchart TD
-
-classDef cond fill:#eeeeee,stroke-width:1px
-classDef yes fill:#2196f3,stroke-width:2px,color:#fff
-classDef alt fill:#3f51b5,stroke-width:2px,color:#fff
-
-start["Output stage"]:::cond
-check["Unclassified indexing condition"]:::cond
-unclassified["Send to wazuh-events-v5-unclassified"]:::yes
-regular["Send to wazuh-events-v5-${wazuh.integration.category}"]:::alt
-
-start --> check
-check -->|true| unclassified
-check -->|false| regular
-```
-
-This means unclassified-events handling is a separate output-routing concern and is intentionally excluded from the enrichment stages described in this section.
 
 #### Relationship between pre-enrichment and enrichment
 
@@ -872,6 +841,65 @@ flowchart TD
     linkStyle 2,3 stroke:#D50000,fill:none
 ```
 
+> [!WARNING]
+> The output files in `default/` are **replaced on every installation or update** of `wazuh-manager`.
+> Modifications to those files will be overwritten. To preserve custom outputs across updates, place
+> them in a space-specific folder (`standard/` or `custom/`) instead of `default/`.
+
+#### Unclassified events
+
+An event is considered **unclassified** when it was only processed by the root decoder and no other decoder
+accepted it. This happens because the root decoder typically has no `check` stage — it accepts every event
+unconditionally, acting solely as the entry point of the decoder tree. When no child decoder matches the event,
+the root decoder remains the only one that has processed it.
+
+The engine tracks which decoders accepted each event by recording their names in the
+`wazuh.integration.decoders` array field. An event is therefore identified as unclassified when that array
+contains exactly one element (only the root decoder).
+
+The `indexer.yml` output uses the [`index_unclassified_events`](ref-helper-functions.md#index_unclassified_events)
+helper to apply this check and route the event accordingly:
+
+```yaml
+# Excerpt from indexer.yml
+outputs:
+  - first_of:
+    - check: index_unclassified_events($wazuh.integration.decoders)
+      then:
+        - wazuh-indexer:
+            index: "wazuh-events-v5-unclassified"
+
+    - check: NOT array_length_eq($wazuh.integration.decoders, 1)
+      then:
+        - wazuh-indexer:
+            index: "wazuh-events-v5-${wazuh.integration.category}"
+```
+
+The routing logic evaluates two conditions in order:
+
+1. If `index_unclassified_events` returns `true` — meaning the policy has unclassified-events indexing enabled
+   **and** `wazuh.integration.decoders` contains exactly one entry — the event is sent to
+   `wazuh-events-v5-unclassified`.
+2. Otherwise, if the decoder array has more than one entry, the event is classified and sent to the
+   data stream corresponding to its integration category: `wazuh-events-v5-${wazuh.integration.category}`.
+
+```mermaid
+flowchart TD
+
+classDef cond fill:#eeeeee,stroke-width:1px
+classDef yes fill:#2196f3,stroke-width:2px,color:#fff
+classDef alt fill:#3f51b5,stroke-width:2px,color:#fff
+classDef skip fill:#9e9e9e,stroke-width:1px,color:#fff
+
+start["Output stage (indexer.yml)"]:::cond
+check["index_unclassified_events(wazuh.integration.decoders)?"]:::cond
+unclassified["wazuh-events-v5-unclassified"]:::yes
+classified["wazuh-events-v5-\${wazuh.integration.category}"]:::alt
+
+start --> check
+check -->|"true: policy enabled AND array length == 1"| unclassified
+check -->|"false: array length > 1"| classified
+```
 
 
 ## Schema
