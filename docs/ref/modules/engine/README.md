@@ -1039,9 +1039,12 @@ When both spaces are available and synchronized, the Engine processes all incomi
 operational graph.
 
 ## Assets
+
 In the Wazuh Engine, assets represent the fundamental components of security policies and are the smallest unit within such a policy.
 
-Each asset is organized into various stages that dictate operational procedures when processing an event. These stages provide a structured and semantically meaningful sequence of operations, enhancing the engine's capability to execute these operations efficiently based on predefined execution strategies.
+Each asset is organized into various stages that dictate operational procedures when processing an event.
+These stages provide a structured and semantically meaningful sequence of operations, enhancing the engine's capability
+to execute these operations efficiently based on predefined execution strategies.
 
 Do not confuse stages with attributes, which are configuration details and metadata about the asset.
 
@@ -1089,11 +1092,19 @@ classDef AttributesClass min-width: 200px
 ```
 
 ### Attributes
-Attributes are configuration details. Although the order of definition does not matter, we follow the convention of defining them in the order of name, metadata, and parents.
-- **Name**: Identifies the asset and follows the pattern `<asset_type>/<name>/<version>`.
-- **Metadata**: Contains all information about the asset. The exact subfields depend on the asset type.
-- **Parents**: When applicable to the asset, this defines the order in the asset graph. The exact child selection depends on the specific asset graph type.
-- **Definitions**: Defines symbols that will be replaced throughout the document in its occurrences.
+
+Attributes are configuration details and metadata about the asset. Every asset shares the following common attributes:
+
+- **`name`**: Uniquely identifies the asset using the pattern `<asset_type>/<name>/<version>` (e.g. `decoder/aws-cloudtrail/0`).
+- **`id`**: A UUIDv4 string that uniquely identifies the asset across the system.
+- **`enabled`**: Boolean flag. Disabled assets are ignored when building the policy operational graph.
+- **`metadata`**: Descriptive information about the asset. Common sub-fields include `module`, `title`, `description`, `compatibility`, `versions`, `author`, and `references`. The exact required sub-fields depend on the asset type.
+- **`parents`**: Lists the parent asset names that define the asset's position in the asset graph. The traversal behavior depends on the asset type.
+- **`definitions`**: Build-time typed macros. Each definition is a named value substituted wherever it is referenced in the asset document.
+
+Filters have one additional attribute:
+
+- **`type`** *(filters only)*: Determines at which point in the policy pipeline the filter is evaluated. Accepted values are `pre-filter` (evaluated before decoding) and `post-filter` (evaluated after enrichment).
 
 ### Stages
 The stages define the operation chain and flow the asset performs on events. Each stage is executed in the order of definition:
@@ -1145,27 +1156,55 @@ successState:::stateSuccessClass
 stage_4 --->|success| successState
 ```
 
-When a stage is executed, it can either fail or succeed, depending on the logic of the stage and the operations performed. Each stage is sequentially executed only if the previous stage succeeds.
+When a stage is executed, it can either fail or succeed. Each stage is executed sequentially only if the previous one succeeded. If any stage fails, the asset is considered to have failed for that event.
 
-Stages:
-- **Check/Allow**: Allows conditional operations to be made on the event. Cannot modify the event.
-- **Parse**: Parses fields on the event, acting both as a condition and normalization.
-- **Map**: Allows mapping and transformation operations on the event.
-- **First Of**: Allows defining multiple branches of operations, where only the first successful branch is executed.
-- **Normalize**: Defines blocks with a combination of check, parse, and map stages.
-- **Output**: Allows operations to communicate outside the Engine, typically used to send events outward. Cannot modify the event.
+The available stages are:
+
+---
+
+**`check`** — Evaluates a condition against the event without modifying it. The asset fails if the condition is not satisfied. Accepts either:
+- A **conditional expression** string using `$field` references, helper calls, and logical/comparison operators (`AND`, `OR`, `NOT`, `==`, `!=`, etc.)
+- A **checklist**: an ordered array of single-pair objects `{field: condition}`, where all conditions must pass in order.
+
+*Available in*: decoders (top-level), filters, and inside `normalize` blocks.
+
+---
+
+**`parse|<field>`** — Parses the value of `<field>` using an ordered list of parser expressions (e.g. logpar patterns). Expressions are tried in order; the stage succeeds as soon as one matches and the parsed values are written to the event. If no expression matches, the stage fails and the asset fails.
+
+The key syntax is `parse|<source_field>: [<expr1>, <expr2>, ...]`.
+
+*Available in*: decoders (top-level and inside `normalize` blocks).
+
+---
+
+**`normalize`** — An ordered array of normalization blocks. Each block is an independent unit that can contain any combination of the following sub-stages:
+
+- **`check`** *(optional)*: Condition for the block. If it fails, the block is skipped; the asset does not fail.
+- **`parse|<field>`** *(optional)*: Parse step within the block.
+- **`map`** *(optional)*: Array of field assignments in the form `{target_field: value_or_expression}`. Maps and transforms values into the event.
+
+*Available in*: decoders.
+
+---
+
+**`outputs`** — An array of output operations that deliver the event to external destinations. Each element in the array can be:
+- A **direct output operation** (e.g. `wazuh-indexer:`, `file:`), executed unconditionally.
+- A **`first_of`** block: an ordered list of branches, each with an optional `check` condition and a `then` list of output operations. The first branch whose `check` passes executes its `then` and the remaining branches are skipped.
+
+Cannot modify the event.
+
+*Available in*: outputs.
 
 ### Asset types
-The type of asset is an allowed combination of certain stages. The following table outlines the stages available for each type of asset:
 
-| Asset Type | Allowed Stages |
-|-|-|
-|Decoders|check, parse, map, normalize|
-|Rules|check, map, normalize_rule|
-|Outputs|check, output, first_of|
-|Filters|allow|
+The type of asset determines which stages are allowed. The following table summarises the stages available per asset type:
 
-Each asset has a name and metadata, with custom metadata suited to its specific needs. Additionally, each asset can have parents.
+| Asset Type | Top-level stages | Notes |
+|------------|-----------------|-------|
+| Decoders | `check`, `parse\|<field>`, `normalize` | `normalize` blocks may contain `check`, `parse\|<field>`, and `map` sub-stages |
+| Outputs | `outputs` | `outputs` array entries can be direct operations or `first_of` blocks with `check` + `then` |
+| Filters | `check` | The `type` attribute (`pre-filter`/`post-filter`) controls pipeline position |
 
 ### Operations
 Operations are the fundamental units within the operation graph. Each operation can succeed or fail, forming the basis for defining the graph by combining operations based on their execution results.
@@ -1187,24 +1226,20 @@ When building an asset, the process can fail if there is any operation that cont
 These errors will be notified when trying to upload the asset to the catalog.
 
 ### Execution Graph Summary
-With a basic understanding of a policy and its components, we can look at the global picture of how the operation graph is defined.
-Within the policy, we have subgraphs, each corresponding to an asset type:
-- Decoders
-- Rules
-- Outputs
 
-<workflow_placeholder>
+A policy is composed of subgraphs, one per asset type. The current asset types that form the pipeline are:
 
-Every event traverses each subgraph independently, forming a chain of subgraphs.
+- **Decoders**
+- **Outputs**
 
-Each graph is composed of assets defined by parent relationships. An event moves down in the graph based on the asset's logical output. If an asset operation succeeds, the event is sent to its child assets.
+Every event traverses each subgraph in order. Each subgraph is built from assets connected by parent relationships, forming a tree.
 
-The traversal of each subgraph follows these rules:
-- **Decoders**: If the current decoder asset succeeds, the event is sent to its first child. If it fails, the event is sent to the next sibling of the parent decoder (logical OR between children).
-- **Rules**: If the current rule asset succeeds, the event is broadcast to all its child assets.
-- **Outputs**: Events are broadcast to all defined output assets.
+The traversal rules per subgraph are:
 
-An asset is considered successful if it accepts the event, meaning all conditional stages have succeeded, regardless of the outcome of transformational stages. This ensures that events are processed through the appropriate path based on successful acceptance checks.
+- **Decoders**: If the current decoder accepts the event (all its stages pass), the event is forwarded to its child decoders for further processing. If it fails, the engine tries the next sibling decoder under the same parent (children are evaluated as logical OR — only the first matching branch is followed).
+- **Outputs**: The event is broadcast to all active output assets simultaneously.
+
+An asset is considered to have **accepted** the event when all its conditional stages (`check`, `parse|<field>`) succeed. Transformational stages (`map` inside `normalize`) do not affect acceptance — a failure in a `map` operation does not cause the asset to reject the event.
 
 A stage succeeds if the logical combination of its operations succeeds. The exact combination logic is determined by the stage itself. This ensures that each stage can apply its own logic to decide whether it has successfully processed an event.
 
