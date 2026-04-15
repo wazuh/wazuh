@@ -2,7 +2,6 @@
 #define API_ADAPTER_HELPERS_HPP
 
 #include <functional>
-#include <initializer_list>
 #include <optional>
 #include <string_view>
 
@@ -35,7 +34,7 @@ ResOrErrorResp<T> tryGetProperty(bool exists, PropGetter<T> propGetter, std::str
 }
 
 inline base::RespOrError<json::Json>
-getJsonFieldFromBody(const std::string& body, std::initializer_list<const char*> fieldPaths, const char* missingMessage)
+getJsonFieldFromBody(const std::string& body, const char* fieldPath, const char* missingMessage)
 {
     json::Json reqJson;
     try
@@ -47,22 +46,13 @@ getJsonFieldFromBody(const std::string& body, std::initializer_list<const char*>
         return base::Error {fmt::format("Error parsing request body: {}", e.what())};
     }
 
-    for (const auto* fieldPath : fieldPaths)
+    auto field = reqJson.getJson(fieldPath);
+    if (!field.has_value())
     {
-        auto field = reqJson.getJson(fieldPath);
-        if (field.has_value())
-        {
-            return field.value();
-        }
+        return base::Error {missingMessage};
     }
 
-    return base::Error {missingMessage};
-}
-
-inline base::RespOrError<json::Json>
-getJsonFieldFromBody(const std::string& body, const char* fieldPath, const char* missingMessage)
-{
-    return getJsonFieldFromBody(body, {fieldPath}, missingMessage);
+    return field.value();
 }
 
 inline httplib::Response buildJsonContentResponse(const json::Json& content)

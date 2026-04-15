@@ -76,6 +76,21 @@ def send_recv(request, expected_response_type) -> Tuple[Optional[str], object, d
     return None, parsed, raw_output
 
 
+def send_recv_json(json_body: dict, request, expected_response_type) -> Tuple[Optional[str], object, dict]:
+    error, response = api_client.jsend(json_body, request, expected_response_type)
+    print(f"Request body: {json_body}")
+    print(f"Error: {error}")
+    print(f"Response: {response}")
+    assert error is None, f"{error}"
+
+    parsed = ParseDict(response, expected_response_type)
+    raw_output = {}
+    if isinstance(parsed, api_tester.RunPost_Response):
+        raw_output = response.get('result', {}).get('output', {})
+
+    return None, parsed, raw_output
+
+
 def _set_json_content(req, payload: str):
     req.jsonContent.CopyFrom(ParseDict(json.loads(payload), Struct()))
 
@@ -311,11 +326,12 @@ def step_impl(context):
         },
     }
 
-    req = api_crud.policyValidate_Request()
-    req.load_in_tester = True
-    req.space = LOGTEST_SPACE
-    req.full_policy.CopyFrom(ParseDict(full_policy, Struct()))
-    err, resp, _ = send_recv(req, api_engine.GenericStatus_Response())
+    body = {
+        "load_in_tester": True,
+        "space": LOGTEST_SPACE,
+        "full_policy": full_policy,
+    }
+    err, resp, _ = send_recv_json(body, api_crud.policyValidate_Request(), api_engine.GenericStatus_Response())
     assert err is None, f"{err}"
     assert resp.status == api_engine.OK, f"{resp}"
 
@@ -331,68 +347,48 @@ def step_impl(context):
 
 @when('I send a request to send the event "{message}" from "{session_name}" session with "{debug_level}" debug, agent.id "{agent_id}", agent.name "{agent_name}", agent.type "{agent_type}" and "{asset_trace}" asset trace')
 def step_send_event_with_extended_metadata(context, message: str, session_name: str, debug_level: str, agent_id: str, agent_name: str, agent_type: str, asset_trace: str):
-    debug_level_to_int = {
-        "NONE": 0,
-        "ASSET_ONLY": 1,
-        "ALL": 2
-    }
-
-    request = api_tester.RunPost_Request()
-    request.name = session_name
-    request.trace_level = debug_level_to_int[debug_level]
-
-    # Build agent_metadata struct with nested wazuh.agent object
-    agent_struct = Struct()
-    agent_struct["id"] = agent_id
-    agent_struct["name"] = agent_name
-    agent_struct["type"] = agent_type
-
-    wazuh_struct = Struct()
-    wazuh_struct["agent"] = agent_struct
-
-    agent_metadata = Struct()
-    agent_metadata["wazuh"] = wazuh_struct
-    request.agent_metadata.CopyFrom(agent_metadata)
-
     LOCATION = f"[{agent_id}] ({agent_name}) any->SomeModule"
     QUEUE = 1
-    request.event = f"{QUEUE}:{LOCATION}:{message}"
+    body = {
+        "name": session_name,
+        "trace_level": debug_level,
+        "event": f"{QUEUE}:{LOCATION}:{message}",
+        "agent_metadata": {
+            "wazuh": {
+                "agent": {
+                    "id": agent_id,
+                    "name": agent_name,
+                    "type": agent_type,
+                }
+            }
+        },
+    }
     if not asset_trace == "ALL":
-        request.asset_trace.extend([asset_trace])
-    error, context.result, context.raw_output = send_recv(request, api_tester.RunPost_Response())
+        body["asset_trace"] = [asset_trace]
+    error, context.result, context.raw_output = send_recv_json(body, api_tester.RunPost_Request(), api_tester.RunPost_Response())
     assert error is None, f"{error}"
 
 
 @when('I send a request to send the event "{message}" from "{session_name}" session with "{debug_level}" debug, agent.id "{agent_id}", agent.name "{agent_name}" and "{asset_trace}" asset trace')
 def step_send_event_with_basic_metadata(context, message: str, session_name: str, debug_level: str, agent_id: str, agent_name: str, asset_trace: str):
-    debug_level_to_int = {
-        "NONE": 0,
-        "ASSET_ONLY": 1,
-        "ALL": 2
-    }
-
-    request = api_tester.RunPost_Request()
-    request.name = session_name
-    request.trace_level = debug_level_to_int[debug_level]
-
-    # Build agent_metadata struct with nested wazuh.agent object
-    agent_struct = Struct()
-    agent_struct["id"] = agent_id
-    agent_struct["name"] = agent_name
-
-    wazuh_struct = Struct()
-    wazuh_struct["agent"] = agent_struct
-
-    agent_metadata = Struct()
-    agent_metadata["wazuh"] = wazuh_struct
-    request.agent_metadata.CopyFrom(agent_metadata)
-
     LOCATION = f"[{agent_id}] ({agent_name}) any->SomeModule"
     QUEUE = 1
-    request.event = f"{QUEUE}:{LOCATION}:{message}"
+    body = {
+        "name": session_name,
+        "trace_level": debug_level,
+        "event": f"{QUEUE}:{LOCATION}:{message}",
+        "agent_metadata": {
+            "wazuh": {
+                "agent": {
+                    "id": agent_id,
+                    "name": agent_name,
+                }
+            }
+        },
+    }
     if not asset_trace == "ALL":
-        request.asset_trace.extend([asset_trace])
-    error, context.result, context.raw_output = send_recv(request, api_tester.RunPost_Response())
+        body["asset_trace"] = [asset_trace]
+    error, context.result, context.raw_output = send_recv_json(body, api_tester.RunPost_Request(), api_tester.RunPost_Response())
     assert error is None, f"{error}"
 
 

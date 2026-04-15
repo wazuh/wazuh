@@ -473,7 +473,7 @@ def step_impl(context, space, name):
     context.res_error_msg, context.res_response = request_resource_upsert(space, "", payload)
 
 
-@when('I send a request to create a "decoder" resource with empty YAML in namespace "{space}"')
+@when('I send a request to create a "decoder" resource with empty JSON in namespace "{space}"')
 def step_impl(context, space):
     context.res_error_msg, context.res_response = request_resource_upsert(space, "decoder", "")
 
@@ -518,7 +518,7 @@ def step_impl(context, bad_name, space):
     context.res_error_msg, context.res_response = request_resource_upsert(space, "decoder", payload)
 
 
-@when('I send a request to update that decoder resource with modified YAML in namespace "{space}"')
+@when('I send a request to update that decoder resource with modified JSON in namespace "{space}"')
 def step_impl(context, space):
     uuid = getattr(context, "resource_uuid", None)
     assert uuid is not None, "No resource UUID stored in context"
@@ -628,30 +628,30 @@ def step_impl(context, space):
 # WHEN steps (policy)
 # ============================================================
 
-@when('I send a request to upsert a policy in an empty space with valid policy YAML')
+@when('I send a request to upsert a policy in an empty space with valid policy JSON')
 def step_impl(context):
     payload = build_valid_policy_json()
     context.pol_error_msg, context.pol_response = request_policy_upsert("", payload)
 
 
-@when('I send a request to upsert a policy in namespace "{space}" with empty policy YAML')
+@when('I send a request to upsert a policy in namespace "{space}" with empty policy JSON')
 def step_impl(context, space):
     context.pol_error_msg, context.pol_response = request_policy_upsert(space, "")
 
 
-@when('I send a request to upsert a policy in namespace "{space}" with valid policy YAML')
+@when('I send a request to upsert a policy in namespace "{space}" with valid policy JSON')
 def step_impl(context, space):
     payload = build_valid_policy_json()
     context.pol_error_msg, context.pol_response = request_policy_upsert(space, payload)
 
 
-@when('I send a request to upsert a policy in namespace "{space}" with YAML missing the integrations array')
+@when('I send a request to upsert a policy in namespace "{space}" with JSON missing the integrations array')
 def step_impl(context, space):
     payload = build_policy_json_missing_integrations()
     context.pol_error_msg, context.pol_response = request_policy_upsert(space, payload)
 
 
-@when('I send a request to upsert a policy in namespace "{space}" with YAML having an invalid root decoder')
+@when('I send a request to upsert a policy in namespace "{space}" with JSON having an invalid root decoder')
 def step_impl(context, space):
     payload = build_policy_json_with_unexists_root_decoder()
     context.pol_error_msg, context.pol_response = request_policy_upsert(space, payload)
@@ -661,7 +661,7 @@ def step_impl(context, space):
 def step_impl(context, space):
     """
     Success path: uses the prepared decoders + integration for this namespace
-    and builds a full, valid policy YAML.
+    and builds a full, valid policy JSON.
     """
     payload = build_full_valid_policy_json(
         default_parent=POLICY_DECODER_UUID,

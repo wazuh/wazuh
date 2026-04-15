@@ -229,7 +229,7 @@ public:
      * @param content JSON content of the resource
      * @return std::string UUID of the created resource
      * @throw std::runtime_error if a resource with the same name and type already exists or any error occurs
-     * @warning This method not validate the content of the YML has the correct schema for the resource type
+     * @warning This method does not validate that the JSON content matches the schema for the resource type
      */
     virtual std::string createResource(const std::string& name, ResourceType type, const json::Json& content) = 0;
 
@@ -240,7 +240,7 @@ public:
      * @param type Type of the resource to update
      * @param content New JSON content of the resource
      * @throw std::runtime_error if the resource does not exist or any error occurs
-     * @warning This method not validate the content of the YML has the correct schema for the resource type
+     * @warning This method does not validate that the JSON content matches the schema for the resource type
      */
     virtual void updateResourceByName(const std::string& name, ResourceType type, const json::Json& content) = 0;
 
@@ -250,7 +250,7 @@ public:
      * @param uuid UUID of the resource to update
      * @param content New JSON content of the resource
      * @throw std::runtime_error if the resource does not exist or any error occurs
-     * @warning This method not validate the content of the YML has the correct schema for the resource type
+     * @warning This method does not validate that the JSON content matches the schema for the resource type
      */
     virtual void updateResourceByUUID(const std::string& uuid, const json::Json& content) = 0;
 

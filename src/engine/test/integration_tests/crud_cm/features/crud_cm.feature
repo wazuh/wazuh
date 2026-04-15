@@ -24,7 +24,7 @@ Feature: Resource management via cmcrud resource handlers
     Given I have created a "decoder" resource named "decoder/my_decoder/0" in namespace "analytics"
     And I have fetched the decoder resources in namespace "analytics"
     And I have stored the UUID of the resource named "decoder/my_decoder/0"
-    When I send a request to update that decoder resource with modified YAML in namespace "analytics"
+    When I send a request to update that decoder resource with modified JSON in namespace "analytics"
     Then the resource request should succeed
     Then the updated decoder resource in namespace "analytics" should include "test.updated: true"
 
@@ -52,8 +52,8 @@ Feature: Resource management via cmcrud resource handlers
     Then the resource request should fail
     And the resource error message should be "Field /type is required"
 
-  Scenario: Fail to create a resource with an empty YAML content
-    When I send a request to create a "decoder" resource with empty YAML in namespace "analytics"
+  Scenario: Fail to create a resource with an empty JSON content
+    When I send a request to create a "decoder" resource with empty JSON in namespace "analytics"
     Then the resource request should fail
     And the resource error message should be "Field /jsonContent cannot be empty"
 
@@ -119,28 +119,28 @@ Feature: Resource management via cmcrud resource handlers
   # ===================================================================
 
   Scenario: Fail to upsert a policy with an empty space field
-    When I send a request to upsert a policy in an empty space with valid policy YAML
+    When I send a request to upsert a policy in an empty space with valid policy JSON
     Then the policy request should fail
     And the policy error message should be "Field /space cannot be empty"
 
-  Scenario: Fail to upsert a policy with an empty YAML content
-    When I send a request to upsert a policy in namespace "analytics" with empty policy YAML
+  Scenario: Fail to upsert a policy with an empty JSON content
+    When I send a request to upsert a policy in namespace "analytics" with empty policy JSON
     Then the policy request should fail
     And the policy error message should be "Field /jsonContent cannot be empty"
 
   Scenario: Fail to upsert a policy in a namespace that does not exist
     Given there is no namespace called "ghost"
-    When I send a request to upsert a policy in namespace "ghost" with valid policy YAML
+    When I send a request to upsert a policy in namespace "ghost" with valid policy JSON
     Then the policy request should fail
     And the policy error message should start with "Failed to upsert policy in namespace 'ghost':"
 
   Scenario: Fail to upsert a policy missing the integrations array
-    When I send a request to upsert a policy in namespace "analytics" with YAML missing the integrations array
+    When I send a request to upsert a policy in namespace "analytics" with JSON missing the integrations array
     Then the policy request should fail
     And the policy error message should be "Failed to upsert policy in namespace 'analytics': Policy JSON must have an 'integrations' array"
 
   Scenario: Fail to upsert a policy with an invalid root decoder id
-    When I send a request to upsert a policy in namespace "analytics" with YAML having an invalid root decoder
+    When I send a request to upsert a policy in namespace "analytics" with JSON having an invalid root decoder
     Then the policy request should fail
     And the policy error message should be "Failed to upsert policy in namespace 'analytics': Resource with UUID '00000000-0000-0000-0000-000000000001' does not exist"
 

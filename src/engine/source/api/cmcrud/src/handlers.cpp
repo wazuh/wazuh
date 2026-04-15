@@ -335,8 +335,7 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
 
         const bool loadInTester = protoReq.load_in_tester();
 
-        auto fullPolicyOrErr =
-            adapter::helpers::getJsonFieldFromBody(req.body, {"/full_policy", "/fullPolicy"}, "Missing full policy");
+        auto fullPolicyOrErr = adapter::helpers::getJsonFieldFromBody(req.body, "/full_policy", "Missing full policy");
         if (base::isError(fullPolicyOrErr))
         {
             res = adapter::userErrorResponse<ResponseType>(base::getError(fullPolicyOrErr).message);

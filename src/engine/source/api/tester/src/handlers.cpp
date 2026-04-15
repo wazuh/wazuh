@@ -682,8 +682,7 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
         // Use provided agent_metadata if available, otherwise use empty struct
         if (protoReq.has_agent_metadata())
         {
-            auto jsonOrErr = getJsonFieldFromBody(
-                req.body, {"/agent_metadata", "/agentMetadata"}, "Field /agent_metadata cannot be empty");
+            auto jsonOrErr = getJsonFieldFromBody(req.body, "/agent_metadata", "Field /agent_metadata cannot be empty");
             if (base::isError(jsonOrErr))
             {
                 res = adapter::userErrorResponse<ResponseType>(base::getError(jsonOrErr).message);
@@ -795,16 +794,14 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
         std::string eventStr {};
         if (protoReq.has_metadata())
         {
-            // Convert protobuf Struct to json::Json
-            auto metadataOrError = eMessage::eStructToJson(protoReq.metadata());
-            if (std::holds_alternative<base::Error>(metadataOrError))
+            auto metadataOrError = getJsonFieldFromBody(req.body, "/metadata", "Field /metadata cannot be empty");
+            if (base::isError(metadataOrError))
             {
-                res = adapter::userErrorResponse<ResponseType>(fmt::format(
-                    "Error converting metadata to JSON: {}", std::get<base::Error>(metadataOrError).message));
+                res = adapter::userErrorResponse<ResponseType>(base::getError(metadataOrError).message);
                 return;
             }
 
-            const auto& metadata = std::get<json::Json>(metadataOrError);
+            metadata = std::move(base::getResponse(metadataOrError));
             if (!metadata.isObject())
             {
                 res = adapter::userErrorResponse<ResponseType>("Metadata must be a JSON object");
