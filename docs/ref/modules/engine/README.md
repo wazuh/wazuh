@@ -80,12 +80,11 @@ Each event travels through the following ordered stages inside a policy:
    downstream components.
 
 
-### Event
-The purpose of the Engine is to convert unstructured or semi-structured logs into normalized and enriched events.
-The agent transmits the logs to `wazuh-manager-remoted` in plain text; `remoted` adds information about the agent, 
-including additional metadata such as operating system information, the log source, and other relevant details.
-The Engine processes these logs and generates a structured JSON event, incorporating all relevant information in 
-accordance with the defined wazuh [schema](#).
+### Event format
+
+The following examples illustrate how the Engine transforms a raw log into a fully structured and enriched event.
+The raw log is collected by the agent and forwarded to `wazuh-manager-remoted` with added agent and cluster metadata.
+The Engine then decodes, normalizes, and enriches it into the final schema-conformant JSON document.
 
 Event collected on agent:
 
@@ -910,7 +909,6 @@ The Engine ensures that all operations—parsing, normalization, and enrichment�
 
 - Consistency: Standardized field names prevent discrepancies when integrating data from different sources.
 - Interoperability: Facilitates integration with various tools and analytics platforms.
-- Rule Creation: Enables users to write rules based on a predictable data structure.
 - Efficient Querying: Optimizes indexing and search performance.
 - Data Enrichment: Enables meaningful correlations by aligning logs with predefined categories (e.g., network, process, user activity).
 
@@ -1495,45 +1493,13 @@ Key characteristics:
 overwritten during event processing.
 
 ### Log Parsing
+
 Log parsing transforms raw log entries into structured data using parser expressions. These expressions serve as an
-alternative to regex, eliminating the need for explicit type declarations by leveraging predefined schema-based parsing.
-Instead of regular expressions, they use specialized parsers for improved accuracy and efficiency.
+alternative to regex: field types are predefined in the schema, so no explicit type declarations are needed.
 
-Key Components:
-- Literals: Direct character matches with escape rules for special characters.
-- Fields: Extract structured data, including:
-  - Schema fields (predefined in the schema)
-  - Custom fields (user-defined, defaulting to text)
-  - Optional fields (ignored if missing)
-  - Field choices (choosing between multiple fields)
-- Wildcards: Capture patterns without mapping data to fields.
-- Optional Groups: Make subexpressions optional for flexible parsing.
-- Schema Parsers: Automatically applied when a field of a known type is used, ensuring compatibility with Wazuh Indexer.
-
-Example:
-This expression captures an IP or hostname into `client.ip` or `client.address` and, if present, captures a port into `server.port`:
-
-```yaml
-parse|event.original:
-  - "<client.ip>?<client.address> connected to <server.ip>(?:<server.port>)"
-```
-
-For a log entry:
-```
-192.168.1.10 connected to 10.0.0.5:443
-```
-
-It extracts:
-```json
-{
-  "client.ip": "192.168.1.10",
-  "server.ip": "10.0.0.5",
-  "server.port": "443"
-}
-```
-
-Parsers are also available as helper functions for use in map and check operations. For a detailed explanation, see
-the Parser Stage and Parser Helper Functions sections.
+For the complete syntax reference — literals, schema fields, custom fields, optional fields, field choices, wildcards,
+and optional groups — see the [Parse stage](#parse) in the Stage reference section, and the full
+[Parsers](ref-parser.md) reference.
 
 ### Key Value Databases (KVDBs)
 
@@ -1629,21 +1595,6 @@ The KVDB helper reference includes functions for direct lookups, array lookups, 
 
 Use this section as the conceptual overview of the asset itself, and refer to the helper reference for function-specific behavior and examples.
 
-### Dates and Timestamps
-Assets are capable of handling dates in various formats and time zones. This flexibility is achieved through configurable
-parsers (refer to the [date parser documentation](ref-parser.html#date-parser) for more details).
-
-Once a date is parsed, the Engine normalizes it to UTC. This ensures that all timestamps are stored and processed
-homogeneously, maintaining consistency across event processing and dashboard visualization.
-
-### Geolocation
-Assets are capable of enriching events with geolocation information, enhancing event data with location-based context.
-This is achieved by using [Maxmind - GeoLite databases](https://www.maxmind.com/), which provide location data based on
-IP addresses. For more details, see the [geo location](ref-helper-functions.md#geoip) helper documentation.
-
-The GeoLite databases are configured through the API, allowing you to specify the relevant databases to be used for
-geolocation enrichment. For more information on how to configure these databases, refer to the API documentation.
-
 ### Decoders
 
 Decoders are the assets responsible for normalizing raw events into structured documents that conform to the [Wazuh Common Schema](#). All events enter the decoder tree through the root decoder and traverse a branch of child decoders, each contributing progressively more specialized field extraction and normalization.
@@ -1701,6 +1652,22 @@ kanban
 - **Normalize**: An ordered array of normalization blocks, each containing optional `check`, `parse|<field>`, and
   `map` sub-stages. A failed block inside `normalize` does not cause the decoder to fail — it is skipped and the
   next block is evaluated. See the [Normalize/Enrichment stage](#normalizeenrichment) for details.
+
+#### Date and timestamp handling
+
+Decoders can parse date and timestamp fields in a wide range of formats and time zones. Field parsers for `date`-type
+schema fields (e.g., `@timestamp`, `event.start`) are applied automatically when those fields appear in a
+`parse|<field>` expression. Once parsed, the Engine normalizes all timestamps to UTC, ensuring consistency across
+event processing and indexing. For the full list of supported formats and parameters, see the
+[date parser documentation](ref-parser.html#date-parser).
+
+#### Geolocation
+
+Decoders can enrich events with geographic location and ASN data using the
+[MaxMind GeoLite databases](https://www.maxmind.com/). The `geoip` helper function is used inside a `map` stage to
+look up an IP address field and write location context into the event. For usage and parameters, see the
+[geoip helper documentation](ref-helper-functions.md#geoip). The databases themselves are registered through the
+Engine API.
 
 #### Example Decoder
 
@@ -1953,7 +1920,7 @@ check: $host.os.platform == 'ubuntu'
 > [!NOTE]
 > When filter assets are used in the orchestrator, they don't have parents; they are a check stage that is evaluated before or after decoders depending on the `type` field.
 
-## Stages
+## Stage reference
 
 ### Check/Allow
 The check stage is a preliminary stage in the asset processing sequence, designed to assess whether an event meets specific conditions without modifying the event itself. Filters events based on predefined criteria, ensuring that only relevant events trigger the subsequent stages like parse or normalize.
@@ -1985,7 +1952,7 @@ All conditions must be met for the event to pass through the check stage. If any
 > `event.id: 1234` is not the same as `event.id: "1234"` because the first one is a number and the second one is a string.
 
 #### Conditional expression
-For scenarios requiring complex conditions, especially in rules, a conditional expression allows for more nuanced logic. This string uses a subset of first-order logic language, including logical connectives and support for grouping through parentheses.
+For scenarios requiring complex conditions, a conditional expression allows for more nuanced logic. This string uses a subset of first-order logic language, including logical connectives and support for grouping through parentheses.
 
 Logical Connectives:
 - Negation (`NOT`)
@@ -2123,7 +2090,7 @@ Example:
 - map:
     - event.kind: event
     - event.dataset: apache.access
-    - event.category: +array_append/web
+    - event.category: array_append('web')
     - event.module: apache
     - service.type: apache
     - event.outcome: success
