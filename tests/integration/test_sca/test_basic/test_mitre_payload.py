@@ -70,15 +70,20 @@ configurations = configuration.load_configuration_template(configurations_path, 
 daemons_handler_configuration = {'all_daemons': True}
 
 def _callback_mitre_event(line):
-    """Return the parsed event JSON when a stateful event containing a MITRE object is found."""
-    match = re.match(patterns.SCA_STATEFUL_EVENT_QUEUED, line)
-    if match:
+    """Return the parsed event JSON when an SCA event containing a MITRE object is found."""
+    for pattern in (patterns.SCA_STATEFUL_EVENT_QUEUED, patterns.SCA_SENDING_EVENT):
+        match = re.match(pattern, line)
+        if not match:
+            continue
+
         try:
             event = json.loads(match.group(1))
-            if event.get('check', {}).get('mitre'):
+            check = event.get('data', {}).get('check', {}) or event.get('check', {})
+            if check.get('mitre'):
                 return (match.group(1),)
         except (json.JSONDecodeError, KeyError):
-            pass
+            continue
+
     return None
 
 # Tests
@@ -154,7 +159,8 @@ def test_sca_mitre_payload(test_configuration, test_metadata, prepare_cis_polici
     assert log_monitor.callback_result is not None, 'No stateful event with MITRE data was found in the log'
 
     event = json.loads(log_monitor.callback_result[0])
-    mitre = event['check']['mitre']
+    check = event.get('data', {}).get('check', {}) or event.get('check', {})
+    mitre = check['mitre']
 
     assert set(mitre.get('tactic', [])) == set(test_metadata['mitre_tactics']), \
         f"Expected MITRE tactics {test_metadata['mitre_tactics']}, got {mitre.get('tactic')}"

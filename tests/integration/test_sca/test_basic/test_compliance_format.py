@@ -35,16 +35,18 @@ references:
 tags:
     - sca
 '''
-import pytest
-import re
 import json
+import re
 import sys
+import time
+
+import pytest
 from pathlib import Path
 
 from wazuh_testing.constants.paths import WAZUH_PATH
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
-from wazuh_testing.utils import callbacks, configuration
+from wazuh_testing.utils import callbacks, configuration, services
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.modulesd.sca import patterns
@@ -75,9 +77,20 @@ SCA_DB_DIR = Path(WAZUH_PATH, 'queue', 'sca', 'db')
 @pytest.fixture()
 def clean_sca_db():
     '''Remove SCA database files to prevent stale data between tests.'''
+    if sys.platform == WINDOWS:
+        services.control_service('stop')
+        time.sleep(2)
+
     if SCA_DB_DIR.exists():
         for f in SCA_DB_DIR.iterdir():
-            f.unlink(missing_ok=True)
+            for attempt in range(5):
+                try:
+                    f.unlink(missing_ok=True)
+                    break
+                except PermissionError:
+                    if attempt == 4:
+                        raise
+                    time.sleep(2)
     yield
 
 
