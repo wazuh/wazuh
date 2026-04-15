@@ -377,7 +377,7 @@ async def update_user(user_id: str, pretty: bool = False, wait_for_complete: boo
     f_kwargs = await UpdateUserModel.get_kwargs(request,
                                                 additional_kwargs=
                                                 {'user_id': user_id,
-                                                  'current_user': request.get("user")})
+                                                  'current_user': request.context['token_info']['sub']})
 
     dapi = DistributedAPI(f=security.update_user,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
