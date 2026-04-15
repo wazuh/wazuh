@@ -170,7 +170,7 @@ jobs:
           set +e
           sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" \
             python -m pytest ${{ inputs.pytest_extra_args }} ${{ inputs.pytest_tier_args }} ${{ inputs.pytest_target }} \
-            --html=results.html --self-contained-html
+            --html=results.html --self-contained-html -vv
           EXIT_CODE=$?
           set -e
           if [ $EXIT_CODE -eq 5 ]; then
