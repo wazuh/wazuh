@@ -900,9 +900,19 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
         }
 
         ResponseType eResponse {};
+
+        // Temporary fields (_...) are cleaned before building the response and validation.
+        {
+            const auto& outputEvent = base::getResponse(response).event();
+            if (outputEvent)
+            {
+                outputEvent->eraseRootKeysByPrefix("_");
+            }
+        }
+
         auto eResult = fromOutput(base::getResponse(response));
 
-        // Validate the final output event against WCS schema (informational, non-blocking)
+        // Validate the final output event against WCS schema (informational, non-blocking).
         if (auto schemaValidatorLocked = wSchemaValidator.lock())
         {
             const auto& outputEvent = base::getResponse(response).event();

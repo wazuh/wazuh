@@ -274,10 +274,11 @@ paths:
           (e.g. `"event.severity"`, `"tags[1]"`, `"hits[0].id"`).
         - `kind` — one of:
           - `unknown_field` — field is not defined in WCS and is not a temporary field.
-          - `temporary_field_not_allowed` — field is a pipeline-internal field (root starts with `_`).
           - `invalid_type` — value does not match the WCS type for that field.
         - `expected` / `actual` — present only for `invalid_type` errors; both are type strings
           (e.g. `"keyword"`, `"object"`, `"number"`).
+
+        Pipeline-internal temporary fields (root key starts with `_`) are cleaned before validation.
 
         Any WCS field can hold either a single value or an array of values of the same type.
         Arrays are always unrolled: each element is validated individually using the field's
@@ -473,8 +474,6 @@ paths:
                       validation:
                         valid: false
                         errors:
-                          - path: "_tmp"
-                            kind: "temporary_field_not_allowed"
                           - path: "event.severity"
                             kind: "invalid_type"
                             expected: "keyword"
