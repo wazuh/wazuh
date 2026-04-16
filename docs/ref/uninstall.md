@@ -100,7 +100,8 @@ msiexec.exe /x wazuh-agent-*.msi /qn
 Additionally, the Wazuh agent can also be uninstalled without the installer file with the following command:
 
 ``` powershell
-Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* ,                              HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* |
+Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* ,
+HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* |
 Where-Object { $_.DisplayName -like "*Wazuh Agent*" } |
 ForEach-Object { msiexec.exe /x $_.PSChildName /qn }
 ```
