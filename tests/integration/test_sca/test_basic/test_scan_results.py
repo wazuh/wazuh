@@ -38,6 +38,7 @@ import sys
 import pytest
 import re
 import json
+import time
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
@@ -64,6 +65,22 @@ configurations = configuration.load_configuration_template(configurations_path, 
 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
+
+
+def _find_scan_results_for_policy(log_content: str, policy: str) -> list[tuple[str, str, str]]:
+    return [result for result in re.findall(patterns.SCA_SCAN_RESULT, log_content) if result[1] == policy]
+
+
+def _wait_scan_results_in_log(policy: str, timeout: int, min_results: int = 1) -> list[tuple[str, str, str]] | None:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        with open(WAZUH_LOG_PATH, encoding='utf-8', errors='ignore') as log_file:
+            scan_results = _find_scan_results_for_policy(log_file.read(), policy)
+        if len(scan_results) >= min_results:
+            return scan_results
+        time.sleep(2)
+
+    return None
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(configurations, configuration_metadata), ids=case_ids)
@@ -154,14 +171,16 @@ def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policie
         log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=scan_timeout)
         assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
-    # Get the results for the checks obtained in the SCA scan
-    # On Windows, just verify at least 1 result appears; on Linux verify exact count from metadata.
-    expected_accumulations = 1 if sys.platform == WINDOWS else int(test_metadata['results'])
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=scan_timeout,
-                      accumulations=expected_accumulations)
-    scan_results = log_monitor.callback_result
-    if isinstance(scan_results, tuple):
-        scan_results = [scan_results]
+    # Get the results for the checks obtained in the SCA scan.
+    if sys.platform == WINDOWS:
+        scan_results = _wait_scan_results_in_log(expected_policy, scan_timeout, min_results=1)
+    else:
+        log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=scan_timeout,
+                          accumulations=int(test_metadata['results']))
+        scan_results = log_monitor.callback_result
+        if isinstance(scan_results, tuple):
+            scan_results = [scan_results]
+
     assert scan_results is not None and all(result[1] == expected_policy for result in scan_results)
 
     if sys.platform != WINDOWS:
