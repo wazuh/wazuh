@@ -71,6 +71,9 @@ daemons_handler_configuration = {'all_daemons': True}
 
 # Helper to find the result for a given id in the accumulated results
 def find_result_for_a_given_id(id: int, results: list[tuple[str, str, str]]) -> tuple[str, str, str] | None:
+    # When only one event was captured the monitor returns a bare tuple instead of a list of tuples.
+    if isinstance(results, tuple):
+        results = [results]
     for result in results:
         if result[0] == str(id):
             return result
