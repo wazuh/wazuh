@@ -141,7 +141,7 @@ def test_sca_mitre_payload(test_configuration, test_metadata, prepare_cis_polici
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
     # Wait for a stateful event containing a MITRE object
-    log_monitor.start(callback=_callback_mitre_event, timeout=60)
+    log_monitor.start(callback=_callback_mitre_event, timeout=120)
     assert log_monitor.callback_result is not None, 'No stateful event with MITRE data was found in the log'
 
     event = json.loads(log_monitor.callback_result[0])

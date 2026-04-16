@@ -864,7 +864,8 @@ TEST_F(SCAEventHandlerTest, ReportPoliciesDelta_ValidInput)
                         {
                             "old", {
                                 {"id", "check3"},
-                                {"name", "Check 3 old name"}
+                                {"name", "Check 3 old name"},
+                                {"result", "failed"}
                             }
                         }
                     }
