@@ -59,9 +59,10 @@ class AgentInfoImpl
         void stop();
 
         /// @brief Override the flush poll delay (milliseconds). Only used in unit tests to avoid real sleeps.
+        /// Negative values are clamped to 0.
         void setFlushPollDelayMs(int delayMs)
         {
-            m_flushPollDelayMs = delayMs;
+            m_flushPollDelayMs = delayMs < 0 ? 0 : delayMs;
         }
 
         /// @brief Initialize the synchronization protocol with only in-memory synchronization

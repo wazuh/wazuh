@@ -949,12 +949,10 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 
             minfo("FIM synchronization requested by agent-info finished.");
 
-            // If there's a flush request active, mark it as completed
-            if (flush_request_detected) {
-                int result = sync_result ? 0 : -1;
-                atomic_int_set(&fim_flush_result, result);
-                atomic_int_set(&fim_flush_in_progress, 0);
-            }
+            // Mark the flush as completed (flush_request_detected is always true here).
+            int result = sync_result ? 0 : -1;
+            atomic_int_set(&fim_flush_result, result);
+            atomic_int_set(&fim_flush_in_progress, 0);
 
             if (sync_result && !first_sync_completed) {
                 fim_db_update_last_sync_time_value(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY, (int64_t)time(NULL));
@@ -1011,7 +1009,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             }
 
             // If a flush was triggered while paused but processed here (after resume),
-            // clear the flush state so pollFimFlushCompletion() can return "completed".
+            // clear the flush state so pollFlushCompletion() can return "completed".
             if (flush_request_detected) {
                 int result = sync_result ? 0 : -1;
                 atomic_int_set(&fim_flush_result, result);

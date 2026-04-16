@@ -1137,9 +1137,11 @@ void AgentInfoImpl::resumePausedModules(const std::set<std::string>& pausedModul
 
 bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
 {
-    // FIM now acknowledges pause immediately (fast-pause: no waiting for scan cycle to finish).
-    // A few retries handle transient IPC failures; the loop is kept for robustness.
-    constexpr int MAX_PAUSE_POLL_ATTEMPTS = 10; // 10 seconds max (should complete in 1-2 polls)
+    // fim_execute_is_pause_completed() uses trylock: it returns in-progress while
+    // fim_run_integrity holds fim_scan_mutex (across the full sync iteration). Retries
+    // are needed until the current sync cycle ends and the mutex becomes available.
+    // 30 attempts at 1 s covers sync cycles that take up to ~30 s under high load.
+    constexpr int MAX_PAUSE_POLL_ATTEMPTS = 30; // 30 seconds max
     constexpr int PAUSE_POLL_DELAY_MS = 1000;   // 1 second between polls
 
     m_logFunction(LOG_DEBUG_VERBOSE, "Polling " + moduleName + " for pause completion (async pause)");
@@ -1202,15 +1204,15 @@ bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
     }
 
     m_logFunction(LOG_ERROR,
-                  moduleName + " pause IPC did not respond within " + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) +
-                  " seconds (IPC communication failure)");
+                  moduleName + " pause did not complete within " + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) +
+                  " seconds (scan mutex may be held by a long sync cycle, or IPC communication failure)");
     return false;
 }
 
 bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
 {
-    const int FLUSH_POLL_DELAY_MS = m_flushPollDelayMs;
-    constexpr int LOG_PROGRESS_EVERY_N_ATTEMPTS = 6; // Log progress every 60 seconds (6 * 10s)
+    const int FLUSH_POLL_DELAY_MS = m_flushPollDelayMs > 0 ? m_flushPollDelayMs : 1;
+    constexpr int LOG_PROGRESS_EVERY_N_ATTEMPTS = 6; // Log progress every 6 poll intervals
     std::map<std::string, int> attempts;
     bool anyFailed = false;
 
@@ -1276,11 +1278,10 @@ bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
 
                         if (!flushSucceeded)
                         {
-                            // The sync protocol timed out on this module. Modules are already
-                            // resumed at this point; the data will be retried in the next
-                            // regular sync cycle. Log as a warning, not an error, and continue
-                            // monitoring the remaining modules rather than aborting early.
-                            m_logFunction(LOG_WARNING, moduleName + " flush timed out — data will be retried in the next sync cycle");
+                            // Flush did not complete successfully. Modules are already resumed;
+                            // data will be retried in the next regular sync cycle. Continue
+                            // monitoring remaining modules rather than aborting early.
+                            m_logFunction(LOG_INFO, moduleName + " flush did not complete — data will be retried in the next sync cycle");
                             anyFailed = true;
                         }
 
@@ -1569,13 +1570,14 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
         // Step 5: Wait for flush completion before handing the new version to the manager.
         // Modules are already resumed, so their scans are not blocked during this wait.
         // We must ensure the indexer has received all pending module events before the
-        // manager sees version N+1 — otherwise the manager would try to reconcile
+        // manager sees newVersion — otherwise the manager would try to reconcile
         // documents that have not yet arrived at the indexer.
         if (!pollFlushCompletion(pausedModules))
         {
             m_logFunction(LOG_INFO,
-                          "One or more module flushes did not complete; proceeding with version sync — "
-                          "data will be retried in the next sync cycle");
+                          "One or more module flushes did not complete; aborting version sync to avoid "
+                          "indexer inconsistency — coordination will be retried in the next cycle");
+            return false;
         }
 
         // Step 6: Build indices list based on enabled modules and synchronize.
