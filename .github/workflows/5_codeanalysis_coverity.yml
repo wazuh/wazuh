@@ -42,17 +42,20 @@ jobs:
 
       - name: Set up project and build variables
         id: vars
+        env:
+          INPUT_PROJECT: ${{ github.event.inputs.project }}
+          INPUT_THREADS: ${{ github.event.inputs.threads }}
         run: |
-          if [[ "${{ github.event.inputs.project }}" == "wazuh" ]]; then
+          if [[ "$INPUT_PROJECT" == "wazuh" ]]; then
             echo "PROJECT=wazuh/wazuh" >> $GITHUB_OUTPUT
           else
             echo "PROJECT=wazuh/ossec-wazuh" >> $GITHUB_OUTPUT
           fi
 
-          if [[ ${{ github.event.inputs.threads }} -le 0 ]]; then
+          if [[ $INPUT_THREADS -le 0 ]]; then
             echo "JOBS=$(nproc)" >> $GITHUB_OUTPUT
           else
-            echo "JOBS=${{ github.event.inputs.threads }}" >> $GITHUB_OUTPUT
+            echo "JOBS=$INPUT_THREADS" >> $GITHUB_OUTPUT
           fi
 
           VERSION=$(jq -r '.version + "-" + .stage' VERSION.json)
@@ -83,9 +86,11 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Print variables
+        env:
+          DOCKER_IMAGE_TAG: ${{ github.event.inputs.docker_image_tag }}
         run: |
           echo Description: ${{ needs.prepare.outputs.description }}
-          echo Docker Image Tag: ${{ github.event.inputs.docker_image_tag }}
+          echo Docker Image Tag: $DOCKER_IMAGE_TAG
 
       - name: Build Coverity artifact
         uses: ./.github/actions/coverity/build

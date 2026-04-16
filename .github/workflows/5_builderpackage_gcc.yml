@@ -69,7 +69,7 @@ jobs:
         with:
           name: gcc-deb-arm64
           path: /tmp/*.deb
-  
+
   build-rpm-arm64:
     runs-on: ubuntu-24.04-arm
     steps:
