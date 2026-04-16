@@ -9,6 +9,12 @@ max_delay=60
 timeout_seconds=""
 label=""
 
+print_command() {
+  printf '[retry] Command used:'
+  printf ' %q' "$@"
+  printf '\n'
+}
+
 usage() {
   cat <<'EOF'
 Usage: run_with_retry.sh [options] -- command [args...]
@@ -70,6 +76,8 @@ if [[ $# -eq 0 ]]; then
   echo "[retry] A command is required." >&2
   usage >&2
   exit 1
+else
+  print_command "$@"
 fi
 
 use_timeout=false
