@@ -170,7 +170,7 @@ RuleResult FileRuleEvaluator::CheckFileExistence()
     }
     else
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, "An error occured and file rule '" + m_ctx.rule + "' could not be resolved");
+        LoggingHelper::getInstance().log(LOG_DEBUG, "An error occurred and file rule '" + m_ctx.rule + "' could not be resolved");
         m_lastInvalidReason = "File system access error for '" + m_ctx.rule + "'";
         return RuleResult::Invalid; // File system access error
     }
@@ -535,7 +535,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryExistence()
     }
     else
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, "An error occured and file rule " + m_ctx.rule + " could not be resolved");
+        LoggingHelper::getInstance().log(LOG_DEBUG, "An error occurred and file rule " + m_ctx.rule + " could not be resolved");
         m_lastInvalidReason = "Directory access error for '" + m_ctx.rule + "'";
         return RuleResult::Invalid;
     }
