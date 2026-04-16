@@ -3,14 +3,14 @@ import argparse
 from importlib.metadata import metadata
 
 from shared.default_settings import Constants
-from engine_archiver.cmds.activate import configure as configure_activate
-from engine_archiver.cmds.deactivate import configure as configure_deactivate
-from engine_archiver.cmds.status import configure as configure_status
+from engine_event_dumper.cmds.activate import configure as configure_activate
+from engine_event_dumper.cmds.deactivate import configure as configure_deactivate
+from engine_event_dumper.cmds.status import configure as configure_status
 
 
 def parse_args():
     meta = metadata('engine-suite')
-    parser = argparse.ArgumentParser(prog='engine-archiver')
+    parser = argparse.ArgumentParser(prog='engine-event-dumper')
     parser.add_argument('--version', action='version',
                         version=f'%(prog)s {meta.get("Version")}')
 

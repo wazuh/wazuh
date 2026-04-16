@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# Script to enable, disable, or check the status of the Wazuh archiver via the local analysisd socket.
+# Script to enable, disable, or check the status of the Wazuh event-dumper via the local analysisd socket.
 #
 # Usage:
-#   ./toggle_archive.sh {enable|disable|status}
+#   ./toggle_event_dumper.sh {enable|disable|status}
 #
 # Requirements:
 #   - Must be run with sufficient permissions to access $ANALYSISD_SOCKET (usually as root or wazuh user).
 #   - Requires 'curl' installed with support for --unix-socket.
 #
 # Example:
-#   sudo ./toggle_archive.sh enable
+#   sudo ./toggle_event_dumper.sh enable
 
 ANALYSISD_SOCKET="/var/wazuh-manager/queue/sockets/analysis"
-ENDPOINT_ACTIVATE="http://localhost/archiver/activate"
-ENDPOINT_STATUS="http://localhost/archiver/status"
-ENDPOINT_DISABLE="http://localhost/archiver/deactivate"
+ENDPOINT_ACTIVATE="http://localhost/event-dumper/activate"
+ENDPOINT_STATUS="http://localhost/event-dumper/status"
+ENDPOINT_DISABLE="http://localhost/event-dumper/deactivate"
 
 
 if [ "$#" -ne 1 ]; then
@@ -25,15 +25,15 @@ fi
 
 case $1 in
     enable)
-        echo "Enabling archiver..."
+        echo "Enabling event-dumper..."
         curl --unix-socket "$ANALYSISD_SOCKET" -X POST -H "Content-Type: application/json" -d '{}' "$ENDPOINT_ACTIVATE"
         ;;
     disable)
-        echo "Disabling archiver..."
+        echo "Disabling event-dumper..."
         curl --unix-socket "$ANALYSISD_SOCKET" -X POST -H "Content-Type: application/json" -d '{}' "$ENDPOINT_DISABLE"
         ;;
     status)
-        echo "Getting archiver status..."
+        echo "Getting event-dumper status..."
         curl --unix-socket "$ANALYSISD_SOCKET" -X POST -H "Content-Type: application/json" -d '{}' "$ENDPOINT_STATUS"
         ;;
     *)
