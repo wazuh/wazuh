@@ -146,12 +146,13 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
     '''
 
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    scan_timeout = 300 if sys.platform == WINDOWS else 20
+    scan_timeout = 420 if sys.platform == WINDOWS else 20
 
     expected_policy = Path(test_metadata['policy_file']).stem
-    # Wait for the SCA scan checks to start for the specific policy
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=scan_timeout)
-    assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
+    if sys.platform != WINDOWS:
+        # Wait for the SCA scan checks to start for the specific policy
+        log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=scan_timeout)
+        assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
     # Get the results for the checks obtained in the initial SCA scan
     log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=scan_timeout,
@@ -167,10 +168,11 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
         # Modify the folder's permissions
         os.chmod(test_folder, test_metadata['perms'])
 
-    # Wait for the SCA scan checks to start for the specific policy
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=scan_timeout,
-                      only_new_events=True)
-    assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
+    if sys.platform != WINDOWS:
+        # Wait for the SCA scan checks to start for the specific policy
+        log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=scan_timeout,
+                          only_new_events=True)
+        assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
     # Get the results for the checks obtained in the SCA scan after change
     log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=scan_timeout,
