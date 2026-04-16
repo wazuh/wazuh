@@ -598,9 +598,8 @@ jobs:
               f.write(f"any_matched={any_matched}\n")
 
   run-integration-tests:
-    needs: [upload-macos-intel64-to-s3, upload-macos-arm64-to-s3, detect-changes]
+    needs: [upload-macos-arm64-to-s3, detect-changes]
     if: >
-      needs.upload-macos-intel64-to-s3.result == 'success' &&
       needs.upload-macos-arm64-to-s3.result == 'success' &&
       needs.detect-changes.result == 'success'
     strategy:
