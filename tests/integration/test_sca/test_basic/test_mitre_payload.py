@@ -40,6 +40,7 @@ tags:
 import json
 import re
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -122,6 +123,32 @@ def _callback_mitre_event(line):
 
     return None
 
+
+def _find_mitre_event_in_log(log_content):
+    for pattern in (patterns.SCA_STATEFUL_EVENT_QUEUED, patterns.SCA_SENDING_EVENT):
+        for match in re.finditer(pattern, log_content):
+            try:
+                event = json.loads(match.group(1))
+            except json.JSONDecodeError:
+                continue
+
+            if _extract_mitre_from_event(event):
+                return event
+
+    return None
+
+
+def _wait_for_mitre_event(timeout):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        with open(WAZUH_LOG_PATH, encoding='utf-8', errors='ignore') as log_file:
+            event = _find_mitre_event_in_log(log_file.read())
+        if event is not None:
+            return event
+        time.sleep(2)
+
+    return None
+
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(configurations, configuration_metadata), ids=case_ids)
 def test_sca_mitre_payload(test_configuration, test_metadata, prepare_cis_policies_file, truncate_monitored_files,
@@ -186,6 +213,7 @@ def test_sca_mitre_payload(test_configuration, test_metadata, prepare_cis_polici
     log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_ENABLED), timeout=scan_timeout)
     assert log_monitor.callback_result
 
+<<<<<<< HEAD
     # Wait for a stateful event containing a MITRE object
 <<<<<<< HEAD
     log_monitor.start(callback=_callback_mitre_event, timeout=120)
@@ -193,8 +221,18 @@ def test_sca_mitre_payload(test_configuration, test_metadata, prepare_cis_polici
     log_monitor.start(callback=_callback_mitre_event, timeout=scan_timeout)
 >>>>>>> c5f837e171 (test(sca): wait for module startup before scan assertions)
     assert log_monitor.callback_result is not None, 'No stateful event with MITRE data was found in the log'
+=======
+    # On Windows, poll the log to avoid missing queued events during service startup.
+    if sys.platform == WINDOWS:
+        event = _wait_for_mitre_event(scan_timeout)
+        assert event is not None, 'No stateful event with MITRE data was found in the log'
+    else:
+        # Wait for a stateful event containing a MITRE object
+        log_monitor.start(callback=_callback_mitre_event, timeout=scan_timeout)
+        assert log_monitor.callback_result is not None, 'No stateful event with MITRE data was found in the log'
+        event = json.loads(log_monitor.callback_result[0])
+>>>>>>> dc79cec118 (test(sca): poll windows logs for mitre and remediation events)
 
-    event = json.loads(log_monitor.callback_result[0])
     mitre = _extract_mitre_from_event(event)
     assert mitre is not None, 'MITRE object was not found in the captured SCA event'
 

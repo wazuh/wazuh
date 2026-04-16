@@ -79,6 +79,27 @@ def find_result_for_a_given_id(id: int, results: list[tuple[str, str, str]]) -> 
             return result
     return None
 
+
+def find_result_for_a_given_id_in_log(id: int, policy: str, log_content: str) -> tuple[str, str, str] | None:
+    matches = re.findall(patterns.SCA_SCAN_RESULT, log_content)
+    for result in matches:
+        if result[0] == str(id) and result[1] == policy:
+            return result
+    return None
+
+
+def wait_for_result_in_log(id: int, policy: str, timeout: int, expected_result: str | None = None, offset: int = 0) -> tuple[str, str, str] | None:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        with open(WAZUH_LOG_PATH, encoding='utf-8', errors='ignore') as log_file:
+            log_file.seek(offset)
+            result = find_result_for_a_given_id_in_log(id, policy, log_file.read())
+        if result is not None and (expected_result is None or result[2] == expected_result):
+            return result
+        time.sleep(2)
+
+    return None
+
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(configurations, configuration_metadata), ids=case_ids)
 def test_validate_remediation_results(test_configuration, test_metadata, prepare_cis_policies_file, truncate_monitored_files,
@@ -154,12 +175,14 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
         log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=scan_timeout)
         assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
-    # Get the results for the checks obtained in the initial SCA scan
-    # On Windows, just verify at least 1 result; on Linux verify full set to catch mismatches early.
-    expected_accumulations = 1 if sys.platform == WINDOWS else 4
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=scan_timeout,
-                      accumulations=expected_accumulations)
-    initial_result = find_result_for_a_given_id(test_metadata['check_id'], log_monitor.callback_result) if log_monitor.callback_result is not None else None
+    # Get the results for the checks obtained in the initial SCA scan.
+    if sys.platform == WINDOWS:
+        initial_result = wait_for_result_in_log(test_metadata['check_id'], expected_policy, scan_timeout,
+                                                expected_result=test_metadata['initial_result'])
+    else:
+        log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=scan_timeout,
+                          accumulations=4)
+        initial_result = find_result_for_a_given_id(test_metadata['check_id'], log_monitor.callback_result) if log_monitor.callback_result is not None else None
     assert initial_result is not None and initial_result[2] == test_metadata['initial_result'], \
         f"Got unexpected SCA result: expected {test_metadata['initial_result']}, got {initial_result}"
 
@@ -176,10 +199,15 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
                           only_new_events=True)
         assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
-    # Get the results for the checks obtained in the SCA scan after change
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=scan_timeout,
-                      only_new_events=True, accumulations=expected_accumulations)
-    final_result = find_result_for_a_given_id(test_metadata['check_id'], log_monitor.callback_result) if log_monitor.callback_result is not None else None
+    # Get the results for the checks obtained in the SCA scan after change.
+    if sys.platform == WINDOWS:
+        log_offset = Path(WAZUH_LOG_PATH).stat().st_size
+        final_result = wait_for_result_in_log(test_metadata['check_id'], expected_policy, scan_timeout,
+                                              expected_result=test_metadata['final_result'], offset=log_offset)
+    else:
+        log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=scan_timeout,
+                          only_new_events=True, accumulations=4)
+        final_result = find_result_for_a_given_id(test_metadata['check_id'], log_monitor.callback_result) if log_monitor.callback_result is not None else None
     assert final_result is not None and final_result[2] == test_metadata['final_result'], \
         f"Got unexpected SCA result: expected {test_metadata['final_result']}, got {final_result}"
 
