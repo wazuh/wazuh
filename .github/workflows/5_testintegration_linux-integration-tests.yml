@@ -76,15 +76,16 @@ env:
 
 jobs:
   run-test:
+    if: inputs.module_name != 'none'
     timeout-minutes: ${{ inputs.timeout_minutes || 120 }}
-    name: ${{ inputs.module_name }} integration tests (${{ inputs.shard_name }})
+    name: Run integration tests
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
       BUILD_WORKFLOW: 5_builderpackage_agent-linux.yml
       PACKAGES_PATH: /tmp/packages
       AGENT_PACKAGE_REGEXP: wazuh-agent.*amd64.*\.deb
-    runs-on: ubuntu-22.04
+    runs-on: wz-linux-amd64
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
@@ -159,7 +160,7 @@ jobs:
         if: inputs.pre_install != ''
         run: ${{ inputs.pre_install }}
 
-      - name: Run ${{ inputs.module_name }} integration tests
+      - name: Run ${{ inputs.module_name }} integration tests (${{ inputs.shard_name }})
         run: |
           cd tests/integration
           set +e
