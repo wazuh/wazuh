@@ -478,7 +478,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
-    name: IT Windows - ${{ matrix.name }} (${{ matrix.shard_name }})
+    name: ${{ needs.detect-changes.outputs.any_matched == 'true' && format('IT Windows - {0} ({1})', matrix.name, matrix.shard_name) || 'IT Windows - no relevant changes' }}
     uses: ./.github/workflows/5_testintegration_windows-integration-tests.yml
     with:
       base_branch: ${{ github.event.pull_request.base.ref }}
@@ -492,15 +492,3 @@ jobs:
       pytest_ignore_args: ${{ matrix.pytest_ignore_args }}
       start_service: ${{ matrix.start_service }}
     secrets: inherit
-
-  run-integration-tests-no-relevant-changes:
-    needs: [smoke-test-windows, detect-changes]
-    if: >
-      success() &&
-      github.event_name == 'pull_request' &&
-      needs.detect-changes.outputs.any_matched != 'true'
-    runs-on: ubuntu-latest
-    name: IT Windows - no relevant changes
-    steps:
-      - name: Skip IT Windows
-        run: echo "No relevant Windows integration test changes detected."
