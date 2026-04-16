@@ -5,19 +5,19 @@ from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
-class ArchiverActivate_Request(_message.Message):
+class EventDumperActivate_Request(_message.Message):
     __slots__ = []
     def __init__(self) -> None: ...
 
-class ArchiverDeactivate_Request(_message.Message):
+class EventDumperDeactivate_Request(_message.Message):
     __slots__ = []
     def __init__(self) -> None: ...
 
-class ArchiverStatus_Request(_message.Message):
+class EventDumperStatus_Request(_message.Message):
     __slots__ = []
     def __init__(self) -> None: ...
 
-class ArchiverStatus_Response(_message.Message):
+class EventDumperStatus_Response(_message.Message):
     __slots__ = ["active", "error", "status"]
     ACTIVE_FIELD_NUMBER: _ClassVar[int]
     ERROR_FIELD_NUMBER: _ClassVar[int]
