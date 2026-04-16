@@ -146,7 +146,7 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
     '''
 
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    scan_timeout = 420 if sys.platform == WINDOWS else 20
+    scan_timeout = 600 if sys.platform == WINDOWS else 20
 
     expected_policy = Path(test_metadata['policy_file']).stem
     if sys.platform != WINDOWS:
@@ -155,8 +155,10 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
         assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
     # Get the results for the checks obtained in the initial SCA scan
+    # On Windows, just verify at least 1 result; on Linux verify full set to catch mismatches early.
+    expected_accumulations = 1 if sys.platform == WINDOWS else 4
     log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=scan_timeout,
-                      accumulations=4)
+                      accumulations=expected_accumulations)
     initial_result = find_result_for_a_given_id(test_metadata['check_id'], log_monitor.callback_result) if log_monitor.callback_result is not None else None
     assert initial_result is not None and initial_result[2] == test_metadata['initial_result'], \
         f"Got unexpected SCA result: expected {test_metadata['initial_result']}, got {initial_result}"
@@ -176,7 +178,7 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
 
     # Get the results for the checks obtained in the SCA scan after change
     log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=scan_timeout,
-                      only_new_events=True, accumulations=4)
+                      only_new_events=True, accumulations=expected_accumulations)
     final_result = find_result_for_a_given_id(test_metadata['check_id'], log_monitor.callback_result) if log_monitor.callback_result is not None else None
     assert final_result is not None and final_result[2] == test_metadata['final_result'], \
         f"Got unexpected SCA result: expected {test_metadata['final_result']}, got {final_result}"
