@@ -436,13 +436,11 @@ if [ $1 = 0 ];then
   rm -rf %{_localstatedir}/queue/
   rm -rf %{_localstatedir}/framework/
   rm -rf %{_localstatedir}/api/
-  rm -rf %{_localstatedir}/active-response/
   rm -rf %{_localstatedir}/stats/
   rm -rf %{_localstatedir}/var/
   rm -rf %{_localstatedir}/bin/
   rm -rf %{_localstatedir}/logs/
   rm -rf %{_localstatedir}/tmp
-  rm -rf %{_localstatedir}/wodles/
   rm -rf %{_localstatedir}/data
 
   # Delete audisp wazuh plugin if exists
@@ -486,7 +484,7 @@ rm -rf %{_localstatedir}/backup/groups
 
 %triggerin -- glibc
 [ -r %{_sysconfdir}/localtime ] && cp -fpL %{_sysconfdir}/localtime %{_localstatedir}/etc
- chown root:root %{_localstatedir}/etc/localtime
+ chown root:wazuh-manager %{_localstatedir}/etc/localtime
  chmod 0640 %{_localstatedir}/etc/localtime
 
 %clean
@@ -531,13 +529,14 @@ rm -fr %{buildroot}
 %attr(640, root, root) %ghost %{_localstatedir}/etc/sslmanager.key
 %attr(660, wazuh-manager, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/client.keys
 %attr(640, root, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/wazuh-manager-internal-options.conf
-%attr(640, root, root) %{_localstatedir}/etc/localtime
+%attr(640, root, wazuh-manager) %{_localstatedir}/etc/localtime
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/etc/shared
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/default
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/agent-template.conf
 %attr(660, wazuh-manager, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/shared/default/*
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs
-%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/*.yml
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/default
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/default/*.yml
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework/python
 %{_localstatedir}/framework/python/*
@@ -572,10 +571,7 @@ rm -fr %{buildroot}
 %attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/wazuh-manager.log
 %attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/wazuh-manager.json
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/api
-%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/archives
-%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/alerts
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/cluster
-%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/firewall
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/wazuh
 %dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files
 %dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts
@@ -642,7 +638,7 @@ rm -fr %{buildroot}
 %files -n wazuh-manager-debuginfo -f debugfiles.list
 
 %changelog
-* Sun Apr 12 2026 support <info@wazuh.com> - 5.0.0
+* Wed Jun 24 2026 support <info@wazuh.com> - 5.0.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-5-0-0.html
 * Sat Apr 11 2026 support <info@wazuh.com> - 4.14.5
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-5.html

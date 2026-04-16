@@ -222,6 +222,7 @@ base::OptError Builder::validateAssetShallow(const json::Json& assetJson) const
 base::OptError Builder::softPolicyValidate(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,
                                            const cm::store::dataType::Policy& policy) const
 {
+    // TODO Replace nsReader->getNamespaceId() with policy.getTitle()
     const auto policyName = nsReader->getNamespaceId().toStr();
 
     // Root decoder

@@ -40,11 +40,11 @@ info:
     <SecurityDefinitions />
 
   version: '5.0.0'
-  x-revision: 'alpha0'
+  x-revision: 'beta1'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/v5.0.0/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/main/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -363,7 +363,7 @@ components:
             detail: "Permission denied: Resource type: *:*"
             remediation: "Please, make sure you have permissions to execute the current request. For more information
             on how to set up permissions, please visit
-            https://documentation.wazuh.com/5.0/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/main/user-manual/api/rbac/configuration.html"
             error: 4000
             dapi_errors:
               unknown-node:
@@ -430,7 +430,7 @@ components:
             title: "Wazuh Error"
             detail: "Maximum number of requests per minute reached"
             remediation: "This limit can be changed in api.yaml file. More information here:
-            https://documentation.wazuh.com/5.0/user-manual/api/security/configuration.html"
+            https://documentation.wazuh.com/main/user-manual/api/security/configuration.html"
             code: 6001
 
     ResourceNotFoundResponse:
@@ -443,7 +443,7 @@ components:
             title: "Resource Not Found"
             detail: "The group does not exist"
             remediation: "Please, use `GET /groups` to find all available groups:
-            https://documentation.wazuh.com/5.0/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/main/user-manual/api/rbac/configuration.html"
             code: 1710
             dapi_errors:
               unknown-node:
@@ -1269,10 +1269,6 @@ components:
                                     type: integer
                                     format: int32
                                     description: "Events coming from the ms-graph module (this agent)"
-                                  osquery:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from the OSQuery module (this agent)"
                                   rootcheck:
                                     type: integer
                                     format: int32
@@ -1316,10 +1312,6 @@ components:
                             type: integer
                             format: int32
                             description: "Alerts written in archives log file (this agent)"
-                          firewall:
-                            type: integer
-                            format: int32
-                            description: "Alerts written in firewall log file (this agent)"
 
     ## Group models
     GroupID:
@@ -2172,10 +2164,6 @@ components:
                       type: integer
                       format: int32
                       description: "Alerts written in archives log file"
-                    firewall:
-                      type: integer
-                      format: int32
-                      description: "Alerts written in firewall log file"
                     fts:
                       type: integer
                       format: int32
@@ -2231,17 +2219,6 @@ components:
                       type: integer
                       format: int32
                       description: "Current usage of the eventchannel queue (percentage)"
-                firewall:
-                  type: object
-                  properties:
-                    size:
-                      type: integer
-                      format: int32
-                      description: "Firewall messages queue size"
-                    usage:
-                      type: integer
-                      format: int32
-                      description: "Current usage of the firewall queue (percentage)"
                 fts:
                   type: object
                   properties:
@@ -2740,10 +2717,6 @@ components:
     WazuhManagerConfiguration:
       type: object
       properties:
-        active-response:
-          type: array
-          items:
-            type: object
         alerts:
           type: object
         auth:
@@ -4001,7 +3974,7 @@ paths:
                 api_version: "v4.5.0"
                 revision: 'beta1'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/v5.0.0/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/main/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11Z"
 
@@ -4654,7 +4627,6 @@ paths:
                               written_breakdown:
                                 alerts: 191
                                 archives: 0
-                                firewall: 0
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
@@ -5575,8 +5547,8 @@ paths:
                           code: 1707
                           message: "Cannot send request, agent is not active"
                           remediation: "Please, check non-active agents connection and try again.
-                           Visit https://documentation.wazuh.com/5.0/user-manual/registering/index.html
-                           and https://documentation.wazuh.com/5.0/user-manual/agents/agent-connection.html
+                           Visit https://documentation.wazuh.com/main/user-manual/registering/index.html
+                           and https://documentation.wazuh.com/main/user-manual/agents/agent-connection.html
                            to obtain more information on registering and connecting agents"
                         id:
                           - '009'
@@ -5686,8 +5658,8 @@ paths:
                           code: 1707
                           message: "Cannot send request, agent is not active"
                           remediation: "Please, check non-active agents connection and try again.
-                           Visit https://documentation.wazuh.com/5.0/user-manual/registering/index.html
-                           and https://documentation.wazuh.com/5.0/user-manual/agents/agent-connection.html
+                           Visit https://documentation.wazuh.com/main/user-manual/registering/index.html
+                           and https://documentation.wazuh.com/main/user-manual/agents/agent-connection.html
                            to obtain more information on registering and connecting agents"
                         id:
                           - '009'
@@ -10104,4 +10076,4 @@ paths:
 
 externalDocs:
   description: "Learn more about the Wazuh API"
-  url: 'https://documentation.wazuh.com/5.0/user-manual/api/index.html'
+  url: 'https://documentation.wazuh.com/main/user-manual/api/index.html'

@@ -148,7 +148,7 @@ public:
      * @return base::RespOrError<std::shared_ptr<ILocator>> A locator for querying the database or an error if the
      * locator could not be retrieved.
      */
-    virtual base::RespOrError<std::shared_ptr<ILocator>> getLocator(Type type) const = 0;
+    virtual Result<std::shared_ptr<ILocator>> getLocator(Type type) const = 0;
 };
 
 } // namespace geo

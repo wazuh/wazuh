@@ -33,15 +33,15 @@ AR_SCHEMA = {
                 "active_response": {
                     "type": "object",
                     "properties": {
-                        "agent_id": {"type": "string"},
+                        "agent_id": {"type": ["string", "null"]},
                         "executable": {"type": "string"},
-                        "extra_arguments": {"type": "string"},
+                        "extra_arguments": {"type": ["string", "null"]},
                         "location": {
                             "type": "string",
                             "enum": ["local", "all", "defined-agent"],
                         },
                         "name": {"type": "string"},
-                        "stateful_timeout": {"type": "integer", "minimum": 0},
+                        "stateful_timeout": {"type": ["integer", "null"], "minimum": 0},
                         "type": {
                             "type": "string",
                             "enum": ["stateful", "stateless"],
@@ -604,8 +604,12 @@ class ActiveResponseBuilder:
         with WazuhQueue(common.AR_SOCKET) as wq:
             for agent_id, msg, bookmark in msgs:
                 try:
+                    json_msg = json.dumps(msg)
+                    self.logger.debug(
+                        f"Dispatching active response message to agent `{agent_id}`: {json_msg}"
+                    )
                     wq.send_msg_to_agent(
-                        msg=json.dumps(msg), agent_id=agent_id, msg_type=WazuhQueue.AR_TYPE
+                        msg=json_msg, agent_id=agent_id, msg_type=WazuhQueue.AR_TYPE
                     )
                     msgs_sent += 1
                 except WazuhError as e:
@@ -625,7 +629,7 @@ class ActiveResponseBuilder:
 
 
 class ActiveResponseFetchTask:
-    DEFAULT_POLLING_INTERVAL = 60
+    DEFAULT_POLLING_INTERVAL = 30
 
     def __init__(self, server: Any):
         """Initialize the AR fetch task.

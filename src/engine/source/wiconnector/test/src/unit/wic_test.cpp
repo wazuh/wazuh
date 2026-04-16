@@ -22,6 +22,7 @@ protected:
     }
 
     wiconnector::LogFunctionType logFunction;
+    const std::size_t maxHitsPerRequest {1000};
 };
 
 // Test Config class functionality
@@ -84,7 +85,7 @@ TEST_F(WIndexerConnectorTest, ConstructorWithValidConfig)
     config.username = "admin";
     config.password = "admin";
 
-    EXPECT_NO_THROW({ wiconnector::WIndexerConnector connector(config, logFunction); });
+    EXPECT_NO_THROW({ wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest); });
 }
 
 TEST_F(WIndexerConnectorTest, ConstructorWithValidJsonConfig)
@@ -95,21 +96,33 @@ TEST_F(WIndexerConnectorTest, ConstructorWithValidJsonConfig)
         "password": "admin"
     })";
 
-    EXPECT_NO_THROW({ wiconnector::WIndexerConnector connector(validJson); });
+    EXPECT_NO_THROW({ wiconnector::WIndexerConnector connector(validJson, maxHitsPerRequest); });
 }
 
 TEST_F(WIndexerConnectorTest, ConstructorWithEmptyJsonConfig)
 {
     std::string emptyJson = "";
 
-    EXPECT_THROW({ wiconnector::WIndexerConnector connector(emptyJson); }, std::runtime_error);
+    EXPECT_THROW({ wiconnector::WIndexerConnector connector(emptyJson, maxHitsPerRequest); }, std::runtime_error);
 }
 
 TEST_F(WIndexerConnectorTest, ConstructorWithInvalidJsonConfig)
 {
     std::string invalidJson = "{ invalid json }";
 
-    EXPECT_THROW({ wiconnector::WIndexerConnector connector(invalidJson); }, std::runtime_error);
+    EXPECT_THROW({ wiconnector::WIndexerConnector connector(invalidJson, maxHitsPerRequest); }, std::runtime_error);
+}
+
+// Test that constructor throws when maxHitsPerRequest is zero
+TEST_F(WIndexerConnectorTest, ConstructorMaxHitsToZero)
+{
+    wiconnector::Config config;
+    config.hosts = {"http://localhost:9200"};
+    config.username = "admin";
+    config.password = "admin";
+
+    // Should not throw maxHitsPerRequest set to 0 will fallback to 1.
+    EXPECT_NO_THROW({ wiconnector::WIndexerConnector connector(config, logFunction, 0); });
 }
 
 // Test indexing functionality
@@ -120,7 +133,7 @@ TEST_F(WIndexerConnectorTest, IndexValidData)
     config.username = "admin";
     config.password = "admin";
 
-    wiconnector::WIndexerConnector connector(config, logFunction);
+    wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
 
     // This should not throw, even if connection fails (it logs warnings internally)
     EXPECT_NO_THROW({ connector.index("test-index", R"({"field": "value"})"); });
@@ -133,7 +146,7 @@ TEST_F(WIndexerConnectorTest, IndexEmptyIndex)
     config.username = "admin";
     config.password = "admin";
 
-    wiconnector::WIndexerConnector connector(config, logFunction);
+    wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
 
     // Should handle empty index name gracefully
     EXPECT_NO_THROW({ connector.index("", R"({"field": "value"})"); });
@@ -146,7 +159,7 @@ TEST_F(WIndexerConnectorTest, IndexEmptyData)
     config.username = "admin";
     config.password = "admin";
 
-    wiconnector::WIndexerConnector connector(config, logFunction);
+    wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
 
     // Should handle empty data gracefully
     EXPECT_NO_THROW({ connector.index("test-index", ""); });
@@ -160,7 +173,7 @@ TEST_F(WIndexerConnectorTest, ShutdownConnector)
     config.username = "admin";
     config.password = "admin";
 
-    wiconnector::WIndexerConnector connector(config, logFunction);
+    wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
 
     // Shutdown should work without throwing
     EXPECT_NO_THROW({ connector.shutdown(); });
@@ -177,7 +190,7 @@ TEST_F(WIndexerConnectorTest, ConcurrentIndexing)
     config.username = "admin";
     config.password = "admin";
 
-    wiconnector::WIndexerConnector connector(config, logFunction);
+    wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
 
     std::vector<std::thread> threads;
     const int numThreads = 5;
@@ -215,7 +228,7 @@ TEST_F(WIndexerConnectorTest, ConcurrentIndexingAndShutdown)
     config.username = "admin";
     config.password = "admin";
 
-    wiconnector::WIndexerConnector connector(config, logFunction);
+    wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
 
     std::atomic<bool> shouldStop {false};
     std::vector<std::thread> threads;
@@ -262,7 +275,7 @@ TEST_F(WIndexerConnectorTest, DISABLED_IntegrationTest)
     config.username = "admin";
     config.password = "admin";
 
-    wiconnector::WIndexerConnector connector(config, logFunction);
+    wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
 
     // Try to index some data
     connector.index("test-integration-index", R"({

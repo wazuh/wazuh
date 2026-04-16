@@ -57,7 +57,7 @@ class WIndexerConnector : public IWIndexerConnector
 private:
     std::unique_ptr<IndexerConnectorAsync> m_indexerConnectorAsync;
     std::shared_mutex m_mutex;
-    std::size_t m_maxHitsPerRequest {100};
+    std::size_t m_maxHitsPerRequest;
 
     std::size_t queryByBatches(std::string_view indexName,
                                std::string_view query,
@@ -76,15 +76,17 @@ public:
      *
      * @param config The configuration object containing settings for the indexer connector
      * @param logFunction The logging function to be used for output and error reporting
+     * @param maxHitsPerRequest The maximum number of hits per request
      */
-    WIndexerConnector(const Config&, const LogFunctionType& logFunction);
+    WIndexerConnector(const Config&, const LogFunctionType& logFunction, const std::size_t maxHitsPerRequest);
 
     /**
      * @brief Constructs a WIndexerConnector instance using a JSON OSSEC configuration string.
      *
      * @param jsonOssecConfig The JSON string containing the OSSEC configuration for the indexer connector
+     * @param maxHitsPerRequest The maximum number of hits per request
      */
-    WIndexerConnector(std::string_view jsonOssecConfig);
+    WIndexerConnector(std::string_view jsonOssecConfig, const std::size_t maxHitsPerRequest);
 
     /**
      * @copydoc IWIndexerConnector::index
@@ -138,6 +140,11 @@ public:
      * @copydoc IWIndexerConnector::getQueueSize
      */
     uint64_t getQueueSize() override;
+
+    /**
+     * @copydoc IWIndexerConnector::getDroppedEvents
+     */
+    uint64_t getDroppedEvents() override;
 
     /**
      * @brief Shuts down the indexer connector, releasing resources and stopping operations.

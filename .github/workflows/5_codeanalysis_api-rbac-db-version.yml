@@ -8,6 +8,10 @@ on:
       - "framework/wazuh/rbac/default/**"
       - "framework/wazuh/rbac/orm.py"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   guard:
     runs-on: ubuntu-latest
@@ -16,7 +20,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-    
+
       - name: Check version skip
         id: check_version
         run: |

@@ -696,7 +696,6 @@ stages:
           total_failed_items: 0
 
   - name: Show the config of monitor/internal on master
-    skip: True # https://github.com/wazuh/wazuh/issues/33608
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/monitor/internal"
@@ -1065,13 +1064,13 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Read logs with filters -> tag=wazuh-manager-remoted, limit=2 {node_id}
+  - name: Read logs with filters -> tag=wazuh-manager-remoted, limit=1 {node_id}
     request:
       verify: False
       <<: *get_cluster_logs
       params:
         tag: wazuh-manager-remoted
-        limit: 2
+        limit: 1
     response:
       status_code: 200
       json:
@@ -1080,11 +1079,14 @@ stages:
           affected_items:
             - <<: *cluster_log
               tag: wazuh-manager-remoted
-            - <<: *cluster_log
-              tag: wazuh-manager-remoted
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "tag"
+            expected_values: "wazuh-manager-remoted"
 
   - name: Read logs with filters -> tag=wazuh-unknown-daemon {node_id}
     request:
@@ -1334,9 +1336,6 @@ stages:
 ---
 test_name: PUT /cluster/restart
 
-marks:
-  - skip: execd socket no longer exists in manager after agent-manager separation
-
 stages:
 
   - name: Restart cluster (worker1, worker2)
@@ -1384,9 +1383,6 @@ stages:
 
 ---
 test_name: PUT /cluster/{node_id}/configuration
-
-marks:
-  - xfail # https://github.com/wazuh/wazuh/issues/34676q
 
 stages:
 
@@ -1459,50 +1455,3 @@ stages:
           total_affected_items: 0
           total_failed_items: 1
 
-  # PUT /cluster/{node_id}/configuration
-  - name: Try to upload an invalid xml
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
-      method: PUT
-      data: "{invalid_wazuh_xml:s}"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/octet-stream
-    response:
-      status_code: 200
-      json:
-        error: 1
-        data:
-          affected_items: [ ]
-          failed_items:
-            - error:
-                code: 1908
-              id:
-                - 'worker1'
-          total_affected_items: 0
-          total_failed_items: 1
-
-  # PUT /cluster/{node_id}/configuration
-  - name: Try to upload an empty configuration
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
-      method: PUT
-      data: "{invalid_wazuh_conf:s}"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/octet-stream
-    response:
-      status_code: 200
-      json:
-        error: 1
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1113
-              id:
-                - 'worker1'
-          total_affected_items: 0
-          total_failed_items: 1

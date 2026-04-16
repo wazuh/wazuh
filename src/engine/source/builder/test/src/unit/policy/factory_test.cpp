@@ -788,6 +788,39 @@ class BuildAssets : public testing::TestWithParam<BuildAssetsT>
 {
 };
 
+TEST(BuildAssetsOutputs, ProductionUsesOriginSpaceWhenLoadingOutputs)
+{
+    auto policy = dataType::Policy("test_policy",
+                                   true,
+                                   "550e8400-e29b-41d4-a716-446655440003",
+                                   {},
+                                   {},
+                                   {},
+                                   {},
+                                   "standard",
+                                   "",
+                                   false,
+                                   false,
+                                   true);
+
+    auto cmStoreNSReader = std::make_shared<MockICMStoreNSReader>();
+    auto buildCtx = std::make_shared<builder::builders::BuildCtx>();
+    auto registry = builder::mocks::MockMetaRegistry<builder::builders::OpBuilderEntry,
+                                                     builder::builders::StageBuilder,
+                                                     builder::builders::EnrichmentBuilder>::createMock();
+    auto definitionsBuilder = std::make_shared<defs::mocks::MockDefinitionsBuilder>();
+    buildCtx->setRegistry(registry);
+    auto assetBuilder = std::make_shared<AssetBuilder>(buildCtx, definitionsBuilder);
+
+    EXPECT_CALL(*cmStoreNSReader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
+        .WillOnce(testing::Return(std::make_tuple(std::string {"decoder/root/0"}, cm::store::ResourceType::DECODER)));
+
+    EXPECT_CALL(*cmStoreNSReader, getOutputsForSpace(testing::Eq(std::string_view {"standard"})))
+        .WillOnce(testing::Return(std::vector<json::Json> {}));
+
+    EXPECT_NO_THROW((void)factory::buildAssets(policy, cmStoreNSReader, assetBuilder, false));
+}
+
 TEST_P(BuildAssets, KVDBAvailability)
 {
     auto [policy, expected] = GetParam();
@@ -1649,14 +1682,13 @@ class PassthroughAssetBuilder final : public builder::policy::IAssetBuilder
 public:
     Asset operator()(const json::Json& document) const override
     {
-        const auto nameOpt = document.getString(json::Json::formatJsonPath(builder::syntax::asset::NAME_KEY));
-
-        if (!nameOpt)
+        std::string nameStr;
+        if (document.getString(nameStr, json::Json::formatJsonPath(builder::syntax::asset::NAME_KEY)) != json::RetGet::Success)
         {
             throw std::runtime_error("Test asset json missing name");
         }
 
-        base::Name n {*nameOpt};
+        base::Name n {nameStr};
         auto expr = buildgraphtest::assetExpr(n); // assetExpr(const base::Name&) -> Expression
 
         return Asset {std::move(n), std::move(expr), std::vector<base::Name> {}};

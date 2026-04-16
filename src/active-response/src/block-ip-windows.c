@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
 
     // Setup and parse JSON input
     action = setup_and_check_message(argv, &input_json);
-    if ((action != ADD_COMMAND) && (action != DELETE_COMMAND)) {
+    if ((action != ENABLE_COMMAND) && (action != DISABLE_COMMAND)) {
         return OS_INVALID;
     }
 
@@ -45,8 +45,8 @@ int main(int argc, char **argv) {
         return OS_INVALID;
     }
 
-    // Send keys and check for abort (ADD command only)
-    if (action == ADD_COMMAND) {
+    // Send keys and check for abort (ENABLE command only)
+    if (action == ENABLE_COMMAND) {
         char **keys = NULL;
         os_calloc(2, sizeof(char *), keys);
         os_strdup(srcip, keys[0]);
@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
 
 firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const char *argv0) {
     (void)ip_version;  // netsh handles both IPv4 and IPv6
-    static const char rule_name[] = "name=WAZUH ACTIVE RESPONSE BLOCKED IP";
+    static const char rule_name[] = "name=\"WAZUH ACTIVE RESPONSE BLOCKED IP\"";
     char log_msg[OS_MAXSTR];
     char *netsh_path = NULL;
     char *reg_path = NULL;
@@ -146,7 +146,7 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
     // Build netsh command
     wfd_t *wfd = NULL;
 
-    if (action == ADD_COMMAND) {
+    if (action == ENABLE_COMMAND) {
         // netsh advfirewall firewall add rule name="..." interface=any dir=in action=block remoteip=<IP>/32
         char remote_ip_arg[OS_MAXSTR];
         memset(remote_ip_arg, '\0', OS_MAXSTR);
@@ -158,7 +158,7 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
             "firewall",
             "add",
             "rule",
-            rule_name,
+            (char *)rule_name,
             "interface=any",
             "dir=in",
             "action=block",
@@ -175,7 +175,15 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
             os_free(netsh_path);
             return FIREWALL_EXECUTION_FAILED;
         }
-        wpclose(wfd);
+
+        int result_in = wpclose(wfd);
+        if (result_in != 0) {
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR - 1, "netsh inbound rule failed with exit code %d", result_in);
+            write_debug_file(argv0, log_msg);
+            os_free(netsh_path);
+            return FIREWALL_EXECUTION_FAILED;
+        }
 
         // Add outbound rule (from PR #34675 fix for bidirectional blocking)
         char remote_ip_arg_out[OS_MAXSTR];
@@ -188,7 +196,7 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
             "firewall",
             "add",
             "rule",
-            rule_name,
+            (char *)rule_name,
             "interface=any",
             "dir=out",
             "action=block",
@@ -198,7 +206,13 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
 
         wfd = wpopenv(netsh_path, exec_cmd_out, W_BIND_STDERR);
         if (wfd) {
-            wpclose(wfd);
+            int result_out = wpclose(wfd);
+            if (result_out != 0) {
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR - 1, "netsh outbound rule failed with exit code %d", result_out);
+                write_debug_file(argv0, log_msg);
+                // Don't fail - outbound rule is optional
+            }
         }
 
     } else {
@@ -213,7 +227,7 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
             "firewall",
             "delete",
             "rule",
-            rule_name,
+            (char *)rule_name,
             remote_ip_arg_del,
             NULL
         };
@@ -226,7 +240,15 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
             os_free(netsh_path);
             return FIREWALL_EXECUTION_FAILED;
         }
-        wpclose(wfd);
+
+        int result_del = wpclose(wfd);
+        if (result_del != 0) {
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR - 1, "netsh delete rule failed with exit code %d", result_del);
+            write_debug_file(argv0, log_msg);
+            os_free(netsh_path);
+            return FIREWALL_EXECUTION_FAILED;
+        }
     }
 
     os_free(netsh_path);
@@ -249,7 +271,7 @@ firewall_result_t try_route_windows(const char *srcip, int action, int ip_versio
         return FIREWALL_NOT_AVAILABLE;
     }
 
-    if (action == ADD_COMMAND) {
+    if (action == ENABLE_COMMAND) {
         // Need to find default gateway using ipconfig
         if (check_binary_available("ipconfig.exe", &ipconfig_path, argv0) != FIREWALL_SUCCESS) {
             log_firewall_action(argv0, LOG_LEVEL_WARNING, "route", "check",

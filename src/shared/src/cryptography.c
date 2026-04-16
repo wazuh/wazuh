@@ -533,8 +533,8 @@ w_err_t verify_hash_and_pe_signature(wchar_t *file_path) {
     if (ERROR_SUCCESS != pe_result) {
         hash_result = verify_hash_catalog(file_path, hash_error_message, OS_SIZE_1024);
         if (ERROR_SUCCESS != hash_result) {
-            plain_minfo("Trust verification of a module failed by using the signature method. %s", pe_error_message);
-            plain_minfo("Trust verification of a module failed by using the hash method. %s", hash_error_message);
+            plain_mwarn("Trust verification of a module failed by using the signature method. %s", pe_error_message);
+            plain_mwarn("Trust verification of a module failed by using the hash method. %s", hash_error_message);
             retval = OS_INVALID;
         } else {
             plain_mdebug1("%s", hash_error_message);

@@ -42,8 +42,30 @@ message Result
         bool success = 2;           // If the asset was successfully decoded
         repeated string traces = 3; // Traces of the asset
     }
+
+    /***************************************************
+     * A single WCS validation error found in the final event
+     **************************************************/
+    message ValidationError
+    {
+        string path = 1;              // Full dot-separated field path (e.g. "event.severity")
+        string kind = 2;              // "unknown_field" | "invalid_type" | "temporary_field_not_allowed"
+        optional string expected = 3; // Expected type string (present for invalid_type errors)
+        optional string actual = 4;   // Actual type string (present for invalid_type errors)
+    }
+
+    /***************************************************
+     * WCS validation summary for the final output event
+     **************************************************/
+    message Validation
+    {
+        bool valid = 1;                      // True when no validation errors were found
+        repeated ValidationError errors = 2; // List of validation errors (empty when valid)
+    }
+
     google.protobuf.Struct output = 1;    // JSON output of the event
     repeated AssetTrace asset_traces = 2; // Asset traces
+    optional Validation validation = 3;   // Output validation result (populated by /logtest)
 }
 
 enum TraceLevel

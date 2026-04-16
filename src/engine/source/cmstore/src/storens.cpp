@@ -107,8 +107,7 @@ void CMStoreNS::rebuildCacheFromStorage()
 
                 // If resource type is DECODER, OUTPUT or FILTER, revert only the first and last '_' to '/'
                 // TODO: Find a better way to handle this case, this is a workaround for legacy naming
-                if (rType == ResourceType::DECODER || rType == ResourceType::OUTPUT
-                    || rType == ResourceType::FILTER)
+                if (rType == ResourceType::DECODER || rType == ResourceType::OUTPUT || rType == ResourceType::FILTER)
                 {
                     // Revert only the first and last '_' to '/'
                     size_t firstUnderscore = resourceName.find('_');
@@ -173,9 +172,9 @@ std::string CMStoreNS::upsertUUID(std::string& ymlContent)
     }
 
     // Check if UUID field exists and validate it
-    if (auto opt = jsonContent.getString(pathns::JSON_ID_PATH); opt.has_value())
+    std::string uuid;
+    if (auto ret = jsonContent.getString(uuid, pathns::JSON_ID_PATH); ret == json::RetGet::Success)
     {
-        const std::string& uuid = opt.value();
         if (!base::utils::generators::isValidUUIDv4(uuid))
         {
             throw std::runtime_error("Existing UUIDv4 is not valid: " + uuid);
@@ -184,7 +183,7 @@ std::string CMStoreNS::upsertUUID(std::string& ymlContent)
     }
 
     // Generate new UUID and add it to content
-    std::string uuid = base::utils::generators::generateUUIDv4();
+    uuid = base::utils::generators::generateUUIDv4();
 
     if (isJson)
     {
@@ -221,8 +220,8 @@ std::filesystem::path CMStoreNS::getResourcePaths(const std::string& name, Resou
     std::filesystem::path rPath = m_storagePath;
 
     auto fileName = name;
-    if (type == ResourceType::DECODER || type == ResourceType::OUTPUT
-        || type == ResourceType::FILTER || type == ResourceType::INTEGRATION || type == ResourceType::KVDB)
+    if (type == ResourceType::DECODER || type == ResourceType::OUTPUT || type == ResourceType::FILTER
+        || type == ResourceType::INTEGRATION || type == ResourceType::KVDB)
     {
         // Replace '/' with '_' to avoid directory traversal on assets names
         std::replace(fileName.begin(), fileName.end(), '/', '_');
@@ -372,8 +371,8 @@ void CMStoreNS::updateResourceByName(const std::string& name, ResourceType type,
 
     // Get the UUID from content (Throws if missing/invalid)
     json::Json jsonContent = json::Json(yml::Converter::loadYMLfromString(ymlContent));
-    auto optUUID = jsonContent.getString(pathns::JSON_ID_PATH);
-    if (!optUUID.has_value())
+    std::string contentUUID;
+    if (jsonContent.getString(contentUUID, pathns::JSON_ID_PATH) != json::RetGet::Success)
     {
         throw std::runtime_error("UUID field (/id) is missing in the provided content");
     }
@@ -382,7 +381,7 @@ void CMStoreNS::updateResourceByName(const std::string& name, ResourceType type,
 
     // Resolve existing UUID from name
     auto existingUUID = resolveUUIDFromNameUnlocked(name, type);
-    auto& uuid = optUUID.value();
+    const auto& uuid = contentUUID;
 
     // Check if the UUID in content matches the existing one
     if (uuid != existingUUID)
@@ -412,17 +411,17 @@ void CMStoreNS::updateResourceByUUID(const std::string& uuid, const std::string&
 {
     // Get the UUID from content (Throws if missing/invalid)
     json::Json jsonContent = json::Json(yml::Converter::loadYMLfromString(ymlContent));
-    auto optUUID = jsonContent.getString(pathns::JSON_ID_PATH);
-    if (!optUUID.has_value())
+    std::string contentUUID;
+    if (jsonContent.getString(contentUUID, pathns::JSON_ID_PATH) != json::RetGet::Success)
     {
         throw std::runtime_error("UUID field (/id) is missing in the provided content");
     }
 
     // Check if the UUID in content matches the provided one
-    if (uuid != optUUID.value())
+    if (uuid != contentUUID)
     {
         throw std::runtime_error(
-            fmt::format("UUID '{}' in content does not match provided UUID '{}'", optUUID.value(), uuid));
+            fmt::format("UUID '{}' in content does not match provided UUID '{}'", contentUUID, uuid));
     }
 
     std::unique_lock lock(m_mutex); // Acquire write cache and file lock
@@ -594,11 +593,22 @@ dataType::Integration CMStoreNS::getIntegrationByUUID(const std::string& uuid) c
     return dataType::Integration::fromJson(json, /*requireUUID:*/ true);
 }
 
-const std::vector<json::Json> CMStoreNS::getDefaultOutputs() const
+const std::vector<json::Json> CMStoreNS::getOutputsForSpace(std::string_view spaceKey) const
 {
+    auto outputsPath = m_defaultOutputsPath / pathns::DEFAULT_OUTPUTS_DIR;
+
+    if (!spaceKey.empty())
+    {
+        const auto spaceOutputsPath = m_defaultOutputsPath / std::string(spaceKey);
+        if (std::filesystem::exists(spaceOutputsPath) && std::filesystem::is_directory(spaceOutputsPath))
+        {
+            outputsPath = std::move(spaceOutputsPath);
+        }
+    }
+
     std::vector<json::Json> outputs;
 
-    for (const auto& entry : std::filesystem::directory_iterator(m_defaultOutputsPath))
+    for (const auto& entry : std::filesystem::directory_iterator(outputsPath))
     {
         if (!entry.is_regular_file())
         {
@@ -645,7 +655,6 @@ dataType::KVDB CMStoreNS::getKVDBByName(const std::string& name) const
     {
         throw std::runtime_error(fmt::format("KVDB with name '{}' does not exist", name));
     }
-    const auto& uuid = optUUID.value();
 
     // Load KVDB from disk
     auto resourcePath = getResourcePaths(name, ResourceType::KVDB);

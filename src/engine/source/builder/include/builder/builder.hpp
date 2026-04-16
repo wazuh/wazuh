@@ -11,8 +11,8 @@
 #include <logpar/logpar.hpp>
 #include <schemf/ischema.hpp>
 #include <schemf/ivalidator.hpp>
-#include <streamlog/ilogger.hpp>
 #include <store/istore.hpp>
+#include <streamlog/ilogger.hpp>
 #include <wiconnector/iwindexerconnector.hpp>
 
 #include <builder/iallowedFields.hpp>
@@ -27,13 +27,14 @@ namespace builder
  */
 struct BuilderDeps
 {
-    size_t logparDebugLvl = 0;                                       ///< Debug level for the log parser.
-    std::shared_ptr<hlp::logpar::Logpar> logpar = nullptr;           ///< Log parser instance.
-    std::shared_ptr<kvdbstore::IKVDBManager> kvdbManager;            ///< KVDB manager.
-    std::shared_ptr<ioc::kvdb::IKVDBManager> kvdbIocManager;           ///< KVDB IOC manager.
-    std::shared_ptr<geo::IManager> geoManager;                       ///< Geo-location manager.
-    std::shared_ptr<streamlog::ILogManager> logManager;              ///< Stream log manager.
-    std::weak_ptr<wiconnector::IWIndexerConnector> iConnector;       ///< Wazuh-Indexer connector.
+    size_t logparDebugLvl = 0;                                 ///< Debug level for the log parser.
+    std::shared_ptr<hlp::logpar::Logpar> logpar = nullptr;     ///< Log parser instance.
+    std::shared_ptr<kvdbstore::IKVDBManager> kvdbManager;      ///< KVDB manager.
+    std::shared_ptr<ioc::kvdb::IKVDBManager> kvdbIocManager;   ///< KVDB IOC manager.
+    std::shared_ptr<geo::IManager> geoManager;                 ///< Geo-location manager.
+    std::shared_ptr<streamlog::ILogManager> logManager;        ///< Stream log manager.
+    streamlog::RotationConfig fileOutputConfig {};             ///< Base config for file output channels.
+    std::weak_ptr<wiconnector::IWIndexerConnector> iConnector; ///< Wazuh-Indexer connector.
 };
 
 /**

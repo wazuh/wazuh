@@ -121,9 +121,8 @@ INSTANTIATE_TEST_SUITE_P(
                 eEngine::geo::DbList_Response protoRes;
                 protoRes.set_status(eEngine::ReturnStatus::OK);
 
-                std::vector<::geo::DbInfo> dbs = {
-                    {"path0", "name0", "hash0", 1769111225, ::geo::Type::CITY},
-                    {"path1", "name1", "hash1", 1769111225, ::geo::Type::ASN}};
+                std::vector<::geo::DbInfo> dbs = {{"path0", "name0", "hash0", 1769111225, ::geo::Type::CITY},
+                                                  {"path1", "name1", "hash1", 1769111225, ::geo::Type::ASN}};
 
                 for (const auto& db : dbs)
                 {
@@ -139,9 +138,8 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](auto& mock)
             {
-                std::vector<::geo::DbInfo> dbs = {
-                    {"path0", "name0", "hash0", 1769111225, ::geo::Type::CITY},
-                    {"path1", "name1", "hash1", 1769111225, ::geo::Type::ASN}};
+                std::vector<::geo::DbInfo> dbs = {{"path0", "name0", "hash0", 1769111225, ::geo::Type::CITY},
+                                                  {"path1", "name1", "hash1", 1769111225, ::geo::Type::ASN}};
 
                 EXPECT_CALL(mock, listDbs()).WillOnce(testing::Return(dbs));
             }),
@@ -194,18 +192,18 @@ INSTANTIATE_TEST_SUITE_P(
                 json::Json cityJson;
                 cityJson.setString("Mountain View", "/city_name");
                 EXPECT_CALL(*cityLocator, getAll("1.2.3.4"))
-                    .WillOnce(testing::Return(base::RespOrError<json::Json>(cityJson)));
+                    .WillOnce(testing::Return(::geo::Result<json::Json>(cityJson)));
 
                 // ASN data
                 json::Json asnJson;
                 asnJson.setInt(15169, "/number");
                 EXPECT_CALL(*asnLocator, getAll("1.2.3.4"))
-                    .WillOnce(testing::Return(base::RespOrError<json::Json>(asnJson)));
+                    .WillOnce(testing::Return(::geo::Result<json::Json>(asnJson)));
 
                 EXPECT_CALL(mock, getLocator(::geo::Type::CITY))
-                    .WillOnce(testing::Return(base::RespOrError<std::shared_ptr<::geo::ILocator>>(cityLocator)));
+                    .WillOnce(testing::Return(::geo::Result<std::shared_ptr<::geo::ILocator>>(cityLocator)));
                 EXPECT_CALL(mock, getLocator(::geo::Type::ASN))
-                    .WillOnce(testing::Return(base::RespOrError<std::shared_ptr<::geo::ILocator>>(asnLocator)));
+                    .WillOnce(testing::Return(::geo::Result<std::shared_ptr<::geo::ILocator>>(asnLocator)));
             }),
 
         // Success with only CITY data (ASN database not available)
@@ -233,12 +231,12 @@ INSTANTIATE_TEST_SUITE_P(
                 json::Json cityJson;
                 cityJson.setString("Mountain View", "/city_name");
                 EXPECT_CALL(*cityLocator, getAll("1.2.3.4"))
-                    .WillOnce(testing::Return(base::RespOrError<json::Json>(cityJson)));
+                    .WillOnce(testing::Return(::geo::Result<json::Json>(cityJson)));
 
                 EXPECT_CALL(mock, getLocator(::geo::Type::CITY))
-                    .WillOnce(testing::Return(base::RespOrError<std::shared_ptr<::geo::ILocator>>(cityLocator)));
+                    .WillOnce(testing::Return(::geo::Result<std::shared_ptr<::geo::ILocator>>(cityLocator)));
                 EXPECT_CALL(mock, getLocator(::geo::Type::ASN))
-                    .WillOnce(testing::Return(base::Error {"Type 'asn' does not have a database"}));
+                    .WillOnce(testing::Return(::geo::ErrorCode::DB_TYPE_NOT_AVAILABLE));
             }),
 
         // Success with only ASN data (IP not found in CITY)
@@ -265,17 +263,17 @@ INSTANTIATE_TEST_SUITE_P(
                 auto asnLocator = std::make_shared<::geo::mocks::MockLocator>();
 
                 EXPECT_CALL(*cityLocator, getAll("1.2.3.4"))
-                    .WillOnce(testing::Return(base::Error {"No data found for the IP address"}));
+                    .WillOnce(testing::Return(::geo::ErrorCode::IP_NOT_FOUND));
 
                 json::Json asnJson;
                 asnJson.setInt(15169, "/number");
                 EXPECT_CALL(*asnLocator, getAll("1.2.3.4"))
-                    .WillOnce(testing::Return(base::RespOrError<json::Json>(asnJson)));
+                    .WillOnce(testing::Return(::geo::Result<json::Json>(asnJson)));
 
                 EXPECT_CALL(mock, getLocator(::geo::Type::CITY))
-                    .WillOnce(testing::Return(base::RespOrError<std::shared_ptr<::geo::ILocator>>(cityLocator)));
+                    .WillOnce(testing::Return(::geo::Result<std::shared_ptr<::geo::ILocator>>(cityLocator)));
                 EXPECT_CALL(mock, getLocator(::geo::Type::ASN))
-                    .WillOnce(testing::Return(base::RespOrError<std::shared_ptr<::geo::ILocator>>(asnLocator)));
+                    .WillOnce(testing::Return(::geo::Result<std::shared_ptr<::geo::ILocator>>(asnLocator)));
             }),
 
         // Empty IP

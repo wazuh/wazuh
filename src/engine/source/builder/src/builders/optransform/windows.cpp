@@ -74,7 +74,13 @@ TransformBuilder getWindowsSidListDescHelperBuilder(const std::shared_ptr<kvdbMa
 
         const auto& sidListRef = *std::static_pointer_cast<Reference>(opArgs[1]);
 
-        auto kvdbName = kvdbNameArg.value().getString().value();
+        std::string kvdbName;
+        if (kvdbNameArg.value().getString(kvdbName) != json::RetGet::Success)
+        {
+            throw std::runtime_error(
+                fmt::format("The first parameter must be a string, got {}", kvdbNameArg.value().str()));
+        }
+
         if (buildCtx->validator().hasField(sidListRef.dotPath()))
         {
             auto jType = buildCtx->validator().getJsonType(sidListRef.dotPath());
@@ -114,13 +120,14 @@ TransformBuilder getWindowsSidListDescHelperBuilder(const std::shared_ptr<kvdbMa
             std::map<std::string, std::string> resultMap;
             for (auto& [key, value] : jsonObject.value())
             {
-                auto optValue = value.getString();
-                if (!optValue)
+                std::string strValue;
+                if (value.getString(strValue) != json::RetGet::Success)
                 {
                     throw std::runtime_error(
-                        fmt::format("Error parsing {} from DB: Expected string for key '{}'", errorMsg, key));
+                        fmt::format("Expected string values but got {} for key '{}'", value.str(), key));
                 }
-                resultMap.emplace(key, optValue.value());
+
+                resultMap.emplace(key, strValue);
             }
 
             if (resultMap.empty())
@@ -149,16 +156,18 @@ TransformBuilder getWindowsSidListDescHelperBuilder(const std::shared_ptr<kvdbMa
         // Return Op
         return [=,
                 targetField = targetField.jsonPath(),
-                sidListRef = sidListRef.jsonPath(),
+                sidListRef = json::PointerPath(sidListRef.jsonPath()),
                 runState = buildCtx->runState()](base::Event event) -> TransformResult
         {
             // Get reference
-            auto optSidList = event->getString(sidListRef);
-            if (!optSidList)
+            std::string strList;
+            if (auto ret = event->getString(strList, sidListRef); ret != json::RetGet::Success)
             {
-                RETURN_FAILURE(runState, event, referenceNotFoundTrace);
+                RETURN_FAILURE(
+                    runState, event, ret == json::RetGet::NotFound ? referenceNotFoundTrace : failureRefErrorParsing);
             }
-            auto sidList = parserListSID(optSidList.value());
+
+            auto sidList = parserListSID(strList);
             if (sidList.empty())
             {
                 RETURN_FAILURE(runState, event, failureRefErrorParsing);

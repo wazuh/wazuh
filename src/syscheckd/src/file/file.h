@@ -200,6 +200,16 @@ void fim_handle_delete_by_path(const char *path,
 void fim_file_scan();
 
 /**
+ * @brief Convert a Unix epoch timestamp to ISO8601 format (%Y-%m-%dT%H:%M:%S.000Z).
+ *
+ * @param timestamp Unix epoch timestamp (seconds).
+ * @param buffer Output buffer to write the formatted string.
+ * @param buffer_size Size of the output buffer (must be >= 25).
+ * @return true on success, false if the conversion fails.
+ */
+bool fim_epoch_to_iso8601(time_t timestamp, char *buffer, size_t buffer_size);
+
+/**
  * @brief Create file attribute set JSON from a FIM entry structure
  *
  * @param dbsync_event Pointer to event dbsync JSON structure.

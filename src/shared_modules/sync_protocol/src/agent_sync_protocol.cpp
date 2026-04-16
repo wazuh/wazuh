@@ -471,16 +471,27 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         // Translate DB mode to Schema mode
         const auto protocolMode = toProtocolMode(mode);
 
-        // Try to get metadata from provider - fail if not available
-        has_metadata = (metadata_provider_get(&metadata) == 0);
-
-        // If metadata not available, abort synchronization
-        if (!has_metadata)
+        // Wait until metadata is available or stop is requested
         {
-            m_logger(LOG_WARNING,
-                     "Metadata not available from provider. Agent-info may not be initialized yet. Cannot proceed with "
-                     "synchronization.");
-            return false;
+            bool logged = false;
+            std::unique_lock<std::mutex> lock(m_syncState.mtx);
+
+            while ((has_metadata = (metadata_provider_get(&metadata) == 0)) == false)
+            {
+                if (m_stopRequested.load(std::memory_order_acquire))
+                {
+                    return false;
+                }
+
+                if (!logged)
+                {
+                    m_logger(LOG_DEBUG,
+                             "Metadata not available from provider. Agent-info may not be initialized yet. Waiting...");
+                    logged = true;
+                }
+
+                m_syncState.cv.wait_for(lock, std::chrono::seconds(1));
+            }
         }
 
         // Create groups vector from metadata
@@ -651,21 +662,74 @@ bool AgentSyncProtocol::sendDataMessages(uint64_t session,
 {
     try
     {
+        // OS_MAXSTR is 65536 bytes; reserve 4 KB for queue headers and FlatBuffers alignment.
+        static constexpr size_t MAX_BATCH_PAYLOAD = 60 * 1024;
+        // Conservative per-item overhead: vtable + field slots + string/vector headers + padding.
+        static constexpr size_t FLATBUFFERS_OVERHEAD_PER_ITEM = 80;
+        // DataBatch table + values vector + Message table + FlatBuffer root.
+        static constexpr size_t BATCH_MESSAGE_OVERHEAD = 128;
+
+        flatbuffers::FlatBufferBuilder batchBuilder;
+        std::vector<flatbuffers::Offset<Wazuh::SyncSchema::DataValue>> batchOffsets;
+        size_t batchEstimatedSize = BATCH_MESSAGE_OVERHEAD;
+
+        auto flushBatch = [&]() -> bool
+        {
+            if (batchOffsets.empty())
+                return true;
+
+            auto valuesVec = batchBuilder.CreateVector(batchOffsets);
+            Wazuh::SyncSchema::DataBatchBuilder dataBatchBuilder(batchBuilder);
+            dataBatchBuilder.add_values(valuesVec);
+            auto dataBatchOffset = dataBatchBuilder.Finish();
+
+            auto message = Wazuh::SyncSchema::CreateMessage(
+                batchBuilder, Wazuh::SyncSchema::MessageType::DataBatch, dataBatchOffset.Union());
+            batchBuilder.Finish(message);
+
+            const uint8_t* bufPtr = batchBuilder.GetBufferPointer();
+            std::vector<uint8_t> messageVector(bufPtr, bufPtr + batchBuilder.GetSize());
+
+            m_logger(LOG_DEBUG_VERBOSE,
+                     std::string("Sending DataBatch with ") + std::to_string(batchOffsets.size()) +
+                     " DataValues (~" + std::to_string(batchEstimatedSize) + " bytes).");
+
+            if (!sendFlatBufferMessageAsString(messageVector))
+            {
+                m_logger(LOG_ERROR, "Failed to send DataBatch message.");
+                return false;
+            }
+
+            batchBuilder.Clear();
+            batchOffsets.clear();
+            batchEstimatedSize = BATCH_MESSAGE_OVERHEAD;
+            return true;
+        };
+
         for (const auto& item : data)
         {
-            // Check if stop was requested
             if (shouldStop())
             {
                 m_logger(LOG_INFO, "Stop requested, aborting data message sending");
                 return false;
             }
 
-            flatbuffers::FlatBufferBuilder builder;
-            auto idStr = builder.CreateString(item.id);
-            auto idxStr = builder.CreateString(item.index);
-            auto dataVec = builder.CreateVector(reinterpret_cast<const int8_t*>(item.data.data()), item.data.size());
+            const size_t itemEstimatedSize =
+                FLATBUFFERS_OVERHEAD_PER_ITEM + item.id.size() + item.index.size() + item.data.size();
 
-            Wazuh::SyncSchema::DataValueBuilder dataValueBuilder(builder);
+            // Flush current batch before adding if this item would overflow it.
+            if (!batchOffsets.empty() && batchEstimatedSize + itemEstimatedSize > MAX_BATCH_PAYLOAD)
+            {
+                if (!flushBatch())
+                    return false;
+            }
+
+            auto idStr = batchBuilder.CreateString(item.id);
+            auto idxStr = batchBuilder.CreateString(item.index);
+            auto dataVec = batchBuilder.CreateVector(
+                               reinterpret_cast<const int8_t*>(item.data.data()), item.data.size());
+
+            Wazuh::SyncSchema::DataValueBuilder dataValueBuilder(batchBuilder);
             dataValueBuilder.add_seq(item.seq);
             dataValueBuilder.add_session(session);
             dataValueBuilder.add_id(idStr);
@@ -676,26 +740,13 @@ bool AgentSyncProtocol::sendDataMessages(uint64_t session,
             const auto protocolOperation = (item.operation == Operation::DELETE_)
                                            ? Wazuh::SyncSchema::Operation::Delete
                                            : Wazuh::SyncSchema::Operation::Upsert;
-
             dataValueBuilder.add_operation(protocolOperation);
             dataValueBuilder.add_data(dataVec);
-            auto dataValueOffset = dataValueBuilder.Finish();
-
-            auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::DataValue, dataValueOffset.Union());
-            builder.Finish(message);
-
-            const uint8_t* buffer_ptr = builder.GetBufferPointer();
-            const size_t buffer_size = builder.GetSize();
-            std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
-
-            if (!sendFlatBufferMessageAsString(messageVector))
-            {
-                m_logger(LOG_ERROR, "Failed to send Data message.");
-                return false;
-            }
+            batchOffsets.push_back(dataValueBuilder.Finish());
+            batchEstimatedSize += itemEstimatedSize;
         }
 
-        return true;
+        return flushBatch();
     }
     catch (const std::exception& e)
     {
@@ -958,7 +1009,14 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
             }
         }
 
-        m_logger(LOG_ERROR, "Exceeded maximum retries for End message. Exiting...");
+        if (shouldStop())
+        {
+            m_logger(LOG_INFO, "Sync End message retries exhausted because module is stopping.");
+        }
+        else
+        {
+            m_logger(LOG_ERROR, "Exceeded maximum retries for End message. Exiting...");
+        }
 
         return false;
     }

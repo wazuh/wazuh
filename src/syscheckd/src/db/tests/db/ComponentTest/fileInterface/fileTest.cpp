@@ -325,6 +325,70 @@ TEST_F(DBTestFixture, TestFimDBFileUpdateNullParameters)
     });
 }
 
+// Test callback to validate inode conversion to string
+static void callbackValidateInodeStringConversion(ReturnTypeCallback result_type,
+                                                   const cJSON* result_json,
+                                                   void* user_data)
+{
+    ASSERT_TRUE(result_json != NULL);
+    ASSERT_TRUE(user_data != NULL);
+
+    // Assert that we received a MODIFIED event (not INSERTED/DELETED)
+    ASSERT_EQ(result_type, ReturnTypeCallback::MODIFIED)
+        << "Expected MODIFIED event, but got type: " << static_cast<int>(result_type);
+
+    // For MODIFIED events, both "old" and "new" objects must be present
+    cJSON* old_obj = cJSON_GetObjectItem(result_json, "old");
+    ASSERT_TRUE(old_obj != NULL) << "MODIFIED event must contain 'old' object";
+
+    cJSON* new_obj = cJSON_GetObjectItem(result_json, "new");
+    ASSERT_TRUE(new_obj != NULL) << "MODIFIED event must contain 'new' object";
+
+    // Validate "old" object has inode as string
+    cJSON* old_inode = cJSON_GetObjectItem(old_obj, "inode");
+    ASSERT_TRUE(old_inode != NULL) << "old object must contain 'inode' field";
+    ASSERT_TRUE(cJSON_IsString(old_inode)) << "old.inode should be a string, but got type: "
+                                            << old_inode->type;
+    // Verify the value is correct
+    const char* old_inode_str = cJSON_GetStringValue(old_inode);
+    ASSERT_TRUE(old_inode_str != NULL);
+    ASSERT_STREQ(old_inode_str, "18277083") << "old.inode string value mismatch";
+
+    // Validate "new" object has inode as string
+    cJSON* new_inode = cJSON_GetObjectItem(new_obj, "inode");
+    ASSERT_TRUE(new_inode != NULL) << "new object must contain 'inode' field";
+    ASSERT_TRUE(cJSON_IsString(new_inode)) << "new.inode should be a string, but got type: "
+                                            << new_inode->type;
+    // Verify the value is correct
+    const char* new_inode_str = cJSON_GetStringValue(new_inode);
+    ASSERT_TRUE(new_inode_str != NULL);
+    ASSERT_STREQ(new_inode_str, "18457083") << "new.inode string value mismatch";
+}
+
+TEST_F(DBTestFixture, TestFimDBFileUpdateInodeConversion)
+{
+    // This test validates that fim_db_file_update converts inode fields
+    // from integer to string in both "old" and "new" JSON objects when
+    // processing MODIFIED events.
+
+    const auto fileFIMTest {std::make_unique<FileItem>(insertStatement1["data"].front())};
+    const auto fileFIMTestUpdated {std::make_unique<FileItem>(updateStatement1["data"].front())};
+
+    EXPECT_NO_THROW({
+        // First insert the file (INSERTED event)
+        auto result = fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        // Now update the file (MODIFIED event) with custom callback
+        callback_context_t callback_inode_validation;
+        callback_inode_validation.callback_txn = callbackValidateInodeStringConversion;
+        callback_inode_validation.context = &ctx1;
+
+        result = fim_db_file_update(fileFIMTestUpdated->toFimEntry(), callback_inode_validation);
+        ASSERT_EQ(result, FIMDB_OK);
+    });
+}
+
 TEST_F(DBTestFixture, TestFimDBGetPathNoFile)
 {
     callback_context_t callback_data {callBackTestFIMEntry, nullptr};

@@ -1727,8 +1727,20 @@
             "string"
           ]
         },
+        "enrichments.indicator.feed.name": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nName of the feed that supplied the indicator.",
+          "type": [
+            "string"
+          ]
+        },
         "enrichments.indicator.first_seen": {
           "description": "Module: ecs\nIndexerType: date\n\nDate/time indicator was first reported.",
+          "type": [
+            "string"
+          ]
+        },
+        "enrichments.indicator.id": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nUnique identifier for the enrichment data, such as a hash of the indicator data or a unique ID from the provider.",
           "type": [
             "string"
           ]
@@ -1753,6 +1765,41 @@
         },
         "enrichments.indicator.reference": {
           "description": "Module: ecs\nIndexerType: keyword\n\nIndicator reference URL.",
+          "type": [
+            "string"
+          ]
+        },
+        "enrichments.indicator.software": {
+          "additionalProperties": false,
+          "description": "Module: ecs\nIndexerType: object\n\nName of the software associated with the indicator, such as malware or attack framework.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "properties": {
+            "alias": {
+              "description": "Module: ecs\nIndexerType: keyword\n\nAlias or alternative names for the software associated with the indicator.",
+              "type": [
+                "string"
+              ]
+            },
+            "name": {
+              "description": "Module: ecs\nIndexerType: keyword\n\nName of the software associated with the indicator.",
+              "type": [
+                "string"
+              ]
+            },
+            "type": {
+              "description": "Module: ecs\nIndexerType: keyword\n\nType of software associated with the indicator, such as malware, attack framework, or tool.",
+              "type": [
+                "string"
+              ]
+            }
+          },
+          "type": [
+            "object",
+            "string"
+          ]
+        },
+        "enrichments.indicator.tags": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nList of tags associated with the indicator.",
           "type": [
             "string"
           ]
@@ -7325,6 +7372,66 @@
             "string"
           ]
         },
+        "rule.compliance.cmmc": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nCMMC requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.fedramp": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nFedRAMP requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.gdpr": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nGDPR requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.hipaa": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nHIPAA requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.iso_27001": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nISO 27001 requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.nis2": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nNIS2 requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.nist_800_171": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nNIST 800-171 requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.nist_800_53": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nNIST 800-53 requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.pci_dss": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nPCI DSS requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.tsc": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nTSC requirements.",
+          "type": [
+            "string"
+          ]
+        },
         "rule.description": {
           "description": "Module: ecs\nIndexerType: keyword\n\nThe description of the rule generating the event.",
           "type": [
@@ -7339,6 +7446,24 @@
         },
         "rule.license": {
           "description": "Module: ecs\nIndexerType: keyword\n\nName of the license under which the rule used to generate this event is made available.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.mitre.subtechnique": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nMITRE ATT&CK subtechniques.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.mitre.tactic": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nMITRE ATT&CK tactics.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.mitre.technique": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nMITRE ATT&CK techniques.",
           "type": [
             "string"
           ]
@@ -8061,6 +8186,12 @@
                 },
                 "email.address": {
                   "description": "Module: ecs\nIndexerType: keyword\n\nIdentifies a threat indicator as an email address (irrespective of direction).",
+                  "type": [
+                    "string"
+                  ]
+                },
+                "feed.name": {
+                  "description": "Module: ecs\nIndexerType: keyword\n\nName of the feed that supplied the indicator.",
                   "type": [
                     "string"
                   ]
@@ -8984,6 +9115,12 @@
                     "string"
                   ]
                 },
+                "id": {
+                  "description": "Module: ecs\nIndexerType: keyword\n\nUnique identifier for the enrichment data, such as a hash of the indicator data or a unique ID from the provider.",
+                  "type": [
+                    "string"
+                  ]
+                },
                 "ip": {
                   "description": "Module: ecs\nIndexerType: ip\n\nIdentifies a threat indicator as an IP address (irrespective of direction).",
                   "type": [
@@ -9095,6 +9232,41 @@
                   "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                   "type": [
                     "number",
+                    "string"
+                  ]
+                },
+                "software": {
+                  "additionalProperties": false,
+                  "description": "Module: ecs\nIndexerType: object\n\nName of the software associated with the indicator, such as malware or attack framework.",
+                  "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                  "properties": {
+                    "alias": {
+                      "description": "Module: ecs\nIndexerType: keyword\n\nAlias or alternative names for the software associated with the indicator.",
+                      "type": [
+                        "string"
+                      ]
+                    },
+                    "name": {
+                      "description": "Module: ecs\nIndexerType: keyword\n\nName of the software associated with the indicator.",
+                      "type": [
+                        "string"
+                      ]
+                    },
+                    "type": {
+                      "description": "Module: ecs\nIndexerType: keyword\n\nType of software associated with the indicator, such as malware, attack framework, or tool.",
+                      "type": [
+                        "string"
+                      ]
+                    }
+                  },
+                  "type": [
+                    "object",
+                    "string"
+                  ]
+                },
+                "tags": {
+                  "description": "Module: ecs\nIndexerType: keyword\n\nList of tags associated with the indicator.",
+                  "type": [
                     "string"
                   ]
                 },
@@ -11871,14 +12043,68 @@
             "string"
           ]
         },
+        "vulnerability.classification": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nThe classification of the vulnerability scoring system. For example (https://www.first.org/cvss/)",
+          "type": [
+            "string"
+          ]
+        },
+        "vulnerability.description": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nThe description of the vulnerability that provides additional context of the vulnerability. For example (https://cve.mitre.org/about/faqs.html#cve_entry_descriptions_created)",
+          "type": [
+            "string"
+          ]
+        },
+        "vulnerability.detected_at": {
+          "description": "Module: ecs\nIndexerType: date\n\nVulnerability's detection date.",
+          "type": [
+            "string"
+          ]
+        },
+        "vulnerability.enumeration": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nThe type of identifier used for this vulnerability. For example (https://cve.mitre.org/about/)",
+          "type": [
+            "string"
+          ]
+        },
         "vulnerability.id": {
           "description": "Module: ecs\nIndexerType: keyword\n\nThe identification (ID) is the number portion of a vulnerability entry. It includes a unique identification number for the vulnerability. For example (https://cve.mitre.org/about/faqs.html#what_is_cve_id)",
           "type": [
             "string"
           ]
         },
+        "vulnerability.published_at": {
+          "description": "Module: ecs\nIndexerType: date\n\nVulnerability's publication date.",
+          "type": [
+            "string"
+          ]
+        },
+        "vulnerability.reference": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nA resource that provides additional information, context, and mitigations for the identified vulnerability.",
+          "type": [
+            "string"
+          ]
+        },
+        "vulnerability.report_id": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nThe report or scan identification number.",
+          "type": [
+            "string"
+          ]
+        },
+        "vulnerability.scanner.condition": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nThe condition matched by the package that led the scanner to consider it vulnerable.",
+          "type": [
+            "string"
+          ]
+        },
         "vulnerability.scanner.reference": {
           "description": "Module: ecs\nIndexerType: keyword\n\nScanner's resource that provides additional information, context, and mitigations for the identified vulnerability.",
+          "type": [
+            "string"
+          ]
+        },
+        "vulnerability.scanner.source": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nThe origin of the decision of the scanner (AKA feed used to detect the vulnerability).",
           "type": [
             "string"
           ]
@@ -11897,6 +12123,22 @@
             "string"
           ]
         },
+        "vulnerability.score.environmental": {
+          "description": "Module: ecs\nIndexerType: float\n\nScores can range from 0.0 to 10.0, with 10.0 being the most severe.\nEnvironmental scores cover an assessment for any modified Base metrics, confidentiality, integrity, and availability requirements. For example (https://www.first.org/cvss/specification-document)",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "vulnerability.score.temporal": {
+          "description": "Module: ecs\nIndexerType: float\n\nScores can range from 0.0 to 10.0, with 10.0 being the most severe.\nTemporal scores cover an assessment for code maturity, remediation level, and confidence. For example (https://www.first.org/cvss/specification-document)",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
         "vulnerability.score.version": {
           "description": "Module: ecs\nIndexerType: keyword\n\nThe National Vulnerability Database (NVD) provides qualitative severity rankings of \"Low\", \"Medium\", and \"High\" for CVSS v2.0 base score ranges in addition to the severity ratings for CVSS v3.0 as they are defined in the CVSS v3.0 specification.\nCVSS is owned and managed by FIRST.Org, Inc. (FIRST), a US-based non-profit organization, whose mission is to help computer security incident response teams across the world. For example (https://nvd.nist.gov/vuln-metrics/cvss)",
           "type": [
@@ -11906,6 +12148,14 @@
         "vulnerability.severity": {
           "description": "Module: ecs\nIndexerType: keyword\n\nThe severity of the vulnerability can help with metrics and internal prioritization regarding remediation. For example (https://nvd.nist.gov/vuln-metrics/cvss)",
           "type": [
+            "string"
+          ]
+        },
+        "vulnerability.under_evaluation": {
+          "description": "Module: ecs\nIndexerType: boolean\n\nIndicates if the vulnerability is awaiting analysis by the NVD.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "boolean",
             "string"
           ]
         },

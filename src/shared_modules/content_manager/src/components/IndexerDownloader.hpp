@@ -21,7 +21,9 @@
 #include <chrono>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <tuple>
 #include <vector>
@@ -48,15 +50,26 @@
  *
  * Configuration expected under configData["indexer"]:
  * {
- *   "index":    ".cti-cves",     // Indexer CVE index name
- *   "pageSize": 250,             // Documents per page (optional, default 250)
- *   "numSlices": 2,              // Parallel PIT slices (optional, default 2)
+ *   "index":               ".cti-cves",               // Indexer CVE index name
+ *   "consumerStatusIndex": ".cti-consumers",          // Consumer status index (optional)
+ *   "consumerStatusId":    "t1-vulnerabilities-5_public-vulnerabilities-5", // Consumer status document id (optional)
+ *   "pageSize":            250,                       // Documents per page (optional, default 250)
+ *   "numSlices":           2,                         // Parallel PIT slices (optional, default 2)
  *   <standard IndexerConnector SSL/auth config>
  * }
  */
 class IndexerDownloader final : public AbstractHandler<std::shared_ptr<UpdaterContext>>
 {
 private:
+    enum class ConsumerStatus
+    {
+        Missing,
+        Empty,
+        Updating,
+        Idle,
+        Unknown
+    };
+
     nlohmann::json m_config;
     mutable std::mutex m_callbackMutex; ///< Serializes processPage calls across parallel slices.
 
@@ -110,6 +123,162 @@ private:
     }
 
     /**
+     * @brief Reads the current consumer status document from `.cti-consumers`.
+     *
+     * The indexer-side contract guarantees that the document status is:
+     *   - empty / missing while the consumer is not ready yet,
+     *   - "updating" while the feed is still being indexed,
+     *   - "idle" only when the consumer can be queried safely.
+     */
+    ConsumerStatus readConsumerStatus(IndexerConnectorSync& syncConnector,
+                                      std::string_view consumerStatusIndex,
+                                      std::string_view consumerStatusId) const
+    {
+        const auto query =
+            nlohmann::json {{"ids", {{"values", nlohmann::json::array({std::string {consumerStatusId}})}}}};
+        const auto sourceFilter =
+            nlohmann::json {{"includes", nlohmann::json::array({"status"})}, {"excludes", nlohmann::json::array()}};
+        const auto searchQuery = nlohmann::json {{"size", 1}, {"query", query}, {"_source", sourceFilter}};
+
+        const auto searchResult = syncConnector.executeSearchQuery(std::string {consumerStatusIndex}, searchQuery);
+        if (!searchResult.contains("hits") || !searchResult.at("hits").is_object() ||
+            !searchResult.at("hits").contains("hits") || !searchResult.at("hits").at("hits").is_array() ||
+            searchResult.at("hits").at("hits").empty())
+        {
+            return ConsumerStatus::Missing;
+        }
+
+        const auto& hit = searchResult.at("hits").at("hits").front();
+        if (!hit.contains("_source") || !hit.at("_source").is_object())
+        {
+            return ConsumerStatus::Empty;
+        }
+
+        const auto& source = hit.at("_source");
+        if (!source.contains("status") || !source.at("status").is_string())
+        {
+            return ConsumerStatus::Empty;
+        }
+
+        std::string status;
+        source.at("status").get_to(status);
+        if (status.empty())
+        {
+            return ConsumerStatus::Empty;
+        }
+        if (status == "idle")
+        {
+            return ConsumerStatus::Idle;
+        }
+        if (status == "updating")
+        {
+            return ConsumerStatus::Updating;
+        }
+
+        return ConsumerStatus::Unknown;
+    }
+
+    /**
+     * @brief Waits until the consumer status document becomes `idle`.
+     *
+     * If the consumer status settings are not configured, the wait is skipped so
+     * non-VD users of IndexerDownloader keep the previous behaviour.
+     */
+    bool waitUntilConsumerIdle(UpdaterContext& context) const
+    {
+        static constexpr auto CONSUMER_STATUS_POLL_INTERVAL {std::chrono::minutes {1}};
+
+        const auto consumerStatusIndex = m_config.at("indexer").value("consumerStatusIndex", std::string {});
+        const auto consumerStatusId = m_config.at("indexer").value("consumerStatusId", std::string {});
+
+        if (consumerStatusIndex.empty() || consumerStatusId.empty())
+        {
+            return true;
+        }
+
+        IndexerConnectorSync syncConnector(m_config.at("indexer"));
+
+        while (true)
+        {
+            try
+            {
+                switch (readConsumerStatus(syncConnector, consumerStatusIndex, consumerStatusId))
+                {
+                    case ConsumerStatus::Idle:
+                        logInfo(WM_CONTENTUPDATER,
+                                "IndexerDownloader: Consumer '%s' in index '%s' is idle. Starting feed download.",
+                                consumerStatusId.c_str(),
+                                consumerStatusIndex.c_str());
+                        return true;
+
+                    case ConsumerStatus::Missing:
+                        logInfo(WM_CONTENTUPDATER,
+                                "IndexerDownloader: Consumer '%s' not found in '%s'. Waiting %zu s before retrying.",
+                                consumerStatusId.c_str(),
+                                consumerStatusIndex.c_str(),
+                                static_cast<size_t>(
+                                    std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL)
+                                        .count()));
+                        break;
+
+                    case ConsumerStatus::Empty:
+                        logInfo(WM_CONTENTUPDATER,
+                                "IndexerDownloader: Consumer '%s' has empty status in '%s'. Waiting %zu s before "
+                                "retrying.",
+                                consumerStatusId.c_str(),
+                                consumerStatusIndex.c_str(),
+                                static_cast<size_t>(
+                                    std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL)
+                                        .count()));
+                        break;
+
+                    case ConsumerStatus::Updating:
+                        logInfo(WM_CONTENTUPDATER,
+                                "IndexerDownloader: Consumer '%s' is still updating in '%s'. Waiting %zu s before "
+                                "retrying.",
+                                consumerStatusId.c_str(),
+                                consumerStatusIndex.c_str(),
+                                static_cast<size_t>(
+                                    std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL)
+                                        .count()));
+                        break;
+
+                    case ConsumerStatus::Unknown:
+                        logWarn(WM_CONTENTUPDATER,
+                                "IndexerDownloader: Consumer '%s' in '%s' returned an unknown status. Waiting %zu s "
+                                "before retrying.",
+                                consumerStatusId.c_str(),
+                                consumerStatusIndex.c_str(),
+                                static_cast<size_t>(
+                                    std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL)
+                                        .count()));
+                        break;
+                }
+            }
+            catch (const std::exception& e)
+            {
+                logWarn(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Failed to query consumer '%s' in '%s' (%s). Waiting %zu s before "
+                        "retrying.",
+                        consumerStatusId.c_str(),
+                        consumerStatusIndex.c_str(),
+                        e.what(),
+                        static_cast<size_t>(
+                            std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL).count()));
+            }
+
+            if (context.spUpdaterBaseContext->spStopCondition->waitFor(
+                    std::chrono::duration_cast<std::chrono::milliseconds>(CONSUMER_STATUS_POLL_INTERVAL)))
+            {
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Stop requested while waiting for consumer '%s' to become idle.",
+                        consumerStatusId.c_str());
+                return false;
+            }
+        }
+    }
+
+    /**
      * @brief Persists the cursor to RocksDB after each page so that a restart can resume
      *        from the last successfully processed page instead of from the beginning.
      *
@@ -124,6 +293,42 @@ private:
         }
         context.spUpdaterBaseContext->spRocksDB->put(
             Utils::getCompactTimestamp(std::time(nullptr)), cursor, Components::Columns::CURRENT_OFFSET);
+    }
+
+    /**
+     * @brief Invalidates the stored cursor so the next cycle is forced to perform a full load.
+     */
+    void invalidateCursor(UpdaterContext& context) const
+    {
+        context.data.erase("cursor");
+
+        if (!context.spUpdaterBaseContext->spRocksDB)
+        {
+            return;
+        }
+
+        logWarn(WM_CONTENTUPDATER,
+                "IndexerDownloader: invalidating stored cursor and forcing a full reload on the next attempt.");
+        context.spUpdaterBaseContext->spRocksDB->put(
+            Utils::getCompactTimestamp(std::time(nullptr)), "0", Components::Columns::CURRENT_OFFSET);
+    }
+
+    /**
+     * @brief Sends the final completion signal so the consumer can validate the downloaded feed.
+     *
+     * Returns true only when the consumer confirms that the feed is ready to be used.
+     */
+    bool sendCompletionSignal(UpdaterContext& context, const size_t totalProcessed) const
+    {
+        const auto cursor = context.data.value("cursor", std::string {});
+        nlohmann::json finalMsg;
+        finalMsg["type"] = "indexer_complete";
+        finalMsg["cursor"] = cursor;
+        finalMsg["changed"] = (totalProcessed > 0);
+        finalMsg["data"] = nlohmann::json::array();
+
+        const auto result = context.spUpdaterBaseContext->fileProcessingCallback(std::move(finalMsg));
+        return std::get<2>(result);
     }
 
     /**
@@ -514,7 +719,7 @@ private:
             if (totalProcessed > 0)
             {
                 logInfo(WM_CONTENTUPDATER,
-                        "IndexerDownloader: Initial load complete — %zu documents, cursor: '%s'",
+                        "IndexerDownloader: Initial load download phase complete — %zu documents, cursor: '%s'",
                         totalProcessed,
                         context.data.value("cursor", std::string {}).c_str());
                 return totalProcessed;
@@ -554,7 +759,7 @@ private:
         const size_t totalProcessed = fetchWithPit(context, query, lastCursor);
 
         logInfo(WM_CONTENTUPDATER,
-                "IndexerDownloader: Incremental update complete — %zu documents, new cursor: '%s'",
+                "IndexerDownloader: Incremental update download phase complete — %zu documents, new cursor: '%s'",
                 totalProcessed,
                 context.data.value("cursor", std::string {}).c_str());
         return totalProcessed;
@@ -602,8 +807,14 @@ public:
             }
         }
 
+        const bool forceInitialLoad = lastCursor.empty();
+        if (!waitUntilConsumerIdle(*context))
+        {
+            return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
+        }
+
         size_t totalProcessed = 0;
-        if (lastCursor.empty())
+        if (forceInitialLoad)
         {
             totalProcessed = initialLoad(*context);
         }
@@ -619,22 +830,12 @@ public:
             return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
         }
 
-        // Signal completion to DatabaseFeedManager so it can write the feed-complete
-        // sentinel and optionally trigger a rescan.  The "changed" field tells
-        // DatabaseFeedManager whether the feed actually changed: the sentinel is written
-        // regardless, but the agent rescan is only triggered when changed=true so that a
-        // manager restart with no new CVE data does not cause an unnecessary full rescan.
-        const auto cursor = context->data.value("cursor", std::string {});
-        nlohmann::json finalMsg;
-        finalMsg["type"] = "indexer_complete";
-        finalMsg["cursor"] = cursor;
-        finalMsg["changed"] = (totalProcessed > 0);
-        finalMsg["data"] = nlohmann::json::array();
-        const auto result = context->spUpdaterBaseContext->fileProcessingCallback(std::move(finalMsg));
-        if (!std::get<2>(result))
+        if (!sendCompletionSignal(*context, totalProcessed))
         {
+            invalidateCursor(*context);
             logWarn(WM_CONTENTUPDATER,
-                    "IndexerDownloader: post-download reload/rescan signal returned failure (non-fatal).");
+                    "IndexerDownloader: downloaded feed is not ready after completion validation. "
+                    "The stored cursor was invalidated and the next scheduler cycle will perform a full reload.");
         }
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));

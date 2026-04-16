@@ -774,8 +774,14 @@
     "enrichments.indicator.confidence": {
       "type": "keyword"
     },
+    "enrichments.indicator.feed.name": {
+      "type": "keyword"
+    },
     "enrichments.indicator.first_seen": {
       "type": "date"
+    },
+    "enrichments.indicator.id": {
+      "type": "keyword"
     },
     "enrichments.indicator.last_seen": {
       "type": "date"
@@ -787,6 +793,21 @@
       "type": "keyword"
     },
     "enrichments.indicator.reference": {
+      "type": "keyword"
+    },
+    "enrichments.indicator.software": {
+      "type": "object"
+    },
+    "enrichments.indicator.software.alias": {
+      "type": "keyword"
+    },
+    "enrichments.indicator.software.name": {
+      "type": "keyword"
+    },
+    "enrichments.indicator.software.type": {
+      "type": "keyword"
+    },
+    "enrichments.indicator.tags": {
       "type": "keyword"
     },
     "enrichments.indicator.type": {
@@ -3270,6 +3291,36 @@
     "rule.category": {
       "type": "keyword"
     },
+    "rule.compliance.cmmc": {
+      "type": "keyword"
+    },
+    "rule.compliance.fedramp": {
+      "type": "keyword"
+    },
+    "rule.compliance.gdpr": {
+      "type": "keyword"
+    },
+    "rule.compliance.hipaa": {
+      "type": "keyword"
+    },
+    "rule.compliance.iso_27001": {
+      "type": "keyword"
+    },
+    "rule.compliance.nis2": {
+      "type": "keyword"
+    },
+    "rule.compliance.nist_800_171": {
+      "type": "keyword"
+    },
+    "rule.compliance.nist_800_53": {
+      "type": "keyword"
+    },
+    "rule.compliance.pci_dss": {
+      "type": "keyword"
+    },
+    "rule.compliance.tsc": {
+      "type": "keyword"
+    },
     "rule.description": {
       "type": "keyword"
     },
@@ -3277,6 +3328,15 @@
       "type": "keyword"
     },
     "rule.license": {
+      "type": "keyword"
+    },
+    "rule.mitre.subtechnique": {
+      "type": "keyword"
+    },
+    "rule.mitre.tactic": {
+      "type": "keyword"
+    },
+    "rule.mitre.technique": {
       "type": "keyword"
     },
     "rule.name": {
@@ -3628,6 +3688,9 @@
       "type": "keyword"
     },
     "threat.enrichments.indicator.email.address": {
+      "type": "keyword"
+    },
+    "threat.enrichments.indicator.feed.name": {
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.accessed": {
@@ -4050,6 +4113,9 @@
     "threat.enrichments.indicator.geo.timezone": {
       "type": "keyword"
     },
+    "threat.enrichments.indicator.id": {
+      "type": "keyword"
+    },
     "threat.enrichments.indicator.ip": {
       "type": "ip"
     },
@@ -4103,6 +4169,21 @@
     },
     "threat.enrichments.indicator.sightings": {
       "type": "long"
+    },
+    "threat.enrichments.indicator.software": {
+      "type": "object"
+    },
+    "threat.enrichments.indicator.software.alias": {
+      "type": "keyword"
+    },
+    "threat.enrichments.indicator.software.name": {
+      "type": "keyword"
+    },
+    "threat.enrichments.indicator.software.type": {
+      "type": "keyword"
+    },
+    "threat.enrichments.indicator.tags": {
+      "type": "keyword"
     },
     "threat.enrichments.indicator.type": {
       "type": "keyword"
@@ -5421,10 +5502,37 @@
     "vulnerability.category": {
       "type": "keyword"
     },
+    "vulnerability.classification": {
+      "type": "keyword"
+    },
+    "vulnerability.description": {
+      "type": "keyword"
+    },
+    "vulnerability.detected_at": {
+      "type": "date"
+    },
+    "vulnerability.enumeration": {
+      "type": "keyword"
+    },
     "vulnerability.id": {
       "type": "keyword"
     },
+    "vulnerability.published_at": {
+      "type": "date"
+    },
+    "vulnerability.reference": {
+      "type": "keyword"
+    },
+    "vulnerability.report_id": {
+      "type": "keyword"
+    },
+    "vulnerability.scanner.condition": {
+      "type": "keyword"
+    },
     "vulnerability.scanner.reference": {
+      "type": "keyword"
+    },
+    "vulnerability.scanner.source": {
       "type": "keyword"
     },
     "vulnerability.scanner.vendor": {
@@ -5433,11 +5541,20 @@
     "vulnerability.score.base": {
       "type": "float"
     },
+    "vulnerability.score.environmental": {
+      "type": "float"
+    },
+    "vulnerability.score.temporal": {
+      "type": "float"
+    },
     "vulnerability.score.version": {
       "type": "keyword"
     },
     "vulnerability.severity": {
       "type": "keyword"
+    },
+    "vulnerability.under_evaluation": {
+      "type": "boolean"
     },
     "wazuh.agent.build.original": {
       "type": "keyword"

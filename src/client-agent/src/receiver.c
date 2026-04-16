@@ -25,6 +25,7 @@
 static FILE *fp = NULL;
 static char file_sum[34] = "";
 static char file[OS_SIZE_1024 + 1] = "";
+static char last_reload_sum[34] = "";
 #ifdef WIN32
 w_queue_t * winexec_queue;
 #endif
@@ -117,7 +118,7 @@ int receive_msg()
             /* Force reconnect agent to the manager */
             else if (strncmp(tmp_msg, HC_FORCE_RECONNECT, strlen(HC_FORCE_RECONNECT)) == 0) {
                 /* Set lock and wait for it */
-                minfo("Wazuh Agent will be reconnected because a reconnect message was received");
+                mdebug1("Wazuh Agent will be reconnected because a reconnect message was received");
                 os_setwait();
                 w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
 
@@ -252,20 +253,24 @@ int receive_msg()
                                     clear_merged_hash_cache();
                                     if (agt->flags.remote_conf && !verifyRemoteConf()) {
                                         const bool gate_was_blocked = !startup_gate_is_ready();
-                                        bool gate_released = false;
+                                        const bool gate_would_release = gate_was_blocked && startup_gate_check_hash_match();
+                                        const bool config_changed = (strcmp(last_reload_sum, file_sum) != 0);
 
-                                        startup_gate_refresh_from_local_hash();
-                                        gate_released = gate_was_blocked && startup_gate_is_ready();
-
-                                        if (agt->flags.auto_restart || gate_released) {
-                                            if (gate_released && !agt->flags.auto_restart) {
-                                                minfo("Agent is reloading to apply startup hash validated configuration.");
+                                        if (config_changed && (agt->flags.auto_restart || gate_would_release)) {
+                                            strncpy(last_reload_sum, file_sum, sizeof(last_reload_sum) - 1);
+                                            if (gate_would_release && !agt->flags.auto_restart) {
+                                                mdebug1("Agent is reloading to apply startup hash validated configuration.");
                                             } else {
                                                 minfo("Agent is reloading due to shared configuration changes.");
                                             }
                                             reloadAgent();
                                         } else {
-                                            minfo("Shared agent configuration has been updated.");
+                                            startup_gate_refresh_from_local_hash();
+                                            if (!config_changed) {
+                                                mdebug1("Shared agent configuration unchanged, skipping reload.");
+                                            } else {
+                                                mdebug1("Shared agent configuration has been updated.");
+                                            }
                                         }
                                     }
                                 }
@@ -346,7 +351,7 @@ int receiver_messages()
             merror(LOST_ERROR);
             os_setwait();
             start_agent(0);
-            minfo(SERVER_UP);
+            mdebug1(SERVER_UP);
             os_delwait();
             w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
         }

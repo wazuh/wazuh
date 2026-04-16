@@ -255,8 +255,19 @@ std::string Config::toJson() const
 /****************************************************************************************
  * Wrapper of IndexerConnector class implementation
  ****************************************************************************************/
-WIndexerConnector::WIndexerConnector(std::string_view jsonOssecConfig)
+WIndexerConnector::WIndexerConnector(std::string_view jsonOssecConfig, const std::size_t maxHitsPerRequest)
 {
+    if (maxHitsPerRequest == 0)
+    {
+        LOG_WARNING("[indexer-connector] maxHitsPerRequest must be greater than zero, default to 1");
+        m_maxHitsPerRequest = 1;
+    }
+    else
+    {
+        m_maxHitsPerRequest = maxHitsPerRequest;
+    }
+
+
     if (jsonOssecConfig.empty())
     {
         throw std::runtime_error("Empty JSON configuration for IndexerConnector");
@@ -269,18 +280,31 @@ WIndexerConnector::WIndexerConnector(std::string_view jsonOssecConfig)
     }
 
     const auto logFunction = logging::createStandaloneLogFunction();
-    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonParsed, logFunction);
+    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonParsed, "engine", logFunction);
 }
 
-WIndexerConnector::WIndexerConnector(const Config& config, const LogFunctionType& logFunction)
+WIndexerConnector::WIndexerConnector(const Config& config,
+                                     const LogFunctionType& logFunction,
+                                     const std::size_t maxHitsPerRequest)
 {
+    if (maxHitsPerRequest == 0)
+    {
+        LOG_WARNING("[indexer-connector] maxHitsPerRequest must be greater than zero, default to 1");
+        m_maxHitsPerRequest = 1;
+    }
+    else
+    {
+        m_maxHitsPerRequest = maxHitsPerRequest;
+    }
+
+
     nlohmann::json jsonConfig = nlohmann::json::parse(config.toJson(), nullptr, false);
     if (jsonConfig.is_discarded())
     {
         throw std::runtime_error("Invalid JSON configuration for IndexerConnector");
     }
 
-    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonConfig, logFunction);
+    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonConfig, "engine", logFunction);
 }
 
 WIndexerConnector::~WIndexerConnector() = default;
@@ -299,6 +323,16 @@ uint64_t WIndexerConnector::getQueueSize()
         return 0;
     }
     return m_indexerConnectorAsync->getQueueSize();
+}
+
+uint64_t WIndexerConnector::getDroppedEvents()
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        return 0;
+    }
+    return m_indexerConnectorAsync->getDroppedEvents();
 }
 
 void WIndexerConnector::index(std::string_view index, std::string_view data)
@@ -524,7 +558,8 @@ std::pair<std::string, bool> WIndexerConnector::getPolicyHashAndEnabled(std::str
     if (!source_data.contains("document") || !source_data["document"].contains("integrations")
         || !source_data["document"]["integrations"].is_array())
     {
-        throw IndexerConnectorException("document.integrations field not found or invalid for space: " + std::string(space));
+        throw IndexerConnectorException("document.integrations field not found or invalid for space: "
+                                        + std::string(space));
     }
 
     // If the document hasn't integrations or it's empty, we consider the policy as disabled, avoiding the need of sync
@@ -632,14 +667,15 @@ WIndexerConnector::streamIocsByType(std::string_view iocType, std::size_t batchS
     const std::string queryBody = fmt::format(R"({{"term": {{"document.type": "{}"}}}})", iocType);
     const auto sourceFilter = buildIocSourceFilter();
     std::size_t streamedDocs = 0;
+
     queryByBatches(
         IOC_INDEX,
         queryBody,
         batchSize,
         [&iocType, &onIoc, &streamedDocs](const json::Json& doc)
         {
-            auto optName = doc.getString("/document/name");
-            if (!optName.has_value() || optName->empty())
+            std::string docName;
+            if (doc.getString(docName, "/document/name") != json::RetGet::Success || docName.empty())
             {
                 LOG_WARNING("[indexer-connector] IOC document without document.name field, skipping");
                 return;
@@ -652,7 +688,7 @@ WIndexerConnector::streamIocsByType(std::string_view iocType, std::size_t batchS
                 return;
             }
 
-            onIoc(*optName, optDocument->str());
+            onIoc(docName, optDocument->str());
             ++streamedDocs;
         },
         sourceFilter);
@@ -759,6 +795,7 @@ std::size_t WIndexerConnector::queryByBatches(std::string_view indexName,
         }
 
         searchAfter = getSearchAfter(hits);
+        LOG_TRACE("[indexer-connector] Processed docs {}", processedDocs);
     }
 
     return processedDocs;
@@ -786,8 +823,8 @@ json::Json WIndexerConnector::getEngineRemoteConfig()
     if (totalHits > 1)
     {
         throw IndexerConnectorException("Multiple remote settings documents found in index "
-                                        + std::string(REMOTE_CONF_INDEX)
-                                        + " (expected 1, got " + std::to_string(totalHits) + ")");
+                                        + std::string(REMOTE_CONF_INDEX) + " (expected 1, got "
+                                        + std::to_string(totalHits) + ")");
     }
 
     const auto& hitArray = hits["hits"];

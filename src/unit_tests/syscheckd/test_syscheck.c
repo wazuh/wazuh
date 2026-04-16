@@ -133,7 +133,7 @@ void test_fim_initialize(void **state)
     will_return(__wrap_schema_validator_is_initialized, false);
     will_return(__wrap_schema_validator_initialize, true);
 
-    expect_string(__wrap__minfo, formatted_msg, "Schema validator initialized successfully from embedded resources");
+    expect_string(__wrap__mdebug1, formatted_msg, "Schema validator initialized successfully from embedded resources");
 
     fim_initialize();
 }
@@ -228,7 +228,7 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
     // Schema validator initialization
     will_return(__wrap_schema_validator_is_initialized, false);
     will_return(__wrap_schema_validator_initialize, true);
-    expect_string(__wrap__minfo, formatted_msg, "Schema validator initialized successfully from embedded resources");
+    expect_string(__wrap__mdebug1, formatted_msg, "Schema validator initialized successfully from embedded resources");
 
     expect_string(__wrap_w_query_agentd, module, SYSCHECK);
     expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
@@ -280,7 +280,7 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
     // Schema validator initialization happens inside fim_initialize, after asp_create but before start_daemon
     will_return(__wrap_schema_validator_is_initialized, false);
     will_return(__wrap_schema_validator_initialize, true);
-    expect_string(__wrap__minfo, formatted_msg, "Schema validator initialized successfully from embedded resources");
+    expect_string(__wrap__mdebug1, formatted_msg, "Schema validator initialized successfully from embedded resources");
 
     expect_string(__wrap_w_query_agentd, module, SYSCHECK);
     expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
@@ -330,7 +330,7 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
     // Schema validator initialization happens inside fim_initialize, after asp_create but before start_daemon
     will_return(__wrap_schema_validator_is_initialized, false);
     will_return(__wrap_schema_validator_initialize, true);
-    expect_string(__wrap__minfo, formatted_msg, "Schema validator initialized successfully from embedded resources");
+    expect_string(__wrap__mdebug1, formatted_msg, "Schema validator initialized successfully from embedded resources");
 
     expect_string(__wrap_w_query_agentd, module, SYSCHECK);
     expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
@@ -385,19 +385,19 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
     will_return(__wrap_rootcheck_init, 0);
 
     expect_string(__wrap__minfo, formatted_msg, "(6002): Monitoring registry entry: 'Entry1 [x64]', with options ''");
-    expect_string(__wrap__minfo, formatted_msg, "(6003): Monitoring path: 'c:\\dir1', with options ''.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6003): Monitoring path: 'c:\\dir1', with options ''.");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6206): Ignore 'file' entry 'dir1'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6206): Ignore 'file' entry 'dir1'");
 
-    expect_string(__wrap__minfo, formatted_msg, "(6207): Ignore 'file' sregex '^regex$'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6207): Ignore 'file' sregex '^regex$'");
 
-    expect_string(__wrap__minfo, formatted_msg, "(6206): Ignore 'registry' entry 'Entry1'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6206): Ignore 'registry' entry 'Entry1'");
 
-    expect_string(__wrap__minfo, formatted_msg, "(6004): No diff for file: 'Diff'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6004): No diff for file: 'Diff'");
 
     expect_wrapper_fim_db_init(0, 100000, 100000);
 
@@ -417,7 +417,7 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
     // Schema validator initialization happens inside fim_initialize, after asp_create but before start_daemon
     will_return(__wrap_schema_validator_is_initialized, false);
     will_return(__wrap_schema_validator_initialize, true);
-    expect_string(__wrap__minfo, formatted_msg, "Schema validator initialized successfully from embedded resources");
+    expect_string(__wrap__mdebug1, formatted_msg, "Schema validator initialized successfully from embedded resources");
 
     expect_string(__wrap_w_query_agentd, module, SYSCHECK);
     expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
@@ -465,7 +465,7 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
 
     will_return(__wrap_rootcheck_init, 0);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6003): Monitoring path: 'c:\\dir1', with options 'whodata'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6003): Monitoring path: 'c:\\dir1', with options 'whodata'.");
 
     expect_wrapper_fim_db_init(0, 100000, 100000);
 
@@ -489,7 +489,7 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
     // Schema validator initialization happens inside fim_initialize, after asp_create but before start_daemon
     will_return(__wrap_schema_validator_is_initialized, false);
     will_return(__wrap_schema_validator_initialize, true);
-    expect_string(__wrap__minfo, formatted_msg, "Schema validator initialized successfully from embedded resources");
+    expect_string(__wrap__mdebug1, formatted_msg, "Schema validator initialized successfully from embedded resources");
 
     expect_string(__wrap_w_query_agentd, module, SYSCHECK);
     expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");

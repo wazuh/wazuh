@@ -1,7 +1,6 @@
 name: 5.X - Engine Standalone
 
 on:
-  # Triggers the workflow on demand
   workflow_dispatch:
     inputs:
       wazuh-branch:

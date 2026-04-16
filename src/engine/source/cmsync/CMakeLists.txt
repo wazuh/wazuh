@@ -28,36 +28,36 @@ target_link_libraries(cmsync_cmsync
 )
 add_library(cmsync::cmsync ALIAS cmsync_cmsync)
 
-# # Tests
-# if(ENGINE_BUILD_TEST)
-# 
-# set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
-# set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
-# set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
-# set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
-# 
-# # Mocks
-# add_library(cmsync_mocks INTERFACE)
-# target_include_directories(cmsync_mocks INTERFACE ${TEST_MOCK_DIR})
-# target_link_libraries(cmsync_mocks INTERFACE GTest::gmock cmsync::icmsync)
-# add_library(cmsync::mocks ALIAS cmsync_mocks)
-# 
-# 
-# add_executable(cmsync_utest
-#     ${UNIT_SRC_DIR}/cmsync_test.cpp
-#     ${UNIT_SRC_DIR}/cachens_test.cpp
-#     ${UNIT_SRC_DIR}/storecti_test.cpp
-# )
-# target_link_libraries(cmsync_utest
-#     PRIVATE
-#     GTest::gtest_main
-#     GTest::gmock
-#     cmsync::cmsync
-#     ctistore::mocks
-# )
-# target_include_directories(cmsync_utest PRIVATE ${SRC_DIR})
-# gtest_discover_tests(cmsync_utest)
-# 
+# Tests
+if(ENGINE_BUILD_TEST)
+
+set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
+set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
+set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
+set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
+
+# Mocks
+add_library(cmsync_mocks INTERFACE)
+target_include_directories(cmsync_mocks INTERFACE ${TEST_MOCK_DIR})
+target_link_libraries(cmsync_mocks INTERFACE GTest::gmock cmsync::icmsync)
+add_library(cmsync::mocks ALIAS cmsync_mocks)
+
+add_executable(cmsync_utest
+    ${UNIT_SRC_DIR}/cmsync_test.cpp
+)
+target_link_libraries(cmsync_utest
+    PRIVATE
+    GTest::gtest_main
+    GTest::gmock
+    cmsync::cmsync
+    router::mocks
+    store::mocks
+    wIndexerConnector::mocks
+    cmcrud::mocks
+)
+target_include_directories(cmsync_utest PRIVATE ${SRC_DIR})
+gtest_discover_tests(cmsync_utest)
+
 # add_executable(cmsync_ctest
 #     ${COMPONENT_SRC_DIR}/cmsync_test.cpp
 #     ${COMPONENT_SRC_DIR}/storecti_test.cpp
@@ -72,5 +72,5 @@ add_library(cmsync::cmsync ALIAS cmsync_cmsync)
 # )
 # target_include_directories(cmsync_ctest PRIVATE ${SRC_DIR})
 # gtest_discover_tests(cmsync_ctest)
-# 
-# endif(ENGINE_BUILD_TEST)
+
+endif(ENGINE_BUILD_TEST)

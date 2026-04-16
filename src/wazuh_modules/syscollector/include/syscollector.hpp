@@ -23,6 +23,7 @@
 #include "dbsync.hpp"
 #include "syscollectorNormalizer.hpp"
 #include "syscollector.h"
+#include "asyncFlushController.hpp"
 #include "iagent_sync_protocol.hpp"
 
 // Define EXPORTED for any platform
@@ -103,6 +104,10 @@ class EXPORTED Syscollector final
         // Mutex access for external synchronization (e.g., from wm_sync_module)
         void lockScanMutex();
         void unlockScanMutex();
+        bool isScanning() const
+        {
+            return m_scanning.load();
+        }
 
         // Recovery functions
         void runRecoveryProcess();
@@ -198,6 +203,7 @@ class EXPORTED Syscollector final
         bool pause();
         void resume();
         int flush();
+        int executeFlushSync();
         int getMaxVersion();
         int setVersion(int version);
 
@@ -437,6 +443,7 @@ class EXPORTED Syscollector final
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocol;
         std::vector<std::string>                                                 m_disabledCollectorsIndicesWithData;
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocolVD;
+        std::unique_ptr<Utils::AsyncFlushController>                             m_asyncFlushController;
         std::vector<std::pair<std::string, nlohmann::json>>*                     m_failedItems;  // Pointer to list of items that failed validation (for deferred deletion)
         std::vector<std::pair<std::string, nlohmann::json>>*                     m_itemsToUpdateSync;  // Pointer to list of items that passed limit check (for deferred sync=1 update)
 

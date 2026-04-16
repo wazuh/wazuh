@@ -209,7 +209,7 @@ if(NOT _orig_rpath)
 endif()
 
 set(_new_paths
-  ${CMAKE_SOURCE_DIR}               # For shared libwazuhext.so
+  ${CMAKE_SOURCE_DIR}/build/lib     # For shared libwazuhext.so
   ${ROCKSDB_LIB_BUILD_DIR}          # External precompiled rocksdb lib
   ${INDEXERCONNECTOR_LIB_BUILD_DIR} # Internal precompiled indexer connector lib
   "$ORIGIN/../lib"
@@ -252,6 +252,7 @@ register_external_library(unofficial-concurrentqueue::concurrentqueue "${CMAKE_S
 register_external_library(OpenSSL::SSL           "${CMAKE_SOURCE_DIR}/external/openssl/include" "${CMAKE_SOURCE_DIR}/external/openssl/libssl.a")
 register_external_library(OpenSSL::Crypto        "${CMAKE_SOURCE_DIR}/external/openssl/include" "${CMAKE_SOURCE_DIR}/external/openssl/libcrypto.a")
 register_external_library(ZLIB::ZLIB             "${CMAKE_SOURCE_DIR}/external/zlib" "${CMAKE_SOURCE_DIR}/external/zlib/libz.a")
+register_external_library(Minizip::Minizip       "${CMAKE_SOURCE_DIR}/external/zlib/contrib" "${CMAKE_SOURCE_DIR}/external/zlib/contrib/minizip/libminizip.a")
 register_external_library(CURL::libcurl          "${CMAKE_SOURCE_DIR}/external/curl/include" "${CMAKE_SOURCE_DIR}/external/curl/lib/.libs/libcurl.a")
 set_target_properties(CURL_libcurl PROPERTIES INTERFACE_LINK_LIBRARIES "ZLIB_ZLIB;OpenSSL_SSL;OpenSSL_Crypto")
 register_external_library(maxminddb::maxminddb   "${CMAKE_SOURCE_DIR}/external/libmaxminddb/include" "${CMAKE_SOURCE_DIR}/external/libmaxminddb/build/libmaxminddb.a")
@@ -299,6 +300,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/cmcrud)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmsync)
 add_subdirectory(${ENGINE_SOURCE_DIR}/confremote)
 add_subdirectory(${ENGINE_SOURCE_DIR}/rawevtindexer)
+add_subdirectory(${ENGINE_SOURCE_DIR}/fastmetrics)
 
 target_link_libraries(wazuh-engine
     base

@@ -10,6 +10,7 @@
 #include "syntax.hpp"
 #include <base/baseTypes.hpp>
 #include <base/utils/ipUtils.hpp>
+#include <fastmetrics/registry.hpp>
 
 namespace builder::builders::opfilter
 {
@@ -336,57 +337,57 @@ FilterOp getStringCmpFunction(const std::string& targetField,
                               const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     // Depending on the operator we return the correct function
-    std::function<bool(const std::string& l, const std::string& r)> cmpFunction;
+    std::function<bool(std::string_view l, std::string_view r)> cmpFunction;
     switch (op)
     {
         case Operator::EQ:
-            cmpFunction = [](const std::string& l, const std::string& r)
+            cmpFunction = [](std::string_view l, std::string_view r)
             {
                 return l == r;
             };
             break;
         case Operator::NE:
-            cmpFunction = [](const std::string& l, const std::string& r)
+            cmpFunction = [](std::string_view l, std::string_view r)
             {
                 return l != r;
             };
             break;
         case Operator::GT:
-            cmpFunction = [](const std::string& l, const std::string& r)
+            cmpFunction = [](std::string_view l, std::string_view r)
             {
                 return l > r;
             };
             break;
         case Operator::GE:
-            cmpFunction = [](const std::string& l, const std::string& r)
+            cmpFunction = [](std::string_view l, std::string_view r)
             {
                 return l >= r;
             };
             break;
         case Operator::LT:
-            cmpFunction = [](const std::string& l, const std::string& r)
+            cmpFunction = [](std::string_view l, std::string_view r)
             {
                 return l < r;
             };
             break;
         case Operator::LE:
-            cmpFunction = [](const std::string& l, const std::string& r)
+            cmpFunction = [](std::string_view l, std::string_view r)
             {
                 return l <= r;
             };
             break;
         case Operator::ST:
-            cmpFunction = [](const std::string& l, const std::string& r)
+            cmpFunction = [](std::string_view l, std::string_view r)
             {
                 return l.substr(0, r.length()) == r;
             };
             break;
         case Operator::CN:
-            cmpFunction = [](const std::string& l, const std::string& r)
+            cmpFunction = [](std::string_view l, std::string_view r)
             {
                 if (!r.empty())
                 {
-                    return l.find(r) != std::string::npos;
+                    return l.find(r) != std::string_view::npos;
                 }
                 return false;
             };
@@ -395,12 +396,14 @@ FilterOp getStringCmpFunction(const std::string& targetField,
         default: break;
     }
 
+    const auto name = buildCtx->context().opName;
     if (rightParameter->isValue())
     {
-        if (!std::static_pointer_cast<Value>(rightParameter)->value().isString())
+        std::string value;
+        if (std::static_pointer_cast<Value>(rightParameter)->value().getString(value) != json::RetGet::Success)
         {
-            throw std::runtime_error(fmt::format(R"(Expected a string but got '{}'.)",
-                                                 std::static_pointer_cast<Value>(rightParameter)->value().str()));
+            throw std::runtime_error(
+                fmt::format(R"({} function: Expected a string but got {}.)", name, rightParameter->str()));
         }
     }
     else
@@ -412,7 +415,8 @@ FilterOp getStringCmpFunction(const std::string& targetField,
             if (jType != json::Json::Type::String)
             {
                 throw std::runtime_error(
-                    fmt::format("Expected a reference of type '{}' but got reference '{}' of type '{}'",
+                    fmt::format("{} function: Expected a reference of type '{}' but got reference '{}' of type '{}'",
+                                name,
                                 json::Json::typeToStr(json::Json::Type::String),
                                 ref->dotPath(),
                                 json::Json::typeToStr(jType)));
@@ -421,12 +425,18 @@ FilterOp getStringCmpFunction(const std::string& targetField,
     }
 
     // Tracing messages
-    const auto name = buildCtx->context().opName;
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
     const std::string failureTrace1 {fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField)};
     const std::string failureTrace2 {fmt::format("[{}] -> Failure: Reference not found", name)};
     const std::string failureTrace3 {fmt::format("[{}] -> Failure: Comparison is false", name)};
+
+    // Pre-build PointerPath objects to avoid re-parsing on every event
+    const json::PointerPath targetFieldPP(targetField);
+    const auto rightParamPP =
+        rightParameter->isReference()
+            ? std::make_optional<json::PointerPath>(std::static_pointer_cast<Reference>(rightParameter)->jsonPath())
+            : std::nullopt;
 
     // Function that implements the helper
     return [=, runState = buildCtx->runState()](base::ConstEvent event) -> FilterResult
@@ -435,30 +445,31 @@ FilterOp getStringCmpFunction(const std::string& targetField,
         // empty ot not. Then if is a reference we get the value from the event, otherwise
         // we get the value from the parameter
 
-        const auto lValue {event->getString(targetField)};
-        if (!lValue.has_value())
+        std::string_view lValue;
+        if (event->getString(lValue, targetFieldPP) != json::RetGet::Success)
         {
             RETURN_FAILURE(runState, false, failureTrace1);
         }
 
-        std::string rValue {};
+        std::string_view rValue {};
         if (rightParameter->isValue())
         {
-            rValue = std::static_pointer_cast<Value>(rightParameter)->value().getString().value();
+            if (std::static_pointer_cast<Value>(rightParameter)->value().getString(rValue) != json::RetGet::Success)
+            {
+                RETURN_FAILURE(runState,
+                               false,
+                               fmt::format("{} function: Expected a string but got {}.", name, rightParameter->str()));
+            }
         }
         else
         {
-            const auto resolvedRValue {
-                event->getString(std::static_pointer_cast<Reference>(rightParameter)->jsonPath())};
-            if (!resolvedRValue.has_value())
+            if (event->getString(rValue, *rightParamPP) != json::RetGet::Success)
             {
                 RETURN_FAILURE(runState, false, failureTrace2);
             }
-
-            rValue = resolvedRValue.value();
         }
 
-        if (cmpFunction(lValue.value(), rValue))
+        if (cmpFunction(lValue, rValue))
         {
             RETURN_SUCCESS(runState, true, successTrace);
         }
@@ -701,7 +712,7 @@ FilterOp opBuilderHelperStringContains(const Reference& targetField,
     return op;
 }
 
-// field: binary_and($ref, value)
+// field: binary_and(value)
 FilterOp opBuilderHelperBinaryAnd(const Reference& targetField,
                                   const std::vector<OpArg>& opArgs,
                                   const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -715,11 +726,11 @@ FilterOp opBuilderHelperBinaryAnd(const Reference& targetField,
     utils::assertValue(opArgs, 0);
 
     // Mask
-    if (!std::static_pointer_cast<Value>(opArgs[0])->value().isString())
+    std::string strMask;
+    if (std::static_pointer_cast<Value>(opArgs[0])->value().getString(strMask) != json::RetGet::Success)
     {
-        throw std::runtime_error(fmt::format("{} function: Mask '{}' is not a string", name, opArgs[0]->str()));
+        throw std::runtime_error(fmt::format("{} function: Mask expected a string but got {}", name, opArgs[0]->str()));
     }
-    auto strMask = std::static_pointer_cast<Value>(opArgs[0])->value().getString().value();
 
     // Tracing
     const auto successTrace {fmt::format("[{}] -> Success", name)};
@@ -764,16 +775,18 @@ FilterOp opBuilderHelperBinaryAnd(const Reference& targetField,
     }
 
     // Fn to get the value from the event
-    auto getValue = [targetField, referenceNotFoundTrace, referenceNotValidHexTrace](
-                        base::ConstEvent event) -> base::RespOrError<uint64_t>
+    auto getValue = [targetField,
+                     targetFieldPP = json::PointerPath(targetField.jsonPath()),
+                     referenceNotFoundTrace,
+                     referenceNotValidHexTrace](base::ConstEvent event) -> base::RespOrError<uint64_t>
     {
-        const auto value = event->getString(targetField.jsonPath());
-        if (!value.has_value())
+        std::string value;
+        if (event->getString(value, targetFieldPP) != json::RetGet::Success)
         {
             return base::Error {referenceNotFoundTrace};
         }
 
-        if (value.value().substr(0, 2) != "0x")
+        if (value.substr(0, 2) != "0x")
         {
             return base::Error {referenceNotValidHexTrace};
         }
@@ -781,7 +794,7 @@ FilterOp opBuilderHelperBinaryAnd(const Reference& targetField,
         uint64_t result {};
         try
         {
-            result = std::stoull(value.value(), nullptr, 16);
+            result = std::stoull(value, nullptr, 16);
         }
         catch (const std::exception& e)
         {
@@ -792,19 +805,20 @@ FilterOp opBuilderHelperBinaryAnd(const Reference& targetField,
     };
 
     // The filter
-    return [getValue, mask, successTrace, failAndTrace](base::ConstEvent event) -> FilterResult
+    return [getValue, runState = buildCtx->runState(), mask, successTrace, failAndTrace](
+               base::ConstEvent event) -> FilterResult
     {
         auto valueResult = getValue(event);
         if (base::isError(valueResult))
         {
-            return base::result::makeFailure(false, base::getError(valueResult).message);
+            RETURN_FAILURE(runState, false, base::getError(valueResult).message);
         }
 
         if (base::getResponse(valueResult) & mask)
         {
-            return base::result::makeSuccess(true, successTrace);
+            RETURN_SUCCESS(runState, true, successTrace);
         }
-        return base::result::makeFailure(false, failAndTrace);
+        RETURN_FAILURE(runState, false, failAndTrace);
     };
 }
 
@@ -822,7 +836,14 @@ FilterOp opBuilderHelperRegexMatch(const Reference& targetField,
     // Parameter type check
     utils::assertValue(opArgs, 0);
 
-    auto value = std::static_pointer_cast<Value>(opArgs[0])->value().getString().value();
+    const auto& name = buildCtx->context().opName;
+
+    std::string value;
+    if (std::static_pointer_cast<Value>(opArgs[0])->value().getString(value) != json::RetGet::Success)
+    {
+        throw std::runtime_error(
+            fmt::format("{} function: Regex pattern expected a string but got {}", name, opArgs[0]->str()));
+    }
 
     auto regex_ptr {std::make_shared<RE2>(value, RE2::Quiet)};
     if (!regex_ptr->ok())
@@ -831,7 +852,6 @@ FilterOp opBuilderHelperRegexMatch(const Reference& targetField,
     }
 
     // Tracing
-    const auto name = buildCtx->context().opName;
     const auto successTrace {fmt::format("[{}] -> Success", name)};
 
     const std::string failureTrace1 {
@@ -839,16 +859,16 @@ FilterOp opBuilderHelperRegexMatch(const Reference& targetField,
     const std::string failureTrace2 {fmt::format("[{}] -> Failure: Regex did not match", name)};
 
     // Return Op
-    return [=, runState = buildCtx->runState(), targetField = targetField.jsonPath()](
+    return [=, runState = buildCtx->runState(), targetField = json::PointerPath(targetField.jsonPath())](
                base::ConstEvent event) -> FilterResult
     {
-        const auto resolvedField {event->getString(targetField)};
-        if (!resolvedField.has_value())
+        std::string_view resolvedField;
+        if (event->getString(resolvedField, targetField) != json::RetGet::Success)
         {
             RETURN_FAILURE(runState, false, failureTrace1);
         }
 
-        if (RE2::PartialMatch(resolvedField.value(), *regex_ptr))
+        if (RE2::PartialMatch(resolvedField, *regex_ptr))
         {
             RETURN_SUCCESS(runState, true, successTrace);
         }
@@ -872,7 +892,12 @@ FilterOp opBuilderHelperRegexNotMatch(const Reference& targetField,
     utils::assertValue(opArgs, 0);
     // Format name for the tracer
     const auto name = buildCtx->context().opName;
-    const auto value = std::static_pointer_cast<Value>(opArgs[0])->value().getString().value();
+    std::string value;
+    if (std::static_pointer_cast<Value>(opArgs[0])->value().getString(value) != json::RetGet::Success)
+    {
+        throw std::runtime_error(
+            fmt::format("{} function: Regex pattern expected a string but got {}", name, opArgs[0]->str()));
+    }
 
     auto regex_ptr {std::make_shared<RE2>(value, RE2::Quiet)};
     if (!regex_ptr->ok())
@@ -891,16 +916,16 @@ FilterOp opBuilderHelperRegexNotMatch(const Reference& targetField,
     const std::string failureTrace2 {fmt::format("[{}] -> Failure: Regex did match", name)};
 
     // Return Op
-    return [=, runState = buildCtx->runState(), targetField = targetField.jsonPath()](
+    return [=, runState = buildCtx->runState(), targetField = json::PointerPath(targetField.jsonPath())](
                base::ConstEvent event) -> FilterResult
     {
-        const auto resolvedField {event->getString(targetField)};
-        if (!resolvedField.has_value())
+        std::string_view resolvedField;
+        if (event->getString(resolvedField, targetField) != json::RetGet::Success)
         {
             RETURN_FAILURE(runState, false, failureTrace1);
         }
 
-        if (!RE2::PartialMatch(resolvedField.value(), *regex_ptr))
+        if (!RE2::PartialMatch(resolvedField, *regex_ptr))
         {
             RETURN_SUCCESS(runState, true, successTrace);
         }
@@ -928,31 +953,45 @@ FilterOp opBuilderHelperIPCIDR(const Reference& targetField,
     // Format name for the tracer
     const auto name = buildCtx->context().opName;
 
+    std::string networkStr;
+    if (std::static_pointer_cast<Value>(opArgs[0])->value().getString(networkStr) != json::RetGet::Success)
+    {
+        throw std::runtime_error(
+            fmt::format("{} function: IPv4 address expected a string but got {}", name, opArgs[0]->str()));
+    }
+
     uint32_t network {};
     try
     {
-        network = ::utils::ip::IPv4ToUInt(std::static_pointer_cast<Value>(opArgs[0])->value().getString().value());
+        network = ::utils::ip::IPv4ToUInt(networkStr);
     }
     catch (std::exception& e)
     {
         throw std::runtime_error(fmt::format("\"{}\" function: IPv4 address \"{}\" "
                                              "could not be converted to int: {}",
                                              name,
-                                             network,
+                                             networkStr,
                                              e.what()));
+    }
+
+    std::string maskStr;
+    if (std::static_pointer_cast<Value>(opArgs[1])->value().getString(maskStr) != json::RetGet::Success)
+    {
+        throw std::runtime_error(
+            fmt::format("{} function: IPv4 Mask expected a string but got {}", name, opArgs[1]->str()));
     }
 
     uint32_t mask {};
     try
     {
-        mask = ::utils::ip::IPv4MaskUInt(std::static_pointer_cast<Value>(opArgs[1])->value().getString().value());
+        mask = ::utils::ip::IPv4MaskUInt(maskStr);
     }
     catch (std::exception& e)
     {
         throw std::runtime_error(fmt::format("\"{}\" function: IPv4 Mask \"{}\" "
                                              "could not be converted to int: {}",
                                              name,
-                                             std::static_pointer_cast<Value>(opArgs[1])->value().getString().value(),
+                                             maskStr,
                                              e.what()));
     }
 
@@ -968,11 +1007,11 @@ FilterOp opBuilderHelperIPCIDR(const Reference& targetField,
     const std::string failureTrace3 {fmt::format("[{}] -> Failure: IP address is not in CIDR", name)};
 
     // Return Op
-    return [=, runState = buildCtx->runState(), targetField = targetField.jsonPath()](
+    return [=, runState = buildCtx->runState(), targetField = json::PointerPath(targetField.jsonPath())](
                base::ConstEvent event) -> FilterResult
     {
-        const auto resolvedField {event->getString(targetField)};
-        if (!resolvedField.has_value())
+        std::string resolvedField;
+        if (event->getString(resolvedField, targetField) != json::RetGet::Success)
         {
             RETURN_FAILURE(runState, false, failureTrace1);
         }
@@ -980,14 +1019,14 @@ FilterOp opBuilderHelperIPCIDR(const Reference& targetField,
         uint32_t ip {};
         try
         {
-            ip = ::utils::ip::IPv4ToUInt(resolvedField.value());
+            ip = ::utils::ip::IPv4ToUInt(resolvedField); // IPv4ToUInt requires std::string
         }
         catch (std::exception& e)
         {
-            RETURN_FAILURE(
-                runState,
-                false,
-                failureTrace2 + fmt::format("'{}' could not be converted to int: {}", resolvedField.value(), e.what()));
+            RETURN_FAILURE(runState,
+                           false,
+                           failureTrace2
+                               + fmt::format("'{}' could not be converted to int: {}", resolvedField, e.what()));
         }
         if (net_lower <= ip && ip <= net_upper)
         {
@@ -1032,17 +1071,17 @@ FilterOp opBuilderHelperPublicIP(const Reference& targetField,
     };
 
     // Return Op
-    return [=, runState = buildCtx->runState(), targetField = targetField.jsonPath()](
+    return [=, runState = buildCtx->runState(), targetField = json::PointerPath(targetField.jsonPath())](
                base::ConstEvent event) -> FilterResult
     {
-        const auto resolvedField {event->getString(targetField)};
-        if (!resolvedField.has_value())
+        std::string resolvedField;
+        if (event->getString(resolvedField, targetField) != json::RetGet::Success)
         {
             RETURN_FAILURE(runState, false, failureTrace1);
         }
 
-        // Check for IPv4
-        auto checkResult = checkFn(resolvedField.value());
+        // checkFn requires std::string
+        auto checkResult = checkFn(resolvedField);
         if (base::isError(checkResult))
         {
             RETURN_FAILURE(runState, false, failureTrace3);
@@ -1469,21 +1508,19 @@ FilterOp opBuilderHelperMatchKey(const Reference& targetField,
         fmt::format("[{}] -> Failure: Object does not contain '{}'", name, targetField.dotPath())};
 
     // Return op
-    return [=, runState = buildCtx->runState(), targetField = targetField.jsonPath(), parameter = opArgs[0]](
-               base::ConstEvent event) -> FilterResult
+    return [=,
+            runState = buildCtx->runState(),
+            targetField = targetField.jsonPath(),
+            targetFieldPP = json::PointerPath(targetField.jsonPath()),
+            parameter = opArgs[0]](base::ConstEvent event) -> FilterResult
     {
-        // Get key
-        if (!event->exists(targetField))
+        std::string_view targetStr;
+        if (auto ret = event->getString(targetStr, targetFieldPP); ret != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, false, failureTrace1);
+            RETURN_FAILURE(runState, false, ret == json::RetGet::WrongType ? failureTrace2 : failureTrace1);
         }
 
-        if (!event->isString(targetField))
-        {
-            RETURN_FAILURE(runState, false, failureTrace2);
-        }
-
-        auto pointerPath = json::Json::formatJsonPath(event->getString(targetField).value());
+        auto pointerPath = json::Json::formatJsonPath(targetStr);
         bool exists {false};
 
         if (parameter->isReference())
@@ -1525,12 +1562,14 @@ FilterOp opBuilderHelperEndsWith(const Reference& targetField,
     // Assert expected number of parameters
     utils::assertSize(opArgs, 1);
 
+    const auto name = buildCtx->context().opName;
     if (opArgs[0]->isValue())
     {
-        if (!std::static_pointer_cast<Value>(opArgs[0])->value().isString())
+        std::string value;
+        if (std::static_pointer_cast<Value>(opArgs[0])->value().getString(value) != json::RetGet::Success)
         {
-            throw std::runtime_error(fmt::format("Expected 'string' value but got '{}'",
-                                                 std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
+            throw std::runtime_error(
+                fmt::format("{} function: Expected string value for parameter 1 but got '{}'", name, opArgs[0]->str()));
         }
     }
     else
@@ -1548,8 +1587,6 @@ FilterOp opBuilderHelperEndsWith(const Reference& targetField,
             }
         }
     }
-
-    const auto name = buildCtx->context().opName;
 
     // Tracing
     const std::string successTrace {fmt::format("[{}] -> Success", name)};
@@ -1570,11 +1607,11 @@ FilterOp opBuilderHelperEndsWith(const Reference& targetField,
             failureTrace4,
             successTrace,
             runState = buildCtx->runState(),
-            targetField = targetField.jsonPath(),
+            targetField = json::PointerPath(targetField.jsonPath()),
             parameter = opArgs[0]](base::ConstEvent event) -> FilterResult
     {
-        const auto targetString = event->getString(targetField);
-        if (!targetString.has_value())
+        std::string_view targetString;
+        if (event->getString(targetString, targetField) != json::RetGet::Success)
         {
             RETURN_FAILURE(runState, false, failureTrace1);
         }
@@ -1582,13 +1619,13 @@ FilterOp opBuilderHelperEndsWith(const Reference& targetField,
         if (parameter->isReference())
         {
             auto refPath = std::static_pointer_cast<Reference>(parameter)->jsonPath();
-            const auto stringReference = event->getString(refPath);
-            if (!stringReference.has_value())
+            std::string_view stringReference;
+            if (event->getString(stringReference, refPath) != json::RetGet::Success)
             {
                 RETURN_FAILURE(runState, false, failureTrace1);
             }
 
-            if (!base::utils::string::endsWith(targetString.value(), stringReference.value()))
+            if (!base::utils::string::endsWith(targetString, stringReference))
             {
                 RETURN_FAILURE(runState, false, failureTrace4);
             }
@@ -1597,8 +1634,12 @@ FilterOp opBuilderHelperEndsWith(const Reference& targetField,
         }
         else
         {
-            auto valueString = std::static_pointer_cast<Value>(parameter)->value().getString().value();
-            if (!base::utils::string::endsWith(targetString.value(), valueString))
+            std::string_view valueString;
+            if (std::static_pointer_cast<Value>(parameter)->value().getString(valueString) != json::RetGet::Success)
+            {
+                RETURN_FAILURE(runState, false, failureTrace3);
+            }
+            if (!base::utils::string::endsWith(targetString, valueString))
             {
                 RETURN_FAILURE(runState, false, failureTrace4);
             }
@@ -1629,15 +1670,15 @@ FilterOp opBuilderHelperIsIpv4(const Reference& targetField,
             failureTrace2,
             successTrace,
             runState = buildCtx->runState(),
-            targetField = targetField.jsonPath()](base::ConstEvent event) -> FilterResult
+            targetField = json::PointerPath(targetField.jsonPath())](base::ConstEvent event) -> FilterResult
     {
-        const auto targetString = event->getString(targetField);
-        if (!targetString.has_value())
+        std::string targetString;
+        if (event->getString(targetString, targetField) != json::RetGet::Success)
         {
             RETURN_FAILURE(runState, false, failureTrace1);
         }
 
-        if (!::utils::ip::checkStrIsIPv4(targetString.value()))
+        if (!::utils::ip::checkStrIsIPv4(targetString)) // checkStrIsIPv4 requires std::string
         {
             RETURN_FAILURE(runState, false, failureTrace2);
         }
@@ -1667,15 +1708,15 @@ FilterOp opBuilderHelperIsIpv6(const Reference& targetField,
             failureTrace2,
             successTrace,
             runState = buildCtx->runState(),
-            targetField = targetField.jsonPath()](base::ConstEvent event) -> FilterResult
+            targetField = json::PointerPath(targetField.jsonPath())](base::ConstEvent event) -> FilterResult
     {
-        const auto targetString = event->getString(targetField);
-        if (!targetString.has_value())
+        std::string targetString;
+        if (event->getString(targetString, targetField) != json::RetGet::Success)
         {
             RETURN_FAILURE(runState, false, failureTrace1);
         }
 
-        if (!::utils::ip::checkStrIsIPv6(targetString.value()))
+        if (!::utils::ip::checkStrIsIPv6(targetString)) // checkStrIsIPv6 requires std::string
         {
             RETURN_FAILURE(runState, false, failureTrace2);
         }
@@ -1718,6 +1759,7 @@ FilterOp opBuilderHelperKeysExistInList(const Reference& targetField,
                                         const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     utils::assertSize(opArgs, 1);
+    const auto name = buildCtx->context().opName;
 
     std::unordered_set<std::string> expectedKeys {};
     if (opArgs[0]->isValue())
@@ -1731,11 +1773,14 @@ FilterOp opBuilderHelperKeysExistInList(const Reference& targetField,
 
         for (const auto& element : list.value())
         {
-            if (!element.isString())
+            std::string elemStr;
+            if (element.getString(elemStr) != json::RetGet::Success)
             {
-                throw std::runtime_error(fmt::format("Expecting a 'string' array but found '{}'", element.typeName()));
+                throw std::runtime_error(
+                    fmt::format("{} function: expected a string array but found {}", name, element.str()));
             }
-            expectedKeys.insert(element.getString().value());
+
+            expectedKeys.insert(std::move(elemStr));
         }
     }
     else
@@ -1754,7 +1799,6 @@ FilterOp opBuilderHelperKeysExistInList(const Reference& targetField,
         }
     }
 
-    const auto name = buildCtx->context().opName;
     const std::string successTrace = fmt::format("[{}] -> Success", name);
     const std::string failureTrace1 = fmt::format(
         "[{}] -> Failure: Target field '{}' not found or is not a json object", name, targetField.dotPath());
@@ -1790,11 +1834,13 @@ FilterOp opBuilderHelperKeysExistInList(const Reference& targetField,
             }
             for (const auto& element : list.value())
             {
-                if (!element.isString())
+                std::string elemStr;
+                if (element.getString(elemStr) != json::RetGet::Success)
                 {
                     RETURN_FAILURE(runState, false, failureTrace3);
                 }
-                localKeys.insert(element.getString().value());
+
+                localKeys.insert(std::move(elemStr));
             }
         }
 
@@ -1898,7 +1944,6 @@ FilterOp opBuilderHelperIndexUnclassifiedEvents(const Reference& targetField,
     const std::string failureTrace3 {fmt::format(
         "[{}] -> Failure: Policy index_unclassified_events=false or array does not have exactly 1 element", name)};
 
-    // Return Op
     return [=, runState = buildCtx->runState(), targetField = targetField.jsonPath()](
                base::ConstEvent event) -> FilterResult
     {
@@ -1914,17 +1959,18 @@ FilterOp opBuilderHelperIndexUnclassifiedEvents(const Reference& targetField,
             RETURN_FAILURE(runState, false, failureTrace1);
         }
 
-        // Check if field is an array
-        const auto resolvedArray {event->getArray(targetField)};
-        if (!resolvedArray.has_value())
-        {
-            RETURN_FAILURE(runState, false, failureTrace2);
-        }
-
         // Check if array has exactly 1 element
-        if (resolvedArray.value().size() == 1)
+        try
         {
-            RETURN_SUCCESS(runState, true, successTrace);
+            if (event->size(targetField) == 1)
+            {
+                RETURN_SUCCESS(runState, true, successTrace);
+            }
+        }
+        catch (const std::exception&)
+        {
+            // size() throws if field is not an array, object, or string
+            RETURN_FAILURE(runState, false, failureTrace2);
         }
 
         RETURN_FAILURE(runState, false, failureTrace3);

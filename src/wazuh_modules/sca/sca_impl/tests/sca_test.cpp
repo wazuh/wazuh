@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include <sca.h>
 #include <sca_impl.hpp>
 
 #include <dbsync.hpp>
@@ -14,6 +15,7 @@
 
 #include <chrono>
 #include <atomic>
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <thread>
@@ -40,6 +42,52 @@ class ScaTest : public ::testing::Test
         std::shared_ptr<SecurityConfigurationAssessment> m_sca = nullptr;
         std::string m_logOutput;
 };
+
+namespace
+{
+    std::string makeTempPath()
+    {
+        const auto now = std::chrono::steady_clock::now().time_since_epoch().count();
+        const auto path = std::filesystem::temp_directory_path() / ("sca_test_" + std::to_string(now));
+        return path.string();
+    }
+
+    const std::string kCreateStatement =
+        "CREATE TABLE IF NOT EXISTS sca_policy ("
+        "id TEXT PRIMARY KEY,"
+        "name TEXT,"
+        "file TEXT,"
+        "description TEXT,"
+        "refs TEXT);"
+        "CREATE TABLE IF NOT EXISTS sca_check ("
+        "checksum TEXT NOT NULL,"
+        "id TEXT PRIMARY KEY,"
+        "policy_id TEXT REFERENCES sca_policy(id),"
+        "name TEXT,"
+        "description TEXT,"
+        "rationale TEXT,"
+        "remediation TEXT,"
+        "refs TEXT,"
+        "result TEXT DEFAULT 'Not run',"
+        "reason TEXT,"
+        "condition TEXT,"
+        "compliance TEXT,"
+        "mitre TEXT,"
+        "rules TEXT,"
+        "regex_type TEXT DEFAULT 'pcre2',"
+        "version INTEGER NOT NULL DEFAULT 1,"
+        "sync INTEGER NOT NULL DEFAULT 0);"
+        "CREATE TABLE IF NOT EXISTS sca_metadata ("
+        "key TEXT PRIMARY KEY,"
+        "value INTEGER);";
+
+    void insertRow(const std::shared_ptr<IDBSync>& dbSync, const std::string& table, const nlohmann::json& data)
+    {
+        auto query = SyncRowQuery::builder().table(table).data(data).build();
+        const auto callback = [](ReturnTypeCallback, const nlohmann::json&) {};
+        dbSync->syncRow(query.query(), callback);
+    }
+}
 
 TEST_F(ScaTest, SetPushMessageFunctionStoresCallback)
 {
@@ -505,4 +553,107 @@ TEST_F(ScaTest, Run_WithPausedState_SkipsScanIteration)
 
     // Verify that paused message appears in log
     EXPECT_NE(m_logOutput.find("SCA module running"), std::string::npos);
+}
+
+TEST_F(ScaTest, SyncModule_PerformsInitialFullSnapshotBeforeFirstSync)
+{
+    const auto dbPath = makeTempPath();
+    auto dbSync = std::make_shared<DBSync>(
+                      HostType::AGENT,
+                      DbEngineType::SQLITE3,
+                      dbPath,
+                      kCreateStatement,
+                      DbManagement::PERSISTENT);
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(dbSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+
+    insertRow(dbSync, "sca_policy",
+    {
+        {"id", "policy-1"},
+        {"name", "Policy 1"},
+        {"file", "policy.yml"},
+        {"description", "Policy description"},
+        {"refs", "https://example.com"}
+    });
+    insertRow(dbSync, "sca_check",
+    {
+        {"checksum", "abc123"},
+        {"id", "check-1"},
+        {"policy_id", "policy-1"},
+        {"name", "Check 1"},
+        {"description", "Check description"},
+        {"rationale", "Rationale"},
+        {"remediation", "Remediation"},
+        {"refs", "https://ref.example.com"},
+        {"result", "Not applicable"},
+        {"reason", "Policy requirements not met"},
+        {"condition", "all"},
+        {"compliance", "[]"},
+        {"mitre", "[]"},
+        {"rules", "f:/tmp exists"},
+        {"regex_type", "pcre2"},
+        {"version", 7},
+        {"sync", 1}
+    });
+
+    EXPECT_CALL(*mockSyncProtocol, clearInMemoryData())
+    .Times(1);
+    EXPECT_CALL(*mockSyncProtocol, persistDifferenceInMemory(testing::_, Operation::CREATE, SCA_SYNC_INDEX, testing::_, 7))
+    .WillOnce(testing::Invoke([](const std::string&,
+                                 Operation,
+                                 const std::string&,
+                                 const std::string & data,
+                                 uint64_t)
+    {
+        const auto payload = nlohmann::json::parse(data);
+        EXPECT_EQ(payload["check"]["id"], "check-1");
+        EXPECT_EQ(payload["check"]["result"], "Not applicable");
+        EXPECT_EQ(payload["policy"]["id"], "policy-1");
+    }));
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::FULL, Option::SYNC))
+    .WillOnce(testing::Return(true));
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
+    .Times(0);
+    EXPECT_CALL(*mockSyncProtocol, persistDifference(testing::_, testing::_, testing::_, testing::_, testing::_, testing::_))
+    .Times(0);
+
+    EXPECT_TRUE(scaMock.syncModule(Mode::DELTA));
+
+    const auto response = nlohmann::json::parse(scaMock.query(R"({"command":"get_first_sync_completed"})"));
+    EXPECT_EQ(response["error"], 0);
+    EXPECT_EQ(response["data"]["first_sync_completed"], 1);
+
+    dbSync->closeAndDeleteDatabase();
+}
+
+TEST_F(ScaTest, SyncModule_UsesDeltaAfterFirstSyncCompleted)
+{
+    const auto dbPath = makeTempPath();
+    auto dbSync = std::make_shared<DBSync>(
+                      HostType::AGENT,
+                      DbEngineType::SQLITE3,
+                      dbPath,
+                      kCreateStatement,
+                      DbManagement::PERSISTENT);
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(dbSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+
+    insertRow(dbSync, "sca_metadata", {{"key", "first_sync_completed"}, {"value", 123456}});
+
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
+    .WillOnce(testing::Return(true));
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::FULL, Option::SYNC))
+    .Times(0);
+    EXPECT_CALL(*mockSyncProtocol, clearInMemoryData())
+    .Times(0);
+    EXPECT_CALL(*mockSyncProtocol, persistDifferenceInMemory(testing::_, testing::_, testing::_, testing::_, testing::_))
+    .Times(0);
+
+    EXPECT_TRUE(scaMock.syncModule(Mode::DELTA));
+
+    dbSync->closeAndDeleteDatabase();
 }

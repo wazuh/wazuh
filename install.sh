@@ -71,9 +71,6 @@ Install()
 {
     if [ "X${INSTALLER_BRIEF_FLOW}" != "Xyes" ]; then
         echo ""
-        echo "4- ${installing}"
-
-        echo ""
         echo "DIR=\"${INSTALLDIR}\""
     fi
 
@@ -183,12 +180,6 @@ UseSSLCert()
     setToggleVar "SSL_CERT" "${USER_CREATE_SSL_CERT}" "yes"
 }
 
-UseUpdateCheck()
-{
-    # Default update-check value (can be overridden by preloaded vars).
-    setToggleVar "UPDATE_CHECK" "${USER_ENABLE_UPDATE_CHECK}" "yes"
-}
-
 ##########
 # EnableAuthd()
 ##########
@@ -268,7 +259,6 @@ SetupLogs()
 {
     NB=$1
     if [ "X${INSTALLER_BRIEF_FLOW}" = "Xyes" ]; then
-        WriteLogs "echo"
         return 0
     fi
 
@@ -298,7 +288,7 @@ ConfigureClient()
         # Ask until a manager address/hostname is provided.
         while :; do
             if [ "X${INSTALLER_BRIEF_FLOW}" = "Xyes" ]; then
-                $ECHO "  ${serveraddr}: "
+                $ECHO "3- ${serveraddr}: "
             else
                 $ECHO "  3.1- ${serveraddr}: "
             fi
@@ -307,19 +297,30 @@ ConfigureClient()
             if printf '%s' "$ADDRANSWER" | grep -Eq "^[0-9]{1,3}(\\.[0-9]{1,3}){3}$"; then
                 echo ""
                 SERVER_IP=$ADDRANSWER
-                echo "   - ${addingip} ${SERVER_IP}"
+                if [ "X${INSTALLER_BRIEF_FLOW}" != "Xyes" ]; then
+                    echo "   - ${addingip} ${SERVER_IP}"
+                fi
                 break;
             # Otherwise treat it as hostname/FQDN.
             else
                 echo ""
                 HNAME=$ADDRANSWER
-                echo "   - ${addingname} $HNAME"
+                if [ "X${INSTALLER_BRIEF_FLOW}" != "Xyes" ]; then
+                    echo "   - ${addingname} $HNAME"
+                fi
                 break;
             fi
         done
     else
         SERVER_IP=${USER_AGENT_MANAGER_IP}
         HNAME=${USER_AGENT_MANAGER_NAME}
+        if [ "X${INSTALLER_BRIEF_FLOW}" = "Xyes" ]; then
+            if [ "X${SERVER_IP}" != "X" ]; then
+                echo "3- ${serveraddr}: ${SERVER_IP}"
+            else
+                echo "3- ${serveraddr}: ${HNAME}"
+            fi
+        fi
     fi
 
     # Keep the rest of the agent flow non-interactive after manager address input.
@@ -394,7 +395,6 @@ ConfigureServer()
         EnableAuthd "3.7"
         ConfigureBoot "3.8"
         SetupLogs "3.9"
-        UseUpdateCheck
         WriteManager
     fi
 }
@@ -415,8 +415,10 @@ setInstallDir()
 ##########
 setEnv()
 {
-    echo ""
-    echo "    - ${installat} ${INSTALLDIR} ."
+    if [ "X${INSTALLER_BRIEF_FLOW}" != "Xyes" ]; then
+        echo ""
+        echo "    - ${installat} ${INSTALLDIR} ."
+    fi
 
     if [ "X$INSTYPE" = "Xagent" ]; then
         CEXTRA="$CEXTRA -DCLIENT"
@@ -587,7 +589,6 @@ setDefaultConfigByInstallType()
         setDefaultIfEmpty USER_ENABLE_ROOTCHECK "n"
         setDefaultIfEmpty USER_ENABLE_SYSCOLLECTOR "n"
         setDefaultIfEmpty USER_ENABLE_SCA "n"
-        setDefaultIfEmpty USER_ENABLE_UPDATE_CHECK "y"
         setDefaultIfEmpty USER_CREATE_SSL_CERT "y"
         return 0;
     fi
@@ -899,11 +900,14 @@ main()
     serverm=$(echo "${server}" | cut -b 1)
     agentm=$(echo "${agent}" | cut -b 1)
 
+    INSTALL_TYPE_PRELOADED="no"
+
     # Skip prompt when USER_INSTALL_TYPE is preloaded.
     if [ "X${USER_INSTALL_TYPE}" = "X" ]; then
         selectInstallType
     else
         INSTYPE=${USER_INSTALL_TYPE}
+        INSTALL_TYPE_PRELOADED="yes"
     fi
 
     INSTYPE=$(echo "${INSTYPE}" | tr '[:upper:]' '[:lower:]')
@@ -919,6 +923,11 @@ main()
             exit 1;
             ;;
     esac
+
+    if [ "X${INSTALL_TYPE_PRELOADED}" = "Xyes" ]; then
+        echo ""
+        echo "1- Installation type: ${INSTYPE}."
+    fi
 
     setDefaultConfigByInstallType
 
@@ -946,6 +955,8 @@ main()
             echo "2- Clean install: no existing ${INSTYPE} installation detected."
         fi
     elif [ "X${CLEANINSTALL_ANY}" = "Xyes" ]; then
+        echo ""
+        echo "2- Clean install requested."
         if [ "X${USER_UPDATE}" != "X" ]; then
             echo "WARNING: USER_UPDATE is ignored when USER_CLEANINSTALL='${yes}'."
         fi
@@ -963,17 +974,17 @@ main()
         fi
     fi
 
+    INSTALLER_BRIEF_FLOW="no"
+    if shouldUseBriefInstallFlow; then
+        INSTALLER_BRIEF_FLOW="yes"
+    fi
+
     # Resolve install directory and environment.
     setInstallDir
     setEnv
 
     # Optionally remove existing directory.
     askForDelete
-
-    INSTALLER_BRIEF_FLOW="no"
-    if shouldUseBriefInstallFlow; then
-        INSTALLER_BRIEF_FLOW="yes"
-    fi
 
     # Run install-type specific configuration.
     if [ "X${update_only}" = "X" ]; then

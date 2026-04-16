@@ -11,6 +11,8 @@
 #include <base/graph.hpp>
 #include <cmstore/icmstore.hpp>
 
+#include <fastmetrics/iMetric.hpp>
+
 #include "iassetBuilder.hpp"
 
 namespace builder::policy::factory
@@ -58,11 +60,12 @@ constexpr std::string_view AssetPipelineStageToStr(const AssetPipelineStage stag
  */
 struct SubgraphData
 {
-    std::vector<base::Name> orderedAssets;                   ///< Order in which the assets were read/built.
-    std::unordered_map<base::Name, Asset> assets;            ///< Quick access to assets by name.
+    std::vector<base::Name> orderedAssets;        ///< Order in which the assets were read/built.
+    std::unordered_map<base::Name, Asset> assets; ///< Quick access to assets by name.
 };
 
-using BuiltAssets = std::unordered_map<AssetPipelineStage, SubgraphData>; ///< Map of pipeline stages to built asset data.
+using BuiltAssets =
+    std::unordered_map<AssetPipelineStage, SubgraphData>; ///< Map of pipeline stages to built asset data.
 
 /**
  * @brief Build the assets of the policy.
@@ -261,7 +264,9 @@ base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgrap
  */
 base::Expression buildExpression(const PolicyGraph& graph,
                                  const base::Expression& preEnrichmentExpression,
-                                 const base::Expression& enrichmentExpression);
+                                 const base::Expression& enrichmentExpression,
+                                 const std::shared_ptr<fastmetrics::ICounter>& preFilterDiscardCounter = nullptr,
+                                 const std::shared_ptr<fastmetrics::ICounter>& postFilterDiscardCounter = nullptr);
 
 } // namespace builder::policy::factory
 

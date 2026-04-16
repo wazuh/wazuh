@@ -15,6 +15,7 @@
 #include "agent_sync_protocol_c_interface.h"
 #include "metadata_provider.h"
 
+#include <future>
 #include <optional>
 #include <thread>
 #include <iostream>
@@ -452,6 +453,112 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendStartFails)
                   );
 
     EXPECT_FALSE(result);
+}
+
+TEST_F(AgentSyncProtocolTest, SendStartWaitsUntilMetadataAvailable)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger,
+                                                   std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout),
+                                                   retries, maxEps, mockQueue);
+
+    protocol->persistDifferenceInMemory("id1", Operation::CREATE, "index1", "data1", 1);
+
+    // Remove metadata so provider returns -1 on the first polls
+    metadata_provider_reset();
+
+    std::atomic<bool> syncDone{false};
+    auto syncFuture = std::async(std::launch::async, [&]()
+    {
+        bool result = protocol->synchronizeModule(Mode::FULL);
+        syncDone = true;
+        return result;
+    });
+
+    // Let the thread enter the metadata polling loop
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    EXPECT_FALSE(syncDone.load()) << "Sync should be blocked waiting for metadata";
+
+    // Provide metadata - the polling loop should unblock
+    agent_metadata_t metadata = {};
+    strncpy(metadata.agent_id, "001", sizeof(metadata.agent_id) - 1);
+    strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
+    strncpy(metadata.agent_version, "4.5.0", sizeof(metadata.agent_version) - 1);
+    strncpy(metadata.architecture, "x86_64", sizeof(metadata.architecture) - 1);
+    strncpy(metadata.hostname, "test-host", sizeof(metadata.hostname) - 1);
+    strncpy(metadata.os_name, "Linux", sizeof(metadata.os_name) - 1);
+    strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
+    strncpy(metadata.os_platform, "ubuntu", sizeof(metadata.os_platform) - 1);
+    strncpy(metadata.os_version, "5.10", sizeof(metadata.os_version) - 1);
+    char* groups[] = {const_cast<char*>("group1")};
+    metadata.groups = groups;
+    metadata.groups_count = 1;
+    metadata_provider_update(&metadata);
+
+    // Sync proceeds past the metadata wait and eventually times out on StartAck.
+    // Bound the wait: (retries + 1) * min_timeout for StartAck retries, plus margin.
+    constexpr auto testTimeout = std::chrono::seconds(10);
+
+    if (syncFuture.wait_for(testTimeout) == std::future_status::timeout)
+    {
+        protocol->stop();
+        syncFuture.wait();
+        FAIL() << "Sync thread did not finish in time; metadata unblocking may be broken";
+    }
+
+    EXPECT_FALSE(syncFuture.get()); // Times out on StartAck, but it did get past the metadata wait
+}
+
+TEST_F(AgentSyncProtocolTest, SendStartAbortedOnStopWhileWaitingForMetadata)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger,
+                                                   std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout),
+                                                   retries, maxEps, mockQueue);
+
+    protocol->persistDifferenceInMemory("id1", Operation::CREATE, "index1", "data1", 1);
+
+    // Remove metadata so provider returns -1 indefinitely
+    metadata_provider_reset();
+
+    auto syncFuture = std::async(std::launch::async, [&]()
+    {
+        return protocol->synchronizeModule(Mode::FULL);
+    });
+
+    // Let the thread enter the metadata polling loop
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // Request stop - cv.notify_all() wakes the wait_for immediately
+    protocol->stop();
+
+    // The thread should exit promptly; give it a generous bound to avoid CI flakiness
+    constexpr auto testTimeout = std::chrono::seconds(5);
+
+    if (syncFuture.wait_for(testTimeout) == std::future_status::timeout)
+    {
+        FAIL() << "Sync thread did not respond to stop() in time; stop handling may be broken";
+    }
+
+    EXPECT_FALSE(syncFuture.get());
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleStartFailDueToManager)
@@ -5558,4 +5665,133 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleProcessingAckThenEndAckError)
     }
 
     syncThread.join();
+}
+
+namespace
+{
+    std::mutex END_RETRY_TEST_MTX;
+    std::condition_variable END_RETRY_TEST_CV;
+    int END_RETRY_TEST_MSG_COUNT = 0;
+
+    int endRetryTestSendBinary(int, const void*, size_t, const char*, char)
+    {
+        {
+            std::lock_guard<std::mutex> lock(END_RETRY_TEST_MTX);
+            ++END_RETRY_TEST_MSG_COUNT;
+        }
+        END_RETRY_TEST_CV.notify_all();
+        return 0;
+    }
+} // namespace
+
+// Verifies that when End-message retries are exhausted while the module is stopping,
+// the event is logged at INFO (not ERROR), because retry exhaustion during shutdown
+// is expected and should not appear as an anomaly in the logs.
+TEST_F(AgentSyncProtocolTest, EndMessageRetryExhaustionDuringStopLogsInfo)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+
+    {
+        std::lock_guard<std::mutex> lock(END_RETRY_TEST_MTX);
+        END_RETRY_TEST_MSG_COUNT = 0;
+    }
+
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = endRetryTestSendBinary
+    };
+
+    std::vector<std::pair<modules_log_level_t, std::string>> capturedLogs;
+    LoggerFunc testLogger = [&capturedLogs](modules_log_level_t level, const std::string & msg)
+    {
+        capturedLogs.push_back({level, msg});
+    };
+
+    // syncEndDelay=0 so End is sent immediately after data, giving stop() time to be
+    // called before the retry loop finishes.
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger,
+                                                   std::chrono::seconds(0),
+                                                   std::chrono::seconds(min_timeout),
+                                                   retries, maxEps, mockQueue);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1},
+    };
+
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync()).WillOnce(Return(testData));
+    EXPECT_CALL(*mockQueue, resetSyncingItems()).Times(1);
+
+    std::thread syncThread([this]()
+    {
+        bool result = protocol->synchronizeModule(Mode::DELTA);
+        EXPECT_FALSE(result);
+    });
+
+    // Helper: always stop + join on early exit (prevents std::terminate on ASSERT failure).
+    auto stopAndJoin = [&]()
+    {
+        protocol->stop();
+        if (syncThread.joinable())
+        {
+            syncThread.join();
+        }
+    };
+
+    // Wait for the Start message to be sent (with timeout to prevent indefinite hang).
+    bool startSent;
+    {
+        std::unique_lock<std::mutex> lock(END_RETRY_TEST_MTX);
+        startSent = END_RETRY_TEST_CV.wait_for(lock, std::chrono::seconds(10),
+                                                [] { return END_RETRY_TEST_MSG_COUNT >= 1; });
+    }
+
+    if (!startSent)
+    {
+        stopAndJoin();
+        FAIL() << "Timed out waiting for Start message to be sent";
+    }
+
+    // Send StartAck so the protocol advances past the start phase.
+    {
+        flatbuffers::FlatBufferBuilder builder;
+        Wazuh::SyncSchema::StartAckBuilder startAckBuilder(builder);
+        startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+        startAckBuilder.add_session(session);
+        auto offset = startAckBuilder.Finish();
+        builder.Finish(Wazuh::SyncSchema::CreateMessage(
+                           builder, Wazuh::SyncSchema::MessageType::StartAck, offset.Union()));
+        protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
+    }
+
+    // Wait for the protocol to enter the End-message retry loop (with timeout).
+    bool endSent;
+    {
+        std::unique_lock<std::mutex> lock(END_RETRY_TEST_MTX);
+        endSent = END_RETRY_TEST_CV.wait_for(lock, std::chrono::seconds(10),
+                                              [] { return END_RETRY_TEST_MSG_COUNT >= 3; });
+    }
+
+    if (!endSent)
+    {
+        stopAndJoin();
+        FAIL() << "Timed out waiting for End message to be sent";
+    }
+
+    // Stop while waiting for EndAck — wakes the internal cv so retries exhaust quickly.
+    protocol->stop();
+
+    syncThread.join();
+
+    // The "retries exhausted" message must be logged at INFO, not ERROR.
+    auto it = std::find_if(capturedLogs.begin(), capturedLogs.end(),
+                           [](const std::pair<modules_log_level_t, std::string>& entry)
+    {
+        return entry.second.find("retries exhausted") != std::string::npos;
+    });
+    ASSERT_NE(it, capturedLogs.end()) << "'retries exhausted' log entry not found";
+    EXPECT_EQ(it->first, LOG_INFO)
+            << "Expected LOG_INFO but got level " << it->first
+            << " for message: " << it->second;
 }

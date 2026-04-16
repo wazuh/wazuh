@@ -15,6 +15,7 @@ PATTERN_STAGE='^(alpha|beta|rc)[0-9]{1,2}$'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 date_time=$(date '+%Y-%m-%d_%H-%M-%S')
 LOG_FILE="${SCRIPT_DIR}/repository_bumper_${date_time}.log"
+skip_urls=""
 
 log_action() {
     local message="$1"
@@ -325,13 +326,7 @@ update_file_api() {
             | sed -E "s/^[[:space:]]*version='([^']+)'.*/\1/"
         )
 
-        local current_spec_version
-        current_spec_version=$(
-            grep -E "^[[:space:]]*version:[[:space:]]*'" "$spec_file" \
-            | sed -E "s/^[[:space:]]*version:[[:space:]]*'([0-9]+\.[0-9]+\.[0-9]+)'.*/\1/"
-        )
-
-        # Only if the version in setup.py does NOT match new_version, we apply changes
+        # Only if the version in setup.py does NOT match new_version, update version fields
         if [[ "$current_setup_version" != "$new_version" ]]; then
             sed -i -E \
                 "s|^([[:space:]]*version=')[^']+(',)|\1${new_version}\2|" \
@@ -341,17 +336,24 @@ update_file_api() {
                 "s|^([[:space:]]*version:[[:space:]]*')[0-9]+\.[0-9]+\.[0-9]+(')|\1${new_version}\2|" \
                 "$spec_file"
 
-            sed -i -E \
-                "s|(\/v)[0-9]+\.[0-9]+\.[0-9]+(/)|\1${new_version}\2|g" \
-                "$spec_file"
-
-            local version_short
-            version_short=$(echo "$new_version" | awk -F. '{print $1 "." $2}')
-            sed -i -E \
-                "s|(com/)[0-9]+\.[0-9]+(/)|\1${version_short}\2|g" \
-                "$spec_file"
-
             log_action "Updated version to '${new_version}' in: $setup_file and $spec_file"
+        fi
+
+        # URL updates run independently of setup.py version to support two-step bump flow:
+        # step 1 (--set-as-main) updates version values only, skipping all URL rewrites;
+        # step 2 (no flag) replaces all URL refs (main or versioned) even when setup.py
+        # already has the target version.
+        local version_short
+        version_short=$(echo "$new_version" | awk -F. '{print $1 "." $2}')
+        if [[ -z "$skip_urls" ]]; then
+            # blob/ paths use 3-part version with v prefix (e.g. blob/v5.0.0/)
+            sed -i -E \
+                "s~(blob/)(v?main|v[0-9]+\.[0-9]+\.[0-9]+)(/)~\1v${new_version}\3~g" \
+                "$spec_file"
+            # documentation URLs use 2-part version without v prefix (e.g. wazuh.com/5.0/)
+            sed -i -E \
+                "s~(wazuh\.com/)(main|[0-9]+\.[0-9]+)(/)~\1${version_short}\3~g" \
+                "$spec_file"
         fi
     fi
 
@@ -548,10 +550,11 @@ update_version() {
 }
 
 usage() {
-    echo "Usage: $0 --version VERSION --stage STAGE --date DATE"
+    echo "Usage: $0 --version VERSION --stage STAGE --date DATE [--set-as-main]"
     echo "  --version VERSION   Version number (e.g., 4.9.1)"
     echo "  --stage STAGE       Stage name (e.g., alpha, beta, rc)"
     echo "  --date DATE         Release date in format YYYY-MM-DD (e.g., 2025-04-14)"
+    echo "  --set-as-main       Update version values only, skipping all URL rewrites"
 }
 
 parse_args() {
@@ -568,6 +571,10 @@ parse_args() {
         --date)
             new_date="$2"
             shift 2
+            ;;
+        --set-as-main)
+            skip_urls=true
+            shift
             ;;
         *)
             echo "Unknown option: $1"

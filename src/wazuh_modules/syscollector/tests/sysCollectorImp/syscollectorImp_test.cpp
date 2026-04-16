@@ -8,8 +8,13 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include <atomic>
+#include <chrono>
 #include <cstdio>
+#include <functional>
+#include <future>
 #include <sqlite3.h>
+#include <thread>
 
 #include "syscollectorImp_test.h"
 #include "syscollector.hpp"
@@ -131,27 +136,27 @@ const auto expected_dbsync_network_iface
 };
 const auto expected_dbsync_network_protocol_1
 {
-    R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
+    R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":["192.168.0.1|600"],"metric":null,"type":"ipv4"}},"module":"inventory"})"
 };
 const auto expected_dbsync_network_protocol_2
 {
-    R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
+    R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":["192.168.0.1|600"],"metric":null,"type":"ipv6"}},"module":"inventory"})"
 };
 const auto expected_dbsync_network_address_1
 {
-    R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":"1"}},"module":"inventory"})"
+    R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":["fe80::250:56ff:fec0:8"],"netmask":["ffff:ffff:ffff:ffff::"],"type":"1"}},"module":"inventory"})"
 };
 const auto expected_dbsync_network_address_2
 {
-    R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":"0"}},"module":"inventory"})"
+    R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":["192.168.153.255"],"ip":["192.168.153.1"],"netmask":["255.255.255.0"],"type":"0"}},"module":"inventory"})"
 };
 const auto expected_dbsync_ports
 {
-    R"({"collector":"dbsync_ports","data":{"destination":{"ip":"0.0.0.0","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"0"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":"System Idle Process","pid":0},"source":{"ip":"127.0.0.1","port":631}},"module":"inventory"})"
+    R"({"collector":"dbsync_ports","data":{"destination":{"ip":["0.0.0.0"],"port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"0"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":"System Idle Process","pid":0},"source":{"ip":["127.0.0.1"],"port":631}},"module":"inventory"})"
 };
 const auto expected_dbsync_ports_udp
 {
-    R"({"collector":"dbsync_ports","data":{"destination":{"ip":"0.0.0.0","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"0"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":"System Idle Process","pid":0},"source":{"ip":"127.0.0.1","port":631}},"module":"inventory"})"
+    R"({"collector":"dbsync_ports","data":{"destination":{"ip":["0.0.0.0"],"port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"0"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":"System Idle Process","pid":0},"source":{"ip":["127.0.0.1"],"port":631}},"module":"inventory"})"
 };
 const auto expected_dbsync_processes
 {
@@ -322,6 +327,24 @@ class LogCapture
         }
 };
 
+static bool waitUntil(const std::function<bool()>& predicate,
+                      const std::chrono::milliseconds timeout = std::chrono::milliseconds(1000))
+{
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+
+    while (std::chrono::steady_clock::now() < deadline)
+    {
+        if (predicate())
+        {
+            return true;
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    return predicate();
+}
+
 // Expected results for persist callback - shared across all tests
 static const auto expectedPersistHW
 {
@@ -337,27 +360,27 @@ static const auto expectedPersistNetIface
 };
 static const auto expectedPersistNetProtoIPv4
 {
-    R"({"checksum":{"hash":{"sha1":"50f3c227c2278cdf43b6107da8455901a09dfa49"}},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}})"
+    R"({"checksum":{"hash":{"sha1":"50f3c227c2278cdf43b6107da8455901a09dfa49"}},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":["192.168.0.1|600"],"metric":null,"type":"ipv4"}})"
 };
 static const auto expectedPersistNetAddrIPv4
 {
-    R"({"checksum":{"hash":{"sha1":"24ecdd6a316b2320c809085106812f6cf8a4cf67"}},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":"0"}})"
+    R"({"checksum":{"hash":{"sha1":"24ecdd6a316b2320c809085106812f6cf8a4cf67"}},"interface":{"name":"enp4s0"},"network":{"broadcast":["192.168.153.255"],"ip":["192.168.153.1"],"netmask":["255.255.255.0"],"type":"0"}})"
 };
 static const auto expectedPersistNetProtoIPv6
 {
-    R"({"checksum":{"hash":{"sha1":"53a9aa90a75f0264beae6beb9bf19192cfc23df1"}},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}})"
+    R"({"checksum":{"hash":{"sha1":"53a9aa90a75f0264beae6beb9bf19192cfc23df1"}},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":["192.168.0.1|600"],"metric":null,"type":"ipv6"}})"
 };
 static const auto expectedPersistNetAddrIPv6
 {
-    R"({"checksum":{"hash":{"sha1":"7271714e0616caea85422916dd6ab2fbdac2b5cd"}},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":"1"}})"
+    R"({"checksum":{"hash":{"sha1":"7271714e0616caea85422916dd6ab2fbdac2b5cd"}},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":["fe80::250:56ff:fec0:8"],"netmask":["ffff:ffff:ffff:ffff::"],"type":"1"}})"
 };
 static const auto expectedPersistPorts
 {
-    R"({"checksum":{"hash":{"sha1":"7223807075622557e855677b47f23f321091353c"}},"destination":{"ip":"0.0.0.0","port":0},"file":{"inode":"0"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":"System Idle Process","pid":0},"source":{"ip":"127.0.0.1","port":631}})"
+    R"({"checksum":{"hash":{"sha1":"7223807075622557e855677b47f23f321091353c"}},"destination":{"ip":["0.0.0.0"],"port":0},"file":{"inode":"0"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":"System Idle Process","pid":0},"source":{"ip":["127.0.0.1"],"port":631}})"
 };
 static const auto expectedPersistPortsUdp
 {
-    R"({"checksum":{"hash":{"sha1":"dff9e7c5127ea90f4e9c38840683330b8c1351c9"}},"destination":{"ip":"0.0.0.0","port":0},"file":{"inode":"0"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":"System Idle Process","pid":0},"source":{"ip":"127.0.0.1","port":631}})"
+    R"({"checksum":{"hash":{"sha1":"dff9e7c5127ea90f4e9c38840683330b8c1351c9"}},"destination":{"ip":["0.0.0.0"],"port":0},"file":{"inode":"0"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":"System Idle Process","pid":0},"source":{"ip":["127.0.0.1"],"port":631}})"
 };
 static const auto expectedPersistProcess
 {
@@ -2154,22 +2177,22 @@ TEST_F(SyscollectorImpTest, portAllEnable)
 
     const auto expectedResult1
     {
-        R"({"collector":"dbsync_ports","data":{"destination":{"ip":"0.0.0.0","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"43481"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":null,"pid":0},"source":{"ip":"0.0.0.0","port":47748}},"module":"inventory"})"
+        R"({"collector":"dbsync_ports","data":{"destination":{"ip":["0.0.0.0"],"port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"43481"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":null,"pid":0},"source":{"ip":["0.0.0.0"],"port":47748}},"module":"inventory"})"
     };
 
     const auto expectedResult2
     {
-        R"({"collector":"dbsync_ports","data":{"destination":{"ip":"::","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"43482"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp6"},"process":{"name":null,"pid":0},"source":{"ip":"::","port":51087}},"module":"inventory"})"
+        R"({"collector":"dbsync_ports","data":{"destination":{"ip":["::"],"port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"43482"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp6"},"process":{"name":null,"pid":0},"source":{"ip":["::"],"port":51087}},"module":"inventory"})"
     };
 
     const auto expectedResult3
     {
-        R"({"collector":"dbsync_ports","data":{"destination":{"ip":"0.0.0.0","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"50324"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":"127.0.0.1","port":33060}},"module":"inventory"})"
+        R"({"collector":"dbsync_ports","data":{"destination":{"ip":["0.0.0.0"],"port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"50324"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":["127.0.0.1"],"port":33060}},"module":"inventory"})"
     };
 
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_ports","data":{"destination":{"ip":"44.238.116.130","port":443},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"122575"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"established"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":"192.168.0.104","port":39106}},"module":"inventory"})"
+        R"({"collector":"dbsync_ports","data":{"destination":{"ip":["44.238.116.130"],"port":443},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"122575"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"established"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":["192.168.0.104"],"port":39106}},"module":"inventory"})"
     };
 
     EXPECT_CALL(wrapper, callbackMock(expectedResult1)).Times(1);
@@ -2179,22 +2202,22 @@ TEST_F(SyscollectorImpTest, portAllEnable)
 
     const auto expectedPersistPorts1
     {
-        R"({"checksum":{"hash":{"sha1":"88b40f1347d9ef9d381287b00c9e924e800a25f7"}},"destination":{"ip":"0.0.0.0","port":0},"file":{"inode":"43481"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":null,"pid":0},"source":{"ip":"0.0.0.0","port":47748}})"
+        R"({"checksum":{"hash":{"sha1":"88b40f1347d9ef9d381287b00c9e924e800a25f7"}},"destination":{"ip":["0.0.0.0"],"port":0},"file":{"inode":"43481"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":null,"pid":0},"source":{"ip":["0.0.0.0"],"port":47748}})"
     };
 
     const auto expectedPersistPorts2
     {
-        R"({"checksum":{"hash":{"sha1":"62a2fc1c9277988df156c208c2a7897b1fb41236"}},"destination":{"ip":"::","port":0},"file":{"inode":"43482"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp6"},"process":{"name":null,"pid":0},"source":{"ip":"::","port":51087}})"
+        R"({"checksum":{"hash":{"sha1":"62a2fc1c9277988df156c208c2a7897b1fb41236"}},"destination":{"ip":["::"],"port":0},"file":{"inode":"43482"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp6"},"process":{"name":null,"pid":0},"source":{"ip":["::"],"port":51087}})"
     };
 
     const auto expectedPersistPorts3
     {
-        R"({"checksum":{"hash":{"sha1":"e049eb5f4a3dbf71dc1e6bdd11a4d070459b36fe"}},"destination":{"ip":"0.0.0.0","port":0},"file":{"inode":"50324"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":"127.0.0.1","port":33060}})"
+        R"({"checksum":{"hash":{"sha1":"e049eb5f4a3dbf71dc1e6bdd11a4d070459b36fe"}},"destination":{"ip":["0.0.0.0"],"port":0},"file":{"inode":"50324"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":["127.0.0.1"],"port":33060}})"
     };
 
     const auto expectedPersistPorts4
     {
-        R"({"checksum":{"hash":{"sha1":"1fcee2154ec4ad7e68c2627a731760dd72fb45ae"}},"destination":{"ip":"44.238.116.130","port":443},"file":{"inode":"122575"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"established"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":"192.168.0.104","port":39106}})"
+        R"({"checksum":{"hash":{"sha1":"1fcee2154ec4ad7e68c2627a731760dd72fb45ae"}},"destination":{"ip":["44.238.116.130"],"port":443},"file":{"inode":"122575"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"established"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":["192.168.0.104"],"port":39106}})"
     };
 
     // Only ports enabled in this test
@@ -2342,17 +2365,17 @@ TEST_F(SyscollectorImpTest, portAllDisable)
 
     const auto expectedResult1
     {
-        R"({"collector":"dbsync_ports","data":{"destination":{"ip":"0.0.0.0","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"43481"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":null,"pid":0},"source":{"ip":"0.0.0.0","port":47748}},"module":"inventory"})"
+        R"({"collector":"dbsync_ports","data":{"destination":{"ip":["0.0.0.0"],"port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"43481"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":null,"pid":0},"source":{"ip":["0.0.0.0"],"port":47748}},"module":"inventory"})"
     };
 
     const auto expectedResult2
     {
-        R"({"collector":"dbsync_ports","data":{"destination":{"ip":"::","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"43482"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp6"},"process":{"name":null,"pid":0},"source":{"ip":"::","port":51087}},"module":"inventory"})"
+        R"({"collector":"dbsync_ports","data":{"destination":{"ip":["::"],"port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"43482"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp6"},"process":{"name":null,"pid":0},"source":{"ip":["::"],"port":51087}},"module":"inventory"})"
     };
 
     const auto expectedResult3
     {
-        R"({"collector":"dbsync_ports","data":{"destination":{"ip":"0.0.0.0","port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"50324"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":"127.0.0.1","port":33060}},"module":"inventory"})"
+        R"({"collector":"dbsync_ports","data":{"destination":{"ip":["0.0.0.0"],"port":0},"event":{"changed_fields":[],"type":"created"},"file":{"inode":"50324"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":["127.0.0.1"],"port":33060}},"module":"inventory"})"
     };
 
     EXPECT_CALL(wrapper, callbackMock(expectedResult1)).Times(1);
@@ -2361,17 +2384,17 @@ TEST_F(SyscollectorImpTest, portAllDisable)
 
     const auto expectedPersistPorts1
     {
-        R"({"checksum":{"hash":{"sha1":"88b40f1347d9ef9d381287b00c9e924e800a25f7"}},"destination":{"ip":"0.0.0.0","port":0},"file":{"inode":"43481"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":null,"pid":0},"source":{"ip":"0.0.0.0","port":47748}})"
+        R"({"checksum":{"hash":{"sha1":"88b40f1347d9ef9d381287b00c9e924e800a25f7"}},"destination":{"ip":["0.0.0.0"],"port":0},"file":{"inode":"43481"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp"},"process":{"name":null,"pid":0},"source":{"ip":["0.0.0.0"],"port":47748}})"
     };
 
     const auto expectedPersistPorts2
     {
-        R"({"checksum":{"hash":{"sha1":"62a2fc1c9277988df156c208c2a7897b1fb41236"}},"destination":{"ip":"::","port":0},"file":{"inode":"43482"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp6"},"process":{"name":null,"pid":0},"source":{"ip":"::","port":51087}})"
+        R"({"checksum":{"hash":{"sha1":"62a2fc1c9277988df156c208c2a7897b1fb41236"}},"destination":{"ip":["::"],"port":0},"file":{"inode":"43482"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":null},"network":{"transport":"udp6"},"process":{"name":null,"pid":0},"source":{"ip":["::"],"port":51087}})"
     };
 
     const auto expectedPersistPorts3
     {
-        R"({"checksum":{"hash":{"sha1":"e049eb5f4a3dbf71dc1e6bdd11a4d070459b36fe"}},"destination":{"ip":"0.0.0.0","port":0},"file":{"inode":"50324"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":"127.0.0.1","port":33060}})"
+        R"({"checksum":{"hash":{"sha1":"e049eb5f4a3dbf71dc1e6bdd11a4d070459b36fe"}},"destination":{"ip":["0.0.0.0"],"port":0},"file":{"inode":"50324"},"host":{"network":{"egress":{"queue":0},"ingress":{"queue":0}}},"interface":{"state":"listening"},"network":{"transport":"tcp"},"process":{"name":null,"pid":0},"source":{"ip":["127.0.0.1"],"port":33060}})"
     };
 
     // Only ports enabled in this test
@@ -2760,6 +2783,137 @@ TEST_F(SyscollectorImpTest, queryCommandFlushNoSyncProtocol)
     EXPECT_EQ(responseJson["error"], MQ_SUCCESS);
     EXPECT_EQ(responseJson["data"]["module"], "syscollector");
     EXPECT_EQ(responseJson["data"]["action"], "flush");
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, queryCommandFlushReportsInProgressAndThenSuccess)
+{
+    static std::atomic<bool> s_blockStart {false};
+    static std::atomic<bool> s_startEntered {false};
+    s_blockStart = true;
+    s_startEntered = false;
+
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false, false);
+
+    MQ_Functions blockingMq {};
+    blockingMq.start = [](const char*, short, short) -> int
+    {
+        s_startEntered = true;
+
+        while (s_blockStart)
+        {
+            std::this_thread::yield();
+        }
+
+        return 1;
+    };
+    blockingMq.send_binary = [](int, const void*, size_t, const char*, char) -> int
+    {
+        return 0;
+    };
+
+    Syscollector::instance().initSyncProtocol("syscollector",
+                                              ":memory:",
+                                              ":memory:",
+                                              blockingMq,
+                                              std::chrono::seconds(0),
+                                              std::chrono::seconds(1),
+                                              1,
+                                              100,
+                                              0);
+
+    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
+    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
+    EXPECT_EQ(flushResponse["data"]["action"], "flush");
+
+    EXPECT_TRUE(waitUntil([]()
+    {
+        return s_startEntered.load();
+    }));
+
+    auto inProgressResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+    EXPECT_EQ(inProgressResponse["error"], MQ_SUCCESS);
+    EXPECT_EQ(inProgressResponse["data"]["status"], "in_progress");
+
+    s_blockStart = false;
+
+    EXPECT_TRUE(waitUntil([]()
+    {
+        auto completedResponse =
+            nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+        return completedResponse["data"]["status"] == "completed";
+    }));
+
+    auto completedResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+    EXPECT_EQ(completedResponse["data"]["status"], "completed");
+    EXPECT_EQ(completedResponse["data"]["result"], "success");
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, queryCommandFlushReportsCompletedError)
+{
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false, false);
+
+    MQ_Functions failingMq {};
+    failingMq.start = [](const char*, short, short) -> int
+    {
+        return -1;
+    };
+    failingMq.send_binary = [](int, const void*, size_t, const char*, char) -> int
+    {
+        return 0;
+    };
+
+    Syscollector::instance().initSyncProtocol("syscollector",
+                                              ":memory:",
+                                              ":memory:",
+                                              failingMq,
+                                              std::chrono::seconds(0),
+                                              std::chrono::seconds(1),
+                                              1,
+                                              100,
+                                              0);
+
+    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
+    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
+    EXPECT_EQ(flushResponse["data"]["action"], "flush");
+
+    EXPECT_TRUE(waitUntil([]()
+    {
+        auto completedResponse =
+            nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+        return completedResponse["data"]["status"] == "completed";
+    }));
+
+    auto completedResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+    EXPECT_EQ(completedResponse["data"]["status"], "completed");
+    EXPECT_EQ(completedResponse["data"]["result"], "error");
 
     Syscollector::instance().destroy();
 }
@@ -4957,4 +5111,90 @@ TEST_F(SyscollectorImpTest, DocumentLimits_EndToEnd_Summary)
 
     EXPECT_TRUE(logCapture->contains(LOG_DEBUG_VERBOSE, "Document limit increased from 0 to 10"))
             << "Expected hotfixes limit to be set to 10";
+}
+
+TEST_F(SyscollectorImpTest, destroyWaitsForOngoingFlush)
+{
+    // Static atomics used by the plain C function pointers in MQ_Functions.
+    // They are reset to initial values at the top of the test.
+    static std::atomic<bool> s_blockStart{false};
+    static std::atomic<bool> s_startEntered{false};
+    s_blockStart  = true;
+    s_startEntered = false;
+
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false, false);
+
+    MQ_Functions blockingMq{};
+    // Block inside start(), which is called unconditionally from checkStatus() at the
+    // top of synchronizeModule() — before the empty-queue early-return.  This ensures
+    // the async flush worker remains active while we verify that destroy() waits for it,
+    // regardless of whether the persistent queue has any data to send.
+    blockingMq.start = [](const char*, short, short) -> int
+    {
+        s_startEntered = true;
+
+        while (s_blockStart)
+        {
+            std::this_thread::yield();
+        }
+
+        return 1; // valid queue descriptor
+    };
+    blockingMq.send_binary = [](int, const void*, size_t, const char*, char) -> int
+    {
+        return 0;
+    };
+
+    Syscollector::instance().initSyncProtocol(
+        "syscollector", ":memory:", ":memory:",
+        blockingMq,
+        std::chrono::seconds(0),
+        std::chrono::seconds(1),
+        1, 100, 0);
+
+    std::atomic<bool> destroyDone{false};
+
+    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
+    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
+    EXPECT_EQ(flushResponse["data"]["action"], "flush");
+
+    // Wait until the async worker has entered start().
+    while (!s_startEntered)
+    {
+        std::this_thread::yield();
+    }
+
+    auto inProgressResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+    EXPECT_EQ(inProgressResponse["data"]["status"], "in_progress");
+
+    // destroy() signals stop on the protocol and waits for the async worker to finish.
+    std::thread destroyThread([&]()
+    {
+        Syscollector::instance().destroy();
+        destroyDone = true;
+    });
+
+    // Give destroy time to start and block waiting for the worker.
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    EXPECT_FALSE(destroyDone) << "destroy should be waiting for the async flush to finish";
+
+    // Release the blocking start — the worker completes, then destroy can proceed.
+    s_blockStart = false;
+
+    destroyThread.join();
+
+    EXPECT_TRUE(destroyDone);
 }

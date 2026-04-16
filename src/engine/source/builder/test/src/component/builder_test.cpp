@@ -2,6 +2,7 @@
 
 #include <base/baseTypes.hpp>
 #include <base/behaviour.hpp>
+#include <fastmetrics/registry.hpp>
 #include <store/mockStore.hpp>
 
 #include "definitions.hpp"
@@ -12,6 +13,12 @@ using namespace base::test;
 
 namespace
 {
+struct FastMetricsInit
+{
+    FastMetricsInit() { fastmetrics::registerManager(); }
+};
+static FastMetricsInit fastMetricsInit_;
+
 bool evalExpression(const base::Expression& expression, const base::Event& event)
 {
     if (expression == nullptr)
@@ -190,7 +197,7 @@ INSTANTIATE_TEST_SUITE_P(
 
                       EXPECT_CALL(*reader, assetExistsByUUID(testing::_)).WillRepeatedly(testing::Return(true));
                       EXPECT_CALL(*reader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
-                      EXPECT_CALL(*reader, getDefaultOutputs())
+                      EXPECT_CALL(*reader, getOutputsForSpace(testing::_))
                           .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
                       return None {};
                   }})),
@@ -245,7 +252,7 @@ INSTANTIATE_TEST_SUITE_P(
                       EXPECT_CALL(*reader, getAssetByUUID("550e8400-e29b-41d4-a716-446655440003"))
                           .WillRepeatedly(testing::Return(rootDecoder));
                       EXPECT_CALL(*reader, assetExistsByUUID(testing::_)).WillRepeatedly(testing::Return(true));
-                      EXPECT_CALL(*reader, getDefaultOutputs())
+                      EXPECT_CALL(*reader, getOutputsForSpace(testing::_))
                           .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
                       return None {};
                   }})),
@@ -303,7 +310,7 @@ INSTANTIATE_TEST_SUITE_P(
                           .WillRepeatedly(testing::Return(rootDecoder));
 
                       EXPECT_CALL(*reader, assetExistsByUUID(testing::_)).WillRepeatedly(testing::Return(true));
-                      EXPECT_CALL(*reader, getDefaultOutputs())
+                      EXPECT_CALL(*reader, getOutputsForSpace(testing::_))
                           .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
                       return None {};
                   }}))));
@@ -529,7 +536,7 @@ TEST_F(BuildPolicyTest, BuildPolicySuccessfully)
 
     EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
 
-    EXPECT_CALL(*m_mocks->m_spNSReader, getDefaultOutputs())
+    EXPECT_CALL(*m_mocks->m_spNSReader, getOutputsForSpace(testing::_))
         .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
 
     // Build policy
@@ -609,7 +616,7 @@ TEST_F(BuildPolicyTest, BuildPolicyWithDisabledIntegration)
 
     EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
 
-    EXPECT_CALL(*m_mocks->m_spNSReader, getDefaultOutputs())
+    EXPECT_CALL(*m_mocks->m_spNSReader, getOutputsForSpace(testing::_))
         .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
 
     // Build policy - should succeed: disabled integration is skipped, enabled integration provides root decoder
@@ -946,7 +953,7 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithMultipleIntegrations)
 
     EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
 
-    EXPECT_CALL(*m_mocks->m_spNSReader, getDefaultOutputs())
+    EXPECT_CALL(*m_mocks->m_spNSReader, getOutputsForSpace(testing::_))
         .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
 
     // Build policy
@@ -1031,7 +1038,7 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithKVDB)
 
     EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
 
-    EXPECT_CALL(*m_mocks->m_spNSReader, getDefaultOutputs())
+    EXPECT_CALL(*m_mocks->m_spNSReader, getOutputsForSpace(testing::_))
         .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
 
     // Build policy
@@ -1113,7 +1120,7 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithOutputs)
 
     EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
 
-    EXPECT_CALL(*m_mocks->m_spNSReader, getDefaultOutputs())
+    EXPECT_CALL(*m_mocks->m_spNSReader, getOutputsForSpace(testing::_))
         .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
 
     // Build policy
@@ -1201,7 +1208,7 @@ TEST_F(BuildPolicyAdvancedTest, ParentTemporaryVariableIsAvailableInChildDecoder
 
     EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByUUID(testing::_)).WillRepeatedly(testing::Return(true));
     EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
-    EXPECT_CALL(*m_mocks->m_spNSReader, getDefaultOutputs())
+    EXPECT_CALL(*m_mocks->m_spNSReader, getOutputsForSpace(testing::_))
         .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
 
     auto builtPolicy = m_builder->buildPolicy(namespaceId, false, true);
@@ -1210,9 +1217,9 @@ TEST_F(BuildPolicyAdvancedTest, ParentTemporaryVariableIsAvailableInChildDecoder
     auto event = std::make_shared<json::Json>(R"({"event": {"code": "PARENT"}})");
     EXPECT_TRUE(evalExpression(builtPolicy->expression(), event));
 
-    auto reason = event->getString("/event/reason");
-    ASSERT_TRUE(reason.has_value());
-    EXPECT_EQ(reason.value(), "child-hit");
+    std::string reason;
+    ASSERT_EQ(json::RetGet::Success, event->getString(reason, "/event/reason"));
+    EXPECT_EQ(reason, "child-hit");
     EXPECT_FALSE(event->exists("/_tmp"));
     EXPECT_FALSE(event->exists("/_tmp/shared"));
 }
@@ -1281,7 +1288,7 @@ TEST_F(BuildPolicyAdvancedTest, DecoderTemporaryVariableIsRemovedAtPipelineEnd)
 
     EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByUUID(testing::_)).WillRepeatedly(testing::Return(true));
     EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
-    EXPECT_CALL(*m_mocks->m_spNSReader, getDefaultOutputs())
+    EXPECT_CALL(*m_mocks->m_spNSReader, getOutputsForSpace(testing::_))
         .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
 
     auto builtPolicy = m_builder->buildPolicy(namespaceId, false, true);

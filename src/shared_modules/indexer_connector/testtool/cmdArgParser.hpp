@@ -42,6 +42,7 @@ public:
         , m_loopSyncCount {paramValueOf(argc, argv, "-L", std::make_pair(false, "0"))}
         , m_loopDelaySeconds {paramValueOf(argc, argv, "-D", std::make_pair(false, "0"))}
         , m_asyncMode {paramValueOf(argc, argv, "-m", std::make_pair(false, "sync"))}
+        , m_extraConfigPaths {paramValuesOf(argc, argv, "-I")}
     {
     }
 
@@ -155,6 +156,15 @@ public:
     }
 
     /**
+     * @brief Gets the list of extra async instance config paths (from -I flags).
+     * @return Vector of config file paths.
+     */
+    const std::vector<std::string>& getExtraConfigPaths() const
+    {
+        return m_extraConfigPaths;
+    }
+
+    /**
      * @brief Shows the help to the user.
      */
     static void showHelp()
@@ -172,15 +182,17 @@ public:
                   << "\t-D DELAY_SECONDS\tDelay in seconds between flush calls (default: 0) (sync mode only).\n"
                   << "\t-w WAIT_TIME\t\tWait time in seconds before closing (0 = wait for enter).\n"
                   << "\t-l LOG_FILE\t\tLog file path.\n"
-                  << "\nExamples:"
-                  << "\n\t# Index events from file sync mode:\n"
+                  << "\t-I EXTRA_CONFIG\t\tAdd an extra async instance with this config (repeatable, async only).\n"
+                  << "\nExamples:" << "\n\t# Index events from file sync mode:\n"
                   << "\t./indexer_connector_tool -c config.json -e events.json\n"
                   << "\n\t# Index events from file async mode:\n"
                   << "\t./indexer_connector_tool -c config.json -e events.json -m async\n"
                   << "\n\t# Auto-generate and index 1000 random events (also available for async mode):\n"
                   << "\t./indexer_connector_tool -c config.json -e template.json -a true -n 1000\n"
                   << "\n\t# Index events and run 30 flush cycles (sync mode):\n"
-                  << "\t./indexer_connector_tool -c config.json -e events.json -L 30 -D 1\n\n";
+                  << "\t./indexer_connector_tool -c config.json -e events.json -L 30 -D 1\n"
+                  << "\n\t# Test isolation with two async instances (each gets its own RocksDB queue):\n"
+                  << "\t./indexer_connector_tool -c config.json -I config2.json -e events.json -m async -w 10\n\n";
     }
 
 private:
@@ -207,6 +219,25 @@ private:
 
         return required.second;
     }
+
+    static std::vector<std::string> paramValuesOf(const int argc, const char* argv[], const std::string& switchValue)
+    {
+        std::vector<std::string> values;
+        for (int i = 1; i < argc; ++i)
+        {
+            const std::string currentValue {argv[i]};
+            if (currentValue == switchValue)
+            {
+                if (i + 1 >= argc)
+                {
+                    throw std::runtime_error {"Switch value: " + switchValue + " requires a following argument."};
+                }
+                values.push_back(argv[i + 1]);
+                ++i;
+            }
+        }
+        return values;
+    }
     const std::string m_templateFilePath;
     const std::string m_updateMappingsFilePath;
     const std::string m_configurationFilePath;
@@ -219,6 +250,7 @@ private:
     const std::string m_loopSyncCount;
     const std::string m_loopDelaySeconds;
     const std::string m_asyncMode;
+    const std::vector<std::string> m_extraConfigPaths;
 };
 
 #endif // _CMD_ARGS_PARSER_HPP_

@@ -17,6 +17,7 @@
 #include <base/process.hpp>
 #include <base/utils/singletonLocator.hpp>
 #include <base/utils/singletonLocatorStrategies.hpp>
+#include <base/utils/timeUtils.hpp>
 #include <bk/rx/controller.hpp>
 #include <builder/allowedFields.hpp>
 #include <builder/builder.hpp>
@@ -28,6 +29,7 @@
 #include <confremote/confremotemanager.hpp>
 #include <defs/defs.hpp>
 #include <eMessages/eMessage.h>
+#include <fastmetrics/registry.hpp>
 #include <fastqueue/cqueue.hpp>
 #include <fastqueue/stdqueue.hpp>
 #include <geo/downloader.hpp>
@@ -51,7 +53,6 @@
 
 #include "base/utils/getExceptionStack.hpp"
 #include "stackExecutor.hpp"
-
 
 volatile sig_atomic_t g_shutdown_requested = 0;
 
@@ -99,6 +100,9 @@ Options parseOptions(int argc, char* argv[])
 
 int main(int argc, char* argv[])
 {
+    // Capture engine start time as ISO 8601 for metrics uptime
+    const std::string engineUptimeISO = base::utils::time::getCurrentISO8601();
+
     // exit handler
     cmd::details::StackExecutor exitHandler {};
     const auto opts = parseOptions(argc, argv);
@@ -236,6 +240,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<kvdbstore::IKVDBManager> kvdbManager;
     std::shared_ptr<ioc::kvdb::IKVDBManager> IOCkvdb;
     std::shared_ptr<geo::Manager> geoManager;
+    std::shared_ptr<fastmetrics::Manager> metricsManager;
     std::shared_ptr<schemf::Schema> schemaValidator;
     std::shared_ptr<scheduler::Scheduler> scheduler;
     std::shared_ptr<streamlog::LogManager> streamLogger;
@@ -324,10 +329,16 @@ int main(int argc, char* argv[])
 
         // GEO
         {
-            // TODO: This is a optional right now, but it be mandatory in the future
-            auto geoDownloader = std::make_shared<geo::Downloader>();
+            auto geoDownloadTimeout = static_cast<long>(confManager.get<size_t>(conf::key::GEO_DOWNLOAD_TIMEOUT));
+            auto geoDownloader = std::make_shared<geo::Downloader>(geoDownloadTimeout);
             geoManager = std::make_shared<geo::Manager>(store, geoDownloader);
             LOG_INFO("Geo initialized.");
+        }
+
+        // Fast Metrics
+        {
+            fastmetrics::registerManager();
+            LOG_INFO("Fast metrics initialized.");
         }
 
         // Schema
@@ -402,9 +413,37 @@ int main(int argc, char* argv[])
                 json::Json jsonCnf(baseJsonCnf);
                 const auto maxQueueSize = confManager.get<size_t>(conf::key::INDEXER_QUEUE_MAX_EVENTS);
                 jsonCnf.setUint64(maxQueueSize, "/max_queue_size");
+                const auto maxHitsPerRequest =
+                    confManager.get<std::size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE);
 
                 // Create indexer connector with enhanced configuration
-                indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf.str());
+                indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf.str(), maxHitsPerRequest);
+
+                // Register pull metric for indexer queue (output/egress)
+                std::weak_ptr<wiconnector::WIndexerConnector> wIndexer = indexerConnector;
+                FASTMETRICS_PULL(uint64_t,
+                                 fastmetrics::names::INDEXER_QUEUE_SIZE,
+                                 [wIndexer]()
+                                 {
+                                     auto connector = wIndexer.lock();
+                                     return connector ? connector->getQueueSize() : 0;
+                                 });
+
+                FASTMETRICS_PULL(uint64_t,
+                                 fastmetrics::names::INDEXER_EVENTS_DROPPED,
+                                 [wIndexer]()
+                                 {
+                                     auto connector = wIndexer.lock();
+                                     return connector ? connector->getDroppedEvents() : 0;
+                                 });
+
+                auto indexerQueueUsageGetter = [wIndexer, maxQueueSize]()
+                {
+                    auto connector = wIndexer.lock();
+                    auto currentSize = connector ? connector->getQueueSize() : 0;
+                    return maxQueueSize > 0 ? (static_cast<double>(currentSize) * 100.0 / maxQueueSize) : 0.0;
+                };
+                FASTMETRICS_PULL(double, fastmetrics::names::INDEXER_QUEUE_USAGE_PERCENT, indexerQueueUsageGetter);
 
                 // Log pending events from previous sessions
                 const auto pendingEvents = indexerConnector->getQueueSize();
@@ -454,32 +493,6 @@ int main(int argc, char* argv[])
                 });
 
             LOG_INFO("Stream logger initialized.");
-
-            auto regChannel =
-                [&](const std::string& name, const std::string& pattern, size_t maxSize, size_t bufferSize)
-            {
-                streamlog::RotationConfig conf = {
-                    .basePath = confManager.get<std::string>(conf::key::STREAMLOG_BASE_PATH),
-                    .pattern = pattern,
-                    .maxSize = maxSize,
-                    .bufferSize = bufferSize,
-                    .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
-                    .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
-
-                streamLogger->isolatedBasePath(name, conf);
-                streamLogger->registerLog(name, conf, "json");
-                LOG_DEBUG("Stream logger channel '{}' registered.", name);
-            };
-
-            regChannel("alerts",
-                       confManager.get<std::string>(conf::key::STREAMLOG_ALERTS_PATTERN),
-                       confManager.get<size_t>(conf::key::STREAMLOG_ALERTS_MAX_SIZE),
-                       confManager.get<size_t>(conf::key::STREAMLOG_ALERTS_BUFFER_SIZE));
-
-            regChannel("archives",
-                       confManager.get<std::string>(conf::key::STREAMLOG_ARCHIVES_PATTERN),
-                       confManager.get<size_t>(conf::key::STREAMLOG_ARCHIVES_MAX_SIZE),
-                       confManager.get<size_t>(conf::key::STREAMLOG_ARCHIVES_BUFFER_SIZE));
         }
 
         // Builder and registry
@@ -491,6 +504,13 @@ int main(int argc, char* argv[])
             builderDeps.kvdbIocManager = IOCkvdb;
             builderDeps.geoManager = geoManager;
             builderDeps.logManager = streamLogger;
+            builderDeps.fileOutputConfig = streamlog::RotationConfig {
+                .basePath = confManager.get<std::string>(conf::key::STREAMLOG_BASE_PATH),
+                .pattern = confManager.get<std::string>(conf::key::STREAMLOG_EVENTS_PATTERN),
+                .maxSize = confManager.get<size_t>(conf::key::STREAMLOG_EVENTS_MAX_SIZE),
+                .bufferSize = confManager.get<size_t>(conf::key::STREAMLOG_EVENTS_BUFFER_SIZE),
+                .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
+                .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
             builderDeps.iConnector = indexerConnector;
             auto defs = std::make_shared<defs::DefinitionsBuilder>();
 
@@ -525,7 +545,10 @@ int main(int argc, char* argv[])
         // Remote runtime settings manager
         if (enableProcessing)
         {
-            remoteConf = std::make_shared<confremote::ConfRemoteManager>(indexerConnector, store);
+            auto maxRetries = confManager.get<size_t>(conf::key::REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES);
+            auto retryInterval = confManager.get<size_t>(conf::key::REMOTE_CONF_INDEXER_CONNECTOR_RETRY_INTERVAL);
+            remoteConf =
+                std::make_shared<confremote::ConfRemoteManager>(indexerConnector, store, maxRetries, retryInterval);
         }
 
         // Raw Event Indexer
@@ -569,13 +592,19 @@ int main(int argc, char* argv[])
             orchestrator->start();
 
             exitHandler.add([orchestrator]() { orchestrator->cleanup(); });
-            LOG_INFO("Orchestrator initialized and started.");
+            const auto epsDescription = qEps > 0 ? std::to_string(qEps) : std::string("unlimited");
+            LOG_INFO("Orchestrator initialized and started with event queue size: {}, events per second: {}.",
+                     qSize,
+                     epsDescription);
         }
 
         // CMsync
         if (enableProcessing)
         {
-            cmSyncService = std::make_shared<cm::sync::CMSync>(indexerConnector, cmCrudService, store, orchestrator);
+            auto maxRetries = confManager.get<size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_MAX_RETRIES);
+            auto retryInterval = confManager.get<size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL);
+            cmSyncService = std::make_shared<cm::sync::CMSync>(
+                indexerConnector, cmCrudService, store, orchestrator, maxRetries, retryInterval);
             LOG_INFO("Content Manager Sync Service initialized.");
 
             // Add sync to scheduler
@@ -594,7 +623,11 @@ int main(int argc, char* argv[])
         if (enableProcessing)
         {
             // Create IOC Sync Service
-            iocSyncService = std::make_shared<ioc::sync::IocSync>(indexerConnector, IOCkvdb, store);
+            auto maxRetries = confManager.get<size_t>(conf::key::IOC_INDEXER_CONNECTOR_MAX_RETRIES);
+            auto retryInterval = confManager.get<size_t>(conf::key::IOC_INDEXER_CONNECTOR_RETRY_INTERVAL);
+            auto iocSyncBatchSize = confManager.get<size_t>(conf::key::IOC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE);
+            iocSyncService = std::make_shared<ioc::sync::IocSync>(
+                indexerConnector, IOCkvdb, store, maxRetries, retryInterval, iocSyncBatchSize);
             LOG_INFO("IOC Sync Service initialized.");
 
             // Add IOC sync to scheduler
@@ -609,7 +642,12 @@ int main(int argc, char* argv[])
                                                                {
                                                                    iocSyncService->synchronize();
                                                                }});
-                LOG_INFO("IOC Sync task scheduled with interval: {} seconds", iocSyncInterval);
+                LOG_DEBUG("IOC Sync task scheduled with interval: {} seconds, {} max retries, {} seconds for retry "
+                          "interval and {} for batch size",
+                          iocSyncInterval,
+                          maxRetries,
+                          retryInterval,
+                          iocSyncBatchSize);
             }
             else
             {
@@ -638,7 +676,7 @@ int main(int argc, char* argv[])
                                            {
                                                geoManager->remoteUpsert(manifestUrl, cityPath, asnPath);
                                            }});
-                LOG_INFO("Geo sync scheduled with interval: {} seconds.", geoSyncInterval);
+                LOG_DEBUG("Geo sync scheduled with interval: {} seconds.", geoSyncInterval);
             }
             else
             {
@@ -649,8 +687,16 @@ int main(int argc, char* argv[])
         // Archiver
         if (enableProcessing)
         {
-            archiver =
-                std::make_shared<archiver::Archiver>(streamLogger, confManager.get<bool>(conf::key::ARCHIVER_ENABLED));
+            const auto archiverConfig = streamlog::RotationConfig {
+                .basePath = confManager.get<std::string>(conf::key::STREAMLOG_BASE_PATH),
+                .pattern = confManager.get<std::string>(conf::key::STREAMLOG_DUMPER_PATTERN),
+                .maxSize = confManager.get<size_t>(conf::key::STREAMLOG_DUMPER_MAX_SIZE),
+                .bufferSize = confManager.get<size_t>(conf::key::STREAMLOG_DUMPER_BUFFER_SIZE),
+                .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
+                .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
+
+            archiver = std::make_shared<archiver::Archiver>(
+                streamLogger, archiverConfig, confManager.get<bool>(conf::key::DUMPER_ENABLED));
             LOG_INFO("Archiver initialized.");
             exitHandler.add([archiver, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
                             { archiver->deactivate(); });
@@ -668,7 +714,7 @@ int main(int argc, char* argv[])
                                                            {
                                                                remoteConf->synchronize();
                                                            }});
-            LOG_INFO("Remote configuration synchronize scheduled with interval: {} seconds.", remoteConfSyncInterval);
+            LOG_DEBUG("Remote configuration synchronize scheduled with interval: {} seconds.", remoteConfSyncInterval);
         }
 
         // Create and configure the api endpoints
@@ -693,7 +739,14 @@ int main(int argc, char* argv[])
                     eMessage::ShutdownEMessageLibrary();
                 });
 
-            // TODO Add Metrics API registration
+            // Metrics - create non-owning shared_ptr to singleton
+            metricsManager = std::shared_ptr<fastmetrics::Manager>(&fastmetrics::manager(),
+                                                                   [](fastmetrics::Manager*) {
+                                                                   } // Empty deleter - singleton is owned elsewhere
+            );
+            api::metrics::handlers::registerHandlers(
+                metricsManager, apiServer, "wazuh-manager-analysisd", engineUptimeISO);
+            LOG_DEBUG("Metrics API registered.");
 
             // Geo
             api::geo::handlers::registerHandlers(geoManager, apiServer);
@@ -734,6 +787,39 @@ int main(int argc, char* argv[])
 
             // Finally start the API server
             apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));
+
+            // Start metrics stream logging task (on-demand channel creation)
+            // Only enabled via internal_options.conf
+            if (streamLogger && confManager.get<bool>(conf::key::METRICS_LOG_ENABLED))
+            {
+                // Prepare metrics channel configuration (lazy creation on first write)
+                const auto metricsChannelConfig = streamlog::RotationConfig {
+                    .basePath = confManager.get<std::string>(conf::key::STREAMLOG_BASE_PATH),
+                    .pattern = confManager.get<std::string>(conf::key::STREAMLOG_METRICS_PATTERN),
+                    .maxSize = confManager.get<size_t>(conf::key::STREAMLOG_METRICS_MAX_SIZE),
+                    .bufferSize = confManager.get<size_t>(conf::key::STREAMLOG_METRICS_BUFFER_SIZE),
+                    .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
+                    .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
+
+                auto metricsWriter = streamLogger->ensureAndGetWriter("engine-metrics", metricsChannelConfig, "json");
+
+                scheduler::TaskConfig metricsConfig {.interval =
+                                                         confManager.get<size_t>(conf::key::METRICS_LOG_INTERVAL),
+                                                     .CPUPriority = 0,
+                                                     .timeout = 0,
+                                                     .taskFunction = [metricsWriter, metricsManager]()
+                                                     {
+                                                         metricsManager->writeAllMetrics(metricsWriter);
+                                                     }};
+
+                scheduler->scheduleTask("MetricsLogger", std::move(metricsConfig));
+                LOG_INFO("Metrics stream logging enabled (interval: {} seconds, on-demand channel creation).",
+                         confManager.get<size_t>(conf::key::METRICS_LOG_INTERVAL));
+            }
+            else if (!confManager.get<bool>(conf::key::METRICS_LOG_ENABLED))
+            {
+                LOG_DEBUG("Metrics stream logging DISABLED.");
+            }
         }
 
         // HTTP enriched events server

@@ -106,7 +106,7 @@ short skipFS(const char *dir_name)
         int i;
         for ( i=0; skip_file_systems[i].name != NULL; i++ ) {
             if(skip_file_systems[i].f_type == stfs.f_type ) {
-                mdebug1("Skipping dir (FS %s): %s ", skip_file_systems[i].name, dir_name);
+                mdebug2("Skipping dir (FS %s): %s ", skip_file_systems[i].name, dir_name);
                 return skip_file_systems[i].flag;
             }
         }

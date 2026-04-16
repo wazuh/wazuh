@@ -107,7 +107,7 @@ static void rem_inc_agents_send_discarded(const char *agent_id);
 
 void * rem_state_main() {
     if (!state_interval) {
-        mdebug1("Agent state cleanup is disabled.");
+        mdebug1("State file is disabled.");
         return NULL;
     }
 

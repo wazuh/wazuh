@@ -34,6 +34,8 @@ EXPORTED void agent_info_start(const struct wm_agent_info_t* agent_info_config);
 
 EXPORTED void agent_info_stop();
 
+EXPORTED void agent_info_cleanup();
+
 EXPORTED void agent_info_set_log_function(log_callback_t log_callback);
 
 EXPORTED void agent_info_set_report_function(report_callback_t report_callback);
@@ -114,6 +116,7 @@ EXPORTED void agent_info_clear_agent_groups(void);
 
 typedef void (*agent_info_start_func)(const struct wm_agent_info_t* agent_info_config);
 typedef void (*agent_info_stop_func)();
+typedef void (*agent_info_cleanup_func)();
 typedef void (*agent_info_set_log_function_func)(log_callback_t log_callback);
 typedef void (*agent_info_set_report_function_func)(report_callback_t report_callback);
 typedef void (*agent_info_init_sync_protocol_func)(const char* module_name,

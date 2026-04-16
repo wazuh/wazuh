@@ -5,6 +5,7 @@
 #include <idbsync.hpp>
 #include <ifilesystem_wrapper.hpp>
 #include <sca_utils.hpp>
+#include "asyncFlushController.hpp"
 #include "iagent_sync_protocol.hpp"
 
 #include <json.hpp>
@@ -154,6 +155,9 @@ class SecurityConfigurationAssessment
         /// @brief Flag indicating if a sync operation is currently in progress
         std::atomic<bool> m_syncInProgress {false};
 
+        /// @brief Cached first-sync completion state used to gate initial stateful publication.
+        std::atomic<bool> m_firstSyncCompleted {false};
+
         /// @brief Condition variable for pause/resume coordination
         std::condition_variable m_pauseCv;
 
@@ -195,6 +199,15 @@ class SecurityConfigurationAssessment
         /// @return true on success, false on error.
         bool updateMetadataValue(const std::string& key, int64_t value);
 
+        /// @brief Refresh the cached first-sync completion flag from metadata.
+        void refreshFirstSyncCompletedState();
+
+        /// @brief Synchronize the current DB snapshot using FULL mode.
+        /// @param increaseVersions Whether to bump versions before building the snapshot.
+        /// @param syncReason Reason used in logs.
+        /// @return true on success.
+        bool synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason);
+
         /// @brief Perform full recovery: load all checks and resync
         /// @return true on success
         bool performRecovery();
@@ -207,6 +220,10 @@ class SecurityConfigurationAssessment
         /// @brief Check if DB has data (policies or checks)
         /// @return true if DB contains any policies or checks
         bool hasDataInDatabase();
+
+        /// @brief Execute the blocking flush work for the module.
+        /// @return 0 on success, -1 on error.
+        int executeFlushSync();
 
         /// @brief Handle the case when no policies are available (either at startup or runtime).
         /// If the database has existing data, triggers DataClean to notify the manager and clears DB.
@@ -259,6 +276,9 @@ class SecurityConfigurationAssessment
 
         /// @brief Mutex for condition variable
         std::mutex m_mutex;
+
+        /// @brief Controller for asynchronous flush requests.
+        std::unique_ptr<Utils::AsyncFlushController> m_asyncFlushController;
 
         /// @brief Commands timeout for policy execution
         int m_commandsTimeout = 0;

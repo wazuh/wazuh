@@ -53,16 +53,13 @@ void updateIOCStatus(const std::shared_ptr<store::IStore>& storeRef,
         {
             // Read current hash and preserve it (Empty on malformed documents or read errors)
             auto docResp = storeRef->readDoc(IOC_STATUS_DOC);
+            std::string currentHash;
             if (!base::isError(docResp))
             {
                 auto& doc = base::getResponse(docResp);
-                auto currentHash = doc.getString(DOC_HASH_KEY).value_or("");
-                statusDoc.setString(currentHash, DOC_HASH_KEY);
+                doc.getString(currentHash, detail::DOC_HASH_KEY); // If key doesn't exist, currentHash remains empty
             }
-            else
-            {
-                statusDoc.setString("", DOC_HASH_KEY);
-            }
+            statusDoc.setString(currentHash, DOC_HASH_KEY);
         }
 
         statusDoc.setString(lastError, DOC_ERROR_KEY);
@@ -286,7 +283,7 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::ioc::kvdb::IKVDBManager>& 
         }
 
         // Read current hash from store
-        std::string storedHash;
+        std::string storedHash; // Empty by default, will be set if document and key exist in store
         auto docResp = storeRef->readDoc(detail::IOC_STATUS_DOC);
         if (base::isError(docResp))
         {
@@ -302,13 +299,11 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::ioc::kvdb::IKVDBManager>& 
                               "Failed to create IOC status document: {}",
                               base::getError(createResult).message);
             }
-            storedHash = "";
         }
         else
         {
             auto doc = base::getResponse(docResp);
-            auto hashOpt = doc.getString(detail::DOC_HASH_KEY);
-            storedHash = hashOpt.value_or("");
+            doc.getString(storedHash, detail::DOC_HASH_KEY); // If key doesn't exist, storedHash remains
         }
 
         // Compare hashes - if they match, no sync needed
@@ -417,17 +412,12 @@ adapter::RouteHandler getIocState(const std::shared_ptr<store::IStore>& store)
         std::string currentHash;
         std::string lastError;
         auto docResp = storeRef->readDoc(detail::IOC_STATUS_DOC);
-        if (base::isError(docResp))
+        if (!base::isError(docResp))
         {
-            // Document doesn't exist yet
-            currentHash = "";
-            lastError = "";
-        }
-        else
-        {
+            // Extract hash and last error from document (if keys don't exist, values remain empty)
             auto doc = base::getResponse(docResp);
-            currentHash = doc.getString(detail::DOC_HASH_KEY).value_or("");
-            lastError = doc.getString(detail::DOC_ERROR_KEY).value_or("");
+            doc.getString(currentHash, detail::DOC_HASH_KEY);
+            doc.getString(lastError, detail::DOC_ERROR_KEY);
         }
 
         // Check if synchronization is in progress

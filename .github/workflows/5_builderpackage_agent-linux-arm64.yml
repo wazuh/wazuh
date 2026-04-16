@@ -47,11 +47,15 @@ on:
         required: false
         default: false
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   # ===================== DEB JOBS =====================
   build-deb-arm64:
     if: github.event_name == 'pull_request' || inputs.system == 'deb'
-    runs-on: ubuntu-24.04-arm
+    runs-on: wz-linux-arm64
     timeout-minutes: 30
     name: Build DEB package
     outputs:
@@ -137,7 +141,7 @@ jobs:
 
   test-deb-arm64:
     needs: build-deb-arm64
-    runs-on: ubuntu-24.04-arm
+    runs-on: wz-linux-arm64
     timeout-minutes: 30
     name: Test DEB package
 
@@ -221,7 +225,7 @@ jobs:
   upload-deb-arm64-to-s3:
     needs: [build-deb-arm64, test-deb-arm64]
     if: success()
-    runs-on: ubuntu-24.04-arm
+    runs-on: wz-linux-arm64
     timeout-minutes: 15
     name: Upload DEB to S3
 
@@ -301,7 +305,7 @@ jobs:
   # ===================== RPM JOBS =====================
   build-rpm-arm64:
     if: github.event_name == 'pull_request' || inputs.system == 'rpm'
-    runs-on: ubuntu-24.04-arm
+    runs-on: wz-linux-arm64
     timeout-minutes: 30
     name: Build RPM package
     outputs:
@@ -387,7 +391,7 @@ jobs:
 
   test-rpm-arm64:
     needs: build-rpm-arm64
-    runs-on: ubuntu-24.04-arm
+    runs-on: wz-linux-arm64
     timeout-minutes: 30
     name: Test RPM package
 
@@ -471,7 +475,7 @@ jobs:
   upload-rpm-arm64-to-s3:
     needs: [build-rpm-arm64, test-rpm-arm64]
     if: success()
-    runs-on: ubuntu-24.04-arm
+    runs-on: wz-linux-arm64
     timeout-minutes: 15
     name: Upload RPM to S3
 

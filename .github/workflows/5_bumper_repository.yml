@@ -23,6 +23,11 @@ on:
         description: 'Issue link in format https://github.com/wazuh/<REPO>/issues/<ISSUE-NUMBER>'
         required: true
         type: string
+      set-as-main:
+        description: 'Update version values only, preserving main branch references in URLs'
+        default: false
+        required: false
+        type: boolean
       id:
         description: 'Optional identifier for the run'
         required: false
@@ -82,16 +87,19 @@ jobs:
           VERSION: ${{ inputs.version }}
           STAGE: ${{ inputs.stage }}
           DATE: ${{ inputs.date }}
+          SET_AS_MAIN: ${{ inputs.set-as-main }}
         run: |
           script_params=""
           version=${{ env.VERSION }}
           stage=${{ env.STAGE }}
           date=${{ env.DATE }}
+          set_as_main=${{ env.SET_AS_MAIN }}
 
           # Both version and stage provided
           [[ -n "$version" ]] && script_params+="--version $version "
           [[ -n "$stage"   ]] && script_params+="--stage $stage "
           [[ -n "$date"    ]] && script_params+="--date $date "
+          [[ "$set_as_main" == "true" ]] && script_params+="--set-as-main "
 
           issue_number=$(echo "${{ inputs.issue-link }}" | awk -F'/' '{print $NF}')
           BRANCH_NAME="enhancement/wqa${issue_number}-bump-${{ github.ref_name }}"
@@ -108,13 +116,21 @@ jobs:
           bash ${{ env.BUMP_SCRIPT_PATH }} ${{ steps.vars.outputs.script_params }}
 
       - name: Commit and push changes
+        id: commit_changes
         run: |
           git add .
+          if git diff --cached --quiet; then
+            echo "No changes detected, skipping PR creation."
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
           git commit -m "feat: bump ${{ github.ref_name }}"
           git push origin ${{ steps.vars.outputs.branch_name }}
+          echo "has_changes=true" >> $GITHUB_OUTPUT
 
       - name: Create pull request
         id: create_pr
+        if: steps.commit_changes.outputs.has_changes == 'true'
         run: |
           gh auth setup-git
           PR_URL=$(gh pr create \
@@ -127,6 +143,7 @@ jobs:
           echo "pull_request_url=${PR_URL}" >> $GITHUB_OUTPUT
 
       - name: Merge pull request
+        if: steps.commit_changes.outputs.has_changes == 'true'
         run: |
           # Any checks for the PR are bypassed since the branch is expected to be functional (i.e. the bump process does not introduce any bugs)
           gh pr merge "${{ steps.create_pr.outputs.pull_request_url }}" --merge --admin

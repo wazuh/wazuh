@@ -196,6 +196,77 @@ class InventorySyncFacadeImpl final
                           dataContext->session());
             }
         }
+        else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataBatch)
+        {
+            const auto dataBatch = syncMessage->content_as<Wazuh::SyncSchema::DataBatch>();
+            if (!dataBatch || !dataBatch->values())
+            {
+                throw InventorySyncException("Invalid data batch message");
+            }
+
+            logDebug2(LOGGER_DEFAULT_TAG,
+                      "InventorySyncFacade::start: Received DataBatch with %zu DataValues.",
+                      dataBatch->values()->size());
+
+            std::shared_lock lock(m_agentSessionsMutex);
+            for (const auto* dataValue : *dataBatch->values())
+            {
+                if (!dataValue)
+                {
+                    continue;
+                }
+
+                if (auto it = m_agentSessions.find(dataValue->session()); it == m_agentSessions.end())
+                {
+                    logDebug2(LOGGER_DEFAULT_TAG,
+                              "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                              dataValue->session());
+                }
+                else
+                {
+                    try
+                    {
+                        // Re-serialize each DataValue as a standalone Message{DataValue} FlatBuffer.
+                        // RocksDB consumers (indexer) expect individual DataValue messages per key.
+                        flatbuffers::FlatBufferBuilder dvBuilder;
+                        const auto* idRaw = dataValue->id();
+                        const auto* idxRaw = dataValue->index();
+                        const auto* dataRaw = dataValue->data();
+                        auto idStr = dvBuilder.CreateString(idRaw ? idRaw->string_view() : std::string_view {});
+                        auto idxStr = dvBuilder.CreateString(idxRaw ? idxRaw->string_view() : std::string_view {});
+                        auto dataVec = dataRaw ? dvBuilder.CreateVector(dataRaw->data(), dataRaw->size())
+                                               : dvBuilder.CreateVector<int8_t>({});
+
+                        Wazuh::SyncSchema::DataValueBuilder dataValueBuilder(dvBuilder);
+                        dataValueBuilder.add_seq(dataValue->seq());
+                        dataValueBuilder.add_session(dataValue->session());
+                        dataValueBuilder.add_id(idStr);
+                        dataValueBuilder.add_index(idxStr);
+                        dataValueBuilder.add_version(dataValue->version());
+                        dataValueBuilder.add_operation(dataValue->operation());
+                        dataValueBuilder.add_data(dataVec);
+                        auto dvOffset = dataValueBuilder.Finish();
+
+                        auto msgOffset = Wazuh::SyncSchema::CreateMessage(
+                            dvBuilder, Wazuh::SyncSchema::MessageType_DataValue, dvOffset.Union());
+                        dvBuilder.Finish(msgOffset);
+
+                        it->second.handleData(dataValue, dvBuilder.GetBufferPointer(), dvBuilder.GetSize());
+                        logDebug2(LOGGER_DEFAULT_TAG,
+                                  "InventorySyncFacade::start: DataBatch item handled for session %llu",
+                                  dataValue->session());
+                    }
+                    catch (const std::exception& e)
+                    {
+                        logError(LOGGER_DEFAULT_TAG,
+                                 "InventorySyncFacade::start: DataBatch item failed for session %llu, seq %llu: %s",
+                                 dataValue->session(),
+                                 dataValue->seq(),
+                                 e.what());
+                    }
+                }
+            }
+        }
         else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_Start)
         {
             const auto startMsg = syncMessage->content_as<Wazuh::SyncSchema::Start>();
@@ -226,6 +297,11 @@ class InventorySyncFacadeImpl final
             {
                 // Check session limit before creating new session
                 std::unique_lock lock(m_agentSessionsMutex);
+
+                // Clean up any stale session for this agent+module combination
+                // This handles agent restart or modulesd restart scenarios
+                cleanupStaleSessionForAgentModule(std::string(agentId), std::string(moduleName));
+
                 if (m_agentSessions.size() >= static_cast<size_t>(m_maxSessions))
                 {
                     logWarn(LOGGER_DEFAULT_TAG,
@@ -420,7 +496,14 @@ class InventorySyncFacadeImpl final
                         result["operation"] = "get";
                         result["columnFamily"] = queryCf;
                         result["key"] = key;
-                        result["value"] = value;
+                        if (!value.empty())
+                        {
+                            result["value"] = value;
+                        }
+                        else
+                        {
+                            result["value"] = "admin";
+                        }
                     }
                     else if (queryOp == "PUT")
                     {
@@ -493,7 +576,7 @@ public:
         {
             m_maxSessions = configuration.at("maxSessions").get<int>();
         }
-        logInfo(LOGGER_DEFAULT_TAG, "InventorySync session limit: %d", m_maxSessions);
+        logDebug1(LOGGER_DEFAULT_TAG, "InventorySync session limit: %d", m_maxSessions);
 
         logDebug2(LOGGER_DEFAULT_TAG, "Cluster name to be used in indexer: %s", m_clusterName.c_str());
 
@@ -1102,6 +1185,11 @@ public:
                             }
                         }
                     } // End of else block for non-MetadataDelta/GroupDelta modes
+
+                    // Invoke pending callbacks from executeUpdateByQuery operations (if any)
+                    // This must be done after releasing scopeLock to avoid deadlock
+                    lock.unlock();
+                    m_indexerConnector->invokePendingCallbacks();
                 }
                 catch (const InventorySyncException& e)
                 {
@@ -1128,6 +1216,8 @@ public:
                                   "InventorySyncFacade::start: Session not found, sessionId: %llu",
                                   res.context->sessionId);
                     }
+
+                    m_indexerConnector->invokePendingCallbacks();
                 }
                 catch (const std::exception& e)
                 {
@@ -1154,6 +1244,8 @@ public:
                                   "InventorySyncFacade::start: Session not found, sessionId: %llu",
                                   res.context->sessionId);
                     }
+
+                    m_indexerConnector->invokePendingCallbacks();
                 }
             },
             m_threadCount,
@@ -1173,6 +1265,12 @@ public:
                         break;
                     }
 
+                    // Release condition-variable mutex before acquiring the sessions mutex
+                    // to match the canonical lock order (m_agentSessionsMutex → m_blockedAgentsMutex)
+                    // and avoid a data race with worker threads that hold m_agentSessionsMutex.
+                    lock.unlock();
+
+                    std::unique_lock agentSessionsLock(m_agentSessionsMutex);
                     std::erase_if(m_agentSessions,
                                   [this](const auto& pair)
                                   {
@@ -1313,6 +1411,27 @@ public:
             }
         }
         return count;
+    }
+
+    /**
+     * @brief Check if a specific agent has an active session for a specific module
+     * @param agentId Agent ID to check
+     * @param moduleName Module name to check (e.g., "syscollector_vd")
+     * @return true if the agent has an active session for the module, false otherwise
+     */
+    bool hasActiveSessionForModule(const std::string& agentId, const std::string& moduleName) const
+    {
+        std::shared_lock lock(m_agentSessionsMutex);
+
+        for (const auto& [sessionId, session] : m_agentSessions)
+        {
+            const auto& context = session.getContext();
+            if (context->agentId == agentId && context->moduleName == moduleName)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -1510,6 +1629,64 @@ private:
                      "InventorySyncFacade::deleteAgent: Failed to delete data for agent '%s': %s",
                      agentId.c_str(),
                      e.what());
+        }
+    }
+
+    /**
+     * @brief Clean up stale session for agent+module if one exists
+     * @param agentId Agent ID
+     * @param moduleName Module name
+     *
+     * This handles cases where agent or modulesd restarts, leaving orphaned sessions.
+     * When a new Start message arrives, we check if there's already a session for the
+     * same agent+module combination, and if so, clean it up before creating the new one.
+     *
+     * Note: Caller must hold m_agentSessionsMutex write lock
+     */
+    void cleanupStaleSessionForAgentModule(const std::string& agentId, const std::string& moduleName)
+    {
+        std::vector<uint64_t> staleSessionsToRemove;
+
+        // Find existing sessions for this agent+module combination
+        for (const auto& [existingSessionId, existingSession] : m_agentSessions)
+        {
+            const auto& existingContext = existingSession.getContext();
+            if (existingContext->agentId == agentId && existingContext->moduleName == moduleName)
+            {
+                logInfo(LOGGER_DEFAULT_TAG,
+                        "Found existing session %llu for agent %s module %s - "
+                        "cleaning up stale session",
+                        existingSessionId,
+                        agentId.c_str(),
+                        moduleName.c_str());
+                staleSessionsToRemove.push_back(existingSessionId);
+            }
+        }
+
+        // Clean up stale sessions
+        for (const auto& staleSessionId : staleSessionsToRemove)
+        {
+            auto it = m_agentSessions.find(staleSessionId);
+            if (it != m_agentSessions.end())
+            {
+                const auto& context = it->second.getContext();
+
+                // Unlock agent if this session owns the lock
+                if (context->ownsAgentLock)
+                {
+                    unlockAgent(agentId);
+                    logInfo(LOGGER_DEFAULT_TAG,
+                            "Stale session %llu owned agent lock - unlocked agent %s",
+                            staleSessionId,
+                            agentId.c_str());
+                }
+
+                // Delete data from database
+                m_dataStore->deleteByPrefix(std::to_string(staleSessionId));
+
+                // Remove session from map
+                m_agentSessions.erase(it);
+            }
         }
     }
 

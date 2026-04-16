@@ -69,7 +69,7 @@ test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_indexer.yaml')
 # Configurations
 test_configuration, test_metadata, test_cases_id = get_test_cases_data(test_cases_path)
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
-daemons_handler_configuration = {'daemons': API_DAEMONS_REQUIREMENTS}
+daemons_handler_configuration = {'all_daemons': True}
 
 
 @pytest.mark.tier(level=0)

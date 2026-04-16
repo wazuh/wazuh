@@ -57,26 +57,27 @@ std::vector<MappingConfig> loadMappingConfigs(const json::Json& config)
     std::vector<MappingConfig> mappingConfigs {};
     mappingConfigs.reserve(collection.size());
 
+    const auto parseEcsPath = [](const json::Json& value,
+                                  const std::string& jsonField,
+                                  std::optional<std::string>& dest)
+    {
+        std::string fieldStr;
+        if (value.getString(fieldStr, jsonField) == json::RetGet::Success)
+        {
+            dest = json::Json::formatJsonPath(fieldStr);
+        }
+    };
+
     for (const auto& [key, value] : collection)
     {
+        MappingConfig cfg {};
+        cfg.dotPath = key;
+        cfg.originIpPath = json::Json::formatJsonPath(key);
 
-        MappingConfig config {};
-        config.dotPath = key;
-        config.originIpPath = json::Json::formatJsonPath(key);
+        parseEcsPath(value, "/geo_field", cfg.geoEcsPath);
+        parseEcsPath(value, "/as_field", cfg.asEcsPath);
 
-        // geo_field
-        if (auto geoFieldOpt = value.getString("/geo_field"); geoFieldOpt.has_value())
-        {
-            config.geoEcsPath = json::Json::formatJsonPath(geoFieldOpt.value());
-        }
-
-        // as_ecs_path
-        if (auto asFieldOpt = value.getString("/as_field"); asFieldOpt.has_value())
-        {
-            config.asEcsPath = json::Json::formatJsonPath(asFieldOpt.value());
-        }
-
-        mappingConfigs.push_back(std::move(config));
+        mappingConfigs.push_back(std::move(cfg));
     }
 
     return mappingConfigs;
@@ -102,9 +103,9 @@ bool mapGeoToECS(const std::string& ip,
     auto mapStringField = [&](const std::string& geoPath, const std::string& ecsField)
     {
         auto result = locator->getString(ip, geoPath);
-        if (!base::isError(result))
+        if (!result.isError())
         {
-            event.setString(getResponse(result), ecsPath + ecsField);
+            event.setString(result.value(), ecsPath + ecsField);
             mapCity = true;
         }
     };
@@ -113,9 +114,9 @@ bool mapGeoToECS(const std::string& ip,
     auto mapDoubleField = [&](const std::string& geoPath, const std::string& ecsField)
     {
         auto result = locator->getDouble(ip, geoPath);
-        if (!base::isError(result))
+        if (!result.isError())
         {
-            event.setDouble(getResponse(result), ecsPath + ecsField);
+            event.setDouble(result.value(), ecsPath + ecsField);
             mapCity = true;
         }
     };
@@ -156,9 +157,9 @@ bool mapAStoECS(const std::string& ip,
     auto mapUint32Field = [&](const std::string& geoPath, const std::string& ecsField)
     {
         auto result = locator->getUint32(ip, geoPath);
-        if (!base::isError(result))
+        if (!result.isError())
         {
-            event.setInt64(getResponse(result), ecsPath + ecsField);
+            event.setInt64(result.value(), ecsPath + ecsField);
             mapAS = true;
         }
     };
@@ -167,9 +168,9 @@ bool mapAStoECS(const std::string& ip,
     auto mapStringField = [&](const std::string& geoPath, const std::string& ecsField)
     {
         auto result = locator->getString(ip, geoPath);
-        if (!base::isError(result))
+        if (!result.isError())
         {
-            event.setString(getResponse(result), ecsPath + ecsField);
+            event.setString(result.value(), ecsPath + ecsField);
             mapAS = true;
         }
     };
@@ -209,21 +210,33 @@ bool mapAStoECS(const std::string& ip,
 base::Expression getEachEnrichTerm(const std::shared_ptr<geo::ILocator>& cityLocator,
                                    const std::shared_ptr<geo::ILocator>& asLocator,
                                    const MappingConfig& mappingConfig,
-                                   bool trace)
+                                   bool trace,
+                                   const std::shared_ptr<bool>& enrichmentApplied)
 {
 
-    auto opFn = [cityLocator, asLocator, mappingConfig, trace](base::Event event) -> base::result::Result<base::Event>
+    const json::PointerPath originIpPP(mappingConfig.originIpPath);
+    const json::PointerPath originIpFirstPP(mappingConfig.originIpPath + "/0");
+
+    /**
+     * @brief Lambda function to extract the source IP address from the event, supporting both single string and array
+     * formats.
+     */
+    const auto getIpFn = [originIpPP, originIpFirstPP](const base::Event& e) -> std::optional<std::string>
+    {
+        std::string ipStr;
+        if ((e->getString(ipStr, originIpPP) == json::RetGet::Success)
+            || e->getString(ipStr, originIpFirstPP) == json::RetGet::Success)
+        {
+            return ipStr;
+        }
+        return std::nullopt;
+    };
+
+    auto opFn = [cityLocator, asLocator, mappingConfig, trace, getIpFn, enrichmentApplied](
+                    base::Event event) -> base::result::Result<base::Event>
     {
         // Get source IP, can be an string o a array of strings, in that case we take the first one.
-        const auto ipOpt = [&]() -> std::optional<std::string>
-        {
-            auto ipStr = event->getString(mappingConfig.originIpPath);
-            if (!ipStr.has_value())
-            {
-                ipStr = event->getString(mappingConfig.originIpPath + "/0");
-            }
-            return ipStr;
-        }();
+        const auto ipOpt = getIpFn(event);
 
         if (!ipOpt.has_value())
         {
@@ -242,6 +255,11 @@ base::Expression getEachEnrichTerm(const std::shared_ptr<geo::ILocator>& cityLoc
 
         const bool geoSuccess =
             geoConfigured ? mapGeoToECS(ip, cityLocator, mappingConfig.geoEcsPath.value(), *event) : false;
+
+        if (asSuccess || geoSuccess)
+        {
+            *enrichmentApplied = true;
+        }
 
         // Generate trace message using lookup lambda
         const auto getTraceMessage = [&]() -> std::string
@@ -325,30 +343,52 @@ std::pair<base::Expression, std::string> geoEnrichmentBuilder(const std::shared_
     auto as = geoManager->getLocator(geo::Type::ASN);
     auto city = geoManager->getLocator(geo::Type::CITY);
 
-    if (base::isError(as))
+    if (as.isError())
     {
-        throw std::runtime_error("Error getting geo asn locator: " + base::getError(as).message);
+        throw std::runtime_error("Error getting geo asn locator: " + as.readableStr());
     }
-    if (base::isError(city))
+    if (city.isError())
     {
-        throw std::runtime_error("Error getting geo city locator: " + base::getError(city).message);
+        throw std::runtime_error("Error getting geo city locator: " + city.readableStr());
     }
 
     // Create locators
-    auto& asLocator = base::getResponse(as);
-    auto& cityLocator = base::getResponse(city);
+    auto& asLocator = as.value();
+    auto& cityLocator = city.value();
+
+    // Shared flag to track if any enrichment was applied
+    auto enrichmentApplied = std::make_shared<bool>(false);
 
     // Create enrichment terms for each mapping config
     std::vector<base::Expression> enrichmentTerms;
     for (const auto& config : mappingConfigs)
     {
-        enrichmentTerms.push_back(getEachEnrichTerm(cityLocator, asLocator, config, trace));
+        enrichmentTerms.push_back(getEachEnrichTerm(cityLocator, asLocator, config, trace, enrichmentApplied));
     }
 
     // Combine terms into a single expression
     base::Expression enrichmentExpr = base::Chain::create(GEO_ENRICHMENT_TRACEABLE_NAMES, enrichmentTerms);
 
-    return {makeTraceableSuccessExpression(enrichmentExpr, trace), GEO_ENRICHMENT_TRACEABLE_NAMES};
+    if (!trace)
+    {
+        return {enrichmentExpr, GEO_ENRICHMENT_TRACEABLE_NAMES};
+    }
+
+    // Only emit SUCCESS if at least one enrichment was applied
+    auto conditionalSuccess =
+        base::Term<base::EngineOp>::create("ConditionalAccept",
+                                           [enrichmentApplied](auto e) -> base::result::Result<base::Event>
+                                           {
+                                               if (*enrichmentApplied)
+                                               {
+                                                   *enrichmentApplied = false;
+                                                   return base::result::makeSuccess(e, "SUCCESS");
+                                               }
+                                               return base::result::makeFailure(e, std::string {});
+                                           });
+
+    return {base::Implication::create("TraceableConditional", enrichmentExpr, conditionalSuccess),
+            GEO_ENRICHMENT_TRACEABLE_NAMES};
 };
 
 } // namespace
