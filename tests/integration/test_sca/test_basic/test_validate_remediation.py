@@ -80,20 +80,29 @@ def find_result_for_a_given_id(id: int, results: list[tuple[str, str, str]]) -> 
     return None
 
 
-def find_result_for_a_given_id_in_log(id: int, policy: str, log_content: str) -> tuple[str, str, str] | None:
+def find_result_for_a_given_id_in_log(id: int, policy: str, log_content: str,
+                                      expected_result: str | None = None) -> tuple[str, str, str] | None:
     matches = re.findall(patterns.SCA_SCAN_RESULT, log_content)
+    selected_result = None
     for result in matches:
-        if result[0] == str(id) and result[1] == policy:
+        if result[0] != str(id) or result[1] != policy:
+            continue
+
+        if expected_result is None:
+            selected_result = result
+        elif result[2] == expected_result:
             return result
-    return None
+
+    return selected_result
 
 
-def wait_for_result_in_log(id: int, policy: str, timeout: int, expected_result: str | None = None, offset: int = 0) -> tuple[str, str, str] | None:
+def wait_for_result_in_log(id: int, policy: str, timeout: int, expected_result: str | None = None,
+                           offset: int = 0) -> tuple[str, str, str] | None:
     deadline = time.time() + timeout
     while time.time() < deadline:
         with open(WAZUH_LOG_PATH, encoding='utf-8', errors='ignore') as log_file:
             log_file.seek(offset)
-            result = find_result_for_a_given_id_in_log(id, policy, log_file.read())
+            result = find_result_for_a_given_id_in_log(id, policy, log_file.read(), expected_result)
         if result is not None and (expected_result is None or result[2] == expected_result):
             return result
         time.sleep(2)
@@ -187,6 +196,7 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
         f"Got unexpected SCA result: expected {test_metadata['initial_result']}, got {initial_result}"
 
     if sys.platform == WINDOWS:
+        log_offset = Path(WAZUH_LOG_PATH).stat().st_size
         # Modify lockout duration
         subprocess.call('net accounts /lockoutduration:100', shell=True)
     else:
@@ -201,7 +211,6 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
 
     # Get the results for the checks obtained in the SCA scan after change.
     if sys.platform == WINDOWS:
-        log_offset = Path(WAZUH_LOG_PATH).stat().st_size
         final_result = wait_for_result_in_log(test_metadata['check_id'], expected_policy, scan_timeout,
                                               expected_result=test_metadata['final_result'], offset=log_offset)
     else:
