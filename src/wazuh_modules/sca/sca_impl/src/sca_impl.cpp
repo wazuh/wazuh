@@ -64,6 +64,10 @@ constexpr auto METADATA_SQL_STATEMENT
 
 constexpr auto SCA_LAST_INTEGRITY_CHECK_METADATA_KEY {"last_integrity_check"};
 constexpr auto SCA_FIRST_SYNC_COMPLETED_METADATA_KEY {"first_sync_completed"};
+// Set after every complete scan iteration; cleared at Run() startup so a crash mid-scan
+// leaves it at 0. The sync thread polls this instead of MAX(version) to avoid triggering
+// the first synchronization while the DB still contains "Not run" placeholders.
+constexpr auto SCA_SCAN_COMPLETED_METADATA_KEY {"scan_completed"};
 
 SecurityConfigurationAssessment::SecurityConfigurationAssessment(std::string dbPath,
                                                                  std::shared_ptr<IDBSync> dbSync,
@@ -136,6 +140,14 @@ void SecurityConfigurationAssessment::Run()
     }
 
     refreshFirstSyncCompletedState();
+
+    // Reset the scan-completed flag only when the first sync has not yet happened.
+    // Once first_sync_completed is set this flag is never polled again, so writing it
+    // on every subsequent restart would be unnecessary overhead.
+    if (!m_firstSyncCompleted.load())
+    {
+        updateMetadataValue(SCA_SCAN_COMPLETED_METADATA_KEY, 0);
+    }
 
     // Check for policies removed between agent restarts (before scan loop starts).
     // This early check uses m_policiesData (raw config) since policies haven't been loaded yet.
@@ -288,6 +300,13 @@ void SecurityConfigurationAssessment::Run()
 
         // Mark scan as complete
         setScanInProgress(false);
+
+        // Signal that a full scan iteration has completed. Only written until the first
+        // sync completes — after that the sync thread no longer polls this flag.
+        if (!m_firstSyncCompleted.load())
+        {
+            updateMetadataValue(SCA_SCAN_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
+        }
     }
 }
 
@@ -873,6 +892,27 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
                 response["message"] = "SCA failed getting first sync completion";
                 response["data"]["action"] = "get_first_sync_completed";
                 response["data"]["module"] = "sca";
+            }
+        }
+        else if (command == "get_scan_completed")
+        {
+            int64_t scanCompleted = 0;
+
+            if (getMetadataValue(SCA_SCAN_COMPLETED_METADATA_KEY, scanCompleted))
+            {
+                response["error"] = 0;
+                response["message"] = "SCA scan completion retrieved successfully";
+                response["data"]["action"] = "get_scan_completed";
+                response["data"]["module"] = "sca";
+                response["data"]["scan_completed"] = scanCompleted > 0 ? 1 : 0;
+            }
+            else
+            {
+                response["error"] = 2;
+                response["message"] = "SCA failed getting scan completion";
+                response["data"]["action"] = "get_scan_completed";
+                response["data"]["module"] = "sca";
+                response["data"]["scan_completed"] = 0;
             }
         }
         else if (command == "set_version")

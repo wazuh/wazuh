@@ -601,38 +601,59 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
                 check.erase("sync");
             }
 
+            // "Not run" is a DB placeholder — the check has not been executed yet in this
+            // scan cycle. Never emit a stateless event for a check in this state, regardless
+            // of the operation type (INSERTED, MODIFIED, DELETED).
+            {
+                const auto resultIt = check.find("result");
+
+                if (resultIt != check.end() &&
+                        resultIt->is_string() &&
+                        resultIt->get<std::string>() == "Not run")
+                {
+                    return {};
+                }
+            }
+
             if (event["check"].contains("old") && event["check"]["old"].is_object())
             {
                 const auto& old = event["check"]["old"];
 
-                // "Not run" is the DB default placeholder, not a user-observable state.
-                // A transition from it is a first observation, not a real delta — any
-                // sibling fields in the diff (e.g. `reason` populated for "Not applicable")
-                // are also first-time values, so the whole stateless event is dropped.
-                const auto oldResult = old.find("result");
-                const bool transitionFromNotRun = oldResult != old.end() &&
-                                                  oldResult->is_string() &&
-                                                  oldResult->get<std::string>() == "Not run";
-
-                if (!transitionFromNotRun)
+                // For MODIFIED events, stateless is only meaningful for valid result state
+                // transitions. "Not run" is a DB placeholder (not a real observable state),
+                // and metadata-only changes (no result change) don't constitute a state
+                // transition worth alerting on.
+                // Note: new result == "Not run" is already caught above.
+                if (static_cast<ReturnTypeCallback>(event["result"]) == MODIFIED)
                 {
-                    nlohmann::json previous;
+                    const auto oldResultIt = old.find("result");
+                    const bool resultChanged = oldResultIt != old.end();
+                    const bool oldResultIsNotRun = resultChanged &&
+                                                   oldResultIt->is_string() &&
+                                                   oldResultIt->get<std::string>() == "Not run";
 
-                    for (auto& [key, value] : old.items())
+                    if (!resultChanged || oldResultIsNotRun)
                     {
-                        if (key == "id" || key == "sync")
-                        {
-                            continue;
-                        }
+                        return {};
+                    }
+                }
 
-                        previous[key] = value;
-                        changedFields.push_back("check." + key);
+                nlohmann::json previous;
+
+                for (auto& [key, value] : old.items())
+                {
+                    if (key == "id" || key == "sync")
+                    {
+                        continue;
                     }
 
-                    if (!previous.empty())
-                    {
-                        check["previous"] = previous;
-                    }
+                    previous[key] = value;
+                    changedFields.push_back("check." + key);
+                }
+
+                if (!previous.empty())
+                {
+                    check["previous"] = previous;
                 }
             }
         }

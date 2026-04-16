@@ -1160,6 +1160,298 @@ TEST_F(SCAEventHandlerTest, ReportCheckResult_EmitsRealResultTransitions)
     EXPECT_EQ(statelessMessage["data"]["check"]["previous"]["result"], "Passed");
 }
 
+TEST_F(SCAEventHandlerTest, ReportCheckResult_SuppressesMetadataOnlyChangeWhenResultIsNotRun)
+{
+    // Reported bug: agent restarts, only check name changes, result stays "Not run" in DB.
+    // The delta has checksum/name/version in old but NO result (result didn't change).
+    // No stateless event should be emitted because "Not run" is not a valid observable state.
+    const std::string policyId = "test_policy";
+    const std::string checkId = "test_check";
+    const std::string checkResult = "Not run";
+
+    EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
+    .WillOnce([checkResult](const nlohmann::json&, const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
+    {
+        nlohmann::json returnData =
+        {
+            {
+                "old", {
+                    {"id", "test_check"},
+                    {"checksum", "old_checksum"},
+                    {"name", "old name"},
+                    {"version", 1}
+                }
+            },
+            {
+                "new", {
+                    {"id", "test_check"},
+                    {"checksum", "new_checksum"},
+                    {"name", "new name"},
+                    {"version", 2},
+                    {"result", checkResult}
+                }
+            }
+        };
+        callback(MODIFIED, returnData);
+    });
+
+    std::vector<std::string> statefulMessages;
+    std::vector<std::string> statelessMessages;
+
+    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message, uint64_t) -> int
+    {
+        statefulMessages.push_back(message);
+        return 0;
+    };
+
+    auto mockPushStateless = [&statelessMessages](const std::string & message) -> int
+    {
+        statelessMessages.push_back(message);
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(
+                          mockDBSync,
+                          mockPushStateless,
+                          mockPushStateful,
+                          false);
+
+    const nlohmann::json mockPolicy =
+    {
+        {"id", policyId},
+        {"name", "Test Policy"},
+        {"description", "Test Description"},
+        {"file", "test.yml"},
+        {"refs", "https://example.com"}
+    };
+
+    EXPECT_CALL(*newHandler, GetPolicyById(policyId))
+    .WillOnce(testing::Return(mockPolicy));
+
+    const nlohmann::json mockCheck =
+    {
+        {"id", checkId},
+        {"policy_id", policyId},
+        {"name", "old name"},
+        {"description", "Test Check Description"},
+        {"result", checkResult}
+    };
+
+    EXPECT_CALL(*newHandler, GetPolicyCheckById(checkId))
+    .WillOnce(testing::Return(mockCheck));
+
+    newHandler->ReportCheckResult(policyId, checkId, checkResult);
+
+    EXPECT_TRUE(statelessMessages.empty());
+}
+
+TEST_F(SCAEventHandlerTest, ReportCheckResult_SuppressesTransitionToNotRun)
+{
+    // A valid previous result ("Failed") transitions to "Not run" — the check couldn't
+    // execute this cycle. "Not run" is not an observable state, so no stateless event.
+    const std::string policyId = "test_policy";
+    const std::string checkId = "test_check";
+    const std::string checkResult = "Not run";
+
+    EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
+    .WillOnce([checkResult](const nlohmann::json&, const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
+    {
+        nlohmann::json returnData =
+        {
+            {
+                "old", {
+                    {"id", "test_check"},
+                    {"result", "Failed"}
+                }
+            },
+            {
+                "new", {
+                    {"id", "test_check"},
+                    {"result", checkResult}
+                }
+            }
+        };
+        callback(MODIFIED, returnData);
+    });
+
+    std::vector<std::string> statefulMessages;
+    std::vector<std::string> statelessMessages;
+
+    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message, uint64_t) -> int
+    {
+        statefulMessages.push_back(message);
+        return 0;
+    };
+
+    auto mockPushStateless = [&statelessMessages](const std::string & message) -> int
+    {
+        statelessMessages.push_back(message);
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(
+                          mockDBSync,
+                          mockPushStateless,
+                          mockPushStateful,
+                          false);
+
+    const nlohmann::json mockPolicy =
+    {
+        {"id", policyId},
+        {"name", "Test Policy"},
+        {"description", "Test Description"},
+        {"file", "test.yml"},
+        {"refs", "https://example.com"}
+    };
+
+    EXPECT_CALL(*newHandler, GetPolicyById(policyId))
+    .WillOnce(testing::Return(mockPolicy));
+
+    const nlohmann::json mockCheck =
+    {
+        {"id", checkId},
+        {"policy_id", policyId},
+        {"name", "Test Check"},
+        {"description", "Test Check Description"},
+        {"result", "Failed"}
+    };
+
+    EXPECT_CALL(*newHandler, GetPolicyCheckById(checkId))
+    .WillOnce(testing::Return(mockCheck));
+
+    newHandler->ReportCheckResult(policyId, checkId, checkResult);
+
+    EXPECT_TRUE(statelessMessages.empty());
+}
+
+TEST_F(SCAEventHandlerTest, ReportCheckResult_SuppressesMetadataOnlyChangeWithValidResult)
+{
+    // Checksum/name change but result stays "Failed" (same valid result, no state transition).
+    // No stateless event should be emitted; only a stateful update is appropriate.
+    const std::string policyId = "test_policy";
+    const std::string checkId = "test_check";
+    const std::string checkResult = "Failed";
+
+    EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
+    .WillOnce([checkResult](const nlohmann::json&, const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
+    {
+        nlohmann::json returnData =
+        {
+            {
+                "old", {
+                    {"id", "test_check"},
+                    {"checksum", "old_checksum"},
+                    {"name", "old name"}
+                }
+            },
+            {
+                "new", {
+                    {"id", "test_check"},
+                    {"checksum", "new_checksum"},
+                    {"name", "new name"},
+                    {"result", checkResult}
+                }
+            }
+        };
+        callback(MODIFIED, returnData);
+    });
+
+    std::vector<std::string> statefulMessages;
+    std::vector<std::string> statelessMessages;
+
+    auto mockPushStateful = [&statefulMessages](const std::string&, Operation_t, const std::string&, const std::string & message, uint64_t) -> int
+    {
+        statefulMessages.push_back(message);
+        return 0;
+    };
+
+    auto mockPushStateless = [&statelessMessages](const std::string & message) -> int
+    {
+        statelessMessages.push_back(message);
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(
+                          mockDBSync,
+                          mockPushStateless,
+                          mockPushStateful);
+
+    const nlohmann::json mockPolicy =
+    {
+        {"id", policyId},
+        {"name", "Test Policy"},
+        {"description", "Test Description"},
+        {"file", "test.yml"},
+        {"refs", "https://example.com"}
+    };
+
+    EXPECT_CALL(*newHandler, GetPolicyById(policyId))
+    .WillOnce(testing::Return(mockPolicy));
+
+    const nlohmann::json mockCheck =
+    {
+        {"id", checkId},
+        {"policy_id", policyId},
+        {"name", "old name"},
+        {"description", "Test Check Description"},
+        {"result", checkResult}
+    };
+
+    EXPECT_CALL(*newHandler, GetPolicyCheckById(checkId))
+    .WillOnce(testing::Return(mockCheck));
+
+    newHandler->ReportCheckResult(policyId, checkId, checkResult);
+
+    EXPECT_TRUE(statelessMessages.empty());
+}
+
+TEST_F(SCAEventHandlerTest, ProcessStateless_SuppressesInsertedCheckWithNotRunResult)
+{
+    // A newly inserted check always has result="Not run" (DB default set by sca_policy_loader).
+    // No stateless event should be emitted — "Not run" is not a real observable state
+    // regardless of the operation type (INSERTED, MODIFIED, DELETED).
+    std::vector<std::string> statelessMessages;
+
+    auto mockPushStateless = [&statelessMessages](const std::string & message) -> int
+    {
+        statelessMessages.push_back(message);
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(
+                          mockDBSync,
+                          mockPushStateless,
+                          nullptr,
+                          false);
+
+    const nlohmann::json event =
+    {
+        {"collector", "check"},
+        {"result", INSERTED},
+        {
+            "check", {
+                {"id", "test_check"},
+                {"policy_id", "test_policy"},
+                {"name", "Test Check"},
+                {"result", "Not run"}
+            }
+        },
+        {
+            "policy", {
+                {"id", "test_policy"},
+                {"name", "Test Policy"},
+                {"description", "Test Description"},
+                {"file", "test.yml"}
+            }
+        }
+    };
+
+    const auto result = newHandler->ProcessStateless(event);
+
+    EXPECT_TRUE(result.empty());
+    EXPECT_TRUE(statelessMessages.empty());
+}
+
 TEST_F(SCAEventHandlerTest, ReportPoliciesDelta_BeforeFirstSyncSkipsValidationDeletion)
 {
     auto& validatorFactory = SchemaValidator::SchemaValidatorFactory::getInstance();
