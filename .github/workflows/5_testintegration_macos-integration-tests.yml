@@ -75,8 +75,9 @@ env:
 
 jobs:
   run-test:
+    if: inputs.module_name != 'none'
     timeout-minutes: ${{ inputs.timeout_minutes || 120 }}
-    name: ${{ inputs.module_name }} integration tests (${{ inputs.shard_name }})
+    name: Run integration tests
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
@@ -164,7 +165,7 @@ jobs:
         if: inputs.pre_install != ''
         run: ${{ inputs.pre_install }}
 
-      - name: Run ${{ inputs.module_name }} integration tests
+      - name: Run ${{ inputs.module_name }} integration tests (${{ inputs.shard_name }})
         run: |
           cd tests/integration
           set +e
