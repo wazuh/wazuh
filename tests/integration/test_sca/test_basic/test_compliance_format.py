@@ -37,6 +37,7 @@ tags:
 '''
 import json
 import re
+import subprocess
 import sys
 import time
 
@@ -77,6 +78,16 @@ SCA_DB_DIR = Path(WAZUH_PATH, 'queue', 'sca', 'db')
 @pytest.fixture()
 def clean_sca_db():
     '''Remove SCA database files to prevent stale data between tests.'''
+    def _wait_windows_service_stopped(timeout=90):
+        end_time = time.time() + timeout
+        while time.time() < end_time:
+            status = subprocess.run(['sc', 'query', 'WazuhSvc'], capture_output=True, text=True)
+            output = f"{status.stdout}\n{status.stderr}".upper()
+            if 'STATE' in output and 'STOPPED' in output:
+                return True
+            time.sleep(2)
+        return False
+
     def _remove_db_files():
         if not SCA_DB_DIR.exists():
             return
@@ -87,6 +98,7 @@ def clean_sca_db():
         for attempt in range(30):
             try:
                 services.control_service('stop')
+                _wait_windows_service_stopped()
                 time.sleep(2)
                 _remove_db_files()
                 break
