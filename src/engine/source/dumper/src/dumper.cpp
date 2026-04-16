@@ -1,9 +1,9 @@
-#include <archiver/archiver.hpp>
+#include <dumper/dumper.hpp>
 
-namespace archiver
+namespace dumper
 {
 
-void Archiver::archive(const std::string& data)
+void Dumper::dump(const std::string& data)
 {
     std::shared_lock<std::shared_mutex> lock(m_loggerMutex);
     if (m_logWriter)
@@ -12,7 +12,7 @@ void Archiver::archive(const std::string& data)
     }
 }
 
-void Archiver::archive(const char* data)
+void Dumper::dump(const char* data)
 {
 
     if (!data || *data == '\0')
@@ -27,7 +27,7 @@ void Archiver::archive(const char* data)
     }
 }
 
-void Archiver::archive(std::string_view data)
+void Dumper::dump(std::string_view data)
 {
     if (data.empty())
     {
@@ -41,4 +41,4 @@ void Archiver::archive(std::string_view data)
     }
 }
 
-} // namespace archiver
+} // namespace dumper

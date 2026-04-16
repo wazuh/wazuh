@@ -1,5 +1,5 @@
-#ifndef ARCHIVER_ARCHIVER_HPP
-#define ARCHIVER_ARCHIVER_HPP
+#ifndef DUMPER_DUMPER_HPP
+#define DUMPER_DUMPER_HPP
 
 #include <memory>
 #include <mutex>
@@ -10,27 +10,27 @@
 #include <fmt/format.h>
 #include <streamlog/ilogger.hpp>
 
-#include <archiver/iarchiver.hpp>
+#include <dumper/idumper.hpp>
 
-namespace archiver
+namespace dumper
 {
 
-constexpr auto EVENT_DUMP_CHANNEL_NAME = "event-dumps";
-constexpr auto EVENT_DUMP_CHANNEL_EXTENSION = "json";
+constexpr auto CHANNEL_NAME = "event-dumps";
+constexpr auto CHANNEL_EXTENSION = "json";
 
-class Archiver final : public IArchiver
+class Dumper final : public IDumper
 {
 private:
     // Shared mutex
     mutable std::shared_mutex m_loggerMutex;             ///< Mutex for thread-safe access to the logger
-    std::weak_ptr<streamlog::ILogManager> m_logger;      ///< Logger for archiving events
+    std::weak_ptr<streamlog::ILogManager> m_logger;      ///< Logger for dumping events
     streamlog::RotationConfig m_channelConfig;           ///< Lazy-created streamlog channel configuration
     std::shared_ptr<streamlog::WriterEvent> m_logWriter; ///< Writer for logging events
 
 public:
-    explicit Archiver(std::weak_ptr<streamlog::ILogManager> logManager,
-                      streamlog::RotationConfig channelConfig,
-                      bool isActive = false)
+    explicit Dumper(std::weak_ptr<streamlog::ILogManager> logManager,
+                    streamlog::RotationConfig channelConfig,
+                    bool isActive = false)
         : m_logger(std::move(logManager))
         , m_channelConfig(std::move(channelConfig))
         , m_logWriter()
@@ -38,33 +38,32 @@ public:
         auto logger = m_logger.lock();
         if (!logger)
         {
-            throw std::runtime_error("Logger for archive is not available");
+            throw std::runtime_error("Logger for dumper is not available");
         }
 
         if (isActive)
         {
-            m_logWriter =
-                logger->ensureAndGetWriter(EVENT_DUMP_CHANNEL_NAME, m_channelConfig, EVENT_DUMP_CHANNEL_EXTENSION);
+            m_logWriter = logger->ensureAndGetWriter(CHANNEL_NAME, m_channelConfig, CHANNEL_EXTENSION);
         }
     }
 
     /**
-     * @copydoc IArchiver::archive
+     * @copydoc IDumper::dump
      */
-    void archive(const std::string& data) override;
+    void dump(const std::string& data) override;
 
     /**
-     * @copydoc IArchiver::archive
+     * @copydoc IDumper::dump
      */
-    void archive(const char* data) override;
+    void dump(const char* data) override;
 
     /**
-     * @copydoc IArchiver::archive
+     * @copydoc IDumper::dump
      */
-    void archive(std::string_view data) override;
+    void dump(std::string_view data) override;
 
     /**
-     * @copydoc IArchiver::activate
+     * @copydoc IDumper::activate
      */
     void activate() override
     {
@@ -74,15 +73,14 @@ public:
             auto logger = m_logger.lock();
             if (!logger)
             {
-                throw std::runtime_error("Logger for archive is not available");
+                throw std::runtime_error("Logger for dumper is not available");
             }
-            m_logWriter =
-                logger->ensureAndGetWriter(EVENT_DUMP_CHANNEL_NAME, m_channelConfig, EVENT_DUMP_CHANNEL_EXTENSION);
+            m_logWriter = logger->ensureAndGetWriter(CHANNEL_NAME, m_channelConfig, CHANNEL_EXTENSION);
         }
     }
 
     /**
-     * @copydoc IArchiver::deactivate
+     * @copydoc IDumper::deactivate
      */
     void deactivate() override
     {
@@ -91,7 +89,7 @@ public:
     }
 
     /**
-     * @copydoc IArchiver::isActive
+     * @copydoc IDumper::isActive
      */
     bool isActive() const override
     {
@@ -99,13 +97,13 @@ public:
         return m_logWriter != nullptr;
     }
 
-    ~Archiver() override
+    ~Dumper() override
     {
         std::unique_lock<std::shared_mutex> lock(m_loggerMutex);
         m_logWriter.reset();
     }
 };
 
-} // namespace archiver
+} // namespace dumper
 
-#endif // ARCHIVER_ARCHIVER_HPP
+#endif // DUMPER_DUMPER_HPP

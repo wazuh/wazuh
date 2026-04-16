@@ -1,20 +1,20 @@
 #include <gtest/gtest.h>
 
 #include <api/adapter/baseHandler_test.hpp>
-#include <api/archiver/handlers.hpp>
-#include <archiver/mockArchiver.hpp>
-#include <eMessages/archiver.pb.h>
+#include <api/dumper/handlers.hpp>
+#include <dumper/mockDumper.hpp>
+#include <eMessages/event_dumper.pb.h>
 
 using namespace api::adapter;
 using namespace api::test;
-using namespace api::archiver;
-using namespace api::archiver::handlers;
-using namespace ::archiver::mocks;
+using namespace api::dumper;
+using namespace api::dumper::handlers;
+using namespace ::dumper::mocks;
 
-using ArchiverHandlerTest = BaseHandlerTest<::archiver::IArchiver, MockArchiver>;
-using ArchiverHandlerT = Params<::archiver::IArchiver, MockArchiver>;
+using DumperHandlerTest = BaseHandlerTest<::dumper::IDumper, MockDumper>;
+using DumperHandlerT = Params<::dumper::IDumper, MockDumper>;
 
-TEST_P(ArchiverHandlerTest, Handler)
+TEST_P(DumperHandlerTest, Handler)
 {
     auto [reqGetter, handlerGetter, resGetter, mocker] = GetParam();
     handlerTest(reqGetter, handlerGetter, resGetter, m_iHandler, m_mockHandler, mocker);
@@ -22,19 +22,19 @@ TEST_P(ArchiverHandlerTest, Handler)
 
 INSTANTIATE_TEST_SUITE_P(
     Api,
-    ArchiverHandlerTest,
+    DumperHandlerTest,
     ::testing::Values(
         /***********************************************************************
-         * ActivateArchiver
+         * ActivateDumper
          **********************************************************************/
         // Success
-        ArchiverHandlerT(
+        DumperHandlerT(
             []()
             {
-                eEngine::archiver::ArchiverActivate_Request protoReq;
-                return createRequest<eEngine::archiver::ArchiverActivate_Request>(protoReq);
+                eEngine::event_dumper::EventDumperActivate_Request protoReq;
+                return createRequest<eEngine::event_dumper::EventDumperActivate_Request>(protoReq);
             },
-            [](const std::shared_ptr<::archiver::IArchiver>& archiver) { return activateArchiver(archiver); },
+            [](const std::shared_ptr<::dumper::IDumper>& dumper) { return activateDumper(dumper); },
             []()
             {
                 eEngine::GenericStatus_Response protoRes;
@@ -43,7 +43,7 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](auto& mock) { EXPECT_CALL(mock, activate()); }),
         // Wrong request type
-        ArchiverHandlerT(
+        DumperHandlerT(
             []()
             {
                 httplib::Request req;
@@ -51,7 +51,7 @@ INSTANTIATE_TEST_SUITE_P(
                 req.set_header("Content-Type", "text/plain");
                 return req;
             },
-            [](const std::shared_ptr<::archiver::IArchiver>& archiver) { return activateArchiver(archiver); },
+            [](const std::shared_ptr<::dumper::IDumper>& dumper) { return activateDumper(dumper); },
             []()
             {
                 return userErrorResponse<eEngine::GenericStatus_Response>(
@@ -60,16 +60,16 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](auto&) {}),
         /***********************************************************************
-         * DeactivateArchiver
+         * DeactivateDumper
          **********************************************************************/
         // Success
-        ArchiverHandlerT(
+        DumperHandlerT(
             []()
             {
-                eEngine::archiver::ArchiverDeactivate_Request protoReq;
-                return createRequest<eEngine::archiver::ArchiverDeactivate_Request>(protoReq);
+                eEngine::event_dumper::EventDumperDeactivate_Request protoReq;
+                return createRequest<eEngine::event_dumper::EventDumperDeactivate_Request>(protoReq);
             },
-            [](const std::shared_ptr<::archiver::IArchiver>& archiver) { return deactivateArchiver(archiver); },
+            [](const std::shared_ptr<::dumper::IDumper>& dumper) { return deactivateDumper(dumper); },
             []()
             {
                 eEngine::GenericStatus_Response protoRes;
@@ -78,7 +78,7 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](auto& mock) { EXPECT_CALL(mock, deactivate()); }),
         // Wrong request type
-        ArchiverHandlerT(
+        DumperHandlerT(
             []()
             {
                 httplib::Request req;
@@ -86,7 +86,7 @@ INSTANTIATE_TEST_SUITE_P(
                 req.set_header("Content-Type", "text/plain");
                 return req;
             },
-            [](const std::shared_ptr<::archiver::IArchiver>& archiver) { return deactivateArchiver(archiver); },
+            [](const std::shared_ptr<::dumper::IDumper>& dumper) { return deactivateDumper(dumper); },
             []()
             {
                 return userErrorResponse<eEngine::GenericStatus_Response>(
@@ -95,26 +95,26 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](auto&) {}),
         /***********************************************************************
-         * GetArchiverStatus
+         * GetDumperStatus
          **********************************************************************/
         // Success
-        ArchiverHandlerT(
+        DumperHandlerT(
             []()
             {
-                eEngine::archiver::ArchiverStatus_Request protoReq;
-                return createRequest<eEngine::archiver::ArchiverStatus_Request>(protoReq);
+                eEngine::event_dumper::EventDumperStatus_Request protoReq;
+                return createRequest<eEngine::event_dumper::EventDumperStatus_Request>(protoReq);
             },
-            [](const std::shared_ptr<::archiver::IArchiver>& archiver) { return getArchiverStatus(archiver); },
+            [](const std::shared_ptr<::dumper::IDumper>& dumper) { return getDumperStatus(dumper); },
             []()
             {
-                eEngine::archiver::ArchiverStatus_Response protoRes;
+                eEngine::event_dumper::EventDumperStatus_Response protoRes;
                 protoRes.set_status(eEngine::ReturnStatus::OK);
                 protoRes.set_active(true);
-                return userResponse<eEngine::archiver::ArchiverStatus_Response>(protoRes);
+                return userResponse<eEngine::event_dumper::EventDumperStatus_Response>(protoRes);
             },
             [](auto& mock) { EXPECT_CALL(mock, isActive()).WillOnce(testing::Return(true)); }),
         // Wrong request type
-        ArchiverHandlerT(
+        DumperHandlerT(
             []()
             {
                 httplib::Request req;
@@ -122,10 +122,10 @@ INSTANTIATE_TEST_SUITE_P(
                 req.set_header("Content-Type", "text/plain");
                 return req;
             },
-            [](const std::shared_ptr<::archiver::IArchiver>& archiver) { return getArchiverStatus(archiver); },
+            [](const std::shared_ptr<::dumper::IDumper>& dumper) { return getDumperStatus(dumper); },
             []()
             {
-                return userErrorResponse<eEngine::archiver::ArchiverStatus_Response>(
+                return userErrorResponse<eEngine::event_dumper::EventDumperStatus_Response>(
                     "Failed to parse protobuff json request: INVALID_ARGUMENT:Unexpected token.\nnot json proto "
                     "reque\n^");
             },

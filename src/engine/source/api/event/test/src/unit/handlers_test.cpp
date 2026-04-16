@@ -3,7 +3,7 @@
 #include <api/adapter/baseHandler_test.hpp>
 #include <api/event/handlers.hpp>
 #include <api/event/ndJsonParser.hpp>
-#include <archiver/mockArchiver.hpp>
+#include <dumper/mockDumper.hpp>
 #include <fastmetrics/registry.hpp>
 #include <router/mockRouter.hpp>
 
@@ -81,9 +81,9 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::IRouterAPI>& orchestrator)
             {
-                // Nice mock: handler always may call archiver->archive()
-                auto archiver = std::make_shared<testing::NiceMock<archiver::mocks::MockArchiver>>();
-                return pushEvent(orchestrator, archiver);
+                // Nice mock: handler always may call dump->dump()
+                auto dumper = std::make_shared<testing::NiceMock<dumper::mocks::MockDumper>>();
+                return pushEvent(orchestrator, dumper);
             },
             []()
             {
@@ -104,8 +104,8 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::IRouterAPI>& orchestrator)
             {
-                auto archiver = std::make_shared<testing::NiceMock<archiver::mocks::MockArchiver>>();
-                return pushEvent(orchestrator, archiver);
+                auto dumper = std::make_shared<testing::NiceMock<dumper::mocks::MockDumper>>();
+                return pushEvent(orchestrator, dumper);
             },
             []()
             {
@@ -130,8 +130,8 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::IRouterAPI>& orchestrator)
             {
-                auto archiver = std::make_shared<testing::NiceMock<archiver::mocks::MockArchiver>>();
-                return pushEvent(orchestrator, archiver);
+                auto dumper = std::make_shared<testing::NiceMock<dumper::mocks::MockDumper>>();
+                return pushEvent(orchestrator, dumper);
             },
             []()
             {
@@ -152,8 +152,8 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::IRouterAPI>& orchestrator)
             {
-                auto archiver = std::make_shared<testing::NiceMock<archiver::mocks::MockArchiver>>();
-                return pushEvent(orchestrator, archiver);
+                auto dumper = std::make_shared<testing::NiceMock<dumper::mocks::MockDumper>>();
+                return pushEvent(orchestrator, dumper);
             },
             []()
             {
@@ -168,7 +168,7 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](auto& mock) { /* no postEvent expected */ }),
 
-        // Success with trailing newline: archiver receives body without final newline
+        // Success with trailing newline: dump receives body without final newline
         HandlerT(
             []()
             {
@@ -179,17 +179,17 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::IRouterAPI>& orchestrator)
             {
-                auto archiver = std::make_shared<testing::StrictMock<archiver::mocks::MockArchiver>>();
+                auto dumper = std::make_shared<testing::StrictMock<dumper::mocks::MockDumper>>();
 
                 const std::string expectedArchived = std::string("H ") + HDR1 + "\n" + "E " + EV1;
 
-                EXPECT_CALL(*archiver, archive(testing::A<std::string_view>()))
+                EXPECT_CALL(*dumper, dump(testing::A<std::string_view>()))
                     .WillOnce(testing::Invoke([expectedArchived](std::string_view v)
                                               { EXPECT_EQ(v, std::string_view {expectedArchived}); }));
 
-                // inner handler stores only weak_ptr, so keep archiver alive by capturing it
-                auto inner = pushEvent(orchestrator, archiver);
-                return [archiver, inner](const httplib::Request& req, httplib::Response& res) mutable
+                // inner handler stores only weak_ptr, so keep dump alive by capturing it
+                auto inner = pushEvent(orchestrator, dumper);
+                return [dumper, inner](const httplib::Request& req, httplib::Response& res) mutable
                 {
                     inner(req, res);
                 };
@@ -213,8 +213,8 @@ INSTANTIATE_TEST_SUITE_P(
             },
             [](const std::shared_ptr<::router::IRouterAPI>& orchestrator)
             {
-                auto archiver = std::make_shared<testing::NiceMock<archiver::mocks::MockArchiver>>();
-                return pushEvent(orchestrator, archiver);
+                auto dumper = std::make_shared<testing::NiceMock<dumper::mocks::MockDumper>>();
+                return pushEvent(orchestrator, dumper);
             },
             []()
             {
