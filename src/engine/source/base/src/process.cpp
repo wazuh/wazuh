@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <cerrno>
+#include <cstdlib>
 #include <cstring>
+#include <memory>
 #include <optional>
 #include <pthread.h>
 #include <stdexcept>
@@ -21,6 +23,7 @@
 #include <fmt/format.h>
 
 #include <base/error.hpp>
+#include <base/libwazuhshared.hpp>
 #include <base/process.hpp>
 
 constexpr auto MAX_RBUFFER_SIZE = 65536;
@@ -174,7 +177,26 @@ void privSepSetGroup(gid_t gid)
 
 std::filesystem::path getWazuhHome()
 {
-    return std::filesystem::path("/var/wazuh-manager");
+    // Manager mode: libwazuhshared is loaded before this is called (see main.cpp).
+    // Delegate to w_homedir(), the canonical function used by every other Wazuh daemon.
+    // It resolves the home via /proc/self/exe internally.
+    if (base::libwazuhshared::getLibPtr())
+    {
+        using WHDir = char* (*)(char*);
+        char executablePath[] = "/proc/self/exe";
+        std::unique_ptr<char, decltype(&std::free)> home(
+            base::libwazuhshared::getFunction<WHDir>("w_homedir")(executablePath), &std::free);
+
+        if (home)
+        {
+            return std::filesystem::path(home.get());
+        }
+    }
+
+    // Standalone mode / unit tests: libwazuhshared is not loaded.
+    // conf::Conf may still use this value to build default paths when the
+    // dedicated environment variables are not set.
+    return std::filesystem::current_path();
 }
 
 void setThreadName(const std::string& name)
