@@ -379,22 +379,30 @@ static wm_syscollector_startup_action_t wm_sys_get_startup_action(bool* first_sy
 
     mtdebug1(WM_SYS_LOGTAG, "Inventory initial scan data is not ready yet. First synchronization will wait for scan data.");
 
+    int log_throttle = 0;
+
     while (sync_module_running && !is_shutdown_process_started())
     {
-        int version = 0;
+        int scan_marker = 0;
 
-        if (!wm_sys_query_int("{\"command\":\"get_version\"}", "version", &version))
+        if (!wm_sys_query_int("{\"command\":\"get_first_scan_completed\"}", "first_scan_completed", &scan_marker))
         {
-            mtdebug1(WM_SYS_LOGTAG, "Failed to detect initial Syscollector scan data. Keeping startup synchronization delay.");
+            mtdebug1(WM_SYS_LOGTAG, "Failed to detect initial Syscollector scan completion. Keeping startup synchronization delay.");
             return SYSCOLLECTOR_STARTUP_ACTION_WAIT;
         }
 
-        if (version > 0)
+        if (scan_marker > 0)
         {
-            mtdebug1(WM_SYS_LOGTAG, "Initial Inventory scan data is ready. Triggering first synchronization without startup delay.");
+            mtdebug1(WM_SYS_LOGTAG, "First inventory scan completed. Triggering first synchronization without startup delay.");
             return SYSCOLLECTOR_STARTUP_ACTION_IMMEDIATE;
         }
 
+        if (log_throttle == 0)
+        {
+            mtdebug1(WM_SYS_LOGTAG, "Synchronization deferred: waiting for first inventory scan to complete.");
+        }
+
+        log_throttle = (log_throttle + 1) % 30;
         sleep(1);
     }
 
@@ -940,11 +948,13 @@ void* wm_sync_module(__attribute__((unused)) void* args)
 #endif
     bool first_sync_completed = false;
     bool wait_before_sync = true;
+    bool first_sync_blocked_on_scan = false;
 
     switch (wm_sys_get_startup_action(&first_sync_completed))
     {
         case SYSCOLLECTOR_STARTUP_ACTION_IMMEDIATE:
             wait_before_sync = false;
+            first_sync_blocked_on_scan = true;
             break;
         case SYSCOLLECTOR_STARTUP_ACTION_STOP:
 #ifdef WIN32
@@ -974,7 +984,25 @@ void* wm_sync_module(__attribute__((unused)) void* args)
             break;
         }
 
-        // Skip synchronization if scan is in progress to avoid syncing incomplete data
+        // On the first cycle after a fresh first scan, wait until scanning has
+        // actually finished rather than bypassing the scan-state guard.
+        if (first_sync_blocked_on_scan && syscollector_is_scanning_ptr)
+        {
+            while (sync_module_running && syscollector_is_scanning_ptr())
+            {
+                mtdebug1(WM_SYS_LOGTAG, "Waiting for scan to finish before forced post-first-scan synchronization.");
+                sleep(1);
+            }
+
+            first_sync_blocked_on_scan = false;
+        }
+
+        if (!sync_module_running)
+        {
+            break;
+        }
+
+        // Skip synchronization if scan is in progress to avoid syncing incomplete data.
         if (syscollector_is_scanning_ptr && syscollector_is_scanning_ptr())
         {
             mtdebug1(WM_SYS_LOGTAG, "Scan in progress, skipping sync cycle");

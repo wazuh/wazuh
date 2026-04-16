@@ -89,6 +89,7 @@ constexpr auto QUEUE_SIZE
 };
 
 constexpr auto SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY {"first_sync_completed"};
+constexpr auto SYSCOLLECTOR_FIRST_SCAN_COMPLETED_METADATA_KEY {"first_scan_completed"};
 
 static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
 {
@@ -1834,6 +1835,15 @@ void Syscollector::scan()
     std::vector<std::pair<std::string, nlohmann::json>> itemsToUpdateSync;
     m_itemsToUpdateSync = &itemsToUpdateSync;
 
+    int64_t firstScanCompleted = 0;
+    const bool isFirstScan = !getMetadataValue(SYSCOLLECTOR_FIRST_SCAN_COMPLETED_METADATA_KEY, firstScanCompleted)
+                             || firstScanCompleted == 0;
+
+    if (isFirstScan)
+    {
+        m_logFunction(LOG_DEBUG, "Initial Syscollector scan starting.");
+    }
+
     m_logFunction(LOG_INFO, "Starting evaluation.");
     TRY_CATCH_TASK(scanHardware);
     TRY_CATCH_TASK(scanOs);
@@ -1871,6 +1881,14 @@ void Syscollector::scan()
     // Delete all items that failed schema validation inside a DBSync transaction
     // This ensures deletions are committed to disk immediately
     deleteFailedItemsFromDB(failedItems);
+
+    if (isFirstScan)
+    {
+        m_scanning = false;
+        m_pauseCv.notify_all();
+        updateMetadataValue(SYSCOLLECTOR_FIRST_SCAN_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
+        m_logFunction(LOG_DEBUG, "First inventory scan completed — marker persisted.");
+    }
 
     m_notify = true;
     m_logFunction(LOG_INFO, "Evaluation finished.");
@@ -3106,6 +3124,22 @@ std::string Syscollector::query(const std::string& jsonQuery)
             {
                 response["error"] = MQ_ERR_INTERNAL;
                 response["message"] = "Failed to retrieve Syscollector first sync completion";
+            }
+        }
+        else if (command == "get_first_scan_completed")
+        {
+            int64_t firstScanCompleted = 0;
+
+            if (getMetadataValue(SYSCOLLECTOR_FIRST_SCAN_COMPLETED_METADATA_KEY, firstScanCompleted))
+            {
+                response["error"] = MQ_SUCCESS;
+                response["message"] = "Syscollector first scan completion retrieved";
+                response["data"]["first_scan_completed"] = firstScanCompleted > 0 ? 1 : 0;
+            }
+            else
+            {
+                response["error"] = MQ_ERR_INTERNAL;
+                response["message"] = "Failed to retrieve Syscollector first scan completion";
             }
         }
         else if (command == "set_version")
