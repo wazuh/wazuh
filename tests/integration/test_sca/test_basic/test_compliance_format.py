@@ -92,7 +92,21 @@ def clean_sca_db():
         if not SCA_DB_DIR.exists():
             return
         for db_file in SCA_DB_DIR.iterdir():
-            db_file.unlink(missing_ok=True)
+            if not db_file.exists():
+                continue
+
+            last_error = None
+            for _ in range(30):
+                try:
+                    db_file.unlink(missing_ok=True)
+                    last_error = None
+                    break
+                except PermissionError as error:
+                    last_error = error
+                    time.sleep(2)
+
+            if last_error is not None:
+                raise last_error
 
     if sys.platform == WINDOWS:
         for attempt in range(30):
