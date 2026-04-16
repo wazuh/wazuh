@@ -343,7 +343,7 @@ EnrichmentBuilder getIocEnrichmentBuilder(const std::shared_ptr<ioc::kvdb::IKVDB
                                           std::string_view iocType)
 {
     const auto mappingConfigs = loadIocMappingConfigs(configDoc, iocType);
-    const auto traceableName = fmt::format("enrichment/Ioc/{}", iocType);
+    const auto traceableName = fmt::format("enrichment/IOC/{}", iocType);
 
     return [kvdbIocManager, mappingConfigs, traceableName](bool trace) -> std::pair<base::Expression, std::string>
     {

@@ -2170,6 +2170,304 @@ Aditionally we define some types for the purpose to use specific parsers, normal
 | url         | uri        | Parses URI text and generates the URL object with all the parsed parts.                               |
 | useragent   | useragent  | Parses a user agent string. It does not build the user agent object; this can be done with the OpenSearch plugin. |
 
+## Metrics
+
+The metrics module provides a lightweight and high-performance way to observe the runtime behavior of the system.
+
+It is designed for scenarios where metrics are updated very frequently, including hot paths, while keeping registration, lookup, reads, and export simple and thread-safe.
+
+Metrics help answer questions such as:
+
+- How many events has the system received?
+- How many events were processed or dropped?
+- How full are the internal queues?
+- What is the recent event throughput?
+- How is each space behaving independently?
+
+For implementation details and API usage, see the **Metrics API** documentation:
+
+---
+
+### Overview
+
+The module supports three metric families plus a sliding-window rate helper:
+
+- **Counter**
+- **Gauge**
+- **Pull metric**
+- **Sliding-window rate** (used for EPS calculations)
+
+```mermaid
+flowchart TD
+    A[Metrics module] --> B[Counter]
+    A --> C[Gauge]
+    A --> D[Pull metric]
+    A --> E[Sliding-window rate]
+
+    B --> B1[Monotonically increasing values]
+    C --> C1[Values that go up or down]
+    D --> D1[Read values from callbacks on demand]
+    E --> E1[Average events per second over time windows]
+```
+
+---
+
+### Metric types
+
+#### Counter
+
+A counter is a metric that only increases over time.
+
+It is used to accumulate occurrences or quantities since process start.
+
+Typical examples include:
+
+- total events received
+- total events processed
+- total dropped events
+- total bytes received
+
+Counters are the correct choice when the value represents a lifetime total.
+
+##### Typical use cases
+
+- counting processed events
+- counting dropped events
+- counting received bytes
+- counting unclassified or discarded events per space
+
+---
+
+#### Gauge
+
+A gauge is a metric whose value may increase or decrease.
+
+It is used to represent the current state of something at a given moment.
+
+Typical examples include:
+
+- current queue size
+- current number of elements waiting in a buffer
+- current active amount of some resource
+
+Gauges are useful when the value represents a snapshot rather than an accumulated total.
+
+##### Typical use cases
+
+- queue size
+- active items in memory
+- current occupancy of a component
+
+---
+
+#### Pull metric
+
+A pull metric does not maintain its own internal state. Instead, it executes a callback whenever the metric value is read.
+
+This avoids duplicating data that is already maintained elsewhere in the system.
+
+A pull metric is useful when a component already knows its own state and the metrics system only needs to expose it.
+
+##### Typical use cases
+
+- queue size obtained directly from a queue object
+- usage percentage derived from current size and capacity
+- derived values computed on demand
+
+##### Notes
+
+- pull metrics have effectively zero update overhead because they are evaluated only when read
+- if the callback throws, the metric returns `0` instead of propagating the failure
+- pull metrics behave as read-only views
+
+---
+
+#### Sliding-window rate
+
+The module also provides a sliding-window rate calculator for throughput metrics.
+
+It is used to compute **events per second (EPS)** over recent time windows instead of only exposing cumulative totals.
+
+The implementation uses a circular buffer with one bucket per second.
+
+Supported window range:
+
+- **1 second resolution**
+- **up to 31 minutes**
+
+This is especially useful to monitor short-term activity and traffic trends.
+
+##### Typical use cases
+
+- EPS over the last 1 minute
+- EPS over the last 5 minutes
+- EPS over the last 30 minutes
+- burst detection
+- throughput trend monitoring
+
+```mermaid
+flowchart LR
+    A[Incoming events] --> B[Sliding window buckets]
+    B --> C[1-minute EPS]
+    B --> D[5-minute EPS]
+    B --> E[30-minute EPS]
+```
+
+---
+
+### Available metric names
+
+The following metric names are defined by the module.
+
+---
+
+#### Indexer metrics
+
+##### `indexer.queue.size`
+
+Current number of elements in the indexer queue.
+
+**Used for:** monitoring queue growth and backpressure.
+
+---
+
+##### `indexer.queue.usage.percent`
+
+Current indexer queue utilization as a percentage of its capacity.
+
+**Used for:** identifying queue saturation risk.
+
+---
+
+##### `indexer.events.dropped`
+
+Total number of events dropped in the indexer path.
+
+**Used for:** detecting loss conditions and overload situations.
+
+---
+
+#### Router metrics
+
+##### `router.queue.size`
+
+Current number of elements waiting in the router queue.
+
+**Used for:** monitoring queue pressure.
+
+---
+
+##### `router.queue.usage.percent`
+
+Current router queue utilization as a percentage.
+
+**Used for:** early detection of congestion.
+
+---
+
+##### `router.eps.1m`
+
+Average events per second during the last 1 minute.
+
+**Used for:** short-term throughput visibility.
+
+---
+
+##### `router.eps.5m`
+
+Average events per second during the last 5 minutes.
+
+**Used for:** medium-term traffic trend monitoring.
+
+---
+
+##### `router.eps.30m`
+
+Average events per second during the last 30 minutes.
+
+**Used for:** longer trend analysis and capacity observation.
+
+---
+
+##### `router.events.processed`
+
+Total number of events successfully processed by the router.
+
+**Used for:** throughput accounting and operational visibility.
+
+---
+
+##### `router.events.dropped`
+
+Total number of events dropped by the router.
+
+**Used for:** troubleshooting overload or discard scenarios.
+
+---
+
+#### Server metrics
+
+##### `server.bytes.received`
+
+Total number of bytes received by the server.
+
+**Used for:** traffic volume measurement.
+
+---
+
+##### `server.events.received`
+
+Total number of events received by the server.
+
+**Used for:** input traffic accounting.
+
+---
+
+#### Per-space metrics
+
+These metrics are created dynamically per space.
+
+The metric name includes the space name:
+
+- `space.<space>.events.unclassified`
+- `space.<space>.events.discarded`
+- `space.<space>.events.discarded.prefilter`
+- `space.<space>.events.discarded.postfilter`
+
+---
+
+##### `space.<space>.events.unclassified`
+
+Total number of unclassified events for a given space.
+
+**Used for:** understanding classification quality and space-specific behavior.
+
+---
+
+##### `space.<space>.events.discarded`
+
+Total number of discarded events for a given space.
+
+**Used for:** measuring overall event loss at the space level.
+
+---
+
+##### `space.<space>.events.discarded.prefilter`
+
+Total number of events discarded during prefiltering for a given space.
+
+**Used for:** identifying events rejected before the main processing flow.
+
+---
+
+##### `space.<space>.events.discarded.postfilter`
+
+Total number of events discarded during postfiltering for a given space.
+
+**Used for:** identifying events rejected after further evaluation.
+
+---
+
 
 ## Debugging
 
@@ -2245,46 +2543,11 @@ Save the file and restart the `wazuh-manager` service for the change to take eff
 > you need to follow a specific event step by step — it produces a large volume of
 > output.
 
-### Internal options reference
-
-All of the following settings live in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`.
-Edit the file and restart the `wazuh-manager` service for changes to take effect.
-
-#### Logging
+### Logging
 
 | Setting | Description | Default |
 |:--------|:------------|:-------:|
 | `analysisd.debug` | Log verbosity level. `0` = normal, `1` = debug, `2` = trace. | `0` |
-
-#### Event queue
-
-| Setting | Description | Default |
-|:--------|:------------|:-------:|
-| `analysisd.event_queue_size` | Maximum number of events waiting in the router input queue. Events can be dropped when this queue is full. | `131072` |
-| `analysisd.event_queue_eps` | Maximum event ingestion rate. `0` means unlimited. | `0` |
-
-#### Indexer connector
-
-| Setting | Description | Default |
-|:--------|:------------|:-------:|
-| `analysisd.indexer_queue_max_events` | Maximum number of events waiting in the indexer output queue. Events can be dropped when this queue is full. | `131072` |
-
-#### Synchronization settings
-
-| Setting | Description | Default |
-|:--------|:------------|:-------:|
-| `analysisd.remote_conf_sync_interval` | Seconds between remote engine configuration synchronization cycles. | `120` |
-| `analysisd.remote_conf_indexer_connector_max_retries` | Maximum retry attempts for remote configuration requests to the Wazuh Indexer. | `3` |
-| `analysisd.remote_conf_indexer_connector_retry_interval` | Seconds between retry attempts for remote configuration synchronization. | `5` |
-| `analysisd.cm_sync_interval` | Seconds between content synchronization cycles from the Wazuh Indexer. | `120` |
-| `analysisd.cmsync_indexer_connector_sync_batch_size` | Maximum number of content documents requested per Wazuh Indexer page during content synchronization. | `100` |
-| `analysisd.cmsync_indexer_connector_max_retries` | Maximum retry attempts for content synchronization requests to the Wazuh Indexer. | `3` |
-| `analysisd.cmsync_indexer_connector_retry_interval` | Seconds between retry attempts for content synchronization. | `5` |
-| `analysisd.ioc_sync_interval` | Seconds between IoC database synchronization cycles. `0` disables IoC sync. | `360` |
-| `analysisd.ioc_indexer_connector_max_retries` | Maximum retry attempts for IoC synchronization requests to the Wazuh Indexer. | `3` |
-| `analysisd.ioc_indexer_connector_retry_interval` | Seconds between retry attempts for IoC synchronization. | `5` |
-| `analysisd.ioc_indexer_connector_ioc_sync_batch_size` | Maximum number of IoC documents streamed per Wazuh Indexer page while synchronizing IoC databases. | `1000` |
-| `analysisd.geo_sync_interval` | Seconds between GeoIP database synchronization cycles. `0` disables GeoIP sync. | `360` |
 
 ### Traces
 
@@ -2425,5 +2688,40 @@ output:
     space:
       name: standard
 ```
+
+## Internal options reference
+
+All of the following settings live in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`.
+Edit the file and restart the `wazuh-manager` service for changes to take effect.
+
+### Event queue
+
+| Setting | Description | Default |
+|:--------|:------------|:-------:|
+| `analysisd.event_queue_size` | Maximum number of events waiting in the router input queue. Events can be dropped when this queue is full. | `131072` |
+| `analysisd.event_queue_eps` | Maximum event ingestion rate. `0` means unlimited. | `0` |
+
+### Indexer connector
+
+| Setting | Description | Default |
+|:--------|:------------|:-------:|
+| `analysisd.indexer_queue_max_events` | Maximum number of events waiting in the indexer output queue. Events can be dropped when this queue is full. | `131072` |
+
+### Synchronization settings
+
+| Setting | Description | Default |
+|:--------|:------------|:-------:|
+| `analysisd.remote_conf_sync_interval` | Seconds between remote engine configuration synchronization cycles. | `120` |
+| `analysisd.remote_conf_indexer_connector_max_retries` | Maximum retry attempts for remote configuration requests to the Wazuh Indexer. | `3` |
+| `analysisd.remote_conf_indexer_connector_retry_interval` | Seconds between retry attempts for remote configuration synchronization. | `5` |
+| `analysisd.cm_sync_interval` | Seconds between content synchronization cycles from the Wazuh Indexer. | `120` |
+| `analysisd.cmsync_indexer_connector_sync_batch_size` | Maximum number of content documents requested per Wazuh Indexer page during content synchronization. | `100` |
+| `analysisd.cmsync_indexer_connector_max_retries` | Maximum retry attempts for content synchronization requests to the Wazuh Indexer. | `3` |
+| `analysisd.cmsync_indexer_connector_retry_interval` | Seconds between retry attempts for content synchronization. | `5` |
+| `analysisd.ioc_sync_interval` | Seconds between IoC database synchronization cycles. `0` disables IoC sync. | `360` |
+| `analysisd.ioc_indexer_connector_max_retries` | Maximum retry attempts for IoC synchronization requests to the Wazuh Indexer. | `3` |
+| `analysisd.ioc_indexer_connector_retry_interval` | Seconds between retry attempts for IoC synchronization. | `5` |
+| `analysisd.ioc_indexer_connector_ioc_sync_batch_size` | Maximum number of IoC documents streamed per Wazuh Indexer page while synchronizing IoC databases. | `1000` |
+| `analysisd.geo_sync_interval` | Seconds between GeoIP database synchronization cycles. `0` disables GeoIP sync. | `360` |
 
 ## F.A.Q

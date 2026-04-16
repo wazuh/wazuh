@@ -78,12 +78,14 @@ target_link_libraries(builder
     geo::igeo
     streamlogger::istreamlogger
     wIndexerConnector::iwIndexerConnector
+	fastmetrics::fastmetrics
     logpar
 
     PRIVATE
     re2::re2
     logicexpr
     date::date
+    fastmetrics::fastmetrics
 )
 
 

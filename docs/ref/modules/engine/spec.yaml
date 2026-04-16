@@ -23,6 +23,8 @@ tags:
     description: "Operations for management content."
   - name: Logtest
     description: "Operations for testing of events."
+  - name: Metrics
+    description: "Operations for engine metrics monitoring and management. Metrics are organized into global (engine-wide) and per-space (policy/namespace) scopes."
 
 #################################################################################
 # Paths
@@ -1850,6 +1852,305 @@ paths:
         "500":
           $ref: "#/components/responses/InternalServerError_500"
 
+  ################################
+  # Metrics - Enable
+  ################################
+  /metrics/enable:
+    post:
+      tags:
+        - Metrics
+      summary: Enable or disable a specific metric
+      description: |
+        Enables or disables collection for a specific metric instrument.
+
+        When disabled, the metric still exists and can be queried, but its value is
+        no longer updated by the engine pipeline.
+
+        **Space resolution**: if the `space` field is provided, the metric name is resolved
+        internally as `space.<space>.<instrumentName>`. This allows consumers to reference
+        per-space metrics by their short name (e.g., `events.discarded`) without knowing
+        the internal naming convention.
+
+        If `space` is omitted, `instrumentName` is used as-is (for global metrics like
+        `router.events.processed`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MetricsEnable_Request"
+            examples:
+              enable_global:
+                summary: Enable a global metric
+                value:
+                  instrumentName: "router.events.processed"
+                  status: true
+              disable_per_space:
+                summary: Disable a per-space metric
+                value:
+                  instrumentName: "events.discarded"
+                  space: "wazuh"
+                  status: false
+      responses:
+        "200":
+          description: Metric enabled/disabled successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                success:
+                  summary: Metric enabled
+                  value:
+                    status: "OK"
+                    error: null
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                not_found:
+                  summary: Metric not found
+                  value:
+                    status: "ERROR"
+                    error: "Metric 'router.events.unknown' not found"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  ################################
+  # Metrics - Get
+  ################################
+  /metrics/get:
+    post:
+      tags:
+        - Metrics
+      summary: Get a single metric value and metadata
+      description: |
+        Retrieves the current value, type, and enablement status of a single metric.
+
+        **Space resolution**: if the `space` field is provided, the metric name is resolved
+        internally as `space.<space>.<instrumentName>`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MetricsGet_Request"
+            examples:
+              get_global:
+                summary: Get a global metric
+                value:
+                  instrumentName: "router.events.processed"
+              get_per_space:
+                summary: Get a per-space metric
+                value:
+                  instrumentName: "events.discarded"
+                  space: "wazuh"
+      responses:
+        "200":
+          description: Metric value retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetricsGet_Response"
+              examples:
+                counter:
+                  summary: Counter metric
+                  value:
+                    status: "OK"
+                    name: "router.events.processed"
+                    type: "counter"
+                    enabled: true
+                    value: 123456
+                per_space:
+                  summary: Per-space counter
+                  value:
+                    status: "OK"
+                    name: "space.wazuh.events.discarded"
+                    type: "counter"
+                    enabled: true
+                    value: 42
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                not_found:
+                  summary: Metric not found
+                  value:
+                    status: "ERROR"
+                    error: "Metric 'unknown.metric' not found"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  ################################
+  # Metrics - List
+  ################################
+  /metrics/list:
+    post:
+      tags:
+        - Metrics
+      summary: List all registered metric names
+      description: |
+        Returns the names of all registered metrics.
+
+        If `space` is provided, only metrics belonging to that space are returned
+        (those matching the internal prefix `space.<space>.`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MetricsList_Request"
+            examples:
+              list_all:
+                summary: List all metrics
+                value: {}
+              list_space:
+                summary: List metrics for a specific space
+                value:
+                  space: "wazuh"
+      responses:
+        "200":
+          description: Metric names retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetricsList_Response"
+              examples:
+                all_metrics:
+                  summary: All registered metrics
+                  value:
+                    status: "OK"
+                    names:
+                      - "router.events.processed"
+                      - "router.eps.1m"
+                      - "router.eps.5m"
+                      - "router.eps.30m"
+                      - "router.queue.size"
+                      - "router.queue.usage.percent"
+                      - "server.events.dropped.input"
+                      - "space.wazuh.events.discarded"
+                      - "space.wazuh.events.unclassified"
+                      - "space.wazuh.events.discarded.prefilter"
+                      - "space.wazuh.events.discarded.postfilter"
+                      - "space.wazuh.events.dropped.output"
+                space_filtered:
+                  summary: Only metrics for space 'wazuh'
+                  value:
+                    status: "OK"
+                    names:
+                      - "space.wazuh.events.discarded"
+                      - "space.wazuh.events.unclassified"
+                      - "space.wazuh.events.discarded.prefilter"
+                      - "space.wazuh.events.discarded.postfilter"
+                      - "space.wazuh.events.dropped.output"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                invalid_space:
+                  summary: Space not found
+                  value:
+                    status: "ERROR"
+                    error: "No metrics found for space 'nonexistent'"
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
+  ################################
+  # Metrics - Dump
+  ################################
+  /metrics/dump:
+    post:
+      tags:
+        - Metrics
+      summary: Dump all metrics with their current values
+      description: |
+        Returns a full snapshot of all registered metrics, organized into two groups:
+
+        - **`global`**: engine-wide metrics not scoped to any specific space
+          (e.g., `router.events.processed`, `router.eps.1m`).
+        - **`spaces`**: per-space metrics grouped by space name. The internal prefix
+          `space.<name>.` is stripped from metric names for readability.
+
+        The response also includes:
+        - **`name`**: daemon identifier (e.g., `wazuh-manager-analysisd`)
+        - **`uptime`**: ISO 8601 timestamp of when the daemon started
+        - **`timestamp`**: ISO 8601 timestamp of when the dump was collected
+
+        This endpoint is designed for monitoring dashboards and observability tools.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: "Empty request body — dumps all metrics"
+            examples:
+              dump_all:
+                summary: Dump all metrics
+                value: {}
+      responses:
+        "200":
+          description: Full metrics dump
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetricsDump_Response"
+              examples:
+                full_dump:
+                  summary: Complete metrics dump with global and per-space metrics
+                  value:
+                    status: "OK"
+                    name: "wazuh-manager-analysisd"
+                    uptime: "2024-01-15T10:30:00Z"
+                    timestamp: "2024-01-15T12:45:30Z"
+                    global:
+                      - name: "router.events.processed"
+                        type: "counter"
+                        enabled: true
+                        value: 500000
+                      - name: "router.queue.size"
+                        type: "pull"
+                        enabled: true
+                        value: 42
+                      - name: "server.events.dropped.input"
+                        type: "counter"
+                        enabled: true
+                        value: 3
+                    spaces:
+                      - name: "wazuh"
+                        metrics:
+                          - name: "events.discarded"
+                            type: "counter"
+                            enabled: true
+                            value: 120
+                          - name: "events.unclassified"
+                            type: "counter"
+                            enabled: true
+                            value: 15
+                          - name: "events.discarded.prefilter"
+                            type: "counter"
+                            enabled: true
+                            value: 80
+                          - name: "events.discarded.postfilter"
+                            type: "counter"
+                            enabled: true
+                            value: 40
+                          - name: "events.dropped.output"
+                            type: "counter"
+                            enabled: true
+                            value: 2
+        "500":
+          $ref: "#/components/responses/InternalServerError_500"
+
 #################################################################################
 # Components
 #################################################################################
@@ -2418,6 +2719,128 @@ components:
             enabled:
               type: boolean
               description: "Indicates whether the raw event indexer is enabled"
+
+    #################################
+    # Metrics
+    #################################
+    MetricsEnable_Request:
+      type: object
+      properties:
+        instrumentName:
+          type: string
+          description: "Metric name. For global metrics use the full name (e.g., 'router.events.processed'). For per-space metrics use the short name (e.g., 'events.discarded') along with the `space` field."
+        status:
+          type: boolean
+          description: "true = enable collection, false = disable collection. Defaults to true."
+          default: true
+        space:
+          type: string
+          description: "Space name (policy/namespace). When set, the metric is resolved internally as 'space.<space>.<instrumentName>'."
+
+    MetricsGet_Request:
+      type: object
+      properties:
+        instrumentName:
+          type: string
+          description: "Metric name. For global metrics use the full name. For per-space metrics use the short name along with the `space` field."
+        space:
+          type: string
+          description: "Space name. When set, the metric is resolved internally as 'space.<space>.<instrumentName>'."
+
+    MetricsGet_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            name:
+              type: string
+              description: "Resolved metric name (full internal name, e.g., 'space.wazuh.events.discarded')"
+            type:
+              type: string
+              description: "Metric type as string"
+              enum: ["counter", "gauge_int", "pull"]
+            enabled:
+              type: boolean
+              description: "Whether metric collection is currently enabled"
+            value:
+              type: number
+              description: "Current metric value"
+
+    MetricsList_Request:
+      type: object
+      properties:
+        space:
+          type: string
+          description: "If set, list only metrics belonging to this space (filters by internal prefix 'space.<space>.')"
+
+    MetricsList_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            names:
+              type: array
+              items:
+                type: string
+              description: "List of registered metric names matching the filter"
+
+    MetricEntry:
+      type: object
+      description: "A single metric with its current value and metadata"
+      properties:
+        name:
+          type: string
+          description: "Metric name. For global metrics: full name. For per-space metrics: suffix without the 'space.<name>.' prefix."
+        type:
+          type: string
+          description: "Metric type as string"
+          enum: ["counter", "gauge_int", "pull"]
+        enabled:
+          type: boolean
+          description: "Whether metric collection is currently enabled"
+        value:
+          type: number
+          description: "Current metric value"
+
+    SpaceMetrics:
+      type: object
+      description: "Metrics grouped by space (policy/namespace)"
+      properties:
+        name:
+          type: string
+          description: "Space name (e.g., 'wazuh', 'testing')"
+        metrics:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetricEntry"
+          description: "Metrics belonging to this space"
+
+    MetricsDump_Response:
+      allOf:
+        - $ref: "#/components/schemas/Response"
+        - type: object
+          properties:
+            name:
+              type: string
+              description: "Daemon name (e.g., 'wazuh-manager-analysisd')"
+            uptime:
+              type: string
+              format: date-time
+              description: "ISO 8601 timestamp of when the daemon started"
+            timestamp:
+              type: string
+              format: date-time
+              description: "ISO 8601 timestamp of when this dump was collected"
+            global:
+              type: array
+              items:
+                $ref: "#/components/schemas/MetricEntry"
+              description: "Global metrics (engine-wide, not scoped to any space)"
+            spaces:
+              type: array
+              items:
+                $ref: "#/components/schemas/SpaceMetrics"
+              description: "Per-space metrics grouped by space name"
 
   #################################################################################
   # Responses

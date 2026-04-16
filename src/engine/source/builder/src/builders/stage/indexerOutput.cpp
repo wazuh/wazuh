@@ -132,14 +132,7 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
                 RETURN_FAILURE(runState, event, fmt::format(failureTrace3, finalIndexName));
             }
 
-            try
-            {
-                wic->index(finalIndexName, event->str());
-            }
-            catch (const std::exception& e)
-            {
-                RETURN_FAILURE(runState, event, failureTrace);
-            }
+            wic->index(finalIndexName, event->str());
 
             RETURN_SUCCESS(runState, event, successTrace);
         });
