@@ -131,6 +131,27 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
         return false;
     }
 
+    // Guard against concurrent calls. The timer thread and the AsyncFlushController
+    // background thread may both call this method on the same instance. When a sync is
+    // already running the second caller skips its cycle — the in-flight sync drains the
+    // shared queue, so a concurrent call would only corrupt the session state.
+    bool expected = false;
+
+    if (!m_syncInProgress.compare_exchange_strong(expected, true))
+    {
+        m_logger(LOG_DEBUG, "Synchronization already in progress, skipping concurrent request");
+        return true;
+    }
+
+    struct SyncInProgressGuard
+    {
+        std::atomic<bool>& flag;
+        ~SyncInProgressGuard()
+        {
+            flag.store(false);
+        }
+    } syncGuard {m_syncInProgress};
+
     clearSyncState();
 
     std::vector<PersistedData> dataToSync;

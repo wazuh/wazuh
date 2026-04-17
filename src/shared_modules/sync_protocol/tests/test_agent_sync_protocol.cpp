@@ -5733,6 +5733,7 @@ TEST_F(AgentSyncProtocolTest, EndMessageRetryExhaustionDuringStopLogsInfo)
     auto stopAndJoin = [&]()
     {
         protocol->stop();
+
         if (syncThread.joinable())
         {
             syncThread.join();
@@ -5744,7 +5745,7 @@ TEST_F(AgentSyncProtocolTest, EndMessageRetryExhaustionDuringStopLogsInfo)
     {
         std::unique_lock<std::mutex> lock(END_RETRY_TEST_MTX);
         startSent = END_RETRY_TEST_CV.wait_for(lock, std::chrono::seconds(10),
-                                                [] { return END_RETRY_TEST_MSG_COUNT >= 1; });
+                                               [] { return END_RETRY_TEST_MSG_COUNT >= 1; });
     }
 
     if (!startSent)
@@ -5770,7 +5771,7 @@ TEST_F(AgentSyncProtocolTest, EndMessageRetryExhaustionDuringStopLogsInfo)
     {
         std::unique_lock<std::mutex> lock(END_RETRY_TEST_MTX);
         endSent = END_RETRY_TEST_CV.wait_for(lock, std::chrono::seconds(10),
-                                              [] { return END_RETRY_TEST_MSG_COUNT >= 3; });
+                                             [] { return END_RETRY_TEST_MSG_COUNT >= 3; });
     }
 
     if (!endSent)
@@ -5794,4 +5795,97 @@ TEST_F(AgentSyncProtocolTest, EndMessageRetryExhaustionDuringStopLogsInfo)
     EXPECT_EQ(it->first, LOG_INFO)
             << "Expected LOG_INFO but got level " << it->first
             << " for message: " << it->second;
+}
+
+// Verifies that m_syncInProgress guards against concurrent synchronizeModule() calls.
+//
+// Two threads call synchronizeModule() on the same instance simultaneously. The first
+// thread is held inside the method (blocked waiting for StartAck). While it is blocked,
+// the second thread's call must return true immediately without touching the in-flight
+// session state. If the guard were absent the second caller would call clearSyncState(),
+// resetting the session ID and flags mid-handshake and causing the first call to fail.
+//
+// The test confirms:
+//   1. The concurrent call returns true quickly (skipped, not queued).
+//   2. The in-flight sync completes successfully (session state was not corrupted).
+//   3. m_syncInProgress is cleared after the first call, so a subsequent call can run.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleConcurrentCallIsSkippedAndDoesNotCorruptSession)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger,
+                                                   std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "id1", "idx1", "data1", Operation::CREATE, 1},
+    };
+
+    // First call fetches data and runs a full sync; second concurrent call finds an
+    // empty queue (or is blocked by the guard before reaching the queue).
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    .WillOnce(Return(testData))     // first (in-flight) call
+    .WillRepeatedly(Return(std::vector<PersistedData> {})); // any subsequent call
+    EXPECT_CALL(*mockQueue, clearSyncedItems()).Times(1);
+
+    // Thread 1: starts the in-flight sync (will block waiting for StartAck).
+    std::promise<bool> firstResult;
+    auto firstFuture = firstResult.get_future();
+    std::thread syncThread([this, &firstResult]()
+    {
+        firstResult.set_value(protocol->synchronizeModule(Mode::DELTA));
+    });
+
+    // Give Thread 1 time to enter synchronizeModule() and block inside sendStartAndWaitAck.
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // Thread 2: concurrent call while Thread 1 is in-flight.
+    // Must return true immediately without touching the session state.
+    auto concurrentFuture = std::async(std::launch::async, [this]()
+    {
+        return protocol->synchronizeModule(Mode::DELTA);
+    });
+
+    // The concurrent call must complete quickly (it is skipped, not blocked).
+    auto status = concurrentFuture.wait_for(std::chrono::seconds(2));
+    ASSERT_EQ(status, std::future_status::ready) << "Concurrent call did not return quickly — likely blocked inside synchronizeModule instead of being skipped";
+    EXPECT_TRUE(concurrentFuture.get()) << "Concurrent call should return true (skipped, not an error)";
+
+    // Complete Thread 1's sync normally: StartAck then EndAck.
+    {
+        flatbuffers::FlatBufferBuilder builder;
+        Wazuh::SyncSchema::StartAckBuilder startAckBuilder(builder);
+        startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+        startAckBuilder.add_session(session);
+        auto offset = startAckBuilder.Finish();
+        builder.Finish(Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::StartAck, offset.Union()));
+        protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    {
+        flatbuffers::FlatBufferBuilder builder;
+        Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
+        endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+        endAckBuilder.add_session(session);
+        auto offset = endAckBuilder.Finish();
+        builder.Finish(Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::EndAck, offset.Union()));
+        protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
+    }
+
+    syncThread.join();
+
+    // Thread 1 must have succeeded — session state was not corrupted by the concurrent call.
+    EXPECT_TRUE(firstFuture.get()) << "In-flight sync failed, likely due to session state corruption from concurrent call";
+
+    // After Thread 1 completes, m_syncInProgress must be cleared.
+    // A fresh call with an empty queue must run to completion (not be skipped).
+    EXPECT_TRUE(protocol->synchronizeModule(Mode::DELTA)) << "Post-sync call was skipped — m_syncInProgress was not reset after completion";
 }
