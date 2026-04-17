@@ -40,6 +40,7 @@ concurrency:
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
+    name: Detect changed Windows test modules
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       any_matched: ${{ steps.set-matrix.outputs.any_matched }}
