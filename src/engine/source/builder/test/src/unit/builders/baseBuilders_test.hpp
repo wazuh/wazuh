@@ -37,7 +37,6 @@ using BuilderWithDeps = std::function<Builder(void)>;
 struct BuildersMocks
 {
     std::shared_ptr<const MockBuildCtx> ctx;
-    std::shared_ptr<RunState> runState;
     std::shared_ptr<MockSchema> validator;
     std::shared_ptr<MockMetaRegistry<OpBuilderEntry, StageBuilder, EnrichmentBuilder>> registry;
     std::shared_ptr<MockDefinitions> definitions;
@@ -57,7 +56,6 @@ protected:
                                           base::PtrSingleton<fastmetrics::IManager, fastmetrics::MockManager>>();
         mocks = std::make_shared<BuildersMocks>();
         mocks->ctx = std::make_shared<const MockBuildCtx>();
-        mocks->runState = std::make_shared<RunState>();
         mocks->validator = std::make_shared<MockSchema>();
         mocks->registry = MockMetaRegistry<OpBuilderEntry, StageBuilder, EnrichmentBuilder>::createMock();
         mocks->definitions = std::make_shared<MockDefinitions>();
@@ -65,7 +63,7 @@ protected:
         mocks->nsReader = std::make_shared<cm::store::MockICMStoreNSReader>();
 
         ON_CALL(*mocks->ctx, context()).WillByDefault(testing::ReturnRef(mocks->context));
-        ON_CALL(*mocks->ctx, runState()).WillByDefault(testing::Return(mocks->runState));
+        ON_CALL(*mocks->ctx, isTestMode()).WillByDefault(testing::Return(false));
         ON_CALL(*mocks->ctx, validator()).WillByDefault(testing::ReturnRef(*(mocks->validator)));
         ON_CALL(*mocks->ctx, allowedFields()).WillByDefault(testing::ReturnRef(*(mocks->allowedFields)));
         ON_CALL(*mocks->ctx, getStoreNSReader()).WillByDefault(testing::ReturnRef(*(mocks->nsReader)));
@@ -85,7 +83,7 @@ protected:
     void expectBuildSuccess()
     {
         EXPECT_CALL(*mocks->ctx, context()).Times(testing::AtLeast(1));
-        EXPECT_CALL(*mocks->ctx, runState()).Times(testing::AtLeast(1));
+        EXPECT_CALL(*mocks->ctx, isTestMode()).Times(testing::AtLeast(1));
     }
 };
 

@@ -18,19 +18,19 @@ namespace
 {
 inline TransformOp makeTransformNoOp(const std::shared_ptr<const IBuildCtx>& buildCtx, std::string trace)
 {
-    const auto runState = buildCtx->runState();
-    return [runState, trace = std::move(trace)](base::Event event) -> TransformResult
+    const auto isTestMode = buildCtx->isTestMode();
+    return [isTestMode, trace = std::move(trace)](base::Event event) -> TransformResult
     {
-        RETURN_SUCCESS(runState, event, trace)
+        RETURN_SUCCESS(isTestMode, event, trace)
     };
 }
 
 inline FilterOp makeFilterNoOp(const std::shared_ptr<const IBuildCtx>& buildCtx, bool pass, std::string trace)
 {
-    const auto runState = buildCtx->runState();
-    return [runState, pass, trace = std::move(trace)](base::ConstEvent) -> FilterResult
+    const auto isTestMode = buildCtx->isTestMode();
+    return [isTestMode, pass, trace = std::move(trace)](base::ConstEvent) -> FilterResult
     {
-        RETURN_SUCCESS(runState, pass, trace)
+        RETURN_SUCCESS(isTestMode, pass, trace)
     };
 }
 
@@ -202,7 +202,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
         "{} -> Cannot map subfields of {} because is not allowed for {}", name, targetField.dotPath(), assetType);
 
     // Precompute values to capture explicitly
-    const auto runState = buildCtx->runState();
+    const auto isTestMode = buildCtx->isTestMode();
     const auto targetJsonPath = targetField.jsonPath();
     const auto targetDotPath = targetField.dotPath();
     const auto allowedFieldsPtr = buildCtx->allowedFieldsPtr();
@@ -220,7 +220,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
             failureTrace6,
             failureTrace7,
             failureTrace8,
-            runState,
+            isTestMode,
             targetJsonPath,
             targetDotPath,
             allowedFieldsPtr,
@@ -235,19 +235,19 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
             const auto& keyRef = *std::static_pointer_cast<Reference>(key);
             if (!event->exists(keyRef.jsonPath()))
             {
-                RETURN_FAILURE(runState, event, failureTrace2)
+                RETURN_FAILURE(isTestMode, event, failureTrace2)
             }
 
             if (event->getString(resolvedKey, keyRef.jsonPath()) != json::RetGet::Success)
             {
-                RETURN_FAILURE(runState, event, failureTrace3)
+                RETURN_FAILURE(isTestMode, event, failureTrace3)
             }
         }
         else
         {
             if (std::static_pointer_cast<const Value>(key)->value().getString(resolvedKey) != json::RetGet::Success)
             {
-                RETURN_FAILURE(runState, event, failureTrace3)
+                RETURN_FAILURE(isTestMode, event, failureTrace3)
             }
         }
         // Get value from KVDB
@@ -260,7 +260,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
                 auto res = targetValueValidator(value);
                 if (base::isError(res))
                 {
-                    RETURN_FAILURE(runState, event, failureTrace7 + res.value().message)
+                    RETURN_FAILURE(isTestMode, event, failureTrace7 + res.value().message)
                 }
             }
             if (value.isObject())
@@ -270,7 +270,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
                 {
                     if (!allowedFieldsPtr->check(assetType, DotPath::append(targetDotPath, field)))
                     {
-                        RETURN_FAILURE(runState, event, failureTrace8)
+                        RETURN_FAILURE(isTestMode, event, failureTrace8)
                     }
                 }
             }
@@ -279,12 +279,12 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
             {
                 if (!event->exists(targetJsonPath))
                 {
-                    RETURN_FAILURE(runState, event, failureTrace1)
+                    RETURN_FAILURE(isTestMode, event, failureTrace1)
                 }
 
                 if (event->type(targetJsonPath) != value.type() || (!value.isObject() && !value.isArray()))
                 {
-                    RETURN_FAILURE(runState, event, failureTrace5)
+                    RETURN_FAILURE(isTestMode, event, failureTrace5)
                 }
 
                 event->merge(isRecursive ? json::RECURSIVE : json::NOT_RECURSIVE, value, targetJsonPath);
@@ -296,14 +296,14 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
         }
         catch (const std::out_of_range&)
         {
-            RETURN_FAILURE(runState, event, failureTrace4)
+            RETURN_FAILURE(isTestMode, event, failureTrace4)
         }
         catch (const std::runtime_error& e)
         {
-            RETURN_FAILURE(runState, event, failureTrace6 + e.what())
+            RETURN_FAILURE(isTestMode, event, failureTrace6 + e.what())
         }
 
-        RETURN_SUCCESS(runState, event, successTrace)
+        RETURN_SUCCESS(isTestMode, event, successTrace)
     };
 }
 
@@ -397,19 +397,19 @@ FilterOp existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
     const auto failureTraceNotMatch = fmt::format("{} -> Key found in DB", name);
 
     return [=,
-            runState = buildCtx->runState(),
+            isTestMode = buildCtx->isTestMode(),
             targetField = targetField.jsonPath(),
             kvdbHandler = std::move(kvdbHandler)](base::ConstEvent event) -> FilterResult
     {
         if (!event->exists(targetField))
         {
-            RETURN_FAILURE(runState, false, failureTrace1)
+            RETURN_FAILURE(isTestMode, false, failureTrace1)
         }
 
         std::string key;
         if (event->getString(key, targetField) != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, false, failureTrace2)
+            RETURN_FAILURE(isTestMode, false, failureTrace2)
         }
 
         const bool found = kvdbHandler->contains(key);
@@ -417,18 +417,18 @@ FilterOp existanceCheck(std::shared_ptr<IKVDBManager> kvdbManager,
         {
             if (!found)
             {
-                RETURN_FAILURE(runState, false, failureTraceMatch)
+                RETURN_FAILURE(isTestMode, false, failureTraceMatch)
             }
         }
         else
         {
             if (found)
             {
-                RETURN_FAILURE(runState, false, failureTraceNotMatch)
+                RETURN_FAILURE(isTestMode, false, failureTraceNotMatch)
             }
         }
 
-        RETURN_SUCCESS(runState, true, successTrace)
+        RETURN_SUCCESS(isTestMode, true, successTrace)
     };
 }
 
@@ -590,7 +590,7 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
 
         // Return Op
         return [=,
-                runState = buildCtx->runState(),
+                isTestMode = buildCtx->isTestMode(),
                 targetField = targetField.jsonPath(),
                 kvdbHandler = std::move(kvdbHandler)](base::Event event) -> TransformResult
         {
@@ -601,20 +601,20 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
                 const auto& keyArrayRef = *std::static_pointer_cast<Reference>(keyArray);
                 if (!event->exists(keyArrayRef.jsonPath()))
                 {
-                    RETURN_FAILURE(runState, event, failureTrace1)
+                    RETURN_FAILURE(isTestMode, event, failureTrace1)
                 }
 
                 const auto value = event->getArray(keyArrayRef.jsonPath());
                 if (!value)
                 {
-                    RETURN_FAILURE(runState, event, failureTrace2)
+                    RETURN_FAILURE(isTestMode, event, failureTrace2)
                 }
 
                 for (const auto& key : value.value())
                 {
                     if (!key.isString())
                     {
-                        RETURN_FAILURE(runState, event, failureTrace2)
+                        RETURN_FAILURE(isTestMode, event, failureTrace2)
                     }
 
                     keys.emplace_back(key);
@@ -638,7 +638,7 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
                     std::string jKeyStr;
                     if (jKey.getString(jKeyStr) != json::RetGet::Success)
                     {
-                        RETURN_FAILURE(runState, event, failureTrace3)
+                        RETURN_FAILURE(isTestMode, event, failureTrace3)
                     }
                     const json::Json& jValue = kvdbHandler->get(jKeyStr);
 
@@ -649,14 +649,14 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
                     }
                     else if (jValue.type() != type)
                     {
-                        RETURN_FAILURE(runState, event, failureTrace5)
+                        RETURN_FAILURE(isTestMode, event, failureTrace5)
                     }
 
                     values.emplace_back(std::cref(jValue));
                 }
                 catch (const std::out_of_range& e)
                 {
-                    RETURN_FAILURE(runState, event, failureTrace3 + e.what())
+                    RETURN_FAILURE(isTestMode, event, failureTrace3 + e.what())
                 }
             }
 
@@ -682,13 +682,13 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
                 auto res = targetValidator(targetArray);
                 if (base::isError(res))
                 {
-                    RETURN_FAILURE(runState, event, failureTrace6 + res.value().message)
+                    RETURN_FAILURE(isTestMode, event, failureTrace6 + res.value().message)
                 }
             }
 
             event->set(targetField, targetArray);
 
-            RETURN_SUCCESS(runState, event, successTrace);
+            RETURN_SUCCESS(isTestMode, event, successTrace);
         };
     };
 }
@@ -912,7 +912,7 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
 
     // Return Op
     return
-        [=, runState = buildCtx->runState(), targetField = targetField.jsonPath()](base::Event event) -> TransformResult
+        [=, isTestMode = buildCtx->isTestMode(), targetField = targetField.jsonPath()](base::Event event) -> TransformResult
     {
         // Get mask in hex
         uint64_t mask {};
@@ -920,7 +920,7 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
             auto resultMask = getMaskFn(event);
             if (base::isError(resultMask))
             {
-                RETURN_FAILURE(runState, event, base::getError(resultMask).message)
+                RETURN_FAILURE(isTestMode, event, base::getError(resultMask).message)
             }
             mask = base::getResponse(resultMask);
         }
@@ -944,10 +944,10 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
 
         if (isResultEmpty)
         {
-            RETURN_FAILURE(runState, event, failureTrace4)
+            RETURN_FAILURE(isTestMode, event, failureTrace4)
         }
 
-        RETURN_SUCCESS(runState, event, successTrace);
+        RETURN_SUCCESS(isTestMode, event, successTrace);
     };
 }
 

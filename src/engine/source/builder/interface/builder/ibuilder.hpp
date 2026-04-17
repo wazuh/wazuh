@@ -23,23 +23,13 @@ public:
     /**
      * @brief Build a policy from the store.
      *
-     * @param name Name of the policy.
-     * @param trace Indicates whether to enable or disable the trace
-     * @param sandbox If it is set to true, it indicates a test environment and if it is set to false, it indicates a
-     * production environment.
-     * @return base::RespOrError<std::shared_ptr<IPolicy>> The policy or an error.
+     * @param namespaceId Namespace identifier for the policy.
+     * @param isTestMode Whether to build the policy in test mode.
+     * @return std::shared_ptr<IPolicy> The built policy.
      */
     virtual std::shared_ptr<IPolicy>
-    buildPolicy(const cm::store::NamespaceId& namespaceId, bool trace, bool sandbox) const = 0;
+    buildPolicy(const cm::store::NamespaceId& namespaceId, bool isTestMode) const = 0;
 
-    /**
-     * @brief Build an asset expression from the store.
-     * @attention This method ignores the parents of the asset.
-     *
-     * @param name Name of the asset.
-     * @return base::RespOrError<base::Expression> The asset expression or an error.
-     */
-    virtual base::Expression buildAsset(const base::Name& name, const cm::store::NamespaceId& namespaceId) const = 0;
 };
 
 } // namespace builder

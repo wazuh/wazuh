@@ -17,16 +17,6 @@ namespace builder::builders
 {
 
 /**
- * @brief Control flags for the runtime.
- */
-struct RunState
-{
-    bool trace;   ///< Whether trace messages are active.
-    bool sandbox; ///< Whether test/sandbox mode is active.
-    bool check;   ///< Whether hard type enforcement mode is active.
-};
-
-/**
  * @brief Context for the builder, tracks the current build scope.
  */
 struct Context
@@ -123,11 +113,13 @@ public:
     virtual Context& context() = 0;
 
     /**
-     * @brief Get the run state object
+     * @brief Whether the policy is built in test mode (enables trace messages and sandbox behavior).
      *
-     * @return std::shared_ptr<const RunState>
+     * This is a policy-level immutable flag set once at construction time.
+     *
+     * @return bool True if test mode is active, false for production.
      */
-    virtual std::shared_ptr<const RunState> runState() const = 0;
+    virtual bool isTestMode() const = 0;
 
     /**
      * @brief Get the allowed fields object

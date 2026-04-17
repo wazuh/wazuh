@@ -13,15 +13,15 @@ FilterOp exists(const Reference& targetField,
 
     const auto successTrace = fmt::format("{} -> Success", buildCtx->context().opName);
     const auto failureTrace = fmt::format("{} -> Failure", buildCtx->context().opName);
-    return [targetField = targetField.jsonPath(), runState = buildCtx->runState(), successTrace, failureTrace, negate](
+    return [targetField = targetField.jsonPath(), isTestMode = buildCtx->isTestMode(), successTrace, failureTrace, negate](
                base::ConstEvent event) -> FilterResult
     {
         if (event->exists(targetField) == negate)
         {
-            RETURN_FAILURE(runState, false, failureTrace);
+            RETURN_FAILURE(isTestMode, false, failureTrace);
         }
 
-        RETURN_SUCCESS(runState, true, successTrace);
+        RETURN_SUCCESS(isTestMode, true, successTrace);
     };
 }
 } // namespace

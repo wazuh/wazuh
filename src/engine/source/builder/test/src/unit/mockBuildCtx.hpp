@@ -23,7 +23,7 @@ public:
     MOCK_METHOD((std::shared_ptr<const schemf::IValidator>), validatorPtr, (), (const));
     MOCK_METHOD((const Context&), context, (), (const));
     MOCK_METHOD((Context&), context, (), ());
-    MOCK_METHOD((std::shared_ptr<const RunState>), runState, (), (const));
+    MOCK_METHOD(bool, isTestMode, (), (const));
     MOCK_METHOD((const builder::IAllowedFields&), allowedFields, (), (const));
     MOCK_METHOD(void, setAllowedFields, (const std::shared_ptr<const builder::IAllowedFields>& allowedFields), ());
     MOCK_METHOD((std::shared_ptr<const builder::IAllowedFields>), allowedFieldsPtr, (), (const));

@@ -49,15 +49,12 @@ public:
     /**
      * @brief Get the Controller object for a given policy.
      *
-     * @param policyName The name of the policy.
-     * @param trace Indicates whether to enable or disable the trace
-     * @param sandbox If it is set to true, it indicates a test environment and if it is set to false, it indicates a
-     * production environment.
-     * @return std::shared_ptr<bk::IController> The constructed controller.
-     * @throws std::runtime_error if the policy has no assets or if the backend cannot be built. // TODO Move to
-     * base::Error
+     * @param namespaceId The namespace of the policy.
+     * @param isTestMode Whether to build the policy in test mode.
+     * @return std::pair<std::shared_ptr<bk::IController>, std::string> The controller and the policy hash.
+     * @throws std::runtime_error if the policy has no assets or if the backend cannot be built.
      */
-    auto makeController(const cm::store::NamespaceId& namespaceId, const bool trace = true, const bool sandbox = true)
+    auto makeController(const cm::store::NamespaceId& namespaceId, const bool isTestMode = true)
         -> std::pair<std::shared_ptr<bk::IController>, std::string>
     {
         // Build the policy and create the pipeline
@@ -67,7 +64,7 @@ public:
             throw std::runtime_error {"The builder is not available"};
         }
 
-        auto policy = builder->buildPolicy(namespaceId, trace, sandbox);
+        auto policy = builder->buildPolicy(namespaceId, isTestMode);
         if (policy == nullptr)
         {
             throw std::runtime_error {fmt::format("Failed to build policy '{}'", namespaceId.toStr())};
@@ -106,9 +103,7 @@ public:
         try
         {
             std::string hash {};
-            auto trace {false};
-            auto sandbox {false};
-            std::tie(controller, hash) = makeController(namespaceId, trace, sandbox);
+            std::tie(controller, hash) = makeController(namespaceId, /*isTestMode=*/false);
             return std::make_unique<Environment>(std::move(controller), std::move(hash));
         }
         catch (const std::runtime_error& e)

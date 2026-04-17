@@ -59,29 +59,12 @@ Builder::Builder(const std::shared_ptr<cm::store::ICMStore>& cmStore,
 }
 
 // TODO: Remove default argument on interface
-std::shared_ptr<IPolicy> Builder::buildPolicy(const cm::store::NamespaceId& namespaceId, bool trace, bool sandbox) const
+std::shared_ptr<IPolicy> Builder::buildPolicy(const cm::store::NamespaceId& namespaceId, bool isTestMode) const
 {
     auto policy = std::make_shared<policy::Policy>(
-        namespaceId, m_cmStore, m_definitionsBuilder, m_registry, m_schema, m_allowedFields, trace, sandbox);
+        namespaceId, m_cmStore, m_definitionsBuilder, m_registry, m_schema, m_allowedFields, isTestMode);
 
     return policy;
-}
-
-base::Expression Builder::buildAsset(const base::Name& name, const cm::store::NamespaceId& namespaceId) const
-{
-    const auto nsReader = m_cmStore->getNSReader(namespaceId);
-    const auto& jsonAsset = nsReader->getAssetByName(name);
-    auto buildCtx = std::make_shared<builders::BuildCtx>();
-    buildCtx->setRegistry(m_registry);
-    buildCtx->setValidator(m_schema);
-    buildCtx->setAllowedFields(m_allowedFields);
-    buildCtx->runState().trace = false;
-    buildCtx->runState().sandbox = false;
-
-    auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);
-    auto asset = (*assetBuilder)(jsonAsset);
-
-    return asset.expression();
 }
 
 base::OptError Builder::softIntegrationValidate(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,

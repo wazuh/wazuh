@@ -34,9 +34,7 @@ public:
      * @param registry Registry instance.
      * @param schema Schema validator instance.
      * @param allowedFields Allowed fields instance.
-     * @param trace Indicates whether to enable or disable the trace.
-     * @param sandbox If it is set to true, it indicates a test environment and if it is set to false, it indicates a
-     * production environment.
+     * @param isTestMode Whether to build the policy in test mode.
      */
     Policy(const cm::store::NamespaceId& namespaceId,
            const std::shared_ptr<cm::store::ICMStore>& cmStore,
@@ -44,8 +42,7 @@ public:
            const std::shared_ptr<builders::RegistryType>& registry,
            const std::shared_ptr<schemf::IValidator>& schema,
            const std::shared_ptr<IAllowedFields>& allowedFields,
-           const bool trace = false,
-           const bool sandbox = false);
+           const bool isTestMode = false);
 
     /**
      * @copydoc IPolicy::name

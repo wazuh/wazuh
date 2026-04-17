@@ -17,12 +17,12 @@ namespace builder::builders::enrichment
  * @brief Make a traceable success expression.
  *
  * @param expr The expression to make traceable.
- * @param trace Enable tracing.
+ * @param isTestMode Enable tracing.
  * @return base::Expression The traceable expression, or the original expression if tracing is disabled.
  */
-inline base::Expression makeTraceableSuccessExpression(const base::Expression& expr, bool trace)
+inline base::Expression makeTraceableSuccessExpression(const base::Expression& expr, bool isTestMode)
 {
-    if (!trace)
+    if (!isTestMode)
     {
         return expr;
     }
@@ -45,10 +45,10 @@ base::Expression postOutputUnclassifiedCounter(const std::string& spaceName,
  * @brief Get the enrichment expression and traceable name for the space defined in the policy.
  *
  * @param policy Policy data.
- * @param trace Enable tracing in the enrichment expression.
+ * @param isTestMode Enable tracing in the enrichment expression.
  * @return std::pair<base::Expression, std::string> The built enrichment expression and its traceable name.
  */
-std::pair<base::Expression, std::string> getSpaceEnrichment(const cm::store::dataType::Policy& policy, bool trace);
+std::pair<base::Expression, std::string> getSpaceEnrichment(const cm::store::dataType::Policy& policy, bool isTestMode);
 
 /**
  * @brief Get the filter expression to handle unclassified events according to policy configuration.
@@ -57,10 +57,10 @@ std::pair<base::Expression, std::string> getSpaceEnrichment(const cm::store::dat
  * if the policy's index_unclassified_events flag is false.
  *
  * @param policy Policy data.
- * @param trace Enable tracing in the filter expression.
+ * @param isTestMode Enable tracing in the filter expression.
  * @return std::pair<base::Expression, std::string> The built filter expression and its traceable name.
  */
-std::pair<base::Expression, std::string> getUnclassifiedFilter(const cm::store::dataType::Policy& policy, bool trace);
+std::pair<base::Expression, std::string> getUnclassifiedFilter(const cm::store::dataType::Policy& policy, bool isTestMode);
 
 /**
  * @brief Get the Geo Enrichment Builder
@@ -90,12 +90,12 @@ EnrichmentBuilder getIocEnrichmentBuilder(const std::shared_ptr<ioc::kvdb::IKVDB
  * This filter checks if an event should be discarded based on the policy's configuration.
  *
  * @param policy Policy data.
- * @param trace Enable tracing in the filter expression.
+ * @param isTestMode Enable tracing in the filter expression.
  * @return std::pair<base::Expression, std::string> The built filter expression and its traceable name.
  */
 std::pair<base::Expression, std::string>
 getDiscardedEventsFilter(const cm::store::dataType::Policy& policy,
-                         bool trace,
+                         bool isTestMode,
                          const std::shared_ptr<fastmetrics::ICounter>& discardedCounter);
 
 /**
@@ -104,10 +104,10 @@ getDiscardedEventsFilter(const cm::store::dataType::Policy& policy,
  * This cleanup removes root keys prefixed with "_".
  *
  * @param enabled Enable cleanup behavior.
- * @param trace Enable tracing in the cleanup expression.
+ * @param isTestMode Enable tracing in the cleanup expression.
  * @return std::pair<base::Expression, std::string> The built cleanup expression and its traceable name.
  */
-std::pair<base::Expression, std::string> getCleanupDecoderVariables(bool enabled, bool trace);
+std::pair<base::Expression, std::string> getCleanupDecoderVariables(bool enabled, bool isTestMode);
 
 /**
  * @brief Create an expression that counts events when a phase expression fails.

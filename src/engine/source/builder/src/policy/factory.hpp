@@ -73,7 +73,7 @@ using BuiltAssets =
  * @param data Policy data.
  * @param store The store interface to query assets and namespaces.
  * @param assetBuilder The asset builder instance to build each asset.
- * @param sandbox Flag indicating sandbox mode.
+ * @param isTestMode Whether the policy is built in test mode.
  *
  * @return BuiltAssets
  *
@@ -82,7 +82,7 @@ using BuiltAssets =
 BuiltAssets buildAssets(const cm::store::dataType::Policy& policyData,
                         const std::shared_ptr<cm::store::ICMStoreNSReader>& cmStoreNsReader,
                         const std::shared_ptr<IAssetBuilder>& assetBuilder,
-                        const bool sandbox = false);
+                        const bool isTestMode = false);
 
 /**
  * @brief This struct contains the policy graphs by type.

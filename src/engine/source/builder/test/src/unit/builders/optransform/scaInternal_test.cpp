@@ -63,7 +63,6 @@ protected:
     std::shared_ptr<MockSockFactory> sockFactory {};
     std::shared_ptr<MockSockHandler> cfg {};
     std::shared_ptr<const MockBuildCtx> ctx {};
-    std::shared_ptr<const RunState> runState;
     Context context {"test", "test", "test", "test"};
 
     void SetUp() override
@@ -75,12 +74,11 @@ protected:
         sockFactory = std::make_shared<MockSockFactory>();
         cfg = std::make_shared<MockSockHandler>();
         ctx = std::make_shared<const MockBuildCtx>();
-        runState = std::make_shared<const RunState>();
 
         ON_CALL(*wdbManager, connection()).WillByDefault(testing::Return(wdb));
         ON_CALL(*sockFactory, getHandler(testing::_, testing::_)).WillByDefault(testing::Return(cfg));
         ON_CALL(*ctx, context()).WillByDefault(testing::ReturnRef(context));
-        ON_CALL(*ctx, runState()).WillByDefault(testing::Return(runState));
+        ON_CALL(*ctx, isTestMode()).WillByDefault(testing::Return(false));
     }
 
     void TearDown() override {}
@@ -94,7 +92,6 @@ protected:
     std::shared_ptr<MockSockFactory> sockFactory {};
     std::shared_ptr<MockSockHandler> cfg {};
     std::shared_ptr<const MockBuildCtx> ctx {};
-    std::shared_ptr<const RunState> runState;
     Context context {"test", "test", "test", "test"};
 
     void SetUp() override
@@ -105,12 +102,11 @@ protected:
         sockFactory = std::make_shared<MockSockFactory>();
         cfg = std::make_shared<MockSockHandler>();
         ctx = std::make_shared<const MockBuildCtx>();
-        runState = std::make_shared<const RunState>();
 
         ON_CALL(*wdbManager, connection()).WillByDefault(testing::Return(wdb));
         ON_CALL(*sockFactory, getHandler(testing::_, testing::_)).WillByDefault(testing::Return(cfg));
         ON_CALL(*ctx, context()).WillByDefault(testing::ReturnRef(context));
-        ON_CALL(*ctx, runState()).WillByDefault(testing::Return(runState));
+        ON_CALL(*ctx, isTestMode()).WillByDefault(testing::Return(false));
     }
 
     void TearDown() override {}
@@ -124,7 +120,6 @@ protected:
     std::shared_ptr<MockSockFactory> sockFactory {};
     std::shared_ptr<MockSockHandler> cfg {};
     std::shared_ptr<const MockBuildCtx> ctx {};
-    std::shared_ptr<const RunState> runState;
     Context context {"test", "test", "test", "test"};
 
     void SetUp() override
@@ -135,12 +130,11 @@ protected:
         sockFactory = std::make_shared<MockSockFactory>();
         cfg = std::make_shared<MockSockHandler>();
         ctx = std::make_shared<const MockBuildCtx>();
-        runState = std::make_shared<const RunState>();
 
         ON_CALL(*wdbManager, connection()).WillByDefault(testing::Return(wdb));
         ON_CALL(*sockFactory, getHandler(testing::_, testing::_)).WillByDefault(testing::Return(cfg));
         ON_CALL(*ctx, context()).WillByDefault(testing::ReturnRef(context));
-        ON_CALL(*ctx, runState()).WillByDefault(testing::Return(runState));
+        ON_CALL(*ctx, isTestMode()).WillByDefault(testing::Return(false));
     }
 
     void TearDown() override {}
@@ -154,7 +148,6 @@ protected:
     std::shared_ptr<MockSockFactory> sockFactory {};
     std::shared_ptr<MockSockHandler> cfg {};
     std::shared_ptr<const MockBuildCtx> ctx {};
-    std::shared_ptr<const RunState> runState;
     Context context {"test", "test", "test", "test"};
 
     void SetUp() override
@@ -165,12 +158,11 @@ protected:
         sockFactory = std::make_shared<MockSockFactory>();
         cfg = std::make_shared<MockSockHandler>();
         ctx = std::make_shared<const MockBuildCtx>();
-        runState = std::make_shared<const RunState>();
 
         ON_CALL(*wdbManager, connection()).WillByDefault(testing::Return(wdb));
         ON_CALL(*sockFactory, getHandler(testing::_, testing::_)).WillByDefault(testing::Return(cfg));
         ON_CALL(*ctx, context()).WillByDefault(testing::ReturnRef(context));
-        ON_CALL(*ctx, runState()).WillByDefault(testing::Return(runState));
+        ON_CALL(*ctx, isTestMode()).WillByDefault(testing::Return(false));
     }
 
     void TearDown() override {}
@@ -184,7 +176,6 @@ protected:
     std::shared_ptr<MockSockFactory> sockFactory {};
     std::shared_ptr<MockSockHandler> cfg {};
     std::shared_ptr<const MockBuildCtx> ctx {};
-    std::shared_ptr<const RunState> runState;
     Context context {"test", "test", "test", "test"};
 
     void SetUp() override
@@ -195,12 +186,11 @@ protected:
         sockFactory = std::make_shared<MockSockFactory>();
         cfg = std::make_shared<MockSockHandler>();
         ctx = std::make_shared<const MockBuildCtx>();
-        runState = std::make_shared<const RunState>();
 
         ON_CALL(*wdbManager, connection()).WillByDefault(testing::Return(wdb));
         ON_CALL(*sockFactory, getHandler(testing::_, testing::_)).WillByDefault(testing::Return(cfg));
         ON_CALL(*ctx, context()).WillByDefault(testing::ReturnRef(context));
-        ON_CALL(*ctx, runState()).WillByDefault(testing::Return(runState));
+        ON_CALL(*ctx, isTestMode()).WillByDefault(testing::Return(false));
     }
 
     void TearDown() override {}

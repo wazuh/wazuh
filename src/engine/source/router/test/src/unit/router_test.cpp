@@ -40,7 +40,7 @@ public:
 
     void makeControllerBuildPolicyFailure(router::prod::EntryPost entryPost)
     {
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_, testing::_))
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_))
             .WillOnce(::testing::Throw(std::runtime_error("error")));
         auto error = m_router->addEntry(entryPost, /*ignoreFail=*/false);
         EXPECT_TRUE(error.has_value());
@@ -48,7 +48,7 @@ public:
 
     void makeControllerBuildPolicySuccess()
     {
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_, testing::_))
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_))
             .WillOnce(::testing::Return(m_mockPolicy));
     }
 
@@ -130,7 +130,7 @@ public:
 
     void rebuildEntryBuildPolicyFailure(const std::string& name)
     {
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_, testing::_))
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_))
             .WillOnce(::testing::Throw(std::runtime_error("Policy was not building")));
         EXPECT_FALSE(rebuildEntry(name));
     }

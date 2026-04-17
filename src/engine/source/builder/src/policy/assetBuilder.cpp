@@ -64,9 +64,6 @@ std::vector<base::Name> AssetBuilder::getParents(const json::Json& value) const
             throw std::runtime_error(fmt::format("Invalid parent name '{}': {}", parentStr, e.what()));
         }
 
-        // TODO : check parent is the same type as the asset??
-        // if (parentName.parts().front() != name.parts().front()) -> error
-
         // Check for duplicates
         if (std::find(parents.begin(), parents.end(), parentName) != parents.end())
         {

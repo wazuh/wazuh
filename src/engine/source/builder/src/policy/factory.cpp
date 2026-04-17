@@ -75,7 +75,7 @@ namespace builder::policy::factory
 BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
                         const std::shared_ptr<cm::store::ICMStoreNSReader>& cmStoreNsReader,
                         const std::shared_ptr<IAssetBuilder>& assetBuilder,
-                        const bool sandbox)
+                        const bool isTestMode)
 {
     BuiltAssets builtAssets;
 
@@ -243,7 +243,7 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
     }
 
     // TODO: Only available for production -->> Remove this, outputs should always be associated with a policy
-    if (!sandbox)
+    if (!isTestMode)
     {
         // Default outputs are not associated with an integration; clear KVDB validation.
         assetBuilder->clearAvailableKvdbs();

@@ -95,7 +95,7 @@ runType(const OpBuilder& builder, const Reference& targetField, const schemf::Va
 
         // Wrapper MapOp
         const auto& invalidTrace = fmt::format("{} -> schema validation failed: ", buildCtx->context().opName);
-        return [invalidTrace, mapOp, runValidator, runState = buildCtx->runState()](base::ConstEvent event) -> MapResult
+        return [invalidTrace, mapOp, runValidator, isTestMode = buildCtx->isTestMode()](base::ConstEvent event) -> MapResult
         {
             auto mapRes = mapOp(event);
             if (mapRes.failure())
@@ -108,7 +108,7 @@ runType(const OpBuilder& builder, const Reference& targetField, const schemf::Va
             auto error = runValidator(value);
             if (error)
             {
-                RETURN_FAILURE(runState, json::Json(), invalidTrace + error.value().message);
+                RETURN_FAILURE(isTestMode, json::Json(), invalidTrace + error.value().message);
             }
 
             return std::move(mapRes);
@@ -125,15 +125,15 @@ TransformBuilder filterToTransform(const FilterBuilder& builder)
         auto filterOp = builder(targetField, opArgs, buildCtx);
 
         // Wrapper TransformOp
-        return [filterOp, rs = buildCtx->runState()](base::Event event) -> TransformResult
+        return [filterOp, isTestMode = buildCtx->isTestMode()](base::Event event) -> TransformResult
         {
             auto filterRes = filterOp(event);
             if (filterRes.failure())
             {
-                RETURN_FAILURE(rs, event, filterRes.popTrace());
+                RETURN_FAILURE(isTestMode, event, filterRes.popTrace());
             }
 
-            RETURN_SUCCESS(rs, event, filterRes.popTrace());
+            RETURN_SUCCESS(isTestMode, event, filterRes.popTrace());
         };
     };
 }
@@ -157,17 +157,17 @@ TransformBuilder mapToTransform(const MapBuilder& builder, const Reference& targ
         auto mapOp = builder(opArgs, buildCtx);
 
         // Wrapper TransformOp
-        return [mapOp, targetField, rs = buildCtx->runState()](base::Event event) -> TransformResult
+        return [mapOp, targetField, isTestMode = buildCtx->isTestMode()](base::Event event) -> TransformResult
         {
             auto mapRes = mapOp(event);
             if (mapRes.failure())
             {
-                RETURN_FAILURE(rs, event, mapRes.popTrace());
+                RETURN_FAILURE(isTestMode, event, mapRes.popTrace());
             }
 
             event->set(targetField.jsonPath(), mapRes.popPayload());
 
-            RETURN_SUCCESS(rs, event, mapRes.popTrace());
+            RETURN_SUCCESS(isTestMode, event, mapRes.popTrace());
         };
     };
 }

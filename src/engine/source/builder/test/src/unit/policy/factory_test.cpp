@@ -1730,7 +1730,7 @@ TEST_P(BuildAssetsOrder, DecoderOrderPreservedInGraph)
         const auto orderCheck = expected.succCase()(cmStoreNSReader, buildCtx);
 
         factory::BuiltAssets built;
-        EXPECT_NO_THROW(built = factory::buildAssets(policy, cmStoreNSReader, assetBuilder, /*sandbox=*/true));
+        EXPECT_NO_THROW(built = factory::buildAssets(policy, cmStoreNSReader, assetBuilder, /*isTestMode=*/true));
 
         factory::PolicyGraph graph;
         EXPECT_NO_THROW(graph = factory::buildGraph(built));
@@ -1751,7 +1751,7 @@ TEST_P(BuildAssetsOrder, DecoderOrderPreservedInGraph)
             {
                 try
                 {
-                    (void)factory::buildAssets(policy, cmStoreNSReader, assetBuilder, /*sandbox=*/true);
+                    (void)factory::buildAssets(policy, cmStoreNSReader, assetBuilder, /*isTestMode=*/true);
                 }
                 catch (const std::runtime_error& e)
                 {
