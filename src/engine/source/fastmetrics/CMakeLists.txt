@@ -3,17 +3,18 @@ set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
 set(INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 
 ## Interface library (pure interfaces for mocking)
-add_library(fastmetrics_interface INTERFACE)
-target_include_directories(fastmetrics_interface INTERFACE ${IFACE_DIR})
-add_library(fastmetrics::interface ALIAS fastmetrics_interface)
+add_library(fastmetrics_ifastmetrics INTERFACE)
+target_include_directories(fastmetrics_ifastmetrics INTERFACE ${IFACE_DIR})
+target_link_libraries(fastmetrics_ifastmetrics INTERFACE streamlogger::streamlogger)
+add_library(fastmetrics::ifastmetrics ALIAS fastmetrics_ifastmetrics)
 
 ## Implementation library
-add_library(fastmetrics STATIC
+add_library(fastmetrics_fastmetrics STATIC
     ${SRC_DIR}/manager.cpp
     ${SRC_DIR}/registry.cpp
 )
 
-target_include_directories(fastmetrics
+target_include_directories(fastmetrics_fastmetrics
     PUBLIC
     ${INCLUDE_DIR}
     ${IFACE_DIR}
@@ -22,17 +23,17 @@ target_include_directories(fastmetrics
     ${SRC_DIR}
 )
 
-target_link_libraries(fastmetrics
+target_link_libraries(fastmetrics_fastmetrics
     PUBLIC
-    fastmetrics::interface
+    fastmetrics::ifastmetrics
     base  # Required for SingletonLocator
     streamlogger::streamlogger
 )
 
 # Require C++17 for if constexpr and other features
-target_compile_features(fastmetrics PUBLIC cxx_std_17)
+target_compile_features(fastmetrics_fastmetrics PUBLIC cxx_std_17)
 
-add_library(fastmetrics::fastmetrics ALIAS fastmetrics)
+add_library(fastmetrics::fastmetrics ALIAS fastmetrics_fastmetrics)
 
 ## Tests
 if(ENGINE_BUILD_TEST)
@@ -46,7 +47,7 @@ set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 add_library(fastmetrics_mocks INTERFACE)
 target_include_directories(fastmetrics_mocks INTERFACE ${TEST_MOCK_DIR})
 target_link_libraries(fastmetrics_mocks INTERFACE
-    fastmetrics::interface
+    fastmetrics::ifastmetrics
     GTest::gmock
 )
 add_library(fastmetrics::mocks ALIAS fastmetrics_mocks)

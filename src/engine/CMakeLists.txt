@@ -327,6 +327,7 @@ target_link_libraries(wazuh-engine
     httpsrv
     api::event
     fastqueue::fastqueue
+    fastmetrics::fastmetrics
     dumper::dumper
     cmstore::cmstore
     cmcrud::cmcrud

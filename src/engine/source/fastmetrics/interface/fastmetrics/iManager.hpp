@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+#include <streamlog/logger.hpp>
+
 #include "iMetric.hpp"
 
 namespace fastmetrics
@@ -28,6 +30,12 @@ class IManager
 {
 public:
     virtual ~IManager() = default;
+
+    /**
+     * @brief Write all metrics as JSON lines using the provided writer.
+     * @param metricsWriter Writer to output each JSON line.
+     */
+    virtual void writeAllMetrics(std::shared_ptr<streamlog::WriterEvent> metricsWriter) const = 0;
 
     /**
      * @brief Create or get an existing counter
@@ -50,6 +58,32 @@ public:
      */
     virtual std::shared_ptr<IGaugeInt>
     getOrCreateGaugeInt(const std::string& name, const std::string& description = "", const std::string& unit = "") = 0;
+
+    /**
+     * @brief Register a pull metric that returns a uint64_t value
+     *
+     * @param name Metric name
+     * @param getter Function to get the metric value
+     * @param description Optional description
+     * @param unit Optional unit (e.g., "items", "connections")
+     */
+    virtual void registerPullMetric(const std::string& name,
+                                    std::function<uint64_t()> getter,
+                                    const std::string& description = "",
+                                    const std::string& unit = "") = 0;
+
+    /**
+     * @brief Register a pull metric that returns a double value
+     *
+     * @param name Metric name
+     * @param getter Function to get the metric value
+     * @param description Optional description
+     * @param unit Optional unit (e.g., "items", "connections")
+     */
+    virtual void registerPullMetricDouble(const std::string& name,
+                                          std::function<double()> getter,
+                                          const std::string& description = "",
+                                          const std::string& unit = "") = 0;
 
     /**
      * @brief Get an existing metric by name

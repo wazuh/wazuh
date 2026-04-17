@@ -23,6 +23,18 @@ public:
                 (const std::string&, const std::string&, const std::string&),
                 (override));
 
+    MOCK_METHOD(void,
+                registerPullMetric,
+                (const std::string&, std::function<size_t()>, const std::string&, const std::string&),
+                (override));
+
+    MOCK_METHOD(void,
+                registerPullMetricDouble,
+                (const std::string&, std::function<double()>, const std::string&, const std::string&),
+                (override));
+
+    MOCK_METHOD(void, writeAllMetrics, (std::shared_ptr<streamlog::WriterEvent>), (const, override));
+
     MOCK_METHOD(std::shared_ptr<IMetric>, get, (const std::string&), (const, override));
 
     MOCK_METHOD(bool, exists, (const std::string&), (const, override));
