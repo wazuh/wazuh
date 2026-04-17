@@ -7,6 +7,7 @@
 
 #include <base/json.hpp>
 #include <base/logging.hpp>
+#include <fastmetrics/registry.hpp>
 
 #include <router/orchestrator.hpp>
 
@@ -149,8 +150,8 @@ std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::ISt
     if (base::isError(jsonEntry))
     {
         LOG_DEBUG("Router: {} table not found in store. Creating new table: {}",
-                 tableName.toStr(),
-                 base::getError(jsonEntry).message);
+                  tableName.toStr(),
+                  base::getError(jsonEntry).message);
         store->createDoc(tableName, json::Json {"[]"});
         return {};
     }
@@ -158,8 +159,9 @@ std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::ISt
     auto json = base::getResponse(jsonEntry);
     if (json.isEmpty())
     {
-        LOG_WARNING("Router: {} table is empty", tableName.toStr());
+        LOG_DEBUG("Router: {} table is empty", tableName.toStr());
     }
+    // Create empty table.
 
     return EntryConverter::fromJsonArray(json);
 }
@@ -218,6 +220,10 @@ void Orchestrator::postEvent(IngestEvent&& event)
     if (!pushed)
     {
         m_droppedEventsInContention.fetch_add(1, std::memory_order_relaxed);
+        if (m_droppedInputCounter)
+        {
+            m_droppedInputCounter->add(1);
+        }
     }
 
     bool expected = false;
@@ -286,6 +292,46 @@ Orchestrator::Orchestrator(const Options& opt)
     m_testTimeout = opt.m_testTimeout;
     m_wStore = opt.m_wStore;
 
+    std::weak_ptr<decltype(m_eventQueue)::element_type> wEventQueue = m_eventQueue;
+    FASTMETRICS_PULL(size_t,
+                     fastmetrics::names::ROUTER_QUEUE_SIZE,
+                     [wEventQueue]()
+                     {
+                         auto eventQueue = wEventQueue.lock();
+                         return eventQueue ? eventQueue->size() : 0;
+                     });
+
+    FASTMETRICS_PULL(double,
+                     fastmetrics::names::ROUTER_QUEUE_USAGE_PERCENT,
+                     [wEventQueue]()
+                     {
+                         auto eventQueue = wEventQueue.lock();
+                         if (!eventQueue)
+                             return 0.0;
+                         auto size = eventQueue->size();
+                         auto freeSlots = eventQueue->aproxFreeSlots();
+                         auto total = size + freeSlots;
+                         return total > 0 ? (static_cast<double>(size) * 100.0 / total) : 0.0;
+                     });
+
+    // Total events dropped at input (never resets, unlike contention window counter)
+    m_droppedInputCounter = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::ROUTER_EVENTS_DROPPED);
+
+    // EPS sliding-window rates (1m, 5m, 30m) derived from the processed counter
+    m_epsRate = std::make_shared<fastmetrics::SlidingWindowRate>();
+
+    FASTMETRICS_PULL(double,
+                     fastmetrics::names::ROUTER_EPS_1M,
+                     [epsRate = m_epsRate]() { return epsRate->getRate(std::chrono::seconds(60)); });
+
+    FASTMETRICS_PULL(double,
+                     fastmetrics::names::ROUTER_EPS_5M,
+                     [epsRate = m_epsRate]() { return epsRate->getRate(std::chrono::seconds(300)); });
+
+    FASTMETRICS_PULL(double,
+                     fastmetrics::names::ROUTER_EPS_30M,
+                     [epsRate = m_epsRate]() { return epsRate->getRate(std::chrono::seconds(1800)); });
+
     // Get the initial states from the store
     auto store = m_wStore.lock();
     if (!store)
@@ -309,7 +355,7 @@ Orchestrator::Orchestrator(const Options& opt)
 
     for (std::size_t i = 0; i < numThreads; ++i)
     {
-        auto r = std::make_shared<router::RouterWorker>(m_envBuilder, m_eventQueue, m_rawIndexer);
+        auto r = std::make_shared<router::RouterWorker>(m_envBuilder, m_eventQueue, m_rawIndexer, m_epsRate);
         if (auto err = initRouterWorker(r, routerEntries))
         {
             LOG_ERROR("Router: Cannot load initial states from store: {}", err->message);

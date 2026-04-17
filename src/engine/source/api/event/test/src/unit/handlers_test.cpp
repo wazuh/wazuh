@@ -4,6 +4,7 @@
 #include <api/event/handlers.hpp>
 #include <api/event/ndJsonParser.hpp>
 #include <archiver/mockArchiver.hpp>
+#include <fastmetrics/registry.hpp>
 #include <router/mockRouter.hpp>
 
 using namespace api::adapter;
@@ -14,6 +15,13 @@ using namespace router::mocks;
 
 namespace
 {
+// Register fastmetrics manager once for all tests in this file
+struct FastMetricsInit
+{
+    FastMetricsInit() { fastmetrics::registerManager(); }
+};
+static FastMetricsInit fastMetricsInit_;
+
 // Build the same error JSON the handler builds, but without hardcoding the parser message.
 // This keeps the test resilient to tweaks in parseNDJson() error wording.
 std::string makeBadRequestBodyFromParser(std::string_view body)

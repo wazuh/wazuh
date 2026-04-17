@@ -1,6 +1,7 @@
 #ifndef _RESULT_H
 #define _RESULT_H
 
+#include <optional>
 #include <string>
 
 namespace base::result
@@ -15,9 +16,11 @@ template<typename Event>
 class Result
 {
 private:
-    Event m_payload;
-    std::string m_trace;
-    bool m_success;
+    inline static const std::string EMPTY_TRACE {}; ///< Shared empty string for cases where no trace is present
+
+    Event m_payload;                    ///< The event payload
+    std::optional<std::string> m_trace; ///< Optional trace message
+    bool m_success;                     ///< Status of the result, true for success, false for failure
 
 public:
     /**
@@ -27,6 +30,19 @@ public:
     Result() {}
 
     /**
+     * @brief Construct a new Result object with payload and status only (no trace).
+     *
+     * @param payload Event.
+     * @param success Status of the event.
+     */
+    Result(Event payload, bool success)
+        : m_payload {std::move(payload)}
+        , m_trace {std::nullopt}
+        , m_success {success}
+    {
+    }
+
+    /**
      * @brief Construct a new Result object with parameters.
      *
      * @param payload Event.
@@ -34,68 +50,17 @@ public:
      * @param success Status of the event.
      */
     Result(Event payload, std::string trace, bool success)
-        : m_payload {payload}
-        , m_trace {trace}
+        : m_payload {std::move(payload)}
+        , m_trace {std::move(trace)}
         , m_success {success}
     {
     }
 
-    /**
-     * @brief Copy constructs a new Result object.
-     *
-     * @param other The Result to copy.
-     */
-    Result(const Result& other)
-        : m_payload {other.m_payload}
-        , m_trace {other.m_trace}
-        , m_success {other.m_success}
-    {
-    }
-
-    /**
-     * @brief Move copy constructor.
-     *
-     * @param other The Result to copy.
-     */
-    Result(Result&& other)
-        : m_payload {std::move(other.m_payload)}
-        , m_trace {other.m_trace}
-        , m_success {other.m_success}
-    {
-    }
-
-    /**
-     * @brief Destroy the Result object
-     */
+    Result(const Result&) = default;
+    Result(Result&&) = default;
     ~Result() = default;
-
-    /**
-     * @brief Copy assignment operator.
-     *
-     * @param other The Result to copy.
-     * @return Result& The new Result object.
-     */
-    Result& operator=(const Result& other)
-    {
-        m_payload = other.m_payload;
-        m_trace = other.m_trace;
-        m_success = other.m_success;
-        return *this;
-    }
-
-    /**
-     * @brief Move copy assignment operator.
-     *
-     * @param other The Result to move.
-     * @return Result& The new Result object.
-     */
-    Result& operator=(Result&& other)
-    {
-        m_payload = std::move(other.m_payload);
-        m_trace = other.m_trace;
-        m_success = other.m_success;
-        return *this;
-    }
+    Result& operator=(const Result&) = default;
+    Result& operator=(Result&&) = default;
 
     /**
      * @brief Check if the result is a success.
@@ -129,18 +94,35 @@ public:
     const Event& payload() const { return m_payload; }
 
     /**
-     * @brief Returns the event trace.
+     * @brief Check if the result has a trace.
      *
-     * @return std::string the event trace.
+     * @return true if a trace is present.
      */
-    std::string trace() const { return m_trace; }
+    bool hasTrace() const { return m_trace.has_value(); }
 
     /**
-     * @brief Returns the event trace.
+     * @brief Returns the event trace. If no trace is present, returns a reference to a
+     * shared empty string.
+     *
+     * @return const std::string& the event trace.
+     */
+    const std::string& trace() const { return m_trace.has_value() ? m_trace.value() : EMPTY_TRACE; }
+
+    /**
+     * @brief Moves and returns the trace string. If no trace is present, returns an empty string.
      *
      * @return std::string the event trace.
      */
-    std::string popTrace() const { return std::move(m_trace); }
+    std::string popTrace()
+    {
+        if (m_trace.has_value())
+        {
+            std::string t = std::move(m_trace.value());
+            m_trace.reset();
+            return t;
+        }
+        return {};
+    }
 
     /**
      * @brief Get the payload object.
@@ -161,7 +143,7 @@ public:
      *
      * @param trace the trace object.
      */
-    void setTrace(std::string trace) { m_trace = trace; }
+    void setTrace(std::string trace) { m_trace = std::move(trace); }
 
     /**
      * @brief Set the payload object.
@@ -172,35 +154,39 @@ public:
 };
 
 /**
- * @brief Returns the result of the event with all the information that it has been
- * success.
- * Incorporates the trace and sets m_success to true
- *
- * @tparam Event
- * @param payload event message
- * @param trace trace to be filled
- * @return Result<Event> Result of the event with all the complete information.
+ * @brief Creates a success Result without trace.
  */
 template<typename Event>
-Result<Event> makeSuccess(Event payload, std::string trace = "")
+Result<Event> makeSuccess(Event payload)
 {
-    return Result<Event> {payload, trace, true};
+    return Result<Event> {std::move(payload), true};
 }
 
 /**
- * @brief Returns the result of the event with all the information that it has been
- * failure.
- * Incorporates the trace and sets m_success to false
- *
- * @tparam Event
- * @param payload event message
- * @param trace trace to be filled
- * @return Result<Event> Result of the event with all the complete information.
+ * @brief Creates a success Result with trace.
  */
 template<typename Event>
-Result<Event> makeFailure(Event payload, std::string trace = "")
+Result<Event> makeSuccess(Event payload, std::string trace)
 {
-    return Result<Event> {payload, trace, false};
+    return Result<Event> {std::move(payload), std::move(trace), true};
+}
+
+/**
+ * @brief Creates a failure Result without trace.
+ */
+template<typename Event>
+Result<Event> makeFailure(Event payload)
+{
+    return Result<Event> {std::move(payload), false};
+}
+
+/**
+ * @brief Creates a failure Result with trace.
+ */
+template<typename Event>
+Result<Event> makeFailure(Event payload, std::string trace)
+{
+    return Result<Event> {std::move(payload), std::move(trace), false};
 }
 
 } // namespace base::result

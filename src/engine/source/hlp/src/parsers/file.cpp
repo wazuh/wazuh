@@ -59,7 +59,7 @@ std::map<std::string, std::string> parseFp(char slash, std::string_view in)
 
 SemParser getSemParser(const std::string& targetField)
 {
-    return [targetField](std::string_view parsed)
+    return [targetField](std::string_view parsed, bool)
     {
         auto res = parsed.find('\\') != std::string::npos ? parseFp('\\', parsed) : parseFp('/', parsed);
 

@@ -9,3 +9,4 @@
 /opt/wazuh-internal-tools/venv/bin/engine-kvdb         /usr/bin/engine-kvdb
 /opt/wazuh-internal-tools/venv/bin/engine-router       /usr/bin/engine-router
 /opt/wazuh-internal-tools/venv/bin/engine-schema       /usr/bin/engine-schema
+/opt/wazuh-internal-tools/venv/bin/engine-metrics      /usr/bin/engine-metrics

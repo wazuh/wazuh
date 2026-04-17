@@ -303,14 +303,19 @@ public:
     /**
      * @brief Class constructor that initializes the publisher.
      *
-     * @param config Indexer configuration, including database_path and servers.
+     * @param config Indexer configuration, including servers and SSL settings.
+     * @param queueId Identifier for this connector instance. Combined with basePath to form
+     *                the RocksDB queue directory: basePath / queueId.
+     *                Must be unique per instance to guarantee queue isolation.
      * @param logFunction Callback function to be called when trying to log a message.
-     * @param timeout Server selector time interval.
+     * @param basePath Base directory for the RocksDB queue. Defaults to "queue/indexer/".
      */
     explicit IndexerConnectorAsync(
         const nlohmann::json& config,
+        std::string queueId,
         const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
-            logFunction = {});
+            logFunction = {},
+        std::string basePath = "queue/indexer/");
 
     ~IndexerConnectorAsync();
 
@@ -362,6 +367,13 @@ public:
      * @return The number of pending indexing operations in the queue.
      */
     uint64_t getQueueSize() const;
+
+    /**
+     * @brief Get the total number of dropped events.
+     *
+     * @return The number of events that have been dropped.
+     */
+    uint64_t getDroppedEvents() const;
 
     /**
      * @brief Create a Point In Time (PIT) for the specified indices.

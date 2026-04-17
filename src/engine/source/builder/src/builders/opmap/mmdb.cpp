@@ -5,14 +5,6 @@ namespace builder::builders::mmdb
 
 namespace
 {
-MapOp dumpFailTransform(const std::string& trace, const std::shared_ptr<const RunState>& runstate)
-{
-
-    return [trace, runstate](base::ConstEvent event) -> MapResult
-    {
-        RETURN_FAILURE(runstate, json::Json {}, trace);
-    };
-}
 
 // Only for the MMDB City / Country db
 json::Json mapGeoToECS(const std::string& ip, const std::shared_ptr<geo::ILocator>& locator)
@@ -22,69 +14,69 @@ json::Json mapGeoToECS(const std::string& ip, const std::shared_ptr<geo::ILocato
 
     // Geo data
     auto city = locator->getString(ip, "city.names.en");
-    if (!base::isError(city))
+    if (!city.isError())
     {
-        cityData.setString(getResponse(city), "/city_name");
+        cityData.setString(city.value(), "/city_name");
     }
 
     auto continentCode = locator->getString(ip, "continent.code");
-    if (!base::isError(continentCode))
+    if (!continentCode.isError())
     {
-        cityData.setString(getResponse(continentCode), "/continent_code");
+        cityData.setString(continentCode.value(), "/continent_code");
     }
 
     auto continentName = locator->getString(ip, "continent.names.en");
-    if (!base::isError(continentName))
+    if (!continentName.isError())
     {
-        cityData.setString(getResponse(continentName), "/continent_name");
+        cityData.setString(continentName.value(), "/continent_name");
     }
 
     auto countryIsoCode = locator->getString(ip, "country.iso_code");
-    if (!base::isError(countryIsoCode))
+    if (!countryIsoCode.isError())
     {
-        cityData.setString(getResponse(countryIsoCode), "/country_iso_code");
+        cityData.setString(countryIsoCode.value(), "/country_iso_code");
     }
 
     auto countryName = locator->getString(ip, "country.names.en");
-    if (!base::isError(countryName))
+    if (!countryName.isError())
     {
-        cityData.setString(getResponse(countryName), "/country_name");
+        cityData.setString(countryName.value(), "/country_name");
     }
 
     auto lat = locator->getDouble(ip, "location.latitude");
-    if (!base::isError(lat))
+    if (!lat.isError())
     {
-        cityData.setDouble(getResponse(lat), "/location/lat");
+        cityData.setDouble(lat.value(), "/location/lat");
     }
 
     auto lon = locator->getDouble(ip, "location.longitude");
-    if (!base::isError(lon))
+    if (!lon.isError())
     {
-        cityData.setDouble(getResponse(lon), "/location/lon");
+        cityData.setDouble(lon.value(), "/location/lon");
     }
 
     auto postalCode = locator->getString(ip, "postal.code");
-    if (!base::isError(postalCode))
+    if (!postalCode.isError())
     {
-        cityData.setString(getResponse(postalCode), "/postal_code");
+        cityData.setString(postalCode.value(), "/postal_code");
     }
 
     auto timeZone = locator->getString(ip, "location.time_zone");
-    if (!base::isError(timeZone))
+    if (!timeZone.isError())
     {
-        cityData.setString(getResponse(timeZone), "/timezone");
+        cityData.setString(timeZone.value(), "/timezone");
     }
 
     auto regionIsoCode = locator->getString(ip, "subdivisions.0.iso_code");
-    if (!base::isError(regionIsoCode))
+    if (!regionIsoCode.isError())
     {
-        cityData.setString(getResponse(regionIsoCode), "/region_iso_code");
+        cityData.setString(regionIsoCode.value(), "/region_iso_code");
     }
 
     auto regionName = locator->getString(ip, "subdivisions.0.names.en");
-    if (!base::isError(regionName))
+    if (!regionName.isError())
     {
-        cityData.setString(getResponse(regionName), "/region_name");
+        cityData.setString(regionName.value(), "/region_name");
     }
 
     return cityData;
@@ -96,15 +88,15 @@ json::Json mapAStoECS(const std::string& ip, const std::shared_ptr<geo::ILocator
     asData.setObject();
 
     auto asn = locator->getUint32(ip, "autonomous_system_number");
-    if (!base::isError(asn))
+    if (!asn.isError())
     {
-        asData.setInt64(getResponse(asn), "/number");
+        asData.setInt64(asn.value(), "/number");
     }
 
     auto asnOrg = locator->getString(ip, "autonomous_system_organization");
-    if (!base::isError(asnOrg))
+    if (!asnOrg.isError())
     {
-        asData.setString(getResponse(asnOrg), "/organization/name");
+        asData.setString(asnOrg.value(), "/organization/name");
     }
 
     return asData;
@@ -128,15 +120,7 @@ MapBuilder getMMDBGeoBuilder(const std::shared_ptr<geo::IManager>& geoManager)
             throw std::runtime_error(fmt::format("The reference '{}' is not an IP.", ipRef.dotPath()));
         }
 
-        auto resDB = geoManager->getLocator(geo::Type::CITY);
-        // TODO Temporary error handling, this should be mandatory
-        auto runstate = buildCtx->runState();
         const auto name = buildCtx->context().opName;
-        if (base::isError(resDB))
-        {
-            const auto trace = fmt::format("{} -> Failure: handler error: {}", name, base::getError(resDB).message);
-            return dumpFailTransform(trace, runstate);
-        }
 
         const std::string successTrace {fmt::format("{} -> Success", name)};
         const std::string notFoundTrace {
@@ -145,16 +129,24 @@ MapBuilder getMMDBGeoBuilder(const std::shared_ptr<geo::IManager>& geoManager)
         const std::string notFoundDBTrace {fmt::format("{} -> Failure: IP Not found in DB", name)};
         const std::string emptyDataTrace {fmt::format("{} -> Failure: Empty wcs data", name)};
 
-        return [=, locator = base::getResponse(resDB), srcRef = ipRef.jsonPath()](base::ConstEvent event) -> MapResult
+        auto resDB = geoManager->getLocator(geo::Type::CITY);
+        if (resDB.isError())
+        {
+            throw std::runtime_error(fmt::format("{} -> Failure: Error getting geo city locator: {}", name, resDB.readableStr()));
+        }
+
+        auto runstate = buildCtx->runState();
+
+        return [=, locator = resDB.value(), srcRef = ipRef.jsonPath()](base::ConstEvent event) -> MapResult
         {
             // Get the ip
-            auto ipStr = event->getString(srcRef);
-            if (!ipStr)
+            std::string ipStr;
+            if (event->getString(ipStr, srcRef) != json::RetGet::Success)
             {
                 RETURN_FAILURE(runstate, json::Json {}, notFoundTrace);
             }
 
-            auto geo = mapGeoToECS(ipStr.value(), locator);
+            auto geo = mapGeoToECS(ipStr, locator);
 
             if (geo.size() == 0)
             {
@@ -192,23 +184,22 @@ MapBuilder getMMDBASNBuilder(const std::shared_ptr<geo::IManager>& geoManager)
         }
 
         auto resDB = geoManager->getLocator(geo::Type::ASN);
-        // TODO Temporary error handling, this should be mandatory
-        auto runstate = buildCtx->runState();
-        if (base::isError(resDB))
+        if (resDB.isError())
         {
-            return dumpFailTransform("Error getting geo asn locator: " + base::getError(resDB).message, runstate);
+            throw std::runtime_error(fmt::format("{} -> Failure: Error getting geo asn locator: {}", name, resDB.readableStr()));
         }
+        auto runstate = buildCtx->runState();
 
-        return [=, locator = base::getResponse(resDB), srcRef = ipRef.jsonPath()](base::ConstEvent event) -> MapResult
+        return [=, locator = resDB.value(), srcRef = ipRef.jsonPath()](base::ConstEvent event) -> MapResult
         {
             // Get the ip
-            auto ipStr = event->getString(srcRef);
-            if (!ipStr)
+            std::string ipStr;
+            if (event->getString(ipStr, srcRef) != json::RetGet::Success)
             {
                 RETURN_FAILURE(runstate, json::Json {}, notFoundTrace);
             }
 
-            auto as = mapAStoECS(ipStr.value(), locator);
+            auto as = mapAStoECS(ipStr, locator);
 
             if (as.size() == 0)
             {

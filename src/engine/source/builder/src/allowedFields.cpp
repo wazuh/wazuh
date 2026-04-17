@@ -13,8 +13,8 @@ AllowedFields::AllowedFields(const json::Json& definition)
         throw std::runtime_error {"Allowed fields definition must be an object"};
     }
 
-    auto name = definition.getString(syntax::allowedfields::NAME_PATH);
-    if (!name)
+    std::string name;
+    if (definition.getString(name, syntax::allowedfields::NAME_PATH) != json::RetGet::Success)
     {
         throw std::runtime_error {"Allowed fields definition must have a name"};
     }
@@ -48,7 +48,9 @@ AllowedFields::AllowedFields(const json::Json& definition)
                     fmt::format("Allowed field '{}' for asset '{}' must be a string", field.str(), key)};
             }
 
-            m_fields[key].insert(field.getString().value());
+            std::string fieldStr;
+            field.getString(fieldStr);
+            m_fields[key].insert(std::move(fieldStr));
         }
     }
 }

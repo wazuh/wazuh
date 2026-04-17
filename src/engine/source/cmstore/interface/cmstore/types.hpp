@@ -155,7 +155,6 @@ public:
             return false;
         }
         return std::all_of(ns.begin(), ns.end(), [](char c) { return std::isalnum(c) || c == '_'; });
-        return true;
     }
 };
 

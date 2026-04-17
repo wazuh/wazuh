@@ -79,6 +79,54 @@ auto builderFailure()
     return FailureExpected::Param {FailureExpected::Behaviour(builderExpectation())};
 }
 
+// Helper to test type validation of IP ref fields (ensureStringRef: getJsonType -> String)
+auto expectStringRefType(const std::string& fieldName, json::Json::Type jType)
+{
+    return [=](const BuildersMocks& mocks)
+    {
+        EXPECT_CALL(*mocks.ctx, validator())
+            .Times(testing::AnyNumber())
+            .WillRepeatedly(testing::ReturnRef(*mocks.validator));
+
+        EXPECT_CALL(*mocks.validator, hasField(testing::_))
+            .Times(testing::AnyNumber())
+            .WillRepeatedly(testing::Return(false));
+
+        EXPECT_CALL(*mocks.validator, hasField(DotPath(fieldName)))
+            .Times(testing::AtLeast(1))
+            .WillRepeatedly(testing::Return(true));
+        EXPECT_CALL(*mocks.validator, getJsonType(DotPath(fieldName)))
+            .Times(testing::AtLeast(1))
+            .WillRepeatedly(testing::Return(jType));
+
+        return base::test::None {};
+    };
+}
+
+// Helper to test type validation of port ref fields (ensureNumericRef: getType -> INTEGER/SHORT/LONG)
+auto expectNumericRefType(const std::string& fieldName, schemf::Type sType)
+{
+    return [=](const BuildersMocks& mocks)
+    {
+        EXPECT_CALL(*mocks.ctx, validator())
+            .Times(testing::AnyNumber())
+            .WillRepeatedly(testing::ReturnRef(*mocks.validator));
+
+        EXPECT_CALL(*mocks.validator, hasField(testing::_))
+            .Times(testing::AnyNumber())
+            .WillRepeatedly(testing::Return(false));
+
+        EXPECT_CALL(*mocks.validator, hasField(DotPath(fieldName)))
+            .Times(testing::AtLeast(1))
+            .WillRepeatedly(testing::Return(true));
+        EXPECT_CALL(*mocks.validator, getType(DotPath(fieldName)))
+            .Times(testing::AtLeast(1))
+            .WillRepeatedly(testing::Return(sType));
+
+        return base::test::None {};
+    };
+}
+
 INSTANTIATE_TEST_SUITE_P(
     Builders,
     MapBuilderTest,
@@ -132,7 +180,70 @@ INSTANTIATE_TEST_SUITE_P(
             opBuilderHelperNetworkCommunityId,
             FAILURE(builderFailure())),
         MapT(makeDefaultArgs(), opBuilderHelperNetworkCommunityId, SUCCESS(builderSuccess())),
-        MapT(makeProtoLiteralArgs(17), opBuilderHelperNetworkCommunityId, SUCCESS(builderSuccess()))),
+        MapT(makeProtoLiteralArgs(17), opBuilderHelperNetworkCommunityId, SUCCESS(builderSuccess())),
+        /*** IP ref type validation (ensureStringRef: getJsonType -> String) ***/
+        MapT(makeDefaultArgs(),
+             opBuilderHelperNetworkCommunityId,
+             SUCCESS(expectStringRefType("source.ip", json::Json::Type::String))),
+        MapT(makeDefaultArgs(),
+             opBuilderHelperNetworkCommunityId,
+             FAILURE(expectStringRefType("source.ip", json::Json::Type::Number))),
+        MapT(makeDefaultArgs(),
+             opBuilderHelperNetworkCommunityId,
+             FAILURE(expectStringRefType("source.ip", json::Json::Type::Boolean))),
+        MapT(makeDefaultArgs(),
+             opBuilderHelperNetworkCommunityId,
+             FAILURE(expectStringRefType("source.ip", json::Json::Type::Object))),
+        MapT(makeDefaultArgs(),
+             opBuilderHelperNetworkCommunityId,
+             FAILURE(expectStringRefType("source.ip", json::Json::Type::Array))),
+        MapT(makeDefaultArgs(),
+             opBuilderHelperNetworkCommunityId,
+             FAILURE(expectStringRefType("source.ip", json::Json::Type::Null))),
+        MapT(makeDefaultArgs(),
+             opBuilderHelperNetworkCommunityId,
+             SUCCESS(expectStringRefType("destination.ip", json::Json::Type::String))),
+        MapT(makeDefaultArgs(),
+             opBuilderHelperNetworkCommunityId,
+             FAILURE(expectStringRefType("destination.ip", json::Json::Type::Number))),
+        /*** Port ref type validation (ensureNumericRef: getType -> INTEGER/SHORT/LONG) ***/
+        MapT(makeDefaultArgs(),
+             opBuilderHelperNetworkCommunityId,
+             SUCCESS(expectNumericRefType("source.port", schemf::Type::INTEGER))),
+        MapT(makeDefaultArgs(),
+             opBuilderHelperNetworkCommunityId,
+             SUCCESS(expectNumericRefType("source.port", schemf::Type::SHORT))),
+        MapT(makeDefaultArgs(),
+             opBuilderHelperNetworkCommunityId,
+             SUCCESS(expectNumericRefType("source.port", schemf::Type::LONG))),
+        MapT(makeDefaultArgs(),
+             opBuilderHelperNetworkCommunityId,
+             FAILURE(expectNumericRefType("source.port", schemf::Type::FLOAT))),
+        MapT(makeDefaultArgs(),
+             opBuilderHelperNetworkCommunityId,
+             FAILURE(expectNumericRefType("source.port", schemf::Type::KEYWORD))),
+        MapT(makeDefaultArgs(),
+             opBuilderHelperNetworkCommunityId,
+             FAILURE(expectNumericRefType("source.port", schemf::Type::OBJECT))),
+        MapT(makeDefaultArgs(),
+             opBuilderHelperNetworkCommunityId,
+             SUCCESS(expectNumericRefType("destination.port", schemf::Type::INTEGER))),
+        MapT(makeDefaultArgs(),
+             opBuilderHelperNetworkCommunityId,
+             FAILURE(expectNumericRefType("destination.port", schemf::Type::BOOLEAN))),
+        /*** Proto ref type validation (ensureNumericRef on proto ref) ***/
+        MapT(makeDefaultArgs(),
+             opBuilderHelperNetworkCommunityId,
+             SUCCESS(expectNumericRefType("network.iana_number", schemf::Type::INTEGER))),
+        MapT(makeDefaultArgs(),
+             opBuilderHelperNetworkCommunityId,
+             SUCCESS(expectNumericRefType("network.iana_number", schemf::Type::SHORT))),
+        MapT(makeDefaultArgs(),
+             opBuilderHelperNetworkCommunityId,
+             FAILURE(expectNumericRefType("network.iana_number", schemf::Type::FLOAT))),
+        MapT(makeDefaultArgs(),
+             opBuilderHelperNetworkCommunityId,
+             FAILURE(expectNumericRefType("network.iana_number", schemf::Type::KEYWORD)))),
     testNameFormatter<MapBuilderTest>("NetworkCommunityId"));
 } // namespace mapbuildtest
 

@@ -86,3 +86,29 @@ target_compile_definitions(geo_ctest PRIVATE MMDB_PATH_TEST="${MMDB_PATH_TEST}")
 gtest_discover_tests(geo_ctest)
 
 endif(ENGINE_BUILD_TEST)
+
+# Benchmarks
+if(ENGINE_BUILD_BENCHMARK)
+
+set(BENCH_DIR ${CMAKE_CURRENT_LIST_DIR}/benchmark)
+set(BENCH_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/benchmark/src)
+set(MMDB_PATH_BENCH ${CMAKE_CURRENT_LIST_DIR}/test/src/testdb.mmdb)
+
+add_executable(geo_benchmark
+    ${BENCH_SRC_DIR}/geo_bench.cpp
+)
+target_include_directories(geo_benchmark
+    PRIVATE
+    ${SRC_DIR}
+    ${INC_DIR}/geo
+)
+target_link_libraries(geo_benchmark
+    PRIVATE
+    geo
+    maxminddb::maxminddb
+    benchmark::benchmark
+    benchmark::benchmark_main
+)
+target_compile_definitions(geo_benchmark PRIVATE MMDB_PATH_TEST="${MMDB_PATH_BENCH}")
+
+endif(ENGINE_BUILD_BENCHMARK)
