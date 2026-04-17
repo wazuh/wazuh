@@ -20,8 +20,6 @@ with patch('wazuh.core.common.wazuh_uid'):
         del sys.modules['wazuh.rbac.orm']
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'stats')
-
 
 @pytest.mark.parametrize('agent, daemon, expected_value', [
     (1, 'logcollector', common.REMOTED_SOCKET),
