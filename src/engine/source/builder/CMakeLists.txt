@@ -143,7 +143,6 @@ add_executable(builder_utest
 	${UNIT_SRC_DIR}/builders/opfilter/indexUnclassifiedEvents_test.cpp
 	${UNIT_SRC_DIR}/builders/opfilter/types_test.cpp
 	${UNIT_SRC_DIR}/builders/opfilter/match_test.cpp
-	${UNIT_SRC_DIR}/builders/opfilter/is_test_session_test.cpp
 	${UNIT_SRC_DIR}/builders/opfilter/keys_exist_in_list_test.cpp
 
 	# # Map Builders
