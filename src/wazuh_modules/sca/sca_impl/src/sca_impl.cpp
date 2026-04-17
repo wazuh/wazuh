@@ -141,12 +141,12 @@ void SecurityConfigurationAssessment::Run()
 
     refreshFirstSyncCompletedState();
 
-    // Reset the scan-completed flag only when the first sync has not yet happened.
-    // Once first_sync_completed is set this flag is never polled again, so writing it
+    // Reset the in-memory scan-completed flag only when the first sync has not yet happened.
+    // Once first_sync_completed is set this flag is never polled again, so resetting it
     // on every subsequent restart would be unnecessary overhead.
     if (!m_firstSyncCompleted.load())
     {
-        updateMetadataValue(SCA_SCAN_COMPLETED_METADATA_KEY, 0);
+        m_scanCompleted.store(0);
     }
 
     // Check for policies removed between agent restarts (before scan loop starts).
@@ -305,7 +305,7 @@ void SecurityConfigurationAssessment::Run()
         // sync completes — after that the sync thread no longer polls this flag.
         if (!m_firstSyncCompleted.load())
         {
-            updateMetadataValue(SCA_SCAN_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
+            m_scanCompleted.store(Utils::getSecondsFromEpoch());
         }
     }
 }
@@ -896,24 +896,12 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
         }
         else if (command == "get_scan_completed")
         {
-            int64_t scanCompleted = 0;
-
-            if (getMetadataValue(SCA_SCAN_COMPLETED_METADATA_KEY, scanCompleted))
-            {
-                response["error"] = 0;
-                response["message"] = "SCA scan completion retrieved successfully";
-                response["data"]["action"] = "get_scan_completed";
-                response["data"]["module"] = "sca";
-                response["data"]["scan_completed"] = scanCompleted > 0 ? 1 : 0;
-            }
-            else
-            {
-                response["error"] = 2;
-                response["message"] = "SCA failed getting scan completion";
-                response["data"]["action"] = "get_scan_completed";
-                response["data"]["module"] = "sca";
-                response["data"]["scan_completed"] = 0;
-            }
+            const int64_t scanCompleted = m_scanCompleted.load();
+            response["error"] = 0;
+            response["message"] = "SCA scan completion retrieved successfully";
+            response["data"]["action"] = "get_scan_completed";
+            response["data"]["module"] = "sca";
+            response["data"]["scan_completed"] = scanCompleted > 0 ? 1 : 0;
         }
         else if (command == "set_version")
         {
