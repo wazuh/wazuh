@@ -1884,8 +1884,6 @@ void Syscollector::scan()
 
     if (isFirstScan)
     {
-        m_scanning = false;
-        m_pauseCv.notify_all();
         updateMetadataValue(SYSCOLLECTOR_FIRST_SCAN_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
         m_logFunction(LOG_DEBUG, "First inventory scan completed — marker persisted.");
     }
