@@ -50,8 +50,8 @@
  *
  * Configuration expected under configData["indexer"]:
  * {
- *   "index":               ".cti-cves",               // Indexer CVE index name
- *   "consumerStatusIndex": ".cti-consumers",          // Consumer status index (optional)
+ *   "index":               "wazuh-threatintel-vulnerabilities", // Indexer CVE index name
+ *   "consumerStatusIndex": ".wazuh-cti-consumers",    // Consumer status index (optional)
  *   "consumerStatusId":    "t1-vulnerabilities-5_public-vulnerabilities-5", // Consumer status document id (optional)
  *   "pageSize":            250,                       // Documents per page (optional, default 250)
  *   "numSlices":           2,                         // Parallel PIT slices (optional, default 2)
@@ -123,7 +123,7 @@ private:
     }
 
     /**
-     * @brief Reads the current consumer status document from `.cti-consumers`.
+     * @brief Reads the current consumer status document from `.wazuh-cti-consumers`.
      *
      * The indexer-side contract guarantees that the document status is:
      *   - empty / missing while the consumer is not ready yet,
