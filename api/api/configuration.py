@@ -5,7 +5,6 @@
 import copy
 import datetime
 import os
-import signal
 from typing import Dict, Tuple, Any, List
 
 import yaml

@@ -604,20 +604,18 @@ def test_agent_get_agent_groups_exceptions(socket_mock, send_mock, mock_get_grou
 
     """
     mock_get_groups.return_value = {'valid-group'}
-    with patch('wazuh.core.common.DATABASE_PATH_GLOBAL', new=db_global):
-        try:
-            group_result = get_agent_groups(group_list=[system_groups])
-            assert group_result.failed_items
-            assert next(iter(group_result.failed_items)).code == error_code
-        except WazuhException as e:
-            assert e.code == error_code, 'The exception was raised as expected but "error_code" does not match.'
+    try:
+        group_result = get_agent_groups(group_list=[system_groups])
+        assert group_result.failed_items
+        assert next(iter(group_result.failed_items)).code == error_code
+    except WazuhException as e:
+        assert e.code == error_code, 'The exception was raised as expected but "error_code" does not match.'
 
 
 @pytest.mark.parametrize('group_list', [
     ['group-1'],
     ['invalid-group']
 ])
-@patch('wazuh.core.common.DATABASE_PATH_GLOBAL', new=test_global_bd_path)
 @patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
 def test_agent_get_group_files(group_list):
@@ -887,7 +885,6 @@ async def test_agent_assign_agents_to_group_exceptions(socket_mock, send_mock, m
     ('default', '001'),
     ('group-1', '005')
 ])
-@patch('wazuh.core.common.DATABASE_PATH_GLOBAL', new=test_global_bd_path)
 @patch('wazuh.core.agent.Agent.unset_single_group_agent')
 @patch('wazuh.agent.get_groups')
 @patch('wazuh.agent.get_agents_info')
@@ -1382,7 +1379,6 @@ def test_agent_get_agent_config_exceptions(socket_mock, send_mock, agent_list):
 @pytest.mark.parametrize('filename, group_list', [
     ('agent.conf', ['default'])
 ])
-@patch('wazuh.core.common.DATABASE_PATH_GLOBAL', new=test_global_bd_path)
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
 def test_agent_get_file_conf(filename, group_list):
     """Test `get_file_conf` from agent module.
@@ -1405,7 +1401,6 @@ def test_agent_get_file_conf(filename, group_list):
 @pytest.mark.parametrize('group_list', [
     ['default']
 ])
-@patch('wazuh.core.common.DATABASE_PATH_GLOBAL', new=test_global_bd_path)
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
 def test_agent_get_agent_conf(group_list):
     """Test `get_agent_agent_conf` function from agent module.

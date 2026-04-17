@@ -4,7 +4,6 @@
 
 import logging
 import socket
-from datetime import datetime
 
 from connexion.lifecycle import ConnexionResponse
 

@@ -192,28 +192,6 @@ def test_failed_send_private(send_mock, connect_mock):
             mywdb._send('test_msg')
 
 
-@pytest.mark.parametrize('content', [
-    b'ok {"agents": {"001": "Ok"}}',
-    b'ok {"agents": {"0ad": "Invalid agent ID"}}',
-    b'ok {"agents": {"001": "DB waiting for deletion"}}',
-    b'ok {"agents": {"001": "DB not found"}}'
-])
-@patch("socket.socket.connect")
-@patch("socket.socket.send")
-def test_remove_agents_database(send_mock, connect_mock, content):
-    """
-    Tests delete_agents_db method handle exceptions properly
-    """
-    def recv_mock(size_to_receive):
-        return format_msg(content) if size_to_receive == 4 else content
-
-    with patch('socket.socket.recv', side_effect=recv_mock):
-        mywdb = WazuhDBConnection()
-        received = mywdb.delete_agents_db(['001', '002'])
-        assert(isinstance(received, dict))
-        assert("agents" in received)
-
-
 @pytest.mark.parametrize('error_query', [
     'Agent sql select test',
     'error sql select test',

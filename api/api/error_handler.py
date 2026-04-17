@@ -5,12 +5,11 @@
 from connexion.lifecycle import ConnexionRequest, ConnexionResponse
 from connexion import exceptions
 
-import jwt
 from content_size_limit_asgi.errors import ContentSizeExceeded
 
 from api import configuration
 from api.middlewares import ip_block, ip_stats, ip_lock, LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
-from api.api_exception import BlockedIPException, MaxRequestsException, ExpectFailedException
+from api.api_exception import ExpectFailedException
 from api.controllers.util import json_response, ERROR_CONTENT_TYPE
 from wazuh.core.utils import get_utc_now
 

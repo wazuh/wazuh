@@ -396,8 +396,6 @@ def test_ClusterFilter():
     """Verify that ClusterFilter adds cluster related information into cluster logs"""
     cluster_filter = utils.ClusterFilter(tag='Cluster', subtag='config')
     record = utils.ClusterFilter(tag='Testing', subtag='config')
-    record.update_tag(new_tag='Testing_tag')
-    record.update_subtag(new_subtag='Testing_subtag')
 
     assert cluster_filter.filter(record=record)
 
@@ -482,24 +480,6 @@ async def test_forward_function(distributed_api_mock, concurrent_mock):
     distributed_api_mock.assert_called_once()
     concurrent_mock.assert_called_once()
 
-
-@pytest.mark.parametrize(
-    'cluster_config,expected',
-    (
-        [{'node_type': 'master'}, True],
-        [{'node_type': 'worker'}, False],
-    )
-)
-@patch('wazuh.core.cluster.utils.read_cluster_config')
-def test_running_on_master_node(read_cluster_config_mock, cluster_config, expected):
-    """
-    Test that running_on_master function returns the expected value,
-    based on combinations of disabled/enabled and node type.
-    """
-
-    read_cluster_config_mock.return_value = cluster_config
-
-    assert utils.running_in_master_node() == expected
 
 @pytest.mark.parametrize('result', [
     WazuhError(6001),
