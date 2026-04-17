@@ -64,7 +64,7 @@ public:
     /**
      * @brief Retrieves the policy hash and enabled status for the specified space.
      *
-     * Queries the .cti-policies index to retrieve the SHA-256 hash stored in
+     * Queries the wazuh-threatintel-policies index to retrieve the SHA-256 hash stored in
      * the space.hash.sha256 field and the enabled status from document.enabled
      * for the given space name.
      *
@@ -80,7 +80,7 @@ public:
     /**
      * @brief Checks if a policy exists for the specified space.
      *
-     * Queries the .cti-policies index to determine if at least one policy
+     * Queries the wazuh-threatintel-policies index to determine if at least one policy
      * exists for the given space name.
      *
      * @param space The name of the space to check
@@ -100,7 +100,7 @@ public:
     /**
      * @brief Retrieves per-type IOC hashes from the IOC hashes manifest.
      *
-     * Reads `__ioc_type_hashes__` from `.cti-iocs` and returns all available
+     * Reads `__ioc_type_hashes__` from `wazuh-threatintel-enrichments` and returns all available
      * `hash.sha256` values for the supported IOC types.
      *
      * @return Map(type -> sha256 hash)
