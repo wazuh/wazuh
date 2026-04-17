@@ -10,6 +10,7 @@
 #include "syntax.hpp"
 #include <base/baseTypes.hpp>
 #include <base/utils/ipUtils.hpp>
+#include <fastmetrics/registry.hpp>
 
 namespace builder::builders::opfilter
 {
@@ -1943,7 +1944,6 @@ FilterOp opBuilderHelperIndexUnclassifiedEvents(const Reference& targetField,
     const std::string failureTrace3 {fmt::format(
         "[{}] -> Failure: Policy index_unclassified_events=false or array does not have exactly 1 element", name)};
 
-    // Return Op
     return [=, runState = buildCtx->runState(), targetField = targetField.jsonPath()](
                base::ConstEvent event) -> FilterResult
     {
@@ -1959,17 +1959,18 @@ FilterOp opBuilderHelperIndexUnclassifiedEvents(const Reference& targetField,
             RETURN_FAILURE(runState, false, failureTrace1);
         }
 
-        // Check if field is an array
-        const auto resolvedArray {event->getArray(targetField)};
-        if (!resolvedArray.has_value())
-        {
-            RETURN_FAILURE(runState, false, failureTrace2);
-        }
-
         // Check if array has exactly 1 element
-        if (resolvedArray.value().size() == 1)
+        try
         {
-            RETURN_SUCCESS(runState, true, successTrace);
+            if (event->size(targetField) == 1)
+            {
+                RETURN_SUCCESS(runState, true, successTrace);
+            }
+        }
+        catch (const std::exception&)
+        {
+            // size() throws if field is not an array, object, or string
+            RETURN_FAILURE(runState, false, failureTrace2);
         }
 
         RETURN_FAILURE(runState, false, failureTrace3);

@@ -1,5 +1,5 @@
-#ifndef _GEO_MANAGER_HPP
-#define _GEO_MANAGER_HPP
+#ifndef GEO_MANAGER_HPP
+#define GEO_MANAGER_HPP
 
 #include <map>
 #include <memory>
@@ -112,8 +112,8 @@ public:
     /**
      * @copydoc IManager::getLocator
      */
-    base::RespOrError<std::shared_ptr<ILocator>> getLocator(Type type) const override;
+    Result<std::shared_ptr<ILocator>> getLocator(Type type) const override;
 };
 
 } // namespace geo
-#endif // _GEO_MANAGER_HPP
+#endif // GEO_MANAGER_HPP

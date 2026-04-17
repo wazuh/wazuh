@@ -121,8 +121,8 @@ TEST_F(WIndexerConnectorTest, ConstructorMaxHitsToZero)
     config.username = "admin";
     config.password = "admin";
 
-    // Should Throw because maxHitsPerRequest cannot be zero
-    EXPECT_THROW({ wiconnector::WIndexerConnector connector(config, logFunction, 0); }, std::runtime_error);
+    // Should not throw maxHitsPerRequest set to 0 will fallback to 1.
+    EXPECT_NO_THROW({ wiconnector::WIndexerConnector connector(config, logFunction, 0); });
 }
 
 // Test indexing functionality

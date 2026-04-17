@@ -1180,9 +1180,26 @@ nlohmann::json SysInfo::getUsers() const
 
                 if (!hostStr.empty())
                 {
-                    userItem["host_ip"] = userItem["host_ip"].get<std::string>() == UNKNOWN_VALUE
-                                          ? hostStr
-                                          : (userItem["host_ip"].get<std::string>() + primaryArraySeparator + hostStr);
+                    // Validate IP address before assigning to host_ip field
+                    static auto pfnInetPton { Utils::getInetPtonFunctionAddress() };
+
+                    bool isValidIp = false;
+
+                    if (pfnInetPton)
+                    {
+                        struct in_addr ipv4;
+                        struct in6_addr ipv6;
+                        isValidIp = (pfnInetPton(AF_INET, hostStr.c_str(), &ipv4) == 1) ||
+                                    (pfnInetPton(AF_INET6, hostStr.c_str(), &ipv6) == 1);
+                    }
+
+                    // Only assign if valid IP, otherwise keep UNKNOWN_VALUE
+                    if (isValidIp)
+                    {
+                        userItem["host_ip"] = userItem["host_ip"].get<std::string>() == UNKNOWN_VALUE
+                                              ? hostStr
+                                              : (userItem["host_ip"].get<std::string>() + primaryArraySeparator + hostStr);
+                    }
                 }
             }
         }

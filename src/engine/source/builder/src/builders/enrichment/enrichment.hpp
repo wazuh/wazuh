@@ -4,6 +4,7 @@
 #include <utility>
 
 #include <cmstore/datapolicy.hpp>
+#include <fastmetrics/iMetric.hpp>
 #include <geo/imanager.hpp>
 #include <iockvdb/iManager.hpp>
 
@@ -29,6 +30,16 @@ inline base::Expression makeTraceableSuccessExpression(const base::Expression& e
         base::Term<base::EngineOp>::create("AcceptAll", [](auto e) { return base::result::makeSuccess(e, "SUCCESS"); });
     return base::Implication::create("TraceableSuccess", expr, successTraceable);
 }
+
+/**
+ * @brief Create an expression that increments the unclassified events metric after output.
+ *
+ * @param spaceName space's name, used to create a space-specific metric.
+ * @param unclassifiedCounter Counter to increment for unclassified events.
+ * @return base::Expression The post-output expression.
+ */
+base::Expression postOutputUnclassifiedCounter(const std::string& spaceName,
+                                               std::shared_ptr<fastmetrics::ICounter> unclassifiedCounter);
 
 /**
  * @brief Get the enrichment expression and traceable name for the space defined in the policy.
@@ -82,8 +93,10 @@ EnrichmentBuilder getIocEnrichmentBuilder(const std::shared_ptr<ioc::kvdb::IKVDB
  * @param trace Enable tracing in the filter expression.
  * @return std::pair<base::Expression, std::string> The built filter expression and its traceable name.
  */
-std::pair<base::Expression, std::string> getDiscardedEventsFilter(const cm::store::dataType::Policy& policy,
-                                                                  bool trace);
+std::pair<base::Expression, std::string>
+getDiscardedEventsFilter(const cm::store::dataType::Policy& policy,
+                         bool trace,
+                         const std::shared_ptr<fastmetrics::ICounter>& discardedCounter);
 
 /**
  * @brief Get the cleanup expression to remove temporary decoder variables.
@@ -95,6 +108,21 @@ std::pair<base::Expression, std::string> getDiscardedEventsFilter(const cm::stor
  * @return std::pair<base::Expression, std::string> The built cleanup expression and its traceable name.
  */
 std::pair<base::Expression, std::string> getCleanupDecoderVariables(bool enabled, bool trace);
+
+/**
+ * @brief Create an expression that counts events when a phase expression fails.
+ *
+ * Wraps a phase expression so that when it returns failure (event is discarded by the phase),
+ * the provided counter is incremented.
+ *
+ * @param phaseExpr The phase expression to wrap.
+ * @param counter Counter to increment on phase failure.
+ * @param name Traceable name for the wrapper expression.
+ * @return base::Expression The wrapped expression.
+ */
+base::Expression makeFilterDiscardCounter(const base::Expression& phaseExpr,
+                                          const std::shared_ptr<fastmetrics::ICounter>& counter,
+                                          const std::string& name);
 
 } // namespace builder::builders::enrichment
 

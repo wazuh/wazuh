@@ -1,4 +1,5 @@
 add_subdirectory(adapter)
+add_subdirectory(metrics)
 add_subdirectory(geo)
 add_subdirectory(router)
 add_subdirectory(tester)
@@ -13,6 +14,7 @@ target_include_directories(api INTERFACE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 target_link_libraries(api INTERFACE
+  api::metrics
   api::geo
   api::router
   api::tester

@@ -78,12 +78,14 @@ target_link_libraries(builder
     geo::igeo
     streamlogger::istreamlogger
     wIndexerConnector::iwIndexerConnector
+	fastmetrics::fastmetrics
     logpar
 
     PRIVATE
     re2::re2
     logicexpr
     date::date
+    fastmetrics::fastmetrics
 )
 
 
@@ -200,3 +202,26 @@ target_link_libraries(builder_utest
 gtest_discover_tests(builder_utest)
 
 endif(ENGINE_BUILD_TEST)
+
+# Benchmarks
+if(ENGINE_BUILD_BENCHMARK)
+
+set(BENCH_SRC_DIR ${SRC_DIR}/builders/enrichment/benchmark/src/)
+
+add_executable(builder_benchmark
+    ${BENCH_SRC_DIR}/geoEnrichment_bench.cpp
+)
+target_include_directories(builder_benchmark
+    PRIVATE
+    ${SRC_DIR}
+    ${INC_DIR}
+    ${INC_DIR}/builder
+)
+target_link_libraries(builder_benchmark
+    PRIVATE
+    builder
+    benchmark::benchmark
+    benchmark::benchmark_main
+)
+
+endif(ENGINE_BUILD_BENCHMARK)

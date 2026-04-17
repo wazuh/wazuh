@@ -611,6 +611,11 @@ public:
         return m_dispatcher->size();
     }
 
+    uint64_t getDroppedEvents() const
+    {
+        return m_dispatcher->getDroppedEvents();
+    }
+
     PointInTime
     createPointInTime(const std::vector<std::string>& indices, std::string_view keepAlive, bool expandWildcards)
     {

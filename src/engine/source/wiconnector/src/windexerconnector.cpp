@@ -259,9 +259,14 @@ WIndexerConnector::WIndexerConnector(std::string_view jsonOssecConfig, const std
 {
     if (maxHitsPerRequest == 0)
     {
-        throw std::runtime_error("maxHitsPerRequest must be greater than zero");
+        LOG_WARNING("[indexer-connector] maxHitsPerRequest must be greater than zero, default to 1");
+        m_maxHitsPerRequest = 1;
     }
-    m_maxHitsPerRequest = maxHitsPerRequest;
+    else
+    {
+        m_maxHitsPerRequest = maxHitsPerRequest;
+    }
+
 
     if (jsonOssecConfig.empty())
     {
@@ -284,9 +289,14 @@ WIndexerConnector::WIndexerConnector(const Config& config,
 {
     if (maxHitsPerRequest == 0)
     {
-        throw std::runtime_error("maxHitsPerRequest must be greater than zero");
+        LOG_WARNING("[indexer-connector] maxHitsPerRequest must be greater than zero, default to 1");
+        m_maxHitsPerRequest = 1;
     }
-    m_maxHitsPerRequest = maxHitsPerRequest;
+    else
+    {
+        m_maxHitsPerRequest = maxHitsPerRequest;
+    }
+
 
     nlohmann::json jsonConfig = nlohmann::json::parse(config.toJson(), nullptr, false);
     if (jsonConfig.is_discarded())
@@ -313,6 +323,16 @@ uint64_t WIndexerConnector::getQueueSize()
         return 0;
     }
     return m_indexerConnectorAsync->getQueueSize();
+}
+
+uint64_t WIndexerConnector::getDroppedEvents()
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        return 0;
+    }
+    return m_indexerConnectorAsync->getDroppedEvents();
 }
 
 void WIndexerConnector::index(std::string_view index, std::string_view data)

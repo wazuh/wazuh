@@ -3,6 +3,69 @@ All notable changes to this project will be documented in this file.
 
 ## [v5.0.0]
 
+### Manager
+
+#### Added
+
+- Added cluster-by-default deployment model: all Wazuh Server installations now run as a cluster node, removing the distinction between clustered and non-clustered deployments. The `cluster.disabled` configuration option has been removed. ([#31295](https://github.com/wazuh/wazuh/issues/31295))
+- Added stateless metadata enrichment in `remoted`, centralizing event metadata handling for stateless messages and removing the dependency on `wazuh-db` for that ingestion path. ([#33269](https://github.com/wazuh/wazuh/issues/33269))
+- Added Engine enrichment support: IOC matching, GeoIP lookup, and event filters. ([#33493](https://github.com/wazuh/wazuh/issues/33493))
+- Added Engine adaptation tier 2: raw archives handling, uncategorized event routing, input-level throttling, and internal metrics exposure. ([#34477](https://github.com/wazuh/wazuh/issues/34477))
+- Added Wazuh Instance Registration status to reflect CTI `access_token` availability (`Pending`, `Polling`, `Denied`, `Available`), allowing the Dashboard to query the subscription state. ([#31906](https://github.com/wazuh/wazuh/pull/31906))
+
+#### Changed
+
+- Upgraded embedded Python interpreter from 3.10 to 3.12. ([#33377](https://github.com/wazuh/wazuh/issues/33377)) ([#33570](https://github.com/wazuh/wazuh/issues/33570))
+- Adapted Vulnerability Detector input pipeline to the new Wazuh 5.0 synchronization algorithm, covering first-scan, inventory-change, and feed-update scenarios. ([#30535](https://github.com/wazuh/wazuh/issues/30535))
+- Revamped Role-Based Access Control (RBAC) management and introduced an upgrade mechanism for existing RBAC configurations. ([#27706](https://github.com/wazuh/wazuh/issues/27706))
+- Removed legacy configuration surfaces, database schemas, build targets, and compatibility layers in the second server cleanup phase. ([#34608](https://github.com/wazuh/wazuh/issues/34608))
+
+#### Removed
+
+- Removed Filebeat as the log-shipping component; event forwarding now uses native Wazuh server connectivity to the Wazuh Indexer via `indexer-connector`. ([#33124](https://github.com/wazuh/wazuh/pull/33124))
+- Removed deprecated manager daemons: `ossec-authd`, `wazuh-agentlessd`, `wazuh-maild`, `wazuh-dbd`. ([#30922](https://github.com/wazuh/wazuh/issues/30922))
+- Removed deprecated C CLI tools: `manage_agents`, `agent-auth`. ([#30924](https://github.com/wazuh/wazuh/issues/30924))
+- Removed OpenSCAP server-side module. ([#31028](https://github.com/wazuh/wazuh/issues/31028))
+- Removed inventory-related API endpoints. ([#31299](https://github.com/wazuh/wazuh/issues/31299))
+- Removed legacy API security configuration endpoints. ([#28425](https://github.com/wazuh/wazuh/issues/28425))
+
+#### Fixed
+
+- Fixed Vulnerability Detector version matcher logic for improved detection accuracy. ([#31746](https://github.com/wazuh/wazuh/issues/31746))
+- Fixed Cloudtrail log ingestion parsing errors. ([#33108](https://github.com/wazuh/wazuh/issues/33108))
+
+### Agent
+
+#### Added
+
+- Added local state persistence for agent modules (FIM, System Inventory, SCA), removing the dependency on `rsync` with the Wazuh Server and reducing network traffic and server-side processing overhead. ([#29533](https://github.com/wazuh/wazuh/issues/29533)) ([#31838](https://github.com/wazuh/wazuh/issues/31838))
+
+#### Changed
+
+- Changed the Wazuh Manager installation path to `/var/wazuh-manager` (replacing `/var/ossec`) and removed agent ID `000`, fully decoupling agent and manager processes on shared hosts. ([#33378](https://github.com/wazuh/wazuh/issues/33378))
+- Changed Vulnerability Detection to use the Wazuh Indexer as the sole authoritative CVE data source, removing direct CTI network access from the agent-side Vulnerability Detector. ([#34849](https://github.com/wazuh/wazuh/issues/34849))
+- Adjusted agent-side Vulnerability Detector inventory emission and synchronization (OS, packages, hotfixes) to align with the updated VD behavior in Wazuh 5.0. ([#33199](https://github.com/wazuh/wazuh/issues/33199))
+- Simplified rootcheck: removed the server-side database, sync path, and API surface; findings are now indexed through the standard alert pipeline. ([#31478](https://github.com/wazuh/wazuh/issues/31478))
+- Updated logcollector file-tailing initial read strategy for more consistent behavior across log rotation scenarios. ([#33382](https://github.com/wazuh/wazuh/issues/33382))
+- Updated Windows Event Channel log collection to emit native XML from `EvtRender()` without an XML declaration header. ([#34462](https://github.com/wazuh/wazuh/issues/34462))
+- Increased default limits for agent event throughput and inventory message sizes. ([#35330](https://github.com/wazuh/wazuh/issues/35330))
+
+#### Removed
+
+- Removed deprecated agent binaries and legacy modules as part of the Wazuh 5.0 agent cleanup. ([#30435](https://github.com/wazuh/wazuh/issues/30435))
+- Removed NSIS-based Windows agent installer; Windows agent now ships exclusively as an MSI package. ([#31582](https://github.com/wazuh/wazuh/issues/31582))
+
+#### Fixed
+
+- Fixed FIM checksum calculation that was incorrectly ignoring some file fields. ([#29668](https://github.com/wazuh/wazuh/issues/29668))
+- Fixed syscollector reporting duplicate and bogus packages on macOS arm64. ([#30513](https://github.com/wazuh/wazuh/issues/30513))
+- Fixed `agent_control` not displaying agent status information. ([#32915](https://github.com/wazuh/wazuh/issues/32915))
+- Fixed SCA handling of invalid operators and missing values in regex patterns. ([#35071](https://github.com/wazuh/wazuh/issues/35071))
+- Fixed agent modules initializing before agent metadata was fully ready. ([#35156](https://github.com/wazuh/wazuh/issues/35156))
+- Fixed FIM inventory reporting file modification time as 1970-01-01. ([#35162](https://github.com/wazuh/wazuh/issues/35162))
+- Fixed agent automatic reload failing after receiving centralized configuration. ([#35169](https://github.com/wazuh/wazuh/issues/35169))
+- Fixed syscollector false positive package detection on macOS. ([#35248](https://github.com/wazuh/wazuh/issues/35248))
+
 ## [v4.14.5]
 
 ### Agent

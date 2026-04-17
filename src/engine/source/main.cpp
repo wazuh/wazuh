@@ -17,6 +17,7 @@
 #include <base/process.hpp>
 #include <base/utils/singletonLocator.hpp>
 #include <base/utils/singletonLocatorStrategies.hpp>
+#include <base/utils/timeUtils.hpp>
 #include <bk/rx/controller.hpp>
 #include <builder/allowedFields.hpp>
 #include <builder/builder.hpp>
@@ -28,6 +29,7 @@
 #include <confremote/confremotemanager.hpp>
 #include <defs/defs.hpp>
 #include <eMessages/eMessage.h>
+#include <fastmetrics/registry.hpp>
 #include <fastqueue/cqueue.hpp>
 #include <fastqueue/stdqueue.hpp>
 #include <geo/downloader.hpp>
@@ -98,6 +100,9 @@ Options parseOptions(int argc, char* argv[])
 
 int main(int argc, char* argv[])
 {
+    // Capture engine start time as ISO 8601 for metrics uptime
+    const std::string engineUptimeISO = base::utils::time::getCurrentISO8601();
+
     // exit handler
     cmd::details::StackExecutor exitHandler {};
     const auto opts = parseOptions(argc, argv);
@@ -235,6 +240,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<kvdbstore::IKVDBManager> kvdbManager;
     std::shared_ptr<ioc::kvdb::IKVDBManager> IOCkvdb;
     std::shared_ptr<geo::Manager> geoManager;
+    std::shared_ptr<fastmetrics::Manager> metricsManager;
     std::shared_ptr<schemf::Schema> schemaValidator;
     std::shared_ptr<scheduler::Scheduler> scheduler;
     std::shared_ptr<streamlog::LogManager> streamLogger;
@@ -329,6 +335,12 @@ int main(int argc, char* argv[])
             LOG_INFO("Geo initialized.");
         }
 
+        // Fast Metrics
+        {
+            fastmetrics::registerManager();
+            LOG_INFO("Fast metrics initialized.");
+        }
+
         // Schema
         {
             schemaValidator = std::make_shared<schemf::Schema>();
@@ -402,10 +414,36 @@ int main(int argc, char* argv[])
                 const auto maxQueueSize = confManager.get<size_t>(conf::key::INDEXER_QUEUE_MAX_EVENTS);
                 jsonCnf.setUint64(maxQueueSize, "/max_queue_size");
                 const auto maxHitsPerRequest =
-                    confManager.get<std::size_t>(conf::key::INDEXER_CONNECTOR_MAX_HITS_PER_REQUEST);
+                    confManager.get<std::size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE);
 
                 // Create indexer connector with enhanced configuration
                 indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf.str(), maxHitsPerRequest);
+
+                // Register pull metric for indexer queue (output/egress)
+                std::weak_ptr<wiconnector::WIndexerConnector> wIndexer = indexerConnector;
+                FASTMETRICS_PULL(uint64_t,
+                                 fastmetrics::names::INDEXER_QUEUE_SIZE,
+                                 [wIndexer]()
+                                 {
+                                     auto connector = wIndexer.lock();
+                                     return connector ? connector->getQueueSize() : 0;
+                                 });
+
+                FASTMETRICS_PULL(uint64_t,
+                                 fastmetrics::names::INDEXER_EVENTS_DROPPED,
+                                 [wIndexer]()
+                                 {
+                                     auto connector = wIndexer.lock();
+                                     return connector ? connector->getDroppedEvents() : 0;
+                                 });
+
+                auto indexerQueueUsageGetter = [wIndexer, maxQueueSize]()
+                {
+                    auto connector = wIndexer.lock();
+                    auto currentSize = connector ? connector->getQueueSize() : 0;
+                    return maxQueueSize > 0 ? (static_cast<double>(currentSize) * 100.0 / maxQueueSize) : 0.0;
+                };
+                FASTMETRICS_PULL(double, fastmetrics::names::INDEXER_QUEUE_USAGE_PERCENT, indexerQueueUsageGetter);
 
                 // Log pending events from previous sessions
                 const auto pendingEvents = indexerConnector->getQueueSize();
@@ -701,7 +739,14 @@ int main(int argc, char* argv[])
                     eMessage::ShutdownEMessageLibrary();
                 });
 
-            // TODO Add Metrics API registration
+            // Metrics - create non-owning shared_ptr to singleton
+            metricsManager = std::shared_ptr<fastmetrics::Manager>(&fastmetrics::manager(),
+                                                                   [](fastmetrics::Manager*) {
+                                                                   } // Empty deleter - singleton is owned elsewhere
+            );
+            api::metrics::handlers::registerHandlers(
+                metricsManager, apiServer, "wazuh-manager-analysisd", engineUptimeISO);
+            LOG_DEBUG("Metrics API registered.");
 
             // Geo
             api::geo::handlers::registerHandlers(geoManager, apiServer);
@@ -742,6 +787,39 @@ int main(int argc, char* argv[])
 
             // Finally start the API server
             apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));
+
+            // Start metrics stream logging task (on-demand channel creation)
+            // Only enabled via internal_options.conf
+            if (streamLogger && confManager.get<bool>(conf::key::METRICS_LOG_ENABLED))
+            {
+                // Prepare metrics channel configuration (lazy creation on first write)
+                const auto metricsChannelConfig = streamlog::RotationConfig {
+                    .basePath = confManager.get<std::string>(conf::key::STREAMLOG_BASE_PATH),
+                    .pattern = confManager.get<std::string>(conf::key::STREAMLOG_METRICS_PATTERN),
+                    .maxSize = confManager.get<size_t>(conf::key::STREAMLOG_METRICS_MAX_SIZE),
+                    .bufferSize = confManager.get<size_t>(conf::key::STREAMLOG_METRICS_BUFFER_SIZE),
+                    .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
+                    .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
+
+                auto metricsWriter = streamLogger->ensureAndGetWriter("engine-metrics", metricsChannelConfig, "json");
+
+                scheduler::TaskConfig metricsConfig {.interval =
+                                                         confManager.get<size_t>(conf::key::METRICS_LOG_INTERVAL),
+                                                     .CPUPriority = 0,
+                                                     .timeout = 0,
+                                                     .taskFunction = [metricsWriter, metricsManager]()
+                                                     {
+                                                         metricsManager->writeAllMetrics(metricsWriter);
+                                                     }};
+
+                scheduler->scheduleTask("MetricsLogger", std::move(metricsConfig));
+                LOG_INFO("Metrics stream logging enabled (interval: {} seconds, on-demand channel creation).",
+                         confManager.get<size_t>(conf::key::METRICS_LOG_INTERVAL));
+            }
+            else if (!confManager.get<bool>(conf::key::METRICS_LOG_ENABLED))
+            {
+                LOG_DEBUG("Metrics stream logging DISABLED.");
+            }
         }
 
         // HTTP enriched events server

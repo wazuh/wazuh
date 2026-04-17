@@ -3,9 +3,20 @@
 #include "builders/baseBuilders_test.hpp"
 #include "builders/stage/indexerOutput.hpp"
 
+#include <fastmetrics/registry.hpp>
 #include <wiconnector/mockswindexerconnector.hpp>
 
 using namespace builder::builders;
+
+namespace
+{
+// Register fastmetrics manager once for all tests in this file
+struct FastMetricsInit
+{
+    FastMetricsInit() { fastmetrics::registerManager(); }
+};
+static FastMetricsInit fastMetricsInit_;
+} // namespace
 
 namespace stagebuildtest
 {

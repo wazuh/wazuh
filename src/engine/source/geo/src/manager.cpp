@@ -399,7 +399,7 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
     LOG_DEBUG("[Geo::Manager] Finished synchronization of geo databases");
 }
 
-base::RespOrError<std::shared_ptr<ILocator>> Manager::getLocator(Type type) const
+Result<std::shared_ptr<ILocator>> Manager::getLocator(Type type) const
 {
     // Search the database with read lock
     std::shared_lock lock(m_rwMapMutex);
@@ -407,14 +407,14 @@ base::RespOrError<std::shared_ptr<ILocator>> Manager::getLocator(Type type) cons
     // Check if the type has a database
     if (m_dbTypes.find(type) == m_dbTypes.end())
     {
-        return base::Error {fmt::format("Type '{}' does not have a database", typeName(type))};
+        return ErrorCode::DB_TYPE_NOT_AVAILABLE;
     }
 
     // Get the database handle and return the locator
     auto handle = m_dbs.at(m_dbTypes.at(type));
     auto locator = std::make_shared<Locator>(handle);
 
-    return locator;
+    return Result<std::shared_ptr<ILocator>>(locator);
 }
 
 std::vector<DbInfo> Manager::listDbs() const
