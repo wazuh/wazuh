@@ -20,7 +20,7 @@ The following commands runs a cluster:
 If a single docker is needed, it is possible to run:
 1. Move to the dockefile location for instance:
  `cd wazuh-manager`
-2. Run `docker build -t dev-wazuh-manager --target server ./wazuh-manager`
+2. Run `docker build -t wazuh-manager --target server ./wazuh-manager`
 3. Define .env with the necessary environment variables
 4. Run docker:
 ```
@@ -32,7 +32,7 @@ docker run -d \
 -v ${WAZUH_LOCAL_PATH}/api/scripts:/var/wazuh-manager/api/scripts \
 -v ${WAZUH_LOCAL_PATH}/framework/wazuh:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/wazuh \
 -v ${WAZUH_LOCAL_PATH}/api/api:/var/wazuh-manager/framework/python/lib/python${WAZUH_PYTHON_VERSION}/site-packages/api \
-dev-wazuh-manager \
+wazuh-manager \
 /scripts/entrypoint.sh wazuh-master master-node master
 ```
 If we need more agents we can use:

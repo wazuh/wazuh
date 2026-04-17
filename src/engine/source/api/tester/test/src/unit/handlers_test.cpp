@@ -202,8 +202,7 @@ INSTANTIATE_TEST_SUITE_P(
                 return req;
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionPost(tester); },
-            []()
-            {
+            []() {
                 return userErrorResponse<eEngine::GenericStatus_Response>(
                     "Invalid policy name: Invalid namespace ID: ");
             },
@@ -222,8 +221,7 @@ INSTANTIATE_TEST_SUITE_P(
                 return req;
             },
             [](const std::shared_ptr<::router::ITesterAPI>& tester) { return sessionPost(tester); },
-            []()
-            {
+            []() {
                 return userErrorResponse<eEngine::GenericStatus_Response>(
                     "Invalid policy name: Invalid namespace ID: not-valid");
             },
@@ -462,7 +460,31 @@ INSTANTIATE_TEST_SUITE_P(
             []()
             {
                 return userErrorResponse<eEngine::tester::RunPost_Response>(
-                    "Metadata must be a non-empty object with 'wazuh' as root");
+                    "Metadata should contain 'wazuh' as root");
+            },
+            []() { return makeSchemaValidator(false); },
+        },
+        // Additional fail case with invalid metadata
+        LogtestPostCase {
+            "Failed metadata",
+            []()
+            {
+                eEngine::tester::PublicRunPost_Request protoReq;
+                protoReq.set_queue(1);
+                protoReq.set_location("/var/log/test");
+                protoReq.set_event("some event");
+                protoReq.set_trace_level("NONE");
+
+                google::protobuf::Struct meta;
+                (*meta.mutable_fields())["wazuh"].set_number_value(123);
+                *protoReq.mutable_metadata() = meta;
+                return protoReq;
+            },
+            [](auto& tester) { EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0); },
+            []()
+            {
+                return userErrorResponse<eEngine::tester::RunPost_Response>(
+                    "Metadata should contain 'wazuh' as root");
             },
             []() { return makeSchemaValidator(false); },
         },
@@ -487,8 +509,7 @@ INSTANTIATE_TEST_SUITE_P(
                 // Handler should fail before calling ingestTest
                 EXPECT_CALL(tester, ingestTest(testing::_, testing::_)).Times(0);
             },
-            []()
-            {
+            []() {
                 return userErrorResponse<eEngine::tester::RunPost_Response>(
                     "queue is required and must be non-zero (1..255)");
             },
@@ -797,7 +818,7 @@ INSTANTIATE_TEST_SUITE_P(
                 EXPECT_EQ(v.errors(0).kind(), "unknown_field");
             },
         },
-        // 7 ─ unknown empty object (subtree pruned at the parent)
+        // 7 ─ unknown empty object (subtree skipped at the parent)
         OutputValidationCase {
             "UnknownEmptyObject",
             R"({"foo":{}})",
@@ -810,7 +831,7 @@ INSTANTIATE_TEST_SUITE_P(
                 EXPECT_EQ(v.errors(0).kind(), "unknown_field");
             },
         },
-        // 8 ─ unknown empty array (subtree pruned at the parent)
+        // 8 ─ unknown empty array (subtree skipped at the parent)
         OutputValidationCase {
             "UnknownEmptyArray",
             R"({"foo":[]})",
@@ -823,17 +844,15 @@ INSTANTIATE_TEST_SUITE_P(
                 EXPECT_EQ(v.errors(0).kind(), "unknown_field");
             },
         },
-        // 9 ─ _tmp.* (entire subtree reported as one error at the _ root)
+        // 9 ─ _tmp.* (entire subtree excluded from validation report)
         OutputValidationCase {
             "TemporaryField",
             R"({"_tmp":{"stage1":"data","stage2":42}})",
             []() -> std::shared_ptr<schemf::IValidator> { return makeSchemaMock({}); },
             [](const eEngine::tester::Result_Validation& v)
             {
-                ASSERT_FALSE(v.valid());
-                ASSERT_EQ(v.errors_size(), 1);
-                EXPECT_EQ(v.errors(0).path(), "_tmp");
-                EXPECT_EQ(v.errors(0).kind(), "temporary_field_not_allowed");
+                EXPECT_TRUE(v.valid());
+                EXPECT_EQ(v.errors_size(), 0);
             },
         },
         // 10 ─ object where the schema expects a scalar
@@ -898,7 +917,7 @@ INSTANTIATE_TEST_SUITE_P(
                 EXPECT_EQ(v.errors_size(), 0);
             },
         },
-        // 13 ─ deterministic error ordering
+        // 13 ─ deterministic error ordering (temporaries excluded from report)
         // The final validateOutputEvent sort is the only ordering guarantee;
         // object children are visited in getObject() order (not sorted).
         OutputValidationCase {
@@ -908,18 +927,207 @@ INSTANTIATE_TEST_SUITE_P(
             [](const eEngine::tester::Result_Validation& v)
             {
                 ASSERT_FALSE(v.valid());
-                ASSERT_EQ(v.errors_size(), 4);
-                EXPECT_EQ(v.errors(0).path(), "_a");
-                EXPECT_EQ(v.errors(0).kind(), "temporary_field_not_allowed");
-                EXPECT_EQ(v.errors(1).path(), "_b");
-                EXPECT_EQ(v.errors(1).kind(), "temporary_field_not_allowed");
-                EXPECT_EQ(v.errors(2).path(), "aaa");
-                EXPECT_EQ(v.errors(2).kind(), "unknown_field");
-                EXPECT_EQ(v.errors(3).path(), "zzz");
-                EXPECT_EQ(v.errors(3).kind(), "unknown_field");
+                ASSERT_EQ(v.errors_size(), 2);
+                EXPECT_EQ(v.errors(0).path(), "aaa");
+                EXPECT_EQ(v.errors(0).kind(), "unknown_field");
+                EXPECT_EQ(v.errors(1).path(), "zzz");
+                EXPECT_EQ(v.errors(1).kind(), "unknown_field");
             },
         }),
     [](const testing::TestParamInfo<OutputValidationCase>& info) { return info.param.name; });
+
+// Additional tests: /logtest excludes temporary fields from validation (issue #35416)
+//
+// These verify that temporary fields (_...) are ignored by
+// /logtest WCS validation, while real schema errors are still reported.
+
+struct LogtestTemporaryExclusionCase
+{
+    std::string name;
+    std::string outputJson;
+    std::function<std::shared_ptr<schemf::IValidator>()> makeSchema;
+    std::function<void(const eEngine::tester::Result_Validation&)> check;
+};
+
+class LogtestTemporaryExclusionTest : public ::testing::TestWithParam<LogtestTemporaryExclusionCase>
+{
+};
+
+TEST_P(LogtestTemporaryExclusionTest, Handler)
+{
+    const auto& tc = GetParam();
+    auto schema = tc.makeSchema();
+    auto v = runOutputValidation(tc.outputJson, schema);
+    tc.check(v);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Api,
+    LogtestTemporaryExclusionTest,
+    ::testing::Values(
+        // 1 ─ only temporaries + valid WCS fields → valid, no errors
+        LogtestTemporaryExclusionCase {
+            "TemporaryPlusValidWcsFields",
+            R"({"_tmp":{"stage":"data"},"code":"42"})",
+            []() -> std::shared_ptr<schemf::IValidator> { return makeSchemaMock({{"code", schemf::Type::KEYWORD}}); },
+            [](const eEngine::tester::Result_Validation& v)
+            {
+                EXPECT_TRUE(v.valid());
+                EXPECT_EQ(v.errors_size(), 0);
+            },
+        },
+        // 2 ─ temporaries + real type error → only invalid_type reported
+        LogtestTemporaryExclusionCase {
+            "TemporaryPlusTypeMismatch",
+            R"({"_tmp":{"x":1},"severity":"bad"})",
+            []() -> std::shared_ptr<schemf::IValidator>
+            {
+                return makeSchemaMock(
+                    {{"severity", schemf::Type::LONG}},
+                    [](const DotPath& name, const json::Json& value) -> base::RespOrError<schemf::ValidationResult>
+                    {
+                        if (name.str() == "severity" && value.isString())
+                            return base::Error {"expected long"};
+                        return schemf::ValidationResult {};
+                    });
+            },
+            [](const eEngine::tester::Result_Validation& v)
+            {
+                ASSERT_FALSE(v.valid());
+                ASSERT_EQ(v.errors_size(), 1);
+                EXPECT_EQ(v.errors(0).path(), "severity");
+                EXPECT_EQ(v.errors(0).kind(), "invalid_type");
+            },
+        },
+        // 3 ─ unknown real field + temporaries → only unknown_field for the real field
+        LogtestTemporaryExclusionCase {
+            "UnknownFieldPlusTemporary",
+            R"({"custom_foo":"val","_decoder_vars":{"a":1}})",
+            []() -> std::shared_ptr<schemf::IValidator> { return makeSchemaMock({}); },
+            [](const eEngine::tester::Result_Validation& v)
+            {
+                ASSERT_FALSE(v.valid());
+                ASSERT_EQ(v.errors_size(), 1);
+                EXPECT_EQ(v.errors(0).path(), "custom_foo");
+                EXPECT_EQ(v.errors(0).kind(), "unknown_field");
+            },
+        },
+        // 4 ─ temporary as nested subtree/object with children → excluded entirely
+        LogtestTemporaryExclusionCase {
+            "TemporarySubtreeObject",
+            R"({"_internal":{"deep":{"nested":"value"},"list":[1,2,3]}})",
+            []() -> std::shared_ptr<schemf::IValidator> { return makeSchemaMock({}); },
+            [](const eEngine::tester::Result_Validation& v)
+            {
+                EXPECT_TRUE(v.valid());
+                EXPECT_EQ(v.errors_size(), 0);
+            },
+        },
+        // 5 ─ multiple temporaries in an otherwise valid event
+        LogtestTemporaryExclusionCase {
+            "MultipleTemporariesValid",
+            R"({"_a":"x","_b":{"nested":true},"_c":[1,2],"code":"42"})",
+            []() -> std::shared_ptr<schemf::IValidator> { return makeSchemaMock({{"code", schemf::Type::KEYWORD}}); },
+            [](const eEngine::tester::Result_Validation& v)
+            {
+                EXPECT_TRUE(v.valid());
+                EXPECT_EQ(v.errors_size(), 0);
+            },
+        },
+        // 6 ─ empty event (no fields at all) → valid
+        LogtestTemporaryExclusionCase {
+            "EmptyEvent",
+            R"({})",
+            []() -> std::shared_ptr<schemf::IValidator> { return makeSchemaMock({}); },
+            [](const eEngine::tester::Result_Validation& v)
+            {
+                EXPECT_TRUE(v.valid());
+                EXPECT_EQ(v.errors_size(), 0);
+            },
+        }),
+    [](const testing::TestParamInfo<LogtestTemporaryExclusionCase>& info) { return info.param.name; });
+
+/***********************************************************************
+ * /tester/run/post: verify that temporary fields ARE reported
+ *
+ * Unlike /logtest, the private endpoint preserves temporary_field_not_allowed
+ * in the validation report. This test drives runPost() directly.
+ **********************************************************************/
+
+/// Helper: run runPost with a canned output event and return validation.
+namespace
+{
+eEngine::tester::Result_Validation runPrivateOutputValidation(const std::string& outputJson,
+                                                              const std::shared_ptr<schemf::IValidator>& schema)
+{
+    auto tester = std::make_shared<MockTesterAPI>();
+    EXPECT_CALL(*tester, ingestTest(testing::_, testing::_))
+        .WillOnce(
+            [outputJson](auto&&, auto&&)
+            {
+                std::promise<base::RespOrError<::router::test::Output>> p;
+                p.set_value(makeOutput(outputJson));
+                return p.get_future();
+            });
+
+    eEngine::tester::RunPost_Request protoReq;
+    protoReq.set_name("test-session");
+    protoReq.set_event("1:/var/log/test:some event");
+    protoReq.set_trace_level(eEngine::tester::TraceLevel::NONE);
+
+    httplib::Response res;
+    runPost(tester, base::eventParsers::parseLegacyEvent, schema)(
+        createRequest<eEngine::tester::RunPost_Request>(protoReq), res);
+
+    EXPECT_EQ(res.status, 200);
+
+    auto parsed = eMessage::eMessageFromJson<eEngine::tester::RunPost_Response>(res.body);
+    if (!std::holds_alternative<eEngine::tester::RunPost_Response>(parsed))
+    {
+        ADD_FAILURE() << "Failed to parse RunPost_Response";
+        return {};
+    }
+
+    const auto& r = std::get<eEngine::tester::RunPost_Response>(parsed);
+    EXPECT_EQ(r.status(), eEngine::ReturnStatus::OK);
+    EXPECT_TRUE(r.has_result());
+    EXPECT_TRUE(r.result().has_validation());
+    return r.result().validation();
+}
+} // namespace
+
+TEST(RunPostTemporaryValidation, TemporaryFieldReportsError)
+{
+    auto schema = makeSchemaMock({});
+    auto v = runPrivateOutputValidation(R"({"_tmp":{"stage":"data"}})", schema);
+
+    ASSERT_FALSE(v.valid());
+    ASSERT_EQ(v.errors_size(), 1);
+    EXPECT_EQ(v.errors(0).path(), "_tmp");
+    EXPECT_EQ(v.errors(0).kind(), "temporary_field_not_allowed");
+}
+
+TEST(RunPostTemporaryValidation, TemporaryPlusUnknownReportsBoth)
+{
+    auto schema = makeSchemaMock({});
+    auto v = runPrivateOutputValidation(R"({"_tmp":"x","custom":"y"})", schema);
+
+    ASSERT_FALSE(v.valid());
+    ASSERT_EQ(v.errors_size(), 2);
+    EXPECT_EQ(v.errors(0).path(), "_tmp");
+    EXPECT_EQ(v.errors(0).kind(), "temporary_field_not_allowed");
+    EXPECT_EQ(v.errors(1).path(), "custom");
+    EXPECT_EQ(v.errors(1).kind(), "unknown_field");
+}
+
+TEST(RunPostTemporaryValidation, ValidFieldsNoTemporariesNoErrors)
+{
+    auto schema = makeSchemaMock({{"code", schemf::Type::KEYWORD}});
+    auto v = runPrivateOutputValidation(R"({"code":"42"})", schema);
+
+    EXPECT_TRUE(v.valid());
+    EXPECT_EQ(v.errors_size(), 0);
+}
 
 class LogtestDeleteTest : public ::testing::TestWithParam<LogtestDeleteCase>
 {

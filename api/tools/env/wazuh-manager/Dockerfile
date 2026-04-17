@@ -1,4 +1,4 @@
-FROM dev-wazuh-base AS builder
+FROM wazuh-base AS builder
 
 COPY preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
 RUN THREADS=$(nproc) /wazuh/install.sh

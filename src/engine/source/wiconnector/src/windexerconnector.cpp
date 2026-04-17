@@ -259,9 +259,14 @@ WIndexerConnector::WIndexerConnector(std::string_view jsonOssecConfig, const std
 {
     if (maxHitsPerRequest == 0)
     {
-        throw std::runtime_error("maxHitsPerRequest must be greater than zero");
+        LOG_WARNING("[indexer-connector] maxHitsPerRequest must be greater than zero, default to 1");
+        m_maxHitsPerRequest = 1;
     }
-    m_maxHitsPerRequest = maxHitsPerRequest;
+    else
+    {
+        m_maxHitsPerRequest = maxHitsPerRequest;
+    }
+
 
     if (jsonOssecConfig.empty())
     {
@@ -275,7 +280,7 @@ WIndexerConnector::WIndexerConnector(std::string_view jsonOssecConfig, const std
     }
 
     const auto logFunction = logging::createStandaloneLogFunction();
-    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonParsed, logFunction);
+    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonParsed, "engine", logFunction);
 }
 
 WIndexerConnector::WIndexerConnector(const Config& config,
@@ -284,9 +289,14 @@ WIndexerConnector::WIndexerConnector(const Config& config,
 {
     if (maxHitsPerRequest == 0)
     {
-        throw std::runtime_error("maxHitsPerRequest must be greater than zero");
+        LOG_WARNING("[indexer-connector] maxHitsPerRequest must be greater than zero, default to 1");
+        m_maxHitsPerRequest = 1;
     }
-    m_maxHitsPerRequest = maxHitsPerRequest;
+    else
+    {
+        m_maxHitsPerRequest = maxHitsPerRequest;
+    }
+
 
     nlohmann::json jsonConfig = nlohmann::json::parse(config.toJson(), nullptr, false);
     if (jsonConfig.is_discarded())
@@ -294,7 +304,7 @@ WIndexerConnector::WIndexerConnector(const Config& config,
         throw std::runtime_error("Invalid JSON configuration for IndexerConnector");
     }
 
-    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonConfig, logFunction);
+    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonConfig, "engine", logFunction);
 }
 
 WIndexerConnector::~WIndexerConnector() = default;
@@ -313,6 +323,16 @@ uint64_t WIndexerConnector::getQueueSize()
         return 0;
     }
     return m_indexerConnectorAsync->getQueueSize();
+}
+
+uint64_t WIndexerConnector::getDroppedEvents()
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        return 0;
+    }
+    return m_indexerConnectorAsync->getDroppedEvents();
 }
 
 void WIndexerConnector::index(std::string_view index, std::string_view data)
@@ -654,8 +674,8 @@ WIndexerConnector::streamIocsByType(std::string_view iocType, std::size_t batchS
         batchSize,
         [&iocType, &onIoc, &streamedDocs](const json::Json& doc)
         {
-            auto optName = doc.getString("/document/name");
-            if (!optName.has_value() || optName->empty())
+            std::string docName;
+            if (doc.getString(docName, "/document/name") != json::RetGet::Success || docName.empty())
             {
                 LOG_WARNING("[indexer-connector] IOC document without document.name field, skipping");
                 return;
@@ -668,7 +688,7 @@ WIndexerConnector::streamIocsByType(std::string_view iocType, std::size_t batchS
                 return;
             }
 
-            onIoc(*optName, optDocument->str());
+            onIoc(docName, optDocument->str());
             ++streamedDocs;
         },
         sourceFilter);

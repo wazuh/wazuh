@@ -76,16 +76,32 @@ public:
      */
     static DBState fromJson(const json::Json& j)
     {
-        auto optName = j.getString(JPATH_NAME);
-        if (!optName.has_value() || optName->empty())
+        std::string name;
+        auto ret = j.getString(name, JPATH_NAME);
+
+        switch (ret)
         {
-            throw std::runtime_error("DBState::fromJson: Missing/empty name field");
+            case json::RetGet::NotFound: throw std::runtime_error("DBState::fromJson: Missing name field");
+            case json::RetGet::WrongType: throw std::runtime_error("DBState::fromJson: name field is not a string");
+            case json::RetGet::Success:
+                if (name.empty())
+                    throw std::runtime_error("DBState::fromJson: name field cannot be empty");
+                break; // Continue processing
+            default: throw std::runtime_error("DBState::fromJson: Unknown error retrieving name field");
         }
 
-        auto optPath = j.getString(JPATH_INSTANCE_PATH);
-        if (!optPath.has_value())
+        std::string path;
+        ret = j.getString(path, JPATH_INSTANCE_PATH);
+
+        switch (ret)
         {
-            throw std::runtime_error("DBState::fromJson: Missing instance_path field");
+            case json::RetGet::NotFound: throw std::runtime_error("DBState::fromJson: Missing instance_path field");
+            case json::RetGet::WrongType: throw std::runtime_error("DBState::fromJson: instance_path field is not a string");
+            case json::RetGet::Success:
+                if (path.empty())
+                    throw std::runtime_error("DBState::fromJson: instance_path field cannot be empty");
+                break; // Continue processing
+            default: throw std::runtime_error("DBState::fromJson: Unknown error retrieving instance_path field");
         }
 
         auto optCreated = j.getInt64(JPATH_CREATED);
@@ -94,7 +110,7 @@ public:
             throw std::runtime_error("DBState::fromJson: Missing created field");
         }
 
-        return {*optName, *optPath, *optCreated};
+        return {name, path, *optCreated};
     }
 };
 

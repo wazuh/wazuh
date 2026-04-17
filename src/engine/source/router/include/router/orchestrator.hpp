@@ -10,6 +10,8 @@
 #include <bk/icontroller.hpp>
 #include <builder/ibuilder.hpp>
 #include <fastqueue/iqueue.hpp>
+#include <fastmetrics/iManager.hpp>
+#include <fastmetrics/slidingWindowRate.hpp>
 #include <rawevtindexer/iraweventindexer.hpp>
 #include <store/istore.hpp>
 
@@ -54,6 +56,7 @@ protected:
     std::atomic<int64_t> m_contentionStartUsec {0};        ///< First contention timestamp (steady_clock, usec)
     std::atomic<int64_t> m_lastContentionWarningUsec {0};  ///< Last warning timestamp (steady_clock, usec)
     std::atomic<uint64_t> m_droppedEventsInContention {0}; ///< Failed push count in current contention window
+    std::shared_ptr<fastmetrics::ICounter> m_droppedInputCounter; ///< Total events dropped at input (never resets)
     static constexpr int64_t CONTENTION_WARNING_INTERVAL_SEC = 600LL; ///< Interval in seconds
     static constexpr int64_t CONTENTION_WARNING_INTERVAL_USEC =
         CONTENTION_WARNING_INTERVAL_SEC * 1000LL * 1000LL;               ///< 10 minutes
@@ -70,6 +73,7 @@ protected:
 
     template<typename T>
     using WorkerOp = std::function<base::OptError(const std::shared_ptr<IWorker<T>>&)>;
+    std::shared_ptr<fastmetrics::SlidingWindowRate> m_epsRate; // EPS rate shared across all workers
     base::OptError forEachRouterWorker(const WorkerOp<IRouter>& f);
     base::OptError forTesterWorker(const WorkerOp<ITester>& f);
 

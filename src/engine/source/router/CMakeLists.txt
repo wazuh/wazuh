@@ -35,6 +35,7 @@ target_link_libraries(router_router
     bk::ibk
     fastqueue::ifastqueue
     rawevtindexer::irawindexer
+    fastmetrics::fastmetrics
 
     PRIVATE
     base

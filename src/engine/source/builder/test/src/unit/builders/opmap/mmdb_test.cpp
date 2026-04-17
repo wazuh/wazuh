@@ -75,11 +75,13 @@ mapbuildtest::BuilderGetter getBuilderWLocator(bool failLocator = false)
         auto geoLocator = std::make_shared<::geo::mocks::MockLocator>();
         if (failLocator)
         {
-            EXPECT_CALL(*geoManager, getLocator(geo::Type::ASN)).WillOnce(testing::Return(base::Error {"error"}));
+            EXPECT_CALL(*geoManager, getLocator(geo::Type::ASN))
+                .WillOnce(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
         }
         else
         {
-            EXPECT_CALL(*geoManager, getLocator(geo::Type::ASN)).WillOnce(testing::Return(geoLocator));
+            EXPECT_CALL(*geoManager, getLocator(geo::Type::ASN))
+                .WillOnce(testing::Return(geo::Result<std::shared_ptr<geo::ILocator>>(geoLocator)));
         }
         return getMMDBASNBuilder(geoManager);
     };
@@ -92,11 +94,16 @@ mapbuildtest::BuilderGetter getBuilderLocatorNoResult()
     {
         auto geoManager = std::make_shared<::geo::mocks::MockManager>();
         auto geoLocator = std::make_shared<::geo::mocks::MockLocator>();
-        EXPECT_CALL(*geoManager, getLocator(geo::Type::ASN)).WillOnce(testing::Return(geoLocator));
-        ON_CALL(*geoLocator, getString(testing::_, testing::_)).WillByDefault(testing::Return(base::Error {"error"}));
-        ON_CALL(*geoLocator, getUint32(testing::_, testing::_)).WillByDefault(testing::Return(base::Error {"error"}));
-        ON_CALL(*geoLocator, getDouble(testing::_, testing::_)).WillByDefault(testing::Return(base::Error {"error"}));
-        ON_CALL(*geoLocator, getAsJson(testing::_, testing::_)).WillByDefault(testing::Return(base::Error {"error"}));
+        EXPECT_CALL(*geoManager, getLocator(geo::Type::ASN))
+            .WillOnce(testing::Return(geo::Result<std::shared_ptr<geo::ILocator>>(geoLocator)));
+        ON_CALL(*geoLocator, getString(testing::_, testing::_))
+            .WillByDefault(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
+        ON_CALL(*geoLocator, getUint32(testing::_, testing::_))
+            .WillByDefault(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
+        ON_CALL(*geoLocator, getDouble(testing::_, testing::_))
+            .WillByDefault(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
+        ON_CALL(*geoLocator, getAsJson(testing::_, testing::_))
+            .WillByDefault(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
         return getMMDBASNBuilder(geoManager);
     };
 }
@@ -113,25 +120,28 @@ mapbuildtest::BuilderGetter getBuilderLocatorResult(bool hasASN, bool hasASOrg)
         auto geoLocator = std::make_shared<::geo::mocks::MockLocator>();
         if (hasASN)
         {
-            EXPECT_CALL(*geoLocator, getUint32(testing::_, asnPath)).WillOnce(testing::Return(123u));
+            EXPECT_CALL(*geoLocator, getUint32(testing::_, asnPath))
+                .WillOnce(testing::Return(geo::Result<uint32_t>(123u)));
         }
         else
         {
             EXPECT_CALL(*geoLocator, getUint32(testing::_, asnPath))
-                .WillOnce(testing::Return(base::Error {"Not found"}));
+                .WillOnce(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
         }
 
         if (hasASOrg)
         {
-            EXPECT_CALL(*geoLocator, getString(testing::_, asOrgPath)).WillOnce(testing::Return("AS Org"));
+            EXPECT_CALL(*geoLocator, getString(testing::_, asOrgPath))
+                .WillOnce(testing::Return(geo::Result<std::string>("AS Org")));
         }
         else
         {
             EXPECT_CALL(*geoLocator, getString(testing::_, asOrgPath))
-                .WillOnce(testing::Return(base::Error {"Not found"}));
+                .WillOnce(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
         }
 
-        EXPECT_CALL(*geoManager, getLocator(geo::Type::ASN)).WillOnce(testing::Return(geoLocator));
+        EXPECT_CALL(*geoManager, getLocator(geo::Type::ASN))
+            .WillOnce(testing::Return(geo::Result<std::shared_ptr<geo::ILocator>>(geoLocator)));
         return getMMDBASNBuilder(geoManager);
     };
 }
@@ -158,11 +168,13 @@ mapbuildtest::BuilderGetter getBuilderWLocator(bool failLocator = false)
         auto geoLocator = std::make_shared<::geo::mocks::MockLocator>();
         if (failLocator)
         {
-            EXPECT_CALL(*geoManager, getLocator(::geo::Type::CITY)).WillOnce(testing::Return(base::Error {"error"}));
+            EXPECT_CALL(*geoManager, getLocator(::geo::Type::CITY))
+                .WillOnce(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
         }
         else
         {
-            EXPECT_CALL(*geoManager, getLocator(::geo::Type::CITY)).WillOnce(testing::Return(geoLocator));
+            EXPECT_CALL(*geoManager, getLocator(::geo::Type::CITY))
+                .WillOnce(testing::Return(geo::Result<std::shared_ptr<geo::ILocator>>(geoLocator)));
         }
         return getMMDBGeoBuilder(geoManager);
     };
@@ -176,12 +188,17 @@ mapbuildtest::BuilderGetter getBuilderLocatorNoResult(bool validIP = true)
         auto geoManager = std::make_shared<::geo::mocks::MockManager>();
         auto geoLocator = std::make_shared<::geo::mocks::MockLocator>();
 
-        ON_CALL(*geoLocator, getString(testing::_, testing::_)).WillByDefault(testing::Return(base::Error {"error"}));
-        ON_CALL(*geoLocator, getUint32(testing::_, testing::_)).WillByDefault(testing::Return(base::Error {"error"}));
-        ON_CALL(*geoLocator, getDouble(testing::_, testing::_)).WillByDefault(testing::Return(base::Error {"error"}));
-        ON_CALL(*geoLocator, getAsJson(testing::_, testing::_)).WillByDefault(testing::Return(base::Error {"error"}));
+        ON_CALL(*geoLocator, getString(testing::_, testing::_))
+            .WillByDefault(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
+        ON_CALL(*geoLocator, getUint32(testing::_, testing::_))
+            .WillByDefault(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
+        ON_CALL(*geoLocator, getDouble(testing::_, testing::_))
+            .WillByDefault(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
+        ON_CALL(*geoLocator, getAsJson(testing::_, testing::_))
+            .WillByDefault(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
 
-        EXPECT_CALL(*geoManager, getLocator(::geo::Type::CITY)).WillOnce(testing::Return(geoLocator));
+        EXPECT_CALL(*geoManager, getLocator(::geo::Type::CITY))
+            .WillOnce(testing::Return(geo::Result<std::shared_ptr<geo::ILocator>>(geoLocator)));
         return getMMDBGeoBuilder(geoManager);
     };
 }
@@ -218,115 +235,127 @@ mapbuildtest::BuilderGetter getBuilderLocatorResult(bool hasCity,
 
         if (hasCity)
         {
-            EXPECT_CALL(*geoLocator, getString(testing::_, cityPath)).WillOnce(testing::Return("City"));
+            EXPECT_CALL(*geoLocator, getString(testing::_, cityPath))
+                .WillOnce(testing::Return(geo::Result<std::string>("City")));
         }
         else
         {
             EXPECT_CALL(*geoLocator, getString(testing::_, cityPath))
-                .WillOnce(testing::Return(base::Error {"Not found"}));
+                .WillOnce(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
         }
 
         if (hasContinentCode)
         {
-            EXPECT_CALL(*geoLocator, getString(testing::_, continentCodePath)).WillOnce(testing::Return("CC"));
+            EXPECT_CALL(*geoLocator, getString(testing::_, continentCodePath))
+                .WillOnce(testing::Return(geo::Result<std::string>("CC")));
         }
         else
         {
             EXPECT_CALL(*geoLocator, getString(testing::_, continentCodePath))
-                .WillOnce(testing::Return(base::Error {"Not found"}));
+                .WillOnce(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
         }
 
         if (hasContinentName)
         {
-            EXPECT_CALL(*geoLocator, getString(testing::_, continentNamePath)).WillOnce(testing::Return("Continent"));
+            EXPECT_CALL(*geoLocator, getString(testing::_, continentNamePath))
+                .WillOnce(testing::Return(geo::Result<std::string>("Continent")));
         }
         else
         {
             EXPECT_CALL(*geoLocator, getString(testing::_, continentNamePath))
-                .WillOnce(testing::Return(base::Error {"Not found"}));
+                .WillOnce(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
         }
 
         if (hasCountryIsoCode)
         {
-            EXPECT_CALL(*geoLocator, getString(testing::_, countryIsoCodePath)).WillOnce(testing::Return("CI"));
+            EXPECT_CALL(*geoLocator, getString(testing::_, countryIsoCodePath))
+                .WillOnce(testing::Return(geo::Result<std::string>("CI")));
         }
         else
         {
             EXPECT_CALL(*geoLocator, getString(testing::_, countryIsoCodePath))
-                .WillOnce(testing::Return(base::Error {"Not found"}));
+                .WillOnce(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
         }
 
         if (hasCountryName)
         {
-            EXPECT_CALL(*geoLocator, getString(testing::_, countryNamePath)).WillOnce(testing::Return("Country"));
+            EXPECT_CALL(*geoLocator, getString(testing::_, countryNamePath))
+                .WillOnce(testing::Return(geo::Result<std::string>("Country")));
         }
         else
         {
             EXPECT_CALL(*geoLocator, getString(testing::_, countryNamePath))
-                .WillOnce(testing::Return(base::Error {"Not found"}));
+                .WillOnce(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
         }
 
         if (hasLatitude)
         {
-            EXPECT_CALL(*geoLocator, getDouble(testing::_, latitudePath)).WillOnce(testing::Return(1.23));
+            EXPECT_CALL(*geoLocator, getDouble(testing::_, latitudePath))
+                .WillOnce(testing::Return(geo::Result<double>(1.23)));
         }
         else
         {
             EXPECT_CALL(*geoLocator, getDouble(testing::_, latitudePath))
-                .WillOnce(testing::Return(base::Error {"Not found"}));
+                .WillOnce(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
         }
 
         if (hasLongitude)
         {
-            EXPECT_CALL(*geoLocator, getDouble(testing::_, longitudePath)).WillOnce(testing::Return(4.56));
+            EXPECT_CALL(*geoLocator, getDouble(testing::_, longitudePath))
+                .WillOnce(testing::Return(geo::Result<double>(4.56)));
         }
         else
         {
             EXPECT_CALL(*geoLocator, getDouble(testing::_, longitudePath))
-                .WillOnce(testing::Return(base::Error {"Not found"}));
+                .WillOnce(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
         }
 
         if (hasPostalCode)
         {
-            EXPECT_CALL(*geoLocator, getString(testing::_, postalCodePath)).WillOnce(testing::Return("12345"));
+            EXPECT_CALL(*geoLocator, getString(testing::_, postalCodePath))
+                .WillOnce(testing::Return(geo::Result<std::string>("12345")));
         }
         else
         {
             EXPECT_CALL(*geoLocator, getString(testing::_, postalCodePath))
-                .WillOnce(testing::Return(base::Error {"Not found"}));
+                .WillOnce(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
         }
 
         if (hasTimeZone)
         {
-            EXPECT_CALL(*geoLocator, getString(testing::_, timeZonePath)).WillOnce(testing::Return("TZ"));
+            EXPECT_CALL(*geoLocator, getString(testing::_, timeZonePath))
+                .WillOnce(testing::Return(geo::Result<std::string>("TZ")));
         }
         else
         {
             EXPECT_CALL(*geoLocator, getString(testing::_, timeZonePath))
-                .WillOnce(testing::Return(base::Error {"Not found"}));
+                .WillOnce(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
         }
 
         if (hasRegionCode)
         {
-            EXPECT_CALL(*geoLocator, getString(testing::_, regionCodePath)).WillOnce(testing::Return("RC"));
+            EXPECT_CALL(*geoLocator, getString(testing::_, regionCodePath))
+                .WillOnce(testing::Return(geo::Result<std::string>("RC")));
         }
         else
         {
             EXPECT_CALL(*geoLocator, getString(testing::_, regionCodePath))
-                .WillOnce(testing::Return(base::Error {"Not found"}));
+                .WillOnce(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
         }
 
         if (hasRegionName)
         {
-            EXPECT_CALL(*geoLocator, getString(testing::_, regionNamePath)).WillOnce(testing::Return("Region"));
+            EXPECT_CALL(*geoLocator, getString(testing::_, regionNamePath))
+                .WillOnce(testing::Return(geo::Result<std::string>("Region")));
         }
         else
         {
             EXPECT_CALL(*geoLocator, getString(testing::_, regionNamePath))
-                .WillOnce(testing::Return(base::Error {"Not found"}));
+                .WillOnce(testing::Return(geo::ErrorCode::UNKNOWN_ERROR));
         }
 
-        EXPECT_CALL(*geoManager, getLocator(::geo::Type::CITY)).WillOnce(testing::Return(geoLocator));
+        EXPECT_CALL(*geoManager, getLocator(::geo::Type::CITY))
+            .WillOnce(testing::Return(geo::Result<std::shared_ptr<geo::ILocator>>(geoLocator)));
         return getMMDBGeoBuilder(geoManager);
     };
 }
@@ -351,9 +380,8 @@ INSTANTIATE_TEST_SUITE_P(
         MapDepsT({makeRef("ref")}, as::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::OBJECT))),
         MapDepsT({makeRef("ref")}, as::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::NESTED))),
         MapDepsT({makeRef("ref")}, as::getBuilderWLocator(), SUCCESS(customRefExpected())),
-        // #TODO: Fail Locator, Temporary error handling, this should be mandatory
         MapDepsT({makeRef("ref")}, as::getBuilderWLocator(), SUCCESS(expectTypeRef(schemf::Type::IP, true))),
-        MapDepsT({makeRef("ref")}, as::getBuilderWLocator(true), SUCCESS(expectTypeRef(schemf::Type::IP, true)))
+        MapDepsT({makeRef("ref")}, as::getBuilderWLocator(true), FAILURE(expectTypeRef(schemf::Type::IP, true)))
         // End of test values
         ),
     testNameFormatter<MapBuilderWithDepsTest>("mmdb_asn"));
@@ -372,9 +400,8 @@ INSTANTIATE_TEST_SUITE_P(
         MapDepsT({makeRef("ref")}, city::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::OBJECT, true))),
         MapDepsT({makeRef("ref")}, city::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::NESTED, true))),
         MapDepsT({makeRef("ref")}, city::getBuilderWLocator(), SUCCESS(customRefExpected())),
-        // #TODO: Fail Locator, Temporary error handling, this should be mandatory
         MapDepsT({makeRef("ref")}, city::getBuilderWLocator(), SUCCESS(expectTypeRef(schemf::Type::IP, true))),
-        MapDepsT({makeRef("ref")}, city::getBuilderWLocator(true), SUCCESS(expectTypeRef(schemf::Type::IP, true)))
+        MapDepsT({makeRef("ref")}, city::getBuilderWLocator(true), FAILURE(expectTypeRef(schemf::Type::IP, true)))
         // End of test values
         ),
     testNameFormatter<MapBuilderWithDepsTest>("mmdb_city"));

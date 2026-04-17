@@ -16,6 +16,7 @@ target_link_libraries(api_event
     router::irouter
     archiver::iface
     rawevtindexer::irawindexer
+    fastmetrics::fastmetrics
 )
 add_library(api::event ALIAS api_event)
 

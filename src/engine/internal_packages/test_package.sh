@@ -12,6 +12,7 @@ TOOLS=(
   engine-private
   engine-it
   engine-router
+  engine-metrics
 )
 
 EXTRA_TESTS=(
