@@ -18,7 +18,6 @@ with patch('wazuh.common.getgrnam'):
 
                 from wazuh.core.cluster import control
                 from wazuh.core.cluster.local_client import LocalClient
-                from wazuh import WazuhInternalError, WazuhError
 
 
 async def async_local_client(command, data):
@@ -138,17 +137,6 @@ async def test_get_system_nodes():
 
         with pytest.raises(json.JSONDecodeError):
             await control.get_system_nodes()
-
-
-@pytest.mark.asyncio
-async def test_get_system_nodes_or_none():
-    """Verify that get_system_nodes_or_none function returns the name of all cluster nodes."""
-    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client):
-        expected_result = [{'items': [{'name': 'master'}]}]
-        for expected in expected_result:
-            with patch('wazuh.core.cluster.control.get_nodes', return_value=expected):
-                result = await control.get_system_nodes_or_none()
-                assert result == [expected['items'][0]['name']]
 
 
 @pytest.mark.asyncio

@@ -37,7 +37,6 @@ opensearch-protobufs==0.19.0
 opensearch-py==3.1.0
 packaging==25.0
 pathable==0.4.3
-pathlib==1.0.1
 pip==26.0
 propcache==0.4.1
 protobuf==6.33.5

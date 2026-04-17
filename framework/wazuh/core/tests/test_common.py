@@ -2,16 +2,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import json
-from contextvars import ContextVar
 from grp import getgrnam
 from pwd import getpwnam
-from unittest.mock import patch, mock_open
+from unittest.mock import patch
 
 import pytest
 
-from wazuh.core.common import find_wazuh_path, wazuh_uid, wazuh_gid, context_cached, reset_context_cache, \
-    get_context_cache
+from wazuh.core.common import find_wazuh_path, wazuh_uid, wazuh_gid, context_cached, reset_context_cache
 
 
 @pytest.mark.parametrize('fake_path, expected', [
@@ -52,18 +49,14 @@ def test_context_cached():
     # The result of function 'foo' is being cached and it has been called once
     assert foo() == 'bar' and test_context_cached.calls_to_foo == 1, '"bar" should be returned with 1 call to foo.'
     assert foo() == 'bar' and test_context_cached.calls_to_foo == 1, '"bar" should be returned with 1 call to foo.'
-    assert isinstance(get_context_cache()[json.dumps({"key": "foobar", "args": [], "kwargs": {}})], ContextVar)
 
     # foo called with an argument
     assert foo('other_arg') == 'other_arg' and test_context_cached.calls_to_foo == 2, '"other_arg" should be ' \
                                                                                       'returned with 2 calls to foo. '
-    assert isinstance(get_context_cache()[json.dumps({"key": "foobar", "args": ['other_arg'], "kwargs": {}})],
-                      ContextVar)
 
     # foo called with the same argument as default, a new context var is created in the cache
     assert foo('bar') == 'bar' and test_context_cached.calls_to_foo == 3, '"bar" should be returned with 3 calls to ' \
                                                                           'foo. '
-    assert isinstance(get_context_cache()[json.dumps({"key": "foobar", "args": ['bar'], "kwargs": {}})], ContextVar)
 
     # Reset cache and calls to foo
     reset_context_cache()
@@ -72,8 +65,6 @@ def test_context_cached():
     # foo called with kwargs, a new context var is created with kwargs not empty
     assert foo(data='bar') == 'bar' and test_context_cached.calls_to_foo == 1, '"bar" should be returned with 1 ' \
                                                                                'calls to foo. '
-    assert isinstance(get_context_cache()[json.dumps({"key": "foobar", "args": [], "kwargs": {"data": "bar"}})],
-                      ContextVar)
 
 
 @patch('wazuh.core.stats.wazuh_socket.create_wazuh_socket_message', side_effect=SystemExit)

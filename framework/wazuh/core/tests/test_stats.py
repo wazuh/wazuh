@@ -5,7 +5,7 @@
 import os
 import sys
 from datetime import date, datetime, timezone
-from unittest.mock import MagicMock, mock_open, patch, call
+from unittest.mock import MagicMock, patch, call
 
 import pytest
 
@@ -14,7 +14,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         from wazuh.core import common, stats
-        from wazuh.core.exception import WazuhException, WazuhInternalError
+        from wazuh.core.exception import WazuhInternalError
         from wazuh.tests.util import RBAC_bypasser
 
         del sys.modules['wazuh.rbac.orm']

@@ -7,7 +7,6 @@ import json
 import re
 import threading
 from base64 import b64encode
-from datetime import datetime, timezone
 from json import dumps, loads
 from os import listdir, path
 from shutil import rmtree
@@ -27,7 +26,6 @@ from wazuh.core.utils import (
     plain_dict_to_nested_dict,
     get_fields_to_nest,
     WazuhDBQuery,
-    WazuhDBQueryDistinct,
     WazuhDBQueryGroupBy,
     WazuhDBBackend,
     get_utc_now,
@@ -530,10 +528,6 @@ class WazuhDBQueryGroup(WazuhDBQuery):
             self.query_filters[-1]["separator"] = "" if not self.q else "AND"
 
 
-class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents):
-    pass
-
-
 class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
     """Class used to query grouping by agents."""
 
@@ -594,55 +588,6 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
         ]
 
         return WazuhDBQuery._format_data_into_dictionary(self)
-
-
-class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
-    """Class used to query agents with multigroups."""
-
-    def __init__(self, group_id: str, query: str = "", *args: dict, **kwargs: dict):
-        """Class constructor.
-
-        Parameters
-        ----------
-        group_id : str
-            ID of the group.
-        query : str
-            Query.
-        """
-        self.group_id = group_id
-        query = "group={}".format(group_id) + (";" + query if query else "")
-        WazuhDBQueryAgents.__init__(self, query=query, *args, **kwargs)
-
-    def _default_query(self) -> str:
-        """Get default query.
-
-        Returns
-        -------
-        str
-            Default query.
-        """
-        return (
-            "SELECT {0} FROM agent a LEFT JOIN belongs b ON a.id = b.id_agent"
-            if self.group_id != "null"
-            else "SELECT {0} FROM agent a"
-        )
-
-    def _default_count_query(self) -> str:
-        """Get count part for the default query.
-
-        Returns
-        -------
-        str
-            String representing the count part for the default query.
-        """
-        return "COUNT(DISTINCT a.id)"
-
-    def _get_total_items(self):
-        """Get total items."""
-        self.total_items = self.backend.execute(
-            self.query.format(self._default_count_query()), self.request, True
-        )
-        self.query += " GROUP BY a.id "
 
 
 class Agent:
@@ -1087,15 +1032,6 @@ class Agent:
 
         return {"message": msg}
 
-    def get_agent_os_name(self) -> str:
-        """Return a string with the agent's os name."""
-        query = WazuhDBQueryAgents(select=["os.name"], filters={"id": [self.id]})
-
-        try:
-            return query.run()["items"][0]["os"].get("name", "null")
-        except KeyError:
-            return "null"
-
     @staticmethod
     @dapi_allower()
     def get_agents_overview(
@@ -1217,47 +1153,6 @@ class Agent:
         Agent.set_agent_group_relationship(agent_id, group_id, override=replace)
 
         return f"Agent {agent_id} assigned to {group_id}"
-
-    @staticmethod
-    def check_if_delete_agent(id: str, seconds: int) -> bool:
-        """Check if we should remove an agent: if time from last connection is greater than <seconds>.
-
-        Parameters
-        ----------
-        id : str
-            ID of the new agent.
-        seconds : int
-            Number of seconds.
-
-        Returns
-        -------
-        bool
-            True if time from last connection is greater thant <seconds>.
-        """
-        remove_agent = False
-
-        # Always return true for 0 seconds to prevent any possible races
-        if seconds == 0:
-            remove_agent = True
-        else:
-            agent_info = Agent(id=id).get_basic_information()
-            if "lastKeepAlive" in agent_info:
-                if agent_info["lastKeepAlive"] == 0:
-                    remove_agent = True
-                else:
-                    if isinstance(agent_info["lastKeepAlive"], datetime):
-                        last_date = agent_info["lastKeepAlive"].replace(
-                            tzinfo=timezone.utc
-                        )
-                    else:
-                        last_date = get_utc_strptime(
-                            agent_info["lastKeepAlive"], "%Y-%m-%d %H:%M:%S"
-                        )
-                    difference = (get_utc_now() - last_date).total_seconds()
-                    if difference >= seconds:
-                        remove_agent = True
-
-        return remove_agent
 
     @staticmethod
     def group_exists(group_id: str) -> bool:

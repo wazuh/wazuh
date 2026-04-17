@@ -1,7 +1,7 @@
 from unittest.mock import AsyncMock, call, MagicMock
 
 import pytest
-from wazuh.core.wdb_http import AgentIDGroups, AgentsSummary, APPLICATION_JSON, WazuhDBHTTPClient
+from wazuh.core.wdb_http import AgentsSummary, APPLICATION_JSON, WazuhDBHTTPClient
 from wazuh.core.exception import WazuhError
 
 
@@ -70,21 +70,6 @@ class TestWazuhDBHTTPClient:
         with pytest.raises(WazuhError, match=expected_error_msg):
             await module_instance._post('/agents', b'')
 
-    async def test_get_agents_ids(self, client_mock: AsyncMock, module_instance: WazuhDBHTTPClient):
-        """Check that the `get_agents_ids` method works as expected."""
-        expected_result = [1, 2, 3]
-        response = MagicMock()
-        response.is_error = False
-        response.json.return_value = expected_result
-        client_mock.get.return_value = response
-
-        result = await module_instance.get_agents_ids()
-        assert result == expected_result
-        client_mock.assert_has_calls([
-            call.get(url='http://localhost/v1/agents/ids', headers={'Accept': APPLICATION_JSON}),
-            call.get().json()
-        ])
-
     async def test_get_agent_groups(self, client_mock: AsyncMock, module_instance: WazuhDBHTTPClient):
         """Check that the `get_agent_groups` method works as expected."""
         agent_id = 1
@@ -101,46 +86,6 @@ class TestWazuhDBHTTPClient:
             call.get().json()
         ])
 
-    async def test_get_agents_groups(self, client_mock: AsyncMock, module_instance: WazuhDBHTTPClient):
-        """Check that the `get_agents_groups` method works as expected."""
-        expected_result = [
-            AgentIDGroups(id='001', groups=['default']),
-            AgentIDGroups(id='002', groups=['default', 'test']),
-        ]
-        response = MagicMock()
-        response.is_error = False
-        response.json.return_value = {'data': {
-            '1': ['default'],
-            '2': ['default','test']
-        }}
-        client_mock.get.return_value = response
-
-        result = await module_instance.get_agents_groups()
-        for i, item in enumerate(result):
-            assert item.id == expected_result[i].id
-            assert item.groups == expected_result[i].groups
-
-        client_mock.assert_has_calls([
-            call.get(url='http://localhost/v1/agents/ids/groups', headers={'Accept': APPLICATION_JSON}),
-            call.get().json()
-        ])
-
-    async def test_get_group_agents(self, client_mock: AsyncMock, module_instance: WazuhDBHTTPClient):
-        """Check that the `get_group_agents` method works as expected."""
-        group_name = 'test'
-        expected_result = [2, 5, 11]
-        response = MagicMock()
-        response.is_error = False
-        response.json.return_value = expected_result
-        client_mock.get.return_value = response
-
-        result = await module_instance.get_group_agents(group_name)
-        assert result == expected_result
-        client_mock.assert_has_calls([
-            call.get(url=f'http://localhost/v1/agents/ids/groups/{group_name}', headers={'Accept': APPLICATION_JSON}),
-            call.get().json()
-        ])
-    
     async def test_get_agents_summary(self, client_mock: AsyncMock, module_instance: WazuhDBHTTPClient):
         """Check that the `get_agents_summary` method works as expected."""
         agent_ids = []
