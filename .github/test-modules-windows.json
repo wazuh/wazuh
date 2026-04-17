@@ -5,8 +5,6 @@
       "pytest_target": "test_agentd\\",
       "tiers": ["0 1"],
       "paths": [
-        ".github/workflows/5_builderpackage_agent-windows.yml",
-        ".github/test-modules-windows.json",
         "src/client-agent/**",
         "src/config/src/buffer-config.c",
         "src/config/src/client-config.c",
@@ -39,8 +37,6 @@
       "pytest_extra_args": "-m win32",
       "tiers": ["0 1"],
       "paths": [
-        ".github/workflows/5_builderpackage_agent-windows.yml",
-        ".github/test-modules-windows.json",
         "src/config/src/active-response.c",
         "src/config/include/active-response.h",
         "src/execd/**",
@@ -97,8 +93,6 @@
       "pytest_target": "test_office365\\",
       "tiers": ["0 1"],
       "paths": [
-        ".github/workflows/5_builderpackage_agent-windows.yml",
-        ".github/test-modules-windows.json",
         "src/config/src/wmodules-office365.c",
         "src/wazuh_modules/src/wm_office365.h",
         "src/wazuh_modules/src/wm_office365.c",
