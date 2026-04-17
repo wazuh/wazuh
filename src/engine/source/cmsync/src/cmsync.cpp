@@ -160,7 +160,7 @@ CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPt
 
 CMSync::~CMSync() = default;
 
-bool CMSync::existSpaceInRemote(std::string_view space)
+bool CMSync::existSpaceInRemote(std::string_view space, const std::function<bool()>& shouldAbort)
 {
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
 
@@ -168,10 +168,13 @@ bool CMSync::existSpaceInRemote(std::string_view space)
                                          fmt::format("{}::exist()", COMPONENT_NAME),
                                          fmt::format("Check '{}' space in wazuh-indexer", space),
                                          m_attempts,
-                                         m_waitSeconds);
+                                         m_waitSeconds,
+                                         shouldAbort);
 }
 
-void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::NamespaceId& dstNamespace)
+void CMSync::downloadNamespace(std::string_view originSpace,
+                               const cm::store::NamespaceId& dstNamespace,
+                               const std::function<bool()>& shouldAbort)
 {
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
     auto cmcrudPtr = base::utils::lockWeakPtr(m_cmcrudPtr, "CMCrudService");
@@ -182,7 +185,8 @@ void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::Na
                                       fmt::format("{}::downloadNamespace()", COMPONENT_NAME),
                                       fmt::format("Download '{}' space from wazuh-indexer", originSpace),
                                       m_attempts,
-                                      m_waitSeconds);
+                                      m_waitSeconds,
+                                      shouldAbort);
 
     // Create destNamespace
     try
@@ -212,7 +216,8 @@ void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::Na
     }
 }
 
-std::pair<std::string, bool> CMSync::getPolicyHashAndEnabledFromRemote(std::string_view space)
+std::pair<std::string, bool> CMSync::getPolicyHashAndEnabledFromRemote(std::string_view space,
+                                                                       const std::function<bool()>& shouldAbort)
 {
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "Indexer Connector");
 
@@ -221,10 +226,12 @@ std::pair<std::string, bool> CMSync::getPolicyHashAndEnabledFromRemote(std::stri
         fmt::format("{}::getInfoFromRemote()", COMPONENT_NAME),
         fmt::format("Get policy hash and enabled status for '{}' space from wazuh-indexer", space),
         m_attempts,
-        m_waitSeconds);
+        m_waitSeconds,
+        shouldAbort);
 }
 
-cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view originSpace)
+cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view originSpace,
+                                                          const std::function<bool()>& shouldAbort)
 {
 
     auto cmcrudPtr = base::utils::lockWeakPtr(m_cmcrudPtr, "CMCrud Service");
@@ -240,7 +247,7 @@ cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view origi
         return tempNsId;
     }();
 
-    downloadNamespace(originSpace, newNs);
+    downloadNamespace(originSpace, newNs, shouldAbort);
 
     // Enrich the namespace with local-only assets
     /*
@@ -405,10 +412,17 @@ void CMSync::dumpStateToStore()
     }
 }
 
-void CMSync::synchronize()
+void CMSync::synchronize(std::function<bool()> shouldAbort)
 {
 
     LOG_DEBUG("[CMSync] Checking for namespace updates to synchronize");
+
+    // Check abort before acquiring lock
+    if (shouldAbort && shouldAbort())
+    {
+        LOG_INFO("[CMSync] Synchronization aborted before start");
+        return;
+    }
 
     const auto cmcrudPtr = base::utils::lockWeakPtr(m_cmcrudPtr, "CMCrud Service");
     const auto routerPtr = base::utils::lockWeakPtr(m_router, "RouterAPI");
@@ -428,11 +442,18 @@ void CMSync::synchronize()
 
     for (auto& nsState : m_namespacesState)
     {
+        // Check abort at the start of each namespace iteration
+        if (shouldAbort && shouldAbort())
+        {
+            LOG_INFO("[CMSync] Synchronization aborted during namespace iteration");
+            return;
+        }
+
         try
         {
             LOG_DEBUG("[CMSync] Synchronizing namespace for space '{}'", nsState.getOriginSpace());
 
-            if (!existSpaceInRemote(nsState.getOriginSpace()))
+            if (!existSpaceInRemote(nsState.getOriginSpace(), shouldAbort))
             {
                 LOG_WARNING("[CMSync] Space '{}' does not exist in remote indexer, skipping synchronization",
                             nsState.getOriginSpace());
@@ -440,7 +461,14 @@ void CMSync::synchronize()
             }
 
             // Get remote policy hash and enabled status
-            const auto [remoteHash, remoteEnabled] = getPolicyHashAndEnabledFromRemote(nsState.getOriginSpace());
+            if (shouldAbort && shouldAbort())
+            {
+                LOG_INFO("[CMSync] Synchronization aborted before getting policy info for space '{}'",
+                         nsState.getOriginSpace());
+                return;
+            }
+            const auto [remoteHash, remoteEnabled] =
+                getPolicyHashAndEnabledFromRemote(nsState.getOriginSpace(), shouldAbort);
 
             // Check the current route/ns configuration to avoid unnecessary synchronization.
             const auto routeConfig = [&]() -> std::optional<std::tuple<bool, cm::store::NamespaceId, std::string>>
@@ -524,8 +552,34 @@ void CMSync::synchronize()
             // Cases 3 and 4: Changes detected, perform synchronization
             LOG_INFO("[CMSync] Changes detected for space '{}', updating...", nsState.getOriginSpace());
 
+            // Check abort before download (most expensive operation)
+            if (shouldAbort && shouldAbort())
+            {
+                LOG_INFO("[CMSync] Synchronization aborted before downloading namespace for space '{}'",
+                         nsState.getOriginSpace());
+                return;
+            }
+
             // Download and enrich the namespace
-            const auto newNsId = downloadAndEnrichNamespace(nsState.getOriginSpace());
+            const auto newNsId = downloadAndEnrichNamespace(nsState.getOriginSpace(), shouldAbort);
+
+            // Check abort before route sync
+            if (shouldAbort && shouldAbort())
+            {
+                // Rollback the downloaded namespace before aborting
+                try
+                {
+                    cmcrudPtr->deleteNamespace(newNsId);
+                }
+                catch (const std::exception& ex)
+                {
+                    LOG_WARNING(
+                        "[CMSync] Failed to rollback namespace '{}' during abort: {}", newNsId.toStr(), ex.what());
+                }
+                LOG_INFO("[CMSync] Synchronization aborted before syncing route for space '{}'",
+                         nsState.getOriginSpace());
+                return;
+            }
 
             // Sync the namespace in the router
             try

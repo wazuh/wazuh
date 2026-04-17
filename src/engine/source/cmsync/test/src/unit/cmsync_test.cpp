@@ -650,3 +650,118 @@ TEST_F(CMSyncSynchronizeTest, RetriesNamespaceIdGenerationOnCollision)
 
     EXPECT_NO_THROW(sync->synchronize());
 }
+
+// ==================== Abort Tests ====================
+
+// Abort before loop: shouldAbort returns true immediately — no remote calls should be made
+TEST_F(CMSyncSynchronizeTest, AbortsBeforeLoopWhenShouldAbortReturnsTrue)
+{
+    auto state = createStoredState(); // standard + custom
+    auto sync = createSyncWithState(state);
+
+    // No expectations on indexer, crud, or router — nothing should be called
+    EXPECT_NO_THROW(sync->synchronize([]() { return true; }));
+}
+
+// Abort mid-loop: shouldAbort returns true after the first namespace is processed
+TEST_F(CMSyncSynchronizeTest, AbortsMidLoopAfterFirstNamespace)
+{
+    auto state = createStoredState(); // standard + custom
+    auto sync = createSyncWithState(state);
+
+    // Counter to abort after the first namespace check
+    int callCount = 0;
+    auto shouldAbort = [&callCount]()
+    {
+        // 1: before lock → false
+        // 2: start of loop for "standard" → false
+        // 3: executeWithRetry in existSpaceInRemote before attempt → false (existsPolicy returns false → skip)
+        // 4: start of loop for "custom" → true (abort)
+        return ++callCount > 3;
+    };
+
+    // Standard space: does not exist in remote — skipped quickly
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(false));
+
+    // Custom space: should NOT be called because abort triggers at start of second iteration
+
+    EXPECT_NO_THROW(sync->synchronize(shouldAbort));
+}
+
+// Abort during download: shouldAbort triggers before downloadAndEnrichNamespace
+TEST_F(CMSyncSynchronizeTest, AbortsBeforeDownload)
+{
+    auto state = createStoredStateWithNs("standard", "dummy_ns_id");
+    auto sync = createSyncWithState(state);
+
+    int callCount = 0;
+    auto shouldAbort = [&callCount]()
+    {
+        // 1: before lock → false
+        // 2: start of loop → false
+        // 3: executeWithRetry in existSpaceInRemote → false (existsPolicy returns true)
+        // 4: before getPolicyHashAndEnabled → false
+        // 5: executeWithRetry in getPolicyHashAndEnabled → false
+        // 6: before downloadAndEnrichNamespace → true (abort)
+        return ++callCount > 5;
+    };
+
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard")))
+        .WillOnce(::testing::Return(std::make_pair(std::string("new_hash"), true)));
+
+    // No route exists — case 3 (new sync needed), but abort triggers before download
+    EXPECT_CALL(*router, existsEntry("cmsync_standard")).WillOnce(::testing::Return(false));
+
+    // No download or route sync should happen
+    EXPECT_NO_THROW(sync->synchronize(shouldAbort));
+}
+
+// Abort after download: shouldAbort triggers before syncNamespaceInRoute — rollback downloaded namespace
+TEST_F(CMSyncSynchronizeTest, AbortsAfterDownloadRollsBackNamespace)
+{
+    auto state = createStoredStateWithNs("standard", "dummy_ns_id");
+    auto sync = createSyncWithState(state);
+
+    int callCount = 0;
+    auto shouldAbort = [&callCount]()
+    {
+        // 1: before lock → false
+        // 2: start of loop → false
+        // 3: executeWithRetry in existSpaceInRemote → false
+        // 4: before getPolicyHashAndEnabled → false
+        // 5: executeWithRetry in getPolicyHashAndEnabled → false
+        // 6: before downloadAndEnrichNamespace → false
+        // 7: executeWithRetry in downloadNamespace → false
+        // 8: before syncNamespaceInRoute → true (abort)
+        return ++callCount > 7;
+    };
+
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard")))
+        .WillOnce(::testing::Return(std::make_pair(std::string("new_hash"), true)));
+
+    EXPECT_CALL(*router, existsEntry("cmsync_standard")).WillOnce(::testing::Return(false));
+
+    EXPECT_CALL(*crud, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
+    wiconnector::PolicyResources resources;
+    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(resources));
+    EXPECT_CALL(*crud, importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+        .Times(1);
+
+    // Rollback: the downloaded namespace should be deleted on abort
+    EXPECT_CALL(*crud, deleteNamespace(::testing::_)).Times(1);
+
+    EXPECT_NO_THROW(sync->synchronize(shouldAbort));
+}
+
+// Default nullptr: synchronize without abort callback works as before
+TEST_F(CMSyncSynchronizeTest, WorksWithNullAbortCallback)
+{
+    auto state = createStoredStateWithNs("standard", "dummy_ns_id");
+    auto sync = createSyncWithState(state);
+
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(false));
+
+    EXPECT_NO_THROW(sync->synchronize(nullptr));
+}

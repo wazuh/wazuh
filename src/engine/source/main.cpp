@@ -618,7 +618,7 @@ int main(int argc, char* argv[])
                                        .timeout = 0,
                                        .taskFunction = [cmSyncService]()
                                        {
-                                           cmSyncService->synchronize();
+                                           cmSyncService->synchronize([]() { return g_shutdown_requested != 0; });
                                        }});
         }
 
@@ -857,7 +857,7 @@ int main(int argc, char* argv[])
         if (enableProcessing)
         {
             // Synchronize on startup
-            cmSyncService->synchronize();
+            cmSyncService->synchronize([]() { return g_shutdown_requested != 0; });
             iocSyncService->synchronize();
             remoteConf->synchronize();
 
