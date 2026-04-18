@@ -5,10 +5,11 @@
 
 #include <fastmetrics/registry.hpp>
 
+#include "syntax.hpp"
+
 namespace
 {
-constexpr std::string_view JPATH_ORIGIN_SPACE = "/wazuh/space/name";                   ///< wazuh.space.name
-constexpr std::string_view JPATH_INTEGRATION_DECODERS = "/wazuh/integration/decoders"; ///< wazuh.integration.decoders
+constexpr std::string_view JPATH_ORIGIN_SPACE = "/wazuh/space/name"; ///< wazuh.space.name
 const std::string ENRICHMENT_SPACE_TRACEABLE_NAME = "enrichment/OriginSpace";
 const std::string DISCARDED_EVENTS_FILTER_TRACEABLE_NAME = "filter/DiscardedEvents";
 const std::string CLEANUP_DECODER_VARIABLES_TRACEABLE_NAME = "cleanup/DecoderTemporaryVariables";
@@ -98,7 +99,7 @@ base::Expression postOutputUnclassifiedCounter(const std::string& spaceName,
         {
             try
             {
-                if (event->size(JPATH_INTEGRATION_DECODERS) == 1)
+                if (event->size(syntax::asset::DECODERS_PATH) == 1)
                 {
                     unclassifiedCounter->add(1);
                 }

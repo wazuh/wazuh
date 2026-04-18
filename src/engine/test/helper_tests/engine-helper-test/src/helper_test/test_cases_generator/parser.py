@@ -252,7 +252,7 @@ class Parser:
         Returns:
             str: The type of the target field, or None if not present.
         """
-        if self.has_target_field:
+        if self.has_target_field():
             return self.yaml_data["target_field"]["type"]
         return None
 
@@ -263,8 +263,13 @@ class Parser:
         Returns:
             str: The subset of the target field, or an empty string if not present.
         """
-        if self.has_target_field:
+        if self.has_target_field():
             return self.yaml_data["target_field"].get("generate", "")
+        return None
+
+    def get_target_field_path(self):
+        if self.has_target_field():
+            return self.yaml_data["target_field"].get("path")
         return None
 
     def get_tests(self):

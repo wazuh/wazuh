@@ -1900,6 +1900,12 @@ FilterOp opBuilderHelperIndexUnclassifiedEvents(const Reference& targetField,
                                                 const std::vector<OpArg>& opArgs,
                                                 const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
+    if (targetField.jsonPath() != syntax::asset::DECODERS_PATH)
+    {
+        throw std::runtime_error(fmt::format("index_unclassified_events: target field must be 'wazuh.integration.decoders', got '{}'",
+                                             targetField.dotPath()));
+    }
+
     // Assert expected number of parameters
     utils::assertSize(opArgs, 0);
 

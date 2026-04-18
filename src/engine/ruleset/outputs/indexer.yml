@@ -7,5 +7,13 @@ metadata:
   description: Output integrations events to wazuh-indexer
 
 outputs:
-  - wazuh-indexer:
-      index: "wazuh-events-v5-${wazuh.integration.category}"
+  - first_of:
+    - check: index_unclassified_events($wazuh.integration.decoders)
+      then:
+        - wazuh-indexer:
+            index: "wazuh-events-v5-unclassified"
+
+    - check: NOT array_length_eq($wazuh.integration.decoders, 1)
+      then:
+        - wazuh-indexer:
+            index: "wazuh-events-v5-${wazuh.integration.category}"

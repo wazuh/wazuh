@@ -319,7 +319,6 @@ TEST(CategoriesTest, ExistingCategoriesFound)
 {
     EXPECT_TRUE(cm::store::categories::exists("security"));
     EXPECT_TRUE(cm::store::categories::exists("network-activity"));
-    EXPECT_TRUE(cm::store::categories::exists("unclassified"));
 }
 
 TEST(CategoriesTest, UnknownCategoryNotFound)
@@ -331,7 +330,7 @@ TEST(CategoriesTest, UnknownCategoryNotFound)
 TEST(CategoriesTest, GetAvailableCategoriesNonEmpty)
 {
     const auto& cats = cm::store::categories::getAvailableCategories();
-    EXPECT_EQ(cats.size(), 8U);
+    EXPECT_EQ(cats.size(), 7U);
 }
 
 // ======================================================================

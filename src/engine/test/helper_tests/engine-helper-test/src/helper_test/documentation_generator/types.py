@@ -19,9 +19,10 @@ class Output:
 
 
 class TargetField:
-    def __init__(self, type_: str, subset: str):
+    def __init__(self, type_: str, subset: str, path: str = None):
         self.type_ = type_
         self.subset = subset
+        self.path = path
 
 
 class Restriction:
