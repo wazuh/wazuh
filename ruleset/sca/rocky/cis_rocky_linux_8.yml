@@ -4969,7 +4969,7 @@ checks:
       subtechnique: ["T1048.003", "T1552.001"]
     condition: all
     rules:
-      - 'c:stat /etc/group- -> r:Access:\s*\(0644/-rw-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/group- -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.10 Ensure permissions on /etc/gshadow- are configured. (Automated)
   - id: 30685
