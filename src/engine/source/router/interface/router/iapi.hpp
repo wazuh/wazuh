@@ -1,6 +1,7 @@
 #ifndef _ROUTER_IAPI_HPP
 #define _ROUTER_IAPI_HPP
 
+#include <functional>
 #include <future>
 #include <optional>
 #include <string>
@@ -34,10 +35,13 @@ public:
      * deletes the old one.
      * @param name Name of the entry
      * @param newNamespace New namespace to set
+     * @param shouldAbort Optional callback that returns true when the operation should be aborted
      * @return base::OptError Error if the route "name" does not exist or
      * the new namespace is invalid.
      */
-    virtual base::OptError hotSwapNamespace(const std::string& name, const cm::store::NamespaceId& newNamespace) = 0;
+    virtual base::OptError hotSwapNamespace(const std::string& name,
+                                            const cm::store::NamespaceId& newNamespace,
+                                            const std::function<bool()>& shouldAbort = nullptr) = 0;
 
     virtual bool existsEntry(const std::string& name) const = 0;
 

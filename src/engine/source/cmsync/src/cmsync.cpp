@@ -282,14 +282,17 @@ cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view origi
     return newNs;
 }
 
-void CMSync::syncNamespaceInRoute(const SyncedNamespace& nsState, const cm::store::NamespaceId& newNamespaceId)
+void CMSync::syncNamespaceInRoute(const SyncedNamespace& nsState,
+                                  const cm::store::NamespaceId& newNamespaceId,
+                                  const std::function<bool()>& shouldAbort)
 {
     auto routerPtr = base::utils::lockWeakPtr(m_router, "RouterAPI");
 
     // If the route exists, hot-swap the namespace
     if (routerPtr->existsEntry(nsState.getRouteName()))
     {
-        if (auto err = routerPtr->hotSwapNamespace(nsState.getRouteName(), newNamespaceId); base::isError(err))
+        if (auto err = routerPtr->hotSwapNamespace(nsState.getRouteName(), newNamespaceId, shouldAbort);
+            base::isError(err))
         {
             throw std::runtime_error(
                 fmt::format("Failed to hot-swap namespace in route '{}': {}", nsState.getRouteName(), err->message));
@@ -563,28 +566,10 @@ void CMSync::synchronize(std::function<bool()> shouldAbort)
             // Download and enrich the namespace
             const auto newNsId = downloadAndEnrichNamespace(nsState.getOriginSpace(), shouldAbort);
 
-            // Check abort before route sync
-            if (shouldAbort && shouldAbort())
-            {
-                // Rollback the downloaded namespace before aborting
-                try
-                {
-                    cmcrudPtr->deleteNamespace(newNsId);
-                }
-                catch (const std::exception& ex)
-                {
-                    LOG_WARNING(
-                        "[CMSync] Failed to rollback namespace '{}' during abort: {}", newNsId.toStr(), ex.what());
-                }
-                LOG_INFO("[CMSync] Synchronization aborted before syncing route for space '{}'",
-                         nsState.getOriginSpace());
-                return;
-            }
-
             // Sync the namespace in the router
             try
             {
-                syncNamespaceInRoute(nsState, newNsId);
+                syncNamespaceInRoute(nsState, newNsId, shouldAbort);
             }
             catch (const std::exception& e)
             {

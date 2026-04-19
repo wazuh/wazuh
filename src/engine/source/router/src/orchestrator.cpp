@@ -438,7 +438,9 @@ base::OptError Orchestrator::postEntry(const prod::EntryPost& entry)
     return std::nullopt;
 }
 
-base::OptError Orchestrator::hotSwapNamespace(const std::string& name, const cm::store::NamespaceId& newNamespace)
+base::OptError Orchestrator::hotSwapNamespace(const std::string& name,
+                                              const cm::store::NamespaceId& newNamespace,
+                                              const std::function<bool()>& shouldAbort)
 {
     if (name.empty())
     {
@@ -466,8 +468,16 @@ base::OptError Orchestrator::hotSwapNamespace(const std::string& name, const cm:
     // 2. Create new environment WITHOUT lock
     // 3. Swap atomically with unique lock (swap environment and enable it for each worker independently)
     std::unique_lock lock {m_syncMutex};
-    auto error = forEachRouterWorker([&](const std::shared_ptr<IWorker<IRouter>>& worker)
-                                     { return worker->get()->hotSwapNamespace(name, newNamespace); });
+    auto error = forEachRouterWorker(
+        [&](const std::shared_ptr<IWorker<IRouter>>& worker)
+        {
+            // Check abort before each worker's hot swap (environment build is expensive)
+            if (shouldAbort && shouldAbort())
+            {
+                return base::OptError {base::Error {"Hot swap aborted"}};
+            }
+            return worker->get()->hotSwapNamespace(name, newNamespace, shouldAbort);
+        });
 
     if (error)
     {

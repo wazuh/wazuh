@@ -97,9 +97,12 @@ private:
      *
      * @param nsState The state of the namespace being synchronized, including origin space and route name
      * @param newNamespaceId The new namespace ID to be used in the router
+     * @param shouldAbort Optional callback to check if the operation should be aborted
      * @throws std::runtime_error if the operation fails
      */
-    void syncNamespaceInRoute(const SyncedNamespace& nsState, const cm::store::NamespaceId& newNamespaceId);
+    void syncNamespaceInRoute(const SyncedNamespace& nsState,
+                              const cm::store::NamespaceId& newNamespaceId,
+                              const std::function<bool()>& shouldAbort = nullptr);
 
     void addSpaceToSync(std::string_view space);      ///< Add a space to the sync list
     void removeSpaceFromSync(std::string_view space); ///< Remove a space from the sync

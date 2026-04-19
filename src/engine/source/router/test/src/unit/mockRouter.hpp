@@ -19,7 +19,9 @@ public:
     MOCK_METHOD(base::RespOrError<prod::Entry>, getEntry, (const std::string& name), (const, override));
     MOCK_METHOD(base::OptError,
                 hotSwapNamespace,
-                (const std::string& name, const cm::store::NamespaceId& newNamespace),
+                (const std::string& name,
+                 const cm::store::NamespaceId& newNamespace,
+                 const std::function<bool()>& shouldAbort),
                 (override));
     MOCK_METHOD(void, ingest, (base::Event && event), (override));
 };

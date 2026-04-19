@@ -389,7 +389,8 @@ TEST_F(CMSyncSynchronizeTest, Case4_PolicyEnabledHashChanged)
         .Times(1);
 
     // hot-swap
-    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_)).WillOnce(::testing::Return(std::nullopt));
+    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_, ::testing::_))
+        .WillOnce(::testing::Return(std::nullopt));
 
     // Dump state
     EXPECT_CALL(*store, upsertDoc(STORE_NAME_CMSYNC, ::testing::_))
@@ -427,7 +428,8 @@ TEST_F(CMSyncSynchronizeTest, Case4_RouteDisabledHashChanged)
         importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
-    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_)).WillOnce(::testing::Return(std::nullopt));
+    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_, ::testing::_))
+        .WillOnce(::testing::Return(std::nullopt));
     EXPECT_CALL(*store, upsertDoc(STORE_NAME_CMSYNC, ::testing::_))
         .WillOnce(::testing::Return(store::mocks::storeOk()));
     EXPECT_CALL(*crud, deleteNamespace(cm::store::NamespaceId("old_ns"))).Times(1);
@@ -479,7 +481,7 @@ TEST_F(CMSyncSynchronizeTest, RollsBackWhenHotSwapFails)
         .Times(1);
 
     // hot-swap fails
-    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_))
+    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_, ::testing::_))
         .WillOnce(::testing::Return(base::Error {"hot-swap failed"}));
 
     // Rollback: delete newly created namespace
@@ -717,31 +719,26 @@ TEST_F(CMSyncSynchronizeTest, AbortsBeforeDownload)
     EXPECT_NO_THROW(sync->synchronize(shouldAbort));
 }
 
-// Abort after download: shouldAbort triggers before syncNamespaceInRoute — rollback downloaded namespace
-TEST_F(CMSyncSynchronizeTest, AbortsAfterDownloadRollsBackNamespace)
+// Abort during hot swap: shouldAbort causes hotSwapNamespace to return an error — rollback downloaded namespace
+TEST_F(CMSyncSynchronizeTest, AbortsInHotSwapRollsBackNamespace)
 {
-    auto state = createStoredStateWithNs("standard", "dummy_ns_id");
+    auto state = createStoredStateWithNs("standard", "stored_ns");
     auto sync = createSyncWithState(state);
 
-    int callCount = 0;
-    auto shouldAbort = [&callCount]()
-    {
-        // 1: before lock → false
-        // 2: start of loop → false
-        // 3: executeWithRetry in existSpaceInRemote → false
-        // 4: before getPolicyHashAndEnabled → false
-        // 5: executeWithRetry in getPolicyHashAndEnabled → false
-        // 6: before downloadAndEnrichNamespace → false
-        // 7: executeWithRetry in downloadNamespace → false
-        // 8: before syncNamespaceInRoute → true (abort)
-        return ++callCount > 7;
-    };
+    // shouldAbort always returns false at CMSync level, but hotSwapNamespace simulates abort by returning error
+    auto shouldAbort = []() { return false; };
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
     EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard")))
         .WillOnce(::testing::Return(std::make_pair(std::string("new_hash"), true)));
 
-    EXPECT_CALL(*router, existsEntry("cmsync_standard")).WillOnce(::testing::Return(false));
+    // Route exists → hot swap path
+    EXPECT_CALL(*router, existsEntry("cmsync_standard"))
+        .WillOnce(::testing::Return(true))  // routeConfig check
+        .WillOnce(::testing::Return(true)); // syncNamespaceInRoute check
+
+    auto routeEntry = makeRouterEntry("cmsync_standard", "stored_ns", 1, router::env::State::ENABLED, "old_hash");
+    EXPECT_CALL(*router, getEntry("cmsync_standard")).WillOnce(::testing::Return(routeEntry));
 
     EXPECT_CALL(*crud, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
     wiconnector::PolicyResources resources;
@@ -749,7 +746,11 @@ TEST_F(CMSyncSynchronizeTest, AbortsAfterDownloadRollsBackNamespace)
     EXPECT_CALL(*crud, importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
-    // Rollback: the downloaded namespace should be deleted on abort
+    // hotSwapNamespace returns abort error
+    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_, ::testing::_))
+        .WillOnce(::testing::Return(base::Error {"Hot swap aborted"}));
+
+    // Rollback: the downloaded namespace should be deleted after hot swap failure
     EXPECT_CALL(*crud, deleteNamespace(::testing::_)).Times(1);
 
     EXPECT_NO_THROW(sync->synchronize(shouldAbort));
