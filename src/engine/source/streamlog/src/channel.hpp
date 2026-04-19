@@ -238,6 +238,38 @@ private:
      */
     scheduler::TaskConfig createCompressionTaskConfig(std::filesystem::path filePath) const;
 
+    /**
+     * @brief Delete old files from the channel directory according to retention rules (maxFiles and
+     * maxAccumulatedSize).
+     *
+     * Scans basePath recursively for all regular files belonging to this channel
+     * (excluding the current active file and the latest hard-link). Files are sorted
+     * by mtime (oldest first) so that the cleanup is pattern-agnostic — it works
+     * correctly even if the naming pattern was changed after files were already written.
+     *
+     * Cleanup algorithm:
+     *   1) Scan basePath recursively for regular files (both .ext and .ext.gz)
+     *   2) Exclude the current active file and the latest link
+     *   3) Sort by mtime ascending (oldest first)
+     *   4) Apply maxAccumulatedSize: delete oldest until total size fits the limit
+     *   5) Apply maxFiles: delete oldest until count fits the limit
+     */
+    void deleteOldFiles();
+
+    /**
+     * @brief Static version of deleteOldFiles for use in scheduled tasks (compression callbacks).
+     *
+     * Because compression tasks run asynchronously via the scheduler and may outlive
+     * the ChannelHandler instance, this static method captures all needed state by value.
+     * The active file is identified by reading the inode of latestLink at execution time,
+     * so no stale path state is needed or accepted.
+     */
+    static void deleteOldFilesStatic(const std::filesystem::path& basePath,
+                                     const std::filesystem::path& latestLink,
+                                     size_t maxFiles,
+                                     size_t maxAccumulatedSize,
+                                     const std::string& channelName);
+
     base::Name getStoreBaseName() const { return base::Name(STORE_STREAMLOG_BASE_NAME) + m_channelName + "/0"; }
 
     /**

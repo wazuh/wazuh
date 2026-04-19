@@ -511,7 +511,9 @@ int main(int argc, char* argv[])
                 .maxSize = confManager.get<size_t>(conf::key::STREAMLOG_EVENTS_MAX_SIZE),
                 .bufferSize = confManager.get<size_t>(conf::key::STREAMLOG_EVENTS_BUFFER_SIZE),
                 .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
-                .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
+                .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL),
+                .maxFiles = confManager.get<size_t>(conf::key::STREAMLOG_MAX_FILES),
+                .maxAccumulatedSize = confManager.get<size_t>(conf::key::STREAMLOG_MAX_ACCUMULATED_SIZE)};
             builderDeps.iConnector = indexerConnector;
             auto defs = std::make_shared<defs::DefinitionsBuilder>();
 
@@ -694,7 +696,9 @@ int main(int argc, char* argv[])
                 .maxSize = confManager.get<size_t>(conf::key::STREAMLOG_DUMPER_MAX_SIZE),
                 .bufferSize = confManager.get<size_t>(conf::key::STREAMLOG_DUMPER_BUFFER_SIZE),
                 .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
-                .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
+                .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL),
+                .maxFiles = confManager.get<size_t>(conf::key::STREAMLOG_MAX_FILES),
+                .maxAccumulatedSize = confManager.get<size_t>(conf::key::STREAMLOG_MAX_ACCUMULATED_SIZE)};
             dumper = std::make_shared<dumper::Dumper>(
                 streamLogger, dumperConfig, confManager.get<bool>(conf::key::DUMPER_ENABLED));
             LOG_INFO("Dumper Events initialized.");
@@ -796,7 +800,9 @@ int main(int argc, char* argv[])
                     .maxSize = confManager.get<size_t>(conf::key::STREAMLOG_METRICS_MAX_SIZE),
                     .bufferSize = confManager.get<size_t>(conf::key::STREAMLOG_METRICS_BUFFER_SIZE),
                     .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
-                    .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
+                    .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL),
+                    .maxFiles = confManager.get<size_t>(conf::key::STREAMLOG_MAX_FILES),
+                    .maxAccumulatedSize = confManager.get<size_t>(conf::key::STREAMLOG_MAX_ACCUMULATED_SIZE)};
 
                 auto metricsWriter = streamLogger->ensureAndGetWriter("engine-metrics", metricsChannelConfig, "json");
 
