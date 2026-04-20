@@ -155,6 +155,54 @@ void test_buffer_append(void **state)
     os_free(agt);
 }
 
+void test_buffer_append_text_size_excludes_null_terminator(void **state)
+{
+    os_calloc(1, sizeof(agent), agt);
+    agt->buffer = 1;
+    agt->buflength = 5;
+    i = 0;
+    j = 0;
+
+    /* Legacy text path (msg_len < 0): the manager must receive exactly
+     * strlen(msg) bytes on the wire, without a trailing '\0'. Regression
+     * guard for issue #35474, where the stored size was strlen + 1 and
+     * the terminator leaked into the encrypted frame, breaking downstream
+     * decoders that parsed event.original. */
+    const char *text_event = "1:/var/log/syslog:Apr 20 hello";
+
+    expect_function_call(__wrap_getDefine_Int);
+    will_return(__wrap_getDefine_Int, 90);
+
+    expect_function_call(__wrap_getDefine_Int);
+    will_return(__wrap_getDefine_Int, 80);
+
+    expect_function_call(__wrap_getDefine_Int);
+    will_return(__wrap_getDefine_Int, 15);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    buffer_init();
+    buffer_append(text_event, -1);
+
+    assert_non_null(buffer[0].data);
+    assert_int_equal(strlen(text_event), buffer[0].size);
+    assert_memory_equal(text_event, buffer[0].data, strlen(text_event));
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    w_agentd_buffer_free(agt->buflength);
+
+    os_free(agt);
+}
+
 void test_buffer_append_binary_preserves_size(void **state)
 {
     os_calloc(1, sizeof(agent), agt);
@@ -441,6 +489,7 @@ int main(void) {
         cmocka_unit_test(test_w_agentd_get_buffer_lenght_buffer),
         #ifndef TEST_WINAGENT
         cmocka_unit_test(test_buffer_append),
+        cmocka_unit_test(test_buffer_append_text_size_excludes_null_terminator),
         cmocka_unit_test(test_buffer_append_binary_preserves_size),
         cmocka_unit_test(test_w_agentd_buffer_free),
         cmocka_unit_test(test_w_agentd_buffer_resize_shrink),
