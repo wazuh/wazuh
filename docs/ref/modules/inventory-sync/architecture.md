@@ -1,245 +1,187 @@
 # Architecture
 
-The **Inventory Sync module** implements a **session-based synchronization architecture** designed to ensure reliable transfer of inventory data from Wazuh agents to the Wazuh Indexer.
-It leverages a combination of design patterns — **Facade**, **Template Method**, and **Publisher–Subscriber** — to modularize responsibilities, simplify extensibility, and provide scalable synchronization capabilities.
+Inventory Sync is a **manager-only**, **session-oriented** synchronization service. Agents send FlatBuffer messages over the Router topic `inventory-states`; the manager validates those messages, stores session chunks in RocksDB, translates them into indexer operations, optionally triggers vulnerability scanning, and returns acknowledgments to the agent.
 
----
+## Main components
 
-## Main Components
+### `src/wazuh_modules/inventory_sync/src/inventorySyncFacade.hpp`
 
-### **`inventorySyncFacade.hpp`**
+This is the orchestration layer.
 
-The main orchestration component and entry point for inventory synchronization.
 Responsibilities:
 
-* Initializes local RocksDB storage for session-based data persistence.
-* Subscribes to Router communication channels for incoming FlatBuffer messages.
-* Manages agent session lifecycle, including creation, tracking, and timeouts.
-* Coordinates IndexerConnector and ResponseDispatcher interactions.
-* Implements the session-based synchronization protocol with unique session IDs.
+- Creates and clears the local RocksDB session store in `inventory_sync/`.
+- Subscribes to the Router topic `inventory-states` with subscriber id `inventory-sync-module`.
+- Validates and dispatches `Start`, `DataValue`, `DataBatch`, `DataContext`, `DataClean`, `ChecksumModule`, `End`, and `ReqRet` protocol messages.
+- Owns the worker queue for inbound messages and the queue that serializes indexer-side completion work.
+- Executes bulk indexing, delete-by-query, update-by-query, checksum verification, stale-session cleanup, and agent deletion.
+- Triggers the Vulnerability Scanner for sessions marked with `VDFirst` or `VDSync`.
 
----
+### `src/wazuh_modules/inventory_sync/src/agentSession.hpp`
 
-### **`agentSession.hpp`**
+This component owns the lifecycle of a single session.
 
-Manages synchronization state and lifecycle for each agent.
 Responsibilities:
 
-* Tracks session lifecycle (Start → Data → End).
-* Stores incoming data with session-prefixed keys in RocksDB.
-* Validates integrity and detects gaps in sequences.
-* Implements timeout and heartbeat validation.
-* Coordinates acknowledgment handling with the ResponseDispatcher.
+- Parses the Start message into a `Context` object.
+- Tracks expected and received sequence numbers with `GapSet`.
+- Persists `DataValue` chunks as `{session}_{seq}`.
+- Persists `DataContext` chunks as `{session}_{seq}_context`.
+- Stores `DataClean` indices and `ChecksumModule` values in session state.
+- Enqueues the session for final processing once `End` arrives and all required chunks are present.
 
----
+### `src/wazuh_modules/inventory_sync/src/context.hpp`
 
-### **`context.hpp`**
+`Context` stores the per-session metadata used by both indexing and downstream consumers:
 
-Defines metadata for each synchronization session.
-Responsibilities:
+- Synchronization mode and option.
+- Session id, module name, agent id, agent identity fields, and group list.
+- Target index list.
+- Global version for metadata and group updates.
+- Cluster name and cluster node from the Start message.
+- Lock ownership for metadata and group reconciliation flows.
+- Checksum data for `ModuleCheck`.
+- Deferred `DataClean` index set.
 
-* Stores synchronization mode (ModuleFull, ModuleDelta, ModuleCheck, MetadataDelta, MetadataCheck, GroupDelta, GroupCheck).
-* Maintains session ID, agent ID, and module name.
-* Tracks agent context information (OS details, version, groups).
-* Manages agent lock ownership flag for metadata/groups operations.
-* Provides metadata to IndexerConnector and ResponseDispatcher.
+### `src/wazuh_modules/inventory_sync/src/responseDispatcher.hpp`
 
----
+This component sends `StartAck`, `EndAck`, and retransmission requests back to the agent through the Router/response path.
 
-### **`responseDispatcher.hpp`**
+### `src/wazuh_modules/inventory_sync/src/inventorySyncQueryBuilder.hpp`
 
-Handles outbound communication to agents.
-Responsibilities:
+This component builds the OpenSearch update and search queries used for:
 
-* Sends acknowledgments upon successful synchronization.
-* Reports errors and status updates.
-* Routes responses based on session context.
+- Metadata updates.
+- Group updates.
+- Metadata recovery checks.
+- Group recovery checks.
+- Module checksum validation.
 
----
+## Supported synchronized data
 
-## Synchronization Flow
+Inventory Sync currently processes these module families:
 
-The Inventory Sync protocol operates in **three phases**:
+- **`syscollector`**: inventory system, hardware, hotfixes, packages, processes, ports, interfaces, protocols, networks, users, groups, services, and browser extensions.
+- **`fim`**: `wazuh-states-fim-files`, `wazuh-states-fim-registry-keys`, and `wazuh-states-fim-registry-values`.
+- **`sca`**: `wazuh-states-sca`.
 
-1. **Start Phase**
+It also handles manager-side **agent metadata** and **group membership** reconciliation across already indexed state documents.
 
-   * Agent initiates synchronization with a `START` message containing mode and agent context.
-   * A unique session ID is generated.
-   * Context is created, and RocksDB storage prepared.
-   * For metadata/groups modes: agent is locked to prevent concurrent inventory sessions.
-
-2. **Data Phase**
-
-   * Agent transmits inventory data in chunks (for module modes).
-   * Data is written into RocksDB with session-prefixed keys.
-   * FlatBuffer validation ensures message integrity.
-   * Multiple message types supported:
-     - **DataValue**: Standard inventory data with upsert/delete operations
-     - **DataContext**: Context metadata (stored but not indexed, for future VD integration)
-     - **DataClean**: Bulk delete-by-query requests for index cleanup
-     - **ChecksumModule**: Integrity verification checksums
-   * For metadata/groups check modes: data phase is skipped (disaster recovery).
-
-3. **End Phase**
-
-   * Agent sends an `END` message.
-   * Session data is processed by the IndexerConnector.
-   * Bulk indexing/deletion operations are issued to the Indexer.
-   * For disaster recovery modes: update-by-query operations scan all indices.
-   * An acknowledgment is sent back, and session data is cleaned up.
-   * Agent is unlocked if it was locked for metadata/groups operations.
-
----
-
-## Message Type Handling
-
-The module processes four distinct data message types during the Data Phase:
-
-### DataValue Messages
-
-**Purpose:** Standard inventory data for indexing
-
-**Processing:**
-- Stored in RocksDB with key format: `{session}_{seq}`
-- Tracked in GapSet for sequence validation
-- Accumulated for bulk indexing operations
-- Supports both Upsert and Delete operations
-
-**Indexer Integration:**
-- Sent to indexer via `bulkIndex()` or `bulkDelete()`
-- Includes agent context enrichment (metadata, groups)
-- Triggers notify callback after successful indexing
-
-### DataContext Messages
-
-**Purpose:** Context metadata for Vulnerability Detector (future integration)
-
-**Processing:**
-- Stored in RocksDB with key format: `{session}_{seq}_context`
-- Tracked in GapSet (participates in ReqRet mechanism)
-- **NOT sent to indexer** - preserved for future VD use
-- Automatically cleaned up with session completion
-
-**Special Handling:**
-- Skipped during indexer processing loop (`key.ends_with("_context")`)
-- If session contains ONLY DataContext (no DataValue/DataClean), EndAck is sent immediately
-- No bulk operations registered for DataContext-only sessions
-
-### DataClean Messages
-
-**Purpose:** Bulk deletion via deleteByQuery
-
-**Processing:**
-- Tracked in GapSet for sequence validation
-- Stored in context: `dataCleanIndices` set
-- Triggers `deleteByQuery` for specified indices during End Phase
-
-**Error Handling:**
-- Gracefully handles 404 errors (index doesn't exist)
-- Prevents cascade failures for non-existent indices
-- Continues processing even when target index is missing
-
-### ChecksumModule Messages
-
-**Purpose:** Integrity verification for ModuleCheck mode
-
-**Processing:**
-- Stores checksum and index in session context
-- Triggers checksum calculation on manager side
-- Compares agent checksum vs manager checksum
-- Supports retry mechanism (5 attempts, 10s delay) to handle indexer flush delays
-
----
-
-## Agent Context Synchronization
-
-### Metadata and Groups Updates
-
-The module handles two types of agent context updates:
-
-**Delta Operations** (MetadataDelta, GroupDelta):
-* Triggered when agent metadata or group membership changes
-* Updates `agent.*` fields on all existing documents for that agent
-* Uses update-by-query to efficiently update documents across multiple indices
-* Requires agent locking to prevent race conditions with concurrent inventory syncs
-
-**Disaster Recovery** (MetadataCheck, GroupCheck):
-* Periodic integrity checks to detect and fix inconsistencies
-* Scans all documents for an agent across all indices
-* Corrects any documents with outdated or incorrect agent context
-* Ensures metadata/groups consistency after crashes, errors, or data corruption
-
-### Agent Locking Mechanism
-
-To prevent race conditions between inventory updates and metadata/groups updates:
-
-1. **Lock Acquisition**: Metadata/groups sessions lock the agent before processing
-2. **Session Waiting**: Module waits up to 60 seconds for active inventory sessions to complete
-3. **Bulk Flush**: Pending bulk operations are flushed to allow sessions to finish quickly
-4. **Safe Processing**: Once all sessions complete, metadata/groups update proceeds
-5. **Lock Release**: Agent is unlocked after operation completes or on error/timeout
-6. **Lock Tracking**: Context tracks which session owns the lock via `ownsAgentLock` flag
-
-This ensures that inventory documents receive correct agent context without conflicts.
-
----
-
-## High-Level Diagram
+## End-to-end flow
 
 ```mermaid
-flowchart TD
-
-subgraph WazuhManager[" "]
-  subgraph WazuhModulesM[" "]
-    subgraph InventorySync[" "]
-      AgentSessions["Agent Sessions"]
-      LocalStorage["RocksDB Storage"]
-      WorkersQueue["Workers Queue"] 
-      IndexerQueue["Indexer Queue"]
-    end
-    D@{ shape: braces, label: "Inventory Sync" } --> InventorySync
-    IndexerConnector["Indexer Connector"]
-    InventorySync -- "Bulk Operations" --> IndexerConnector
-  end
-  C@{ shape: braces, label: "Wazuh Modules" } --> WazuhModulesM
-  Router -- "FlatBuffer Messages" --> InventorySync
-  InventorySync -- "ACK / Status" --> Router
-end
-B@{ shape: braces, label: "Wazuh Manager" } --> WazuhManager
-IndexerConnector -- "HTTP Bulk API" --> WazuhIndexer
-
-subgraph WazuhAgent["Wazuh Agent"]
-  subgraph WazuhModulesA[" "]
-    Syscollector["Syscollector"]
-    FIM["FIM Module"]  
-  end
-  A@{ shape: braces, label: "Wazuh Modules" } --> WazuhModulesA
-  Syscollector -- "Inventory States" --> Router
-  FIM -- "FIM States" --> Router
-end
-
-WazuhIndexer["Wazuh Indexer"]
-WazuhDashboard["Wazuh Dashboard"]
-WazuhDashboard -- "/wazuh-states-*/_search" --> WazuhIndexer
+flowchart LR
+  Agent["Agent modules\nSyscollector / FIM / SCA"] --> Router["Router topic\ninventory-states"]
+  Router --> Workers[Inventory Sync worker queue]
+  Workers --> Session[AgentSession + GapSet]
+  Session --> RocksDB[RocksDB session store]
+  Session --> EndQueue[Indexer completion queue]
+  EndQueue --> Indexer[Indexer Connector]
+  EndQueue --> VD[Vulnerability Scanner]
+  EndQueue --> Ack[ResponseDispatcher]
+  Indexer --> OpenSearch[Wazuh Indexer]
+  Ack --> Agent
 ```
 
----
+The protocol is organized around three phases:
 
-## Session Management
+1. **Start**
 
-The module provides robust **session lifecycle management**:
+- The agent opens a session with module name, mode, option, message count, target indices, agent identity, groups, and cluster fields.
+- The manager assigns a 64-bit session id and replies with `StartAck`.
+- The session is rejected if the indexer is unavailable, the agent is locked for metadata or group maintenance, or the configured session limit is reached.
 
-* **Session Creation**: 64-bit random IDs prevent collisions.
-* **Timeout Handling**: Configurable timeout (default: 10s) triggers cleanup.
-* **Concurrency Control**: Thread-safe session map with shared/unique locks.
-* **Data Persistence**: Session-scoped keys ensure isolation in RocksDB.
-* **Error Recovery**: Automatic cleanup on timeouts or errors.
+2. **Data**
 
----
+- `DataValue` carries upsert or delete operations for indexable state documents.
+- `DataBatch` carries multiple `DataValue` entries in one protocol message; Inventory Sync unwraps them and stores them as individual session entries.
+- `DataContext` carries auxiliary context data. Inventory Sync stores it in RocksDB and tracks its sequence number, but does not index it directly.
+- `DataClean` requests `deleteByQuery` against one or more indices for the current agent.
+- `ChecksumModule` provides the agent checksum used by `ModuleCheck`.
+- `GapSet` tracks missing ranges and supports retransmission requests.
 
-## Scalability Features
+3. **End**
 
-* **Asynchronous Processing**: Multi-threaded workers handle messages in concurrent way, using a producer-consumer approach.
-* **Bulk Operations**: Efficient batching reduces Indexer overhead.
-* **Memory Protection**: Temporary RocksDB storage prevents memory bloat.
-* **Queue Management**: Configurable worker and Indexer queues enable backpressure control.
+- Once `End` is received and all required chunks are present, the session is moved to the indexer completion queue.
+- The manager executes indexing, deletion, update-by-query, checksum verification, or vulnerability scanning according to the session mode.
+- The session store is deleted and `EndAck` is returned when processing completes.
+
+## Synchronization modes
+
+Inventory Sync supports these synchronization modes:
+
+- `ModuleFull`: delete all documents for the agent in the Start indices, then index the session payload.
+- `ModuleDelta`: apply only the `DataValue` upserts and deletes received in the session.
+- `ModuleCheck`: compare the agent checksum with the manager checksum for the target index.
+- `MetadataDelta`: update agent metadata fields on existing state documents.
+- `MetadataCheck`: repair stale or inconsistent metadata through update-by-query.
+- `GroupDelta`: update `wazuh.agent.groups` on existing state documents.
+- `GroupCheck`: repair stale or inconsistent groups through update-by-query.
+
+## Message handling details
+
+### `DataValue`
+
+- Stored in RocksDB as `{session}_{seq}`.
+- Replayed at End time into `bulkIndex` or `bulkDelete` calls.
+- Enriched by the manager with `wazuh.agent.*` and `wazuh.cluster.name` metadata before indexing.
+
+### `DataBatch`
+
+- Supported by the current schema and implementation.
+- Used to ship many `DataValue` entries in one message.
+- Inventory Sync unpacks the batch and stores each item as an individual session record so the rest of the pipeline remains unchanged.
+
+### `DataContext`
+
+- Stored in RocksDB as `{session}_{seq}_context`.
+- Excluded from indexer replay.
+- Participates in gap tracking and retransmission.
+- Can still be consumed by downstream session logic, including vulnerability-scanner flows that use the session RocksDB contents.
+
+### `DataClean`
+
+- Adds indices to `Context.dataCleanIndices`.
+- At End time, Inventory Sync issues `deleteByQuery(index, agentId)` for each requested index.
+
+### `ChecksumModule`
+
+- Used only for `ModuleCheck`.
+- Stores the agent checksum and checksum target index in the session context.
+- The manager computes its own checksum-of-checksums from indexed documents and compares the values before acknowledging the session.
+
+## Metadata and group coordination
+
+Metadata and group updates use a stronger coordination path than normal inventory sync.
+
+Behavior:
+
+- The agent is locked before metadata or group reconciliation begins.
+- Pending indexer bulk work is flushed first.
+- The manager waits up to **60 seconds** for other active sessions for that agent to finish.
+- If sessions remain after the timeout, they are treated as zombie sessions and cleaned up.
+- The lock is released only after the update-by-query operation completes or the session fails.
+
+This prevents race conditions where inventory data would be indexed with stale metadata or stale group lists.
+
+## Reliability and cleanup
+
+Inventory Sync includes several consistency mechanisms:
+
+- **Gap detection and retransmission** through `GapSet` and `ReqRet`.
+- **Stale-session cleanup** for sessions inactive for **20 minutes**.
+- **Periodic cleanup sweep** every **10 minutes**.
+- **Checksum validation** with retry logic for `ModuleCheck` to tolerate indexer propagation delays.
+- **Startup cleanup** of the `inventory_sync/` RocksDB directory before the module starts serving new sessions.
+
+## Vulnerability Scanner integration
+
+When the Start option is `VDFirst` or `VDSync`, Inventory Sync can invoke the Vulnerability Scanner after session persistence and indexer work setup.
+
+Current behavior:
+
+- If the Vulnerability Scanner is disabled, Inventory Sync skips the scan and still completes the session.
+- If the scanner is enabled but the CVE feed is not ready, the session waits until the scanner reports readiness or stops.
+- Once ready, the scanner builds its own context from the same Inventory Sync session data stored in RocksDB.
+
+This means Inventory Sync is not only an indexing service. It is also the synchronization boundary that feeds downstream vulnerability analysis.
