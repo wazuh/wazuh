@@ -372,7 +372,7 @@ namespace InventorySyncQueryBuilder
     inline nlohmann::json
     buildContextGetQuery(const std::string& agentId, std::size_t size, const std::string& searchAfter = "")
     {
-        nlohmann::json query = {{"_source", nlohmann::json::array({"vulnerability.id"})},
+        nlohmann::json query = {{"_source", nlohmann::json::array({"vulnerability.id", "vulnerability.score"})},
                                 {"query", {{"term", {{"wazuh.agent.id", agentId}}}}},
                                 {"size", size},
                                 {"sort", {{{"_id", {{"order", "asc"}}}}}}};
