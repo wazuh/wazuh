@@ -6,7 +6,7 @@
 namespace api::event::handlers
 {
 adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orchestrator,
-                                const std::shared_ptr<::archiver::IArchiver>& archiver)
+                                const std::shared_ptr<::dumper::IDumper>& dumper)
 {
     auto lambdaName = logging::getLambdaName(__FUNCTION__, "apiHandler");
     auto weakOrchestrator = std::weak_ptr(orchestrator);
@@ -17,7 +17,7 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
 
     return [lambdaName = std::move(lambdaName),
             weakOrchestrator = std::move(weakOrchestrator),
-            weakArchiver = std::weak_ptr(archiver),
+            weakDump = std::weak_ptr(dumper),
             bytesReceivedCounter,
             eventsReceivedCounter](const auto& req, auto& res)
     {
@@ -30,16 +30,16 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
             return;
         }
 
-        // Archive the batch, stripping trailing newline to prevent blank lines between batches.
+        // Dump the batch, stripping trailing newline to prevent blank lines between batches.
 
-        if (auto archiverRef = weakArchiver.lock(); archiverRef)
+        if (auto dumpRef = weakDump.lock(); dumpRef)
         {
-            std::string_view batchToArchive = req.body;
-            if (!batchToArchive.empty() && batchToArchive.back() == '\n')
+            std::string_view batchToDump = req.body;
+            if (!batchToDump.empty() && batchToDump.back() == '\n')
             {
-                batchToArchive.remove_suffix(1);
+                batchToDump.remove_suffix(1);
             }
-            archiverRef->archive(batchToArchive);
+            dumpRef->dump(batchToDump);
         }
 
         // Track bytes received (entire HTTP body size)

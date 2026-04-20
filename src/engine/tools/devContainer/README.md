@@ -60,8 +60,8 @@ Located at `tools/purge_wazuh.sh`, this script provides a comprehensive cleanup 
 ### mount_wazuh_proc.sh
 Mounts the `/proc` filesystem inside the Wazuh installation directory for development and testing purposes.
 
-### toggle_archive.sh
-Enables or disables the archiving functionality in the Wazuh engine.
+### toggle_event_dumper.sh
+Enables or disables the event dumper functionality in the Wazuh engine.
 
 ### Other utilities
 - `event_sock_v2.go`: Tools for testing event socket communication

@@ -58,7 +58,7 @@ All proto messages follow a strict pattern:
 
 Examples:
 - `RoutePost_Request` / `RouteGet_Response`
-- `ArchiverActivate_Request` / `ArchiverStatus_Response`
+- `EventDumperActivate_Request` / `EventDumperStatus_Response`
 - `SessionPost_Request` / `RunPost_Response`
 
 When an endpoint returns only a status, it reuses the shared `GenericStatus_Response` from `engine.proto`.
@@ -94,7 +94,7 @@ proto/
 │   ├── router.proto                    # Route CRUD, table queries, event queue
 │   ├── tester.proto                    # Session management, test runs, logtest
 │   ├── geo.proto                       # GeoIP database queries
-│   ├── archiver.proto                  # Archive activate/deactivate/status
+│   ├── event_dumper.proto             # Event dumper activate/deactivate/status
 │   ├── rawevtindexer.proto             # Raw event indexer status
 │   ├── crud.proto                      # Namespace, policy, and resource CRUD
 │   ├── ioc.proto                       # IOC sync: update and state
@@ -107,7 +107,7 @@ proto/
     ├── router.pb.cc / router.pb.h      # Generated from router.proto
     ├── tester.pb.cc / tester.pb.h      # Generated from tester.proto
     ├── geo.pb.cc / geo.pb.h            # ...
-    ├── archiver.pb.cc / archiver.pb.h
+    ├── event_dumper.pb.cc / event_dumper.pb.h
     ├── rawevtindexer.pb.cc / .pb.h
     ├── crud.pb.cc / crud.pb.h
     ├── ioc.pb.cc / ioc.pb.h
@@ -123,7 +123,7 @@ proto/
 | `router.proto` | `com.wazuh.api.engine.router` | Route CRUD, table queries, event queue ingestion |
 | `tester.proto` | `com.wazuh.api.engine.tester` | Session management, test runs, logtest |
 | `geo.proto` | `com.wazuh.api.engine.geo` | GeoIP database queries |
-| `archiver.proto` | `com.wazuh.api.engine.archiver` | Archive activate/deactivate/status |
+| `event_dumper.proto` | `com.wazuh.api.engine.event_dumper` | Event dumper activate/deactivate/status |
 | `rawevtindexer.proto` | `com.wazuh.api.engine.rawevtindexer` | Raw event indexer status |
 | `crud.proto` | `com.wazuh.api.engine.content` | Namespace, policy, and resource CRUD |
 | `ioc.proto` | `com.wazuh.api.engine.ioc` | IOC sync: update and state |

@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <api/handlers.hpp>
-#include <archiver/archiver.hpp>
 #include <base/eventParser.hpp>
 #include <base/json.hpp>
 #include <base/libwazuhshared.hpp>
@@ -28,6 +27,7 @@
 #include <conf/keys.hpp>
 #include <confremote/confremotemanager.hpp>
 #include <defs/defs.hpp>
+#include <dumper/dumper.hpp>
 #include <eMessages/eMessage.h>
 #include <fastmetrics/registry.hpp>
 #include <fastqueue/cqueue.hpp>
@@ -246,7 +246,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<streamlog::LogManager> streamLogger;
     std::shared_ptr<wiconnector::WIndexerConnector> indexerConnector;
     std::shared_ptr<httpsrv::Server> apiServer;
-    std::shared_ptr<archiver::Archiver> archiver;
+    std::shared_ptr<dumper::Dumper> dumper;
     std::shared_ptr<raweventindexer::RawEventIndexer> rawEventIndexer;
     std::shared_ptr<confremote::ConfRemoteManager> remoteConf;
     std::shared_ptr<httpsrv::Server> engineRemoteServer;
@@ -684,22 +684,21 @@ int main(int argc, char* argv[])
             }
         }
 
-        // Archiver
+        // Dumper Events
         if (enableProcessing)
         {
-            const auto archiverConfig = streamlog::RotationConfig {
+            const auto dumperConfig = streamlog::RotationConfig {
                 .basePath = confManager.get<std::string>(conf::key::STREAMLOG_BASE_PATH),
                 .pattern = confManager.get<std::string>(conf::key::STREAMLOG_DUMPER_PATTERN),
                 .maxSize = confManager.get<size_t>(conf::key::STREAMLOG_DUMPER_MAX_SIZE),
                 .bufferSize = confManager.get<size_t>(conf::key::STREAMLOG_DUMPER_BUFFER_SIZE),
                 .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
                 .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
-
-            archiver = std::make_shared<archiver::Archiver>(
-                streamLogger, archiverConfig, confManager.get<bool>(conf::key::DUMPER_ENABLED));
-            LOG_INFO("Archiver initialized.");
-            exitHandler.add([archiver, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
-                            { archiver->deactivate(); });
+            dumper = std::make_shared<dumper::Dumper>(
+                streamLogger, dumperConfig, confManager.get<bool>(conf::key::DUMPER_ENABLED));
+            LOG_INFO("Dumper Events initialized.");
+            exitHandler.add([dumper, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
+                            { dumper->deactivate(); });
         }
 
         // Remote runtime settings sync
@@ -761,10 +760,9 @@ int main(int argc, char* argv[])
                 orchestrator, cmStore, std::static_pointer_cast<schemf::IValidator>(schemaValidator), apiServer);
             LOG_DEBUG("Tester API registered.");
 
-            // Archiver
-            // should be refactored to use the rotation and dont use a semaphore for writing
-            api::archiver::handlers::registerHandlers(archiver, apiServer);
-            LOG_DEBUG("Archiver API registered.");
+            // Dumper Events
+            api::dumper::handlers::registerHandlers(dumper, apiServer);
+            LOG_DEBUG("Dumper Events API registered.");
 
             // Raw Event Indexer
             if (rawEventIndexer)
@@ -830,7 +828,7 @@ int main(int argc, char* argv[])
             exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
 
             engineRemoteServer->addRoute(
-                httpsrv::Method::POST, "/events/enriched", api::event::handlers::pushEvent(orchestrator, archiver));
+                httpsrv::Method::POST, "/events/enriched", api::event::handlers::pushEvent(orchestrator, dumper));
 
             // starting in a new thread
             engineRemoteServer->start(confManager.get<std::string>(conf::key::SERVER_ENRICHED_EVENTS_SOCKET));

@@ -117,7 +117,7 @@ build_pep517 tools/api-communication
 if ! build_pep517 tools/engine-suite; then
   echo "[build] PEP517 failed for engine-suite; falling back to legacy mode..."
   build_legacy_from_copy tools/engine-suite engine-suite \
-    "engine_public engine_archiver engine_decoder engine_router engine_schema engine_private engine_test engine_test_utils helper_test engine_metrics health_test integration_test"
+    "engine_public engine_event_dumper engine_decoder engine_router engine_schema engine_private engine_test engine_test_utils helper_test engine_metrics health_test integration_test"
 fi
 
 build_pep517 test/engine-test-utils  || build_legacy_from_copy test/engine-test-utils  engine-test-utils   "engine_test_utils"
@@ -257,7 +257,7 @@ EOF
 }
 
 mk_wrapper engine-public       engine_public
-mk_wrapper engine-archiver     engine_archiver
+mk_wrapper engine-event-dumper     engine_event_dumper
 mk_wrapper engine-router       engine_router
 mk_wrapper engine-schema       engine_schema
 mk_wrapper engine-private      engine_private
@@ -382,7 +382,7 @@ echo "[post] pip list (summary):"
 # Enable argcomplete for each tool in bash
 if [ -x "$VENV/bin/register-python-argcomplete" ]; then
   echo "[post] Registering bash completion for engine tools..."
-  for tool in engine-private engine-public engine-archiver engine-test engine-helper-test engine-it engine-router; do
+  for tool in engine-private engine-public engine-event-dumper engine-test engine-helper-test engine-it engine-router; do
     "$VENV/bin/register-python-argcomplete" "$tool" > "/etc/bash_completion.d/$tool" 2>/dev/null || true
   done
 fi
@@ -436,7 +436,7 @@ exit 0
 # =====================
 %files
 %{_bindir}/engine-public
-%{_bindir}/engine-archiver
+%{_bindir}/engine-event-dumper
 %{_bindir}/engine-router
 %{_bindir}/engine-schema
 %{_bindir}/engine-private

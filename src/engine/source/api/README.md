@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Wazuh Engine exposes an internal HTTP API over a **Unix Domain Socket (UDS)**. This API is the control plane for the engine: it handles routing, testing, content management, archiving, geolocation, IOC synchronization, and more.
+The Wazuh Engine exposes an internal HTTP API over a **Unix Domain Socket (UDS)**. This API is the control plane for the engine: it handles routing, testing, content management, event dumping, geolocation, IOC synchronization, and more.
 
 The API system spans five tightly-coupled locations in the repository:
 
@@ -69,8 +69,8 @@ api/
 │   ├── src/handlers.cpp
 │   └── test/src/unit/
 │
-├── archiver/                                   # Archive enable/disable/status handlers
-│   ├── include/api/archiver/handlers.hpp
+├── dumper/                                 # Event Dumper enable/disable/status handlers
+│   ├── include/api/dumper/handlers.hpp
 │   ├── src/handlers.cpp
 │   └── test/src/unit/handlers_test.cpp
 │
@@ -125,42 +125,43 @@ There is **no abstract base class**. Every sub-module follows the same conventio
 **a) Free functions returning `RouteHandler` (factory pattern)**
 ```cpp
 // In namespace api::<module>::handlers
-adapter::RouteHandler activateArchiver(const std::shared_ptr<::archiver::IArchiver>& archiver);
+adapter::RouteHandler activateDumper(const std::shared_ptr<::dumper::IDumper>& dumper);
 ```
 
 **b) Inline `registerHandlers()` function wiring routes to the server**
 ```cpp
-inline void registerHandlers(const std::shared_ptr<::archiver::IArchiver>& archiver,
+inline void registerHandlers(const std::shared_ptr<::dumper::IDumper>& dumper,
                              const std::shared_ptr<httpsrv::Server>& server)
 {
-    server->addRoute(httpsrv::Method::POST, "/archiver/activate", activateArchiver(archiver));
-    server->addRoute(httpsrv::Method::POST, "/archiver/deactivate", deactivateArchiver(archiver));
-    server->addRoute(httpsrv::Method::POST, "/archiver/status", getArchiverStatus(archiver));
+    server->addRoute(httpsrv::Method::POST, "/event-dumper/activate", activateDumper(dumper));
+    server->addRoute(httpsrv::Method::POST, "/event-dumper/deactivate", deactivateDumper(dumper));
+    server->addRoute(httpsrv::Method::POST, "/event-dumper/status", getDumperStatus(dumper));
 }
 ```
 
 **c) Handler factory implementation (lambda capturing a `weak_ptr`)**
 ```cpp
-adapter::RouteHandler activateArchiver(const std::shared_ptr<::archiver::IArchiver>& archiver)
+adapter::RouteHandler activateDumper(const std::shared_ptr<::dumper::IDumper>& dumper)
 {
-    return [weakArchiver = std::weak_ptr(archiver)](const auto& req, auto& res)
+    return [lambdaName = logging::getLambdaName(__FUNCTION__, "apiHandler"),
+            weakDumper = std::weak_ptr(dumper)](const auto& req, auto& res)
     {
-        using RequestType = eArchiver::ArchiverActivate_Request;
+        using RequestType = eEventDumper::EventDumperActivate_Request;
         using ResponseType = eEngine::GenericStatus_Response;
 
         // 1. Lock the weak_ptr and parse the protobuf request in one call
-        auto result = adapter::getReqAndHandler<RequestType, ResponseType, ::archiver::IArchiver>(
-            req, weakArchiver);
+        auto result = adapter::getReqAndHandler<RequestType, ResponseType, ::dumper::IDumper>(
+            req, weakDumper);
         if (adapter::isError(result)) {
             res = adapter::getErrorResp(result);
             return;
         }
 
         // 2. Destructure the result
-        auto [archiver, protoReq] = adapter::getRes(result);
+        auto [dumper, protoReq] = adapter::getRes(result);
 
         // 3. Execute domain logic via the interface
-        archiver->activate();
+        dumper->activate();
 
         // 4. Build and return the protobuf response
         ResponseType eResponse;
@@ -174,14 +175,14 @@ adapter::RouteHandler activateArchiver(const std::shared_ptr<::archiver::IArchiv
 
 - The root `CMakeLists.txt` creates an **INTERFACE** target `api` that links all sub-modules.
 - Each sub-module is a **STATIC** library (except `adapter`, which is INTERFACE/header-only).
-- Each sub-module links `api::adapter` and its domain interface library (e.g., `archiver::iface`).
+- Each sub-module links `api::adapter` and its domain interface library (e.g., `dumper::iface`).
 - Test targets link the module + `GTest::gtest_main` + `api::adapter::test` + domain mocks.
 
 ```cmake
-# Example: archiver CMakeLists.txt
-add_library(api_archiver STATIC ${SRC_DIR}/handlers.cpp)
-target_link_libraries(api_archiver PUBLIC api::adapter archiver::iface)
-add_library(api::archiver ALIAS api_archiver)
+# Example: dumper CMakeLists.txt
+add_library(api_dumper STATIC ${SRC_DIR}/handlers.cpp)
+target_link_libraries(api_dumper PUBLIC api::adapter dumper::iface)
+add_library(api::dumper ALIAS api_dumper)
 ```
 
 ---
@@ -196,7 +197,7 @@ add_library(api::archiver ALIAS api_archiver)
 | `router.proto` | `com.wazuh.api.engine.router` | Route CRUD, table queries, event queue |
 | `tester.proto` | `com.wazuh.api.engine.tester` | Session management, test runs, logtest |
 | `geo.proto` | `com.wazuh.api.engine.geo` | GeoIP database queries |
-| `archiver.proto` | `com.wazuh.api.engine.archiver` | Archive activate/deactivate/status |
+| `event_dumper.proto` | `com.wazuh.api.engine.event_dumper` | Event Dumper activate/deactivate/status |
 | `rawevtindexer.proto` | `com.wazuh.api.engine.rawevtindexer` | Raw event indexer status |
 | `crud.proto` | `com.wazuh.api.engine.content` | Namespace, policy, and resource CRUD |
 | `ioc.proto` | `com.wazuh.api.engine.ioc` | IOC sync: update and state |
@@ -211,7 +212,7 @@ Proto messages follow a strict naming pattern:
 ```
 
 Examples:
-- `ArchiverActivate_Request` / `GenericStatus_Response` (shared)
+- `EventDumperActivate_Request` / `GenericStatus_Response` (shared)
 - `RoutePost_Request` / `RouteGet_Response`
 - `SessionPost_Request` / `SessionGet_Response`
 
@@ -294,9 +295,9 @@ A static dispatch table mapping protobuf request message types to HTTP endpoints
 ```python
 def get_endpoint(message: Message) -> Tuple[Optional[str], str, str]:
     """Returns (error, endpoint_path, http_method)"""
-    if isinstance(message, archiver.ArchiverActivate_Request):
-        endpoint = 'archiver/activate'
-    # ... instanceof checks for all message types
+    if isinstance(message, event_dumper.EventDumperActivate_Request):
+        endpoint = 'event-dumper/activate'
+    # ... isinstance checks for all message types
 ```
 
 ---
@@ -311,7 +312,7 @@ Provides 5 CLI entry points that exercise the API via `api-communication`:
 |------------|--------|--------|
 | `engine-router` | `engine_router` | Route CRUD, table, ingest |
 | `engine-test` | `engine_test` | Tester sessions, integration test runs |
-| `engine-archiver` | `engine_archiver` | Archive activate/deactivate/status |
+| `engine-event-dumper` | `engine_event_dumper` | Event Dumper activate/deactivate/status |
 | `engine-public` | `engine_public` | Content validation, IOC, logtest cleanup |
 | `engine-private` | `engine_private` | Internal CRUD: namespaces, resources, policies, geo, rawevt |
 
@@ -325,16 +326,16 @@ pip install -e src/engine/tools/engine-suite
 Every command module follows a two-function pattern:
 
 ```python
-# File: engine_archiver/cmds/activate.py
+# File: engine_event_dumper/cmds/activate.py
 
 from api_communication.client import APIClient
-import api_communication.proto.archiver_pb2 as archiver
+import api_communication.proto.event_dumper_pb2 as event_dumper
 import api_communication.proto.engine_pb2 as engine
 
 def run(args):
     client = APIClient(args['api_socket'])
 
-    request = archiver.ArchiverActivate_Request()
+    request = event_dumper.EventDumperActivate_Request()
     error, response = client.send_recv(request)
     if error:
         sys.exit(f'Error: {error}')
@@ -346,7 +347,7 @@ def run(args):
     return 0
 
 def configure(subparsers):
-    parser = subparsers.add_parser('activate', help='Activate the archiver')
+    parser = subparsers.add_parser('activate', help='Activate the event-dumper')
     parser.set_defaults(func=run)
 ```
 
@@ -354,7 +355,7 @@ def configure(subparsers):
 
 ```python
 def parse_args():
-    parser = argparse.ArgumentParser(prog='engine-archiver')
+    parser = argparse.ArgumentParser(prog='engine-event-dumper')
     parser.add_argument('--api-socket', type=str, default=Constants.SOCKET_PATH)
     subparsers = parser.add_subparsers(title='subcommands', required=True, dest='subcommand')
 
@@ -376,7 +377,7 @@ def main():
 The spec documents the **public-facing** API endpoints using OpenAPI 3.0.3. It does **not** include internal (`_internal/`) endpoints or the metrics API.
 
 ### Tags (Domains)
-`Router`, `Tester`, `Geo`, `Archiver`, `Raw Event Indexer`, `Content`, `Logtest`
+`Router`, `Tester`, `Geo`, `Event Dumper`, `Raw Event Indexer`, `Content`, `Logtest`
 
 ### Schema Conventions
 
@@ -427,9 +428,9 @@ The spec documents the **public-facing** API endpoints using OpenAPI 3.0.3. It d
 | **Tester** | `/tester/table/get` | POST | `TableGet_Request` | `TableGet_Response` |
 | **Geo** | `/geo/db/get` | POST | `DbGet_Request` | `DbGet_Response` |
 | **Geo** | `/geo/db/list` | POST | `DbList_Request` | `DbList_Response` |
-| **Archiver** | `/archiver/activate` | POST | `ArchiverActivate_Request` | `GenericStatus_Response` |
-| **Archiver** | `/archiver/deactivate` | POST | `ArchiverDeactivate_Request` | `GenericStatus_Response` |
-| **Archiver** | `/archiver/status` | POST | `ArchiverStatus_Request` | `ArchiverStatus_Response` |
+| **Event Dumper** | `/event-dumper/activate` | POST | `EventDumperActivate_Request` | `GenericStatus_Response` |
+| **Event Dumper** | `/event-dumper/deactivate` | POST | `EventDumperDeactivate_Request` | `GenericStatus_Response` |
+| **Event Dumper** | `/event-dumper/status` | POST | `EventDumperStatus_Request` | `EventDumperStatus_Response` |
 
 ### Internal Endpoints (prefixed with `/_internal/`)
 
@@ -604,7 +605,7 @@ import api_communication.proto.example_pb2 as example
 
 Create a command module in the appropriate `engine-suite` CLI tool.
 
-> **Which CLI tool?** Use `engine_public` for public-facing endpoints, `engine_private` for `_internal/` endpoints, `engine_router` for router-specific commands, `engine_archiver` for archiver commands, or `engine_test` for tester/session commands.
+> **Which CLI tool?** Use `engine_public` for public-facing endpoints, `engine_private` for `_internal/` endpoints, `engine_router` for router-specific commands, `engine_event_dumper` for event-dumper commands, or `engine_test` for tester/session commands.
 
 #### Output Formatting Conventions
 
@@ -779,7 +780,7 @@ def configure(subparsers):
 
 #### Register in the CLI's `__main__.py`
 
-For a **flat CLI** (e.g., `engine-archiver`, `engine-router`) register directly on the root subparsers:
+For a **flat CLI** (e.g., `engine-event-dumper`, `engine-router`) register directly on the root subparsers:
 
 ```python
 from engine_public.cmds.example.action import configure as configure_example_action

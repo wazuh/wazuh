@@ -15,8 +15,8 @@ tags:
     description: "Operations for testing and validating policies"
   - name: Geo
     description: "Operations for geo databases"
-  - name: Archiver
-    description: "Operations for managing the archives. By default a file 'archives.json' is created at '/var/lib/wazuh-server/archives.json' where all events received by the Engine are stored."
+  - name: Event Dumper
+    description: "Operations for managing the event dumper. When active, a file 'event-dump.json' is created on demand at the configured streamlog path where all events received by the Engine are stored."
   - name: Raw Event Indexer
     description: "Operations for checking the status of raw event indexing."
   - name: Content
@@ -1424,15 +1424,15 @@ paths:
         "500":
           $ref: "#/components/responses/InternalServerError_500"
   #################################
-  # Archiver
+  # Event Dumper
   #################################
-  /archiver/activate:
+  /event-dumper/activate:
     post:
       tags:
-        - Archiver
-      summary: Activate the archiver
+        - Event Dumper
+      summary: Activate the event dumper
       description: |
-        This endpoint activates the archiver in the system.
+        This endpoint activates the event dumper in the system.
       requestBody:
         required: true
         content:
@@ -1450,13 +1450,13 @@ paths:
                 $ref: "#/components/schemas/Response"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
-  /archiver/deactivate:
+  /event-dumper/deactivate:
     post:
       tags:
-        - Archiver
-      summary: Deactivate the archiver
+        - Event Dumper
+      summary: Deactivate the event dumper
       description: |
-        This endpoint deactivates the archiver in the system.
+        This endpoint deactivates the event dumper in the system.
       requestBody:
         required: true
         content:
@@ -1474,13 +1474,13 @@ paths:
                 $ref: "#/components/schemas/Response"
         "500":
           $ref: "#/components/responses/InternalServerError_500"
-  /archiver/status:
+  /event-dumper/status:
     post:
       tags:
-        - Archiver
-      summary: Get the status of the archiver
+        - Event Dumper
+      summary: Get the status of the event dumper
       description: |
-        This endpoint retrieves the current status of the archiver.
+        This endpoint retrieves the current status of the event dumper.
       requestBody:
         required: true
         content:
@@ -1489,20 +1489,20 @@ paths:
               $ref: "#/components/schemas/EmptyRequest"
       responses:
         "200":
-          description: Successfully retrieved archiver status
+          description: Successfully retrieved event dumper status
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ArchiverStatus_Response"
+                $ref: "#/components/schemas/EventDumperStatus_Response"
               examples:
-                archiver_active:
-                  summary: Archiver is active
+                event_dumper_active:
+                  summary: Dumper events is active
                   value:
                     status: "OK"
                     error: null
                     active: true
-                archiver_inactive:
-                  summary: Archiver is inactive
+                event_dumper_inactive:
+                  summary: Dumper events is inactive
                   value:
                     status: "OK"
                     error: null
@@ -2697,16 +2697,16 @@ components:
               description: "List of MMDB database entries currently loaded in the geo manager"
 
     #################################
-    # Archiver
+    # Event Dumper
     #################################
-    ArchiverStatus_Response:
+    EventDumperStatus_Response:
       allOf:
         - $ref: "#/components/schemas/Response"
         - type: object
           properties:
             active:
               type: boolean
-              description: "Indicates whether the archiver is active"
+              description: "Indicates whether the event dumper is active"
 
     #################################
     # Raw Event Indexer

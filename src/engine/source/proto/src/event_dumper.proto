@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+import "engine.proto";
+
+package com.wazuh.api.engine.event_dumper;
+
+/*
+ * This API is used to manage the event dumper in the engine
+ */
+
+/***************************************************
+ * Activate the Event Dumper
+ *
+ * command: event-dumper/activate
+ **************************************************/
+message EventDumperActivate_Request {}
+
+// message EventDumperActivate_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Deactivate the Event Dumper
+ *
+ * command: event-dumper/deactivate
+ **************************************************/
+message EventDumperDeactivate_Request {}
+
+// message EventDumperDeactivate_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Get the status of the Event Dumper
+ *
+ * command: event-dumper/status
+ **************************************************/
+message EventDumperStatus_Request {}
+
+message EventDumperStatus_Response
+{
+    ReturnStatus status = 1;   // Status of the query
+    optional string error = 2; // Error message if status is ERROR
+    bool active = 3;           // Whether the Event Dumper is active
+}
