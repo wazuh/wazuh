@@ -17,74 +17,22 @@
 
 namespace base::utils
 {
+// TODO: Make shouldAbort mandatory and remove the default nullptr value, to enforce better cancellation support in retry logic.
 
 /**
- * @brief Execute an operation with retry logic
+ * @brief Execute an operation with retry logic and optional abort support
  *
  * This function attempts to execute the provided operation and retries it if an exception is thrown. It logs each
- * attempt and waits for a specified duration between retries.
+ * attempt and waits for a specified duration between retries. If a shouldAbort callback is provided, it is checked
+ * before each retry attempt and during the wait between retries (split into 1-second intervals for responsive
+ * cancellation).
  * @tparam Func Callable type that performs the operation
  * @param operation The operation to execute
  * @param componentOperationName Name of the component operation for logging purposes
  * @param message Description of the operation for logging purposes
  * @param maxAttempts Maximum number of retry attempts, cannot be zero (will default to 1 attempt)
  * @param waitSeconds Seconds to wait between retries, cannot be zero (will default to 1 second)
- * @return decltype(auto) Result of the operation
- * @throw std::exception if all retry attempts fail
- */
-template<typename Func>
-decltype(auto) executeWithRetry(Func&& operation,
-                                const std::string& componentOperationName,
-                                std::string_view message,
-                                std::size_t maxAttempts,
-                                std::size_t waitSeconds)
-{
-    // Ensure at least 1 second wait to avoid tight loop
-    waitSeconds = waitSeconds == 0 ? 1 : waitSeconds;
-    // Ensure at least 1 attempt to execute the operation
-    maxAttempts = maxAttempts == 0 ? 1 : maxAttempts;
-    for (std::size_t attempt = 1; attempt <= maxAttempts; ++attempt)
-    {
-        try
-        {
-            return operation();
-        }
-        catch (const std::exception& e)
-        {
-            LOG_WARNING_L(componentOperationName.c_str(),
-                          "[{}] {} - Attempt {}/{}: {}",
-                          componentOperationName,
-                          message,
-                          attempt,
-                          maxAttempts,
-                          e.what());
-            if (attempt < maxAttempts)
-            {
-                std::this_thread::sleep_for(std::chrono::seconds(waitSeconds));
-            }
-            else
-            {
-                throw std::runtime_error(fmt::format(
-                    "{}::{} failed after {} attempts: {}", message, componentOperationName, maxAttempts, e.what()));
-            }
-        }
-    }
-
-    throw std::runtime_error(fmt::format("Unreachable code in {}::{}", message, componentOperationName));
-}
-
-/**
- * @brief Execute an operation with retry logic and abort support
- *
- * Same as executeWithRetry but accepts a shouldAbort callback that is checked before each retry attempt and during
- * the wait between retries. The wait is split into 1-second intervals to allow responsive cancellation.
- * @tparam Func Callable type that performs the operation
- * @param operation The operation to execute
- * @param componentOperationName Name of the component operation for logging purposes
- * @param message Description of the operation for logging purposes
- * @param maxAttempts Maximum number of retry attempts, cannot be zero (will default to 1 attempt)
- * @param waitSeconds Seconds to wait between retries, cannot be zero (will default to 1 second)
- * @param shouldAbort Callback that returns true when the operation should be aborted
+ * @param shouldAbort Optional callback that returns true when the operation should be aborted
  * @return decltype(auto) Result of the operation
  * @throw std::runtime_error if aborted, or if all retry attempts fail
  */
@@ -94,7 +42,7 @@ decltype(auto) executeWithRetry(Func&& operation,
                                 std::string_view message,
                                 std::size_t maxAttempts,
                                 std::size_t waitSeconds,
-                                const std::function<bool()>& shouldAbort)
+                                const std::function<bool()>& shouldAbort = nullptr)
 {
     // Ensure at least 1 second wait to avoid tight loop
     waitSeconds = waitSeconds == 0 ? 1 : waitSeconds;
@@ -123,15 +71,24 @@ decltype(auto) executeWithRetry(Func&& operation,
                           e.what());
             if (attempt < maxAttempts)
             {
-                // Split sleep into 1-second chunks for responsive abort
-                for (std::size_t s = 0; s < waitSeconds; ++s)
+                if (shouldAbort)
                 {
-                    if (shouldAbort && shouldAbort())
+                    // Split sleep into 1-second chunks for responsive abort
+                    for (std::size_t s = 0; s < waitSeconds; ++s)
                     {
-                        throw std::runtime_error(fmt::format(
-                            "{}::{} aborted during retry wait (attempt {})", message, componentOperationName, attempt));
+                        if (shouldAbort())
+                        {
+                            throw std::runtime_error(fmt::format("{}::{} aborted during retry wait (attempt {})",
+                                                                 message,
+                                                                 componentOperationName,
+                                                                 attempt));
+                        }
+                        std::this_thread::sleep_for(std::chrono::seconds(1));
                     }
-                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                }
+                else
+                {
+                    std::this_thread::sleep_for(std::chrono::seconds(waitSeconds));
                 }
             }
             else
