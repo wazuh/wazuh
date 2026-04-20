@@ -19,10 +19,10 @@
 #include <chrono>
 #include <condition_variable>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <unordered_map>
 #include <vector>
-#include <condition_variable>
 
 class AgentSyncProtocol : public IAgentSyncProtocol
 {
@@ -293,6 +293,14 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Manages the state for the current synchronization operation.
         SyncState m_syncState;
+
+        /// @brief Guards against concurrent calls to synchronizeModule().
+        ///
+        /// AsyncFlushController spawns a background thread that calls synchronizeModule()
+        /// on the same instance as the module's periodic timer thread. If a sync is already
+        /// in progress the second caller skips its cycle — the in-flight sync drains the
+        /// shared queue, making the concurrent call redundant.
+        std::atomic<bool> m_syncInProgress{false};
 };
 
 #endif // AGENT_SYNC_PROTOCOL_HPP

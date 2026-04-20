@@ -9,7 +9,7 @@ import subprocess
 import pytest
 import sys
 
-from wazuh_testing.constants.platforms import WINDOWS
+from wazuh_testing.constants.platforms import WINDOWS, MACOS
 from py.xml import html
 from wazuh_testing import session_parameters
 from wazuh_testing.constants import platforms

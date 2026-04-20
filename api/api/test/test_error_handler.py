@@ -10,7 +10,7 @@ import pytest
 
 from freezegun import freeze_time
 
-from connexion.exceptions import HTTPException, ProblemException, BadRequestProblem, Unauthorized
+from connexion.exceptions import HTTPException, ProblemException, Unauthorized
 from api.error_handler import _cleanup_detail_field, prevent_bruteforce_attack, \
     http_error_handler, problem_error_handler, unauthorized_error_handler, \
     expect_failed_error_handler, ERROR_CONTENT_TYPE

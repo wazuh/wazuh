@@ -290,7 +290,6 @@ if __name__ == '__main__':
     import logging.config
     import ssl
 
-    import jwt
     import uvicorn
     from connexion import AsyncApp
     from connexion.exceptions import HTTPException, ProblemException, Unauthorized
