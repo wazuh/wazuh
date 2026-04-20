@@ -646,7 +646,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
                     keys.keyentries[agentid]->rcvd = current_ts;
                 } else {
-                    mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
+                    mwarn("Agent key already in use: agent ID '%s' (source IP: %s)", keys.keyentries[agentid]->id, srcip);
 
                     w_mutex_unlock(&keys.keyentries[agentid]->mutex);
                     key_unlock();
@@ -703,7 +703,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
                     keys.keyentries[agentid]->rcvd = current_ts;
                 } else {
-                    mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
+                    mwarn("Agent key already in use: agent ID '%s' (source IP: %s)", keys.keyentries[agentid]->id, srcip);
 
                     w_mutex_unlock(&keys.keyentries[agentid]->mutex);
                     key_unlock();
@@ -724,7 +724,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     }
 
     if (recv_b <= 0) {
-        mwarn("Received message is empty");
+        mwarn("Received message is empty from '%s'", srcip);
         key_unlock();
         if (message->sock >= 0) {
             _close_sock(&keys, message->sock);
@@ -744,7 +744,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         key_unlock();
 
         if (message->sock >= 0) {
-            mwarn("Decrypt the message fail, socket %d", message->sock);
+            mwarn("Decrypt the message fail from '%s', socket %d", srcip, message->sock);
             _close_sock(&keys, message->sock);
         }
 

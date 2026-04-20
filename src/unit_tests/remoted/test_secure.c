@@ -1026,7 +1026,7 @@ void test_HandleSecureMessage_invalid_message(void** state)
     expect_string(__wrap_OS_IsAllowedDynamicID, srcip, "127.0.0.1");
     will_return(__wrap_OS_IsAllowedDynamicID, 0);
 
-    expect_string(__wrap__mwarn, formatted_msg, "Received message is empty");
+    expect_string(__wrap__mwarn, formatted_msg, "Received message is empty from '127.0.0.1'");
 
     expect_function_call(__wrap_key_unlock);
 
@@ -1101,7 +1101,7 @@ void test_HandleSecureMessage_different_sock(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001'");
+    expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001' (source IP: 127.0.0.1)");
 
     expect_function_call(__wrap_key_lock_read);
 
@@ -1173,7 +1173,7 @@ void test_HandleSecureMessage_different_sock_2(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001'");
+    expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001' (source IP: 127.0.0.1)");
 
     expect_function_call(__wrap_key_lock_read);
 
@@ -1439,7 +1439,7 @@ void test_HandleSecureMessage_close_idle_sock_disabled(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001'");
+    expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001' (source IP: 127.0.0.1)");
 
     expect_function_call(__wrap_key_lock_read);
 
@@ -1517,7 +1517,7 @@ void test_HandleSecureMessage_close_idle_sock_disabled_2(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001'");
+    expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001' (source IP: 127.0.0.1)");
 
     expect_function_call(__wrap_key_lock_read);
 
@@ -1596,7 +1596,7 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "Idle socket [4] from agent ID '001' will be closed.");
 
-    expect_string(__wrap__mwarn, formatted_msg, "Received message is empty");
+    expect_string(__wrap__mwarn, formatted_msg, "Received message is empty from '127.0.0.1'");
 
     expect_function_call(__wrap_key_unlock);
 
@@ -1711,7 +1711,7 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    expect_string(__wrap__mwarn, formatted_msg, "Decrypt the message fail, socket 1");
+    expect_string(__wrap__mwarn, formatted_msg, "Decrypt the message fail from '127.0.0.1', socket 1");
 
     // Close new socket
     expect_function_call(__wrap_key_lock_read);
