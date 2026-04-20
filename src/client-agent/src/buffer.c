@@ -43,25 +43,9 @@ struct{
 } buff;
 
 /**
- * @brief Represents a single message stored in the event buffer.
- *
- * This structure is used to hold a message that can be either a null-terminated
- * text string or a raw binary data buffer. It pairs a pointer to the data with
- * its explicit size, allowing the system to handle binary content safely
- * without truncation at null bytes.
- */
-typedef struct {
-    /** @brief Pointer to the dynamically allocated message data. */
-    void *data;
-
-    /** @brief The exact size of the data in bytes. */
-    size_t size;
-} buffered_message;
-
-/**
  * @brief The agent's main event buffer.
  */
-static buffered_message *buffer;
+STATIC buffered_message *buffer;
 
 static pthread_mutex_t mutex_lock;
 static pthread_cond_t cond_no_empty;
