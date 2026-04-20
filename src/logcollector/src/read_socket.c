@@ -40,22 +40,7 @@ void *read_socket(logreader *lf, int *rc, int drop_it) {
         buf[rbytes] = '\0';
         size_t msg_len = (size_t)rbytes;
 
-        /* Strip trailing newline if present */
-        if (msg_len > 0 && buf[msg_len - 1] == '\n') {
-            buf[--msg_len] = '\0';
-        }
-
-        if (msg_len == 0) {
-            continue;
-        }
-
-        if (strlen(buf) != msg_len) {
-            mdebug2("Message from socket '%s' contains zero-bytes. Dropping.", lf->file);
-            continue;
-        }
-
-        if (!w_utf8_valid(buf)) {
-            mdebug2("Message from socket '%s' is not valid UTF-8. Dropping.", lf->file);
+        if (!w_logcollector_validate_text_line(buf, &msg_len, "socket", lf->file)) {
             continue;
         }
 

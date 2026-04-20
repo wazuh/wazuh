@@ -186,7 +186,31 @@ void* read_fullcommand(logreader* lf, int* rc, int drop_it);
 #ifndef WIN32
 /* Read datagrams from a UNIX datagram socket */
 void* read_socket(logreader* lf, int* rc, int drop_it);
+
+/**
+ * @brief Open an HTTP-over-UNIX-stream source: starts the worker thread.
+ *
+ * @param lf logreader configured with file (socket path), http_endpoint, http_reconnect_interval.
+ * @return 0 on success, -1 on failure (thread already running, missing config, pthread_create failure).
+ */
+int w_logcollector_http_unix_open(logreader* lf);
 #endif
+
+/**
+ * @brief Strip a single trailing '\n', reject embedded NUL bytes, validate UTF-8.
+ *
+ * Operates in-place on the buffer. After return, *len reflects the message length
+ * excluding any stripped newline. Empty messages (or messages that become empty
+ * after the strip) are reported as invalid.
+ *
+ * @param[in,out] buf         Null-terminated text buffer.
+ * @param[in,out] len         In: current buffer content length. Out: updated length.
+ * @param[in]     source_kind Short label for the source class (e.g. "socket", "http-unix"),
+ *                            used in the rejection debug message.
+ * @param[in]     source      Source identifier (file/socket path) for debug log context.
+ * @return true if the message is non-empty, NUL-free, and valid UTF-8; false to drop.
+ */
+bool w_logcollector_validate_text_line(char* buf, size_t* len, const char* source_kind, const char* source);
 
 /* Read auditd events */
 void* read_audit(logreader* lf, int* rc, int drop_it);

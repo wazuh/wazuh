@@ -149,19 +149,23 @@ void _getLocalfilesListJSON(logreader* reader, cJSON* array, const char *gpath)
         }
         cJSON_AddItemToObject(file, "query", query);
     }
+    bool is_socket_like = reader->logformat != NULL &&
+                          (strcmp(reader->logformat, SOCKET_LOG) == 0 ||
+                           strcmp(reader->logformat, HTTP_UNIX_LOG) == 0);
+
     // Invalid configuration for journal logs
-    if (reader->journal_log == NULL && (!reader->logformat || strcmp(reader->logformat, SOCKET_LOG) != 0))
+    if (reader->journal_log == NULL && !is_socket_like)
     {
         cJSON_AddStringToObject(file, "ignore_binaries", reader->filter_binary ? "yes" : "no");
     }
 
-    if (reader->age_str && (!reader->logformat || strcmp(reader->logformat, SOCKET_LOG) != 0))
+    if (reader->age_str && !is_socket_like)
         cJSON_AddStringToObject(file, "age", reader->age_str);
     if (reader->exclude)
         cJSON_AddStringToObject(file, "exclude", reader->exclude);
 
     if (reader->logformat != NULL && strcmp(reader->logformat, EVENTLOG) != 0 && strcmp(reader->logformat, "command") != 0 &&
-        strcmp(reader->logformat, "full_command") != 0 && strcmp(reader->logformat, SOCKET_LOG) != 0)
+        strcmp(reader->logformat, "full_command") != 0 && !is_socket_like)
     {
 
         if (reader->future == 1)
@@ -226,6 +230,15 @@ void _getLocalfilesListJSON(logreader* reader, cJSON* array, const char *gpath)
         cJSON_AddNumberToObject(multiline, "timeout", reader->multiline->timeout);
         cJSON_AddItemToObject(file, "multiline_regex", multiline);
     }
+#ifndef WIN32
+    if (reader->logformat != NULL && strcmp(reader->logformat, HTTP_UNIX_LOG) == 0)
+    {
+        if (reader->http_endpoint)
+            cJSON_AddStringToObject(file, "endpoint", reader->http_endpoint);
+        if (reader->http_reconnect_interval)
+            cJSON_AddNumberToObject(file, "reconnect_interval", reader->http_reconnect_interval);
+    }
+#endif
     if (reader->journal_log != NULL && reader->journal_log->filters != NULL)
     {
 

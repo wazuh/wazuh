@@ -951,6 +951,98 @@ void test_Read_Localfile_socket_defaults(void ** state) {
     Free_Localfile(&config);
 }
 
+void test_Read_Localfile_http_unix_defaults(void ** state) {
+    logreader_config config = {0};
+    xml_node location = { .element = "location", .content = "/var/run/docker.sock" };
+    xml_node log_format = { .element = "log_format", .content = HTTP_UNIX_LOG };
+    xml_node *nodes[] = { &location, &log_format, NULL };
+
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
+    assert_non_null(config.config);
+    assert_string_equal(config.config[0].logformat, HTTP_UNIX_LOG);
+    assert_string_equal(config.config[0].http_endpoint, HTTP_UNIX_DEFAULT_ENDPOINT);
+    assert_int_equal(config.config[0].http_reconnect_interval, HTTP_UNIX_DEFAULT_RECONNECT);
+
+    Free_Localfile(&config);
+}
+
+void test_Read_Localfile_http_unix_endpoint_valid(void ** state) {
+    logreader_config config = {0};
+    xml_node location = { .element = "location", .content = "/var/run/docker.sock" };
+    xml_node log_format = { .element = "log_format", .content = HTTP_UNIX_LOG };
+    xml_node endpoint = { .element = "endpoint", .content = "/events" };
+    xml_node *nodes[] = { &location, &log_format, &endpoint, NULL };
+
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
+    assert_non_null(config.config);
+    assert_string_equal(config.config[0].http_endpoint, "/events");
+
+    Free_Localfile(&config);
+}
+
+void test_Read_Localfile_http_unix_endpoint_invalid(void ** state) {
+    logreader_config config = {0};
+    xml_node location = { .element = "location", .content = "/var/run/docker.sock" };
+    xml_node log_format = { .element = "log_format", .content = HTTP_UNIX_LOG };
+    xml_node endpoint = { .element = "endpoint", .content = "events" };
+    xml_node *nodes[] = { &location, &log_format, &endpoint, NULL };
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1235): Invalid value for element 'endpoint': events.");
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), OS_INVALID);
+
+    Free_Localfile(&config);
+}
+
+void test_Read_Localfile_http_unix_reconnect_interval_valid(void ** state) {
+    logreader_config config = {0};
+    xml_node location = { .element = "location", .content = "/var/run/docker.sock" };
+    xml_node log_format = { .element = "log_format", .content = HTTP_UNIX_LOG };
+    xml_node interval = { .element = "reconnect_interval", .content = "30" };
+    xml_node *nodes[] = { &location, &log_format, &interval, NULL };
+
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
+    assert_non_null(config.config);
+    assert_int_equal(config.config[0].http_reconnect_interval, 30);
+
+    Free_Localfile(&config);
+}
+
+void test_Read_Localfile_http_unix_reconnect_interval_invalid(void ** state) {
+    logreader_config config = {0};
+    xml_node location = { .element = "location", .content = "/var/run/docker.sock" };
+    xml_node log_format = { .element = "log_format", .content = HTTP_UNIX_LOG };
+    xml_node interval = { .element = "reconnect_interval", .content = "0" };
+    xml_node *nodes[] = { &location, &log_format, &interval, NULL };
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1235): Invalid value for element 'reconnect_interval': 0.");
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), OS_INVALID);
+
+    Free_Localfile(&config);
+}
+
+void test_Read_Localfile_http_unix_opts_on_non_http_unix(void ** state) {
+    logreader_config config = {0};
+    xml_node location = { .element = "location", .content = "/var/log/syslog" };
+    xml_node log_format = { .element = "log_format", .content = "syslog" };
+    xml_node endpoint = { .element = "endpoint", .content = "/events" };
+    xml_node interval = { .element = "reconnect_interval", .content = "10" };
+    xml_node *nodes[] = { &location, &log_format, &endpoint, &interval, NULL };
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(8004): log_format 'syslog' does not support 'endpoint' option. Option will be ignored.");
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(8004): log_format 'syslog' does not support 'reconnect_interval' option. Option will be ignored.");
+
+    assert_int_equal(Read_Localfile(nodes, &config, NULL), 0);
+    assert_non_null(config.config);
+    assert_null(config.config[0].http_endpoint);
+    assert_int_equal(config.config[0].http_reconnect_interval, 0);
+
+    Free_Localfile(&config);
+}
+
 // ------------------------------------------------
 /* journald_add_condition_to_filter */
 void test_journald_add_condition_to_filter_invalid_params(void ** state) {
@@ -1464,6 +1556,13 @@ int main(void) {
         cmocka_unit_test(test_Read_Localfile_recv_buffer_too_small),
         cmocka_unit_test(test_Read_Localfile_socket_opts_on_non_socket),
         cmocka_unit_test(test_Read_Localfile_socket_defaults),
+        // Test Read_Localfile http-unix configuration
+        cmocka_unit_test(test_Read_Localfile_http_unix_defaults),
+        cmocka_unit_test(test_Read_Localfile_http_unix_endpoint_valid),
+        cmocka_unit_test(test_Read_Localfile_http_unix_endpoint_invalid),
+        cmocka_unit_test(test_Read_Localfile_http_unix_reconnect_interval_valid),
+        cmocka_unit_test(test_Read_Localfile_http_unix_reconnect_interval_invalid),
+        cmocka_unit_test(test_Read_Localfile_http_unix_opts_on_non_http_unix),
         // Test journald_add_condition_to_filter
         cmocka_unit_test(test_journald_add_condition_to_filter_invalid_params),
         cmocka_unit_test(test_journald_add_condition_to_filter_non_field),

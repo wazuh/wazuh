@@ -44,11 +44,21 @@ STATIC int w_logcollector_get_macos_log_type(const char * content);
 w_exp_type_t w_check_regex_type(xml_node * node, const char * element);
 
 STATIC void w_logcollector_socket_release(logreader *logf);
+STATIC void w_logcollector_http_unix_release(logreader *logf);
 STATIC void w_logreader_release_runtime_entry(logreader *logf);
+STATIC void w_logcollector_warn_file_only_options(logreader *logf,
+                                                  const char *log_format,
+                                                  const char *xml_localfile_age,
+                                                  const char *xml_localfile_future,
+                                                  const char *xml_localfile_binaries);
 STATIC void w_logcollector_validate_socket(logreader *logf,
                                            const char *xml_localfile_age,
                                            const char *xml_localfile_future,
                                            const char *xml_localfile_binaries);
+STATIC void w_logcollector_validate_http_unix(logreader *logf,
+                                              const char *xml_localfile_age,
+                                              const char *xml_localfile_future,
+                                              const char *xml_localfile_binaries);
 
 int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
@@ -81,6 +91,8 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_socket_mode = "socket_mode";
     const char *xml_localfile_socket_group = "socket_group";
     const char *xml_localfile_recv_buffer = "recv_buffer";
+    const char *xml_localfile_endpoint = "endpoint";
+    const char *xml_localfile_reconnect_interval = "reconnect_interval";
 
     logreader *logf;
     logreader_config *log_config;
@@ -425,6 +437,11 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
 #endif
+            } else if (strcmp(logf[pl].logformat, HTTP_UNIX_LOG) == 0) {
+#ifdef WIN32
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+#endif
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
@@ -603,6 +620,26 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
             logf[pl].socket_recv_buffer = (int)value;
 #endif
+        } else if (strcmp(node[i]->element, xml_localfile_endpoint) == 0) {
+#ifndef WIN32
+            if (strlen(node[i]->content) == 0 || node[i]->content[0] != '/') {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+            os_free(logf[pl].http_endpoint);
+            os_strdup(node[i]->content, logf[pl].http_endpoint);
+#endif
+        } else if (strcmp(node[i]->element, xml_localfile_reconnect_interval) == 0) {
+#ifndef WIN32
+            char *endptr;
+            long value = strtol(node[i]->content, &endptr, 10);
+            if (endptr == node[i]->content || *endptr != '\0' ||
+                value < HTTP_UNIX_MIN_RECONNECT || value > HTTP_UNIX_MAX_RECONNECT) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+            logf[pl].http_reconnect_interval = (int)value;
+#endif
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -732,6 +769,13 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                                        xml_localfile_binaries);
     }
 
+    if (strcmp(logf[pl].logformat, HTTP_UNIX_LOG) == 0) {
+        w_logcollector_validate_http_unix(&logf[pl],
+                                          xml_localfile_age,
+                                          xml_localfile_future,
+                                          xml_localfile_binaries);
+    }
+
 #ifndef WIN32
     /* Warn if socket-specific options are used on non-socket log formats */
     if (strcmp(logf[pl].logformat, SOCKET_LOG) != 0) {
@@ -746,6 +790,18 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         if (logf[pl].socket_recv_buffer != 0) {
             mwarn(LOGCOLLECTOR_OPTION_IGNORED, logf[pl].logformat, xml_localfile_recv_buffer);
             logf[pl].socket_recv_buffer = 0;
+        }
+    }
+
+    /* Warn if http-unix-specific options are used on non-http-unix log formats */
+    if (strcmp(logf[pl].logformat, HTTP_UNIX_LOG) != 0) {
+        if (logf[pl].http_endpoint != NULL) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, logf[pl].logformat, xml_localfile_endpoint);
+            os_free(logf[pl].http_endpoint);
+        }
+        if (logf[pl].http_reconnect_interval != 0) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, logf[pl].logformat, xml_localfile_reconnect_interval);
+            logf[pl].http_reconnect_interval = 0;
         }
     }
 #endif
@@ -995,6 +1051,27 @@ STATIC void w_logcollector_socket_release(logreader *logf) {
 #endif
 }
 
+STATIC void w_logcollector_http_unix_release(logreader *logf) {
+#ifndef WIN32
+    if (logf == NULL) {
+        return;
+    }
+
+    /* Signal worker to exit; thread polls http_stop at safe points */
+    if (logf->http_thread_started) {
+        logf->http_stop = 1;
+        pthread_join(logf->http_thread, NULL);
+        logf->http_thread_started = 0;
+    }
+
+    os_free(logf->http_endpoint);
+    logf->http_reconnect_interval = 0;
+    logf->http_stop = 0;
+#else
+    (void)logf;
+#endif
+}
+
 STATIC void w_logreader_release_runtime_entry(logreader *logf) {
     if (logf == NULL) {
         return;
@@ -1009,6 +1086,32 @@ STATIC void w_logreader_release_runtime_entry(logreader *logf) {
     }
 
     w_logcollector_socket_release(logf);
+    w_logcollector_http_unix_release(logf);
+}
+
+STATIC void w_logcollector_warn_file_only_options(logreader *logf,
+                                                  const char *log_format,
+                                                  const char *xml_localfile_age,
+                                                  const char *xml_localfile_future,
+                                                  const char *xml_localfile_binaries) {
+    if (logf->age != 0) {
+        mwarn(LOGCOLLECTOR_OPTION_IGNORED, log_format, xml_localfile_age);
+        logf->age = 0;
+        os_free(logf->age_str);
+    }
+
+    if (logf->filter_binary != 0) {
+        mwarn(LOGCOLLECTOR_OPTION_IGNORED, log_format, xml_localfile_binaries);
+        logf->filter_binary = 0;
+    }
+
+    /* diff_max_size is only set when <only-future-events> is explicitly parsed,
+     * so a nonzero value means the user configured it. */
+    if (logf->diff_max_size != 0) {
+        mwarn(LOGCOLLECTOR_OPTION_IGNORED, log_format, xml_localfile_future);
+    }
+    logf->future = 1;
+    logf->diff_max_size = DIFF_DEFAULT_SIZE;
 }
 
 STATIC void w_logcollector_validate_socket(logreader *logf,
@@ -1019,30 +1122,39 @@ STATIC void w_logcollector_validate_socket(logreader *logf,
         return;
     }
 
-    if (logf->age != 0) {
-        mwarn(LOGCOLLECTOR_OPTION_IGNORED, SOCKET_LOG, xml_localfile_age);
-        logf->age = 0;
-        os_free(logf->age_str);
-    }
-
-    if (logf->filter_binary != 0) {
-        mwarn(LOGCOLLECTOR_OPTION_IGNORED, SOCKET_LOG, xml_localfile_binaries);
-        logf->filter_binary = 0;
-    }
-
-    /* diff_max_size is only set when <only-future-events> is explicitly parsed,
-     * so a nonzero value means the user configured it. */
-    if (logf->diff_max_size != 0) {
-        mwarn(LOGCOLLECTOR_OPTION_IGNORED, SOCKET_LOG, xml_localfile_future);
-    }
-    logf->future = 1;
-    logf->diff_max_size = DIFF_DEFAULT_SIZE;
+    w_logcollector_warn_file_only_options(logf, SOCKET_LOG,
+                                          xml_localfile_age,
+                                          xml_localfile_future,
+                                          xml_localfile_binaries);
 
 #ifndef WIN32
     if (logf->socket_recv_buffer != 0 && logf->socket_recv_buffer < OS_MAXSTR) {
         mwarn("recv_buffer value '%d' is below the minimum (%d). Default will be used.",
               logf->socket_recv_buffer, OS_MAXSTR);
         logf->socket_recv_buffer = 0;
+    }
+#endif
+}
+
+STATIC void w_logcollector_validate_http_unix(logreader *logf,
+                                              const char *xml_localfile_age,
+                                              const char *xml_localfile_future,
+                                              const char *xml_localfile_binaries) {
+    if (logf == NULL) {
+        return;
+    }
+
+    w_logcollector_warn_file_only_options(logf, HTTP_UNIX_LOG,
+                                          xml_localfile_age,
+                                          xml_localfile_future,
+                                          xml_localfile_binaries);
+
+#ifndef WIN32
+    if (logf->http_endpoint == NULL) {
+        os_strdup(HTTP_UNIX_DEFAULT_ENDPOINT, logf->http_endpoint);
+    }
+    if (logf->http_reconnect_interval == 0) {
+        logf->http_reconnect_interval = HTTP_UNIX_DEFAULT_RECONNECT;
     }
 #endif
 }
@@ -1090,6 +1202,7 @@ void Free_Logreader(logreader * logf) {
         }
 
         w_logcollector_socket_release(logf);
+        w_logcollector_http_unix_release(logf);
 #ifndef WIN32
         os_free(logf->socket_group);
 #endif

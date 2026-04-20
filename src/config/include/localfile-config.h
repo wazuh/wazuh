@@ -15,6 +15,11 @@
 #define EVENTCHANNEL "eventchannel"
 #define MACOS        "macos"
 #define SOCKET_LOG   "socket"
+#define HTTP_UNIX_LOG                 "http-unix"
+#define HTTP_UNIX_DEFAULT_ENDPOINT    "/"
+#define HTTP_UNIX_DEFAULT_RECONNECT   5
+#define HTTP_UNIX_MIN_RECONNECT       1
+#define HTTP_UNIX_MAX_RECONNECT       3600
 #define JOURNALD_LOG                  "journald"
 #define MULTI_LINE_REGEX              "multi-line-regex"
 #define MULTI_LINE_REGEX_TIMEOUT      5
@@ -43,6 +48,7 @@
 #define MACOS_LOG_TIMEOUT               5
 
 #include <pthread.h>
+#include <signal.h>
 
 /* For ino_t */
 #include <sys/types.h>
@@ -258,6 +264,13 @@ typedef struct _logreader {
     char *socket_group;
     mode_t socket_mode;
     int socket_recv_buffer;
+
+    /* HTTP-over-UNIX-stream (log_format=http-unix) */
+    char *http_endpoint;
+    int http_reconnect_interval;
+    pthread_t http_thread;
+    volatile sig_atomic_t http_thread_started;
+    volatile sig_atomic_t http_stop;
 #endif
 } logreader;
 

@@ -227,6 +227,18 @@ void test_Free_Logreader_socket_runtime(void **state) {
     Free_Logreader(&lf);
 }
 
+void test_Free_Logreader_http_unix_endpoint(void **state) {
+    logreader lf = {0};
+
+    lf.file = strdup("/var/run/docker.sock");
+    lf.logformat = strdup(HTTP_UNIX_LOG);
+    lf.http_endpoint = strdup("/events");
+    lf.http_reconnect_interval = 5;
+    /* http_thread_started == 0: no pthread_join expected */
+
+    Free_Logreader(&lf);
+}
+
 void test_Remove_Localfile_socket_runtime(void **state) {
     logreader_glob glob = {0};
     logreader *entries = calloc(2, sizeof(logreader));
@@ -3057,6 +3069,7 @@ int main(void) {
 
         // Test socket runtime cleanup
         cmocka_unit_test(test_Free_Logreader_socket_runtime),
+        cmocka_unit_test(test_Free_Logreader_http_unix_endpoint),
         cmocka_unit_test(test_Remove_Localfile_socket_runtime),
         cmocka_unit_test(test_open_socket_source_custom_perms),
         cmocka_unit_test(test_open_socket_source_default_perms),

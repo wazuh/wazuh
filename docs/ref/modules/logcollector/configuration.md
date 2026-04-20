@@ -164,6 +164,59 @@ Restart the agent after applying the configuration.
 
 ---
 
+## Streaming logs from an HTTP endpoint over a UNIX stream socket
+
+On UNIX platforms, Logcollector can act as an HTTP/1.1 client over a UNIX **stream** socket (`SOCK_STREAM`) and treat each newline-delimited line of the response body as a log event. Use `log_format` set to `http-unix`. Unlike `log_format=socket` (which binds and waits for datagrams), this mode **connects to a socket owned by another process**, issues a `GET`, and consumes the streamed response.
+
+```xml
+<localfile>
+  <location>/var/run/example.sock</location>
+  <log_format>http-unix</log_format>
+  <endpoint>/events</endpoint>
+  <reconnect_interval>5</reconnect_interval>
+  <target>agent</target>
+</localfile>
+```
+
+The `location` value is the UNIX stream socket path of the producing service. A dedicated worker thread per `<localfile>` issues the configured HTTP request, parses the response (supports `Transfer-Encoding: chunked`, `Content-Length`, and read-until-close), and forwards each non-empty UTF-8 line to the output queue. If the connection is closed by the peer or fails, the worker waits `reconnect_interval` seconds and retries indefinitely.
+
+### http-unix-specific options
+
+| Option               | Default | Description                                                                  |
+|----------------------|---------|------------------------------------------------------------------------------|
+| `endpoint`           | `/`     | HTTP path to request. Must start with `/`.                                   |
+| `reconnect_interval` | `5`     | Seconds to wait between reconnect attempts. Allowed range: `1`–`3600`.       |
+
+### Streaming Docker events
+
+The Docker daemon exposes a streaming `/events` endpoint over `/var/run/docker.sock`. Logcollector can consume it directly:
+
+```xml
+<localfile>
+  <location>/var/run/docker.sock</location>
+  <log_format>http-unix</log_format>
+  <endpoint>/events</endpoint>
+  <reconnect_interval>5</reconnect_interval>
+</localfile>
+```
+
+The Wazuh user must have read access to `/var/run/docker.sock` (typically by joining the `docker` group).
+
+!!! note
+    This is **not** a drop-in replacement for the existing Docker Listener wodle (`wodles/docker-listener/DockerListener.py`). The wodle wraps each event in `{"integration":"docker","docker":<event>}` and sends with the `Wazuh-Docker` queue header so the bundled Docker rules match. `log_format=http-unix` forwards each line of the Docker stream verbatim — rules consuming raw Docker events would need to be adjusted accordingly. The wodle remains supported; choose the path that matches your decoder/rule pipeline.
+
+!!! note
+    - This log format is available only on UNIX platforms.
+    - The unix socket file must be a **stream** socket owned by the producer; Logcollector connects but does not bind or unlink.
+    - Lines must be valid UTF-8 text. Binary payloads and invalid UTF-8 are dropped.
+    - Each `<localfile>` of this type creates one dedicated worker thread that owns the connection lifecycle (connect, parse, reconnect).
+    - Lines exceeding `OS_MAXSTR` bytes are dropped with a warning.
+    - The `age`, `ignore_binaries`, and `only-future-events` options are ignored for `log_format=http-unix`.
+
+Restart the agent after applying the configuration.
+
+---
+
 ## Monitoring log files with environment variables
 
 !!! note
