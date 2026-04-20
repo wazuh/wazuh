@@ -1,6 +1,7 @@
 #ifndef _ICMSTORE_DATA_POLICY
 #define _ICMSTORE_DATA_POLICY
 
+#include <regex>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -61,12 +62,9 @@ constexpr std::string_view PATH_KEY_HASH = "/hash";
 constexpr std::string_view PATH_KEY_INDEX_DISCARDED_EVENTS = "/index_discarded_events";
 constexpr std::string_view PATH_KEY_CLEANUP_DECODER_VARIABLES = "/cleanup_decoder_variables";
 
-} // namespace jsonpolicy
-
-namespace
-{
 constexpr std::string_view DEFAULT_ORIGIN_SPACE = "UNDEFINED"; ///< Default origin space when not specified
-}
+
+} // namespace jsonpolicy
 
 /**
  * @brief Policy class representing a policy in wazuh-engine
@@ -89,6 +87,17 @@ private:
     bool m_indexUnclassifiedEvents; ///< Flag indicating whether to index unclassified events
     bool m_indexDiscardedEvents;    ///< Flag to control discarded event indexing
     bool m_cleanupDecoderVariables; ///< Flag to control cleanup of temporary decoder variables
+
+    void validateOriginSpace(std::string_view value) const
+    {
+        if (!std::regex_match(value.begin(), value.end(), std::regex("^[a-zA-Z0-9_-]+$")))
+        {
+            throw std::runtime_error(fmt::format(
+                "'origin_space' contains invalid characters: '{}'. Only alphanumeric, hyphens and underscores are "
+                "allowed.",
+                value));
+        }
+    }
 
 public:
     ~Policy() = default;
@@ -122,6 +131,10 @@ public:
         cm::store::detail::findDuplicateOrInvalidUUID(m_integrations, "Integration");
         cm::store::detail::findDuplicateOrInvalidUUID(m_outputs, "Output");
         cm::store::detail::findDuplicateOrInvalidUUID(m_filters, "Filter");
+        if (m_originSpace != jsonpolicy::DEFAULT_ORIGIN_SPACE)
+        {
+            validateOriginSpace(m_originSpace);
+        }
     }
 
     // Dumper and loader
@@ -138,7 +151,7 @@ public:
             std::string title;
             if (policyJson.getString(title, jsonpolicy::PATH_KEY_TITLE) != json::RetGet::Success || title.empty())
             {
-                return std::string {"Untitled Policy"};
+                return std::string{"Untitled Policy"};
             }
             return title;
         }();
@@ -274,8 +287,9 @@ public:
             if (policyJson.getString(originSpace, jsonpolicy::PATH_KEY_ORIGIN_SPACE) != json::RetGet::Success
                 || originSpace.empty())
             {
-                return std::string(DEFAULT_ORIGIN_SPACE);
+                return std::string(jsonpolicy::DEFAULT_ORIGIN_SPACE);
             }
+
             return originSpace;
         }();
 
@@ -389,7 +403,11 @@ public:
 
     // Getters and setters of optional values
     const std::string& getOriginSpace() const { return m_originSpace; }
-    void setOriginSpace(std::string_view originSpace) { m_originSpace = originSpace; }
+    void setOriginSpace(std::string_view originSpace)
+    {
+        validateOriginSpace(originSpace);
+        m_originSpace = originSpace;
+    }
     bool shouldIndexUnclassifiedEvents() const { return m_indexUnclassifiedEvents; }
     bool shouldIndexDiscardedEvents() const { return m_indexDiscardedEvents; }
     bool shouldCleanupDecoderVariables() const { return m_cleanupDecoderVariables; }

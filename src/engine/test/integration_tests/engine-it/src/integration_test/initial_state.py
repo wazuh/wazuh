@@ -7,6 +7,7 @@ from typing import Optional
 from datetime import datetime, timezone
 
 from google.protobuf.json_format import ParseDict
+from google.protobuf.struct_pb2 import Struct
 
 from engine_handler.handler import EngineHandler
 from shared.default_settings import Constants
@@ -72,6 +73,10 @@ def send_recv(api_client: APIClient, request, expected_response):
     if status == api_engine.ERROR:
         raise RuntimeError(f"Engine API returned ERROR: {parsed.error}")
     return parsed
+
+
+def _set_json_content(req, payload: str):
+    req.jsonContent.CopyFrom(ParseDict(json.loads(payload), Struct()))
 
 
 def md5_file(path: Path) -> str:
@@ -214,62 +219,55 @@ def init_default_outputs(env_path: Path, test_path: Path):
     print(f"Initialized default outputs in '{default_outputs_path}'.")
 
 # ===================================================================
-#  YAML builders (decoders / integrations / filter)
+#  JSON builders (decoders / integrations)
 # ===================================================================
 
-def build_tester_decoder_yaml(name: str, uuid: str, check_expr: str) -> str:
+def build_tester_decoder_json(name: str, uuid: str, check_expr: str) -> str:
     """
     Valid decoder for the new asset validator:
       - name + id
       - check
       - normalize with basic map
     """
-    return f"""\
-name: {name}
-id: {uuid}
-enabled: true
+    return json.dumps(
+        {
+            "name": name,
+            "id": uuid,
+            "enabled": True,
+            "check": check_expr,
+            "normalize": [
+                {
+                    "map": [
+                        {"event.category": "array_append(test)"},
+                        {"event.kind": "metric"},
+                        {"event.type": "array_append(info)"},
+                    ]
+                }
+            ],
+        },
+        separators=(",", ":"),
+    )
 
-check: {check_expr}
 
-normalize:
-  - map:
-    - event.category: array_append(test)
-    - event.kind: metric
-    - event.type: array_append(info)
-"""
-
-
-def build_integration_yaml(
+def build_integration_json(
     integ_uuid: str,
     integ_title: str,
     default_parent: str,
     category: str,
     decoder_uuid: str,
 ) -> str:
-    """
-    Integration YAML according to the new model:
-
-      {
-        "id": "...",
-        "title": "...",
-        "enabled": true,
-        "category": "other",
-        "default_parent": "...",
-        "decoders": [ "<decoder_uuid>" ],
-        "kvdbs": []
-      }
-    """
-    return f"""\
-id: {integ_uuid}
-metadata:
-  title: {integ_title}
-enabled: true
-category: {category}
-default_parent: {default_parent}
-decoders:
-  - "{decoder_uuid}"
-kvdbs: []
-"""
+    return json.dumps(
+        {
+            "id": integ_uuid,
+            "metadata": {"title": integ_title},
+            "enabled": True,
+            "category": category,
+            "default_parent": default_parent,
+            "decoders": [decoder_uuid],
+            "kvdbs": [],
+        },
+        separators=(",", ":"),
+    )
 
 
 # ===================================================================
@@ -289,26 +287,26 @@ def init_cm_resources(api_client: APIClient):
     send_recv(api_client, ns_post, api_engine.GenericStatus_Response())
 
     # 2) Decoders
-    dec_test_yaml = build_tester_decoder_yaml(
+    dec_test_json = build_tester_decoder_json(
         DECODER_TEST_NAME,
         DECODER_TEST_UUID,
         check_expr="$wazuh.agent.id == AA11",
     )
-    dec_other_yaml = build_tester_decoder_yaml(
+    dec_other_json = build_tester_decoder_json(
         DECODER_OTHER_NAME,
         DECODER_OTHER_UUID,
         check_expr="$wazuh.agent.id == BB22",
     )
 
-    for yml in (dec_test_yaml, dec_other_yaml):
+    for payload in (dec_test_json, dec_other_json):
         req = api_crud.resourcePost_Request()
         req.space = POLICY_NS
         req.type = "decoder"
-        req.ymlContent = yml
+        _set_json_content(req, payload)
         send_recv(api_client, req, api_engine.GenericStatus_Response())
 
     # 3) Integrations
-    wazuh_core_yaml = build_integration_yaml(
+    wazuh_core_json = build_integration_json(
         integ_uuid=INTEG_WAZUH_CORE_UUID,
         integ_title="wazuh-core-test",
         default_parent=DECODER_TEST_UUID,
@@ -316,7 +314,7 @@ def init_cm_resources(api_client: APIClient):
         decoder_uuid=DECODER_TEST_UUID,
     )
 
-    other_core_yaml = build_integration_yaml(
+    other_core_json = build_integration_json(
         integ_uuid=INTEG_OTHER_WAZUH_CORE_UUID,
         integ_title="other-wazuh-core-test",
         default_parent=DECODER_TEST_UUID,
@@ -324,11 +322,11 @@ def init_cm_resources(api_client: APIClient):
         decoder_uuid=DECODER_OTHER_UUID,
     )
 
-    for yml in (wazuh_core_yaml, other_core_yaml):
+    for payload in (wazuh_core_json, other_core_json):
         req = api_crud.resourcePost_Request()
         req.space = POLICY_NS
         req.type = "integration"
-        req.ymlContent = yml
+        _set_json_content(req, payload)
         send_recv(api_client, req, api_engine.GenericStatus_Response())
 
     print(f"CM initialized in namespace '{POLICY_NS}' with decoders and integrations.")

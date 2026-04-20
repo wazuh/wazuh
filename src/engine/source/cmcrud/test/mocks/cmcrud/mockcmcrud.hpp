@@ -27,7 +27,7 @@ public:
                  bool softValidation),
                 (override));
 
-    MOCK_METHOD(void, upsertPolicy, (const cm::store::NamespaceId& nsId, std::string_view document), (override));
+    MOCK_METHOD(void, upsertPolicy, (const cm::store::NamespaceId& nsId, const json::Json& policy), (override));
     MOCK_METHOD(void, deletePolicy, (const cm::store::NamespaceId& nsId), (override));
 
     MOCK_METHOD(std::vector<ResourceSummary>,
@@ -35,14 +35,14 @@ public:
                 (const cm::store::NamespaceId& nsId, cm::store::ResourceType type),
                 (const, override));
 
-    MOCK_METHOD(std::string,
+    MOCK_METHOD(json::Json,
                 getResourceByUUID,
-                (const cm::store::NamespaceId& nsId, const std::string& uuid, bool asJson),
+                (const cm::store::NamespaceId& nsId, const std::string& uuid),
                 (const, override));
 
     MOCK_METHOD(void,
                 upsertResource,
-                (const cm::store::NamespaceId& nsId, cm::store::ResourceType type, std::string_view document),
+                (const cm::store::NamespaceId& nsId, cm::store::ResourceType type, const json::Json& resource),
                 (override));
 
     MOCK_METHOD(void, deleteResourceByUUID, (const cm::store::NamespaceId& nsId, const std::string& uuid), (override));

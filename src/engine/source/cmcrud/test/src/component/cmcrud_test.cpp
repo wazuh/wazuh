@@ -27,73 +27,91 @@ using cm::store::NamespaceId;
 using cm::store::ResourceType;
 
 // ---------------------------------------------------------------------
-// YAML fixtures for realistic resources
+// JSON fixtures for realistic resources
 // ---------------------------------------------------------------------
 
-static constexpr const char* kPolicyYAML = R"(
-type: "policy"
-enabled: true
-title: "Development 0.0.1"
-hash: "cmcrud-component-test-hash"
-default_parent: "decoder/integration/0"
-root_decoder: "decoder/wazuh-core-message/0"
-integrations:
-  - "42e28392-4f5e-473d-89e8-c9030e6fedc2"
-  - "a7fe64a2-0a03-414f-8692-8441bdfe6f69"
-  - "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
-  - "f61133f5-90b9-49ed-b1d5-0b88cb04355e"
-  - "369c3128-9715-4a30-9ff9-22fcac87688b"
-filters: []
-enrichments: []
-index_unclassified_events: false
-index_discarded_events: false
-)";
+static constexpr const char* kPolicyJson = R"({
+  "type": "policy",
+  "enabled": true,
+  "title": "Development 0.0.1",
+  "hash": "cmcrud-component-test-hash",
+  "default_parent": "decoder/integration/0",
+  "root_decoder": "decoder/wazuh-core-message/0",
+  "integrations": [
+    "42e28392-4f5e-473d-89e8-c9030e6fedc2",
+    "a7fe64a2-0a03-414f-8692-8441bdfe6f69",
+    "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
+    "f61133f5-90b9-49ed-b1d5-0b88cb04355e",
+    "369c3128-9715-4a30-9ff9-22fcac87688b"
+  ],
+  "filters": [],
+  "enrichments": [],
+  "index_unclassified_events": false,
+  "index_discarded_events": false
+})";
 
-static constexpr const char* kIntegrationYAML = R"(
-id: "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
-metadata:
-  title: "windows"
-enabled: true
-category: "security"
-default_parent: "3f086ce2-32a4-42b0-be7e-40dcfb9c6160"
-decoders:
-  - "85853f26-5779-469b-86c4-c47ee7d400b4"
-  - "4aa06596-5ba9-488c-8354-2475705e1257"
-  - "4da71af3-fff5-4b67-90d6-51db9e15bc47"
-  - "6f8bd7d2-8516-4b2b-a6f1-cc924513c404"
-kvdbs: []
-)";
+static constexpr const char* kIntegrationJson = R"({
+  "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
+  "metadata": {
+    "title": "windows"
+  },
+  "enabled": true,
+  "category": "security",
+  "default_parent": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
+  "decoders": [
+    "85853f26-5779-469b-86c4-c47ee7d400b4",
+    "4aa06596-5ba9-488c-8354-2475705e1257",
+    "4da71af3-fff5-4b67-90d6-51db9e15bc47",
+    "6f8bd7d2-8516-4b2b-a6f1-cc924513c404"
+  ],
+  "kvdbs": []
+})";
 
-static constexpr const char* kKVDBYAML = R"(
-id: "82e215c4-988a-4f64-8d15-b98b2fc03a4f"
-date: "2025-10-06T13:32:19Z"
-metadata:
-  title: "windows_kerberos_status_code_to_code_name"
-author: "Wazuh Inc."
-content:
-  "0x0": "KDC_ERR_NONE"
-  "0x1": "KDC_ERR_NAME_EXP"
-  "0x2": "KDC_ERR_SERVICE_EXP"
-  "0x3": "KDC_ERR_BAD_PVNO"
-  "0x4": "KDC_ERR_C_OLD_MAST_KVNO"
-  "0x5": "KDC_ERR_S_OLD_MAST_KVNO"
-  "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN"
-enabled: true
-)";
+static constexpr const char* kKVDBJson = R"({
+  "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
+  "date": "2025-10-06T13:32:19Z",
+  "metadata": {
+    "title": "windows_kerberos_status_code_to_code_name"
+  },
+  "author": "Wazuh Inc.",
+  "content": {
+    "0x0": "KDC_ERR_NONE",
+    "0x1": "KDC_ERR_NAME_EXP",
+    "0x2": "KDC_ERR_SERVICE_EXP",
+    "0x3": "KDC_ERR_BAD_PVNO",
+    "0x4": "KDC_ERR_C_OLD_MAST_KVNO",
+    "0x5": "KDC_ERR_S_OLD_MAST_KVNO",
+    "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN"
+  },
+  "enabled": true
+})";
 
-static constexpr const char* kDecoderYAML = R"(
-name: decoder/syslog/0
-id: "3f086ce2-32a4-42b0-be7e-40dcfb9c6160"
-enabled: true
-metadata:
-  module: syslog
-  title: "Syslog Decoder event"
-parse|event.original:
-  - "<event.start/ISO8601Z> <tmp.hostname/fqdn> <TAG/alphanumeric/->: <message>"
-normalize:
-  - map:
-    - event.kind: event
-)";
+static constexpr const char* kDecoderJson = R"({
+  "name": "decoder/syslog/0",
+  "id": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
+  "enabled": true,
+  "metadata": {
+    "module": "syslog",
+    "title": "Syslog Decoder event"
+  },
+  "parse|event.original": [
+    "<event.start/ISO8601Z> <tmp.hostname/fqdn> <TAG/alphanumeric/->: <message>"
+  ],
+  "normalize": [
+    {
+      "map": [
+        {
+          "event.kind": "event"
+        }
+      ]
+    }
+  ]
+})";
+
+json::Json makeJsonPayload(const char* raw)
+{
+    return json::Json {raw};
+}
 
 // ---------------------------------------------------------------------
 // Helper: build a CrudService + MockValidator + Mock store
@@ -133,7 +151,7 @@ TEST(CrudService_Component, UpsertPolicy_Success_EndToEnd)
     EXPECT_CALL(*stack.validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
     EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
 
-    EXPECT_NO_THROW(stack.service.upsertPolicy(nsId, kPolicyYAML));
+    EXPECT_NO_THROW(stack.service.upsertPolicy(nsId, makeJsonPayload(kPolicyJson)));
 }
 
 // ---------------------------------------------------------------------
@@ -161,7 +179,7 @@ TEST(CrudService_Component, UpsertPolicy_BuilderErrorIsPropagated)
 
     try
     {
-        stack.service.upsertPolicy(nsId, kPolicyYAML);
+        stack.service.upsertPolicy(nsId, makeJsonPayload(kPolicyJson));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
@@ -196,7 +214,7 @@ TEST(CrudService_Component, UpsertIntegration_Success_EndToEnd)
     EXPECT_CALL(*nsPtr, createResource("windows", ResourceType::INTEGRATION, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    EXPECT_NO_THROW(stack.service.upsertResource(nsId, ResourceType::INTEGRATION, kIntegrationYAML));
+    EXPECT_NO_THROW(stack.service.upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson)));
 }
 
 // ---------------------------------------------------------------------
@@ -226,7 +244,7 @@ TEST(CrudService_Component, UpsertIntegration_BuilderErrorIsPropagated)
 
     try
     {
-        stack.service.upsertResource(nsId, ResourceType::INTEGRATION, kIntegrationYAML);
+        stack.service.upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
@@ -258,7 +276,7 @@ TEST(CrudService_Component, UpsertKVDB_Success_EndToEnd)
     EXPECT_CALL(*nsPtr, createResource("windows_kerberos_status_code_to_code_name", ResourceType::KVDB, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    EXPECT_NO_THROW(stack.service.upsertResource(nsId, ResourceType::KVDB, kKVDBYAML));
+    EXPECT_NO_THROW(stack.service.upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kKVDBJson)));
 }
 
 // ---------------------------------------------------------------------
@@ -288,7 +306,7 @@ TEST(CrudService_Component, UpsertDecoder_BuilderAssetErrorIsPropagated)
 
     try
     {
-        stack.service.upsertResource(nsId, ResourceType::DECODER, kDecoderYAML);
+        stack.service.upsertResource(nsId, ResourceType::DECODER, makeJsonPayload(kDecoderJson));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
@@ -323,7 +341,7 @@ TEST(CrudService_Component, UpsertDecoder_Success_CreateByName)
     EXPECT_CALL(*nsPtr, createResource("decoder/syslog/0", ResourceType::DECODER, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByName(_, _, _)).Times(0);
 
-    EXPECT_NO_THROW(stack.service.upsertResource(nsId, ResourceType::DECODER, kDecoderYAML));
+    EXPECT_NO_THROW(stack.service.upsertResource(nsId, ResourceType::DECODER, makeJsonPayload(kDecoderJson)));
 }
 
 TEST(CrudService_Component, UpsertDecoder_Success_UpdateByName)
@@ -346,7 +364,7 @@ TEST(CrudService_Component, UpsertDecoder_Success_UpdateByName)
     EXPECT_CALL(*nsPtr, updateResourceByName("decoder/syslog/0", ResourceType::DECODER, _)).Times(1);
     EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
 
-    EXPECT_NO_THROW(stack.service.upsertResource(nsId, ResourceType::DECODER, kDecoderYAML));
+    EXPECT_NO_THROW(stack.service.upsertResource(nsId, ResourceType::DECODER, makeJsonPayload(kDecoderJson)));
 }
 
 // ---------------------------------------------------------------------
@@ -374,17 +392,18 @@ TEST(CrudService_Component, UpsertKVDB_ContentNotObject_Throws_NoMutation)
     EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    static constexpr const char* kBadKvdbYaml = R"(
-    id: "82e215c4-988a-4f64-8d15-b98b2fc03a4f"
-    metadata:
-      title: "windows_kerberos_status_code_to_code_name"
-    content: [ "0x0", "0x1" ]   # <-- invalid: must be an object
-    enabled: true
-    )";
+    static constexpr const char* kBadKvdbYaml = R"({
+      "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
+      "metadata": {
+        "title": "windows_kerberos_status_code_to_code_name"
+      },
+      "content": ["0x0", "0x1"],
+      "enabled": true
+    })";
 
     try
     {
-        stack.service.upsertResource(nsId, ResourceType::KVDB, kBadKvdbYaml);
+        stack.service.upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kBadKvdbYaml));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
@@ -411,18 +430,20 @@ TEST(CrudService_Component, UpsertKVDB_InvalidUUID_Throws_NoMutation)
     EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    static constexpr const char* kBadKvdbUuidYaml = R"(
-    id: "not-a-uuid"
-    metadata:
-      title: "windows_kerberos_status_code_to_code_name"
-    content:
-      "0x0": "KDC_ERR_NONE"
-    enabled: true
-    )";
+    static constexpr const char* kBadKvdbUuidYaml = R"({
+      "id": "not-a-uuid",
+      "metadata": {
+        "title": "windows_kerberos_status_code_to_code_name"
+      },
+      "content": {
+        "0x0": "KDC_ERR_NONE"
+      },
+      "enabled": true
+    })";
 
     try
     {
-        stack.service.upsertResource(nsId, ResourceType::KVDB, kBadKvdbUuidYaml);
+        stack.service.upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kBadKvdbUuidYaml));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
@@ -450,19 +471,20 @@ TEST(CrudService_Component, UpsertIntegration_InvalidCategory_Throws_NoValidator
     EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    static constexpr const char* kBadCategoryIntegrationYaml = R"(
-    id: "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
-    metadata:
-      title: "windows"
-    enabled: true
-    category: "ossec"  # <-- invalid
-    decoders: []
-    kvdbs: []
-    )";
+    static constexpr const char* kBadCategoryIntegrationYaml = R"({
+      "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
+      "metadata": {
+        "title": "windows"
+      },
+      "enabled": true,
+      "category": "ossec",
+      "decoders": [],
+      "kvdbs": []
+    })";
 
     try
     {
-        stack.service.upsertResource(nsId, ResourceType::INTEGRATION, kBadCategoryIntegrationYaml);
+        stack.service.upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kBadCategoryIntegrationYaml));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
@@ -487,20 +509,22 @@ TEST(CrudService_Component, UpsertIntegration_InvalidDecoderUUID_Throws_NoValida
     EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    static constexpr const char* kBadDecoderUuidIntegrationYaml = R"(
-    id: "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
-    metadata:
-      title: "windows"
-    enabled: true
-    category: "security"
-    decoders:
-      - "not-a-uuid"   # <-- invalid
-    kvdbs: []
-    )";
+    static constexpr const char* kBadDecoderUuidIntegrationYaml = R"({
+      "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
+      "metadata": {
+        "title": "windows"
+      },
+      "enabled": true,
+      "category": "security",
+      "decoders": ["not-a-uuid"],
+      "kvdbs": []
+    })";
 
     try
     {
-        stack.service.upsertResource(nsId, ResourceType::INTEGRATION, kBadDecoderUuidIntegrationYaml);
+        stack.service.upsertResource(nsId,
+                                     ResourceType::INTEGRATION,
+                                     makeJsonPayload(kBadDecoderUuidIntegrationYaml));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)
@@ -524,20 +548,20 @@ TEST(CrudService_Component, UpsertIntegration_InvalidKVDBUUID_Throws_NoValidator
     EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    static constexpr const char* kBadKvdbUuidIntegrationYaml = R"(
-    id: "5c1df6b6-1458-4b2e-9001-96f67a8b12c8"
-    metadata:
-      title: "windows"
-    enabled: true
-    category: "security"
-    decoders: []
-    kvdbs:
-      - "not-a-uuid"   # <-- invalid
-    )";
+    static constexpr const char* kBadKvdbUuidIntegrationYaml = R"({
+      "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
+      "metadata": {
+        "title": "windows"
+      },
+      "enabled": true,
+      "category": "security",
+      "decoders": [],
+      "kvdbs": ["not-a-uuid"]
+    })";
 
     try
     {
-        stack.service.upsertResource(nsId, ResourceType::INTEGRATION, kBadKvdbUuidIntegrationYaml);
+        stack.service.upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kBadKvdbUuidIntegrationYaml));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& ex)

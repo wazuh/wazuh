@@ -1230,7 +1230,7 @@ class policyPost_Request final :
 
   enum : int {
     kSpaceFieldNumber = 1,
-    kYmlContentFieldNumber = 2,
+    kJsonContentFieldNumber = 2,
   };
   // string space = 1;
   void clear_space();
@@ -1246,19 +1246,23 @@ class policyPost_Request final :
   std::string* _internal_mutable_space();
   public:
 
-  // string ymlContent = 2;
-  void clear_ymlcontent();
-  const std::string& ymlcontent() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_ymlcontent(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_ymlcontent();
-  PROTOBUF_NODISCARD std::string* release_ymlcontent();
-  void set_allocated_ymlcontent(std::string* ymlcontent);
+  // .google.protobuf.Struct jsonContent = 2;
+  bool has_jsoncontent() const;
   private:
-  const std::string& _internal_ymlcontent() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_ymlcontent(const std::string& value);
-  std::string* _internal_mutable_ymlcontent();
+  bool _internal_has_jsoncontent() const;
   public:
+  void clear_jsoncontent();
+  const ::PROTOBUF_NAMESPACE_ID::Struct& jsoncontent() const;
+  PROTOBUF_NODISCARD ::PROTOBUF_NAMESPACE_ID::Struct* release_jsoncontent();
+  ::PROTOBUF_NAMESPACE_ID::Struct* mutable_jsoncontent();
+  void set_allocated_jsoncontent(::PROTOBUF_NAMESPACE_ID::Struct* jsoncontent);
+  private:
+  const ::PROTOBUF_NAMESPACE_ID::Struct& _internal_jsoncontent() const;
+  ::PROTOBUF_NAMESPACE_ID::Struct* _internal_mutable_jsoncontent();
+  public:
+  void unsafe_arena_set_allocated_jsoncontent(
+      ::PROTOBUF_NAMESPACE_ID::Struct* jsoncontent);
+  ::PROTOBUF_NAMESPACE_ID::Struct* unsafe_arena_release_jsoncontent();
 
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.content.policyPost_Request)
  private:
@@ -1269,7 +1273,7 @@ class policyPost_Request final :
   typedef void DestructorSkippable_;
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr space_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr ymlcontent_;
+    ::PROTOBUF_NAMESPACE_ID::Struct* jsoncontent_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -2095,7 +2099,6 @@ class resourceGet_Request final :
   enum : int {
     kSpaceFieldNumber = 1,
     kUuidFieldNumber = 2,
-    kAsJsonFieldNumber = 3,
   };
   // string space = 1;
   void clear_space();
@@ -2125,19 +2128,6 @@ class resourceGet_Request final :
   std::string* _internal_mutable_uuid();
   public:
 
-  // optional bool asJson = 3;
-  bool has_asjson() const;
-  private:
-  bool _internal_has_asjson() const;
-  public:
-  void clear_asjson();
-  bool asjson() const;
-  void set_asjson(bool value);
-  private:
-  bool _internal_asjson() const;
-  void _internal_set_asjson(bool value);
-  public:
-
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.content.resourceGet_Request)
  private:
   class _Internal;
@@ -2146,11 +2136,9 @@ class resourceGet_Request final :
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
   struct Impl_ {
-    ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
-    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr space_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr uuid_;
-    bool asjson_;
+    mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_crud_2eproto;
@@ -2279,7 +2267,7 @@ class resourceGet_Response final :
 
   enum : int {
     kErrorFieldNumber = 2,
-    kContentFieldNumber = 3,
+    kJsonContentFieldNumber = 3,
     kStatusFieldNumber = 1,
   };
   // optional string error = 2;
@@ -2300,23 +2288,23 @@ class resourceGet_Response final :
   std::string* _internal_mutable_error();
   public:
 
-  // optional string content = 3;
-  bool has_content() const;
+  // .google.protobuf.Struct jsonContent = 3;
+  bool has_jsoncontent() const;
   private:
-  bool _internal_has_content() const;
+  bool _internal_has_jsoncontent() const;
   public:
-  void clear_content();
-  const std::string& content() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_content(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_content();
-  PROTOBUF_NODISCARD std::string* release_content();
-  void set_allocated_content(std::string* content);
+  void clear_jsoncontent();
+  const ::PROTOBUF_NAMESPACE_ID::Struct& jsoncontent() const;
+  PROTOBUF_NODISCARD ::PROTOBUF_NAMESPACE_ID::Struct* release_jsoncontent();
+  ::PROTOBUF_NAMESPACE_ID::Struct* mutable_jsoncontent();
+  void set_allocated_jsoncontent(::PROTOBUF_NAMESPACE_ID::Struct* jsoncontent);
   private:
-  const std::string& _internal_content() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_content(const std::string& value);
-  std::string* _internal_mutable_content();
+  const ::PROTOBUF_NAMESPACE_ID::Struct& _internal_jsoncontent() const;
+  ::PROTOBUF_NAMESPACE_ID::Struct* _internal_mutable_jsoncontent();
   public:
+  void unsafe_arena_set_allocated_jsoncontent(
+      ::PROTOBUF_NAMESPACE_ID::Struct* jsoncontent);
+  ::PROTOBUF_NAMESPACE_ID::Struct* unsafe_arena_release_jsoncontent();
 
   // .com.wazuh.api.engine.ReturnStatus status = 1;
   void clear_status();
@@ -2338,7 +2326,7 @@ class resourceGet_Response final :
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr error_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr content_;
+    ::PROTOBUF_NAMESPACE_ID::Struct* jsoncontent_;
     int status_;
   };
   union { Impl_ _impl_; };
@@ -2469,7 +2457,7 @@ class resourcePost_Request final :
   enum : int {
     kSpaceFieldNumber = 1,
     kTypeFieldNumber = 2,
-    kYmlContentFieldNumber = 3,
+    kJsonContentFieldNumber = 3,
   };
   // string space = 1;
   void clear_space();
@@ -2499,19 +2487,23 @@ class resourcePost_Request final :
   std::string* _internal_mutable_type();
   public:
 
-  // string ymlContent = 3;
-  void clear_ymlcontent();
-  const std::string& ymlcontent() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_ymlcontent(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_ymlcontent();
-  PROTOBUF_NODISCARD std::string* release_ymlcontent();
-  void set_allocated_ymlcontent(std::string* ymlcontent);
+  // .google.protobuf.Struct jsonContent = 3;
+  bool has_jsoncontent() const;
   private:
-  const std::string& _internal_ymlcontent() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_ymlcontent(const std::string& value);
-  std::string* _internal_mutable_ymlcontent();
+  bool _internal_has_jsoncontent() const;
   public:
+  void clear_jsoncontent();
+  const ::PROTOBUF_NAMESPACE_ID::Struct& jsoncontent() const;
+  PROTOBUF_NODISCARD ::PROTOBUF_NAMESPACE_ID::Struct* release_jsoncontent();
+  ::PROTOBUF_NAMESPACE_ID::Struct* mutable_jsoncontent();
+  void set_allocated_jsoncontent(::PROTOBUF_NAMESPACE_ID::Struct* jsoncontent);
+  private:
+  const ::PROTOBUF_NAMESPACE_ID::Struct& _internal_jsoncontent() const;
+  ::PROTOBUF_NAMESPACE_ID::Struct* _internal_mutable_jsoncontent();
+  public:
+  void unsafe_arena_set_allocated_jsoncontent(
+      ::PROTOBUF_NAMESPACE_ID::Struct* jsoncontent);
+  ::PROTOBUF_NAMESPACE_ID::Struct* unsafe_arena_release_jsoncontent();
 
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.content.resourcePost_Request)
  private:
@@ -2523,7 +2515,7 @@ class resourcePost_Request final :
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr space_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr type_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr ymlcontent_;
+    ::PROTOBUF_NAMESPACE_ID::Struct* jsoncontent_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   };
   union { Impl_ _impl_; };
@@ -3475,54 +3467,89 @@ inline void policyPost_Request::set_allocated_space(std::string* space) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.policyPost_Request.space)
 }
 
-// string ymlContent = 2;
-inline void policyPost_Request::clear_ymlcontent() {
-  _impl_.ymlcontent_.ClearToEmpty();
+// .google.protobuf.Struct jsonContent = 2;
+inline bool policyPost_Request::_internal_has_jsoncontent() const {
+  return this != internal_default_instance() && _impl_.jsoncontent_ != nullptr;
 }
-inline const std::string& policyPost_Request::ymlcontent() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.content.policyPost_Request.ymlContent)
-  return _internal_ymlcontent();
+inline bool policyPost_Request::has_jsoncontent() const {
+  return _internal_has_jsoncontent();
 }
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void policyPost_Request::set_ymlcontent(ArgT0&& arg0, ArgT... args) {
- 
- _impl_.ymlcontent_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.content.policyPost_Request.ymlContent)
+inline const ::PROTOBUF_NAMESPACE_ID::Struct& policyPost_Request::_internal_jsoncontent() const {
+  const ::PROTOBUF_NAMESPACE_ID::Struct* p = _impl_.jsoncontent_;
+  return p != nullptr ? *p : reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Struct&>(
+      ::PROTOBUF_NAMESPACE_ID::_Struct_default_instance_);
 }
-inline std::string* policyPost_Request::mutable_ymlcontent() {
-  std::string* _s = _internal_mutable_ymlcontent();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.content.policyPost_Request.ymlContent)
-  return _s;
+inline const ::PROTOBUF_NAMESPACE_ID::Struct& policyPost_Request::jsoncontent() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.content.policyPost_Request.jsonContent)
+  return _internal_jsoncontent();
 }
-inline const std::string& policyPost_Request::_internal_ymlcontent() const {
-  return _impl_.ymlcontent_.Get();
-}
-inline void policyPost_Request::_internal_set_ymlcontent(const std::string& value) {
-  
-  _impl_.ymlcontent_.Set(value, GetArenaForAllocation());
-}
-inline std::string* policyPost_Request::_internal_mutable_ymlcontent() {
-  
-  return _impl_.ymlcontent_.Mutable(GetArenaForAllocation());
-}
-inline std::string* policyPost_Request::release_ymlcontent() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.content.policyPost_Request.ymlContent)
-  return _impl_.ymlcontent_.Release();
-}
-inline void policyPost_Request::set_allocated_ymlcontent(std::string* ymlcontent) {
-  if (ymlcontent != nullptr) {
+inline void policyPost_Request::unsafe_arena_set_allocated_jsoncontent(
+    ::PROTOBUF_NAMESPACE_ID::Struct* jsoncontent) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.jsoncontent_);
+  }
+  _impl_.jsoncontent_ = jsoncontent;
+  if (jsoncontent) {
     
   } else {
     
   }
-  _impl_.ymlcontent_.SetAllocated(ymlcontent, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.ymlcontent_.IsDefault()) {
-    _impl_.ymlcontent_.Set("", GetArenaForAllocation());
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.content.policyPost_Request.jsonContent)
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* policyPost_Request::release_jsoncontent() {
+  
+  ::PROTOBUF_NAMESPACE_ID::Struct* temp = _impl_.jsoncontent_;
+  _impl_.jsoncontent_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
   }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.policyPost_Request.ymlContent)
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* policyPost_Request::unsafe_arena_release_jsoncontent() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.content.policyPost_Request.jsonContent)
+  
+  ::PROTOBUF_NAMESPACE_ID::Struct* temp = _impl_.jsoncontent_;
+  _impl_.jsoncontent_ = nullptr;
+  return temp;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* policyPost_Request::_internal_mutable_jsoncontent() {
+  
+  if (_impl_.jsoncontent_ == nullptr) {
+    auto* p = CreateMaybeMessage<::PROTOBUF_NAMESPACE_ID::Struct>(GetArenaForAllocation());
+    _impl_.jsoncontent_ = p;
+  }
+  return _impl_.jsoncontent_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* policyPost_Request::mutable_jsoncontent() {
+  ::PROTOBUF_NAMESPACE_ID::Struct* _msg = _internal_mutable_jsoncontent();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.content.policyPost_Request.jsonContent)
+  return _msg;
+}
+inline void policyPost_Request::set_allocated_jsoncontent(::PROTOBUF_NAMESPACE_ID::Struct* jsoncontent) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete reinterpret_cast< ::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.jsoncontent_);
+  }
+  if (jsoncontent) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(
+                reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(jsoncontent));
+    if (message_arena != submessage_arena) {
+      jsoncontent = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, jsoncontent, submessage_arena);
+    }
+    
+  } else {
+    
+  }
+  _impl_.jsoncontent_ = jsoncontent;
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.policyPost_Request.jsonContent)
 }
 
 // -------------------------------------------------------------------
@@ -4078,34 +4105,6 @@ inline void resourceGet_Request::set_allocated_uuid(std::string* uuid) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.resourceGet_Request.uuid)
 }
 
-// optional bool asJson = 3;
-inline bool resourceGet_Request::_internal_has_asjson() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000001u) != 0;
-  return value;
-}
-inline bool resourceGet_Request::has_asjson() const {
-  return _internal_has_asjson();
-}
-inline void resourceGet_Request::clear_asjson() {
-  _impl_.asjson_ = false;
-  _impl_._has_bits_[0] &= ~0x00000001u;
-}
-inline bool resourceGet_Request::_internal_asjson() const {
-  return _impl_.asjson_;
-}
-inline bool resourceGet_Request::asjson() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.content.resourceGet_Request.asJson)
-  return _internal_asjson();
-}
-inline void resourceGet_Request::_internal_set_asjson(bool value) {
-  _impl_._has_bits_[0] |= 0x00000001u;
-  _impl_.asjson_ = value;
-}
-inline void resourceGet_Request::set_asjson(bool value) {
-  _internal_set_asjson(value);
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.content.resourceGet_Request.asJson)
-}
-
 // -------------------------------------------------------------------
 
 // resourceGet_Response
@@ -4198,72 +4197,89 @@ inline void resourceGet_Response::set_allocated_error(std::string* error) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.resourceGet_Response.error)
 }
 
-// optional string content = 3;
-inline bool resourceGet_Response::_internal_has_content() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
-  return value;
+// .google.protobuf.Struct jsonContent = 3;
+inline bool resourceGet_Response::_internal_has_jsoncontent() const {
+  return this != internal_default_instance() && _impl_.jsoncontent_ != nullptr;
 }
-inline bool resourceGet_Response::has_content() const {
-  return _internal_has_content();
+inline bool resourceGet_Response::has_jsoncontent() const {
+  return _internal_has_jsoncontent();
 }
-inline void resourceGet_Response::clear_content() {
-  _impl_.content_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000002u;
+inline const ::PROTOBUF_NAMESPACE_ID::Struct& resourceGet_Response::_internal_jsoncontent() const {
+  const ::PROTOBUF_NAMESPACE_ID::Struct* p = _impl_.jsoncontent_;
+  return p != nullptr ? *p : reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Struct&>(
+      ::PROTOBUF_NAMESPACE_ID::_Struct_default_instance_);
 }
-inline const std::string& resourceGet_Response::content() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.content.resourceGet_Response.content)
-  return _internal_content();
+inline const ::PROTOBUF_NAMESPACE_ID::Struct& resourceGet_Response::jsoncontent() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.content.resourceGet_Response.jsonContent)
+  return _internal_jsoncontent();
 }
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void resourceGet_Response::set_content(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000002u;
- _impl_.content_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.content.resourceGet_Response.content)
-}
-inline std::string* resourceGet_Response::mutable_content() {
-  std::string* _s = _internal_mutable_content();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.content.resourceGet_Response.content)
-  return _s;
-}
-inline const std::string& resourceGet_Response::_internal_content() const {
-  return _impl_.content_.Get();
-}
-inline void resourceGet_Response::_internal_set_content(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000002u;
-  _impl_.content_.Set(value, GetArenaForAllocation());
-}
-inline std::string* resourceGet_Response::_internal_mutable_content() {
-  _impl_._has_bits_[0] |= 0x00000002u;
-  return _impl_.content_.Mutable(GetArenaForAllocation());
-}
-inline std::string* resourceGet_Response::release_content() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.content.resourceGet_Response.content)
-  if (!_internal_has_content()) {
-    return nullptr;
+inline void resourceGet_Response::unsafe_arena_set_allocated_jsoncontent(
+    ::PROTOBUF_NAMESPACE_ID::Struct* jsoncontent) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.jsoncontent_);
   }
-  _impl_._has_bits_[0] &= ~0x00000002u;
-  auto* p = _impl_.content_.Release();
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.content_.IsDefault()) {
-    _impl_.content_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  return p;
-}
-inline void resourceGet_Response::set_allocated_content(std::string* content) {
-  if (content != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000002u;
+  _impl_.jsoncontent_ = jsoncontent;
+  if (jsoncontent) {
+    
   } else {
-    _impl_._has_bits_[0] &= ~0x00000002u;
+    
   }
-  _impl_.content_.SetAllocated(content, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.content_.IsDefault()) {
-    _impl_.content_.Set("", GetArenaForAllocation());
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.content.resourceGet_Response.jsonContent)
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* resourceGet_Response::release_jsoncontent() {
+  
+  ::PROTOBUF_NAMESPACE_ID::Struct* temp = _impl_.jsoncontent_;
+  _impl_.jsoncontent_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
   }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.resourceGet_Response.content)
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* resourceGet_Response::unsafe_arena_release_jsoncontent() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.content.resourceGet_Response.jsonContent)
+  
+  ::PROTOBUF_NAMESPACE_ID::Struct* temp = _impl_.jsoncontent_;
+  _impl_.jsoncontent_ = nullptr;
+  return temp;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* resourceGet_Response::_internal_mutable_jsoncontent() {
+  
+  if (_impl_.jsoncontent_ == nullptr) {
+    auto* p = CreateMaybeMessage<::PROTOBUF_NAMESPACE_ID::Struct>(GetArenaForAllocation());
+    _impl_.jsoncontent_ = p;
+  }
+  return _impl_.jsoncontent_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* resourceGet_Response::mutable_jsoncontent() {
+  ::PROTOBUF_NAMESPACE_ID::Struct* _msg = _internal_mutable_jsoncontent();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.content.resourceGet_Response.jsonContent)
+  return _msg;
+}
+inline void resourceGet_Response::set_allocated_jsoncontent(::PROTOBUF_NAMESPACE_ID::Struct* jsoncontent) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete reinterpret_cast< ::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.jsoncontent_);
+  }
+  if (jsoncontent) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(
+                reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(jsoncontent));
+    if (message_arena != submessage_arena) {
+      jsoncontent = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, jsoncontent, submessage_arena);
+    }
+    
+  } else {
+    
+  }
+  _impl_.jsoncontent_ = jsoncontent;
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.resourceGet_Response.jsonContent)
 }
 
 // -------------------------------------------------------------------
@@ -4370,54 +4386,89 @@ inline void resourcePost_Request::set_allocated_type(std::string* type) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.resourcePost_Request.type)
 }
 
-// string ymlContent = 3;
-inline void resourcePost_Request::clear_ymlcontent() {
-  _impl_.ymlcontent_.ClearToEmpty();
+// .google.protobuf.Struct jsonContent = 3;
+inline bool resourcePost_Request::_internal_has_jsoncontent() const {
+  return this != internal_default_instance() && _impl_.jsoncontent_ != nullptr;
 }
-inline const std::string& resourcePost_Request::ymlcontent() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.content.resourcePost_Request.ymlContent)
-  return _internal_ymlcontent();
+inline bool resourcePost_Request::has_jsoncontent() const {
+  return _internal_has_jsoncontent();
 }
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void resourcePost_Request::set_ymlcontent(ArgT0&& arg0, ArgT... args) {
- 
- _impl_.ymlcontent_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.content.resourcePost_Request.ymlContent)
+inline const ::PROTOBUF_NAMESPACE_ID::Struct& resourcePost_Request::_internal_jsoncontent() const {
+  const ::PROTOBUF_NAMESPACE_ID::Struct* p = _impl_.jsoncontent_;
+  return p != nullptr ? *p : reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Struct&>(
+      ::PROTOBUF_NAMESPACE_ID::_Struct_default_instance_);
 }
-inline std::string* resourcePost_Request::mutable_ymlcontent() {
-  std::string* _s = _internal_mutable_ymlcontent();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.content.resourcePost_Request.ymlContent)
-  return _s;
+inline const ::PROTOBUF_NAMESPACE_ID::Struct& resourcePost_Request::jsoncontent() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.content.resourcePost_Request.jsonContent)
+  return _internal_jsoncontent();
 }
-inline const std::string& resourcePost_Request::_internal_ymlcontent() const {
-  return _impl_.ymlcontent_.Get();
-}
-inline void resourcePost_Request::_internal_set_ymlcontent(const std::string& value) {
-  
-  _impl_.ymlcontent_.Set(value, GetArenaForAllocation());
-}
-inline std::string* resourcePost_Request::_internal_mutable_ymlcontent() {
-  
-  return _impl_.ymlcontent_.Mutable(GetArenaForAllocation());
-}
-inline std::string* resourcePost_Request::release_ymlcontent() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.content.resourcePost_Request.ymlContent)
-  return _impl_.ymlcontent_.Release();
-}
-inline void resourcePost_Request::set_allocated_ymlcontent(std::string* ymlcontent) {
-  if (ymlcontent != nullptr) {
+inline void resourcePost_Request::unsafe_arena_set_allocated_jsoncontent(
+    ::PROTOBUF_NAMESPACE_ID::Struct* jsoncontent) {
+  if (GetArenaForAllocation() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.jsoncontent_);
+  }
+  _impl_.jsoncontent_ = jsoncontent;
+  if (jsoncontent) {
     
   } else {
     
   }
-  _impl_.ymlcontent_.SetAllocated(ymlcontent, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.ymlcontent_.IsDefault()) {
-    _impl_.ymlcontent_.Set("", GetArenaForAllocation());
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:com.wazuh.api.engine.content.resourcePost_Request.jsonContent)
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* resourcePost_Request::release_jsoncontent() {
+  
+  ::PROTOBUF_NAMESPACE_ID::Struct* temp = _impl_.jsoncontent_;
+  _impl_.jsoncontent_ = nullptr;
+#ifdef PROTOBUF_FORCE_COPY_IN_RELEASE
+  auto* old =  reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(temp);
+  temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  if (GetArenaForAllocation() == nullptr) { delete old; }
+#else  // PROTOBUF_FORCE_COPY_IN_RELEASE
+  if (GetArenaForAllocation() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
   }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.resourcePost_Request.ymlContent)
+#endif  // !PROTOBUF_FORCE_COPY_IN_RELEASE
+  return temp;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* resourcePost_Request::unsafe_arena_release_jsoncontent() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.content.resourcePost_Request.jsonContent)
+  
+  ::PROTOBUF_NAMESPACE_ID::Struct* temp = _impl_.jsoncontent_;
+  _impl_.jsoncontent_ = nullptr;
+  return temp;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* resourcePost_Request::_internal_mutable_jsoncontent() {
+  
+  if (_impl_.jsoncontent_ == nullptr) {
+    auto* p = CreateMaybeMessage<::PROTOBUF_NAMESPACE_ID::Struct>(GetArenaForAllocation());
+    _impl_.jsoncontent_ = p;
+  }
+  return _impl_.jsoncontent_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::Struct* resourcePost_Request::mutable_jsoncontent() {
+  ::PROTOBUF_NAMESPACE_ID::Struct* _msg = _internal_mutable_jsoncontent();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.content.resourcePost_Request.jsonContent)
+  return _msg;
+}
+inline void resourcePost_Request::set_allocated_jsoncontent(::PROTOBUF_NAMESPACE_ID::Struct* jsoncontent) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArenaForAllocation();
+  if (message_arena == nullptr) {
+    delete reinterpret_cast< ::PROTOBUF_NAMESPACE_ID::MessageLite*>(_impl_.jsoncontent_);
+  }
+  if (jsoncontent) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+        ::PROTOBUF_NAMESPACE_ID::Arena::InternalGetOwningArena(
+                reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(jsoncontent));
+    if (message_arena != submessage_arena) {
+      jsoncontent = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, jsoncontent, submessage_arena);
+    }
+    
+  } else {
+    
+  }
+  _impl_.jsoncontent_ = jsoncontent;
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.content.resourcePost_Request.jsonContent)
 }
 
 // -------------------------------------------------------------------

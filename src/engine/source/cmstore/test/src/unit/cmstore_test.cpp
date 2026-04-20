@@ -4,6 +4,9 @@
 #include <memory>
 #include <unistd.h>
 
+#include <base/name.hpp>
+#include <base/utils/generator.hpp>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <cmstore/cmstore.hpp>
@@ -11,9 +14,109 @@
 
 #include "storens.hpp"
 
-// ======================================================================
-//  Helpers
-// ======================================================================
+namespace
+{
+
+class CMStoreNSJsonTest : public ::testing::Test
+{
+protected:
+    std::filesystem::path m_root;
+    std::filesystem::path m_outputs;
+
+    void SetUp() override
+    {
+        const auto suffix = base::utils::generators::generateUUIDv4();
+        m_root = std::filesystem::temp_directory_path() / ("cmstore-test-" + suffix);
+        m_outputs = m_root / "default_outputs";
+
+        std::filesystem::create_directories(m_root);
+        std::filesystem::create_directories(m_outputs);
+    }
+
+    void TearDown() override
+    {
+        std::error_code ec;
+        std::filesystem::remove_all(m_root, ec);
+    }
+};
+
+} // namespace
+
+TEST_F(CMStoreNSJsonTest, CreateResourcePersistsJsonAndGetterReadsItBack)
+{
+    cm::store::CMStoreNS store {cm::store::NamespaceId("test"), m_root, m_outputs};
+
+    json::Json payload;
+    payload.setObject();
+    payload.setString("decoder/syslog/0", "/name");
+    payload.setString("3f086ce2-32a4-42b0-be7e-40dcfb9c6160", "/id");
+    payload.setObject("/metadata");
+    payload.setString("syslog", "/metadata/module");
+
+    const auto uuid = store.createResource("decoder/syslog/0", cm::store::ResourceType::DECODER, payload);
+
+    EXPECT_EQ(uuid, "3f086ce2-32a4-42b0-be7e-40dcfb9c6160");
+
+    const auto resourcePath = m_root / "decoders" / "decoder_syslog_0.json";
+    std::ifstream persistedFile(resourcePath);
+    ASSERT_TRUE(persistedFile.is_open());
+    const std::string persisted((std::istreambuf_iterator<char>(persistedFile)), std::istreambuf_iterator<char>());
+    EXPECT_THAT(persisted, ::testing::HasSubstr("\"name\":\"decoder/syslog/0\""));
+    EXPECT_THAT(persisted, ::testing::HasSubstr("\"id\":\"3f086ce2-32a4-42b0-be7e-40dcfb9c6160\""));
+
+    const auto asset = store.getAssetByName(base::Name {"decoder/syslog/0"});
+    std::string name;
+    EXPECT_EQ(asset.getString(name, "/name"), json::RetGet::Success);
+    EXPECT_EQ(name, "decoder/syslog/0");
+    std::string id;
+    EXPECT_EQ(asset.getString(id, "/id"), json::RetGet::Success);
+    EXPECT_EQ(id, "3f086ce2-32a4-42b0-be7e-40dcfb9c6160");
+}
+
+TEST_F(CMStoreNSJsonTest, JsonResourcesOnDiskAreLoadedDuringStoreInitialization)
+{
+    std::filesystem::create_directories(m_root / "decoders");
+
+    const auto jsonPath = m_root / "decoders" / "decoder_syslog_0.json";
+    std::ofstream jsonFile(jsonPath);
+    ASSERT_TRUE(jsonFile.is_open());
+    jsonFile << R"({"name":"decoder/syslog/0","id":"3f086ce2-32a4-42b0-be7e-40dcfb9c6160","metadata":{"module":"syslog"}})";
+    jsonFile.close();
+
+    cm::store::CMStoreNS store {cm::store::NamespaceId("test"), m_root, m_outputs};
+
+    const auto asset = store.getAssetByName(base::Name {"decoder/syslog/0"});
+    std::string name;
+    EXPECT_EQ(asset.getString(name, "/name"), json::RetGet::Success);
+    EXPECT_EQ(name, "decoder/syslog/0");
+    std::string id;
+    EXPECT_EQ(asset.getString(id, "/id"), json::RetGet::Success);
+    EXPECT_EQ(id, "3f086ce2-32a4-42b0-be7e-40dcfb9c6160");
+}
+
+TEST_F(CMStoreNSJsonTest, DefaultOutputsYamlAreConvertedToJson)
+{
+    std::filesystem::create_directories(m_outputs / "default");
+
+    std::ofstream outputFile(m_outputs / "default" / "stdout.yml");
+    ASSERT_TRUE(outputFile.is_open());
+    outputFile << "name: output/stdout\n";
+    outputFile << "enabled: true\n";
+    outputFile << "batch: 5\n";
+    outputFile.close();
+
+    cm::store::CMStoreNS store {cm::store::NamespaceId("test"), m_root, m_outputs};
+
+    const auto outputs = store.getOutputsForSpace("");
+    ASSERT_EQ(outputs.size(), 1u);
+    std::string name;
+    EXPECT_EQ(outputs[0].getString(name, "/name"), json::RetGet::Success);
+    EXPECT_EQ(name, "output/stdout");
+    ASSERT_TRUE(outputs[0].getBool("/enabled").has_value());
+    EXPECT_TRUE(outputs[0].getBool("/enabled").value());
+    ASSERT_TRUE(outputs[0].getInt("/batch").has_value());
+    EXPECT_EQ(outputs[0].getInt("/batch").value(), 5);
+}
 
 namespace
 {
@@ -53,6 +156,73 @@ void writeOutputFile(const std::filesystem::path& path, std::string_view name)
     out << "enabled: true\n";
     out << "outputs:\n";
     out << "  - file: alerts\n";
+}
+
+json::Json makeResourceJson(std::string_view name, std::string_view uuid = "", bool enabled = true)
+{
+    json::Json resource;
+    resource.setObject();
+    resource.setString(name, "/name");
+    resource.setBool(enabled, "/enabled");
+    if (!uuid.empty())
+    {
+        resource.setString(uuid, "/id");
+    }
+    return resource;
+}
+
+json::Json makeDecoderJson(std::string_view name, std::string_view uuid = "", bool enabled = true)
+{
+    auto decoder = makeResourceJson(name, uuid, enabled);
+    decoder.setArray("/parents");
+    decoder.appendString("decoder/root/0", "/parents");
+    return decoder;
+}
+
+json::Json makeFilterJson(std::string_view name, std::string_view uuid = "", bool enabled = true)
+{
+    auto filter = makeResourceJson(name, uuid, enabled);
+    filter.setString("pre-filter", "/type");
+    return filter;
+}
+
+json::Json makeOutputJson(std::string_view name, std::string_view uuid = "", bool enabled = true)
+{
+    auto output = makeResourceJson(name, uuid, enabled);
+    json::Json fileOutput;
+    fileOutput.setObject();
+    fileOutput.setString("alerts", "/file");
+    output.setArray("/outputs");
+    output.appendJson(fileOutput, "/outputs");
+    return output;
+}
+
+json::Json makeIntegrationJson(std::string_view name,
+                               std::string_view uuid,
+                               std::string_view category = "security",
+                               bool enabled = true)
+{
+    json::Json integration;
+    integration.setObject();
+    integration.setString(uuid, "/id");
+    integration.setString(name, "/metadata/title");
+    integration.setBool(enabled, "/enabled");
+    integration.setString(category, "/category");
+    integration.setArray("/decoders");
+    integration.setArray("/kvdbs");
+    return integration;
+}
+
+json::Json makeKVDBJson(std::string_view name, std::string_view uuid, bool enabled = true)
+{
+    json::Json kvdb;
+    kvdb.setObject();
+    kvdb.setString(uuid, "/id");
+    kvdb.setString(name, "/metadata/title");
+    kvdb.setBool(enabled, "/enabled");
+    kvdb.setString("value1", "/content/key1");
+    kvdb.setString("value2", "/content/key2");
+    return kvdb;
 }
 
 } // namespace
@@ -216,13 +386,8 @@ TEST_F(CMStoreNSTest, CreateAndGetDecoder)
 {
     auto store = makeStore();
 
-    std::string yml = R"(name: decoder/test/0
-enabled: true
-parents:
-  - decoder/root/0
-)";
-
-    auto uuid = store->createResource("decoder/test/0", cm::store::ResourceType::DECODER, yml);
+    auto uuid =
+        store->createResource("decoder/test/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/test/0"));
     EXPECT_FALSE(uuid.empty());
 
     // Verify it exists
@@ -245,24 +410,17 @@ TEST_F(CMStoreNSTest, CreateDuplicateNameThrows)
 {
     auto store = makeStore();
 
-    std::string yml = R"(name: decoder/test/0
-enabled: true
-)";
-
-    store->createResource("decoder/test/0", cm::store::ResourceType::DECODER, yml);
-    EXPECT_THROW(store->createResource("decoder/test/0", cm::store::ResourceType::DECODER, yml), std::runtime_error);
+    store->createResource("decoder/test/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/test/0"));
+    EXPECT_THROW(store->createResource("decoder/test/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/test/0")),
+                 std::runtime_error);
 }
 
 TEST_F(CMStoreNSTest, ResolveUUIDFromName)
 {
     auto store = makeStore();
 
-    std::string yml = R"(name: filter/myfilter/0
-enabled: true
-type: pre-filter
-)";
-
-    auto uuid = store->createResource("filter/myfilter/0", cm::store::ResourceType::FILTER, yml);
+    auto uuid =
+        store->createResource("filter/myfilter/0", cm::store::ResourceType::FILTER, makeFilterJson("filter/myfilter/0"));
     auto resolved = store->resolveUUIDFromName("filter/myfilter/0", cm::store::ResourceType::FILTER);
     EXPECT_EQ(uuid, resolved);
 }
@@ -271,13 +429,8 @@ TEST_F(CMStoreNSTest, ResolveNameFromUUID)
 {
     auto store = makeStore();
 
-    std::string yml = R"(name: output/myout/0
-enabled: true
-outputs:
-  - file: alerts
-)";
-
-    auto uuid = store->createResource("output/myout/0", cm::store::ResourceType::OUTPUT, yml);
+    auto uuid =
+        store->createResource("output/myout/0", cm::store::ResourceType::OUTPUT, makeOutputJson("output/myout/0"));
     auto [name, type] = store->resolveNameFromUUID(uuid);
     EXPECT_EQ(name, "output/myout/0");
     EXPECT_EQ(type, cm::store::ResourceType::OUTPUT);
@@ -287,11 +440,8 @@ TEST_F(CMStoreNSTest, DeleteResourceByName)
 {
     auto store = makeStore();
 
-    std::string yml = R"(name: decoder/del/0
-enabled: true
-)";
-
-    auto uuid = store->createResource("decoder/del/0", cm::store::ResourceType::DECODER, yml);
+    auto uuid =
+        store->createResource("decoder/del/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/del/0"));
     EXPECT_TRUE(store->assetExistsByUUID(uuid));
 
     store->deleteResourceByName("decoder/del/0", cm::store::ResourceType::DECODER);
@@ -302,12 +452,7 @@ TEST_F(CMStoreNSTest, DeleteResourceByUUID)
 {
     auto store = makeStore();
 
-    std::string yml = R"(name: filter/del/0
-enabled: true
-type: pre-filter
-)";
-
-    auto uuid = store->createResource("filter/del/0", cm::store::ResourceType::FILTER, yml);
+    auto uuid = store->createResource("filter/del/0", cm::store::ResourceType::FILTER, makeFilterJson("filter/del/0"));
     store->deleteResourceByUUID(uuid);
     EXPECT_FALSE(store->assetExistsByUUID(uuid));
 }
@@ -323,13 +468,9 @@ TEST_F(CMStoreNSTest, GetCollectionReturnsCreatedResources)
 {
     auto store = makeStore();
 
-    std::string dec1 = "name: decoder/a/0\nenabled: true\n";
-    std::string dec2 = "name: decoder/b/0\nenabled: true\n";
-    std::string flt1 = "name: filter/c/0\nenabled: true\ntype: pre-filter\n";
-
-    store->createResource("decoder/a/0", cm::store::ResourceType::DECODER, dec1);
-    store->createResource("decoder/b/0", cm::store::ResourceType::DECODER, dec2);
-    store->createResource("filter/c/0", cm::store::ResourceType::FILTER, flt1);
+    store->createResource("decoder/a/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/a/0"));
+    store->createResource("decoder/b/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/b/0"));
+    store->createResource("filter/c/0", cm::store::ResourceType::FILTER, makeFilterJson("filter/c/0"));
 
     auto decoders = store->getCollection(cm::store::ResourceType::DECODER);
     EXPECT_EQ(decoders.size(), 2U);
@@ -355,9 +496,8 @@ TEST_F(CMStoreNSTest, CreateResourceWithExistingIDPreservesIt)
     auto store = makeStore();
 
     std::string existingUUID = "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d";
-    std::string yml = "name: decoder/withid/0\nenabled: true\nid: " + existingUUID + "\n";
-
-    auto uuid = store->createResource("decoder/withid/0", cm::store::ResourceType::DECODER, yml);
+    auto uuid = store->createResource(
+        "decoder/withid/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/withid/0", existingUUID));
     EXPECT_EQ(uuid, existingUUID);
 }
 
@@ -461,16 +601,10 @@ TEST_F(CMStoreNSTest, CreateAndGetIntegration)
 {
     auto store = makeStore();
 
-    std::string ymlContent = R"(id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
-metadata:
-  title: test_integration
-enabled: true
-category: security
-decoders: []
-kvdbs: []
-)";
-
-    auto uuid = store->createResource("test_integration", cm::store::ResourceType::INTEGRATION, ymlContent);
+    auto uuid = store->createResource("test_integration",
+                                      cm::store::ResourceType::INTEGRATION,
+                                      makeIntegrationJson("test_integration",
+                                                          "f47ac10b-58cc-4372-a567-0e02b2c3d479"));
     EXPECT_FALSE(uuid.empty());
 
     auto integration = store->getIntegrationByName("test_integration");
@@ -500,16 +634,9 @@ TEST_F(CMStoreNSTest, CreateAndGetKVDB)
 {
     auto store = makeStore();
 
-    std::string ymlContent = R"(id: "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e"
-metadata:
-  title: test_kvdb
-enabled: true
-content:
-  key1: value1
-  key2: value2
-)";
-
-    auto uuid = store->createResource("test_kvdb", cm::store::ResourceType::KVDB, ymlContent);
+    auto uuid = store->createResource("test_kvdb",
+                                      cm::store::ResourceType::KVDB,
+                                      makeKVDBJson("test_kvdb", "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e"));
     EXPECT_FALSE(uuid.empty());
 
     auto kvdb = store->getKVDBByName("test_kvdb");
@@ -539,8 +666,8 @@ TEST_F(CMStoreNSTest, CacheSurvivesReinstantiation)
     std::string uuid;
     {
         auto store = makeStore();
-        std::string yml = "name: decoder/persist/0\nenabled: true\n";
-        uuid = store->createResource("decoder/persist/0", cm::store::ResourceType::DECODER, yml);
+        uuid = store->createResource(
+            "decoder/persist/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/persist/0"));
     }
     // Re-create store from same path — should reload cache from disk
     auto store2 = makeStore();

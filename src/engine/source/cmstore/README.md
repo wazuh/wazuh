@@ -236,7 +236,7 @@ class ICMstoreNS : public ICMStoreNSReader {
 - **Resource CRUD**: All operations follow: validate → acquire lock → update cache → write file → flush cache.
 - **UUID handling**: `upsertUUID()` parses content as JSON/YAML, extracts or generates UUID, re-injects it into content.
 - **Path mapping**: Resource names have `/` replaced with `_` for safe filenames. The type determines the subdirectory (`decoders/`, `filters/`, etc.).
-- **Files are stored as `.yml`**; policies as `policy.json`.
+- **Assets are stored as `.json`**; policies as `policy.json`.
 - **File permissions**: Files get 0640, directories get 0750.
 - **Output resolution**: `getOutputsForSpace()` checks for a space-specific directory under the outputs path; falls back to `default/`.
 

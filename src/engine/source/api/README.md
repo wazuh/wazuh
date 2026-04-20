@@ -28,7 +28,7 @@ The API system spans five tightly-coupled locations in the repository:
 ```
 
 **Wire format**: All messages are serialized as **JSON** (not binary protobuf). Protobuf is used as a **schema and validation layer** on both sides:
-- **C++ side**: `eMessage::eMessageFromJson` / `eMessageToJson` converts between protobuf objects and JSON strings.
+- **C++ side**: `eMessage::eMessageFromJson` / `eMessageToJson` converts between protobuf objects and JSON strings. Use `eMessageToJson` for response serialization; request handlers that need a `json::Json` payload should parse `req.body` and extract the relevant subtree directly.
 - **Python side**: `google.protobuf.json_format.MessageToDict` / `ParseDict` converts between protobuf objects and Python dicts, which are then JSON-serialized via `json.dumps`.
 
 ---
