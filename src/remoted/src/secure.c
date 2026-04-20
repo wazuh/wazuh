@@ -772,6 +772,18 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         return;
     }
 
+    /* Defense in depth note: downstream code (strncmp, IsValidHeader, strchr
+     * in validate_control_msg, w_utf8_filter, cJSON_ParseWithOpts in
+     * router_message_forward) treats tmp_msg as a C string. A malicious
+     * agent with a valid key could craft a decrypted payload whose
+     * msg_length does not include a trailing '\0'. The memset of
+     * cleartext_msg to '\0' at the top of this function (OS_MAXSTR + 1
+     * bytes) guarantees that the byte immediately past any valid decrypted
+     * payload is already a NUL, so those downstream calls cannot walk off
+     * the decrypted region. Any change to that memset, or any path that
+     * re-enters ReadSecMSG without re-zeroing, must re-establish the
+     * sentinel explicitly. */
+
     /* Recieved valid message timestamp updated. */
     keys.keyentries[agentid]->rcvd = current_ts;
 
@@ -922,7 +934,12 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
                 ctrl_msg_data->key = key;
 
-                os_calloc(msg_length, sizeof(char), ctrl_msg_data->message);
+                // Size exactly to tmp_msg_length plus a sentinel '\0'. The previous
+                // allocation used msg_length (which is tmp_msg_length + 3 because the
+                // HC_AGENT_ACK header has been stripped) so it over-allocated by three
+                // bytes and, more importantly, left no guaranteed terminator for the
+                // cJSON_Parse(strchr(clean, '{')) path in validate_control_msg.
+                os_calloc(tmp_msg_length + 1, sizeof(char), ctrl_msg_data->message);
                 // Use cleaned message from validation if available, otherwise use original
                 memcpy(ctrl_msg_data->message, cleaned_msg ? cleaned_msg : tmp_msg, tmp_msg_length);
 
@@ -996,7 +1013,11 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     // Only send to analysisd if not forwarded to router
     if (!forwarded_to_router) {
         evt_item_t *e; os_calloc(1, sizeof(*e), e);
-        os_calloc(msg_length, sizeof(char), e->raw);
+        // Allocate one extra byte so e->raw[e->len] is a guaranteed '\0'. The
+        // downstream bulk writer uses e->len (length-aware) so this does not
+        // change the bytes sent to the engine; the sentinel only protects any
+        // future consumer that might treat e->raw as a C string.
+        os_calloc(msg_length + 1, sizeof(char), e->raw);
         memcpy(e->raw, tmp_msg, msg_length);
         e->len = msg_length;
 

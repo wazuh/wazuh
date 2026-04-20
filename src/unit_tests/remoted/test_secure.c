@@ -627,6 +627,11 @@ void test_HandleSecureMessage_shutdown_message(void** state)
     w_ctrl_msg_data_t * node = indexed_queue_pop(control_msg_queue);
     assert_non_null(node);
     assert_string_equal(node->message, "agent shutdown ");
+    // The copy is sized tmp_msg_length + 1 (15 + 1 = 16), so node->message[15]
+    // is the sentinel '\0' written by os_calloc. If a regression shrinks the
+    // allocation back to tmp_msg_length, this access becomes a one-byte
+    // over-read that AddressSanitizer will flag.
+    assert_int_equal('\0', node->message[strlen("agent shutdown ")]);
     assert_int_equal(node->key->keyid, 1);
     assert_int_equal(node->key->sock, 1);
     assert_string_equal(node->key->id, "009");
