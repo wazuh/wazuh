@@ -1,6 +1,8 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v5.9.9]
+
 ## [v5.0.0]
 
 ### Manager
