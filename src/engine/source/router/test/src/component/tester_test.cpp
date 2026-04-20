@@ -78,7 +78,8 @@ public:
             .WillRepeatedly(::testing::Return(m_mockCounter));
 
         ON_CALL(*m_mockMetricsManager, registerPullMetric(::testing::_, ::testing::_, ::testing::_, ::testing::_))
-            .WillByDefault([](const std::string&, std::function<size_t()>, const std::string&, const std::string&) {});
+            .WillByDefault(
+                [](const std::string&, std::function<uint64_t()>, const std::string&, const std::string&) {});
 
         ON_CALL(*m_mockMetricsManager, registerPullMetricDouble(::testing::_, ::testing::_, ::testing::_, ::testing::_))
             .WillByDefault([](const std::string&, std::function<double()>, const std::string&, const std::string&) {});

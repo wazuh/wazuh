@@ -25,7 +25,7 @@ public:
 
     MOCK_METHOD(void,
                 registerPullMetric,
-                (const std::string&, std::function<size_t()>, const std::string&, const std::string&),
+                (const std::string&, std::function<uint64_t()>, const std::string&, const std::string&),
                 (override));
 
     MOCK_METHOD(void,

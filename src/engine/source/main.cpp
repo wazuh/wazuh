@@ -418,6 +418,7 @@ int main(int argc, char* argv[])
 
                 // Create indexer connector with enhanced configuration
                 indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf.str(), maxHitsPerRequest);
+                exitHandler.add([indexerConnector]() { indexerConnector->shutdown(); });
 
                 // Register pull metric for indexer queue (output/egress)
                 std::weak_ptr<wiconnector::WIndexerConnector> wIndexer = indexerConnector;
@@ -739,9 +740,8 @@ int main(int argc, char* argv[])
                 });
 
             // Metrics - create non-owning shared_ptr to singleton
-            metricsManager = std::shared_ptr<fastmetrics::IManager>(&fastmetrics::manager(),
-                                                        [](fastmetrics::IManager*) {
-                                                        });
+            metricsManager =
+                std::shared_ptr<fastmetrics::IManager>(&fastmetrics::manager(), [](fastmetrics::IManager*) {});
             api::metrics::handlers::registerHandlers(
                 metricsManager, apiServer, "wazuh-manager-analysisd", engineUptimeISO);
             LOG_DEBUG("Metrics API registered.");
@@ -892,11 +892,6 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     }
 
-    // Shutdown indexer connector before destroying logging resources
-    if (indexerConnector)
-    {
-        indexerConnector->shutdown();
-    }
     // Clean exit
     exitHandler.execute();
 }
