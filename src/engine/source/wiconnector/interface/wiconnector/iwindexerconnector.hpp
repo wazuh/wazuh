@@ -30,6 +30,7 @@ struct PolicyResources
 {
     std::vector<json::Json> kvdbs {};       ///< List of KVDB
     std::vector<json::Json> decoders {};    ///< List of decoder
+    std::vector<json::Json> filters {};     ///< List of filters
     std::vector<json::Json> integration {}; ///< List of integration decoder
     json::Json policy {};                   ///< The policy
 };

@@ -23,16 +23,20 @@ namespace
 /**
  * @brief List of policy resource aliases in the indexer
  */
-const std::vector<std::string> POLICY_ALIASES = {"wazuh-threatintel-kvdbs", "wazuh-threatintel-decoders", "wazuh-threatintel-integrations", "wazuh-threatintel-policies"};
+const std::vector<std::string> POLICY_ALIASES = {"wazuh-threatintel-kvdbs",
+                                                 "wazuh-threatintel-decoders",
+                                                 "wazuh-threatintel-filters",
+                                                 "wazuh-threatintel-integrations",
+                                                 "wazuh-threatintel-policies"};
 
-constexpr std::string_view PIT_KEEP_ALIVE {"5m"};                     ///< Keep alive duration for Point In Time
-constexpr std::string_view POLICY_INDEX {"wazuh-threatintel-policies"};            ///< Policy index name
-constexpr std::string_view IOC_INDEX {"wazuh-threatintel-enrichments"};                   ///< IOC index name
-constexpr std::string_view IOC_HASHES_DOC_ID {"__ioc_type_hashes__"}; ///< IOC hash manifest document ID
-constexpr std::size_t SINGLE_RESULT_SIZE {1};                         ///< Size for single result queries
-constexpr std::size_t HASH_QUERY_SIZE {1};                            ///< Size for hash query (expecting single result)
-constexpr std::size_t SAFE_STREAM_PAGE_SIZE {1000};                   ///< Hard cap for streaming page size
-constexpr std::string_view REMOTE_CONF_INDEX {".wazuh-settings"};     ///< remote conf index name
+constexpr std::string_view PIT_KEEP_ALIVE {"5m"};                       ///< Keep alive duration for Point In Time
+constexpr std::string_view POLICY_INDEX {"wazuh-threatintel-policies"}; ///< Policy index name
+constexpr std::string_view IOC_INDEX {"wazuh-threatintel-enrichments"}; ///< IOC index name
+constexpr std::string_view IOC_HASHES_DOC_ID {"__ioc_type_hashes__"};   ///< IOC hash manifest document ID
+constexpr std::size_t SINGLE_RESULT_SIZE {1};                           ///< Size for single result queries
+constexpr std::size_t HASH_QUERY_SIZE {1};                        ///< Size for hash query (expecting single result)
+constexpr std::size_t SAFE_STREAM_PAGE_SIZE {1000};               ///< Hard cap for streaming page size
+constexpr std::string_view REMOTE_CONF_INDEX {".wazuh-settings"}; ///< remote conf index name
 const std::array<std::string_view, 12> IOC_SOURCE_FILTER_INCLUDES = {"document.name",
                                                                      "document.type",
                                                                      "document.id",
@@ -51,6 +55,7 @@ enum class IndexResourceType
 {
     KVDB,
     DECODER,
+    FILTER,
     INTEGRATION_DECODER,
     POLICY
 };
@@ -58,9 +63,10 @@ enum class IndexResourceType
 IndexResourceType fromIndexName(std::string_view indexName)
 {
     // Static regex patterns compiled once
-    static const std::array<std::pair<std::regex, IndexResourceType>, 4> patterns = {
+    static const std::array<std::pair<std::regex, IndexResourceType>, 5> patterns = {
         {{std::regex(R"(.*-kvdbs$)"), IndexResourceType::KVDB},
          {std::regex(R"(.*-decoders$)"), IndexResourceType::DECODER},
+         {std::regex(R"(.*-filters$)"), IndexResourceType::FILTER},
          {std::regex(R"(.*-integrations$)"), IndexResourceType::INTEGRATION_DECODER},
          {std::regex(R"(.*-policies$)"), IndexResourceType::POLICY}}};
 
@@ -267,7 +273,6 @@ WIndexerConnector::WIndexerConnector(std::string_view jsonOssecConfig, const std
         m_maxHitsPerRequest = maxHitsPerRequest;
     }
 
-
     if (jsonOssecConfig.empty())
     {
         throw std::runtime_error("Empty JSON configuration for IndexerConnector");
@@ -296,7 +301,6 @@ WIndexerConnector::WIndexerConnector(const Config& config,
     {
         m_maxHitsPerRequest = maxHitsPerRequest;
     }
-
 
     nlohmann::json jsonConfig = nlohmann::json::parse(config.toJson(), nullptr, false);
     if (jsonConfig.is_discarded())
@@ -458,6 +462,7 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
     {
         std::size_t kvdbCount = 0;
         std::size_t decoderCount = 0;
+        std::size_t filterCount = 0;
         std::size_t integrationDecoderCount = 0;
         for (const auto& [type, _] : resourceList)
         {
@@ -465,11 +470,13 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
             {
                 case IndexResourceType::KVDB: ++kvdbCount; break;
                 case IndexResourceType::DECODER: ++decoderCount; break;
+                case IndexResourceType::FILTER: ++filterCount; break;
                 case IndexResourceType::INTEGRATION_DECODER: ++integrationDecoderCount; break;
                 case IndexResourceType::POLICY: break;
             }
         }
         policyMap.kvdbs.reserve(kvdbCount);
+        policyMap.filters.reserve(filterCount);
         policyMap.decoders.reserve(decoderCount);
         policyMap.integration.reserve(integrationDecoderCount);
     }
@@ -481,6 +488,7 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
         {
             case IndexResourceType::KVDB: policyMap.kvdbs.emplace_back(std::move(data)); break;
             case IndexResourceType::DECODER: policyMap.decoders.emplace_back(std::move(data)); break;
+            case IndexResourceType::FILTER: policyMap.filters.emplace_back(std::move(data)); break;
             case IndexResourceType::INTEGRATION_DECODER: policyMap.integration.emplace_back(std::move(data)); break;
         }
     }

@@ -345,6 +345,7 @@ cm::store::dataType::Policy CrudService::importNamespace(const cm::store::Namesp
 void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
                                   const std::vector<json::Json>& kvdbs,
                                   const std::vector<json::Json>& decoders,
+                                  const std::vector<json::Json>& filters,
                                   const std::vector<json::Json>& integrations,
                                   const json::Json& policy,
                                   bool softValidation)
@@ -385,6 +386,25 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
             validator->validateAsset(nsReader, assetJson);
         }
         ns->createResource(name.toStr(), cm::store::ResourceType::DECODER, assetJson);
+    }
+
+    for (const auto& jfilt : filters)
+    {
+        auto assetJson = store::detail::adaptFilter(jfilt);
+        auto name = assetNameFromJson(assetJson);
+        const auto resourceStr = cm::store::resourceTypeToString(cm::store::ResourceType::FILTER);
+
+        if (resourceStr != name.parts().front())
+        {
+            throw std::runtime_error(
+                fmt::format("Asset name '{}' does not match resource type '{}'", name.toStr(), resourceStr));
+        }
+
+        if (!softValidation)
+        {
+            validator->validateAsset(nsReader, assetJson);
+        }
+        ns->createResource(name.toStr(), cm::store::ResourceType::FILTER, assetJson);
     }
 
     for (const auto& jinteg : integrations)

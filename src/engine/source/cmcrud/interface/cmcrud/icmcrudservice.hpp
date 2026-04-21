@@ -113,6 +113,7 @@ public:
      * @param nsName Namespace identifier, to store the imported data.
      * @param kvdbs list of KVDB definitions in json format
      * @param decoders list of decoder definitions in json format
+     * @param filters list of filter definitions in json format
      * @param integrations list of integration definitions in json format
      * @param policy policy definition in json format
      * @param softValidation if true, only check the most critical validations.
@@ -121,6 +122,7 @@ public:
     virtual void importNamespace(const cm::store::NamespaceId& nsId,
                                  const std::vector<json::Json>& kvdbs,
                                  const std::vector<json::Json>& decoders,
+                                 const std::vector<json::Json>& filters,
                                  const std::vector<json::Json>& integrations,
                                  const json::Json& policy,
                                  bool softValidation) = 0;
