@@ -17,21 +17,30 @@ namespace builder::builders
 {
 
 /**
+ * @brief Struct representing integration-related data in the build context
+ *
+ */
+struct IntegrationData
+{
+    std::string name;     ///< Name of the current integration being built.
+    std::string category; ///< Category of the current integration being built.
+    std::optional<std::unordered_map<std::string, bool>>
+        availableKvdbs; ///< Available KVDBs: nullopt = no validation, value = validate with this map.
+};
+
+/**
  * @brief Context for the builder, tracks the current build scope.
  */
 struct Context
 {
-    std::string assetName;           ///< Name of the current asset being built.
-    std::string integrationName;     ///< Name of the current integration being built.
-    std::string integrationCategory; ///< Category of the current integration being built.
-    std::string policyName;          ///< Name of the current policy being built.
-    std::string originSpace;         ///< Origin space of the policy (from DataPolicy, default "UNDEFINED").
-    std::string stageName;           ///< Name of the current stage being built.
-    std::string opName;              ///< Name of the current operation being built.
-    std::optional<std::unordered_map<std::string, bool>>
-        availableKvdbs;              ///< Available KVDBs: nullopt = no validation, value = validate with this map.
-    bool indexDiscardedEvents;       ///< Policy configuration: whether to index discarded events.
-    bool indexUnclassifiedEvents;    ///< Policy configuration: whether to index unclassified events.
+    std::string assetName;        ///< Name of the current asset being built.
+    std::string policyName;       ///< Name of the current policy being built.
+    std::string originSpace;      ///< Origin space of the policy (from DataPolicy, default "UNDEFINED").
+    std::string stageName;        ///< Name of the current stage being built.
+    std::string opName;           ///< Name of the current operation being built.
+    IntegrationData integration;  ///< Data related to the current integration being built.
+    bool indexDiscardedEvents;    ///< Policy configuration: whether to index discarded events.
+    bool indexUnclassifiedEvents; ///< Policy configuration: whether to index unclassified events.
 };
 
 /**

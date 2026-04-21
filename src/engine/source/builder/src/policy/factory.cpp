@@ -144,8 +144,8 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
         // TODO: Only decoder should have the integration context
         // TODO: The context integration should has the aviable KVDBs for validation
         // Configure partial build context for the integration.
-        assetBuilder->getContext().integrationName = integration.getName();
-        assetBuilder->getContext().integrationCategory = integration.getCategory();
+        assetBuilder->getContext().integration.name = integration.getName();
+        assetBuilder->getContext().integration.category = integration.getCategory();
         // Set availability map in the build context (integration-scoped).
         assetBuilder->setAvailableKvdbs(buildKvdbsMap(integration, cmStoreNsReader, integUUID));
 

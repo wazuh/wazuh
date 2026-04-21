@@ -58,7 +58,6 @@ Builder::Builder(const std::shared_ptr<cm::store::ICMStore>& cmStore,
     detail::registerEnrichmentBuilders<Registry>(m_registry, builderDeps, store);
 }
 
-// TODO: Remove default argument on interface
 std::shared_ptr<IPolicy> Builder::buildPolicy(const cm::store::NamespaceId& namespaceId, bool isTestMode) const
 {
     auto policy = std::make_shared<policy::Policy>(

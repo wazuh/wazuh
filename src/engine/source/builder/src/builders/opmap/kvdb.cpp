@@ -48,7 +48,7 @@ inline void validateKvdbAvailability(const std::shared_ptr<const IBuildCtx>& bui
 {
     // Only validate when building from integration/policy context.
     // When validating assets individually, availableKvdbs is nullopt.
-    if (buildCtx->context().availableKvdbs.has_value())
+    if (buildCtx->context().integration.availableKvdbs.has_value())
     {
         const auto [exists, enabled] = buildCtx->isKvdbAvailable(dbName);
 

@@ -217,8 +217,8 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
     if (isDecoder)
     {
         // Inject integration.categories from context (non-invasive, independent of "normalize")
-        const auto integrationName = newContext->context().integrationName;
-        const auto integrationCategory = newContext->context().integrationCategory;
+        const auto& integrationName = newContext->context().integration.name;
+        const auto& integrationCategory = newContext->context().integration.category;
 
         auto automapping = base::Term<base::EngineOp>::create(
             "Automapping",

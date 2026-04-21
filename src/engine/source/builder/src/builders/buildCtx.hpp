@@ -42,7 +42,7 @@ public:
         m_allowedFields = nullptr;
         m_storeNSReader = nullptr;
         m_allowMissingDependencies = false;
-        m_context.availableKvdbs = std::nullopt;
+        m_context.integration.availableKvdbs = std::nullopt;
         m_context.indexDiscardedEvents = false;
         m_context.indexUnclassifiedEvents = false;
     }
@@ -209,13 +209,13 @@ public:
      */
     inline std::pair<bool, bool> isKvdbAvailable(const std::string& kvdbName) const override
     {
-        if (!m_context.availableKvdbs.has_value())
+        if (!m_context.integration.availableKvdbs.has_value())
         {
             return {false, false};
         }
 
-        auto it = m_context.availableKvdbs.value().find(kvdbName);
-        if (it == m_context.availableKvdbs.value().end())
+        auto it = m_context.integration.availableKvdbs.value().find(kvdbName);
+        if (it == m_context.integration.availableKvdbs.value().end())
         {
             return {false, false};
         }
