@@ -153,7 +153,7 @@ class EXPORTED Syscollector final
          * @return true if first VD sync is done, false if this is the first scan (VDFIRST)
          */
         bool isVDFirstSyncDone() const;
-
+        void createVDFirstSyncFlagIfNeeded(const bool vdResult, const bool firstSyncDone) const;
         /**
          * @brief Processes VD DataContext after scan completes
          * @details Queries the VD sync protocol database for pending DataValue items,
