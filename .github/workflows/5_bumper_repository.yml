@@ -23,7 +23,7 @@ on:
         description: 'Issue link in format https://github.com/wazuh/<REPO>/issues/<ISSUE-NUMBER>'
         required: true
         type: string
-      set-as-main:
+      set_as_main:
         description: 'Update version values only, preserving main branch references in URLs'
         default: false
         required: false
@@ -87,7 +87,7 @@ jobs:
           VERSION: ${{ inputs.version }}
           STAGE: ${{ inputs.stage }}
           DATE: ${{ inputs.date }}
-          SET_AS_MAIN: ${{ inputs.set-as-main }}
+          SET_AS_MAIN: ${{ inputs.set_as_main }}
         run: |
           script_params=""
           version=${{ env.VERSION }}
