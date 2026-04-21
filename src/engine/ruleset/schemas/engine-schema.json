@@ -772,7 +772,7 @@
       "type": "keyword"
     },
     "enrichments.indicator.confidence": {
-      "type": "keyword"
+      "type": "short"
     },
     "enrichments.indicator.feed.name": {
       "type": "keyword"
