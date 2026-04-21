@@ -66,9 +66,9 @@ The private `queryByBatches()` method provides a reusable pagination loop used b
 
 | Constant | Index Name | Purpose |
 |---|---|---|
-| `POLICY_INDEX` | `.cti-policies` | Policy metadata (hash, enabled, integrations) |
-| `POLICY_ALIASES` | `.cti-kvdbs`, `.cti-decoders`, `.cti-integrations`, `.cti-policies` | Full policy resource retrieval |
-| `IOC_INDEX` | `.cti-iocs` | Indicators of Compromise |
+| `POLICY_INDEX` | `wazuh-threatintel-policies` | Policy metadata (hash, enabled, integrations) |
+| `POLICY_ALIASES` | `wazuh-threatintel-kvdbs`, `wazuh-threatintel-decoders`, `wazuh-threatintel-integrations`, `wazuh-threatintel-policies` | Full policy resource retrieval |
+| `IOC_INDEX` | `wazuh-threatintel-enrichments` | Indicators of Compromise |
 | `REMOTE_CONF_INDEX` | `.wazuh-settings` | Remote engine runtime configuration |
 
 ### Configuration
@@ -210,7 +210,7 @@ Acquires shared lock, delegates to `IndexerConnectorAsync::indexDataStream()`. E
 
 #### `getPolicy(space)`
 
-1. Opens a PIT across all 4 policy aliases (`.cti-kvdbs`, `.cti-decoders`, `.cti-integrations`, `.cti-policies`).
+1. Opens a PIT across all 4 policy aliases (`wazuh-threatintel-kvdbs`, `wazuh-threatintel-decoders`, `wazuh-threatintel-integrations`, `wazuh-threatintel-policies`).
 2. Paginates through results using `search_after` cursors.
 3. Classifies each hit by index name suffix into `IndexResourceType`.
 4. Accumulates resources into `PolicyResources` vectors (with pre-reserved capacity).
@@ -219,7 +219,7 @@ Acquires shared lock, delegates to `IndexerConnectorAsync::indexDataStream()`. E
 
 #### `getPolicyHashAndEnabled(space)`
 
-Queries `.cti-policies` for a single document matching the space, extracts `space.hash.sha256`, `document.enabled`, and `document.integrations`. Returns the hash and `enabled && hasIntegrations`.
+Queries `wazuh-threatintel-policies` for a single document matching the space, extracts `space.hash.sha256`, `document.enabled`, and `document.integrations`. Returns the hash and `enabled && hasIntegrations`.
 
 #### `streamIocsByType(iocType, batchSize, onIoc)`
 

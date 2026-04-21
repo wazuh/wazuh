@@ -1722,8 +1722,10 @@
           ]
         },
         "enrichments.indicator.confidence": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nIndicator confidence rating.",
+          "description": "Module: ecs\nIndexerType: short\n\nIndicator confidence rating.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
           "type": [
+            "number",
             "string"
           ]
         },

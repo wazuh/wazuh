@@ -2,7 +2,7 @@
 
 ## Details
 
-The [Indexer Downloader](../../src/components/IndexerDownloader.hpp) stage is part of the Content Manager orchestration and downloads content directly from the Wazuh Indexer using Point-In-Time (PIT) pagination. It is used by the Vulnerability Detection module to fetch CVE data from the `.cti-cves` index, replacing the CTI API as the CVE data source.
+The [Indexer Downloader](../../src/components/IndexerDownloader.hpp) stage is part of the Content Manager orchestration and downloads content directly from the Wazuh Indexer using Point-In-Time (PIT) pagination. It is used by the Vulnerability Detection module to fetch CVE data from the `wazuh-threatintel-vulnerabilities` index, replacing the CTI API as the CVE data source.
 
 Content is delivered synchronously to the `fileProcessingCallback` as structured `nlohmann::json` objects page by page.
 
@@ -101,7 +101,7 @@ The `indexer` sub-object must be present under `configData` when `contentSource`
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `index` | string | Target index name (e.g. `.cti-cves`) |
+| `index` | string | Target index name (e.g. `wazuh-threatintel-vulnerabilities`) |
 | `consumerStatusIndex` | string | Index containing the consumer status document to poll before downloading (optional) |
 | `consumerStatusId` | string | Consumer status document id to poll before downloading (optional) |
 | `pageSize` | integer | Documents per page. Default: `250` |
@@ -134,8 +134,8 @@ Example:
                 "certificate": "",
                 "key": ""
             },
-            "index": ".cti-cves",
-            "consumerStatusIndex": ".cti-consumers",
+            "index": "wazuh-threatintel-vulnerabilities",
+            "consumerStatusIndex": ".wazuh-cti-consumers",
             "consumerStatusId": "t1-vulnerabilities-5_public-vulnerabilities-5",
             "pageSize": 250,
             "numSlices": 2

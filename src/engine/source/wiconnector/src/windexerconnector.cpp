@@ -23,11 +23,11 @@ namespace
 /**
  * @brief List of policy resource aliases in the indexer
  */
-const std::vector<std::string> POLICY_ALIASES = {".cti-kvdbs", ".cti-decoders", ".cti-integrations", ".cti-policies"};
+const std::vector<std::string> POLICY_ALIASES = {"wazuh-threatintel-kvdbs", "wazuh-threatintel-decoders", "wazuh-threatintel-integrations", "wazuh-threatintel-policies"};
 
 constexpr std::string_view PIT_KEEP_ALIVE {"5m"};                     ///< Keep alive duration for Point In Time
-constexpr std::string_view POLICY_INDEX {".cti-policies"};            ///< Policy index name
-constexpr std::string_view IOC_INDEX {".cti-iocs"};                   ///< IOC index name
+constexpr std::string_view POLICY_INDEX {"wazuh-threatintel-policies"};            ///< Policy index name
+constexpr std::string_view IOC_INDEX {"wazuh-threatintel-enrichments"};                   ///< IOC index name
 constexpr std::string_view IOC_HASHES_DOC_ID {"__ioc_type_hashes__"}; ///< IOC hash manifest document ID
 constexpr std::size_t SINGLE_RESULT_SIZE {1};                         ///< Size for single result queries
 constexpr std::size_t HASH_QUERY_SIZE {1};                            ///< Size for hash query (expecting single result)

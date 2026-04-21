@@ -60,8 +60,8 @@ After all pages are processed, the downloader signals completion via `indexer_co
                 "certificate": "",
                 "key": ""
             },
-            "index": ".cti-cves",
-            "consumerStatusIndex": ".cti-consumers",
+            "index": "wazuh-threatintel-vulnerabilities",
+            "consumerStatusIndex": ".wazuh-cti-consumers",
             "consumerStatusId": "t1-vulnerabilities-5_public-vulnerabilities-5",
             "pageSize": 250,
             "numSlices": 2

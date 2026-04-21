@@ -388,7 +388,7 @@ public:
      * @throws IndexerConnectorException if the PIT creation fails.
      *
      * Example:
-     * auto pit = connector.createPointInTime({".cti-kvdbs", ".cti-decoders"}, "5m", true);
+     * auto pit = connector.createPointInTime({"wazuh-threatintel-kvdbs", "wazuh-threatintel-decoders"}, "5m", true);
      * std::string pitId = pit.getPitId(); // Use for subsequent searches
      * // ... perform searches ...
      * connector.deletePointInTime(pit); // Clean up when done
@@ -449,7 +449,7 @@ public:
      * Example:
      * nlohmann::json query = {{"bool", {{"filter", {{{{"term", {{"space.name", "free"}}}}}}}}};
      * nlohmann::json source = {{"includes", {"space.hash.sha256"}}, {"excludes", nlohmann::json::array()}};
-     * auto hits = connector.search(".cti-policies", 10, query, source);
+     * auto hits = connector.search("wazuh-threatintel-policies", 10, query, source);
      */
     nlohmann::json search(std::string_view index,
                           std::size_t size,
