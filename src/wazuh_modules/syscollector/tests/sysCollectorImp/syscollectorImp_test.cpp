@@ -11,8 +11,10 @@
 #include <atomic>
 #include <chrono>
 #include <cstdio>
+#include <filesystem>
 #include <functional>
 #include <future>
+#include <fstream>
 #include <sqlite3.h>
 #include <thread>
 
@@ -26,6 +28,7 @@
 
 constexpr auto SYSCOLLECTOR_DB_PATH {":memory:"};
 constexpr auto SYSCOLLECTOR_TEST_DB_PATH {"syscollector_test.db"};
+constexpr auto VD_FIRST_SYNC_FLAG_FILE {"queue/syscollector/db/.vd_first_sync_done"};
 
 // Mock SchemaValidatorEngine for dependency injection in tests
 class MockSchemaValidatorEngine : public SchemaValidator::ISchemaValidatorEngine
@@ -190,6 +193,7 @@ const auto expected_dbsync_browser_extensions
 void SyscollectorImpTest::SetUp()
 {
     std::remove(SYSCOLLECTOR_TEST_DB_PATH);
+    std::remove(VD_FIRST_SYNC_FLAG_FILE);
 
     // Initialize SchemaValidatorFactory with mocks to prevent issues in Wine/Windows tests
     // This ensures all tests use mock validators instead of loading real embedded schemas
@@ -226,6 +230,7 @@ void SyscollectorImpTest::SetUp()
 void SyscollectorImpTest::TearDown()
 {
     std::remove(SYSCOLLECTOR_TEST_DB_PATH);
+    std::remove(VD_FIRST_SYNC_FLAG_FILE);
 
     // Ensure Syscollector singleton is destroyed after each test
     // This prevents stale function pointer issues between tests
@@ -2914,6 +2919,283 @@ TEST_F(SyscollectorImpTest, queryCommandFlushReportsCompletedError)
     auto completedResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
     EXPECT_EQ(completedResponse["data"]["status"], "completed");
     EXPECT_EQ(completedResponse["data"]["result"], "error");
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, executeFlushSync_VDEnabled_FirstSyncNotDone_FlushSucceeds)
+{
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,    // scanOnStart
+                                  false,    // hardware
+                                  true,     // os  (VD requires os)
+                                  false,    // network
+                                  true,     // packages (VD requires packages)
+                                  false,    // ports
+                                  false,    // portsAll
+                                  false,    // processes
+                                  false,    // hotfixes
+                                  false,    // groups
+                                  false,    // users
+                                  false,    // services
+                                  false,    // browserExtensions
+                                  false);   // notifyOnFirstScan
+
+    MQ_Functions successMq {};
+    successMq.start = [](const char*, short, short) -> int { return 0; };
+    successMq.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    Syscollector::instance().initSyncProtocol("syscollector",
+                                              ":memory:",
+                                              ":memory:",
+                                              successMq,
+                                              std::chrono::seconds(0),
+                                              std::chrono::seconds(1),
+                                              1,
+                                              100,
+                                              0);
+
+    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
+    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
+
+    EXPECT_TRUE(waitUntil([]()
+    {
+        auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+        return r["data"]["status"] == "completed";
+    }));
+
+    auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+    EXPECT_EQ(r["data"]["status"], "completed");
+    EXPECT_EQ(r["data"]["result"], "success");
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, executeFlushSync_VDEnabled_FirstSyncAlreadyDone_FlushSucceeds)
+{
+    std::filesystem::create_directories("queue/syscollector/db");
+    {
+        std::ofstream flag(VD_FIRST_SYNC_FLAG_FILE);
+        ASSERT_TRUE(flag.is_open()) << "Could not create VD first-sync flag file for test setup";
+    }
+
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,    // scanOnStart
+                                  false,    // hardware
+                                  true,     // os  (VD requires os)
+                                  false,    // network
+                                  true,     // packages (VD requires packages)
+                                  false,    // ports
+                                  false,    // portsAll
+                                  false,    // processes
+                                  false,    // hotfixes
+                                  false,    // groups
+                                  false,    // users
+                                  false,    // services
+                                  false,    // browserExtensions
+                                  false);   // notifyOnFirstScan
+
+    MQ_Functions successMq {};
+    successMq.start = [](const char*, short, short) -> int { return 0; };
+    successMq.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    Syscollector::instance().initSyncProtocol("syscollector",
+                                              ":memory:",
+                                              ":memory:",
+                                              successMq,
+                                              std::chrono::seconds(0),
+                                              std::chrono::seconds(1),
+                                              1,
+                                              100,
+                                              0);
+
+    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
+    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
+
+    EXPECT_TRUE(waitUntil([]()
+    {
+        auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+        return r["data"]["status"] == "completed";
+    }));
+
+    auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+    EXPECT_EQ(r["data"]["status"], "completed");
+    EXPECT_EQ(r["data"]["result"], "success");
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, executeFlushSync_VDSyncDisabled_FlushSucceeds)
+{
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // os=false, packages=false → m_vdSyncEnabled=false → VD protocol uses Option::SYNC
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false, false);
+
+    MQ_Functions successMq {};
+    successMq.start = [](const char*, short, short) -> int { return 0; };
+    successMq.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    Syscollector::instance().initSyncProtocol("syscollector",
+                                              ":memory:",
+                                              ":memory:",
+                                              successMq,
+                                              std::chrono::seconds(0),
+                                              std::chrono::seconds(1),
+                                              1,
+                                              100,
+                                              0);
+
+    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
+    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
+
+    EXPECT_TRUE(waitUntil([]()
+    {
+        auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+        return r["data"]["status"] == "completed";
+    }));
+
+    auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+    EXPECT_EQ(r["data"]["status"], "completed");
+    EXPECT_EQ(r["data"]["result"], "success");
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, executeFlushSync_RegularQueueFails_VDSucceeds_FlushFails)
+{
+    static std::atomic<int> s_startCallCount {0};
+    s_startCallCount = 0;
+
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false, false);
+
+    // First start call (regular protocol) fails; second (VD protocol) succeeds
+    MQ_Functions partialMq {};
+    partialMq.start = [](const char*, short, short) -> int
+    {
+        return (++s_startCallCount == 1) ? -1 : 0;
+    };
+    partialMq.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    Syscollector::instance().initSyncProtocol("syscollector",
+                                              ":memory:",
+                                              ":memory:",
+                                              partialMq,
+                                              std::chrono::seconds(0),
+                                              std::chrono::seconds(1),
+                                              1,
+                                              100,
+                                              0);
+
+    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
+    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
+
+    EXPECT_TRUE(waitUntil([]()
+    {
+        auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+        return r["data"]["status"] == "completed";
+    }));
+
+    auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+    EXPECT_EQ(r["data"]["status"], "completed");
+    EXPECT_EQ(r["data"]["result"], "error");
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, executeFlushSync_RegularQueueSucceeds_VDQueueFails_FlushFails)
+{
+    static std::atomic<int> s_startCallCount {0};
+    s_startCallCount = 0;
+
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false, false);
+
+    // First start call (regular protocol) succeeds; second (VD protocol) fails
+    MQ_Functions partialMq {};
+    partialMq.start = [](const char*, short, short) -> int
+    {
+        return (++s_startCallCount == 1) ? 0 : -1;
+    };
+    partialMq.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    Syscollector::instance().initSyncProtocol("syscollector",
+                                              ":memory:",
+                                              ":memory:",
+                                              partialMq,
+                                              std::chrono::seconds(0),
+                                              std::chrono::seconds(1),
+                                              1,
+                                              100,
+                                              0);
+
+    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
+    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
+
+    EXPECT_TRUE(waitUntil([]()
+    {
+        auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+        return r["data"]["status"] == "completed";
+    }));
+
+    auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+    EXPECT_EQ(r["data"]["status"], "completed");
+    EXPECT_EQ(r["data"]["result"], "error");
 
     Syscollector::instance().destroy();
 }

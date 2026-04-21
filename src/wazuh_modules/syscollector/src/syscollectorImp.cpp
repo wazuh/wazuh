@@ -2287,31 +2287,7 @@ bool Syscollector::syncModule(Mode mode)
 
         bool vdSuccess = m_spSyncProtocolVD->synchronizeModule(mode, vdOption);
 
-        // Create flag file after successful first sync only if not stopping
-        if (vdSuccess && !firstSyncDone && !m_stopping.load())
-        {
-            m_logFunction(LOG_DEBUG, "VD first sync successful, attempting to create flag file: " + std::string(VD_FIRST_SYNC_FLAG_FILE));
-            std::ofstream flagFile(VD_FIRST_SYNC_FLAG_FILE);
-
-            if (flagFile.is_open())
-            {
-                flagFile << "1";
-                flagFile.close();
-                m_logFunction(LOG_INFO, "VD first sync completed, flag file created");
-            }
-            else
-            {
-                m_logFunction(LOG_ERROR, "Failed to create VD flag file: " + std::string(VD_FIRST_SYNC_FLAG_FILE));
-            }
-        }
-        else if (m_stopping.load() && vdSuccess && !firstSyncDone)
-        {
-            m_logFunction(LOG_DEBUG, "VD first sync successful but module is stopping, flag file not created");
-        }
-        else if (!vdSuccess)
-        {
-            m_logFunction(LOG_DEBUG, "VD sync was not successful, flag file not created");
-        }
+        createVDFirstSyncFlagIfNeeded(vdSuccess, firstSyncDone);
 
         success = vdSuccess && success;
     }
@@ -2541,6 +2517,46 @@ bool Syscollector::isVDFirstSyncDone() const
     bool firstSyncDone = flagCheck.good();
     flagCheck.close();
     return firstSyncDone;
+}
+
+void Syscollector::createVDFirstSyncFlagIfNeeded(const bool vdResult, const bool firstSyncDone) const
+{
+    // Create the VD first-sync flag after a successful first VD flush.
+    if (vdResult && !firstSyncDone && !m_stopping.load())
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_DEBUG, "VD first flush successful, attempting to create flag file: " + std::string(VD_FIRST_SYNC_FLAG_FILE));
+        }
+
+        std::ofstream flagFile(VD_FIRST_SYNC_FLAG_FILE);
+
+        if (flagFile.is_open())
+        {
+            flagFile << "1";
+            flagFile.close();
+
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_INFO, "VD first sync completed (via flush), flag file created");
+            }
+        }
+        else
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_ERROR, "Failed to create VD flag file: " + std::string(VD_FIRST_SYNC_FLAG_FILE));
+            }
+        }
+    }
+    else if (m_stopping.load() && vdResult && !firstSyncDone)
+    {
+        m_logFunction(LOG_DEBUG, "VD first sync successful but module is stopping, flag file not created");
+    }
+    else if (!vdResult)
+    {
+        m_logFunction(LOG_DEBUG, "VD sync was not successful, flag file not created");
+    }
 }
 
 void Syscollector::processVDDataContext()
@@ -2794,7 +2810,8 @@ int Syscollector::executeFlushSync()
         m_logFunction(LOG_INFO, "Syscollector flush requested - syncing pending messages");
     }
 
-    if (!m_spSyncProtocol)
+    // Nothing to flush if neither sync protocol is initialized.
+    if (!m_spSyncProtocol && !m_spSyncProtocolVD)
     {
         if (m_logFunction)
         {
@@ -2804,10 +2821,37 @@ int Syscollector::executeFlushSync()
         return 0; // Not an error - just nothing to flush
     }
 
-    // Trigger immediate synchronization to flush pending messages
-    bool result = m_spSyncProtocol->synchronizeModule(Mode::DELTA);
+    // Trigger immediate synchronization to flush pending messages.
+    bool result = true;
+    bool vdResult = true;
 
-    if (result)
+    if (m_spSyncProtocol)
+    {
+        result = m_spSyncProtocol->synchronizeModule(Mode::DELTA);
+    }
+
+    if (m_spSyncProtocolVD)
+    {
+        Option vdOption;
+        const bool firstSyncDone = isVDFirstSyncDone();
+
+        if (!m_vdSyncEnabled)
+        {
+            vdOption = Option::SYNC;
+        }
+        else
+        {
+            vdOption = firstSyncDone ? Option::VDSYNC : Option::VDFIRST;
+        }
+
+        vdResult = m_spSyncProtocolVD->synchronizeModule(Mode::DELTA, vdOption);
+
+        createVDFirstSyncFlagIfNeeded(vdResult, firstSyncDone);
+    }
+
+    const bool overallSuccess = result && vdResult;
+
+    if (overallSuccess)
     {
         if (m_logFunction)
         {
@@ -2816,24 +2860,32 @@ int Syscollector::executeFlushSync()
 
         return 0;
     }
-    else
+
+    const bool stopping = (m_spSyncProtocol && m_spSyncProtocol->shouldStop()) ||
+                          (m_spSyncProtocolVD && m_spSyncProtocolVD->shouldStop());
+
+    if (m_logFunction)
     {
-        const bool stopping = m_spSyncProtocol->shouldStop();
-
-        if (m_logFunction)
+        if (stopping)
         {
-            if (stopping)
-            {
-                m_logFunction(LOG_INFO, "Syscollector flush skipped: module is stopping");
-            }
-            else
-            {
-                m_logFunction(LOG_ERROR, "Syscollector flush failed");
-            }
+            m_logFunction(LOG_INFO, "Syscollector flush skipped: module is stopping");
         }
+        else
+        {
+            std::string failedQueues;
 
-        return stopping ? 0 : -1;
+            if (!result && !vdResult)
+                failedQueues = "both syscollector and VD queues";
+            else if (!result)
+                failedQueues = "syscollector queue";
+            else
+                failedQueues = "VD queue";
+
+            m_logFunction(LOG_WARNING, "Syscollector flush failed: " + failedQueues);
+        }
     }
+
+    return stopping ? 0 : -1;
 }
 
 int Syscollector::getMaxVersion()
