@@ -517,6 +517,15 @@ std::tuple<nlohmann::json, ReturnTypeCallback, uint64_t> SCAEventHandler::Proces
             {
                 check = event["check"];
             }
+
+            const auto resultIt = check.find("result");
+
+            if (resultIt != check.end() &&
+                    resultIt->is_string() &&
+                    resultIt->get<std::string>() == "Not run")
+            {
+                return {{}, SELECTED, 0};
+            }
         }
         else
         {
