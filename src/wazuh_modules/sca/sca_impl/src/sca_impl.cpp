@@ -64,10 +64,6 @@ constexpr auto METADATA_SQL_STATEMENT
 
 constexpr auto SCA_LAST_INTEGRITY_CHECK_METADATA_KEY {"last_integrity_check"};
 constexpr auto SCA_FIRST_SYNC_COMPLETED_METADATA_KEY {"first_sync_completed"};
-// Set after every complete scan iteration; cleared at Run() startup so a crash mid-scan
-// leaves it at 0. The sync thread polls this instead of MAX(version) to avoid triggering
-// the first synchronization while the DB still contains "Not run" placeholders.
-constexpr auto SCA_SCAN_COMPLETED_METADATA_KEY {"scan_completed"};
 
 SecurityConfigurationAssessment::SecurityConfigurationAssessment(std::string dbPath,
                                                                  std::shared_ptr<IDBSync> dbSync,
