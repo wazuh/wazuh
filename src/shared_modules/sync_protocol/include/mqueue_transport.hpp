@@ -11,19 +11,19 @@
 
 #include "agent_sync_protocol_c_interface_types.h"
 #include "agent_sync_protocol_types.hpp"
-#include "isync_message_transport.hpp"
 #include <atomic>
+#include <cstdint>
+#include <vector>
 
 /**
  * @brief MQueue-based transport for remote agents.
  */
-class MQueueTransport : public ISyncMessageTransport
+class MQueueTransport
 {
     public:
         MQueueTransport(const std::string& moduleName, MQ_Functions mqFuncs, LoggerFunc logger);
-        bool sendMessage(const std::vector<uint8_t>& message, size_t maxEps) override;
-        void shutdown() override;
-        bool checkStatus() override;
+        bool sendMessage(const std::vector<uint8_t>& message, size_t maxEps);
+        bool checkStatus();
 
     private:
         bool ensureQueueAvailable();

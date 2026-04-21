@@ -9,8 +9,7 @@
 
 #include "agent_sync_protocol.hpp"
 #include "ipersistent_queue.hpp"
-#include "isync_message_transport.hpp"
-#include "sync_message_transport.hpp"
+#include "mqueue_transport.hpp"
 #include "persistent_queue.hpp"
 #include "defs.h"
 #include "metadata_provider.h"
@@ -50,7 +49,7 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, std::optiona
 
         // else: m_persistentQueue remains nullptr for in-memory-only operation
 
-        m_transport = SyncTransportFactory::createDefaultTransport(moduleName, mqFuncs, m_logger);
+        m_transport = std::make_unique<MQueueTransport>(moduleName, mqFuncs, m_logger);
 
         if (!m_transport)
         {

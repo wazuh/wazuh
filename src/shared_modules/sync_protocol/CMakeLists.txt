@@ -80,7 +80,6 @@ add_library(
   src/persistent_queue_storage.cpp
   ${GENERATED_HEADER}
   src/agent_sync_protocol_c_interface.cpp
-  src/sync_message_transport.cpp
   src/mqueue_transport.cpp
   ${RESOURCE_OBJ_DLL})
 
