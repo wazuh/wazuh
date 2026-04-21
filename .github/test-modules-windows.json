@@ -5,8 +5,6 @@
       "pytest_target": "test_agentd\\",
       "tiers": ["0 1"],
       "paths": [
-        ".github/workflows/5_builderpackage_agent-windows.yml",
-        ".github/test-modules-windows.json",
         "src/client-agent/**",
         "src/config/src/buffer-config.c",
         "src/config/src/client-config.c",
@@ -22,8 +20,6 @@
       "pytest_target": "test_enrollment\\",
       "tiers": ["0 1"],
       "paths": [
-        ".github/workflows/5_builderpackage_agent-windows.yml",
-        ".github/test-modules-windows.json",
         "src/client-agent/**",
         "src/config/src/buffer-config.c",
         "src/config/src/client-config.c",
@@ -41,8 +37,6 @@
       "pytest_extra_args": "-m win32",
       "tiers": ["0 1"],
       "paths": [
-        ".github/workflows/5_builderpackage_agent-windows.yml",
-        ".github/test-modules-windows.json",
         "src/config/src/active-response.c",
         "src/config/include/active-response.h",
         "src/execd/**",
@@ -59,8 +53,6 @@
       "exclude": ["test_fim\\test_files\\test_basic_usage\\test_rename.py"],
       "start_service": true,
       "paths": [
-        ".github/workflows/5_builderpackage_agent-windows.yml",
-        ".github/test-modules-windows.json",
         "src/config/src/syscheck-config.c",
         "src/config/include/syscheck-config.h",
         "src/syscheckd/**",
@@ -74,8 +66,6 @@
       "pytest_target": "test_github\\",
       "tiers": ["0 1"],
       "paths": [
-        ".github/workflows/5_builderpackage_agent-windows.yml",
-        ".github/test-modules-windows.json",
         "src/config/src/wmodules-github.c",
         "src/wazuh_modules/src/wm_github.h",
         "src/wazuh_modules/src/wm_github.c",
@@ -90,8 +80,6 @@
       "pytest_target": "test_logcollector\\",
       "tiers": ["0 1"],
       "paths": [
-        ".github/workflows/5_builderpackage_agent-windows.yml",
-        ".github/test-modules-windows.json",
         "src/config/src/localfile-config.c",
         "src/config/include/localfile-config.h",
         "src/logcollector/**",
@@ -105,8 +93,6 @@
       "pytest_target": "test_office365\\",
       "tiers": ["0 1"],
       "paths": [
-        ".github/workflows/5_builderpackage_agent-windows.yml",
-        ".github/test-modules-windows.json",
         "src/config/src/wmodules-office365.c",
         "src/wazuh_modules/src/wm_office365.h",
         "src/wazuh_modules/src/wm_office365.c",
@@ -122,8 +108,6 @@
       "pytest_extra_args": "-m win32",
       "tiers": ["0 1"],
       "paths": [
-        ".github/workflows/5_builderpackage_agent-windows.yml",
-        ".github/test-modules-windows.json",
         "src/config/src/wmodules-sca.c",
         "src/wazuh_modules/src/wm_sca.c",
         "src/wazuh_modules/src/wm_sca.h",
@@ -138,8 +122,6 @@
       "pytest_target": "test_syscollector\\",
       "tiers": ["0 1"],
       "paths": [
-        ".github/workflows/5_builderpackage_agent-windows.yml",
-        ".github/test-modules-windows.json",
         "src/config/src/wmodules-syscollector.c",
         "src/wazuh_modules/syscollector/**",
         "src/win32/**",
