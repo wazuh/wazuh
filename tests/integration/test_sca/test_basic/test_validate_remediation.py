@@ -38,7 +38,6 @@ import sys
 import os
 import pytest
 import re
-import time
 import stat
 import subprocess
 from pathlib import Path
@@ -80,41 +79,31 @@ def find_result_for_a_given_id(id: int, results: list[tuple[str, str, str]]) -> 
     return None
 
 
-def find_result_for_a_given_id_in_log(id: int, policy: str, log_content: str,
-                                      expected_result: str | None = None,
-                                      allow_any_policy: bool = False) -> tuple[str, str, str] | None:
-    matches = re.findall(patterns.SCA_SCAN_RESULT, log_content, flags=re.IGNORECASE)
-    selected_result = None
+def _callback_scan_result_for_check(check_id: int,
+                                    expected_policy: str,
+                                    expected_result: str | None = None,
+                                    allow_any_policy: bool = False):
     expected_result_normalized = expected_result.lower() if expected_result is not None else None
-    for result in matches:
-        if result[0] != str(id):
-            continue
 
-        if not allow_any_policy and result[1] != policy:
-            continue
+    def _callback(line):
+        match = re.match(patterns.SCA_SCAN_RESULT, line, flags=re.IGNORECASE)
+        if not match:
+            return None
 
-        if expected_result is None:
-            selected_result = result
-        elif result[2].lower() == expected_result_normalized:
-            return result
+        current_check_id, current_policy, current_result = match.groups()
 
-    return selected_result
+        if current_check_id != str(check_id):
+            return None
 
+        if not allow_any_policy and current_policy != expected_policy:
+            return None
 
-def wait_for_result_in_log(id: int, policy: str, timeout: int, expected_result: str | None = None,
-                           offset: int = 0, allow_any_policy: bool = False) -> tuple[str, str, str] | None:
-    expected_result_normalized = expected_result.lower() if expected_result is not None else None
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        with open(WAZUH_LOG_PATH, encoding='utf-8', errors='ignore') as log_file:
-            log_file.seek(offset)
-            result = find_result_for_a_given_id_in_log(id, policy, log_file.read(), expected_result,
-                                                       allow_any_policy=allow_any_policy)
-        if result is not None and (expected_result is None or result[2].lower() == expected_result_normalized):
-            return result
-        time.sleep(2)
+        if expected_result_normalized is not None and current_result.lower() != expected_result_normalized:
+            return None
 
-    return None
+        return match.groups()
+
+    return _callback
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(configurations, configuration_metadata), ids=case_ids)
@@ -193,14 +182,32 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
 
     # Get the results for the checks obtained in the initial SCA scan.
     if sys.platform == WINDOWS:
-        initial_result = wait_for_result_in_log(test_metadata['check_id'], expected_policy, scan_timeout,
-                                                expected_result=test_metadata['initial_result'])
+        log_monitor.start(
+            callback=_callback_scan_result_for_check(
+                test_metadata['check_id'],
+                expected_policy,
+                expected_result=test_metadata['initial_result']
+            ),
+            timeout=scan_timeout,
+            only_new_events=False
+        )
+        initial_result = log_monitor.callback_result
+
         if initial_result is None:
             # Some Windows runners emit SCA scan results with a policy label that differs
             # from the metadata policy stem.
-            initial_result = wait_for_result_in_log(test_metadata['check_id'], expected_policy, 60,
-                                                    expected_result=test_metadata['initial_result'],
-                                                    allow_any_policy=True)
+            log_monitor.start(
+                callback=_callback_scan_result_for_check(
+                    test_metadata['check_id'],
+                    expected_policy,
+                    expected_result=test_metadata['initial_result'],
+                    allow_any_policy=True
+                ),
+                timeout=60,
+                only_new_events=False
+            )
+            initial_result = log_monitor.callback_result
+
             if initial_result is None:
                 pytest.xfail('Windows runner did not emit initial SCA scan result in ossec.log')
     else:
@@ -211,7 +218,6 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
         f"Got unexpected SCA result: expected {test_metadata['initial_result']}, got {initial_result}"
 
     if sys.platform == WINDOWS:
-        log_offset = Path(WAZUH_LOG_PATH).stat().st_size
         # Modify lockout duration
         subprocess.call('net accounts /lockoutduration:100', shell=True)
     else:
@@ -226,12 +232,30 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
 
     # Get the results for the checks obtained in the SCA scan after change.
     if sys.platform == WINDOWS:
-        final_result = wait_for_result_in_log(test_metadata['check_id'], expected_policy, scan_timeout,
-                                              expected_result=test_metadata['final_result'], offset=log_offset)
+        log_monitor.start(
+            callback=_callback_scan_result_for_check(
+                test_metadata['check_id'],
+                expected_policy,
+                expected_result=test_metadata['final_result']
+            ),
+            timeout=scan_timeout,
+            only_new_events=True
+        )
+        final_result = log_monitor.callback_result
+
         if final_result is None:
-            final_result = wait_for_result_in_log(test_metadata['check_id'], expected_policy, 60,
-                                                  expected_result=test_metadata['final_result'], offset=log_offset,
-                                                  allow_any_policy=True)
+            log_monitor.start(
+                callback=_callback_scan_result_for_check(
+                    test_metadata['check_id'],
+                    expected_policy,
+                    expected_result=test_metadata['final_result'],
+                    allow_any_policy=True
+                ),
+                timeout=60,
+                only_new_events=True
+            )
+            final_result = log_monitor.callback_result
+
             if final_result is None:
                 pytest.xfail('Windows runner did not emit final SCA scan result in ossec.log')
     else:

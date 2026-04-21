@@ -40,7 +40,6 @@ tags:
 import json
 import re
 import sys
-import time
 from pathlib import Path
 
 import pytest
@@ -124,64 +123,19 @@ def _callback_mitre_event(line):
     return None
 
 
-def _find_mitre_event_in_log(log_content):
-    for pattern in (patterns.SCA_STATEFUL_EVENT_QUEUED, patterns.SCA_SENDING_EVENT):
-        for match in re.finditer(pattern, log_content):
-            try:
-                event = json.loads(match.group(1))
-            except json.JSONDecodeError:
-                continue
+def _callback_scan_result_for_policy(policy: str, allow_any_policy: bool = False):
+    def _callback(line):
+        match = re.match(patterns.SCA_SCAN_RESULT, line)
+        if not match:
+            return None
 
-            if _extract_mitre_from_event(event):
-                return event
+        event_policy = match.group(2)
+        if allow_any_policy or event_policy == policy:
+            return match.groups()
 
-    return None
+        return None
 
-
-def _has_mitre_trace_in_log(log_content: str, tactics: list[str], techniques: list[str]) -> bool:
-    # Fallback for Windows when event wrappers differ but MITRE fields are still logged.
-    if '"mitre"' not in log_content:
-        return False
-
-    for tactic in tactics:
-        if tactic not in log_content:
-            return False
-
-    for technique in techniques:
-        if technique not in log_content:
-            return False
-
-    return True
-
-
-def _wait_for_mitre_event(timeout):
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        with open(WAZUH_LOG_PATH, encoding='utf-8', errors='ignore') as log_file:
-            event = _find_mitre_event_in_log(log_file.read())
-        if event is not None:
-            return event
-        time.sleep(2)
-
-    return None
-
-
-def _wait_for_policy_scan_result(policy: str, timeout: int, allow_any_policy: bool = False) -> bool:
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        with open(WAZUH_LOG_PATH, encoding='utf-8', errors='ignore') as log_file:
-            log_content = log_file.read()
-
-        matches = re.findall(patterns.SCA_SCAN_RESULT, log_content)
-        if any(match[1] == policy for match in matches):
-            return True
-
-        if allow_any_policy and len(matches) > 0:
-            return True
-
-        time.sleep(2)
-
-    return False
+    return _callback
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(configurations, configuration_metadata), ids=case_ids)
@@ -247,39 +201,37 @@ def test_sca_mitre_payload(test_configuration, test_metadata, prepare_cis_polici
     log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_ENABLED), timeout=scan_timeout)
     assert log_monitor.callback_result
 
-<<<<<<< HEAD
-    # Wait for a stateful event containing a MITRE object
-<<<<<<< HEAD
-    log_monitor.start(callback=_callback_mitre_event, timeout=120)
-=======
-    log_monitor.start(callback=_callback_mitre_event, timeout=scan_timeout)
->>>>>>> c5f837e171 (test(sca): wait for module startup before scan assertions)
-    assert log_monitor.callback_result is not None, 'No stateful event with MITRE data was found in the log'
-=======
-    # On Windows, poll the log to avoid missing queued events during service startup.
     expected_policy = Path(test_metadata['policy_file']).stem
 
     if sys.platform == WINDOWS:
-        # Ensure the policy scan was executed before asserting MITRE traces.
-        if not _wait_for_policy_scan_result(expected_policy, scan_timeout):
-            # Some Windows runners log a policy name that does not exactly match the file stem.
-            if not _wait_for_policy_scan_result(expected_policy, 30, allow_any_policy=True):
+        # Validate a scan result exists before asserting MITRE payloads.
+        log_monitor.start(
+            callback=_callback_scan_result_for_policy(expected_policy),
+            timeout=scan_timeout,
+            only_new_events=False
+        )
+
+        if log_monitor.callback_result is None:
+            log_monitor.start(
+                callback=_callback_scan_result_for_policy(expected_policy, allow_any_policy=True),
+                timeout=30,
+                only_new_events=False
+            )
+
+            if log_monitor.callback_result is None:
                 pytest.xfail(f'Windows runner did not emit SCA scan results for policy {expected_policy}')
 
-        event = _wait_for_mitre_event(scan_timeout)
-        if event is None:
-            with open(WAZUH_LOG_PATH, encoding='utf-8', errors='ignore') as log_file:
-                log_content = log_file.read()
-            if _has_mitre_trace_in_log(log_content, test_metadata['mitre_tactics'], test_metadata['mitre_techniques']):
-                return
+        log_monitor.start(callback=_callback_mitre_event, timeout=scan_timeout, only_new_events=False)
 
+        if log_monitor.callback_result is None:
             pytest.xfail('Windows runner did not emit MITRE event trace even though the SCA scan executed')
+
+        event = json.loads(log_monitor.callback_result[0])
     else:
         # Wait for a stateful event containing a MITRE object
         log_monitor.start(callback=_callback_mitre_event, timeout=scan_timeout)
         assert log_monitor.callback_result is not None, 'No stateful event with MITRE data was found in the log'
         event = json.loads(log_monitor.callback_result[0])
->>>>>>> dc79cec118 (test(sca): poll windows logs for mitre and remediation events)
 
     mitre = _extract_mitre_from_event(event)
     assert mitre is not None, 'MITRE object was not found in the captured SCA event'

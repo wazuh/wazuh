@@ -37,8 +37,6 @@ tags:
 import sys
 import pytest
 import re
-import json
-import time
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
@@ -67,25 +65,19 @@ configurations = configuration.load_configuration_template(configurations_path, 
 daemons_handler_configuration = {'all_daemons': True}
 
 
-def _find_scan_results_for_policy(log_content: str, policy: str,
-                                  allow_any_policy: bool = False) -> list[tuple[str, str, str]]:
-    results = re.findall(patterns.SCA_SCAN_RESULT, log_content)
-    if allow_any_policy:
-        return results
-    return [result for result in results if result[1] == policy]
+def _callback_scan_result(policy: str, allow_any_policy: bool = False):
+    def _callback(line):
+        match = re.match(patterns.SCA_SCAN_RESULT, line)
+        if not match:
+            return None
 
+        event_policy = match.group(2)
+        if allow_any_policy or event_policy == policy:
+            return match.groups()
 
-def _wait_scan_results_in_log(policy: str, timeout: int, min_results: int = 1,
-                              allow_any_policy: bool = False) -> list[tuple[str, str, str]] | None:
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        with open(WAZUH_LOG_PATH, encoding='utf-8', errors='ignore') as log_file:
-            scan_results = _find_scan_results_for_policy(log_file.read(), policy, allow_any_policy)
-        if len(scan_results) >= min_results:
-            return scan_results
-        time.sleep(2)
+        return None
 
-    return None
+    return _callback
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(configurations, configuration_metadata), ids=case_ids)
@@ -178,12 +170,24 @@ def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policie
 
     # Get the results for the checks obtained in the SCA scan.
     if sys.platform == WINDOWS:
-        scan_results = _wait_scan_results_in_log(expected_policy, scan_timeout, min_results=1)
+        log_monitor.start(
+            callback=_callback_scan_result(expected_policy),
+            timeout=scan_timeout,
+            only_new_events=False
+        )
+
+        scan_results = log_monitor.callback_result
+
         if scan_results is None:
             # Some Windows runners emit SCA result lines but with a policy label that does not
             # exactly match the policy file stem used in test metadata.
-            any_scan_results = _wait_scan_results_in_log(expected_policy, 60, min_results=1, allow_any_policy=True)
-            if any_scan_results is None:
+            log_monitor.start(
+                callback=_callback_scan_result(expected_policy, allow_any_policy=True),
+                timeout=60,
+                only_new_events=False
+            )
+
+            if log_monitor.callback_result is None:
                 pytest.xfail('Windows runner did not emit SCA scan results in ossec.log')
 
             pytest.xfail(
