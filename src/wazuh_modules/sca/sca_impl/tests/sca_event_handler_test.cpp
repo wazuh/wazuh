@@ -581,18 +581,31 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_ValidInput1)
 
 TEST_F(SCAEventHandlerTest, ProcessStateless_ValidInput2)
 {
-    const nlohmann::json input = {{"check",
-            {   {"checksum", "abc123"},
-                {"id", "chk1"},
-                {"result", "failed"},
-                {"compliance", {{"pci_dss", {"1.1"}}, {"gdpr", {"32"}}}},
-                {"condition", "any"},
-                {"description", "Short check description"},
-                {"rationale", "Minimize risk"},
-                {"refs", "RefA, RefB"},
-                {"remediation", "Do something secure"},
-                {"rules", {"RuleA", "RuleB"}},
-                {"name", "Check some condition"}
+    const nlohmann::json input =
+    {
+        {
+            "check",
+            {
+                {
+                    "new",
+                    {   {"checksum", "abc123"},
+                        {"id", "chk1"},
+                        {"result", "failed"},
+                        {"compliance", {{"pci_dss", {"1.1"}}, {"gdpr", {"32"}}}},
+                        {"condition", "any"},
+                        {"description", "Short check description"},
+                        {"rationale", "Minimize risk"},
+                        {"refs", "RefA, RefB"},
+                        {"remediation", "Do something secure"},
+                        {"rules", {"RuleA", "RuleB"}},
+                        {"name", "Check some condition"}
+                    }
+                },
+                {
+                    "old",
+                    {   {"result", "passed"}
+                    }
+                }
             }
         },
         {
@@ -605,7 +618,7 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_ValidInput2)
             }
         },
         {"collector", "check"},
-        {"result", 1}
+        {"result", 0}
     };
 
     const nlohmann::json output = handler->ProcessStateless(input);
