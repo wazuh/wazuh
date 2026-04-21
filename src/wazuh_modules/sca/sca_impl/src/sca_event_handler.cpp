@@ -587,6 +587,12 @@ std::tuple<nlohmann::json, ReturnTypeCallback, uint64_t> SCAEventHandler::Proces
 
 nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) const
 {
+    if (event.contains("result") &&
+            static_cast<ReturnTypeCallback>(event["result"]) == DELETED)
+    {
+        return {};
+    }
+
     nlohmann::json check;
     nlohmann::json policy;
     nlohmann::json changedFields = nlohmann::json::array();
