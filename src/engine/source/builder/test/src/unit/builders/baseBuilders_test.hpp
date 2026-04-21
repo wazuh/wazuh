@@ -1,5 +1,5 @@
-#ifndef _BUILDER_TEST_BASEBUILDERS_HPP
-#define _BUILDER_TEST_BASEBUILDERS_HPP
+#ifndef BUILDER_TEST_BASEBUILDERS_HPP
+#define BUILDER_TEST_BASEBUILDERS_HPP
 
 #include <gtest/gtest.h>
 
@@ -431,4 +431,4 @@ class StageBuilderTest
 };
 } // namespace stagebuildtest
 
-#endif // _BUILDER_TEST_BASEBUILDERS_HPP
+#endif // BUILDER_TEST_BASEBUILDERS_HPP

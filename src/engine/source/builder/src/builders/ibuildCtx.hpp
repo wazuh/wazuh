@@ -1,5 +1,5 @@
-#ifndef _BUILDER_BUILDERS_IBUILDCTX_HPP
-#define _BUILDER_BUILDERS_IBUILDCTX_HPP
+#ifndef BUILDER_BUILDERS_IBUILDCTX_HPP
+#define BUILDER_BUILDERS_IBUILDCTX_HPP
 
 #include <memory>
 #include <optional>
@@ -189,4 +189,4 @@ public:
 
 } // namespace builder::builders
 
-#endif // _BUILDER_BUILDERS_IBUILDCTX_HPP
+#endif // BUILDER_BUILDERS_IBUILDCTX_HPP

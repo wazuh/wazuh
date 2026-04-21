@@ -1,5 +1,5 @@
-#ifndef _OP_BUILDER_HELPER_FILTER_H
-#define _OP_BUILDER_HELPER_FILTER_H
+#ifndef OP_BUILDER_HELPER_FILTER_H
+#define OP_BUILDER_HELPER_FILTER_H
 
 #include "builders/types.hpp"
 
@@ -774,4 +774,4 @@ FilterOp opBuilderHelperIndexUnclassifiedEvents(const Reference& targetField,
 
 } // namespace builder::builders::opfilter
 
-#endif // _OP_BUILDER_HELPER_FILTER_H
+#endif // OP_BUILDER_HELPER_FILTER_H

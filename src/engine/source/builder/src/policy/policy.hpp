@@ -1,5 +1,5 @@
-#ifndef _BUILDER_POLICY_POLICY_HPP
-#define _BUILDER_POLICY_POLICY_HPP
+#ifndef BUILDER_POLICY_POLICY_HPP
+#define BUILDER_POLICY_POLICY_HPP
 
 #include <builder/ipolicy.hpp>
 #include <cmstore/icmstore.hpp>
@@ -72,4 +72,4 @@ public:
 };
 } // namespace builder::policy
 
-#endif // _BUILDER_POLICY_POLICY_HPP
+#endif // BUILDER_POLICY_POLICY_HPP

@@ -1,5 +1,5 @@
-#ifndef _BUILDER_BUILDERS_UTILS_HPP
-#define _BUILDER_BUILDERS_UTILS_HPP
+#ifndef BUILDER_BUILDERS_UTILS_HPP
+#define BUILDER_BUILDERS_UTILS_HPP
 
 #include "types.hpp"
 
@@ -129,4 +129,4 @@ inline void assertValue(const std::vector<OpArg>& args, Idx... idx)
 
 } // namespace builder::builders::utils
 
-#endif // _BUILDER_BUILDERS_UTILS_HPP
+#endif // BUILDER_BUILDERS_UTILS_HPP

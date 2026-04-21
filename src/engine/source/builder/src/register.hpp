@@ -1,5 +1,5 @@
-#ifndef _BUILDER2_REGISTER_HPP
-#define _BUILDER2_REGISTER_HPP
+#ifndef BUILDER2_REGISTER_HPP
+#define BUILDER2_REGISTER_HPP
 
 #include <memory>
 
@@ -462,4 +462,4 @@ void registerEnrichmentBuilders(const std::shared_ptr<Registry>& registry,
 
 } // namespace builder::detail
 
-#endif // _BUILDER2_REGISTER_HPP
+#endif // BUILDER2_REGISTER_HPP

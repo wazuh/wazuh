@@ -1,5 +1,5 @@
-#ifndef _BUILDER2_IBUILDER_HPP
-#define _BUILDER2_IBUILDER_HPP
+#ifndef BUILDER2_IBUILDER_HPP
+#define BUILDER2_IBUILDER_HPP
 
 #include <memory>
 
@@ -34,4 +34,4 @@ public:
 
 } // namespace builder
 
-#endif // _BUILDER2_IBUILDER_HPP
+#endif // BUILDER2_IBUILDER_HPP

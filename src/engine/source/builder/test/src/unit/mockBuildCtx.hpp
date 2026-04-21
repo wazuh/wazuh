@@ -1,5 +1,5 @@
-#ifndef _BUILDER_TEST_UNIT_MOCK_BUILDCTX_HPP
-#define _BUILDER_TEST_UNIT_MOCK_BUILDCTX_HPP
+#ifndef BUILDER_TEST_UNIT_MOCK_BUILDCTX_HPP
+#define BUILDER_TEST_UNIT_MOCK_BUILDCTX_HPP
 
 #include <gmock/gmock.h>
 
@@ -38,4 +38,4 @@ public:
 
 } // namespace builder::builders::mocks
 
-#endif // _BUILDER_TEST_UNIT_MOCK_BUILDCTX_HPP
+#endif // BUILDER_TEST_UNIT_MOCK_BUILDCTX_HPP

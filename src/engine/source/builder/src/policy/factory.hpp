@@ -1,5 +1,5 @@
-#ifndef _BUILDER_POLICY_FACTORY_HPP
-#define _BUILDER_POLICY_FACTORY_HPP
+#ifndef BUILDER_POLICY_FACTORY_HPP
+#define BUILDER_POLICY_FACTORY_HPP
 
 #include <map>
 #include <memory>
@@ -270,4 +270,4 @@ base::Expression buildExpression(const PolicyGraph& graph,
 
 } // namespace builder::policy::factory
 
-#endif // _BUILDER_POLICY_FACTORY_HPP
+#endif // BUILDER_POLICY_FACTORY_HPP

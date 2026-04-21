@@ -1,5 +1,5 @@
-#ifndef _ROUTER_ENVIRONMENT_BUILD_HPP
-#define _ROUTER_ENVIRONMENT_BUILD_HPP
+#ifndef ROUTER_ENVIRONMENT_BUILD_HPP
+#define ROUTER_ENVIRONMENT_BUILD_HPP
 
 #include <memory>
 #include <unordered_set>
@@ -120,4 +120,4 @@ public:
 
 } // namespace router
 
-#endif //_ROUTER_ENVIRONMENT_BUILD_HPP
+#endif //ROUTER_ENVIRONMENT_BUILD_HPP

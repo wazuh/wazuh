@@ -1,5 +1,5 @@
-#ifndef _BUILDER_ENRICHMENT_ENRICHMENT_HPP
-#define _BUILDER_ENRICHMENT_ENRICHMENT_HPP
+#ifndef BUILDER_ENRICHMENT_ENRICHMENT_HPP
+#define BUILDER_ENRICHMENT_ENRICHMENT_HPP
 
 #include <utility>
 
@@ -126,4 +126,4 @@ base::Expression makeFilterDiscardCounter(const base::Expression& phaseExpr,
 
 } // namespace builder::builders::enrichment
 
-#endif // _BUILDER_ENRICHMENT_ENRICHMENT_HPP
+#endif // BUILDER_ENRICHMENT_ENRICHMENT_HPP
