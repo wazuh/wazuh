@@ -397,21 +397,21 @@ static wm_sca_startup_action_t wm_sca_get_startup_action(bool* first_sync_comple
         return SCA_STARTUP_ACTION_WAIT;
     }
 
-    mdebug1("SCA initial scan data is not ready yet. First synchronization will wait for scan data.");
+    mdebug1("SCA initial scan has not completed yet. First synchronization will wait for a full scan.");
 
     while (sca_sync_module_running && !g_shutting_down)
     {
-        int version = 0;
+        int scan_completed = 0;
 
-        if (!wm_sca_query_int("{\"command\":\"get_version\"}", "version", &version))
+        if (!wm_sca_query_int("{\"command\":\"get_scan_completed\"}", "scan_completed", &scan_completed))
         {
-            mdebug1("Failed to detect initial SCA scan data. Keeping startup synchronization delay.");
+            mdebug1("Failed to detect initial SCA scan completion. Keeping startup synchronization delay.");
             return SCA_STARTUP_ACTION_WAIT;
         }
 
-        if (version > 0)
+        if (scan_completed > 0)
         {
-            mdebug1("Initial SCA scan data is ready. Triggering first synchronization without startup delay.");
+            mdebug1("Initial SCA scan completed. Triggering first synchronization.");
             return SCA_STARTUP_ACTION_IMMEDIATE;
         }
 

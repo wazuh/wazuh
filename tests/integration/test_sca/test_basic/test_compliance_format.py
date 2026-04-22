@@ -190,6 +190,12 @@ def test_sca_compliance_format(test_configuration, test_metadata, prepare_cis_po
     log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_CHECK), timeout=timeout)
     assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
+    # Give SCA time to flush stateful events through the async pipeline after the
+    # scan ends; the "Stateful event queued" log lines are written from a worker
+    # thread so they may trail the SCA_SCAN_ENDED_CHECK marker.
+    import time
+    time.sleep(5)
+
     # ------------------------------------------------------------------
     # Phase 2: Validate WARNING messages
     # ------------------------------------------------------------------
@@ -235,8 +241,10 @@ def test_sca_compliance_format(test_configuration, test_metadata, prepare_cis_po
     # ------------------------------------------------------------------
     # Phase 3: Validate compliance in event JSON
     # ------------------------------------------------------------------
+    # Stateful events always flow on first scan; stateless deltas are suppressed
+    # for the "Not run" → first-observation transition (issue #35428).
     events_by_check = {}
-    for match in re.finditer(patterns.SCA_SENDING_EVENT, log_content):
+    for match in re.finditer(patterns.SCA_STATEFUL_EVENT_QUEUED, log_content):
         json_str = match.group(1)
         check_id, compliance = extract_compliance_from_event_json(json_str)
         if check_id:
