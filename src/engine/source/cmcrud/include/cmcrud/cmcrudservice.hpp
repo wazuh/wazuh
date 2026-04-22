@@ -38,6 +38,7 @@ public:
     void importNamespace(const cm::store::NamespaceId& nsId,
                          const std::vector<json::Json>& kvdbs,
                          const std::vector<json::Json>& decoders,
+                         const std::vector<json::Json>& filters,
                          const std::vector<json::Json>& integrations,
                          const json::Json& policy,
                          bool softValidation) override;

@@ -116,6 +116,18 @@ static constexpr const char* kDecoderJson = R"({
   ]
 })";
 
+// Minimal filter asset example (JSON)
+static constexpr const char* kFilterJson = R"({
+  "name": "filter/pre-filter/0",
+  "id": "f1111111-1111-4111-a111-111111111111",
+  "enabled": true,
+  "type": "pre-filter",
+  "metadata": {
+    "title": "Test Pre-Filter"
+  },
+  "check": "$host.os.platform == 'ubuntu'"
+})";
+
 json::Json makeJsonPayload(const char* raw)
 {
     return json::Json {raw};
@@ -714,12 +726,13 @@ TEST(CrudService_Unit, UpsertIntegration_AcceptsJsonPayloadAndPassesJsonToStore)
     EXPECT_CALL(*nsPtr,
                 createResource("windows",
                                ResourceType::INTEGRATION,
-                               Truly([](const json::Json& content)
-                                     {
-                                         return content.isObject() && content.isBool("/enabled")
-                                                && content.isString("/metadata/title")
-                                                && getStringOrEmpty(content, "/metadata/title") == "windows";
-                                     })))
+                               Truly(
+                                   [](const json::Json& content)
+                                   {
+                                       return content.isObject() && content.isBool("/enabled")
+                                              && content.isString("/metadata/title")
+                                              && getStringOrEmpty(content, "/metadata/title") == "windows";
+                                   })))
         .Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
@@ -1154,6 +1167,43 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidCategory_Throws)
         EXPECT_THAT(std::string {e.what()}, ::testing::HasSubstr("category"));
         EXPECT_THAT(std::string {e.what()}, ::testing::HasSubstr("not valid"));
     }
+}
+
+// ---------------------------------------------------------------------
+// importNamespace (component-based)
+// ---------------------------------------------------------------------
+
+TEST(CrudService_Unit, ImportNamespace_Success_WithFilters)
+{
+    auto store = std::make_shared<NiceMock<MockICMstore>>();
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
+    CrudService service {store, validator};
+
+    const NamespaceId nsId {"imported"};
+    auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
+    auto nsReader = std::static_pointer_cast<cm::store::ICMStoreNSReader>(nsPtr);
+
+    EXPECT_CALL(*store, existsNamespace(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
+        .WillOnce(Return(false));
+    EXPECT_CALL(*store, createNamespace(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
+        .WillOnce(Return(nsPtr));
+
+    std::vector<json::Json> kvdbs;
+    std::vector<json::Json> decoders;
+    std::vector<json::Json> integrations;
+    std::vector<json::Json> filters;
+
+    // Add a filter
+    filters.emplace_back(makeJsonPayload(kFilterJson));
+
+    // Expect filter creation
+    EXPECT_CALL(*nsPtr, createResource("filter/pre-filter/0", ResourceType::FILTER, _)).Times(1);
+
+    // Expect policy upsert
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(
+        service.importNamespace(nsId, kvdbs, decoders, filters, integrations, makeJsonPayload(kPolicyJson), true));
 }
 
 } // namespace cm::crud::test

@@ -345,7 +345,9 @@ TEST_F(CMSyncSynchronizeTest, Case3_PolicyEnabledNoRouteExists)
     EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(resources));
 
     // importNamespace
-    EXPECT_CALL(*crud, importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
     // syncNamespaceInRoute: no existing route → create new
@@ -381,7 +383,9 @@ TEST_F(CMSyncSynchronizeTest, Case4_PolicyEnabledHashChanged)
     EXPECT_CALL(*crud, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
     wiconnector::PolicyResources resources;
     EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(resources));
-    EXPECT_CALL(*crud, importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
     // hot-swap
@@ -418,7 +422,9 @@ TEST_F(CMSyncSynchronizeTest, Case4_RouteDisabledHashChanged)
     EXPECT_CALL(*crud, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
     wiconnector::PolicyResources resources;
     EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(resources));
-    EXPECT_CALL(*crud, importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
     EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_)).WillOnce(::testing::Return(std::nullopt));
@@ -467,7 +473,9 @@ TEST_F(CMSyncSynchronizeTest, RollsBackWhenHotSwapFails)
     EXPECT_CALL(*crud, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
     wiconnector::PolicyResources resources;
     EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(resources));
-    EXPECT_CALL(*crud, importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
     // hot-swap fails
@@ -498,7 +506,9 @@ TEST_F(CMSyncSynchronizeTest, ContinuesWhenImportNamespaceFails)
     EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(resources));
 
     // importNamespace throws
-    EXPECT_CALL(*crud, importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .WillOnce(::testing::Throw(std::runtime_error("import failed")));
 
     // Rollback in downloadNamespace
@@ -529,7 +539,9 @@ TEST_F(CMSyncSynchronizeTest, ContinuesWithNextSpaceAfterFailure)
     EXPECT_CALL(*crud, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
     wiconnector::PolicyResources resources;
     EXPECT_CALL(*indexer, getPolicy(::testing::Eq("custom"))).WillOnce(::testing::Return(resources));
-    EXPECT_CALL(*crud, importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
     EXPECT_CALL(*router, getEntries()).WillOnce(::testing::Return(std::list<router::prod::Entry> {}));
@@ -560,7 +572,9 @@ TEST_F(CMSyncSynchronizeTest, DoesNotDeleteDummyNamespaceAfterSync)
     EXPECT_CALL(*crud, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
     wiconnector::PolicyResources resources;
     EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(resources));
-    EXPECT_CALL(*crud, importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
     EXPECT_CALL(*router, getEntries()).WillOnce(::testing::Return(std::list<router::prod::Entry> {}));
@@ -589,7 +603,9 @@ TEST_F(CMSyncSynchronizeTest, RollsBackWhenPostEntryFails)
     EXPECT_CALL(*crud, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
     wiconnector::PolicyResources resources;
     EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(resources));
-    EXPECT_CALL(*crud, importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
     EXPECT_CALL(*router, getEntries()).WillOnce(::testing::Return(std::list<router::prod::Entry> {}));
@@ -622,7 +638,9 @@ TEST_F(CMSyncSynchronizeTest, RetriesNamespaceIdGenerationOnCollision)
 
     wiconnector::PolicyResources resources;
     EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(resources));
-    EXPECT_CALL(*crud, importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
     EXPECT_CALL(*router, getEntries()).WillOnce(::testing::Return(std::list<router::prod::Entry> {}));

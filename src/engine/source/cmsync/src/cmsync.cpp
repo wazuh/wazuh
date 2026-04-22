@@ -190,6 +190,7 @@ void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::Na
         cmcrudPtr->importNamespace(dstNamespace,
                                    policyResource.kvdbs,
                                    policyResource.decoders,
+                                   policyResource.filters,
                                    policyResource.integration,
                                    policyResource.policy,
                                    /*softValidation=*/true);
