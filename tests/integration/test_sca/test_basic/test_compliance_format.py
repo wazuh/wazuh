@@ -167,13 +167,14 @@ def _callback_scan_result_for_policy(policy: str):
 
 def _callback_event_for_check(check_id: str):
     def _callback(line):
-        match = re.match(patterns.SCA_SENDING_EVENT, line)
-        if not match:
-            return None
+        for pattern in (patterns.SCA_STATEFUL_EVENT_QUEUED, patterns.SCA_SENDING_EVENT):
+            match = re.match(pattern, line)
+            if not match:
+                continue
 
-        event_check_id, compliance = extract_compliance_from_event_json(match.group(1))
-        if event_check_id == check_id:
-            return (event_check_id, compliance)
+            event_check_id, compliance = extract_compliance_from_event_json(match.group(1))
+            if event_check_id == check_id:
+                return (event_check_id, compliance)
 
         return None
 
