@@ -1,8 +1,12 @@
 #include <gtest/gtest.h>
 
+#include <base/utils/singletonLocator.hpp>
+#include <base/utils/singletonLocatorStrategies.hpp>
 #include <bk/mockController.hpp>
 #include <builder/mockBuilder.hpp>
 #include <builder/mockPolicy.hpp>
+#include <fastmetrics/mockCounter.hpp>
+#include <fastmetrics/mockManager.hpp>
 #include <queue/mockQueue.hpp>
 #include <rawevtindexer/mockraweventindexer.hpp>
 #include <store/mockStore.hpp>
@@ -27,6 +31,7 @@ class OrchestratorRouterTest : public ::testing::Test
 protected:
     std::shared_ptr<builder::mocks::MockBuilder> m_mockbuilder;
     std::shared_ptr<builder::mocks::MockPolicy> m_mockPolicy;
+    std::shared_ptr<fastmetrics::MockCounter> m_mockCounter;
     std::shared_ptr<store::mocks::MockStore> m_mockStore;
     std::shared_ptr<bk::mocks::MockMakerController> m_mockControllerMaker;
     std::shared_ptr<bk::mocks::MockController> m_mockController;
@@ -41,6 +46,9 @@ public:
     {
         logging::testInit();
 
+        SingletonLocator::registerManager<fastmetrics::IManager,
+                                          base::PtrSingleton<fastmetrics::IManager, fastmetrics::MockManager>>();
+
         m_mockStore = std::make_shared<store::mocks::MockStore>();
         m_mockbuilder = std::make_shared<builder::mocks::MockBuilder>();
         m_mockPolicy = std::make_shared<builder::mocks::MockPolicy>();
@@ -49,6 +57,28 @@ public:
         m_mockQueueRouter = std::make_shared<fastqueue::mocks::MockQueue<router::IngestEvent>>();
         m_mockQueueTester = std::make_shared<fastqueue::mocks::MockQueue<router::test::EventTest>>();
         m_mockRawIndexer = std::make_shared<raweventindexer::mocks::MockRawEventIndexer>();
+
+        auto& manager = SingletonLocator::instance<fastmetrics::IManager>();
+        auto m_mockMetricsManager = dynamic_cast<fastmetrics::MockManager*>(&manager);
+        ASSERT_NE(m_mockMetricsManager, nullptr);
+
+        m_mockCounter = std::make_shared<fastmetrics::MockCounter>();
+        static const std::string kCounterName = "test.counter";
+
+        ON_CALL(*m_mockCounter, value()).WillByDefault(::testing::Return(0.0));
+        ON_CALL(*m_mockCounter, get()).WillByDefault(::testing::Return(0));
+        ON_CALL(*m_mockCounter, name()).WillByDefault(::testing::ReturnRef(kCounterName));
+
+        EXPECT_CALL(*m_mockMetricsManager, getOrCreateCounter(::testing::_, ::testing::_, ::testing::_))
+            .Times(::testing::AnyNumber())
+            .WillRepeatedly(::testing::Return(m_mockCounter));
+
+        ON_CALL(*m_mockMetricsManager, registerPullMetric(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+            .WillByDefault(
+                [](const std::string&, std::function<uint64_t()>, const std::string&, const std::string&) {});
+
+        ON_CALL(*m_mockMetricsManager, registerPullMetricDouble(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+            .WillByDefault([](const std::string&, std::function<double()>, const std::string&, const std::string&) {});
 
         router::Orchestrator::Options config {.m_numThreads = NUM_THREADS,
                                               .m_wStore = m_mockStore,
@@ -99,6 +129,8 @@ public:
         EXPECT_CALL(*m_mockQueueRouter, waitPop(testing::_, testing::_)).WillRepeatedly(testing::Return(false));
         m_orchestrator->start();
     }
+
+    void TearDown() override { SingletonLocator::unregisterManager<fastmetrics::IManager>(); }
 };
 
 namespace

@@ -78,14 +78,13 @@ target_link_libraries(builder
     geo::igeo
     streamlogger::istreamlogger
     wIndexerConnector::iwIndexerConnector
-	fastmetrics::fastmetrics
+	fastmetrics::ifastmetrics
     logpar
 
     PRIVATE
     re2::re2
     logicexpr
     date::date
-    fastmetrics::fastmetrics
 )
 
 
@@ -115,6 +114,7 @@ target_link_libraries(builder_ctest
 	store::mocks
 	defs::mocks
 	base::test
+	fastmetrics::mocks
 )
 gtest_discover_tests(builder_ctest)
 ## Unit tests
@@ -198,6 +198,7 @@ target_link_libraries(builder_utest
 	base::test
 	streamlogger::mocks
 	wIndexerConnector::mocks
+	fastmetrics::mocks
 )
 gtest_discover_tests(builder_utest)
 

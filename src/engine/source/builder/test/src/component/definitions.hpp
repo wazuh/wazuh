@@ -6,6 +6,8 @@
 #include <builder/builder.hpp>
 #include <cmstore/mockcmstore.hpp>
 #include <defs/mockDefinitions.hpp>
+#include <fastmetrics/mockManager.hpp>
+#include <fastmetrics/registry.hpp>
 #include <logpar/logpar.hpp>
 #include <schemf/ivalidator.hpp>
 #include <schemf/mockSchema.hpp>
@@ -336,6 +338,8 @@ public:
 
     void SetUp() override
     {
+        SingletonLocator::registerManager<fastmetrics::IManager,
+                                      base::PtrSingleton<fastmetrics::IManager, fastmetrics::MockManager>>();
         m_spMocks = std::make_shared<Mocks>();
         m_spMocks->m_spStore = std::make_shared<MockICMstore>();
         m_spMocks->m_spNSReader = std::make_shared<MockICMStoreNSReader>();
@@ -344,6 +348,11 @@ public:
         m_spMocks->m_spDef = std::make_shared<MockDefinitions>();
         m_spMocks->m_spMockStore = std::make_shared<store::mocks::MockStore>();
         initializeBuilder();
+    }
+
+    void TearDown() override
+    {
+        SingletonLocator::unregisterManager<fastmetrics::IManager>();
     }
 
     void initializeBuilder()

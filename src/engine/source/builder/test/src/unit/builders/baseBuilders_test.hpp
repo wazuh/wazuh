@@ -4,6 +4,8 @@
 #include <gtest/gtest.h>
 
 #include <base/behaviour.hpp>
+#include <fastmetrics/mockManager.hpp>
+#include <fastmetrics/registry.hpp>
 
 #include "builders/types.hpp"
 #include "mockBuildCtx.hpp"
@@ -51,6 +53,8 @@ protected:
 
     void SetUp() override
     {
+        SingletonLocator::registerManager<fastmetrics::IManager,
+                                          base::PtrSingleton<fastmetrics::IManager, fastmetrics::MockManager>>();
         mocks = std::make_shared<BuildersMocks>();
         mocks->ctx = std::make_shared<const MockBuildCtx>();
         mocks->runState = std::make_shared<RunState>();
@@ -75,6 +79,8 @@ protected:
         mocks->context.originSpace = "test_space";
         mocks->context.assetName = "asset/name/0";
     }
+
+    void TearDown() override { SingletonLocator::unregisterManager<fastmetrics::IManager>(); }
 
     void expectBuildSuccess()
     {

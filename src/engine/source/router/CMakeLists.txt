@@ -35,7 +35,7 @@ target_link_libraries(router_router
     bk::ibk
     fastqueue::ifastqueue
     rawevtindexer::irawindexer
-    fastmetrics::fastmetrics
+    fastmetrics::ifastmetrics
 
     PRIVATE
     base
@@ -71,6 +71,7 @@ if(ENGINE_BUILD_TEST)
         store::mocks
         bk::mocks
         fastqueue::mocks
+        fastmetrics::mocks
         rawevtindexer::mocks
     )
 
@@ -94,6 +95,7 @@ if(ENGINE_BUILD_TEST)
         bk::mocks
         bk::rx
         fastqueue::mocks
+        fastmetrics::mocks
         rawevtindexer::mocks
     )
     gtest_discover_tests(router_utest router_ctest)

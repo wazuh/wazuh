@@ -2,6 +2,7 @@
 
 #include <base/baseTypes.hpp>
 #include <base/behaviour.hpp>
+#include <fastmetrics/mockManager.hpp>
 #include <fastmetrics/registry.hpp>
 #include <store/mockStore.hpp>
 
@@ -13,11 +14,6 @@ using namespace base::test;
 
 namespace
 {
-struct FastMetricsInit
-{
-    FastMetricsInit() { fastmetrics::registerManager(); }
-};
-static FastMetricsInit fastMetricsInit_;
 
 bool evalExpression(const base::Expression& expression, const base::Event& event)
 {
@@ -401,6 +397,8 @@ protected:
 
     void SetUp() override
     {
+        SingletonLocator::registerManager<fastmetrics::IManager,
+                                          base::PtrSingleton<fastmetrics::IManager, fastmetrics::MockManager>>();
         m_mocks = std::make_shared<Mocks>();
         m_mocks->m_spStore = std::make_shared<MockICMstore>();
         m_mocks->m_spNSReader = std::make_shared<MockICMStoreNSReader>();
@@ -452,6 +450,8 @@ protected:
                                               builderDeps,
                                               mockStore);
     }
+
+    void TearDown() override { SingletonLocator::unregisterManager<fastmetrics::IManager>(); }
 };
 
 TEST_F(BuildPolicyTest, BuildPolicySuccessfully)
@@ -634,6 +634,8 @@ protected:
 
     void SetUp() override
     {
+        SingletonLocator::registerManager<fastmetrics::IManager,
+                                          base::PtrSingleton<fastmetrics::IManager, fastmetrics::MockManager>>();
         m_mocks = std::make_shared<Mocks>();
         m_mocks->m_spStore = std::make_shared<MockICMstore>();
         m_mocks->m_spNSReader = std::make_shared<MockICMStoreNSReader>();
@@ -684,6 +686,8 @@ protected:
                                               builderDeps,
                                               mockStore);
     }
+
+    void TearDown() override { SingletonLocator::unregisterManager<fastmetrics::IManager>(); }
 };
 
 TEST_F(BuildAssetTest, BuildDecoderSuccessfully)
@@ -820,6 +824,8 @@ protected:
 
     void SetUp() override
     {
+        SingletonLocator::registerManager<fastmetrics::IManager,
+                                          base::PtrSingleton<fastmetrics::IManager, fastmetrics::MockManager>>();
         m_mocks = std::make_shared<Mocks>();
         m_mocks->m_spStore = std::make_shared<MockICMstore>();
         m_mocks->m_spNSReader = std::make_shared<MockICMStoreNSReader>();
@@ -866,6 +872,8 @@ protected:
                                               builderDeps,
                                               mockStore);
     }
+
+    void TearDown() override { SingletonLocator::unregisterManager<fastmetrics::IManager>(); }
 };
 
 TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithMultipleIntegrations)

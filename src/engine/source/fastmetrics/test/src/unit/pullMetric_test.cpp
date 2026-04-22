@@ -19,10 +19,10 @@ protected:
 TEST_F(PullMetricTest, BasicPullMetric)
 {
     // Simulate a queue with size() method
-    std::atomic<size_t> queueSize{0};
+    std::atomic<uint64_t> queueSize {0};
 
     // Register pull metric with lambda
-    manager.registerPullMetric<size_t>("queue.size", [&queueSize]() { return queueSize.load(); });
+    manager.registerPullMetric("queue.size", [&queueSize]() { return queueSize.load(); });
 
     // Initially empty
     auto metric = manager.get("queue.size");
@@ -44,14 +44,14 @@ TEST_F(PullMetricTest, PullMetricWithSharedPtr)
     // Safe pattern: capture shared_ptr
     struct Queue
     {
-        std::atomic<size_t> m_size{0};
-        size_t size() const { return m_size.load(); }
+        std::atomic<uint64_t> m_size {0};
+        uint64_t size() const { return m_size.load(); }
     };
 
     auto queue = std::make_shared<Queue>();
 
     // Safe: shared_ptr keeps queue alive
-    manager.registerPullMetric<size_t>("safe.queue.size", [queue]() { return queue->size(); });
+    manager.registerPullMetric("safe.queue.size", [queue]() { return queue->size(); });
 
     queue->m_size = 123;
 
@@ -63,12 +63,11 @@ TEST_F(PullMetricTest, PullMetricWithSharedPtr)
 TEST_F(PullMetricTest, PullMetricDerivedValue)
 {
     // Multiple queues combined
-    std::atomic<size_t> queueA{10};
-    std::atomic<size_t> queueB{20};
+    std::atomic<uint64_t> queueA {10};
+    std::atomic<uint64_t> queueB {20};
 
-    manager.registerPullMetric<size_t>("total.queue.size", [&queueA, &queueB]() {
-        return queueA.load() + queueB.load();
-    });
+    manager.registerPullMetric("total.queue.size",
+                                         [&queueA, &queueB]() { return queueA.load() + queueB.load(); });
 
     auto metric = manager.get("total.queue.size");
     ASSERT_NE(metric, nullptr);
@@ -80,9 +79,9 @@ TEST_F(PullMetricTest, PullMetricDerivedValue)
 
 TEST_F(PullMetricTest, PullMetricEnableDisable)
 {
-    std::atomic<size_t> value{42};
+    std::atomic<uint64_t> value {42};
 
-    manager.registerPullMetric<size_t>("test.value", [&value]() { return value.load(); });
+    manager.registerPullMetric("test.value", [&value]() { return value.load(); });
 
     auto metric = manager.get("test.value");
     ASSERT_NE(metric, nullptr);
@@ -103,7 +102,7 @@ TEST_F(PullMetricTest, PullMetricEnableDisable)
 TEST_F(PullMetricTest, PullMetricExceptionHandling)
 {
     // Lambda that throws
-    manager.registerPullMetric<size_t>("failing.metric", []() -> size_t { throw std::runtime_error("oops"); });
+    manager.registerPullMetric("failing.metric", []() -> uint64_t { throw std::runtime_error("oops"); });
 
     auto metric = manager.get("failing.metric");
     ASSERT_NE(metric, nullptr);
@@ -114,15 +113,15 @@ TEST_F(PullMetricTest, PullMetricExceptionHandling)
 
 TEST_F(PullMetricTest, PullMetricTypedAccess)
 {
-    std::atomic<size_t> value{12345};
+    std::atomic<uint64_t> value {12345};
 
-    manager.registerPullMetric<size_t>("typed.value", [&value]() { return value.load(); });
+    manager.registerPullMetric("typed.value", [&value]() { return value.load(); });
 
     auto metric = manager.get("typed.value");
     ASSERT_NE(metric, nullptr);
 
     // Cast to specific type to get typed access
-    auto pullMetric = std::dynamic_pointer_cast<PullMetric<size_t>>(metric);
+    auto pullMetric = std::dynamic_pointer_cast<PullMetric<uint64_t>>(metric);
     ASSERT_NE(pullMetric, nullptr);
 
     // Direct typed access (no double conversion)
@@ -136,8 +135,8 @@ TEST_F(PullMetricTest, MixedPushAndPullMetrics)
     counter->add(100);
 
     // PULL metric (lazy evaluation)
-    std::atomic<size_t> queueSize{42};
-    manager.registerPullMetric<size_t>("queue.size", [&queueSize]() { return queueSize.load(); });
+    std::atomic<uint64_t> queueSize {42};
+    manager.registerPullMetric("queue.size", [&queueSize]() { return queueSize.load(); });
 
     // Both should be listable
     auto names = manager.getAllNames();
@@ -158,14 +157,14 @@ TEST_F(PullMetricTest, RealWorldQueueExample)
     struct EventQueue
     {
         std::vector<int> items;
-        size_t size() const { return items.size(); }
+        uint64_t size() const { return items.size(); }
         void push(int val) { items.push_back(val); }
     };
 
     auto queue = std::make_shared<EventQueue>();
 
     // Register pull metric pointing to real queue
-    manager.registerPullMetric<size_t>("orchestrator.queue.size", [queue]() { return queue->size(); });
+    manager.registerPullMetric("orchestrator.queue.size", [queue]() { return queue->size(); });
 
     // Query shows real size
     auto metric = manager.get("orchestrator.queue.size");

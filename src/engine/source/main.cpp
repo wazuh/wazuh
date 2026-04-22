@@ -240,7 +240,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<kvdbstore::IKVDBManager> kvdbManager;
     std::shared_ptr<ioc::kvdb::IKVDBManager> IOCkvdb;
     std::shared_ptr<geo::Manager> geoManager;
-    std::shared_ptr<fastmetrics::Manager> metricsManager;
+    std::shared_ptr<fastmetrics::IManager> metricsManager;
     std::shared_ptr<schemf::Schema> schemaValidator;
     std::shared_ptr<scheduler::Scheduler> scheduler;
     std::shared_ptr<streamlog::LogManager> streamLogger;
@@ -418,6 +418,7 @@ int main(int argc, char* argv[])
 
                 // Create indexer connector with enhanced configuration
                 indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf.str(), maxHitsPerRequest);
+                exitHandler.add([indexerConnector]() { indexerConnector->shutdown(); });
 
                 // Register pull metric for indexer queue (output/egress)
                 std::weak_ptr<wiconnector::WIndexerConnector> wIndexer = indexerConnector;
@@ -739,10 +740,8 @@ int main(int argc, char* argv[])
                 });
 
             // Metrics - create non-owning shared_ptr to singleton
-            metricsManager = std::shared_ptr<fastmetrics::Manager>(&fastmetrics::manager(),
-                                                                   [](fastmetrics::Manager*) {
-                                                                   } // Empty deleter - singleton is owned elsewhere
-            );
+            metricsManager =
+                std::shared_ptr<fastmetrics::IManager>(&fastmetrics::manager(), [](fastmetrics::IManager*) {});
             api::metrics::handlers::registerHandlers(
                 metricsManager, apiServer, "wazuh-manager-analysisd", engineUptimeISO);
             LOG_DEBUG("Metrics API registered.");
