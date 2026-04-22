@@ -669,7 +669,7 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_NormalizesMitreAndKeepsCheckFields)
             }
         },
         {"collector", "check"},
-        {"result", 0}
+        {"result", 2}
     };
 
     const nlohmann::json output = handler->ProcessStateless(input);
@@ -711,7 +711,7 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_NormalizesTitleInChangedFields)
             }
         },
         {"collector", "check"},
-        {"result", 1}
+        {"result", 0}
     }
     ;
 
