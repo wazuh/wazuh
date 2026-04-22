@@ -37,6 +37,7 @@ decoded_payload = {
     "iss": 'wazuh',
     "aud": 'Wazuh API REST',
     "nbf": 0,
+    "nbf_ms": 0,
     "exp": security_conf['auth_token_exp_timeout'],
     "sub": '001',
     "rbac_policies": {'value': 'test', 'rbac_mode': security_conf['rbac_mode']},
@@ -48,6 +49,7 @@ original_payload = {
     "iss": "wazuh",
     "aud": "Wazuh API REST",
     "nbf": 0,
+    "nbf_ms": 0,
     "exp": security_conf['auth_token_exp_timeout'],
     "sub": "001",
     "run_as": False,
@@ -79,31 +81,30 @@ async def test_check_user(mock_raise_if_exc, mock_distribute_function, mock_dapi
     mock_raise_if_exc.assert_called_once()
 
 
-@patch('api.authentication.change_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
-                                                          '-----BEGIN PUBLIC KEY-----'))
-@patch('os.chmod')
-@patch('os.chown')
-@patch('builtins.open')
-def test_generate_keypair(mock_open, mock_chown, mock_chmod, mock_change_keypair):
-    """Verify correct params when calling open method inside generate_keypair"""
-    result = generate_keypair()
-    assert result == ('-----BEGIN PRIVATE KEY-----',
-                      '-----BEGIN PUBLIC KEY-----')
-
-    calls = [call(_private_key_path, wazuh_uid(), wazuh_gid()),
-             call(_public_key_path, wazuh_uid(), wazuh_gid())]
-    mock_chown.assert_has_calls(calls)
-    calls = [call(_private_key_path, 0o640),
-             call(_public_key_path, 0o640)]
-    mock_chmod.assert_has_calls(calls)
+@patch('api.authentication._write_new_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
+                                                               '-----BEGIN PUBLIC KEY-----'))
+def test_generate_keypair(mock_write_keypair):
+    """Verify generate_keypair creates keys when they don't exist"""
+    with patch('os.path.exists', return_value=False):
+        result = generate_keypair()
+        assert result == ('-----BEGIN PRIVATE KEY-----',
+                          '-----BEGIN PUBLIC KEY-----')
+        mock_write_keypair.assert_called_once()
 
     generate_keypair.cache_clear()
 
+    # Test reading existing keys
     with patch('os.path.exists', return_value=True):
-        generate_keypair()
-        calls = [call(_private_key_path, mode='r'),
-                 call(_public_key_path, mode='r')]
-        mock_open.assert_has_calls(calls, any_order=True)
+        with patch('builtins.open', create=True) as mock_open:
+            mock_file = MagicMock()
+            mock_file.__enter__ = MagicMock(return_value=mock_file)
+            mock_file.__exit__ = MagicMock(return_value=False)
+            mock_file.read = MagicMock(side_effect=['priv_key', 'pub_key'])
+            mock_file.fileno = MagicMock(return_value=99)
+            mock_open.return_value = mock_file
+
+            result = generate_keypair()
+            assert result == ('priv_key', 'pub_key')
 
 
 def test_generate_keypair_ko():
@@ -113,50 +114,50 @@ def test_generate_keypair_ko():
             with patch('os.chown', side_effect=PermissionError):
                 assert generate_keypair()
 
-@patch("os.chmod")
-@patch("os.chown")
-@patch("api.authentication.change_keypair", return_value=("priv", "pub"))
+@patch("api.authentication._write_new_keypair", return_value=("priv", "pub"))
 @patch("os.path.exists", return_value=False)
-def test_generate_keypair_cache_no_keys(mock_exists, mock_change_keypair, mock_chown, mock_chmod):
-
+def test_generate_keypair_cache_no_keys(mock_exists, mock_write_keypair):
+    """Verify caching works when keys don't exist"""
     first = generate_keypair()
     cached = generate_keypair()
 
     assert first == ("priv", "pub")
     assert first is cached
 
-    mock_exists.assert_called_once()
-    mock_change_keypair.assert_called_once()
-    assert mock_chown.call_count == 2
-    assert mock_chmod.call_count == 2
-
-@patch("builtins.open", return_value=MagicMock())
-@patch("os.path.exists", return_value=True)
-def test_generate_keypair_cache(mock_exists, mock_open,
-    clear_generate_keypair_cache):
-
-    file_mock = MagicMock()
-    file_mock.read.side_effect = ["priv", "pub"]
-    mock_open.return_value.__enter__.return_value = file_mock
-
-    first = generate_keypair()
-    cached = generate_keypair()
-
-    assert first == ("priv", "pub")
-    assert first is cached
-
+    # First call checks both private and public key paths
     assert mock_exists.call_count == 2
-    assert mock_open.call_count == 2
+    # But _write_new_keypair is called only once due to caching
+    mock_write_keypair.assert_called_once()
 
-@patch('builtins.open')
-def test_change_keypair(mock_open):
-    """Verify correct params when calling open method inside change_keypair"""
+@patch("os.path.exists", return_value=True)
+def test_generate_keypair_cache(mock_exists, clear_generate_keypair_cache):
+    """Verify caching works when keys exist"""
+    with patch('builtins.open', create=True) as mock_open:
+        mock_file = MagicMock()
+        mock_file.__enter__ = MagicMock(return_value=mock_file)
+        mock_file.__exit__ = MagicMock(return_value=False)
+        mock_file.read = MagicMock(side_effect=["priv", "pub"])
+        mock_file.fileno = MagicMock(return_value=99)
+        mock_open.return_value = mock_file
+
+        first = generate_keypair()
+        cached = generate_keypair()
+
+        assert first == ("priv", "pub")
+        assert first is cached
+
+        assert mock_exists.call_count == 2
+        # Should read files twice (private + public) only once due to caching
+        assert mock_file.read.call_count == 2
+
+@patch('api.authentication._write_new_keypair', return_value=('new_priv', 'new_pub'))
+def test_change_keypair(mock_write_keypair):
+    """Verify change_keypair generates new keys and clears cache"""
     result = change_keypair()
     assert isinstance(result[0], str)
     assert isinstance(result[1], str)
-    calls = [call(_private_key_path, mode='w'),
-             call(_public_key_path, mode='w')]
-    mock_open.assert_has_calls(calls, any_order=True)
+    assert result == ('new_priv', 'new_pub')
+    mock_write_keypair.assert_called_once()
 
 
 def test_get_security_conf():
