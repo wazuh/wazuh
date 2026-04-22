@@ -11,10 +11,9 @@
 #include <atomic>
 #include <chrono>
 #include <cstdio>
-#include <filesystem>
 #include <functional>
 #include <future>
-#include <fstream>
+#include <memory>
 #include <sqlite3.h>
 #include <thread>
 
@@ -28,7 +27,6 @@
 
 constexpr auto SYSCOLLECTOR_DB_PATH {":memory:"};
 constexpr auto SYSCOLLECTOR_TEST_DB_PATH {"syscollector_test.db"};
-constexpr auto VD_FIRST_SYNC_FLAG_FILE {"queue/syscollector/db/.vd_first_sync_done"};
 
 // Mock SchemaValidatorEngine for dependency injection in tests
 class MockSchemaValidatorEngine : public SchemaValidator::ISchemaValidatorEngine
@@ -193,7 +191,6 @@ const auto expected_dbsync_browser_extensions
 void SyscollectorImpTest::SetUp()
 {
     std::remove(SYSCOLLECTOR_TEST_DB_PATH);
-    std::remove(VD_FIRST_SYNC_FLAG_FILE);
 
     // Initialize SchemaValidatorFactory with mocks to prevent issues in Wine/Windows tests
     // This ensures all tests use mock validators instead of loading real embedded schemas
@@ -230,7 +227,6 @@ void SyscollectorImpTest::SetUp()
 void SyscollectorImpTest::TearDown()
 {
     std::remove(SYSCOLLECTOR_TEST_DB_PATH);
-    std::remove(VD_FIRST_SYNC_FLAG_FILE);
 
     // Ensure Syscollector singleton is destroyed after each test
     // This prevents stale function pointer issues between tests
@@ -2984,21 +2980,56 @@ TEST_F(SyscollectorImpTest, executeFlushSync_VDEnabled_FirstSyncNotDone_FlushSuc
 
 TEST_F(SyscollectorImpTest, executeFlushSync_VDEnabled_FirstSyncAlreadyDone_FlushSucceeds)
 {
-    std::filesystem::create_directories("queue/syscollector/db");
-    {
-        std::ofstream flag(VD_FIRST_SYNC_FLAG_FILE);
-        ASSERT_TRUE(flag.is_open()) << "Could not create VD first-sync flag file for test setup";
-    }
-
     const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // Initialize once to create the schema (including table_metadata), then destroy to
+    // release the DB so we can seed the VD first-sync marker directly.
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,    // scanOnStart
+                                  false,    // hardware
+                                  true,     // os
+                                  false,    // network
+                                  true,     // packages
+                                  false,    // ports
+                                  false,    // portsAll
+                                  false,    // processes
+                                  false,    // hotfixes
+                                  false,    // groups
+                                  false,    // users
+                                  false,    // services
+                                  false,    // browserExtensions
+                                  false);   // notifyOnFirstScan
+    Syscollector::instance().destroy();
+
+    {
+        sqlite3* rawDb = nullptr;
+        ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &rawDb, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+        std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db {rawDb, &sqlite3_close};
+
+        char* rawErrMsg = nullptr;
+        const int execResult = sqlite3_exec(db.get(),
+                                            "INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('vd_first_sync_completed', 123456);",
+                                            nullptr,
+                                            nullptr,
+                                            &rawErrMsg);
+        std::unique_ptr<char, decltype(&sqlite3_free)> errMsg {rawErrMsg, &sqlite3_free};
+        ASSERT_EQ(execResult, SQLITE_OK) << (errMsg ? errMsg.get() : "");
+    }
 
     Syscollector::instance().init(spInfoWrapper,
                                   reportFunction,
                                   persistFunction,
                                   logFunction,
-                                  SYSCOLLECTOR_DB_PATH,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
                                   "",
                                   "",
                                   3600,
@@ -5721,4 +5752,131 @@ TEST_F(SyscollectorImpTest, destroyWaitsForOngoingFlush)
     destroyThread.join();
 
     EXPECT_TRUE(destroyDone);
+}
+
+TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedDefaultsToFalse)
+{
+    // No VD sync has run and no marker is present: expect vd_first_sync_completed == 0.
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    std::string response = Syscollector::instance().query(R"({"command":"get_vd_first_sync_completed"})");
+    auto responseJson = nlohmann::json::parse(response);
+
+    EXPECT_EQ(responseJson["error"], MQ_SUCCESS);
+    EXPECT_EQ(responseJson["data"]["vd_first_sync_completed"], 0);
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedReturnsTrueWhenMetadataExists)
+{
+    // Seed the marker directly into the DB, then verify the query reports it.
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    Syscollector::instance().destroy();
+
+    {
+        sqlite3* rawDb = nullptr;
+        ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &rawDb, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+        std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db {rawDb, &sqlite3_close};
+
+        char* rawErrMsg = nullptr;
+        const int execResult = sqlite3_exec(db.get(),
+                                            "INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('vd_first_sync_completed', 123456);",
+                                            nullptr,
+                                            nullptr,
+                                            &rawErrMsg);
+        std::unique_ptr<char, decltype(&sqlite3_free)> errMsg {rawErrMsg, &sqlite3_free};
+        ASSERT_EQ(execResult, SQLITE_OK) << (errMsg ? errMsg.get() : "");
+    }
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    std::string response = Syscollector::instance().query(R"({"command":"get_vd_first_sync_completed"})");
+    auto responseJson = nlohmann::json::parse(response);
+
+    EXPECT_EQ(responseJson["error"], MQ_SUCCESS);
+    EXPECT_EQ(responseJson["data"]["vd_first_sync_completed"], 1);
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedIgnoresZeroTimestamp)
+{
+    // A row with last_sync_time=0 must NOT be reported as completed (boolean is "> 0").
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    Syscollector::instance().destroy();
+
+    {
+        sqlite3* rawDb = nullptr;
+        ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &rawDb, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+        std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db {rawDb, &sqlite3_close};
+
+        char* rawErrMsg = nullptr;
+        const int execResult = sqlite3_exec(db.get(),
+                                            "INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('vd_first_sync_completed', 0);",
+                                            nullptr,
+                                            nullptr,
+                                            &rawErrMsg);
+        std::unique_ptr<char, decltype(&sqlite3_free)> errMsg {rawErrMsg, &sqlite3_free};
+        ASSERT_EQ(execResult, SQLITE_OK) << (errMsg ? errMsg.get() : "");
+    }
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    std::string response = Syscollector::instance().query(R"({"command":"get_vd_first_sync_completed"})");
+    auto responseJson = nlohmann::json::parse(response);
+
+    EXPECT_EQ(responseJson["error"], MQ_SUCCESS);
+    EXPECT_EQ(responseJson["data"]["vd_first_sync_completed"], 0);
+
+    Syscollector::instance().destroy();
 }
