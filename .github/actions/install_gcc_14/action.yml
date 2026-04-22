@@ -23,6 +23,7 @@ runs:
           sudo apt-get install -f -y
           sudo dpkg -i "/tmp/${GCC_PKG}"
         }
+        rm -f "/tmp/${GCC_PKG}"
 
         for cmd in gcc g++ c++; do
           sudo mv /usr/bin/${cmd} /usr/bin/${cmd}.bak 2>/dev/null || true

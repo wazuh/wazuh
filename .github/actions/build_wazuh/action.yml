@@ -12,6 +12,8 @@ runs:
   steps:
     - name: Build Wazuh ${{ inputs.target }}
       shell: bash
+      env:
+        TARGET: ${{ inputs.target }}
       run: |
-        make deps -C src TARGET=${{ inputs.target }} -j$(nproc)
-        make -C src TARGET=${{ inputs.target }} -j$(nproc)
+        make deps -C src TARGET="$TARGET" -j$(nproc)
+        make -C src TARGET="$TARGET" -j$(nproc)
