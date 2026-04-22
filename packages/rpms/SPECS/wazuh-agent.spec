@@ -621,6 +621,7 @@ if [ $1 = 0 ] || [ $DELETE_WAZUH_USER_AND_GROUP = 1 ]; then
     # Remove lingering folders and files
     rm -rf %{_localstatedir}/etc/shared/
     rm -rf %{_localstatedir}/queue/
+    rm -rf %{_localstatedir}/alerts/
     rm -rf %{_localstatedir}/var/
     rm -rf %{_localstatedir}/bin/
     rm -rf %{_localstatedir}/logs/
@@ -655,6 +656,14 @@ fi
 
 if [ -d %{_localstatedir}/queue/ossec ]; then
   rm -rf %{_localstatedir}/queue/ossec/
+fi
+
+if [ -d %{_localstatedir}/alerts/execq ]; then
+  mv %{_localstatedir}/alerts/execq %{_localstatedir}/queue/execq
+fi
+
+if [ -d %{_localstatedir}/alerts ]; then
+  rm -rf %{_localstatedir}/alerts
 fi
 
 %clean
@@ -708,7 +717,6 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/agent_info
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/agent_info/db
 %attr(640, root, wazuh) %{_localstatedir}/queue/syscollector/norm_config.json
-%dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/alerts
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/rids
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/logcollector
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset/

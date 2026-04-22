@@ -230,9 +230,46 @@ WazuhUpgrade()
     # Set merged.mg permissions to new ones
     find $PREINSTALLEDDIR/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} \;
 
-    # Remove unnecessary `execa` socket
-    if [ -f "$DIRECTORY/queue/alerts/execa" ]; then
-        rm -f $DIRECTORY/queue/alerts/execa
+    # Remove deprecated queues and backup folders
+
+    # Moving ar queue if exists
+    if [ -d "$PREINSTALLEDDIR/queue/alerts/ar" ]; then
+        mv $PREINSTALLEDDIR/queue/alerts/ar $PREINSTALLEDDIR/queue/sockets/ar
+    fi
+
+    # Moving execq socket if exists
+    if [ -d "$PREINSTALLEDDIR/queue/alerts/execq" ]; then
+        mv $PREINSTALLEDDIR/queue/alerts/execq $PREINSTALLEDDIR/queue/sockets/execq
+    fi
+
+    # Remove old alerts queue
+    if [ -d "$PREINSTALLEDDIR/queue/alerts" ]; then
+        rm -rf $PREINSTALLEDDIR/queue/alerts
+    fi
+
+    # Moving old engine queue
+    if [ -d "$PREINSTALLEDDIR/queue/indexer/engine" ]; then
+        mv $PREINSTALLEDDIR/queue/indexer/engine $PREINSTALLEDDIR/queue/engine-output
+    fi
+
+    # Remove old vd_updater queue
+    if [ -d "$PREINSTALLEDDIR/queue/vd_updater" ]; then
+        mv $PREINSTALLEDDIR/queue/vd_updater $PREINSTALLEDDIR/queue/vd/vd_updater
+    fi
+
+    # Remove old shared backup folder
+    if [ -d "$PREINSTALLEDDIR/backup/shared" ]; then
+        rm -rf $PREINSTALLEDDIR/backup/shared
+    fi
+
+    # Remove agents backup folder
+    if [ -d "$PREINSTALLEDDIR/backup/agents" ]; then
+        rm -rf $PREINSTALLEDDIR/backup/agents
+    fi
+
+    # Remove old inventory_sync queue
+    if [ -d "$PREINSTALLEDDIR/inventory_sync" ]; then
+        mv $PREINSTALLEDDIR/inventory_sync $PREINSTALLEDDIR/queue/inventory_sync
     fi
 
 }

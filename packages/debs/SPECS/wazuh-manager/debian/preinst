@@ -153,6 +153,47 @@ EOF
             if [ -d ${DIR}/queue/agent-groups ]; then
                 mv -f ${DIR}/queue/agent-groups ${WAZUH_TMP_DIR}/
             fi
+
+
+            # Remove groups backup folder if exists
+            if [ -d ${DIR}/backup/groups ]; then
+                rm -rf ${DIR}/backup/groups
+            fi
+
+            # Remove agents backup folder if exists
+            if [ -d ${DIR}/backup/agents ]; then
+                rm -rf ${DIR}/backup/agents
+            fi
+
+            # Remove shared backup folder if exists
+            if [ -d ${DIR}/backup/shared ]; then
+                rm -rf ${DIR}/backup/shared
+            fi
+
+            # Moving old vd_updater folder if exists
+            if [ -d ${DIR}/queue/vd_updater ]; then
+                mv ${DIR}/queue/vd_updater ${DIR}/queue/vd/vd_updater
+            fi
+
+            # Moving ar folder if exists
+            if [ -d ${DIR}/queue/alerts/ar ]; then
+                mv ${DIR}/queue/alerts/ar ${DIR}/queue/sockets/ar
+            fi
+
+            # Deleting old alerts folder if exists
+            if [ -d ${DIR}/queue/alerts ]; then
+                rm -rf ${DIR}/queue/alerts
+            fi
+
+            # Moving engine folder if exists
+            if [ -d ${DIR}/queue/indexer/engine ]; then
+                mv ${DIR}/queue/indexer/engine ${DIR}/queue/engine-output
+            fi
+
+            # Moving inventory_sync folder if exists
+            if [ -d ${DIR}/inventory_sync ]; then
+                mv ${DIR}/inventory_sync ${DIR}/queue/inventory_sync
+            fi
         else
             # environment configuration (original behavior for install)
             prepare_tmp_dir
@@ -191,11 +232,6 @@ EOF
         # Remove plain-text agent information if exists
         if [ -d ${DIR}/queue/agent-info ]; then
             rm -rf ${DIR}/queue/agent-info/* > /dev/null 2>&1
-        fi
-
-        # Remove groups backup content if exists
-        if [ -d ${DIR}/backup/groups ]; then
-            rm -rf ${DIR}/backup/groups/* > /dev/null 2>&1
         fi
     ;;
 

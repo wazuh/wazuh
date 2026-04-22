@@ -97,6 +97,16 @@ EOF
             if [ -d ${DIR}/queue/ossec ]; then
                 mv ${DIR}/queue/ossec ${DIR}/queue/sockets
             fi
+
+            # Move old execq folder to its new location
+            if [ -d ${DIR}/queue/alerts/execq ]; then
+                mv ${DIR}/queue/alerts/execq ${DIR}/queue/sockets
+            fi
+
+            # Remove empty alerts folder
+            if [ -d ${DIR}/queue/alerts]; then
+                rm -rf ${DIR}/queue/alerts
+            fi
         fi
 
         if [ ! -z "$2" ] && [ ! -f ${DIR}/etc/ossec.conf ] ; then
@@ -107,6 +117,7 @@ EOF
         if [ -f /etc/init.d/ossec ]; then
             rm /etc/init.d/ossec
         fi
+
         # back up the current user rules
         if [ -f ${DIR}/etc/client.keys ]; then
             cp ${DIR}/etc/client.keys ${WAZUH_TMP_DIR}/client.keys

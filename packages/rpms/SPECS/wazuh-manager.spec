@@ -479,8 +479,37 @@ if [ -d %{_localstatedir}/queue/ossec ]; then
   rm -rf %{_localstatedir}/queue/ossec/
 fi
 
-# Remove groups backup files
-rm -rf %{_localstatedir}/backup/groups
+if [ -d %{_localstatedir}/backup/groups ]; then
+  rm -rf %{_localstatedir}/backup/groups
+fi
+
+if [ -d %{_localstatedir}/backup/agents ]; then
+  rm -rf %{_localstatedir}/backup/agents
+fi
+
+if [ -d %{_localstatedir}/backup/shared ]; then
+  rm -rf %{_localstatedir}/backup/shared
+fi
+
+if [ -d %{_localstatedir}/queue/vd_updater ]; then
+  mv %{_localstatedir}/queue/vd_updater %{_localstatedir}/queue/vd/vd_updater
+fi
+
+if [ -d %{_localstatedir}/queue/alerts/ar ]; then
+  mv %{_localstatedir}/queue/alerts/ar %{_localstatedir}/queue/sockets/ar
+fi
+
+if [ -d %{_localstatedir}/queue/alerts ]; then
+  rm -rf %{_localstatedir}/queue/alerts
+fi
+
+if [ -d %{_localstatedir}/queue/indexer/engine ]; then
+  mv %{_localstatedir}/queue/indexer/engine %{_localstatedir}/queue/engine-output
+fi
+
+if [ -d %{_localstatedir}/inventory_sync ]; then
+  mv %{_localstatedir}/inventory_sync %{_localstatedir}/queue/inventory_sync
+fi
 
 %triggerin -- glibc
 [ -r %{_sysconfdir}/localtime ] && cp -fpL %{_sysconfdir}/localtime %{_localstatedir}/etc
@@ -505,8 +534,6 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh-manager) %{_localstatedir}/api/scripts/*.py
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/backup
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/backup/db
-%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/backup/agents
-%dir %attr(750, root, wazuh-manager) %{_localstatedir}/backup/shared
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/bin
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/agent_groups
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/agent_upgrade
@@ -589,7 +616,6 @@ rm -fr %{buildroot}
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/rhel/*
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/agents-timestamp
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/alerts
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/cluster
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/db
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/rids

@@ -157,10 +157,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 
 /* Exec queue */
-#define EXECQUEUE "queue/alerts/execq"
+#define EXECQUEUE "queue/sockets/execq"
 
 /* Active Response queue */
-#define ARQUEUE "queue/alerts/ar"
+#define ARQUEUE "queue/sockets/ar"
 
 /* Agent groups location */
 #define GROUPS_DIR "queue/agent-groups"

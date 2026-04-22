@@ -38,7 +38,7 @@
 
 constexpr int SINGLE_THREAD_COUNT = 1;
 constexpr int DEFAULT_TIME {60 * 10}; // 10 minutes
-constexpr auto INVENTORY_SYNC_PATH {"inventory_sync"};
+constexpr auto INVENTORY_SYNC_PATH {"queue/inventory_sync"};
 constexpr auto INVENTORY_SYNC_TOPIC {"inventory-states"};
 constexpr auto INVENTORY_SYNC_SUBSCRIBER_ID {"inventory-sync-module"};
 constexpr auto WAZUH_STATES_INDEX_PATTERN {"wazuh-states-*"};
