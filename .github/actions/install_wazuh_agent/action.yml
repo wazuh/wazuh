@@ -16,15 +16,18 @@ runs:
   steps:
     - name: Install Wazuh agent
       shell: bash
+      env:
+        INSTALL_DIR: ${{ inputs.install_dir }}
+        DISABLE_SCA_SYSCOLLECTOR: ${{ inputs.disable_sca_syscollector }}
       run: |
         {
           echo 'USER_LANGUAGE="en"'
           echo 'USER_AGENT_MANAGER_IP="127.0.0.1"'
           echo 'USER_INSTALL_TYPE="agent"'
-          echo 'USER_DIR=${{ inputs.install_dir }}'
+          echo "USER_DIR=$INSTALL_DIR"
           echo 'USER_ENABLE_SYSCHECK="n"'
           echo 'USER_ENABLE_ROOTCHECK="n"'
-          if [[ "${{ inputs.disable_sca_syscollector }}" == "true" ]]; then
+          if [[ "$DISABLE_SCA_SYSCOLLECTOR" == "true" ]]; then
             echo 'USER_ENABLE_SYSCOLLECTOR="n"'
             echo 'USER_ENABLE_SCA="n"'
           fi
