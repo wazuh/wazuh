@@ -16,9 +16,9 @@ adapter::RouteHandler getDumperStatus(const std::shared_ptr<::dumper::IDumper>& 
 inline void registerHandlers(const std::shared_ptr<::dumper::IDumper>& dumper,
                              const std::shared_ptr<httpsrv::Server>& server)
 {
-    server->addRoute(httpsrv::Method::POST, "/event-dumper/activate", activateDumper(dumper));
-    server->addRoute(httpsrv::Method::POST, "/event-dumper/deactivate", deactivateDumper(dumper));
-    server->addRoute(httpsrv::Method::POST, "/event-dumper/status", getDumperStatus(dumper));
+    server->addRoute(httpsrv::Method::POST, "/_internal/event-dumper/activate", activateDumper(dumper));
+    server->addRoute(httpsrv::Method::POST, "/_internal/event-dumper/deactivate", deactivateDumper(dumper));
+    server->addRoute(httpsrv::Method::POST, "/_internal/event-dumper/status", getDumperStatus(dumper));
 }
 } // namespace api::dumper::handlers
 

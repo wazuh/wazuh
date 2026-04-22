@@ -1,21 +1,29 @@
 <head>
-    <title>Engine API REST Reference</title>
-    <!-- needed for adaptive design -->
+    <title>Engine API Reference</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
-    <!--
-    ReDoc doesn't change outer page styles
-    -->
     <style>
         body {
-            margin: 0;
-            padding: 0;
+            font-family: Arial, sans-serif;
+            margin: 2rem;
+            line-height: 1.5;
+        }
+
+        h1 {
+            margin-bottom: 0.5rem;
+        }
+
+        ul {
+            padding-left: 1.5rem;
         }
     </style>
 </head>
 
 <body>
-    <redoc spec-url='spec.yaml'></redoc>
-    <script src="https://cdn.jsdelivr.net/npm/redoc@2.5.2/bundles/redoc.standalone.js"> </script>
+    <h1>Engine API Reference</h1>
+    <p>The engine API is split into public and private contracts.</p>
+    <ul>
+        <li><a href="public-api-reference.html">Public API Reference</a></li>
+        <li><a href="private-api-reference.html">Private API Reference</a></li>
+    </ul>
 </body>
