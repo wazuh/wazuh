@@ -405,7 +405,6 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
         }
         w_auth_group_regex_compiled = true;
     }
-    w_mutex_unlock(&w_auth_group_regex_mutex);
 
     os_strdup(groups, tmp_groups);
     char *group = strtok_r(tmp_groups, delim, &save_ptr);
@@ -460,6 +459,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
         group = strtok_r(NULL, delim, &save_ptr);
         closedir(dp);
     }
+    w_mutex_unlock(&w_auth_group_regex_mutex);
     os_free(tmp_groups);
     return ret;
 }

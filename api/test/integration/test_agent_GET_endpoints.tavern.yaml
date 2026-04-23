@@ -6,7 +6,7 @@ stages:
   - name: Get wazuh version
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -19,7 +19,7 @@ stages:
   - name: Get all agents
     request: &get_agents
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1286,7 +1286,7 @@ stages:
   - name: Basic response agent
     request: &get_agent
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1326,7 +1326,7 @@ stages:
   - name: Try to show not existing agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1350,7 +1350,7 @@ stages:
   - name: Try show not existing agent by name
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1464,7 +1464,7 @@ stages:
   - name: Get client configuration from agent component
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/client"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/config/agent/client"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1485,7 +1485,7 @@ stages:
   - name: Get buffer configuration from agent component
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/buffer"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/config/agent/buffer"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1502,7 +1502,7 @@ stages:
   - name: Get labels configuration from agent component
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/labels"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/config/agent/labels"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1516,7 +1516,7 @@ stages:
   - name: Get internal configuration from agent component
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/internal"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/config/agent/internal"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1554,7 +1554,7 @@ stages:
   - name: Get global configuration from analysis component
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/global"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/config/analysis/global"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1583,7 +1583,7 @@ stages:
   - name: Get active_response configuration from analysis component
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/active_response"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/config/analysis/active_response"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1597,7 +1597,7 @@ stages:
   - name: Get alerts configuration from analysis component
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/alerts"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/config/analysis/alerts"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1613,7 +1613,7 @@ stages:
   - name: Get command configuration from analysis component
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/command"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/config/analysis/command"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1627,7 +1627,7 @@ stages:
   - name: Get internal configuration from analysis component
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/analysis/internal"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/config/analysis/internal"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1655,7 +1655,7 @@ stages:
   - name: Get auth configuration from auth component
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/auth/auth"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/config/auth/auth"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1680,7 +1680,7 @@ stages:
   - name: Get active-response configuration from com component (Manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/com/active-response"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/config/com/active-response"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1695,7 +1695,7 @@ stages:
   - name: Get active-response configuration from com component (Agent)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/com/active-response"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/config/com/active-response"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1710,7 +1710,7 @@ stages:
   - name: Get internal configuration from com component (Manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/com/internal"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/config/com/internal"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1727,7 +1727,7 @@ stages:
   - name: Get internal configuration from com component (Agent)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/com/internal"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/config/com/internal"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1744,7 +1744,7 @@ stages:
   - name: Get localfile configuration from logcollector component (Manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/logcollector/localfile"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/config/logcollector/localfile"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1758,7 +1758,7 @@ stages:
   - name: Get localfile configuration from logcollector component (Agent)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/logcollector/localfile"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/config/logcollector/localfile"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1772,7 +1772,7 @@ stages:
   - name: Get socket configuration from logcollector component (Manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/logcollector/socket"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/config/logcollector/socket"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1782,7 +1782,7 @@ stages:
   - name: Get socket configuration from logcollector component (Agent)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/logcollector/socket"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/config/logcollector/socket"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1792,7 +1792,7 @@ stages:
   - name: Get internal configuration from logcollector component (Manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/logcollector/internal"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/config/logcollector/internal"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1822,7 +1822,7 @@ stages:
   - name: Get internal configuration from logcollector component (Agent)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/logcollector/internal"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/config/logcollector/internal"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1852,7 +1852,7 @@ stages:
   - name: Get internal configuration from monitor component
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/monitor/internal"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/config/monitor/internal"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1875,7 +1875,7 @@ stages:
   - name: Get remote configuration from request component
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/request/remote"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/config/request/remote"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1894,7 +1894,7 @@ stages:
   - name: Get internal configuration from request component
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/request/internal"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/config/request/internal"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1927,7 +1927,7 @@ stages:
   - name: Get syscheck configuration from syscheck component (Manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/syscheck/syscheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/config/syscheck/syscheck"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1949,7 +1949,7 @@ stages:
   - name: Get syscheck configuration from syscheck component (Agent)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/syscheck/syscheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/config/syscheck/syscheck"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1971,7 +1971,7 @@ stages:
   - name: Get rootcheck configuration from syscheck component (Manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/syscheck/rootcheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/config/syscheck/rootcheck"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1999,7 +1999,7 @@ stages:
   - name: Get rootcheck configuration from syscheck component (Agent)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/syscheck/rootcheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/config/syscheck/rootcheck"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2027,7 +2027,7 @@ stages:
   - name: Get internal configuration from syscheck component (Manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/syscheck/internal"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/config/syscheck/internal"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2050,7 +2050,7 @@ stages:
   - name: Get internal configuration from syscheck component (Agent)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/syscheck/internal"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/config/syscheck/internal"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2073,7 +2073,7 @@ stages:
   - name: Get internal configuration from wazuh-db component
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/wazuh-db/internal"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/config/wazuh-db/internal"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2091,7 +2091,7 @@ stages:
   - name: Get wdb configuration from wazuh-db component
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/wazuh-db/wdb"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/config/wazuh-db/wdb"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2110,7 +2110,7 @@ stages:
   - name: Get wmodules configuration from wmodules component (Manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/wmodules/wmodules"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/config/wmodules/wmodules"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2124,7 +2124,7 @@ stages:
   - name: Get wmodules configuration from wmodules component (Agent)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/wmodules/wmodules"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/config/wmodules/wmodules"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2138,7 +2138,7 @@ stages:
   - name: Try to show config of a non existing agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/999/config/mail/global"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/999/config/mail/global"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2150,7 +2150,7 @@ stages:
   - name: Try to show config of an invalid agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/wrong_name/config/mail/global"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/wrong_name/config/mail/global"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2162,7 +2162,7 @@ stages:
   - name: Request Error Component Parameter
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/wrong_component/global"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/config/wrong_component/global"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2174,7 +2174,7 @@ stages:
   - name: Request Error Configuration Parameter
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/mail/wrong_configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/config/mail/wrong_configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2186,7 +2186,7 @@ stages:
   - name: Request Error Component and Configuration Parameters
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/wrong_component/wrong_configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/config/wrong_component/wrong_configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2198,7 +2198,7 @@ stages:
   - name: Request error on invalid component and configuration pair
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/wmodules"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/config/agent/wmodules"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2218,7 +2218,7 @@ stages:
 - name: Get cluster configuration from com component (Manager)
   request:
     verify: False
-    url: "{protocol:s}://{host:s}:{port:d}/agents/000/config/com/cluster"
+    url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/config/com/cluster"
     method: GET
     headers:
       Authorization: "Bearer {test_login_token}"
@@ -2245,7 +2245,7 @@ stages:
   - name: Try to get sync of agent 000 (manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/group/is_sync"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/group/is_sync"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2266,7 +2266,7 @@ stages:
   - name: Try to get sync of a non existing agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/999/group/is_sync"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/999/group/is_sync"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2287,7 +2287,7 @@ stages:
   - name: Try get sync agent by name
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/group/is_sync"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/bad_id/group/is_sync"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2299,7 +2299,7 @@ stages:
   - name: Get agent sync
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/is_sync"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/group/is_sync"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2323,7 +2323,7 @@ stages:
   - name: Try get key agent 000 (manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/key"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/key"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2344,7 +2344,7 @@ stages:
   - name: Try get key not existing agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/999/key"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/999/key"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2365,7 +2365,7 @@ stages:
   - name: Try get key agent by name
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/key"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/bad_id/key"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2377,7 +2377,7 @@ stages:
   - name: Get agent key
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/key"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/key"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2400,7 +2400,7 @@ stages:
   - name: Try to get daemon stats from agent 000 (manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/daemons/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2421,7 +2421,7 @@ stages:
   - name: Get all daemons' stats from agent 001
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/daemons/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2450,7 +2450,7 @@ stages:
   - name: Try to get all daemons' stats from agent 001 with a wrong daemons list
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/daemons/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/daemons/stats"
       method: GET
       params:
         daemons_list: wrong_daemon_1,wrong_daemon_2
@@ -2465,7 +2465,7 @@ stages:
   - name: Get all daemons' stats from agent 001 with a specified daemons list
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/daemons/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/daemons/stats"
       method: GET
       params:
         daemons_list: wazuh-remoted
@@ -2490,7 +2490,7 @@ stages:
   - name: Try to get daemon stats from a non-existent agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/021/daemons/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/021/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2516,7 +2516,7 @@ stages:
   - name: Get logcollector stats from agent 000 (manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/stats/logcollector"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/stats/logcollector"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2541,7 +2541,7 @@ stages:
   - name: Get wazuh-agentd stats from agent 000 (manager, not allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/000/stats/agent"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/000/stats/agent"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2562,7 +2562,7 @@ stages:
   - name: Get logcollector stats from agent 002
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/002/stats/logcollector"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/002/stats/logcollector"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2580,7 +2580,7 @@ stages:
   - name: Get wazuh-agentd stats from agent 001
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/stats/agent"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/stats/agent"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2604,7 +2604,7 @@ stages:
   - name: Try to get logcollector stats from agent 007 (incompatible version)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/007/stats/logcollector"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/007/stats/logcollector"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2625,7 +2625,7 @@ stages:
   - name: Try to get logcollector stats from agent 017 (non-existent)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/017/stats/logcollector"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/017/stats/logcollector"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2646,7 +2646,7 @@ stages:
   - name: Try to get invalid component stats from agent 000
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/017/stats/invalid_component"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/017/stats/invalid_component"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2664,7 +2664,7 @@ stages:
   - name: Basic response agents groups
     request: &get_agents_groups
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2998,7 +2998,7 @@ stages:
   - name: Try get all agents in one group
     request: &groups_id_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/group3/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/group3/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -3102,7 +3102,7 @@ stages:
   - name: Params, bad group name
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/wrong_group/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/wrong_group/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -3114,7 +3114,7 @@ stages:
   - name: Params, invalid group name (not alphanumeric)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/wrong_%_group/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/wrong_%_group/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -3440,7 +3440,7 @@ stages:
   - name: Get wazuh version
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -3479,7 +3479,7 @@ stages:
   - name: Try get the configuration of a group
     request: &groups_id_config_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/default/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/default/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -3498,7 +3498,7 @@ stages:
   - name: Try get the configuration of a bad group
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/wrong_group/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/wrong_group/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -3510,7 +3510,7 @@ stages:
   - name: Try get the configuration of a bad group (not alphanumeric)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/wrong_%group/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/wrong_%group/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -3608,7 +3608,7 @@ stages:
   - name: Try get the files of a group
     request: &groups_id_files_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/default/files"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/default/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -3724,7 +3724,7 @@ stages:
   - name: Try get the files of a bad group name
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/wrong_group/files"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/wrong_group/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -3747,7 +3747,7 @@ stages:
   - name: Try get the files of a bad group name (no alphanumeric)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/wrong_%_group/files"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/wrong_%_group/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -3947,7 +3947,7 @@ stages:
   - name: Get one file of a group (JSON)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/agent.conf"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/default/files/agent.conf"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -3960,7 +3960,7 @@ stages:
   - name: Get one file of a group (XML)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/agent.conf"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/default/files/agent.conf"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -3974,7 +3974,7 @@ stages:
   - name: Get one file of a group (plain text)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/merged.mg"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/default/files/merged.mg"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -3988,7 +3988,7 @@ stages:
   - name: Try get one file of a group, bad group
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/wrong_group/files/agent.conf"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/wrong_group/files/agent.conf"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -3998,7 +3998,7 @@ stages:
   - name: Try get one file of a group, bad group (not aplhanumeric)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/wrong_%_group/files/agent.conf"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/wrong_%_group/files/agent.conf"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -4010,7 +4010,7 @@ stages:
   - name: Try get one file of a group, non existent file
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/agent.mg"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/default/files/agent.mg"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -4027,7 +4027,7 @@ stages:
   - name: Basic response agents name
     request: &get_agents_by_name
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -4048,7 +4048,7 @@ stages:
   - name: Error agent name
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents?name=wrong_agent"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents?name=wrong_agent"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -4125,7 +4125,7 @@ stages:
   - name: Get the agents without group
     request: &no_group_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/no_group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/no_group"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -4332,7 +4332,7 @@ stages:
   - name: Get the agents without group, sort
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/no_group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/no_group"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -4348,7 +4348,7 @@ stages:
   - name: Select
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/no_group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/no_group"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -4372,7 +4372,7 @@ stages:
   - name: Get the outdated agents
     request: &agents_outdated_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/outdated"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/outdated"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -4611,7 +4611,7 @@ stages:
   - name: Returns all the different combinations that agents have for the selected fields. It also indicates the total number of agents that have each combination.
     request: &distinct_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/stats/distinct"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -4689,7 +4689,7 @@ stages:
   - name: Get the different combinations for os.platform, search
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/stats/distinct"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -4922,7 +4922,7 @@ stages:
   - name: Get the different combinations for all fields
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/stats/distinct"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -4946,7 +4946,7 @@ stages:
   - name: Get the agents status summary
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/summary"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/summary"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -4976,7 +4976,7 @@ stages:
   - name: Get the agents status summary
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/summary/status"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/summary/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -5004,7 +5004,7 @@ stages:
   - name: Get the summary/os of all agents
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/summary/os"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/summary/os"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -5027,7 +5027,7 @@ stages:
   - name: Upgrade all agents (only old agents will appear in affected_items). We use q to leave agent 008 with no tasks in DB
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -5054,7 +5054,7 @@ stages:
   - name: Try to get upgrade result from agent 000 (manager)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_result"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -5077,7 +5077,7 @@ stages:
   - name: Try to get upgrade result from a not existing agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_result"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -5101,7 +5101,7 @@ stages:
   - name: Try to get upgrade results with an invalid agents list
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_result"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -5115,7 +5115,7 @@ stages:
   - name: Try to get upgrade results from a list of agents that cannot be upgraded (000, not existing and non active agents)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_result"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -5157,7 +5157,7 @@ stages:
   - name: Try to get upgrade result from agent with no task in DB
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_result"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -5182,7 +5182,7 @@ stages:
   - name: Try to get upgrade results from a list of agents with filters not matching them
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_result"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -5210,7 +5210,7 @@ stages:
   - name: Get upgrade results from all agents
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_result"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

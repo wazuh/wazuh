@@ -8,7 +8,7 @@ stages:
     request: &get_decoders
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/decoders"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -411,7 +411,7 @@ stages:
     request: &get_decoders_with_name
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/decoders"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -581,7 +581,7 @@ stages:
     request: &get_decoders_files
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders/files"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -892,7 +892,7 @@ stages:
     request: &get_decoders_parents
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/parents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders/parents"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1069,7 +1069,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0005-wazuh_decoders.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders/files/0005-wazuh_decoders.xml"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1087,7 +1087,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0005-wazuh_decoders.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders/files/0005-wazuh_decoders.xml"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -1100,7 +1100,7 @@ stages:
   - name: Download decoder (it does not exist)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/no_exists.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders/files/no_exists.xml"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1121,7 +1121,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0005-wazuh_decoders.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders/files/0005-wazuh_decoders.xml"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -1143,7 +1143,7 @@ stages:
   - name: Download decoder (invalid file 1)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/decoderxml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders/files/decoderxml"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1152,7 +1152,7 @@ stages:
   - name: Download decoder (invalid file 2)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/..%2F..%2Fetc%local_decoder.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders/files/..%2F..%2Fetc%local_decoder.xml"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1166,7 +1166,7 @@ stages:
   - name: Upload new valid decoder
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/new_decoder.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders/files/new_decoder.xml"
       method: PUT
       data: "{new_decoder:s}"
       headers:
@@ -1186,7 +1186,7 @@ stages:
   - name: Upload same decoder (overwrite=False)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/new_decoder.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders/files/new_decoder.xml"
       method: PUT
       data: "{new_decoder:s}"
       headers:
@@ -1209,7 +1209,7 @@ stages:
   - name: Upload same decoder (overwrite=True)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/new_decoder.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders/files/new_decoder.xml"
       method: PUT
       data: "{new_decoder:s}"
       headers:
@@ -1223,7 +1223,7 @@ stages:
   - name: Upload decoder with relative_dirname
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/new_decoder.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders/files/new_decoder.xml"
       method: PUT
       data: "{new_decoder:s}"
       headers:
@@ -1246,7 +1246,7 @@ stages:
   - name: Upload decoder with invalid name
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/new_Decoder"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders/files/new_Decoder"
       method: PUT
       data: "{new_decoder:s}"
       headers:
@@ -1258,7 +1258,7 @@ stages:
   - name: Upload invalid decoder
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/invalid_decoder.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders/files/invalid_decoder.xml"
       method: PUT
       data: "{new_decoder_with_syntax_error:s}"
       headers:
@@ -1281,7 +1281,7 @@ stages:
   - name: Upload empty xml decoder
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/empty_file.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders/files/empty_file.xml"
       method: PUT
       data: "{empty_file_xml:s}"
       headers:
@@ -1309,7 +1309,7 @@ stages:
   - name: Delete user decoder
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/new_decoder.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders/files/new_decoder.xml"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1327,7 +1327,7 @@ stages:
   - name: Delete user decoder in subdir
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/new_decoder.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders/files/new_decoder.xml"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1347,7 +1347,7 @@ stages:
   - name: Delete same user decoder (it does not exist now)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/new_decoder.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders/files/new_decoder.xml"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1368,7 +1368,7 @@ stages:
   - name: Delete ruleset decoder
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0010-active-response_decoders.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders/files/0010-active-response_decoders.xml"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1389,7 +1389,7 @@ stages:
   - name: Delete invalid decoder
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/ossec.conf"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/decoders/files/ossec.conf"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
