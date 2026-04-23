@@ -641,7 +641,7 @@ private:
             }
         };
 
-        for (size_t i = 0; i < numSlices; ++i)
+        for (size_t i = 1; i <= numSlices; ++i)
         {
             threads.emplace_back(sliceWorker, i);
         }
