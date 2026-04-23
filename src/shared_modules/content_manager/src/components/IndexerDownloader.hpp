@@ -466,6 +466,12 @@ private:
 
         while (true)
         {
+            if (context.spUpdaterBaseContext->spStopCondition->check())
+            {
+                logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested during PIT fetch — aborting.");
+                break;
+            }
+
             const auto hitsObj = syncConnector.search(pit, pageSize, query, sort, searchAfter, sourceFilter);
             const auto& hitArray = hitsObj.at("hits");
 
@@ -570,6 +576,12 @@ private:
 
                 while (true)
                 {
+                    if (context.spUpdaterBaseContext->spStopCondition->check())
+                    {
+                        logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested — slice %zu aborting.", sliceId);
+                        break;
+                    }
+
                     const auto hitsObj =
                         sliceConnector.search(pit, pageSize, query, sort, searchAfter, sourceFilter, sliceParam);
                     const auto& hitArray = hitsObj.at("hits");
