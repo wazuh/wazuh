@@ -17,13 +17,11 @@
 
 namespace base::utils
 {
-// TODO: Make shouldAbort mandatory and remove the default nullptr value, to enforce better cancellation support in retry logic.
-
 /**
- * @brief Execute an operation with retry logic and optional abort support
+ * @brief Execute an operation with retry logic and abort support
  *
  * This function attempts to execute the provided operation and retries it if an exception is thrown. It logs each
- * attempt and waits for a specified duration between retries. If a shutdownRequested flag is provided, it is checked
+ * attempt and waits for a specified duration between retries. The shutdownRequested flag is checked
  * before each retry attempt and during the wait between retries (split into 1-second intervals for responsive
  * cancellation).
  * @tparam Func Callable type that performs the operation
@@ -32,7 +30,7 @@ namespace base::utils
  * @param message Description of the operation for logging purposes
  * @param maxAttempts Maximum number of retry attempts, cannot be zero (will default to 1 attempt)
  * @param waitSeconds Seconds to wait between retries, cannot be zero (will default to 1 second)
- * @param shutdownRequested Optional pointer to an atomic flag that signals abort when true
+ * @param shutdownRequested Atomic flag that signals abort when true
  * @return decltype(auto) Result of the operation
  * @throw std::runtime_error if aborted, or if all retry attempts fail
  */
@@ -42,7 +40,7 @@ decltype(auto) executeWithRetry(Func&& operation,
                                 std::string_view message,
                                 std::size_t maxAttempts,
                                 std::size_t waitSeconds,
-                                const std::atomic<bool>* shutdownRequested = nullptr)
+                                const std::atomic<bool>& shutdownRequested)
 {
     // Ensure at least 1 second wait to avoid tight loop
     waitSeconds = waitSeconds == 0 ? 1 : waitSeconds;
@@ -50,7 +48,7 @@ decltype(auto) executeWithRetry(Func&& operation,
     maxAttempts = maxAttempts == 0 ? 1 : maxAttempts;
     for (std::size_t attempt = 1; attempt <= maxAttempts; ++attempt)
     {
-        if (shutdownRequested && shutdownRequested->load(std::memory_order_relaxed))
+        if (shutdownRequested.load(std::memory_order_relaxed))
         {
             throw std::runtime_error(
                 fmt::format("{}::{} aborted before attempt {}", message, componentOperationName, attempt));
@@ -71,24 +69,17 @@ decltype(auto) executeWithRetry(Func&& operation,
                           e.what());
             if (attempt < maxAttempts)
             {
-                if (shutdownRequested)
+                // Split sleep into 1-second chunks for responsive abort
+                for (std::size_t s = 0; s < waitSeconds; ++s)
                 {
-                    // Split sleep into 1-second chunks for responsive abort
-                    for (std::size_t s = 0; s < waitSeconds; ++s)
+                    if (shutdownRequested.load(std::memory_order_relaxed))
                     {
-                        if (shutdownRequested->load(std::memory_order_relaxed))
-                        {
-                            throw std::runtime_error(fmt::format("{}::{} aborted during retry wait (attempt {})",
-                                                                 message,
-                                                                 componentOperationName,
-                                                                 attempt));
-                        }
-                        std::this_thread::sleep_for(std::chrono::seconds(1));
+                        throw std::runtime_error(fmt::format("{}::{} aborted during retry wait (attempt {})",
+                                                             message,
+                                                             componentOperationName,
+                                                             attempt));
                     }
-                }
-                else
-                {
-                    std::this_thread::sleep_for(std::chrono::seconds(waitSeconds));
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
                 }
             }
             else
@@ -100,6 +91,27 @@ decltype(auto) executeWithRetry(Func&& operation,
     }
 
     throw std::runtime_error(fmt::format("Unreachable code in {}::{}", message, componentOperationName));
+}
+
+/**
+ * @brief Execute an operation with retry logic and no abort support
+ *
+ * This overload keeps call sites simple when no cancellation flag exists.
+ */
+template<typename Func>
+decltype(auto) executeWithRetry(Func&& operation,
+                                const std::string& componentOperationName,
+                                std::string_view message,
+                                std::size_t maxAttempts,
+                                std::size_t waitSeconds)
+{
+    static const std::atomic<bool> kNeverShutdown {false};
+    return executeWithRetry(std::forward<Func>(operation),
+                            componentOperationName,
+                            message,
+                            maxAttempts,
+                            waitSeconds,
+                            kNeverShutdown);
 }
 
 /**

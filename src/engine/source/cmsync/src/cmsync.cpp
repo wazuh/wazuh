@@ -169,7 +169,7 @@ bool CMSync::existSpaceInRemote(std::string_view space)
                                          fmt::format("Check '{}' space in wazuh-indexer", space),
                                          m_attempts,
                                          m_waitSeconds,
-                                         &m_shutdownRequested);
+                                         m_shutdownRequested);
 }
 
 void CMSync::downloadNamespace(std::string_view originSpace,
@@ -185,7 +185,7 @@ void CMSync::downloadNamespace(std::string_view originSpace,
                                       fmt::format("Download '{}' space from wazuh-indexer", originSpace),
                                       m_attempts,
                                       m_waitSeconds,
-                                      &m_shutdownRequested);
+                                      m_shutdownRequested);
 
     // Create destNamespace
     try
@@ -225,7 +225,7 @@ std::pair<std::string, bool> CMSync::getPolicyHashAndEnabledFromRemote(std::stri
         fmt::format("Get policy hash and enabled status for '{}' space from wazuh-indexer", space),
         m_attempts,
         m_waitSeconds,
-        &m_shutdownRequested);
+        m_shutdownRequested);
 }
 
 cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view originSpace)
