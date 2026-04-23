@@ -4,12 +4,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-sonoma:
-    runs-on: macos-14
+  deprecated:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v3
-      - name: Build wazuh agent for macOS 14
-        run: |
-          make deps -C src TARGET=agent -j3
-          make -C src TARGET=agent -j3
+      - name: Warning
+        run: echo "This workflow is deprecated. Be careful, you have just run it from main."
