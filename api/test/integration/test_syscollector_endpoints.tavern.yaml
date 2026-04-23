@@ -7,7 +7,7 @@ stages:
     request: &os_request_001
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/os"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscollector/001/os"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -55,7 +55,7 @@ stages:
   - name: Try to get 012 agent's syscollector OS data (never connected)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/012/os"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscollector/012/os"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -109,7 +109,7 @@ stages:
   - name: Hardware of an agent
     request: &hardware_request_002
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/hardware"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscollector/002/hardware"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -188,7 +188,7 @@ stages:
   - name: Packages of and agent
     request: &packages_request_003
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/003/packages"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscollector/003/packages"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -589,7 +589,7 @@ stages:
   - name: Processes of an agent with limit = 1
     request: &processes_request_004
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/004/processes"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscollector/004/processes"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1093,7 +1093,7 @@ stages:
     request: &port_request_005
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/005/ports"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscollector/005/ports"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1362,7 +1362,7 @@ stages:
     request: &netaddr_request_002
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netaddr"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscollector/002/netaddr"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -1762,7 +1762,7 @@ stages:
     request: &netproto_request_003
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/003/netproto"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscollector/003/netproto"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -2101,7 +2101,7 @@ stages:
     request: &netiface_request_008
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/008/netiface"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscollector/008/netiface"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -2777,7 +2777,7 @@ stages:
     request: &os_request
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/os"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscollector/002/os"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -2863,7 +2863,7 @@ stages:
   - name: Hardware of an agent
     request: &hardware_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/hardware"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscollector/002/hardware"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -2939,7 +2939,7 @@ stages:
     request: &netaddr_request
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netaddr"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscollector/002/netaddr"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -3272,7 +3272,7 @@ stages:
     request: &netproto_request
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netproto"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscollector/002/netproto"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -3614,7 +3614,7 @@ stages:
     request: &netiface_request
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netiface"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscollector/002/netiface"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -4264,7 +4264,7 @@ stages:
     request: &hotfix_request_001
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/hotfixes"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscollector/001/hotfixes"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -4315,7 +4315,7 @@ stages:
     request: &user_request_001
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/users"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscollector/001/users"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -4348,7 +4348,7 @@ stages:
     request: &group_request_001
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/groups"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscollector/001/groups"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -4381,7 +4381,7 @@ stages:
     request: &browser_extension_request_001
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/browser_extensions"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscollector/001/browser_extensions"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -4407,7 +4407,7 @@ stages:
 
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/browser_extensions"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscollector/001/browser_extensions"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -4440,7 +4440,7 @@ stages:
     request: &service_request_001
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/services"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscollector/001/services"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -4465,7 +4465,7 @@ stages:
         function: tavern_utils:test_distinct_key
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/services"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscollector/001/services"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
