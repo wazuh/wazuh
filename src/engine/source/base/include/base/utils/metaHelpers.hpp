@@ -94,27 +94,6 @@ decltype(auto) executeWithRetry(Func&& operation,
 }
 
 /**
- * @brief Execute an operation with retry logic and no abort support
- *
- * This overload keeps call sites simple when no cancellation flag exists.
- */
-template<typename Func>
-decltype(auto) executeWithRetry(Func&& operation,
-                                const std::string& componentOperationName,
-                                std::string_view message,
-                                std::size_t maxAttempts,
-                                std::size_t waitSeconds)
-{
-    static const std::atomic<bool> kNeverShutdown {false};
-    return executeWithRetry(std::forward<Func>(operation),
-                            componentOperationName,
-                            message,
-                            maxAttempts,
-                            waitSeconds,
-                            kNeverShutdown);
-}
-
-/**
  * @brief Locks a weak pointer and returns a shared pointer.
  *
  * @tparam T Type of the resource
