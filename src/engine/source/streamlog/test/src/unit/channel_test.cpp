@@ -2169,6 +2169,7 @@ TEST_F(ChannelHandlerTest, RetentionMaxFilesDeletesOldest)
     config.pattern = "${name}-${YYYY}-${MM}-${DD}-${counter}.log";
 
     // Pre-create 5 "old" files in basePath with staggered mtime
+    const std::time_t baseTimeMaxFiles = 1000;
     std::vector<std::filesystem::path> oldFiles;
     for (int i = 0; i < 5; ++i)
     {
@@ -2179,7 +2180,7 @@ TEST_F(ChannelHandlerTest, RetentionMaxFilesDeletesOldest)
         }
         oldFiles.push_back(filePath);
         // stagger mtime so ordering is deterministic
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        setFileMtime(filePath, baseTimeMaxFiles + i * 10);
     }
 
     auto handler = createBasicHandler("retention-maxfiles", config);
@@ -2524,6 +2525,307 @@ TEST_F(ChannelHandlerTest, RetentionWithCompressionMultiplePendingRotations)
         ++remaining;
     }
     EXPECT_LE(remaining, config.maxFiles);
+
+    writer.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+// ============= DEGRADATION / ERROR PATH TESTS =============
+
+// When scheduleTask() throws, the in-flight entries for the failed file must be unregistered
+// so that subsequent retention cleanup does NOT skip those files.
+TEST_F(ChannelHandlerTest, ScheduleTaskThrowsUnregistersInFlight)
+{
+    using namespace ::testing;
+
+    auto config = defaultConfig;
+    config.maxSize = 1 << 20;
+    config.maxFiles = 2;
+    config.shouldCompress = true;
+    config.compressionLevel = 1;
+    config.pattern = "${name}-${YYYY}-${MM}-${DD}-${counter}.log";
+
+    // Pre-create old files so retention has something to evaluate.
+    const std::time_t baseTime = 1000;
+    std::vector<std::filesystem::path> oldFiles;
+    for (int i = 0; i < 4; ++i)
+    {
+        auto filePath = tmpDir / ("throw-old-" + std::to_string(i) + ".log");
+        {
+            std::ofstream f(filePath);
+            f << std::string(100, 'T');
+        }
+        setFileMtime(filePath, baseTime + i * 10);
+        oldFiles.push_back(filePath);
+    }
+
+    // First call throws; subsequent calls execute inline (simulate transient failure).
+    auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+    bool firstCall = true;
+    EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
+        .WillRepeatedly(
+            [&firstCall](std::string_view, scheduler::TaskConfig&& cfg)
+            {
+                if (firstCall)
+                {
+                    firstCall = false;
+                    throw std::runtime_error("Simulated scheduler full");
+                }
+                cfg.taskFunction();
+            });
+
+    auto handler = createHandlerWithScheduler("sched-throw", config, mockScheduler);
+    auto writer = handler->createWriter();
+
+    // Rotation 1: scheduleTask throws — in-flight must be cleaned up.
+    (*writer)(std::string(config.maxSize + 1, 'A'));
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    // Rotation 2: scheduleTask succeeds and runs inline, triggering retention cleanup.
+    (*writer)(std::string(config.maxSize + 1, 'B'));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    // The file from rotation 1 was never compressed (task threw), so it remains as .log.
+    // Since in-flight was cleaned up, retention should still be able to delete it if needed.
+    // Verify that old pre-created files were pruned (retention ran successfully).
+    size_t oldRemaining = 0;
+    for (const auto& f : oldFiles)
+    {
+        if (std::filesystem::exists(f))
+            ++oldRemaining;
+    }
+    EXPECT_LT(oldRemaining, 4u) << "Retention should have deleted some old files despite first scheduleTask throwing";
+
+    writer.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+// When the scheduler weak_ptr is expired at rotation time, compression is skipped
+// but the channel keeps working, and retention still runs (non-compressed path).
+TEST_F(ChannelHandlerTest, SchedulerExpiredSkipsCompression)
+{
+    using namespace ::testing;
+
+    auto config = defaultConfig;
+    config.maxSize = 1 << 20;
+    config.maxFiles = 2;
+    config.shouldCompress = true; // Compression is configured…
+    config.compressionLevel = 1;
+    config.pattern = "${name}-${YYYY}-${MM}-${DD}-${counter}.log";
+
+    // Create a scheduler, build the handler, then destroy the scheduler before writing.
+    auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+    // scheduleTask should never be called because weak_ptr will be expired.
+    EXPECT_CALL(*mockScheduler, scheduleTask(_, _)).Times(0);
+
+    auto handler = createHandlerWithScheduler("sched-expired", config, mockScheduler);
+    auto writer = handler->createWriter();
+
+    // Destroy the scheduler — weak_ptr inside the handler becomes expired.
+    mockScheduler.reset();
+
+    // Write enough to trigger rotation.
+    (*writer)(std::string(config.maxSize + 1, 'E'));
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    // The handler should still be functional (not crashed / ErrorClosed).
+    // Verify the active file exists.
+    EXPECT_TRUE(std::filesystem::exists(handler->getCurrentFilePath()))
+        << "Active file should exist even when scheduler is expired";
+
+    // The rotated file should remain uncompressed (no .gz created).
+    bool foundGz = false;
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(tmpDir))
+    {
+        if (entry.path().extension() == ".gz")
+        {
+            foundGz = true;
+            break;
+        }
+    }
+    EXPECT_FALSE(foundGz) << "No .gz files should exist when scheduler is expired";
+
+    writer.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+// Retention cleanup must skip files that are registered as in-flight.
+// Simulates the window where compression tasks are queued but not yet executed:
+// in-flight files should survive cleanup even when they exceed retention limits.
+TEST_F(ChannelHandlerTest, RetentionSkipsInFlightFiles)
+{
+    using namespace ::testing;
+
+    auto config = defaultConfig;
+    config.maxSize = 1 << 20;
+    config.maxFiles = 1; // aggressive: would normally delete everything except 1
+    config.shouldCompress = true;
+    config.compressionLevel = 1;
+    config.pattern = "${name}-${YYYY}-${MM}-${DD}-${counter}.log";
+
+    // Collect tasks without executing them so files stay registered as in-flight.
+    std::vector<scheduler::TaskConfig> pendingTasks;
+    auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+    EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
+        .WillRepeatedly([&pendingTasks](std::string_view, scheduler::TaskConfig&& cfg)
+                        { pendingTasks.push_back(std::move(cfg)); });
+
+    auto handler = createHandlerWithScheduler("inflight-skip", config, mockScheduler);
+    auto writer = handler->createWriter();
+
+    // Trigger 3 rotations → 3 files become in-flight.
+    for (int i = 0; i < 3; ++i)
+    {
+        (*writer)(std::string(config.maxSize + 1, 'I' + i));
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+
+    ASSERT_GE(pendingTasks.size(), 3u) << "Expected at least 3 compression tasks";
+
+    // The rotated .log files are in-flight (registered before scheduling).
+    // Now execute only the LAST task — its retention cleanup runs with maxFiles=1.
+    // The other 2 files are still in-flight and must NOT be deleted.
+    pendingTasks.back().taskFunction();
+
+    // Count surviving .log files (uncompressed rotated files that are still in-flight).
+    size_t inFlightLogFiles = 0;
+    const auto activeInode = [&]()
+    {
+        struct stat s {};
+        ::stat(handler->getCurrentFilePath().c_str(), &s);
+        return s.st_ino;
+    }();
+
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(tmpDir))
+    {
+        if (!entry.is_regular_file())
+            continue;
+        struct stat s {};
+        if (::stat(entry.path().c_str(), &s) != 0)
+            continue;
+        if (s.st_ino == activeInode)
+            continue;
+        if (entry.path().extension() == ".log")
+            ++inFlightLogFiles;
+    }
+
+    // At least the 2 still-pending in-flight files should survive.
+    EXPECT_GE(inFlightLogFiles, 2u) << "In-flight .log files should not be deleted by retention";
+
+    // Now execute the remaining tasks — after that, retention should clean up normally.
+    for (size_t i = 0; i < pendingTasks.size() - 1; ++i)
+    {
+        pendingTasks[i].taskFunction();
+    }
+
+    writer.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+// When compression fails (e.g. source file already deleted), the in-flight entries
+// must still be unregistered so that future retention runs are not permanently blocked.
+TEST_F(ChannelHandlerTest, CompressionFailureStillUnregistersInFlight)
+{
+    using namespace ::testing;
+
+    auto config = defaultConfig;
+    config.maxSize = 1 << 20;
+    config.maxFiles = 2;
+    config.shouldCompress = true;
+    config.compressionLevel = 1;
+    config.pattern = "${name}-${YYYY}-${MM}-${DD}-${counter}.log";
+
+    // Pre-create old files for retention to evaluate.
+    const std::time_t baseTime = 1000;
+    for (int i = 0; i < 4; ++i)
+    {
+        auto filePath = tmpDir / ("fail-old-" + std::to_string(i) + ".log");
+        {
+            std::ofstream f(filePath);
+            f << std::string(100, 'F');
+        }
+        setFileMtime(filePath, baseTime + i * 10);
+    }
+
+    // Collect the first task, execute subsequent ones inline.
+    std::vector<scheduler::TaskConfig> collectedTasks;
+    auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+    bool collectFirst = true;
+    EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
+        .WillRepeatedly(
+            [&collectedTasks, &collectFirst](std::string_view, scheduler::TaskConfig&& cfg)
+            {
+                if (collectFirst)
+                {
+                    collectFirst = false;
+                    collectedTasks.push_back(std::move(cfg));
+                }
+                else
+                {
+                    cfg.taskFunction();
+                }
+            });
+
+    auto handler = createHandlerWithScheduler("compress-fail", config, mockScheduler);
+    auto writer = handler->createWriter();
+
+    // Rotation 1: task is collected but not executed.
+    (*writer)(std::string(config.maxSize + 1, 'X'));
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    ASSERT_EQ(collectedTasks.size(), 1u);
+
+    // Delete the source file that the collected task will try to compress → compression will fail.
+    // We need to find the rotated .log file (not the current active one).
+    std::filesystem::path rotatedFile;
+    const auto activeInode = [&]()
+    {
+        struct stat s {};
+        ::stat(handler->getCurrentFilePath().c_str(), &s);
+        return s.st_ino;
+    }();
+
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(tmpDir))
+    {
+        if (!entry.is_regular_file())
+            continue;
+        if (entry.path().extension() != ".log")
+            continue;
+        if (entry.path().filename().string().find("compress-fail") == std::string::npos)
+            continue;
+        struct stat s {};
+        if (::stat(entry.path().c_str(), &s) != 0)
+            continue;
+        if (s.st_ino != activeInode)
+        {
+            rotatedFile = entry.path();
+            break;
+        }
+    }
+
+    if (!rotatedFile.empty())
+    {
+        std::filesystem::remove(rotatedFile);
+    }
+
+    // Execute the collected task — compression will fail (source gone), but in-flight must be unregistered.
+    collectedTasks[0].taskFunction();
+
+    // Rotation 2: task runs inline, triggering retention cleanup.
+    // If in-flight entries were NOT unregistered after failure, cleanup would skip
+    // the ghost entries and not be able to prune old files.
+    (*writer)(std::string(config.maxSize + 1, 'Y'));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    // Verify that retention ran and pruned old files.
+    size_t oldRemaining = 0;
+    for (int i = 0; i < 4; ++i)
+    {
+        if (std::filesystem::exists(tmpDir / ("fail-old-" + std::to_string(i) + ".log")))
+            ++oldRemaining;
+    }
+    EXPECT_LT(oldRemaining, 4u) << "Retention should have deleted old files after failed compression unregistered "
+                                   "in-flight entries";
 
     writer.reset();
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
