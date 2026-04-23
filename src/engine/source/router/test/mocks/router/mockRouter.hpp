@@ -14,9 +14,7 @@ public:
     MOCK_METHOD(base::OptError, postEntry, (const ::router::prod::EntryPost& entry), (override));
     MOCK_METHOD(base::OptError,
                 hotSwapNamespace,
-                (const std::string& name,
-                 const cm::store::NamespaceId& newNamespace,
-                 const std::function<bool()>& shouldAbort),
+                (const std::string& name, const cm::store::NamespaceId& newNamespace),
                 (override));
     MOCK_METHOD(bool, existsEntry, (const std::string& name), (const, override));
     MOCK_METHOD(base::OptError, deleteEntry, (const std::string& name), (override));

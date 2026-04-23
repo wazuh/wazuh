@@ -155,8 +155,7 @@ public:
      * @copydoc router::IRouterAPI::hotSwapNamespace
      */
     base::OptError hotSwapNamespace(const std::string& name,
-                                    const cm::store::NamespaceId& newNamespace,
-                                    const std::function<bool()>& shouldAbort = nullptr) override;
+                                    const cm::store::NamespaceId& newNamespace) override;
 
     /**
      * @copydoc router::IRouterAPI::existsEntry

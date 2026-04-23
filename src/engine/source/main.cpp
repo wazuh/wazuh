@@ -610,6 +610,13 @@ int main(int argc, char* argv[])
                 indexerConnector, cmCrudService, store, orchestrator, maxRetries, retryInterval);
             LOG_INFO("Content Manager Sync Service initialized.");
 
+            exitHandler.add(
+                [cmSyncService, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
+                {
+                    cmSyncService->requestShutdown();
+                    LOG_INFO_L(functionName.c_str(), "CMSync shutdown requested.");
+                });
+
             // Add sync to scheduler
             scheduler->scheduleTask(
                 "cm-sync-task",
@@ -618,7 +625,7 @@ int main(int argc, char* argv[])
                                        .timeout = 0,
                                        .taskFunction = [cmSyncService]()
                                        {
-                                           cmSyncService->synchronize([]() { return g_shutdown_requested != 0; });
+                                           cmSyncService->synchronize();
                                        }});
         }
 
@@ -857,7 +864,7 @@ int main(int argc, char* argv[])
         if (enableProcessing)
         {
             // Synchronize on startup
-            cmSyncService->synchronize([]() { return g_shutdown_requested != 0; });
+            cmSyncService->synchronize();
             iocSyncService->synchronize();
             remoteConf->synchronize();
 

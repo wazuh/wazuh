@@ -389,7 +389,7 @@ TEST_F(CMSyncSynchronizeTest, Case4_PolicyEnabledHashChanged)
         .Times(1);
 
     // hot-swap
-    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_, ::testing::_))
+    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_))
         .WillOnce(::testing::Return(std::nullopt));
 
     // Dump state
@@ -428,7 +428,7 @@ TEST_F(CMSyncSynchronizeTest, Case4_RouteDisabledHashChanged)
         importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
-    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_, ::testing::_))
+    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_))
         .WillOnce(::testing::Return(std::nullopt));
     EXPECT_CALL(*store, upsertDoc(STORE_NAME_CMSYNC, ::testing::_))
         .WillOnce(::testing::Return(store::mocks::storeOk()));
@@ -481,7 +481,7 @@ TEST_F(CMSyncSynchronizeTest, RollsBackWhenHotSwapFails)
         .Times(1);
 
     // hot-swap fails
-    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_, ::testing::_))
+    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_))
         .WillOnce(::testing::Return(base::Error {"hot-swap failed"}));
 
     // Rollback: delete newly created namespace
@@ -653,83 +653,61 @@ TEST_F(CMSyncSynchronizeTest, RetriesNamespaceIdGenerationOnCollision)
     EXPECT_NO_THROW(sync->synchronize());
 }
 
-// ==================== Abort Tests ====================
+// ==================== Shutdown Tests ====================
 
-// Abort before loop: shouldAbort returns true immediately — no remote calls should be made
-TEST_F(CMSyncSynchronizeTest, AbortsBeforeLoopWhenShouldAbortReturnsTrue)
+// Shutdown before loop: requestShutdown() called before synchronize — no remote calls
+TEST_F(CMSyncSynchronizeTest, AbortsBeforeLoopWhenShutdownRequested)
 {
     auto state = createStoredState(); // standard + custom
     auto sync = createSyncWithState(state);
 
+    // Request shutdown before synchronize
+    sync->requestShutdown();
+
     // No expectations on indexer, crud, or router — nothing should be called
-    EXPECT_NO_THROW(sync->synchronize([]() { return true; }));
+    EXPECT_NO_THROW(sync->synchronize());
 }
 
-// Abort mid-loop: shouldAbort returns true after the first namespace is processed
+// Shutdown mid-loop: requestShutdown() triggered via mock side effect after first namespace
 TEST_F(CMSyncSynchronizeTest, AbortsMidLoopAfterFirstNamespace)
 {
     auto state = createStoredState(); // standard + custom
     auto sync = createSyncWithState(state);
 
-    // Counter to abort after the first namespace check
-    int callCount = 0;
-    auto shouldAbort = [&callCount]()
-    {
-        // 1: before lock → false
-        // 2: start of loop for "standard" → false
-        // 3: executeWithRetry in existSpaceInRemote before attempt → false (existsPolicy returns false → skip)
-        // 4: start of loop for "custom" → true (abort)
-        return ++callCount > 3;
-    };
-
     // Standard space: does not exist in remote — skipped quickly
-    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(false));
+    // After existsPolicy returns, trigger shutdown so "custom" iteration aborts
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard")))
+        .WillOnce(::testing::DoAll(::testing::InvokeWithoutArgs([&sync]() { sync->requestShutdown(); }),
+                                   ::testing::Return(false)));
 
-    // Custom space: should NOT be called because abort triggers at start of second iteration
-
-    EXPECT_NO_THROW(sync->synchronize(shouldAbort));
+    // Custom space: should NOT be called because shutdown triggers at start of second iteration
+    EXPECT_NO_THROW(sync->synchronize());
 }
 
-// Abort during download: shouldAbort triggers before downloadAndEnrichNamespace
+// Shutdown before download: requestShutdown() triggered via mock after getting policy info
 TEST_F(CMSyncSynchronizeTest, AbortsBeforeDownload)
 {
     auto state = createStoredStateWithNs("standard", "dummy_ns_id");
     auto sync = createSyncWithState(state);
 
-    int callCount = 0;
-    auto shouldAbort = [&callCount]()
-    {
-        // 1: before lock → false
-        // 2: start of loop → false
-        // 3: executeWithRetry in existSpaceInRemote → false (existsPolicy returns true)
-        // 4: before getPolicyHashAndEnabled → false
-        // 5: executeWithRetry in getPolicyHashAndEnabled → false
-        // 6: before downloadAndEnrichNamespace → true (abort)
-        return ++callCount > 5;
-    };
-
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
     EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard")))
-        .WillOnce(::testing::Return(std::make_pair(std::string("new_hash"), true)));
+        .WillOnce(::testing::DoAll(
+            ::testing::InvokeWithoutArgs([&sync]() { sync->requestShutdown(); }),
+            ::testing::Return(std::make_pair(std::string("new_hash"), true))));
 
-    // No route exists — case 3 (new sync needed), but abort triggers before download
+    // No route exists — case 3 (new sync needed), but shutdown triggers before download
     EXPECT_CALL(*router, existsEntry("cmsync_standard")).WillOnce(::testing::Return(false));
 
     // No download or route sync should happen
-    EXPECT_NO_THROW(sync->synchronize(shouldAbort));
+    EXPECT_NO_THROW(sync->synchronize());
 }
 
-// Abort during hot swap: shouldAbort causes hotSwapNamespace to return an error — rollback downloaded namespace
-TEST_F(CMSyncSynchronizeTest, AbortsInHotSwapRollsBackNamespace)
+// Hot swap failure triggers rollback (tests the rollback path, not shutdown per se)
+TEST_F(CMSyncSynchronizeTest, RollsBackOnHotSwapFailure)
 {
     auto state = createStoredStateWithNs("standard", "stored_ns");
     auto sync = createSyncWithState(state);
-
-    // shouldAbort always returns false at CMSync level, but hotSwapNamespace simulates abort by returning error
-    auto shouldAbort = []()
-    {
-        return false;
-    };
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
     EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard")))
@@ -751,23 +729,23 @@ TEST_F(CMSyncSynchronizeTest, AbortsInHotSwapRollsBackNamespace)
         importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
-    // hotSwapNamespace returns abort error
-    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_, ::testing::_))
-        .WillOnce(::testing::Return(base::Error {"Hot swap aborted"}));
+    // hotSwapNamespace returns error
+    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_))
+        .WillOnce(::testing::Return(base::Error {"Hot swap failed"}));
 
     // Rollback: the downloaded namespace should be deleted after hot swap failure
     EXPECT_CALL(*crud, deleteNamespace(::testing::_)).Times(1);
 
-    EXPECT_NO_THROW(sync->synchronize(shouldAbort));
+    EXPECT_NO_THROW(sync->synchronize());
 }
 
-// Default nullptr: synchronize without abort callback works as before
-TEST_F(CMSyncSynchronizeTest, WorksWithNullAbortCallback)
+// Synchronize works normally without requestShutdown
+TEST_F(CMSyncSynchronizeTest, WorksNormallyWithoutShutdown)
 {
     auto state = createStoredStateWithNs("standard", "dummy_ns_id");
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(false));
 
-    EXPECT_NO_THROW(sync->synchronize(nullptr));
+    EXPECT_NO_THROW(sync->synchronize());
 }

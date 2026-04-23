@@ -439,8 +439,7 @@ base::OptError Orchestrator::postEntry(const prod::EntryPost& entry)
 }
 
 base::OptError Orchestrator::hotSwapNamespace(const std::string& name,
-                                              const cm::store::NamespaceId& newNamespace,
-                                              const std::function<bool()>& shouldAbort)
+                                              const cm::store::NamespaceId& newNamespace)
 {
     if (name.empty())
     {
@@ -471,10 +470,10 @@ base::OptError Orchestrator::hotSwapNamespace(const std::string& name,
     auto error = forEachRouterWorker(
         [&](const std::shared_ptr<IWorker<IRouter>>& worker)
         {
-            // Check abort before each worker's hot swap (environment build is expensive)
-            if (shouldAbort && shouldAbort())
+            // Check shutdown before each worker's hot swap (environment build is expensive)
+            if (m_isShutdown.load(std::memory_order_acquire))
             {
-                return base::OptError {base::Error {"Hot swap aborted"}};
+                return base::OptError {base::Error {"Hot swap aborted: orchestrator shutting down"}};
             }
             return worker->get()->hotSwapNamespace(name, newNamespace);
         });

@@ -1,9 +1,9 @@
 #ifndef META_HELPERS_HPP
 #define META_HELPERS_HPP
 
+#include <atomic>
 #include <chrono>
 #include <cstddef>
-#include <functional>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -23,7 +23,7 @@ namespace base::utils
  * @brief Execute an operation with retry logic and optional abort support
  *
  * This function attempts to execute the provided operation and retries it if an exception is thrown. It logs each
- * attempt and waits for a specified duration between retries. If a shouldAbort callback is provided, it is checked
+ * attempt and waits for a specified duration between retries. If a shutdownRequested flag is provided, it is checked
  * before each retry attempt and during the wait between retries (split into 1-second intervals for responsive
  * cancellation).
  * @tparam Func Callable type that performs the operation
@@ -32,7 +32,7 @@ namespace base::utils
  * @param message Description of the operation for logging purposes
  * @param maxAttempts Maximum number of retry attempts, cannot be zero (will default to 1 attempt)
  * @param waitSeconds Seconds to wait between retries, cannot be zero (will default to 1 second)
- * @param shouldAbort Optional callback that returns true when the operation should be aborted
+ * @param shutdownRequested Optional pointer to an atomic flag that signals abort when true
  * @return decltype(auto) Result of the operation
  * @throw std::runtime_error if aborted, or if all retry attempts fail
  */
@@ -42,7 +42,7 @@ decltype(auto) executeWithRetry(Func&& operation,
                                 std::string_view message,
                                 std::size_t maxAttempts,
                                 std::size_t waitSeconds,
-                                const std::function<bool()>& shouldAbort = nullptr)
+                                const std::atomic<bool>* shutdownRequested = nullptr)
 {
     // Ensure at least 1 second wait to avoid tight loop
     waitSeconds = waitSeconds == 0 ? 1 : waitSeconds;
@@ -50,7 +50,7 @@ decltype(auto) executeWithRetry(Func&& operation,
     maxAttempts = maxAttempts == 0 ? 1 : maxAttempts;
     for (std::size_t attempt = 1; attempt <= maxAttempts; ++attempt)
     {
-        if (shouldAbort && shouldAbort())
+        if (shutdownRequested && shutdownRequested->load(std::memory_order_relaxed))
         {
             throw std::runtime_error(
                 fmt::format("{}::{} aborted before attempt {}", message, componentOperationName, attempt));
@@ -71,12 +71,12 @@ decltype(auto) executeWithRetry(Func&& operation,
                           e.what());
             if (attempt < maxAttempts)
             {
-                if (shouldAbort)
+                if (shutdownRequested)
                 {
                     // Split sleep into 1-second chunks for responsive abort
                     for (std::size_t s = 0; s < waitSeconds; ++s)
                     {
-                        if (shouldAbort())
+                        if (shutdownRequested->load(std::memory_order_relaxed))
                         {
                             throw std::runtime_error(fmt::format("{}::{} aborted during retry wait (attempt {})",
                                                                  message,

@@ -1,7 +1,7 @@
 #ifndef _CMSYNC_CMSYNC
 #define _CMSYNC_CMSYNC
 
-#include <functional>
+#include <atomic>
 #include <mutex>
 #include <shared_mutex>
 #include <string>
@@ -34,38 +34,34 @@ private:
     mutable std::shared_mutex m_mutex; ///< Mutex to protect access to m_namespacesState and sync operations
     std::vector<SyncedNamespace> m_namespacesState; ///< State of the namespaces being synchronized
 
+    std::atomic<bool> m_shutdownRequested {false}; ///< Flag to signal graceful shutdown of sync operations
+
     /**
      * @brief Check if a space exists in the wazuh-indexer
      *
      * @param space Space name to check
-     * @param shouldAbort Optional callback to check if the operation should be aborted
      * @return true if the space exists, false otherwise
      * @throws std::runtime_error on errors.
      */
-    bool existSpaceInRemote(std::string_view space, const std::function<bool()>& shouldAbort = nullptr);
+    bool existSpaceInRemote(std::string_view space);
 
     /**
      * @brief Download a full namespace from the indexer to the local cmcrud store
      *
      * @param originSpace Define the source space in the indexer
      * @param dstNamespace Define the destination namespace in the local store (Must not exist)
-     * @param shouldAbort Optional callback to check if the operation should be aborted
      * @throws std::runtime_error on errors.
      */
-    void downloadNamespace(std::string_view originSpace,
-                           const cm::store::NamespaceId& dstNamespace,
-                           const std::function<bool()>& shouldAbort = nullptr);
+    void downloadNamespace(std::string_view originSpace, const cm::store::NamespaceId& dstNamespace);
 
     /**
      * @brief Get remote policy hash and enabled status from the indexer
      *
      * @param space Space name in the indexer
-     * @param shouldAbort Optional callback to check if the operation should be aborted
      * @return A pair containing the policy hash as a string and a boolean indicating if the policy is enabled
      * @throws std::runtime_error on errors.
      */
-    std::pair<std::string, bool> getPolicyHashAndEnabledFromRemote(std::string_view space,
-                                                                   const std::function<bool()>& shouldAbort = nullptr);
+    std::pair<std::string, bool> getPolicyHashAndEnabledFromRemote(std::string_view space);
 
     /**
      * @brief Downloads a namespace from the indexer and enriches it with local assets
@@ -78,15 +74,13 @@ private:
      * automatic rollback on failure, ensuring the local store remains consistent.
      *
      * @param originSpace The source space name in the wazuh-indexer to download from
-     * @param shouldAbort Optional callback to check if the operation should be aborted
      * @return cm::store::NamespaceId The newly created namespace ID in the local store,
      * @throws std::runtime_error if any step of the process fails
      * @warning There is no ganrantee that the returned namespace is valid, should be verified by the router.
      * @note If the operation fails at any point, the temporary namespace is automatically deleted
      *       to maintain store consistency
      */
-    cm::store::NamespaceId downloadAndEnrichNamespace(std::string_view originSpace,
-                                                      const std::function<bool()>& shouldAbort = nullptr);
+    cm::store::NamespaceId downloadAndEnrichNamespace(std::string_view originSpace);
 
     /**
      * @brief Syncs a namespace in the router by updating or creating its route
@@ -97,12 +91,9 @@ private:
      *
      * @param nsState The state of the namespace being synchronized, including origin space and route name
      * @param newNamespaceId The new namespace ID to be used in the router
-     * @param shouldAbort Optional callback to check if the operation should be aborted
      * @throws std::runtime_error if the operation fails
      */
-    void syncNamespaceInRoute(const SyncedNamespace& nsState,
-                              const cm::store::NamespaceId& newNamespaceId,
-                              const std::function<bool()>& shouldAbort = nullptr);
+    void syncNamespaceInRoute(const SyncedNamespace& nsState, const cm::store::NamespaceId& newNamespaceId);
 
     void addSpaceToSync(std::string_view space);      ///< Add a space to the sync list
     void removeSpaceFromSync(std::string_view space); ///< Remove a space from the sync
@@ -128,11 +119,14 @@ public:
      * downloads the updated namespace, enriches it with local assets, and updates
      * the router accordingly.
      *
-     * @param shouldAbort Optional callback that returns true when the synchronization should be aborted.
-     *        When provided, it is checked at strategic points during synchronization to enable graceful shutdown.
      * @throws std::runtime_error if any step of the synchronization process fails
      */
-    void synchronize(std::function<bool()> shouldAbort = nullptr);
+    void synchronize();
+
+    /**
+     * @copydoc ICMSync::requestShutdown
+     */
+    void requestShutdown() override;
 };
 
 } // namespace cm::sync
