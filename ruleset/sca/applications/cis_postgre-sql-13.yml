@@ -33,7 +33,7 @@ variables: # default values, please provide based on your organization policies
   $log_timezone: America/New_York #  server's timezone in the Operating System
 
 requirements:
-  title: "Check that postgreSQL13 is up and able to execute commands from shell"
+  name: "Check that postgreSQL13 is up and able to execute commands from shell"
   description: "Requirements for running the SCA scan against the PostgreSQL13 setup. "
   condition: all
   rules:
@@ -48,7 +48,7 @@ checks:
 
   # 1.2 Ensure systemd Service Files Are Enabled (Automated)
   - id: 24000
-    title: Ensure systemd Service Files Are Enabled
+    name: "Ensure systemd Service Files Are Enabled"
     description: Confirm, and correct if necessary, the PostgreSQL systemd service is enabled.
     rationale: >
       Enabling the systemd service on the OS ensures the database service is active when a
@@ -93,7 +93,7 @@ checks:
 
   # 3.1.2 Ensure the log destinations are set correctly (Automated) --TODO--
   - id: 24001
-    title: Ensure the log destinations are set correctly
+    name: "Ensure the log destinations are set correctly"
     description: >
       PostgreSQL supports several methods for logging server messages, including stderr,
       csvlog and syslog. On Windows, eventlog is also supported. One or more of these
@@ -140,7 +140,7 @@ checks:
 
   # 3.1.3 Ensure the logging collector is enabled (Automated)
   - id: 24002
-    title: Ensure the logging collector is enabled
+    name: "Ensure the logging collector is enabled"
     description: >
       The logging collector is a background process that captures log messages sent to stderr
       and redirects them into log files. The logging_collector setting must be enabled in order
@@ -195,7 +195,7 @@ checks:
 
   # 3.1.4 Ensure the log file destination directory is set correctly (Automated)
   - id: 24003
-    title: Ensure the log file destination directory is set correctly
+    name: "Ensure the log file destination directory is set correctly"
     description: >
       The log_directory setting specifies the destination directory for log files when
       log_destination is stderr or csvlog. It can be specified as relative to the cluster data
@@ -261,7 +261,7 @@ checks:
 
   # 3.1.5 Ensure the filename pattern for log files is set correctly (Automated)
   - id: 24004
-    title: Ensure the filename pattern for log files is set correctly
+    name: "Ensure the filename pattern for log files is set correctly"
     description: >
       The log_filename setting specifies the filename pattern for log files. The value for
       log_filename should match your organization's logging policy.
@@ -313,7 +313,7 @@ checks:
 
   # 3.1.6 Ensure the log file permissions are set correctly (Automated)
   - id: 24005
-    title: Ensure the log file permissions are set correctly
+    name: "Ensure the log file permissions are set correctly"
     description: >
       The log_file_mode setting determines the file permissions for log files when
       logging_collector is enabled. The parameter value is expected to be a numeric mode
@@ -364,7 +364,7 @@ checks:
 
   # 3.1.7 Ensure 'log_truncate_on_rotation' is enabled (Automated)
   - id: 24006
-    title: Ensure 'log_truncate_on_rotation' is enabled
+    name: "Ensure 'log_truncate_on_rotation' is enabled"
     description: >
       "Enabling the log_truncate_on_rotation setting when logging_collector is enabled
       causes PostgreSQL to truncate (overwrite) existing log files with the same name during log
@@ -422,7 +422,7 @@ checks:
 
   # 3.1.8 Ensure the maximum log file lifetime is set correctly (Automated)
   - id: 24007
-    title: Ensure the maximum log file lifetime is set correctly
+    name: "Ensure the maximum log file lifetime is set correctly"
     description: >
       When logging_collector is enabled, the log_rotation_age parameter determines the
       maximum lifetime of an individual log file (depending on the value of log_filename). After
@@ -462,7 +462,7 @@ checks:
 
   # 3.1.9 Ensure the maximum log file size is set correctly (Automated)
   - id: 24008
-    title: Ensure the maximum log file size is set correctly
+    name: "Ensure the maximum log file size is set correctly"
     description: >
       The log_rotation_size setting determines the maximum size of an individual log file.
       Once the maximum size is reached, automatic log file rotation will occur.
@@ -501,7 +501,7 @@ checks:
 
   # 3.1.10 Ensure the correct syslog facility is selected (Manual)
   - id: 24009
-    title: Ensure the correct syslog facility is selected
+    name: "Ensure the correct syslog facility is selected"
     description: >
       The syslog_facility setting specifies the syslog "facility" to be used when logging to
       syslog is enabled. You can choose from any of the 'local' facilities. Your organization's logging policy should dictate which facility to use based on the syslog
@@ -542,7 +542,7 @@ checks:
 
   # 3.1.11 Ensure the program name for PostgreSQL syslog messages is correct (Automated)
   - id: 24010
-    title: Ensure the program name for PostgreSQL syslog messages is correct
+    name: "Ensure the program name for PostgreSQL syslog messages is correct"
     description: >
       The syslog_ident setting specifies the program name used to identify PostgreSQL
       messages in syslog logs. An example of a possible program name is postgres.
@@ -586,7 +586,7 @@ checks:
 
   # 3.1.12 Ensure the correct messages are written to the server log (Automated)
   - id: 24011
-    title: Ensure the correct messages are written to the server log
+    name: "Ensure the correct messages are written to the server log"
     description: >
       The log_min_messages setting specifies the message levels that are written to the server
       log. Each level includes all the levels that follow it. The lower the level (vertically, below),
@@ -625,7 +625,7 @@ checks:
 
   ## 3.1.13 Ensure the correct SQL statements generating errors are recorded (Automated)
   - id: 24012
-    title: Ensure the correct SQL statements generating errors are recorded
+    name: "Ensure the correct SQL statements generating errors are recorded"
     description: >
       The log_min_error_statement setting causes all SQL statements generating errors at or
       above the specified severity level to be recorded in the server log. Each level includes all
@@ -670,7 +670,7 @@ checks:
 
   ## 3.1.14 Ensure 'debug_print_parse' is disabled (Automated)
   - id: 24013
-    title: Ensure 'debug_print_parse' is disabled
+    name: "Ensure 'debug_print_parse' is disabled"
     description: >
       The debug_print_parse setting enables printing the resulting parse tree for each executed
       query. These messages are emitted at the LOG message level. Unless directed otherwise by
@@ -710,7 +710,7 @@ checks:
 
   ## 3.1.15 Ensure 'debug_print_rewritten' is disabled (Automated)
   - id: 24014
-    title: Ensure 'debug_print_rewritten' is disabled
+    name: "Ensure 'debug_print_rewritten' is disabled"
     description: >
       The debug_print_rewritten setting enables printing the query rewriter output for each
       executed query. These messages are emitted at the LOG message level. Unless directed
@@ -750,7 +750,7 @@ checks:
 
   ## 3.1.16 Ensure 'debug_print_plan' is disabled (Automated)
   - id: 24015
-    title: Ensure 'debug_print_plan' is disabled
+    name: "Ensure 'debug_print_plan' is disabled"
     description: >
       The debug_print_plan setting enables printing the execution plan for each executed query.
       These messages are emitted at the LOG message level. Unless directed otherwise by your
@@ -789,7 +789,7 @@ checks:
 
   ## 3.1.17 Ensure 'debug_pretty_print' is enabled (Automated)
   - id: 24016
-    title: Ensure 'debug_pretty_print' is enabled
+    name: "Ensure 'debug_pretty_print' is enabled"
     description: >
       Enabling debug_pretty_print indents the messages produced by debug_print_parse,
       debug_print_rewritten, or debug_print_plan making them significantly easier to read.
@@ -827,7 +827,7 @@ checks:
 
   ## 3.1.18 Ensure 'log_connections' is enabled (Automated)
   - id: 24017
-    title: Ensure 'log_connections' is enabled
+    name: "Ensure 'log_connections' is enabled"
     description: >
       Enabling the log_connections setting causes each attempted connection to the server to
       be logged, as well as successful completion of client authentication. This parameter cannot
@@ -868,7 +868,7 @@ checks:
 
   ## 3.1.19 Ensure 'log_disconnections' is enabled (Automated)
   - id: 24018
-    title: Ensure 'log_disconnections' is enabled (Automated)
+    name: "Ensure 'log_disconnections' is enabled"
     description: >
       Enabling the log_disconnections setting logs the end of each session, including session
       duration. This parameter cannot be changed after session start.
@@ -910,7 +910,7 @@ checks:
 
   ## 3.1.20 Ensure 'log_error_verbosity' is set correctly (Automated)
   - id: 24019
-    title: Ensure 'log_error_verbosity' is set correctly
+    name: "Ensure 'log_error_verbosity' is set correctly"
     description: >
       The log_error_verbosity setting specifies the verbosity (amount of detail) of logged
       messages.
@@ -947,7 +947,7 @@ checks:
 
   ## 3.1.21 Ensure 'log_hostname' is set correctly (Automated)
   - id: 24020
-    title: Ensure 'log_hostname' is set correctly
+    name: "Ensure 'log_hostname' is set correctly"
     description: >
       Enabling the log_hostname setting causes the hostname of the connecting host to be logged
       in addition to the host's IP address for connection log messages. Disabling the setting
@@ -989,7 +989,7 @@ checks:
 
   ## 3.1.22 Ensure 'log_line_prefix' is set correctly (Automated)
   - id: 24021
-    title: Ensure 'log_line_prefix' is set correctly
+    name: "Ensure 'log_line_prefix' is set correctly"
     description: >
       The log_line_prefix setting specifies a printf-style string that is prefixed to each log line.
       If blank, no prefix is used. You should configure this as recommended by the pgBadger
@@ -1040,7 +1040,7 @@ checks:
 
   ## 3.1.23 Ensure 'log_statement' is set correctly (Automated)
   - id: 24022
-    title: Ensure 'log_statement' is set correctly
+    name: "Ensure 'log_statement' is set correctly"
     description: >
       The log_statement setting specifies the types of SQL statements that are logged.
       It is recommended this be set to ddl unless otherwise directed by your organization's
@@ -1079,7 +1079,7 @@ checks:
 
   ## 3.1.24 Ensure 'log_timezone' is set correctly (Automated)
   - id: 24023
-    title: Ensure 'log_timezone' is set correctly
+    name: "Ensure 'log_timezone' is set correctly"
     description: >
       The log_timezone setting specifies the time zone to use in timestamps within log messages.
       This value is cluster-wide, so that all sessions will report timestamps consistently. Unless
@@ -1125,7 +1125,7 @@ checks:
 
   ## 3.2 Ensure the PostgreSQL Audit Extension (pgAudit) is enabled (Automated)
   - id: 24024
-    title: Ensure the PostgreSQL Audit Extension (pgAudit) is enabled
+    name: "Ensure the PostgreSQL Audit Extension (pgAudit) is enabled"
     description: >
       The PostgreSQL Audit Extension (pgAudit) provides detailed session and/or object audit
       logging via the standard PostgreSQL logging facility. The goal of pgAudit is to provide
@@ -1234,7 +1234,7 @@ checks:
 
   ## 4.5 Use pg_permission extension to audit object permissions (Automated)
   - id: 24025
-    title: Use pg_permission extension to audit object permissions
+    name: "Use pg_permission extension to audit object permissions"
     description: >
       Using a PostgreSQL extension called pg_permissions it is possible to declare which DB
       users should have which permissions on a given object and generate a report showing
@@ -1270,7 +1270,7 @@ checks:
 
   ## 4.7 Ensure the set_user extension is installed (Automated)
   - id: 24026
-    title: Ensure the set_user extension is installed
+    name: "Ensure the set_user extension is installed"
     description: >
       PostgreSQL access to the superuser database role must be controlled and audited to
       prevent unauthorized access.
@@ -1311,7 +1311,7 @@ checks:
   # 6 PostgreSQL Settings
   # 6.7 Ensure FIPS 140-2 OpenSSL Cryptography Is Used (Automated)
   - id: 24027
-    title: Ensure FIPS 140-2 OpenSSL Cryptography Is Used
+    name: "Ensure FIPS 140-2 OpenSSL Cryptography Is Used"
     description: >
       Install, configure, and use OpenSSL on a platform that has a NIST certified FIPS 140-2
       installation of OpenSSL. This provides PostgreSQL instances the ability to generate and
@@ -1359,7 +1359,7 @@ checks:
 
   # 6.8 Ensure SSL is enabled and configured correctly (Automated)
   - id: 24028
-    title: Ensure SSL is enabled and configured correctly
+    name: "Ensure SSL is enabled and configured correctly"
     description: >
       SSL on a PostgreSQL server should be enabled (set to on) and configured to encrypt TCP
       traffic to and from the server.
@@ -1394,7 +1394,7 @@ checks:
   # 8 Special Configuration Considerations
   # 8.3 Ensure the backup and restore tool, 'pgBackRest', is installed and configured (Automated)
   - id: 24029
-    title: Ensure the backup and restore tool, 'pgBackRest', is installed and configured
+    name: "Ensure the backup and restore tool, 'pgBackRest', is installed and configured"
     description: >
       pgBackRest aims to be a simple, reliable backup and restore system that can seamlessly
       scale up to the largest databases and workloads. Instead of relying on traditional backup
