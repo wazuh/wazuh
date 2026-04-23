@@ -274,8 +274,11 @@ When `shouldCompress` is `true` and the `scheduler` weak pointer is valid:
    };
    ```
 2. `compressLogFile()` calls `Utils::ZlibHelper::gzipCompress()` and removes the original.
-3. If retention is configured (`maxFiles > 0` or `maxAccumulatedSize > 0`), `deleteOldFilesStatic()` runs **after** compression so cleanup always sees files in their final compressed size.
-4. If the scheduler is unavailable (expired `weak_ptr`), a warning is logged and the file is left uncompressed.
+3. In-flight paths (source and `.gz`) are unregistered so future retention runs can consider them.
+4. If retention is configured (`maxFiles > 0` or `maxAccumulatedSize > 0`), `deleteOldFilesStatic()` runs **after** compression. In the happy path this means cleanup sees files in their final compressed size.
+5. If the scheduler is unavailable (expired `weak_ptr`), a warning is logged and the file is left uncompressed.
+
+> **Compression failure:** Steps 3-4 execute unconditionally. If `gzipCompress()` throws, the original file remains on disk and a partial `.gz` artefact may also be present. Retention cleanup proceeds in best-effort mode against whatever state is on disk — it may observe uncompressed sizes for that file, but the system self-heals on the next successful rotation cycle.
 
 ---
 
@@ -309,7 +312,7 @@ Both policies are applied **in sequence** (accumulated-size first, then file-cou
 | **Disabled** | Immediately inside `rotateFile()`, after the new file is opened. |
 | **Enabled** | After each compression task completes (in the scheduler thread), via the captured `deleteOldFilesStatic()` call in the compression task callback. |
 
-Deferring cleanup to post-compression avoids a race where the still-uncompressed (larger) rotated file would cause over-aggressive size-based deletion.
+Deferring cleanup to post-compression avoids a race where the still-uncompressed (larger) rotated file would cause over-aggressive size-based deletion. If compression fails, retention still runs in best-effort mode against the actual on-disk state (see [Compression](#compression)).
 
 ### Configuration
 
@@ -493,6 +496,8 @@ logManager.updateConfig("standard-wazuh-events-v5", newCfg, "json");
 | Queue full | `writer->operator()` returns `false`; message is dropped. |
 | Store read / write failure | Warning logged; operation continues normally. |
 | Scheduler unavailable | Warning logged; rotated file left uncompressed. |
+| Compression fails (`gzipCompress` throws) | Warning logged; original file left on disk, partial `.gz` may remain. In-flight entries are unregistered and retention cleanup runs in best-effort mode on whatever state is on disk. |
+| `scheduleTask()` throws | Warning logged; in-flight entries are unregistered immediately so retention is not permanently blocked. File is left uncompressed. |
 | Retention cleanup fails to delete a file | File remains on disk and stays in the accounting (not marked as freed). |
 | Directory creation fails during rotation | Warning logged; channel may enter `ErrorClosed`. |
 
