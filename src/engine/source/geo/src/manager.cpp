@@ -257,6 +257,12 @@ base::OptError Manager::processDbEntry(const std::string& path,
         auto downloadResp = m_downloader->downloadHTTPS(gzUrl);
         if (base::isError(downloadResp))
         {
+            // If shutdown was requested mid-transfer, exit immediately instead of retrying
+            if (!m_shouldRun->load())
+            {
+                return base::Error {"Shutdown requested, aborting geo database download"};
+            }
+
             error = base::Error {
                 fmt::format("Cannot download database from '{}': {}", gzUrl, base::getError(downloadResp).message)};
             continue;

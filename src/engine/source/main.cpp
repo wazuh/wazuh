@@ -333,7 +333,6 @@ int main(int argc, char* argv[])
             auto geoDownloader = std::make_shared<geo::Downloader>(geoDownloadTimeout);
             geoManager = std::make_shared<geo::Manager>(store, geoDownloader);
             geoDownloader->setShouldRun(geoManager->shouldRunFlag());
-            exitHandler.add([geoManager]() { geoManager->requestShutdown(); });
             LOG_INFO("Geo initialized.");
         }
 
@@ -380,6 +379,19 @@ int main(int argc, char* argv[])
                 base::getResponse<store::Doc>(res), std::static_pointer_cast<schemf::IValidator>(schemaValidator));
             hlp::registerParsers(logpar);
             LOG_INFO("HLP initialized.");
+        }
+
+        // Scheduler -> Should be terminated before all modules to ensure any scheduled are stopped before shutdown
+        {
+            scheduler = std::make_shared<scheduler::Scheduler>();
+            scheduler->start();
+            LOG_INFO("Scheduler initialized and started.");
+            exitHandler.add(
+                [scheduler, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
+                {
+                    scheduler->stop();
+                    LOG_INFO_L(functionName.c_str(), "Scheduler stopped.");
+                });
         }
 
         // Check if event processing is enabled
@@ -470,19 +482,6 @@ int main(int argc, char* argv[])
             LOG_INFO("Indexer Connector DISABLED - events will not be indexed.");
         }
 
-        // Scheduler
-        {
-            scheduler = std::make_shared<scheduler::Scheduler>();
-            scheduler->start();
-            LOG_INFO("Scheduler initialized and started.");
-            exitHandler.add(
-                [scheduler, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
-                {
-                    scheduler->stop();
-                    LOG_INFO_L(functionName.c_str(), "Scheduler stopped.");
-                });
-        }
-
         // Stream log for alerts an archive
         if (enableProcessing)
         {
@@ -559,7 +558,6 @@ int main(int argc, char* argv[])
                 [remoteConf, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
                 {
                     remoteConf->requestShutdown();
-                    LOG_INFO_L(functionName.c_str(), "ConfRemote shutdown requested.");
                 });
         }
 
@@ -623,7 +621,6 @@ int main(int argc, char* argv[])
                 [cmSyncService, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
                 {
                     cmSyncService->requestShutdown();
-                    LOG_INFO_L(functionName.c_str(), "CMSync shutdown requested.");
                 });
 
             // Add sync to scheduler
@@ -653,7 +650,6 @@ int main(int argc, char* argv[])
                 [iocSyncService, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
                 {
                     iocSyncService->requestShutdown();
-                    LOG_INFO_L(functionName.c_str(), "IOCSync shutdown requested.");
                 });
 
             // Add IOC sync to scheduler
@@ -684,6 +680,8 @@ int main(int argc, char* argv[])
         // Geo sync
         {
             auto geoSyncInterval = confManager.get<std::size_t>(conf::key::GEO_SYNC_INTERVAL);
+            exitHandler.add([geoManager]() { geoManager->requestShutdown(); });
+
             if (geoSyncInterval > 0)
             {
                 auto geoDbPath = confManager.get<std::string>(conf::key::GEO_DB_PATH);
@@ -889,6 +887,9 @@ int main(int argc, char* argv[])
                                                                cmSyncService->synchronize();
                                                                iocSyncService->synchronize();
                                                                remoteConf->synchronize();
+                                                               geoManager->remoteUpsert(confManager.get<std::string>(conf::key::GEO_MANIFEST_URL),
+                                                                                      confManager.get<std::string>(conf::key::GEO_DB_PATH) + "/GeoLite2-City.mmdb",
+                                                                                      confManager.get<std::string>(conf::key::GEO_DB_PATH) + "/GeoLite2-ASN.mmdb");
                                                            }});
 
             while (engineRemoteServer->isRunning())
