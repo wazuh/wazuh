@@ -332,6 +332,8 @@ int main(int argc, char* argv[])
             auto geoDownloadTimeout = static_cast<long>(confManager.get<size_t>(conf::key::GEO_DOWNLOAD_TIMEOUT));
             auto geoDownloader = std::make_shared<geo::Downloader>(geoDownloadTimeout);
             geoManager = std::make_shared<geo::Manager>(store, geoDownloader);
+            geoDownloader->setShouldRun(geoManager->shouldRunFlag());
+            exitHandler.add([geoManager]() { geoManager->requestShutdown(); });
             LOG_INFO("Geo initialized.");
         }
 
