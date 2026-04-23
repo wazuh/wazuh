@@ -539,7 +539,6 @@
 
 /* Wazuh alert messages */
 #define OS_MG_STARTED   "wazuh: Manager started."
-#define OS_AG_STARTED   "wazuh: Agent started: [%03d] (%s)."
 #define OS_AG_STOPPED   "wazuh: Agent stopped: [%03d] (%s)."
 #define OS_AG_DISCON    "wazuh: Agent disconnected: [%03d] (%s)."
 #define OS_AG_REMOVED   "wazuh: Agent removed: [%03d] (%s)."
