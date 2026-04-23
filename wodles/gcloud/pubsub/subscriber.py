@@ -61,15 +61,23 @@ class WazuhGCloudSubscriber(WazuhGCloudIntegration):
 
         Parameters
         ----------
-        credentials_file : str
-            Path to credentials file.
+        credentials_file : str, optional
+            Path to credentials file. If not provided, the client will attempt
+            to use Application Default Credentials or other environment
+            configurations.
 
         Returns
         -------
         pubsub.subscriber.Client
-            Instance of subscriber client object created with the provided key.
+            Instance of subscriber client object.
         """
-        return pubsub.subscriber.Client.from_service_account_file(credentials_file)  # noqa: E501
+        if credentials_file:
+            # If a credentials file path is provided, use it to create the client.
+            return pubsub.subscriber.Client.from_service_account_file(credentials_file)
+        else:
+            # If no credentials file is provided, instantiate the client directly.
+            # This will attempt to use Application Default Credentials (ADC).
+            return pubsub.subscriber.Client()
 
     def get_subscription_path(self, project: str, subscription_id: str) -> str:
         """Get the subscription path.
