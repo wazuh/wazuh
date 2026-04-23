@@ -8,8 +8,10 @@
 #include <memory>
 #include <mutex>
 #include <regex>
+#include <shared_mutex>
 #include <sstream>
 #include <thread>
+#include <unordered_map>
 
 #include <streamlog/logger.hpp>
 
@@ -167,6 +169,54 @@ private:
         size_t count {0};         ///< Count of active ChannelWriter instances (protected by m_writersMutex)
     } m_activeWriters;            ///< Active writers count, protected by m_writersMutex
 
+    /// @brief Per-channel mutex serialising concurrent retention cleanup calls.
+    ///
+    /// Using a shared_ptr so that compression task lambdas (which may outlive the
+    /// ChannelHandler) can capture it by value and keep it alive.
+    std::shared_ptr<std::mutex> m_retentionMutex {std::make_shared<std::mutex>()};
+
+    /// @brief Thread-safe registry of files currently in the compression pipeline.
+    ///
+    /// Tracks both the source (.log/.json) and destination (.gz) paths so that
+    /// concurrent retention cleanup skips files that are mid-compression.
+    /// Uses refcounting to handle the (unlikely) case of duplicate registrations.
+    /// Wrapped in a shared_ptr so task lambdas can capture it by value.
+    class InFlightRegistry
+    {
+    public:
+        /// Register a path as in-flight. Thread-safe.
+        void add(const std::filesystem::path& path)
+        {
+            std::unique_lock lock(m_mutex);
+            ++m_paths[path.string()];
+        }
+
+        /// Unregister a path. Removes the entry when refcount reaches 0. Thread-safe.
+        void remove(const std::filesystem::path& path)
+        {
+            std::unique_lock lock(m_mutex);
+            auto it = m_paths.find(path.string());
+            if (it != m_paths.end() && --it->second == 0)
+            {
+                m_paths.erase(it);
+            }
+        }
+
+        /// Check if a path is currently in-flight. Thread-safe (shared lock).
+        bool contains(const std::filesystem::path& path) const
+        {
+            std::shared_lock lock(m_mutex);
+            return m_paths.count(path.string()) > 0;
+        }
+
+    private:
+        mutable std::shared_mutex m_mutex;
+        std::unordered_map<std::string, size_t> m_paths; ///< path.string() → refcount
+    };
+
+    // In shared_ptr so task lambdas that outlive ChannelHandler keep it alive.
+    std::shared_ptr<InFlightRegistry> m_inFlightFiles {std::make_shared<InFlightRegistry>()};
+
     struct AsyncChannelData
     {
         // Stream flow handling
@@ -227,12 +277,30 @@ private:
 
     /**
      * @brief Compresses a rotated log file using gzip in a background task.
+     *
+     * On success the original file is removed and only the `.gz` remains.
+     * On failure (gzipCompress throws) a warning is logged and the function
+     * returns early — the original file is left on disk and a partial `.gz`
+     * artefact may also remain.  The caller receives no indication of
+     * success or failure; post-compression steps (in-flight unregister,
+     * retention cleanup) always execute regardless of the outcome.
+     *
      * @note Static method to allow scheduling without needing an instance.
      */
     static void compressLogFile(std::filesystem::path filePath, int compressionLevel);
 
     /**
      * @brief Creates a TaskConfig for compressing a log file.
+     *
+     * The returned task lambda executes three steps unconditionally:
+     *   1. `compressLogFile()` — may fail silently (see its doc).
+     *   2. Unregister both source and `.gz` paths from the in-flight registry.
+     *   3. Run retention cleanup (`deleteOldFilesStatic`) if any policy is active.
+     *
+     * Steps 2-3 run regardless of whether compression succeeded.  On failure
+     * the retention cleanup operates in best-effort mode on whatever state
+     * remains on disk (original uncompressed file and/or partial `.gz`).
+     *
      * @param filePath The path of the log file to compress.
      * @return A TaskConfig configured for compressing the specified log file.
      */
@@ -261,14 +329,29 @@ private:
      *
      * Because compression tasks run asynchronously via the scheduler and may outlive
      * the ChannelHandler instance, this static method captures all needed state by value.
-     * The active file is identified by reading the inode of latestLink at execution time,
-     * so no stale path state is needed or accepted.
+     *
+     * Active-file exclusion uses a two-layer strategy to minimise the TOCTOU window
+     * between when the directory is scanned and when each file is actually deleted:
+     *
+     *   1. `::stat(latestLink)` is called once before the scan to obtain the initial active
+     *      inode. Files matching this inode are removed from the candidate list after the
+     *      scan (not inside the scan loop), keeping the loop itself filter-free.
+     *
+     *   2. `::stat(latestLink)` is called again immediately before every individual
+     *      `remove()` call. This catches any rotation that occurred between the initial
+     *      read and the deletion attempt — the fresh inode will reflect the new active
+     *      file, preventing its accidental deletion.
+     *
+     * Callers are responsible for holding `m_retentionMutex` before invoking this method
+     * to prevent concurrent retention runs on the same channel from both the worker thread
+     * and scheduler threads.
      */
     static void deleteOldFilesStatic(const std::filesystem::path& basePath,
                                      const std::filesystem::path& latestLink,
                                      size_t maxFiles,
                                      size_t maxAccumulatedSize,
-                                     const std::string& channelName);
+                                     const std::string& channelName,
+                                     const std::shared_ptr<InFlightRegistry>& inFlightFiles);
 
     base::Name getStoreBaseName() const { return base::Name(STORE_STREAMLOG_BASE_NAME) + m_channelName + "/0"; }
 
