@@ -8,7 +8,7 @@ policy:
   regex_type: pcre2
 
 requirements:
-  title: Check Windows family platform
+  name: Check Windows family platform
   description: Requirements for running the policy against Windows family.
   condition: any
   rules:
@@ -18,7 +18,7 @@ checks:
 
   # Check with PCRE2 value
   - id: 1
-    title: Test_1
+    name: Test_1
     description: Test pcre2 regex engine with pcre2 rules
     rationale: Test_1
     remediation: Run pcre2

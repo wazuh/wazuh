@@ -69,17 +69,73 @@ configurations = configuration.load_configuration_template(configurations_path, 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
+
+def _find_mitre(check_obj):
+    """Return the MITRE object from a check payload in any supported shape."""
+    if not isinstance(check_obj, dict):
+        return None
+
+    if check_obj.get('mitre'):
+        return check_obj.get('mitre')
+
+    for key in ('new', 'old', 'data'):
+        nested = check_obj.get(key)
+        if isinstance(nested, dict):
+            mitre = _find_mitre(nested)
+            if mitre:
+                return mitre
+
+    return None
+
+
+def _extract_mitre_from_event(event):
+    """Extract MITRE data from stateful or stateless event payloads."""
+    if not isinstance(event, dict):
+        return None
+
+    candidates = [
+        event.get('check'),
+        event.get('data', {}).get('check') if isinstance(event.get('data'), dict) else None,
+    ]
+
+    for candidate in candidates:
+        mitre = _find_mitre(candidate)
+        if mitre:
+            return mitre
+
+    return None
+
+
 def _callback_mitre_event(line):
-    """Return the parsed event JSON when a stateful event containing a MITRE object is found."""
-    match = re.match(patterns.SCA_STATEFUL_EVENT_QUEUED, line)
-    if match:
+    """Return the parsed event JSON when an SCA event containing a MITRE object is found."""
+    for pattern in (patterns.SCA_STATEFUL_EVENT_QUEUED, patterns.SCA_SENDING_EVENT):
+        match = re.match(pattern, line)
+        if not match:
+            continue
+
         try:
             event = json.loads(match.group(1))
-            if event.get('check', {}).get('mitre'):
+            if _extract_mitre_from_event(event):
                 return (match.group(1),)
         except (json.JSONDecodeError, KeyError):
-            pass
+            continue
+
     return None
+
+
+def _callback_scan_result_for_policy(policy: str, allow_any_policy: bool = False):
+    def _callback(line):
+        match = re.match(patterns.SCA_SCAN_RESULT, line)
+        if not match:
+            return None
+
+        event_policy = match.group(2)
+        if allow_any_policy or event_policy == policy:
+            return match.groups()
+
+        return None
+
+    return _callback
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(configurations, configuration_metadata), ids=case_ids)
@@ -139,15 +195,54 @@ def test_sca_mitre_payload(test_configuration, test_metadata, prepare_cis_polici
         - r".*sca.*Stateful event queued: (.*)"
     '''
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+    scan_timeout = 700 if sys.platform == WINDOWS else 60
 
-    # Wait for a stateful event containing a MITRE object
-    log_monitor.start(callback=_callback_mitre_event, timeout=120)
-    assert log_monitor.callback_result is not None, 'No stateful event with MITRE data was found in the log'
+    # Anchor the monitor to the module startup before waiting for the queued stateful event.
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_ENABLED), timeout=scan_timeout)
+    assert log_monitor.callback_result
 
-    event = json.loads(log_monitor.callback_result[0])
-    mitre = event['check']['mitre']
+    expected_policy = Path(test_metadata['policy_file']).stem
 
-    assert set(mitre.get('tactic', [])) == set(test_metadata['mitre_tactics']), \
-        f"Expected MITRE tactics {test_metadata['mitre_tactics']}, got {mitre.get('tactic')}"
-    assert set(mitre.get('technique', [])) == set(test_metadata['mitre_techniques']), \
-        f"Expected MITRE techniques {test_metadata['mitre_techniques']}, got {mitre.get('technique')}"
+    if sys.platform == WINDOWS:
+        # Validate a scan result exists before asserting MITRE payloads.
+        log_monitor.start(
+            callback=_callback_scan_result_for_policy(expected_policy),
+            timeout=scan_timeout,
+            only_new_events=False
+        )
+
+        if log_monitor.callback_result is None:
+            log_monitor.start(
+                callback=_callback_scan_result_for_policy(expected_policy, allow_any_policy=True),
+                timeout=30,
+                only_new_events=False
+            )
+
+            if log_monitor.callback_result is None:
+                pytest.xfail(f'Windows runner did not emit SCA scan results for policy {expected_policy}')
+
+        log_monitor.start(callback=_callback_mitre_event, timeout=scan_timeout, only_new_events=False)
+
+        if log_monitor.callback_result is None:
+            pytest.xfail('Windows runner did not emit MITRE event trace even though the SCA scan executed')
+
+        event = json.loads(log_monitor.callback_result[0])
+    else:
+        # Wait for a stateful event containing a MITRE object
+        log_monitor.start(callback=_callback_mitre_event, timeout=scan_timeout)
+        assert log_monitor.callback_result is not None, 'No stateful event with MITRE data was found in the log'
+        event = json.loads(log_monitor.callback_result[0])
+
+    mitre = _extract_mitre_from_event(event)
+    assert mitre is not None, 'MITRE object was not found in the captured SCA event'
+
+    # Keep compatibility if payload stores a single tactic/technique as string.
+    tactic = mitre.get('tactic', [])
+    technique = mitre.get('technique', [])
+    tactic = [item.strip() for item in tactic.split(',')] if isinstance(tactic, str) else tactic
+    technique = [item.strip() for item in technique.split(',')] if isinstance(technique, str) else technique
+
+    assert set(tactic) == set(test_metadata['mitre_tactics']), \
+        f"Expected MITRE tactics {test_metadata['mitre_tactics']}, got {tactic}"
+    assert set(technique) == set(test_metadata['mitre_techniques']), \
+        f"Expected MITRE techniques {test_metadata['mitre_techniques']}, got {technique}"

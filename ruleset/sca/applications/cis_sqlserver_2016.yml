@@ -18,7 +18,7 @@ policy:
     - https://www.cisecurity.org/cis-benchmarks/
 
 requirements:
-  title: "Check that the Windows platform has Microsoft SQL Server 2016"
+  name: "Check that the Windows platform has Microsoft SQL Server 2016"
   description: "Requirements for running the CIS Microsoft SQL Server 2016 Benchmark"
   condition: all
   rules:
@@ -30,7 +30,7 @@ checks:
   ######################################################
   # 2.1 Ensure 'Ad Hoc Distributed Queries' Server Configuration Option is set to '0'
   - id: 13000
-    title: Ensure 'Ad Hoc Distributed Queries' Server Configuration Option is set to '0'
+    name: "Ensure 'Ad Hoc Distributed Queries' Server Configuration Option is set to '0'"
     description: >
       Enabling Ad Hoc Distributed Queries allows users to query data and execute statements on
       external data sources. This functionality should be disabled.
@@ -68,7 +68,7 @@ checks:
 
   # 2.2 Ensure 'CLR Enabled' Server Configuration Option is set to '0'
   - id: 13001
-    title: Ensure 'CLR Enabled' Server Configuration Option is set to '0'
+    name: "Ensure 'CLR Enabled' Server Configuration Option is set to '0'"
     description: The clr enabled option specifies whether user assemblies can be run by SQL Server.
     rationale: >
       Enabling use of CLR assemblies widens the attack surface of SQL Server and puts it at risk
@@ -99,7 +99,7 @@ checks:
 
   # 2.3 Ensure 'Cross DB Ownership Chaining' Server Configuration Option is set to '0'
   - id: 13002
-    title: Ensure 'Cross DB Ownership Chaining' Server Configuration Option is set to '0'
+    name: "Ensure 'Cross DB Ownership Chaining' Server Configuration Option is set to '0'"
     description: >
       The cross db ownership chaining option controls cross-database ownership chaining
       across all databases at the instance (or server) level.
@@ -138,7 +138,7 @@ checks:
 
   # 2.4 Ensure 'Database Mail XPs' Server Configuration Option is set to '0'
   - id: 13003
-    title: Ensure 'Database Mail XPs' Server Configuration Option is set to '0'
+    name: "Ensure 'Database Mail XPs' Server Configuration Option is set to '0'"
     description: >
       The Database Mail XPs option controls the ability to generate and transmit email
       messages from SQL Server.
@@ -176,7 +176,7 @@ checks:
 
   # 2.5 Ensure 'Ole Automation Procedures' Server Configuration Option is set to '0'
   - id: 13004
-    title: Ensure 'Ole Automation Procedures' Server Configuration Option is set to '0'
+    name: "Ensure 'Ole Automation Procedures' Server Configuration Option is set to '0'"
     description: >
       The Ole Automation Procedures option controls whether OLE Automation objects can be
       instantiated within Transact-SQL batches. These are extended stored procedures that allow
@@ -215,7 +215,7 @@ checks:
 
   # 2.6 Ensure 'Remote Access' Server Configuration Option is set to '0'
   - id: 13005
-    title: Ensure 'Remote Access' Server Configuration Option is set to '0'
+    name: "Ensure 'Remote Access' Server Configuration Option is set to '0'"
     description: >
       The remote access option controls the execution of local stored procedures on remote
       servers or remote stored procedures on local server.
@@ -253,7 +253,7 @@ checks:
 
   # 2.7 Ensure 'Remote Admin Connections' Server Configuration Option is set to '0'
   - id: 13006
-    title: Ensure 'Remote Admin Connections' Server Configuration Option is set to '0'
+    name: "Ensure 'Remote Admin Connections' Server Configuration Option is set to '0'"
     description: >
       The remote admin connections option controls whether a client application on a remote
       computer can use the Dedicated Administrator Connection (DAC).
@@ -293,7 +293,7 @@ checks:
 
   # 2.8 Ensure 'Scan For Startup Procs' Server Configuration Option is set to '0'
   - id: 13007
-    title: Ensure 'Scan For Startup Procs' Server Configuration Option is set to '0'
+    name: "Ensure 'Scan For Startup Procs' Server Configuration Option is set to '0'"
     description: >
       The scan for startup procs option, if enabled, causes SQL Server to scan for and
       automatically run all stored procedures that are set to execute upon service startup.
@@ -333,7 +333,7 @@ checks:
 
   # 2.9 Ensure 'Trustworthy' Database Property is set to 'Off'
   - id: 13008
-    title: Ensure 'Trustworthy' Database Property is set to 'Off'
+    name: "Ensure 'Trustworthy' Database Property is set to 'Off'"
     description: >
       The TRUSTWORTHY database option allows database objects to access objects in other
       databases under certain circumstances.
@@ -365,7 +365,7 @@ checks:
 
   # 2.11 Ensure SQL Server is configured to use non-standard ports
   - id: 13009
-    title: Ensure SQL Server is configured to use non-standard ports
+    name: "Ensure SQL Server is configured to use non-standard ports"
     description: >
       If installed, a default SQL Server instance will be assigned a default port of TCP:1433 for
       TCP/IP communication. Administrators can also manually configure named instances to
@@ -410,7 +410,7 @@ checks:
 
   # 2.13 Ensure the 'sa' Login Account is set to 'Disabled'
   - id: 13010
-    title: Ensure the 'sa' Login Account is set to 'Disabled'
+    name: "Ensure the 'sa' Login Account is set to 'Disabled'"
     description: >
       The sa account is a widely known and often widely used SQL Server account with sysadmin
       privileges. This is the original login created during installation and always has the
@@ -450,7 +450,7 @@ checks:
 
   # 2.14 Ensure the 'sa' Login Account has been renamed
   - id: 13011
-    title: Ensure the 'sa' Login Account has been renamed
+    name: "Ensure the 'sa' Login Account has been renamed"
     description: >
       The sa account is a widely known and often widely used SQL Server login with sysadmin
       privileges. The sa login is the original login created during installation and always has
@@ -483,7 +483,7 @@ checks:
 
   # 2.15 Ensure 'xp_cmdshell' Server Configuration Option is set to '0'
   - id: 13012
-    title: Ensure 'xp_cmdshell' Server Configuration Option is set to '0'
+    name: "Ensure 'xp_cmdshell' Server Configuration Option is set to '0'"
     description: >
       The xp_cmdshell option controls whether the xp_cmdshell extended stored procedure can
       be used by an authenticated SQL Server user to execute operating-system command shell
@@ -523,7 +523,7 @@ checks:
 
   # 2.16 Ensure 'AUTO_CLOSE' is set to 'OFF' on contained databases
   - id: 13013
-    title: Ensure 'AUTO_CLOSE' is set to 'OFF' on contained databases
+    name: "Ensure 'AUTO_CLOSE' is set to 'OFF' on contained databases"
     description: >
       AUTO_CLOSE determines if a given database is closed or not after a connection terminates. If
       enabled, subsequent connections to the given database will require the database to be
@@ -558,7 +558,7 @@ checks:
 
   # 2.17 Ensure no login exists with the name 'sa'
   - id: 13014
-    title: Ensure no login exists with the name 'sa'
+    name: "Ensure no login exists with the name 'sa'"
     description: >
       The sa login (e.g. principal) is a widely known and often widely used SQL Server account.
       Therefore, there should not be a login called sa even when the original sa login
@@ -602,7 +602,7 @@ checks:
   ###########################################################
   # 3.1 Ensure 'Server Authentication' Property is set to 'Windows Authentication Mode'
   - id: 13015
-    title: Ensure 'Server Authentication' Property is set to 'Windows Authentication Mode'
+    name: "Ensure 'Server Authentication' Property is set to 'Windows Authentication Mode'"
     description: Uses Windows Authentication to validate attempted connections.
     rationale: Windows provides a more robust authentication mechanism than SQL Server authentication.
     remediation: >
@@ -645,7 +645,7 @@ checks:
 
   # 3.8 Ensure only the default permissions specified by Microsoft are granted to the public server role
   - id: 13016
-    title: Ensure only the default permissions specified by Microsoft are granted to the public server role
+    name: "Ensure only the default permissions specified by Microsoft are granted to the public server role"
     description: >
       public is a special fixed server role containing all logins. Unlike other fixed server roles,
       permissions can be changed for the public role. In keeping with the principle of least
@@ -686,7 +686,7 @@ checks:
 
   # 3.10 Ensure Windows local groups are not SQL Logins
   - id: 13017
-    title: Ensure Windows local groups are not SQL Logins
+    name: "Ensure Windows local groups are not SQL Logins"
     description: Local Windows groups should not be used as logins for SQL Server instances.
     rationale: >
       Allowing local Windows groups as SQL Logins provides a loophole whereby anyone with
@@ -723,7 +723,7 @@ checks:
   ###########################################################
   # 4.2 Ensure 'CHECK_EXPIRATION' Option is set to 'ON' for All SQL Authenticated Logins Within the Sysadmin Role
   - id: 13018
-    title: Ensure 'CHECK_EXPIRATION' Option is set to 'ON' for All SQL Authenticated Logins Within the Sysadmin Role
+    name: "Ensure 'CHECK_EXPIRATION' Option is set to 'ON' for All SQL Authenticated Logins Within the Sysadmin Role"
     description: Applies the same password expiration policy used in Windows to passwords used inside SQL Server.
     rationale: >
       Ensuring SQL logins comply with the secure password policy applied by the Windows
@@ -756,7 +756,7 @@ checks:
 
   # 4.3 Ensure 'CHECK_POLICY' Option is set to 'ON' for All SQL Authenticated Logins
   - id: 13019
-    title: Ensure 'CHECK_POLICY' Option is set to 'ON' for All SQL Authenticated Logins
+    name: "Ensure 'CHECK_POLICY' Option is set to 'ON' for All SQL Authenticated Logins"
     description: Applies the same password complexity policy used in Windows to passwords used inside SQL Server.
     rationale: >
       Ensure SQL authenticated login passwords comply with the secure password policy applied
@@ -792,7 +792,7 @@ checks:
   ##########################################################
   # 5.1 Ensure 'Maximum number of error log files' is set to greater than or equal to '12'
   - id: 13020
-    title: Ensure 'Maximum number of error log files' is set to greater than or equal to '12'
+    name: "Ensure 'Maximum number of error log files' is set to greater than or equal to '12'"
     description: >
       SQL Server error log files must be protected from loss. The log files must be backed up
       before they are overwritten. Retaining more error logs helps prevent loss from frequent
@@ -842,7 +842,7 @@ checks:
 
   # 5.2 Ensure 'Default Trace Enabled' Server Configuration Option is set to '1'
   - id: 13021
-    title: Ensure 'Default Trace Enabled' Server Configuration Option is set to '1'
+    name: "Ensure 'Default Trace Enabled' Server Configuration Option is set to '1'"
     description: >
       The default trace provides audit logging of database activity including account creations,
       privilege elevation and execution of DBCC commands.
@@ -881,7 +881,7 @@ checks:
   ###########################################################
   # 6.2 Ensure 'CLR Assembly Permission Set' is set to 'SAFE_ACCESS' for All CLR Assemblies
   - id: 13022
-    title: Ensure 'CLR Assembly Permission Set' is set to 'SAFE_ACCESS' for All CLR Assemblies
+    name: "Ensure 'CLR Assembly Permission Set' is set to 'SAFE_ACCESS' for All CLR Assemblies"
     description: >
       Setting CLR Assembly Permission Sets to SAFE_ACCESS will prevent assemblies from
       accessing external system resources such as files, the network, environment variables, or

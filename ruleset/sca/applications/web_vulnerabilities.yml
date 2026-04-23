@@ -14,7 +14,7 @@ policy:
   description: "Guidance for establishing a secure configuration for web-related vulnerabilities."
 
 requirements:
-  title: Check if web-server files are present
+  name: "Check if web-server files are present"
   description: "Requirements for running the SCA scan against the web-vulnerability policy."
   condition: any
   rules:
@@ -31,32 +31,32 @@ variables:
 # PHP checks
 checks:
   - id: 14000
-    title: "PHP - Ensure 'Register globals' are not enabled"
+    name: "PHP - Ensure 'Register globals' are not enabled"
     condition: all
     rules:
       - 'f:$php.ini -> r:^register_globals\s*\t*=\s*\t*Off|register_globals\s*\t*=\s*\t*off'
 
   - id: 14001
-    title: "PHP - Ensure 'Expose PHP' is not enabled"
+    name: "PHP - Ensure 'Expose PHP' is not enabled"
     condition: all
     rules:
       - 'f:$php.ini -> r:^expose_php\s*\t*=\s*\t*Off|^expose_php\s*\t*=\s*\t*off'
 
   - id: 14002
-    title: "PHP - Ensure 'Allow URL fopen' is not enabled"
+    name: "PHP - Ensure 'Allow URL fopen' is not enabled"
     condition: all
     rules:
       - 'f:$php.ini -> r:^allow_url_fopen\s*\t*=\s*\t*Off|^allow_url_fopen\s*\t*=\s*\t*off'
 
   - id: 14003
-    title: "PHP - Ensure 'Displaying of errors' is not enabled"
+    name: "PHP - Ensure 'Displaying of errors' is not enabled"
     condition: all
     rules:
       - 'f:$php.ini -> r:^display_errors\s*\t*=\s*\t*Off|^display_errors\s*\t*=\s*\t*off'
 
   # WEB checks
   - id: 14004
-    title: "Web exploits: '.yop' is an uncommon file name inside htdocs - Possible compromise"
+    name: "Web exploits: '.yop' is an uncommon file name inside htdocs - Possible compromise"
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -76,7 +76,7 @@ checks:
       - "d:$web_dirs -> ^.yop$"
 
   - id: 14005
-    title: "Web exploits: 'id' is an uncommon file name inside htdocs - Possible compromise"
+    name: "Web exploits: 'id' is an uncommon file name inside htdocs - Possible compromise"
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -96,7 +96,7 @@ checks:
       - "d:$web_dirs -> ^id$"
 
   - id: 14006
-    title: "Web exploits: '.ssh' is an uncommon file name inside htdocs"
+    name: "Web exploits: '.ssh' is an uncommon file name inside htdocs"
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -116,7 +116,7 @@ checks:
       - "d:$web_dirs -> ^.ssh$"
 
   - id: 14007
-    title: "Web exploits: '...' is an uncommon file name inside htdocs - Possible compromise"
+    name: "Web exploits: '...' is an uncommon file name inside htdocs - Possible compromise"
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -136,7 +136,7 @@ checks:
       - "d:$web_dirs -> ^...$"
 
   - id: 14008
-    title: "Web exploits: '.shell' is an uncommon file name inside htdocs - Possible compromise"
+    name: "Web exploits: '.shell' is an uncommon file name inside htdocs - Possible compromise"
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -157,7 +157,7 @@ checks:
 
   # Outdated Web applications
   - id: 14009
-    title: "Web vulnerability - Outdated WordPress installation"
+    name: "Web vulnerability - Outdated WordPress installation"
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -177,7 +177,7 @@ checks:
       - 'd:$web_dirs -> ^version.php$ -> r:^.wp_version && r:4\.4\.2'
 
   - id: 14010
-    title: "Web vulnerability - Outdated Joomla installation"
+    name: "Web vulnerability - Outdated Joomla installation"
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -197,7 +197,7 @@ checks:
       - 'd:$web_dirs -> ^version.php$ -> r:var .RELEASE && r:3\.4\.8'
 
   - id: 14011
-    title: "Web vulnerability - Outdated osCommerce (v2.2) installation"
+    name: "Web vulnerability - Outdated osCommerce (v2.2) installation"
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -218,7 +218,7 @@ checks:
 
   # Known backdoors
   - id: 14012
-    title: "Web vulnerability - Backdoors / Web based malware found - eval(base64_decode)"
+    name: "Web vulnerability - Backdoors / Web based malware found - eval(base64_decode)"
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -238,7 +238,7 @@ checks:
       - 'd:$web_dirs -> .php$ -> r:eval\(base64_decode\([*!+-]aWYo'
 
   - id: 14013
-    title: "Web vulnerability - Backdoors / Web based malware found - eval(base64_decode(POST))"
+    name: "Web vulnerability - Backdoors / Web based malware found - eval(base64_decode(POST))"
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -258,7 +258,7 @@ checks:
       - 'd:$web_dirs -> .php$ -> r:eval\(base64_decode\(\S_POST'
 
   - id: 14014
-    title: "Web vulnerability - .htaccess file compromised"
+    name: "Web vulnerability - .htaccess file compromised"
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
@@ -280,7 +280,7 @@ checks:
       - 'd:$web_dirs -> ^.htaccess$ -> r:RewriteCond\s+\S+HTTP_REFERERS\s+\S+google'
 
   - id: 14015
-    title: "Web vulnerability - .htaccess file compromised - auto append"
+    name: "Web vulnerability - .htaccess file compromised - auto append"
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]

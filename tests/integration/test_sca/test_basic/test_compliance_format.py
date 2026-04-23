@@ -35,16 +35,19 @@ references:
 tags:
     - sca
 '''
-import pytest
-import re
 import json
+import re
+import subprocess
 import sys
+import time
+
+import pytest
 from pathlib import Path
 
 from wazuh_testing.constants.paths import WAZUH_PATH
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
-from wazuh_testing.utils import callbacks, configuration
+from wazuh_testing.utils import callbacks, configuration, services
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.modulesd.sca import patterns
@@ -75,9 +78,51 @@ SCA_DB_DIR = Path(WAZUH_PATH, 'queue', 'sca', 'db')
 @pytest.fixture()
 def clean_sca_db():
     '''Remove SCA database files to prevent stale data between tests.'''
-    if SCA_DB_DIR.exists():
-        for f in SCA_DB_DIR.iterdir():
-            f.unlink(missing_ok=True)
+    def _wait_windows_service_stopped(timeout=90):
+        end_time = time.time() + timeout
+        while time.time() < end_time:
+            status = subprocess.run(['sc', 'query', 'WazuhSvc'], capture_output=True, text=True)
+            output = f"{status.stdout}\n{status.stderr}".upper()
+            if 'STATE' in output and 'STOPPED' in output:
+                return True
+            time.sleep(2)
+        return False
+
+    def _remove_db_files():
+        if not SCA_DB_DIR.exists():
+            return
+        for db_file in SCA_DB_DIR.iterdir():
+            if not db_file.exists():
+                continue
+
+            last_error = None
+            for _ in range(30):
+                try:
+                    db_file.unlink(missing_ok=True)
+                    last_error = None
+                    break
+                except PermissionError as error:
+                    last_error = error
+                    time.sleep(2)
+
+            if last_error is not None:
+                raise last_error
+
+    if sys.platform == WINDOWS:
+        for attempt in range(30):
+            try:
+                services.control_service('stop')
+                _wait_windows_service_stopped()
+                time.sleep(2)
+                _remove_db_files()
+                break
+            except PermissionError:
+                if attempt == 29:
+                    raise
+                time.sleep(2)
+    else:
+        _remove_db_files()
+
     yield
 
 
@@ -104,6 +149,36 @@ def extract_compliance_from_event_json(json_str):
     compliance = check.get('compliance')
 
     return (check_id, compliance)
+
+
+def _callback_scan_result_for_policy(policy: str):
+    def _callback(line):
+        match = re.match(patterns.SCA_SCAN_RESULT, line)
+        if not match:
+            return None
+
+        if match.group(2) == policy:
+            return match.groups()
+
+        return None
+
+    return _callback
+
+
+def _callback_event_for_check(check_id: str):
+    def _callback(line):
+        for pattern in (patterns.SCA_STATEFUL_EVENT_QUEUED, patterns.SCA_SENDING_EVENT):
+            match = re.match(pattern, line)
+            if not match:
+                continue
+
+            event_check_id, compliance = extract_compliance_from_event_json(match.group(1))
+            if event_check_id == check_id:
+                return (event_check_id, compliance)
+
+        return None
+
+    return _callback
 
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(configurations, configuration_metadata), ids=case_ids)
@@ -183,80 +258,96 @@ def test_sca_compliance_format(test_configuration, test_metadata, prepare_cis_po
     log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=timeout)
     assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT),
+    log_monitor.start(callback=_callback_scan_result_for_policy(expected_policy),
                       timeout=timeout, accumulations=int(test_metadata['results']))
     assert log_monitor.callback_result is not None
 
     log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_CHECK), timeout=timeout)
     assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
-    # Give SCA time to flush stateful events through the async pipeline after the
-    # scan ends; the "Stateful event queued" log lines are written from a worker
-    # thread so they may trail the SCA_SCAN_ENDED_CHECK marker.
-    import time
-    time.sleep(5)
-
     # ------------------------------------------------------------------
     # Phase 2: Validate WARNING messages
     # ------------------------------------------------------------------
-    with open(WAZUH_LOG_PATH, 'r') as f:
-        log_content = f.read()
-
     # Old-format scenario: assert 'Unexpected compliance format' warnings for all check IDs
     if scenario == 'old_format':
         for check_info in test_metadata['checks']:
             check_id = check_info['id']
-            assert re.search(
-                rf"Unexpected compliance format in check {re.escape(check_id)}, ignoring",
-                log_content
-            ), f"Expected 'Unexpected compliance format' warning for check {check_id}"
+            log_monitor.start(
+                callback=callbacks.generate_callback(
+                    rf".*sca.*WARNING: Unexpected compliance format in check {re.escape(check_id)}, ignoring"
+                ),
+                timeout=timeout,
+                only_new_events=False
+            )
+            assert log_monitor.callback_result is not None, \
+                f"Expected 'Unexpected compliance format' warning for check {check_id}"
 
     # Invalid-keys scenario: assert 'Invalid compliance key' warnings for specified keys, and NO 'Unexpected compliance format' warnings for any check ID
     elif scenario == 'invalid_keys':
         for check_info in test_metadata['checks']:
             check_id = check_info['id']
-            assert not re.search(
-                rf"Unexpected compliance format in check {re.escape(check_id)}",
-                log_content
-            ), f"Unexpected 'Unexpected compliance format' warning for check {check_id}"
+            log_monitor.start(
+                callback=callbacks.generate_callback(
+                    rf".*sca.*WARNING: Unexpected compliance format in check {re.escape(check_id)}"
+                ),
+                timeout=2,
+                only_new_events=False
+            )
+            assert log_monitor.callback_result is None, \
+                f"Unexpected 'Unexpected compliance format' warning for check {check_id}"
+
             for key in check_info.get('invalid_key_warnings', []):
-                assert re.search(
-                    rf"Invalid compliance key '{re.escape(key)}' in check {re.escape(check_id)}, ignoring",
-                    log_content
-                ), f"Expected 'Invalid compliance key' warning for key '{key}' in check {check_id}"
+                log_monitor.start(
+                    callback=callbacks.generate_callback(
+                        rf".*sca.*WARNING: Invalid compliance key '{re.escape(key)}' in check "
+                        rf"{re.escape(check_id)}, ignoring"
+                    ),
+                    timeout=timeout,
+                    only_new_events=False
+                )
+                assert log_monitor.callback_result is not None, \
+                    f"Expected 'Invalid compliance key' warning for key '{key}' in check {check_id}"
 
     # Valid-keys scenario: assert NO 'Invalid compliance key' or 'Unexpected compliance format' warnings for any check ID
     elif scenario == 'valid_keys':
         for check_info in test_metadata['checks']:
             check_id = check_info['id']
-            assert not re.search(
-                rf"Invalid compliance key.*in check {re.escape(check_id)}",
-                log_content
-            ), f"Unexpected 'Invalid compliance key' warning for check {check_id}"
-            assert not re.search(
-                rf"Unexpected compliance format in check {re.escape(check_id)}",
-                log_content
-            ), f"Unexpected 'Unexpected compliance format' warning for check {check_id}"
+            log_monitor.start(
+                callback=callbacks.generate_callback(
+                    rf".*sca.*WARNING: Invalid compliance key.*in check {re.escape(check_id)}"
+                ),
+                timeout=2,
+                only_new_events=False
+            )
+            assert log_monitor.callback_result is None, \
+                f"Unexpected 'Invalid compliance key' warning for check {check_id}"
+
+            log_monitor.start(
+                callback=callbacks.generate_callback(
+                    rf".*sca.*WARNING: Unexpected compliance format in check {re.escape(check_id)}"
+                ),
+                timeout=2,
+                only_new_events=False
+            )
+            assert log_monitor.callback_result is None, \
+                f"Unexpected 'Unexpected compliance format' warning for check {check_id}"
 
     # ------------------------------------------------------------------
     # Phase 3: Validate compliance in event JSON
     # ------------------------------------------------------------------
-    # Stateful events always flow on first scan; stateless deltas are suppressed
-    # for the "Not run" → first-observation transition (issue #35428).
-    events_by_check = {}
-    for match in re.finditer(patterns.SCA_STATEFUL_EVENT_QUEUED, log_content):
-        json_str = match.group(1)
-        check_id, compliance = extract_compliance_from_event_json(json_str)
-        if check_id:
-            events_by_check[check_id] = compliance
-
     for check_info in test_metadata['checks']:
         check_id = check_info['id']
         expected_keys = check_info.get('expected_compliance_keys', [])
         unexpected_keys = check_info.get('unexpected_compliance_keys', [])
 
-        assert check_id in events_by_check, f"No SCA event found for check {check_id}"
-        compliance = events_by_check[check_id]
+        log_monitor.start(
+            callback=_callback_event_for_check(check_id),
+            timeout=timeout,
+            only_new_events=False
+        )
+        assert log_monitor.callback_result is not None, f"No SCA event found for check {check_id}"
+
+        compliance = log_monitor.callback_result[1]
 
         if scenario == 'old_format':
             assert compliance is None, \

@@ -40,6 +40,7 @@ concurrency:
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
+    name: Detect changed Windows test modules
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       any_matched: ${{ steps.set-matrix.outputs.any_matched }}
@@ -105,11 +106,26 @@ jobs:
                               'pytest_tier_args': tier_args,
                               'pytest_ignore_args': ignore_args,
                               'start_service': module.get('start_service', False),
+                              'skip_tests': False,
                           })
 
               print(f'Final matrix: {json.dumps(matched)}')
 
-          matrix = {'include': matched} if matched else {'include': [{'name': 'none'}]}
+          if matched:
+              matrix = {'include': matched}
+          else:
+              matrix = {
+                  'include': [{
+                      'name': 'none',
+                      'shard_name': 'none',
+                      'pytest_target': 'test_none\\',
+                      'pytest_extra_args': '',
+                      'pytest_tier_args': '',
+                      'pytest_ignore_args': '',
+                      'start_service': False,
+                      'skip_tests': True,
+                  }]
+              }
           any_matched = 'true' if matched else 'false'
           with open(output_path, 'a', encoding='utf-8') as stream:
               stream.write(f"matrix={json.dumps(matrix, separators=(',', ':'))}\n")
@@ -473,12 +489,11 @@ jobs:
     needs: [smoke-test-windows, detect-changes]
     if: >
       success() &&
-      github.event_name == 'pull_request' &&
-      needs.detect-changes.outputs.any_matched == 'true'
+      github.event_name == 'pull_request'
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
-    name: ${{ needs.detect-changes.outputs.any_matched == 'true' && format('IT Windows - {0} ({1})', matrix.name, matrix.shard_name) || 'IT Windows - no relevant changes' }}
+    name: ${{ matrix.skip_tests && 'IT Windows - no relevant changes' || format('IT Windows - {0} ({1})', matrix.name, matrix.shard_name) }}
     uses: ./.github/workflows/5_testintegration_windows-integration-tests.yml
     with:
       base_branch: ${{ github.event.pull_request.base.ref }}
@@ -491,4 +506,5 @@ jobs:
       pytest_tier_args: ${{ matrix.pytest_tier_args }}
       pytest_ignore_args: ${{ matrix.pytest_ignore_args }}
       start_service: ${{ matrix.start_service }}
+      skip_tests: ${{ matrix.skip_tests }}
     secrets: inherit

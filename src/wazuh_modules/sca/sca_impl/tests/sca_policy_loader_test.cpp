@@ -133,7 +133,7 @@ TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDeltaBadData)
         id: policy1
       nochecks:
         - id: check1
-          title: "title"
+          name: "title"
           condition: "all"
           rules:
             - 'f: $var1/passwd exists'
@@ -220,13 +220,13 @@ TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDeltaNoDBSyncObject)
         id: policy1
       checks:
         - id: check1
-          title: "title"
+          name: "title"
           condition: "all"
           rules:
             - 'f: $var1/passwd exists'
             - 'f: $var11/shared exists'
         - id: check2
-          title: "title2"
+          name: "title2"
           condition: "any"
           rules:
             - 'f: $var1/passwd2 exists'
@@ -322,7 +322,7 @@ TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDelta)
         id: policy1
       checks:
         - id: check1
-          title: "title"
+          name: "title"
           condition: "all"
           rules:
             - 'f: $var1/passwd exists'
