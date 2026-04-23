@@ -552,6 +552,13 @@ int main(int argc, char* argv[])
             auto retryInterval = confManager.get<size_t>(conf::key::REMOTE_CONF_INDEXER_CONNECTOR_RETRY_INTERVAL);
             remoteConf =
                 std::make_shared<confremote::ConfRemoteManager>(indexerConnector, store, maxRetries, retryInterval);
+
+            exitHandler.add(
+                [remoteConf, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
+                {
+                    remoteConf->requestShutdown();
+                    LOG_INFO_L(functionName.c_str(), "ConfRemote shutdown requested.");
+                });
         }
 
         // Raw Event Indexer

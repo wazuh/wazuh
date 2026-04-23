@@ -31,6 +31,12 @@ ConfRemoteManager::ConfRemoteManager(const std::shared_ptr<wiconnector::IWIndexe
 
 void ConfRemoteManager::synchronize()
 {
+    if (m_shutdownRequested.load(std::memory_order_relaxed))
+    {
+        LOG_INFO("[ConfRemote] Synchronization aborted before start");
+        return;
+    }
+
     json::Json remoteSettings;
 
     try
@@ -40,10 +46,17 @@ void ConfRemoteManager::synchronize()
                                                        "synchronize",
                                                        "ConfRemoteManager",
                                                        m_attempts,
-                                                       m_waitSeconds);
+                                                       m_waitSeconds,
+                                                       m_shutdownRequested);
     }
     catch (const std::exception& e)
     {
+        if (m_shutdownRequested.load(std::memory_order_relaxed))
+        {
+            LOG_INFO("[ConfRemote] Synchronization aborted during remote fetch");
+            return;
+        }
+
         LOG_WARNING("Failed to synchronize remote settings. Keeping current state.");
         LOG_DEBUG("Synchronize failure detail: {}.", e.what());
         return;
@@ -61,6 +74,12 @@ void ConfRemoteManager::synchronize()
 
     for (const auto& [key, value] : fields.value())
     {
+        if (m_shutdownRequested.load(std::memory_order_relaxed))
+        {
+            LOG_INFO("[ConfRemote] Synchronization aborted during settings application");
+            return;
+        }
+
         const auto it = m_settings.find(key);
         if (it == m_settings.end() || !it->second.onConfigChange)
         {
@@ -100,6 +119,12 @@ void ConfRemoteManager::synchronize()
             LOG_WARNING("Failed to persist remote settings cache: {}", e.what());
         }
     }
+}
+
+void ConfRemoteManager::requestShutdown()
+{
+    m_shutdownRequested.store(true, std::memory_order_relaxed);
+    LOG_INFO("[ConfRemote] Shutdown requested");
 }
 
 json::Json ConfRemoteManager::addTrigger(std::string_view key,
