@@ -41,27 +41,9 @@ jobs:
         with:
           target: manager
       - name: Install wazuh manager for linux
-        run: |
-          echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_INSTALL_TYPE="manager"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo "USER_DIR=$INSTALLATION_DIR" >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_AUTHD="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_AUTO_START="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          sudo sh install.sh
-          rm ./etc/preloaded-vars.conf
-
-          sudo mkdir -p $INSTALLATION_DIR/etc/certs
-          sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
-            -keyout $INSTALLATION_DIR/etc/certs/root-ca.pem -out $INSTALLATION_DIR/etc/certs/root-ca.pem \
-            -days 1 -subj "/CN=test" 2>/dev/null
-          sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
-            -keyout $INSTALLATION_DIR/etc/certs/manager-key.pem -out $INSTALLATION_DIR/etc/certs/manager.pem \
-            -days 1 -subj "/CN=test" 2>/dev/null
+        uses: ./.github/actions/install_wazuh_manager
+        with:
+          install_dir: ${{ env.INSTALLATION_DIR }}
 
       - name: Install QA integration framework
         uses: ./.github/actions/install_qa_framework

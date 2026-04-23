@@ -1,4 +1,4 @@
-name: 5.X - Running RTR. Module agent_metadata for agent/winagent targets
+name: 5.X - Agent Metadata - RTR
 
 on:
   workflow_dispatch:

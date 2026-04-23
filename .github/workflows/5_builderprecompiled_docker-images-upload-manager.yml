@@ -38,6 +38,10 @@ on:
         description: "Branch from wazuh/wazuh repository to use."
         required: true
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   upload-images:
     if: github.event_name == 'push' || (inputs.system == matrix.system && inputs.architecture == matrix.arch)

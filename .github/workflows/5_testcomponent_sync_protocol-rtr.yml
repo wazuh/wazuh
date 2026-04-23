@@ -1,4 +1,4 @@
-name: 5.X - Running RTR. Module sync_protocol for agent/winagent targets
+name: 5.X - Sync Protocol - RTR
 
 on:
   workflow_dispatch:

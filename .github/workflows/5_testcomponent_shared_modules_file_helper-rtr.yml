@@ -1,4 +1,4 @@
-name: 5.X - Running RTR. Shared Modules - File Helper - Unit tests
+name: 5.X - File Helper - RTR
 
 on:
   workflow_dispatch:

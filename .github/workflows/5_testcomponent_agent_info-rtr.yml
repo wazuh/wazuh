@@ -1,4 +1,4 @@
-name: 5.X - Running RTR. Module Agent Info for Agent/Winagent targets
+name: 5.X - Agent Info - RTR
 
 on:
   workflow_dispatch:
