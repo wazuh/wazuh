@@ -149,11 +149,14 @@ class EXPORTED Syscollector final
         std::vector<std::string> getDataContextTables(Operation operation, const std::string& index);
 
         /**
-         * @brief Checks if the first VD sync has been completed
+         * @brief Checks if the first VD sync has been completed.
+         * @details The state is persisted in @c table_metadata under the
+         *          @c vd_first_sync_completed key as an epoch-seconds timestamp;
+         *          any value > 0 means the first VD sync already completed.
          * @return true if first VD sync is done, false if this is the first scan (VDFIRST)
          */
-        bool isVDFirstSyncDone() const;
-        void createVDFirstSyncFlagIfNeeded(const bool vdResult, const bool firstSyncDone) const;
+        bool isVDFirstSyncDone();
+        void persistVDFirstSyncIfNeeded(const bool vdResult, const bool firstSyncDone);
         /**
          * @brief Processes VD DataContext after scan completes
          * @details Queries the VD sync protocol database for pending DataValue items,

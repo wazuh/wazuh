@@ -16,7 +16,6 @@
 #include "timeHelper.h"
 #include <cstdint>
 #include <iostream>
-#include <fstream>
 #include <stack>
 #include <set>
 #include <chrono>
@@ -90,6 +89,7 @@ constexpr auto QUEUE_SIZE
 
 constexpr auto SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY {"first_sync_completed"};
 constexpr auto SYSCOLLECTOR_FIRST_SCAN_COMPLETED_METADATA_KEY {"first_scan_completed"};
+constexpr auto SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY {"vd_first_sync_completed"};
 
 static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
 {
@@ -148,10 +148,6 @@ static const std::map<std::string, std::string> AGENTD_TO_INDEX_MAP
     {"browser_extensions", SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS},
     // LCOV_EXCL_STOP
 };
-
-// VD (Vulnerability Detection) flag file path
-// This file is created after the first successful VD sync to distinguish VDFIRST from VDSYNC
-static constexpr auto VD_FIRST_SYNC_FLAG_FILE = "queue/syscollector/db/.vd_first_sync_done";
 
 static void sanitizeJsonValue(nlohmann::json& input)
 {
@@ -2287,7 +2283,7 @@ bool Syscollector::syncModule(Mode mode)
 
         bool vdSuccess = m_spSyncProtocolVD->synchronizeModule(mode, vdOption);
 
-        createVDFirstSyncFlagIfNeeded(vdSuccess, firstSyncDone);
+        persistVDFirstSyncIfNeeded(vdSuccess, firstSyncDone);
 
         success = vdSuccess && success;
     }
@@ -2511,51 +2507,36 @@ std::vector<std::string> Syscollector::getDataContextTables(Operation operation,
     return tables;
 }
 
-bool Syscollector::isVDFirstSyncDone() const
+bool Syscollector::isVDFirstSyncDone()
 {
-    std::ifstream flagCheck(VD_FIRST_SYNC_FLAG_FILE);
-    bool firstSyncDone = flagCheck.good();
-    flagCheck.close();
-    return firstSyncDone;
+    int64_t vdFirstSyncCompleted = 0;
+    return getMetadataValue(SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY, vdFirstSyncCompleted)
+           && vdFirstSyncCompleted > 0;
 }
 
-void Syscollector::createVDFirstSyncFlagIfNeeded(const bool vdResult, const bool firstSyncDone) const
+void Syscollector::persistVDFirstSyncIfNeeded(const bool vdResult, const bool firstSyncDone)
 {
-    // Create the VD first-sync flag after a successful first VD flush.
     if (vdResult && !firstSyncDone && !m_stopping.load())
     {
-        if (m_logFunction)
-        {
-            m_logFunction(LOG_DEBUG, "VD first flush successful, attempting to create flag file: " + std::string(VD_FIRST_SYNC_FLAG_FILE));
-        }
-
-        std::ofstream flagFile(VD_FIRST_SYNC_FLAG_FILE);
-
-        if (flagFile.is_open())
-        {
-            flagFile << "1";
-            flagFile.close();
-
-            if (m_logFunction)
-            {
-                m_logFunction(LOG_INFO, "VD first sync completed (via flush), flag file created");
-            }
-        }
-        else
+        if (updateMetadataValue(SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch()))
         {
             if (m_logFunction)
             {
-                m_logFunction(LOG_ERROR, "Failed to create VD flag file: " + std::string(VD_FIRST_SYNC_FLAG_FILE));
+                m_logFunction(LOG_INFO, "VD first sync completed, metadata marker persisted.");
             }
+        }
+        else if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Failed to persist VD first sync metadata marker.");
         }
     }
     else if (m_stopping.load() && vdResult && !firstSyncDone)
     {
-        m_logFunction(LOG_DEBUG, "VD first sync successful but module is stopping, flag file not created");
+        m_logFunction(LOG_DEBUG, "VD first sync successful but module is stopping, metadata marker not persisted.");
     }
     else if (!vdResult)
     {
-        m_logFunction(LOG_DEBUG, "VD sync was not successful, flag file not created");
+        m_logFunction(LOG_DEBUG, "VD sync was not successful, metadata marker not persisted.");
     }
 }
 
@@ -2846,7 +2827,7 @@ int Syscollector::executeFlushSync()
 
         vdResult = m_spSyncProtocolVD->synchronizeModule(Mode::DELTA, vdOption);
 
-        createVDFirstSyncFlagIfNeeded(vdResult, firstSyncDone);
+        persistVDFirstSyncIfNeeded(vdResult, firstSyncDone);
     }
 
     const bool overallSuccess = result && vdResult;
@@ -3190,6 +3171,22 @@ std::string Syscollector::query(const std::string& jsonQuery)
             {
                 response["error"] = MQ_ERR_INTERNAL;
                 response["message"] = "Failed to retrieve Syscollector first scan completion";
+            }
+        }
+        else if (command == "get_vd_first_sync_completed")
+        {
+            int64_t vdFirstSyncCompleted = 0;
+
+            if (getMetadataValue(SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY, vdFirstSyncCompleted))
+            {
+                response["error"] = MQ_SUCCESS;
+                response["message"] = "Syscollector VD first sync completion retrieved";
+                response["data"]["vd_first_sync_completed"] = vdFirstSyncCompleted > 0 ? 1 : 0;
+            }
+            else
+            {
+                response["error"] = MQ_ERR_INTERNAL;
+                response["message"] = "Failed to retrieve Syscollector VD first sync completion";
             }
         }
         else if (command == "set_version")
