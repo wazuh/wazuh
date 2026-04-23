@@ -43,7 +43,7 @@ protected:
 
     void setupValidPolicyMocks(const cm::store::NamespaceId& policyName, const std::string& hash)
     {
-        EXPECT_CALL(*mockBuilder, buildPolicy(policyName, ::testing::_, ::testing::_))
+        EXPECT_CALL(*mockBuilder, buildPolicy(policyName, ::testing::_))
             .WillOnce(Return(std::shared_ptr<builder::IPolicy>(mockPolicy)));
 
         EXPECT_CALL(*mockPolicy, assets()).WillRepeatedly(ReturnRef(fakeAssets));
@@ -85,7 +85,7 @@ TEST_F(EnvironmentBuilderFixture, CreateEnvironmentWithValidPolicyButNoAssets)
 {
     std::unordered_set<base::Name> emptyAssets {};
 
-    EXPECT_CALL(*mockBuilder, buildPolicy(validPolicyName, ::testing::_, ::testing::_))
+    EXPECT_CALL(*mockBuilder, buildPolicy(validPolicyName, ::testing::_))
         .WillOnce(Return(std::shared_ptr<builder::IPolicy>(mockPolicy)));
 
     EXPECT_CALL(*mockPolicy, assets()).WillRepeatedly(ReturnRef(emptyAssets));
@@ -97,7 +97,7 @@ TEST_F(EnvironmentBuilderFixture, CreateEnvironmentWithValidPolicyButNoAssets)
 
 TEST_F(EnvironmentBuilderFixture, CreateThrowsOnPolicyBuildFailure)
 {
-    EXPECT_CALL(*mockBuilder, buildPolicy(invalidPolicyName, ::testing::_, ::testing::_))
+    EXPECT_CALL(*mockBuilder, buildPolicy(invalidPolicyName, ::testing::_))
         .WillOnce(Throw(std::runtime_error("Failed to build policy")));
 
     EnvironmentBuilder eBuilder(mockBuilder, mockControllerMaker);
@@ -107,7 +107,7 @@ TEST_F(EnvironmentBuilderFixture, CreateThrowsOnPolicyBuildFailure)
 
 TEST_F(EnvironmentBuilderFixture, CreateThrowsOnControllerCreationFailure)
 {
-    EXPECT_CALL(*mockBuilder, buildPolicy(validPolicyName, ::testing::_, ::testing::_))
+    EXPECT_CALL(*mockBuilder, buildPolicy(validPolicyName, ::testing::_))
         .WillOnce(Return(std::shared_ptr<builder::IPolicy>(mockPolicy)));
 
     EXPECT_CALL(*mockPolicy, assets()).WillRepeatedly(ReturnRef(fakeAssets));
@@ -122,7 +122,7 @@ TEST_F(EnvironmentBuilderFixture, CreateThrowsOnControllerCreationFailure)
 
 TEST_F(EnvironmentBuilderFixture, MakeControllerReturnsControllerAndHash)
 {
-    EXPECT_CALL(*mockBuilder, buildPolicy(validPolicyName, true, true))
+    EXPECT_CALL(*mockBuilder, buildPolicy(validPolicyName, true))
         .WillOnce(Return(std::shared_ptr<builder::IPolicy>(mockPolicy)));
 
     EXPECT_CALL(*mockPolicy, assets()).WillRepeatedly(ReturnRef(fakeAssets));
@@ -133,7 +133,7 @@ TEST_F(EnvironmentBuilderFixture, MakeControllerReturnsControllerAndHash)
     EXPECT_CALL(*mockControllerMaker, create(testing::_, testing::_, testing::_)).WillOnce(Return(mockController));
 
     EnvironmentBuilder eBuilder(mockBuilder, mockControllerMaker);
-    auto [controller, hash] = eBuilder.makeController(validPolicyName, true, true);
+    auto [controller, hash] = eBuilder.makeController(validPolicyName, true);
 
     EXPECT_NE(controller, nullptr);
     EXPECT_EQ(hash, testHash);
@@ -155,7 +155,7 @@ TEST_F(EnvironmentBuilderFixture, CreateMultipleEnvironments)
 {
     auto mockController2 = std::make_shared<bk::mocks::MockController>();
 
-    EXPECT_CALL(*mockBuilder, buildPolicy(validPolicyName, false, false))
+    EXPECT_CALL(*mockBuilder, buildPolicy(validPolicyName, false))
         .WillOnce(Return(std::shared_ptr<builder::IPolicy>(mockPolicy)));
     EXPECT_CALL(*mockPolicy, assets()).WillRepeatedly(ReturnRef(fakeAssets));
     EXPECT_CALL(*mockPolicy, expression()).WillOnce(ReturnRef(emptyExpression));

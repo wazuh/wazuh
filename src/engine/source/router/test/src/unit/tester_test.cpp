@@ -34,7 +34,7 @@ public:
 
     void addEntryCallers(const std::unordered_set<base::Name>& fakeAssets, const std::string& hash)
     {
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_, testing::_))
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_))
             .WillOnce(::testing::Return(m_mockPolicy));
         EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(fakeAssets));
         EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_))
@@ -48,13 +48,13 @@ public:
 
     void rebuildEntryFailture()
     {
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_, testing::_))
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_))
             .WillOnce(::testing::Throw(std::runtime_error("Policy was not building")));
     }
 
     void rebuildEntryCallersSuccess(const std::unordered_set<base::Name>& fakeAssets, const std::string& hash)
     {
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_, testing::_))
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_))
             .WillOnce(::testing::Return(m_mockPolicy));
         EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(fakeAssets));
         EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_))
@@ -125,7 +125,7 @@ TEST_F(TesterTest, FailedCreatingEnvironment)
 {
     auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, cm::store::NamespaceId {"decoder"}, LIFESPAM};
 
-    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_, testing::_)).WillOnce(::testing::Return(nullptr));
+    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_)).WillOnce(::testing::Return(nullptr));
     EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_)).Times(0);
 
     auto error = m_test->addEntry(entryPost, /*ignoreFail=*/false);
@@ -142,7 +142,7 @@ TEST_F(TesterTest, FailedCreatingEnvironmentControllerNull)
     std::unordered_set<base::Name> fakeAssets {};
     fakeAssets.insert(base::Name("asset/test/0"));
 
-    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_, testing::_))
+    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_))
         .WillOnce(::testing::Return(m_mockPolicy));
     EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(fakeAssets));
     EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(base::Expression {}));

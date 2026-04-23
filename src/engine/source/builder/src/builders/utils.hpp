@@ -1,11 +1,11 @@
-#ifndef _BUILDER_BUILDERS_UTILS_HPP
-#define _BUILDER_BUILDERS_UTILS_HPP
+#ifndef BUILDER_BUILDERS_UTILS_HPP
+#define BUILDER_BUILDERS_UTILS_HPP
 
 #include "types.hpp"
 
-/** @brief Return a failure result, optionally including a trace message when tracing is enabled. */
-#define RETURN_FAILURE(runState, ret, traceMsg)                                                                        \
-    if ((runState)->trace)                                                                                             \
+/** @brief Return a failure result, optionally including a trace message when test mode is enabled. */
+#define RETURN_FAILURE(isTestMode, ret, traceMsg)                                                                      \
+    if (isTestMode)                                                                                                    \
     {                                                                                                                  \
         return base::result::makeFailure<decltype(ret)>(ret, traceMsg);                                                \
     }                                                                                                                  \
@@ -14,9 +14,9 @@
         return base::result::makeFailure<decltype(ret)>(ret);                                                          \
     }
 
-/** @brief Return a success result, optionally including a trace message when tracing is enabled. */
-#define RETURN_SUCCESS(runState, ret, traceMsg)                                                                        \
-    if ((runState)->trace)                                                                                             \
+/** @brief Return a success result, optionally including a trace message when test mode is enabled. */
+#define RETURN_SUCCESS(isTestMode, ret, traceMsg)                                                                      \
+    if (isTestMode)                                                                                                    \
     {                                                                                                                  \
         return base::result::makeSuccess<decltype(ret)>(ret, traceMsg);                                                \
     }                                                                                                                  \
@@ -129,4 +129,4 @@ inline void assertValue(const std::vector<OpArg>& args, Idx... idx)
 
 } // namespace builder::builders::utils
 
-#endif // _BUILDER_BUILDERS_UTILS_HPP
+#endif // BUILDER_BUILDERS_UTILS_HPP

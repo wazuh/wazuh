@@ -1,5 +1,5 @@
-#ifndef _ICMSTORE_DATA_POLICY
-#define _ICMSTORE_DATA_POLICY
+#ifndef ICMSTORE_DATA_POLICY
+#define ICMSTORE_DATA_POLICY
 
 #include <regex>
 #include <string>
@@ -24,6 +24,7 @@
  *   {
  *     "title": "Development 0.0.1",
  *   },
+ *   "enabled": true,
  *   "root_decoder": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
  *   "origin_space": "space1", -> optional, default value "UNDEFINED"
  *   "index_unclassified_events": true, -> optional, default value false
@@ -39,7 +40,9 @@
  *     "f61133f5-90b9-49ed-b1d5-0b88cb04355e",
  *     "369c3128-9715-4a30-9ff9-22fcac87688b",
  *   ],
- *   "outputs": [] -> opcional.
+ *   "outputs": [], -> optional.
+ *   "hash": "7ab287...5180", -> "optional hash value for integrity verification"
+ *   "id": "eb5c2519-feff-4789-8542-9a0453cc8690" -> "uuid for the policy"
  * }
  *
  */
@@ -90,11 +93,10 @@ private:
 
     void validateOriginSpace(std::string_view value) const
     {
-        if (!std::regex_match(value.begin(), value.end(), std::regex("^[a-zA-Z0-9_-]+$")))
+        if (!std::regex_match(value.begin(), value.end(), std::regex("^[a-zA-Z0-9_]+$")))
         {
             throw std::runtime_error(fmt::format(
-                "'origin_space' contains invalid characters: '{}'. Only alphanumeric, hyphens and underscores are "
-                "allowed.",
+                "'origin_space' contains invalid characters: '{}'. Only alphanumeric and underscores are allowed.",
                 value));
         }
     }
@@ -151,7 +153,7 @@ public:
             std::string title;
             if (policyJson.getString(title, jsonpolicy::PATH_KEY_TITLE) != json::RetGet::Success || title.empty())
             {
-                return std::string{"Untitled Policy"};
+                return std::string {"Untitled Policy"};
             }
             return title;
         }();
@@ -204,7 +206,7 @@ public:
             return integrations;
         }();
 
-        // filters
+        // Get filters
         std::vector<std::string> filters = [&]() -> auto
         {
             std::vector<std::string> filters;
@@ -230,7 +232,7 @@ public:
             return filters;
         }();
 
-        // enrichments
+        // Get enrichments
         std::vector<std::string> enrichments = [&]() -> auto
         {
             std::vector<std::string> enrichments;
@@ -249,7 +251,6 @@ public:
                     enrichments.push_back(std::move(enrichment));
                 }
             }
-            // TODO: Uncomment when enrichments are mandatory
             else
             {
                 throw std::runtime_error("Policy JSON must have an 'enrichments' array");
@@ -293,6 +294,7 @@ public:
             return originSpace;
         }();
 
+        // optional hash
         auto policyHash = [&]() -> std::string
         {
             std::string hash;
@@ -303,6 +305,7 @@ public:
             return hash;
         }();
 
+        // Get index_unclassified_events flag
         auto indexUnclassifiedEvents = [&]() -> bool
         {
             auto indexOpt = policyJson.getBool(jsonpolicy::PATH_KEY_INDEX_UNCLASSIFIED_EVENTS);
@@ -313,6 +316,7 @@ public:
             return indexOpt.value();
         }();
 
+        // Get index_discarded_events flag
         bool indexDiscardedEvents = [&]() -> bool
         {
             auto indexDiscardedOpt = policyJson.getBool(jsonpolicy::PATH_KEY_INDEX_DISCARDED_EVENTS);
@@ -323,6 +327,7 @@ public:
             return indexDiscardedOpt.value();
         }();
 
+        // Get cleanup_decoder_variables flag
         bool cleanupDecoderVariables = [&]() -> bool
         {
             auto cleanupDecoderVariablesOpt = policyJson.getBool(jsonpolicy::PATH_KEY_CLEANUP_DECODER_VARIABLES);
@@ -415,4 +420,4 @@ public:
 
 } // namespace cm::store::dataType
 
-#endif // _ICMSTORE_DATA_POLICY
+#endif // ICMSTORE_DATA_POLICY

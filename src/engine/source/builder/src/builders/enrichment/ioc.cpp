@@ -245,16 +245,16 @@ std::vector<IocMappingConfig> loadIocMappingConfigs(const json::Json& config, st
 
 base::Expression getEachIocEnrichTerm(const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbIocManager,
                                       const IocMappingConfig& config,
-                                      bool trace,
+                                      bool isTestMode,
                                       const std::shared_ptr<bool>& matchFound)
 {
-    auto opFn = [kvdbIocManager, config, trace, matchFound](base::Event event) -> base::result::Result<base::Event>
+    auto opFn = [kvdbIocManager, config, isTestMode, matchFound](base::Event event) -> base::result::Result<base::Event>
     {
         const auto keyOpt = buildLookupKey(event, config);
         if (!keyOpt.has_value())
         {
             const auto traceMsg =
-                trace ? fmt::format(FMT_IOC_SOURCE_MISSING_TRACE, config.iocType, config.sourceFields) : std::string {};
+                isTestMode ? fmt::format(FMT_IOC_SOURCE_MISSING_TRACE, config.iocType, config.sourceFields) : std::string {};
             return base::result::makeFailure<decltype(event)>(event, traceMsg);
         }
 
@@ -263,7 +263,7 @@ base::Expression getEachIocEnrichTerm(const std::shared_ptr<ioc::kvdb::IKVDBMana
         if (!iocValue.has_value())
         {
             const auto traceMsg =
-                trace ? fmt::format(FMT_IOC_NOT_FOUND_TRACE, config.iocType, lookupKey, config.sourceFields)
+                isTestMode ? fmt::format(FMT_IOC_NOT_FOUND_TRACE, config.iocType, lookupKey, config.sourceFields)
                       : std::string {};
             return base::result::makeFailure<decltype(event)>(event, traceMsg);
         }
@@ -283,7 +283,7 @@ base::Expression getEachIocEnrichTerm(const std::shared_ptr<ioc::kvdb::IKVDBMana
         *matchFound = true;
 
         const auto traceMsg =
-            trace ? fmt::format(FMT_IOC_MATCH_TRACE, config.iocType, config.sourceFields, lookupKey) : std::string {};
+            isTestMode ? fmt::format(FMT_IOC_MATCH_TRACE, config.iocType, config.sourceFields, lookupKey) : std::string {};
 
         return base::result::makeSuccess<decltype(event)>(event, traceMsg);
     };
@@ -295,7 +295,7 @@ std::pair<base::Expression, std::string>
 iocEnrichmentBuilder(const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbIocManager,
                      const std::vector<IocMappingConfig>& mappingConfigs,
                      std::string traceableName,
-                     bool trace)
+                     bool isTestMode)
 {
     if (!kvdbIocManager)
     {
@@ -310,12 +310,12 @@ iocEnrichmentBuilder(const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbIocMana
 
     for (const auto& config : mappingConfigs)
     {
-        enrichmentTerms.push_back(getEachIocEnrichTerm(kvdbIocManager, config, trace, matchFound));
+        enrichmentTerms.push_back(getEachIocEnrichTerm(kvdbIocManager, config, isTestMode, matchFound));
     }
 
     base::Expression enrichmentExpr = base::Chain::create(traceableName, enrichmentTerms);
 
-    if (!trace)
+    if (!isTestMode)
     {
         return {enrichmentExpr, traceableName};
     }
@@ -345,9 +345,9 @@ EnrichmentBuilder getIocEnrichmentBuilder(const std::shared_ptr<ioc::kvdb::IKVDB
     const auto mappingConfigs = loadIocMappingConfigs(configDoc, iocType);
     const auto traceableName = fmt::format("enrichment/IOC/{}", iocType);
 
-    return [kvdbIocManager, mappingConfigs, traceableName](bool trace) -> std::pair<base::Expression, std::string>
+    return [kvdbIocManager, mappingConfigs, traceableName](bool isTestMode) -> std::pair<base::Expression, std::string>
     {
-        return iocEnrichmentBuilder(kvdbIocManager, mappingConfigs, traceableName, trace);
+        return iocEnrichmentBuilder(kvdbIocManager, mappingConfigs, traceableName, isTestMode);
     };
 }
 

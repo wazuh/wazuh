@@ -7,7 +7,7 @@ auto customRefExpected = [](const std::string& refName = "ref")
 {
     return [=](const BuildersMocks& mocks)
     {
-        EXPECT_CALL(*mocks.ctx, runState()).Times(testing::AtLeast(1));
+        EXPECT_CALL(*mocks.ctx, isTestMode()).Times(testing::AtLeast(1));
         EXPECT_CALL(*mocks.ctx, validator());
         return None {};
     };
@@ -17,7 +17,7 @@ auto typeRefExpected = [](json::Json::Type type, bool success = true, const std:
 {
     return [=](const BuildersMocks& mocks)
     {
-        EXPECT_CALL(*mocks.ctx, runState()).Times(testing::AtLeast(1));
+        EXPECT_CALL(*mocks.ctx, isTestMode()).Times(testing::AtLeast(1));
         EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AtLeast(1));
         EXPECT_CALL(*mocks.validator, hasField(DotPath(refName))).WillOnce(testing::Return(true));
         EXPECT_CALL(*mocks.validator, getJsonType(DotPath(refName))).WillRepeatedly(testing::Return(type));
