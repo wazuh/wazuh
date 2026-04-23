@@ -161,7 +161,8 @@ bool IocSync::existIocDataInRemote()
                                          fmt::format("{}::existIocDataInRemote()", COMPONENT_NAME),
                                          "Check if IOC data index exists in remote indexer",
                                          m_attempts,
-                                         m_waitSeconds);
+                                         m_waitSeconds,
+                                         m_shutdownRequested);
 }
 
 std::unordered_map<std::string, std::string> IocSync::getRemoteHashesFromRemote()
@@ -172,7 +173,8 @@ std::unordered_map<std::string, std::string> IocSync::getRemoteHashesFromRemote(
                                          fmt::format("{}::getRemoteHashesFromRemote()", COMPONENT_NAME),
                                          "Get IOC type hashes from remote indexer",
                                          m_attempts,
-                                         m_waitSeconds);
+                                         m_waitSeconds,
+                                         m_shutdownRequested);
 }
 
 void IocSync::downloadAndPopulateDB(std::string_view iocType, const std::string& dbName)
@@ -431,6 +433,12 @@ void IocSync::synchronize()
 {
     LOG_DEBUG("[IOC::Sync] Checking for IOC database updates to synchronize");
 
+    if (m_shutdownRequested.load(std::memory_order_relaxed))
+    {
+        LOG_INFO("[IOC::Sync] Synchronization aborted before start");
+        return;
+    }
+
     try
     {
         // Lock weak pointers and acquire mutex
@@ -451,6 +459,12 @@ void IocSync::synchronize()
         bool stateChanged = false;
         for (auto& dbState : m_databasesState)
         {
+            if (m_shutdownRequested.load(std::memory_order_relaxed))
+            {
+                LOG_INFO("[IOC::Sync] Synchronization aborted during IOC type iteration");
+                return;
+            }
+
             if (syncIOCType(dbState, remoteTypeHashes, kvdbiocPtr))
             {
                 stateChanged = true;
@@ -474,8 +488,19 @@ void IocSync::synchronize()
     }
     catch (const std::exception& e)
     {
+        if (m_shutdownRequested.load(std::memory_order_relaxed))
+        {
+            LOG_INFO("[IOC::Sync] Synchronization aborted during remote operation");
+            return;
+        }
         LOG_WARNING("[IOC::Sync] Synchronization cycle failed: {}", e.what());
     }
+}
+
+void IocSync::requestShutdown()
+{
+    m_shutdownRequested.store(true, std::memory_order_relaxed);
+    LOG_INFO("[IOC::Sync] Shutdown requested");
 }
 
 } // namespace ioc::sync

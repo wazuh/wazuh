@@ -647,6 +647,13 @@ int main(int argc, char* argv[])
                 indexerConnector, IOCkvdb, store, maxRetries, retryInterval, iocSyncBatchSize);
             LOG_INFO("IOC Sync Service initialized.");
 
+            exitHandler.add(
+                [iocSyncService, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
+                {
+                    iocSyncService->requestShutdown();
+                    LOG_INFO_L(functionName.c_str(), "IOCSync shutdown requested.");
+                });
+
             // Add IOC sync to scheduler
             auto iocSyncInterval = confManager.get<std::size_t>(conf::key::IOC_SYNC_INTERVAL);
             if (iocSyncInterval > 0)

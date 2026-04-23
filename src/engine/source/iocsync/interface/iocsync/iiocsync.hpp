@@ -4,11 +4,11 @@
 #include <string>
 #include <vector>
 
-
 namespace ioc::sync
 {
 
-class IIocSync {
+class IIocSync
+{
 public:
     virtual ~IIocSync() = default;
 
@@ -29,6 +29,11 @@ public:
      * @throws std::runtime_error if any step of the synchronization process fails
      */
     virtual void synchronize() = 0;
+
+    /**
+     * @brief Requests graceful shutdown for in-flight or future sync operations.
+     */
+    virtual void requestShutdown() = 0;
 };
 
 } // namespace ioc::sync
