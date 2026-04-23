@@ -627,8 +627,9 @@ private:
                     std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0)
                         .count();
                 logInfo(WM_CONTENTUPDATER,
-                        "IndexerDownloader: Slice %zu/%zu complete — %zu docs in %ldms",
+                        "IndexerDownloader: Slice %zu (%zu/%zu) complete — %zu docs in %ldms",
                         sliceId,
+                        sliceId + 1,
                         numSlices,
                         sliceProcessed,
                         elapsed);
