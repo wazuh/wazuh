@@ -29,28 +29,14 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Project dependencies
-        uses: ./.github/actions/build_external_deps
-
-      - name: Inventory sync - Build tests
-        uses: ./.github/actions/build_target_cpp
+      - name: C++ test pipeline
+        uses: ./.github/actions/cpp_test_pipeline
         with:
           target: "inventory_sync_utest"
-          test: "true"
           asan: "false"
-
-      - name: Inventory sync - Run tests
-        uses: ./.github/actions/test_cpp
-        with:
-          valgrind: "true"
-          target: "inventory_sync_utest"
-
-      - name: Inventory sync - Coverage
-        uses: ./.github/actions/coverage_cpp
-        with:
-          path: src/wazuh_modules/inventory_sync
-          test_directory: src/wazuh_modules/inventory_sync
-          id: inventory_sync
+          with_coverage: "true"
+          coverage_path: src/wazuh_modules/inventory_sync
+          coverage_id: inventory_sync
           validate_function_coverage: "false"
 
   inventorysync-asan:
@@ -64,18 +50,8 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Project dependencies
-        uses: ./.github/actions/build_external_deps
-
-      - name: Inventory sync - Build tests
-        uses: ./.github/actions/build_target_cpp
+      - name: C++ test pipeline (ASAN)
+        uses: ./.github/actions/cpp_test_pipeline
         with:
           target: "inventory_sync_utest"
-          test: "true"
           asan: "true"
-
-      - name: Inventory sync - Run tests
-        uses: ./.github/actions/test_cpp
-        with:
-          target: "inventory_sync_utest"
-          valgrind: "false"

@@ -29,28 +29,15 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Project dependencies
-        uses: ./.github/actions/build_external_deps
-
-      - name: Content manager - Build tests
-        uses: ./.github/actions/build_target_cpp
+      - name: C++ test pipeline
+        uses: ./.github/actions/cpp_test_pipeline
         with:
           target: "content_manager_utest"
-          test: "true"
           asan: "false"
-
-      - name: Content manager - Run tests
-        uses: ./.github/actions/test_cpp
-        with:
-          valgrind: "true"
-          target: "content_manager_utest"
-
-      - name: Content manager - Coverage
-        uses: ./.github/actions/coverage_cpp
-        with:
-          path: src/shared_modules/content_manager
-          id: content_manager
-          threshold: "65"
+          with_coverage: "true"
+          coverage_path: src/shared_modules/content_manager
+          coverage_id: content_manager
+          coverage_threshold: "65"
 
   contentmanager-asan:
     strategy:
@@ -63,18 +50,8 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Project dependencies
-        uses: ./.github/actions/build_external_deps
-
-      - name: Content manager - Build tests
-        uses: ./.github/actions/build_target_cpp
+      - name: C++ test pipeline (ASAN)
+        uses: ./.github/actions/cpp_test_pipeline
         with:
           target: "content_manager_utest"
-          test: "true"
           asan: "true"
-
-      - name: Content manager - Run tests
-        uses: ./.github/actions/test_cpp
-        with:
-          target: "content_manager_utest"
-          valgrind: "false"
