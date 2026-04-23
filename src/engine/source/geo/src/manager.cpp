@@ -249,7 +249,7 @@ base::OptError Manager::processDbEntry(const std::string& path,
 
     for (int i = 0; i < MAX_RETRIES; ++i)
     {
-        if (!m_shouldRun.load())
+        if (!m_shouldRun->load())
         {
             return base::Error {"Shutdown requested, aborting geo database download"};
         }
@@ -338,7 +338,7 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
 {
     LOG_DEBUG("[Geo::Manager] Checking for geo database updates from manifest '{}'", manifestUrl);
 
-    if (!m_shouldRun.load())
+    if (!m_shouldRun->load())
     {
         LOG_DEBUG("[Geo::Manager] Shutdown requested, skipping geo sync");
         return;
@@ -402,7 +402,7 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
     manifest.getString(cityMd5, "/city/md5");
     processDatabase(Type::CITY, cityPath, cityUrl, cityMd5, "CITY");
 
-    if (!m_shouldRun.load())
+    if (!m_shouldRun->load())
     {
         LOG_DEBUG("[Geo::Manager] Shutdown requested, skipping ASN database sync");
         return;
@@ -419,7 +419,7 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
 
 void Manager::requestShutdown()
 {
-    m_shouldRun.store(false);
+    m_shouldRun->store(false);
 }
 
 Result<std::shared_ptr<ILocator>> Manager::getLocator(Type type) const

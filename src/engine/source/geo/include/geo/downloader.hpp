@@ -10,7 +10,7 @@ namespace geo
 class Downloader : public IDownloader
 {
     long m_timeout; ///< Maximum time in milliseconds for HTTP requests (0 = no timeout).
-    const std::atomic<bool>* m_shouldRun {nullptr}; ///< Optional flag to interrupt in-flight downloads.
+    std::shared_ptr<const std::atomic<bool>> m_shouldRun; ///< Optional flag to interrupt in-flight downloads.
 
 public:
     explicit Downloader(long timeout = 0)
@@ -21,9 +21,9 @@ public:
 
     /**
      * @brief Set a should-run flag to enable mid-transfer cancellation.
-     * @param flag Atomic flag; when set to false, in-flight downloads will be cancelled.
+     * @param flag Shared atomic flag; when set to false, in-flight downloads will be cancelled.
      */
-    void setShouldRun(const std::atomic<bool>& flag) { m_shouldRun = &flag; }
+    void setShouldRun(std::shared_ptr<const std::atomic<bool>> flag) { m_shouldRun = std::move(flag); }
 
     base::RespOrError<std::string> downloadHTTPS(const std::string& url) const override;
     base::RespOrError<json::Json> downloadManifest(const std::string& url) const override;
