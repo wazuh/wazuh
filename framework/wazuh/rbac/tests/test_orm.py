@@ -97,6 +97,32 @@ def test_nbf_invalid(db_setup):
             assert not tm.is_token_valid(role_id=role, token_nbf_time=current_timestamp)
 
 
+def test_token_valid_after_revoke_same_second_ms(db_setup):
+    """Ensure tokens issued within the same second as revoke are correctly validated using ms precision."""
+    with db_setup.AuthenticationManager() as am:
+        am.add_user(username='timing_user', password='testingA1!')
+        user_id = am.get_user('timing_user')['id']
+
+    # Use a timestamp that represents milliseconds (>= 10_000_000_000) to avoid normalization
+    mocked_time = 1609459200.100  # 2021-01-01 00:00:00.100 UTC
+    with patch('wazuh.rbac.orm.time', return_value=mocked_time):
+        with db_setup.TokenManager() as tm:
+            assert tm.add_user_roles_rules(users={user_id})
+
+    # Calculate the revoke timestamp the same way UsersTokenBlacklist.__init__ does
+    revoke_ts = int(mocked_time * 1000)
+
+    with db_setup.TokenManager() as tm:
+        # Token issued before revoke -> invalid
+        assert not tm.is_token_valid(user_id=user_id, token_nbf_time=revoke_ts - 1)
+
+        # Token issued exactly at revoke time -> invalid
+        assert not tm.is_token_valid(user_id=user_id, token_nbf_time=revoke_ts)
+
+        # Token issued after revoke -> valid
+        assert tm.is_token_valid(user_id=user_id, token_nbf_time=revoke_ts + 1)
+
+
 def test_delete_all_rules(db_setup):
     """Check that rules are correctly deleted"""
     add_token(db_setup)
