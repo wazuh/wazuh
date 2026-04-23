@@ -879,10 +879,17 @@ int main(int argc, char* argv[])
 
         if (enableProcessing)
         {
-            // Synchronize on startup
-            cmSyncService->synchronize();
-            iocSyncService->synchronize();
-            remoteConf->synchronize();
+            // Async Synchronize on startup
+            scheduler->scheduleTask("initial-sync",
+                                    scheduler::TaskConfig {.interval = 0,
+                                                           .CPUPriority = 0,
+                                                           .timeout = 0,
+                                                           .taskFunction = [=]()
+                                                           {
+                                                               cmSyncService->synchronize();
+                                                               iocSyncService->synchronize();
+                                                               remoteConf->synchronize();
+                                                           }});
 
             while (engineRemoteServer->isRunning())
             {
