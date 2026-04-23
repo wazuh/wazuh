@@ -391,7 +391,7 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
         auto error = processDbEntry(path, type, url, md5, createdAt.value());
         if (base::isError(error))
         {
-            LOG_ERROR("[Geo::Manager] Failed to process {} database '{}': {}",
+            LOG_WARNING("[Geo::Manager] Failed to process {} database '{}': {}",
                       typeName,
                       dbName,
                       base::getError(error).message);
