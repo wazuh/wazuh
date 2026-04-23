@@ -93,9 +93,7 @@ public:
     /**
      * @copydoc IRouter::hotSwapNamespace
      */
-    base::OptError hotSwapNamespace(const std::string& name,
-                                    const cm::store::NamespaceId& newNamespace,
-                                    const std::function<bool()>& shouldAbort = nullptr) override;
+    base::OptError hotSwapNamespace(const std::string& name, const cm::store::NamespaceId& newNamespace) override;
 
     /**
      * @copydoc IRouter::ingest

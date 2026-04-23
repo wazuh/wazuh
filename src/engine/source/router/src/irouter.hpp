@@ -1,7 +1,6 @@
 #ifndef _ROUTER_IROUTER_HPP
 #define _ROUTER_IROUTER_HPP
 
-#include <functional>
 #include <list>
 #include <memory>
 #include <string>
@@ -86,12 +85,9 @@ public:
      *
      * @param name The name of the entry to hot swap
      * @param newNamespace The new namespace to use
-     * @param shouldAbort Optional callback that returns true when the operation should be aborted
      * @return An optional error if the operation failed
      */
-    virtual base::OptError hotSwapNamespace(const std::string& name,
-                                            const cm::store::NamespaceId& newNamespace,
-                                            const std::function<bool()>& shouldAbort = nullptr) = 0;
+    virtual base::OptError hotSwapNamespace(const std::string& name, const cm::store::NamespaceId& newNamespace) = 0;
 
     /**
      * @brief Ingest an event into the router.

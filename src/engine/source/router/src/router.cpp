@@ -1,5 +1,4 @@
 #include <chrono>
-#include <functional>
 
 #include <base/logging.hpp>
 
@@ -165,16 +164,8 @@ base::RespOrError<prod::Entry> Router::getEntry(const std::string& name) const
     return m_table.get(name);
 }
 
-base::OptError Router::hotSwapNamespace(const std::string& name,
-                                        const cm::store::NamespaceId& newNamespace,
-                                        const std::function<bool()>& shouldAbort)
+base::OptError Router::hotSwapNamespace(const std::string& name, const cm::store::NamespaceId& newNamespace)
 {
-    // Check abort before the expensive environment build
-    if (shouldAbort && shouldAbort())
-    {
-        return base::Error {"Hot swap aborted before environment build"};
-    }
-
     // Step 1: Create new environment WITHOUT any lock
     std::unique_ptr<Environment> newEnv;
     try

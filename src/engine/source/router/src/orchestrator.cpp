@@ -476,7 +476,7 @@ base::OptError Orchestrator::hotSwapNamespace(const std::string& name,
             {
                 return base::OptError {base::Error {"Hot swap aborted"}};
             }
-            return worker->get()->hotSwapNamespace(name, newNamespace, shouldAbort);
+            return worker->get()->hotSwapNamespace(name, newNamespace);
         });
 
     if (error)

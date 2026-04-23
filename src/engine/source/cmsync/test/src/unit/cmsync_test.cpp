@@ -726,7 +726,10 @@ TEST_F(CMSyncSynchronizeTest, AbortsInHotSwapRollsBackNamespace)
     auto sync = createSyncWithState(state);
 
     // shouldAbort always returns false at CMSync level, but hotSwapNamespace simulates abort by returning error
-    auto shouldAbort = []() { return false; };
+    auto shouldAbort = []()
+    {
+        return false;
+    };
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
     EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard")))
@@ -743,7 +746,9 @@ TEST_F(CMSyncSynchronizeTest, AbortsInHotSwapRollsBackNamespace)
     EXPECT_CALL(*crud, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
     wiconnector::PolicyResources resources;
     EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(resources));
-    EXPECT_CALL(*crud, importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
     // hotSwapNamespace returns abort error
