@@ -15,7 +15,7 @@ export LD_LIBRARY_PATH="${DIR}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 # Installation info
 VERSION="v5.0.0"
-REVISION="beta2"
+REVISION="beta1"
 TYPE="agent"
 
 ###  Do not modify below here ###
