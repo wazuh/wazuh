@@ -119,6 +119,17 @@ namespace Utils
         }
 
         /**
+         * @brief Compress file to GZIP format (non-cancellable convenience overload).
+         */
+        static void gzipCompress(const std::filesystem::path& inputFilePath,
+                                 const std::filesystem::path& gzFilePath,
+                                 int compressionLevel)
+        {
+            static const std::atomic<bool> alwaysRun {true};
+            gzipCompress(inputFilePath, gzFilePath, compressionLevel, alwaysRun);
+        }
+
+        /**
          * @brief Uncompress GZIP file.
          *
          * @param gzFilePath Compressed (.gz) file path.
