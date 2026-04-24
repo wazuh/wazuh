@@ -166,17 +166,27 @@ int buffer_append(const char *msg, ssize_t msg_len) {
     }
 }
 
+STATIC void send_buffer_status_event(const char *action, int severity) {
+    char msg[OS_MAXSTR];
+    cJSON *event = cJSON_CreateObject();
+    cJSON_AddStringToObject(event, "event.module", "wazuh-agent");
+    cJSON_AddStringToObject(event, "event.category", "change");
+    cJSON_AddStringToObject(event, "event.dataset", "wazuh-agent.buffer");
+    cJSON_AddNumberToObject(event, "event.severity", severity);
+    cJSON_AddStringToObject(event, "event.action", action);
+    char *json_str = cJSON_PrintUnformatted(event);
+    cJSON_Delete(event);
+    snprintf(msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", json_str);
+    os_free(json_str);
+    send_msg(msg, -1);
+}
+
 /* Send messages from buffer to the server */
 #ifdef WIN32
 DWORD WINAPI dispatch_buffer(__attribute__((unused)) LPVOID arg) {
 #else
 void *dispatch_buffer(__attribute__((unused)) void * arg) {
 #endif
-    char flood_msg[OS_MAXSTR];
-    char full_msg[OS_MAXSTR];
-    char warn_msg[OS_MAXSTR];
-    char normal_msg[OS_MAXSTR];
-    char warn_str[OS_SIZE_2048];
     struct timespec ts0;
     struct timespec ts1;
 
@@ -235,36 +245,27 @@ void *dispatch_buffer(__attribute__((unused)) void * arg) {
         w_mutex_unlock(&mutex_lock);
 
         if (buff.warn) {
-
             buff.warn = 0;
             mwarn(WARN_BUFFER, warn_level);
-            snprintf(warn_str, OS_SIZE_2048, OS_WARN_BUFFER, warn_level);
-            snprintf(warn_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", warn_str);
-            send_msg(warn_msg, -1);
+            send_buffer_status_event("warning", 1);
         }
 
         if (buff.full) {
-
             buff.full = 0;
             mwarn(FULL_BUFFER);
-            snprintf(full_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", OS_FULL_BUFFER);
-            send_msg(full_msg, -1);
+            send_buffer_status_event("full", 2);
         }
 
         if (buff.flood) {
-
             buff.flood = 0;
             mwarn(FLOODED_BUFFER);
-            snprintf(flood_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", OS_FLOOD_BUFFER);
-            send_msg(flood_msg, -1);
+            send_buffer_status_event("flooded", 3);
         }
 
         if (buff.normal) {
-
             buff.normal = 0;
             mdebug1(NORMAL_BUFFER, normal_level);
-            snprintf(normal_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", OS_NORMAL_BUFFER);
-            send_msg(normal_msg, -1);
+            send_buffer_status_event("normal", 0);
         }
 
         os_wait();
