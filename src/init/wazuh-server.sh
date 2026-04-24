@@ -17,8 +17,8 @@ WAZUH_CONF="${WAZUH_CONF:-wazuh-manager.conf}"
 export LD_LIBRARY_PATH="${DIR}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 # Installation info
-VERSION="v5.0.1"
-REVISION="alpha1"
+VERSION="v5.0.0"
+REVISION="beta1"
 TYPE="manager"
 WAZUH_ENGINE_GROUP="${WAZUH_ENGINE_GROUP:-wazuh-manager}"
 export WAZUH_ENGINE_GROUP
