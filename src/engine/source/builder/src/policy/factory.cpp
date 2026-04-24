@@ -216,8 +216,7 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
         }
     }
 
-    // TODO: Should clear all integration related context
-    assetBuilder->clearAvailableKvdbs();
+    assetBuilder->clearIntegrationData();
 
     // Filters
     for (const auto& filterUUID : policy.getFiltersUUIDs())
@@ -246,7 +245,7 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
     if (!isTestMode)
     {
         // Default outputs are not associated with an integration; clear KVDB validation.
-        assetBuilder->clearAvailableKvdbs();
+        assetBuilder->clearIntegrationData();
 
         const auto outputsForSpace = cmStoreNsReader->getOutputsForSpace(policy.getOriginSpace());
         for (const auto& output : outputsForSpace)
