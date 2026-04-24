@@ -16,6 +16,7 @@
 #include "defer.hpp"
 #include "minizip/unzip.h"
 #include "stringHelper.h"
+#include <atomic>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -51,15 +52,17 @@ namespace Utils
         ZlibHelper& operator=(ZlibHelper&&) = delete;
 
         /**
-         * @brief Compress file to GZIP format.
+         * @brief Compress file to GZIP format with cancellation support.
          *
          * @param inputFilePath Input file path to compress.
          * @param gzFilePath Output compressed (.gz) file path.
-         * @param compressionLevel Compression level (0-9, where 0 is no compression and 9 is maximum compression).
+         * @param compressionLevel Compression level (0-9).
+         * @param shouldRun Atomic flag; when false, compression is cancelled and the partial .gz is removed.
          */
         static void gzipCompress(const std::filesystem::path& inputFilePath,
                                  const std::filesystem::path& gzFilePath,
-                                 int compressionLevel = 6)
+                                 int compressionLevel,
+                                 const std::atomic<bool>& shouldRun)
         {
             // Validate compression level
             if (compressionLevel < 0 || compressionLevel > 9)
@@ -95,6 +98,16 @@ namespace Utils
             char buf[GZ_BUF_LEN] {};
             while (inputFile.read(buf, sizeof(buf)) || inputFile.gcount() > 0)
             {
+                // Allow cancellation between chunks
+                if (!shouldRun.load(std::memory_order_relaxed))
+                {
+                    inputFile.close();
+                    gzFile.reset();
+                    std::error_code ec;
+                    std::filesystem::remove(gzFilePath, ec);
+                    throw std::runtime_error("Compression cancelled for: " + inputFilePath.string());
+                }
+
                 auto bytesRead = inputFile.gcount();
                 if (gzwrite(gzFile.get(), buf, static_cast<unsigned int>(bytesRead)) != bytesRead)
                 {
