@@ -170,8 +170,7 @@ STATIC void send_buffer_status_event(const char *action, int severity) {
     char msg[OS_MAXSTR];
     cJSON *event = cJSON_CreateObject();
     cJSON_AddStringToObject(event, "event.module", "wazuh-agent");
-    cJSON_AddStringToObject(event, "event.category", "buffer-status");
-    cJSON_AddStringToObject(event, "event.type", "change");
+    cJSON_AddStringToObject(event, "event.category", "change");
     cJSON_AddStringToObject(event, "event.dataset", "wazuh-agent.buffer");
     cJSON_AddNumberToObject(event, "event.severity", severity);
     cJSON_AddStringToObject(event, "event.action", action);

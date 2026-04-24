@@ -846,7 +846,7 @@ STATIC void send_msg_on_startup(void) {
 
     cJSON *event = cJSON_CreateObject();
     cJSON_AddStringToObject(event, "event.module", "wazuh-agent");
-    cJSON_AddStringToObject(event, "event.category", "agent-start");
+    cJSON_AddStringToObject(event, "event.action", "agent-start");
     cJSON_AddStringToObject(event, "event.start", timestamp);
     char *json_str = cJSON_PrintUnformatted(event);
     cJSON_Delete(event);
