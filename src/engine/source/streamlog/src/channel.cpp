@@ -536,7 +536,8 @@ ChannelHandler::ChannelHandler(RotationConfig config,
                                std::string channelName,
                                const std::shared_ptr<store::IStore>& store,
                                std::weak_ptr<scheduler::IScheduler> scheduler,
-                               std::string_view ext)
+                               std::string_view ext,
+                               std::shared_ptr<const std::atomic<bool>> compressionShouldRun)
     : m_config(
           [&config]()
           {
@@ -553,6 +554,7 @@ ChannelHandler::ChannelHandler(RotationConfig config,
     , m_store(store)
     , m_scheduler(std::move(scheduler))
     , m_fileExtension(ext)
+    , m_compressionShouldRun(std::move(compressionShouldRun))
 {
 
     // Initial state data: File paths
@@ -698,10 +700,11 @@ std::shared_ptr<ChannelHandler> ChannelHandler::create(RotationConfig config,
                                                        std::string channelName,
                                                        const std::shared_ptr<store::IStore>& store,
                                                        std::weak_ptr<scheduler::IScheduler> scheduler,
-                                                       std::string_view ext)
+                                                       std::string_view ext,
+                                                       std::shared_ptr<const std::atomic<bool>> compressionShouldRun)
 {
-    return std::shared_ptr<ChannelHandler>(
-        new ChannelHandler(std::move(config), std::move(channelName), store, std::move(scheduler), ext));
+    return std::shared_ptr<ChannelHandler>(new ChannelHandler(
+        std::move(config), std::move(channelName), store, std::move(scheduler), ext, std::move(compressionShouldRun)));
 }
 
 /**
@@ -784,11 +787,17 @@ void ChannelHandler::onWriterDestroyed()
 }
 
 // CompressLogFile static method
-void ChannelHandler::compressLogFile(std::filesystem::path filePath, int compressionLevel)
+void ChannelHandler::compressLogFile(const std::filesystem::path& filePath,
+                                     int compressionLevel,
+                                     std::shared_ptr<const std::atomic<bool>> shouldRun)
 {
+    // Fallback: if no cancellation flag was wired, compress unconditionally.
+    static const auto alwaysRun = std::make_shared<const std::atomic<bool>>(true);
+    const auto& flag = shouldRun ? shouldRun : alwaysRun;
+
     try
     {
-        Utils::ZlibHelper::gzipCompress(filePath, filePath.string() + ".gz", compressionLevel);
+        Utils::ZlibHelper::gzipCompress(filePath, filePath.string() + ".gz", compressionLevel, *flag);
     }
     catch (const std::exception& e)
     {
@@ -808,7 +817,7 @@ void ChannelHandler::compressLogFile(std::filesystem::path filePath, int compres
     }
 }
 
-scheduler::TaskConfig ChannelHandler::createCompressionTaskConfig(std::filesystem::path filePath) const
+scheduler::TaskConfig ChannelHandler::createCompressionTaskConfig(const std::filesystem::path& filePath) const
 {
     // Capture config fields needed for retention after compression
     auto basePath = m_config.basePath;
@@ -832,9 +841,11 @@ scheduler::TaskConfig ChannelHandler::createCompressionTaskConfig(std::filesyste
              latestLink = std::move(latestLink),
              channelName = std::move(channelName),
              retentionMutex = m_retentionMutex,
-             inFlightFiles = m_inFlightFiles]()
+             inFlightFiles = m_inFlightFiles,
+             shouldRun = m_compressionShouldRun
+            ]()
         {
-            compressLogFile(filePath, compressionLevel);
+            compressLogFile(filePath, compressionLevel. shouldRun);
 
             // Unregister in-flight paths now that compression (and source removal) is done
             inFlightFiles->remove(filePath);
@@ -849,8 +860,7 @@ scheduler::TaskConfig ChannelHandler::createCompressionTaskConfig(std::filesyste
                 std::lock_guard<std::mutex> lock(*retentionMutex);
                 deleteOldFilesStatic(basePath, latestLink, maxFiles, maxAccumulatedSize, channelName, inFlightFiles);
             }
-        },
-    };
+        }};
 }
 
 void ChannelHandler::deleteOldFiles()
