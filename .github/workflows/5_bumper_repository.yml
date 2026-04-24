@@ -156,12 +156,38 @@ jobs:
 
           MERGE_COMMIT=$(gh pr view $PR_NUMBER --json mergeCommit --jq '.mergeCommit.oid')
 
+          # --- Capture current values BEFORE revert (robust, no trailing quotes) ---
+          CURRENT_VERSION=$(sed -nE "s/^[[:space:]]*version:[[:space:]]*['\"]?([^'\"]*)['\"]?/\1/p" api/api/spec/spec.yaml)
+          CURRENT_REVISION=$(sed -nE "s/^[[:space:]]*x-revision:[[:space:]]*['\"]?([^'\"]*)['\"]?/\1/p" api/api/spec/spec.yaml)
+
+          echo "DEBUG version=[$CURRENT_VERSION]"
+          echo "DEBUG revision=[$CURRENT_REVISION]"
+
+          # Fail fast if parsing broke
+          if [ -z "$CURRENT_VERSION" ] || [ -z "$CURRENT_REVISION" ]; then
+            echo "Error: Failed to extract version or x-revision"
+            exit 1
+          fi
+
+          # --- Apply revert (only to get the correct parent context if needed) ---
           git revert -m 1 $MERGE_COMMIT --no-commit
 
-          # Remove the files to prevent them from being included in the revert commit
-          git checkout HEAD -- VERSION.json 2>/dev/null || true
-          git checkout HEAD -- CHANGELOG.md 2>/dev/null || true
-          # Add any other repository-specific version files here
+          # --- Reset everything ---
+          git reset
+
+          # --- Restore repo to clean HEAD ---
+          git checkout HEAD -- .
+
+          # --- Bring back ONLY the file from BEFORE the bump PR ---
+          PARENT_COMMIT=$(git rev-parse ${MERGE_COMMIT}^1)
+          git checkout $PARENT_COMMIT -- api/api/spec/spec.yaml
+
+          # --- Restore preserved fields (NO quotes to avoid duplication issues) ---
+          sed -i "s/^\([[:space:]]*version:\).*/\1 $CURRENT_VERSION/" api/api/spec/spec.yaml
+          sed -i "s/^\([[:space:]]*x-revision:\).*/\1 $CURRENT_REVISION/" api/api/spec/spec.yaml
+
+          # --- Stage final result ---
+          git add api/api/spec/spec.yaml
 
           if git diff --staged --quiet; then
             echo "No references to revert. Skipping commit."
