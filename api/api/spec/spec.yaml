@@ -39,12 +39,12 @@ info:
 
     <SecurityDefinitions />
 
-  version: '5.0.1'
-  x-revision: 'alpha1'
+  version: '5.0.1''
+  x-revision: 'alpha1''
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/v5.0.1/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/main/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -363,7 +363,7 @@ components:
             detail: "Permission denied: Resource type: *:*"
             remediation: "Please, make sure you have permissions to execute the current request. For more information
             on how to set up permissions, please visit
-            https://documentation.wazuh.com/5.0/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/main/user-manual/api/rbac/configuration.html"
             error: 4000
             dapi_errors:
               unknown-node:
@@ -430,7 +430,7 @@ components:
             title: "Wazuh Error"
             detail: "Maximum number of requests per minute reached"
             remediation: "This limit can be changed in api.yaml file. More information here:
-            https://documentation.wazuh.com/5.0/user-manual/api/security/configuration.html"
+            https://documentation.wazuh.com/main/user-manual/api/security/configuration.html"
             code: 6001
 
     ResourceNotFoundResponse:
@@ -443,7 +443,7 @@ components:
             title: "Resource Not Found"
             detail: "The group does not exist"
             remediation: "Please, use `GET /groups` to find all available groups:
-            https://documentation.wazuh.com/5.0/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/main/user-manual/api/rbac/configuration.html"
             code: 1710
             dapi_errors:
               unknown-node:
@@ -816,7 +816,7 @@ components:
     Agent:
       type: object
       properties:
-        version:
+        version: '5.0.1''
           type: string
           description: "Wazuh version the agent has installed"
         id:
@@ -859,7 +859,7 @@ components:
               type: string
             platform:
               type: string
-            version:
+            version: '5.0.1''
               type: string
             arch:
               type: string
@@ -1383,7 +1383,7 @@ components:
           - worker
           - master
           description: "Node type"
-        version:
+        version: '5.0.1''
           type: string
           format: \d+\.\d+\.\d+
           description: "Wazuh version installed in the node"
@@ -2697,7 +2697,7 @@ components:
           type: string
           format: paths
           description: "Wazuh installation path"
-        version:
+        version: '5.0.1''
           type: string
           description: "Wazuh version"
         type:
@@ -2912,7 +2912,7 @@ components:
                   platform:
                     type: string
                     format: alphanumeric_symbols
-                  version:
+                  version: '5.0.1''
                     type: string
                     format: alphanumeric_symbols
         agent_status:
@@ -2926,7 +2926,7 @@ components:
               count:
                 type: integer
                 format: int32
-              version:
+              version: '5.0.1''
                 type: string
                 format: alphanumeric_symbols
         last_registered_agent:
@@ -3685,7 +3685,7 @@ components:
       required: True
       schema:
         $ref: '#/components/schemas/User_id'
-    version:
+    version: '5.0.1''
       in: query
       name: version
       description: "Filter by agents version using one of the following formats: 'X.Y.Z', 'vX.Y.Z', 'wazuh X.Y.Z' or 'wazuh vX.Y.Z'. For example: '4.4.0'"
@@ -3974,7 +3974,7 @@ paths:
                 api_version: "v4.5.0"
                 revision: 'beta1'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/v5.0.1/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/main/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11Z"
 
@@ -4090,7 +4090,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        version: 20.04.2 LTS
+                        version: '5.0.1''
                       lastKeepAlive: '2021-05-26T12:40:40Z'
                       id: '001'
                       dateAdd: 2021-05-26T12:40:08Z
@@ -4100,7 +4100,7 @@ paths:
                       name: ac7cb188d538
                       status: active
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
-                      version: v4.3.0
+                      version: '5.0.1''
                       node_name: worker2
                       group_config_status: 'synced'
                       status_code: 0
@@ -4110,7 +4110,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        version: 20.04.2 LTS
+                        version: '5.0.1''
                       lastKeepAlive: '2021-05-26T12:40:40Z'
                       id: '002'
                       dateAdd: 2021-05-26T12:40:10Z
@@ -4120,7 +4120,7 @@ paths:
                       name: 91642a418627
                       status: active
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
-                      version: v4.3.0
+                      version: '5.0.1''
                       node_name: worker2
                       group_config_status: 'synced'
                       status_code: 0
@@ -4130,7 +4130,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        version: 20.04.2 LTS
+                        version: '5.0.1''
                       lastKeepAlive: '2021-05-26T12:40:40Z'
                       id: '003'
                       dateAdd: 2021-05-26T12:40:10Z
@@ -4140,7 +4140,7 @@ paths:
                       name: a442e15bc84e
                       status: active
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
-                      version: v4.3.0
+                      version: '5.0.1''
                       node_name: worker1
                       group_config_status: 'not synced'
                       status_code: 0
@@ -5454,7 +5454,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        version: 20.04.2 LTS
+                        version: '5.0.1''
                       lastKeepAlive: '2024-02-26T12:40:40Z'
                       id: '001'
                       dateAdd: 2024-02-26T12:40:08Z
@@ -5464,7 +5464,7 @@ paths:
                       name: ac7cb188d538
                       status: active
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
-                      version: v4.3.0
+                      version: '5.0.1''
                       node_name: worker2
                       group_config_status: "synced"
                       status_code: 0
@@ -5474,7 +5474,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        version: 20.04.2 LTS
+                        version: '5.0.1''
                       lastKeepAlive: '2024-02-26T12:40:40Z'
                       id: '002'
                       dateAdd: 2024-02-26T12:40:10Z
@@ -5484,7 +5484,7 @@ paths:
                       name: 91642a418627
                       status: active
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
-                      version: v4.3.0
+                      version: '5.0.1''
                       node_name: worker2
                       group_config_status: "synced"
                       status_code: 0
@@ -5547,8 +5547,8 @@ paths:
                           code: 1707
                           message: "Cannot send request, agent is not active"
                           remediation: "Please, check non-active agents connection and try again.
-                           Visit https://documentation.wazuh.com/5.0/user-manual/registering/index.html
-                           and https://documentation.wazuh.com/5.0/user-manual/agents/agent-connection.html
+                           Visit https://documentation.wazuh.com/main/user-manual/registering/index.html
+                           and https://documentation.wazuh.com/main/user-manual/agents/agent-connection.html
                            to obtain more information on registering and connecting agents"
                         id:
                           - '009'
@@ -5658,8 +5658,8 @@ paths:
                           code: 1707
                           message: "Cannot send request, agent is not active"
                           remediation: "Please, check non-active agents connection and try again.
-                           Visit https://documentation.wazuh.com/5.0/user-manual/registering/index.html
-                           and https://documentation.wazuh.com/5.0/user-manual/agents/agent-connection.html
+                           Visit https://documentation.wazuh.com/main/user-manual/registering/index.html
+                           and https://documentation.wazuh.com/main/user-manual/agents/agent-connection.html
                            to obtain more information on registering and connecting agents"
                         id:
                           - '009'
@@ -5714,10 +5714,10 @@ paths:
                 data:
                   affected_items:
                     - os:
-                        version: "20.04.2 LTS"
+                        version: '5.0.1''
                       count: 2
                     - os:
-                        version: "N/A"
+                        version: '5.0.1''
                       count: 1
                   total_affected_items: 3
                   total_failed_items: 0
@@ -6063,7 +6063,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        version: 20.04.2 LTS
+                        version: '5.0.1''
                       mergedSum: 2c769b2ea138d472ee8f1ba23412b5d4
                       node_name: worker1
                       ip: 172.20.0.7
@@ -6076,7 +6076,7 @@ paths:
                       dateAdd: 2021-05-27T09:14:19Z
                       registerIP: any
                       lastKeepAlive: 2021-05-27T09:23:59Z
-                      version: v4.3.0
+                      version: '5.0.1''
                       status_code: 0
                     - os:
                         arch: x86_64
@@ -6084,7 +6084,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        version: 20.04.2 LTS
+                        version: '5.0.1''
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       node_name: worker1
                       ip: 172.20.0.9
@@ -6097,7 +6097,7 @@ paths:
                       dateAdd: 2021-05-27T09:14:19Z
                       registerIP: any
                       lastKeepAlive: 2021-05-27T09:23:52Z
-                      version: v4.3.0
+                      version: '5.0.1''
                       status_code: 0
                     - os:
                         arch: x86_64
@@ -6105,7 +6105,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        version: 20.04.2 LTS
+                        version: '5.0.1''
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       node_name: worker2
                       ip: 172.20.0.10
@@ -6118,7 +6118,7 @@ paths:
                       dateAdd: 2021-05-27T09:14:19Z
                       registerIP: any
                       lastKeepAlive: 2021-05-27T09:23:52Z
-                      version: v4.3.0
+                      version: '5.0.1''
                       status_code: 0
                   total_affected_items: 3
                   total_failed_items: 0
@@ -6521,15 +6521,15 @@ paths:
                   affected_items:
                     - name: master-node
                       type: master
-                      version: 4.4.0
+                      version: '5.0.1''
                       ip: wazuh-master
                     - name: worker1
                       type: worker
-                      version: 4.4.0
+                      version: '5.0.1''
                       ip: 172.26.0.7
                     - name: worker2
                       type: worker
-                      version: 4.4.0
+                      version: '5.0.1''
                       ip: 172.26.0.6
                   total_affected_items: 3
                   total_failed_items: 0
@@ -6579,13 +6579,13 @@ paths:
                     - info:
                         name: master-node
                         type: master
-                        version: 4.4.0
+                        version: '5.0.1''
                         ip: wazuh-master
                         n_active_agents: 5
                     - info:
                         name: worker1
                         type: worker
-                        version: 4.4.0
+                        version: '5.0.1''
                         ip: 172.21.0.7
                         n_active_agents: 3
                       status:
@@ -6620,7 +6620,7 @@ paths:
                     - info:
                         name: worker2
                         type: worker
-                        version: 4.4.0
+                        version: '5.0.1''
                         ip: 172.21.0.6
                         n_active_agents: 1
                       status:
@@ -6968,7 +6968,7 @@ paths:
                 data:
                   affected_items:
                     - path: /var/wazuh-manager
-                      version: v4.3.0
+                      version: '5.0.1''
                       type: server
                       max_agents: unlimited
                       tz_offset: +0000
@@ -9876,7 +9876,7 @@ paths:
                     - os:
                         name: Ubuntu
                         platform: ubuntu
-                        version: "20.04.02 LTS"
+                        version: '5.0.1''
                       count: 6
                   agent_status:
                     active: 6
@@ -9894,7 +9894,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
-                        version: "20.04.02 LTS"
+                        version: '5.0.1''
                       node_name: worker1
                       lastKeepAlive: "2021-05-31T10:56:52Z"
                       status: active
@@ -9906,7 +9906,7 @@ paths:
                       dateAdd: "2021-05-31T09:49:28Z"
                       id: "004"
                       mergedSum: "9a016508cea1e997ab8569f5cfab30f5"
-                      version: "v4.3.0"
+                      version: '5.0.1''
                       status_code: 0
                       group_config_status: active
                 error: 0
@@ -10076,4 +10076,4 @@ paths:
 
 externalDocs:
   description: "Learn more about the Wazuh API"
-  url: 'https://documentation.wazuh.com/5.0/user-manual/api/index.html'
+  url: 'https://documentation.wazuh.com/main/user-manual/api/index.html'
