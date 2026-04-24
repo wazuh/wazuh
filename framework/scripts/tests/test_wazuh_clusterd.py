@@ -98,10 +98,9 @@ async def test_master_main(helper_disabled: bool):
     cluster_config = {'test': 'config', HAPROXY_HELPER: {HAPROXY_DISABLED: helper_disabled}}
 
     class Arguments:
-        def __init__(self, performance_test, concurrency_test, ssl):
+        def __init__(self, performance_test, concurrency_test):
             self.performance_test = performance_test
             self.concurrency_test = concurrency_test
-            self.ssl = ssl
 
     class TaskPoolMock:
         def __init__(self):
@@ -148,7 +147,7 @@ async def test_master_main(helper_disabled: bool):
 
 
     wazuh_clusterd.cluster_utils = cluster_utils
-    args = Arguments(performance_test='test_performance', concurrency_test='concurrency_test', ssl=True)
+    args = Arguments(performance_test='test_performance', concurrency_test='concurrency_test')
     with patch('scripts.wazuh_clusterd.asyncio.gather', gather):
         with patch('wazuh.core.cluster.master.Master', MasterMock):
             with patch('wazuh.core.cluster.local_server.LocalServerMaster', LocalServerMasterMock):
@@ -168,10 +167,9 @@ async def test_worker_main(asyncio_sleep_mock):
     import wazuh.core.cluster.utils as cluster_utils
 
     class Arguments:
-        def __init__(self, performance_test, concurrency_test, ssl, send_file, send_string):
+        def __init__(self, performance_test, concurrency_test, send_file, send_string):
             self.performance_test = performance_test
             self.concurrency_test = concurrency_test
-            self.ssl = ssl
             self.send_file = send_file
             self.send_string = send_string
 
@@ -224,7 +222,7 @@ async def test_worker_main(asyncio_sleep_mock):
 
     wazuh_clusterd.cluster_utils = cluster_utils
     wazuh_clusterd.main_logger = LoggerMock
-    args = Arguments(performance_test='test_performance', concurrency_test='concurrency_test', ssl=True,
+    args = Arguments(performance_test='test_performance', concurrency_test='concurrency_test',
                      send_file=True, send_string=True)
 
     with patch.object(wazuh_clusterd, 'main_logger') as main_logger_mock:
