@@ -778,7 +778,7 @@ void SCAEventHandler::PushStateful(const nlohmann::json& event, ReturnTypeCallba
 
     m_pushStatefulMessage(CalculateHashId(event), OPERATION_STATES_MAP.at(operation), SCA_SYNC_INDEX, event.dump(), version);
 
-    LoggingHelper::getInstance().log(LOG_DEBUG, "Stateful event queued: " + event.dump());
+    LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE, "Stateful event queued: " + event.dump());
 }
 
 void SCAEventHandler::PushStateless(const nlohmann::json& event) const
@@ -795,7 +795,7 @@ void SCAEventHandler::PushStateless(const nlohmann::json& event) const
 
     m_pushStatelessMessage(event.dump());
 
-    LoggingHelper::getInstance().log(LOG_DEBUG, "Stateless event queued: " + event.dump());
+    LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE, "Stateless event queued: " + event.dump());
 }
 
 nlohmann::json SCAEventHandler::StringToJsonArray(const std::string& input) const
