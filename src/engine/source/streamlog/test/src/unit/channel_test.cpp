@@ -95,13 +95,13 @@ bool waitFor(Condition&& condition, std::chrono::milliseconds timeout = std::chr
 // Set file mtime to a specific Unix timestamp for deterministic retention ordering.
 // Using utimensat avoids relying on sleep_for + filesystem timestamp resolution,
 // which can be coarser than expected on some filesystems.
-void setFileMtime(const std::filesystem::path& path, std::time_t epochSeconds)
+void setFileMtime(const std::filesystem::path& path, std::time_t epochSeconds, long nsec = 0)
 {
     struct timespec times[2];
     times[0].tv_sec = epochSeconds; // atime
-    times[0].tv_nsec = 0;
+    times[0].tv_nsec = nsec;
     times[1].tv_sec = epochSeconds; // mtime
-    times[1].tv_nsec = 0;
+    times[1].tv_nsec = nsec;
     ::utimensat(AT_FDCWD, path.c_str(), times, 0);
 }
 
@@ -2525,6 +2525,54 @@ TEST_F(ChannelHandlerTest, RetentionWithCompressionMultiplePendingRotations)
         ++remaining;
     }
     EXPECT_LE(remaining, config.maxFiles);
+
+    writer.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+// Test that retention correctly orders files with identical second-level mtime
+// but different sub-second (nanosecond) timestamps, deleting the truly oldest first.
+TEST_F(ChannelHandlerTest, RetentionSubSecondMtimeOrdering)
+{
+    auto config = defaultConfig;
+    config.maxSize = 1 << 20;
+    // maxFiles=3 accounts for the 4 pre-created files plus the initial channel file
+    // that becomes non-active after rotation (5 non-active total → delete 2 oldest).
+    config.maxFiles = 3;
+    config.shouldCompress = false;
+    config.pattern = "${name}-${YYYY}-${MM}-${DD}-${counter}.log";
+
+    // All 4 files share the same tv_sec but differ in tv_nsec.
+    // Without nanosecond precision the deletion order would be arbitrary.
+    const std::time_t sameSecond = 2000;
+    std::vector<std::filesystem::path> oldFiles;
+    for (int i = 0; i < 4; ++i)
+    {
+        auto filePath = tmpDir / ("subsec-" + std::to_string(i) + ".log");
+        {
+            std::ofstream f(filePath);
+            f << "sub-second content " << i << "\n";
+        }
+        oldFiles.push_back(filePath);
+        // Spread nanoseconds: 100'000'000, 200'000'000, 300'000'000, 400'000'000
+        setFileMtime(filePath, sameSecond, static_cast<long>((i + 1)) * 100'000'000L);
+    }
+
+    auto handler = createBasicHandler("retention-subsec", config);
+    auto writer = handler->createWriter();
+
+    // Trigger a rotation so deleteOldFiles runs
+    std::string bigMsg(config.maxSize + 1, 'S');
+    (*writer)(std::move(bigMsg));
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    // 5 non-active files (4 old + 1 initial rotated), maxFiles=3 → delete 2 oldest by mtime.
+    // The 2 oldest are subsec-0 (100ms) and subsec-1 (200ms) thanks to nanosecond ordering.
+    EXPECT_FALSE(std::filesystem::exists(oldFiles[0])) << "Oldest sub-second file should be deleted";
+    EXPECT_FALSE(std::filesystem::exists(oldFiles[1])) << "Second oldest sub-second file should be deleted";
+    // The 2 newest should survive
+    EXPECT_TRUE(std::filesystem::exists(oldFiles[2])) << "Third sub-second file should survive";
+    EXPECT_TRUE(std::filesystem::exists(oldFiles[3])) << "Newest sub-second file should survive";
 
     writer.reset();
     std::this_thread::sleep_for(std::chrono::milliseconds(50));

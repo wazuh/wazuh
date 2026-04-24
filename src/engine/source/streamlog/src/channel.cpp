@@ -879,12 +879,16 @@ void ChannelHandler::deleteOldFilesStatic(const std::filesystem::path& basePath,
     struct FileInfo
     {
         std::filesystem::path path;
-        std::time_t mtime;
+        struct timespec mtime;
         std::int64_t size;
         ino_t inode;
         bool valid;
 
-        bool operator<(const FileInfo& other) const { return mtime < other.mtime; }
+        bool operator<(const FileInfo& other) const
+        {
+            return mtime.tv_sec < other.mtime.tv_sec
+                   || (mtime.tv_sec == other.mtime.tv_sec && mtime.tv_nsec < other.mtime.tv_nsec);
+        }
     };
 
     auto statInode = [](const std::filesystem::path& path, ino_t& inode, struct stat* stOut = nullptr) -> bool
@@ -966,7 +970,7 @@ void ChannelHandler::deleteOldFilesStatic(const std::filesystem::path& basePath,
                     continue;
                 }
 
-                rotatedFiles.push_back({filePath, fileStat.st_mtime, fileSize, fileInode, true});
+                rotatedFiles.push_back({filePath, fileStat.st_mtim, fileSize, fileInode, true});
                 totalSize += fileSize;
             }
         }
