@@ -1184,7 +1184,7 @@ bool SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseV
                     check["version"].get<uint64_t>()
                 );
 
-                LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE, "Stateful event queued: " + statefulMessage.dump());
+                LoggingHelper::getInstance().log(LOG_DEBUG, "Stateful event queued: " + statefulMessage.dump());
             }
         }
 
