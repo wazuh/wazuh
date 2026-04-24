@@ -78,7 +78,16 @@ INSTANTIATE_TEST_SUITE_P(
              FAILURE(expectPriorityRefWrongType(json::Json::Type::String))),
         MapT({makeRef(PRIORITY_REF)},
              opBuilderHelperSyslogExtractFacility,
-             FAILURE(expectPriorityRefWrongType(json::Json::Type::Boolean)))),
+             FAILURE(expectPriorityRefWrongType(json::Json::Type::Boolean))),
+        MapT({makeRef(PRIORITY_REF)},
+             opBuilderHelperSyslogExtractFacility,
+             FAILURE(expectPriorityRefWrongType(json::Json::Type::Object))),
+        MapT({makeRef(PRIORITY_REF)},
+             opBuilderHelperSyslogExtractFacility,
+             FAILURE(expectPriorityRefWrongType(json::Json::Type::Array))),
+        MapT({makeRef(PRIORITY_REF)},
+             opBuilderHelperSyslogExtractFacility,
+             FAILURE(expectPriorityRefWrongType(json::Json::Type::Null)))),
     testNameFormatter<MapBuilderTest>("SyslogFacility"));
 
 INSTANTIATE_TEST_SUITE_P(
@@ -95,7 +104,16 @@ INSTANTIATE_TEST_SUITE_P(
              FAILURE(expectPriorityRefWrongType(json::Json::Type::String))),
         MapT({makeRef(PRIORITY_REF)},
              opBuilderHelperSyslogExtractSeverity,
-             FAILURE(expectPriorityRefWrongType(json::Json::Type::Boolean)))),
+             FAILURE(expectPriorityRefWrongType(json::Json::Type::Boolean))),
+        MapT({makeRef(PRIORITY_REF)},
+             opBuilderHelperSyslogExtractSeverity,
+             FAILURE(expectPriorityRefWrongType(json::Json::Type::Object))),
+        MapT({makeRef(PRIORITY_REF)},
+             opBuilderHelperSyslogExtractSeverity,
+             FAILURE(expectPriorityRefWrongType(json::Json::Type::Array))),
+        MapT({makeRef(PRIORITY_REF)},
+             opBuilderHelperSyslogExtractSeverity,
+             FAILURE(expectPriorityRefWrongType(json::Json::Type::Null)))),
     testNameFormatter<MapBuilderTest>("SyslogSeverity"));
 } // namespace mapbuildtest
 

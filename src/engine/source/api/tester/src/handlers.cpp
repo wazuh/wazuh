@@ -86,42 +86,26 @@ eTester::Result fromOutput(const ::router::test::Output& output)
     return result;
 }
 
-base::RespOrError<std::pair<json::Json, json::Json>>
-parseAndValidatePublicMetadata(const google::protobuf::Struct& protoMetadata)
+std::variant<std::string,json::Json> validatePublicMetadata(const json::Json& metadataObj)
 {
-    auto metadataOrError = eMessage::eStructToJson(protoMetadata);
-    if (std::holds_alternative<base::Error>(metadataOrError))
+    // Empty metadata is allowed
+    if (metadataObj.isEmpty())
     {
-        return base::Error {
-            fmt::format("Error converting metadata to JSON: {}", std::get<base::Error>(metadataOrError).message)};
+        return json::Json("{}");
     }
 
-    const auto& metadata = std::get<json::Json>(metadataOrError);
-    if (!metadata.isObject())
+    if (metadataObj.size() > 1)
     {
-        return base::Error {"Metadata must be a JSON object"};
+        return "If not empty metadata must contain only 'wazuh' as the top-level key";
     }
 
-    if (metadata.size() > 1)
-    {
-        return base::Error {"If not empty metadata must contain only 'wazuh' as the top-level key"};
-    }
-
-    // Empty metadata is allowed, but in that case we return an empty object for the 'wazuh' metadata
-    // to avoid issues in the protocol handler
-    if (metadata.isEmpty())
-    {
-        return std::make_pair(json::Json("{}"), json::Json("{}"));
-    }
-
-    auto wazuhMetadataObject = metadata.getJson("/wazuh");
-    auto wazuhRootObjectOpt = wazuhMetadataObject ? wazuhMetadataObject->getJson() : std::nullopt;
+    auto wazuhMetadataObject = metadataObj.getJson("/wazuh");
     if (!wazuhMetadataObject.has_value() || !wazuhMetadataObject->isObject())
     {
-        return base::Error {"Metadata must be a non-empty object with 'wazuh' as root"};
+        return "Metadata should contain 'wazuh' as root";
     }
 
-    return std::make_pair(std::move(metadata), std::move(wazuhMetadataObject.value()));
+    return wazuhMetadataObject.value();
 }
 
 bool validateMetadataLeaves(const json::Json& node,
@@ -176,6 +160,15 @@ bool validateMetadataLeaves(const json::Json& node,
     return true;
 }
 
+/**
+ * @brief Build a Result_ValidationError protobuf message.
+ *
+ * @param path Field path in the output event (dot notation, may include array indices like `foo[0].bar`).
+ * @param kind Error kind string: `"unknown_field"`, `"temporary_field_not_allowed"`, or `"invalid_type"`.
+ * @param expected Expected WCS type string. Only set for `invalid_type` errors (e.g. `"keyword"`, `"long"`).
+ * @param actual Actual JSON type string of the value. Only set for `invalid_type` errors (e.g. `"number"`, `"string"`).
+ * @return eTester::Result_ValidationError Populated validation error message.
+ */
 eTester::Result_ValidationError makeValidationError(const std::string& path,
                                                     const std::string& kind,
                                                     const std::string& expected = {},
@@ -208,6 +201,10 @@ std::string appendIndexToReportPath(const std::string& base, size_t idx)
 /**
  * @brief Classify a schema field using validateTargetField from the IValidator.
  *
+ * @param schemaPath Index-free dot path used for schema lookup (e.g. `"event.category"`).
+ * @param reportPath Path exposed in validation errors, may include array indices (e.g. `"event.category[1]"`).
+ * @param schema The WCS schema validator.
+ * @param errors Output vector where a validation error is appended when the field is temporary or unknown.
  * @return true if the field is a SCHEMA field and traversal should continue.
  * @return false if the field was classified as temporary or unknown (error already pushed).
  */
@@ -236,25 +233,23 @@ bool classifyField(const std::string& schemaPath,
 }
 
 /**
- * @brief Recursively validate the output event against WCS.
+ * @brief Recursively validate the output event against WCS and collect validation errors.
  *
- * schemaPath:
- *   - Path used for schema lookup (always index-free).
+ * @param node The JSON node to validate.
+ * @param schema The WCS schema validator.
+ * @param schemaPath Index-free dot path used for schema lookup (always without array indices).
+ * @param reportPath Path exposed in validation errors (may include array indices like `foo[0].bar`).
+ * @param errors Output vector where validation errors are appended.
+ * @param isArrayItem Whether the current node is an element inside an array field.
  *
- * reportPath:
- *   - Path exposed in validation errors (may include array indices like foo[0].bar).
- *
- * isArrayItem:
- *   - true when validating an element inside an array field.
- *
- * Rules:
- *   - Temporary fields rooted at '_' are reported once and the subtree is skipped.
+ * @note Rules applied during traversal:
+ *   - Temporary fields rooted at `_` are reported once and the subtree is skipped.
  *   - Unknown fields are reported once and the subtree is skipped.
  *   - Field classification uses IValidator::validateTargetField (no duplicated logic).
  *   - Type validation uses IValidator::validate(DotPath, json::Json).
  *   - Empty known objects/arrays are valid.
  *   - Arrays reuse the same schemaPath for all items.
- *   - Nested arrays are reported as invalid_type.
+ *   - Nested arrays are reported as `invalid_type`.
  *   - FLAT_OBJECT and GEO_POINT fields are treated as opaque and their children are not validated.
  */
 void collectOutputErrors(const json::Json& node,
@@ -687,15 +682,14 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
         // Use provided agent_metadata if available, otherwise use empty struct
         if (protoReq.has_agent_metadata())
         {
-            auto jsonOrErr = eMessage::eStructToJson(protoReq.agent_metadata());
-            if (std::holds_alternative<base::Error>(jsonOrErr))
+            auto jsonOrErr = getJsonFieldFromBody(req.body, "/agent_metadata", "Field /agent_metadata cannot be empty");
+            if (base::isError(jsonOrErr))
             {
-                res = adapter::userErrorResponse<ResponseType>(fmt::format(
-                    "Error converting agent_metadata to JSON: {}", std::get<base::Error>(jsonOrErr).message));
+                res = adapter::userErrorResponse<ResponseType>(base::getError(jsonOrErr).message);
                 return;
             }
 
-            agentMetadata = std::move(std::get<json::Json>(jsonOrErr));
+            agentMetadata = std::move(base::getResponse(jsonOrErr));
         }
         else
         {
@@ -800,6 +794,27 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
         std::string eventStr {};
         if (protoReq.has_metadata())
         {
+            auto metadataOrError = getJsonFieldFromBody(req.body, "/metadata", "Field /metadata cannot be empty");
+            if (base::isError(metadataOrError))
+            {
+                res = adapter::userErrorResponse<ResponseType>(base::getError(metadataOrError).message);
+                return;
+            }
+
+            metadata = std::move(base::getResponse(metadataOrError));
+            if (!metadata.isObject())
+            {
+                res = adapter::userErrorResponse<ResponseType>("Metadata must be a JSON object");
+                return;
+            }
+
+            auto errorOrMetadata = validatePublicMetadata(metadata);
+            if (std::holds_alternative<std::string>(errorOrMetadata))
+            {
+                res = adapter::userErrorResponse<ResponseType>(std::get<std::string>(errorOrMetadata));
+                return;
+            }
+
             // Ensure schemaValidator is available
             auto schemaValidatorLocked = wSchemaValidator.lock();
             if (!schemaValidatorLocked)
@@ -808,19 +823,10 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
                 return;
             }
 
-            auto metadataOrError = parseAndValidatePublicMetadata(protoReq.metadata());
-            if (base::isError(metadataOrError))
-            {
-                res = adapter::userErrorResponse<ResponseType>(base::getError(metadataOrError).message);
-                return;
-            }
-
-            auto [tempMetadata, wazuhMetadataObject] = base::getResponse(metadataOrError);
-            metadata = std::move(tempMetadata);
-
             std::string badFieldMsg {};
             std::string metadataPath {"wazuh"};
-            if (!validateMetadataLeaves(wazuhMetadataObject, schemaValidatorLocked, metadataPath, badFieldMsg))
+            auto metadataObj = std::get<json::Json>(errorOrMetadata);
+            if (!validateMetadataLeaves(metadataObj, schemaValidatorLocked, metadataPath, badFieldMsg))
             {
                 res = adapter::userErrorResponse<ResponseType>(badFieldMsg);
                 return;
@@ -891,9 +897,19 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
         }
 
         ResponseType eResponse {};
+
+        // Temporary fields (_...) are cleaned before building the response and validation.
+        {
+            const auto& outputEvent = base::getResponse(response).event();
+            if (outputEvent)
+            {
+                outputEvent->eraseRootKeysByPrefix("_");
+            }
+        }
+
         auto eResult = fromOutput(base::getResponse(response));
 
-        // Validate the final output event against WCS schema (informational, non-blocking)
+        // Validate the final output event against WCS schema (informational, non-blocking).
         if (auto schemaValidatorLocked = wSchemaValidator.lock())
         {
             const auto& outputEvent = base::getResponse(response).event();

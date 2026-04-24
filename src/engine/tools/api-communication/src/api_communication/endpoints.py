@@ -7,9 +7,10 @@ import api_communication.proto.crud_pb2 as crud
 import api_communication.proto.router_pb2 as router
 import api_communication.proto.tester_pb2 as tester
 import api_communication.proto.geo_pb2 as geo
-import api_communication.proto.archiver_pb2 as archiver
+import api_communication.proto.event_dumper_pb2 as event_dumper
 import api_communication.proto.rawevtindexer_pb2 as rawevtindexer
 import api_communication.proto.ioc_pb2 as ioc
+import api_communication.proto.metrics_pb2 as metrics
 
 
 def get_endpoint(message: Message) -> Tuple[Optional[str], str, str]:
@@ -89,13 +90,13 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str, str]:
         endpoint = 'logtest'
         method = 'delete'
 
-    # Archiver
-    if isinstance(message, archiver.ArchiverActivate_Request):
-        endpoint = 'archiver/activate'
-    if isinstance(message, archiver.ArchiverDeactivate_Request):
-        endpoint = 'archiver/deactivate'
-    if isinstance(message, archiver.ArchiverStatus_Request):
-        endpoint = 'archiver/status'
+    # Event Dumper
+    if isinstance(message, event_dumper.EventDumperActivate_Request):
+        endpoint = 'event-dumper/activate'
+    if isinstance(message, event_dumper.EventDumperDeactivate_Request):
+        endpoint = 'event-dumper/deactivate'
+    if isinstance(message, event_dumper.EventDumperStatus_Request):
+        endpoint = 'event-dumper/status'
 
     # Raw event indexer
     if isinstance(message, rawevtindexer.RawEvtIndexerStatus_Request):
@@ -107,6 +108,16 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str, str]:
     if isinstance(message, ioc.GetIocState_Request):
         endpoint = 'content/ioc/state'
         method = 'get'
+
+    # Metrics
+    if isinstance(message, metrics.Enable_Request):
+        endpoint = 'metrics/enable'
+    if isinstance(message, metrics.Get_Request):
+        endpoint = 'metrics/get'
+    if isinstance(message, metrics.List_Request):
+        endpoint = 'metrics/list'
+    if isinstance(message, metrics.Dump_Request):
+        endpoint = 'metrics/dump'
 
     # Unknown
     if endpoint == '':

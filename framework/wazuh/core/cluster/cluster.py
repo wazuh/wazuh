@@ -34,7 +34,7 @@ from wazuh.core.cluster.utils import (
     safe_join,
 )
 from wazuh.core.InputValidator import InputValidator
-from wazuh.core.utils import blake2b, get_date_from_timestamp, get_utc_now, mkdir_with_mode, to_relative_path
+from wazuh.core.utils import blake2b, get_date_from_timestamp, get_utc_now, mkdir_with_mode
 
 logger = logging.getLogger('wazuh')
 

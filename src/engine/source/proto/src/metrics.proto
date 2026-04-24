@@ -1,98 +1,143 @@
 syntax = "proto3";
 
 import "engine.proto";
-import "google/protobuf/struct.proto"; // For Value
 
 package com.wazuh.api.engine.metrics;
 
 /*
- * This API is used to manage the metrics of the Wazuh manager
+ * Metrics API - Lock-free metrics management for wazuh-engine
+ *
+ * Provides operations to enable/disable, query, list, and dump engine metrics.
+ * Metrics are organized in two scopes:
+ *   - Global metrics: engine-wide counters and rates (e.g., "router.events.processed")
+ *   - Per-space metrics: scoped to a policy namespace (e.g., "events.discarded" within space "wazuh")
+ *
+ * When a request includes the `space` field, the metric name is resolved internally
+ * as "space.<space>.<instrumentName>", abstracting the naming convention from the consumer.
+ *
+ * Metric types (returned as lowercase strings):
+ *   "counter"    - Monotonically increasing counter (atomic, lock-free)
+ *   "gauge_int"  - Integer gauge (instantaneous value)
+ *   "gauge_dbl"  - Double gauge (instantaneous value, e.g., EPS rates)
+ *   "pull"       - On-demand callback metric (lazy evaluation)
  */
 
 /***************************************************
- * Prints all collected metrics
+ * Enable or disable a specific metric
  *
- * command: metrics/dump (<resource>/<action>)
- **************************************************/
-message Dump_Request
-{
-    // Nothing
-}
-
-message Dump_Response
-{
-    ReturnStatus status = 1;                  // Status of the query
-    optional string error = 2;                // Error message if status is ERROR
-    optional google.protobuf.Value value = 3; // Value of the resource if status is OK
-}
-
-/***************************************************
- * Print a single metric as json
+ * endpoint: POST /metrics/enable
  *
- * command: metrics/get (<resource>/<action>)
- **************************************************/
-message Get_Request
-{
-    optional string scopeName = 1;      // Metric scope name
-    optional string instrumentName = 2; // Metric instrument name
-}
-
-message Get_Response
-{
-    ReturnStatus status = 1;                  // Status of the query
-    optional string error = 2;                // Error message if status is ERROR
-    optional google.protobuf.Value value = 3; // Content of the resource if status is OK
-}
-
-/***************************************************
- * Enable or disable a specific instrument
+ * Enables or disables collection for a specific metric.
+ * When disabled, the metric still exists but its value is not updated.
  *
- * command: metrics/enable (<resource>/<action>)
+ * If `space` is provided, the metric name is resolved to "space.<space>.<instrumentName>".
+ * Otherwise, `instrumentName` is used as-is (for global metrics).
  **************************************************/
 message Enable_Request
 {
-    optional string scopeName = 1;      // Metric scope name
-    optional string instrumentName = 2; // Metric instrument name
-    optional bool status = 3;           // Action
+    optional string instrumentName =
+        1; // Metric name (e.g., "events.discarded" for per-space, or "router.events.processed" for global)
+    optional bool status = 2;  // true = enable, false = disable (default: true)
+    optional string space = 3; // Space name. If set, resolves to "space.<space>.<instrumentName>"
 }
 
 message Enable_Response
 {
-    ReturnStatus status = 1;     // Status of the query
+    ReturnStatus status = 1;     // Status of the operation
     optional string error = 2;   // Error message if status is ERROR
-    optional string content = 3; // Content of the resource if status is OK
+    optional string content = 3; // Success message if status is OK
 }
 
 /***************************************************
- * Prints name, status and instruments types
+ * Get a single metric value and metadata
  *
- * command: metrics/list (<resource>/<action>)
+ * endpoint: POST /metrics/get
+ *
+ * Retrieves the current value, type, and enablement status of a single metric.
+ *
+ * If `space` is provided, the metric name is resolved to "space.<space>.<instrumentName>".
+ * Otherwise, `instrumentName` is used as-is (for global metrics).
+ **************************************************/
+message Get_Request
+{
+    optional string instrumentName = 1; // Metric name (e.g., "events.discarded" or full name "router.events.processed")
+    optional string space = 2;          // Space name. If set, resolves to "space.<space>.<instrumentName>"
+}
+
+message Get_Response
+{
+    ReturnStatus status = 1;   // Status of the query
+    optional string error = 2; // Error message if status is ERROR
+    optional string name = 3;  // Resolved metric name (full internal name)
+    optional string type = 4;  // Metric type: "counter", "gauge_int", "gauge_dbl", "pull"
+    optional bool enabled = 5; // Whether metric collection is enabled
+    optional double value = 6; // Current metric value
+}
+
+/***************************************************
+ * List all registered metric names
+ *
+ * endpoint: POST /metrics/list
+ *
+ * Returns the names of all registered metrics.
+ * If `space` is provided, only metrics belonging to that space are returned
+ * (i.e., those with the internal prefix "space.<space>.").
  **************************************************/
 message List_Request
 {
-    // Nothing
+    optional string space = 1; // If set, list only metrics for this space (filters by prefix "space.<space>.")
 }
 
 message List_Response
 {
-    ReturnStatus status = 1;                  // Status of the query
-    optional string error = 2;                // Error message if status is ERROR
-    optional google.protobuf.Value value = 3; // Value of the resource if status is OK
+    ReturnStatus status = 1;   // Status of the query
+    optional string error = 2; // Error message if status is ERROR
+    repeated string names = 3; // List of metric names matching the filter
 }
 
 /***************************************************
- * Generate dummy metrics for testing
+ * Dump all metrics with their values
  *
- * command: metrics/test (<resource>/<action>)
+ * endpoint: POST /metrics/dump
+ *
+ * Returns a full snapshot of all registered metrics, organized into:
+ *   - `global`: engine-wide metrics (not scoped to any space)
+ *   - `spaces`: per-space metrics grouped by space name, with the "space.<name>." prefix stripped
+ *
+ * The response includes daemon identification (`name`), the daemon start time (`uptime`),
+ * and the timestamp when the dump was collected (`timestamp`), both in ISO 8601 format.
+ *
+ * This endpoint is designed for monitoring dashboards and observability tools.
  **************************************************/
-message Test_Request
+message Dump_Request
 {
-    // Nothing
+    // Empty request - dumps all metrics
 }
 
-message Test_Response
+/* A single metric entry with its current value and metadata */
+message MetricEntry
 {
-    ReturnStatus status = 1;     // Status of the query
-    optional string error = 2;   // Error message if status is ERROR
-    repeated string content = 3; // Content of the resource if status is OK
+    optional string name =
+        1; // Metric name (for global: full name; for per-space: suffix without "space.<name>." prefix)
+    optional string type = 2;  // Metric type: "counter", "gauge_int", "gauge_dbl", "pull"
+    optional bool enabled = 3; // Whether metric collection is enabled
+    optional double value = 4; // Current metric value
+}
+
+/* Metrics grouped by space (policy/namespace) */
+message SpaceMetrics
+{
+    string name = 1;                  // Space name (e.g., "wazuh", "testing")
+    repeated MetricEntry metrics = 2; // Metrics belonging to this space
+}
+
+message Dump_Response
+{
+    ReturnStatus status = 1;          // Status of the query
+    optional string error = 2;        // Error message if status is ERROR
+    optional string name = 3;         // Daemon name (e.g., "wazuh-manager-analysisd")
+    optional string uptime = 4;       // ISO 8601 timestamp of when the daemon started
+    optional string timestamp = 5;    // ISO 8601 timestamp of when this dump was collected
+    repeated MetricEntry global = 6;  // Global metrics (not space-scoped)
+    repeated SpaceMetrics spaces = 7; // Per-space metrics grouped by space name
 }

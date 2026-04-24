@@ -38,22 +38,22 @@ public:
     void importNamespace(const cm::store::NamespaceId& nsId,
                          const std::vector<json::Json>& kvdbs,
                          const std::vector<json::Json>& decoders,
+                         const std::vector<json::Json>& filters,
                          const std::vector<json::Json>& integrations,
                          const json::Json& policy,
                          bool softValidation) override;
 
     /********************************* Policy *********************************/
-    void upsertPolicy(const cm::store::NamespaceId& nsId, std::string_view policyDocument) override;
+    void upsertPolicy(const cm::store::NamespaceId& nsId, const json::Json& policy) override;
     void deletePolicy(const cm::store::NamespaceId& nsId) override;
 
     /***************************** Generic resources **************************/
     std::vector<ResourceSummary> listResources(const cm::store::NamespaceId& nsId,
                                                cm::store::ResourceType type) const override;
-    std::string
-    getResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid, bool asJson) const override;
+    json::Json getResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid) const override;
     void upsertResource(const cm::store::NamespaceId& nsId,
                         cm::store::ResourceType type,
-                        std::string_view document) override;
+                        const json::Json& resource) override;
     void deleteResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid) override;
 
     // Public validate

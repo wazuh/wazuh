@@ -295,6 +295,8 @@ jobs:
 
       - name: Run inventory sync integration tests
         working-directory: src/wazuh_modules/inventory_sync/qa
+        env:
+          TEST_MANAGER: ${{ github.event.inputs.test_manager || '127.0.0.1' }}
         run: |
           echo "[>] Running inventory sync integration tests..."
           source venv/bin/activate
@@ -305,8 +307,6 @@ jobs:
 
           # Run all tests
           echo "[>] Running all integration tests..."
-          TEST_MANAGER="${{ inputs.test_manager || '127.0.0.1' }}"
-
           python3 run_tests.py --manager "$TEST_MANAGER" --verbose
 
       - name: Cleanup and collect logs

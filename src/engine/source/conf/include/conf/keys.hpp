@@ -32,15 +32,16 @@ constexpr std::string_view INDEXER_SSL_CA_BUNDLE = "analysisd.indexer_ssl_certif
 constexpr std::string_view INDEXER_SSL_CERTIFICATE = "analysisd.indexer_ssl_certificate";
 constexpr std::string_view INDEXER_SSL_KEY = "analysisd.indexer_ssl_key";
 constexpr std::string_view INDEXER_QUEUE_MAX_EVENTS = "analysisd.indexer_queue_max_events";
-constexpr std::string_view INDEXER_CONNECTOR_MAX_HITS_PER_REQUEST = "analysisd.indexer_connector_max_hits_per_request";
 
 constexpr std::string_view IOC_INDEXER_CONNECTOR_MAX_RETRIES = "analysisd.ioc_indexer_connector_max_retries";
 constexpr std::string_view IOC_INDEXER_CONNECTOR_RETRY_INTERVAL = "analysisd.ioc_indexer_connector_retry_interval";
 constexpr std::string_view IOC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE =
-    "analysisd.ioc_indexer_connector_ioc_sync_batch_size";
+    "analysisd.ioc_indexer_connector_sync_batch_size";
 constexpr std::string_view CMSYNC_INDEXER_CONNECTOR_MAX_RETRIES = "analysisd.cmsync_indexer_connector_max_retries";
 constexpr std::string_view CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL =
     "analysisd.cmsync_indexer_connector_retry_interval";
+constexpr std::string_view CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE =
+    "analysisd.cmsync_indexer_connector_sync_batch_size";
 constexpr std::string_view REMOTE_CONF_INDEXER_CONNECTOR_MAX_RETRIES =
     "analysisd.remote_conf_indexer_connector_max_retries";
 constexpr std::string_view REMOTE_CONF_INDEXER_CONNECTOR_RETRY_INTERVAL =
@@ -74,7 +75,12 @@ constexpr std::string_view STREAMLOG_EVENTS_BUFFER_SIZE = "analysisd.streamlog_e
 constexpr std::string_view STREAMLOG_DUMPER_PATTERN = "analysisd.streamlog_dumper_pattern";
 constexpr std::string_view STREAMLOG_DUMPER_MAX_SIZE = "analysisd.streamlog_dumper_max_size";
 constexpr std::string_view STREAMLOG_DUMPER_BUFFER_SIZE = "analysisd.streamlog_dumper_buffer_size";
+constexpr std::string_view STREAMLOG_METRICS_PATTERN = "analysisd.streamlog_metrics_pattern";
+constexpr std::string_view STREAMLOG_METRICS_MAX_SIZE = "analysisd.streamlog_metrics_max_size";
+constexpr std::string_view STREAMLOG_METRICS_BUFFER_SIZE = "analysisd.streamlog_metrics_buffer_size";
 
+constexpr std::string_view METRICS_LOG_ENABLED = "analysisd.metrics_log_enabled";
+constexpr std::string_view METRICS_LOG_INTERVAL = "analysisd.metrics_log_interval";
 constexpr std::string_view DUMPER_ENABLED = "analysisd.dumper_enabled";
 
 constexpr std::string_view PID_FILE_PATH = "analysisd.pid_path";

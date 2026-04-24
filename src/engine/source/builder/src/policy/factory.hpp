@@ -1,5 +1,5 @@
-#ifndef _BUILDER_POLICY_FACTORY_HPP
-#define _BUILDER_POLICY_FACTORY_HPP
+#ifndef BUILDER_POLICY_FACTORY_HPP
+#define BUILDER_POLICY_FACTORY_HPP
 
 #include <map>
 #include <memory>
@@ -10,6 +10,8 @@
 #include <base/expression.hpp>
 #include <base/graph.hpp>
 #include <cmstore/icmstore.hpp>
+
+#include <fastmetrics/iMetric.hpp>
 
 #include "iassetBuilder.hpp"
 
@@ -58,11 +60,12 @@ constexpr std::string_view AssetPipelineStageToStr(const AssetPipelineStage stag
  */
 struct SubgraphData
 {
-    std::vector<base::Name> orderedAssets;                   ///< Order in which the assets were read/built.
-    std::unordered_map<base::Name, Asset> assets;            ///< Quick access to assets by name.
+    std::vector<base::Name> orderedAssets;        ///< Order in which the assets were read/built.
+    std::unordered_map<base::Name, Asset> assets; ///< Quick access to assets by name.
 };
 
-using BuiltAssets = std::unordered_map<AssetPipelineStage, SubgraphData>; ///< Map of pipeline stages to built asset data.
+using BuiltAssets =
+    std::unordered_map<AssetPipelineStage, SubgraphData>; ///< Map of pipeline stages to built asset data.
 
 /**
  * @brief Build the assets of the policy.
@@ -70,7 +73,7 @@ using BuiltAssets = std::unordered_map<AssetPipelineStage, SubgraphData>; ///< M
  * @param data Policy data.
  * @param store The store interface to query assets and namespaces.
  * @param assetBuilder The asset builder instance to build each asset.
- * @param sandbox Flag indicating sandbox mode.
+ * @param isTestMode Whether the policy is built in test mode.
  *
  * @return BuiltAssets
  *
@@ -79,7 +82,7 @@ using BuiltAssets = std::unordered_map<AssetPipelineStage, SubgraphData>; ///< M
 BuiltAssets buildAssets(const cm::store::dataType::Policy& policyData,
                         const std::shared_ptr<cm::store::ICMStoreNSReader>& cmStoreNsReader,
                         const std::shared_ptr<IAssetBuilder>& assetBuilder,
-                        const bool sandbox = false);
+                        const bool isTestMode = false);
 
 /**
  * @brief This struct contains the policy graphs by type.
@@ -261,8 +264,10 @@ base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgrap
  */
 base::Expression buildExpression(const PolicyGraph& graph,
                                  const base::Expression& preEnrichmentExpression,
-                                 const base::Expression& enrichmentExpression);
+                                 const base::Expression& enrichmentExpression,
+                                 const std::shared_ptr<fastmetrics::ICounter>& preFilterDiscardCounter = nullptr,
+                                 const std::shared_ptr<fastmetrics::ICounter>& postFilterDiscardCounter = nullptr);
 
 } // namespace builder::policy::factory
 
-#endif // _BUILDER_POLICY_FACTORY_HPP
+#endif // BUILDER_POLICY_FACTORY_HPP

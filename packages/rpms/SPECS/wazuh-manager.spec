@@ -534,9 +534,9 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/default
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/agent-template.conf
 %attr(660, wazuh-manager, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/shared/default/*
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/default
-%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/default/*.yml
+%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs
+%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/default
+%attr(640, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/default/*.yml
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework/python
 %{_localstatedir}/framework/python/*
@@ -638,7 +638,7 @@ rm -fr %{buildroot}
 %files -n wazuh-manager-debuginfo -f debugfiles.list
 
 %changelog
-* Sun Apr 12 2026 support <info@wazuh.com> - 5.0.0
+* Wed Jun 24 2026 support <info@wazuh.com> - 5.0.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-5-0-0.html
 * Sat Apr 11 2026 support <info@wazuh.com> - 4.14.5
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-5.html

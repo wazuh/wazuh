@@ -139,7 +139,7 @@ protected:
         docJson.setString(path, typePrefix + "/path");
         docJson.setString("hash", typePrefix + "/hash");
         docJson.setInt64(1769111225, typePrefix + "/generated_at");
-        
+
         EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
             .WillOnce(testing::Return(storeReadDocResp(docJson)));
 
@@ -169,8 +169,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbs)
     doc.setString("hash2", "/city/hash");
     doc.setInt64(1769111225, "/city/generated_at");
 
-    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
-        .WillOnce(testing::Return(storeReadDocResp(doc)));
+    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME))).WillOnce(testing::Return(storeReadDocResp(doc)));
 
     std::shared_ptr<Manager> manager;
     ASSERT_NO_THROW(manager = std::make_shared<Manager>(mockStore, mockDownloader));
@@ -194,8 +193,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbs)
 TEST_F(GeoManagerTest, InitializeAddingDbsStoreError)
 {
     // Failure reading document
-    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
-        .WillOnce(testing::Return(storeReadError<store::Doc>()));
+    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME))).WillOnce(testing::Return(storeReadError<store::Doc>()));
 
     std::shared_ptr<Manager> manager;
     ASSERT_NO_THROW(manager = std::make_shared<Manager>(mockStore, mockDownloader));
@@ -216,8 +214,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbsAddError)
     doc.setString("hash2", "/city/hash");
     doc.setInt64(1769111225, "/city/generated_at");
 
-    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
-        .WillOnce(testing::Return(storeReadDocResp(doc)));
+    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME))).WillOnce(testing::Return(storeReadDocResp(doc)));
 
     std::shared_ptr<Manager> manager;
     ASSERT_NO_THROW(manager = std::make_shared<Manager>(mockStore, mockDownloader));
@@ -236,10 +233,10 @@ TEST_F(GeoManagerTest, GetLocator)
     auto dbType = Type::ASN;
     auto manager = getManagerWithDb(dbPath, dbType);
 
-    base::RespOrError<std::shared_ptr<ILocator>> locatorResp;
+    Result<std::shared_ptr<ILocator>> locatorResp;
     ASSERT_NO_THROW(locatorResp = manager.getLocator(dbType));
-    ASSERT_FALSE(base::isError(locatorResp));
-    auto locator = base::getResponse(locatorResp);
+    ASSERT_FALSE(locatorResp.isError());
+    auto locator = locatorResp.value();
     ASSERT_NE(locator, nullptr);
 }
 
@@ -247,9 +244,9 @@ TEST_F(GeoManagerTest, GetLocatorNonExists)
 {
     auto manager = getEmptyManager();
 
-    base::RespOrError<std::shared_ptr<ILocator>> locatorResp;
+    Result<std::shared_ptr<ILocator>> locatorResp;
     ASSERT_NO_THROW(locatorResp = manager.getLocator(Type::ASN));
-    ASSERT_TRUE(base::isError(locatorResp));
+    ASSERT_TRUE(locatorResp.isError());
 }
 
 TEST_F(GeoManagerTest, RemoteUpsert)

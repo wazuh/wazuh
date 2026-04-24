@@ -303,14 +303,19 @@ public:
     /**
      * @brief Class constructor that initializes the publisher.
      *
-     * @param config Indexer configuration, including database_path and servers.
+     * @param config Indexer configuration, including servers and SSL settings.
+     * @param queueId Identifier for this connector instance. Combined with basePath to form
+     *                the RocksDB queue directory: basePath / queueId.
+     *                Must be unique per instance to guarantee queue isolation.
      * @param logFunction Callback function to be called when trying to log a message.
-     * @param timeout Server selector time interval.
+     * @param basePath Base directory for the RocksDB queue. Defaults to "queue/indexer/".
      */
     explicit IndexerConnectorAsync(
         const nlohmann::json& config,
+        std::string queueId,
         const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
-            logFunction = {});
+            logFunction = {},
+        std::string basePath = "queue/indexer/");
 
     ~IndexerConnectorAsync();
 
@@ -364,6 +369,13 @@ public:
     uint64_t getQueueSize() const;
 
     /**
+     * @brief Get the total number of dropped events.
+     *
+     * @return The number of events that have been dropped.
+     */
+    uint64_t getDroppedEvents() const;
+
+    /**
      * @brief Create a Point In Time (PIT) for the specified indices.
      *
      * Creates a PIT context that can be used for consistent pagination across multiple search requests.
@@ -376,7 +388,7 @@ public:
      * @throws IndexerConnectorException if the PIT creation fails.
      *
      * Example:
-     * auto pit = connector.createPointInTime({".cti-kvdbs", ".cti-decoders"}, "5m", true);
+     * auto pit = connector.createPointInTime({"wazuh-threatintel-kvdbs", "wazuh-threatintel-decoders"}, "5m", true);
      * std::string pitId = pit.getPitId(); // Use for subsequent searches
      * // ... perform searches ...
      * connector.deletePointInTime(pit); // Clean up when done
@@ -437,7 +449,7 @@ public:
      * Example:
      * nlohmann::json query = {{"bool", {{"filter", {{{{"term", {{"space.name", "free"}}}}}}}}};
      * nlohmann::json source = {{"includes", {"space.hash.sha256"}}, {"excludes", nlohmann::json::array()}};
-     * auto hits = connector.search(".cti-policies", 10, query, source);
+     * auto hits = connector.search("wazuh-threatintel-policies", 10, query, source);
      */
     nlohmann::json search(std::string_view index,
                           std::size_t size,

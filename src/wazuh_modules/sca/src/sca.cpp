@@ -273,7 +273,7 @@ void SCA::init()
             m_sca->SetPushStatelessMessageFunction(sendStatelessMessage);
             m_sca->SetPushStatefulMessageFunction(persistStatefulMessage);
 
-            LoggingHelper::getInstance().log(LOG_INFO, "SCA module initialized successfully.");
+            LoggingHelper::getInstance().log(LOG_DEBUG, "SCA module initialized successfully.");
         }
         catch (const std::exception& ex)
         {
@@ -286,7 +286,7 @@ void SCA::init()
     }
     else
     {
-        LoggingHelper::getInstance().log(LOG_INFO, "SCA module already initialized.");
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA module already initialized.");
     }
 }
 

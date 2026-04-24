@@ -7,9 +7,11 @@
 
 #include <fmt/format.h>
 
+#include <fastmetrics/registry.hpp>
 #include <store/utils.hpp>
 
 #include "asset.hpp"
+#include "builders/enrichment/enrichment.hpp"
 #include "syntax.hpp"
 
 namespace
@@ -73,7 +75,7 @@ namespace builder::policy::factory
 BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
                         const std::shared_ptr<cm::store::ICMStoreNSReader>& cmStoreNsReader,
                         const std::shared_ptr<IAssetBuilder>& assetBuilder,
-                        const bool sandbox)
+                        const bool isTestMode)
 {
     BuiltAssets builtAssets;
 
@@ -142,8 +144,8 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
         // TODO: Only decoder should have the integration context
         // TODO: The context integration should has the aviable KVDBs for validation
         // Configure partial build context for the integration.
-        assetBuilder->getContext().integrationName = integration.getName();
-        assetBuilder->getContext().integrationCategory = integration.getCategory();
+        assetBuilder->getContext().integration.name = integration.getName();
+        assetBuilder->getContext().integration.category = integration.getCategory();
         // Set availability map in the build context (integration-scoped).
         assetBuilder->setAvailableKvdbs(buildKvdbsMap(integration, cmStoreNsReader, integUUID));
 
@@ -241,7 +243,7 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
     }
 
     // TODO: Only available for production -->> Remove this, outputs should always be associated with a policy
-    if (!sandbox)
+    if (!isTestMode)
     {
         // Default outputs are not associated with an integration; clear KVDB validation.
         assetBuilder->clearAvailableKvdbs();
@@ -340,7 +342,9 @@ PolicyGraph buildGraph(const BuiltAssets& assets)
 
 base::Expression buildExpression(const PolicyGraph& graph,
                                  const base::Expression& preEnrichmentExpression,
-                                 const base::Expression& enrichmentExpression)
+                                 const base::Expression& enrichmentExpression,
+                                 const std::shared_ptr<fastmetrics::ICounter>& preFilterDiscardCounter,
+                                 const std::shared_ptr<fastmetrics::ICounter>& postFilterDiscardCounter)
 {
 
     // Phase 1: Pre filters implies Decoders tree
@@ -375,7 +379,15 @@ base::Expression buildExpression(const PolicyGraph& graph,
         // If pre-filters are present, they imply decoders, if not, just decoders
         if (preFiltersExpr.has_value())
         {
-            return base::Implication::create("Phase1_PreFilters", preFiltersExpr.value(), decodersExpr);
+            auto implExpr = base::Implication::create("Phase1_PreFilters", preFiltersExpr.value(), decodersExpr);
+            // Wrap with discard counter: events failing the pre-filter are counted
+            if (preFilterDiscardCounter)
+            {
+                return builders::enrichment::makeFilterDiscardCounter(
+                           implExpr, preFilterDiscardCounter, "Phase1_PreFilterDiscard")
+                    ->getPtr<base::Operation>();
+            }
+            return implExpr;
         }
         return base::Chain::create("Phase1_Decoders", {decodersExpr});
     }();
@@ -411,7 +423,15 @@ base::Expression buildExpression(const PolicyGraph& graph,
         // If post-filters are present, they imply outputs, if not, just outputs
         if (postFiltersExpr.has_value() && outputsExpr.has_value())
         {
-            return base::Implication::create("Phase3_PostFilters", postFiltersExpr.value(), outputsExpr.value());
+            auto implExpr =
+                base::Implication::create("Phase3_PostFilters", postFiltersExpr.value(), outputsExpr.value());
+            // Wrap with discard counter: events failing the post-filter are counted
+            if (postFilterDiscardCounter)
+            {
+                return builders::enrichment::makeFilterDiscardCounter(
+                    implExpr, postFilterDiscardCounter, "Phase3_PostFilterDiscard");
+            }
+            return implExpr;
         }
         else if (outputsExpr.has_value())
         {
@@ -420,6 +440,11 @@ base::Expression buildExpression(const PolicyGraph& graph,
         else if (postFiltersExpr.has_value())
         {
             // Only for checking trace in Tester module (logetst)
+            if (postFilterDiscardCounter)
+            {
+                return builders::enrichment::makeFilterDiscardCounter(
+                    postFiltersExpr.value(), postFilterDiscardCounter, "Phase3_PostFilterDiscard");
+            }
             return postFiltersExpr;
         }
         return std::nullopt;
@@ -428,12 +453,10 @@ base::Expression buildExpression(const PolicyGraph& graph,
     // Phase 1 only fails if pre-filters fail, phase 3 only fails if post-filters fail.
     if (phase3.has_value())
     {
-        return base::And::create(
-            graph.graphName,
-            {phase1, preEnrichmentExpression, enrichmentExpression, phase3.value()});
+        return base::And::create(graph.graphName,
+                                 {phase1, preEnrichmentExpression, enrichmentExpression, phase3.value()});
     }
-    return base::And::create(graph.graphName,
-                             {phase1, preEnrichmentExpression, enrichmentExpression});
+    return base::And::create(graph.graphName, {phase1, preEnrichmentExpression, enrichmentExpression});
 }
 
 } // namespace builder::policy::factory

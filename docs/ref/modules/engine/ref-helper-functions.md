@@ -39,7 +39,6 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [is_object](#is_object)
 - [is_public_ip](#is_public_ip)
 - [is_string](#is_string)
-- [is_test_session](#is_test_session)
 - [keys_exist_in_list](#keys_exist_in_list)
 - [kvdb_match](#kvdb_match)
 - [kvdb_not_match](#kvdb_not_match)
@@ -4179,60 +4178,6 @@ check:
 ```json
 {
   "target_field": "hello"
-}
-```
-
-*The check was successful*
-
-
-
----
-# is_test_session
-
-## Signature
-
-```
-
-field: is_test_session()
-```
-
-## Target Field
-
-| Type | Possible values |
-| ---- | --------------- |
-| [number, string, boolean, array, object] | - |
-
-
-## Description
-
-Check if the environment in use is testing or production.
-This helper function is typically used in the check stage
-
-
-## Keywords
-
-- `undefined` 
-
-## Examples
-
-### Example 1
-
-Is test session
-
-#### Asset
-
-```yaml
-check:
-  - target_field: is_test_session()
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": {
-    "key": "value"
-  }
 }
 ```
 

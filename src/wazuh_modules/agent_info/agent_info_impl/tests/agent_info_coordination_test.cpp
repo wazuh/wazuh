@@ -851,6 +851,7 @@ TEST_F(AgentInfoCoordinationTest, CoordinationRequestsAllFlushesBeforePollingAnd
     m_agentInfo = std::make_shared<AgentInfoImpl>(
                       ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
                       m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->setFlushPollDelayMs(0);
 
     EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
     .WillRepeatedly(::testing::Return(false));
@@ -987,7 +988,7 @@ TEST_F(AgentInfoCoordinationTest, CoordinationFlushFailureResumesPausedModules)
     });
 
     EXPECT_EQ(resumeCount, 3);
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("flush completed with error"));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("flush did not complete — data will be retried in the next sync cycle"));
 }
 
 TEST_F(AgentInfoCoordinationTest, CoordinationWithModuleResumptionSuccess)

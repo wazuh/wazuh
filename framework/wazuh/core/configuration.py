@@ -603,57 +603,6 @@ def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DA
     return {'total_affected_items': len(data), 'affected_items': cut_array(data, offset=offset, limit=limit)}
 
 
-def get_agent_conf_multigroup(multigroup_id: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
-                              filename: str = None) -> dict:
-    """Return agent.conf as dictionary.
-
-    Parameters
-    ----------
-    multigroup_id : str
-        ID of the group with the agent.conf we want to get.
-    offset : int
-        First element to return in the collection.
-    limit : int
-        Maximum number of elements to return.
-    filename : str
-        Name of the file to get. Default: 'agent.conf'
-
-    Raises
-    ------
-    WazuhResourceNotFound(1710)
-        Group was not found.
-    WazuhError(1006)
-        agent.conf does not exist or there is a problem with the permissions.
-    WazuhError(1101)
-        Requested component does not exist.
-
-    Returns
-    -------
-    dict
-        agent.conf as dictionary.
-    """
-    # Check if a multigroup_id is provided and it exists
-    if multigroup_id and not os_path.exists(os_path.join(common.MULTI_GROUPS_PATH, multigroup_id)) or not multigroup_id:
-        raise WazuhResourceNotFound(1710, extra_message=multigroup_id if multigroup_id else "No multigroup provided")
-
-    agent_conf_name = filename if filename else 'agent.conf'
-    agent_conf = os_path.join(common.MULTI_GROUPS_PATH, multigroup_id, agent_conf_name)
-
-    if not os_path.exists(agent_conf):
-        raise WazuhError(1006, extra_message=os_path.join("WAZUH_PATH", "var", "multigroups", agent_conf))
-
-    try:
-        # Read XML
-        xml_data = load_wazuh_xml(agent_conf)
-
-        # Parse XML to JSON
-        data = _agentconf2json(xml_data)
-    except Exception:
-        raise WazuhError(1101)
-
-    return {'totalItems': len(data), 'items': cut_array(data, offset=offset, limit=limit)}
-
-
 def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, raw: bool = False) -> dict | str:
     """Return the configuration file content.
 

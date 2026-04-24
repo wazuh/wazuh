@@ -12,8 +12,6 @@
 #include "manager.hpp"
 
 
-// TODO: Improve all methods error handler, now they should return a string view or similar
-// for avoid memory allocations on each call
 namespace
 {
 /**
@@ -243,26 +241,23 @@ MMDB_entry_data_list_s* dumpEntryDataList(MMDB_entry_data_list_s* eDataList, jso
     return eDataList;
 }
 
-static const std::string TRANSLATE_ERROR = "Error translating IP address ";
-static const std::string LIBMMD_ERROR = "Error from libmaxminddb: ";
-
 } // namespace
 
 namespace geo
 {
 
-base::RespOrError<std::shared_ptr<const DbInstance>> Locator::validateAndGetDb()
+Result<std::shared_ptr<const DbInstance>> Locator::validateAndGetDb()
 {
     auto handle = m_handle.lock();
     if (!handle)
     {
-        return base::Error {"Database handle expired"};
+        return geo::ErrorCode::DB_HANDLE_EXPIRED;
     }
 
     auto db = handle->load();
     if (!db)
     {
-        return base::Error {"Database is not available"};
+        return geo::ErrorCode::DB_NOT_AVAILABLE;
     }
 
     // If the instance changed, invalidate the cache
@@ -276,11 +271,11 @@ base::RespOrError<std::shared_ptr<const DbInstance>> Locator::validateAndGetDb()
     return db;
 }
 
-base::OptError Locator::lookup(const std::string& ip, const std::shared_ptr<const DbInstance>& db)
+Result<void> Locator::lookup(const std::string& ip, const std::shared_ptr<const DbInstance>& db)
 {
     if (ip == m_cachedIp)
     {
-        return base::noError();
+        return geo::ErrorCode::SUCCESS;
     }
 
     int gai_error, mmdb_error;
@@ -289,25 +284,27 @@ base::OptError Locator::lookup(const std::string& ip, const std::shared_ptr<cons
 
     if (0 != gai_error) // translation error
     {
-        return base::Error {TRANSLATE_ERROR + ip + ": " + gai_strerror(gai_error)};
+        // More details can be obtained from gai_strerror(gai_error)
+        return geo::ErrorCode::IP_TRANSLATION;
     }
 
     if (MMDB_SUCCESS != mmdb_error) // libmaxminddb error, should not happen
     {
-        return base::Error {LIBMMD_ERROR + MMDB_strerror(mmdb_error)};
+        // More details can be obtained from MMDB_strerror(mmdb_error)
+        return geo::ErrorCode::MMDB_LIBMMDB_ERROR;
     }
 
     m_cachedIp = ip;
     m_cachedResult = result;
 
-    return base::noError();
+    return geo::ErrorCode::SUCCESS;
 }
 
-base::RespOrError<MMDB_entry_data_s> Locator::getEData(const DotPath& path)
+Result<MMDB_entry_data_s> Locator::getEData(const DotPath& path)
 {
     if (!m_cachedResult.found_entry)
     {
-        return base::Error {"No data found for the IP address"};
+        return geo::ErrorCode::IP_NOT_FOUND;
     }
 
     MMDB_entry_data_s eData;
@@ -316,134 +313,134 @@ base::RespOrError<MMDB_entry_data_s> Locator::getEData(const DotPath& path)
     int status = MMDB_aget_value((MMDB_entry_s* const)&m_cachedResult.entry, &eData, pathCStrVec.data());
     if (MMDB_SUCCESS != status)
     {
-        return base::Error {fmt::format("Error getting value: {}", MMDB_strerror(status))};
+        // More details from MMDB_strerror(status)
+        return geo::ErrorCode::MMDB_VALUE_ERROR;
     }
 
     return eData;
 }
 
-base::RespOrError<std::string> Locator::getString(const std::string& ip, const DotPath& path)
+Result<std::string> Locator::getString(const std::string& ip, const DotPath& path)
 {
     auto dbResp = validateAndGetDb();
-    if (base::isError(dbResp))
+    if (dbResp.isError())
     {
-        return base::getError(dbResp);
+        return dbResp.error();
     }
-    auto db = base::getResponse(dbResp);
+    auto db = dbResp.value();
 
     auto lookError = lookup(ip, db);
-    if (base::isError(lookError))
+    if (lookError.isError())
     {
-        return base::getError(lookError);
+        return lookError.error();
     }
 
     auto eDataResp = getEData(path);
-    if (base::isError(eDataResp))
+    if (eDataResp.isError())
     {
-        return base::getError(eDataResp);
+        return eDataResp.error();
     }
 
-    auto& eData = base::getResponse(eDataResp);
+    auto& eData = eDataResp.value();
 
     if (eData.type != MMDB_DATA_TYPE_UTF8_STRING)
     {
-        return base::Error {"Data is not a string"};
+        return geo::ErrorCode::DATA_TYPE_MISMATCH_STRING;
     }
 
     return std::string {eData.utf8_string, eData.data_size};
 }
 
-base::RespOrError<uint32_t> Locator::getUint32(const std::string& ip, const DotPath& path)
+Result<uint32_t> Locator::getUint32(const std::string& ip, const DotPath& path)
 {
     auto dbResp = validateAndGetDb();
-    if (base::isError(dbResp))
+    if (dbResp.isError())
     {
-        return base::getError(dbResp);
+        return dbResp.error();
     }
-    auto db = base::getResponse(dbResp);
+    auto db = dbResp.value();
 
     auto lookError = lookup(ip, db);
-    if (base::isError(lookError))
+    if (lookError.isError())
     {
-        return base::getError(lookError);
+        return lookError.error();
     }
 
     auto eDataResp = getEData(path);
-    if (base::isError(eDataResp))
+    if (eDataResp.isError())
     {
-        auto message = base::getError(eDataResp).message;
-        return base::getError(eDataResp);
+        return eDataResp.error();
     }
 
-    auto& eData = base::getResponse(eDataResp);
+    auto& eData = eDataResp.value();
 
     if (eData.type != MMDB_DATA_TYPE_UINT32)
     {
-        return base::Error {"Data is not a uint32_t"};
+        return geo::ErrorCode::DATA_TYPE_MISMATCH_UINT32;
     }
 
     return eData.uint32;
 }
 
-base::RespOrError<double> Locator::getDouble(const std::string& ip, const DotPath& path)
+Result<double> Locator::getDouble(const std::string& ip, const DotPath& path)
 {
     auto dbResp = validateAndGetDb();
-    if (base::isError(dbResp))
+    if (dbResp.isError())
     {
-        return base::getError(dbResp);
+        return dbResp.error();
     }
-    auto db = base::getResponse(dbResp);
+    auto db = dbResp.value();
 
     auto lookError = lookup(ip, db);
-    if (base::isError(lookError))
+    if (lookError.isError())
     {
-        return base::getError(lookError);
+        return lookError.error();
     }
 
     auto eDataResp = getEData(path);
-    if (base::isError(eDataResp))
+    if (eDataResp.isError())
     {
-        return base::getError(eDataResp);
+        return eDataResp.error();
     }
 
-    auto& eData = base::getResponse(eDataResp);
+    auto& eData = eDataResp.value();
 
     if (eData.type != MMDB_DATA_TYPE_DOUBLE)
     {
-        return base::Error {"Data is not a double"};
+        return geo::ErrorCode::DATA_TYPE_MISMATCH_DOUBLE;
     }
 
     return eData.double_value;
 }
 
-base::RespOrError<json::Json> Locator::getAsJson(const std::string& ip, const DotPath& path)
+Result<json::Json> Locator::getAsJson(const std::string& ip, const DotPath& path)
 {
     auto dbResp = validateAndGetDb();
-    if (base::isError(dbResp))
+    if (dbResp.isError())
     {
-        return base::getError(dbResp);
+        return dbResp.error();
     }
-    auto db = base::getResponse(dbResp);
+    auto db = dbResp.value();
 
     auto lookError = lookup(ip, db);
-    if (base::isError(lookError))
+    if (lookError.isError())
     {
-        return base::getError(lookError);
+        return lookError.error();
     }
 
     auto eDataResp = getEData(path);
-    if (base::isError(eDataResp))
+    if (eDataResp.isError())
     {
-        return base::getError(eDataResp);
+        return eDataResp.error();
     }
 
-    auto& eData = base::getResponse(eDataResp);
+    auto& eData = eDataResp.value();
 
     json::Json result {};
     switch (eData.type)
     {
         case MMDB_DATA_TYPE_MAP:
-        case MMDB_DATA_TYPE_ARRAY: return base::Error {"Data is not a simple type"};
+        case MMDB_DATA_TYPE_ARRAY: return geo::ErrorCode::DATA_TYPE_MISMATCH_SIMPLE;
         case MMDB_DATA_TYPE_UTF8_STRING: result.setString(std::string {eData.utf8_string, eData.data_size}); break;
         case MMDB_DATA_TYPE_BYTES: result.setString(bytesToHexString(eData.bytes, eData.data_size)); break;
         case MMDB_DATA_TYPE_DOUBLE: result.setDouble(eData.double_value); break;
@@ -460,24 +457,24 @@ base::RespOrError<json::Json> Locator::getAsJson(const std::string& ip, const Do
     return result;
 }
 
-base::RespOrError<json::Json> Locator::getAll(const std::string& ip)
+Result<json::Json> Locator::getAll(const std::string& ip)
 {
     auto dbResp = validateAndGetDb();
-    if (base::isError(dbResp))
+    if (dbResp.isError())
     {
-        return base::getError(dbResp);
+        return dbResp.error();
     }
-    auto db = base::getResponse(dbResp);
+    auto db = dbResp.value();
 
     auto lookError = lookup(ip, db);
-    if (base::isError(lookError))
+    if (lookError.isError())
     {
-        return base::getError(lookError);
+        return lookError.error();
     }
 
     if (!m_cachedResult.found_entry)
     {
-        return base::Error {"No data found for the IP address"};
+        return geo::ErrorCode::IP_NOT_FOUND;
     }
 
     // Get complete entry data list
@@ -485,12 +482,13 @@ base::RespOrError<json::Json> Locator::getAll(const std::string& ip)
     int status = MMDB_get_entry_data_list(&m_cachedResult.entry, &entry_data_list);
     if (MMDB_SUCCESS != status)
     {
-        return base::Error {fmt::format("Error getting entry data list: {}", MMDB_strerror(status))};
+        // Additional information can be retrieved from MMDB_strerror(status)
+        return geo::ErrorCode::MMDB_RETRIEVAL_ENTRY_LIST;
     }
 
     if (!entry_data_list)
     {
-        return base::Error {"Entry data list is empty"};
+        return geo::ErrorCode::DATA_ENTRY_EMPTY;
     }
 
     // Build JSON from entry data list
@@ -502,7 +500,7 @@ base::RespOrError<json::Json> Locator::getAll(const std::string& ip)
     catch (const std::exception& e)
     {
         MMDB_free_entry_data_list(entry_data_list);
-        return base::Error {fmt::format("Error dumping entry data: {}", e.what())};
+        return geo::ErrorCode::MMDB_DUMP_ENTRY;
     }
 
     MMDB_free_entry_data_list(entry_data_list);

@@ -39,6 +39,10 @@ on:
         required: false
         type: boolean
         default: false
+      skip_tests:
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       base_branch:
@@ -75,6 +79,10 @@ on:
         description: 'Start Wazuh agent service before tests'
         required: false
         default: 'false'
+      skip_tests:
+        description: 'Skip execution and report no relevant changes'
+        required: false
+        default: 'false'
 
 jobs:
   run-test:
@@ -87,17 +95,24 @@ jobs:
     runs-on: windows-2025
     name: Run ${{ inputs.module_name }} integration tests (${{ inputs.shard_name }})
     steps:
+      - name: No relevant changes
+        if: ${{ inputs.skip_tests == true || inputs.skip_tests == 'true' }}
+        run: echo "No relevant changes detected for this PR"
+
       - name: Checkout Repo
+        if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') }}
         uses: actions/checkout@v3
         with:
           ref: ${{ env.PR_HEAD_SHA }}
       - name: Set up Python
+        if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') }}
         uses: actions/setup-python@v4
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
       # ================= CACHE =================
       - name: Restore MSI cache
+        if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') }}
         id: cache-msi
         uses: actions/cache@v4
         with:
@@ -105,7 +120,7 @@ jobs:
           key: msi-${{ env.PR_HEAD_SHA }}
       # ================= DOWNLOAD =================
       - name: Download MSI package artifact
-        if: steps.cache-msi.outputs.cache-hit != 'true'
+        if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') && steps.cache-msi.outputs.cache-hit != 'true' }}
         uses: dawidd6/action-download-artifact@v6
         with:
           workflow: ${{ env.BUILD_WORKFLOW }}
@@ -116,6 +131,7 @@ jobs:
           if_no_artifact_found: fail
       # ================= INSTALL =================
       - name: Install wazuh agent
+        if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') }}
         shell: pwsh
         run: |
           $package = Get-ChildItem -Path "C:\wazuh-package" -Filter "wazuh-agent*windows*.msi" -File -Recurse |
@@ -128,6 +144,7 @@ jobs:
           Start-Process msiexec.exe -ArgumentList "/i `"$($package.FullName)`" /q WAZUH_MANAGER=`"127.0.0.1`"" -Wait -NoNewWindow
       # ================= QA FRAMEWORK =================
       - name: Download and install qa-integration-framework
+        if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') }}
         shell: pwsh
         run: |
           $VERSION = (Get-Content -Raw VERSION.json | ConvertFrom-Json).version
@@ -144,15 +161,17 @@ jobs:
           pip install qa-integration-framework/
           Remove-Item qa-integration-framework -Recurse -Force
       - name: Copy integration tests to C:\wazuh
+        if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') }}
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path C:\wazuh\tests | Out-Null
           Copy-Item -Path "$env:GITHUB_WORKSPACE\tests\*" -Destination C:\wazuh\tests -Recurse -Force
       # ================= EXECUTION =================
       - name: Start Wazuh agent service
-        if: ${{ inputs.start_service == true || inputs.start_service == 'true' }}
+        if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') && (inputs.start_service == true || inputs.start_service == 'true') }}
         run: NET START wazuh
       - name: Run ${{ inputs.module_name }} integration tests
+        if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') }}
         shell: pwsh
         run: |
           cd C:\wazuh\tests\integration
@@ -169,7 +188,7 @@ jobs:
           }
       # ================= RESULTS =================
       - name: Upload failed test results
-        if: failure()
+        if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') && failure() }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.module_name }}-win-${{ inputs.shard_name }}-test-results-${{ github.run_id }}

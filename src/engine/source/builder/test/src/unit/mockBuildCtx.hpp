@@ -1,5 +1,5 @@
-#ifndef _BUILDER_TEST_UNIT_MOCK_BUILDCTX_HPP
-#define _BUILDER_TEST_UNIT_MOCK_BUILDCTX_HPP
+#ifndef BUILDER_TEST_UNIT_MOCK_BUILDCTX_HPP
+#define BUILDER_TEST_UNIT_MOCK_BUILDCTX_HPP
 
 #include <gmock/gmock.h>
 
@@ -23,7 +23,7 @@ public:
     MOCK_METHOD((std::shared_ptr<const schemf::IValidator>), validatorPtr, (), (const));
     MOCK_METHOD((const Context&), context, (), (const));
     MOCK_METHOD((Context&), context, (), ());
-    MOCK_METHOD((std::shared_ptr<const RunState>), runState, (), (const));
+    MOCK_METHOD(bool, isTestMode, (), (const));
     MOCK_METHOD((const builder::IAllowedFields&), allowedFields, (), (const));
     MOCK_METHOD(void, setAllowedFields, (const std::shared_ptr<const builder::IAllowedFields>& allowedFields), ());
     MOCK_METHOD((std::shared_ptr<const builder::IAllowedFields>), allowedFieldsPtr, (), (const));
@@ -38,4 +38,4 @@ public:
 
 } // namespace builder::builders::mocks
 
-#endif // _BUILDER_TEST_UNIT_MOCK_BUILDCTX_HPP
+#endif // BUILDER_TEST_UNIT_MOCK_BUILDCTX_HPP

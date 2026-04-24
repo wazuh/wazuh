@@ -142,6 +142,11 @@ public:
     uint64_t getQueueSize() override;
 
     /**
+     * @copydoc IWIndexerConnector::getDroppedEvents
+     */
+    uint64_t getDroppedEvents() override;
+
+    /**
      * @brief Shuts down the indexer connector, releasing resources and stopping operations.
      *
      * This method ensures that the underlying asynchronous indexer connector is properly

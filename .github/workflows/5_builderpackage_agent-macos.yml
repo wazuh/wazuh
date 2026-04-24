@@ -1,4 +1,4 @@
-run-name: Build Wazuh agent macOS - ${{ github.event.pull_request.head.ref || github.ref_name }} - ${{ inputs.architecture || 'intel64,arm64' }}
+run-name: Build Wazuh agent macOS - ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }} - ${{ inputs.architecture || 'intel64,arm64' }}
 name: 5.X - Build Wazuh agent macOS (PKG)
 
 on:
@@ -8,6 +8,8 @@ on:
       - "src/**"
       - "packages/**"
       - ".github/workflows/5_builderpackage_agent-macos.yml"
+      - ".github/workflows/5_testintegration_macos-integration-tests.yml"
+      - ".github/test_modules_macos.json"
   workflow_dispatch:
     inputs:
       architecture:
@@ -23,7 +25,7 @@ on:
           Package revision (name and metadata).
           Default is '1'.
         required: false
-        default: "1"
+        default: '1'
       debug:
         type: boolean
         description: |
@@ -44,130 +46,112 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-package:
-    if: github.event_name == 'pull_request' || inputs.architecture == matrix.arch
-    runs-on: ${{ matrix.arch == 'intel64' && 'macos-14-large' || 'macos-14' }}
+  build-macos-intel64:
+    if: github.event_name == 'pull_request' || inputs.architecture == 'intel64'
+    runs-on: macos-14-large
     timeout-minutes: 90
-    name: Build PKG package (${{ matrix.arch }})
-    strategy:
-      fail-fast: false
-      matrix:
-        arch: [intel64, arm64]
+    name: Build PKG package (intel64)
+    outputs:
+      package-name: ${{ steps.build.outputs.package-name }}
+      package-symbols-name: ${{ steps.build.outputs.package-symbols-name }}
+      version: ${{ steps.build.outputs.version }}
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
-      - name: Set VERSION and ARCH
+      - name: Set VERSION
         run: |
           VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
-          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
-          VERSION=$VERSION
-          ARCH=${{ matrix.arch }}
-          EOF
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "ARCH=intel64" >> $GITHUB_ENV
 
       - name: Append short commit to VERSION file
         run: |
           SHORT_COMMIT=$(git rev-parse --short=7 HEAD)
-          if [ -z "$SHORT_COMMIT" ]; then exit 1; fi
+          if [ -z "$SHORT_COMMIT" ]; then echo "No commit found"; exit 1; fi
+          echo "Found commit: $SHORT_COMMIT"
           sed -i '' '/"stage":/s/$/,/; /}/{i\
               "commit": "'"$SHORT_COMMIT"'"'$'\n''}' VERSION.json || exit 1
+          cat VERSION.json
 
       - name: Install dependencies
         run: |
           bash packages/macos/generate_wazuh_packages.sh -i
 
-      - name: Build macOS package
+      - name: Build macOS intel64 package (without notarization)
         id: build
         run: |
           REVISION=${{ inputs.revision || '1' }}
           FLAGS="-a ${{ env.ARCH }} -j 2 -r $REVISION --verbose "
           if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
           if [ "${{ inputs.debug }}" == "true" ]; then FLAGS+="--debug "; fi
+          echo "generate_wazuh_packages.sh $FLAGS"
           sudo bash packages/macos/generate_wazuh_packages.sh $FLAGS
 
           PACKAGE_NAME=$(find packages/macos/output -maxdepth 1 -type f -name "*agent*.pkg" -exec basename {} 2>/dev/null \;)
           PACKAGE_SYMBOLS_NAME=$(find packages/macos/output -maxdepth 1 -type f -name "*agent-debug-symbols*.zip" -exec basename {} 2>/dev/null \;)
 
-          cat << EOF | sed -e 's/^[[:space:]]*//' > packages/macos/output/metadata.env
-          PACKAGE_NAME=$PACKAGE_NAME
-          PACKAGE_SYMBOLS_NAME=$PACKAGE_SYMBOLS_NAME
-          VERSION=${{ env.VERSION }}
-          ARCH=${{ env.ARCH }}
-          EOF
-
-          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
-          PACKAGE_NAME=$PACKAGE_NAME
-          PACKAGE_SYMBOLS_NAME=$PACKAGE_SYMBOLS_NAME
-          EOF
-
-      - name: Upload metadata
-        uses: actions/upload-artifact@v4
-        with:
-          name: metadata-${{ matrix.arch }}
-          path: packages/macos/output/metadata.env
-          retention-days: 1
+          echo "package-name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "package-symbols-name=$PACKAGE_SYMBOLS_NAME" >> $GITHUB_OUTPUT
+          echo "version=${{ env.VERSION }}" >> $GITHUB_OUTPUT
 
       - name: Upload package as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.PACKAGE_NAME }}
-          path: packages/macos/output/${{ env.PACKAGE_NAME }}
+          name: ${{ steps.build.outputs.package-name }}
+          path: packages/macos/output/${{ steps.build.outputs.package-name }}
           retention-days: 7
 
       - name: Upload debug symbols as artifact
-        if: env.PACKAGE_SYMBOLS_NAME != ''
+        if: steps.build.outputs.package-symbols-name != ''
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.PACKAGE_SYMBOLS_NAME }}
-          path: packages/macos/output/${{ env.PACKAGE_SYMBOLS_NAME }}
+          name: ${{ steps.build.outputs.package-symbols-name }}
+          path: packages/macos/output/${{ steps.build.outputs.package-symbols-name }}
           retention-days: 7
 
       - name: Upload checksums as artifacts
         if: inputs.checksum == true
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.PACKAGE_NAME }}-checksums
+          name: ${{ steps.build.outputs.package-name }}-checksums
           path: |
-            packages/macos/output/${{ env.PACKAGE_NAME }}.sha512
-            packages/macos/output/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512
+            packages/macos/output/${{ steps.build.outputs.package-name }}.sha512
+            packages/macos/output/${{ steps.build.outputs.package-symbols-name }}.sha512
           retention-days: 7
 
-  test-package:
-    needs: build-package
-    if: github.event_name == 'pull_request' || inputs.architecture == matrix.arch
-    runs-on: ${{ matrix.arch == 'intel64' && 'macos-14-large' || 'macos-14' }}
+  test-macos-intel64:
+    needs: build-macos-intel64
+    runs-on: macos-14-large
     timeout-minutes: 30
-    name: Test PKG package (${{ matrix.arch }})
-    strategy:
-      fail-fast: false
-      matrix:
-        arch: [intel64, arm64]
+    name: Test PKG package (intel64)
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Download metadata
-        uses: actions/download-artifact@v4
-        with:
-          name: metadata-${{ matrix.arch }}
-          path: packages/macos/output
-
-      - name: Load metadata
-        run: |
-          tr -d '\r' < packages/macos/output/metadata.env >> $GITHUB_ENV
+        uses: actions/checkout@v4
 
       - name: Download package artifact
         uses: actions/download-artifact@v4
         with:
-          name: ${{ env.PACKAGE_NAME }}
+          name: ${{ needs.build-macos-intel64.outputs.package-name }}
           path: packages/macos/output
+
+      - name: Set environment variables
+        run: |
+          echo "PACKAGE_NAME=${{ needs.build-macos-intel64.outputs.package-name }}" >> $GITHUB_ENV
+          echo "VERSION=${{ needs.build-macos-intel64.outputs.version }}" >> $GITHUB_ENV
+          echo "ARCH=intel64" >> $GITHUB_ENV
 
       - name: Test install macOS package
         run: |
           sudo installer -pkg packages/macos/output/${{ env.PACKAGE_NAME }} -target / | sudo tee installer.log
-          if ! grep -q "The install was successful" "installer.log"; then exit 1; fi
+          if grep -q "The install was successful" "installer.log"; then
+            echo "Installation successfully."
+          else
+            echo "The installation could not be completed."
+            exit 1
+          fi
 
       - name: Checking files after installation
         run: |
@@ -175,7 +159,9 @@ jobs:
           source venv/bin/activate
           python3 -m pip install -r .github/actions/check_files/requirements.txt
           sudo /Library/Ossec/bin/wazuh-control stop
+          echo "Running check_files.py (base comparison)"
           sudo python3 .github/actions/check_files/check_files.py -f ".github/actions/check_files/macos_agent_$(uname -m).csv" --wazuh_gid -1 --wazuh_uid -1 --directory '/Library/Ossec'
+          echo "Running check_files.py (actual state dump)"
           sudo python3 .github/actions/check_files/check_files.py -b 'macos_actual_state.csv' --wazuh_gid -1 --wazuh_uid -1 --directory '/Library/Ossec'
 
       - name: Uninstall package
@@ -205,52 +191,38 @@ jobs:
           version: ${{ steps.last-stable-version.outputs.latest_stable_version }}
           architecture: ${{ env.ARCH }}
 
-      - name: Test uninstall and upgrade
+      - name: Test uninstall and upgrade from ${{ steps.last-stable-version.outputs.latest_stable_version }} to ${{ env.VERSION }}
         uses: ./.github/actions/5_builderpackage_macos-smoke-upgrade-test
         with:
           old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
           expected_upgrade_version: ${{ env.VERSION }}
 
-  upload-to-s3:
-    needs: [build-package, test-package]
-    if: success() && (github.event_name == 'pull_request' || inputs.architecture == matrix.arch)
+  upload-macos-intel64-to-s3:
+    needs: [build-macos-intel64, test-macos-intel64]
+    if: success()
     runs-on: wz-linux-amd64
     timeout-minutes: 15
-    name: Upload PKG to S3 (${{ matrix.arch }})
-    strategy:
-      fail-fast: false
-      matrix:
-        arch: [intel64, arm64]
+    name: Upload PKG to S3 (intel64)
 
     steps:
-      - name: Download metadata
-        uses: actions/download-artifact@v4
-        with:
-          name: metadata-${{ matrix.arch }}
-          path: /tmp
-
-      - name: Load metadata
-        run: |
-          tr -d '\r' < /tmp/metadata.env >> $GITHUB_ENV
-
       - name: Download package artifacts
         uses: actions/download-artifact@v4
         with:
-          name: ${{ env.PACKAGE_NAME }}
+          name: ${{ needs.build-macos-intel64.outputs.package-name }}
           path: /tmp
 
       - name: Download debug symbols artifacts
-        if: env.PACKAGE_SYMBOLS_NAME != ''
+        if: needs.build-macos-intel64.outputs.package-symbols-name != ''
         uses: actions/download-artifact@v4
         with:
-          name: ${{ env.PACKAGE_SYMBOLS_NAME }}
+          name: ${{ needs.build-macos-intel64.outputs.package-symbols-name }}
           path: /tmp
 
       - name: Download checksums
         if: inputs.checksum == true
         uses: actions/download-artifact@v4
         with:
-          name: ${{ env.PACKAGE_NAME }}-checksums
+          name: ${{ needs.build-macos-intel64.outputs.package-name }}-checksums
           path: /tmp
 
       - name: Set up AWS CLI
@@ -262,42 +234,387 @@ jobs:
 
       - name: Upload package to S3
         run: |
+          PACKAGE_NAME="${{ needs.build-macos-intel64.outputs.package-name }}"
           S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
-          if [ -s "/tmp/${{ env.PACKAGE_NAME }}" ]; then
-            aws s3 cp /tmp/${{ env.PACKAGE_NAME }} $S3_URI/
+          if [ -s "/tmp/$PACKAGE_NAME" ]; then
+            aws s3 cp /tmp/$PACKAGE_NAME $S3_URI/
+            echo "S3 URI: $S3_URI/$PACKAGE_NAME"
           else
+            echo "Package file is empty or does not exist."
             exit 1
           fi
 
       - name: Upload checksum to S3
         if: inputs.checksum == true
         run: |
+          PACKAGE_NAME="${{ needs.build-macos-intel64.outputs.package-name }}"
           S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
-          if [ -s "/tmp/${{ env.PACKAGE_NAME }}.sha512" ]; then
-            aws s3 cp /tmp/${{ env.PACKAGE_NAME }}.sha512 $S3_URI/
+          if [ -s "/tmp/$PACKAGE_NAME.sha512" ]; then
+            aws s3 cp /tmp/$PACKAGE_NAME.sha512 $S3_URI/
+          else
+            echo "Warning: Checksum file not found, skipping"
           fi
 
       - name: Upload debug symbols to S3
-        if: env.PACKAGE_SYMBOLS_NAME != ''
+        if: needs.build-macos-intel64.outputs.package-symbols-name != ''
         run: |
+          SYMBOLS_NAME="${{ needs.build-macos-intel64.outputs.package-symbols-name }}"
           S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
-          if [ -s "/tmp/${{ env.PACKAGE_SYMBOLS_NAME }}" ]; then
-            aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }} $S3_URI/
+          if [ -s "/tmp/$SYMBOLS_NAME" ]; then
+            aws s3 cp /tmp/$SYMBOLS_NAME $S3_URI/
+          else
+            echo "Warning: Debug symbols file not found, skipping"
           fi
 
       - name: Upload debug symbols checksum to S3
-        if: inputs.checksum == true && env.PACKAGE_SYMBOLS_NAME != ''
+        if: inputs.checksum == true && needs.build-macos-intel64.outputs.package-symbols-name != ''
         run: |
+          SYMBOLS_NAME="${{ needs.build-macos-intel64.outputs.package-symbols-name }}"
           S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
-          if [ -s "/tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512" ]; then
-            aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 $S3_URI/
+          if [ -s "/tmp/$SYMBOLS_NAME.sha512" ]; then
+            aws s3 cp /tmp/$SYMBOLS_NAME.sha512 $S3_URI/
+          else
+            echo "Warning: Debug symbols checksum file not found, skipping"
+          fi
+
+  build-macos-arm64:
+    if: github.event_name == 'pull_request' || inputs.architecture == 'arm64'
+    runs-on: macos-14
+    timeout-minutes: 90
+    name: Build PKG package (arm64)
+    outputs:
+      package-name: ${{ steps.build.outputs.package-name }}
+      package-symbols-name: ${{ steps.build.outputs.package-symbols-name }}
+      version: ${{ steps.build.outputs.version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set VERSION
+        run: |
+          VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "ARCH=arm64" >> $GITHUB_ENV
+
+      - name: Append short commit to VERSION file
+        run: |
+          SHORT_COMMIT=$(git rev-parse --short=7 HEAD)
+          if [ -z "$SHORT_COMMIT" ]; then echo "No commit found"; exit 1; fi
+          echo "Found commit: $SHORT_COMMIT"
+          sed -i '' '/"stage":/s/$/,/; /}/{i\
+              "commit": "'"$SHORT_COMMIT"'"'$'\n''}' VERSION.json || exit 1
+          cat VERSION.json
+
+      - name: Install dependencies
+        run: |
+          bash packages/macos/generate_wazuh_packages.sh -i
+
+      - name: Build macOS arm64 package (without notarization)
+        id: build
+        run: |
+          REVISION=${{ inputs.revision || '1' }}
+          FLAGS="-a ${{ env.ARCH }} -j 2 -r $REVISION --verbose "
+          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "${{ inputs.debug }}" == "true" ]; then FLAGS+="--debug "; fi
+          echo "generate_wazuh_packages.sh $FLAGS"
+          sudo bash packages/macos/generate_wazuh_packages.sh $FLAGS
+
+          PACKAGE_NAME=$(find packages/macos/output -maxdepth 1 -type f -name "*agent*.pkg" -exec basename {} 2>/dev/null \;)
+          PACKAGE_SYMBOLS_NAME=$(find packages/macos/output -maxdepth 1 -type f -name "*agent-debug-symbols*.zip" -exec basename {} 2>/dev/null \;)
+
+          echo "package-name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "package-symbols-name=$PACKAGE_SYMBOLS_NAME" >> $GITHUB_OUTPUT
+          echo "version=${{ env.VERSION }}" >> $GITHUB_OUTPUT
+
+      - name: Upload package as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-name }}
+          path: packages/macos/output/${{ steps.build.outputs.package-name }}
+          retention-days: 7
+
+      - name: Upload debug symbols as artifact
+        if: steps.build.outputs.package-symbols-name != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-symbols-name }}
+          path: packages/macos/output/${{ steps.build.outputs.package-symbols-name }}
+          retention-days: 7
+
+      - name: Upload checksums as artifacts
+        if: inputs.checksum == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build.outputs.package-name }}-checksums
+          path: |
+            packages/macos/output/${{ steps.build.outputs.package-name }}.sha512
+            packages/macos/output/${{ steps.build.outputs.package-symbols-name }}.sha512
+          retention-days: 7
+
+  test-macos-arm64:
+    needs: build-macos-arm64
+    runs-on: macos-14
+    timeout-minutes: 30
+    name: Test PKG package (arm64)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-macos-arm64.outputs.package-name }}
+          path: packages/macos/output
+
+      - name: Set environment variables
+        run: |
+          echo "PACKAGE_NAME=${{ needs.build-macos-arm64.outputs.package-name }}" >> $GITHUB_ENV
+          echo "VERSION=${{ needs.build-macos-arm64.outputs.version }}" >> $GITHUB_ENV
+          echo "ARCH=arm64" >> $GITHUB_ENV
+
+      - name: Test install macOS package
+        run: |
+          sudo installer -pkg packages/macos/output/${{ env.PACKAGE_NAME }} -target / | sudo tee installer.log
+          if grep -q "The install was successful" "installer.log"; then
+            echo "Installation successfully."
+          else
+            echo "The installation could not be completed."
+            exit 1
+          fi
+
+      - name: Checking files after installation
+        run: |
+          python3 -m venv venv
+          source venv/bin/activate
+          python3 -m pip install -r .github/actions/check_files/requirements.txt
+          sudo /Library/Ossec/bin/wazuh-control stop
+          echo "Running check_files.py (base comparison)"
+          sudo python3 .github/actions/check_files/check_files.py -f ".github/actions/check_files/macos_agent_$(uname -m).csv" --wazuh_gid -1 --wazuh_uid -1 --directory '/Library/Ossec'
+          echo "Running check_files.py (actual state dump)"
+          sudo python3 .github/actions/check_files/check_files.py -b 'macos_actual_state.csv' --wazuh_gid -1 --wazuh_uid -1 --directory '/Library/Ossec'
+
+      - name: Uninstall package
+        run: |
+          sudo /bin/rm -r /Library/Ossec
+          sudo /bin/rm -f /Library/LaunchDaemons/com.wazuh.agent.plist
+          sudo /bin/rm -rf /Library/StartupItems/WAZUH
+          sudo /usr/bin/dscl . -delete "/Users/wazuh"
+          sudo /usr/bin/dscl . -delete "/Groups/wazuh"
+          sudo /usr/sbin/pkgutil --forget com.wazuh.pkg.wazuh-agent
+
+      - name: Get last stable version
+        id: last-stable-version
+        uses: ./.github/actions/5_builderpackage_get-last-stable-version
+        with:
+          repo_owner: wazuh
+          repo_name: wazuh
+          testing_version: ${{ env.VERSION }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get package url of the last stable version
+        id: upgrade-package-url
+        uses: ./.github/actions/5_builderpackage_get-upgrade-test-package-url
+        with:
+          component: agent
+          os: macos
+          version: ${{ steps.last-stable-version.outputs.latest_stable_version }}
+          architecture: ${{ env.ARCH }}
+
+      - name: Test uninstall and upgrade from ${{ steps.last-stable-version.outputs.latest_stable_version }} to ${{ env.VERSION }}
+        uses: ./.github/actions/5_builderpackage_macos-smoke-upgrade-test
+        with:
+          old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
+          expected_upgrade_version: ${{ env.VERSION }}
+
+  upload-macos-arm64-to-s3:
+    needs: [build-macos-arm64, test-macos-arm64]
+    if: success()
+    runs-on: wz-linux-amd64
+    timeout-minutes: 15
+    name: Upload PKG to S3 (arm64)
+
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-macos-arm64.outputs.package-name }}
+          path: /tmp
+
+      - name: Download debug symbols artifacts
+        if: needs.build-macos-arm64.outputs.package-symbols-name != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-macos-arm64.outputs.package-symbols-name }}
+          path: /tmp
+
+      - name: Download checksums
+        if: inputs.checksum == true
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-macos-arm64.outputs.package-name }}-checksums
+          path: /tmp
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Upload package to S3
+        run: |
+          PACKAGE_NAME="${{ needs.build-macos-arm64.outputs.package-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$PACKAGE_NAME" ]; then
+            aws s3 cp /tmp/$PACKAGE_NAME $S3_URI/
+            echo "S3 URI: $S3_URI/$PACKAGE_NAME"
+          else
+            echo "Package file is empty or does not exist."
+            exit 1
+          fi
+
+      - name: Upload checksum to S3
+        if: inputs.checksum == true
+        run: |
+          PACKAGE_NAME="${{ needs.build-macos-arm64.outputs.package-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$PACKAGE_NAME.sha512" ]; then
+            aws s3 cp /tmp/$PACKAGE_NAME.sha512 $S3_URI/
+          else
+            echo "Warning: Checksum file not found, skipping"
+          fi
+
+      - name: Upload debug symbols to S3
+        if: needs.build-macos-arm64.outputs.package-symbols-name != ''
+        run: |
+          SYMBOLS_NAME="${{ needs.build-macos-arm64.outputs.package-symbols-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$SYMBOLS_NAME" ]; then
+            aws s3 cp /tmp/$SYMBOLS_NAME $S3_URI/
+          else
+            echo "Warning: Debug symbols file not found, skipping"
+          fi
+
+      - name: Upload debug symbols checksum to S3
+        if: inputs.checksum == true && needs.build-macos-arm64.outputs.package-symbols-name != ''
+        run: |
+          SYMBOLS_NAME="${{ needs.build-macos-arm64.outputs.package-symbols-name }}"
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$SYMBOLS_NAME.sha512" ]; then
+            aws s3 cp /tmp/$SYMBOLS_NAME.sha512 $S3_URI/
+          else
+            echo "Warning: Debug symbols checksum file not found, skipping"
           fi
 
   smoke-test-macos:
-    needs: [upload-to-s3]
+    needs: [upload-macos-arm64-to-s3, detect-changes]
     if: success()
     uses: ./.github/workflows/5_testintegration_agent-start.yml
     with:
-      base_branch: ""
-      platform: "macos"
+      base_branch: ''
+      platform: 'macos'
+    secrets: inherit
+
+  detect-changes:
+    runs-on: wz-linux-amd64
+    timeout-minutes: 10
+    name: Detect changed macOS test modules
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      any_matched: ${{ steps.set-matrix.outputs.any_matched }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build matrix from changed files
+        id: set-matrix
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: python
+        run: |
+          import json, os, subprocess
+          from pathlib import PurePosixPath
+
+          base_sha = os.environ.get("BASE_SHA", "").strip()
+          head_sha = os.environ.get("HEAD_SHA", "").strip()
+
+          none_matrix = {
+              "include": [{
+                  "name": "none",
+                  "shard_name": "none",
+                  "pytest_target": "",
+                  "pytest_extra_args": "",
+                  "pytest_tier_args": "",
+                  "pre_install": "",
+                  "timeout_minutes": 1
+              }]
+          }
+
+          if not base_sha or not head_sha:
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  f.write(f"matrix={json.dumps(none_matrix)}\n")
+                  f.write("any_matched=false\n")
+              raise SystemExit(0)
+
+          result = subprocess.run(
+              ["git", "diff", "--name-only", base_sha, head_sha],
+              capture_output=True, text=True
+          )
+          changed = set(result.stdout.splitlines())
+
+          with open(".github/test_modules_macos.json") as f:
+              config = json.load(f)
+
+          matched = []
+          for mod in config["modules"]:
+              for pattern in mod["paths"]:
+                  if any(PurePosixPath(fp).match(pattern) for fp in changed):
+                      tiers = mod.get("tiers", ["0 1"])
+                      for tier in tiers:
+                          tier_args = " ".join(f"--tier {t}" for t in tier.split())
+                          shard_name = f"tier-{tier.replace(' ', '-')}"
+                          matched.append({
+                              "name": mod["name"],
+                              "shard_name": shard_name,
+                              "pytest_target": mod["pytest_target"],
+                              "pytest_extra_args": mod.get("pytest_extra_args", ""),
+                              "pytest_tier_args": tier_args,
+                              "pre_install": mod.get("pre_install", ""),
+                              "timeout_minutes": mod.get("timeout_minutes", 120)
+                          })
+                      break
+
+          matrix = {"include": matched} if matched else none_matrix
+          any_matched = "true" if matched else "false"
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"matrix={json.dumps(matrix)}\n")
+              f.write(f"any_matched={any_matched}\n")
+
+  run-integration-tests:
+    needs: [upload-macos-arm64-to-s3, detect-changes]
+    if: >
+      needs.upload-macos-arm64-to-s3.result == 'success' &&
+      needs.detect-changes.result == 'success'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
+    name: ${{ matrix.name == 'none' && 'Skipped IT MacOS - no relevant changes' || format('IT MacOS - {0} ({1})', matrix.name, matrix.shard_name) }}
+    uses: ./.github/workflows/5_testintegration_macos-integration-tests.yml
+    with:
+      base_branch: ${{ github.event.pull_request.base.ref }}
+      build_run_id: ${{ github.run_id }}
+      module_name: ${{ matrix.name }}
+      shard_name: ${{ matrix.shard_name }}
+      pytest_target: ${{ matrix.pytest_target }}
+      pytest_extra_args: ${{ matrix.pytest_extra_args }}
+      pytest_tier_args: ${{ matrix.pytest_tier_args }}
+      pre_install: ${{ matrix.pre_install }}
+      timeout_minutes: ${{ matrix.timeout_minutes }}
     secrets: inherit

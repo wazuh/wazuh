@@ -293,13 +293,14 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/scheduler)
 add_subdirectory(${ENGINE_SOURCE_DIR}/geo)
 add_subdirectory(${ENGINE_SOURCE_DIR}/fastqueue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/httpsrv)
-add_subdirectory(${ENGINE_SOURCE_DIR}/archiver)
+add_subdirectory(${ENGINE_SOURCE_DIR}/dumper)
 add_subdirectory(${ENGINE_SOURCE_DIR}/wiconnector)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmstore)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmcrud)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmsync)
 add_subdirectory(${ENGINE_SOURCE_DIR}/confremote)
 add_subdirectory(${ENGINE_SOURCE_DIR}/rawevtindexer)
+add_subdirectory(${ENGINE_SOURCE_DIR}/fastmetrics)
 
 target_link_libraries(wazuh-engine
     base
@@ -326,7 +327,8 @@ target_link_libraries(wazuh-engine
     httpsrv
     api::event
     fastqueue::fastqueue
-    archiver::archive
+    fastmetrics::fastmetrics
+    dumper::dumper
     cmstore::cmstore
     cmcrud::cmcrud
     cmsync::cmsync

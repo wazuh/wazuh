@@ -27,8 +27,8 @@ struct ResourceSummary
  *
  * Implementations are responsible for:
  *  - Resolving namespaces using cm::store::ICMStore.
- *  - Parsing resource documents (typically YAML) into the corresponding
- *    data types (Policy, Integration, KVDB, assets).
+ *  - Receiving structured JSON payloads and transforming them into the
+ *    corresponding data types (Policy, Integration, KVDB, assets).
  *  - Delegating structural checks to an builder::IValidator before mutating
  *    the underlying store.
  *  - Applying the cm::store mutations on success.
@@ -113,6 +113,7 @@ public:
      * @param nsName Namespace identifier, to store the imported data.
      * @param kvdbs list of KVDB definitions in json format
      * @param decoders list of decoder definitions in json format
+     * @param filters list of filter definitions in json format
      * @param integrations list of integration definitions in json format
      * @param policy policy definition in json format
      * @param softValidation if true, only check the most critical validations.
@@ -121,6 +122,7 @@ public:
     virtual void importNamespace(const cm::store::NamespaceId& nsId,
                                  const std::vector<json::Json>& kvdbs,
                                  const std::vector<json::Json>& decoders,
+                                 const std::vector<json::Json>& filters,
                                  const std::vector<json::Json>& integrations,
                                  const json::Json& policy,
                                  bool softValidation) = 0;
@@ -128,21 +130,21 @@ public:
     /********************************* Policy *********************************/
 
     /**
-     * @brief Upsert the policy associated to a namespace from a document.
+     * @brief Upsert the policy associated to a namespace from a JSON object.
      *
      * Behavior:
      *  - If the namespace has no policy, a new one is created.
      *  - If it already has one, it is replaced.
-     *  - The document is parsed into cm::store::dataType::Policy.
+     *  - The payload is converted into cm::store::dataType::Policy.
      *  - The resulting policy is validated before being stored.
      *
      * @param nsId       Target namespace identifier.
-     * @param document   Policy document (typically YAML).
+     * @param policy     Policy document as JSON object.
      *
      * @throws std::runtime_error on parse errors, validation failures
      *         or storage errors.
      */
-    virtual void upsertPolicy(const cm::store::NamespaceId& nsId, std::string_view document) = 0;
+    virtual void upsertPolicy(const cm::store::NamespaceId& nsId, const json::Json& policy) = 0;
 
     /**
      * @brief Delete the policy of the given namespace.
@@ -175,45 +177,40 @@ public:
                                                        cm::store::ResourceType type) const = 0;
 
     /**
-     * @brief Get the serialized representation of a resource by UUID.
+     * @brief Get a resource by UUID.
      *
      * The implementation must:
      *  - Resolve the UUID to its logical name and type.
      *  - Load the underlying object from the store.
-     *  - Serialize it back to a document string (typically YAML).
      *
      * @param nsId   Target namespace identifier.
      * @param uuid   Resource UUID.
-     * @param asJSon Get with json format
+     * @return JSON object representing the resource.
      *
-     * @return Document representing the resource.
-     *
-     * @throws std::runtime_error if the namespace or resource does not exist
-     *         or if the serialization fails.
+     * @throws std::runtime_error if the namespace or resource does not exist.
      */
-    virtual std::string
-    getResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid, bool asJson) const = 0;
+    virtual json::Json
+    getResourceByUUID(const cm::store::NamespaceId& nsId, const std::string& uuid) const = 0;
 
     /**
-     * @brief Upsert a resource (asset, integration or KVDB) from a document.
+     * @brief Upsert a resource (asset, integration or KVDB) from a JSON object.
      *
      * The behavior depends on @p type:
-     *  - For assets (DECODER, FILTER, OUTPUT):
-     *      - The document is parsed into an internal asset representation.
-     *  - For integrations:
-     *      - The document is parsed into cm::store::dataType::Integration.
-     *  - For KVDBs:
-     *      - The document is parsed into cm::store::dataType::KVDB.
+     *  - For assets (DECODER, FILTER, OUTPUT), the payload is adapted into the
+     *    internal asset representation.
+     *  - For integrations, the payload is converted into
+     *    cm::store::dataType::Integration.
+     *  - For KVDBs, the payload is converted into cm::store::dataType::KVDB.
      *
      * @param nsId       Target namespace identifier.
      * @param type       Resource type.
-     * @param document   Resource document (typically YAML).
+     * @param resource   Resource document as JSON object.
      *
      * @throws std::runtime_error on parse errors, validation failures
      *         or storage errors.
      */
     virtual void
-    upsertResource(const cm::store::NamespaceId& nsId, cm::store::ResourceType type, std::string_view document) = 0;
+    upsertResource(const cm::store::NamespaceId& nsId, cm::store::ResourceType type, const json::Json& resource) = 0;
 
     /**
      * @brief Delete a resource by UUID.

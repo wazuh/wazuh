@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <api/handlers.hpp>
-#include <archiver/archiver.hpp>
 #include <base/eventParser.hpp>
 #include <base/json.hpp>
 #include <base/libwazuhshared.hpp>
@@ -17,6 +16,7 @@
 #include <base/process.hpp>
 #include <base/utils/singletonLocator.hpp>
 #include <base/utils/singletonLocatorStrategies.hpp>
+#include <base/utils/timeUtils.hpp>
 #include <bk/rx/controller.hpp>
 #include <builder/allowedFields.hpp>
 #include <builder/builder.hpp>
@@ -27,7 +27,9 @@
 #include <conf/keys.hpp>
 #include <confremote/confremotemanager.hpp>
 #include <defs/defs.hpp>
+#include <dumper/dumper.hpp>
 #include <eMessages/eMessage.h>
+#include <fastmetrics/registry.hpp>
 #include <fastqueue/cqueue.hpp>
 #include <fastqueue/stdqueue.hpp>
 #include <geo/downloader.hpp>
@@ -98,6 +100,9 @@ Options parseOptions(int argc, char* argv[])
 
 int main(int argc, char* argv[])
 {
+    // Capture engine start time as ISO 8601 for metrics uptime
+    const std::string engineUptimeISO = base::utils::time::getCurrentISO8601();
+
     // exit handler
     cmd::details::StackExecutor exitHandler {};
     const auto opts = parseOptions(argc, argv);
@@ -235,12 +240,13 @@ int main(int argc, char* argv[])
     std::shared_ptr<kvdbstore::IKVDBManager> kvdbManager;
     std::shared_ptr<ioc::kvdb::IKVDBManager> IOCkvdb;
     std::shared_ptr<geo::Manager> geoManager;
+    std::shared_ptr<fastmetrics::IManager> metricsManager;
     std::shared_ptr<schemf::Schema> schemaValidator;
     std::shared_ptr<scheduler::Scheduler> scheduler;
     std::shared_ptr<streamlog::LogManager> streamLogger;
     std::shared_ptr<wiconnector::WIndexerConnector> indexerConnector;
     std::shared_ptr<httpsrv::Server> apiServer;
-    std::shared_ptr<archiver::Archiver> archiver;
+    std::shared_ptr<dumper::Dumper> dumper;
     std::shared_ptr<raweventindexer::RawEventIndexer> rawEventIndexer;
     std::shared_ptr<confremote::ConfRemoteManager> remoteConf;
     std::shared_ptr<httpsrv::Server> engineRemoteServer;
@@ -329,6 +335,12 @@ int main(int argc, char* argv[])
             LOG_INFO("Geo initialized.");
         }
 
+        // Fast Metrics
+        {
+            fastmetrics::registerManager();
+            LOG_INFO("Fast metrics initialized.");
+        }
+
         // Schema
         {
             schemaValidator = std::make_shared<schemf::Schema>();
@@ -402,10 +414,37 @@ int main(int argc, char* argv[])
                 const auto maxQueueSize = confManager.get<size_t>(conf::key::INDEXER_QUEUE_MAX_EVENTS);
                 jsonCnf.setUint64(maxQueueSize, "/max_queue_size");
                 const auto maxHitsPerRequest =
-                    confManager.get<std::size_t>(conf::key::INDEXER_CONNECTOR_MAX_HITS_PER_REQUEST);
+                    confManager.get<std::size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE);
 
                 // Create indexer connector with enhanced configuration
                 indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf.str(), maxHitsPerRequest);
+                exitHandler.add([indexerConnector]() { indexerConnector->shutdown(); });
+
+                // Register pull metric for indexer queue (output/egress)
+                std::weak_ptr<wiconnector::WIndexerConnector> wIndexer = indexerConnector;
+                FASTMETRICS_PULL(uint64_t,
+                                 fastmetrics::names::INDEXER_QUEUE_SIZE,
+                                 [wIndexer]()
+                                 {
+                                     auto connector = wIndexer.lock();
+                                     return connector ? connector->getQueueSize() : 0;
+                                 });
+
+                FASTMETRICS_PULL(uint64_t,
+                                 fastmetrics::names::INDEXER_EVENTS_DROPPED,
+                                 [wIndexer]()
+                                 {
+                                     auto connector = wIndexer.lock();
+                                     return connector ? connector->getDroppedEvents() : 0;
+                                 });
+
+                auto indexerQueueUsageGetter = [wIndexer, maxQueueSize]()
+                {
+                    auto connector = wIndexer.lock();
+                    auto currentSize = connector ? connector->getQueueSize() : 0;
+                    return maxQueueSize > 0 ? (static_cast<double>(currentSize) * 100.0 / maxQueueSize) : 0.0;
+                };
+                FASTMETRICS_PULL(double, fastmetrics::names::INDEXER_QUEUE_USAGE_PERCENT, indexerQueueUsageGetter);
 
                 // Log pending events from previous sessions
                 const auto pendingEvents = indexerConnector->getQueueSize();
@@ -646,22 +685,21 @@ int main(int argc, char* argv[])
             }
         }
 
-        // Archiver
+        // Dumper Events
         if (enableProcessing)
         {
-            const auto archiverConfig = streamlog::RotationConfig {
+            const auto dumperConfig = streamlog::RotationConfig {
                 .basePath = confManager.get<std::string>(conf::key::STREAMLOG_BASE_PATH),
                 .pattern = confManager.get<std::string>(conf::key::STREAMLOG_DUMPER_PATTERN),
                 .maxSize = confManager.get<size_t>(conf::key::STREAMLOG_DUMPER_MAX_SIZE),
                 .bufferSize = confManager.get<size_t>(conf::key::STREAMLOG_DUMPER_BUFFER_SIZE),
                 .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
                 .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
-
-            archiver = std::make_shared<archiver::Archiver>(
-                streamLogger, archiverConfig, confManager.get<bool>(conf::key::DUMPER_ENABLED));
-            LOG_INFO("Archiver initialized.");
-            exitHandler.add([archiver, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
-                            { archiver->deactivate(); });
+            dumper = std::make_shared<dumper::Dumper>(
+                streamLogger, dumperConfig, confManager.get<bool>(conf::key::DUMPER_ENABLED));
+            LOG_INFO("Dumper Events initialized.");
+            exitHandler.add([dumper, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
+                            { dumper->deactivate(); });
         }
 
         // Remote runtime settings sync
@@ -701,7 +739,12 @@ int main(int argc, char* argv[])
                     eMessage::ShutdownEMessageLibrary();
                 });
 
-            // TODO Add Metrics API registration
+            // Metrics - create non-owning shared_ptr to singleton
+            metricsManager =
+                std::shared_ptr<fastmetrics::IManager>(&fastmetrics::manager(), [](fastmetrics::IManager*) {});
+            api::metrics::handlers::registerHandlers(
+                metricsManager, apiServer, "wazuh-manager-analysisd", engineUptimeISO);
+            LOG_DEBUG("Metrics API registered.");
 
             // Geo
             api::geo::handlers::registerHandlers(geoManager, apiServer);
@@ -716,10 +759,9 @@ int main(int argc, char* argv[])
                 orchestrator, cmStore, std::static_pointer_cast<schemf::IValidator>(schemaValidator), apiServer);
             LOG_DEBUG("Tester API registered.");
 
-            // Archiver
-            // should be refactored to use the rotation and dont use a semaphore for writing
-            api::archiver::handlers::registerHandlers(archiver, apiServer);
-            LOG_DEBUG("Archiver API registered.");
+            // Dumper Events
+            api::dumper::handlers::registerHandlers(dumper, apiServer);
+            LOG_DEBUG("Dumper Events API registered.");
 
             // Raw Event Indexer
             if (rawEventIndexer)
@@ -742,6 +784,39 @@ int main(int argc, char* argv[])
 
             // Finally start the API server
             apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));
+
+            // Start metrics stream logging task (on-demand channel creation)
+            // Only enabled via internal_options.conf
+            if (streamLogger && confManager.get<bool>(conf::key::METRICS_LOG_ENABLED))
+            {
+                // Prepare metrics channel configuration (lazy creation on first write)
+                const auto metricsChannelConfig = streamlog::RotationConfig {
+                    .basePath = confManager.get<std::string>(conf::key::STREAMLOG_BASE_PATH),
+                    .pattern = confManager.get<std::string>(conf::key::STREAMLOG_METRICS_PATTERN),
+                    .maxSize = confManager.get<size_t>(conf::key::STREAMLOG_METRICS_MAX_SIZE),
+                    .bufferSize = confManager.get<size_t>(conf::key::STREAMLOG_METRICS_BUFFER_SIZE),
+                    .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
+                    .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
+
+                auto metricsWriter = streamLogger->ensureAndGetWriter("engine-metrics", metricsChannelConfig, "json");
+
+                scheduler::TaskConfig metricsConfig {.interval =
+                                                         confManager.get<size_t>(conf::key::METRICS_LOG_INTERVAL),
+                                                     .CPUPriority = 0,
+                                                     .timeout = 0,
+                                                     .taskFunction = [metricsWriter, metricsManager]()
+                                                     {
+                                                         metricsManager->writeAllMetrics(metricsWriter);
+                                                     }};
+
+                scheduler->scheduleTask("MetricsLogger", std::move(metricsConfig));
+                LOG_INFO("Metrics stream logging enabled (interval: {} seconds, on-demand channel creation).",
+                         confManager.get<size_t>(conf::key::METRICS_LOG_INTERVAL));
+            }
+            else if (!confManager.get<bool>(conf::key::METRICS_LOG_ENABLED))
+            {
+                LOG_DEBUG("Metrics stream logging DISABLED.");
+            }
         }
 
         // HTTP enriched events server
@@ -752,7 +827,7 @@ int main(int argc, char* argv[])
             exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
 
             engineRemoteServer->addRoute(
-                httpsrv::Method::POST, "/events/enriched", api::event::handlers::pushEvent(orchestrator, archiver));
+                httpsrv::Method::POST, "/events/enriched", api::event::handlers::pushEvent(orchestrator, dumper));
 
             // starting in a new thread
             engineRemoteServer->start(confManager.get<std::string>(conf::key::SERVER_ENRICHED_EVENTS_SOCKET));

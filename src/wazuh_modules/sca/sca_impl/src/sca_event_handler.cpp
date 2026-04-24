@@ -7,6 +7,7 @@
 #include <stringHelper.h>
 #include <timeHelper.h>
 
+#include <array>
 #include <sstream>
 
 #include "logging_helper.hpp"
@@ -517,6 +518,15 @@ std::tuple<nlohmann::json, ReturnTypeCallback, uint64_t> SCAEventHandler::Proces
             {
                 check = event["check"];
             }
+
+            const auto resultIt = check.find("result");
+
+            if (resultIt != check.end() &&
+                    resultIt->is_string() &&
+                    resultIt->get<std::string>() == "Not run")
+            {
+                return {{}, SELECTED, 0};
+            }
         }
         else
         {
@@ -578,6 +588,12 @@ std::tuple<nlohmann::json, ReturnTypeCallback, uint64_t> SCAEventHandler::Proces
 
 nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) const
 {
+    if (event.contains("result") &&
+            static_cast<ReturnTypeCallback>(event["result"]) == DELETED)
+    {
+        return {};
+    }
+
     nlohmann::json check;
     nlohmann::json policy;
     nlohmann::json changedFields = nlohmann::json::array();
@@ -601,9 +617,43 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
                 check.erase("sync");
             }
 
+            // "Not run" is a DB placeholder — the check has not been executed yet in this
+            // scan cycle. Never emit a stateless event for a check in this state, regardless
+            // of the operation type (INSERTED, MODIFIED, DELETED).
+            {
+                const auto resultIt = check.find("result");
+
+                if (resultIt != check.end() &&
+                        resultIt->is_string() &&
+                        resultIt->get<std::string>() == "Not run")
+                {
+                    return {};
+                }
+            }
+
             if (event["check"].contains("old") && event["check"]["old"].is_object())
             {
                 const auto& old = event["check"]["old"];
+
+                // For MODIFIED events, stateless is only meaningful for valid result state
+                // transitions. "Not run" is a DB placeholder (not a real observable state),
+                // and metadata-only changes (no result change) don't constitute a state
+                // transition worth alerting on.
+                // Note: new result == "Not run" is already caught above.
+                if (static_cast<ReturnTypeCallback>(event["result"]) == MODIFIED)
+                {
+                    const auto oldResultIt = old.find("result");
+                    const bool resultChanged = oldResultIt != old.end();
+                    const bool oldResultIsNotRun = resultChanged &&
+                                                   oldResultIt->is_string() &&
+                                                   oldResultIt->get<std::string>() == "Not run";
+
+                    if (!resultChanged || oldResultIsNotRun)
+                    {
+                        return {};
+                    }
+                }
+
                 nlohmann::json previous;
 
                 for (auto& [key, value] : old.items())
@@ -613,11 +663,15 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
                         continue;
                     }
 
-                    previous[key] = value;
-                    changedFields.push_back("check." + key);
+                    const auto normalizedKey = (key == "title") ? "name" : key;
+                    previous[normalizedKey] = value;
+                    changedFields.push_back("check." + normalizedKey);
                 }
 
-                check["previous"] = previous;
+                if (!previous.empty())
+                {
+                    check["previous"] = previous;
+                }
             }
         }
         else
@@ -649,8 +703,9 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
                         continue;
                     }
 
-                    previous[key] = value;
-                    changedFields.push_back("policy." + key);
+                    const auto normalizedKey = (key == "title") ? "name" : key;
+                    previous[normalizedKey] = value;
+                    changedFields.push_back("policy." + normalizedKey);
                 }
 
                 policy["previous"] = previous;
@@ -659,6 +714,13 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
         else
         {
             LoggingHelper::getInstance().log(LOG_ERROR, "Stateless event does not contain policy");
+            return {};
+        }
+
+        // Drop MODIFIED events whose only pseudo-change was the "Not run" default
+        // being replaced by a real scan result: nothing user-visible changed.
+        if (static_cast<ReturnTypeCallback>(event["result"]) == MODIFIED && changedFields.empty())
+        {
             return {};
         }
 
@@ -758,6 +820,16 @@ nlohmann::json SCAEventHandler::StringToJsonArray(const std::string& input) cons
 
 void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
 {
+    if (!check.contains("name") && check.contains("title") && check["title"].is_string())
+    {
+        check["name"] = check["title"];
+    }
+
+    if (check.contains("title"))
+    {
+        check.erase("title");
+    }
+
     if (check.contains("refs") && check["refs"].is_string())
     {
         check["references"] = StringToJsonArray(check["refs"].get<std::string>());
@@ -783,6 +855,36 @@ void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
             check["mitre"] = nlohmann::json::parse(check["mitre"].get<std::string>());
         }
         catch (const nlohmann::json::parse_error&)
+        {
+            check.erase("mitre");
+        }
+    }
+
+    if (check.contains("mitre") && check["mitre"].is_object())
+    {
+        static const std::array<const char*, 3> MITRE_FIELDS = {"tactic", "technique", "subtechnique"};
+
+        for (const auto* field : MITRE_FIELDS)
+        {
+            if (!check["mitre"].contains(field))
+            {
+                continue;
+            }
+
+            auto& mitreField = check["mitre"][field];
+
+            if (mitreField.is_string())
+            {
+                mitreField = StringToJsonArray(mitreField.get<std::string>());
+            }
+            else if (!mitreField.is_array())
+            {
+                // Keep schema alignment by dropping invalid mitre subfield types.
+                check["mitre"].erase(field);
+            }
+        }
+
+        if (check["mitre"].empty())
         {
             check.erase("mitre");
         }
@@ -819,6 +921,16 @@ void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
 
 void SCAEventHandler::NormalizePolicy(nlohmann::json& policy) const
 {
+    if (!policy.contains("name") && policy.contains("title") && policy["title"].is_string())
+    {
+        policy["name"] = policy["title"];
+    }
+
+    if (policy.contains("title"))
+    {
+        policy.erase("title");
+    }
+
     if (policy.contains("refs") && policy["refs"].is_string())
     {
         policy["references"] = StringToJsonArray(policy["refs"].get<std::string>());

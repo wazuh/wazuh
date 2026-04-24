@@ -137,6 +137,14 @@ void SecurityConfigurationAssessment::Run()
 
     refreshFirstSyncCompletedState();
 
+    // Reset the in-memory scan-completed flag only when the first sync has not yet happened.
+    // Once first_sync_completed is set this flag is never polled again, so resetting it
+    // on every subsequent restart would be unnecessary overhead.
+    if (!m_firstSyncCompleted.load())
+    {
+        m_scanCompleted.store(0);
+    }
+
     // Check for policies removed between agent restarts (before scan loop starts).
     // This early check uses m_policiesData (raw config) since policies haven't been loaded yet.
     bool hasEnabledPolicies =
@@ -288,6 +296,13 @@ void SecurityConfigurationAssessment::Run()
 
         // Mark scan as complete
         setScanInProgress(false);
+
+        // Signal that a full scan iteration has completed. Only written until the first
+        // sync completes — after that the sync thread no longer polls this flag.
+        if (!m_firstSyncCompleted.load())
+        {
+            m_scanCompleted.store(Utils::getSecondsFromEpoch());
+        }
     }
 }
 
@@ -874,6 +889,15 @@ std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
                 response["data"]["action"] = "get_first_sync_completed";
                 response["data"]["module"] = "sca";
             }
+        }
+        else if (command == "get_scan_completed")
+        {
+            const int64_t scanCompleted = m_scanCompleted.load();
+            response["error"] = 0;
+            response["message"] = "SCA scan completion retrieved successfully";
+            response["data"]["action"] = "get_scan_completed";
+            response["data"]["module"] = "sca";
+            response["data"]["scan_completed"] = scanCompleted > 0 ? 1 : 0;
         }
         else if (command == "set_version")
         {

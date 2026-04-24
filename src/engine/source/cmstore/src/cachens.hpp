@@ -14,9 +14,12 @@
 
 namespace cm::store
 {
+/**
+ * @brief A (Name, ResourceType) tuple used as a composite key in the cache.
+ */
 using NameType = std::tuple<std::string, ResourceType>;
 
-// Entry structure to hold name and type
+/// @brief Holds the name and resource type for a cached entry.
 struct EntryData
 {
     std::string name;
@@ -24,6 +27,7 @@ struct EntryData
 };
 
 // Hash function for NameType to be used in unordered_map
+/// @brief Hash functor for NameType.
 struct NameTypeHash
 {
     std::size_t operator()(const NameType& nt) const noexcept

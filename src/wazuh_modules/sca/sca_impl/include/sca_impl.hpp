@@ -158,6 +158,11 @@ class SecurityConfigurationAssessment
         /// @brief Cached first-sync completion state used to gate initial stateful publication.
         std::atomic<bool> m_firstSyncCompleted {false};
 
+        /// @brief In-memory flag set after each complete scan iteration, cleared at Run() startup.
+        /// Polled by the C sync thread (via get_scan_completed query) to avoid triggering the first
+        /// snapshot while the DB still contains "Not run" placeholders. Non-zero means completed.
+        std::atomic<int64_t> m_scanCompleted {0};
+
         /// @brief Condition variable for pause/resume coordination
         std::condition_variable m_pauseCv;
 

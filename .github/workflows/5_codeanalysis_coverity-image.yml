@@ -40,9 +40,11 @@ jobs:
           echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
 
       - name: Download Coverity tarball
+        env:
+          COVERITY_TOKEN: ${{ secrets.COVERITY_SCAN_WAZUH_TOKEN }}
         run: |
           wget -q https://scan.coverity.com/download/linux64 \
-            --post-data "token=${{ secrets.COVERITY_SCAN_WAZUH_TOKEN }}&project=${PROJECT//\//%2F}" \
+            --post-data "token=${COVERITY_TOKEN}&project=${PROJECT//\//%2F}" \
             -O tools/testing/coverity/coverity_tool.tgz
 
       - name: Log in to the Container registry

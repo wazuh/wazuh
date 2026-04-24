@@ -61,7 +61,7 @@ jobs:
       fail-fast: false
       matrix:
         system: [deb, rpm]
-        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{{0}}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{0}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
 
     steps:
       - name: Checkout repository
@@ -167,7 +167,7 @@ jobs:
       fail-fast: false
       matrix:
         system: [deb, rpm]
-        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{{0}}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{0}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
 
     steps:
       - name: Checkout repository
@@ -280,7 +280,7 @@ jobs:
       fail-fast: false
       matrix:
         system: [deb, rpm]
-        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{{0}}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{0}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
 
     steps:
       - name: Download metadata

@@ -3,7 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import copy
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 

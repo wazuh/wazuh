@@ -8,7 +8,6 @@ import os
 import re
 from datetime import datetime
 from enum import IntEnum
-from functools import partial
 from shutil import chown
 from time import time
 from typing import Union
@@ -46,11 +45,6 @@ CURRENT_ORM_VERSION = 1
 _new_columns = {}
 _engine = create_engine(f"sqlite:///{DB_FILE}", pool_size=10, echo=False)
 _Base = declarative_base()
-
-# Required rules for role
-# Key: Role - Value: Rules
-REQUIRED_RULE_FOR_ROLE = {1: [1, 2]}
-required_rules = {required_rule for r in REQUIRED_RULE_FOR_ROLE.values() for required_rule in r}
 
 
 # Security error codes for each RBAC resource's manager
@@ -164,8 +158,8 @@ class RunAsTokenBlacklist(_Base):
     __table_args__ = (UniqueConstraint('nbf_invalid_until', name='nbf_invalid_until_invalidation_rule'),)
 
     def __init__(self):
-        self.nbf_invalid_until = int(time())
-        self.is_valid_until = self.nbf_invalid_until + security_conf['auth_token_exp_timeout']
+        self.nbf_invalid_until = int(time() * 1000)
+        self.is_valid_until = self.nbf_invalid_until + (security_conf['auth_token_exp_timeout'] * 1000)
 
     def to_dict(self) -> dict:
         """Return the information of the RunAsTokenBlacklist object.
@@ -195,8 +189,8 @@ class UsersTokenBlacklist(_Base):
 
     def __init__(self, user_id):
         self.user_id = user_id
-        self.nbf_invalid_until = int(time())
-        self.is_valid_until = self.nbf_invalid_until + security_conf['auth_token_exp_timeout']
+        self.nbf_invalid_until = int(time() * 1000)
+        self.is_valid_until = self.nbf_invalid_until + (security_conf['auth_token_exp_timeout'] * 1000)
 
     def to_dict(self):
         """Return the information of the token rule
@@ -226,8 +220,8 @@ class RolesTokenBlacklist(_Base):
 
     def __init__(self, role_id):
         self.role_id = role_id
-        self.nbf_invalid_until = int(time())
-        self.is_valid_until = self.nbf_invalid_until + security_conf['auth_token_exp_timeout']
+        self.nbf_invalid_until = int(time() * 1000)
+        self.is_valid_until = self.nbf_invalid_until + (security_conf['auth_token_exp_timeout'] * 1000)
 
     def to_dict(self):
         """Return the information of the token rule
@@ -598,6 +592,11 @@ class TokenManager(RBACManager):
     This class provides all the methods needed for the administration of the TokenBlacklist objects.
     """
 
+    @staticmethod
+    def _normalize_timestamp(timestamp: int) -> int:
+        """Normalize persisted timestamps to milliseconds."""
+        return timestamp * 1000 if timestamp < 10_000_000_000 else timestamp
+
     def is_token_valid(self, token_nbf_time: int, user_id: int = None, role_id: int = None,
                        run_as: bool = False) -> bool:
         """Check if the specified token is valid.
@@ -622,39 +621,16 @@ class TokenManager(RBACManager):
             user_rule = self.session.scalars(select(UsersTokenBlacklist).filter_by(user_id=user_id).limit(1)).first()
             role_rule = self.session.scalars(select(RolesTokenBlacklist).filter_by(role_id=role_id).limit(1)).first()
             runas_rule = self.session.query(RunAsTokenBlacklist).first()
-            return (not user_rule or (token_nbf_time > user_rule.nbf_invalid_until)) and \
-                   (not role_rule or (token_nbf_time > role_rule.nbf_invalid_until)) and \
-                   (not run_as or (not runas_rule or (token_nbf_time > runas_rule.nbf_invalid_until)))
+
+            user_nbf_invalid_until = self._normalize_timestamp(user_rule.nbf_invalid_until) if user_rule else None
+            role_nbf_invalid_until = self._normalize_timestamp(role_rule.nbf_invalid_until) if role_rule else None
+            runas_nbf_invalid_until = self._normalize_timestamp(runas_rule.nbf_invalid_until) if runas_rule else None
+
+            return (not user_rule or (token_nbf_time > user_nbf_invalid_until)) and \
+                   (not role_rule or (token_nbf_time > role_nbf_invalid_until)) and \
+                   (not run_as or (not runas_rule or (token_nbf_time > runas_nbf_invalid_until)))
         except IntegrityError:
             return True
-
-    def get_all_rules(self) -> Union[tuple, int]:
-        """Return two dictionaries where the keys are the role IDs and user IDs of each rule and the values are the
-        rule nbf_invalid_until value.
-        It also returns a dictionary with the nbf_invalid_until value of run_as.
-
-        Returns
-        -------
-        Union[tuple, int]
-            Dictionaries representing the nbf_invalid_until of each rule and the roles and users affected
-            or a SecurityError code.
-        """
-        try:
-            users_format_rules, roles_format_rules, runas_format_rule = dict(), dict(), dict()
-            users_rules = map(UsersTokenBlacklist.to_dict, self.session.scalars(select(UsersTokenBlacklist)).all())
-            roles_rules = map(RolesTokenBlacklist.to_dict, self.session.scalars(select(RolesTokenBlacklist)).all())
-            runas_rule = self.session.query(RunAsTokenBlacklist).first()
-            if runas_rule:
-                runas_rule = runas_rule.to_dict()
-                runas_format_rule['run_as'] = runas_rule['nbf_invalid_until']
-            for rule in list(users_rules):
-                users_format_rules[rule['user_id']] = rule['nbf_invalid_until']
-            for rule in list(roles_rules):
-                roles_format_rules[rule['role_id']] = rule['nbf_invalid_until']
-
-            return users_format_rules, roles_format_rules, runas_format_rule
-        except IntegrityError:
-            return SecurityError.TOKEN_RULE_NOT_EXIST
 
     def add_user_roles_rules(self, users: set = None, roles: set = None, run_as: bool = False) -> Union[bool, int]:
         """Add new rules for users-token or roles-token.
@@ -740,23 +716,28 @@ class TokenManager(RBACManager):
         """
         try:
             list_users, list_roles = list(), list()
-            current_time = int(time())
+            current_time = int(time() * 1000)
             users_tokens_in_blacklist = self.session.scalars(select(UsersTokenBlacklist)).all()
             for user_token in users_tokens_in_blacklist:
                 token_rule = self.session.query(UsersTokenBlacklist).filter_by(user_id=user_token.user_id)
-                if token_rule.first() and current_time > token_rule.first().is_valid_until:
+                rule = token_rule.first()
+                if rule and current_time > self._normalize_timestamp(rule.is_valid_until):
                     token_rule.delete()
                     self.session.commit()
                     list_users.append(user_token.user_id)
+
             roles_tokens_in_blacklist = self.session.scalars(select(RolesTokenBlacklist)).all()
             for role_token in roles_tokens_in_blacklist:
                 token_rule = self.session.query(RolesTokenBlacklist).filter_by(role_id=role_token.role_id)
-                if token_rule.first() and current_time > token_rule.first().is_valid_until:
+                rule = token_rule.first()
+                if rule and current_time > self._normalize_timestamp(rule.is_valid_until):
                     token_rule.delete()
                     self.session.commit()
                     list_roles.append(role_token.role_id)
+
             runas_token_in_blacklist = self.session.query(RunAsTokenBlacklist).first()
-            if runas_token_in_blacklist and runas_token_in_blacklist.to_dict()['is_valid_until'] < current_time:
+            if runas_token_in_blacklist and \
+                    self._normalize_timestamp(runas_token_in_blacklist.is_valid_until) < current_time:
                 self.session.delete(runas_token_in_blacklist)
                 self.session.commit()
 
@@ -1162,51 +1143,6 @@ class RolesManager(RBACManager):
             self.session.rollback()
             return False
 
-    def delete_role_by_name(self, role_name: str) -> bool:
-        """Delete an existent role in the system given its name.
-
-        Parameters
-        ----------
-        role_name : str
-            Name of the role to be deleted.
-
-        Returns
-        -------
-        bool
-            True is the role was deleted successfully, False otherwise.
-        """
-        try:
-            if self.get_role(role_name) is not None and self.get_role(role_name)['id'] > MAX_ID_RESERVED:
-                role_id = self.session.scalars(select(Roles).filter_by(name=role_name).limit(1)).first().id
-                if role_id:
-                    self.delete_role(role_id=role_id)
-                    return True
-            return False
-        except (IntegrityError, AttributeError):
-            self.session.rollback()
-            return False
-
-    def delete_all_roles(self) -> Union[list, bool]:
-        """Delete all existent roles in the system.
-
-        Returns
-        -------
-        Union[list, bool]
-            List of deleted roles or Failed if the operatio failed.
-        """
-        try:
-            list_roles = list()
-            roles = self.session.scalars(select(Roles)).all()
-            for role in roles:
-                if int(role.id) > MAX_ID_RESERVED:
-                    self.session.delete(self.session.scalars(select(Roles).filter_by(id=role.id).limit(1)).first())
-                    self.session.commit()
-                    list_roles.append(int(role.id))
-            return list_roles
-        except IntegrityError:
-            self.session.rollback()
-            return False
-
     def update_role(self, role_id: int, name: str) -> Union[bool, int]:
         """Update an existent role in the system.
 
@@ -1361,31 +1297,6 @@ class RulesManager(RBACManager):
                 return True
             return SecurityError.ADMIN_RESOURCES
         except IntegrityError:
-            self.session.rollback()
-            return False
-
-    def delete_rule_by_name(self, rule_name: str) -> bool:
-        """Delete an existent rule from the system given its name.
-
-        Parameters
-        ----------
-        rule_name : str
-            Name of the rule.
-
-        Returns
-        -------
-        bool
-            True if the rule was deleted or False if the operation failed.
-        """
-        try:
-            if self.get_rule_by_name(rule_name) is not None and \
-                    self.get_rule_by_name(rule_name)['id'] > MAX_ID_RESERVED:
-                rule_id = self.session.scalars(select(Rules).filter_by(name=rule_name).limit(1)).first().id
-                if rule_id:
-                    self.delete_rule(rule_id=rule_id)
-                    return True
-            return False
-        except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
 
@@ -1604,52 +1515,6 @@ class PoliciesManager(RBACManager):
             self.session.rollback()
             return False
 
-    def delete_policy_by_name(self, policy_name: str) -> bool:
-        """Delete an existent role in the system given its name.
-
-        Parameters
-        ----------
-        policy_name : str
-            Name of the policy to be deleted.
-
-        Returns
-        -------
-        bool
-            True if the policy was deleted successfully, False otherwise.
-        """
-        try:
-            if self.get_policy(policy_name) is not None and \
-                    self.get_policy(name=policy_name)['id'] > MAX_ID_RESERVED:
-                policy_id = self.session.scalars(select(Policies).filter_by(name=policy_name).limit(1)).first().id
-                if policy_id:
-                    self.delete_policy(policy_id=policy_id)
-                    return True
-            return False
-        except (IntegrityError, AttributeError):
-            self.session.rollback()
-            return False
-
-    def delete_all_policies(self) -> Union[list, bool]:
-        """Delete all existent policies in the system.
-
-        Returns
-        -------
-        Union[list, bool]
-            List with the Policies objects deleted or False if the operation failed.
-        """
-        try:
-            list_policies = list()
-            policies = self.session.scalars(select(Policies)).all()
-            for policy in policies:
-                if int(policy.id) > MAX_ID_RESERVED:
-                    self.session.delete(self.session.scalars(select(Policies).filter_by(id=policy.id).limit(1)).first())
-                    self.session.commit()
-                    list_policies.append(int(policy.id))
-            return list_policies
-        except IntegrityError:
-            self.session.rollback()
-            return False
-
     def update_policy(self, policy_id: int, name: str, policy: dict,
                       check_default: bool = True) -> Union[bool, int]:
         """Update an existent policy in the system.
@@ -1777,28 +1642,6 @@ class UserRolesManager(RBACManager):
             self.session.rollback()
             return SecurityError.INVALID
 
-    def add_user_to_role(self, user_id: int, role_id: int, position: int = -1, atomic: bool = True) -> Union[bool, int]:
-        """Add a relation between a specified user and a specified role.
-
-        Parameters
-        ----------
-        user_id : int
-            ID of the user.
-        role_id : int
-            ID of the role.
-        position : int
-            Order to be applied in case of multiple roles assigned to the same user.
-        atomic : bool
-            Flag used to indicate the atomicity of the operation. If this function is called within a loop or a function
-            composed of several operations, atomicity cannot be guaranteed unless this flag is set to True.
-
-        Returns
-        -------
-        Union[bool, int]
-            True if the role was added to the user successfully or a SecurityError code if the operation failed.
-        """
-        return self.add_role_to_user(user_id=user_id, role_id=role_id, position=position, atomic=atomic)
-
     def get_all_roles_from_user(self, user_id: int) -> Union[bool, list]:
         """Get all the roles related to the specified user.
 
@@ -1822,73 +1665,6 @@ class UserRolesManager(RBACManager):
         except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
-
-    def get_all_users_from_role(self, role_id: int) -> Union[bool, map]:
-        """Get all the users related to the specified role.
-
-        Parameters
-        ----------
-        role_id : int
-            ID of the role.
-
-        Returns
-        -------
-        Union[bool, map]
-            List of the users related to the specified user or False if the operation failed.
-        """
-        try:
-            role = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first()
-            return map(partial(User.to_dict, session=self.session), role.users)
-        except (IntegrityError, AttributeError):
-            self.session.rollback()
-            return False
-
-    def exist_user_role(self, user_id: int, role_id: int) -> Union[bool, int]:
-        """Check if the relationship between a specified user and a specified role exists.
-
-        Parameters
-        ----------
-        user_id : int
-            ID of the user.
-        role_id : int
-            ID of th role.
-
-        Returns
-        -------
-        Union[bool, int]
-            True if the relationship exists, False if the relationship does not exist, or a SecurityError code.
-        """
-        try:
-            user = self.session.scalars(select(User).filter_by(id=user_id).limit(1)).first()
-            if user is None:
-                return SecurityError.USER_NOT_EXIST
-            role = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first()
-            if role is None:
-                return SecurityError.ROLE_NOT_EXIST
-            role = user.roles.filter_by(id=role_id).first()
-            if role is not None:
-                return True
-            return False
-        except IntegrityError:
-            self.session.rollback()
-            return False
-
-    def exist_role_user(self, user_id: int, role_id: int) -> Union[bool, int]:
-        """Check if the relationship between a specified user and a specified role exists.
-
-        Parameters
-        ----------
-        user_id : int
-            ID of the user.
-        role_id : int
-            ID of th role.
-
-        Returns
-        -------
-        Union[bool, int]
-            True if the relationship exists, False if the relationship does not exist, or a SecurityError code.
-        """
-        return self.exist_user_role(user_id=user_id, role_id=role_id)
 
     def remove_role_in_user(self, user_id: int, role_id: int, atomic: bool = True) -> Union[bool, int]:
         """Remove a relationship between a specified user and a specified role.
@@ -1929,106 +1705,6 @@ class UserRolesManager(RBACManager):
         except IntegrityError:
             self.session.rollback()
             return SecurityError.INVALID
-
-    def remove_user_in_role(self, user_id: int, role_id: int, atomic: bool = True) -> Union[bool, int]:
-        """Remove a relationship between a specified user and a specified role.
-
-        Parameters
-        ----------
-        user_id : int
-            ID of the user.
-        role_id : int
-            ID of the role.
-        atomic : bool
-            Flag used to indicate the atomicity of the operation. If this function is called within a loop or a function
-            composed of several operations, atomicity cannot be guaranteed unless this flag is set to True.
-
-        Returns
-        -------
-        Union[bool, int]
-            True if the relationship was removed successfully or a SecurityError code if the operation failed.
-        """
-        return self.remove_role_in_user(user_id=user_id, role_id=role_id, atomic=atomic)
-
-    def remove_all_roles_in_user(self, user_id: int) -> bool:
-        """Remove the relationships between a specified user and all its roles.
-
-        Parameters
-        ----------
-        user_id : int
-            ID of the user.
-
-        Returns
-        -------
-        bool
-            True if the relationships were deleted successfully, False otherwise.
-        """
-        try:
-            if user_id > MAX_ID_RESERVED:
-                roles = self.session.scalars(select(User).filter_by(id=user_id).limit(1)).first().roles
-                for role in roles:
-                    self.remove_role_in_user(user_id=user_id, role_id=role.id, atomic=False)
-                self.session.commit()
-                return True
-        except (IntegrityError, TypeError):
-            self.session.rollback()
-            return False
-
-    def remove_all_users_in_role(self, role_id: int) -> Union[bool, int]:
-        """Remove the relationships between a specified role and the users related to it.
-
-        Parameters
-        ----------
-        role_id : int
-            ID of the role.
-
-        Returns
-        -------
-        bool
-            True if the relationships were deleted successfully, False otherwise.
-        """
-        try:
-            if int(role_id) > MAX_ID_RESERVED:
-                users = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first().users
-                for user in users:
-                    if self.remove_user_in_role(user_id=user.id, role_id=role_id, atomic=False) is not True:
-                        return SecurityError.RELATIONSHIP_ERROR
-                self.session.commit()
-                return True
-        except (IntegrityError, TypeError):
-            self.session.rollback()
-            return False
-
-    def replace_user_role(self, user_id: int, actual_role_id: int, new_role_id: int,
-                          position: int = -1) -> Union[bool, int]:
-        """Replace an existing relationship with another one.
-
-        Parameters
-        ----------
-        user_id : int
-            ID of the user.
-        actual_role_id : int
-            ID of the role.
-        new_role_id : int
-            ID of the new role.
-        position : int
-            Order to be applied in case of multiple roles assigned to the same user.
-
-        Returns
-        -------
-        Union[bool, int]
-            True if the relationship was replaced successfully, False if the operation failed, or a SecurityError code.
-        """
-        if user_id > MAX_ID_RESERVED and self.exist_user_role(user_id=user_id, role_id=actual_role_id) and \
-                self.session.scalars(select(Roles).filter_by(id=new_role_id).limit(1)).first() is not None:
-            if self.remove_role_in_user(user_id=user_id, role_id=actual_role_id, atomic=False) is not True or \
-                    self.add_user_to_role(user_id=user_id, role_id=new_role_id, position=position,
-                                          atomic=False) is not True:
-                return SecurityError.RELATIONSHIP_ERROR
-            self.session.commit()
-            return True
-
-        return False
 
 
 class RolesPoliciesManager(RBACManager):
@@ -2130,34 +1806,6 @@ class RolesPoliciesManager(RBACManager):
             self.session.rollback()
             return SecurityError.INVALID
 
-    def add_role_to_policy(self, policy_id: int, role_id: int, position: int = None, force_admin: bool = False,
-                           atomic: bool = True) -> Union[bool, int]:
-        """Add a relationship between a specified policy and a specified role.
-
-        Parameters
-        ----------
-        role_id : int
-            ID of the role.
-        policy_id : int
-            ID of the policy.
-        position : int
-            Order to be applied in case of multiple policies in the same role.
-        created_at : datetime
-            Date when the resource was created.
-        force_admin : bool
-            Flag used to update administrator roles, which cannot be updated by default.
-        atomic : bool
-            Flag used to indicate the atomicity of the operation. If this function is called within a loop or a function
-            composed of several operations, atomicity cannot be guaranteed unless this flag is set to True.
-
-        Returns
-        -------
-        Union[bool, int]
-            True if the policy was added successfully or a SecurityError code if the operation failed.
-        """
-        return self.add_policy_to_role(role_id=role_id, policy_id=policy_id, position=position,
-                                       force_admin=force_admin, atomic=atomic)
-
     def get_all_policies_from_role(self, role_id: int) -> Union[list, bool]:
         """Get all the policies related to the specified role.
 
@@ -2204,53 +1852,6 @@ class RolesPoliciesManager(RBACManager):
         except (IntegrityError, AttributeError):
             self.session.rollback()
             return False
-
-    def exist_role_policy(self, role_id: int, policy_id: int) -> Union[bool, int]:
-        """Check if a relationship between a role and a policy exits.
-
-        Parameters
-        ----------
-        role_id : int
-            ID of the role.
-        policy_id : int
-            ID of the policy.
-
-        Returns
-        -------
-        Union[bool, int]
-            True if the relationship exists, False if the relationship does not exist, or a SecurityError code.
-        """
-        try:
-            role = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first()
-            if role is None:
-                return SecurityError.ROLE_NOT_EXIST
-            policy = self.session.scalars(select(Policies).filter_by(id=policy_id).limit(1)).first()
-            if policy is None:
-                return SecurityError.POLICY_NOT_EXIST
-            policy = role.policies.filter_by(id=policy_id).first()
-            if policy is not None:
-                return True
-            return False
-        except IntegrityError:
-            self.session.rollback()
-            return False
-
-    def exist_policy_role(self, policy_id: int, role_id: int) -> Union[bool, int]:
-        """Check if a relationship between a role and a policy exits.
-
-        Parameters
-        ----------
-        role_id : int
-            ID of the role.
-        policy_id : int
-            ID of the policy.
-
-        Returns
-        -------
-        Union[bool, int]
-            True if the relationship exists, False if the relationship does not exist, or a SecurityError code.
-        """
-        return self.exist_role_policy(role_id, policy_id)
 
     def remove_policy_in_role(self, role_id: int, policy_id: int, atomic: bool = True) -> Union[bool, int]:
         """Remove a relationship between a specific role and a specific policy if both exist.
@@ -2304,103 +1905,6 @@ class RolesPoliciesManager(RBACManager):
         except IntegrityError:
             self.session.rollback()
             return SecurityError.INVALID
-
-    def remove_role_in_policy(self, role_id: int, policy_id: int, atomic: bool = True) -> Union[bool, int]:
-        """Remove a relationship between a specific role and a specific policy if both exist.
-
-        Parameters
-        ----------
-        role_id : int
-            ID of the role.
-        policy_id : int
-            ID of the policy.
-        atomic : bool
-            Flag used to indicate the atomicity of the operation. If this function is called within a loop or a function
-            composed of several operations, atomicity cannot be guaranteed unless this flag is set to True.
-
-        Returns
-        -------
-        Union[bool, int]
-            True if the relationship was removed successfully or a SecurityError code otherwise.
-        """
-        return self.remove_policy_in_role(role_id=role_id, policy_id=policy_id, atomic=atomic)
-
-    def remove_all_policies_in_role(self, role_id: int) -> Union[bool, int]:
-        """Remove all relationships between a specified role and its policies.
-
-        Parameters
-        ----------
-        role_id : int
-            ID of the role.
-
-        Returns
-        -------
-        Union[bool, int]
-            True if the relationships were removed successfully or a SecurityError code otherwise.
-        """
-        try:
-            if int(role_id) > MAX_ID_RESERVED:
-                policies = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first().policies
-                for policy in policies:
-                    if self.remove_policy_in_role(role_id=role_id, policy_id=policy.id, atomic=False) is not True:
-                        return SecurityError.RELATIONSHIP_ERROR
-                self.session.commit()
-                return True
-        except (IntegrityError, TypeError):
-            self.session.rollback()
-            return False
-
-    def remove_all_roles_in_policy(self, policy_id: int) -> bool:
-        """Remove all relationships between a specified policy and the roles it belongs to.
-
-        Parameters
-        ----------
-        policy_id : int
-            ID of the policy.
-
-        Returns
-        -------
-        bool
-            True if the relationships were removed successfully or a SecurityError code otherwise.
-        """
-        try:
-            if int(policy_id) > MAX_ID_RESERVED:
-                roles = self.session.scalars(select(Policies).filter_by(id=policy_id).limit(1)).first().roles
-                for rol in roles:
-                    self.remove_policy_in_role(role_id=rol.id, policy_id=policy_id, atomic=False)
-                self.session.commit()
-                return True
-        except (IntegrityError, TypeError):
-            self.session.rollback()
-            return False
-
-    def replace_role_policy(self, role_id: int, current_policy_id: int, new_policy_id: int) -> Union[int, bool]:
-        """Replace an existing relationship with another one.
-
-        Parameters
-        ----------
-        role_id : int
-            ID of the role.
-        current_policy_id : int
-            ID of a policy related to the role.
-        new_policy_id : int
-            ID of the new policy to relate to the role.
-
-        Returns
-        -------
-        Union[int, bool]
-            True if the relationship was replaced successfully, False or SecurityError code otherwise.
-        """
-        if int(role_id) > MAX_ID_RESERVED and \
-                self.exist_role_policy(role_id=role_id, policy_id=current_policy_id) and \
-                self.session.scalars(select(Policies).filter_by(id=new_policy_id).limit(1)).first() is not None:
-            if self.remove_policy_in_role(role_id=role_id, policy_id=current_policy_id, atomic=False) is not True or \
-                    self.add_policy_to_role(role_id=role_id, policy_id=new_policy_id, atomic=False) is not True:
-                return SecurityError.RELATIONSHIP_ERROR
-            self.session.commit()
-            return True
-
-        return False
 
 
 class RolesRulesManager(RBACManager):
@@ -2457,84 +1961,6 @@ class RolesRulesManager(RBACManager):
             self.session.rollback()
             return SecurityError.INVALID
 
-    def get_all_rules_from_role(self, role_id: int) -> Union[list, bool]:
-        """Get all the rules related to the specified role.
-
-        Parameters
-        ----------
-        role_id : int
-            ID of the role.
-
-        Returns
-        -------
-        Union[list, bool]
-            List of rules related to the role or False if the operation failed.
-        """
-        try:
-            rule_roles = self.session.scalars(
-                select(RolesRules).filter_by(role_id=role_id).order_by(RolesRules.id)).all()
-            rules = list()
-            for relation in rule_roles:
-                rules.append(self.session.scalars(select(Rules).filter_by(id=relation.rule_id).limit(1)).first())
-            return rules
-        except (IntegrityError, AttributeError):
-            self.session.rollback()
-            return False
-
-    def get_all_roles_from_rule(self, rule_id: int) -> Union[list, bool]:
-        """Get all the roles related to the specified rule.
-
-        Parameters
-        ----------
-        rule_id : int
-            ID of the role.
-
-        Returns
-        -------
-        Union[list, bool]
-            List of roles related to the rule or False if the operation failed.
-        """
-        try:
-            role_rules = self.session.scalars(
-                select(RolesRules).filter_by(rule_id=rule_id).order_by(RolesRules.id)).all()
-            roles = list()
-            for relation in role_rules:
-                roles.append(self.session.scalars(select(Roles).filter_by(id=relation.role_id).limit(1)).first())
-            return roles
-        except (IntegrityError, AttributeError):
-            self.session.rollback()
-            return False
-
-    def exist_role_rule(self, role_id: int, rule_id: int) -> Union[bool, int]:
-        """Check if the relationship between a specified role and a specified rule exists.
-
-        Parameters
-        ----------
-        role_id : int
-            ID of the role.
-        rule_id : int
-            ID of the rule.
-
-        Returns
-        -------
-        Union[bool, int]
-            True if the relationship exists, False or a SecurityError code otherwise.
-        """
-        try:
-            rule = self.session.scalars(select(Rules).filter_by(id=rule_id).limit(1)).first()
-            if rule is None:
-                return SecurityError.RULE_NOT_EXIST
-            role = self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first()
-            if role is None:
-                return SecurityError.ROLE_NOT_EXIST
-            match = role.rules.filter_by(id=rule_id).first()
-            if match is not None:
-                return True
-            return False
-        except IntegrityError:
-            self.session.rollback()
-            return False
-
     def remove_rule_in_role(self, rule_id: int, role_id: int, atomic: bool = True) -> Union[bool, int]:
         """Remove a relationship between a specified rule and a specified role if both exist.
 
@@ -2574,98 +2000,6 @@ class RolesRulesManager(RBACManager):
         except IntegrityError:
             self.session.rollback()
             return SecurityError.INVALID
-
-    def remove_role_in_rule(self, rule_id: int, role_id: int, atomic: bool = True) -> Union[bool, int]:
-        """Remove a relationship between a specified rule and a specified role if both exist.
-
-        Parameters
-        ----------
-        rule_id : int
-            ID of the rule.
-        role_id : int
-            ID of the role.
-        atomic : bool
-            Flag used to indicate the atomicity of the operation. If this function is called within a loop or a function
-            composed of several operations, atomicity cannot be guaranteed unless this flag is set to True.
-
-        Returns
-        -------
-        Union[bool, int]
-            True if the relationship was removed successfully or a SecurityError code if the operation failed.
-        """
-        return self.remove_rule_in_role(rule_id=rule_id, role_id=role_id, atomic=atomic)
-
-    def remove_all_roles_in_rule(self, rule_id: int) -> Union[bool, int]:
-        """Remove all relationships between a specified rule and its roles.
-
-        Parameters
-        ----------
-        rule_id : int
-            ID of the rule
-
-        Returns
-        -------
-        Union[bool, int]
-            True if the relationships were removed successfully, False or a SecurityError code otherwise.
-        """
-        try:
-            if int(rule_id) > MAX_ID_RESERVED:
-                self.session.scalars(select(Rules).filter_by(id=rule_id).limit(1)).first().roles = list()
-                self.session.commit()
-                return True
-            return SecurityError.ADMIN_RESOURCES
-        except (IntegrityError, TypeError):
-            self.session.rollback()
-            return False
-
-    def remove_all_rules_in_role(self, role_id: int) -> bool:
-        """Remove all relationships between a specified role and its rules.
-
-        Parameters
-        ----------
-        role_id : int
-            ID of the role.
-
-        Returns
-        -------
-        bool
-            True if the relationships were removed successfully, False otherwise.
-        """
-        try:
-            if int(role_id) > MAX_ID_RESERVED:
-                self.session.scalars(select(Roles).filter_by(id=role_id).limit(1)).first().rules = list()
-                self.session.commit()
-                return True
-        except (IntegrityError, TypeError):
-            self.session.rollback()
-            return False
-
-    def replace_rule_role(self, rule_id: int, current_role_id: int, new_role_id: int) -> Union[bool, int]:
-        """Replace an existing relationship between a specified rule and a specified role with another one.
-
-        Parameters
-        ----------
-        rule_id : int
-            ID of the rule.
-        current_role_id : int
-            ID of the related role to be replaced.
-        new_role_id : int
-            ID of the role to be replaced in the relationship.
-
-        Returns
-        -------
-        Union[bool, int]
-            True if the relationship was replaced successfully, False or a SecurityError code otherwise.
-        """
-        if current_role_id > MAX_ID_RESERVED and self.exist_role_rule(rule_id=rule_id, role_id=current_role_id) \
-                and self.session.session.scalars(select(Roles).filter_by(id=new_role_id).limit(1)).first() is not None:
-            if self.remove_role_in_rule(rule_id=rule_id, role_id=current_role_id, atomic=False) is not True or \
-                    self.add_rule_to_role(rule_id=rule_id, role_id=new_role_id, atomic=False) is not True:
-                return SecurityError.RELATIONSHIP_ERROR
-
-            return True
-
-        return False
 
 
 class DatabaseManager:

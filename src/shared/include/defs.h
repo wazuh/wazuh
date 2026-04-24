@@ -130,7 +130,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define MON_LOCAL_SOCK     "queue/sockets/monitor"
 #define CLUSTER_SOCK       "queue/cluster/c-internal.sock"
 #define CONTROL_SOCK       "queue/sockets/control"
-#define LOGTEST_SOCK       "queue/sockets/logtest"
 #define AGENT_UPGRADE_SOCK "queue/sockets/upgrade"
 
 // Tasks socket

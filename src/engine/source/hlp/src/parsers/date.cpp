@@ -36,7 +36,7 @@ SemParser getSemParser(std::string_view targetField,
 {
 
     return [targetField, fds, outputLocale, abbrev = std::move(abbrev), name, offset](
-               std::string_view) -> std::variant<hlp::parser::Mapper, base::Error>
+               std::string_view, bool enableTrace) -> std::variant<hlp::parser::Mapper, base::Error>
     {
         // if no year is parsed, we add our current year
         date::year_month_day ymd = fds.ymd;
@@ -71,7 +71,11 @@ SemParser getSemParser(std::string_view targetField,
                 }
                 catch (std::exception& e)
                 {
-                    return base::Error {fmt::format("{} failed to set timezone: {}", name, e.what())};
+                    if (enableTrace)
+                    {
+                        return base::Error {fmt::format("{} failed to set timezone: {}", name, e.what())};
+                    }
+                    return base::Error {};
                 }
             }
             else

@@ -21,12 +21,11 @@ base::Expression fileOutputBuilder(const json::Json& definition,
             "Stage '{}' expects a string but got '{}'", syntax::asset::FILE_OUTPUT_KEY, definition.typeName()));
     }
 
-    auto optChannelBase = definition.getString();
-    if (!optChannelBase.has_value() || optChannelBase->empty())
+    std::string channelBase;
+    if (definition.getString(channelBase) != json::RetGet::Success || channelBase.empty())
     {
         throw std::runtime_error(fmt::format("Stage '{}' expects a non-empty string", syntax::asset::FILE_OUTPUT_KEY));
     }
-    const auto& channelBase = optChannelBase.value();
 
     // Derive the effective channel name: {originSpace}-{channelBase}
     const auto& originSpace = buildCtx->context().originSpace;
@@ -45,16 +44,16 @@ base::Expression fileOutputBuilder(const json::Json& definition,
     const auto failureTrace = fmt::format("{} -> Could not write event to output", name);
 
     return base::Term<base::EngineOp>::create(name,
-                                              [writer, successTrace, failureTrace, runState = buildCtx->runState()](
+                                              [writer, successTrace, failureTrace, isTestMode = buildCtx->isTestMode()](
                                                   base::Event event) -> base::result::Result<base::Event>
                                               {
                                                   if ((*writer)(event->str()))
                                                   {
-                                                      RETURN_SUCCESS(runState, event, successTrace);
+                                                      RETURN_SUCCESS(isTestMode, event, successTrace);
                                                   }
                                                   else
                                                   {
-                                                      RETURN_FAILURE(runState, event, failureTrace);
+                                                      RETURN_FAILURE(isTestMode, event, failureTrace);
                                                   }
                                               });
 }

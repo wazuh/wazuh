@@ -113,19 +113,7 @@ def reset_context_cache() -> None:
         context_var.set(None)
 
 
-def get_context_cache() -> dict:
-    """Get the context cache.
-
-    Returns
-    -------
-    dict
-        Dictionary with the context variables representing the cache.
-    """
-
-    return _context_cache
-
-
-# ================================================= Context variables ==================================================
+# ================================================= Context variables ==================================================================================================
 rbac: ContextVar[Dict] = ContextVar('rbac', default={'rbac_mode': 'black'})
 current_user: ContextVar[str] = ContextVar('current_user', default='')
 broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
@@ -165,7 +153,6 @@ WPK_REPO_URL_4_X = "packages.wazuh.com/4.x/wpk/"
 # Agent component stats required version.
 AGENT_COMPONENT_STATS_REQUIRED_VERSION = {'logcollector': 'v4.2.0', 'agent': 'v4.2.0'}
 # Version variables (legacy, required, etc).
-AR_LEGACY_VERSION = 'Wazuh v4.2.0'
 ACTIVE_CONFIG_VERSION = 'Wazuh v4.0.0'
 
 
@@ -180,14 +167,10 @@ SHARED_PATH = os.path.join(WAZUH_PATH, 'etc', 'shared')
 WAZUH_LOGS = os.path.join(WAZUH_PATH, 'logs')
 WAZUH_LOG = os.path.join(WAZUH_LOGS, 'wazuh-manager.log')
 WAZUH_LOG_JSON = os.path.join(WAZUH_LOGS, 'wazuh-manager.json')
-DATABASE_PATH = os.path.join(WAZUH_PATH, 'var', 'db')
-DATABASE_PATH_GLOBAL = os.path.join(DATABASE_PATH, 'global.db')
 OSSEC_TMP_PATH = os.path.join(WAZUH_PATH, 'tmp')
 OSSEC_PIDFILE_PATH = os.path.join(WAZUH_PATH, 'var', 'run')
 OS_PIDFILE_PATH = os.path.join('var', 'run')
 WDB_PATH = os.path.join(WAZUH_PATH, 'queue', 'db')
-BACKUP_PATH = os.path.join(WAZUH_PATH, 'backup')
-MULTI_GROUPS_PATH = os.path.join(WAZUH_PATH, 'var', 'multigroups')
 DEFAULT_RBAC_RESOURCES = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'rbac', 'default')
 WAZUH_LOCALTIME_PATH = os.path.join(WAZUH_PATH, 'etc', 'localtime')
 CLUSTERD_WORKINGDIR = os.path.join(WAZUH_PATH, 'queue', 'cluster')
@@ -204,7 +187,6 @@ REMOTED_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'remote')
 TASKS_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'task')
 WDB_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'db', 'wdb')
 WDB_HTTP_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wdb-http')
-WMODULES_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wmodules')
 KEY_STORE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'keystore')
 CLUSTERD_SOCKET = os.path.join(CLUSTERD_WORKINGDIR, 'c-internal.sock')
 

@@ -78,6 +78,7 @@ target_link_libraries(builder
     geo::igeo
     streamlogger::istreamlogger
     wIndexerConnector::iwIndexerConnector
+	fastmetrics::ifastmetrics
     logpar
 
     PRIVATE
@@ -113,6 +114,7 @@ target_link_libraries(builder_ctest
 	store::mocks
 	defs::mocks
 	base::test
+	fastmetrics::mocks
 )
 gtest_discover_tests(builder_ctest)
 ## Unit tests
@@ -132,6 +134,7 @@ add_executable(builder_utest
 	${UNIT_SRC_DIR}/builders/opfilter/numberCmp_test.cpp
 	${UNIT_SRC_DIR}/builders/opfilter/strCmp_test.cpp
 	${UNIT_SRC_DIR}/builders/opfilter/regex_test.cpp
+	${UNIT_SRC_DIR}/builders/opfilter/binaryAnd_test.cpp
 	${UNIT_SRC_DIR}/builders/opfilter/is_ipv4_test.cpp
 	${UNIT_SRC_DIR}/builders/opfilter/is_ipv6_test.cpp
 	${UNIT_SRC_DIR}/builders/opfilter/ip_test.cpp
@@ -140,7 +143,6 @@ add_executable(builder_utest
 	${UNIT_SRC_DIR}/builders/opfilter/indexUnclassifiedEvents_test.cpp
 	${UNIT_SRC_DIR}/builders/opfilter/types_test.cpp
 	${UNIT_SRC_DIR}/builders/opfilter/match_test.cpp
-	${UNIT_SRC_DIR}/builders/opfilter/is_test_session_test.cpp
 	${UNIT_SRC_DIR}/builders/opfilter/keys_exist_in_list_test.cpp
 
 	# # Map Builders
@@ -195,7 +197,31 @@ target_link_libraries(builder_utest
 	base::test
 	streamlogger::mocks
 	wIndexerConnector::mocks
+	fastmetrics::mocks
 )
 gtest_discover_tests(builder_utest)
 
 endif(ENGINE_BUILD_TEST)
+
+# Benchmarks
+if(ENGINE_BUILD_BENCHMARK)
+
+set(BENCH_SRC_DIR ${SRC_DIR}/builders/enrichment/benchmark/src/)
+
+add_executable(builder_benchmark
+    ${BENCH_SRC_DIR}/geoEnrichment_bench.cpp
+)
+target_include_directories(builder_benchmark
+    PRIVATE
+    ${SRC_DIR}
+    ${INC_DIR}
+    ${INC_DIR}/builder
+)
+target_link_libraries(builder_benchmark
+    PRIVATE
+    builder
+    benchmark::benchmark
+    benchmark::benchmark_main
+)
+
+endif(ENGINE_BUILD_BENCHMARK)

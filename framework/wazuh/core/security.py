@@ -13,7 +13,7 @@ from api.authentication import change_keypair
 from api.constants import SECURITY_CONFIG_PATH
 from wazuh import WazuhInternalError, WazuhError
 from wazuh.core.decorators import dapi_allower
-from wazuh.rbac.orm import RolesManager, TokenManager, check_database_integrity, DB_FILE
+from wazuh.rbac.orm import TokenManager, check_database_integrity, DB_FILE
 
 REQUIRED_FIELDS = ['id']
 SORT_FIELDS = ['id', 'name']
@@ -54,28 +54,6 @@ def update_security_conf(new_config: dict):
         middlewares.ip_block = set()
     if 'max_request_per_minute' in new_config.keys():
         middlewares.request_counter = 0
-
-
-def check_relationships(roles: list = None) -> set:
-    """Check the users related with the specified list of roles.
-
-    Parameters
-    ----------
-    roles : list
-        List of affected roles.
-
-    Returns
-    -------
-    set
-        Set with all affected users.
-    """
-    users_affected = set()
-    if roles:
-        for role in roles:
-            with RolesManager() as rm:
-                users_affected.update(set(rm.get_role_id(role)['users']))
-
-    return users_affected
 
 
 def invalid_run_as_tokens():

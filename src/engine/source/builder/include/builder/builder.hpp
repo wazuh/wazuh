@@ -1,5 +1,5 @@
-#ifndef _BUILDER2_BUILDER_HPP
-#define _BUILDER2_BUILDER_HPP
+#ifndef BUILDER2_BUILDER_HPP
+#define BUILDER2_BUILDER_HPP
 
 #include <memory>
 
@@ -80,12 +80,7 @@ public:
      * @copydoc IBuilder::buildPolicy
      */
     std::shared_ptr<IPolicy>
-    buildPolicy(const cm::store::NamespaceId& namespaceId, bool trace = false, bool sandbox = false) const override;
-
-    /**
-     * @copydoc IBuilder::buildAsset
-     */
-    base::Expression buildAsset(const base::Name& name, const cm::store::NamespaceId& namespaceId) const override;
+    buildPolicy(const cm::store::NamespaceId& namespaceId, bool isTestMode = false) const override;
 
     /**
      * @copydoc IValidator::softIntegrationValidate
@@ -113,4 +108,4 @@ public:
 
 } // namespace builder
 
-#endif // _BUILDER2_BUILDER_HPP
+#endif // BUILDER2_BUILDER_HPP

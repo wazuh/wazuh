@@ -3,7 +3,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import sys
-from datetime import date
 from json import dumps
 from unittest.mock import call, MagicMock, patch
 
