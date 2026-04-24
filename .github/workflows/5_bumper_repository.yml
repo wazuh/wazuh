@@ -156,12 +156,31 @@ jobs:
 
           MERGE_COMMIT=$(gh pr view $PR_NUMBER --json mergeCommit --jq '.mergeCommit.oid')
 
-          git revert -m 1 $MERGE_COMMIT --no-commit
+          # --- Capture current values BEFORE revert (ONLY FIRST MATCH) ---
+          CURRENT_VERSION=$(sed -nE "s/^[[:space:]]*version:[[:space:]]*['\"]?([^'\"]*)['\"]?/\1/p" api/api/spec/spec.yaml | head -n 1)
+          CURRENT_REVISION=$(sed -nE "s/^[[:space:]]*x-revision:[[:space:]]*['\"]?([^'\"]*)['\"]?/\1/p" api/api/spec/spec.yaml | head -n 1)
 
-          # Remove the files to prevent them from being included in the revert commit
-          git checkout HEAD -- VERSION.json 2>/dev/null || true
-          git checkout HEAD -- CHANGELOG.md 2>/dev/null || true
-          # Add any other repository-specific version files here
+          echo "DEBUG version=[$CURRENT_VERSION]"
+          echo "DEBUG revision=[$CURRENT_REVISION]"
+
+          if [ -z "$CURRENT_VERSION" ] || [ -z "$CURRENT_REVISION" ]; then
+            echo "Error: Failed to extract version or x-revision"
+            exit 1
+          fi
+
+          # Escape safely for sed
+          ESCAPED_VERSION=$(printf '%s\n' "$CURRENT_VERSION" | sed 's/[\/&]/\\&/g')
+          ESCAPED_REVISION=$(printf '%s\n' "$CURRENT_REVISION" | sed 's/[\/&]/\\&/g')
+
+          # --- Restore file from before PR ---
+          PARENT_COMMIT=$(git rev-parse ${MERGE_COMMIT}^1)
+          git checkout $PARENT_COMMIT -- api/api/spec/spec.yaml
+
+          # --- Restore preserved fields ---
+          sed -i "s|^\([[:space:]]*version:\).*|\1 '$ESCAPED_VERSION'|" api/api/spec/spec.yaml
+          sed -i "s|^\([[:space:]]*x-revision:\).*|\1 '$ESCAPED_REVISION'|" api/api/spec/spec.yaml
+
+          git add api/api/spec/spec.yaml
 
           if git diff --staged --quiet; then
             echo "No references to revert. Skipping commit."
