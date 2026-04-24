@@ -27,7 +27,7 @@
 #include <codecvt>
 #include "wuapi.h"
 
-// Declare Windows Update API GUIDs (defined in utilsWrapperWin.cpp)
+// Forward declarations for Windows Update API GUIDs (defined in wuguid library)
 extern "C" const GUID CLSID_UpdateSearcher;
 extern "C" const GUID IID_IUpdateSearcher;
 
