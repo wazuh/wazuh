@@ -466,6 +466,12 @@ private:
 
         while (true)
         {
+            if (context.spUpdaterBaseContext->spStopCondition->check())
+            {
+                logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested during PIT fetch — aborting.");
+                break;
+            }
+
             const auto hitsObj = syncConnector.search(pit, pageSize, query, sort, searchAfter, sourceFilter);
             const auto& hitArray = hitsObj.at("hits");
 
@@ -570,6 +576,12 @@ private:
 
                 while (true)
                 {
+                    if (context.spUpdaterBaseContext->spStopCondition->check())
+                    {
+                        logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested — slice %zu aborting.", sliceId);
+                        break;
+                    }
+
                     const auto hitsObj =
                         sliceConnector.search(pit, pageSize, query, sort, searchAfter, sourceFilter, sliceParam);
                     const auto& hitArray = hitsObj.at("hits");
@@ -626,11 +638,13 @@ private:
                 auto elapsed =
                     std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0)
                         .count();
+                const bool stopped = context.spUpdaterBaseContext->spStopCondition->check();
                 logInfo(WM_CONTENTUPDATER,
-                        "IndexerDownloader: Slice %zu (%zu/%zu) complete — %zu docs in %ldms",
+                        "IndexerDownloader: Slice %zu (%zu/%zu) %s — %zu docs in %ldms",
                         sliceId,
                         sliceId + 1,
                         numSlices,
+                        stopped ? "interrupted" : "complete",
                         sliceProcessed,
                         elapsed);
             }
@@ -719,8 +733,10 @@ private:
 
             if (totalProcessed > 0)
             {
+                const bool stopped = context.spUpdaterBaseContext->spStopCondition->check();
                 logInfo(WM_CONTENTUPDATER,
-                        "IndexerDownloader: Initial load download phase complete — %zu documents, cursor: '%s'",
+                        "IndexerDownloader: Initial load download phase %s — %zu documents, cursor: '%s'",
+                        stopped ? "interrupted" : "complete",
                         totalProcessed,
                         context.data.value("cursor", std::string {}).c_str());
                 return totalProcessed;
@@ -758,9 +774,11 @@ private:
         const nlohmann::json query = {{"range", {{"offset", {{"gt", std::stoull(lastCursor)}}}}}};
 
         const size_t totalProcessed = fetchWithPit(context, query, lastCursor);
+        const bool stopped = context.spUpdaterBaseContext->spStopCondition->check();
 
         logInfo(WM_CONTENTUPDATER,
-                "IndexerDownloader: Incremental update download phase complete — %zu documents, new cursor: '%s'",
+                "IndexerDownloader: Incremental update download phase %s — %zu documents, new cursor: '%s'",
+                stopped ? "interrupted" : "complete",
                 totalProcessed,
                 context.data.value("cursor", std::string {}).c_str());
         return totalProcessed;
