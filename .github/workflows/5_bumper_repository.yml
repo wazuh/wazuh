@@ -156,12 +156,28 @@ jobs:
 
           MERGE_COMMIT=$(gh pr view $PR_NUMBER --json mergeCommit --jq '.mergeCommit.oid')
 
+          # --- Capture current values BEFORE revert ---
+          CURRENT_VERSION=$(grep '^  version:' api/api/spec/spec.yaml | sed "s/^  version: *['\"]\?\(.*\)['\"]\?/\1/")
+          CURRENT_REVISION=$(grep '^  x-revision:' api/api/spec/spec.yaml | sed "s/^  x-revision: *['\"]\?\(.*\)['\"]\?/\1/")
+
+          # --- Apply revert ---
           git revert -m 1 $MERGE_COMMIT --no-commit
 
-          # Remove the files to prevent them from being included in the revert commit
-          git checkout HEAD -- VERSION.json 2>/dev/null || true
-          git checkout HEAD -- CHANGELOG.md 2>/dev/null || true
-          # Add any other repository-specific version files here
+          # Unstage everything
+          git reset
+
+          # Restore everything EXCEPT the target file
+          git checkout HEAD -- .
+          git restore --source=HEAD --staged --worktree -- . 2>/dev/null || true
+
+          # Now bring back ONLY the reverted version of the file
+          git checkout $MERGE_COMMIT^1 -- api/api/spec/spec.yaml
+
+          # Now patch the fields
+          sed -i "s/^\([[:space:]]*version:\).*/\1 '$CURRENT_VERSION'/" api/api/spec/spec.yaml
+          sed -i "s/^\([[:space:]]*x-revision:\).*/\1 '$CURRENT_REVISION'/" api/api/spec/spec.yaml
+
+          git add api/api/spec/spec.yaml
 
           if git diff --staged --quiet; then
             echo "No references to revert. Skipping commit."
