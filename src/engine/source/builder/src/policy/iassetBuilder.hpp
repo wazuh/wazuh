@@ -44,7 +44,7 @@ public:
     /**
      * @brief Clear the available KVDBs (disables KVDB validation).
      */
-    virtual void clearAvailableKvdbs() = 0;
+    virtual void clearIntegrationData() = 0;
 };
 
 } // namespace builder::policy

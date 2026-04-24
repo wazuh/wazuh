@@ -54,7 +54,7 @@ public:
      * @return std::pair<std::shared_ptr<bk::IController>, std::string> The controller and the policy hash.
      * @throws std::runtime_error if the policy has no assets or if the backend cannot be built.
      */
-    auto makeController(const cm::store::NamespaceId& namespaceId, const bool isTestMode = true)
+    auto makeController(const cm::store::NamespaceId& namespaceId, const bool isTestMode)
         -> std::pair<std::shared_ptr<bk::IController>, std::string>
     {
         // Build the policy and create the pipeline
