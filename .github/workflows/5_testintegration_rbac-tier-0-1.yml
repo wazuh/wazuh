@@ -39,27 +39,12 @@ jobs:
         uses: ./.github/actions/build_wazuh
         with:
           target: manager
-      - name: Create cert stubs and install wazuh manager
-        run: |
-          sudo mkdir -p /var/wazuh-manager/etc/certs
-          sudo touch /var/wazuh-manager/etc/certs/root-ca.pem
-          sudo touch /var/wazuh-manager/etc/certs/manager.pem
-          sudo touch /var/wazuh-manager/etc/certs/manager-key.pem
-
-          cat << EOF | sed -e 's/^[[:space:]]*//' > ./etc/preloaded-vars.conf
-          USER_LANGUAGE="en"
-          USER_INSTALL_TYPE="manager"
-          USER_DIR=/var/wazuh-manager
-          USER_ENABLE_EMAIL="n"
-          USER_ENABLE_SYSCHECK="n"
-          USER_ENABLE_ROOTCHECK="n"
-          USER_ENABLE_SYSCOLLECTOR="n"
-          USER_ENABLE_SCA="n"
-          USER_ENABLE_AUTHD="n"
-          USER_AUTO_START="y"
-          EOF
-          sudo sh install.sh
-          rm ./etc/preloaded-vars.conf
+      - name: Install wazuh manager for linux
+        uses: ./.github/actions/install_wazuh_manager
+        with:
+          auto_start: "y"
+          disable_extra_modules: "true"
+          cert_mode: stub
 
       - name: Install QA integration framework
         uses: ./.github/actions/install_qa_framework

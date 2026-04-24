@@ -1,9 +1,13 @@
-name: 5.X - 'Python vulnerability checks'
+name: 5.X - Python vulnerability checks
 
 on:
   workflow_dispatch:
   schedule:
     - cron: "0 0 * * 0"
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   pick-branches:
     name: Get branches to analyze
