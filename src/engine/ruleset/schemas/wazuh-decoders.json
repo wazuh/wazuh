@@ -12081,12 +12081,6 @@
             "string"
           ]
         },
-        "vulnerability.reference": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nA resource that provides additional information, context, and mitigations for the identified vulnerability.",
-          "type": [
-            "string"
-          ]
-        },
         "vulnerability.report_id": {
           "description": "Module: ecs\nIndexerType: keyword\n\nThe report or scan identification number.",
           "type": [

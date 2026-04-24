@@ -34,6 +34,11 @@ struct keynode *queue_remove = NULL;
 struct keynode * volatile *insert_tail;
 struct keynode * volatile *remove_tail;
 
+/* Static regex for group validation */
+static regex_t w_auth_group_regex;
+static bool w_auth_group_regex_compiled = false;
+static pthread_mutex_t w_auth_group_regex_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 // Append key to insertion queue
 void add_insert(const keyentry *entry,const char *group) {
     struct keynode *node;
@@ -389,6 +394,20 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
     const char delim[] = {MULTIGROUP_SEPARATOR,'\0'};
     w_err_t ret = OS_SUCCESS;
 
+    /* Compile regex once on first call */
+    w_mutex_lock(&w_auth_group_regex_mutex);
+    if (!w_auth_group_regex_compiled) {
+        if (regcomp(&w_auth_group_regex, "^[a-zA-Z0-9_\\.\\-]+$", REG_EXTENDED | REG_NOSUB) != 0) {
+            merror("Failed to compile group validation regex");
+            w_mutex_unlock(&w_auth_group_regex_mutex);
+            if (response) {
+                snprintf(response, OS_SIZE_2048, "ERROR: Internal validation error");
+            }
+            return OS_INVALID;
+        }
+        w_auth_group_regex_compiled = true;
+    }
+
     os_strdup(groups, tmp_groups);
     char *group = strtok_r(tmp_groups, delim, &save_ptr);
 
@@ -407,6 +426,27 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
             break;
         }
 
+        /* Validate group name format */
+        if (regexec(&w_auth_group_regex, group, 0, NULL, 0) != 0) {
+            merror("Invalid group name '%s': contains forbidden characters", group);
+            if (response) {
+                snprintf(response, OS_SIZE_2048, "ERROR: Invalid group name: %s", group);
+            }
+            ret = OS_INVALID;
+            break;
+        }
+
+        /* Explicit check for directory references (. and ..) */
+        if (strcmp(group, ".") == 0 || strcmp(group, "..") == 0) {
+            merror("Invalid group name '%s': directory reference not allowed", group);
+            if (response) {
+                snprintf(response, OS_SIZE_2048, "ERROR: Invalid group name: %s", group);
+            }
+            ret = OS_INVALID;
+            break;
+        }
+
+        /* Verify group directory exists (after validation) */
         snprintf(dir, PATH_MAX + 1, SHAREDCFG_DIR "/%s", group);
         dp = wopendir(dir);
         if (!dp) {
@@ -421,8 +461,18 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
         group = strtok_r(NULL, delim, &save_ptr);
         closedir(dp);
     }
+    w_mutex_unlock(&w_auth_group_regex_mutex);
     os_free(tmp_groups);
     return ret;
+}
+
+void w_auth_validate_groups_cleanup(void) {
+    w_mutex_lock(&w_auth_group_regex_mutex);
+    if (w_auth_group_regex_compiled) {
+        regfree(&w_auth_group_regex);
+        w_auth_group_regex_compiled = false;
+    }
+    w_mutex_unlock(&w_auth_group_regex_mutex);
 }
 
 char *w_generate_random_pass()

@@ -47,7 +47,7 @@ def get_worker_handler(loop):
     with patch('asyncio.get_running_loop', return_value=loop):
         abstract_client = client.AbstractClientManager(configuration=configuration,
                                                        cluster_items=cluster_items,
-                                                       enable_ssl=False, performance_test=False, logger=None,
+                                                       performance_test=False, logger=None,
                                                        concurrency_test=False, file='None', string=20)
 
     return worker.WorkerHandler(cluster_name='Testing', node_type='master', version='4.0.0',
@@ -1312,7 +1312,7 @@ async def test_worker_init(api_request_queue, event_loop):
     """Check if the object Worker is being properly initialized."""
 
     task_pool = {'task_pool': ''}
-    nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items, enable_ssl=False,
+    nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items,
                                   performance_test=False, logger=None, concurrency_test=False, file='None', string=20,
                                   task_pool=task_pool)
 
@@ -1361,7 +1361,7 @@ async def test_worker_add_tasks(ar_task, api_request_queue, get_ossec_conf_mock,
 
     task_pool = {'task_pool': ''}
 
-    nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items, enable_ssl=False,
+    nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items,
                                   performance_test=False, logger=None, concurrency_test=False, file='None', string=20,
                                   task_pool=task_pool)
 
@@ -1387,7 +1387,7 @@ async def test_worker_get_node(api_request_queue, event_loop):
     """Check if the basic cluster information is returned."""
     task_pool = {'task_pool': ''}
 
-    nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items, enable_ssl=False,
+    nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items,
                                   performance_test=False, logger=None, concurrency_test=False, file='None', string=20,
                                   task_pool=task_pool)
 
