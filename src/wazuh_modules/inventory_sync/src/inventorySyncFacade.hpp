@@ -34,6 +34,7 @@
 #include <rocksdb/slice.h>
 #include <shared_mutex>
 #include <string>
+#include <unordered_set>
 #include <utility>
 
 constexpr int SINGLE_THREAD_COUNT = 1;
@@ -280,15 +281,14 @@ class InventorySyncFacadeImpl final
             auto moduleName = startMsg->module_() ? startMsg->module_()->string_view() : std::string_view();
 
             // Check if agent is locked.
-            // syscollector_vd sessions (VDFirst/VDSync) are exempt from the feed-update lock:
-            // they read package data from their RocksDB session store, not from the OpenSearch
-            // package index, so they cannot produce dirty reads during a feed-update full scan.
-            // Per-agent serialisation with the feed-update scan is handled by the wait in
-            // hasActiveSessionForModule instead.
+            // syscollector_vd sessions (VDFirst/VDSync) are only exempt from the
+            // global all-agents lock. Per-agent locks still reject them so SAFU can
+            // lock only the agent it is about to scan and avoid new concurrent
+            // inventory writes for that agent.
             std::string agentIdStr(agentId.data(), agentId.size());
             const std::string moduleNameStr(moduleName.data(), moduleName.size());
             const bool isVDModule = (moduleNameStr == "syscollector_vd");
-            if (!isVDModule && isAgentLocked(agentIdStr))
+            if (isAgentLocked(agentIdStr, isVDModule))
             {
                 logDebug2(LOGGER_DEFAULT_TAG,
                           "InventorySyncFacade::start: Agent %s is locked, rejecting new session",
@@ -1248,6 +1248,11 @@ public:
                                         {
                                             VulnerabilityScannerFacade::instance().runScanner(
                                                 *m_dataStore, *res.context);
+                                            if (res.context->option == Wazuh::SyncSchema::Option_VDFirst)
+                                            {
+                                                VulnerabilityScannerFacade::instance().registerFeedUpdateCoveredAgent(
+                                                    res.context->agentId);
+                                            }
                                             logWarn(LOGGER_DEFAULT_TAG,
                                                     "[VDSYNC] Scan RUN END: agent=%s sessionId=%llu option=%s — "
                                                     "runScanner() completed successfully.",
@@ -1584,10 +1589,17 @@ public:
      * @param agentId Agent ID to check
      * @return true if agent is locked (or all agents are locked)
      */
-    bool isAgentLocked(const std::string& agentId) const
+    bool isAgentLocked(const std::string& agentId, const bool allowVDGlobalExemption = false) const
     {
         std::shared_lock lock(m_blockedAgentsMutex);
-        return m_allAgentsLocked.load() || m_blockedAgents.contains(agentId);
+
+        if (m_blockedAgents.contains(agentId))
+        {
+            return true;
+        }
+
+        const bool allAgentsLocked = m_allAgentsLocked.load();
+        return allAgentsLocked && !allowVDGlobalExemption;
     }
 
     /**
@@ -1619,15 +1631,35 @@ public:
     }
 
     /**
+     * @brief Returns the agents that currently have an active session for the module/option pair.
+     *
+     * @param moduleName Module name to filter (e.g. "syscollector_vd").
+     * @param option Session option to filter.
+     * @return Set of agent IDs with a matching active session.
+     */
+    std::unordered_set<std::string> getAgentsWithActiveSessionForModule(const std::string& moduleName,
+                                                                        Wazuh::SyncSchema::Option option) const
+    {
+        std::unordered_set<std::string> agentIds;
+        std::shared_lock lock(m_agentSessionsMutex);
+
+        for (const auto& [sessionId, session] : m_agentSessions)
+        {
+            const auto& context = session.getContext();
+            if (context->moduleName == moduleName && context->option == option)
+            {
+                agentIds.insert(context->agentId);
+            }
+        }
+
+        return agentIds;
+    }
+
+    /**
      * @brief Wait until all active VDSync sessions across all agents have completed.
      *
-     * Called by the feed-update callback BEFORE it acquires m_internalMutex, avoiding
-     * the deadlock where feedUpdate holds that mutex while waiting for a VDSync session
-     * that is itself blocked trying to acquire the same mutex.
-     *
-     * Because VulnerabilityScannerFacade::m_feedUpdateScanInProgress is set before
-     * this is called, VDSync sessions in their scan-decision phase will skip their scan
-     * and end quickly, so each hasActiveSessionForModule call below returns fast.
+     * Called by the feed-update callback after the SAFU state flag is raised, so
+     * VDSync sessions in their scan-decision phase can self-skip and finish fast.
      *
      * @param timeout    Maximum wait time per attempt (forwarded to hasActiveSessionForModule).
      * @param maxRetries Retry count (forwarded to hasActiveSessionForModule).
@@ -1636,20 +1668,8 @@ public:
     {
         while (true)
         {
-            std::vector<std::string> vdSyncAgents;
-            {
-                std::shared_lock lock(m_agentSessionsMutex);
-                for (const auto& [id, session] : m_agentSessions)
-                {
-                    const auto& ctx = session.getContext();
-                    if (ctx->moduleName == "syscollector_vd" &&
-                        ctx->option == Wazuh::SyncSchema::Option_VDSync)
-                    {
-                        vdSyncAgents.push_back(ctx->agentId);
-                    }
-                }
-            }
-
+            const auto vdSyncAgents =
+                getAgentsWithActiveSessionForModule("syscollector_vd", Wazuh::SyncSchema::Option_VDSync);
             if (vdSyncAgents.empty())
             {
                 break;
