@@ -1004,6 +1004,23 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         return;
     }
 
+    /* Issue #35474: strip trailing NUL bytes from the event payload before
+     * it reaches the router or analysisd. Wazuh 5.x agents prior to the
+     * buffer_append fix included the terminating '\0' in the wire-level
+     * length of legacy text events; the byte rides the HTTP body and gets
+     * stored verbatim by RapidJSON in event.original, silently breaking
+     * decoder matches. Compliant agents are unaffected -- the loop is a
+     * no-op when msg_length already excludes the terminator. */
+    size_t stripped_nulls = 0;
+    while (msg_length > 0 && tmp_msg[msg_length - 1] == '\0') {
+        msg_length--;
+        stripped_nulls++;
+    }
+    if (stripped_nulls > 0) {
+        mdebug1("Stripped %zu trailing null byte(s) from event payload of agent '%s'",
+                stripped_nulls, agentid_str);
+    }
+
     // Check if message should be forwarded to router instead of analysisd
     bool forwarded_to_router = false;
     if (router_forwarding_disabled != 1) {
