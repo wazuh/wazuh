@@ -15,15 +15,16 @@
 5. [Data Flow & Threading Model](#data-flow--threading-model)
 6. [Rotation Mechanics](#rotation-mechanics)
 7. [Compression](#compression)
-8. [Crash-Recovery (Store Persistence)](#crash-recovery-store-persistence)
-9. [Configuration Reference](#configuration-reference)
-10. [Pattern Placeholders](#pattern-placeholders)
-11. [Usage Examples](#usage-examples)
-12. [Error Handling Strategy](#error-handling-strategy)
-13. [Build & Test](#build--test)
-14. [Design Decisions & Rationale](#design-decisions--rationale)
-15. [Dependency Graph](#dependency-graph)
-16. [FAQ & Gotchas](#faq--gotchas)
+8. [Retention Policies](#retention-policies)
+9. [Crash-Recovery (Store Persistence)](#crash-recovery-store-persistence)
+10. [Configuration Reference](#configuration-reference)
+11. [Pattern Placeholders](#pattern-placeholders)
+12. [Usage Examples](#usage-examples)
+13. [Error Handling Strategy](#error-handling-strategy)
+14. [Build & Test](#build--test)
+15. [Design Decisions & Rationale](#design-decisions--rationale)
+16. [Dependency Graph](#dependency-graph)
+17. [FAQ & Gotchas](#faq--gotchas)
 
 ---
 
@@ -40,6 +41,7 @@ The **streamlog** module provides high-performance, named, rotating log channels
 | **Dual Rotation** | Size-based (counter suffix) and time-based (date placeholders in file name). |
 | **Hard-Link "Latest"** | `<basePath>/<name>.<ext>` always points to the active file — external tools tail this stable path. |
 | **Gzip Compression** | Rotated files are compressed asynchronously via the `scheduler::IScheduler`. |
+| **Retention Policies** | Configurable limits on rotated file count (`maxFiles`) and total rotated size (`maxAccumulatedSize`). Oldest files are deleted first. |
 | **Crash Recovery** | The current file path is persisted to the `store::IStore`; on restart, pending compressions are resumed. |
 | **Zero-Copy Enqueue** | Writers `std::move` messages into the queue — no copies on the hot path. |
 
@@ -80,7 +82,7 @@ The **streamlog** module provides high-performance, named, rotating log channels
 │   loop:                                                                │
 │     1. waitPop(message, 1000ms)                                        │
 │     2. needsRotation(message.size())  →  Size | Time | No             │
-│     3. if rotation → rotateFile() → schedule compression               │
+│     3. if rotation → rotateFile() → schedule compression + retention   │
 │     4. writeMessage(message)  →  outputFile << msg << '\n'; flush()   │
 │                                                                        │
 │  State:                                                                │
@@ -93,6 +95,7 @@ The **streamlog** module provides high-performance, named, rotating log channels
                                        ▼  (on rotation, if shouldCompress)
 ┌──────────────────────────────────────────────────────────────────────────┐
 │  scheduler::IScheduler  →  compressLogFile()  (gzip + remove original) │
+│                         →  deleteOldFilesStatic()  (retention cleanup)  │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -151,7 +154,9 @@ streamlog/
            │ implements          │  bufferSize             │
            ▼                     │  shouldCompress         │
   ┌──────────────────┐          │  compressionLevel       │
-  │    LogManager     │          └────────────────────────┘
+  │    LogManager     │          │  maxFiles               │
+  │ ─────────────────│          │  maxAccumulatedSize     │
+                                 └────────────────────────┘
   │ ─────────────────│                     │ used by
   │  m_channels       │─── owns N ──►┌─────┴──────────────┐
   │  m_channelsMutex  │              │   ChannelHandler    │
@@ -170,7 +175,8 @@ streamlog/
   ┌──────────────────┐              │ -rotateFile()       │
   │  «interface»      │              │ -writeMessage()     │
   │  WriterEvent      │              │ -compressLogFile()  │
-  │ ─────────────────│              └──────┬──────────────┘
+  │ ─────────────────│              │ -deleteOldFiles()   │
+                                    └──────┬──────────────┘
   │ +operator()(msg) │                     │ creates
   └────────┬─────────┘                     ▼
            │ implements          ┌────────────────────────┐
@@ -268,7 +274,56 @@ When `shouldCompress` is `true` and the `scheduler` weak pointer is valid:
    };
    ```
 2. `compressLogFile()` calls `Utils::ZlibHelper::gzipCompress()` and removes the original.
-3. If the scheduler is unavailable (expired `weak_ptr`), a warning is logged and the file is left uncompressed.
+3. In-flight paths (source and `.gz`) are unregistered so future retention runs can consider them.
+4. If retention is configured (`maxFiles > 0` or `maxAccumulatedSize > 0`), `deleteOldFilesStatic()` runs **after** compression. In the happy path this means cleanup sees files in their final compressed size.
+5. If the scheduler is unavailable (expired `weak_ptr`), a warning is logged and the file is left uncompressed.
+
+> **Compression failure:** Steps 3-4 execute unconditionally. If `gzipCompress()` throws, the original file remains on disk and a partial `.gz` artefact may also be present. Retention cleanup proceeds in best-effort mode against whatever state is on disk — it may observe uncompressed sizes for that file, but the system self-heals on the next successful rotation cycle.
+
+---
+
+## Retention Policies
+
+Retention limits how many files accumulate in the channel directory (`basePath`). Two independent policies can be combined:
+
+| Policy | Field | Default | Behaviour |
+|--------|-------|---------|-----------|
+| **File count** | `maxFiles` | `90` | Keep at most N files in the channel directory. The active file is always excluded from the count. |
+| **Accumulated size** | `maxAccumulatedSize` | `20 GiB` | Delete oldest non-active files until their combined on-disk size fits within the limit. The active file is excluded from this accounting. |
+
+Both policies are applied **in sequence** (accumulated-size first, then file-count), so they act as an AND — both constraints are satisfied simultaneously.
+
+### Cleanup algorithm (`deleteOldFiles` / `deleteOldFilesStatic`)
+
+1. Scan `basePath` **recursively** for all regular files.
+2. Exclude the current active file (identified by the inode of the `latestLink` hard link).
+3. Sort by `mtime` ascending (oldest first).
+4. **Strategy 1 — size:** delete oldest non-active files until their combined size ≤ `maxAccumulatedSize`.
+5. **Strategy 2 — count:** delete oldest remaining non-active files until count ≤ `maxFiles`.
+
+> **Active file is never a deletion candidate.** The file currently being written is excluded from both policies. If it has grown beyond `maxAccumulatedSize` on its own, it will not be deleted — it becomes subject to retention only after the next rotation closes it.
+
+> **Pattern-agnostic:** The scan uses `mtime` ordering, not filename parsing. This means retention works correctly even if the `pattern` was changed after files were already rotated under a previous naming scheme.
+
+### When does cleanup run?
+
+| Compression | Cleanup trigger |
+|-------------|----------------|
+| **Disabled** | Immediately inside `rotateFile()`, after the new file is opened. |
+| **Enabled** | After each compression task completes (in the scheduler thread), via the captured `deleteOldFilesStatic()` call in the compression task callback. |
+
+Deferring cleanup to post-compression avoids a race where the still-uncompressed (larger) rotated file would cause over-aggressive size-based deletion. If compression fails, retention still runs in best-effort mode against the actual on-disk state (see [Compression](#compression)).
+
+### Configuration
+
+Set via `internal_options.conf` or environment variables:
+
+| Key | Env var | Default |
+|-----|---------|---------|
+| `analysisd.streamlog_max_files` | `WAZUH_STREAMLOG_MAX_FILES` | `90` |
+| `analysisd.streamlog_max_accumulated_size` | `WAZUH_STREAMLOG_MAX_ACCUMULATED_SIZE` | `21474836480` (20 GiB) |
+
+Set either to `0` to disable that specific policy.
 
 ---
 
@@ -301,8 +356,10 @@ This ensures that a rotated file that was not yet compressed before a crash will
 | `pattern` | `std::string` | *(required)* | File name pattern with placeholders. May contain subdirectories. |
 | `maxSize` | `size_t` | `0` | Max file size in bytes before size rotation. `0` = disabled. Clamped to ≥ 1 MiB. |
 | `bufferSize` | `size_t` | `1 << 20` | Queue capacity (events). `0` is promoted to default. |
-| `shouldCompress` | `bool` | `true` | Gzip rotated files. |
+| `shouldCompress` | `bool` | `true` | Gzip files on rotation. |
 | `compressionLevel` | `size_t` | `5` | 1 (fastest) – 9 (best). Only used when `shouldCompress`. |
+| `maxFiles` | `size_t` | `90` | Max files to keep in the channel directory. `0` = unlimited. Active file excluded. |
+| `maxAccumulatedSize` | `size_t` | `20 GiB` | Max combined on-disk bytes of non-active files in the channel directory. `0` = unlimited. Active file excluded from accounting. Oldest deleted first. |
 
 ### Validation Rules (applied in `validateAndNormalizeConfig`)
 
@@ -371,7 +428,9 @@ streamlog::RotationConfig cfg {
     10 * 1024 * 1024,   // 10 MiB max size
     1 << 20,            // buffer
     true,               // compress
-    5                   // compression level
+    5,                  // compression level
+    30,                 // keep at most 30 files in the channel directory
+    20ULL * 1024 * 1024 * 1024  // max 20 GiB accumulated size in the channel directory
 };
 streamlog::LogManager::isolatedBasePath("standard-wazuh-events-v5", cfg);
 logManager.registerLog("standard-wazuh-events-v5", cfg, "json");
@@ -399,6 +458,8 @@ void processEvent(streamlog::ILogManager& logManager) {
       1 << 20,
       true,
       5,
+      30,
+      2ULL * 1024 * 1024 * 1024
     };
     streamlog::LogManager::isolatedBasePath("standard-wazuh-events-v5", cfg);
     auto writer = logManager.ensureAndGetWriter("standard-wazuh-events-v5", cfg, "json");
@@ -435,6 +496,9 @@ logManager.updateConfig("standard-wazuh-events-v5", newCfg, "json");
 | Queue full | `writer->operator()` returns `false`; message is dropped. |
 | Store read / write failure | Warning logged; operation continues normally. |
 | Scheduler unavailable | Warning logged; rotated file left uncompressed. |
+| Compression fails (`gzipCompress` throws) | Warning logged; original file left on disk, partial `.gz` may remain. In-flight entries are unregistered and retention cleanup runs in best-effort mode on whatever state is on disk. |
+| `scheduleTask()` throws | Warning logged; in-flight entries are unregistered immediately so retention is not permanently blocked. File is left uncompressed. |
+| Retention cleanup fails to delete a file | File remains on disk and stays in the accounting (not marked as freed). |
 | Directory creation fails during rotation | Warning logged; channel may enter `ErrorClosed`. |
 
 **Philosophy:** Never crash the process. Log an emergency message and gracefully degrade.

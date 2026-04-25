@@ -16,7 +16,7 @@ namespace dumper
 {
 
 constexpr auto CHANNEL_NAME = "event-dumps";
-constexpr auto CHANNEL_EXTENSION = "json";
+constexpr auto CHANNEL_EXTENSION = "log";
 
 class Dumper final : public IDumper
 {
