@@ -64,8 +64,8 @@ namespace Utils
                                  int compressionLevel,
                                  const std::atomic<bool>& shouldRun)
         {
-            // Validate compression level
-            if (compressionLevel < 0 || compressionLevel > 9)
+            // Validate compression level (Z_DEFAULT_COMPRESSION = -1 is allowed)
+            if ((compressionLevel < 0 && compressionLevel != Z_DEFAULT_COMPRESSION) || compressionLevel > 9)
             {
                 throw std::runtime_error("Invalid compression level: " + std::to_string(compressionLevel) +
                                          ". Must be between 0 and 9.");
@@ -127,6 +127,14 @@ namespace Utils
         {
             static const std::atomic<bool> alwaysRun {true};
             gzipCompress(inputFilePath, gzFilePath, compressionLevel, alwaysRun);
+        }
+
+        /**
+         * @brief Compress file to GZIP format with default compression level.
+         */
+        static void gzipCompress(const std::filesystem::path& inputFilePath, const std::filesystem::path& gzFilePath)
+        {
+            gzipCompress(inputFilePath, gzFilePath, Z_DEFAULT_COMPRESSION);
         }
 
         /**
