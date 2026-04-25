@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-    <Product Id="*" Name="Wazuh Agent" Language="1033" Version="5.0.0" Manufacturer="Wazuh, Inc." UpgradeCode="F495AC57-7BDE-4C4B-92D8-DBE40A9AA5A0">
-        <Package Description="Wazuh helps you to gain security visibility into your infrastructure by monitoring hosts at an operating system and application level. It provides the following capabilities: log analysis, file integrity monitoring, intrusions detection and policy and compliance monitoring" Comments="wazuh-agent" InstallerVersion="200" Compressed="yes" />
+    <Product Id="*" Name="Overwatch Agent" Language="1033" Version="5.0.0" Manufacturer="Overwatch, Inc." UpgradeCode="F495AC57-7BDE-4C4B-92D8-DBE40A9AA5A0">
+        <Package Description="Overwatch helps you to gain security visibility into your infrastructure by monitoring hosts at an operating system and application level. It provides the following capabilities: log analysis, file integrity monitoring, intrusions detection and policy and compliance monitoring" Comments="overwatch-agent" InstallerVersion="200" Compressed="yes" />
         <Media Id="1" Cabinet="simple.cab" EmbedCab="yes" CompressionLevel="high" />
 
         <!-- Disable Restart Manager -->
@@ -117,12 +117,12 @@
         <CustomAction Id="SetCustomActionDataCleanupLegacyDBs" Return="check" Property="CleanupLegacyDatabases" Value="&quot;[APPLICATIONFOLDER]&quot;" />
         <CustomAction Id="CleanupLegacyDatabases" BinaryKey="InstallerScripts" VBScriptCall="CleanupLegacyDatabases" Return="check" Execute="deferred" Impersonate="no" />
 
-        <!-- Explicitely stopping and deleting the OSSEC service to install new Wazuh service -->
+        <!-- Explicitely stopping and deleting the OSSEC service to install new Overwatch service -->
         <CustomAction Id="StopOssecService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
         <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
         <CustomAction Id="StartWazuhSvc" BinaryKey="InstallerScripts" VBScriptCall="StartWazuhSvc" Return="check" Execute="immediate" Impersonate="no"/>
 
-        <!-- Close the Wazuh agent GUI -->
+        <!-- Close the Overwatch agent GUI -->
         <CustomAction Id="CloseGUI" BinaryKey="InstallerScripts" VBScriptCall="KillGUITask" Return="check" Execute="deferred" Impersonate="no"/>
 
         <CustomAction Id="CreateDumpRegistryKey" BinaryKey="InstallerScripts" VBScriptCall="CreateDumpRegistryKey" Return="check" Execute="deferred" Impersonate="yes" />
@@ -176,7 +176,7 @@
             <Custom Action="SetCustomActionDataValue" After="InstallInitialize">(NOT WIX_UPGRADE_DETECTED) AND (NOT PATCH) AND (NOT Installed)</Custom>
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">(NOT WIX_UPGRADE_DETECTED) AND (NOT PATCH) AND (NOT Installed)</Custom>
 
-            <!-- Set Wazuh permissions on upgrade -->
+            <!-- Set Overwatch permissions on upgrade -->
             <Custom Action="SetCustomActionDataForSetWazuhPermissions" After="InstallInitialize">(WIX_UPGRADE_DETECTED) OR (PATCH)</Custom>
             <Custom Action="SetWazuhPermissions" After="SetCustomActionDataForSetWazuhPermissions">(WIX_UPGRADE_DETECTED) OR (PATCH)</Custom>
 
@@ -450,7 +450,7 @@
                         <Shortcut Id="EDIT_CONF" Name="Edit conf" Target="[APPLICATIONFOLDER]ossec.conf" WorkingDirectory="APPLICATIONFOLDER" />
                         <Shortcut Id="UninstallProduct" Name="Uninstall" Description="Uninstalls the application" Target="[System64Folder]msiexec.exe" Arguments="/x [ProductCode]" />
                         <Shortcut Id="RUN_WIN32UI" Name="Manage Agent" Target="[APPLICATIONFOLDER]win32ui.exe" WorkingDirectory="APPLICATIONFOLDER" />
-                        <util:InternetShortcut Id="WebsiteShortcut" Name="Documentation" Target="https://documentation.wazuh.com" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension" />
+                        <util:InternetShortcut Id="WebsiteShortcut" Name="Documentation" Target="https://overwatch.visot.io/docs" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension" />
                     </Component>
                 </Directory>
             </Directory>
@@ -603,7 +603,7 @@
                 <RemoveFolder Id="purgue_shared_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
-        <Feature Id="MainFeature" Title="Wazuh Agent" Description="Install the Wazuh Agent program files" ConfigurableDirectory="APPLICATIONFOLDER" InstallDefault="local" TypicalDefault="install" AllowAdvertise="no" Absent="disallow">
+        <Feature Id="MainFeature" Title="Overwatch Agent" Description="Install the Overwatch Agent program files" ConfigurableDirectory="APPLICATIONFOLDER" InstallDefault="local" TypicalDefault="install" AllowAdvertise="no" Absent="disallow">
             <ComponentRef Id="REGISTRY_INSTALL_DIR" />
             <ComponentRef Id="SYSCOLLECTOR_NORM_CONFIG" />
             <ComponentRef Id="SYSCOLLECTOR_DLL" />
@@ -682,17 +682,17 @@
         <UpgradeVersion Maximum="4.14.0" IncludeMaximum="no" Property="IS_UPGRADING_FROM_UNSUPPORTED_VERSION" />
         <UpgradeVersion Maximum="5.0.0" IncludeMaximum="no" Property="IS_UPGRADING_FROM_PRIOR_TO_5X" /></Upgrade>
 
-        <CustomAction Id="PreventUnsupportedUpgrade" Error="Upgrade to Wazuh 5.0.0 is only supported from version 4.14.0 or later.&#x0A;&#x0A;Your current version is not supported for direct upgrade to 5.0.0&#x0A;&#x0A;Required action:&#x0A;  1. Upgrade to version 4.14.0 or later first&#x0A;  2. Then upgrade to 5.0.0&#x0A;&#x0A;For more information, visit:&#x0A;  https://documentation.wazuh.com/current/upgrade-guide/" />
+        <CustomAction Id="PreventUnsupportedUpgrade" Error="Upgrade to Overwatch 5.0.0 is only supported from version 4.14.0 or later.&#x0A;&#x0A;Your current version is not supported for direct upgrade to 5.0.0&#x0A;&#x0A;Required action:&#x0A;  1. Upgrade to version 4.14.0 or later first&#x0A;  2. Then upgrade to 5.0.0&#x0A;&#x0A;For more information, visit:&#x0A;  https://overwatch.visot.io/docs/upgrade-guide/" />
     </Product>
     <Fragment>
         <Binary Id="CustomImage" SourceFile="ui\bannrbmp.jpg" />
         <UI>
-	        <Dialog Id="CustomCheckDialog" Width="370" Height="270" Title="Wazuh Agent Setup">
+	        <Dialog Id="CustomCheckDialog" Width="370" Height="270" Title="Overwatch Agent Setup">
                 <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44"
                     Text="CustomImage" />
 
                 <Control Id="Description" Type="Text" X="20" Y="60" Width="330" Height="60"
-                    Text="Enabling this option allows Wazuh to generate debug information in the event of an agent failure.&#x0A;This information could be useful to detect and fix the problem that caused it." />
+                    Text="Enabling this option allows Overwatch to generate debug information in the event of an agent failure.&#x0A;This information could be useful to detect and fix the problem that caused it." />
 
                 <Control Id="GenerateDumpCheckbox" Type="CheckBox" X="20" Y="150" Width="330" Height="17"
                     Property="GENERATE_DUMP" CheckBoxValue="1"

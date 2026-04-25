@@ -1,13 +1,13 @@
-** Wazuh Windows Agent **
-** Copyright (C) 2015, Wazuh Inc. **
+** Overwatch Windows Agent **
+** Copyright (C) 2015, Overwatch Inc. **
 
 
-Thanks for installing the 'Wazuh Windows Agent'. Before you continue,
-make sure that you have an instance of the Wazuh manager running and configured
+Thanks for installing the 'Overwatch Windows Agent'. Before you continue,
+make sure that you have an instance of the Overwatch manager running and configured
 to accept this system as an agent.
 
-For more information on how to install the server version of Wazuh, look at:
-https://documentation.wazuh.com
+For more information on how to install the server version of Overwatch, look at:
+https://overwatch.visot.io/docs
 
 
 
@@ -23,8 +23,8 @@ https://documentation.wazuh.com
 
 1- How to obtain more information
 
-You can obtain more information about WAZUH on the following links:
-https://documentation.wazuh.com
+You can obtain more information about OVERWATCH on the following links:
+https://overwatch.visot.io/docs
 
 
 2- What this agent does
@@ -43,6 +43,6 @@ The Windows agent does the following tasks:
 3- Questions/Support
 
 Visit the following link for information on how to get help or
-support for WAZUH:
+support for OVERWATCH:
 
-https://wazuh.com/
+https://overwatch.visot.io/

@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) 2015, Overwatch Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -29,7 +29,7 @@ int main(int argc, char **argv)
         return (0);
     }
 
-    /* Configure Wazuh for automatic startup */
+    /* Configure Overwatch for automatic startup */
     system("sc config WazuhSvc start= auto");
 
     /* Change permissions */

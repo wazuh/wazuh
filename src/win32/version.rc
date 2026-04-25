@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) 2015, Overwatch Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -43,13 +43,13 @@ BEGIN
 	BEGIN
 		BLOCK "040904b0"
         BEGIN
-		VALUE "CompanyName",        "Wazuh Inc."
-		VALUE "FileDescription",    "Wazuh Agent"
+		VALUE "CompanyName",        "Overwatch Inc."
+		VALUE "FileDescription",    "Overwatch Agent"
 		VALUE "FileVersion",        QUOTE(VER_PRODUCTVERSION_STR)
-		VALUE "LegalCopyright",     "Copyright (C) Wazuh, Inc."
-		VALUE "ProductName",        "Wazuh Windows Agent"
+		VALUE "LegalCopyright",     "Copyright (C) Overwatch, Inc."
+		VALUE "ProductName",        "Overwatch Windows Agent"
 		VALUE "ProductVersion",     QUOTE(VER_PRODUCTVERSION_STR)
-         VALUE "Info",               "https://www.wazuh.com"
+         VALUE "Info",               "https://overwatch.visot.io"
          VALUE "License",            "GPLv2"
         END
 	END

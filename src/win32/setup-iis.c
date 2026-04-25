@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) 2015, Overwatch Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -111,7 +111,7 @@ int config_dir(char *name, char *dir, char *vfile)
     printf("%s: You may have it configured in a format different\n"
            "               than W3C Extended or you just don't have today's\n"
            "               log available.\n", name);
-    printf("%s: https://documentation.wazuh.com\n\n", name);
+    printf("%s: https://overwatch.visot.io/docs\n\n", name);
 
     /* Add IIS config */
     fp = wfopen(WAZUHCONF, "a");
@@ -209,7 +209,7 @@ int main(int argc, char **argv)
 
     printf("%s: Looking for IIS log files to monitor.\r\n",
            argv[0]);
-    printf("%s: For more information: https://documentation.wazuh.com\r\n",
+    printf("%s: For more information: https://overwatch.visot.io/docs\r\n",
            argv[0]);
     printf("\r\n");
 

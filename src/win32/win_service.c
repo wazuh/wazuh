@@ -1,4 +1,4 @@
-/* Copyright (C) 2015, Wazuh Inc.
+/* Copyright (C) 2015, Overwatch Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -25,8 +25,8 @@
 **************************************************************************************/
 
 static LPTSTR g_lpszServiceName        = "WazuhSvc";
-static LPTSTR g_lpszServiceDisplayName = "Wazuh";
-static LPTSTR g_lpszServiceDescription = "Wazuh Windows Agent";
+static LPTSTR g_lpszServiceDisplayName = "Overwatch";
+static LPTSTR g_lpszServiceDescription = "Overwatch Windows Agent";
 
 static SERVICE_STATUS          ossecServiceStatus;
 static SERVICE_STATUS_HANDLE   ossecServiceStatusHandle;
