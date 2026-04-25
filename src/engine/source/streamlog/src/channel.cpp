@@ -845,7 +845,7 @@ scheduler::TaskConfig ChannelHandler::createCompressionTaskConfig(const std::fil
              shouldRun = m_compressionShouldRun
             ]()
         {
-            compressLogFile(filePath, compressionLevel. shouldRun);
+            compressLogFile(filePath, compressionLevel, shouldRun);
 
             // Unregister in-flight paths now that compression (and source removal) is done
             inFlightFiles->remove(filePath);
