@@ -27,6 +27,10 @@ struct RotationConfig
     size_t bufferSize = 1 << 20; ///< Queue capacity in events (default 1 Mi). `0` is promoted to the default.
     bool shouldCompress {true};  ///< Compress rotated files with gzip when `true`.
     size_t compressionLevel {5}; ///< Gzip compression level: 1 (fastest) – 9 (best). Only used when `shouldCompress`.
+    size_t maxFiles {90};        ///< Max files to keep in the channel directory. Active file excluded. `0` = unlimited.
+    size_t maxAccumulatedSize {20ULL * 1024 * 1024
+                               * 1024}; ///< Max total on-disk size in bytes of all files in the channel directory.
+                                        ///< Active file excluded. `0` = unlimited. Oldest deleted first when exceeded.
 };
 
 /**

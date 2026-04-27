@@ -1,9 +1,11 @@
 #include <chrono>
+#include <fcntl.h>
 #include <filesystem>
 #include <fstream>
 #include <future>
 #include <memory>
 #include <random>
+#include <sys/stat.h>
 #include <thread>
 
 #include <gmock/gmock.h>
@@ -88,6 +90,19 @@ bool waitFor(Condition&& condition, std::chrono::milliseconds timeout = std::chr
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     return true;
+}
+
+// Set file mtime to a specific Unix timestamp for deterministic retention ordering.
+// Using utimensat avoids relying on sleep_for + filesystem timestamp resolution,
+// which can be coarser than expected on some filesystems.
+void setFileMtime(const std::filesystem::path& path, std::time_t epochSeconds, long nsec = 0)
+{
+    struct timespec times[2];
+    times[0].tv_sec = epochSeconds; // atime
+    times[0].tv_nsec = nsec;
+    times[1].tv_sec = epochSeconds; // mtime
+    times[1].tv_nsec = nsec;
+    ::utimensat(AT_FDCWD, path.c_str(), times, 0);
 }
 
 } // namespace
@@ -2140,4 +2155,726 @@ TEST_F(ChannelHandlerTest, StorePersistencePreviousFileNotFound)
 
     auto handler = createHandlerWithScheduler("missing-file-test", config, mockScheduler);
     EXPECT_NE(handler, nullptr);
+}
+
+// ============= RETENTION POLICY TESTS =============
+
+// Test maxFiles retention: create several files in the channel directory, verify oldest are deleted
+TEST_F(ChannelHandlerTest, RetentionMaxFilesDeletesOldest)
+{
+    auto config = defaultConfig;
+    config.maxSize = 1 << 20; // 1 MiB to enable size rotation with counter
+    config.maxFiles = 3;
+    config.shouldCompress = false; // disable compression so cleanup runs in rotateFile
+    config.pattern = "${name}-${YYYY}-${MM}-${DD}-${counter}.log";
+
+    // Pre-create 5 "old" files in basePath with staggered mtime
+    const std::time_t baseTimeMaxFiles = 1000;
+    std::vector<std::filesystem::path> oldFiles;
+    for (int i = 0; i < 5; ++i)
+    {
+        auto filePath = tmpDir / ("old-rotated-" + std::to_string(i) + ".log");
+        {
+            std::ofstream f(filePath);
+            f << "old content " << i << "\n";
+        }
+        oldFiles.push_back(filePath);
+        // stagger mtime so ordering is deterministic
+        setFileMtime(filePath, baseTimeMaxFiles + i * 10);
+    }
+
+    auto handler = createBasicHandler("retention-maxfiles", config);
+    auto writer = handler->createWriter();
+
+    // Write enough data to trigger at least one rotation
+    std::string bigMsg(config.maxSize + 1, 'X');
+    (*writer)(std::move(bigMsg));
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    // After rotation + cleanup, at most maxFiles channel directory files should remain
+    // (excluding the current active file and latest link)
+    size_t remainingRotated = 0;
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(tmpDir))
+    {
+        if (!entry.is_regular_file())
+            continue;
+        auto canonical = std::filesystem::canonical(entry.path());
+        // Don't count the latest link (it's a hard link to the active file)
+        if (entry.path().filename().string().find("retention-maxfiles.log") != std::string::npos)
+            continue;
+        // Don't double-count hard links to the active file
+        if (canonical == std::filesystem::canonical(handler->getCurrentFilePath()))
+            continue;
+        remainingRotated++;
+    }
+
+    EXPECT_LE(remainingRotated, config.maxFiles);
+
+    // Verify the oldest files were deleted first
+    // At minimum, the 2 oldest should be gone (we had 5 old + the rotation produces 1 more = 6, keep 3)
+    size_t deletedOld = 0;
+    for (const auto& f : oldFiles)
+    {
+        if (!std::filesystem::exists(f))
+            ++deletedOld;
+    }
+    EXPECT_GE(deletedOld, 2u);
+
+    writer.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+// Test maxAccumulatedSize retention: create large files in the channel directory, verify total size is respected
+TEST_F(ChannelHandlerTest, RetentionMaxAccumulatedSizeDeletesOldest)
+{
+    auto config = defaultConfig;
+    config.maxSize = 1 << 20;
+    config.maxAccumulatedSize = 500; // 500 bytes limit for accumulated channel directory files
+    config.shouldCompress = false;
+    config.pattern = "${name}-${YYYY}-${MM}-${DD}-${counter}.log";
+
+    // Pre-create several files that exceed the accumulated limit.
+    // Explicit mtimes (oldest → newest) make deletion order deterministic.
+    const std::time_t baseTimeAccum = 1000;
+    for (int i = 0; i < 5; ++i)
+    {
+        auto filePath = tmpDir / ("accum-old-" + std::to_string(i) + ".log");
+        {
+            std::ofstream f(filePath);
+            f << std::string(200, 'A'); // 200 bytes each → 1000 bytes total > 500 limit
+        }
+        setFileMtime(filePath, baseTimeAccum + i * 10);
+    }
+
+    auto handler = createBasicHandler("retention-accum", config);
+    auto writer = handler->createWriter();
+
+    // Trigger rotation
+    std::string bigMsg(config.maxSize + 1, 'Y');
+    (*writer)(std::move(bigMsg));
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    // Calculate total size of channel directory files (excluding active + latest link)
+    std::int64_t totalRotatedSize = 0;
+    auto activePath = std::filesystem::canonical(handler->getCurrentFilePath());
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(tmpDir))
+    {
+        if (!entry.is_regular_file())
+            continue;
+        auto canonical = std::filesystem::canonical(entry.path());
+        if (canonical == activePath)
+            continue;
+        totalRotatedSize += entry.file_size();
+    }
+
+    EXPECT_LE(totalRotatedSize, static_cast<std::int64_t>(config.maxAccumulatedSize + config.maxSize + 100));
+
+    writer.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+// Test that retention with both maxFiles and maxAccumulatedSize applies both limits
+TEST_F(ChannelHandlerTest, RetentionBothPoliciesCombined)
+{
+    auto config = defaultConfig;
+    config.maxSize = 1 << 20;
+    config.maxFiles = 10;            // generous file count
+    config.maxAccumulatedSize = 300; // tight size limit
+    config.shouldCompress = false;
+    config.pattern = "${name}-${YYYY}-${MM}-${DD}-${counter}.log";
+
+    // Pre-create files totaling well over 300 bytes with deterministic mtime ordering.
+    const std::time_t baseTimeCombined = 1000;
+    for (int i = 0; i < 4; ++i)
+    {
+        auto filePath = tmpDir / ("combined-" + std::to_string(i) + ".log");
+        {
+            std::ofstream f(filePath);
+            f << std::string(200, 'B');
+        }
+        setFileMtime(filePath, baseTimeCombined + i * 10);
+    }
+
+    auto handler = createBasicHandler("retention-combined", config);
+    auto writer = handler->createWriter();
+
+    // Trigger rotation
+    std::string bigMsg(config.maxSize + 1, 'Z');
+    (*writer)(std::move(bigMsg));
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    // Both constraints should be satisfied
+    size_t rotatedCount = 0;
+    std::int64_t rotatedSize = 0;
+    auto activePath = std::filesystem::canonical(handler->getCurrentFilePath());
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(tmpDir))
+    {
+        if (!entry.is_regular_file())
+            continue;
+        auto canonical = std::filesystem::canonical(entry.path());
+        if (canonical == activePath)
+            continue;
+        rotatedCount++;
+        rotatedSize += entry.file_size();
+    }
+
+    EXPECT_LE(rotatedCount, config.maxFiles);
+    // The old pre-existing files should have been pruned by maxAccumulatedSize.
+    // The rotation itself produces 1 new large file (~1 MiB) which is bigger than our 300-byte limit,
+    // but the old 200-byte files should be gone. Verify that at least some were deleted.
+    size_t oldFilesRemaining = 0;
+    for (int i = 0; i < 4; ++i)
+    {
+        if (std::filesystem::exists(tmpDir / ("combined-" + std::to_string(i) + ".log")))
+            ++oldFilesRemaining;
+    }
+    EXPECT_LT(oldFilesRemaining, 4u) << "At least some old files should have been deleted by retention";
+
+    writer.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+// Test that retention with maxFiles=0 and maxAccumulatedSize=0 does not delete any files (unlimited)
+TEST_F(ChannelHandlerTest, RetentionUnlimitedKeepsAllFiles)
+{
+    auto config = defaultConfig;
+    config.maxSize = 1 << 20;
+    config.maxFiles = 0;
+    config.maxAccumulatedSize = 0;
+    config.shouldCompress = false;
+    config.pattern = "${name}-${YYYY}-${MM}-${DD}-${counter}.log";
+
+    // Pre-create files
+    std::vector<std::filesystem::path> preFiles;
+    for (int i = 0; i < 3; ++i)
+    {
+        auto filePath = tmpDir / ("keep-" + std::to_string(i) + ".log");
+        {
+            std::ofstream f(filePath);
+            f << "keep this " << i;
+        }
+        preFiles.push_back(filePath);
+    }
+
+    auto handler = createBasicHandler("retention-unlimited", config);
+    auto writer = handler->createWriter();
+
+    std::string bigMsg(config.maxSize + 1, 'K');
+    (*writer)(std::move(bigMsg));
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    // All pre-existing files should still exist
+    for (const auto& f : preFiles)
+    {
+        EXPECT_TRUE(std::filesystem::exists(f)) << "File should not have been deleted: " << f;
+    }
+
+    writer.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+// Test retention with compression enabled: cleanup is deferred to the compression callback
+// (not inside rotateFile). Pre-created files with old mtime should be removed, keeping
+// at most maxFiles non-active files after the compression task runs.
+TEST_F(ChannelHandlerTest, RetentionWithCompressionMaxFiles)
+{
+    using namespace ::testing;
+
+    auto config = defaultConfig;
+    config.maxSize = 1 << 20;
+    config.maxFiles = 2;
+    config.shouldCompress = true;
+    config.compressionLevel = 1; // fastest; keeps the test quick
+    config.pattern = "${name}-${YYYY}-${MM}-${DD}-${counter}.log";
+
+    // Pre-create 4 old files with deterministic mtime ordering.
+    const std::time_t baseTimeCompress = 1000;
+    for (int i = 0; i < 4; ++i)
+    {
+        auto filePath = tmpDir / ("compress-old-" + std::to_string(i) + ".log");
+        {
+            std::ofstream f(filePath);
+            f << "old content " << i << "\n";
+        }
+        setFileMtime(filePath, baseTimeCompress + i * 10);
+    }
+
+    // Execute each compression task inline (synchronously) so that retention has already
+    // run before we inspect the directory.
+    auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+    EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
+        .Times(AtLeast(1))
+        .WillRepeatedly([](std::string_view, scheduler::TaskConfig&& cfg) { cfg.taskFunction(); });
+
+    auto handler = createHandlerWithScheduler("retention-compress", config, mockScheduler);
+    auto writer = handler->createWriter();
+
+    // Trigger one rotation
+    (*writer)(std::string(config.maxSize + 1, 'X'));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    // Count non-active files using inode comparison so the latestLink hard link is also excluded.
+    struct stat activeStat {};
+    ASSERT_EQ(::stat(handler->getCurrentFilePath().c_str(), &activeStat), 0);
+    const ino_t activeInode = activeStat.st_ino;
+
+    size_t remaining = 0;
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(tmpDir))
+    {
+        if (!entry.is_regular_file())
+            continue;
+        struct stat s {};
+        if (::stat(entry.path().c_str(), &s) != 0)
+            continue;
+        if (s.st_ino == activeInode)
+            continue;
+        ++remaining;
+    }
+
+    EXPECT_LE(remaining, config.maxFiles) << "Deferred retention after compression did not respect maxFiles";
+
+    writer.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+// Regression test for the stale-capture race condition in the compression callback.
+//
+// Scenario:
+//   1. Two rotations fire before any compression task executes.
+//   2. Task-1 was created with currentFile = file-at-rotation-1 (now stale).
+//   3. All deferred tasks then execute with maxFiles=1 (aggressive pruning).
+//
+// Pre-created files are given future mtimes so they appear *newer* than the
+// active file under any wall-clock condition — this is the adversarial ordering
+// where stale path-based exclusion would incorrectly score the active file as the
+// oldest candidate and delete it. The inode-based fix must prevent that.
+TEST_F(ChannelHandlerTest, RetentionWithCompressionMultiplePendingRotations)
+{
+    using namespace ::testing;
+
+    auto config = defaultConfig;
+    config.maxSize = 1 << 20;
+    config.maxFiles = 1; // aggressive: forces deletion on every cleanup run
+    config.shouldCompress = true;
+    config.compressionLevel = 1;
+    config.pattern = "${name}-${YYYY}-${MM}-${DD}-${counter}.log";
+
+    // Pre-create files with mtime far in the future so they look *newer* than the active file.
+    // The active file will therefore have the lowest (oldest) mtime among all candidates —
+    // the exact worst-case where stale path-based exclusion would select it for deletion.
+    const std::time_t futureTime = std::time(nullptr) + 100000;
+    for (int i = 0; i < 3; ++i)
+    {
+        auto filePath = tmpDir / ("pending-old-" + std::to_string(i) + ".log");
+        {
+            std::ofstream f(filePath);
+            f << std::string(300, 'P');
+        }
+        setFileMtime(filePath, futureTime + i * 10);
+    }
+
+    // Collect tasks without executing them so both rotations complete before any cleanup.
+    std::vector<scheduler::TaskConfig> pendingTasks;
+    auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+    EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
+        .Times(AtLeast(2))
+        .WillRepeatedly([&pendingTasks](std::string_view, scheduler::TaskConfig&& cfg)
+                        { pendingTasks.push_back(std::move(cfg)); });
+
+    auto handler = createHandlerWithScheduler("retention-pending", config, mockScheduler);
+    auto writer = handler->createWriter();
+
+    // Rotation 1: task1 captures currentFile = file opened by rotation1
+    (*writer)(std::string(config.maxSize + 1, 'A'));
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    // Rotation 2: task2 captures currentFile = file opened by rotation2.
+    // task1's captured currentFile is now stale.
+    (*writer)(std::string(config.maxSize + 1, 'B'));
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    ASSERT_GE(pendingTasks.size(), 2u) << "Expected at least 2 compression tasks to be scheduled";
+
+    // Record the active file inode before running any deferred task.
+    const auto activeFilePath = handler->getCurrentFilePath();
+    struct stat activeStat {};
+    ASSERT_EQ(::stat(activeFilePath.c_str(), &activeStat), 0)
+        << "Active file missing before running deferred tasks: " << activeFilePath;
+    const ino_t activeInode = activeStat.st_ino;
+
+    // Execute all deferred tasks — the window where the race condition would trigger.
+    for (auto& task : pendingTasks) task.taskFunction();
+
+    // The active file must still exist with the same inode (not deleted by stale-state cleanup).
+    struct stat afterStat {};
+    ASSERT_EQ(::stat(activeFilePath.c_str(), &afterStat), 0)
+        << "Active file was deleted during deferred retention cleanup: " << activeFilePath;
+    EXPECT_EQ(afterStat.st_ino, activeInode) << "Active file inode changed unexpectedly";
+
+    // Non-active files in the channel directory should respect maxFiles.
+    size_t remaining = 0;
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(tmpDir))
+    {
+        if (!entry.is_regular_file())
+            continue;
+        struct stat s {};
+        if (::stat(entry.path().c_str(), &s) != 0)
+            continue;
+        if (s.st_ino == activeInode)
+            continue; // skip active file and its latestLink hard link (share same inode)
+        ++remaining;
+    }
+    EXPECT_LE(remaining, config.maxFiles);
+
+    writer.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+// Test that retention correctly orders files with identical second-level mtime
+// but different sub-second (nanosecond) timestamps, deleting the truly oldest first.
+TEST_F(ChannelHandlerTest, RetentionSubSecondMtimeOrdering)
+{
+    auto config = defaultConfig;
+    config.maxSize = 1 << 20;
+    // maxFiles=3 accounts for the 4 pre-created files plus the initial channel file
+    // that becomes non-active after rotation (5 non-active total → delete 2 oldest).
+    config.maxFiles = 3;
+    config.shouldCompress = false;
+    config.pattern = "${name}-${YYYY}-${MM}-${DD}-${counter}.log";
+
+    // All 4 files share the same tv_sec but differ in tv_nsec.
+    // Without nanosecond precision the deletion order would be arbitrary.
+    const std::time_t sameSecond = 2000;
+    std::vector<std::filesystem::path> oldFiles;
+    for (int i = 0; i < 4; ++i)
+    {
+        auto filePath = tmpDir / ("subsec-" + std::to_string(i) + ".log");
+        {
+            std::ofstream f(filePath);
+            f << "sub-second content " << i << "\n";
+        }
+        oldFiles.push_back(filePath);
+        // Spread nanoseconds: 100'000'000, 200'000'000, 300'000'000, 400'000'000
+        setFileMtime(filePath, sameSecond, static_cast<long>((i + 1)) * 100'000'000L);
+    }
+
+    auto handler = createBasicHandler("retention-subsec", config);
+    auto writer = handler->createWriter();
+
+    // Trigger a rotation so deleteOldFiles runs
+    std::string bigMsg(config.maxSize + 1, 'S');
+    (*writer)(std::move(bigMsg));
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    // 5 non-active files (4 old + 1 initial rotated), maxFiles=3 → delete 2 oldest by mtime.
+    // The 2 oldest are subsec-0 (100ms) and subsec-1 (200ms) thanks to nanosecond ordering.
+    EXPECT_FALSE(std::filesystem::exists(oldFiles[0])) << "Oldest sub-second file should be deleted";
+    EXPECT_FALSE(std::filesystem::exists(oldFiles[1])) << "Second oldest sub-second file should be deleted";
+    // The 2 newest should survive
+    EXPECT_TRUE(std::filesystem::exists(oldFiles[2])) << "Third sub-second file should survive";
+    EXPECT_TRUE(std::filesystem::exists(oldFiles[3])) << "Newest sub-second file should survive";
+
+    writer.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+// ============= DEGRADATION / ERROR PATH TESTS =============
+
+// When scheduleTask() throws, the in-flight entries for the failed file must be unregistered
+// so that subsequent retention cleanup does NOT skip those files.
+TEST_F(ChannelHandlerTest, ScheduleTaskThrowsUnregistersInFlight)
+{
+    using namespace ::testing;
+
+    auto config = defaultConfig;
+    config.maxSize = 1 << 20;
+    config.maxFiles = 2;
+    config.shouldCompress = true;
+    config.compressionLevel = 1;
+    config.pattern = "${name}-${YYYY}-${MM}-${DD}-${counter}.log";
+
+    // Pre-create old files so retention has something to evaluate.
+    const std::time_t baseTime = 1000;
+    std::vector<std::filesystem::path> oldFiles;
+    for (int i = 0; i < 4; ++i)
+    {
+        auto filePath = tmpDir / ("throw-old-" + std::to_string(i) + ".log");
+        {
+            std::ofstream f(filePath);
+            f << std::string(100, 'T');
+        }
+        setFileMtime(filePath, baseTime + i * 10);
+        oldFiles.push_back(filePath);
+    }
+
+    // First call throws; subsequent calls execute inline (simulate transient failure).
+    auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+    bool firstCall = true;
+    EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
+        .WillRepeatedly(
+            [&firstCall](std::string_view, scheduler::TaskConfig&& cfg)
+            {
+                if (firstCall)
+                {
+                    firstCall = false;
+                    throw std::runtime_error("Simulated scheduler full");
+                }
+                cfg.taskFunction();
+            });
+
+    auto handler = createHandlerWithScheduler("sched-throw", config, mockScheduler);
+    auto writer = handler->createWriter();
+
+    // Rotation 1: scheduleTask throws — in-flight must be cleaned up.
+    (*writer)(std::string(config.maxSize + 1, 'A'));
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    // Rotation 2: scheduleTask succeeds and runs inline, triggering retention cleanup.
+    (*writer)(std::string(config.maxSize + 1, 'B'));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    // The file from rotation 1 was never compressed (task threw), so it remains as .log.
+    // Since in-flight was cleaned up, retention should still be able to delete it if needed.
+    // Verify that old pre-created files were pruned (retention ran successfully).
+    size_t oldRemaining = 0;
+    for (const auto& f : oldFiles)
+    {
+        if (std::filesystem::exists(f))
+            ++oldRemaining;
+    }
+    EXPECT_LT(oldRemaining, 4u) << "Retention should have deleted some old files despite first scheduleTask throwing";
+
+    writer.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+// When the scheduler weak_ptr is expired at rotation time, compression is skipped
+// but the channel keeps working, and retention still runs (non-compressed path).
+TEST_F(ChannelHandlerTest, SchedulerExpiredSkipsCompression)
+{
+    using namespace ::testing;
+
+    auto config = defaultConfig;
+    config.maxSize = 1 << 20;
+    config.maxFiles = 2;
+    config.shouldCompress = true; // Compression is configured…
+    config.compressionLevel = 1;
+    config.pattern = "${name}-${YYYY}-${MM}-${DD}-${counter}.log";
+
+    // Create a scheduler, build the handler, then destroy the scheduler before writing.
+    auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+    // scheduleTask should never be called because weak_ptr will be expired.
+    EXPECT_CALL(*mockScheduler, scheduleTask(_, _)).Times(0);
+
+    auto handler = createHandlerWithScheduler("sched-expired", config, mockScheduler);
+    auto writer = handler->createWriter();
+
+    // Destroy the scheduler — weak_ptr inside the handler becomes expired.
+    mockScheduler.reset();
+
+    // Write enough to trigger rotation.
+    (*writer)(std::string(config.maxSize + 1, 'E'));
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    // The handler should still be functional (not crashed / ErrorClosed).
+    // Verify the active file exists.
+    EXPECT_TRUE(std::filesystem::exists(handler->getCurrentFilePath()))
+        << "Active file should exist even when scheduler is expired";
+
+    // The rotated file should remain uncompressed (no .gz created).
+    bool foundGz = false;
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(tmpDir))
+    {
+        if (entry.path().extension() == ".gz")
+        {
+            foundGz = true;
+            break;
+        }
+    }
+    EXPECT_FALSE(foundGz) << "No .gz files should exist when scheduler is expired";
+
+    writer.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+// Retention cleanup must skip files that are registered as in-flight.
+// Simulates the window where compression tasks are queued but not yet executed:
+// in-flight files should survive cleanup even when they exceed retention limits.
+TEST_F(ChannelHandlerTest, RetentionSkipsInFlightFiles)
+{
+    using namespace ::testing;
+
+    auto config = defaultConfig;
+    config.maxSize = 1 << 20;
+    config.maxFiles = 1; // aggressive: would normally delete everything except 1
+    config.shouldCompress = true;
+    config.compressionLevel = 1;
+    config.pattern = "${name}-${YYYY}-${MM}-${DD}-${counter}.log";
+
+    // Collect tasks without executing them so files stay registered as in-flight.
+    std::vector<scheduler::TaskConfig> pendingTasks;
+    auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+    EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
+        .WillRepeatedly([&pendingTasks](std::string_view, scheduler::TaskConfig&& cfg)
+                        { pendingTasks.push_back(std::move(cfg)); });
+
+    auto handler = createHandlerWithScheduler("inflight-skip", config, mockScheduler);
+    auto writer = handler->createWriter();
+
+    // Trigger 3 rotations → 3 files become in-flight.
+    for (int i = 0; i < 3; ++i)
+    {
+        (*writer)(std::string(config.maxSize + 1, 'I' + i));
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+
+    ASSERT_GE(pendingTasks.size(), 3u) << "Expected at least 3 compression tasks";
+
+    // The rotated .log files are in-flight (registered before scheduling).
+    // Now execute only the LAST task — its retention cleanup runs with maxFiles=1.
+    // The other 2 files are still in-flight and must NOT be deleted.
+    pendingTasks.back().taskFunction();
+
+    // Count surviving .log files (uncompressed rotated files that are still in-flight).
+    size_t inFlightLogFiles = 0;
+    const auto activeInode = [&]()
+    {
+        struct stat s {};
+        ::stat(handler->getCurrentFilePath().c_str(), &s);
+        return s.st_ino;
+    }();
+
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(tmpDir))
+    {
+        if (!entry.is_regular_file())
+            continue;
+        struct stat s {};
+        if (::stat(entry.path().c_str(), &s) != 0)
+            continue;
+        if (s.st_ino == activeInode)
+            continue;
+        if (entry.path().extension() == ".log")
+            ++inFlightLogFiles;
+    }
+
+    // At least the 2 still-pending in-flight files should survive.
+    EXPECT_GE(inFlightLogFiles, 2u) << "In-flight .log files should not be deleted by retention";
+
+    // Now execute the remaining tasks — after that, retention should clean up normally.
+    for (size_t i = 0; i < pendingTasks.size() - 1; ++i)
+    {
+        pendingTasks[i].taskFunction();
+    }
+
+    writer.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+// When compression fails (e.g. source file already deleted), the in-flight entries
+// must still be unregistered so that future retention runs are not permanently blocked.
+TEST_F(ChannelHandlerTest, CompressionFailureStillUnregistersInFlight)
+{
+    using namespace ::testing;
+
+    auto config = defaultConfig;
+    config.maxSize = 1 << 20;
+    config.maxFiles = 2;
+    config.shouldCompress = true;
+    config.compressionLevel = 1;
+    config.pattern = "${name}-${YYYY}-${MM}-${DD}-${counter}.log";
+
+    // Pre-create old files for retention to evaluate.
+    const std::time_t baseTime = 1000;
+    for (int i = 0; i < 4; ++i)
+    {
+        auto filePath = tmpDir / ("fail-old-" + std::to_string(i) + ".log");
+        {
+            std::ofstream f(filePath);
+            f << std::string(100, 'F');
+        }
+        setFileMtime(filePath, baseTime + i * 10);
+    }
+
+    // Collect the first task, execute subsequent ones inline.
+    std::vector<scheduler::TaskConfig> collectedTasks;
+    auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+    bool collectFirst = true;
+    EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
+        .WillRepeatedly(
+            [&collectedTasks, &collectFirst](std::string_view, scheduler::TaskConfig&& cfg)
+            {
+                if (collectFirst)
+                {
+                    collectFirst = false;
+                    collectedTasks.push_back(std::move(cfg));
+                }
+                else
+                {
+                    cfg.taskFunction();
+                }
+            });
+
+    auto handler = createHandlerWithScheduler("compress-fail", config, mockScheduler);
+    auto writer = handler->createWriter();
+
+    // Rotation 1: task is collected but not executed.
+    (*writer)(std::string(config.maxSize + 1, 'X'));
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    ASSERT_EQ(collectedTasks.size(), 1u);
+
+    // Delete the source file that the collected task will try to compress → compression will fail.
+    // We need to find the rotated .log file (not the current active one).
+    std::filesystem::path rotatedFile;
+    const auto activeInode = [&]()
+    {
+        struct stat s {};
+        ::stat(handler->getCurrentFilePath().c_str(), &s);
+        return s.st_ino;
+    }();
+
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(tmpDir))
+    {
+        if (!entry.is_regular_file())
+            continue;
+        if (entry.path().extension() != ".log")
+            continue;
+        if (entry.path().filename().string().find("compress-fail") == std::string::npos)
+            continue;
+        struct stat s {};
+        if (::stat(entry.path().c_str(), &s) != 0)
+            continue;
+        if (s.st_ino != activeInode)
+        {
+            rotatedFile = entry.path();
+            break;
+        }
+    }
+
+    if (!rotatedFile.empty())
+    {
+        std::filesystem::remove(rotatedFile);
+    }
+
+    // Execute the collected task — compression will fail (source gone), but in-flight must be unregistered.
+    collectedTasks[0].taskFunction();
+
+    // Rotation 2: task runs inline, triggering retention cleanup.
+    // If in-flight entries were NOT unregistered after failure, cleanup would skip
+    // the ghost entries and not be able to prune old files.
+    (*writer)(std::string(config.maxSize + 1, 'Y'));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    // Verify that retention ran and pruned old files.
+    size_t oldRemaining = 0;
+    for (int i = 0; i < 4; ++i)
+    {
+        if (std::filesystem::exists(tmpDir / ("fail-old-" + std::to_string(i) + ".log")))
+            ++oldRemaining;
+    }
+    EXPECT_LT(oldRemaining, 4u) << "Retention should have deleted old files after failed compression unregistered "
+                                   "in-flight entries";
+
+    writer.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }

@@ -1,5 +1,7 @@
 #include "channel.hpp"
 
+#include <sys/stat.h>
+
 #include <zlibHelper.hpp>
 
 #include <base/process.hpp>
@@ -200,10 +202,25 @@ void ChannelHandler::rotateFile(RotationRequirement rotationType)
         // Schedule compression of the previous file if needed
         if (auto schedulerPtr = m_scheduler.lock())
         {
+            // Register both source and destination as in-flight before scheduling
+            m_inFlightFiles->add(previousFile);
+            m_inFlightFiles->add(std::filesystem::path(previousFile.string() + ".gz"));
+
             const auto taskName = "CompressLog-" + m_channelName + "-" + previousFile.filename().string();
             auto config = createCompressionTaskConfig(previousFile);
-            schedulerPtr->scheduleTask(taskName, std::move(config));
-            LOG_DEBUG("Scheduled compression for rotated log file: {}", previousFile.string());
+            try
+            {
+                schedulerPtr->scheduleTask(taskName, std::move(config));
+                LOG_DEBUG("Scheduled compression for rotated log file: {}", previousFile.string());
+            }
+            catch (...)
+            {
+                // Scheduling failed — unregister immediately
+                m_inFlightFiles->remove(previousFile);
+                m_inFlightFiles->remove(std::filesystem::path(previousFile.string() + ".gz"));
+                LOG_WARNING("Failed to schedule compression for '{}'; unregistered in-flight entries",
+                            previousFile.string());
+            }
         }
         else
         {
@@ -214,6 +231,22 @@ void ChannelHandler::rotateFile(RotationRequirement rotationType)
     if (previousFile != m_stateData.currentFile)
     {
         LOG_INFO("Rotated the channel '{}' to new file: {}", m_channelName, m_stateData.currentFile.string());
+    }
+
+    // Retention cleanup strategy depends on whether compression is enabled:
+    //
+    // - Compression DISABLED: run cleanup here, inside rotateFile().
+    //   All channel directory files (non-active) are in their final state (uncompressed),
+    //   so sizes and file counts are accurate.
+    //
+    // - Compression ENABLED: cleanup is deferred to the compression
+    //   task callback (see createCompressionTaskConfig). Running it
+    //   here would race with the background compressor: the newly
+    //   rotated file is still uncompressed (larger), so size-based
+    //   retention would be over-aggressive.
+    if (!m_config.shouldCompress && (m_config.maxFiles > 0 || m_config.maxAccumulatedSize > 0))
+    {
+        deleteOldFiles();
     }
 }
 
@@ -614,12 +647,26 @@ ChannelHandler::ChannelHandler(RotationConfig config,
                 {
                     if (auto schedulerPtr = m_scheduler.lock())
                     {
+                        // Register both source and destination as in-flight before scheduling
+                        m_inFlightFiles->add(*previousFilePath);
+                        m_inFlightFiles->add(std::filesystem::path(previousFilePath->string() + ".gz"));
+
                         const auto taskName =
                             "CompressLog-" + m_channelName + "-" + previousFilePath->filename().string();
                         auto config = createCompressionTaskConfig(*previousFilePath);
-                        schedulerPtr->scheduleTask(taskName, std::move(config));
-                        LOG_DEBUG("Scheduled compression for previous log file from store: {}",
-                                  previousFilePath->string());
+                        try
+                        {
+                            schedulerPtr->scheduleTask(taskName, std::move(config));
+                            LOG_DEBUG("Scheduled compression for previous log file from store: {}",
+                                      previousFilePath->string());
+                        }
+                        catch (...)
+                        {
+                            m_inFlightFiles->remove(*previousFilePath);
+                            m_inFlightFiles->remove(std::filesystem::path(previousFilePath->string() + ".gz"));
+                            LOG_WARNING("Failed to schedule compression for '{}'; unregistered in-flight entries",
+                                        previousFilePath->string());
+                        }
                     }
                     else
                     {
@@ -763,13 +810,346 @@ void ChannelHandler::compressLogFile(std::filesystem::path filePath, int compres
 
 scheduler::TaskConfig ChannelHandler::createCompressionTaskConfig(std::filesystem::path filePath) const
 {
+    // Capture config fields needed for retention after compression
+    auto basePath = m_config.basePath;
+    auto maxFiles = m_config.maxFiles;
+    auto maxAccumulatedSize = m_config.maxAccumulatedSize;
+    auto latestLink = m_stateData.latestLink;
+    auto channelName = m_channelName;
+    auto gzPath = std::filesystem::path(filePath.string() + ".gz");
+
     return scheduler::TaskConfig {
         .interval = 0, // One-time task
         .CPUPriority = 0,
         .timeout = 0,
-        .taskFunction = [filePath, compressionLevel = m_config.compressionLevel]()
-        { compressLogFile(filePath, compressionLevel); },
+        .taskFunction =
+            [filePath,
+             gzPath = std::move(gzPath),
+             compressionLevel = m_config.compressionLevel,
+             basePath = std::move(basePath),
+             maxFiles,
+             maxAccumulatedSize,
+             latestLink = std::move(latestLink),
+             channelName = std::move(channelName),
+             retentionMutex = m_retentionMutex,
+             inFlightFiles = m_inFlightFiles]()
+        {
+            compressLogFile(filePath, compressionLevel);
+
+            // Unregister in-flight paths now that compression (and source removal) is done
+            inFlightFiles->remove(filePath);
+            inFlightFiles->remove(gzPath);
+
+            // Run retention cleanup after compression.  In the success path
+            // this ensures cleanup sees files in their final (compressed) size.
+            // If compression failed, cleanup still runs in best-effort mode on
+            // whatever state remains on disk (original file and/or partial .gz).
+            if (maxFiles > 0 || maxAccumulatedSize > 0)
+            {
+                std::lock_guard<std::mutex> lock(*retentionMutex);
+                deleteOldFilesStatic(basePath, latestLink, maxFiles, maxAccumulatedSize, channelName, inFlightFiles);
+            }
+        },
     };
+}
+
+void ChannelHandler::deleteOldFiles()
+{
+    std::lock_guard<std::mutex> lock(*m_retentionMutex);
+    deleteOldFilesStatic(m_config.basePath,
+                         m_stateData.latestLink,
+                         m_config.maxFiles,
+                         m_config.maxAccumulatedSize,
+                         m_channelName,
+                         m_inFlightFiles);
+}
+
+void ChannelHandler::deleteOldFilesStatic(const std::filesystem::path& basePath,
+                                          const std::filesystem::path& latestLink,
+                                          size_t maxFiles,
+                                          size_t maxAccumulatedSize,
+                                          const std::string& channelName,
+                                          const std::shared_ptr<InFlightRegistry>& inFlightFiles)
+{
+    if (maxFiles == 0 && maxAccumulatedSize == 0)
+    {
+        return;
+    }
+
+    struct FileInfo
+    {
+        std::filesystem::path path;
+        struct timespec mtime;
+        std::int64_t size;
+        ino_t inode;
+        bool valid;
+
+        bool operator<(const FileInfo& other) const
+        {
+            return mtime.tv_sec < other.mtime.tv_sec
+                   || (mtime.tv_sec == other.mtime.tv_sec && mtime.tv_nsec < other.mtime.tv_nsec);
+        }
+    };
+
+    auto statInode = [](const std::filesystem::path& path, ino_t& inode, struct stat* stOut = nullptr) -> bool
+    {
+        struct stat st {};
+        if (::stat(path.c_str(), &st) != 0)
+        {
+            return false;
+        }
+
+        inode = st.st_ino;
+
+        if (stOut != nullptr)
+        {
+            *stOut = st;
+        }
+
+        return true;
+    };
+
+    auto countValidFiles = [](const std::vector<FileInfo>& files) -> size_t
+    {
+        return static_cast<size_t>(std::count_if(files.begin(), files.end(), [](const auto& f) { return f.valid; }));
+    };
+
+    constexpr size_t MAX_SCAN_ATTEMPTS = 2;
+    std::vector<FileInfo> rotatedFiles;
+    std::int64_t totalSize = 0;
+    bool stableSnapshot = false;
+
+    for (size_t attempt = 0; attempt < MAX_SCAN_ATTEMPTS; ++attempt)
+    {
+        rotatedFiles.clear();
+        totalSize = 0;
+
+        ino_t activeStart {};
+        if (!statInode(latestLink, activeStart))
+        {
+            LOG_WARNING("Cannot stat latestLink '{}' for channel '{}'; aborting retention cleanup to avoid "
+                        "deleting the active file with stale path information",
+                        latestLink.string(),
+                        channelName);
+            return;
+        }
+
+        try
+        {
+            for (const auto& entry : std::filesystem::recursive_directory_iterator(
+                     basePath, std::filesystem::directory_options::skip_permission_denied))
+            {
+                if (!entry.is_regular_file())
+                {
+                    continue;
+                }
+
+                const auto& filePath = entry.path();
+
+                struct stat fileStat {};
+                ino_t fileInode {};
+                if (!statInode(filePath, fileInode, &fileStat))
+                {
+                    continue;
+                }
+
+                if (fileInode == activeStart)
+                {
+                    continue;
+                }
+
+                // Skip files currently being compressed (in-flight)
+                if (inFlightFiles && inFlightFiles->contains(filePath))
+                {
+                    continue;
+                }
+
+                const auto fileSize = static_cast<std::int64_t>(fileStat.st_size);
+                if (fileSize < 0)
+                {
+                    continue;
+                }
+
+                rotatedFiles.push_back({filePath, fileStat.st_mtim, fileSize, fileInode, true});
+                totalSize += fileSize;
+            }
+        }
+        catch (const std::filesystem::filesystem_error& e)
+        {
+            LOG_WARNING("Failed to scan basePath for retention cleanup of channel '{}': {}", channelName, e.what());
+            return;
+        }
+
+        ino_t activeEnd {};
+        if (!statInode(latestLink, activeEnd))
+        {
+            LOG_WARNING("Cannot stat latestLink '{}' for channel '{}' after scan; aborting retention cleanup to avoid "
+                        "deleting the active file with stale path information",
+                        latestLink.string(),
+                        channelName);
+            return;
+        }
+
+        if (activeStart == activeEnd)
+        {
+            stableSnapshot = true;
+            break;
+        }
+
+        LOG_DEBUG("Retention cleanup for channel '{}': active file changed while scanning '{}'; retrying snapshot",
+                  channelName,
+                  basePath.string());
+    }
+
+    if (!stableSnapshot)
+    {
+        LOG_DEBUG("Retention cleanup for channel '{}': proceeding with best-effort snapshot after active file changed "
+                  "during scan",
+                  channelName);
+    }
+
+    if (rotatedFiles.empty())
+    {
+        return;
+    }
+
+    std::sort(rotatedFiles.begin(), rotatedFiles.end());
+
+    enum class DeleteResult
+    {
+        Deleted,
+        Skipped,
+        Abort
+    };
+
+    auto tryDeleteFile = [&](FileInfo& file) -> DeleteResult
+    {
+        if (!file.valid)
+        {
+            return DeleteResult::Skipped;
+        }
+
+        ino_t activeNow {};
+        if (!statInode(latestLink, activeNow))
+        {
+            LOG_WARNING("Cannot stat latestLink '{}' for channel '{}'; aborting retention cleanup before deleting "
+                        "'{}' to avoid deleting the active file",
+                        latestLink.string(),
+                        channelName,
+                        file.path.string());
+            return DeleteResult::Abort;
+        }
+
+        ino_t candidateNow {};
+        if (!statInode(file.path, candidateNow))
+        {
+            file.valid = false;
+            return DeleteResult::Skipped;
+        }
+
+        if (candidateNow != file.inode)
+        {
+            LOG_DEBUG("Retention cleanup for channel '{}': skipping '{}' because its identity changed during cleanup",
+                      channelName,
+                      file.path.string());
+            file.valid = false;
+            return DeleteResult::Skipped;
+        }
+
+        if (candidateNow == activeNow)
+        {
+            LOG_DEBUG("Retention cleanup for channel '{}': skipping '{}' because it is now the active file",
+                      channelName,
+                      file.path.string());
+            file.valid = false;
+            return DeleteResult::Skipped;
+        }
+
+        // Revalidate that the file hasn't become in-flight between scan and deletion
+        if (inFlightFiles && inFlightFiles->contains(file.path))
+        {
+            LOG_DEBUG("Retention cleanup for channel '{}': skipping '{}' because it is now in-flight",
+                      channelName,
+                      file.path.string());
+            file.valid = false;
+            return DeleteResult::Skipped;
+        }
+
+        std::error_code ec;
+        if (std::filesystem::remove(file.path, ec) && !ec)
+        {
+            file.valid = false;
+            return DeleteResult::Deleted;
+        }
+
+        return DeleteResult::Skipped;
+    };
+
+    size_t filesDeleted = 0;
+
+    if (maxAccumulatedSize > 0 && totalSize > static_cast<std::int64_t>(maxAccumulatedSize))
+    {
+        const auto sizeToFree = totalSize - static_cast<std::int64_t>(maxAccumulatedSize);
+        std::int64_t freedSize = 0;
+
+        for (auto& file : rotatedFiles)
+        {
+            if (freedSize >= sizeToFree)
+            {
+                break;
+            }
+
+            const auto result = tryDeleteFile(file);
+            if (result == DeleteResult::Abort)
+            {
+                return;
+            }
+
+            if (result == DeleteResult::Deleted)
+            {
+                freedSize += file.size;
+                totalSize -= file.size;
+                ++filesDeleted;
+                LOG_DEBUG("Retention (size): deleted '{}' for channel '{}'", file.path.string(), channelName);
+            }
+        }
+    }
+
+    if (maxFiles > 0)
+    {
+        const size_t remainingFiles = countValidFiles(rotatedFiles);
+        if (remainingFiles > maxFiles)
+        {
+            const size_t filesToDelete = remainingFiles - maxFiles;
+            size_t deletedCount = 0;
+
+            for (auto& file : rotatedFiles)
+            {
+                if (deletedCount >= filesToDelete)
+                {
+                    break;
+                }
+
+                const auto result = tryDeleteFile(file);
+                if (result == DeleteResult::Abort)
+                {
+                    return;
+                }
+
+                if (result == DeleteResult::Deleted)
+                {
+                    ++deletedCount;
+                    ++filesDeleted;
+                    LOG_DEBUG("Retention (count): deleted '{}' for channel '{}'", file.path.string(), channelName);
+                }
+            }
+        }
+    }
+
+    if (filesDeleted > 0)
+    {
+        LOG_INFO("Retention cleanup for channel '{}': deleted {} file(s)", channelName, filesDeleted);
+    }
 }
 
 std::optional<std::filesystem::path> ChannelHandler::getPreviousCurrentFilePathFromStore() const
