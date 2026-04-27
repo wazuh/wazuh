@@ -5,6 +5,7 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - "src/engine/**"
+      - ".github/workflows/5_testunit_engine.yml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
