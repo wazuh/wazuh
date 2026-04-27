@@ -30,7 +30,7 @@ jobs:
 
       - name: Detect file changes
         if: steps.check_skip.outputs.skip != 'true'
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -53,3 +53,4 @@ jobs:
             echo "::error::CURRENT_ORM_VERSION was not bumped in orm.py."
             exit 1
           fi
+
