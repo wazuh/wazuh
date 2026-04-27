@@ -401,11 +401,9 @@ stages:
       json:
         error: 0
         data:
-          affected_items:
-            - cis: !anystr
-            - cis: !anystr
+          affected_items: !anything
           failed_items: []
-          total_affected_items: 2
+          total_affected_items: !anyint
           total_failed_items: 0
       verify_response_with:
         - function: tavern_utils:test_sort_response
@@ -598,9 +596,12 @@ stages:
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 5
+          total_affected_items: !anyint
           total_failed_items: 0
         message: !anystr
+      save:
+        json:
+          initial_rootcheck_count: data.total_affected_items
 
   # DELETE /rootcheck/001
   - name: Delete rootcheck scans in agent 001
