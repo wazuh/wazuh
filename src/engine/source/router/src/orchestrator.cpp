@@ -397,7 +397,7 @@ void Orchestrator::stop()
     m_testerWorker->stop();
 }
 
-void Orchestrator::cleanup()
+void Orchestrator::requestShutdown()
 {
     this->stop();
     m_isShutdown.store(true, std::memory_order_release);

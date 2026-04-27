@@ -137,10 +137,10 @@ public:
     void stop();
 
     /**
-     * @brief Clean up the router
+     * @brief Request a fast shutdown: stop workers and release all resources.
      * @warning After calling this method, the Orchestrator instance should not be used again.
      */
-    void cleanup();
+    void requestShutdown();
 
     /**************************************************************************
      * IRouterAPI
