@@ -28,6 +28,11 @@ on:
         default: false
         required: false
         type: boolean
+      revert:
+        description: "Revert the bump instead of applying it"
+        default: false
+        required: false
+        type: boolean
       id:
         description: "Optional identifier for the run"
         required: false
@@ -95,10 +100,16 @@ jobs:
 
           issue_number=$(echo "${{ inputs.issue-link }}" | awk -F'/' '{print $NF}')
 
-          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_OUTPUT
-          branch_name=enhancement/wqa${issue_number}-bump-${{ github.ref_name }}
-          script_params=$script_params
-          EOF
+          if [[ "${{ inputs.revert }}" == "true" ]]; then
+            BRANCH_NAME="enhancement/wqa${issue_number}-revert-bump-${{ github.ref_name }}"
+            echo "pr_title=Revert bump ${{ github.ref_name }} branch" >> $GITHUB_OUTPUT
+          else
+            BRANCH_NAME="enhancement/wqa${issue_number}-bump-${{ github.ref_name }}"
+            echo "pr_title=Bump ${{ github.ref_name }} branch" >> $GITHUB_OUTPUT
+          fi
+
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "script_params=${script_params}" >> $GITHUB_OUTPUT
 
       - name: Create and switch to bump branch
         run: |
@@ -128,7 +139,7 @@ jobs:
         run: |
           gh auth setup-git
           PR_URL=$(gh pr create \
-            --title "Bump ${{ github.ref_name }} branch" \
+            --title "${{ steps.vars.outputs.pr_title }}" \
             --body "Issue: ${{ inputs.issue-link }}" \
             --base ${{ github.ref_name }} \
             --head ${{ steps.vars.outputs.branch_name }})
