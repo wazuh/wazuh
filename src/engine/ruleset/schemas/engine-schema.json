@@ -5520,9 +5520,6 @@
     "vulnerability.published_at": {
       "type": "date"
     },
-    "vulnerability.reference": {
-      "type": "keyword"
-    },
     "vulnerability.report_id": {
       "type": "keyword"
     },

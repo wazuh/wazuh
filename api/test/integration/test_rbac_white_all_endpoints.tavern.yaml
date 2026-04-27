@@ -15,7 +15,7 @@ stages:
   - name: Try to remove all agents (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: DELETE
       params:
         agents_list: all
@@ -35,7 +35,7 @@ stages:
   - name: Try to remove one agent (specific)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: DELETE
       params:
         agents_list: '001'
@@ -54,7 +54,7 @@ stages:
   - name: Try to get all agents (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -64,7 +64,7 @@ stages:
   - name: Try to get one agent (specific)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: GET
       params:
         agents_list: '001'
@@ -80,7 +80,7 @@ stages:
   - name: Try to create a new agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -97,7 +97,7 @@ stages:
   - name: Try to get daemon stats from agent 001
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/daemons/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -112,7 +112,7 @@ stages:
   - name: Try to get client configuration from agent component
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/config/agent/client"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/config/agent/client"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -126,7 +126,7 @@ stages:
   - name: Try to remove agent 005 from all groups
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/005/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/005/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -140,7 +140,7 @@ stages:
   - name: Try to remove agent 001 from group1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/group1"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/group/group1"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -154,7 +154,7 @@ stages:
   - name: Try to remove agent 005 from all groups
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/group1"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/group/group1"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -168,7 +168,7 @@ stages:
   - name: Try get agent's 001 key
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/key"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/key"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -182,7 +182,7 @@ stages:
   - name: Try to restart agent 001
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -196,7 +196,7 @@ stages:
   - name: Try to upgrade all agents (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -209,7 +209,7 @@ stages:
   - name: Try to upgrade agent 008
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -225,7 +225,7 @@ stages:
   - name: Try to customly upgrade all agents (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -238,7 +238,7 @@ stages:
   - name: Try to customly upgrade agent 008 using default installer
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -255,7 +255,7 @@ stages:
   - name: Try to get all upgrade results (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_result"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -265,7 +265,7 @@ stages:
   - name: Try to get agent 007 upgrade result (specific)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_result"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -281,7 +281,7 @@ stages:
   - name: Try to remove agents 006 and 010 from group2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -298,7 +298,7 @@ stages:
   - name: Try to assign all agents to group2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -314,7 +314,7 @@ stages:
   - name: Try to restart agents from group2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group/group2/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group/group2/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -328,7 +328,7 @@ stages:
   - name: Try to create a new agent specifying id, ip, key and name
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/insert"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/insert"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -347,7 +347,7 @@ stages:
   - name: Try to create new agent specifying its name
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/insert/quick"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/insert/quick"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -363,7 +363,7 @@ stages:
   - name: Try to get agents without group
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/no_group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/no_group"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -377,7 +377,7 @@ stages:
   - name: Try to restart all agents belonging to a node (worker1)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/node/worker1/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/node/worker1/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -391,7 +391,7 @@ stages:
   - name: Try to get the outdated agents
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/outdated"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/outdated"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -405,7 +405,7 @@ stages:
   - name: Try to reconnect all agents (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reconnect"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -415,7 +415,7 @@ stages:
   - name: Try to reconnect agent 001 (specific)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reconnect"
       method: PUT
       params:
         agents_list: '001'
@@ -431,7 +431,7 @@ stages:
   - name: Try to restart all agents (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -441,7 +441,7 @@ stages:
   - name: Try to restart agent 001 (specific)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/restart"
       method: PUT
       params:
         agents_list: '001'
@@ -457,7 +457,7 @@ stages:
   - name: Try to return all different combinations that agents have
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/stats/distinct"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -473,7 +473,7 @@ stages:
  - name: Try to get the agents summary
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/agents/summary"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/summary"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -497,7 +497,7 @@ stages:
   - name: Try to get the summary/os of all agents
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/summary/os"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/summary/os"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -511,7 +511,7 @@ stages:
   - name: Try to get the agents status summary
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/summary/status"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/summary/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -538,7 +538,7 @@ stages:
   - name: Try to get cluster node info
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/local/info"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/local/info"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -552,7 +552,7 @@ stages:
   - name: Try to get cluster nodes
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/nodes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -566,7 +566,7 @@ stages:
   - name: Try to get cluster healtcheck
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/healthcheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/healthcheck"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -580,7 +580,7 @@ stages:
   - name: Try to get cluster config
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/local/config"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/local/config"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -594,7 +594,7 @@ stages:
   - name: Try to get cluster status
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/status"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -608,7 +608,7 @@ stages:
   - name: Try to get all nodes api config (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/api/config"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -619,7 +619,7 @@ stages:
   - name: Try to get master-node api config (specific)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/api/config"
       method: GET
       params:
         nodes_list: master-node
@@ -635,7 +635,7 @@ stages:
   - name: Try to get status (worker1)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/status"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -649,7 +649,7 @@ stages:
   - name: Try to get info (worker1)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/info"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/info"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -663,7 +663,7 @@ stages:
   - name: Try to get configuration (worker1)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -677,7 +677,7 @@ stages:
   - name: Try to update configuration (worker1)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/configuration"
       method: PUT
       data: "{valid_wazuh_conf:s}"
       headers:
@@ -693,7 +693,7 @@ stages:
   - name: Try to get all daemons' statistics from a specified node (worker1)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/daemons/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -707,7 +707,7 @@ stages:
   - name: Try to get logs (worker1)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/logs"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -721,7 +721,7 @@ stages:
   - name: Try to get summary logs (worker1)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/logs/summary"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/logs/summary"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -735,7 +735,7 @@ stages:
   - name: Try to restart all nodes (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -745,7 +745,7 @@ stages:
   - name: Try to restart master-node node (specific)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/restart"
       method: PUT
       params:
         nodes_list: master-node
@@ -761,7 +761,7 @@ stages:
   - name: Try to request cluster validation (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/configuration/validation"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -774,7 +774,7 @@ stages:
   - name: Try to request master-node validation (specific)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/configuration/validation"
       method: GET
       params:
         nodes_list: master-node
@@ -792,7 +792,7 @@ stages:
   - name: Try to get auth/auth configuration (worker1)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/auth/auth"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/configuration/auth/auth"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -806,7 +806,7 @@ stages:
   - name: Try to delete all groups (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups"
       method: DELETE
       params:
         groups_list: all
@@ -818,7 +818,7 @@ stages:
   - name: Try to delete group3 (specific)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups"
       method: DELETE
       params:
         groups_list: group3
@@ -834,7 +834,7 @@ stages:
   - name: Try to get all groups (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -844,7 +844,7 @@ stages:
   - name: Try to get group1 (specific)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups"
       method: GET
       params:
         groups_list: group1
@@ -860,7 +860,7 @@ stages:
   - name: Try to create new group
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups"
       method: POST
       json:
         group_id: "group5"
@@ -876,7 +876,7 @@ stages:
   - name: Try to get agents in group1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/group1/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -890,7 +890,7 @@ stages:
   - name: Try to get group1 configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/group1/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -904,7 +904,7 @@ stages:
   - name: Try to update group1 configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/group1/configuration"
       method: PUT
       data:
         "{file_xml:s}"
@@ -921,7 +921,7 @@ stages:
   - name: Try to get one file of a group
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/agent.conf"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/default/files/agent.conf"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -935,7 +935,7 @@ stages:
   - name: Try to get group files
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/default/files"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/default/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -949,7 +949,7 @@ stages:
   - name: Try to get agents overview
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/overview/agents"
+      url: "{protocol:s}://{host:s}:{master_port:d}/overview/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -981,7 +981,7 @@ stages:
   - name: Try to revoke all JWT tokens
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/revoke"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/revoke"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -995,7 +995,7 @@ stages:
   - name: Try to get API users (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1005,7 +1005,7 @@ stages:
   - name: Try to get API user (specific)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1021,7 +1021,7 @@ stages:
   - name: Try to add API user
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users"
       method: POST
       json:
         username: newUser
@@ -1038,7 +1038,7 @@ stages:
   - name: Try to change the allow_run_as field of a user
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/1/run_as"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/1/run_as"
       method: PUT
       params:
         allow_run_as: false
@@ -1054,7 +1054,7 @@ stages:
   - name: Try to delete API users (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users"
       method: DELETE
       params:
         user_ids: all
@@ -1066,7 +1066,7 @@ stages:
   - name: Try to delete API user (specific)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users"
       method: DELETE
       params:
         user_ids: 002
@@ -1082,7 +1082,7 @@ stages:
   - name: Try to update API user
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/1"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/1"
       method: PUT
       json:
         password: stringB1!
@@ -1098,7 +1098,7 @@ stages:
   - name: Try to get API roles (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1108,7 +1108,7 @@ stages:
   - name: Try to get API role (specific)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles"
       method: GET
       params:
         role_ids: 1
@@ -1124,7 +1124,7 @@ stages:
   - name: Try to add API role
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles"
       method: POST
       json:
         name: test_role
@@ -1140,7 +1140,7 @@ stages:
   - name: Try to delete API roles (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles"
       method: DELETE
       params:
         role_ids: all
@@ -1153,7 +1153,7 @@ stages:
   - name: Try to delete API role (specific)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles"
       method: DELETE
       params:
         role_ids: 8
@@ -1169,7 +1169,7 @@ stages:
   - name: Try to update API role
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/8"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles/8"
       method: PUT
       json:
         name: new_name
@@ -1185,7 +1185,7 @@ stages:
   - name: Try to get API rules (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/rules"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1195,7 +1195,7 @@ stages:
   - name: Try to get API rule (specific)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/rules"
       method: GET
       params:
         rule_ids: 1
@@ -1211,7 +1211,7 @@ stages:
   - name: Try to add API rule
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/rules"
       method: POST
       json:
         name: new_rule
@@ -1230,7 +1230,7 @@ stages:
   - name: Try to update API rule
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/rules/1"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/rules/1"
       method: PUT
       json:
         name: changed_name
@@ -1249,7 +1249,7 @@ stages:
   - name: Try to delete API rules (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/rules"
       method: DELETE
       params:
         rule_ids: all
@@ -1261,7 +1261,7 @@ stages:
   - name: Try to delete API rule (specific)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/rules"
       method: DELETE
       params:
         rule_ids: 1
@@ -1277,7 +1277,7 @@ stages:
   - name: Try to get API policies (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/policies"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1287,7 +1287,7 @@ stages:
   - name: Try to get API policy (specific)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/policies"
       method: GET
       params:
         policy_ids: 1
@@ -1303,7 +1303,7 @@ stages:
   - name: Try to delete API policy (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/policies"
       method: DELETE
       params:
         policy_ids: all
@@ -1315,7 +1315,7 @@ stages:
   - name: Try to delete API policy (specific)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/policies"
       method: DELETE
       params:
         policy_ids: 1
@@ -1331,7 +1331,7 @@ stages:
   - name: Try to add API policy
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/policies"
       method: POST
       json:
         name: "test_i2"
@@ -1355,7 +1355,7 @@ stages:
   - name: Try to update API policy
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies/1"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/policies/1"
       method: PUT
       json:
         name: "test_i3"
@@ -1379,7 +1379,7 @@ stages:
   - name: Try to add roles to user
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/99/roles"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/99/roles"
       method: POST
       params:
         role_ids: 1
@@ -1395,7 +1395,7 @@ stages:
   - name: Try to remove roles from user (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/99/roles"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/99/roles"
       method: DELETE
       params:
         role_ids: all
@@ -1407,7 +1407,7 @@ stages:
   - name: Try to remove role from user (specific)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/99/roles"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/99/roles"
       method: DELETE
       params:
         role_ids: 1
@@ -1423,7 +1423,7 @@ stages:
   - name: Try to add policies to role
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/1/policies"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles/1/policies"
       method: POST
       params:
         policy_ids: 1
@@ -1439,7 +1439,7 @@ stages:
   - name: Try to add rules to role
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/1/rules"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles/1/rules"
       method: POST
       params:
         rule_ids: 1
@@ -1455,7 +1455,7 @@ stages:
   - name: Try to remove policies from role (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/1/policies"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles/1/policies"
       method: DELETE
       params:
         policy_ids: all
@@ -1467,7 +1467,7 @@ stages:
   - name: Try to remove policy from role (specific)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/1/policies"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles/1/policies"
       method: DELETE
       params:
         policy_ids: 1
@@ -1483,7 +1483,7 @@ stages:
   - name: Try to remove rules from role (generic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/1/rules"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles/1/rules"
       method: DELETE
       params:
         rule_ids: all
@@ -1495,7 +1495,7 @@ stages:
   - name: Try to remove rule from role (specific)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles/1/rules"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles/1/rules"
       method: DELETE
       params:
         rule_ids: 1
@@ -1511,7 +1511,7 @@ stages:
   - name: Try to get API security config
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/config"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/config"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1525,7 +1525,7 @@ stages:
   - name: Try to update API security config
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/config"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/config"
       method: PUT
       json:
         auth_token_exp_timeout: 700
@@ -1541,7 +1541,7 @@ stages:
   - name: Try to restore default API security config
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/config"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/config"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1555,7 +1555,7 @@ stages:
   - name: Try to get tasks status
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/tasks/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

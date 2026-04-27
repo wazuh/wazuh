@@ -11,7 +11,7 @@
 #include "logcollector.h"
 #include "sha1_op.h"
 
-#define MAX_CACHE 16
+#define MAX_CACHE 64
 #define MAX_HEADER 64
 
 /* Compile message from cache and send through queue */

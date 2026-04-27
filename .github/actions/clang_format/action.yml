@@ -13,8 +13,58 @@ inputs:
 runs:
   using: "composite"
   steps:
+      - name: Resolve Wazuh clang-format
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          WAZUH_CLANG_FORMAT_URL="https://packages.wazuh.com/utils/clang-format/clang-format.tar.gz"
+          RUNNER_TEMP_DIR="${RUNNER_TEMP:-/tmp}"
+          TOOL_ROOT="${RUNNER_TEMP_DIR}/wazuh-clang-format"
+          TOOL_BIN="${TOOL_ROOT}/bin/clang-format"
+
+          echo "USE_WAZUH_CLANG_FORMAT=false" >> "${GITHUB_ENV}"
+          echo "CLANG_FORMAT_BIN=clang-format" >> "${GITHUB_ENV}"
+
+          if [ "$(uname -s)" != "Linux" ] || { [ "$(uname -m)" != "x86_64" ] && [ "$(uname -m)" != "amd64" ]; }; then
+            echo "::warning::Wazuh clang-format package is only configured for Linux amd64. Falling back to runner package."
+            exit 0
+          fi
+
+          if [ -x "${TOOL_BIN}" ]; then
+            echo "USE_WAZUH_CLANG_FORMAT=true" >> "${GITHUB_ENV}"
+            echo "CLANG_FORMAT_BIN=${TOOL_BIN}" >> "${GITHUB_ENV}"
+            "${TOOL_BIN}" --version
+            exit 0
+          fi
+
+          TMP_DIR="$(mktemp -d)"
+          trap 'rm -rf "${TMP_DIR}"' EXIT
+
+          echo "Attempting to download clang-format from ${WAZUH_CLANG_FORMAT_URL}"
+
+          if ! curl -fsSL "${WAZUH_CLANG_FORMAT_URL}" -o "${TMP_DIR}/clang-format.tar.gz"; then
+            echo "::warning::Unable to download clang-format from ${WAZUH_CLANG_FORMAT_URL}. Falling back to runner package."
+            exit 0
+          fi
+
+          mkdir -p "${TMP_DIR}/extract" "${TOOL_ROOT}/bin"
+          tar -xzf "${TMP_DIR}/clang-format.tar.gz" -C "${TMP_DIR}/extract"
+
+          FOUND_BIN="$(find "${TMP_DIR}/extract" -type f \( -name "clang-format" -o -name "clang-format-*" \) | head -n 1)"
+
+          if [ -z "${FOUND_BIN}" ]; then
+            echo "::warning::Downloaded clang-format package from ${WAZUH_CLANG_FORMAT_URL} but no clang-format executable was found. Falling back to runner package."
+            exit 0
+          fi
+
+          install -Dm755 "${FOUND_BIN}" "${TOOL_BIN}"
+          echo "USE_WAZUH_CLANG_FORMAT=true" >> "${GITHUB_ENV}"
+          echo "CLANG_FORMAT_BIN=${TOOL_BIN}" >> "${GITHUB_ENV}"
+          "${TOOL_BIN}" --version
+
       - name: Dependencies for local execution
-        if: env.ACT # Only run for local execution
+        if: env.ACT && env.USE_WAZUH_CLANG_FORMAT != 'true'
         shell: bash
         run: |
           wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
@@ -22,8 +72,9 @@ runs:
           sudo apt update
 
       # Dependencies for testing:
-      # - clang-format (system default, v18 on Ubuntu 24.04)
+      # - clang-format from the runner package manager
       - name: Install dependencies
+        if: env.USE_WAZUH_CLANG_FORMAT != 'true'
         uses: awalsh128/cache-apt-pkgs-action@v1.4.3
         with:
           packages: clang-format
@@ -32,11 +83,12 @@ runs:
       - name: Check Coding style
         shell: bash
         run: |
+          set -euo pipefail
 
           readonly ERRORS_FILE=${{ inputs.path }}/clang_format_errors.txt
           mapfile -t SOURCE_FILES < <(find "${{ inputs.path }}" -type f \( -name "*.cpp" -o -name "*.hpp" \))
 
-          clang-format --dry-run -i "${SOURCE_FILES[@]}" 2> "${ERRORS_FILE}"
+          "${CLANG_FORMAT_BIN}" --dry-run -i "${SOURCE_FILES[@]}" 2> "${ERRORS_FILE}"
 
           if [ -s "${ERRORS_FILE}" ]; then
             echo "---------------------------------"

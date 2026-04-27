@@ -27,7 +27,7 @@ from api import configuration
 from api.alogging import custom_logging
 from api.authentication import generate_keypair, JWT_ALGORITHM
 from api.api_exception import BlockedIPException, MaxRequestsException, ExpectFailedException
-from api.configuration import default_api_configuration
+from api.controllers.util import build_recursion_error_response
 
 # Variable used to specify an unknown user
 UNKNOWN_USER_STRING = "unknown_user"
@@ -165,9 +165,12 @@ def check_rate_limit(
 
     Return
     ------
-        0 if the counter is greater than max_requests
+        0 if the request is allowed
         else error_code.
     """
+    if max_requests == 0:
+        return 0
+
     if not globals()[current_time_key]:
         globals()[current_time_key] = get_utc_now().timestamp()
 
@@ -241,6 +244,10 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
                 _ = await request.json()
             except json.decoder.JSONDecodeError:
                 pass
+            except RecursionError:
+                conn_resp = build_recursion_error_response(pretty=False)
+                return Response(content=conn_resp.body, status_code=conn_resp.status_code,
+                            media_type=conn_resp.content_type)
 
         response = await call_next(request)
         await access_log(ConnexionRequest.from_starlette_request(request), response, prev_time)
@@ -298,7 +305,7 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
             
             if 'Content-Length' in request.headers:
                 content_length = int(request.headers["Content-Length"])
-                max_upload_size = default_api_configuration["max_upload_size"]
+                max_upload_size = configuration.api_conf["max_upload_size"]
                 if content_length > max_upload_size:
                     raise ExpectFailedException(status=417, title="Expectation failed",
                                                 detail=f"Maximum content size limit ({max_upload_size}) exceeded "
@@ -306,4 +313,3 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
                 
         response = await call_next(request)
         return response
-    
