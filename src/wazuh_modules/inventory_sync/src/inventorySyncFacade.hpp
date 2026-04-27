@@ -1663,9 +1663,11 @@ public:
      *
      * @param timeout    Maximum wait time per attempt (forwarded to hasActiveSessionForModule).
      * @param maxRetries Retry count (forwarded to hasActiveSessionForModule).
+     * @return true  if at least one VDSync session was active.
      */
-    void waitForAllVDSyncSessions(std::chrono::seconds timeout, uint32_t maxRetries) const
+    bool waitForAllVDSyncSessions(std::chrono::seconds timeout, uint32_t maxRetries) const
     {
+        bool hadActiveSessions = false;
         while (true)
         {
             const auto vdSyncAgents =
@@ -1675,11 +1677,13 @@ public:
                 break;
             }
 
+            hadActiveSessions = true;
             for (const auto& agentId : vdSyncAgents)
             {
                 hasActiveSessionForModule(agentId, "syscollector_vd", timeout, maxRetries);
             }
         }
+        return hadActiveSessions;
     }
 
     /**
