@@ -288,11 +288,10 @@ void test_winevt_dec_systemNode_ok(void ** state) {
     os_calloc(2, sizeof(char *), channelNode->attributes);
     os_calloc(2, sizeof(char *), channelNode->values);
 
-    os_strdup("useridAttr", channelNode->attributes[0]);
-    os_strdup("UserID", channelNode->values[0]);
-    // TODO Fix this should be the attribute value
+    os_strdup("UserID", channelNode->attributes[0]);
+    os_strdup("S-1-5-18", channelNode->values[0]);
     expect_string(__wrap_cJSON_AddStringToObject, name, "userID");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "UserID");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "S-1-5-18");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *) 1);
 
     // Security node
@@ -302,11 +301,11 @@ void test_winevt_dec_systemNode_ok(void ** state) {
     os_calloc(2, sizeof(char *), securityNode->attributes);
     os_calloc(2, sizeof(char *), securityNode->values);
 
-    os_strdup("useridAttr", securityNode->attributes[0]);
-    os_strdup("UserID", securityNode->values[0]);
+    os_strdup("UserID", securityNode->attributes[0]);
+    os_strdup("S-1-5-18", securityNode->values[0]);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, "securityUserID");
-    expect_string(__wrap_cJSON_AddStringToObject, string, "UserID");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "S-1-5-18");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *) 1);
 
     // Level
