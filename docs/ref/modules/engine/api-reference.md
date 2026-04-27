@@ -9,8 +9,3 @@ Interactive ReDoc pages:
 
 - [Public API ReDoc](public-api-reference.html)
 - [Private API ReDoc](private-api-reference.html)
-
-OpenAPI source files:
-
-- `public-api.yaml`
-- `private-api.yaml`
