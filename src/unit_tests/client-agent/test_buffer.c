@@ -163,11 +163,6 @@ void test_buffer_append_text_size_excludes_null_terminator(void **state)
     i = 0;
     j = 0;
 
-    /* Legacy text path (msg_len < 0): the manager must receive exactly
-     * strlen(msg) bytes on the wire, without a trailing '\0'. Regression
-     * guard for issue #35474, where the stored size was strlen + 1 and
-     * the terminator leaked into the encrypted frame, breaking downstream
-     * decoders that parsed event.original. */
     const char *text_event = "1:/var/log/syslog:Apr 20 hello";
 
     expect_function_call(__wrap_getDefine_Int);
@@ -211,9 +206,6 @@ void test_buffer_append_binary_preserves_size(void **state)
     i = 0;
     j = 0;
 
-    /* Binary payload with an embedded NUL in the middle and another at the tail.
-     * The explicit-length path (msg_len >= 0) must store the exact byte count
-     * without truncating at the first NUL or silently adding a terminator. */
     const char payload[] = { 's', 'y', 's', 'c', 'h', 'e', 'c', 'k',
                              '\0', '{', '"', 'x', '"', ':', '1', '}', '\0' };
     const size_t payload_len = sizeof(payload);

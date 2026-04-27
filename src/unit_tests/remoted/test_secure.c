@@ -627,10 +627,6 @@ void test_HandleSecureMessage_shutdown_message(void** state)
     w_ctrl_msg_data_t * node = indexed_queue_pop(control_msg_queue);
     assert_non_null(node);
     assert_string_equal(node->message, "agent shutdown ");
-    // The copy is sized tmp_msg_length + 1 (15 + 1 = 16), so node->message[15]
-    // is the sentinel '\0' written by os_calloc. If a regression shrinks the
-    // allocation back to tmp_msg_length, this access becomes a one-byte
-    // over-read that AddressSanitizer will flag.
     assert_int_equal('\0', node->message[strlen("agent shutdown ")]);
     assert_int_equal(node->key->keyid, 1);
     assert_int_equal(node->key->sock, 1);
@@ -2601,13 +2597,6 @@ void test_HandleSecureMessage_discard_dbsync_message(void** state)
     batch_queue_free(events_queue);
 }
 
-/* Issue #35474 inverse-case guard. A 5.x-shaped event without a trailing
- * NUL reaches HandleSecureMessage; this checker is invoked via expect_check
- * while cmocka validates the data argument to batch_queue_enqueue_ex. It
- * reads e->raw[e->len] before HandleSecureMessage returns (while the
- * allocation is still live) — under AddressSanitizer any regression that
- * shrinks the event allocation below e->len + 1 shows up as a
- * heap-buffer-overflow on that read. */
 static int check_evt_item_sentinel(const LargestIntegralType value,
                                    const LargestIntegralType check_value_data) {
     (void)check_value_data;
@@ -2623,9 +2612,6 @@ void test_HandleSecureMessage_event_without_trailing_null(void** state)
     const char *payload = "Apr 23 12:34:56 host dpkg[1]: status installed foo:amd64 1.0.0";
     size_t payload_len = strlen(payload);
 
-    /* Fill the stack buffer with a non-NUL sentinel so that if the
-     * production code ever relied on the byte at buffer[payload_len]
-     * being '\0', the test would catch it. */
     char buffer[OS_MAXSTR + 1];
     memset(buffer, 0xAA, sizeof(buffer));
     memcpy(buffer, payload, payload_len);
@@ -2665,8 +2651,6 @@ void test_HandleSecureMessage_event_without_trailing_null(void** state)
     will_return(__wrap_OS_IsAllowedIP, 1);
 
     expect_value(__wrap_ReadSecMSG, keys, &keys);
-    /* The test buffer is intentionally filled with a non-NUL sentinel, so
-     * it is not a valid C string. Skip string-matching on it. */
     expect_any(__wrap_ReadSecMSG, buffer);
     expect_value(__wrap_ReadSecMSG, id, 1);
     expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
@@ -2676,7 +2660,6 @@ void test_HandleSecureMessage_event_without_trailing_null(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    /* Bypass router_message_forward so the event path runs. */
     router_forwarding_disabled = 1;
 
     expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
@@ -2698,13 +2681,6 @@ void test_HandleSecureMessage_event_without_trailing_null(void** state)
     batch_queue_free(events_queue);
 }
 
-/* Issue #35474 positive guard. A legacy Wazuh 5.x agent (before the
- * buffer_append fix) delivers a text event whose msg_length includes the
- * trailing '\0'. HandleSecureMessage must strip the NUL so the payload
- * forwarded to analysisd does not carry it. Asserts e->len equals the
- * true payload length and the last stored byte is the payload's final
- * character (not '\0'), plus verifies the mdebug1 log fires with the
- * exact stripped count. */
 static int check_evt_item_trimmed(const LargestIntegralType value,
                                   const LargestIntegralType check_value_data) {
     (void)check_value_data;
@@ -2775,7 +2751,6 @@ void test_HandleSecureMessage_event_with_trailing_null(void** state)
     expect_string(__wrap__mdebug1, formatted_msg,
                   "Stripped 1 trailing null byte(s) from event payload of agent '001'");
 
-    /* Bypass router_message_forward so the event path runs. */
     router_forwarding_disabled = 1;
 
     expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
@@ -2787,6 +2762,105 @@ void test_HandleSecureMessage_event_with_trailing_null(void** state)
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
     router_forwarding_disabled = 0;
+
+    os_free(key->id);
+    os_free(key->name);
+    os_free(key->ip);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+    batch_queue_free(events_queue);
+}
+
+static const unsigned char g_expected_flatbuf_with_trailing_zeros[] = {
+    0xAB, 0xCD, 0x12, 0x34, 0x56, 0x78,
+    0x00, 0x00, 0x00
+};
+static const size_t g_expected_flatbuf_len =
+    sizeof(g_expected_flatbuf_with_trailing_zeros);
+
+static int check_flatbuf_unchanged(const LargestIntegralType value,
+                                   const LargestIntegralType check_value_data) {
+    (void)check_value_data;
+    const unsigned char *got = (const unsigned char *)(uintptr_t)value;
+    assert_memory_equal(got,
+                        g_expected_flatbuf_with_trailing_zeros,
+                        g_expected_flatbuf_len);
+    return 1;
+}
+
+void test_HandleSecureMessage_inventory_sync_preserves_trailing_null(void** state)
+{
+    const char prefix[] = "s:fim:";
+    const size_t prefix_len = sizeof(prefix) - 1; /* exclude the C-string NUL */
+
+    char buffer[OS_MAXSTR + 1];
+    memset(buffer, 0xAA, sizeof(buffer));
+    memcpy(buffer, prefix, prefix_len);
+    memcpy(buffer + prefix_len,
+           g_expected_flatbuf_with_trailing_zeros,
+           g_expected_flatbuf_len);
+    size_t total_len = prefix_len + g_expected_flatbuf_len;
+
+    message_t message = {.buffer = buffer, .size = total_len, .sock = 1};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+    w_rr_queue_t * events_queue = batch_queue_init(10);
+    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+
+    keyentry** keyentries;
+    os_calloc(2, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+    os_calloc(1, sizeof(os_ip), key->ip);
+
+    key->id = strdup("001");
+    key->sock = 1;
+    key->keyid = 1;
+    key->rcvd = 0;
+    key->ip->ip = "127.0.0.1";
+    key->name = strdup("name");
+
+    keys.keyentries[1] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 1);
+
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_any(__wrap_ReadSecMSG, buffer);
+    expect_value(__wrap_ReadSecMSG, id, 1);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, total_len);
+    will_return(__wrap_ReadSecMSG, buffer);
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_function_call(__wrap_key_unlock);
+
+    ROUTER_PROVIDER_HANDLE saved_handle = router_sync_handle;
+    router_sync_handle = (ROUTER_PROVIDER_HANDLE)0xDEADBEEF;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
+
+    expect_check(__wrap_router_provider_send_sync, message,
+                 check_flatbuf_unchanged, NULL);
+    expect_value(__wrap_router_provider_send_sync, message_size,
+                 g_expected_flatbuf_len);
+    expect_string(__wrap_router_provider_send_sync, authenticated_agent_id, "001");
+    will_return(__wrap_router_provider_send_sync, 0);
+
+    HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    router_sync_handle = saved_handle;
 
     os_free(key->id);
     os_free(key->name);
@@ -3167,6 +3241,7 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_discard_dbsync_message),
         cmocka_unit_test(test_HandleSecureMessage_event_without_trailing_null),
         cmocka_unit_test(test_HandleSecureMessage_event_with_trailing_null),
+        cmocka_unit_test(test_HandleSecureMessage_inventory_sync_preserves_trailing_null),
         // Tests handle_new_tcp_connection
         cmocka_unit_test_setup_teardown(test_handle_new_tcp_connection_success, setup_new_tcp, teardown_new_tcp),
         cmocka_unit_test_setup_teardown(test_handle_new_tcp_connection_wnotify_fail, setup_new_tcp, teardown_new_tcp),

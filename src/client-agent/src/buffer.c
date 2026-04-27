@@ -133,14 +133,10 @@ int buffer_append(const char *msg, ssize_t msg_len) {
     } else {
         size_t payload_size;
         size_t alloc_size;
-        if (msg_len < 0) { // Null-terminated text message.
-            // The wire-level size must exclude the terminator so the manager
-            // does not receive a trailing '\0' in event.original. Allocate
-            // payload_size + 1 so the stored copy stays safely null-terminated
-            // for any callers that briefly treat it as a C string.
+        if (msg_len < 0) {
             payload_size = strlen(msg);
             alloc_size = payload_size + 1;
-        } else { // Binary buffer with an explicit length.
+        } else {
             payload_size = (size_t)msg_len;
             alloc_size = payload_size;
         }
