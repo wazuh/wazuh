@@ -315,6 +315,7 @@ WIndexerConnector::~WIndexerConnector() = default;
 
 void WIndexerConnector::shutdown()
 {
+    LOG_INFO("[indexer-connector] Shutdown initiated");
     std::unique_lock lock(m_mutex);
     m_indexerConnectorAsync.reset();
 }

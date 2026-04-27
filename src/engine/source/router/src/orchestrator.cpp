@@ -400,8 +400,8 @@ void Orchestrator::stop()
 void Orchestrator::requestShutdown()
 {
     LOG_INFO("[Orchestrator] Shutdown requested, stopping workers...");
-    this->stop();
     m_isShutdown.store(true, std::memory_order_release);
+    this->stop();
     std::unique_lock lock {m_syncMutex};
     m_routerWorkers.clear();
     m_testerWorker.reset();
