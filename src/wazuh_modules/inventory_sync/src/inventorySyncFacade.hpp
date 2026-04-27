@@ -347,9 +347,9 @@ class InventorySyncFacadeImpl final
                         {
                             switch (startMsg->mode())
                             {
-                                case Wazuh::SyncSchema::Mode_ModuleFull:  return "ModuleFull";
+                                case Wazuh::SyncSchema::Mode_ModuleFull: return "ModuleFull";
                                 case Wazuh::SyncSchema::Mode_ModuleDelta: return "ModuleDelta";
-                                default:                                   return "Other";
+                                default: return "Other";
                             }
                         }();
                         logWarn(LOGGER_DEFAULT_TAG,
@@ -409,8 +409,7 @@ class InventorySyncFacadeImpl final
             else
             {
                 const auto& ctx = it->second.getContext();
-                if (ctx->option == Wazuh::SyncSchema::Option_VDSync ||
-                    ctx->option == Wazuh::SyncSchema::Option_VDFirst)
+                if (ctx->option == Wazuh::SyncSchema::Option_VDSync || ctx->option == Wazuh::SyncSchema::Option_VDFirst)
                 {
                     logWarn(LOGGER_DEFAULT_TAG,
                             "[VDSYNC] End message RECEIVED: agent=%s sessionId=%llu option=%s — "
@@ -682,9 +681,9 @@ public:
                     {
                         switch (res.context->mode)
                         {
-                            case Wazuh::SyncSchema::Mode_ModuleFull:  return "ModuleFull";
+                            case Wazuh::SyncSchema::Mode_ModuleFull: return "ModuleFull";
                             case Wazuh::SyncSchema::Mode_ModuleDelta: return "ModuleDelta";
-                            default:                                   return "Other";
+                            default: return "Other";
                         }
                     }();
                     logWarn(LOGGER_DEFAULT_TAG,
@@ -695,12 +694,15 @@ public:
                             res.context->option == Wazuh::SyncSchema::Option_VDSync ? "VDSync" : "VDFirst",
                             modeStr);
                 }
-                if (auto sessionIt = m_agentSessions.find(res.context->sessionId); sessionIt == m_agentSessions.end())
                 {
-                    logError(LOGGER_DEFAULT_TAG,
-                             "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                             res.context->sessionId);
-                    return;
+                    std::shared_lock sessionLock(m_agentSessionsMutex);
+                    if (m_agentSessions.find(res.context->sessionId) == m_agentSessions.end())
+                    {
+                        logError(LOGGER_DEFAULT_TAG,
+                                 "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                 res.context->sessionId);
+                        return;
+                    }
                 }
 
                 try
@@ -772,7 +774,7 @@ public:
                                 m_responseDispatcher->sendEndAck(
                                     Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
                                 // Delete Session.
-                                if (m_agentSessions.erase(ctx->sessionId) == 0)
+                                if (eraseSession(ctx->sessionId) == 0)
                                 {
                                     logDebug2(LOGGER_DEFAULT_TAG,
                                               "InventorySyncFacade::start: Session not found, sessionId: %llu",
@@ -814,7 +816,7 @@ public:
                                 m_responseDispatcher->sendEndAck(
                                     Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
                                 // Delete Session.
-                                if (m_agentSessions.erase(ctx->sessionId) == 0)
+                                if (eraseSession(ctx->sessionId) == 0)
                                 {
                                     logDebug2(LOGGER_DEFAULT_TAG,
                                               "InventorySyncFacade::start: Session not found, sessionId: %llu",
@@ -847,7 +849,7 @@ public:
                                 m_responseDispatcher->sendEndAck(
                                     Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
                                 // Delete Session.
-                                if (m_agentSessions.erase(ctx->sessionId) == 0)
+                                if (eraseSession(ctx->sessionId) == 0)
                                 {
                                     logDebug2(LOGGER_DEFAULT_TAG,
                                               "InventorySyncFacade::start: Session not found, sessionId: %llu",
@@ -894,7 +896,7 @@ public:
                                 m_responseDispatcher->sendEndAck(
                                     Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
                                 // Delete Session.
-                                if (m_agentSessions.erase(ctx->sessionId) == 0)
+                                if (eraseSession(ctx->sessionId) == 0)
                                 {
                                     logDebug2(LOGGER_DEFAULT_TAG,
                                               "InventorySyncFacade::start: Session not found, sessionId: %llu",
@@ -1012,7 +1014,7 @@ public:
                                                              res.context->moduleName);
                         }
 
-                        if (m_agentSessions.erase(res.context->sessionId) == 0)
+                        if (eraseSession(res.context->sessionId) == 0)
                         {
                             logDebug2(LOGGER_DEFAULT_TAG,
                                       "InventorySyncFacade::start: Session not found, sessionId: %llu",
@@ -1185,7 +1187,7 @@ public:
                                             res.context->agentId.c_str(),
                                             res.context->sessionId,
                                             res.context->option == Wazuh::SyncSchema::Option_VDSync ? "VDSync"
-                                                                                                   : "VDFirst");
+                                                                                                    : "VDFirst");
                                     VulnerabilityScannerFacade::instance().waitForFeedReady();
                                     logWarn(LOGGER_DEFAULT_TAG,
                                             "[VDSYNC] Wait END: agent=%s sessionId=%llu option=%s — "
@@ -1193,7 +1195,7 @@ public:
                                             res.context->agentId.c_str(),
                                             res.context->sessionId,
                                             res.context->option == Wazuh::SyncSchema::Option_VDSync ? "VDSync"
-                                                                                                   : "VDFirst");
+                                                                                                    : "VDFirst");
                                 }
 
                                 // Run scan only if the scanner was not stopped during the wait.
@@ -1239,11 +1241,11 @@ public:
                                                 res.context->agentId.c_str(),
                                                 res.context->sessionId,
                                                 res.context->option == Wazuh::SyncSchema::Option_VDSync ? "VDSync"
-                                                                                                       : "VDFirst");
+                                                                                                        : "VDFirst");
                                         try
                                         {
-                                            VulnerabilityScannerFacade::instance().runScanner(
-                                                *m_dataStore, *res.context);
+                                            VulnerabilityScannerFacade::instance().runScanner(*m_dataStore,
+                                                                                              *res.context);
                                             if (res.context->option == Wazuh::SyncSchema::Option_VDFirst)
                                             {
                                                 VulnerabilityScannerFacade::instance().registerFeedUpdateCoveredAgent(
@@ -1254,8 +1256,9 @@ public:
                                                     "runScanner() completed successfully.",
                                                     res.context->agentId.c_str(),
                                                     res.context->sessionId,
-                                                    res.context->option == Wazuh::SyncSchema::Option_VDSync ? "VDSync"
-                                                                                                           : "VDFirst");
+                                                    res.context->option == Wazuh::SyncSchema::Option_VDSync
+                                                        ? "VDSync"
+                                                        : "VDFirst");
                                         }
                                         catch (const std::exception& e)
                                         {
@@ -1269,15 +1272,14 @@ public:
                                                                              res.context->sessionId,
                                                                              res.context->moduleName);
                                             m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
-                                            m_agentSessions.erase(res.context->sessionId);
+                                            eraseSession(res.context->sessionId);
                                             logWarn(LOGGER_DEFAULT_TAG,
                                                     "[VDSYNC] Session END (scanner-exception): agent=%s "
                                                     "sessionId=%llu option=%s reason=%s",
                                                     res.context->agentId.c_str(),
                                                     res.context->sessionId,
-                                                    res.context->option == Wazuh::SyncSchema::Option_VDSync
-                                                        ? "VDSync"
-                                                        : "VDFirst",
+                                                    res.context->option == Wazuh::SyncSchema::Option_VDSync ? "VDSync"
+                                                                                                            : "VDFirst",
                                                     e.what());
                                             m_sessionCompletedCV.notify_all();
                                         }
@@ -1314,7 +1316,7 @@ public:
                                     // Delete data from database.
                                     m_dataStore->deleteByPrefix(std::to_string(ctx->sessionId));
                                     // Delete Session.
-                                    if (m_agentSessions.erase(ctx->sessionId) == 0)
+                                    if (eraseSession(ctx->sessionId) == 0)
                                     {
                                         logDebug2(LOGGER_DEFAULT_TAG,
                                                   "InventorySyncFacade::start: Session not found, sessionId: %llu",
@@ -1347,7 +1349,7 @@ public:
                                                              res.context->sessionId,
                                                              res.context->moduleName);
                             m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
-                            if (m_agentSessions.erase(res.context->sessionId) == 0)
+                            if (eraseSession(res.context->sessionId) == 0)
                             {
                                 logDebug2(LOGGER_DEFAULT_TAG,
                                           "InventorySyncFacade::start: Session not found, sessionId: %llu",
@@ -1391,7 +1393,7 @@ public:
                     // Delete data from database.
                     m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
                     // Delete Session.
-                    if (m_agentSessions.erase(res.context->sessionId) == 0)
+                    if (eraseSession(res.context->sessionId) == 0)
                     {
                         logDebug2(LOGGER_DEFAULT_TAG,
                                   "InventorySyncFacade::start: Session not found, sessionId: %llu",
@@ -1431,7 +1433,7 @@ public:
                     // Delete data from database.
                     m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
                     // Delete Session.
-                    if (m_agentSessions.erase(res.context->sessionId) == 0)
+                    if (eraseSession(res.context->sessionId) == 0)
                     {
                         logDebug2(LOGGER_DEFAULT_TAG,
                                   "InventorySyncFacade::start: Session not found, sessionId: %llu",
@@ -1659,10 +1661,13 @@ public:
      *
      * @param timeout    Maximum wait time per attempt (forwarded to hasActiveSessionForModule).
      * @param maxRetries Retry count (forwarded to hasActiveSessionForModule).
+     * @return true  if at least one VDSync session was active.
      */
-    void waitForAllVDSyncSessions(std::chrono::seconds timeout, uint32_t maxRetries) const
+    bool waitForAllVDSyncSessions(std::chrono::seconds timeout, uint32_t maxRetries) const
     {
-        while (true)
+        bool hadActiveSessions = false;
+        constexpr uint32_t MAX_OUTER_ITERATIONS = 3;
+        for (uint32_t i = 0; i < MAX_OUTER_ITERATIONS; ++i)
         {
             const auto vdSyncAgents =
                 getAgentsWithActiveSessionForModule("syscollector_vd", Wazuh::SyncSchema::Option_VDSync);
@@ -1671,11 +1676,13 @@ public:
                 break;
             }
 
+            hadActiveSessions = true;
             for (const auto& agentId : vdSyncAgents)
             {
                 hasActiveSessionForModule(agentId, "syscollector_vd", timeout, maxRetries);
             }
         }
+        return hadActiveSessions;
     }
 
     /**
@@ -1775,6 +1782,12 @@ public:
         }
 
         return false; // no session
+    }
+
+    size_t eraseSession(uint64_t sessionId)
+    {
+        std::unique_lock lock(m_agentSessionsMutex);
+        return m_agentSessions.erase(sessionId);
     }
 
     /**
