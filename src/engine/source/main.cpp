@@ -322,7 +322,7 @@ int main(int argc, char* argv[])
         {
             auto kvdbPath = std::filesystem::path(confManager.get<std::string>(conf::key::KVDB_IOC_PATH));
             IOCkvdb = std::make_shared<ioc::kvdb::KVDBManager>(kvdbPath, store);
-            LOG_INFO("KVDB IOC initialized.");
+            LOG_INFO("IOC initialized.");
             // Initialize required DBs for iocs
             ioc::kvdb::details::initializeDBs(IOCkvdb);
         }
@@ -333,7 +333,7 @@ int main(int argc, char* argv[])
             auto geoDownloader = std::make_shared<geo::Downloader>(geoDownloadTimeout);
             geoManager = std::make_shared<geo::Manager>(store, geoDownloader);
             geoDownloader->setShouldRun(geoManager->shouldRunFlag());
-            LOG_INFO("Geo initialized.");
+            LOG_INFO("GEO initialized.");
         }
 
         // Fast Metrics
@@ -386,12 +386,7 @@ int main(int argc, char* argv[])
             scheduler = std::make_shared<scheduler::Scheduler>();
             scheduler->start();
             LOG_INFO("Scheduler initialized and started.");
-            exitHandler.add(
-                [scheduler, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
-                {
-                    scheduler->stop();
-                    LOG_INFO_L(functionName.c_str(), "Scheduler stopped.");
-                });
+            exitHandler.add([scheduler]() { scheduler->stop(); });
         }
 
         // Check if event processing is enabled
@@ -487,12 +482,7 @@ int main(int argc, char* argv[])
         {
 
             streamLogger = std::make_shared<streamlog::LogManager>(store, scheduler);
-            exitHandler.add(
-                [streamLogger, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
-                {
-                    streamLogger->requestShutdown();
-                    LOG_INFO_L(functionName.c_str(), "[Stream logger] Shutdown requested.");
-                });
+            exitHandler.add([streamLogger]() { streamLogger->requestShutdown(); });
 
             LOG_INFO("Stream logger initialized.");
         }
@@ -554,11 +544,7 @@ int main(int argc, char* argv[])
             remoteConf =
                 std::make_shared<confremote::ConfRemoteManager>(indexerConnector, store, maxRetries, retryInterval);
 
-            exitHandler.add(
-                [remoteConf, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
-                {
-                    remoteConf->requestShutdown();
-                });
+            exitHandler.add([remoteConf]() { remoteConf->requestShutdown(); });
         }
 
         // Raw Event Indexer
@@ -617,11 +603,7 @@ int main(int argc, char* argv[])
                 indexerConnector, cmCrudService, store, orchestrator, maxRetries, retryInterval);
             LOG_INFO("Content Manager Sync Service initialized.");
 
-            exitHandler.add(
-                [cmSyncService, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
-                {
-                    cmSyncService->requestShutdown();
-                });
+            exitHandler.add([cmSyncService]() { cmSyncService->requestShutdown(); });
 
             // Add sync to scheduler
             scheduler->scheduleTask(
@@ -646,11 +628,7 @@ int main(int argc, char* argv[])
                 indexerConnector, IOCkvdb, store, maxRetries, retryInterval, iocSyncBatchSize);
             LOG_INFO("IOC Sync Service initialized.");
 
-            exitHandler.add(
-                [iocSyncService, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
-                {
-                    iocSyncService->requestShutdown();
-                });
+            exitHandler.add([iocSyncService]() { iocSyncService->requestShutdown(); });
 
             // Add IOC sync to scheduler
             auto iocSyncInterval = confManager.get<std::size_t>(conf::key::IOC_SYNC_INTERVAL);
@@ -754,7 +732,7 @@ int main(int argc, char* argv[])
                 serverApiPayloadMaxBytes = 0;
             }
             apiServer =
-                std::make_shared<httpsrv::Server>("API Server", static_cast<size_t>(serverApiPayloadMaxBytes), true);
+                std::make_shared<httpsrv::Server>("API services", static_cast<size_t>(serverApiPayloadMaxBytes), true);
 
             // API
             exitHandler.add(
@@ -849,7 +827,7 @@ int main(int argc, char* argv[])
         // HTTP enriched events server
         if (enableProcessing)
         {
-            engineRemoteServer = std::make_shared<httpsrv::Server>("Events Server", 0, false);
+            engineRemoteServer = std::make_shared<httpsrv::Server>("Event services", 0, false);
 
             exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
 
@@ -902,7 +880,6 @@ int main(int argc, char* argv[])
                 }
             }
             engineRemoteServer.reset();
-            LOG_INFO("Engine remote server stopped.");
         }
         else
         {

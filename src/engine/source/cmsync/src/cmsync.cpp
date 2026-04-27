@@ -165,15 +165,14 @@ bool CMSync::existSpaceInRemote(std::string_view space)
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
 
     return base::utils::executeWithRetry([&indexerPtr, space]() { return indexerPtr->existsPolicy(space); },
-                                         fmt::format("{}::exist()", COMPONENT_NAME),
+                                         fmt::format("{}", COMPONENT_NAME),
                                          fmt::format("Check '{}' space in wazuh-indexer", space),
                                          m_attempts,
                                          m_waitSeconds,
                                          m_shutdownRequested);
 }
 
-void CMSync::downloadNamespace(std::string_view originSpace,
-                               const cm::store::NamespaceId& dstNamespace)
+void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::NamespaceId& dstNamespace)
 {
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
     auto cmcrudPtr = base::utils::lockWeakPtr(m_cmcrudPtr, "CMCrudService");
@@ -279,16 +278,14 @@ cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view origi
     return newNs;
 }
 
-void CMSync::syncNamespaceInRoute(const SyncedNamespace& nsState,
-                                  const cm::store::NamespaceId& newNamespaceId)
+void CMSync::syncNamespaceInRoute(const SyncedNamespace& nsState, const cm::store::NamespaceId& newNamespaceId)
 {
     auto routerPtr = base::utils::lockWeakPtr(m_router, "RouterAPI");
 
     // If the route exists, hot-swap the namespace
     if (routerPtr->existsEntry(nsState.getRouteName()))
     {
-        if (auto err = routerPtr->hotSwapNamespace(nsState.getRouteName(), newNamespaceId);
-            base::isError(err))
+        if (auto err = routerPtr->hotSwapNamespace(nsState.getRouteName(), newNamespaceId); base::isError(err))
         {
             throw std::runtime_error(
                 fmt::format("Failed to hot-swap namespace in route '{}': {}", nsState.getRouteName(), err->message));
@@ -454,7 +451,7 @@ void CMSync::synchronize()
 
             if (!existSpaceInRemote(nsState.getOriginSpace()))
             {
-                LOG_WARNING("[CMSync] Space '{}' does not exist in remote indexer, skipping synchronization",
+                LOG_WARNING("[CMSync] Space '{}' does not exist in wazuh-indexer, skipping synchronization",
                             nsState.getOriginSpace());
                 continue;
             }
@@ -466,8 +463,7 @@ void CMSync::synchronize()
                          nsState.getOriginSpace());
                 return;
             }
-            const auto [remoteHash, remoteEnabled] =
-                getPolicyHashAndEnabledFromRemote(nsState.getOriginSpace());
+            const auto [remoteHash, remoteEnabled] = getPolicyHashAndEnabledFromRemote(nsState.getOriginSpace());
 
             // Check the current route/ns configuration to avoid unnecessary synchronization.
             const auto routeConfig = [&]() -> std::optional<std::tuple<bool, cm::store::NamespaceId, std::string>>

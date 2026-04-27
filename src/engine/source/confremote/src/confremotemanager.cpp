@@ -17,7 +17,9 @@ const base::Name REMOTE_CONF_CACHE_DOC {"remote-config/engine-cnf/0"};
 }
 
 ConfRemoteManager::ConfRemoteManager(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerConnector,
-                                     const std::shared_ptr<store::IStore>& store, const size_t attempts, const size_t waitSeconds)
+                                     const std::shared_ptr<store::IStore>& store,
+                                     const size_t attempts,
+                                     const size_t waitSeconds)
     : m_indexerConnector(indexerConnector)
     , m_store(store)
     , m_attempts(attempts)
@@ -43,8 +45,8 @@ void ConfRemoteManager::synchronize()
     {
         auto connector = base::utils::lockWeakPtr(m_indexerConnector, "IndexerConnector");
         remoteSettings = base::utils::executeWithRetry([&connector]() { return connector->getEngineRemoteConfig(); },
-                                                       "synchronize",
-                                                       "ConfRemoteManager",
+                                                       "ConfRemote",
+                                                       "Checking remote settings from indexer",
                                                        m_attempts,
                                                        m_waitSeconds,
                                                        m_shutdownRequested);

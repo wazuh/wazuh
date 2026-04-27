@@ -399,6 +399,7 @@ void Orchestrator::stop()
 
 void Orchestrator::requestShutdown()
 {
+    LOG_INFO("[Orchestrator] Shutdown requested, stopping workers...");
     this->stop();
     m_isShutdown.store(true, std::memory_order_release);
     std::unique_lock lock {m_syncMutex};
@@ -438,8 +439,7 @@ base::OptError Orchestrator::postEntry(const prod::EntryPost& entry)
     return std::nullopt;
 }
 
-base::OptError Orchestrator::hotSwapNamespace(const std::string& name,
-                                              const cm::store::NamespaceId& newNamespace)
+base::OptError Orchestrator::hotSwapNamespace(const std::string& name, const cm::store::NamespaceId& newNamespace)
 {
     if (name.empty())
     {

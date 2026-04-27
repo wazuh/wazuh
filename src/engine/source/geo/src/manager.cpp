@@ -392,9 +392,9 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
         if (base::isError(error))
         {
             LOG_WARNING("[Geo::Manager] Failed to process {} database '{}': {}",
-                      typeName,
-                      dbName,
-                      base::getError(error).message);
+                        typeName,
+                        dbName,
+                        base::getError(error).message);
         }
         else
         {
@@ -426,6 +426,7 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
 void Manager::requestShutdown()
 {
     m_shouldRun->store(false);
+    LOG_INFO("[Geo::Manager] Shutdown requested.");
 }
 
 Result<std::shared_ptr<ILocator>> Manager::getLocator(Type type) const

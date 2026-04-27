@@ -67,7 +67,7 @@ private:
      * @brief Downloads a namespace from the indexer and enriches it with local assets
      *
      * This method performs a two-phase operation to prepare a complete namespace:
-     * 1. Downloads the policy and resources from the remote indexer (KVDB, decoders, integrations, policy)
+     * 1. Downloads the policy and resources from the wazuh-indexer (KVDB, decoders, integrations, policy)
      * 2. Enriches the namespace with local-only assets (outputs, filters, etc.)
      *
      * The method generates a unique temporary namespace ID to avoid conflicts and performs
@@ -115,7 +115,7 @@ public:
      * @brief Perform synchronization of all configured namespaces
      *
      * This method iterates through all namespaces configured for synchronization,
-     * checking for updates in the remote indexer. If changes are detected, it
+     * checking for updates in the wazuh-indexer. If changes are detected, it
      * downloads the updated namespace, enriches it with local assets, and updates
      * the router accordingly.
      *

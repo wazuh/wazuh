@@ -16,7 +16,7 @@ public:
      * @brief Perform synchronization of all configured IOC databases
      *
      * This method iterates through all IOC types configured for synchronization,
-     * checking for updates in the remote indexer. If changes are detected, it
+     * checking for updates in the wazuh-indexer. If changes are detected, it
      * downloads the updated IOCs, creates a new database, and performs an atomic
      * hot-swap to ensure readers transparently switch to the new data.
      *
