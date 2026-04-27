@@ -14,6 +14,7 @@
 #include <math.h>
 #include <pthread.h>
 #include "sysinfo_utils.h"
+#include "os_net.h"
 #include <openssl/evp.h>
 
 // Remove STATIC qualifier from tests
@@ -37,6 +38,12 @@ static int update_current(logreader **current, int *i, int *j);
 static void set_read(logreader *current, int i, int j);
 static IT_control remove_duplicates(logreader *current, int i, int j);
 static int find_duplicate_inode(logreader * lf);
+static bool source_is_socket(const logreader *lf);
+static bool source_is_http_unix(const logreader *lf);
+static bool source_is_open(const logreader *lf);
+static int open_source(int i, int j, int do_fseek, int do_log);
+static int reload_source(logreader *lf);
+static void close_source(logreader *lf);
 static void set_sockets();
 static void files_lock_init(void);
 static void check_text_only();
@@ -145,6 +152,35 @@ STATIC atomic_int_t _startup_completed = ATOMIC_INT_INITIALIZER(0);
 STATIC w_macos_log_procceses_t * macos_processes = NULL;
 
 #endif
+
+bool w_logcollector_validate_text_line(char *buf, size_t *len, const char *source_kind, const char *source) {
+    if (buf == NULL || len == NULL) {
+        return false;
+    }
+
+    const char *kind = source_kind ? source_kind : "source";
+    const char *src = source ? source : "(null)";
+
+    if (*len > 0 && buf[*len - 1] == '\n') {
+        buf[--(*len)] = '\0';
+    }
+
+    if (*len == 0) {
+        return false;
+    }
+
+    if (strlen(buf) != *len) {
+        mdebug2("Message from %s '%s' contains zero-bytes. Dropping.", kind, src);
+        return false;
+    }
+
+    if (!w_utf8_valid(buf)) {
+        mdebug2("Message from %s '%s' is not valid UTF-8. Dropping.", kind, src);
+        return false;
+    }
+
+    return true;
+}
 
 int check_ignore_and_restrict(OSList * ignore_exp_list, OSList * restrict_exp_list, const char *log_line) {
     OSListNode *node_it;
@@ -542,8 +578,8 @@ void LogCollectorStart()
                         }
                     }
 
-                    if (current->file && current->fp) {
-                        close_file(current);
+                    if (current->file && source_is_open(current)) {
+                        close_source(current);
                     }
                 }
 
@@ -571,7 +607,12 @@ void LogCollectorStart()
                     }
 
                     if (current->file && current->exists) {
-                        if (reload_file(current) == -1) {
+                        if (reload_source(current) == -1) {
+                            if (source_is_socket(current) || source_is_http_unix(current)) {
+                                current->exists = 0;
+                                continue;
+                            }
+
                             minfo(FORGET_FILE, current->file);
                             os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
                             free_files_status_data(old_file_status);
@@ -617,25 +658,55 @@ void LogCollectorStart()
                 /* Files with date -- check for day change */
                 if (current->ffile) {
                     if (update_fname(i, j)) {
-                        if (current->fp) {
-                            fclose(current->fp);
+                        if (source_is_open(current)) {
+                            close_source(current);
                         }
-                        current->fp = NULL;
                         current->exists = 1;
 
-                        handle_file(i, j, 0, 1);
+                        open_source(i, j, 0, 1);
                         continue;
                     }
 
                     /* Variable file name */
-                    else if (!current->fp && open_file_attempts - current->ign > 0) {
-                        handle_file(i, j, 1, 1);
+                    else if (!source_is_open(current) && (source_is_socket(current) || source_is_http_unix(current) || open_file_attempts - current->ign > 0)) {
+                        open_source(i, j, 1, 1);
                         continue;
                     }
                 }
 
                 /* Check for file change -- if the file is open already */
-                if (current->fp) {
+                if (source_is_open(current)) {
+#ifndef WIN32
+                    if (source_is_http_unix(current)) {
+                        /* Worker thread manages connection liveness; nothing to verify here. */
+                        continue;
+                    }
+                    if (source_is_socket(current)) {
+                        struct stat stat_fd = { .st_mode = 0 };
+                        const char *socket_path = current->socket_path ? current->socket_path : current->file;
+
+                        if (w_stat(socket_path, &stat_fd) == -1 || (stat_fd.st_mode & S_IFMT) != S_IFSOCK) {
+                            if (current->exists == 1) {
+                                minfo(FORGET_FILE, current->file);
+                                w_logcollector_state_delete_file(current->file);
+                                current->exists = 0;
+                            }
+
+                            close_source(current);
+                            current->ign++;
+
+                            if (open_file_attempts) {
+                                mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                            } else {
+                                mdebug1(OPEN_UNABLE, current->file);
+                            }
+                        } else {
+                            current->exists = 1;
+                        }
+
+                        continue;
+                    }
+#endif
 #ifndef WIN32
 
                     /* To help detect a file rollover, temporarily open the file a second time.
@@ -759,7 +830,7 @@ void LogCollectorStart()
 #endif
 
                         current->fp = NULL;
-                        handle_file(i, j, 0, 1);
+                        open_source(i, j, 0, 1);
                         continue;
                     }
 #ifdef WIN32
@@ -792,7 +863,7 @@ void LogCollectorStart()
                         CloseHandle(h1);
 #endif
                         current->fp = NULL;
-                        handle_file(i, j, 0, 1);
+                        open_source(i, j, 0, 1);
                     } else {
 #ifdef WIN32
                         CloseHandle(h1);
@@ -847,11 +918,11 @@ void LogCollectorStart()
                 }
 
                 /* If open_file_attempts is at 0 the files aren't forgotted ever*/
-                if(open_file_attempts == 0){
+                if(open_file_attempts == 0 && !source_is_socket(current)){
                     current->ign = -1;
                 }
                 /* Too many errors for the file */
-                if (current->ign >= open_file_attempts) {
+                if (!source_is_socket(current) && !source_is_http_unix(current) && current->ign >= open_file_attempts) {
                     /* 999 Maximum ignore */
                     if (current->ign == 999) {
                         continue;
@@ -897,12 +968,17 @@ void LogCollectorStart()
                 }
 
                 /* File not open */
-                if (!current->fp) {
+                if (!source_is_open(current)) {
+                    if (source_is_socket(current) || source_is_http_unix(current)) {
+                        open_source(i, j, 1, 1);
+                        continue;
+                    }
+
                     if (current->ign >= 999) {
                         continue;
                     } else {
                         /* Try for a few times to open the file */
-                        handle_file(i, j, 1, 1);
+                        open_source(i, j, 1, 1);
                         continue;
                     }
                 }
@@ -1000,6 +1076,216 @@ int update_fname(int i, int j)
 
     _cday = tm_result.tm_mday;
     return (0);
+}
+
+static bool source_is_socket(const logreader *lf) {
+    return lf != NULL && lf->logformat != NULL && strcmp(lf->logformat, SOCKET_LOG) == 0;
+}
+
+static bool source_is_http_unix(const logreader *lf) {
+    return lf != NULL && lf->logformat != NULL && strcmp(lf->logformat, HTTP_UNIX_LOG) == 0;
+}
+
+static bool source_is_open(const logreader *lf) {
+    if (lf == NULL) {
+        return false;
+    }
+
+    if (source_is_socket(lf)) {
+#ifndef WIN32
+        return lf->socket_path != NULL;
+#else
+        return false;
+#endif
+    }
+
+    if (source_is_http_unix(lf)) {
+#ifndef WIN32
+        return lf->http_thread_started != 0;
+#else
+        return false;
+#endif
+    }
+
+    return lf->fp != NULL;
+}
+
+#ifndef WIN32
+/* Release a previously-bound socket so the path can be re-bound. */
+static void release_bound_socket(logreader *lf) {
+    if (lf->socket_path == NULL) {
+        return;
+    }
+    OS_CloseSocket(lf->socket_fd);
+    unlink(lf->socket_path);
+    os_free(lf->socket_path);
+    lf->socket_fd = -1;
+}
+
+/* Resolve the socket's owning group; falls back to the process group if
+ * <socket_group> is unset. Returns 0 on success, -1 on lookup failure. */
+static int resolve_socket_group(const logreader *lf, gid_t *out, int do_log, int *exists_out) {
+    if (lf->socket_group == NULL) {
+        *out = getgid();
+        return 0;
+    }
+
+    gid_t gid = Privsep_GetGroup(lf->socket_group);
+    if (gid == (gid_t)-1) {
+        if (do_log == 1 && lf->exists == 1) {
+            merror("Unable to resolve group '%s' for socket '%s'",
+                   lf->socket_group, lf->file);
+            *exists_out = 0;
+        }
+        return -1;
+    }
+    *out = gid;
+    return 0;
+}
+
+/* Make a socket non-blocking. Returns 0 on success, -1 on failure (and closes fd). */
+static int set_socket_nonblocking(int fd, const char *path) {
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags < 0 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+        merror("Unable to configure socket '%s' as non-blocking (%d): %s", path, errno, strerror(errno));
+        OS_CloseSocket(fd);
+        return -1;
+    }
+    return 0;
+}
+
+/* Log open-attempt accounting after a failed open. */
+static void log_open_failure(const logreader *lf) {
+    if (open_file_attempts) {
+        mdebug1(OPEN_ATTEMPT, lf->file, open_file_attempts - lf->ign);
+    } else {
+        mdebug1(OPEN_UNABLE, lf->file);
+    }
+}
+
+STATIC int open_socket_source(logreader *lf, int do_log) {
+    release_bound_socket(lf);
+
+    mode_t sock_mode = lf->socket_mode ? lf->socket_mode : 0660;
+    int recv_buf = lf->socket_recv_buffer ? lf->socket_recv_buffer : OS_MAXSTR;
+    gid_t sock_gid;
+
+    if (resolve_socket_group(lf, &sock_gid, do_log, &lf->exists) < 0) {
+        lf->ign++;
+        log_open_failure(lf);
+        return -1;
+    }
+
+    int fd = OS_BindUnixDomainWithPerms(lf->file, SOCK_DGRAM, recv_buf,
+                                        getuid(), sock_gid, sock_mode);
+    if (fd < 0) {
+        if (do_log == 1 && lf->exists == 1) {
+            merror("Unable to bind datagram socket '%s' (%d): %s", lf->file, errno, strerror(errno));
+            lf->exists = 0;
+        }
+        lf->ign++;
+        log_open_failure(lf);
+        return -1;
+    }
+
+    if (set_socket_nonblocking(fd, lf->file) < 0) {
+        lf->ign++;
+        log_open_failure(lf);
+        return -1;
+    }
+
+    os_strdup(lf->file, lf->socket_path);
+    lf->socket_fd = fd;
+    lf->ign = 0;
+    lf->exists = 1;
+    return 0;
+}
+#endif
+
+#ifndef WIN32
+static int open_http_unix_source(logreader *lf) {
+    int rc = w_logcollector_http_unix_open(lf);
+    if (rc == 0) {
+        lf->ign = 0;
+        lf->exists = 1;
+    }
+    return rc;
+}
+
+static void close_http_unix_source(logreader *lf) {
+    if (!lf->http_thread_started) {
+        return;
+    }
+    lf->http_stop = 1;
+    pthread_join(lf->http_thread, NULL);
+    lf->http_thread_started = 0;
+    lf->http_stop = 0;
+}
+#endif
+
+static int open_source(int i, int j, int do_fseek, int do_log) {
+    logreader *lf = j < 0 ? &logff[i] : &globs[j].gfiles[i];
+
+    if (source_is_socket(lf)) {
+#ifndef WIN32
+        return open_socket_source(lf, do_log);
+#else
+        return -1;
+#endif
+    }
+
+    if (source_is_http_unix(lf)) {
+#ifndef WIN32
+        return open_http_unix_source(lf);
+#else
+        return -1;
+#endif
+    }
+
+    return handle_file(i, j, do_fseek, do_log);
+}
+
+static int reload_source(logreader *lf) {
+    if (source_is_socket(lf)) {
+#ifndef WIN32
+        return open_socket_source(lf, 1);
+#else
+        return -1;
+#endif
+    }
+
+    if (source_is_http_unix(lf)) {
+#ifndef WIN32
+        close_http_unix_source(lf);
+        return open_http_unix_source(lf);
+#else
+        return -1;
+#endif
+    }
+
+    return reload_file(lf);
+}
+
+static void close_source(logreader *lf) {
+    if (lf == NULL) {
+        return;
+    }
+
+    if (source_is_socket(lf)) {
+#ifndef WIN32
+        release_bound_socket(lf);
+#endif
+        return;
+    }
+
+    if (source_is_http_unix(lf)) {
+#ifndef WIN32
+        close_http_unix_source(lf);
+#endif
+        return;
+    }
+
+    close_file(lf);
 }
 
 /* Open, get the fileno, seek to the end and update mtime */
@@ -1213,13 +1499,13 @@ void set_read(logreader *current, int i, int j) {
         /* Day must be zero for all files to be initialized */
         _cday = 0;
         if (update_fname(i, j)) {
-            handle_file(i, j, 1, 1);
+            open_source(i, j, 1, 1);
         } else {
             merror_exit(PARSE_ERROR, current->ffile);
         }
 
     } else {
-        handle_file(i, j, 1, 1);
+        open_source(i, j, 1, 1);
     }
 
     tg = 0;
@@ -1236,7 +1522,12 @@ void set_read(logreader *current, int i, int j) {
         current->read = read_snortfull;
     }
 #ifndef WIN32
-    if (strcmp("wazuhalert", current->logformat) == 0) {
+    if (strcmp(SOCKET_LOG, current->logformat) == 0) {
+        current->read = read_socket;
+    } else if (strcmp(HTTP_UNIX_LOG, current->logformat) == 0) {
+        /* Worker thread handles I/O directly; no synchronous read callback. */
+        current->read = NULL;
+    } else if (strcmp("wazuhalert", current->logformat) == 0) {
         current->read = read_wazuhalert;
     }
 #endif
@@ -1334,10 +1625,15 @@ int check_pattern_expand(int do_seek) {
                     continue;
                 }
 
-                if ((statbuf.st_mode & S_IFMT) != S_IFREG) {
-                    mdebug1("File %s is not a regular file. Skipping it.", g.gl_pathv[glob_offset]);
-                    glob_offset++;
-                    continue;
+                {
+                    bool expects_socket = source_is_socket(globs[j].gfiles) || source_is_http_unix(globs[j].gfiles);
+                    mode_t st_type = statbuf.st_mode & S_IFMT;
+                    if ((expects_socket && st_type != S_IFSOCK) ||
+                        (!expects_socket && st_type != S_IFREG)) {
+                        mdebug1("Path %s does not match the expected source type. Skipping it.", g.gl_pathv[glob_offset]);
+                        glob_offset++;
+                        continue;
+                    }
                 }
 
                 found = 0;
@@ -1374,7 +1670,7 @@ int check_pattern_expand(int do_seek) {
                         if  (!globs[j].gfiles[i].read) {
                             set_read(&globs[j].gfiles[i], i, j);
                         } else {
-                            handle_file(i, j, do_seek, 1);
+                            open_source(i, j, do_seek, 1);
                         }
 
                         added = 1;
@@ -1403,7 +1699,7 @@ int check_pattern_expand(int do_seek) {
                         if  (!globs[j].gfiles[i].read) {
                             set_read(&globs[j].gfiles[i], i, j);
                         } else {
-                            handle_file(i, j, do_seek, 1);
+                            open_source(i, j, do_seek, 1);
                         }
                     }
                 }
@@ -1565,7 +1861,7 @@ int check_pattern_expand(int do_seek) {
                             if (!globs[j].gfiles[i].read) {
                                 set_read(&globs[j].gfiles[i], i, j);
                             } else {
-                                handle_file(i, j, do_seek, 1);
+                                open_source(i, j, do_seek, 1);
                             }
 
                             added = 1;
@@ -1595,7 +1891,7 @@ int check_pattern_expand(int do_seek) {
                             if (!globs[j].gfiles[i].read) {
                                 set_read(&globs[j].gfiles[i], i, j);
                             } else {
-                                handle_file(i, j, do_seek, 1);
+                                open_source(i, j, do_seek, 1);
                             }
                         }
                     }
@@ -2069,7 +2365,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
 
             if (pthread_mutex_trylock(&current->mutex) == 0){
 
-                if (!current->fp) {
+                if (!source_is_open(current)) {
                     /* Run the command */
                     if (current->command) {
                         curr_time = time(0);
@@ -2094,6 +2390,35 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         }
                     }
 #endif
+                    w_mutex_unlock(&current->mutex);
+                    rwlock_unlock(&files_update_rwlock);
+                    continue;
+                }
+
+                if (source_is_socket(current)) {
+                    current->read(current, &r, 0);
+
+                    if (r != 0) {
+                        mdebug1("Read error on socket '%s', will attempt to re-bind.", current->file);
+                        w_logcollector_state_delete_file(current->file);
+                        close_source(current);
+
+                        current->ign++;
+
+                        if (open_file_attempts && j < 0) {
+                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                        } else {
+                            mdebug1(OPEN_UNABLE, current->file);
+                        }
+                    }
+
+                    w_mutex_unlock(&current->mutex);
+                    rwlock_unlock(&files_update_rwlock);
+                    continue;
+                }
+
+                if (source_is_http_unix(current)) {
+                    /* Worker thread owns I/O and reconnect; nothing to do in the main loop. */
                     w_mutex_unlock(&current->mutex);
                     rwlock_unlock(&files_update_rwlock);
                     continue;
@@ -2250,11 +2575,10 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
     #endif
 
                         /* Close the file */
-                        fclose(current->fp);
-                        current->fp = NULL;
+                        close_source(current);
 
                         /* Try to open it again */
-                        if (handle_file(i, j, 0, 1)) {
+                        if (open_source(i, j, 0, 1)) {
                             w_mutex_unlock(&current->mutex);
                             rwlock_unlock(&files_update_rwlock);
                             continue;
@@ -2345,7 +2669,7 @@ static void check_text_only() {
         }
 
         /* Check for files to exclude */
-        if(current->file && !current->command && current->filter_binary) {
+        if(current->file && !current->command && current->filter_binary && !source_is_socket(current) && !source_is_http_unix(current)) {
             snprintf(file_name, PATH_MAX, "%s", current->file);
 
             char *file_excluded = OSHash_Get(excluded_files,file_name);

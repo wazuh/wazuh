@@ -26,6 +26,10 @@
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/os_crypto/sha1_op_wrappers.h"
+#include "../wrappers/wazuh/os_net/os_net_wrappers.h"
+#include "../wrappers/wazuh/shared/privsep_op_wrappers.h"
+#include "../wrappers/linux/socket_wrappers.h"
+#include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/posix/signal_wrappers.h"
 
@@ -42,6 +46,7 @@ void w_initialize_file_status();
 int w_update_hash_node(char * path, int64_t pos);
 int w_set_to_last_line_read(logreader *lf);
 void free_files_status_data(os_file_status_t *data);
+int open_socket_source(logreader *lf, int do_log);
 
 // Auxiliar structs
 typedef struct test_logcollector_s {
@@ -206,6 +211,155 @@ static int teardown_regex(void **state) {
 /* wraps */
 
 /* tests */
+
+void test_Free_Logreader_socket_runtime(void **state) {
+    logreader lf = {0};
+
+    lf.file = strdup("/tmp/test-free.sock");
+    lf.socket_path = strdup("/tmp/test-free.sock");
+    lf.socket_fd = 21;
+
+    expect_value(__wrap_OS_CloseSocket, sock, lf.socket_fd);
+    will_return(__wrap_OS_CloseSocket, 0);
+    expect_string(__wrap_unlink, file, "/tmp/test-free.sock");
+    will_return(__wrap_unlink, 0);
+
+    Free_Logreader(&lf);
+}
+
+void test_Free_Logreader_http_unix_endpoint(void **state) {
+    logreader lf = {0};
+
+    lf.file = strdup("/var/run/docker.sock");
+    lf.logformat = strdup(HTTP_UNIX_LOG);
+    lf.http_endpoint = strdup("/events");
+    lf.http_reconnect_interval = 5;
+    /* http_thread_started == 0: no pthread_join expected */
+
+    Free_Logreader(&lf);
+}
+
+void test_Remove_Localfile_socket_runtime(void **state) {
+    logreader_glob glob = {0};
+    logreader *entries = calloc(2, sizeof(logreader));
+
+    assert_non_null(entries);
+
+    entries[0].file = strdup("/tmp/test-remove.sock");
+    entries[0].socket_path = strdup("/tmp/test-remove.sock");
+    entries[0].socket_fd = 22;
+
+    glob.gfiles = entries;
+    glob.num_files = 1;
+    current_files = 1;
+
+    expect_value(__wrap_OS_CloseSocket, sock, entries[0].socket_fd);
+    will_return(__wrap_OS_CloseSocket, 0);
+    expect_string(__wrap_unlink, file, "/tmp/test-remove.sock");
+    will_return(__wrap_unlink, 0);
+
+    assert_int_equal(Remove_Localfile(&entries, 0, 1, 0, &glob), 0);
+    assert_int_equal(glob.num_files, 0);
+    assert_int_equal(current_files, 0);
+
+    free(entries);
+}
+
+void test_open_socket_source_custom_perms(void **state) {
+    logreader lf = {0};
+
+    lf.file = "/tmp/test-custom.sock";
+    lf.socket_path = NULL;
+    lf.socket_fd = -1;
+    lf.socket_mode = 0640;
+    lf.socket_group = strdup("syslog");
+    lf.socket_recv_buffer = 1048576;
+    lf.exists = 1;
+
+    /* Privsep_GetGroup resolves "syslog" to gid 110 */
+    expect_string(__wrap_Privsep_GetGroup, name, "syslog");
+    will_return(__wrap_Privsep_GetGroup, 110);
+
+    /* OS_BindUnixDomainWithPerms called with custom values */
+    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, "/tmp/test-custom.sock");
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, 1048576);
+    expect_any(__wrap_OS_BindUnixDomainWithPerms, uid);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, gid, 110);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0640);
+    will_return(__wrap_OS_BindUnixDomainWithPerms, 10);
+
+    /* fcntl for non-blocking */
+    will_return(__wrap_fcntl, 0);   /* F_GETFL returns 0 */
+    will_return(__wrap_fcntl, 0);   /* F_SETFL returns 0 */
+
+    assert_int_equal(open_socket_source(&lf, 1), 0);
+    assert_int_equal(lf.socket_fd, 10);
+    assert_string_equal(lf.socket_path, "/tmp/test-custom.sock");
+    assert_int_equal(lf.exists, 1);
+
+    os_free(lf.socket_path);
+    os_free(lf.socket_group);
+}
+
+void test_open_socket_source_default_perms(void **state) {
+    logreader lf = {0};
+
+    lf.file = "/tmp/test-default.sock";
+    lf.socket_path = NULL;
+    lf.socket_fd = -1;
+    lf.socket_mode = 0;
+    lf.socket_group = NULL;
+    lf.socket_recv_buffer = 0;
+    lf.exists = 1;
+
+    /* No Privsep_GetGroup call — socket_group is NULL */
+
+    /* OS_BindUnixDomainWithPerms called with defaults */
+    expect_string(__wrap_OS_BindUnixDomainWithPerms, path, "/tmp/test-default.sock");
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, max_msg_size, OS_MAXSTR);
+    expect_any(__wrap_OS_BindUnixDomainWithPerms, uid);
+    expect_any(__wrap_OS_BindUnixDomainWithPerms, gid);
+    expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
+    will_return(__wrap_OS_BindUnixDomainWithPerms, 11);
+
+    /* fcntl for non-blocking */
+    will_return(__wrap_fcntl, 0);
+    will_return(__wrap_fcntl, 0);
+
+    assert_int_equal(open_socket_source(&lf, 1), 0);
+    assert_int_equal(lf.socket_fd, 11);
+
+    os_free(lf.socket_path);
+}
+
+void test_open_socket_source_group_resolve_fail(void **state) {
+    logreader lf = {0};
+
+    lf.file = "/tmp/test-bagroup.sock";
+    lf.socket_path = NULL;
+    lf.socket_fd = -1;
+    lf.socket_mode = 0;
+    lf.socket_group = strdup("nonexistent");
+    lf.socket_recv_buffer = 0;
+    lf.exists = 1;
+
+    expect_string(__wrap_Privsep_GetGroup, name, "nonexistent");
+    will_return(__wrap_Privsep_GetGroup, (gid_t)-1);
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Unable to resolve group 'nonexistent' for socket '/tmp/test-bagroup.sock'");
+
+    /* Error path calls mdebug1(OPEN_UNABLE, ...) since open_file_attempts == 0 */
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "(1963): Unable to open file '/tmp/test-bagroup.sock'.");
+
+    assert_int_equal(open_socket_source(&lf, 1), -1);
+    assert_int_equal(lf.exists, 0);
+
+    os_free(lf.socket_group);
+}
 
 /* w_get_hash_context */
 
@@ -2912,6 +3066,14 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_same_file, setup_local_hashmap, teardown_local_hashmap),
         cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_same_file_rotate, setup_local_hashmap, teardown_local_hashmap),
         cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_update_hash_node_error, setup_local_hashmap, teardown_local_hashmap),
+
+        // Test socket runtime cleanup
+        cmocka_unit_test(test_Free_Logreader_socket_runtime),
+        cmocka_unit_test(test_Free_Logreader_http_unix_endpoint),
+        cmocka_unit_test(test_Remove_Localfile_socket_runtime),
+        cmocka_unit_test(test_open_socket_source_custom_perms),
+        cmocka_unit_test(test_open_socket_source_default_perms),
+        cmocka_unit_test(test_open_socket_source_group_resolve_fail),
 
         // Test w_macos_release_log_show
         cmocka_unit_test_setup_teardown(test_w_macos_release_log_show_not_launched, setup_process, teardown_process),

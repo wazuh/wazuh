@@ -40,6 +40,8 @@ else()
     list(APPEND logcollector_flags "-Wl,--wrap,OS_SHA1_Stream -Wl,--wrap,merror_exit \
                                     -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek \
                                     -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetpos \
+                                    -Wl,--wrap,OS_CloseSocket -Wl,--wrap,unlink -Wl,--wrap,getpid \
+                                    -Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,Privsep_GetGroup -Wl,--wrap,fcntl \
                                     -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_AddArrayToObject -Wl,--wrap,cJSON_AddStringToObject \
                                     -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,pthread_rwlock_wrlock \
                                     -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,cJSON_Delete -Wl,--wrap,fopen -Wl,--wrap,clearerr \
@@ -152,6 +154,10 @@ else()
                                     -Wl,--wrap,fgetpos -Wl,--wrap=w_update_file_status -Wl,--wrap,_merror \
                                     -Wl,--wrap=w_get_hash_context -Wl,--wrap=_fseeki64 -Wl,--wrap=OS_SHA1_Stream \
                                     -Wl,--wrap=w_fseek -Wl,--wrap,wfopen")
+
+    list(APPEND logcollector_names "test_read_socket")
+    list(APPEND logcollector_flags "-Wl,--wrap,recv -Wl,--wrap,can_read \
+                                    -Wl,--wrap,w_msg_hash_queues_push ${DEBUG_OP_WRAPPERS}")
 
 endif()
 

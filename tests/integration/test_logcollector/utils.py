@@ -4,6 +4,9 @@ Created by Wazuh, Inc. <info@wazuh.com>.
 This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 """
 from os.path import join as path_join
+from pathlib import Path
+import socket
+import time
 
 
 from wazuh_testing.tools.monitors import file_monitor
@@ -119,3 +122,38 @@ def send_log_to_journal(conf_message: dict):
         sp.run(['logger', '-t', tag, '-p', priority, message], check=True)
     except sp.CalledProcessError as e:
         raise Exception(f"Error sending log message to journal: {e}")
+
+
+def send_log_to_unix_socket(socket_path: str, message):
+    '''
+    Send a datagram to a UNIX socket path (for server mode).
+
+    Args:
+        socket_path (str): Destination socket path.
+        message (str | bytes): Payload to send.
+    '''
+
+    payload = message.encode() if isinstance(message, str) else message
+
+    with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as sock:
+        sock.sendto(payload, socket_path)
+
+
+def wait_for_path_state(path: str, exists: bool = True, timeout: int = 10):
+    '''
+    Wait until a filesystem path reaches the expected existence state.
+
+    Args:
+        path (str): Path to monitor.
+        exists (bool): Expected path existence.
+        timeout (int): Maximum wait time in seconds.
+    '''
+
+    deadline = time.time() + timeout
+
+    while time.time() < deadline:
+        if Path(path).exists() == exists:
+            return
+        time.sleep(0.2)
+
+    raise TimeoutError(f"Path '{path}' did not reach exists={exists} in {timeout}s")

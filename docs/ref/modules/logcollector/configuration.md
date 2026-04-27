@@ -92,6 +92,131 @@ Restart the agent to apply the configuration.
 
 ---
 
+## Monitoring UNIX datagram sockets
+
+On UNIX platforms, Logcollector can bind a UNIX datagram socket and receive log messages sent to it by external processes, by using `log_format` set to `socket`.
+
+```xml
+<localfile>
+  <location>/var/run/app.sock</location>
+  <log_format>socket</log_format>
+  <target>agent</target>
+  <out_format target="agent">$(timestamp) $(log)</out_format>
+  <label key="source">app</label>
+  <ignore>healthcheck</ignore>
+  <restrict>ERROR|WARN</restrict>
+</localfile>
+```
+
+The `location` value is a UNIX socket path where Logcollector will create a datagram socket. External processes send log messages as datagrams using `SOCK_DGRAM`. Each datagram is treated as a single log message. If the socket file is removed, Logcollector will detect this and re-create it. Date-based paths and wildcard expansion follow the same resolution flow used by file-backed `localfile` entries.
+
+### Socket-specific options
+
+| Option         | Default       | Description                                                         |
+|----------------|---------------|---------------------------------------------------------------------|
+| `socket_mode`  | `0660`        | Octal permission bits for the socket file.                          |
+| `socket_group` | Process group | Group name for the socket file, resolved at creation time.          |
+| `recv_buffer`  | `65536` (64K) | Minimum kernel receive buffer size (`SO_RCVBUF`). Accepts K/M/G suffixes. Maximum 16M. |
+
+!!! note
+    `recv_buffer` sets a minimum value for `SO_RCVBUF`. If the kernel default is already larger, no change is made. For high-volume sources, increase this to absorb bursts (e.g. `1M`). The value must be between 65536 (the maximum datagram size) and 16M.
+
+### rsyslog integration example
+
+A common use case is forwarding syslog messages from rsyslog to Logcollector via a local UNIX socket. Logcollector creates and owns the socket; rsyslog writes to it.
+
+**Wazuh agent** (`ossec.conf`):
+
+```xml
+<localfile>
+  <location>/var/run/wazuh-rsyslog.sock</location>
+  <log_format>socket</log_format>
+  <socket_mode>0660</socket_mode>
+  <socket_group>syslog</socket_group>
+  <recv_buffer>1M</recv_buffer>
+</localfile>
+```
+
+**rsyslog** (`/etc/rsyslog.d/wazuh.conf`):
+
+```
+# rsyslog v8.24+ (RainerScript)
+module(load="omuxsock")
+action(type="omuxsock" socket="/var/run/wazuh-rsyslog.sock"
+       template="RSYSLOG_TraditionalFileFormat")
+
+# rsyslog legacy syntax (v8.21 and earlier)
+# $ModLoad omuxsock
+# $OMUxSockSocket /var/run/wazuh-rsyslog.sock
+# *.* :omuxsock:
+```
+
+Ensure the rsyslog user belongs to the configured `socket_group`, or set `socket_mode` to `0666`.
+
+!!! note
+    - This log format is available only on UNIX platforms.
+    - Messages must be valid UTF-8 text. Binary payloads and invalid UTF-8 are dropped.
+    - Logcollector creates and owns the socket file — it is removed when the source is closed.
+    - The `age` option is accepted for compatibility but ignored for `log_format=socket`.
+    - Socket readers do not use `file_status.json`, bookmarks, or file rotation and truncation semantics.
+
+Restart the agent after applying the configuration.
+
+---
+
+## Streaming logs from an HTTP endpoint over a UNIX stream socket
+
+On UNIX platforms, Logcollector can act as an HTTP/1.1 client over a UNIX **stream** socket (`SOCK_STREAM`) and treat each newline-delimited line of the response body as a log event. Use `log_format` set to `http-unix`. Unlike `log_format=socket` (which binds and waits for datagrams), this mode **connects to a socket owned by another process**, issues a `GET`, and consumes the streamed response.
+
+```xml
+<localfile>
+  <location>/var/run/example.sock</location>
+  <log_format>http-unix</log_format>
+  <endpoint>/events</endpoint>
+  <reconnect_interval>5</reconnect_interval>
+  <target>agent</target>
+</localfile>
+```
+
+The `location` value is the UNIX stream socket path of the producing service. A dedicated worker thread per `<localfile>` issues the configured HTTP request, parses the response (supports `Transfer-Encoding: chunked`, `Content-Length`, and read-until-close), and forwards each non-empty UTF-8 line to the output queue. If the connection is closed by the peer or fails, the worker waits `reconnect_interval` seconds and retries indefinitely.
+
+### http-unix-specific options
+
+| Option               | Default | Description                                                                  |
+|----------------------|---------|------------------------------------------------------------------------------|
+| `endpoint`           | `/`     | HTTP path to request. Must start with `/`.                                   |
+| `reconnect_interval` | `5`     | Seconds to wait between reconnect attempts. Allowed range: `1`–`3600`.       |
+
+### Streaming Docker events
+
+The Docker daemon exposes a streaming `/events` endpoint over `/var/run/docker.sock`. Logcollector can consume it directly:
+
+```xml
+<localfile>
+  <location>/var/run/docker.sock</location>
+  <log_format>http-unix</log_format>
+  <endpoint>/events</endpoint>
+  <reconnect_interval>5</reconnect_interval>
+</localfile>
+```
+
+The Wazuh user must have read access to `/var/run/docker.sock` (typically by joining the `docker` group).
+
+!!! note
+    This is **not** a drop-in replacement for the existing Docker Listener wodle (`wodles/docker-listener/DockerListener.py`). The wodle wraps each event in `{"integration":"docker","docker":<event>}` and sends with the `Wazuh-Docker` queue header so the bundled Docker rules match. `log_format=http-unix` forwards each line of the Docker stream verbatim — rules consuming raw Docker events would need to be adjusted accordingly. The wodle remains supported; choose the path that matches your decoder/rule pipeline.
+
+!!! note
+    - This log format is available only on UNIX platforms.
+    - The unix socket file must be a **stream** socket owned by the producer; Logcollector connects but does not bind or unlink.
+    - Lines must be valid UTF-8 text. Binary payloads and invalid UTF-8 are dropped.
+    - Each `<localfile>` of this type creates one dedicated worker thread that owns the connection lifecycle (connect, parse, reconnect).
+    - Lines exceeding `OS_MAXSTR` bytes are dropped with a warning.
+    - The `age`, `ignore_binaries`, and `only-future-events` options are ignored for `log_format=http-unix`.
+
+Restart the agent after applying the configuration.
+
+---
+
 ## Monitoring log files with environment variables
 
 !!! note

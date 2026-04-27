@@ -14,6 +14,12 @@
 #define EVENTLOG     "eventlog"
 #define EVENTCHANNEL "eventchannel"
 #define MACOS        "macos"
+#define SOCKET_LOG   "socket"
+#define HTTP_UNIX_LOG                 "http-unix"
+#define HTTP_UNIX_DEFAULT_ENDPOINT    "/"
+#define HTTP_UNIX_DEFAULT_RECONNECT   5
+#define HTTP_UNIX_MIN_RECONNECT       1
+#define HTTP_UNIX_MAX_RECONNECT       3600
 #define JOURNALD_LOG                  "journald"
 #define MULTI_LINE_REGEX              "multi-line-regex"
 #define MULTI_LINE_REGEX_TIMEOUT      5
@@ -23,6 +29,7 @@
 #define DIFF_DEFAULT_SIZE (10 * 1024 * 1024)
 #define DEFAULT_FREQUENCY_SECS  360
 #define DIFF_MAX_SIZE (2 * 1024 * 1024 * 1024LL)
+#define SOCKET_RECV_BUFFER_MAX (16 * 1024 * 1024)  /* 16 MB — hard cap for SO_RCVBUF */
 
 /* macOS log command configurations */
 
@@ -41,6 +48,7 @@
 #define MACOS_LOG_TIMEOUT               5
 
 #include <pthread.h>
+#include <signal.h>
 
 /* For ino_t */
 #include <sys/types.h>
@@ -249,6 +257,21 @@ typedef struct _logreader {
 
     FILE *fp;
     fpos_t position; // Pointer offset when closed
+
+#ifndef WIN32
+    int socket_fd;
+    char *socket_path;
+    char *socket_group;
+    mode_t socket_mode;
+    int socket_recv_buffer;
+
+    /* HTTP-over-UNIX-stream (log_format=http-unix) */
+    char *http_endpoint;
+    int http_reconnect_interval;
+    pthread_t http_thread;
+    volatile sig_atomic_t http_thread_started;
+    volatile sig_atomic_t http_stop;
+#endif
 } logreader;
 
 typedef struct _logreader_glob {
