@@ -196,7 +196,6 @@ static int teardown_test_payload(void **state) {
 }
 
 static void wm_command_prepare_single_iteration(void) {
-    will_return(__wrap_FOREVER, 1);
     will_return(__wrap_FOREVER, 0);
 }
 
@@ -253,80 +252,88 @@ static size_t wm_command_build_base_len_for_test(const char *event_start,
     return len;
 }
 
+static size_t wm_command_build_payload_len_for_test(const char *event_start,
+                                                    const char *tag,
+                                                    const char *command_line,
+                                                    const char *proc_name,
+                                                    const char *proc_path,
+                                                    char **proc_argv,
+                                                    int status,
+                                                    const char *output_text) {
+    cJSON *json_event = cJSON_CreateObject();
+    assert_non_null(json_event);
+
+    cJSON_AddStringToObject(json_event, "event.module", "wazuh-wodle-cmd");
+    cJSON_AddStringToObject(json_event, "event.start", event_start ? event_start : "");
+    if (tag) {
+        cJSON_AddStringToObject(json_event, "tags", tag);
+    }
+
+    cJSON *process = cJSON_AddObjectToObject(json_event, "process");
+    assert_non_null(process);
+
+    cJSON *process_args = cJSON_AddArrayToObject(process, "args");
+    if (process_args && proc_argv) {
+        for (size_t i = 1; proc_argv[i]; ++i) {
+            cJSON_AddItemToArray(process_args, cJSON_CreateString(proc_argv[i]));
+        }
+    }
+
+    cJSON_AddStringToObject(process, "name", proc_name ? proc_name : "");
+    cJSON_AddStringToObject(process, "path", proc_path ? proc_path : "");
+    cJSON_AddStringToObject(process, "command_line", command_line ? command_line : "");
+    cJSON_AddNumberToObject(process, "exit_code", status);
+
+    cJSON *process_io = cJSON_AddObjectToObject(process, "io");
+    assert_non_null(process_io);
+    cJSON_AddStringToObject(process_io, "text", output_text ? output_text : "");
+
+    char *json_payload = cJSON_PrintUnformatted(json_event);
+    cJSON_Delete(json_event);
+
+    assert_non_null(json_payload);
+    size_t len = strlen(json_payload);
+    free(json_payload);
+    return len;
+}
+
 static size_t wm_command_compute_metadata_only_command_filler_len(void) {
     const size_t max_len = wm_command_max_json_payload_len();
     assert_true(max_len > 0);
 
-    const char *event_start = "2026-04-27T00:00:00Z";
+    const char *event_start = "2026-04-27T00:00:00.000Z";
     const char *tag = "test";
     const char *proc_path = "/bin/echo";
     const char *proc_name = "echo";
     const int status = 0;
     const char *prefix = "/bin/echo ";
 
-    // Measure slope by comparing filler length 0 vs 1.
-    char command0[64];
-    snprintf(command0, sizeof(command0), "%s", prefix);
-    char *command0_cpy = strdup(command0);
-    assert_non_null(command0_cpy);
-    char **argv0 = w_strtok(command0_cpy);
-    size_t base0 = wm_command_build_base_len_for_test(event_start, tag, command0, proc_name, proc_path, argv0, status);
-    free_strarray(argv0);
-    free(command0_cpy);
+    const char *probe_output = "\x1f"; // Control char: JSON-encodes to  (6 bytes), adding 4 net bytes vs empty.
 
-    char command1[64];
-    snprintf(command1, sizeof(command1), "%sA", prefix);
-    char *command1_cpy = strdup(command1);
-    assert_non_null(command1_cpy);
-    char **argv1 = w_strtok(command1_cpy);
-    size_t base1 = wm_command_build_base_len_for_test(event_start, tag, command1, proc_name, proc_path, argv1, status);
-    free_strarray(argv1);
-    free(command1_cpy);
-
-    const size_t slope = base1 - base0;
-    assert_true(slope > 0);
-
-    // Target: leave ~1 byte for output before escaping pushes it over.
-    const size_t target = max_len - 1;
-    assert_true(base0 < target);
-
-    size_t filler_len = (target - base0) / slope;
-
-    // Adjust to the closest value where base_len is within [max_len-1, max_len-1].
-    // (We just need base_len close enough so that a 1-char output that escapes will overflow.)
-    for (int i = 0; i < 1024; ++i) {
-        char *filler = calloc(filler_len + 1, 1);
-        assert_non_null(filler);
-        memset(filler, 'A', filler_len);
-        filler[filler_len] = '\0';
-
-        size_t cmd_len = strlen(prefix) + filler_len;
+    // Brute-force search for a command length where:
+    // - Metadata-only event (empty output) fits within the payload limit.
+    // - Event with a 1-char output that JSON-encodes to 6 bytes does NOT fit (triggering metadata-only fallback).
+    for (size_t filler_len = 0; filler_len < max_len; ++filler_len) {
+        const size_t cmd_len = strlen(prefix) + filler_len;
         char *cmdline = calloc(cmd_len + 1, 1);
         assert_non_null(cmdline);
         memcpy(cmdline, prefix, strlen(prefix));
-        memcpy(cmdline + strlen(prefix), filler, filler_len);
+        memset(cmdline + strlen(prefix), 'A', filler_len);
         cmdline[cmd_len] = '\0';
 
         char *cmd_cpy = strdup(cmdline);
         assert_non_null(cmd_cpy);
         char **argv = w_strtok(cmd_cpy);
-        size_t base_len = wm_command_build_base_len_for_test(event_start, tag, cmdline, proc_name, proc_path, argv, status);
+
+        const size_t len_empty = wm_command_build_payload_len_for_test(event_start, tag, cmdline, proc_name, proc_path, argv, status, "");
+        const size_t len_probe = wm_command_build_payload_len_for_test(event_start, tag, cmdline, proc_name, proc_path, argv, status, probe_output);
+
         free_strarray(argv);
         free(cmd_cpy);
-
         free(cmdline);
-        free(filler);
 
-        if (base_len == target) {
+        if (len_empty <= max_len && len_probe > max_len) {
             return filler_len;
-        }
-        if (base_len < target) {
-            filler_len++;
-        } else {
-            if (filler_len == 0) {
-                break;
-            }
-            filler_len--;
         }
     }
 
@@ -448,12 +455,31 @@ void test_interval_execution(void **state) {
 
     will_return_always(__wrap_wm_exec, 0);
 
-    will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES);
+    // The module uses a do-while loop; to run exactly TEST_MAX_DATES iterations
+    // we need TEST_MAX_DATES-1 "continue" returns and a final "stop".
+    will_return_count(__wrap_FOREVER, 1, TEST_MAX_DATES - 1);
     will_return(__wrap_FOREVER, 0);
-    expect_any_always(__wrap__mtinfo, tag);
-    expect_any_always(__wrap__mtinfo, formatted_msg);
-    expect_any_always(__wrap__mtdebug1, tag);
-    expect_any_always(__wrap__mtdebug1, formatted_msg);
+
+    const int verify_debug_calls =
+        ((module_data->md5_hash && module_data->md5_hash[0]) ? 1 : 0) +
+        ((module_data->sha1_hash && module_data->sha1_hash[0]) ? 1 : 0) +
+        ((module_data->sha256_hash && module_data->sha256_hash[0]) ? 1 : 0);
+
+    // Expected logs:
+    // - mtinfo: 1x module started + 1x per iteration ("Starting command")
+    // - mtdebug1: 1x per iteration ("finished") + 1x per hash in initial checksum validation
+    expect_any_count(__wrap__mtinfo, tag, 1 + TEST_MAX_DATES);
+    expect_any_count(__wrap__mtinfo, formatted_msg, 1 + TEST_MAX_DATES);
+    expect_any_count(__wrap__mtdebug1, tag, TEST_MAX_DATES + verify_debug_calls);
+    expect_any_count(__wrap__mtdebug1, formatted_msg, TEST_MAX_DATES + verify_debug_calls);
+
+    // Queue sends: 1 event per iteration.
+    expect_any_count(__wrap_wm_sendmsg, usec, TEST_MAX_DATES);
+    expect_any_count(__wrap_wm_sendmsg, queue, TEST_MAX_DATES);
+    expect_any_count(__wrap_wm_sendmsg, message, TEST_MAX_DATES);
+    expect_any_count(__wrap_wm_sendmsg, locmsg, TEST_MAX_DATES);
+    expect_any_count(__wrap_wm_sendmsg, loc, TEST_MAX_DATES);
+    will_return_always(__wrap_wm_sendmsg, 0);
 
     expect_any_always(__wrap_wm_validate_command, command);
     expect_any_always(__wrap_wm_validate_command, digest);
@@ -477,6 +503,15 @@ static void test_command_payload_normal_output(void **state) {
     will_return(__wrap_wm_exec, (char *)output);
     will_return(__wrap_wm_exec, 7);
     will_return(__wrap_wm_exec, 0);
+
+    // status > 0 triggers mtwarn + mtdebug2(OUTPUT).
+    expect_any(__wrap__mtwarn, tag);
+    expect_any(__wrap__mtwarn, formatted_msg);
+
+    expect_any_count(__wrap__mtinfo, tag, 2);
+    expect_any_count(__wrap__mtinfo, formatted_msg, 2);
+    expect_any(__wrap__mtdebug1, tag);
+    expect_any(__wrap__mtdebug1, formatted_msg);
 
     wm_command_prepare_single_iteration();
     wm_command_expect_sendmsg_json();
@@ -505,6 +540,11 @@ static void test_command_payload_empty_output(void **state) {
     will_return(__wrap_wm_exec, (char *)output);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
+
+    expect_any_count(__wrap__mtinfo, tag, 2);
+    expect_any_count(__wrap__mtinfo, formatted_msg, 2);
+    expect_any(__wrap__mtdebug1, tag);
+    expect_any(__wrap__mtdebug1, formatted_msg);
 
     wm_command_prepare_single_iteration();
     wm_command_expect_sendmsg_json();
@@ -542,6 +582,15 @@ static void test_command_payload_long_output_truncates(void **state) {
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
 
+    // Truncation path emits one warning.
+    expect_any(__wrap__mtwarn, tag);
+    expect_any(__wrap__mtwarn, formatted_msg);
+
+    expect_any_count(__wrap__mtinfo, tag, 2);
+    expect_any_count(__wrap__mtinfo, formatted_msg, 2);
+    expect_any(__wrap__mtdebug1, tag);
+    expect_any(__wrap__mtdebug1, formatted_msg);
+
     wm_command_prepare_single_iteration();
     wm_command_expect_sendmsg_json();
 
@@ -558,8 +607,44 @@ static void test_command_payload_long_output_truncates(void **state) {
 
 static void test_command_payload_metadata_only_fallback(void **state) {
     wm_command_t *command = (wm_command_t *)*state;
-    const size_t filler_len = wm_command_compute_metadata_only_command_filler_len();
+    
+    size_t filler_len = wm_command_compute_metadata_only_command_filler_len();
     const char *prefix = "/bin/echo ";
+
+    // Reduce until it actually fits at runtime
+    while (filler_len > 0) {
+        size_t cmd_len = strlen(prefix) + filler_len;
+
+        char *cmdline = calloc(cmd_len + 1, 1);
+        assert_non_null(cmdline);
+        memcpy(cmdline, prefix, strlen(prefix));
+        memset(cmdline + strlen(prefix), 'A', filler_len);
+        cmdline[cmd_len] = '\0';
+
+        char *cmd_cpy = strdup(cmdline);
+        char **argv = w_strtok(cmd_cpy);
+
+        size_t len_empty = wm_command_build_payload_len_for_test(
+            "2026-04-27T00:00:00.000Z",
+            command->tag,
+            cmdline,
+            "echo",
+            "/bin/echo",
+            argv,
+            0,
+            ""
+        );
+
+        free_strarray(argv);
+        free(cmd_cpy);
+        free(cmdline);
+
+        if (len_empty <= wm_command_max_json_payload_len()) {
+            break;
+        }
+
+        filler_len--;  // shrink until it fits
+    }
 
     // Replace the command line with a very long one that almost fills the max payload.
     free(command->command);
@@ -570,8 +655,11 @@ static void test_command_payload_metadata_only_fallback(void **state) {
     memset(command->command + strlen(prefix), 'A', filler_len);
     command->command[cmd_len] = '\0';
 
-    const char *output = "\""; // Escapes to two bytes (\") so a 1-char allowance will still overflow.
+    command->md5_hash = NULL;
+    command->sha1_hash = NULL;
+    command->sha256_hash = NULL;
 
+    const char *output = "\x1f"; // Control char: JSON-encodes to 6 bytes (), so truncation never fits.
     expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, 0);
@@ -582,6 +670,15 @@ static void test_command_payload_metadata_only_fallback(void **state) {
     will_return(__wrap_wm_exec, (char *)output);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
+
+    // First warning: truncation attempt; second warning: still too large, metadata-only fallback.
+    expect_any_count(__wrap__mtwarn, tag, 2);
+    expect_any_count(__wrap__mtwarn, formatted_msg, 2);
+
+    expect_any_count(__wrap__mtinfo, tag, 2);
+    expect_any_count(__wrap__mtinfo, formatted_msg, 2);
+    expect_any(__wrap__mtdebug1, tag);
+    expect_any(__wrap__mtdebug1, formatted_msg);
 
     wm_command_prepare_single_iteration();
     wm_command_expect_sendmsg_json();
