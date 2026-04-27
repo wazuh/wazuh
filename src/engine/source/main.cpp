@@ -490,8 +490,8 @@ int main(int argc, char* argv[])
             exitHandler.add(
                 [streamLogger, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
                 {
-                    streamLogger->cleanup();
-                    LOG_INFO_L(functionName.c_str(), "Stream logger cleaned up.");
+                    streamLogger->requestShutdown();
+                    LOG_INFO_L(functionName.c_str(), "[Stream logger] Shutdown requested.");
                 });
 
             LOG_INFO("Stream logger initialized.");

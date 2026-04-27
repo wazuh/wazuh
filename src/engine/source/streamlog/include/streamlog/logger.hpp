@@ -142,7 +142,7 @@ class ChannelHandler; // Forward declaration of ChannelHandler
  * All public methods are protected by a `shared_mutex`:
  * - Read operations (`hasChannel`, `getConfig`, `getActiveWritersCount`)
  *   take a shared (read) lock.
- * - Write operations (`registerLog`, `updateConfig`, `destroyChannel`, `cleanup`)
+ * - Write operations (`registerLog`, `updateConfig`, `destroyChannel`, `requestShutdown`)
  *   take a unique (write) lock.
  *
  * @see RotationConfig
@@ -266,11 +266,11 @@ public:
     static RotationConfig& isolatedBasePath(const std::string& channelName, RotationConfig& config);
 
     /**
-     * @brief Clean up the logger, releasing all resources.
+     * @brief Request a fast shutdown: cancel in-flight compressions and release all channels.
      *
      * @warning After calling this method, the LogManager instance should not be used again.
      */
-    void cleanup();
+    void requestShutdown();
 
     /**
      * @brief Destructor
