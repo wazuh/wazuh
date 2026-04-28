@@ -21,8 +21,29 @@ case "$1" in
     GROUP="wazuh-manager"
     WAZUH_GLOBAL_TMP_DIR="${DIR}/packages_files"
     WAZUH_TMP_DIR="${WAZUH_GLOBAL_TMP_DIR}/manager_config_files"
+    WAZUH_PRESERVE_DIR="${WAZUH_GLOBAL_TMP_DIR}/manager_upgrade_preserve"
     OSMYSHELL="/sbin/nologin"
     SCRIPTS_DIR="${WAZUH_GLOBAL_TMP_DIR}/manager_installation_scripts"
+
+    restore_upgrade_preserve() {
+        if [ -d "${WAZUH_PRESERVE_DIR}/etc" ]; then
+            mkdir -p "${DIR}/etc"
+            cp -a "${WAZUH_PRESERVE_DIR}/etc/." "${DIR}/etc/"
+        fi
+
+        if [ -d "${WAZUH_PRESERVE_DIR}/data" ]; then
+            mkdir -p "${DIR}/data"
+
+            for DATA_ENTRY in "${WAZUH_PRESERVE_DIR}/data/"* "${WAZUH_PRESERVE_DIR}/data/."[!.]* "${WAZUH_PRESERVE_DIR}/data/"..?*; do
+                [ -e "${DATA_ENTRY}" ] || continue
+                cp -a "${DATA_ENTRY}" "${DIR}/data/"
+            done
+        fi
+
+        if [ -d "${WAZUH_PRESERVE_DIR}" ]; then
+            rm -rf "${WAZUH_PRESERVE_DIR}"
+        fi
+    }
 
     if [ -d /run/systemd/system ]; then
         rm -f /etc/init.d/wazuh-manager
@@ -104,31 +125,19 @@ case "$1" in
 
     chmod 640 ${DIR}/etc/sslmanager.cert ${DIR}/etc/sslmanager.key > /dev/null 2>&1 || true
 
-    # For the etc dir
-    if [ -f /etc/localtime ]; then
-        cp -pL /etc/localtime ${DIR}/etc/;
-        chmod 640 ${DIR}/etc/localtime
-        chown root:${GROUP} ${DIR}/etc/localtime
-    fi
+    if [ -z "$2" ]; then
+        # For the etc dir
+        if [ -f /etc/localtime ]; then
+            cp -pL /etc/localtime ${DIR}/etc/;
+            chmod 640 ${DIR}/etc/localtime
+            chown root:${GROUP} ${DIR}/etc/localtime
+        fi
 
-    if [ -f /etc/TIMEZONE ]; then
-        cp -p /etc/TIMEZONE ${DIR}/etc/;
-        chmod 640 ${DIR}/etc/TIMEZONE
-        chown root:root ${DIR}/etc/TIMEZONE
-    fi
-
-    # Restore client.keys configuration
-    if [ -f ${WAZUH_TMP_DIR}/client.keys ]; then
-        mv ${WAZUH_TMP_DIR}/client.keys ${DIR}/etc/client.keys
-    fi
-    # Restore manager internal options configuration
-    if [ -f ${WAZUH_TMP_DIR}/wazuh-manager-internal-options.conf ]; then
-        mv ${WAZUH_TMP_DIR}/wazuh-manager-internal-options.conf ${DIR}/etc/wazuh-manager-internal-options.conf
-    fi
-
-    # Restore wazuh-manager.conf configuration
-    if [ -f ${WAZUH_TMP_DIR}/wazuh-manager.conf ]; then
-        mv ${WAZUH_TMP_DIR}/wazuh-manager.conf ${DIR}/etc/wazuh-manager.conf
+        if [ -f /etc/TIMEZONE ]; then
+            cp -p /etc/TIMEZONE ${DIR}/etc/;
+            chmod 640 ${DIR}/etc/TIMEZONE
+            chown root:root ${DIR}/etc/TIMEZONE
+        fi
     fi
 
     for BIN in agent_groups agent_upgrade cluster_control rbac_control \
@@ -156,16 +165,6 @@ case "$1" in
     chmod 660 ${DIR}/etc/wazuh-manager.conf > /dev/null 2>&1 || true
     chown root:${GROUP} ${DIR}/etc/wazuh-manager-internal-options.conf > /dev/null 2>&1 || true
     chmod 640 ${DIR}/etc/wazuh-manager-internal-options.conf > /dev/null 2>&1 || true
-    # Restore group files
-    if [ -d ${WAZUH_TMP_DIR}/group ]; then
-        cp -rfp ${WAZUH_TMP_DIR}/group/* ${DIR}/etc/shared
-        rm -rf ${WAZUH_TMP_DIR}/group/
-    fi
-
-    # Restore agent-groups files
-    if [ -d ${WAZUH_TMP_DIR}/agent-groups ]; then
-        mv ${WAZUH_TMP_DIR}/agent-groups ${DIR}/queue/
-    fi
 
     # Restore RBAC database
     if [ -f ${WAZUH_TMP_DIR}/rbac.db ]; then
@@ -189,6 +188,12 @@ case "$1" in
     touch ${DIR}/logs/wazuh-manager.json
     chown ${USER}:${GROUP} ${DIR}/logs/wazuh-manager.json
     chmod 0660 ${DIR}/logs/wazuh-manager.json
+
+    # Restore preserved etc/ and data/ as the last content-restore/overwrite
+    # step for those trees, matching the RPM %posttrans ordering and the
+    # strict "etc/ MUST NOT be overwritten" contract from the upgrade rules.
+    # Permission normalization may still follow afterwards.
+    restore_upgrade_preserve
 
     # Set merged.mg permissions to new ones
     find ${DIR}/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} \;

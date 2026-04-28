@@ -225,9 +225,37 @@ if [ $1 = 2 ]; then
   elif [ -x %{_localstatedir}/bin/wazuh-control ]; then
     %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
   fi
-fi
-if pgrep -f wazuh-manager-authd > /dev/null 2>&1; then
+  if pgrep -f wazuh-manager-authd > /dev/null 2>&1; then
     kill -15 $(pgrep -f wazuh-manager-authd)
+  fi
+
+  UPGRADE_PRESERVE_DIR="%{_localstatedir}/tmp/manager_upgrade_preserve"
+  (
+    set -e
+    if [ -e "${UPGRADE_PRESERVE_DIR}" ]; then
+      echo "ERROR: Existing manager upgrade preserve backup found at ${UPGRADE_PRESERVE_DIR}." >&2
+      echo "ERROR: Recover or move this directory before retrying the upgrade." >&2
+      exit 1
+    fi
+    mkdir -p "${UPGRADE_PRESERVE_DIR}"
+
+    if [ -d "%{_localstatedir}/etc" ]; then
+      cp -a "%{_localstatedir}/etc" "${UPGRADE_PRESERVE_DIR}/"
+    fi
+
+    if [ -d "%{_localstatedir}/data" ]; then
+      mkdir -p "${UPGRADE_PRESERVE_DIR}/data"
+      for DATA_ENTRY in "%{_localstatedir}/data/"* "%{_localstatedir}/data/."[!.]* "%{_localstatedir}/data/"..?*; do
+        [ -e "${DATA_ENTRY}" ] || continue
+        DATA_NAME=$(basename "${DATA_ENTRY}")
+        [ "${DATA_NAME}" = "tzdb" ] && continue
+        cp -a "${DATA_ENTRY}" "${UPGRADE_PRESERVE_DIR}/data/"
+      done
+    fi
+  ) || {
+    echo "ERROR: Could not prepare manager upgrade preserve backup at ${UPGRADE_PRESERVE_DIR}." >&2
+    exit 1
+  }
 fi
 
 # Remove/relocate existing SQLite databases
@@ -354,9 +382,6 @@ chmod 0660 %{_localstatedir}/etc/wazuh-manager.conf
 # Delete the installation files used to configure the manager
 rm -rf %{_localstatedir}/packages_files
 
-# Remove unnecessary files from default group
-rm -f %{_localstatedir}/etc/shared/default/*.rpmnew
-
 # Remove old ossec user and group if exists and change ownwership of files
 
 if getent group ossec > /dev/null 2>&1; then
@@ -454,6 +479,50 @@ fi
 
 # posttrans code is the last thing executed in a install/upgrade
 %posttrans
+UPGRADE_PRESERVE_DIR="%{_localstatedir}/tmp/manager_upgrade_preserve"
+
+if [ -d "${UPGRADE_PRESERVE_DIR}" ]; then
+  (
+    set -e
+    if [ -d "${UPGRADE_PRESERVE_DIR}/etc" ]; then
+      mkdir -p "%{_localstatedir}/etc"
+      cp -a "${UPGRADE_PRESERVE_DIR}/etc/." "%{_localstatedir}/etc/"
+    fi
+
+    if [ -d "${UPGRADE_PRESERVE_DIR}/data" ]; then
+      mkdir -p "%{_localstatedir}/data"
+
+      for DATA_ENTRY in "${UPGRADE_PRESERVE_DIR}/data/"* "${UPGRADE_PRESERVE_DIR}/data/."[!.]* "${UPGRADE_PRESERVE_DIR}/data/"..?*; do
+        [ -e "${DATA_ENTRY}" ] || continue
+        cp -a "${DATA_ENTRY}" "%{_localstatedir}/data/"
+      done
+    fi
+  ) || {
+    echo "ERROR: Could not restore manager upgrade preserve backup; contents left at ${UPGRADE_PRESERVE_DIR}." >&2
+    exit 1
+  }
+  rm -rf "${UPGRADE_PRESERVE_DIR}"
+fi
+
+if [ -f "%{_localstatedir}/etc/wazuh-manager.conf" ]; then
+  chown root:wazuh-manager "%{_localstatedir}/etc/wazuh-manager.conf"
+  chmod 0660 "%{_localstatedir}/etc/wazuh-manager.conf"
+fi
+
+if [ -f "%{_localstatedir}/etc/wazuh-manager-internal-options.conf" ]; then
+  chown root:wazuh-manager "%{_localstatedir}/etc/wazuh-manager-internal-options.conf"
+  chmod 0640 "%{_localstatedir}/etc/wazuh-manager-internal-options.conf"
+fi
+
+if [ -f "%{_localstatedir}/etc/client.keys" ]; then
+  chown wazuh-manager:wazuh-manager "%{_localstatedir}/etc/client.keys"
+  chmod 0660 "%{_localstatedir}/etc/client.keys"
+fi
+
+if [ -d "%{_localstatedir}/etc/shared" ]; then
+  find "%{_localstatedir}/etc/shared/" -type f -name 'merged.mg' -exec chmod 644 {} \;
+fi
+
 if [ -f %{_sysconfdir}/systemd/system/wazuh-manager.service ]; then
   rm -rf %{_sysconfdir}/systemd/system/wazuh-manager.service
   systemctl daemon-reload > /dev/null 2>&1
@@ -522,13 +591,13 @@ rm -fr %{buildroot}
 %attr(660, root, wazuh-manager) %ghost %{_localstatedir}/etc/wazuh-manager.conf
 %attr(640, root, root) %ghost %{_localstatedir}/etc/sslmanager.cert
 %attr(640, root, root) %ghost %{_localstatedir}/etc/sslmanager.key
-%attr(660, wazuh-manager, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/client.keys
-%attr(640, root, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/wazuh-manager-internal-options.conf
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/client.keys
+%attr(640, root, wazuh-manager) %{_localstatedir}/etc/wazuh-manager-internal-options.conf
 %attr(640, root, wazuh-manager) %{_localstatedir}/etc/localtime
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/etc/shared
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/default
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/agent-template.conf
-%attr(660, wazuh-manager, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/shared/default/*
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/default/*
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/default
 %attr(640, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/default/*.yml

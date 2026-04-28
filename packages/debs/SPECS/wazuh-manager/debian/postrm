@@ -15,6 +15,7 @@ if [ "$1" = "abort-upgrade" ] || [ "$1" = "failed-upgrade" ]; then
 fi
 
 WAZUH_TMP_DIR="${DIR}/packages_files/manager_config_files"
+WAZUH_PRESERVE_DIR="${DIR}/packages_files/manager_upgrade_preserve"
 ROLLBACK_MARKER="${WAZUH_TMP_DIR}/rollback_prepared"
 
 # If preinst did not prepare rollback state, abort safely.
@@ -29,6 +30,17 @@ case "$1" in
 
         if [ -d ${WAZUH_TMP_DIR} ]; then
             rm -rf ${WAZUH_TMP_DIR}
+        fi
+
+        if [ -d "${WAZUH_PRESERVE_DIR}" ]; then
+            case "$1" in
+                failed-upgrade|abort-upgrade)
+                    echo "Wazuh upgrade recovery files were preserved at ${WAZUH_PRESERVE_DIR}. Restore them manually if needed." >&2
+                    ;;
+                *)
+                    rm -rf "${WAZUH_PRESERVE_DIR}"
+                    ;;
+            esac
         fi
 
         # Back up the old configuration files as .save
