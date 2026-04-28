@@ -10,8 +10,43 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check-files:
+    runs-on: ubuntu-24.04
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if only CHANGELOG.md was modified
+        id: check
+        run: |
+          # Get the list of modified files in the PR
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD)
+
+          echo "Files changed in this PR:"
+          echo "$CHANGED_FILES"
+          echo ""
+
+          # Count total files changed
+          TOTAL_FILES=$(echo "$CHANGED_FILES" | wc -l)
+
+          # Check if CHANGELOG.md is the only file changed
+          if [ "$TOTAL_FILES" -eq 1 ] && echo "$CHANGED_FILES" | grep -q "^CHANGELOG.md$"; then
+            echo "Only CHANGELOG.md was modified. Skipping clang-format check."
+            echo "should_run=false" >> $GITHUB_OUTPUT
+          else
+            echo "Code files were modified. Running clang-format check."
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          fi
+
   style:
     runs-on: ubuntu-24.04
+    needs: check-files
+    if: needs.check-files.outputs.should_run == 'true'
 
     steps:
       - name: Cancel previous runs
