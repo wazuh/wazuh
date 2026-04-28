@@ -1,0 +1,59 @@
+name: PR Labels Check
+
+on:
+  pull_request:
+    types:
+      - opened              # Cuando se crea el PR
+      - ready_for_review    # Cuando pasa de Draft a Ready for Review
+      - labeled             # Cuando se añade un label
+      - unlabeled           # Cuando se quita un label
+
+jobs:
+  list-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: List PR Labels
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_STATE: ${{ github.event.pull_request.state }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
+          ACTION: ${{ github.event.action }}
+        run: |
+          echo "================================="
+          echo "PR Information"
+          echo "================================="
+          echo "PR Number: #$PR_NUMBER"
+          echo "Title: $PR_TITLE"
+          echo "State: $PR_STATE"
+          echo "Is Draft: $IS_DRAFT"
+          echo "Action triggered: $ACTION"
+          echo ""
+          echo "================================="
+          echo "Current PR Labels"
+          echo "================================="
+
+          # Obtener los labels del PR usando la API de GitHub
+          LABELS=$(gh pr view $PR_NUMBER --json labels --jq '.labels[].name')
+
+          if [ -z "$LABELS" ]; then
+            echo "⚠️  No labels found on this PR"
+          else
+            echo "Labels found:"
+            echo "$LABELS" | while read -r label; do
+              echo "  • $label"
+            done
+
+            # Verificar si existe el label "no changelog"
+            if echo "$LABELS" | grep -q "no changelog"; then
+              echo ""
+              echo "✓ Label 'no changelog' is present"
+            else
+              echo ""
+              echo "✗ Label 'no changelog' is NOT present"
+            fi
+          fi
+
+          echo "================================="
+        env:
+          GH_TOKEN: ${{ github.token }}
