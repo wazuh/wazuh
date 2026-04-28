@@ -65,6 +65,8 @@
 
 #define FIM_EBPF_INIT                       "(6047): Initializing eBPF driver for FIM whodata."
 #define FIM_EBPF_HEALTHCHECK_SUCCESS        "(6048): Healthcheck for eBPF FIM whodata module success."
+#define FIM_EBPF_HEALTHCHECK_ACTION_SUCCESS "(6049): eBPF healthcheck action succeeded: %s."
+#define FIM_EBPF_HEALTHCHECK_CLEANUP        "(6050): Removed a leftover eBPF healthcheck file before starting the validation sequence."
 
 /* wazuh-logtest information messages */
 #define LOGTEST_INITIALIZED                 "(7200): Logtest started"

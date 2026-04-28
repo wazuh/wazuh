@@ -9,7 +9,9 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cerrno>
 #include <sstream>
+#include <sys/stat.h>
 #include <unistd.h>
 #include "modern.skel.h"
 #include <fstream>
@@ -30,6 +32,7 @@
 #define LIB_INSTALL_PATH "bpf"
 #define BPF_OBJ_INSTALL_PATH "lib/modern.bpf.o"
 #define WAIT_MS 500
+#define HC_ACTION_TIMEOUT_S 10
 
 // Global
 static bpf_object* global_obj = nullptr;
@@ -98,6 +101,170 @@ int healthcheck_event(void* ctx, void* data, size_t data_sz) {
         event_received = true;
     }
     return 0;
+}
+
+using healthcheck_operation_t = bool (*)(const char*, char*, size_t);
+
+static void log_healthcheck_message(modules_log_level_t level,
+                                    const char* format,
+                                    const char* action,
+                                    const char* detail = nullptr) {
+    auto logFn = fimebpf::instance().m_loggingFunction;
+    char log_message[4200] = {0};
+
+    if (!logFn) {
+        return;
+    }
+
+    if (detail) {
+        snprintf(log_message,
+                 sizeof(log_message),
+                 format,
+                 action,
+                 detail);
+    } else {
+        snprintf(log_message,
+                 sizeof(log_message),
+                 format,
+                 action);
+    }
+
+    logFn(level, log_message);
+}
+
+static bool wait_for_healthcheck_event(ring_buffer* rb, char* detail, size_t detail_size) {
+    auto logFn = fimebpf::instance().m_loggingFunction;
+
+    if (!logFn) {
+        return false;
+    }
+
+    event_received = false;
+    time_t start_time = w_time(nullptr);
+
+    while (!event_received) {
+        int ret = bpf_helpers->ring_buffer_poll(rb, WAIT_MS);
+        if (ret < 0) {
+            logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_CONSUME);
+            snprintf(detail, detail_size, "%s", FIM_EBPF_HEALTHCHECK_EVENT_CONSUME_DETAIL);
+            return false;
+        }
+
+        if (w_time(nullptr) - start_time >= HC_ACTION_TIMEOUT_S) {
+            snprintf(detail, detail_size, "%s", FIM_EBPF_HEALTHCHECK_EVENT_TIMEOUT_DETAIL);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static bool create_healthcheck_file(const char* file_path, char* detail, size_t detail_size) {
+    char error_message[4200] = {0};
+    auto logFn = fimebpf::instance().m_loggingFunction;
+
+    if (!logFn) {
+        return false;
+    }
+
+    std::ofstream file(file_path);
+    if (!file.is_open()) {
+        snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_HEALTHCHECK_FILE, file_path);
+        logFn(LOG_ERROR, error_message);
+        snprintf(detail, detail_size, "%s", FIM_EBPF_HEALTHCHECK_CREATE_DETAIL);
+        return false;
+    }
+
+    file << "Testing eBPF healthcheck\n";
+    file.close();
+
+    return true;
+}
+
+static bool modify_healthcheck_file_content(const char* file_path, char* detail, size_t detail_size) {
+    std::ofstream file(file_path, std::ios::app);
+
+    if (!file.is_open()) {
+        snprintf(detail, detail_size, "%s", FIM_EBPF_HEALTHCHECK_CONTENT_DETAIL);
+        return false;
+    }
+
+    file << "Updating eBPF healthcheck\n";
+    file.close();
+
+    return true;
+}
+
+static bool modify_healthcheck_file_metadata(const char* file_path, char* detail, size_t detail_size) {
+    struct stat file_stat = {};
+
+    if (stat(file_path, &file_stat) != 0) {
+        snprintf(detail,
+                 detail_size,
+                 FIM_EBPF_HEALTHCHECK_STAT_DETAIL,
+                 file_path,
+                 strerror(errno));
+        return false;
+    }
+
+    mode_t current_mode = file_stat.st_mode & 0777;
+    mode_t new_mode = (current_mode ^ S_IXUSR) & 0777;
+
+    if (chmod(file_path, new_mode) != 0) {
+        snprintf(detail,
+                 detail_size,
+                 FIM_EBPF_HEALTHCHECK_CHMOD_DETAIL,
+                 file_path,
+                 strerror(errno));
+        return false;
+    }
+
+    return true;
+}
+
+static bool delete_healthcheck_file(const char* file_path, char* detail, size_t detail_size) {
+    char error_message[4200] = {0};
+    auto logFn = fimebpf::instance().m_loggingFunction;
+
+    if (!logFn) {
+        return false;
+    }
+
+    if (std::remove(file_path) != 0) {
+        snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL, file_path);
+        logFn(LOG_ERROR, error_message);
+        snprintf(detail, detail_size, "%s", FIM_EBPF_HEALTHCHECK_DELETE_DETAIL);
+        return false;
+    }
+
+    return true;
+}
+
+static bool run_healthcheck_action(ring_buffer* rb,
+                                   const char* action,
+                                   const char* file_path,
+                                   healthcheck_operation_t operation,
+                                   bool enabled) {
+    char detail[4200] = {0};
+
+    if (!enabled) {
+        log_healthcheck_message(LOG_ERROR,
+                                FIM_ERROR_EBPF_HEALTHCHECK_ACTION_SKIPPED,
+                                action,
+                                FIM_EBPF_HEALTHCHECK_SKIP_DETAIL);
+        return false;
+    }
+
+    if (!operation(file_path, detail, sizeof(detail)) || !wait_for_healthcheck_event(rb, detail, sizeof(detail))) {
+        log_healthcheck_message(LOG_ERROR,
+                                FIM_ERROR_EBPF_HEALTHCHECK_ACTION_FAILED,
+                                action,
+                                detail);
+        return false;
+    }
+
+    log_healthcheck_message(LOG_INFO, FIM_EBPF_HEALTHCHECK_ACTION_SUCCESS, action);
+    return true;
 }
 
 int check_invalid_kernel_version() {
@@ -342,7 +509,8 @@ int ebpf_whodata_healthcheck() {
     auto logFn = fimebpf::instance().m_loggingFunction;
     auto abspathFn = fimebpf::instance().m_abspath;
     char ebpf_hc_abs_path[PATH_MAX] = {0};
-    char error_message[4200];
+    bool healthcheck_failed = false;
+    bool healthcheck_file_available = false;
 
     if (!bpf_helpers) {
         bpf_helpers = std::make_unique<w_bpf_helpers_t>();
@@ -366,42 +534,51 @@ int ebpf_whodata_healthcheck() {
         return 1;
     }
 
-    time_t start_time = w_time(nullptr);
-    while (!event_received) {
-        int ret = bpf_helpers->ring_buffer_poll(rb, WAIT_MS);
-        if (ret < 0) {
-            logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_CONSUME);
-            break;
-        }
-        if (w_time(nullptr) - start_time >= 10) {
-            logFn(LOG_ERROR, FIM_ERROR_EBPF_HEALTHCHECK_TIMEOUT);
-            break;
-        }
+    event_received = false;
+    ebpf_hc_created = false;
+    abspathFn(EBPF_HC_FILE, ebpf_hc_abs_path, sizeof(ebpf_hc_abs_path));
 
-        if (!ebpf_hc_created) {
-            abspathFn(EBPF_HC_FILE, ebpf_hc_abs_path, sizeof(ebpf_hc_abs_path));
-            std::ofstream file(ebpf_hc_abs_path);
-            if (!file.is_open()) {
-                snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_HEALTHCHECK_FILE, ebpf_hc_abs_path);
-                logFn(LOG_ERROR, error_message);
-                break;
-            }
-            file << "Testing eBPF healthcheck\n";
-            file.close();
-            ebpf_hc_created = true;
-        }
+    if (std::remove(ebpf_hc_abs_path) == 0) {
+        logFn(LOG_DEBUG_VERBOSE, FIM_EBPF_HEALTHCHECK_CLEANUP);
     }
 
-    // Remove the tmp file
-    if (std::remove(ebpf_hc_abs_path) != 0) {
-        snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL, ebpf_hc_abs_path);
-        logFn(LOG_ERROR, error_message);
-    }
+    healthcheck_failed |= !run_healthcheck_action(rb,
+                                                  "create file",
+                                                  ebpf_hc_abs_path,
+                                                  create_healthcheck_file,
+                                                  true);
+    ebpf_hc_created = (access(ebpf_hc_abs_path, F_OK) == 0);
+    healthcheck_file_available = ebpf_hc_created;
+
+    healthcheck_failed |= !run_healthcheck_action(rb,
+                                                  "modify content",
+                                                  ebpf_hc_abs_path,
+                                                  modify_healthcheck_file_content,
+                                                  healthcheck_file_available);
+
+    healthcheck_failed |= !run_healthcheck_action(rb,
+                                                  "modify metadata",
+                                                  ebpf_hc_abs_path,
+                                                  modify_healthcheck_file_metadata,
+                                                  healthcheck_file_available);
+
+    healthcheck_failed |= !run_healthcheck_action(rb,
+                                                  "delete file",
+                                                  ebpf_hc_abs_path,
+                                                  delete_healthcheck_file,
+                                                  healthcheck_file_available);
+    healthcheck_file_available = (access(ebpf_hc_abs_path, F_OK) == 0);
 
     // Free healthcheck ring buffer
     bpf_helpers->ring_buffer_free(rb);
 
-    if (!event_received) {
+    if (healthcheck_file_available && std::remove(ebpf_hc_abs_path) != 0 && errno != ENOENT) {
+        char error_message[4200] = {0};
+        snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL, ebpf_hc_abs_path);
+        logFn(LOG_ERROR, error_message);
+    }
+
+    if (healthcheck_failed) {
         return 1;
     }
 
