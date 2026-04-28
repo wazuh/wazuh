@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 ### Manager
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added cluster-by-default deployment model: all Wazuh Server installations now run as a cluster node, removing the distinction between clustered and non-clustered deployments. The `cluster.disabled` configuration option has been removed. ([#31295](https://github.com/wazuh/wazuh/issues/31295))
 - Added stateless metadata enrichment in `remoted`, centralizing event metadata handling for stateless messages and removing the dependency on `wazuh-db` for that ingestion path. ([#33269](https://github.com/wazuh/wazuh/issues/33269))
@@ -37,6 +38,7 @@ All notable changes to this project will be documented in this file.
 ### Agent
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added local state persistence for agent modules (FIM, System Inventory, SCA), removing the dependency on `rsync` with the Wazuh Server and reducing network traffic and server-side processing overhead. ([#29533](https://github.com/wazuh/wazuh/issues/29533)) ([#31838](https://github.com/wazuh/wazuh/issues/31838))
 
@@ -189,6 +191,7 @@ All notable changes to this project will be documented in this file.
 ### Agent
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added hostname and architecture metadata to Windows keep-alive messages. ([#33831](https://github.com/wazuh/wazuh/pull/33831))
 
@@ -218,6 +221,7 @@ All notable changes to this project will be documented in this file.
 ### Ruleset
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added a CIS SCA policy for macOS 26 Tahoe. ([#33492](https://github.com/wazuh/wazuh/pull/33492))
 
@@ -247,6 +251,7 @@ All notable changes to this project will be documented in this file.
 ### Agent
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added detection of the `-a never,task` Audit rule in FIM whodata for Linux. ([#33313](https://github.com/wazuh/wazuh/pull/33313))
 
@@ -262,6 +267,7 @@ All notable changes to this project will be documented in this file.
 ### Ruleset
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added SCA Policy for Microsoft Windows Server 2025. ([#32856](https://github.com/wazuh/wazuh/pull/32856))
 
@@ -286,6 +292,7 @@ All notable changes to this project will be documented in this file.
 ### Manager
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added IAM role support for VPC flow logs in the AWS wodle. ([#32009](https://github.com/wazuh/wazuh/pull/32009))
 - Added support for static and temporary AWS credentials in the Amazon Security Lake subscriber. ([#32514](https://github.com/wazuh/wazuh/pull/32514))
@@ -310,6 +317,7 @@ All notable changes to this project will be documented in this file.
 ### Agent
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added support for Homebrew 2.0+ in IT Hygiene for macOS. ([#32746](https://github.com/wazuh/wazuh/pull/32746))
 
@@ -364,6 +372,7 @@ All notable changes to this project will be documented in this file.
 ### Manager
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added system users and groups to the inventory data. ([#30848](https://github.com/wazuh/wazuh/pull/30848))
 - Added browser extensions and services to the inventory data. ([#31614](https://github.com/wazuh/wazuh/pull/31614))
@@ -387,6 +396,7 @@ All notable changes to this project will be documented in this file.
 ### Agent
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added support for parquet version 2 in AWS Wodle. ([#30235](https://github.com/wazuh/wazuh/pull/30235))
 - Added capability to do a hot configuration reload in Linux agents. ([#30797](https://github.com/wazuh/wazuh/pull/30797))
@@ -412,6 +422,7 @@ All notable changes to this project will be documented in this file.
 ### RESTful API
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added syscollector users and groups endpoints. ([#30913](https://github.com/wazuh/wazuh/pull/30913))
 - Added syscollector services and browser_extension endpoints. ([#31513](https://github.com/wazuh/wazuh/pull/31513))
@@ -424,6 +435,7 @@ All notable changes to this project will be documented in this file.
 ### Ruleset
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added SCA content for Rocky Linux 10. ([#30745](https://github.com/wazuh/wazuh/pull/30745))
 - Added SCA content for Debian 13. ([#31747](https://github.com/wazuh/wazuh/pull/31747))
@@ -465,6 +477,7 @@ All notable changes to this project will be documented in this file.
 ### Manager
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added Analysisd ability to do a hot ruleset reload. ([#29458](https://github.com/wazuh/wazuh/pull/29458))
 - Added support for global queries of FIM and system inventory data. ([#27894](https://github.com/wazuh/wazuh/issues/27894))
@@ -498,6 +511,7 @@ All notable changes to this project will be documented in this file.
 ### Agent
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added support for Rocky Linux and AlmaLinux in the agent upgrade module. ([#29391](https://github.com/wazuh/wazuh/pull/29391))
 - Added handling of CentOS 9 SCA files in package specs. ([#29393](https://github.com/wazuh/wazuh-packages/pull/29393))
@@ -533,6 +547,7 @@ All notable changes to this project will be documented in this file.
 ### RESTful API
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added the server uuid to the /manager/info endpoint. ([#29524](https://github.com/wazuh/wazuh/pull/29524))
 - Added /agents/summary endpoint. ([#29589](https://github.com/wazuh/wazuh/pull/29589))
@@ -546,6 +561,7 @@ All notable changes to this project will be documented in this file.
 ### Ruleset
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added SCA content for CentOS Stream 9. ([#29269](https://github.com/wazuh/wazuh/pull/29269))
 - Added IOCs and rules for Wazuh 4.x ruleset improvement. ([#29653](https://github.com/wazuh/wazuh/pull/29653))
@@ -575,6 +591,7 @@ All notable changes to this project will be documented in this file.
 ### Manager
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added new compilation flags for the Vulnerability Detector module. ([#26652](https://github.com/wazuh/wazuh/pull/26652))
 - Added support for central components in ARM architectures. ([#26083](https://github.com/wazuh/wazuh/issues/26083))
@@ -603,6 +620,7 @@ All notable changes to this project will be documented in this file.
 ### Agent
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - FIM now supports whodata using an eBPF-based integration. ([#27956](https://github.com/wazuh/wazuh/pull/27956))
 - Added support for the `riskDetections` relationship in MS Graph. ([#28416](https://github.com/wazuh/wazuh/pull/28416))
@@ -630,6 +648,7 @@ All notable changes to this project will be documented in this file.
 ### Ruleset
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Created SCA content for Distribution Independent Linux. ([#27749](https://github.com/wazuh/wazuh/pull/27749))
 - Created SCA policy for Ubuntu 24.04 LTS. ([#27253](https://github.com/wazuh/wazuh/pull/27253))
@@ -668,6 +687,7 @@ All notable changes to this project will be documented in this file.
 ### RESTful API
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added the `authentication_pool_size` option to customize the number of authentication processes in the Wazuh API configuration. ([#28653](https://github.com/wazuh/wazuh/pull/28653))
 
@@ -704,6 +724,7 @@ All notable changes to this project will be documented in this file.
 - Enabled inventory synchronization in Vulnerability Detector when the Indexer module is disabled. ([#26132](https://github.com/wazuh/wazuh/pull/26132))
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added CISA vulnerability content and prioritized over NVD in vulnerability scanner. ([#27692](https://github.com/wazuh/wazuh/pull/27692))
 
@@ -722,6 +743,7 @@ All notable changes to this project will be documented in this file.
 - Fixed error in event processing on AWS Custom Logs Buckets module. ([#27739](https://github.com/wazuh/wazuh/pull/27739))
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Improved Syscollector hotfix coverage on Windows by integrating WMI and WUA APIs. ([#26706](https://github.com/wazuh/wazuh/pull/26706))
 - Extended Syscollector capabilities to detect installed .pkg packages. ([#26782](https://github.com/wazuh/wazuh/pull/26782))
@@ -809,6 +831,7 @@ All notable changes to this project will be documented in this file.
 ### RESTful API
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Created new endpoint for agent uninstall process. ([#24621](https://github.com/wazuh/wazuh/pull/24621))
 
@@ -824,6 +847,7 @@ All notable changes to this project will be documented in this file.
 ### Ruleset
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Create SCA Policy for Windows Server 2012 (non R2). ([#21794](https://github.com/wazuh/wazuh/pull/21794))
 
@@ -874,6 +898,7 @@ All notable changes to this project will be documented in this file.
 ### Agent
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added support for macOS 15 "Sequoia" in Wazuh Agent. ([#25652](https://github.com/wazuh/wazuh/issues/25652))
 
@@ -907,6 +932,7 @@ All notable changes to this project will be documented in this file.
 ### Manager
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - The manager now supports alert forwarding to Fluentd. ([#17306](https://github.com/wazuh/wazuh/pull/17306))
 - Added missing functionality for vulnerability scanner translations. ([#23518](https://github.com/wazuh/wazuh/issues/23518))
@@ -931,6 +957,7 @@ All notable changes to this project will be documented in this file.
 ### Agent
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added debug logging in FIM to detect invalid report change registry values. Thanks to Zafer Balkan (@zbalkan). ([#21690](https://github.com/wazuh/wazuh/pull/21690))
 - Added Amazon Linux 1 and 2023 support for the installation script. ([#21287](https://github.com/wazuh/wazuh/pull/21287))
@@ -972,6 +999,7 @@ All notable changes to this project will be documented in this file.
 ### RESTful API
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added support in the Wazuh API to parse `journald` configurations from the `ossec.conf` file. ([#23094](https://github.com/wazuh/wazuh/pull/23094))
 - Added user-agent to the CTI service request. ([#24360](https://github.com/wazuh/wazuh/pull/24360))
@@ -1040,6 +1068,7 @@ All notable changes to this project will be documented in this file.
 ### Manager
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added dedicated RSA keys for keystore encryption. ([#24357](https://github.com/wazuh/wazuh/pull/24357))
 
@@ -1073,6 +1102,7 @@ All notable changes to this project will be documented in this file.
 ### Manager
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Transition to Wazuh Keystore for Indexer Configuration. ([#21670](https://github.com/wazuh/wazuh/pull/21670))
 
@@ -1097,6 +1127,7 @@ All notable changes to this project will be documented in this file.
 ### Agent
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added snap package manager support to Syscollector. ([#15740](https://github.com/wazuh/wazuh/pull/15740))
 - Added event size validation for the external integrations. ([#17932](https://github.com/wazuh/wazuh/pull/17932))
@@ -1126,6 +1157,7 @@ All notable changes to this project will be documented in this file.
 ### RESTful API
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added new `GET /manager/version/check` endpoint to obtain information about new releases of Wazuh. ([#19952](https://github.com/wazuh/wazuh/pull/19952))
 - Introduced an `auto` option for the ssl_protocol setting in the API configuration. This enables automatic negotiation of the TLS certificate to be used. ([#20420](https://github.com/wazuh/wazuh/pull/20420))
@@ -1146,6 +1178,7 @@ All notable changes to this project will be documented in this file.
 ### Ruleset
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added new SCA policy for Amazon Linux 2023. ([#17780](https://github.com/wazuh/wazuh/pull/17780))
 - Added new SCA policy for Rocky Linux 8. ([#17784](https://github.com/wazuh/wazuh/pull/17784))
@@ -1172,6 +1205,7 @@ All notable changes to this project will be documented in this file.
 ### Other
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added external lua library dependency version 5.3.6. ([#21710](https://github.com/wazuh/wazuh/pull/21710))
 - Added external PyJWT library dependency version 2.8.0. ([#21749](https://github.com/wazuh/wazuh/pull/21749))
@@ -1205,6 +1239,7 @@ All notable changes to this project will be documented in this file.
 ### Manager
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added a database endpoint to recalculate the hash of agent groups. ([#23441](https://github.com/wazuh/wazuh/pull/23441))
 
@@ -1246,6 +1281,7 @@ All notable changes to this project will be documented in this file.
 ### Manager
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added minimum time constraint of 1 hour for Vulnerability Detector feed downloads. ([#21142](https://github.com/wazuh/wazuh/pull/21142))
 
@@ -1258,6 +1294,7 @@ All notable changes to this project will be documented in this file.
 ### Agent
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added timeouts to external and Cloud integrations to prevent indefinite waiting for a response. ([#20638](https://github.com/wazuh/wazuh/pull/20638))
 
@@ -1271,6 +1308,7 @@ All notable changes to this project will be documented in this file.
 ### Ruleset
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added new SCA policy for Debian 12. ([#17565](https://github.com/wazuh/wazuh/pull/17565))
 
@@ -1335,6 +1373,7 @@ All notable changes to this project will be documented in this file.
 ### Manager
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Introduced native Maltiverse integration. Thanks to David Gil (@dgilm). ([#18026](https://github.com/wazuh/wazuh/pull/18026))
 - Added a file detailing the dependencies for the Wazuh RESTful API and wodles tests. ([#16513](https://github.com/wazuh/wazuh/pull/16513))
@@ -1361,6 +1400,7 @@ All notable changes to this project will be documented in this file.
 ### Agent
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added support for Custom Logs in Buckets via AWS SQS. ([#17951](https://github.com/wazuh/wazuh/pull/17951))
 - Added geolocation for `aws.data.client_ip` field. Thanks to @rh0dy. ([#16198](https://github.com/wazuh/wazuh/pull/16198))
@@ -1384,6 +1424,7 @@ All notable changes to this project will be documented in this file.
 ### RESTful API
 
 ### Added
+- Test entry for automated merge test [5538]
 - Added new `status_code` field to `GET /agents` response. ([#19726](https://github.com/wazuh/wazuh/pull/19726))
 
 #### Fixed
@@ -1407,6 +1448,7 @@ All notable changes to this project will be documented in this file.
 ### Manager
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - wazuh-authd can now generate X509 certificates. ([#13559](https://github.com/wazuh/wazuh/pull/13559))
 - Introduced a new CLI to manage features related to the Wazuh API RBAC resources. ([#13797](https://github.com/wazuh/wazuh/pull/13797))
@@ -1459,6 +1501,7 @@ All notable changes to this project will be documented in this file.
 ### Agent
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added GuardDuty Native support to the AWS integration. ([#15226](https://github.com/wazuh/wazuh/pull/15226))
 - Added `--prefix` parameter to Azure Storage integration. ([#14768](https://github.com/wazuh/wazuh/pull/14768))
@@ -1528,6 +1571,7 @@ All notable changes to this project will be documented in this file.
 ### RESTful API
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added `POST /events` API endpoint to ingest logs through the API. ([#17670](https://github.com/wazuh/wazuh/pull/17670))
 - Added `query`, `select` and `distinct` parameters to multiple endpoints. ([#17865](https://github.com/wazuh/wazuh/pull/17865))
@@ -1610,6 +1654,7 @@ All notable changes to this project will be documented in this file.
 ### RESTful API
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added support for the `$` symbol in query values. ([#18509](https://github.com/wazuh/wazuh/pull/18509))
 - Added support for the `@` symbol in query values. ([#18346](https://github.com/wazuh/wazuh/pull/18346))
@@ -1664,6 +1709,7 @@ All notable changes to this project will be documented in this file.
 ### Agent
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added the `discard_regex` functionality to Inspector and CloudWatchLogs AWS integrations. ([#17748](https://github.com/wazuh/wazuh/pull/17748))
 - Added new validations for the AWS integration arguments. ([#17673](https://github.com/wazuh/wazuh/pull/17673))
@@ -1810,6 +1856,7 @@ All notable changes to this project will be documented in this file.
 ### Agent
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added a new module to integrate with Amazon Security Lake as a subscriber. ([#16515](https://github.com/wazuh/wazuh/pull/16515))
 - Added support for `localfile` blocks deployment. ([#16847](https://github.com/wazuh/wazuh/pull/16847))
@@ -1832,6 +1879,7 @@ All notable changes to this project will be documented in this file.
 ### Ruleset
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added macOS 13.0 Ventura SCA policy. ([#15566](https://github.com/wazuh/wazuh/pull/15566))
 - Added new ruleset for macOS 13 Ventura and older versions. ([#15567](https://github.com/wazuh/wazuh/pull/15567))
@@ -1840,6 +1888,7 @@ All notable changes to this project will be documented in this file.
 ### Other
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added `pyarrow` and `numpy` Python dependencies. ([#16692](https://github.com/wazuh/wazuh/pull/16692))
 - Added `importlib-metadata` and `zipp` Python dependencies. ([#16692](https://github.com/wazuh/wazuh/pull/16692))
@@ -1870,6 +1919,7 @@ All notable changes to this project will be documented in this file.
 ### Ruleset
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added Debian Linux 11 SCA policy. ([#16017](https://github.com/wazuh/wazuh/pull/16017))
 
@@ -1889,6 +1939,7 @@ All notable changes to this project will be documented in this file.
 ### Manager
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added new unit tests for cluster Python module and increased coverage to 99%. ([#9995](https://github.com/wazuh/wazuh/pull/9995))
 - Added file size limitation on cluster integrity sync. ([#11190](https://github.com/wazuh/wazuh/pull/11190))
@@ -1971,6 +2022,7 @@ All notable changes to this project will be documented in this file.
 ### Agent
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added support of CPU frequency data provided by Syscollector on Raspberry Pi. ([#11756](https://github.com/wazuh/wazuh/pull/11756))
 - Added support for IPv6 address collection in the agent. ([#11450](https://github.com/wazuh/wazuh/pull/11450))
@@ -2047,6 +2099,7 @@ All notable changes to this project will be documented in this file.
 ### RESTful API
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added new API integration tests for a Wazuh environment without a cluster configuration. ([#10620](https://github.com/wazuh/wazuh/pull/10620))
 - Added wazuh-modulesd tags to `GET /manager/logs` and `GET /cluster/{node_id}/logs` endpoints. ([#11731](https://github.com/wazuh/wazuh/pull/11731))
@@ -2113,6 +2166,7 @@ All notable changes to this project will be documented in this file.
 ### Ruleset
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added support for new sysmon events. ([#13594](https://github.com/wazuh/wazuh/pull/13594))
 - Added new detection rules using Sysmon ID 1 events. ([#13595](https://github.com/wazuh/wazuh/pull/13595))
@@ -2148,6 +2202,7 @@ All notable changes to this project will be documented in this file.
 ### Other
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added unit tests to the component in Analysisd that extracts the IP address from events. ([#12733](https://github.com/wazuh/wazuh/pull/12733))
 - Added `python-json-logger` dependency. ([#12518](https://github.com/wazuh/wazuh/pull/12518))
@@ -2242,6 +2297,7 @@ All notable changes to this project will be documented in this file.
 ### Manager
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added cluster command to obtain custom ruleset files and their hash. ([#14540](https://github.com/wazuh/wazuh/pull/14540))
 
@@ -2266,6 +2322,7 @@ All notable changes to this project will be documented in this file.
 ### RESTful API
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added endpoint GET /cluster/ruleset/synchronization to check ruleset synchronization status in a cluster. ([#14551](https://github.com/wazuh/wazuh/pull/14551))
 
@@ -2276,6 +2333,7 @@ All notable changes to this project will be documented in this file.
 ### Ruleset
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added SCA Policy for CIS Microsoft Windows 11 Enterprise Benchmark v1.0.0. ([#13806](https://github.com/wazuh/wazuh/pull/13806))
 - Added SCA Policy for CIS Microsoft Windows 10 Enterprise Release 21H2 Benchmark v1.12.0. ([#13879](https://github.com/wazuh/wazuh/pull/13879))
@@ -2296,6 +2354,7 @@ All notable changes to this project will be documented in this file.
 ### Manager
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added support for Ubuntu 22 (Jammy) in Vulnerability Detector. ([#14085](https://github.com/wazuh/wazuh/pull/14085))
 - Addded support for Red Hat 9 in Vulnerability Detector. ([#14117](https://github.com/wazuh/wazuh/pull/14117))
@@ -2335,6 +2394,7 @@ All notable changes to this project will be documented in this file.
 ### Ruleset
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added Ubuntu Linux 22.04 SCA Policy. ([#13893](https://github.com/wazuh/wazuh/pull/13893))
 - Added Apple macOS 12.0 Monterey SCA Policy. ([#13905](https://github.com/wazuh/wazuh/pull/13905))
@@ -2484,6 +2544,7 @@ All notable changes to this project will be documented in this file.
 ### Manager
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added support for Arch Linux OS in Vulnerability Detector. Thanks to Aviel Warschawski (@avielw). ([#8178](https://github.com/wazuh/wazuh/pull/8178))
 - Added a log message in the `cluster.log` file to notify that wazuh-clusterd has been stopped. ([#8749](https://github.com/wazuh/wazuh/pull/8749))
@@ -2598,6 +2659,7 @@ All notable changes to this project will be documented in this file.
 ### Agent
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added an option to allow the agent to refresh the connection to the manager. ([#8016](https://github.com/wazuh/wazuh/pull/8016))
 - Introduced a new module to collect audit logs from GitHub. ([#8532](https://github.com/wazuh/wazuh/pull/8532))
@@ -2688,6 +2750,7 @@ All notable changes to this project will be documented in this file.
 ### RESTful API
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added new `PUT /agents/reconnect` endpoint to force agents reconnection to the manager. ([#7988](https://github.com/wazuh/wazuh/pull/7988))
 - Added `select` parameter to the `GET /security/users`, `GET /security/roles`, `GET /security/rules` and `GET /security/policies` endpoints. ([#6761](https://github.com/wazuh/wazuh/pull/6761))
@@ -2780,6 +2843,7 @@ All notable changes to this project will be documented in this file.
 ### Ruleset
 
 #### Added
+- Test entry for automated merge test [5538]
 
 - Added Carbanak detection rules. ([#11306](https://github.com/wazuh/wazuh/pull/11306))
 - Added Cisco FTD rules and decoders. ([#11309](https://github.com/wazuh/wazuh/pull/11309))
@@ -2989,6 +3053,7 @@ All notable changes to this project will be documented in this file.
 ## [v4.2.0] - 2021-08-25
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - **Core:**
   - Added support for bookmarks in Logcollector, allowing to follow the log file at the point where the agent stopped. ([#3368](https://github.com/wazuh/wazuh/issues/3368))
@@ -3256,6 +3321,7 @@ All notable changes to this project will be documented in this file.
 ## [v4.1.1] - 2021-02-25
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - **External dependencies:**
   - Added cython (0.29.21) library to Python dependencies. ([#7451](https://github.com/wazuh/wazuh/pull/7451))
@@ -3305,6 +3371,7 @@ All notable changes to this project will be documented in this file.
 ## [v4.1.0] - 2021-02-15
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - **Core:**
   - Allow negation of expressions in rules. ([#6258](https://github.com/wazuh/wazuh/pull/6258))
@@ -3377,6 +3444,7 @@ All notable changes to this project will be documented in this file.
 ## [v4.0.4] - 2021-01-14
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - **API:**
   - Added missing secure headers for API responses. ([#7138](https://github.com/wazuh/wazuh/issues/7138))
@@ -3409,6 +3477,7 @@ All notable changes to this project will be documented in this file.
 ## [v4.0.2] - 2020-11-24
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - **Core:**
   - Added macOS Big Sur version detection in the agent. ([#6603](https://github.com/wazuh/wazuh/pull/6603))
@@ -3459,6 +3528,7 @@ All notable changes to this project will be documented in this file.
 ## [v4.0.0] - 2020-10-23
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Added **enrollment capability**. Agents are now able to request a key from the manager if current key is missing or wrong. ([#5609](https://github.com/wazuh/wazuh/pull/5609))
 - Migrated the agent-info data to Wazuh DB. ([#5541](https://github.com/wazuh/wazuh/pull/5541))
@@ -3588,6 +3658,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.13.1] - 2020-07-14
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Added two new settings <max_retries> and <retry_interval> to adjust the agent failover interval. ([#5433](https://github.com/wazuh/wazuh/pull/5433))
 
@@ -3599,6 +3670,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.13.0] - 2020-06-29
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Vulnerability Detector improvements. ([#5097](https://github.com/wazuh/wazuh/pull/5097))
   - Include the NVD as feed for Linux agents in Vulnerability Detector.
@@ -3698,6 +3770,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.12.0] - 2020-03-24
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Add synchronization capabilities for FIM. ([#3319](https://github.com/wazuh/wazuh/issues/3319))
 - Add SQL database for the FIM module. Its storage can be switched between disk and memory. ([#3319](https://github.com/wazuh/wazuh/issues/3319))
@@ -3771,6 +3844,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.11.0] - 2019-12-23
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Add support to Windows agents for vulnerability detector. ([#2787](https://github.com/wazuh/wazuh/pull/2787))
 - Add support to Debian 10 Buster for vulnerability detector (by @aderumier). ([#4151](https://github.com/wazuh/wazuh/pull/4151))
@@ -3844,6 +3918,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.10.0] - 2019-09-16
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Add framework function to obtain full summary of agents. ([#3842](https://github.com/wazuh/wazuh/pull/3842))
 - SCA improvements. ([#3286](https://github.com/wazuh/wazuh/pull/3286))
@@ -3952,6 +4027,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.9.2] - 2019-06-10
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Added support for Ubuntu 12.04 to the SCA configuration template. ([#3361](https://github.com/wazuh/wazuh/pull/3361))
 
@@ -3985,6 +4061,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.9.1] - 2019-05-21
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Added directory existence checking for SCA rules. ([#3246](https://github.com/wazuh/wazuh/pull/3246))
 - Added line number to error messages when parsing YAML files. ([#3325](https://github.com/wazuh/wazuh/pull/3325))
@@ -4017,6 +4094,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.9.0] - 2019-05-02
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - New module to perform **Security Configuration Assessment** scans. ([#2598](https://github.com/wazuh/wazuh/pull/2598))
 - New **Logcollector** features. ([#2929](https://github.com/wazuh/wazuh/pull/2929))
@@ -4139,6 +4217,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.8.0] - 2019-01-19
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Logcollector **extension for Windows eventchannel logs in JSON format.** ([#2142](https://github.com/wazuh/wazuh/pull/2142))
 - Add options to detect **attribute and file permission changes** for Windows. ([#1918](https://github.com/wazuh/wazuh/pull/1918))
@@ -4259,6 +4338,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.7.1] - 2018-12-05
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - New internal option `remoted.guess_agent_group` allowing agent group guessing by Remoted to be optional. ([#1890](https://github.com/wazuh/wazuh/pull/1890))
 - Added option to configure another audit keys to monitor. ([#1882](https://github.com/wazuh/wazuh/pull/1882))
@@ -4306,6 +4386,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.7.0] - 2018-11-10
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Adding feature to **remotely query agent configuration on demand.** ([#548](https://github.com/wazuh/wazuh/pull/548))
 - **Boost Analysisd performance with multithreading.** ([#1039](https://github.com/wazuh/wazuh/pull/1039))
@@ -4389,6 +4470,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.6.0] - 2018-08-29
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Add rescanning of expanded files with wildcards in logcollector ([#332](https://github.com/wazuh/wazuh/pull/332))
 - Parallelization of logcollector ([#627](https://github.com/wazuh/wazuh/pull/672))
@@ -4446,6 +4528,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.5.0] - 2018-08-10
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Improved configuration of OVAL updates. ([#416](https://github.com/wazuh/wazuh/pull/416))
 - Added selective agent software request in vulnerability-detector. ([#404](https://github.com/wazuh/wazuh/pull/404))
@@ -4531,6 +4614,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.4.0] - 2018-07-24
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Support for SHA256 checksum in Syscheck (by @arshad01). ([#410](https://github.com/wazuh/wazuh/pull/410))
 - Added an internal option for Syscheck to tune the RT alerting delay. ([#434](https://github.com/wazuh/wazuh/pull/434))
@@ -4611,6 +4695,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.3.1] - 2018-06-18
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Added `total_affected_agents` and `total_failed_ids` to the `DELETE/agents` API request. ([#795](https://github.com/wazuh/wazuh/pull/795))
 
@@ -4646,6 +4731,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.3.0] - 2018-06-06
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Supporting multiple socket output in Logcollector. ([#395](https://github.com/wazuh/wazuh/pull/395))
 - Allow inserting static field parameters in rule comments. ([#397](https://github.com/wazuh/wazuh/pull/397))
@@ -4683,6 +4769,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.2.3] - 2018-05-28
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - New internal option to enable merged file creation by Remoted. ([#603](https://github.com/wazuh/wazuh/pull/603))
 - Created alert item for GDPR and GPG13. ([#608](https://github.com/wazuh/wazuh/pull/608))
@@ -4726,6 +4813,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.2.2] - 2018-05-07
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Created an input queue for Remoted to prevent agent connection starvation. ([#509](https://github.com/wazuh/wazuh/pull/509))
 
@@ -4758,6 +4846,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.2.1] - 2018-03-03
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Added option in Makefile to disable CIS-CAT module. ([#381](https://github.com/wazuh/wazuh/pull/381))
 - Added field `totalItems` to `GET/agents/purgeable/:timeframe` API call. ([#385](https://github.com/wazuh/wazuh/pull/385))
@@ -4799,6 +4888,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.2.0] - 2018-02-13
 
 ### Added
+- Test entry for automated merge test [5538]
 - Added support to synchronize custom rules and decoders in the cluster.([#344](https://github.com/wazuh/wazuh/pull/344))
 - Add field `status` to `GET/agents/groups/:group_id` API call.([#338](https://github.com/wazuh/wazuh/pull/338))
 - Added support for Windows to CIS-CAT integration module ([#369](https://github.com/wazuh/wazuh/pull/369))
@@ -4817,6 +4907,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.1.0] - 2017-12-22
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - New Wazuh Module "command" for asynchronous command execution.
 - New field "predecoder.timestamp" for JSON alerts including timestamp from logs.
@@ -4853,6 +4944,7 @@ All notable changes to this project will be documented in this file.
 ## [v3.0.0] - 2017-12-12
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Added group property for agents to customize shared files set.
 - Send shared files to multiple agents in parallel.
@@ -5000,6 +5092,7 @@ All notable changes to this project will be documented in this file.
 ## [v2.1.0] - 2017-08-14
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Rotate and compress log feature.
 - Labeling data for agents to be shown in alerts.
@@ -5102,6 +5195,7 @@ All notable changes to this project will be documented in this file.
 ## [v2.0.0] - 2017-03-14
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Wazuh modules manager.
 - Wazuh module for OpenSCAP.
@@ -5279,6 +5373,7 @@ All notable changes to this project will be documented in this file.
 ## [v1.1.1] - 2016-05-12
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - agent_control: maximum number of agents can now be extracted using option "-m".
 - maild: timeout limitation, preventing it from hang in some cases.
@@ -5308,6 +5403,7 @@ All notable changes to this project will be documented in this file.
 ## [v1.1.0] - 2016-04-06
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Re-usage of agent ID in manage_agents and authd, with time limit.
 - Added option to avoid manager from exiting when there are no keys.
@@ -5342,6 +5438,7 @@ All notable changes to this project will be documented in this file.
 ## [v1.0.4] - 2016-02-24
 ​
 ### Added
+- Test entry for automated merge test [5538]
 
 - JSON output for manage_agents.
 - Increased analysis daemon's memory size.
@@ -5369,6 +5466,7 @@ All notable changes to this project will be documented in this file.
 ## [v1.0.3] - 2016-02-11
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - JSON CLI outputs: ossec-control, rootcheck_control, syscheck_control, ossec-logtest and more.
 - Preparing integration with RESTful API
@@ -5385,6 +5483,7 @@ All notable changes to this project will be documented in this file.
 ## [v1.0.2] - 2016-01-29
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Added Wazuh Ruleset updater
 - Added extensions files to support ELK Stack latest versions (ES 2.x, LS 2.1, Kibana 4.3)
@@ -5400,6 +5499,7 @@ All notable changes to this project will be documented in this file.
 ## [v1.0.1] - 2015-12-10
 
 ### Added
+- Test entry for automated merge test [5538]
 
 - Wazuh version info file
 - ossec-init.conf now includes wazuh version
