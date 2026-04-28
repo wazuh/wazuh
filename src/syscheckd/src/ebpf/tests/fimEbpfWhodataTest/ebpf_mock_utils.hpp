@@ -103,6 +103,10 @@ ring_buffer* mock_ring_buffer_new_failure([[maybe_unused]] int fd, [[maybe_unuse
 }
 
 int mock_ring_buffer_poll_success([[maybe_unused]]ring_buffer* rb, [[maybe_unused]]int timeout_ms) { return 1; }
+int mock_ring_buffer_poll_healthcheck_success([[maybe_unused]]ring_buffer* rb, [[maybe_unused]]int timeout_ms) {
+    event_received = true;
+    return 1;
+}
 int mock_ring_buffer_poll_failure([[maybe_unused]]ring_buffer* rb, [[maybe_unused]]int timeout_ms) { return -1; }
 void mock_ring_buffer_free([[maybe_unused]]ring_buffer* rb) {}
 void mock_bpf_object_close([[maybe_unused]]void* obj) {}
