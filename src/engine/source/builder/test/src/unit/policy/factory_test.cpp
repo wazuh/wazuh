@@ -27,10 +27,9 @@ base::Expression createDummyEnrichment()
 base::Expression createDummyPreEnrichment()
 {
     auto originSpaceExp = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
-    auto unclassifiedExp = base::Term<base::EngineOp>::create("filter/UnclassifiedEvents", nullptr);
     auto discardedExp = base::Term<base::EngineOp>::create("filter/DiscardedEvents", nullptr);
     auto cleanupVarsExp = base::Term<base::EngineOp>::create("CleanupDecoderVariables", nullptr);
-    return base::And::create("preEnrichment", {originSpaceExp, unclassifiedExp, discardedExp, cleanupVarsExp});
+    return base::And::create("preEnrichment", {originSpaceExp, discardedExp, cleanupVarsExp});
 }
 } // namespace
 namespace buildgraphtest
@@ -181,10 +180,9 @@ INSTANTIATE_TEST_SUITE_P(
                        auto decoder = Or::create("DecodersTree/Input", {assetExpr("decoder/asset/0")});
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
                        auto originSpace = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
-                       auto unclassified = base::Term<base::EngineOp>::create("filter/UnclassifiedEvents", nullptr);
                        auto discarded = base::Term<base::EngineOp>::create("filter/DiscardedEvents", nullptr);
                        auto cleanupVars = base::Term<base::EngineOp>::create("CleanupDecoderVariables", nullptr);
-                       auto phase2 = And::create("preEnrichment", {originSpace, unclassified, discarded, cleanupVars});
+                       auto phase2 = And::create("preEnrichment", {originSpace, discarded, cleanupVars});
                        auto enrichment = base::Term<base::EngineOp>::create("enrichment/geo", nullptr);
                        return And::create("test", {phase1, phase2, enrichment});
                    })),
@@ -197,10 +195,9 @@ INSTANTIATE_TEST_SUITE_P(
                        auto decoder = Or::create("DecodersTree/Input", {assetExpr("decoder/root/0")});
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
                        auto originSpace = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
-                       auto unclassified = base::Term<base::EngineOp>::create("filter/UnclassifiedEvents", nullptr);
                        auto discarded = base::Term<base::EngineOp>::create("filter/DiscardedEvents", nullptr);
                        auto cleanupVars = base::Term<base::EngineOp>::create("CleanupDecoderVariables", nullptr);
-                       auto phase2 = And::create("preEnrichment", {originSpace, unclassified, discarded, cleanupVars});
+                       auto phase2 = And::create("preEnrichment", {originSpace, discarded, cleanupVars});
                        auto enrichment = base::Term<base::EngineOp>::create("enrichment/geo", nullptr);
                        auto output = Broadcast::create("OutputsTree/Input", {assetExpr("output/asset/0")});
                        return And::create("test", {phase1, phase2, enrichment, output});
@@ -218,10 +215,9 @@ INSTANTIATE_TEST_SUITE_P(
                        auto decoder = Or::create("DecodersTree/Input", {parentExpr});
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
                        auto originSpace = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
-                       auto unclassified = base::Term<base::EngineOp>::create("filter/UnclassifiedEvents", nullptr);
                        auto discarded = base::Term<base::EngineOp>::create("filter/DiscardedEvents", nullptr);
                        auto cleanupVars = base::Term<base::EngineOp>::create("CleanupDecoderVariables", nullptr);
-                       auto phase2 = And::create("preEnrichment", {originSpace, unclassified, discarded, cleanupVars});
+                       auto phase2 = And::create("preEnrichment", {originSpace, discarded, cleanupVars});
                        auto enrichment = base::Term<base::EngineOp>::create("enrichment/geo", nullptr);
                        return And::create("test", {phase1, phase2, enrichment});
                    })),
@@ -234,10 +230,9 @@ INSTANTIATE_TEST_SUITE_P(
                        auto decoder = Or::create("DecodersTree/Input", {assetExpr("decoder/root/0")});
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
                        auto originSpace = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
-                       auto unclassified = base::Term<base::EngineOp>::create("filter/UnclassifiedEvents", nullptr);
                        auto discarded = base::Term<base::EngineOp>::create("filter/DiscardedEvents", nullptr);
                        auto cleanupVars = base::Term<base::EngineOp>::create("CleanupDecoderVariables", nullptr);
-                       auto phase2 = And::create("preEnrichment", {originSpace, unclassified, discarded, cleanupVars});
+                       auto phase2 = And::create("preEnrichment", {originSpace, discarded, cleanupVars});
                        auto enrichment = base::Term<base::EngineOp>::create("enrichment/geo", nullptr);
                        auto childExpr = assetExpr("output/child/0");
                        auto childrenOp = Broadcast::create("output/parent/0/Children", {childExpr});
@@ -261,10 +256,9 @@ INSTANTIATE_TEST_SUITE_P(
                        auto decoder = Or::create("DecodersTree/Input", {parentExpr});
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
                        auto originSpace = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
-                       auto unclassified = base::Term<base::EngineOp>::create("filter/UnclassifiedEvents", nullptr);
                        auto discarded = base::Term<base::EngineOp>::create("filter/DiscardedEvents", nullptr);
                        auto cleanupVars = base::Term<base::EngineOp>::create("CleanupDecoderVariables", nullptr);
-                       auto phase2 = And::create("preEnrichment", {originSpace, unclassified, discarded, cleanupVars});
+                       auto phase2 = And::create("preEnrichment", {originSpace, discarded, cleanupVars});
                        auto enrichment = base::Term<base::EngineOp>::create("enrichment/geo", nullptr);
                        return And::create("test", {phase1, phase2, enrichment});
                    })),
@@ -285,10 +279,9 @@ INSTANTIATE_TEST_SUITE_P(
 
                        // Phase 2: Enrichment/IOCs
                        auto originSpace = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
-                       auto unclassified = base::Term<base::EngineOp>::create("filter/UnclassifiedEvents", nullptr);
                        auto discarded = base::Term<base::EngineOp>::create("filter/DiscardedEvents", nullptr);
                        auto cleanupVars = base::Term<base::EngineOp>::create("CleanupDecoderVariables", nullptr);
-                       auto phase2 = And::create("preEnrichment", {originSpace, unclassified, discarded, cleanupVars});
+                       auto phase2 = And::create("preEnrichment", {originSpace, discarded, cleanupVars});
                        auto enrichment = base::Term<base::EngineOp>::create("enrichment/geo", nullptr);
 
                        // Phase 3: Outputs
@@ -1229,11 +1222,10 @@ TEST(OrderPreservation, PreEnrichmentCleanupIsLast)
     auto preEnrichmentOp = preEnrichment->getPtr<base::And>();
     const auto& ops = preEnrichmentOp->getOperands();
 
-    ASSERT_EQ(ops.size(), 4);
+    ASSERT_EQ(ops.size(), 3);
     EXPECT_EQ(ops[0]->getName(), "enrichment/OriginSpace");
-    EXPECT_EQ(ops[1]->getName(), "filter/UnclassifiedEvents");
-    EXPECT_EQ(ops[2]->getName(), "filter/DiscardedEvents");
-    EXPECT_EQ(ops[3]->getName(), "CleanupDecoderVariables");
+    EXPECT_EQ(ops[1]->getName(), "filter/DiscardedEvents");
+    EXPECT_EQ(ops[2]->getName(), "CleanupDecoderVariables");
 }
 
 // Test order preservation with parent-child relationships

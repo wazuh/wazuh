@@ -759,11 +759,11 @@ FilterOp opBuilderHelperArrayLength(const Reference& targetField,
  *
  * This helper returns true if:
  * - The policy has indexUnclassifiedEvents flag set to true AND
- * - The target array has exactly 1 element
+ * - $wazuh.integration.decoders has exactly 1 element
  *
  * Otherwise, it returns false.
  *
- * @param targetField Reference to the array field to check (typically wazuh.integration.decoders)
+ * @param targetField Reference to $wazuh.integration.decoders. Any other field is rejected at build-time.
  * @param opArgs Vector of operation arguments (empty for this helper)
  * @param buildCtx Build context containing policy configuration
  * @return FilterOp The filter operation
