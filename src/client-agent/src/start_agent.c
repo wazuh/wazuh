@@ -839,14 +839,20 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
  * */
 STATIC void send_msg_on_startup(void) {
 
-    char msg[OS_MAXSTR + 2] = { '\0' };
     char fmsg[OS_MAXSTR + 1] = { '\0' };
+    char timestamp[32];
 
-    /* Send log message about start up */
-    snprintf(msg, OS_MAXSTR, OS_AG_STARTED,
-            atoi(keys.keyentries[0]->id),
-            keys.keyentries[0]->name);
-    os_snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", msg);
+    get_iso8601_utc_time(timestamp, sizeof(timestamp));
+
+    cJSON *event = cJSON_CreateObject();
+    cJSON_AddStringToObject(event, "event.module", "wazuh-agent");
+    cJSON_AddStringToObject(event, "event.action", "agent-start");
+    cJSON_AddStringToObject(event, "event.start", timestamp);
+    char *json_str = cJSON_PrintUnformatted(event);
+    cJSON_Delete(event);
+
+    os_snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", json_str);
+    os_free(json_str);
 
     send_msg(fmsg, -1);
 }

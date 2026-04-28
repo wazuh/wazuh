@@ -31,7 +31,8 @@
  *   Clients call `registerLog(name, config)` to declare a log stream,
  *
  * - **RotationConfig**
- *   Defines `basePath`, `pattern`, optional `maxSize`, `bufferSize`, and optional compression settings.
+ *   Defines `basePath`, `pattern`, optional `maxSize`, `bufferSize`, optional compression settings,
+ *   and optional retention policies (`maxFiles`, `maxAccumulatedSize`).
  *   E.g.
  *   ```cpp
  *   RotationConfig cfg {
@@ -40,7 +41,9 @@
  *     10*1024*1024,              // rotate after 10 MiB
  *     1<<20,                     // 1 MiB write buffer
  *     true,                      // compress rotated files
- *      5                         // compression level (1-9)
+ *      5,                        // compression level (1-9)
+ *     30,                        // keep at most 30 files in the channel directory
+ *     20ULL*1024*1024*1024       // max 20 GiB accumulated size in the channel directory
  *   };
  *   ```
  *

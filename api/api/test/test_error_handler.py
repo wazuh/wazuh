@@ -11,9 +11,10 @@ import pytest
 from freezegun import freeze_time
 
 from connexion.exceptions import HTTPException, ProblemException, Unauthorized
+from connexion.lifecycle import ConnexionRequest
 from api.error_handler import _cleanup_detail_field, prevent_bruteforce_attack, \
     http_error_handler, problem_error_handler, unauthorized_error_handler, \
-    expect_failed_error_handler, ERROR_CONTENT_TYPE
+    expect_failed_error_handler, recursion_error_handler, ERROR_CONTENT_TYPE
 from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
 from api.api_exception import ExpectFailedException
 
@@ -196,3 +197,31 @@ async def test_expect_failed_error_handler(query_param_pretty, expected_detail):
     if expected_detail:
         assert body["detail"] == expected_detail
 
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "query_params, expected_pretty",
+    [
+        ({"pretty": "true"}, True),
+        ({"pretty": "false"}, False),
+        ({}, False),
+        ({"pretty": "TRUE"}, False),  # case-sensitive
+        ({"pretty": "1"}, False),     # valores no válidos
+    ],
+)
+@patch("api.error_handler.build_recursion_error_response")
+async def test_recursion_error_handler_pretty(mock_build, query_params, expected_pretty):
+    """Test recursion_error_handler pretty param handling."""
+
+    request = MagicMock(spec=ConnexionRequest)
+    request.query_params = query_params
+
+    expected_response = MagicMock()
+    mock_build.return_value = expected_response
+
+    exc = RecursionError()
+
+    result = await recursion_error_handler(request, exc)
+
+    mock_build.assert_called_once_with(pretty=expected_pretty)
+    assert result == expected_response

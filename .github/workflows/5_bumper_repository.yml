@@ -37,6 +37,11 @@ on:
         description: "Optional identifier for the run"
         required: false
         type: string
+      revert:
+        description: 'Set to true to revert the bump changes applied for this issue'
+        default: false
+        required: false
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -88,6 +93,7 @@ jobs:
           # Using workflow-specific GITHUB_TOKEN because currently CI_WAZUHCI_BUMPER_TOKEN
           # doesn't have all the necessary permissions
           token: ${{ env.GH_TOKEN }}
+          fetch-depth: 0
 
       - name: Determine branch name and parameters
         id: vars
@@ -116,26 +122,85 @@ jobs:
           git checkout -b ${{ steps.vars.outputs.branch_name }}
 
       - name: Make version bump changes
+        if: inputs.revert != true
         run: |
           echo "Running bump script"
           bash ${{ env.BUMP_SCRIPT_PATH }} ${{ steps.vars.outputs.script_params }}
 
-      - name: Commit and push changes
-        id: commit_changes
+      - name: Commit changes (Bump)
+        if: inputs.revert != true
         run: |
           git add .
-          if git diff --cached --quiet; then
-            echo "No changes detected, skipping PR creation."
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
           git commit -m "feat: bump ${{ github.ref_name }}"
+
+      - name: Revert references (Revert)
+        id: revert_step
+        if: inputs.revert == true
+        run: |
+          ISSUE_NUMBER=$(echo "${{ inputs.issue-link }}" | awk -F'/' '{print $NF}')
+
+          BUMP_BRANCH="enhancement/wqa${ISSUE_NUMBER}-bump-${{ github.ref_name }}"
+
+          PR_NUMBER=$(gh pr list --head "$BUMP_BRANCH" --base "${{ github.ref_name }}" --state merged --json number --jq '.[0].number')
+
+          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" == "null" ]; then
+            echo "Error: The original PR for the bump was not found"
+            echo "Searching merged PR from: $BUMP_BRANCH to ${{ github.ref_name }}"
+            exit 1
+          fi
+
+          echo "Original PR found: #$PR_NUMBER"
+
+          MERGE_COMMIT=$(gh pr view $PR_NUMBER --json mergeCommit --jq '.mergeCommit.oid')
+
+          # --- Capture current metadata lines BEFORE revert (info block only) ---
+          CURRENT_VERSION_LINE=$(awk '/^info:/ { in_info = 1 } in_info && /^  version:/ { print; exit } /^servers:/ { in_info = 0 }' api/api/spec/spec.yaml)
+          CURRENT_REVISION_LINE=$(awk '/^info:/ { in_info = 1 } in_info && /^  x-revision:/ { print; exit } /^servers:/ { in_info = 0 }' api/api/spec/spec.yaml)
+
+          echo "DEBUG version_line=[$CURRENT_VERSION_LINE]"
+          echo "DEBUG revision_line=[$CURRENT_REVISION_LINE]"
+
+          if [ -z "$CURRENT_VERSION_LINE" ] || [ -z "$CURRENT_REVISION_LINE" ]; then
+            echo "Error: Failed to extract version or x-revision"
+            exit 1
+          fi
+
+          # --- Restore file from before PR ---
+          PARENT_COMMIT=$(git rev-parse ${MERGE_COMMIT}^1)
+          git checkout $PARENT_COMMIT -- api/api/spec/spec.yaml
+
+          # --- Restore preserved metadata lines (info block only) ---
+          TEMP_SPEC_FILE=$(mktemp)
+          awk \
+            -v version_line="$CURRENT_VERSION_LINE" \
+            -v revision_line="$CURRENT_REVISION_LINE" \
+            '
+              /^info:/ { in_info = 1 }
+              in_info && /^  version:/ { print version_line; next }
+              in_info && /^  x-revision:/ { print revision_line; next }
+              /^servers:/ { in_info = 0 }
+              { print }
+            ' api/api/spec/spec.yaml > "$TEMP_SPEC_FILE"
+          mv "$TEMP_SPEC_FILE" api/api/spec/spec.yaml
+
+          git add api/api/spec/spec.yaml
+
+          if git diff --staged --quiet; then
+            echo "No references to revert. Skipping commit."
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            git commit -m "feat: revert ${{ github.ref_name }} references"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Push changes
+        if: inputs.revert != true || (inputs.revert == true && steps.revert_step.outputs.has_changes == 'true')
+        run: |
           git push origin ${{ steps.vars.outputs.branch_name }}
-          echo "has_changes=true" >> $GITHUB_OUTPUT
 
       - name: Create pull request
         id: create_pr
-        if: steps.commit_changes.outputs.has_changes == 'true'
+        if: inputs.revert != true || (inputs.revert == true && steps.revert_step.outputs.has_changes == 'true')
         run: |
           gh auth setup-git
           PR_URL=$(gh pr create \
@@ -148,15 +213,25 @@ jobs:
           echo "pull_request_url=${PR_URL}" >> $GITHUB_OUTPUT
 
       - name: Merge pull request
-        if: steps.commit_changes.outputs.has_changes == 'true'
+        if: inputs.revert != true || (inputs.revert == true && steps.revert_step.outputs.has_changes == 'true')
         run: |
-          # Any checks for the PR are bypassed since the branch is expected to be functional (i.e. the bump process does not introduce any bugs)
+          # Any checks for the PR are bypassed since the branch is expected to be functional
           gh pr merge "${{ steps.create_pr.outputs.pull_request_url }}" --merge --admin
 
       - name: Show logs
+        if: inputs.revert != true
         run: |
           echo "Bump complete."
           echo "Branch: ${{ steps.vars.outputs.branch_name }}"
           echo "PR: ${{ steps.create_pr.outputs.pull_request_url }}"
           echo "Bumper scripts logs:"
           cat ${BUMP_LOG_PATH}/repository_bumper*log
+
+      - name: Show revert logs
+        if: inputs.revert == true
+        run: |
+          echo "Revert bump complete."
+          echo "Branch: ${{ steps.vars.outputs.branch_name }}"
+          echo "PR: ${{ steps.create_pr.outputs.pull_request_url }}"
+          echo "Revert bumper scripts logs:"
+          cat ${BUMP_LOG_PATH}/repository_bumper*log || true
