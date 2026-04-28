@@ -438,6 +438,9 @@ os_info *get_unix_version()
                         if (name[0] == '\"' && (end = strchr(++name, '\"'), end)) {
                             *end = '\0';
                         }
+                        else if (name[0] == '\'' && (end = strchr(++name, '\''), end)) {
+                            *end = '\0';
+                        }
                         info->os_name = strdup(name);
                     }
                 } else if (strcmp (tag,"VERSION") == 0) {
@@ -449,6 +452,9 @@ os_info *get_unix_version()
                         if (version[0] == '\"' && (end = strchr(++version, '\"'), end)) {
                             *end = '\0';
                         }
+                        else if (version[0] == '\'' && (end = strchr(++version, '\''), end)) {
+                            *end = '\0';
+                        }
                         info->os_version = strdup(version);
                     }
                 } else if (strcmp (tag,"VERSION_ID") == 0) {
@@ -457,12 +463,18 @@ os_info *get_unix_version()
                         if (version_id[0] == '\"' && (end = strchr(++version_id, '\"'), end)) {
                             *end = '\0';
                         }
+                        else if (version_id[0] == '\'' && (end = strchr(++version_id, '\''), end)) {
+                            *end = '\0';
+                        }
                         info->os_version = strdup(version_id);
                     }
                 } else if (strcmp (tag,"ID") == 0) {
                     if (!id) {
                         id = strtok_r(NULL, " \n", &save_ptr);
                         if (id[0] == '\"' && (end = strchr(++id, '\"'), end)) {
+                            *end = '\0';
+                        }
+                        else if (id[0] == '\'' && (end = strchr(++id, '\''), end)) {
                             *end = '\0';
                         }
                         info->os_platform = strdup(id);
