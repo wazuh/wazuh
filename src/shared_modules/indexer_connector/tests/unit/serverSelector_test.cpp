@@ -265,3 +265,102 @@ TEST_F(ServerSelectorTest, TestGetNextWhenThereAreNoAvailableServers)
     // Test that exception is thrown when no servers are available
     EXPECT_THROW(selector->getNext(), std::runtime_error);
 }
+
+// =============================================================================
+// isAvailable Tests — ServerSelector
+// =============================================================================
+
+/**
+ * @brief Test isAvailable returns true when at least one server is healthy.
+ */
+TEST_F(ServerSelectorTest, TestIsAvailableWithHealthyServer)
+{
+    std::vector<std::string> servers;
+    servers.emplace_back("http://localhost:9209");
+    servers.emplace_back("http://localhost:9210");
+
+    // Server 1 green, server 2 red
+    setupHealthCheckMocks("green", "red", "red");
+
+    std::shared_ptr<TestServerSelector> selector;
+    EXPECT_NO_THROW(
+        selector = std::make_shared<TestServerSelector>(
+            servers, SERVER_SELECTOR_HEALTH_CHECK_INTERVAL, SecureCommunication {}, m_mockHttpRequest.get()));
+
+    EXPECT_TRUE(selector->isAvailable());
+}
+
+/**
+ * @brief Test isAvailable returns false when all servers are unhealthy.
+ */
+TEST_F(ServerSelectorTest, TestIsAvailableAllServersDown)
+{
+    std::vector<std::string> servers;
+    servers.emplace_back("http://localhost:9209");
+    servers.emplace_back("http://localhost:9210");
+    servers.emplace_back("http://localhost:9211");
+
+    // All servers red
+    setupHealthCheckMocks("red", "red", "red");
+
+    std::shared_ptr<TestServerSelector> selector;
+    EXPECT_NO_THROW(
+        selector = std::make_shared<TestServerSelector>(
+            servers, SERVER_SELECTOR_HEALTH_CHECK_INTERVAL, SecureCommunication {}, m_mockHttpRequest.get()));
+
+    EXPECT_FALSE(selector->isAvailable());
+}
+
+/**
+ * @brief Test isAvailable returns true when yellow server is available.
+ */
+TEST_F(ServerSelectorTest, TestIsAvailableWithYellowServer)
+{
+    std::vector<std::string> servers;
+    servers.emplace_back("http://localhost:9209");
+    servers.emplace_back("http://localhost:9211");
+
+    // Server 1 red, server 3 yellow (should be available)
+    setupHealthCheckMocks("red", "red", "yellow");
+
+    std::shared_ptr<TestServerSelector> selector;
+    EXPECT_NO_THROW(
+        selector = std::make_shared<TestServerSelector>(
+            servers, SERVER_SELECTOR_HEALTH_CHECK_INTERVAL, SecureCommunication {}, m_mockHttpRequest.get()));
+
+    EXPECT_TRUE(selector->isAvailable());
+}
+
+/**
+ * @brief Test round-robin cycling skips unhealthy servers consistently.
+ */
+TEST_F(ServerSelectorTest, TestRoundRobinSkipsUnhealthyServers)
+{
+    std::vector<std::string> servers;
+    servers.emplace_back("http://localhost:9209");
+    servers.emplace_back("http://localhost:9210");
+    servers.emplace_back("http://localhost:9211");
+
+    // Only server1 (green) and server3 (yellow) are available
+    setupHealthCheckMocks("green", "red", "yellow");
+
+    std::shared_ptr<TestServerSelector> selector;
+    EXPECT_NO_THROW(
+        selector = std::make_shared<TestServerSelector>(
+            servers, SERVER_SELECTOR_HEALTH_CHECK_INTERVAL, SecureCommunication {}, m_mockHttpRequest.get()));
+
+    std::string s1, s2, s3, s4;
+    EXPECT_NO_THROW(s1 = selector->getNext());
+    EXPECT_NO_THROW(s2 = selector->getNext());
+    EXPECT_NO_THROW(s3 = selector->getNext());
+    EXPECT_NO_THROW(s4 = selector->getNext());
+
+    // Should cycle between 9209 and 9211, never returning 9210 (red)
+    EXPECT_NE(s1, "http://localhost:9210");
+    EXPECT_NE(s2, "http://localhost:9210");
+    EXPECT_NE(s3, "http://localhost:9210");
+    EXPECT_NE(s4, "http://localhost:9210");
+    // Should alternate
+    EXPECT_EQ(s1, s3);
+    EXPECT_EQ(s2, s4);
+}
