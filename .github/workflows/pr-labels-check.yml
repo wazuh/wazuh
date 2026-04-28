@@ -19,6 +19,7 @@ jobs:
           PR_STATE: ${{ github.event.pull_request.state }}
           IS_DRAFT: ${{ github.event.pull_request.draft }}
           ACTION: ${{ github.event.action }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           echo "================================="
           echo "PR Information"
@@ -33,7 +34,7 @@ jobs:
           echo "Current PR Labels"
           echo "================================="
 
-          # Obtener los labels del PR usando la API de GitHub
+          # Get the labels from the PR using GitHub API
           LABELS=$(gh pr view $PR_NUMBER --json labels --jq '.labels[].name')
 
           if [ -z "$LABELS" ]; then
@@ -44,7 +45,7 @@ jobs:
               echo "  • $label"
             done
 
-            # Verificar si existe el label "no changelog"
+            # Check if "no changelog" label exists
             if echo "$LABELS" | grep -q "no changelog"; then
               echo ""
               echo "✓ Label 'no changelog' is present"
@@ -55,5 +56,3 @@ jobs:
           fi
 
           echo "================================="
-        env:
-          GH_TOKEN: ${{ github.token }}
