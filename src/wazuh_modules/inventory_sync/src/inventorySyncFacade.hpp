@@ -1686,18 +1686,7 @@ public:
     }
 
     /**
-     * @brief Check if a specific agent has an active session for a specific module.
-     *
-     * When called from a feed-update scan context (timeout > 0):
-     *   - VDFirst session: returns true immediately so the caller can skip the redundant
-     *     feed-update scan (the first-scan itself will cover the updated feed).
-     *   - VDSync session:  blocks until the session ends or the timeout expires, then
-     *     returns false so the caller proceeds with the feed-update scan.
-     *     If the session does not finish within the timeout, the wait is retried up to
-     *     maxRetries additional times before giving up.
-     *
-     * When called without a timeout (default): behaves as a plain existence check and
-     * returns true if any session matches, regardless of the session option.
+     * @brief Check if a specific agent has an active session for a specific module.egardless of the session option.
      *
      * @param agentId    Agent ID to check
      * @param moduleName Module name to check (e.g., "syscollector_vd")
@@ -1725,8 +1714,6 @@ public:
 
                 if (timeout > std::chrono::seconds(0))
                 {
-                    // VDSync: wait for the session to finish before the feed-update scan reads
-                    // the indexer, so all packages are in a consistent state.
                     logInfo(LOGGER_DEFAULT_TAG,
                             "Feed update scan waiting for VDSync session to complete for agent %s "
                             "(timeout: %lds, max retries: %u).",
