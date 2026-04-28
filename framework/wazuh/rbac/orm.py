@@ -39,6 +39,9 @@ WAZUH_WUI_USER_ID = 2
 MAX_ID_RESERVED = 99
 CLOUD_RESERVED_RANGE = 89
 
+# Dummy hash for constant-time username enumeration protection
+_DUMMY_HASH = generate_password_hash("wazuh-dummy-constant-never-matches-any-real-password")
+
 # Start a session and set the default security elements
 DB_FILE = os.path.join(SECURITY_PATH, "rbac.db")
 DB_FILE_TMP = f"{DB_FILE}.tmp"
@@ -950,7 +953,11 @@ class AuthenticationManager(RBACManager):
             True if username and password matches. False otherwise.
         """
         user = self.session.scalars(select(User).filter_by(username=username).limit(1)).first()
-        return check_password_hash(user.password, password) if user else False
+
+        hash_to_check = user.password if user else _DUMMY_HASH
+        result = check_password_hash(hash_to_check, password)
+
+        return result and user is not None
 
     def get_user(self, username: str = None) -> Union[dict, bool]:
         """Get a specified user in the system given its name.
