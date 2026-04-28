@@ -1,0 +1,77 @@
+name: Changelog Check
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize        # Cuando se añaden nuevos commits
+      - reopened
+      - ready_for_review   # Cuando pasa de Draft a Ready for Review
+      - labeled            # Cuando se añade un label
+      - unlabeled          # Cuando se quita un label
+
+jobs:
+  changelog-check:
+    name: Check changelog modification
+    runs-on: ubuntu-latest
+    # Solo ejecutar si el PR no es draft (está ready for review)
+    if: ${{ !github.event.pull_request.draft }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history to compare branches
+
+      - name: Check for changelog modification or label
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "================================="
+          echo "Changelog Check for PR #$PR_NUMBER"
+          echo "================================="
+          echo ""
+
+          # Check if the PR has the "no changelog" label
+          LABELS=$(gh pr view $PR_NUMBER --json labels --jq '.labels[].name')
+          HAS_NO_CHANGELOG_LABEL=false
+
+          if echo "$LABELS" | grep -q "^no changelog$"; then
+            HAS_NO_CHANGELOG_LABEL=true
+            echo "✓ Label 'no changelog' is present"
+            echo "  This PR is exempt from changelog requirement."
+            echo ""
+            echo "✅ CHECK PASSED: PR has 'no changelog' label"
+            exit 0
+          else
+            echo "ℹ️  Label 'no changelog' is NOT present"
+          fi
+
+          echo ""
+          echo "Checking if CHANGELOG.md has been modified..."
+          echo ""
+
+          # Get the list of modified files in the PR
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD)
+
+          echo "Files changed in this PR:"
+          echo "$CHANGED_FILES"
+          echo ""
+
+          # Check if CHANGELOG.md is in the list of modified files
+          if echo "$CHANGED_FILES" | grep -q "^CHANGELOG.md$"; then
+            echo "✅ CHECK PASSED: CHANGELOG.md has been modified in this PR"
+            exit 0
+          else
+            echo "❌ CHECK FAILED: CHANGELOG.md has NOT been modified"
+            echo ""
+            echo "This PR requires either:"
+            echo "  1. A modification to CHANGELOG.md, OR"
+            echo "  2. The 'no changelog' label to be added"
+            echo ""
+            echo "Please update the CHANGELOG.md file or add the 'no changelog' label if this PR doesn't require a changelog entry."
+            exit 1
+          fi
