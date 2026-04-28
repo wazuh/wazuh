@@ -137,10 +137,10 @@ public:
     void stop();
 
     /**
-     * @brief Clean up the router
+     * @brief Request a fast shutdown: stop workers and release all resources.
      * @warning After calling this method, the Orchestrator instance should not be used again.
      */
-    void cleanup();
+    void requestShutdown();
 
     /**************************************************************************
      * IRouterAPI
@@ -154,7 +154,8 @@ public:
     /**
      * @copydoc router::IRouterAPI::hotSwapNamespace
      */
-    base::OptError hotSwapNamespace(const std::string& name, const cm::store::NamespaceId& newNamespace) override;
+    base::OptError hotSwapNamespace(const std::string& name,
+                                    const cm::store::NamespaceId& newNamespace) override;
 
     /**
      * @copydoc router::IRouterAPI::existsEntry

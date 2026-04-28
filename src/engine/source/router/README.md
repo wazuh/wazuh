@@ -16,7 +16,7 @@ The **Router** module is the event-processing core of the Wazuh Engine, responsi
                                           │
                     ┌─────────────────────▼────────────────────────────────┐
                     │                Orchestrator                          │
-                    │  - Lifecycle: start / stop / cleanup                 │
+                    │  - Lifecycle: start / stop / requestShutdown        │
                     │  - Config persistence (Store)                        │
                     │  - Event queue contention monitoring                 │
                     │  - Coordinates N RouterWorkers + 1 TesterWorker      │

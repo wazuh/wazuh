@@ -397,10 +397,11 @@ void Orchestrator::stop()
     m_testerWorker->stop();
 }
 
-void Orchestrator::cleanup()
+void Orchestrator::requestShutdown()
 {
-    this->stop();
+    LOG_INFO("[Orchestrator] Shutdown requested, stopping workers...");
     m_isShutdown.store(true, std::memory_order_release);
+    this->stop();
     std::unique_lock lock {m_syncMutex};
     m_routerWorkers.clear();
     m_testerWorker.reset();
@@ -466,8 +467,16 @@ base::OptError Orchestrator::hotSwapNamespace(const std::string& name, const cm:
     // 2. Create new environment WITHOUT lock
     // 3. Swap atomically with unique lock (swap environment and enable it for each worker independently)
     std::unique_lock lock {m_syncMutex};
-    auto error = forEachRouterWorker([&](const std::shared_ptr<IWorker<IRouter>>& worker)
-                                     { return worker->get()->hotSwapNamespace(name, newNamespace); });
+    auto error = forEachRouterWorker(
+        [&](const std::shared_ptr<IWorker<IRouter>>& worker)
+        {
+            // Check shutdown before each worker's hot swap (environment build is expensive)
+            if (m_isShutdown.load(std::memory_order_acquire))
+            {
+                return base::OptError {base::Error {"Hot swap aborted: orchestrator shutting down"}};
+            }
+            return worker->get()->hotSwapNamespace(name, newNamespace);
+        });
 
     if (error)
     {

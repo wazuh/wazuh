@@ -111,7 +111,7 @@ TEST_F(ZlibHelperTest, GzCompressInvalidOutputPath)
 TEST_F(ZlibHelperTest, GzCompressInvalidCompressionLevel)
 {
     const auto outputGzFile = OUTPUT_DIR / "test_output.gz";
-    EXPECT_THROW(Utils::ZlibHelper::gzipCompress(RAW_FILE, outputGzFile, -1), std::runtime_error);
+    EXPECT_THROW(Utils::ZlibHelper::gzipCompress(RAW_FILE, outputGzFile, -2), std::runtime_error);
     EXPECT_THROW(Utils::ZlibHelper::gzipCompress(RAW_FILE, outputGzFile, 10), std::runtime_error);
 }
 

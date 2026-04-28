@@ -23,7 +23,7 @@ namespace
 {
 
 const base::Name STORE_NAME_IOCSYNC {"iocsync/status/0"}; ///< Name of the internal store document
-constexpr std::string_view COMPONENT_NAME = "IOCSync";    ///< Component name for logging
+constexpr std::string_view COMPONENT_NAME = "IOC::Sync";  ///< Component name for logging
 
 void ensureTargetDbExists(const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbiocPtr, std::string_view targetDBName)
 {
@@ -158,10 +158,11 @@ bool IocSync::existIocDataInRemote()
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
 
     return base::utils::executeWithRetry([&indexerPtr]() { return indexerPtr->existsIocDataIndex(); },
-                                         fmt::format("{}::existIocDataInRemote()", COMPONENT_NAME),
-                                         "Check if IOC data index exists in remote indexer",
+                                         fmt::format("{}", COMPONENT_NAME),
+                                         "Check if IOC data index exists in wazuh-indexer",
                                          m_attempts,
-                                         m_waitSeconds);
+                                         m_waitSeconds,
+                                         m_shutdownRequested);
 }
 
 std::unordered_map<std::string, std::string> IocSync::getRemoteHashesFromRemote()
@@ -169,10 +170,11 @@ std::unordered_map<std::string, std::string> IocSync::getRemoteHashesFromRemote(
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "Indexer Connector");
 
     return base::utils::executeWithRetry([&indexerPtr]() { return indexerPtr->getIocTypeHashes(); },
-                                         fmt::format("{}::getRemoteHashesFromRemote()", COMPONENT_NAME),
-                                         "Get IOC type hashes from remote indexer",
+                                         fmt::format("{}", COMPONENT_NAME),
+                                         "Get IOC type hashes from wazuh-indexer",
                                          m_attempts,
-                                         m_waitSeconds);
+                                         m_waitSeconds,
+                                         m_shutdownRequested);
 }
 
 void IocSync::downloadAndPopulateDB(std::string_view iocType, const std::string& dbName)
@@ -431,6 +433,12 @@ void IocSync::synchronize()
 {
     LOG_DEBUG("[IOC::Sync] Checking for IOC database updates to synchronize");
 
+    if (m_shutdownRequested.load(std::memory_order_relaxed))
+    {
+        LOG_INFO("[IOC::Sync] Synchronization aborted before start");
+        return;
+    }
+
     try
     {
         // Lock weak pointers and acquire mutex
@@ -451,6 +459,12 @@ void IocSync::synchronize()
         bool stateChanged = false;
         for (auto& dbState : m_databasesState)
         {
+            if (m_shutdownRequested.load(std::memory_order_relaxed))
+            {
+                LOG_INFO("[IOC::Sync] Synchronization aborted during IOC type iteration");
+                return;
+            }
+
             if (syncIOCType(dbState, remoteTypeHashes, kvdbiocPtr))
             {
                 stateChanged = true;
@@ -474,8 +488,19 @@ void IocSync::synchronize()
     }
     catch (const std::exception& e)
     {
+        if (m_shutdownRequested.load(std::memory_order_relaxed))
+        {
+            LOG_INFO("[IOC::Sync] Synchronization aborted during remote operation");
+            return;
+        }
         LOG_WARNING("[IOC::Sync] Synchronization cycle failed: {}", e.what());
     }
+}
+
+void IocSync::requestShutdown()
+{
+    m_shutdownRequested.store(true, std::memory_order_relaxed);
+    LOG_INFO("[IOC::Sync] Shutdown requested");
 }
 
 } // namespace ioc::sync

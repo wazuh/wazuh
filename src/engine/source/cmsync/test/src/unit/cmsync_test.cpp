@@ -389,7 +389,8 @@ TEST_F(CMSyncSynchronizeTest, Case4_PolicyEnabledHashChanged)
         .Times(1);
 
     // hot-swap
-    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_)).WillOnce(::testing::Return(std::nullopt));
+    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_))
+        .WillOnce(::testing::Return(std::nullopt));
 
     // Dump state
     EXPECT_CALL(*store, upsertDoc(STORE_NAME_CMSYNC, ::testing::_))
@@ -427,7 +428,8 @@ TEST_F(CMSyncSynchronizeTest, Case4_RouteDisabledHashChanged)
         importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
-    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_)).WillOnce(::testing::Return(std::nullopt));
+    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_))
+        .WillOnce(::testing::Return(std::nullopt));
     EXPECT_CALL(*store, upsertDoc(STORE_NAME_CMSYNC, ::testing::_))
         .WillOnce(::testing::Return(store::mocks::storeOk()));
     EXPECT_CALL(*crud, deleteNamespace(cm::store::NamespaceId("old_ns"))).Times(1);
@@ -647,6 +649,103 @@ TEST_F(CMSyncSynchronizeTest, RetriesNamespaceIdGenerationOnCollision)
     EXPECT_CALL(*router, postEntry(::testing::_)).WillOnce(::testing::Return(std::nullopt));
     EXPECT_CALL(*store, upsertDoc(STORE_NAME_CMSYNC, ::testing::_))
         .WillOnce(::testing::Return(store::mocks::storeOk()));
+
+    EXPECT_NO_THROW(sync->synchronize());
+}
+
+// ==================== Shutdown Tests ====================
+
+// Shutdown before loop: requestShutdown() called before synchronize — no remote calls
+TEST_F(CMSyncSynchronizeTest, AbortsBeforeLoopWhenShutdownRequested)
+{
+    auto state = createStoredState(); // standard + custom
+    auto sync = createSyncWithState(state);
+
+    // Request shutdown before synchronize
+    sync->requestShutdown();
+
+    // No expectations on indexer, crud, or router — nothing should be called
+    EXPECT_NO_THROW(sync->synchronize());
+}
+
+// Shutdown mid-loop: requestShutdown() triggered via mock side effect after first namespace
+TEST_F(CMSyncSynchronizeTest, AbortsMidLoopAfterFirstNamespace)
+{
+    auto state = createStoredState(); // standard + custom
+    auto sync = createSyncWithState(state);
+
+    // Standard space: does not exist in remote — skipped quickly
+    // After existsPolicy returns, trigger shutdown so "custom" iteration aborts
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard")))
+        .WillOnce(::testing::DoAll(::testing::InvokeWithoutArgs([&sync]() { sync->requestShutdown(); }),
+                                   ::testing::Return(false)));
+
+    // Custom space: should NOT be called because shutdown triggers at start of second iteration
+    EXPECT_NO_THROW(sync->synchronize());
+}
+
+// Shutdown before download: requestShutdown() triggered via mock after getting policy info
+TEST_F(CMSyncSynchronizeTest, AbortsBeforeDownload)
+{
+    auto state = createStoredStateWithNs("standard", "dummy_ns_id");
+    auto sync = createSyncWithState(state);
+
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard")))
+        .WillOnce(::testing::DoAll(
+            ::testing::InvokeWithoutArgs([&sync]() { sync->requestShutdown(); }),
+            ::testing::Return(std::make_pair(std::string("new_hash"), true))));
+
+    // No route exists — case 3 (new sync needed), but shutdown triggers before download
+    EXPECT_CALL(*router, existsEntry("cmsync_standard")).WillOnce(::testing::Return(false));
+
+    // No download or route sync should happen
+    EXPECT_NO_THROW(sync->synchronize());
+}
+
+// Hot swap failure triggers rollback (tests the rollback path, not shutdown per se)
+TEST_F(CMSyncSynchronizeTest, RollsBackOnHotSwapFailure)
+{
+    auto state = createStoredStateWithNs("standard", "stored_ns");
+    auto sync = createSyncWithState(state);
+
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard")))
+        .WillOnce(::testing::Return(std::make_pair(std::string("new_hash"), true)));
+
+    // Route exists → hot swap path
+    EXPECT_CALL(*router, existsEntry("cmsync_standard"))
+        .WillOnce(::testing::Return(true))  // routeConfig check
+        .WillOnce(::testing::Return(true)); // syncNamespaceInRoute check
+
+    auto routeEntry = makeRouterEntry("cmsync_standard", "stored_ns", 1, router::env::State::ENABLED, "old_hash");
+    EXPECT_CALL(*router, getEntry("cmsync_standard")).WillOnce(::testing::Return(routeEntry));
+
+    EXPECT_CALL(*crud, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
+    wiconnector::PolicyResources resources;
+    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(resources));
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+        .Times(1);
+
+    // hotSwapNamespace returns error
+    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_))
+        .WillOnce(::testing::Return(base::Error {"Hot swap failed"}));
+
+    // Rollback: the downloaded namespace should be deleted after hot swap failure
+    EXPECT_CALL(*crud, deleteNamespace(::testing::_)).Times(1);
+
+    EXPECT_NO_THROW(sync->synchronize());
+}
+
+// Synchronize works normally without requestShutdown
+TEST_F(CMSyncSynchronizeTest, WorksNormallyWithoutShutdown)
+{
+    auto state = createStoredStateWithNs("standard", "dummy_ns_id");
+    auto sync = createSyncWithState(state);
+
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(false));
 
     EXPECT_NO_THROW(sync->synchronize());
 }

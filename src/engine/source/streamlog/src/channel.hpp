@@ -162,6 +162,7 @@ private:
     std::weak_ptr<scheduler::IScheduler> m_scheduler; ///< Scheduler for compressing log writes
     const std::string m_fileExtension;                ///< The file extension for log files.
     std::shared_ptr<store::IStore> m_store;           ///< Store for managing last state
+    std::shared_ptr<const std::atomic<bool>> m_compressionShouldRun; ///< Flag to cancel in-flight compressions
 
     struct ActiveWriters
     {
@@ -285,9 +286,14 @@ private:
      * success or failure; post-compression steps (in-flight unregister,
      * retention cleanup) always execute regardless of the outcome.
      *
+     * @param filePath The path of the log file to compress.
+     * @param compressionLevel The gzip compression level (1-9).
+     * @param shouldRun Shared atomic flag to allow cancellation of the compression task.
      * @note Static method to allow scheduling without needing an instance.
      */
-    static void compressLogFile(std::filesystem::path filePath, int compressionLevel);
+    static void compressLogFile(const std::filesystem::path& filePath,
+                                int compressionLevel,
+                                std::shared_ptr<const std::atomic<bool>> shouldRun);
 
     /**
      * @brief Creates a TaskConfig for compressing a log file.
@@ -304,7 +310,7 @@ private:
      * @param filePath The path of the log file to compress.
      * @return A TaskConfig configured for compressing the specified log file.
      */
-    scheduler::TaskConfig createCompressionTaskConfig(std::filesystem::path filePath) const;
+    scheduler::TaskConfig createCompressionTaskConfig(const std::filesystem::path& filePath) const;
 
     /**
      * @brief Delete old files from the channel directory according to retention rules (maxFiles and
@@ -378,7 +384,8 @@ private:
                    std::string channelName,
                    const std::shared_ptr<store::IStore>& store,
                    std::weak_ptr<scheduler::IScheduler> scheduler,
-                   std::string_view ext);
+                   std::string_view ext,
+                   std::shared_ptr<const std::atomic<bool>> compressionShouldRun);
 
 public:
     /**
@@ -409,7 +416,8 @@ public:
                                                   std::string channelName,
                                                   const std::shared_ptr<store::IStore>& store,
                                                   std::weak_ptr<scheduler::IScheduler> scheduler = {},
-                                                  std::string_view ext = "json");
+                                                  std::string_view ext = "json",
+                                                  std::shared_ptr<const std::atomic<bool>> compressionShouldRun = {});
 
     /**
      * @brief Creates a new ChannelWriter and starts the worker thread if it's the first writer
