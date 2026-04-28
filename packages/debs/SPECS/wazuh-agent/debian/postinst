@@ -14,10 +14,22 @@ case "$1" in
     GROUP="wazuh"
     WAZUH_GLOBAL_TMP_DIR="${DIR}/packages_files"
     WAZUH_TMP_DIR="${WAZUH_GLOBAL_TMP_DIR}/agent_config_files"
+    WAZUH_PRESERVE_DIR="${WAZUH_GLOBAL_TMP_DIR}/agent_upgrade_preserve"
     SCRIPTS_DIR="${WAZUH_GLOBAL_TMP_DIR}/agent_installation_scripts"
     SCA_BASE_DIR="${SCRIPTS_DIR}/sca"
 
     OSMYSHELL="/sbin/nologin"
+
+    restore_upgrade_preserve() {
+        if [ -d "${WAZUH_PRESERVE_DIR}/etc" ]; then
+            mkdir -p "${DIR}/etc"
+            cp -a "${WAZUH_PRESERVE_DIR}/etc/." "${DIR}/etc/"
+        fi
+
+        if [ -d "${WAZUH_PRESERVE_DIR}" ]; then
+            rm -rf "${WAZUH_PRESERVE_DIR}"
+        fi
+    }
 
     if [ -d /run/systemd/system ]; then
         rm -f /etc/init.d/wazuh-agent
@@ -46,30 +58,18 @@ case "$1" in
         chmod 640 ${DIR}/etc/ossec.conf.new
     fi
 
-    # For the etc dir
-    if [ -f /etc/localtime ]; then
-        cp -pL /etc/localtime ${DIR}/etc/;
-        chmod 640 ${DIR}/etc/localtime
-        chown root:${GROUP} ${DIR}/etc/localtime
+    if [ -z "$2" ]; then
+        # For the etc dir
+        if [ -f /etc/localtime ]; then
+            cp -pL /etc/localtime ${DIR}/etc/;
+            chmod 640 ${DIR}/etc/localtime
+            chown root:${GROUP} ${DIR}/etc/localtime
+        fi
     fi
 
     # Remove deprecated binaries
     if [ -f ${DIR}/bin/agent-auth ]; then
         rm -f ${DIR}/bin/agent-auth
-    fi
-
-    # Restore the local rules, client.keys and local_decoder
-    if [ -f ${WAZUH_TMP_DIR}/client.keys ]; then
-        cp ${WAZUH_TMP_DIR}/client.keys ${DIR}/etc/client.keys
-    fi
-    # Restore ossec.conf configuration
-    if [ -f ${WAZUH_TMP_DIR}/ossec.conf ]; then
-        mv ${WAZUH_TMP_DIR}/ossec.conf ${DIR}/etc/ossec.conf
-        chmod 640 ${DIR}/etc/ossec.conf
-    fi
-    # Restore internal options configuration
-    if [ -f ${WAZUH_TMP_DIR}/local_internal_options.conf ]; then
-        mv ${WAZUH_TMP_DIR}/local_internal_options.conf ${DIR}/etc/local_internal_options.conf
     fi
 
     # Install the SCA files
@@ -112,12 +112,6 @@ case "$1" in
 
     fi
 
-    # Restore group files
-    if [ -d ${WAZUH_TMP_DIR}/group ]; then
-        cp -rfp ${WAZUH_TMP_DIR}/group/* ${DIR}/etc/shared
-        rm -rf ${WAZUH_TMP_DIR}/group
-    fi
-
     touch ${DIR}/logs/active-responses.log
     chown wazuh:wazuh ${DIR}/logs/active-responses.log
     chmod 0660 ${DIR}/logs/active-responses.log
@@ -134,6 +128,12 @@ case "$1" in
     if [ -z "$2" ] ; then
         ${SCRIPTS_DIR}/src/init/register_configure_agent.sh ${DIR} > /dev/null || :
     fi
+
+    # Restore preserved etc/ as the last content-restore/overwrite
+    # step for that tree, matching the RPM %posttrans ordering and the
+    # strict "etc/ MUST NOT be overwritten" contract from the upgrade rules.
+    # Permission normalization may still follow afterwards.
+    restore_upgrade_preserve
 
     # Restoring file permissions
     ${SCRIPTS_DIR}/restore-permissions.sh > /dev/null 2>&1 || :

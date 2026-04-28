@@ -222,6 +222,17 @@ jobs:
           expected_upgrade_version: ${{ env.VERSION }}
           tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
 
+      - name: Test agent upgrade rule checks
+        uses: ./.github/actions/5_builderpackage_manager-upgrade-rules-test
+        with:
+          mode: run
+          component: agent
+          system: ${{ env.SYSTEM }}
+          tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
+          old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
+          package_mount: /tmp
+          package_path: /packages/${{ env.PACKAGE_NAME }}
+
   upload-deb-arm64-to-s3:
     needs: [build-deb-arm64, test-deb-arm64]
     if: success()
@@ -471,6 +482,17 @@ jobs:
           old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
           expected_upgrade_version: ${{ env.VERSION }}
           tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
+
+      - name: Test agent upgrade rule checks
+        uses: ./.github/actions/5_builderpackage_manager-upgrade-rules-test
+        with:
+          mode: run
+          component: agent
+          system: ${{ env.SYSTEM }}
+          tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
+          old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
+          package_mount: /tmp
+          package_path: /packages/${{ env.PACKAGE_NAME }}
 
   upload-rpm-arm64-to-s3:
     needs: [build-rpm-arm64, test-rpm-arm64]

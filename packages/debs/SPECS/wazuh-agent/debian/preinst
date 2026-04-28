@@ -6,9 +6,23 @@ set -e
 # configuration variables
 DIR="/var/ossec"
 WAZUH_TMP_DIR="${DIR}/packages_files/agent_config_files"
+WAZUH_PRESERVE_DIR="${DIR}/packages_files/agent_upgrade_preserve"
 
 # environment configuration
 mkdir -p ${WAZUH_TMP_DIR}
+
+backup_upgrade_preserve() {
+    if [ -e "${WAZUH_PRESERVE_DIR}" ]; then
+        echo "ERROR: Existing agent upgrade preserve backup found at ${WAZUH_PRESERVE_DIR}." >&2
+        echo "ERROR: Recover or move this directory before retrying the upgrade." >&2
+        exit 1
+    fi
+    mkdir -p "${WAZUH_PRESERVE_DIR}"
+
+    if [ -d "${DIR}/etc" ]; then
+        cp -a "${DIR}/etc" "${WAZUH_PRESERVE_DIR}/"
+    fi
+}
 
 case "$1" in
     install|upgrade)
@@ -80,6 +94,8 @@ EOF
             fi
             ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
 
+            backup_upgrade_preserve
+
             # Remove old databases if upgrading from pre 5.X to 5.X
             if [ $MAJOR -lt 5 ]; then
                 if [ -f ${DIR}/queue/syscollector/db/local.db ]; then
@@ -118,32 +134,6 @@ EOF
             touch ${WAZUH_TMP_DIR}/create_conf
         fi
 
-        # Delete old service
-        if [ -f /etc/init.d/ossec ]; then
-            rm /etc/init.d/ossec
-        fi
-
-        # back up the current user rules
-        if [ -f ${DIR}/etc/client.keys ]; then
-            cp ${DIR}/etc/client.keys ${WAZUH_TMP_DIR}/client.keys
-        fi
-        if [ -f ${DIR}/etc/local_internal_options.conf ]; then
-            cp -p ${DIR}/etc/local_internal_options.conf ${WAZUH_TMP_DIR}/local_internal_options.conf
-        fi
-        if [ -f ${DIR}/etc/ossec.conf ]; then
-            cp -p ${DIR}/etc/ossec.conf ${WAZUH_TMP_DIR}/ossec.conf
-        fi
-
-        if [ -d "${DIR}/etc/shared" ]; then
-            if [ "$(ls -A "${DIR}/etc/shared")" ]; then
-                files="$(ls -A ${DIR}/etc/shared/*)"
-            fi
-        fi
-
-        if [ ! -z "$files" ]; then
-            mkdir -p ${WAZUH_TMP_DIR}/group
-            cp -rp ${DIR}/etc/shared/* ${WAZUH_TMP_DIR}/group/
-        fi
     ;;
 
     abort-upgrade)
