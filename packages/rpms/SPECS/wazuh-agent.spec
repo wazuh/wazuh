@@ -621,7 +621,6 @@ if [ $1 = 0 ] || [ $DELETE_WAZUH_USER_AND_GROUP = 1 ]; then
     # Remove lingering folders and files
     rm -rf %{_localstatedir}/etc/shared/
     rm -rf %{_localstatedir}/queue/
-    rm -rf %{_localstatedir}/alerts/
     rm -rf %{_localstatedir}/var/
     rm -rf %{_localstatedir}/bin/
     rm -rf %{_localstatedir}/logs/
@@ -658,12 +657,16 @@ if [ -d %{_localstatedir}/queue/ossec ]; then
   rm -rf %{_localstatedir}/queue/ossec/
 fi
 
-if [ -d %{_localstatedir}/alerts/execq ]; then
-  mv %{_localstatedir}/alerts/execq %{_localstatedir}/queue/execq
+if [ -S %{_localstatedir}/queue/alerts/execq ]; then
+  rm -f %{_localstatedir}/queue/alerts/execq
 fi
 
-if [ -d %{_localstatedir}/alerts ]; then
-  rm -rf %{_localstatedir}/alerts
+if [ -S %{_localstatedir}/queue/alerts/cfgaq ]; then
+  rm -f %{_localstatedir}/queue/alerts/cfgaq
+fi
+
+if [ -d %{_localstatedir}/queue/alerts ]; then
+  rm -rf %{_localstatedir}/queue/alerts
 fi
 
 %clean

@@ -167,9 +167,14 @@ if [[ $(dscl . -read /Groups/ossec) ]]; then
     sudo /usr/bin/dscl . -delete "/Groups/ossec"
 fi
 
-# Move execq folder
-if [ -d ${DIR}/queue/alerts/execq ]; then
-    mv ${DIR}/queue/alerts/execq ${DIR}/queue/sockets/execq
+# Remove execq folder
+if [ -S ${DIR}/queue/alerts/execq ]; then
+    rm -f ${DIR}/queue/alerts/execq
+fi
+
+# Remove deprecated cfgaq socket
+if [ -S ${DIR}/queue/alerts/cfgaq ]; then
+    rm -f ${DIR}/queue/alerts/cfgaq
 fi
 
 # Remove alerts folder

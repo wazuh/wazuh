@@ -98,13 +98,18 @@ EOF
                 mv ${DIR}/queue/ossec ${DIR}/queue/sockets
             fi
 
-            # Move old execq folder to its new location
-            if [ -d ${DIR}/queue/alerts/execq ]; then
-                mv ${DIR}/queue/alerts/execq ${DIR}/queue/sockets
+            # Remove execq socket so when restarting the agent it is regenerated in its new location
+            if [ -S ${DIR}/queue/alerts/execq ]; then
+                rm -f ${DIR}/queue/alerts/execq
             fi
 
-            # Remove empty alerts folder
-            if [ -d ${DIR}/queue/alerts]; then
+            # Remove deprecated cfgaq socket
+            if [ -S ${DIR}/queue/alerts/cfgaq ]; then
+                rm -f ${DIR}/queue/alerts/cfgaq
+            fi
+
+            # Remove alerts folder
+            if [ -d ${DIR}/queue/alerts ]; then
                 rm -rf ${DIR}/queue/alerts
             fi
         fi

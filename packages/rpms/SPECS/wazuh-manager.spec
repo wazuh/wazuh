@@ -479,38 +479,6 @@ if [ -d %{_localstatedir}/queue/ossec ]; then
   rm -rf %{_localstatedir}/queue/ossec/
 fi
 
-if [ -d %{_localstatedir}/backup/groups ]; then
-  rm -rf %{_localstatedir}/backup/groups
-fi
-
-if [ -d %{_localstatedir}/backup/agents ]; then
-  rm -rf %{_localstatedir}/backup/agents
-fi
-
-if [ -d %{_localstatedir}/backup/shared ]; then
-  rm -rf %{_localstatedir}/backup/shared
-fi
-
-if [ -d %{_localstatedir}/queue/vd_updater ]; then
-  mv %{_localstatedir}/queue/vd_updater %{_localstatedir}/queue/vd/vd_updater
-fi
-
-if [ -d %{_localstatedir}/queue/alerts/ar ]; then
-  mv %{_localstatedir}/queue/alerts/ar %{_localstatedir}/queue/sockets/ar
-fi
-
-if [ -d %{_localstatedir}/queue/alerts ]; then
-  rm -rf %{_localstatedir}/queue/alerts
-fi
-
-if [ -d %{_localstatedir}/queue/indexer/engine ]; then
-  mv %{_localstatedir}/queue/indexer/engine %{_localstatedir}/queue/engine-output
-fi
-
-if [ -d %{_localstatedir}/inventory_sync ]; then
-  mv %{_localstatedir}/inventory_sync %{_localstatedir}/queue/inventory_sync
-fi
-
 %triggerin -- glibc
 [ -r %{_sysconfdir}/localtime ] && cp -fpL %{_sysconfdir}/localtime %{_localstatedir}/etc
  chown root:wazuh-manager %{_localstatedir}/etc/localtime

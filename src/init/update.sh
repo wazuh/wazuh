@@ -371,52 +371,6 @@ UpdateStopWAZUH()
     if [ -d "$PREINSTALLEDDIR/queue/rootcheck" ]; then
         rm -rf $PREINSTALLEDDIR/queue/rootcheck > /dev/null 2>&1
     fi
-
-    # Delete groups backup folder if exists
-    if [ -d "$PREINSTALLEDDIR/backup/groups" ]; then
-        rm -rf $PREINSTALLEDDIR/backup/groups > /dev/null 2>&1
-    fi
-
-    # Delete agents backup folder if exists
-    if [ -d "$PREINSTALLEDDIR/backup/agents" ]; then
-        rm -rf "$PREINSTALLEDDIR/backup/agents" > /dev/null 2>&1
-    fi
-
-    # Delete shared backup folder if exists
-    if [ -d "$PREINSTALLEDDIR/backup/shared" ]; then
-        rm -rf "$PREINSTALLEDDIR/backup/shared" > /dev/null 2>&1
-    fi
-
-    # Move ar socket if exists
-    if [ -d "$PREINSTALLEDDIR/queue/alerts/ar" ]; then
-        mv "$PREINSTALLEDDIR/queue/alerts/ar" "$PREINSTALLEDDIR/queue/sockets/ar"
-    fi
-
-    # Move ar socket if exists
-    if [ -d "$PREINSTALLEDDIR/queue/alerts/execq" ]; then
-        mv "$PREINSTALLEDDIR/queue/alerts/execq" "$PREINSTALLEDDIR/queue/sockets/execq"
-    fi
-
-    # Remove old alerts queue if exists
-    if [ -d "$PREINSTALLEDDIR/queue/alerts" ]; then
-        rm -rf "$PREINSTALLEDDIR/queue/alerts" > /dev/null 2>&1
-    fi
-
-    # Move old vd_updater queue if exists
-    if [ -d "$PREINSTALLEDDIR/queue/vd_updater" ]; then
-        mv "$PREINSTALLEDDIR/queue/vd_updater" "$PREINSTALLEDDIR/queue/vd/vd_updater"
-    fi
-
-
-    # Move old indexer_engine queue if exists
-    if [ -d "$PREINSTALLEDDIR/queue/indexer/engine" ]; then
-        mv "$PREINSTALLEDDIR/queue/indexer/engine" "$PREINSTALLEDDIR/queue/engine-output"
-    fi
-
-    # Move old inventory_sync queue if exists
-    if [ -d "$PREINSTALLEDDIR/inventory_sync" ]; then
-        mv "$PREINSTALLEDDIR/inventory_sync" "$PREINSTALLEDDIR/queue/inventory_sync"
-    fi
 }
 
 UpdateOldVersions()
