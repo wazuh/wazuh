@@ -124,7 +124,7 @@ case "$1" in
     fi
 
     # Register and configure agent if Wazuh environment variables are defined
-    if [ -z "$2" ] ; then
+    if [ -z "$2" ] || [ -f ${WAZUH_TMP_DIR}/create_conf ] ; then
         ${SCRIPTS_DIR}/src/init/register_configure_agent.sh ${DIR} > /dev/null || :
     fi
 
