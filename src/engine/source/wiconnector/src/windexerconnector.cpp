@@ -316,8 +316,15 @@ WIndexerConnector::~WIndexerConnector() = default;
 void WIndexerConnector::shutdown()
 {
     LOG_INFO("[indexer-connector] Shutdown initiated");
-    std::unique_lock lock(m_mutex);
+    m_shutdownRequested.store(true, std::memory_order_relaxed);
+    std::unique_lock lock(m_mutex); // Wait for any in-flight operations (syncs)
     m_indexerConnectorAsync.reset();
+}
+
+void WIndexerConnector::requestShutdown()
+{
+    m_shutdownRequested.store(true, std::memory_order_relaxed);
+    LOG_INFO("[indexer-connector] Shutdown requested");
 }
 
 uint64_t WIndexerConnector::getQueueSize()
@@ -407,6 +414,11 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
 
     do
     {
+        if (m_shutdownRequested.load(std::memory_order_relaxed))
+        {
+            throw IndexerConnectorException("Shutdown requested during policy retrieval");
+        }
+
         nlohmann::json hits = m_indexerConnectorAsync->search(pit, m_maxHitsPerRequest, query, sort, searchAfter);
 
         if (!searchAfter.has_value())
@@ -801,6 +813,14 @@ std::size_t WIndexerConnector::queryByBatches(std::string_view indexName,
         if (hitArray.size() < effectiveBatchSize)
         {
             break;
+        }
+
+        if (m_shutdownRequested.load(std::memory_order_relaxed))
+        {
+            // Throw to ensure callers (e.g. IOC sync) discard the partial result instead of
+            // promoting an incomplete dataset (e.g. via hot-swap).
+            throw IndexerConnectorException(
+                fmt::format("Shutdown requested during batched query after {} processed docs", processedDocs));
         }
 
         searchAfter = getSearchAfter(hits);

@@ -427,7 +427,10 @@ int main(int argc, char* argv[])
 
                 // Create indexer connector with enhanced configuration
                 indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf.str(), maxHitsPerRequest);
+                // Register destructive shutdown first so it executes (LIFO) AFTER requestShutdown,
+                // ensuring in-flight pagination loops abort and release shared locks before destroy.
                 exitHandler.add([indexerConnector]() { indexerConnector->shutdown(); });
+                exitHandler.add([indexerConnector]() { indexerConnector->requestShutdown(); });
 
                 // Register pull metric for indexer queue (output/egress)
                 std::weak_ptr<wiconnector::WIndexerConnector> wIndexer = indexerConnector;
