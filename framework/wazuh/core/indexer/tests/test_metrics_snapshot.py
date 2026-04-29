@@ -1116,7 +1116,8 @@ class TestInit:
 
 
 def _patch_collect_and_index(
-    tasks, mock_indexer, agent_docs=None, comms_docs=None, collect_agents_override=None
+    tasks, mock_indexer, agent_docs=None, comms_docs=None, normalization_docs=None,
+    collect_agents_override=None
 ):
     from contextlib import contextmanager
 
@@ -1138,6 +1139,12 @@ def _patch_collect_and_index(
                 new_callable=AsyncMock,
                 return_value=comms_docs if comms_docs is not None else [],
             ) as mock_comms,
+            patch.object(
+                tasks,
+                "_collect_normalization_all_nodes",
+                new_callable=AsyncMock,
+                return_value=normalization_docs if normalization_docs is not None else [],
+            ) as mock_norm,
             patch(
                 "wazuh.core.indexer.metrics_snapshot.get_indexer_client",
                 return_value=AsyncMock(
@@ -1146,7 +1153,7 @@ def _patch_collect_and_index(
                 ),
             ),
         ):
-            yield mock_agents, mock_comms
+            yield mock_agents, mock_comms, mock_norm
 
     return _ctx()
 
@@ -1167,11 +1174,13 @@ class TestCollectAndIndex:
         with _patch_collect_and_index(tasks, mock_indexer, agent_docs, comms_docs) as (
             mock_agents,
             mock_comms,
+            mock_norm,
         ):
             await tasks._collect_and_index()
 
         mock_agents.assert_awaited_once()
         mock_comms.assert_awaited_once()
+        mock_norm.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_bulk_index_called_for_agents_index(self):
@@ -1967,3 +1976,165 @@ class TestNormalizeCommsDocZeroPreservation:
         assert doc["queue"]["size"] == 10
         assert doc["events"]["total"] == 1000
         assert doc["tcp"]["sessions"] == 5
+
+
+# ---------------------------------------------------------------------------
+# Engine metrics normalization tests
+# ---------------------------------------------------------------------------
+
+ENGINE_DUMP_RESPONSE = {
+    "status": 0,
+    "name": "engine",
+    "uptime": 99000,
+    "global": [
+        {"name": "router.queue.size", "type": 0, "enabled": True, "value": 1000},
+        {"name": "router.queue.usage.percent", "type": 1, "enabled": True, "value": 55.5},
+        {"name": "router.eps.1m", "type": 1, "enabled": True, "value": 250.0},
+        {"name": "router.eps.5m", "type": 1, "enabled": True, "value": 240.0},
+        {"name": "router.eps.30m", "type": 1, "enabled": True, "value": 230.0},
+        {"name": "router.events.processed", "type": 0, "enabled": True, "value": 100000},
+        {"name": "router.events.dropped", "type": 0, "enabled": True, "value": 5},
+        {"name": "indexer.queue.size", "type": 0, "enabled": True, "value": 200},
+        {"name": "indexer.queue.usage.percent", "type": 1, "enabled": True, "value": 20.0},
+        {"name": "indexer.events.dropped", "type": 0, "enabled": True, "value": 0},
+        {"name": "server.bytes.received", "type": 0, "enabled": True, "value": 1048576},
+        {"name": "server.events.received", "type": 0, "enabled": True, "value": 100005},
+    ],
+    "spaces": [
+        {
+            "name": "default",
+            "metrics": [
+                {"name": "space.default.events.unclassified", "type": 0, "enabled": True, "value": 10},
+                {"name": "space.default.events.discarded", "type": 0, "enabled": True, "value": 2},
+                {"name": "space.default.events.discarded.prefilter", "type": 0, "enabled": True, "value": 1},
+                {"name": "space.default.events.discarded.postfilter", "type": 0, "enabled": True, "value": 1},
+            ],
+        }
+    ],
+}
+
+
+class TestNormalizeNormalizationDoc:
+    def _base_doc(self):
+        doc = dict(ENGINE_DUMP_RESPONSE)
+        doc["@timestamp"] = TIMESTAMP
+        doc["wazuh.cluster.node"] = "node01"
+        doc["wazuh.cluster.name"] = "wazuh"
+        return doc
+
+    def test_top_level_metadata(self):
+        doc = MetricsSnapshotTasks._normalize_normalization_doc(self._base_doc())
+        assert doc["@timestamp"] == TIMESTAMP
+        assert doc["wazuh"]["cluster"]["node"] == "node01"
+        assert doc["wazuh"]["cluster"]["name"] == "wazuh"
+        assert doc["wazuh"]["schema"]["version"] == "1"
+        assert doc["event"]["module"] == "engine"
+
+    def test_engine_fields(self):
+        doc = MetricsSnapshotTasks._normalize_normalization_doc(self._base_doc())
+        assert doc["engine"]["name"] == "engine"
+        assert doc["engine"]["uptime"] == 99000
+
+    def test_router_metrics(self):
+        doc = MetricsSnapshotTasks._normalize_normalization_doc(self._base_doc())
+        assert doc["router"]["queue"]["size"] == 1000
+        assert doc["router"]["queue"]["usage"]["percent"] == 55.5
+        assert doc["router"]["eps"]["1m"] == 250.0
+        assert doc["router"]["eps"]["5m"] == 240.0
+        assert doc["router"]["eps"]["30m"] == 230.0
+        assert doc["router"]["events"]["processed"] == 100000
+        assert doc["router"]["events"]["dropped"] == 5
+
+    def test_indexer_metrics(self):
+        doc = MetricsSnapshotTasks._normalize_normalization_doc(self._base_doc())
+        assert doc["indexer"]["queue"]["size"] == 200
+        assert doc["indexer"]["queue"]["usage"]["percent"] == 20.0
+        assert doc["indexer"]["events"]["dropped"] == 0
+
+    def test_server_metrics(self):
+        doc = MetricsSnapshotTasks._normalize_normalization_doc(self._base_doc())
+        assert doc["server"]["bytes"]["received"] == 1048576
+        assert doc["server"]["events"]["received"] == 100005
+
+    def test_spaces_mapping(self):
+        doc = MetricsSnapshotTasks._normalize_normalization_doc(self._base_doc())
+        assert len(doc["spaces"]) == 1
+        space = doc["spaces"][0]
+        assert space["name"] == "default"
+        assert space["events"]["unclassified"] == 10
+        assert space["events"]["discarded"] == 2
+        assert space["events"]["discarded_prefilter"] == 1
+        assert space["events"]["discarded_postfilter"] == 1
+
+    def test_empty_global_drops_metric_fields(self):
+        doc = dict(ENGINE_DUMP_RESPONSE)
+        doc["global"] = []
+        doc["spaces"] = []
+        doc["@timestamp"] = TIMESTAMP
+        doc["wazuh.cluster.node"] = "node01"
+        doc["wazuh.cluster.name"] = "wazuh"
+        result = MetricsSnapshotTasks._normalize_normalization_doc(doc)
+        assert "router" not in result
+        assert "indexer" not in result
+        assert "server" not in result
+        assert "spaces" not in result
+
+    def test_zero_value_preserved(self):
+        doc = dict(ENGINE_DUMP_RESPONSE)
+        doc["global"] = [{"name": "router.events.dropped", "type": 0, "enabled": True, "value": 0}]
+        doc["spaces"] = []
+        doc["@timestamp"] = TIMESTAMP
+        doc["wazuh.cluster.node"] = "node01"
+        doc["wazuh.cluster.name"] = "wazuh"
+        result = MetricsSnapshotTasks._normalize_normalization_doc(doc)
+        assert result["router"]["events"]["dropped"] == 0
+
+
+class TestCollectNormalizationAllNodes:
+    @pytest.mark.asyncio
+    async def test_local_node_collected(self):
+        tasks = _make_tasks()
+        engine_result = _make_dapi_result([dict(ENGINE_DUMP_RESPONSE)])
+
+        with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_engine_metrics",
+            return_value=engine_result,
+        ):
+            docs = await tasks._collect_normalization_all_nodes(TIMESTAMP)
+
+        assert len(docs) == 1
+        assert docs[0]["@timestamp"] == TIMESTAMP
+        assert docs[0]["wazuh"]["cluster"]["node"] == "node01"
+        assert docs[0]["engine"]["name"] == "engine"
+
+    @pytest.mark.asyncio
+    async def test_worker_node_uses_dapi(self):
+        server = _make_server(workers={"worker01": MagicMock()})
+        tasks = _make_tasks(server=server)
+        master_result = _make_dapi_result([dict(ENGINE_DUMP_RESPONSE)])
+        worker_result = _make_dapi_result([dict(ENGINE_DUMP_RESPONSE)])
+        dapi_mock = AsyncMock(return_value=worker_result)
+
+        with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_engine_metrics",
+            return_value=master_result,
+        ), patch(
+            "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
+        ) as mock_dapi_cls:
+            mock_dapi_cls.return_value.distribute_function = dapi_mock
+            docs = await tasks._collect_normalization_all_nodes(TIMESTAMP)
+
+        assert len(docs) == 2
+        assert mock_dapi_cls.called
+
+    @pytest.mark.asyncio
+    async def test_node_failure_skipped(self):
+        tasks = _make_tasks()
+
+        with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_engine_metrics",
+            side_effect=Exception("socket error"),
+        ):
+            docs = await tasks._collect_normalization_all_nodes(TIMESTAMP)
+
+        assert docs == []

@@ -160,3 +160,41 @@ def test_get_agents_component_stats_json_ko(mock_agents_info, mock_getstats):
     response = stats.get_agents_component_stats_json(agent_list=['003'], component='logcollector')
     assert isinstance(response, AffectedItemsWazuhResult), 'The result is not AffectedItemsWazuhResult type'
     assert response.render()['data']['failed_items'][0]['error']['code'] == 1701, 'Expected error code was not returned'
+
+
+METRICS_DUMP_DATA = {
+    "status": 0,
+    "name": "engine",
+    "uptime": 99,
+    "global": [{"name": "router.queue.size", "type": 0, "enabled": True, "value": 500}],
+    "spaces": [],
+}
+
+
+@patch('wazuh.stats.EngineHTTPClient')
+def test_get_engine_metrics(mock_client_cls):
+    mock_client = MagicMock()
+    mock_client.get_metrics_dump.return_value = METRICS_DUMP_DATA
+    mock_client_cls.return_value = mock_client
+
+    response = stats.get_engine_metrics()
+
+    assert isinstance(response, AffectedItemsWazuhResult)
+    assert response.total_affected_items == 1
+    assert response.affected_items[0] == METRICS_DUMP_DATA
+    assert not response.failed_items
+
+
+@patch('wazuh.stats.EngineHTTPClient')
+def test_get_engine_metrics_ko(mock_client_cls):
+    from wazuh.core.exception import WazuhInternalError
+
+    mock_client = MagicMock()
+    mock_client.get_metrics_dump.side_effect = WazuhInternalError(2021)
+    mock_client_cls.return_value = mock_client
+
+    response = stats.get_engine_metrics()
+
+    assert isinstance(response, AffectedItemsWazuhResult)
+    assert response.total_affected_items == 0
+    assert response.render()['data']['failed_items'][0]['error']['code'] == 2021
