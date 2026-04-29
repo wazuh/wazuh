@@ -390,4 +390,65 @@ TEST_F(ReflectiveJsonTest, NumericBufferZeroing)
     EXPECT_EQ(json.front(), '{');
     EXPECT_EQ(json.back(), '}');
 }
+
+TEST_F(ReflectiveJsonTest, IsEmptyReturnsFalseForPartiallyPopulatedNestedStruct)
+{
+    struct NestedData
+    {
+        std::string_view stringField;
+        int64_t intField;
+
+        REFLECTABLE(MAKE_FIELD("stringField", &NestedData::stringField),
+                    MAKE_FIELD("intField", &NestedData::intField));
+    };
+
+    NestedData obj;
+    obj.stringField = "someValue";
+    obj.intField    = DEFAULT_INT_VALUE;
+
+    EXPECT_FALSE(isEmpty(obj));
+}
+
+TEST_F(ReflectiveJsonTest, IsEmptyReturnsTrueWhenAllFieldsAreEmpty)
+{
+    struct NestedData
+    {
+        std::string_view stringField;
+        int64_t intField;
+
+        REFLECTABLE(MAKE_FIELD("stringField", &NestedData::stringField),
+                    MAKE_FIELD("intField", &NestedData::intField));
+    };
+
+    NestedData obj;
+    obj.stringField = "";
+    obj.intField    = DEFAULT_INT_VALUE;
+
+    EXPECT_TRUE(isEmpty(obj));
+}
+
+TEST_F(ReflectiveJsonTest, PartiallyPopulatedNestedStructIsNotOmittedFromOutput)
+{
+    struct NestedData
+    {
+        std::string_view stringField;
+        int64_t intField;
+
+        REFLECTABLE(MAKE_FIELD("stringField", &NestedData::stringField),
+                    MAKE_FIELD("intField", &NestedData::intField));
+    };
+
+    TestData<NestedData> obj;
+    obj.fieldOne              = "";
+    obj.fieldTwo              = DEFAULT_INT_VALUE;
+    obj.fieldThree.stringField = "someValue";
+    obj.fieldThree.intField   = DEFAULT_INT_VALUE;
+
+    std::string json;
+    serializeToJSON(obj, json);
+
+    EXPECT_EQ(json.find(R"("fieldOne":)"), std::string::npos);
+    EXPECT_EQ(json.find(R"("fieldTwo":)"), std::string::npos);
+    EXPECT_NE(json.find(R"("fieldThree":{"stringField":"someValue"})"), std::string::npos);
+}
 #endif
