@@ -50,7 +50,7 @@ After all pages are processed, the downloader signals completion via `indexer_co
     "configData": {
         "consumerName": "Wazuh VulnerabilityDetector",
         "contentSource": "indexer",
-        "databasePath": "queue/vd_updater/rocksdb",
+        "databasePath": "queue/vd/vd_updater/rocksdb",
         "indexer": {
             "hosts": ["https://localhost:9200"],
             "username": "admin",

@@ -60,6 +60,12 @@ enum class IndexResourceType
     POLICY
 };
 
+/**
+ * @brief Constant that keeps the value of the base path where engine-output queue is going to be
+ *
+ */
+const std::string BASEQUEUEPATH = "queue/";
+
 IndexResourceType fromIndexName(std::string_view indexName)
 {
     // Static regex patterns compiled once
@@ -285,7 +291,7 @@ WIndexerConnector::WIndexerConnector(std::string_view jsonOssecConfig, const std
     }
 
     const auto logFunction = logging::createStandaloneLogFunction();
-    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonParsed, "engine", logFunction);
+    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonParsed, "engine-output", logFunction, BASEQUEUEPATH);
 }
 
 WIndexerConnector::WIndexerConnector(const Config& config,
@@ -308,7 +314,7 @@ WIndexerConnector::WIndexerConnector(const Config& config,
         throw std::runtime_error("Invalid JSON configuration for IndexerConnector");
     }
 
-    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonConfig, "engine", logFunction);
+    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonConfig, "engine-output", logFunction, BASEQUEUEPATH);
 }
 
 WIndexerConnector::~WIndexerConnector() = default;

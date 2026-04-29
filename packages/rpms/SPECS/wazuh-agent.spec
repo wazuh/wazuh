@@ -657,6 +657,18 @@ if [ -d %{_localstatedir}/queue/ossec ]; then
   rm -rf %{_localstatedir}/queue/ossec/
 fi
 
+if [ -S %{_localstatedir}/queue/alerts/execq ]; then
+  rm -f %{_localstatedir}/queue/alerts/execq
+fi
+
+if [ -S %{_localstatedir}/queue/alerts/cfgaq ]; then
+  rm -f %{_localstatedir}/queue/alerts/cfgaq
+fi
+
+if [ -d %{_localstatedir}/queue/alerts ]; then
+  rm -rf %{_localstatedir}/queue/alerts
+fi
+
 %clean
 rm -fr %{buildroot}
 
@@ -708,7 +720,6 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/agent_info
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/agent_info/db
 %attr(640, root, wazuh) %{_localstatedir}/queue/syscollector/norm_config.json
-%dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/alerts
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/rids
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/logcollector
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset/
