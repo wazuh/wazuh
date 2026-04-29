@@ -50,20 +50,12 @@ jobs:
         run:
           make -C src external/cpython.tar.gz && tar -xzf src/external/cpython.tar.gz -C src/external --one-top-level
 
-      - name: Scan prebuilt embedded Python 
+      - name: Scan prebuilt embedded Python
         uses: anchore/scan-action@v6
         id: scan
         with:
           path: "src/external/cpython"
           fail-build: false
-
-      - name: Individualize SARIF fingerprints
-        run: |
-          INPUT_SARIF="${{ steps.scan.outputs.sarif }}"
-          
-          jq --arg branch "${{ matrix.ref }}" \
-            '.runs[].results[]?.partialFingerprints.primaryLocationLineHash |= . + "-" + $branch' \
-            "$INPUT_SARIF" > sarif_modified.json && mv sarif_modified.json "$INPUT_SARIF"
 
       - name: Upload scan results to GitHub
         uses: github/codeql-action/upload-sarif@v4
@@ -71,3 +63,4 @@ jobs:
           ref: refs/heads/${{ matrix.ref }}
           sha: ${{ matrix.sha }}
           sarif_file: ${{ steps.scan.outputs.sarif }}
+          category: python-vulns-${{ matrix.ref }}
