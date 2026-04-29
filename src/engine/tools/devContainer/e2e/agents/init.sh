@@ -78,8 +78,9 @@ function need_cmd() {
 function download_to() {
   local url="$1"
   local dest="$2"
+  local force_dl="${3:-$FORCE}"  # optional 3rd arg overrides global FORCE
 
-  if [[ -f "$dest" && "$FORCE" -ne 1 ]]; then
+  if [[ -f "$dest" && "$force_dl" -ne 1 ]]; then
     echo "    => Already present, skipping: $(basename "$dest")"
     echo "       (use --force to re-download)"
     return 0
@@ -134,8 +135,8 @@ function download_5x_packages() {
   echo ""
 
   echo "==> Downloading Wazuh agent 5.x packages..."
-  download_to "$deb_url" "${PKGS_DIR}/$(basename "$deb_url")"
-  download_to "$rpm_url" "${PKGS_DIR}/$(basename "$rpm_url")"
+  download_to "$deb_url" "${PKGS_DIR}/$(basename "$deb_url")" 1
+  download_to "$rpm_url" "${PKGS_DIR}/$(basename "$rpm_url")" 1
   echo ""
 }
 
