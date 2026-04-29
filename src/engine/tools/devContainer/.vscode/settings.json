@@ -173,6 +173,5 @@
             "*/filters/*/*/*/*.yml"
         ]
     },
-    "C_Cpp.clang_format_fallbackStyle": "none",
-    "C_Cpp.clang_format_path": "/usr/bin/clang-format-18",
+    "C_Cpp.clang_format_fallbackStyle": "none"
 }
