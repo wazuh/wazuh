@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.6]
 
+### Manager
+
+#### Fixed
+
+- Improved message decompression handling in remoted. ([#35773](https://github.com/wazuh/wazuh/pull/35773))
+
 ## [v4.14.5]
 
 ### Manager

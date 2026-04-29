@@ -17,7 +17,9 @@
 #include "client-agent/agentd.h"
 
 #ifdef WAZUH_UNIT_TESTING
-#define static
+#define STATIC
+#else
+#define STATIC static
 #endif
 
 /*
@@ -40,10 +42,10 @@
 #define MSG_OVERHEAD (MD5_CHECKSUM_SIZE + RANDOM_DATA_SIZE + GLOBAL_COUNTER_SIZE + LOCAL_COUNTER_SIZE + 2 * COUNTER_FORMAT_SIZE)
 
 /* Prototypes */
-static void StoreSenderCounter(const keystore *keys, unsigned int global, unsigned int local) __attribute((nonnull));
-static void StoreCounter(const keystore *keys, int id, unsigned int global, unsigned int local) __attribute((nonnull));
-static void ReloadCounter(const keystore *keys, unsigned int id, const char * cid) __attribute((nonnull));
-static char *CheckSum(char *msg, size_t length) __attribute((nonnull));
+STATIC void StoreSenderCounter(const keystore *keys, unsigned int global, unsigned int local) __attribute((nonnull));
+STATIC void StoreCounter(const keystore *keys, int id, unsigned int global, unsigned int local) __attribute((nonnull));
+STATIC void ReloadCounter(const keystore *keys, unsigned int id, const char * cid) __attribute((nonnull));
+STATIC char *CheckSum(char *msg, size_t length) __attribute((nonnull));
 
 /* Sending counts */
 static _Atomic (unsigned int) global_count = 0;
@@ -185,7 +187,7 @@ void OS_RemoveCounter(const char *id)
 }
 
 /* Store sender counter */
-static void StoreSenderCounter(const keystore *keys, unsigned int global, unsigned int local)
+STATIC void StoreSenderCounter(const keystore *keys, unsigned int global, unsigned int local)
 {
     /* Write to the beginning of the file */
     fseek(keys->keyentries[keys->keysize]->fp, 0, SEEK_SET);
@@ -194,7 +196,7 @@ static void StoreSenderCounter(const keystore *keys, unsigned int global, unsign
 }
 
 /* Store the global and local count of events */
-static void StoreCounter(const keystore *keys, int id, unsigned int global, unsigned int local)
+STATIC void StoreCounter(const keystore *keys, int id, unsigned int global, unsigned int local)
 {
     if (!keys->keyentries[id]->fp) {
         char rids_file[OS_FLSIZE + 1];
@@ -228,7 +230,7 @@ static void StoreCounter(const keystore *keys, int id, unsigned int global, unsi
 }
 
 /* Reload the global and local count of events */
-static void ReloadCounter(const keystore *keys, unsigned int id, const char * cid)
+STATIC void ReloadCounter(const keystore *keys, unsigned int id, const char * cid)
 {
     ino_t new_inode;
     char rids_file[OS_FLSIZE + 1];
@@ -284,7 +286,7 @@ fail_open:
 /* Verify the checksum of the message
  * Returns NULL on error or the message on success
  */
-static char *CheckSum(char *msg, size_t length)
+STATIC char *CheckSum(char *msg, size_t length)
 {
     os_md5 recvd_sum;
     os_md5 checksum;
@@ -361,6 +363,8 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
 
     /* Compressed */
     if (cleartext[0] == '!') {
+        static __thread char decompress_buffer[OS_MAXSTR + 1];
+
         cleartext[buffer_size] = '\0';
         cleartext++;
         buffer_size--;
@@ -371,8 +375,8 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
             buffer_size--;
         }
 
-        /* Uncompress */
-        *final_size = os_zlib_uncompress(cleartext, buffer, buffer_size, OS_MAXSTR);
+        /* Uncompress to temporary buffer */
+        *final_size = os_zlib_uncompress(cleartext, decompress_buffer, buffer_size, OS_MAXSTR);
 #ifdef CLIENT
         if (*final_size < MSG_OVERHEAD) {
             merror(UNCOMPRESS_ERR);
@@ -391,7 +395,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
 #endif
 
         /* Check checksum */
-        if (f_msg = CheckSum(buffer, *final_size), !f_msg) {
+        if (f_msg = CheckSum(decompress_buffer, *final_size), !f_msg) {
             merror(ENCSUM_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
             return KS_CORRUPT;
         }
@@ -420,7 +424,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         }
         f_msg++;
 
-        *final_size -= (f_msg - buffer);
+        *final_size -= (f_msg - decompress_buffer);
 
         w_mutex_lock(&keys->keyentries[id]->mutex);
 

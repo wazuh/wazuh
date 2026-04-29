@@ -43,7 +43,7 @@ OSHash *remoted_agents_state;
 extern remoted_state_t remoted_state;
 ROUTER_PROVIDER_HANDLE router_rsync_handle = NULL;
 ROUTER_PROVIDER_HANDLE router_syscollector_handle = NULL;
-// ROUTER_PROVIDER_HANDLE router_syscheck_handle = NULL; // DISABLED 
+// ROUTER_PROVIDER_HANDLE router_syscheck_handle = NULL; // DISABLED
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
@@ -782,6 +782,23 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
         if (message->sock >= 0) {
             mwarn("Decrypt the message fail, socket %d", message->sock);
+            _close_sock(&keys, message->sock);
+        }
+
+        if (sock_idle >= 0) {
+            _close_sock(&keys, sock_idle);
+        }
+
+        rem_inc_recv_unknown();
+        return;
+    }
+
+    if (msg_length > OS_MAXSTR) {
+        mwarn("Message length (%zu) exceeds maximum allowed size (%d) from agent '%s'",
+              msg_length, OS_MAXSTR, keys.keyentries[agentid]->id);
+        key_unlock();
+
+        if (message->sock >= 0) {
             _close_sock(&keys, message->sock);
         }
 
