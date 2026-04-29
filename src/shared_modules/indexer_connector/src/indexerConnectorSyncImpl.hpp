@@ -1145,6 +1145,7 @@ public:
         m_bulkData.append("\n");
         m_boundaries.push_back(m_bulkData.size());
     }
+
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data)
     {
         bulkIndex(id, index, data, std::string_view());
