@@ -280,11 +280,10 @@ class InventorySyncFacadeImpl final
             auto agentId = startMsg->agentid() ? startMsg->agentid()->string_view() : std::string_view();
             auto moduleName = startMsg->module_() ? startMsg->module_()->string_view() : std::string_view();
 
-            // Check if agent is locked.
-            // syscollector_vd sessions (VDFirst/VDSync) are only exempt from the
-            // global all-agents lock. Per-agent locks still reject them so SAFU can
-            // lock only the agent it is about to scan and avoid new concurrent
-            // inventory writes for that agent.
+            // VDFirst/VDSync sessions bypass the global all-agents lock (held during shutdown)
+            // but are still blocked by per-agent locks. The feed-update scan takes a per-agent
+            // lock before scanning to prevent new inventory sessions from writing data while
+            // the scan reads it.
             std::string agentIdStr(agentId.data(), agentId.size());
             const std::string moduleNameStr(moduleName.data(), moduleName.size());
             const bool isVDModule = (moduleNameStr == "syscollector_vd");
@@ -337,31 +336,6 @@ class InventorySyncFacadeImpl final
                     m_agentSessions.try_emplace(
                         sessionId, sessionId, startMsg, *m_dataStore, *m_indexerQueue, *m_responseDispatcher);
                     logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Session created %llu", sessionId);
-
-                    if (startMsg->option() == Wazuh::SyncSchema::Option_VDSync ||
-                        startMsg->option() == Wazuh::SyncSchema::Option_VDFirst)
-                    {
-                        const char* optStr =
-                            startMsg->option() == Wazuh::SyncSchema::Option_VDSync ? "VDSync" : "VDFirst";
-                        const char* modeStr = [&]() -> const char*
-                        {
-                            switch (startMsg->mode())
-                            {
-                                case Wazuh::SyncSchema::Mode_ModuleFull: return "ModuleFull";
-                                case Wazuh::SyncSchema::Mode_ModuleDelta: return "ModuleDelta";
-                                default: return "Other";
-                            }
-                        }();
-                        logWarn(LOGGER_DEFAULT_TAG,
-                                "[VDSYNC] Session CREATED: agent=%s module=%s option=%s mode=%s "
-                                "size=%llu sessionId=%llu — Start ACK (Status_Ok) sent to agent.",
-                                agentIdStr.c_str(),
-                                moduleNameStr.c_str(),
-                                optStr,
-                                modeStr,
-                                static_cast<unsigned long long>(startMsg->size()),
-                                sessionId);
-                    }
                 }
             }
         }
@@ -408,17 +382,6 @@ class InventorySyncFacadeImpl final
             }
             else
             {
-                const auto& ctx = it->second.getContext();
-                if (ctx->option == Wazuh::SyncSchema::Option_VDSync || ctx->option == Wazuh::SyncSchema::Option_VDFirst)
-                {
-                    logWarn(LOGGER_DEFAULT_TAG,
-                            "[VDSYNC] End message RECEIVED: agent=%s sessionId=%llu option=%s — "
-                            "agent finished sending all packages; session queued for indexing "
-                            "(Status_Processing sent to agent).",
-                            ctx->agentId.c_str(),
-                            ctx->sessionId,
-                            ctx->option == Wazuh::SyncSchema::Option_VDSync ? "VDSync" : "VDFirst");
-                }
                 // Handle end.
                 it->second.handleEnd(*m_responseDispatcher);
                 logDebug2(
@@ -674,26 +637,6 @@ public:
             [this](const Response& res)
             {
                 logDebug2(LOGGER_DEFAULT_TAG, "Indexer queue action...");
-                if (res.context->option == Wazuh::SyncSchema::Option_VDSync ||
-                    res.context->option == Wazuh::SyncSchema::Option_VDFirst)
-                {
-                    const char* modeStr = [&]() -> const char*
-                    {
-                        switch (res.context->mode)
-                        {
-                            case Wazuh::SyncSchema::Mode_ModuleFull: return "ModuleFull";
-                            case Wazuh::SyncSchema::Mode_ModuleDelta: return "ModuleDelta";
-                            default: return "Other";
-                        }
-                    }();
-                    logWarn(LOGGER_DEFAULT_TAG,
-                            "[VDSYNC] IndexerQueue PROCESSING: agent=%s sessionId=%llu option=%s mode=%s — "
-                            "all packages received; starting bulk indexing to OpenSearch.",
-                            res.context->agentId.c_str(),
-                            res.context->sessionId,
-                            res.context->option == Wazuh::SyncSchema::Option_VDSync ? "VDSync" : "VDFirst",
-                            modeStr);
-                }
                 {
                     std::shared_lock sessionLock(m_agentSessionsMutex);
                     if (m_agentSessions.find(res.context->sessionId) == m_agentSessions.end())
@@ -1152,79 +1095,27 @@ public:
                         if (res.context->option == Wazuh::SyncSchema::Option_VDFirst ||
                             res.context->option == Wazuh::SyncSchema::Option_VDSync)
                         {
-                            logWarn(LOGGER_DEFAULT_TAG,
-                                    "[VDSYNC] Packages INDEXED: agent=%s sessionId=%llu option=%s "
-                                    "hasBulkData=%s — packages queued for bulk send to OpenSearch "
-                                    "(notify-callback will fire when OpenSearch ACKs the bulk).",
-                                    res.context->agentId.c_str(),
-                                    res.context->sessionId,
-                                    res.context->option == Wazuh::SyncSchema::Option_VDSync ? "VDSync" : "VDFirst",
-                                    hasBulkData ? "true" : "false");
-
                             if (VulnerabilityScannerFacade::instance().isInitialized())
                             {
-                                // If the CVE feed initial load is still in progress, block this
-                                // session thread until it completes (or the scanner is stopped).
-                                // The agent stays in Status_Processing — already sent at End-message
-                                // time — so it will not mark its VDFirst flag prematurely.
-                                bool waitedForFeed = false;
-                                const bool feedReadyNow = VulnerabilityScannerFacade::instance().isFeedReady();
-                                logWarn(LOGGER_DEFAULT_TAG,
-                                        "[VDSYNC] Feed check: agent=%s sessionId=%llu option=%s "
-                                        "isFeedReady=%s — %s.",
-                                        res.context->agentId.c_str(),
-                                        res.context->sessionId,
-                                        res.context->option == Wazuh::SyncSchema::Option_VDSync ? "VDSync" : "VDFirst",
-                                        feedReadyNow ? "true" : "false",
-                                        feedReadyNow ? "proceeding directly to scan decision"
-                                                     : "CVE feed not ready, this thread will block");
-                                if (!feedReadyNow)
+                                // On the first manager startup the CVE feed may still be downloading.
+                                // Block here until it's ready so the scan doesn't run against empty data.
+                                // The agent stays in Status_Processing (sent at End-message time) and
+                                // gets Status_Ok once the scan finishes.
+                                if (!VulnerabilityScannerFacade::instance().isFeedReady())
                                 {
-                                    waitedForFeed = true;
-                                    logWarn(LOGGER_DEFAULT_TAG,
-                                            "[VDSYNC] Wait START: agent=%s sessionId=%llu option=%s — "
-                                            "blocking IndexerQueue thread until CVE feed is ready.",
-                                            res.context->agentId.c_str(),
-                                            res.context->sessionId,
-                                            res.context->option == Wazuh::SyncSchema::Option_VDSync ? "VDSync"
-                                                                                                    : "VDFirst");
                                     VulnerabilityScannerFacade::instance().waitForFeedReady();
-                                    logWarn(LOGGER_DEFAULT_TAG,
-                                            "[VDSYNC] Wait END: agent=%s sessionId=%llu option=%s — "
-                                            "CVE feed ready, resuming.",
-                                            res.context->agentId.c_str(),
-                                            res.context->sessionId,
-                                            res.context->option == Wazuh::SyncSchema::Option_VDSync ? "VDSync"
-                                                                                                    : "VDFirst");
                                 }
 
-                                // Run scan only if the scanner was not stopped during the wait.
+                                // waitForFeedReady() also returns when stop() fires before the feed is ready.
                                 if (VulnerabilityScannerFacade::instance().isFeedReady())
                                 {
-                                    // Skip VDSync delta scan only when a feed-update full scan is
-                                    // actively in progress — SAFU will cover all packages for this
-                                    // agent.  Do NOT skip based on waitedForFeed alone: when the feed
-                                    // has no new CVEs (changed=false), prepareFeedUpdateScan() is never
-                                    // called, so isFeedUpdateScanInProgress() is false and the VDSync
-                                    // scan must run.
+                                    // Skip the VDSync delta scan when feed-update scan is already running — it
+                                    // does a full package scan and covers this agent too. If the feed
+                                    // update had no new CVEs, feed-update scan never starts and we must scan here.
                                     const bool feedUpdateInProgress =
                                         VulnerabilityScannerFacade::instance().isFeedUpdateScanInProgress();
                                     const bool skipScan =
-                                        feedUpdateInProgress &&
-                                        res.context->option == Wazuh::SyncSchema::Option_VDSync;
-
-                                    logWarn(LOGGER_DEFAULT_TAG,
-                                            "[VDSYNC] Scan decision: agent=%s sessionId=%llu option=%s "
-                                            "waitedForFeed=%s feedUpdateInProgress=%s skipScan=%s — %s.",
-                                            res.context->agentId.c_str(),
-                                            res.context->sessionId,
-                                            res.context->option == Wazuh::SyncSchema::Option_VDSync ? "VDSync"
-                                                                                                   : "VDFirst",
-                                            waitedForFeed ? "true" : "false",
-                                            feedUpdateInProgress ? "true" : "false",
-                                            skipScan ? "true" : "false",
-                                            skipScan ? "SKIPPED — feed-update full scan in progress, covers all packages"
-                                                     : "RUN — executing delta vulnerability scan now");
+                                        feedUpdateInProgress && res.context->option == Wazuh::SyncSchema::Option_VDSync;
 
                                     if (skipScan)
                                     {
@@ -1235,13 +1126,6 @@ public:
                                     }
                                     else
                                     {
-                                        logWarn(LOGGER_DEFAULT_TAG,
-                                                "[VDSYNC] Scan RUN START: agent=%s sessionId=%llu option=%s — "
-                                                "calling runScanner() with RocksDB delta packages.",
-                                                res.context->agentId.c_str(),
-                                                res.context->sessionId,
-                                                res.context->option == Wazuh::SyncSchema::Option_VDSync ? "VDSync"
-                                                                                                        : "VDFirst");
                                         try
                                         {
                                             VulnerabilityScannerFacade::instance().runScanner(*m_dataStore,
@@ -1251,14 +1135,6 @@ public:
                                                 VulnerabilityScannerFacade::instance().registerFeedUpdateCoveredAgent(
                                                     res.context->agentId);
                                             }
-                                            logWarn(LOGGER_DEFAULT_TAG,
-                                                    "[VDSYNC] Scan RUN END: agent=%s sessionId=%llu option=%s — "
-                                                    "runScanner() completed successfully.",
-                                                    res.context->agentId.c_str(),
-                                                    res.context->sessionId,
-                                                    res.context->option == Wazuh::SyncSchema::Option_VDSync
-                                                        ? "VDSync"
-                                                        : "VDFirst");
                                         }
                                         catch (const std::exception& e)
                                         {
@@ -1273,14 +1149,6 @@ public:
                                                                              res.context->moduleName);
                                             m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
                                             eraseSession(res.context->sessionId);
-                                            logWarn(LOGGER_DEFAULT_TAG,
-                                                    "[VDSYNC] Session END (scanner-exception): agent=%s "
-                                                    "sessionId=%llu option=%s reason=%s",
-                                                    res.context->agentId.c_str(),
-                                                    res.context->sessionId,
-                                                    res.context->option == Wazuh::SyncSchema::Option_VDSync ? "VDSync"
-                                                                                                            : "VDFirst",
-                                                    e.what());
                                             m_sessionCompletedCV.notify_all();
                                         }
                                     }
@@ -1322,17 +1190,6 @@ public:
                                                   "InventorySyncFacade::start: Session not found, sessionId: %llu",
                                                   ctx->sessionId);
                                     }
-                                    if (ctx->option == Wazuh::SyncSchema::Option_VDSync ||
-                                        ctx->option == Wazuh::SyncSchema::Option_VDFirst)
-                                    {
-                                        logWarn(LOGGER_DEFAULT_TAG,
-                                                "[VDSYNC] Session END (notify-callback): agent=%s sessionId=%llu "
-                                                "option=%s — OpenSearch ACKed the bulk; Status_Ok sent to agent; "
-                                                "RocksDB data deleted.",
-                                                ctx->agentId.c_str(),
-                                                ctx->sessionId,
-                                                ctx->option == Wazuh::SyncSchema::Option_VDSync ? "VDSync" : "VDFirst");
-                                    }
                                     m_sessionCompletedCV.notify_all();
                                 });
                         }
@@ -1354,16 +1211,6 @@ public:
                                 logDebug2(LOGGER_DEFAULT_TAG,
                                           "InventorySyncFacade::start: Session not found, sessionId: %llu",
                                           res.context->sessionId);
-                            }
-                            if (res.context->option == Wazuh::SyncSchema::Option_VDSync ||
-                                res.context->option == Wazuh::SyncSchema::Option_VDFirst)
-                            {
-                                logWarn(LOGGER_DEFAULT_TAG,
-                                        "[VDSYNC] Session END (immediate-response): agent=%s sessionId=%llu "
-                                        "option=%s — no bulk data; Status_Ok sent to agent immediately.",
-                                        res.context->agentId.c_str(),
-                                        res.context->sessionId,
-                                        res.context->option == Wazuh::SyncSchema::Option_VDSync ? "VDSync" : "VDFirst");
                             }
                             m_sessionCompletedCV.notify_all();
                         }
@@ -1399,17 +1246,6 @@ public:
                                   "InventorySyncFacade::start: Session not found, sessionId: %llu",
                                   res.context->sessionId);
                     }
-                    if (res.context->option == Wazuh::SyncSchema::Option_VDSync ||
-                        res.context->option == Wazuh::SyncSchema::Option_VDFirst)
-                    {
-                        logWarn(LOGGER_DEFAULT_TAG,
-                                "[VDSYNC] Session END (InventorySyncException): agent=%s sessionId=%llu "
-                                "option=%s reason=%s",
-                                res.context->agentId.c_str(),
-                                res.context->sessionId,
-                                res.context->option == Wazuh::SyncSchema::Option_VDSync ? "VDSync" : "VDFirst",
-                                e.what());
-                    }
                     m_sessionCompletedCV.notify_all();
 
                     m_indexerConnector->invokePendingCallbacks();
@@ -1438,17 +1274,6 @@ public:
                         logDebug2(LOGGER_DEFAULT_TAG,
                                   "InventorySyncFacade::start: Session not found, sessionId: %llu",
                                   res.context->sessionId);
-                    }
-                    if (res.context->option == Wazuh::SyncSchema::Option_VDSync ||
-                        res.context->option == Wazuh::SyncSchema::Option_VDFirst)
-                    {
-                        logWarn(LOGGER_DEFAULT_TAG,
-                                "[VDSYNC] Session END (exception): agent=%s sessionId=%llu "
-                                "option=%s reason=%s",
-                                res.context->agentId.c_str(),
-                                res.context->sessionId,
-                                res.context->option == Wazuh::SyncSchema::Option_VDSync ? "VDSync" : "VDFirst",
-                                e.what());
                     }
                     m_sessionCompletedCV.notify_all();
 
@@ -1654,14 +1479,16 @@ public:
     }
 
     /**
-     * @brief Wait until all active VDSync sessions across all agents have completed.
+     * @brief Wait for all in-progress VDSync sessions to finish before feed-update scan starts.
      *
-     * Called by the feed-update callback after the SAFU state flag is raised, so
-     * VDSync sessions in their scan-decision phase can self-skip and finish fast.
+     * Called from the feed-update callback after prepareFeedUpdateScan() sets the
+     * feed-update scan in-progress flag. VDSync sessions see that flag and self-skip, so they
+     * drain quickly. Iterates up to MAX_OUTER_ITERATIONS times in case new sessions
+     * started between loop iterations.
      *
-     * @param timeout    Maximum wait time per attempt (forwarded to hasActiveSessionForModule).
-     * @param maxRetries Retry count (forwarded to hasActiveSessionForModule).
-     * @return true  if at least one VDSync session was active.
+     * @param timeout    Per-agent wait timeout, forwarded to hasActiveSessionForModule.
+     * @param maxRetries Retry count, forwarded to hasActiveSessionForModule.
+     * @return true if at least one VDSync session was active (index refresh recommended).
      */
     bool waitForAllVDSyncSessions(std::chrono::seconds timeout, uint32_t maxRetries) const
     {
@@ -1686,14 +1513,19 @@ public:
     }
 
     /**
-     * @brief Check if a specific agent has an active session for a specific module.egardless of the session option.
+     * @brief Check whether an agent has an active session for the given module.
      *
-     * @param agentId    Agent ID to check
-     * @param moduleName Module name to check (e.g., "syscollector_vd")
-     * @param timeout    How long to wait per attempt for a VDSync session to finish (0 = no wait)
-     * @param maxRetries Maximum number of extra wait attempts after the first timeout (0 = no retry)
-     * @return true if a VDFirst session is active (caller should skip the scan);
-     *         false in all other cases (no session, or VDSync finished/timed out)
+     * VDFirst sessions return true immediately — feed-update scan should skip that agent
+     * because VDFirst already runs a full scan with the updated feed.
+     * VDSync sessions wait up to timeout × (maxRetries+1) seconds to finish,
+     * then return false so the scan proceeds with whatever data is available.
+     *
+     * @param agentId    Agent to check.
+     * @param moduleName Module to match (e.g. "syscollector_vd").
+     * @param timeout    Per-attempt wait timeout (zero = no wait).
+     * @param maxRetries Extra wait attempts after the first timeout.
+     * @return true  if a VDFirst session is live (feed-update scan should skip this agent);
+     *         false if no session exists or a VDSync session finished/timed out.
      */
     bool hasActiveSessionForModule(const std::string& agentId,
                                    const std::string& moduleName,
@@ -1709,7 +1541,7 @@ public:
             {
                 if (context->option == Wazuh::SyncSchema::Option_VDFirst)
                 {
-                    return true; // VDFirst: caller should skip
+                    return true; // VDFirst owns a full scan — feed-update scan should skip this agent
                 }
 
                 if (timeout > std::chrono::seconds(0))
@@ -1764,13 +1596,14 @@ public:
                     }
                 }
 
-                return false; // VDSync: proceed with the scan (waited or no-wait requested)
+                return false; // VDSync session finished (or timed out) — feed-update scan can proceed
             }
         }
 
-        return false; // no session
+        return false; // no matching session found
     }
 
+    // Always use this instead of erasing m_agentSessions directly — it holds the exclusive lock.
     size_t eraseSession(uint64_t sessionId)
     {
         std::unique_lock lock(m_agentSessionsMutex);
@@ -2038,7 +1871,7 @@ private:
     std::string m_clusterName;
     int m_maxSessions {1000}; // Maximum concurrent sessions (configured from internal_options)
     mutable std::shared_mutex m_agentSessionsMutex;
-    mutable std::condition_variable_any m_sessionCompletedCV; ///< Notified whenever a session is removed
+    mutable std::condition_variable_any m_sessionCompletedCV;
     std::mutex m_sessionTimeoutMutex;
     std::condition_variable m_sessionTimeoutCv;
     std::atomic<bool> m_stopping {false};
