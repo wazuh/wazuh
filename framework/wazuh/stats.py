@@ -6,6 +6,7 @@ from wazuh.core import common
 from wazuh.core import exception
 from wazuh.core.agent import Agent, get_agents_info, get_rbac_filters, WazuhDBQueryAgents
 from wazuh.core.cluster.cluster import get_node
+from wazuh.core.engine_http import EngineHTTPClient
 from wazuh.core.exception import WazuhException
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.stats import get_daemons_stats_socket
@@ -146,6 +147,32 @@ def get_daemons_stats(daemons_list: list = None) -> AffectedItemsWazuhResult:
         except WazuhException as e:
             result.add_failed_item(id_=daemon, error=e)
 
+    result.total_affected_items = len(result.affected_items)
+    return result
+
+
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
+def get_engine_metrics() -> AffectedItemsWazuhResult:
+    """Fetch Engine metrics dump from the local analysisd socket.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Engine metrics dump as the single affected item.
+    """
+    result = AffectedItemsWazuhResult(
+        all_msg='Engine metrics were successfully retrieved',
+        some_msg='Could not retrieve engine metrics',
+        none_msg='Could not retrieve engine metrics',
+    )
+    client = EngineHTTPClient()
+    try:
+        data = client.get_metrics_dump()
+        result.affected_items.append(data)
+    except WazuhException as e:
+        result.add_failed_item(id_='engine', error=e)
+    finally:
+        client.close()
     result.total_affected_items = len(result.affected_items)
     return result
 
