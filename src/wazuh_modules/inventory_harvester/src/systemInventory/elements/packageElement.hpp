@@ -53,7 +53,7 @@ public:
         element.data.agent.name = data->agentName();
         element.data.agent.version = data->agentVersion();
 
-        if (auto agentIp = data->agentIp(); agentIp.compare("any") != 0)
+        if (auto agentIp = data->agentIp(); !agentIp.empty() && agentIp.compare("any") != 0)
         {
             element.data.agent.host.ip = agentIp;
         }
