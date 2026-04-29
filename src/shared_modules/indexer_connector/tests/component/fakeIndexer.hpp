@@ -239,7 +239,7 @@ public:
                                   m_publishCallback(req.body);
                               }
                               res.status = 200;
-                              res.set_content("Content published", "text/plain");
+                              res.set_content(R"({"took":1,"errors":false,"items":[]})", "application/json");
                           }
                           catch (const std::exception& e)
                           {
@@ -259,7 +259,7 @@ public:
                                   m_publishCallback(req.body);
                               }
                               res.status = 200;
-                              res.set_content("Content published", "text/plain");
+                              res.set_content(R"({"deleted":1,"failures":[]})", "application/json");
                           }
                           catch (const std::exception& e)
                           {
