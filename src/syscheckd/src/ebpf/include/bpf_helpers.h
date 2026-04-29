@@ -77,8 +77,12 @@ typedef int (*ring_buffer__poll_t)(struct ring_buffer *rb, int timeout);
 typedef void (*ring_buffer__free_t)(struct ring_buffer *rb);
 typedef void (*bpf_object__close_t)(struct bpf_object *obj);
 typedef struct bpf_program *(*bpf_object__next_program_t)(const struct bpf_object *obj, struct bpf_program *prog);
-typedef int (*bpf_program__attach_t)(struct bpf_program *prog);
+typedef struct bpf_link *(*bpf_program__attach_t)(struct bpf_program *prog);
 typedef int (*bpf_object__find_map_fd_by_name_t)(struct bpf_object *obj, const char *name);
+typedef int (*bpf_program__set_autoload_t)(struct bpf_program *prog, bool autoload);
+typedef bool (*bpf_program__autoload_t)(const struct bpf_program *prog);
+typedef const char *(*bpf_program__section_name_t)(const struct bpf_program *prog);
+typedef const char *(*bpf_program__name_t)(const struct bpf_program *prog);
 
 // Function pointers to execute stateless requests to BPF
 void (*bpf_object__destroy_skeleton)(struct bpf_object_skeleton *obj) = NULL;
@@ -109,6 +113,10 @@ typedef struct {
     bpf_object__next_program_t bpf_object_next_program;
     bpf_program__attach_t bpf_program_attach;
     bpf_object__find_map_fd_by_name_t bpf_object_find_map_fd_by_name;
+    bpf_program__set_autoload_t bpf_program_set_autoload;
+    bpf_program__autoload_t bpf_program_autoload;
+    bpf_program__section_name_t bpf_program_section_name;
+    bpf_program__name_t bpf_program_name;
 
     bpf_object__open_skeleton_t bpf_object_open_skeleton;
     bpf_object__destroy_skeleton_t bpf_object_destroy_skeleton;
@@ -146,6 +154,10 @@ inline bool w_bpf_deinit(std::unique_ptr<w_bpf_helpers_t>& bpf_helpers) {
         bpf_helpers->bpf_object_next_program = NULL;
         bpf_helpers->bpf_program_attach = NULL;
         bpf_helpers->bpf_object_find_map_fd_by_name = NULL;
+        bpf_helpers->bpf_program_set_autoload = NULL;
+        bpf_helpers->bpf_program_autoload = NULL;
+        bpf_helpers->bpf_program_section_name = NULL;
+        bpf_helpers->bpf_program_name = NULL;
 
         // Reset skeleton-specific function pointers to NULL
         bpf_helpers->bpf_object_open_skeleton = NULL;
