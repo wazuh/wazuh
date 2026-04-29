@@ -361,6 +361,8 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
 
     /* Compressed */
     if (cleartext[0] == '!') {
+        static __thread char decompress_buffer[OS_MAXSTR + 1];
+
         cleartext[buffer_size] = '\0';
         cleartext++;
         buffer_size--;
@@ -371,8 +373,8 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
             buffer_size--;
         }
 
-        /* Uncompress */
-        *final_size = os_zlib_uncompress(cleartext, buffer, buffer_size, OS_MAXSTR);
+        /* Uncompress to temporary buffer */
+        *final_size = os_zlib_uncompress(cleartext, decompress_buffer, buffer_size, OS_MAXSTR);
 #ifdef CLIENT
         if (*final_size < MSG_OVERHEAD) {
             merror(UNCOMPRESS_ERR);
@@ -391,7 +393,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
 #endif
 
         /* Check checksum */
-        if (f_msg = CheckSum(buffer, *final_size), !f_msg) {
+        if (f_msg = CheckSum(decompress_buffer, *final_size), !f_msg) {
             merror(ENCSUM_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
             return KS_CORRUPT;
         }
@@ -420,7 +422,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         }
         f_msg++;
 
-        *final_size -= (f_msg - buffer);
+        *final_size -= (f_msg - decompress_buffer);
 
         w_mutex_lock(&keys->keyentries[id]->mutex);
 
