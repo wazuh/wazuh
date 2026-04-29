@@ -2,8 +2,8 @@
 set -Eeuo pipefail
 
 REPO_URL="https://github.com/llvm/llvm-project.git"
-REF="llvmorg-22.1.4"
-WORKDIR="$/tmp/llvm-clang-format-work"
+REF=""
+WORKDIR="/tmp/llvm-clang-format-work"
 BUILD_TYPE="Release"
 JOBS="$(nproc)"
 INSTALL_DIR="/usr/bin"
