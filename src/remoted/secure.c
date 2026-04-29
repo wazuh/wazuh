@@ -923,6 +923,12 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
     key_unlock();
 
+    /* Agents registered without a fixed address use "any"; fall back to the real connection IP. */
+    if (strcmp(agent_ip, "any") == 0 && srcip[0] != '\0') {
+        os_free(agent_ip);
+        os_strdup(srcip, agent_ip);
+    }
+
     if (sock_idle >= 0) {
         _close_sock(&keys, sock_idle);
     }
