@@ -5751,6 +5751,9 @@
     "wazuh.cluster.node": {
       "type": "keyword"
     },
+    "wazuh.event.id": {
+      "type": "keyword"
+    },
     "wazuh.integration.category": {
       "type": "keyword"
     },

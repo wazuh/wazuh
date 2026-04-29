@@ -15,7 +15,7 @@ echo "[entrypoint] manager=${MANAGER_HOST}:${MANAGER_PORT} authd_port=${AUTHD_PO
 if grep -q "<address>" "$OSSEC_CONF"; then
   sed -i "s|<address>.*</address>|<address>${MANAGER_HOST}</address>|" "$OSSEC_CONF" || true
 else
-  echo "[entrypoint] WARN: no encontré <address> en ${OSSEC_CONF}. Revisá el template del agente."
+  echo "[entrypoint] WARN: <address> tag not found in ${OSSEC_CONF}."
 fi
 
 if [[ -n "${AUTHD_PASSWORD}" ]]; then

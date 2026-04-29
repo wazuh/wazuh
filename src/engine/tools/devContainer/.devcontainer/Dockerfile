@@ -22,7 +22,7 @@ RUN apt-get update && apt-get -y install --no-install-recommends ninja-build \
 # RUN su vscode -c "${VCPKG_ROOT}/vcpkg install <your-port-name-here>"
 
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
-    && apt-get -y install --no-install-recommends lcov docker-compose bc jq \
+    && apt-get -y install --no-install-recommends lcov docker-compose bc jq yq \
         inetutils-ping inetutils-telnet inetutils-tools nmap \
         libc6-dev curl policycoreutils automake autoconf libtool libssl-dev procps \
         gcc-14 g++-14 rocksdb-tools
