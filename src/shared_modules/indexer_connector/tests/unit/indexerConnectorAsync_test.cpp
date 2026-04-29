@@ -1930,9 +1930,10 @@ TEST_F(IndexerConnectorAsyncTest, CreatePointInTimeSuccess)
                 }
             }));
 
-    IndexerConnectorAsyncImplTest connector(config, nullptr, "test-pit-queue", &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplTest connector(
+        config, nullptr, "test-pit-queue", &mockHttpRequest, std::move(mockSelector));
 
-    auto pit = connector.createPointInTime(std::vector<std::string>{"wazuh-states-*"}, "5m", true);
+    auto pit = connector.createPointInTime(std::vector<std::string> {"wazuh-states-*"}, "5m", true);
     EXPECT_EQ(pit.getPitId(), "async_pit_123");
     EXPECT_EQ(pit.getCreationTime(), 1700000000000ULL);
     EXPECT_EQ(pit.getKeepAlive(), "5m");
@@ -1944,16 +1945,15 @@ TEST_F(IndexerConnectorAsyncTest, CreatePointInTimeEmptyIndicesThrows)
     IndexerConnectorAsyncImplTest connector(
         config, nullptr, "test-pit-empty", &mockHttpRequest, std::move(mockSelector));
 
-    EXPECT_THROW(connector.createPointInTime(std::vector<std::string>{}, "5m", false), IndexerConnectorException);
+    EXPECT_THROW(connector.createPointInTime(std::vector<std::string> {}, "5m", false), IndexerConnectorException);
 }
 
 TEST_F(IndexerConnectorAsyncTest, CreatePointInTimeEmptyKeepAliveThrows)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
-    IndexerConnectorAsyncImplTest connector(
-        config, nullptr, "test-pit-ka", &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplTest connector(config, nullptr, "test-pit-ka", &mockHttpRequest, std::move(mockSelector));
 
-    EXPECT_THROW(connector.createPointInTime(std::vector<std::string>{"index"}, "", false), IndexerConnectorException);
+    EXPECT_THROW(connector.createPointInTime(std::vector<std::string> {"index"}, "", false), IndexerConnectorException);
 }
 
 TEST_F(IndexerConnectorAsyncTest, CreatePointInTimeServerErrorThrows)
@@ -1967,8 +1967,7 @@ TEST_F(IndexerConnectorAsyncTest, CreatePointInTimeServerErrorThrows)
             {
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onError("Server error", 500, "");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Server error", 500, "");
                 }
                 else
                 {
@@ -1976,10 +1975,10 @@ TEST_F(IndexerConnectorAsyncTest, CreatePointInTimeServerErrorThrows)
                 }
             }));
 
-    IndexerConnectorAsyncImplTest connector(
-        config, nullptr, "test-pit-err", &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplTest connector(config, nullptr, "test-pit-err", &mockHttpRequest, std::move(mockSelector));
 
-    EXPECT_THROW(connector.createPointInTime(std::vector<std::string>{"index"}, "5m", false), IndexerConnectorException);
+    EXPECT_THROW(connector.createPointInTime(std::vector<std::string> {"index"}, "5m", false),
+                 IndexerConnectorException);
 }
 
 TEST_F(IndexerConnectorAsyncTest, DeletePointInTimeSuccess)
@@ -1991,8 +1990,7 @@ TEST_F(IndexerConnectorAsyncTest, DeletePointInTimeSuccess)
     EXPECT_CALL(mockHttpRequest, delete_(_, _, _))
         .Times(1)
         .WillOnce(Invoke(
-            [&capturedBody](
-                auto requestParams, const auto& postParams, const ConfigurationParameters& /*configParams*/)
+            [&capturedBody](auto requestParams, const auto& postParams, const ConfigurationParameters& /*configParams*/)
             {
                 std::visit(
                     [&capturedBody](auto&& req)
@@ -2006,18 +2004,15 @@ TEST_F(IndexerConnectorAsyncTest, DeletePointInTimeSuccess)
 
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onSuccess(R"({"succeeded":true})");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(R"({"succeeded":true})");
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams)
-                        .onSuccess(R"({"succeeded":true})");
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(R"({"succeeded":true})");
                 }
             }));
 
-    IndexerConnectorAsyncImplTest connector(
-        config, nullptr, "test-del-pit", &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplTest connector(config, nullptr, "test-del-pit", &mockHttpRequest, std::move(mockSelector));
     PointInTime pit("async_pit_to_delete", 100, "5m");
 
     EXPECT_NO_THROW(connector.deletePointInTime(pit));
@@ -2047,8 +2042,7 @@ TEST_F(IndexerConnectorAsyncTest, DeletePointInTimeServerErrorThrows)
             {
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onError("Delete failed", 500, "");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Delete failed", 500, "");
                 }
                 else
                 {
@@ -2056,8 +2050,7 @@ TEST_F(IndexerConnectorAsyncTest, DeletePointInTimeServerErrorThrows)
                 }
             }));
 
-    IndexerConnectorAsyncImplTest connector(
-        config, nullptr, "test-del-err", &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplTest connector(config, nullptr, "test-del-err", &mockHttpRequest, std::move(mockSelector));
     PointInTime pit("valid_pit", 100, "5m");
 
     EXPECT_THROW(connector.deletePointInTime(pit), IndexerConnectorException);
@@ -2076,8 +2069,7 @@ TEST_F(IndexerConnectorAsyncTest, SearchWithPitSuccess)
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(1)
         .WillOnce(Invoke(
-            [&capturedBody](
-                auto requestParams, const auto& postParams, const ConfigurationParameters& /*configParams*/)
+            [&capturedBody](auto requestParams, const auto& postParams, const ConfigurationParameters& /*configParams*/)
             {
                 std::visit(
                     [&capturedBody](auto&& req)
@@ -2127,8 +2119,7 @@ TEST_F(IndexerConnectorAsyncTest, SearchWithPitSearchAfterAndSource)
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(1)
         .WillOnce(Invoke(
-            [&capturedBody](
-                auto requestParams, const auto& postParams, const ConfigurationParameters& /*configParams*/)
+            [&capturedBody](auto requestParams, const auto& postParams, const ConfigurationParameters& /*configParams*/)
             {
                 std::visit(
                     [&capturedBody](auto&& req)
@@ -2176,8 +2167,7 @@ TEST_F(IndexerConnectorAsyncTest, SearchWithPitAndSlice)
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(1)
         .WillOnce(Invoke(
-            [&capturedBody](
-                auto requestParams, const auto& postParams, const ConfigurationParameters& /*configParams*/)
+            [&capturedBody](auto requestParams, const auto& postParams, const ConfigurationParameters& /*configParams*/)
             {
                 std::visit(
                     [&capturedBody](auto&& req)
@@ -2227,8 +2217,7 @@ TEST_F(IndexerConnectorAsyncTest, SearchWithPitServerErrorThrows)
             {
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onError("Search failed", 500, "");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Search failed", 500, "");
                 }
                 else
                 {
@@ -2242,7 +2231,8 @@ TEST_F(IndexerConnectorAsyncTest, SearchWithPitServerErrorThrows)
     nlohmann::json query = {{"match_all", nlohmann::json::object()}};
     nlohmann::json sort = nlohmann::json::array({{{"_shard_doc", "asc"}}});
 
-    EXPECT_THROW(connector.search(pit, static_cast<std::size_t>(10), query, sort, std::nullopt, std::nullopt), IndexerConnectorException);
+    EXPECT_THROW(connector.search(pit, static_cast<std::size_t>(10), query, sort, std::nullopt, std::nullopt),
+                 IndexerConnectorException);
 }
 
 // =============================================================================
@@ -2259,8 +2249,8 @@ TEST_F(IndexerConnectorAsyncTest, SearchByIndexSuccess)
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(1)
         .WillOnce(Invoke(
-            [&capturedUrl, &capturedBody](
-                auto requestParams, const auto& postParams, const ConfigurationParameters& /*configParams*/)
+            [&capturedUrl,
+             &capturedBody](auto requestParams, const auto& postParams, const ConfigurationParameters& /*configParams*/)
             {
                 std::visit(
                     [&capturedUrl, &capturedBody](auto&& req)
@@ -2292,7 +2282,7 @@ TEST_F(IndexerConnectorAsyncTest, SearchByIndexSuccess)
     IndexerConnectorAsyncImplTest connector(
         config, nullptr, "test-search-idx", &mockHttpRequest, std::move(mockSelector));
 
-    nlohmann::json query = {{"bool", {{"filter", nlohmann::json::array({{{"term", {{"space.name", "free"}}}}}) }}}};
+    nlohmann::json query = {{"bool", {{"filter", nlohmann::json::array({{{"term", {{"space.name", "free"}}}}})}}}};
     nlohmann::json source = {{"includes", nlohmann::json::array({"hash"})}};
 
     auto hits = connector.search("wazuh-threatintel-policies", 10, query, source);
@@ -2314,8 +2304,7 @@ TEST_F(IndexerConnectorAsyncTest, SearchByIndexWithoutSource)
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(1)
         .WillOnce(Invoke(
-            [&capturedBody](
-                auto requestParams, const auto& postParams, const ConfigurationParameters& /*configParams*/)
+            [&capturedBody](auto requestParams, const auto& postParams, const ConfigurationParameters& /*configParams*/)
             {
                 std::visit(
                     [&capturedBody](auto&& req)
@@ -2360,8 +2349,7 @@ TEST_F(IndexerConnectorAsyncTest, SearchByIndexServerErrorThrows)
             {
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onError("Not found", 404, "");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Not found", 404, "");
                 }
                 else
                 {
@@ -2477,8 +2465,7 @@ TEST_F(IndexerConnectorAsyncTest, GetDroppedEventsInitiallyZero)
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
-    IndexerConnectorAsyncImplTest connector(
-        config, nullptr, "test-dropped", &mockHttpRequest, std::move(mockSelector));
+    IndexerConnectorAsyncImplTest connector(config, nullptr, "test-dropped", &mockHttpRequest, std::move(mockSelector));
 
     EXPECT_EQ(connector.getDroppedEvents(), 0ULL);
 }
