@@ -59,16 +59,37 @@
             "problemMatcher": []
         },
         {
-            "label": "E2E Scripts: Init setup (certs && pkg)",
+            "label": "E2E Scripts: [Manager] Init setup (certs && pkg)",
             "type": "shell",
             "command": "${env:WAZUH_DEV_SCRIPTS}/../e2e/init.sh",
             "args": [],
             "problemMatcher": []
         },
         {
-            "label": "E2E Scripts: Copy wazuh-manager certs",
+            "label": "E2E Scripts: [Manager] Copy wazuh-manager certs",
             "type": "shell",
             "command": "${env:WAZUH_DEV_SCRIPTS}/../e2e/wazuh_copy_certs.sh",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "E2E Scripts: [Agent] Init setup (download pkgs)",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/init.sh",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "E2E Scripts: [Agent] Up (reset & start containers)",
+            "type": "shell",
+            "command": "docker compose -f ${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/docker-compose.yml down -v && docker compose -f ${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/docker-compose.yml up -d",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "E2E Scripts: [Manager] Up (reset & start containers)",
+            "type": "shell",
+            "command": "docker compose -f ${env:WAZUH_DEV_SCRIPTS}/../e2e/docker-compose.yml down -v && docker compose -f ${env:WAZUH_DEV_SCRIPTS}/../e2e/docker-compose.yml up -d",
             "args": [],
             "problemMatcher": []
         },
