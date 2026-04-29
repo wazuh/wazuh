@@ -218,7 +218,8 @@ TEST_F(IndexerConnectorSyncTest, HandleError413PayloadTooLarge)
     std::string dataValue(2048, 'a');
     // Why expecting any throw here?
     EXPECT_ANY_THROW({ connector.bulkIndex(id, "index1", dataValue); });
-    // shouldn't we add an additional check that the call count is 2 or more meaning that the message was spplitted and retried?
+    // shouldn't we add an additional check that the call count is 2 or more meaning that the message was spplitted and
+    // retried?
 }
 
 TEST_F(IndexerConnectorSyncTest, HandleError409VersionConflict)
@@ -3525,8 +3526,7 @@ TEST_F(IndexerConnectorSyncTest, CreatePointInTimeServerErrorThrows)
             {
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onError("Server error", 500, "");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Server error", 500, "");
                 }
                 else
                 {
@@ -3574,8 +3574,8 @@ TEST_F(IndexerConnectorSyncTest, DeletePointInTimeSuccess)
     EXPECT_CALL(mockHttpRequest, delete_(_, _, _))
         .Times(1)
         .WillOnce(Invoke(
-            [&capturedUrl, &capturedBody](
-                auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            [&capturedUrl,
+             &capturedBody](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
             {
                 std::visit(
                     [&capturedUrl, &capturedBody](auto&& req)
@@ -3630,8 +3630,7 @@ TEST_F(IndexerConnectorSyncTest, DeletePointInTimeServerErrorThrows)
             {
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onError("Server error", 500, "");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Server error", 500, "");
                 }
                 else
                 {
@@ -3659,8 +3658,8 @@ TEST_F(IndexerConnectorSyncTest, SearchWithPitSuccess)
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(1)
         .WillOnce(Invoke(
-            [&capturedUrl, &capturedBody](
-                auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            [&capturedUrl,
+             &capturedBody](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
             {
                 std::visit(
                     [&capturedUrl, &capturedBody](auto&& req)
@@ -3792,8 +3791,7 @@ TEST_F(IndexerConnectorSyncTest, SearchWithPitAndSourceFilter)
     PointInTime pit("pit_src", 100, "5m");
     nlohmann::json query = {{"match_all", nlohmann::json::object()}};
     nlohmann::json sort = nlohmann::json::array({{{"_shard_doc", "asc"}}});
-    nlohmann::json source = {{"includes", nlohmann::json::array({"field1"})},
-                             {"excludes", nlohmann::json::array()}};
+    nlohmann::json source = {{"includes", nlohmann::json::array({"field1"})}, {"excludes", nlohmann::json::array()}};
 
     connector.search(pit, 5, query, sort, std::nullopt, source);
 
@@ -3860,8 +3858,7 @@ TEST_F(IndexerConnectorSyncTest, SearchWithPitServerErrorThrows)
             {
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams)
-                        .onError("Search failed", 500, "");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Search failed", 500, "");
                 }
                 else
                 {
