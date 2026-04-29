@@ -18,6 +18,11 @@
 
 int __wrap_router_provider_send(ROUTER_PROVIDER_HANDLE handle, const char* message, unsigned int message_size);
 
+int __wrap_router_provider_send_sync(ROUTER_PROVIDER_HANDLE handle,
+                                     const char* message,
+                                     unsigned int message_size,
+                                     const char* authenticated_agent_id);
+
 ROUTER_PROVIDER_HANDLE __wrap_router_provider_create(const char* name);
 
 // Router subscriber wrappers for agent upgrade module

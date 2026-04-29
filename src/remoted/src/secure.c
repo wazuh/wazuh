@@ -922,7 +922,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
                 ctrl_msg_data->key = key;
 
-                os_calloc(msg_length, sizeof(char), ctrl_msg_data->message);
+                os_calloc(tmp_msg_length + 1, sizeof(char), ctrl_msg_data->message);
                 // Use cleaned message from validation if available, otherwise use original
                 memcpy(ctrl_msg_data->message, cleaned_msg ? cleaned_msg : tmp_msg, tmp_msg_length);
 
@@ -995,8 +995,19 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
     // Only send to analysisd if not forwarded to router
     if (!forwarded_to_router) {
+        /* Router-bound messages may be binary; trim only analysisd events. */
+        size_t stripped_nulls = 0;
+        while (msg_length > 0 && tmp_msg[msg_length - 1] == '\0') {
+            msg_length--;
+            stripped_nulls++;
+        }
+        if (stripped_nulls > 0) {
+            mdebug1("Stripped %zu trailing null byte(s) from event payload of agent '%s'",
+                    stripped_nulls, agentid_str);
+        }
+
         evt_item_t *e; os_calloc(1, sizeof(*e), e);
-        os_calloc(msg_length, sizeof(char), e->raw);
+        os_calloc(msg_length + 1, sizeof(char), e->raw);
         memcpy(e->raw, tmp_msg, msg_length);
         e->len = msg_length;
 
