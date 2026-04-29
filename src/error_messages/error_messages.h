@@ -493,6 +493,7 @@
 #define FIM_ERROR_EBPF_INVALID_KERNEL               "(6980): Invalid Kernel version detected. Must be +5.8."
 #define FIM_ERROR_EBPF_HEALTHCHECK_ACTION_FAILED    "(6981): eBPF healthcheck action failed: %s. %s"
 #define FIM_ERROR_EBPF_HEALTHCHECK_ACTION_SKIPPED   "(6982): eBPF healthcheck action skipped: %s. %s"
+#define FIM_ERROR_EBPF_OBJ_ATTACH_DETAIL            "(6983): Attaching BPF program '%s' failed (errno=%d: %s)."
 #define FIM_EBPF_HEALTHCHECK_EVENT_CONSUME_DETAIL   "Failed while consuming healthcheck events."
 #define FIM_EBPF_HEALTHCHECK_EVENT_TIMEOUT_DETAIL   "Timed out waiting for the corresponding event."
 #define FIM_EBPF_HEALTHCHECK_CREATE_DETAIL          "Could not create the temporary healthcheck file."

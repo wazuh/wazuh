@@ -88,9 +88,18 @@ int mock_bpf_object_load_success([[maybe_unused]] void* obj) { return 0; }
 int mock_bpf_object_load_failure([[maybe_unused]] void* obj) { return 1; }
 void mock_bpf_object_close_called([[maybe_unused]] void* obj) { return; }
 bpf_program* mock_bpf_object_next_program([[maybe_unused]] void* obj, [[maybe_unused]] bpf_program* pos) { return nullptr; }
-bpf_program* mock_bpf_object_next_program_in([[maybe_unused]] void* obj, [[maybe_unused]] bpf_program* pos) { return (bpf_program *)1; }
+bpf_program* mock_bpf_object_next_program_in([[maybe_unused]] void* obj, bpf_program* pos) {
+    /* Stateless single-step iteration: yield one program then stop.
+     * Avoids infinite loops in select_programs / attach loops. */
+    return pos == nullptr ? (bpf_program*)1 : nullptr;
+}
 int mock_bpf_program_attach_success([[maybe_unused]] void* prog) { return 1; }
 int mock_bpf_program_attach_failure([[maybe_unused]] void* prog) { return 0; }
+int mock_bpf_program_set_autoload([[maybe_unused]] void* prog, [[maybe_unused]] bool autoload) { return 0; }
+bool mock_bpf_program_autoload_true([[maybe_unused]] const void* prog) { return true; }
+bool mock_bpf_program_autoload_false([[maybe_unused]] const void* prog) { return false; }
+const char* mock_bpf_program_section_name_kprobe([[maybe_unused]] const void* prog) { return "kprobe/security_inode_setattr"; }
+const char* mock_bpf_program_name_default([[maybe_unused]] const void* prog) { return "mock_prog"; }
 int mock_bpf_object_find_map_fd_by_name_success([[maybe_unused]] void* obj, [[maybe_unused]] const char* name) { return 1; }
 int mock_bpf_object_find_map_fd_by_name_failure([[maybe_unused]] void* obj, [[maybe_unused]] const char* name) { return -1; }
 

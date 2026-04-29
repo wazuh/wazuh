@@ -33,9 +33,41 @@
 #define BPF_OBJ_INSTALL_PATH "lib/modern.bpf.o"
 #define WAIT_MS 500
 #define HC_ACTION_TIMEOUT_S 10
+#define LSM_LIST_FILE "/sys/kernel/security/lsm"
 
 // Global
 static bpf_object* global_obj = nullptr;
+static bool g_bpf_lsm_active = false;
+
+/*
+ * Returns true if the running kernel has "bpf" in its active LSM list.
+ *
+ * BPF LSM programs (SEC("lsm/...")) attach successfully whenever
+ * CONFIG_BPF_LSM=y, but their hooks are only invoked when "bpf" is
+ * present in /sys/kernel/security/lsm (controlled by CONFIG_LSM=
+ * and the kernel boot parameter lsm=). Distributions like Ubuntu do
+ * not enable BPF in the active LSM list by default, which makes LSM
+ * BPF programs silently inert. We use this detection to choose
+ * between the LSM and kprobe variants of our hooks at load time.
+ */
+static bool is_bpf_lsm_active() {
+    std::ifstream file(LSM_LIST_FILE);
+    if (!file) {
+        return false;
+    }
+    std::string lsm_list;
+    if (!std::getline(file, lsm_list)) {
+        return false;
+    }
+    std::stringstream ss(lsm_list);
+    std::string token;
+    while (std::getline(ss, token, ',')) {
+        if (token == "bpf") {
+            return true;
+        }
+    }
+    return false;
+}
 
 std::unique_ptr<w_bpf_helpers_t> bpf_helpers = nullptr;
 std::unique_ptr<DefaultDynamicLibraryWrapper> sym_load;
@@ -340,6 +372,10 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load) {
     bpf_helpers->bpf_object_next_program     = (bpf_object__next_program_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__next_program");
     bpf_helpers->bpf_program_attach          = (bpf_program__attach_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_program__attach");
     bpf_helpers->bpf_object_find_map_fd_by_name = (bpf_object__find_map_fd_by_name_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__find_map_fd_by_name");
+    bpf_helpers->bpf_program_set_autoload    = (bpf_program__set_autoload_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_program__set_autoload");
+    bpf_helpers->bpf_program_autoload        = (bpf_program__autoload_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_program__autoload");
+    bpf_helpers->bpf_program_section_name    = (bpf_program__section_name_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_program__section_name");
+    bpf_helpers->bpf_program_name            = (bpf_program__name_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_program__name");
 
 
     /* Load all required symbols */
@@ -355,6 +391,10 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load) {
         !bpf_helpers->bpf_object_next_program ||
         !bpf_helpers->bpf_program_attach ||
         !bpf_helpers->bpf_object_find_map_fd_by_name ||
+        !bpf_helpers->bpf_program_set_autoload ||
+        !bpf_helpers->bpf_program_autoload ||
+        !bpf_helpers->bpf_program_section_name ||
+        !bpf_helpers->bpf_program_name ||
         !bpf_helpers->bpf_object_open_skeleton ||
         !bpf_helpers->bpf_object_destroy_skeleton ||
         !bpf_helpers->bpf_object_load_skeleton ||
@@ -381,6 +421,62 @@ void close_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load) {
     }
 }
 
+/*
+ * libbpf encodes attach failures as either NULL or as an ERR_PTR-like
+ * value in the top page of address space. Treat both as failure so we
+ * don't silently keep going with an invalid bpf_link.
+ */
+static inline bool bpf_link_is_error(const struct bpf_link *link) {
+    if (link == nullptr) {
+        return true;
+    }
+    return reinterpret_cast<uintptr_t>(link) >= static_cast<uintptr_t>(-4095UL);
+}
+
+/*
+ * Decide which programs in the loaded object should autoload.
+ *
+ * On systems where BPF LSM is active in /sys/kernel/security/lsm we
+ * prefer the lsm/* programs (cleaner semantics, fewer kernel-version
+ * pitfalls). Otherwise the lsm/* programs would attach but never fire,
+ * so we disable them and rely on the kprobe/* fallbacks instead.
+ *
+ * security_inode_setattr is always enabled regardless of LSM state.
+ */
+static void select_programs(bpf_object* obj, bool use_lsm) {
+    bpf_program* prog;
+    bpf_object__for_each_program(bpf_helpers, prog, obj) {
+        const char* sec  = bpf_helpers->bpf_program_section_name(prog);
+        const char* name = bpf_helpers->bpf_program_name(prog);
+        if (!sec) {
+            continue;
+        }
+
+        const bool is_lsm = (strncmp(sec, "lsm/", 4) == 0);
+        const bool is_create_or_unlink_kprobe =
+            (strncmp(sec, "kprobe/", 7) == 0) &&
+            (strstr(sec, "vfs_open") != nullptr ||
+             strstr(sec, "vfs_unlink") != nullptr);
+
+        bool keep = true;
+        if (use_lsm && is_create_or_unlink_kprobe) {
+            keep = false;
+        } else if (!use_lsm && is_lsm) {
+            keep = false;
+        }
+
+        bpf_helpers->bpf_program_set_autoload(prog, keep);
+
+        if (fimebpf::instance().m_loggingFunction) {
+            char msg[256] = {0};
+            snprintf(msg, sizeof(msg),
+                     "eBPF program '%s' (%s): autoload=%s",
+                     name ? name : "?", sec, keep ? "true" : "false");
+            fimebpf::instance().m_loggingFunction(LOG_DEBUG_VERBOSE, msg);
+        }
+    }
+}
+
 int init_bpfobj() {
     auto logFn = fimebpf::instance().m_loggingFunction;
     auto abspathFn = fimebpf::instance().m_abspath;
@@ -400,6 +496,12 @@ int init_bpfobj() {
     }
     global_obj = obj;
 
+    /* Decide LSM vs kprobe set BEFORE loading so the verifier only sees
+     * the programs we actually intend to attach. */
+    g_bpf_lsm_active = is_bpf_lsm_active();
+    logFn(LOG_INFO, g_bpf_lsm_active ? FIM_EBPF_LSM_ACTIVE : FIM_EBPF_LSM_INACTIVE);
+    select_programs(obj, g_bpf_lsm_active);
+
     int err = bpf_helpers->bpf_object_load(obj);
     if (err) {
         logFn(LOG_ERROR, FIM_ERROR_EBPF_OBJ_LOAD);
@@ -410,7 +512,24 @@ int init_bpfobj() {
 
     bpf_program* prog;
     bpf_object__for_each_program(bpf_helpers, prog, obj) {
-        if (!bpf_helpers->bpf_program_attach(prog)) {
+        /* Skip programs we explicitly disabled in select_programs;
+         * libbpf would otherwise return -EINVAL because they were
+         * never JIT'd. */
+        if (!bpf_helpers->bpf_program_autoload(prog)) {
+            continue;
+        }
+
+        struct bpf_link* link = (struct bpf_link*)bpf_helpers->bpf_program_attach(prog);
+        if (bpf_link_is_error(link)) {
+            const int saved_errno = errno;
+            const char* name = bpf_helpers->bpf_program_name(prog);
+            char error_message[4200] = {0};
+            snprintf(error_message, sizeof(error_message),
+                     FIM_ERROR_EBPF_OBJ_ATTACH_DETAIL,
+                     name ? name : "?",
+                     saved_errno,
+                     strerror(saved_errno));
+            logFn(LOG_ERROR, error_message);
             logFn(LOG_ERROR, FIM_ERROR_EBPF_OBJ_ATTACH);
             bpf_helpers->bpf_object_close(obj);
             global_obj = nullptr;
