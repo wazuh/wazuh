@@ -12,7 +12,7 @@ from wazuh.core.cluster.utils import manager_restart, read_cluster_config, runni
 from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.manager import status, get_api_conf, get_update_information_template, get_ossec_logs, \
-    get_logs_summary, validate_ossec_conf, OSSEC_LOG_FIELDS
+    get_logs_summary, validate_ossec_conf, OSSEC_LOG_FIELDS, query_update_check_service as query_update_check_service_core
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, full_copy
 from wazuh.rbac.decorators import expose_resources, mask_sensitive_config
@@ -239,9 +239,11 @@ def validation() -> AffectedItemsWazuhResult:
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 @mask_sensitive_config()
+@expose_resources(
+    actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+    resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*']
+)
 def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhResult:
     """Wrapper for get_active_configuration.
 
@@ -275,9 +277,11 @@ def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhR
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 @mask_sensitive_config()
+@expose_resources(
+    actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+    resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*']
+)
 def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
                     distinct: bool = False) -> AffectedItemsWazuhResult:
     """Wrapper for get_ossec_conf.
@@ -431,3 +435,15 @@ def get_update_information(installation_uid: str, update_information: dict) -> W
     update_information.pop('message', None)
 
     return WazuhResult({'data': update_information})
+
+
+@expose_resources(actions=['manager:read'], resources=['*:*:*'])
+async def query_update_check_service(installation_uid: str) -> dict:
+    """Query the update check service and return the information.
+
+    Returns
+    -------
+    WazuhResult
+        Result with update information.
+    """
+    return (await query_update_check_service_core(installation_uid))

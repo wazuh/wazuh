@@ -15,7 +15,7 @@ jobs:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
       PYTHONPATH: /home/runner/work/wazuh/wazuh/api:/home/runner/work/wazuh/wazuh/framework
-    runs-on: ubuntu-22.04
+    runs-on: wz-linux-amd64
     strategy:
       fail-fast: false
       matrix:

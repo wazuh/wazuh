@@ -11,6 +11,7 @@
 #include <regex.h>
 
 #define MAX_MATCHES 10
+#define MAX_STRING_LESS 30
 
 // Main function, call the others parsers.
 void W_ParseJSON(cJSON *root, const Eventinfo *lf);

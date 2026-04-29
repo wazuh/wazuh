@@ -77,3 +77,15 @@ EXPORTED void QueryWMIHotFixes(std::set<std::string>& hotfixSet, IComHelper& com
 // Queries Windows Update Agent (WUA) for installed update history,
 // extracts hotfixes, and adds them to the provided set.
 EXPORTED void QueryWUHotFixes(std::set<std::string>& hotfixSet, IComHelper& comHelper);
+
+// Result of parsing a wide-string command line into UTF-8 components.
+struct ProcessCmdLine
+{
+    std::string cmd;    // Full command line in UTF-8
+    std::string argvs;  // Arguments only (after the executable), space-separated, UTF-8
+};
+
+// Converts a UTF-16 command line into UTF-8 cmd and argvs fields.
+// Uses WideCharToMultiByte for encoding and CommandLineToArgvW for argument tokenization.
+// Returns empty fields if the input is empty or conversion fails.
+ProcessCmdLine parseProcessCommandLine(const std::wstring& fullCmdLineW);

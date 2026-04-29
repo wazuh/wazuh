@@ -75,8 +75,8 @@ async def test_middlewares_check_blocked_ip_ko(mock_req):
 @pytest.mark.parametrize("current_time,max_requests,current_time_key, current_counter_key,expected_error_code", [
     (-80, 300, 'events_current_time', 'events_request_counter', 0),
     (-80, 300, 'general_current_time', 'general_request_counter', 0),
-    (0, 0, 'events_current_time', 'events_request_counter', 6005),
-    (0, 0, 'general_current_time', 'general_request_counter', 6001),
+    (0, 0, 'events_current_time', 'events_request_counter', 0),
+    (0, 0, 'general_current_time', 'general_request_counter', 0),
 ])
 def test_middlewares_check_rate_limit(
     current_time, max_requests, current_time_key, current_counter_key,
@@ -120,16 +120,29 @@ async def test_check_rate_limits_middleware(endpoint, mock_req):
         dispatch_mock.assert_awaited()
 
 
+@freeze_time(datetime(1970, 1, 1))
+def test_check_rate_limit_disabled():
+    """Check that rate limit is disabled when max_requests is 0."""
+    code = check_rate_limit(
+        request_counter_key='general_request_counter',
+        current_time_key='general_current_time',
+        max_requests=0,
+        error_code=6001
+    )
+    assert code == 0
+
+
 @pytest.mark.asyncio
-@pytest.mark.parametrize("endpoint, return_code_general, return_code_events", [
-    ('/agents', 6001, 0),
-    ('/events', 0, 6005),
-    ('/events', 6001, 6005),
+@pytest.mark.parametrize("endpoint, return_values, expected_calls, expected_code", [
+    ('/agents', [6001], 1, 6001),
+    ('/events', [0, 6005], 2, 6005),
+    ('/events', [6001], 1, 6001),
 ])
 async def test_check_rate_limits_middleware_ko(
-    endpoint, return_code_general, return_code_events, mock_req):
+    endpoint, return_values, expected_calls, expected_code, mock_req):
     """Test limits middleware."""
-    return_value_sequence = [return_code_general, return_code_events]
+    return_value_sequence = return_values.copy()
+
     def check_rate_limit_side_effect(*_):
         """Side effect function."""
         return return_value_sequence.pop(0)
@@ -141,20 +154,19 @@ async def test_check_rate_limits_middleware_ko(
     mock_req.url = MagicMock()
     mock_req.url.path = endpoint
     rq_x_min = 10000
-    api_conf = {'access': { 'max_request_per_minute': rq_x_min }}
+    api_conf = {'access': {'max_request_per_minute': rq_x_min}}
     with TestContext(operation=operation), \
         patch('api.middlewares.ConnexionRequest.from_starlette_request',
               return_value=mock_req) as mock_from, \
         patch('api.middlewares.configuration.api_conf', api_conf), \
-        patch('api.middlewares.check_rate_limit', side_effect=check_rate_limit_side_effect), \
+        patch('api.middlewares.check_rate_limit', side_effect=check_rate_limit_side_effect) as mock_check, \
         pytest.raises(ProblemException) as exc_info:
         await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
         mock_from.assert_called_once_with(mock_req)
         dispatch_mock.assert_not_awaited()
         assert exc_info.value.status == 429
-        assert exc_info.value.title == "Permission Denied"
-        assert exc_info.value.detail == return_code_general if endpoint == 'event' else return_code_events
-        assert exc_info.ext == mock_req
+        assert mock_check.call_count == expected_calls
+        assert exc_info.value.ext['code'] == expected_code
 
 
 @pytest.mark.asyncio
@@ -334,6 +346,33 @@ async def test_wazuh_access_logger_middleware():
 
 
 @pytest.mark.asyncio
+async def test_wazuh_access_logger_middleware_recursion_error():
+    mock_req = AsyncMock()
+    mock_req.body = AsyncMock(return_value=b'{"a": "b"}')
+    mock_req.json = AsyncMock(side_effect=RecursionError)
+
+    dispatch_mock = AsyncMock()
+    middleware = WazuhAccessLoggerMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    mock_conn_resp = MagicMock()
+    mock_conn_resp.body = b'error'
+    mock_conn_resp.status_code = 400
+    mock_conn_resp.content_type = "application/json"
+
+    with patch('api.middlewares.build_recursion_error_response', return_value=mock_conn_resp), \
+         patch('api.middlewares.access_log') as mock_access_log:
+
+        resp = await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
+
+        dispatch_mock.assert_not_called()
+        mock_access_log.assert_not_called()
+
+        assert resp.status_code == 400
+        assert resp.body == b'error'
+        assert resp.media_type == "application/json"
+
+
+@pytest.mark.asyncio
 async def test_secure_headers_middleware(mock_req):
     """Test access logging."""
     response = MagicMock()
@@ -405,4 +444,23 @@ async def test_check_expect_header_middleware(expect_value):
         returned_response = await middleware.dispatch(mock_request, call_next_mock)
         call_next_mock.assert_called_once_with(mock_request)
         assert returned_response == response
-        
+
+@pytest.mark.asyncio
+async def test_check_expect_header_middleware_uses_runtime_max_upload_size():
+    """Check Expect header uses current api configuration upload size limit."""
+    middleware = CheckExpectHeaderMiddleware(AsyncApp(__name__))
+
+    mock_request = MagicMock(headers={
+        'Expect': '100-continue',
+        'Content-Length': '10'
+    })
+
+    call_next_mock = AsyncMock(return_value=Response("Success"))
+
+    with patch('api.middlewares.configuration.api_conf', new={'max_upload_size': 5}):
+        with pytest.raises(ExpectFailedException) as exc_info:
+            await middleware.dispatch(mock_request, call_next_mock)
+
+    call_next_mock.assert_not_called()
+    assert exc_info.value.status == 417
+    assert "Maximum content size limit (5) exceeded" in exc_info.value.detail

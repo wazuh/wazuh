@@ -175,12 +175,33 @@ static void initConfiguration(SecureCommunication& secureCommunication, const nl
         .caRootCertificate(caRootCertificate);
 }
 
+/**
+ * @brief Appends id to bulkData, JSON-escaping any characters that would produce
+ * invalid JSON if emitted raw (control bytes, backslashes, double quotes).
+ *
+ * @param bulkData Output string being built for the bulk NDJSON request.
+ * @param id Document ID to append.
+ */
+static void appendEscapedId(std::string& bulkData, std::string_view id)
+{
+    if (needEscape(id))
+    {
+        std::string escapedId;
+        escapeJSONString(id, escapedId);
+        bulkData.append(escapedId);
+    }
+    else
+    {
+        bulkData.append(id);
+    }
+}
+
 static void builderBulkDelete(std::string& bulkData, std::string_view id, std::string_view index)
 {
     bulkData.append(R"({"delete":{"_index":")");
     bulkData.append(index);
     bulkData.append(R"(","_id":")");
-    bulkData.append(id);
+    appendEscapedId(bulkData, id);
     bulkData.append(R"("}})");
     bulkData.append("\n");
 }
@@ -195,19 +216,7 @@ static void builderBulkIndex(std::string& bulkData, std::string_view id, std::st
     bulkData.append(R"({"index":{"_index":")");
     bulkData.append(index);
     bulkData.append(R"(","_id":")");
-
-    // Escape special characters in ID to prevent JSON parsing errors
-    if (needEscape(id))
-    {
-        std::string escapedId;
-        escapeJSONString(id, escapedId);
-        bulkData.append(escapedId);
-    }
-    else
-    {
-        bulkData.append(id);
-    }
-
+    appendEscapedId(bulkData, id);
     bulkData.append(R"("}})");
     bulkData.append("\n");
     bulkData.append(data);

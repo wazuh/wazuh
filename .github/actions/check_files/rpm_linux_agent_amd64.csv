@@ -166,7 +166,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/wodles/aws/buckets_s3/__init__.py,root,wazuh,750,file,-rwxr-x---,640,0.1
 /var/ossec/wodles/aws/buckets_s3/aws_bucket.py,root,wazuh,750,file,-rwxr-x---,42403,0.1
 /var/ossec/wodles/aws/buckets_s3/cloudtrail.py,root,wazuh,750,file,-rwxr-x---,1889,0.1
-/var/ossec/wodles/aws/buckets_s3/guardduty.py,root,wazuh,750,file,-rwxr-x---,4356,0.1
+/var/ossec/wodles/aws/buckets_s3/guardduty.py,root,wazuh,750,file,-rwxr-x---,5649,0.1
 /var/ossec/wodles/aws/buckets_s3/vpcflow.py,root,wazuh,750,file,-rwxr-x---,11323,0.1
 /var/ossec/wodles/aws/buckets_s3/server_access.py,root,wazuh,750,file,-rwxr-x---,9261,0.1
 /var/ossec/wodles/aws/buckets_s3/umbrella.py,root,wazuh,750,file,-rwxr-x---,2841,0.1

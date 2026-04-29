@@ -8,7 +8,7 @@ stages:
     request: &get_lists
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -259,7 +259,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -272,7 +272,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -291,7 +291,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -310,7 +310,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -341,7 +341,7 @@ stages:
     request: &get_lists_files
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -501,7 +501,7 @@ stages:
     request: &get_audit_keys_list
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/audit-keys"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files/audit-keys"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -536,7 +536,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/aws-eventnames"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files/aws-eventnames"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -554,7 +554,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/unknown"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files/unknown"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -575,7 +575,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/..%2F..%2Faudit-keys"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files/..%2F..%2Faudit-keys"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -586,7 +586,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/audit-keys.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files/audit-keys.xml"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -601,7 +601,7 @@ stages:
   - name: Upload a new list file
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/new_list"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files/new_list"
       method: PUT
       data: "{new_cdb_list:s}"
       headers:
@@ -621,7 +621,7 @@ stages:
   - name: Try to upload same list file (overwrite=False)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/new_list"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files/new_list"
       method: PUT
       data: "{new_cdb_list:s}"
       headers:
@@ -643,7 +643,7 @@ stages:
   - name: Upload same list file (overwrite=True)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/new_list"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files/new_list"
       method: PUT
       data: "{new_cdb_list:s}"
       params:
@@ -665,7 +665,7 @@ stages:
   - name: Try to upload list file with repeated name
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/aws-eventnames"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files/aws-eventnames"
       method: PUT
       data: "{new_cdb_list:s}"
       headers:
@@ -687,7 +687,7 @@ stages:
   - name: Try to upload invalid list file
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/new_list"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files/new_list"
       method: PUT
       data: "{new_cdb_list_with_syntax_error:s}"
       params:
@@ -711,7 +711,7 @@ stages:
   - name: Try to upload list with invalid name
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/invalid.txt"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files/invalid.txt"
       method: PUT
       data: "{new_cdb_list:s}"
       headers:
@@ -726,7 +726,7 @@ stages:
   - name: Try to upload CDB list (invalid file 2)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/..%2F..%2Faudit-keys"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files/..%2F..%2Faudit-keys"
       method: PUT
       data: "{new_cdb_list:s}"
       headers:
@@ -743,7 +743,7 @@ stages:
   - name: Delete an existent list file
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/new_list"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files/new_list"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -762,7 +762,7 @@ stages:
   - name: Try to delete same file (it does not exist now)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/new_list"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files/new_list"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -783,7 +783,7 @@ stages:
   - name: Try to delete CDB list (invalid file)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/..%2F..%2Faudit-keys"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files/..%2F..%2Faudit-keys"
       method: DELETE
       data: "{new_cdb_list:s}"
       headers:

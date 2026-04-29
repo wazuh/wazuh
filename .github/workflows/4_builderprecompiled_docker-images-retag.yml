@@ -30,7 +30,7 @@ on:
 
 jobs:
   Upload-package-building-images:
-    runs-on: ubuntu-22.04
+    runs-on: wz-linux-amd64
     timeout-minutes: 20
     name: Package - Retag Docker images
 

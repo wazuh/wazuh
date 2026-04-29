@@ -25,7 +25,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.IT_AWS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.IT_AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: 'us-east-1'
-    runs-on: ubuntu-22.04
+    runs-on: wz-linux-amd64
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
@@ -87,18 +87,18 @@ jobs:
               QA_BRANCH="main"
           fi
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
-          sudo pip install qa-integration-framework/
+          sudo pip install --ignore-installed qa-integration-framework/
           sudo rm -rf qa-integration-framework/
 
       - name: Set AWS credentials file
         run: |
-          sudo aws configure set aws_access_key_id ${{ secrets.IT_AWS_KEY_ID }} --profile default
-          sudo aws configure set aws_secret_access_key ${{ secrets.IT_AWS_SECRET_ACCESS_KEY }} --profile default
+          sudo aws configure set aws_access_key_id ${AWS_ACCESS_KEY_ID} --profile default
+          sudo aws configure set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY} --profile default
           sudo aws configure set default.region ${AWS_DEFAULT_REGION} --profile default
       - name: Set AWS credentials file for inspector2 tests (us-east-2)
         run: |
-          sudo aws configure set aws_access_key_id ${{ secrets.IT_AWS_KEY_ID }} --profile inspector_tests
-          sudo aws configure set aws_secret_access_key ${{ secrets.IT_AWS_SECRET_ACCESS_KEY }} --profile inspector_tests
+          sudo aws configure set aws_access_key_id ${AWS_ACCESS_KEY_ID} --profile inspector_tests
+          sudo aws configure set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY} --profile inspector_tests
           sudo aws configure set region us-east-2 --profile inspector_tests
 
       - name: "Install a compatible CMake"

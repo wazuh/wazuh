@@ -99,9 +99,7 @@ public:
          *
          */
         UpdateData(const UpdateType type, const int offset, const std::string& fileHash)
-            : type(type)
-            , offset(offset)
-            , fileHash(fileHash) {};
+            : type(type), offset(offset), fileHash(fileHash) {};
     };
 
     /**

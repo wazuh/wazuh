@@ -1,14 +1,14 @@
 AlignAfterOpenBracket: Align
-AlignConsecutiveMacros: 'true'
+AlignConsecutiveMacros: Consecutive
 AlignConsecutiveAssignments: 'false'
 AlignConsecutiveDeclarations: 'false'
 AlignEscapedNewlines: Right
-AlignOperands: 'true'
-AlignTrailingComments: 'true'
+AlignOperands: Align
+AlignTrailingComments:
+  Kind: Always
 AllowAllArgumentsOnNextLine: 'true'
-AllowAllConstructorInitializersOnNextLine: 'true'
 AllowAllParametersOfDeclarationOnNextLine: 'true'
-AllowShortBlocksOnASingleLine: 'false'
+AllowShortBlocksOnASingleLine: Never
 AllowShortCaseLabelsOnASingleLine: 'true'
 AllowShortFunctionsOnASingleLine: Empty
 AllowShortIfStatementsOnASingleLine: Never
@@ -24,6 +24,7 @@ BreakInheritanceList: BeforeComma
 FixNamespaceComments: 'true'
 IncludeBlocks: Preserve
 IndentCaseLabels: 'true'
+PackConstructorInitializers: NextLine
 SortIncludes: 'true'
 SpaceAfterCStyleCast: 'false'
 SpaceAfterLogicalNot: 'false'
@@ -34,9 +35,9 @@ SpaceBeforeParens: ControlStatements
 SpaceBeforeCpp11BracedList: 'true'
 SpaceBeforeCtorInitializerColon: 'true'
 SpaceBeforeInheritanceColon: 'true'
-SpaceInEmptyParentheses: 'false'
+SpacesInParens: Never
 Standard: Auto
-SpacesInAngles: 'false'
+SpacesInAngles: Never
 IndentWidth: '4'
 TabWidth: '4'
 AccessModifierOffset: '-4'
@@ -44,4 +45,3 @@ UseTab: Never
 PointerAlignment: Left
 NamespaceIndentation: All
 ColumnLimit: 120
-

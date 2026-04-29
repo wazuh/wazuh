@@ -445,41 +445,35 @@ int isfile_ondir(const char *file, const char *dir)
  */
 int is_file(char *file_name)
 {
-    struct  stat statbuf;
-    int     ret = 0;
-    FILE    *fp = NULL;
-    DIR     *dp = NULL;
-
     if (!file_name) {
         mtdebug2(ARGV0, "RK: Invalid file name: NULL!");
-        return ret;
+        return 0;
     }
 
-    dp = wopendir(file_name);
+    DIR* dp = wopendir(file_name);
     if (dp) {
         closedir(dp);
-        ret = 1;
-#ifndef WIN32
-    } else if (errno == ENOTDIR) {
-        ret = 1;
-#endif
+        return 1;
     }
 
-    /* Trying other calls */
-    if ((w_stat(file_name, &statbuf) < 0) &&
-#ifndef WIN32
-            (waccess(file_name, F_OK) < 0) &&
-#endif
-            ((fp = wfopen(file_name, "r")) == NULL)) {
-        return ret;
+    struct  stat statbuf;
+    if (w_stat(file_name, &statbuf) == 0) {
+        return 1;
     }
 
+#ifndef WIN32
+    if (waccess(file_name, F_OK) == 0) {
+        return 1;
+    }
+#endif
+
+    FILE* fp = wfopen(file_name, "r");
     if (fp) {
-        ret = 1;
         fclose(fp);
+        return 1;
     }
 
-    return ret;
+    return 0;
 }
 
 /* Delete the process list */

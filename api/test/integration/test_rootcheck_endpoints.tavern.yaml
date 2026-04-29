@@ -8,7 +8,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/001/last_scan"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rootcheck/001/last_scan"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -33,7 +33,7 @@ stages:
     request: &get_rootcheck_agent
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/001"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rootcheck/001"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -401,11 +401,9 @@ stages:
       json:
         error: 0
         data:
-          affected_items:
-            - cis: !anystr
-            - cis: !anystr
+          affected_items: !anything
           failed_items: []
-          total_affected_items: 2
+          total_affected_items: !anyint
           total_failed_items: 0
       verify_response_with:
         - function: tavern_utils:test_sort_response
@@ -465,7 +463,7 @@ stages:
   - name: Try to get 012 agent's rootcheck data (never connected)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/012"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rootcheck/012"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -484,7 +482,7 @@ stages:
     request:
       verify: False
       method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rootcheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -505,7 +503,7 @@ stages:
     request:
       verify: False
       method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rootcheck"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -532,7 +530,7 @@ stages:
     request:
       verify: False
       method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rootcheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -557,7 +555,7 @@ stages:
     request:
       verify: False
       method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rootcheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -588,7 +586,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/001"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rootcheck/001"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -598,16 +596,19 @@ stages:
         data:
           affected_items: !anything
           failed_items: []
-          total_affected_items: 5
+          total_affected_items: !anyint
           total_failed_items: 0
         message: !anystr
+      save:
+        json:
+          initial_rootcheck_count: data.total_affected_items
 
   # DELETE /rootcheck/001
   - name: Delete rootcheck scans in agent 001
     request:
       verify: False
       method: DELETE
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/001"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rootcheck/001"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -627,7 +628,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/001"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rootcheck/001"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:

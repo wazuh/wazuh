@@ -25,6 +25,9 @@
 
 #define WM_MS_GRAPH_DEFAULT_TIMEOUT 60L
 #define WM_MS_GRAPH_TIMESTAMP_SIZE_80 80
+#define WM_MS_GRAPH_MAX_RETRIES      3
+#define WM_MS_GRAPH_MAX_RETRY_AFTER_WARN  300
+#define WM_MS_GRAPH_RETRY_AFTER_REGEX "Retry-After:\\s*(\\d+)"
 
 #define WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN "login.microsoftonline.com"
 #define WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN "graph.microsoft.com"

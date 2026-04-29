@@ -501,6 +501,66 @@ TEST_F(IndexerConnectorTest, PublishDeleted)
 
 /**
  * @brief Test the connection and posterior data publication into a server. The published data is checked against the
+ * expected one. The publication contains DELETED operations with document IDs that include characters requiring
+ * JSON escaping: a control byte (0x04), backslashes (as seen in Windows AD domain groups), and a double quote.
+ * Verifies that each ID is correctly escaped in the bulk delete request sent to the indexer.
+ *
+ */
+TEST_F(IndexerConnectorTest, PublishDeletedWithSpecialCharId)
+{
+    // IDs that require JSON escaping
+    const std::vector<std::string> specialIds {
+        "000_test\x04id",
+        "000_DOMAIN\\ggroup",
+        "000_test\"id",
+    };
+
+    nlohmann::json expectedMetadata;
+
+    std::atomic<bool> callbackCalled {false};
+    const auto checkPublishedData {[&expectedMetadata, &callbackCalled](const std::string& data)
+                                   {
+                                       const auto splitData {Utils::split(data, '\n')};
+                                       ASSERT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
+                                       callbackCalled = true;
+                                   }};
+    m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    for (const auto& specialId : specialIds)
+    {
+        nlohmann::json publishData;
+
+        // INSERT first to populate the local RocksDB entry required by m_useSeekDelete.
+        callbackCalled = false;
+        expectedMetadata.clear();
+        expectedMetadata["index"]["_index"] = INDEXER_NAME;
+        expectedMetadata["index"]["_id"] = specialId;
+        publishData["id"] = specialId;
+        publishData["operation"] = "INSERTED";
+        publishData["data"] = "content";
+        ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+        ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+        callbackCalled = false;
+        publishData.erase("data");
+        expectedMetadata.clear();
+        expectedMetadata["delete"]["_index"] = INDEXER_NAME;
+        expectedMetadata["delete"]["_id"] = specialId;
+        publishData["id"] = specialId;
+        publishData["operation"] = "DELETED";
+        ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
+        ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+    }
+}
+
+/**
+ * @brief Test the connection and posterior data publication into a server. The published data is checked against the
  * expected one. The publication contains a DELETED_BY_QUERY operation.
  *
  */

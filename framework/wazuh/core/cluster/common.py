@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from wazuh.core.exception import WazuhClusterError
 import ast
 import asyncio
 import base64
@@ -37,6 +38,12 @@ _ALLOWED_PREFIXES = (
 )
 
 ALLOWED_CALLABLES_PACKAGES = ["wazuh", "api"]
+
+MAX_TOTAL_SIZE = 268435456  # maximum total size of the message to receive in bytes (256 MiB)
+
+MAX_CHUNK_SIZE = 10485760  # maximum chunk size of the message to receive in bytes (10 MiB)
+
+MAX_CONCURRENT_DIVIDED_MSGS = 10  # maximum number of concurrent divided messages being received. This is used to mitigate DoS attacks with many divided messages.
 
 class Response:
     """
@@ -82,6 +89,8 @@ class InBuffer:
         total : int
             Size of the payload buffer in bytes.
         """
+        if total > MAX_TOTAL_SIZE:
+            raise exception.WazuhClusterError(3050, extra_message=str(total))
         self.payload = bytearray(total)  # array to store the message's data
         self.total = total  # total of bytes to receive
         self.received = 0  # number of received bytes
@@ -113,6 +122,8 @@ class InBuffer:
 
         # Command is the first 11 B of command without dashes (in case they were added)
         self.cmd = cmd[:-1].split(b' ')[0]
+        if self.total > MAX_TOTAL_SIZE :
+            raise exception.WazuhClusterError(3050, extra_message=f"Header total size out of range: {self.total}")
         self.payload = bytearray(self.total)
         return header[header_size:]
 
@@ -782,35 +793,58 @@ class Handler(asyncio.Protocol):
             Received data.
         """
         self.in_buffer += message
-        for command, counter, payload, flag_divided in self.get_messages():
-            # If the message is a divided one
-            if flag_divided == InBuffer.divide_flag:
-                try:
-                    self.div_msg_box[counter] = self.div_msg_box[counter] + payload
-                except KeyError:
-                    self.div_msg_box[counter] = payload
-            else:
-                # If the message is the last part of a division, join it.
-                if counter in self.div_msg_box:
-                    payload = self.div_msg_box[counter] + payload
-                    del self.div_msg_box[counter]
-                    # Decrypt the joined payload
-                    try:
-                        payload = self.my_fernet.decrypt(bytes(payload)) if self.my_fernet is not \
-                                                                            None else bytes(payload)
-                    except cryptography.fernet.InvalidToken:
-                        raise exception.WazuhClusterError(3025)
+        try:
+            for command, counter, payload, flag_divided in self.get_messages():
+                # If the message is a divided one
+                if flag_divided == InBuffer.divide_flag:
+                    # Check number of concurrent divided messages
+                    if len(self.div_msg_box) >= MAX_CONCURRENT_DIVIDED_MSGS and counter not in self.div_msg_box:
+                        raise WazuhClusterError(3051, extra_message=str(len(self.div_msg_box)))
 
-                # If the message is the response of a previously sent request.
-                if counter in self.box:
-                    if self.box[counter] is None:
-                        # Delete entry for previously expired request, just in case is received too late.
-                        del self.box[counter]
-                    else:
-                        self.box[counter].write(self.process_response(command, payload))
-                # If the message is not related to any previously sent request.
+                    current_size = len(self.div_msg_box.get(counter, b''))
+                    if current_size + len(payload) > MAX_TOTAL_SIZE:
+                        raise WazuhClusterError(3050, extra_message=str(current_size + len(payload)))
+                    try:
+                        self.div_msg_box[counter] = self.div_msg_box[counter] + payload
+                    except KeyError:
+                        self.div_msg_box[counter] = payload
+
                 else:
-                    self.dispatch(command, counter, payload)
+                    # If the message is the last part of a division, join it.
+                    if counter in self.div_msg_box:
+                        payload = self.div_msg_box[counter] + payload
+                        del self.div_msg_box[counter]
+                        # Decrypt the joined payload
+                        try:
+                            payload = self.my_fernet.decrypt(bytes(payload)) if self.my_fernet else bytes(payload)
+                        except cryptography.fernet.InvalidToken:
+                            raise exception.WazuhClusterError(3025)
+                    # If the message is the response of a previously sent request.
+                    if counter in self.box:
+                        if self.box[counter] is None:
+                            # Delete entry for previously expired request, just in case is received too late.
+                            del self.box[counter]
+                        else:
+                            # If the message is not related to any previously sent request.
+                            self.box[counter].write(self.process_response(command, payload))
+                    else:
+                        self.dispatch(command, counter, payload)
+
+        except exception.WazuhClusterError as e:
+            if e.code == 3050:
+                self.logger.warning(
+                    f"[Cluster] Payload too large. Possible DoS attempt. "
+                    f"Details: {e.message} bytes received, but the maximum allowed is {MAX_TOTAL_SIZE} bytes. "
+                    f"Closing connection."
+                )
+                if self.transport:
+                    self.close()
+                return
+            else:
+                raise e
+
+        except Exception:
+            self.logger.exception("[Cluster] Unexpected error in data_received")
 
     def dispatch(self, command: bytes, counter: int, payload: bytes) -> None:
         """Process a received message and send a response.
@@ -1058,8 +1092,14 @@ class Handler(asyncio.Protocol):
         bytes
             String ID.
         """
+        requested_size = int(data)
+
+        if requested_size > MAX_TOTAL_SIZE:
+            return b"error", b"Requested size exceeds maximum allowed limit"
+
         name = str(random.SystemRandom().randint(0, 2 ** 32 - 1)).encode()
-        self.in_str[name] = InBuffer(total=int(data))
+        self.in_str[name] = InBuffer(total=requested_size)
+
         return b"ok", name
 
     def str_upd(self, data: bytes) -> Tuple[bytes, bytes]:
@@ -1849,7 +1889,17 @@ def as_wazuh_object(dct: Dict):
             if '__wazuh__' in encoded_callable:
                 # Encoded Wazuh instance method.
                 wazuh = Wazuh()
-                return getattr(wazuh, funcname)
+                func = getattr(wazuh, funcname)
+                # Verify that the method has the @expose_resources decorator
+                # Check the underlying function for methods
+                underlying_func = getattr(func, '__func__', func)
+                if not getattr(underlying_func, '__wazuh_exposed__', False):
+                    raise exception.WazuhInternalError(
+                        1000,
+                        extra_message=f"Method '{funcname}' is not exposed with @dapi_allower decorator",
+                        cmd_error=True
+                    )
+                return func
             else:
                 # Encoded function or static method.
                 qualname = encoded_callable['__qualname__'].split('.')
@@ -1858,18 +1908,33 @@ def as_wazuh_object(dct: Dict):
 
                 package_name = module_path.split('.')[0]
                 if package_name not in ALLOWED_CALLABLES_PACKAGES:
-                    raise exception.WazuhInternalError(1000,
-                                                       extra_message=f"Decoding callable from module '{module_path}' is not allowed",
-                                                       cmd_error=True)
-                
+                    raise exception.WazuhInternalError(
+                        1000,
+                        extra_message=f"Decoding callable from module '{module_path}' is not allowed",
+                        cmd_error=True
+                    )
+
                 relative_mod = module_path.removeprefix(package_name)
                 module = import_module(relative_mod, package=package_name)
 
                 if classname is None:
-                    return getattr(module, funcname)
+                    func = getattr(module, funcname)
                 else:
-                    return getattr(getattr(module, classname), funcname)
-        
+                    func = getattr(getattr(module, classname), funcname)
+
+                # Verify that the function has the @expose_resources decorator
+                # The decorator sets a specific __wazuh_exposed__ marker
+                # For methods, check the underlying function via __func__
+                underlying_func = getattr(func, '__func__', func)
+                if not getattr(underlying_func, '__wazuh_exposed__', False):
+                    raise exception.WazuhInternalError(
+                        1000,
+                        extra_message=f"Function '{funcname}' from module '{module_path}' is not exposed with @dapi_allower decorator",
+                        cmd_error=True
+                    )
+
+                return func
+
         elif '__wazuh_exception__' in dct:
             wazuh_exception = dct['__wazuh_exception__']
             return getattr(exception, wazuh_exception['__class__']).from_dict(wazuh_exception['__object__'])
@@ -1884,6 +1949,9 @@ def as_wazuh_object(dct: Dict):
             return ast.literal_eval(json.dumps(exc_dict))
         return dct
 
+    except exception.WazuhInternalError:
+        # Re-raise Wazuh internal errors (including our security checks)
+        raise
     except (KeyError, AttributeError, TypeError, ValueError):
         raise exception.WazuhInternalError(1000,
                                            extra_message=f"Wazuh object cannot be decoded from JSON {dct}",

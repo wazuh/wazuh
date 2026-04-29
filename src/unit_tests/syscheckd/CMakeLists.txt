@@ -343,6 +343,41 @@ if(${TARGET} STREQUAL "winagent")
   endforeach()
 endif()
 
+if(NOT ${TARGET} STREQUAL "winagent")
+  set(CHECK_RC_SYS_FLAGS "-Wl,--wrap,lstat \
+                           -Wl,--wrap,notify_rk \
+                           -Wl,--wrap,wopendir \
+                           -Wl,--wrap,wfopen \
+                           -Wl,--wrap,readdir \
+                           -Wl,--wrap,closedir \
+                           -Wl,--wrap,check_ignore \
+                           -Wl,--wrap,skipFS \
+                           -Wl,--wrap,IsNFS \
+                           ${DEBUG_OP_WRAPPERS}")
+
+  add_executable(test_check_rc_sys test_check_rc_sys.c)
+  target_include_directories(test_check_rc_sys PRIVATE ${SRC_FOLDER}/rootcheck)
+  target_link_libraries(test_check_rc_sys SYSCHECK_O ${TEST_DEPS} "${CHECK_RC_SYS_FLAGS}")
+  add_test(NAME test_check_rc_sys COMMAND test_check_rc_sys)
+
+  set(COMMON_FLAGS "-Wl,--wrap,wopendir \
+                    -Wl,--wrap,closedir \
+                    -Wl,--wrap,w_stat \
+                    -Wl,--wrap,waccess \
+                    -Wl,--wrap,wfopen \
+                    -Wl,--wrap,fclose \
+                    -Wl,--wrap,OS_Regex \
+                    -Wl,--wrap,OS_Match2 \
+                    -Wl,--wrap,OSList_GetFirstNode \
+                    -Wl,--wrap,OSList_GetNextNode \
+                    ${DEBUG_OP_WRAPPERS}")
+
+  add_executable(test_common test_common.c)
+  target_include_directories(test_common PRIVATE ${SRC_FOLDER}/rootcheck)
+  target_link_libraries(test_common SYSCHECK_O ${TEST_DEPS} "${COMMON_FLAGS}")
+  add_test(NAME test_common COMMAND test_common)
+endif()
+
 # create_db.c tests
 add_executable(test_create_db test_create_db.c)
 

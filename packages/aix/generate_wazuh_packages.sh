@@ -164,8 +164,15 @@ build_perl() {
 }
 
 build_cmake() {
-  socket_lib=$(find /opt/freeware/lib/gcc/*/6.3.0/include-fixed/sys/ -name socket.h)
-  mv ${socket_lib} ${socket_lib}.bkp
+  socket_lib_backup=""
+  socket_lib_trap_set="no"
+  socket_lib=$(find /opt/freeware/lib/gcc/*/6.3.0/include-fixed/sys/ -name socket.h 2>/dev/null | head -n1)
+  if [ -n "${socket_lib}" ] && [ -f "${socket_lib}" ]; then
+    mv "${socket_lib}" "${socket_lib}.bkp"
+    socket_lib_backup="${socket_lib}.bkp"
+    trap 'if [ -n "${socket_lib_backup}" ] && [ -f "${socket_lib_backup}" ]; then mv "${socket_lib_backup}" "${socket_lib}"; fi' RETURN INT TERM EXIT
+    socket_lib_trap_set="yes"
+  fi
   mkdir -p /home/aix
   cd /home/aix
   curl -LO https://packages-dev.wazuh.com/deps/aix/precompiled-aix-cmake-3.12.4.tar.gz -s
@@ -175,6 +182,12 @@ build_cmake() {
   gmake install
   cd .. && rm -rf *cmake-3.12.4*
   ln -fs /usr/local/bin/cmake /usr/bin/cmake
+  if [ -n "${socket_lib_backup}" ] && [ -f "${socket_lib_backup}" ]; then
+    mv "${socket_lib_backup}" "${socket_lib}"
+  fi
+  if [ "${socket_lib_trap_set}" = "yes" ]; then
+    trap - RETURN INT TERM EXIT
+  fi
   cd ${current_path}
 }
 
@@ -352,10 +365,15 @@ build_package() {
 
   cp ${current_path}/SPECS/wazuh-agent-aix.spec ${rpm_build_dir}/SPECS/${package_name}-aix.spec
 
-  socket_lib=$(find /opt/freeware/lib/gcc/*/6.3.0/include-fixed/sys/ -name socket.h)
+  socket_lib_backup=""
+  socket_lib_trap_set="no"
+  socket_lib=$(find /opt/freeware/lib/gcc/*/6.3.0/include-fixed/sys/ -name socket.h 2>/dev/null | head -n1)
 
-  if [[ ${aix_major} = "6" ]] && [[ -f ${socket_lib} ]]; then
-    mv ${socket_lib} ${socket_lib}.backup
+  if [[ "${aix_major}" = "6" ]] && [ -n "${socket_lib}" ] && [ -f "${socket_lib}" ]; then
+    mv "${socket_lib}" "${socket_lib}.backup"
+    socket_lib_backup="${socket_lib}.backup"
+    trap 'if [ -n "${socket_lib_backup}" ] && [ -f "${socket_lib_backup}" ]; then mv "${socket_lib_backup}" "${socket_lib}"; fi' RETURN INT TERM EXIT
+    socket_lib_trap_set="yes"
   fi
 
   init_scripts="/etc/rc.d/init.d"
@@ -364,6 +382,13 @@ build_package() {
   rpm --define '_tmppath /tmp' --define "_topdir ${rpm_build_dir}" --define "_localstatedir ${install_path}" \
   --define "_init_scripts ${init_scripts}" --define "_sysconfdir ${sysconfdir}" --define "_version ${wazuh_version}" \
   --define "_release ${revision}" -bb ${rpm_build_dir}/SPECS/${package_name}-aix.spec
+
+  if [ -n "${socket_lib_backup}" ] && [ -f "${socket_lib_backup}" ]; then
+    mv "${socket_lib_backup}" "${socket_lib}"
+  fi
+  if [ "${socket_lib_trap_set}" = "yes" ]; then
+    trap - RETURN INT TERM EXIT
+  fi
 
   # If they exist, remove the installed files in ${install_path}
   rm -rf ${install_path} /etc/ossec-init.conf

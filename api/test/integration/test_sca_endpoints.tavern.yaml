@@ -6,7 +6,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -19,7 +19,7 @@ stages:
   - name: Parameters -> limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -55,7 +55,7 @@ stages:
   - name: Parameters -> offset=1,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -75,7 +75,7 @@ stages:
   - name: Parameters -> search=cis,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -96,7 +96,7 @@ stages:
   - name: Parameters -> q=score>0,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -117,7 +117,7 @@ stages:
   - name: Parameters -> limit=999999
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -129,7 +129,7 @@ stages:
   - name: Parameters -> references=https://www.cisecurity.org/cis-benchmarks/, limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -151,7 +151,7 @@ stages:
   - name: Parameters -> description,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -173,7 +173,7 @@ stages:
   - name: Parameters -> name=CIS Benchmark for Debian/Linux 9, limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -195,7 +195,7 @@ stages:
   - name: Parameters -> sort=-score,limit=10
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -214,7 +214,7 @@ stages:
   - name: Parameters -> limit=2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/006"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -251,7 +251,7 @@ stages:
   - name: Parameters -> offset=1,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/006"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -272,7 +272,7 @@ stages:
   - name: Parameters -> search=cis,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/006"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -293,7 +293,7 @@ stages:
   - name: Parameters -> q=score>0,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/006"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -314,7 +314,7 @@ stages:
   - name: Parameters -> limit=999999
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/006"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -326,7 +326,7 @@ stages:
   - name: Parameters -> references=https://www.cisecurity.org/cis-benchmarks/, limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/006"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -348,7 +348,7 @@ stages:
   - name: Parameters -> description,limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/006"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -370,7 +370,7 @@ stages:
   - name: Parameters -> sort=-score,limit=2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/006"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -388,7 +388,7 @@ stages:
   - name: Parameters -> sort=+score,limit=2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/006"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -405,7 +405,7 @@ stages:
   - name: Try to get 012 agent's SCA data (never connected)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/012"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/012"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -417,7 +417,7 @@ stages:
   - name: Get distinct sca agent data
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/006"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/006"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -453,7 +453,7 @@ stages:
   - name: Get agent SCA data using select
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -492,7 +492,7 @@ stages:
   - name: Get agent SCA data using select and distinct
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -516,7 +516,7 @@ stages:
   - name: Get policy ID
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -531,7 +531,7 @@ stages:
   - name: Get generic SCA check item
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -559,7 +559,7 @@ stages:
   - name: Get item with the command field (q="rules.type=command")
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -602,7 +602,7 @@ stages:
   - name: Get items with the condition 'all'
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -621,7 +621,7 @@ stages:
   - name: Get item with the file field (q="rules.type=file")
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -666,7 +666,7 @@ stages:
   - name: Get SCA checks using limit=4
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -697,7 +697,7 @@ stages:
   - name: Get SCA checks using limit=2, offset=2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -723,7 +723,7 @@ stages:
   - name: Try to get SCA checks using limit=999999
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -737,7 +737,7 @@ stages:
   - name: Get SCA checks using sort=-id, limit=2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -757,7 +757,7 @@ stages:
   - name: Get SCA checks using sort=-title
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -782,7 +782,7 @@ stages:
   - name: Get SCA checks using sort=command
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -808,7 +808,7 @@ stages:
   - name: Get SCA checks using search=pci_dss
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -833,7 +833,7 @@ stages:
   - name: Get SCA check using query (command)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -863,7 +863,7 @@ stages:
   - name: Get SCA check using query (file)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -895,7 +895,7 @@ stages:
   - name: Get SCA checks filtering by rationale
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -915,7 +915,7 @@ stages:
   - name: Get SCA checks filtering by command
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -935,7 +935,7 @@ stages:
   - name: Get SCA checks filtering by condition
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -955,7 +955,7 @@ stages:
   - name: Get SCA checks filtering by description
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -975,7 +975,7 @@ stages:
   - name: Get SCA checks filtering by title
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -995,7 +995,7 @@ stages:
   - name: Get SCA checks filtering by file
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1015,7 +1015,7 @@ stages:
   - name: Get SCA checks filtering by remediation
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1035,7 +1035,7 @@ stages:
   - name: Get SCA checks filtering by rationale
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1084,7 +1084,7 @@ stages:
   - name: Get policy ID
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1097,7 +1097,7 @@ stages:
   - name: Get agent SCA data using select
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1115,7 +1115,7 @@ stages:
   - name: Get agent SCA data using select and distinct
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/{sca_policy_id:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/sca/001/checks/{sca_policy_id:s}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

@@ -9,6 +9,7 @@ import hashlib
 import json
 import logging
 import os
+import struct
 import sys
 from contextvars import ContextVar
 from datetime import datetime
@@ -109,6 +110,12 @@ def test_inbuffer_init():
     assert in_buffer.payload == bytearray(bytearray(in_buffer.total))
 
 
+def test_inbuffer_init_ko():
+    """Test if the exception is being properly raised when 'total' exceeds MAX_TOTAL_SIZE in InBuffer class."""
+    with pytest.raises(exception.WazuhClusterError, match=r'.* 3050 .*'):
+        cluster_common.InBuffer(total=cluster_common.MAX_TOTAL_SIZE + 1)
+
+
 @patch('struct.unpack')
 def test_inbuffer_get_info_from_header(unpack_mock):
     """Test if the information contained in a request's header is properly extracted."""
@@ -131,6 +138,29 @@ def test_inbuffer_get_info_from_header(unpack_mock):
     # In this case the flag value is not equal to divide_flag, thus the flag_divided value will be the default one, b"".
     assert in_buffer.flag_divided == b""
     assert in_buffer.cmd == b"ech"
+
+
+@patch('struct.unpack')
+def test_inbuffer_get_info_from_header_zero_size_ok(unpack_mock):
+    """Validate that zero-size payloads in header are accepted."""
+    unpack_mock.return_value = (1, 0, b'echo')
+
+    remaining_data = in_buffer.get_info_from_header(b"header", "hhl", 1)
+
+    assert remaining_data == b"eader"
+    assert in_buffer.counter == 1
+    assert in_buffer.total == 0
+    assert in_buffer.payload == bytearray(0)
+
+
+@patch('struct.unpack')
+def test_inbuffer_get_info_from_header_ko(unpack_mock):
+    """Test if the exception is being properly raised when 'total' exceeds MAX_CHUNK_SIZE in InBuffer class."""
+    unpack_mock.return_value = (0, cluster_common.MAX_TOTAL_SIZE + 1, b'pwd')
+
+    with pytest.raises(exception.WazuhClusterError,
+                       match=r'.*Header total size out of range.*'):
+        in_buffer.get_info_from_header(b"header", "hhl", 1)
 
 
 def test_inbuffer_receive_data():
@@ -498,7 +528,7 @@ def test_handler_msg_parse():
     assert handler.msg_parse() is False
 
     # Test nested if
-    handler.in_buffer = b"much much longer command"
+    handler.in_buffer = struct.pack(handler.header_format, 1, 10, b"command")
     assert len(handler.in_buffer) >= handler.header_len
     assert handler.msg_parse() is True
 
@@ -584,6 +614,67 @@ async def test_handler_send_request_ko():
 
     with pytest.raises(exception.WazuhClusterError, match=r'.* 3018 .*'):
         await handler.send_request(b'some bytes', b'some data')
+
+
+def test_handler_data_received_max_concurrent_divided_msgs():
+    """
+    Validate that error 3051 is raised if the maximum number of
+    concurrent divided messages is exceeded (DoS mitigation).
+    """
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+
+    handler.div_msg_box = {i: b"data" for i in range(cluster_common.MAX_CONCURRENT_DIVIDED_MSGS)}
+    handler.logger = MagicMock()
+
+    new_counter = 999
+    with patch.object(handler, 'get_messages', return_value=[(b'cmd', new_counter, b'payload', cluster_common.InBuffer.divide_flag)]):
+        with pytest.raises(cluster_common.WazuhClusterError, match=r'.* 3051 .*'):
+            handler.data_received(b"raw_data_trigger")
+
+
+def test_handler_data_received_payload_limit_warning():
+    """
+    Validate that if accumulating fragments exceeds MAX_TOTAL_SIZE,
+    a warning is logged and the connection is closed (Error 3050).
+    """
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+    handler.transport = MagicMock()
+    handler.logger = MagicMock()
+
+    counter = 5
+    handler.div_msg_box[counter] = b"A" * (cluster_common.MAX_TOTAL_SIZE - 5)
+
+    payload_extra = b"B" * 10
+
+    with patch.object(handler, 'get_messages', return_value=[(b'cmd', counter, payload_extra, cluster_common.InBuffer.divide_flag)]):
+        handler.data_received(b"trigger")
+
+        handler.logger.warning.assert_called()
+        assert "Payload too large" in handler.logger.warning.call_args[0][0]
+
+        handler.transport.close.assert_called_once()
+
+
+def test_handler_receive_str_ko():
+    """Test if the proper error message is returned when requested size exceeds the maximum limit."""
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+
+    requested_size = str(cluster_common.MAX_TOTAL_SIZE + 1).encode()
+    reply, name = handler.receive_str(requested_size)
+
+    assert reply == b"error"
+    assert name == b"Requested size exceeds maximum allowed limit"
+
+
+def test_handler_msg_parse_updated():
+    """Test to validate parsing with struct pack according to the Handler requirements."""
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+
+    assert handler.msg_parse() is False
+
+    handler.in_buffer = struct.pack(handler.header_format, 1, 10, b"command")
+    assert len(handler.in_buffer) >= handler.header_len
+    assert handler.msg_parse() is True
 
 
 @pytest.mark.asyncio
@@ -1114,6 +1205,15 @@ def test_handler_receive_str():
     assert isinstance(handler.in_str[list(handler.in_str.keys())[0]], cluster_common.InBuffer)
 
 
+def test_handler_receive_str_ko():
+    """Test if the proper error message is being returned when requested size exceeds maximum allowed limit."""
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+
+    reply, name = handler.receive_str(str(cluster_common.MAX_TOTAL_SIZE + 1).encode())
+    assert reply == b"error"
+    assert name == b"Requested size exceeds maximum allowed limit"
+
+
 def test_handler_str_upd():
     """Test if a string content is updated."""
     handler = cluster_common.Handler(fernet_key, cluster_items)
@@ -1132,8 +1232,9 @@ def test_handler_process_error_str():
     assert handler.in_str == {}
 
     # Test return inside loop and condition
-    handler.in_str = {b"string_id": in_buffer}
-    assert handler.process_error_str(b"2048") == (b'ok', b'string_id')
+    local_in_buffer = cluster_common.InBuffer()
+    handler.in_str = {b"string_id": local_in_buffer}
+    assert handler.process_error_str(b"0") == (b'ok', b'string_id')
     assert handler.in_str == {}
 
 
@@ -1780,8 +1881,10 @@ def test_wazuh_json_encoder_default(mock_chmod, mock_chown, mock_gid, mock_uid):
 def test_as_wazuh_object_ok(mock_chmod, mock_chown, mock_gid, mock_uid):
     """Test the different outputs taking into account the input values."""
 
-    # Test the first condition and nested if
-    assert cluster_common.as_wazuh_object({"__callable__": {"__name__": "type", "__wazuh__": "version"}}) == "server"
+    # Test the first condition - Wazuh methods without @dapi_allower must be blocked
+    with pytest.raises(exception.WazuhInternalError) as err:
+        cluster_common.as_wazuh_object({"__callable__": {"__name__": "to_dict", "__wazuh__": "version"}})
+    assert "is not exposed with @dapi_allower decorator" in str(err.value)
 
     # Test the first condition - non-internal callable must be blocked
     with pytest.raises(exception.WazuhInternalError) as err:
@@ -1794,22 +1897,29 @@ def test_as_wazuh_object_ok(mock_chmod, mock_chown, mock_gid, mock_uid):
                                                         "__module__": "itertools"}})
     assert "Decoding callable from module" in str(err.value)
 
-    # Test the first condition - allowed callable packages must be processed
-    func =  cluster_common.as_wazuh_object({"__callable__": {"__name__": "check_user_master",
-                                                             "__module__": "api.authentication",
-                                                             "__qualname__": "check_user_master",
-                                                             "__type__": "function"}})
-    assert callable(func)
-    assert func.__module__ == "api.authentication"
-    assert func.__name__ == "check_user_master"
+    # Test the first condition - non-exposed callables must be blocked (no @dapi_allower)
+    with pytest.raises(exception.WazuhInternalError) as err:
+        cluster_common.as_wazuh_object({"__callable__": {"__name__": "check_user",
+                                                         "__module__": "api.authentication",
+                                                         "__qualname__": "check_user",
+                                                         "__type__": "function"}})
+    assert "is not exposed with @dapi_allower decorator" in str(err.value)
 
-    func =  cluster_common.as_wazuh_object({"__callable__": {"__name__": "get_node",
-                                                             "__module__": "wazuh.core.cluster.cluster",
-                                                             "__qualname__": "get_node",
+    with pytest.raises(exception.WazuhInternalError) as err:
+        cluster_common.as_wazuh_object({"__callable__": {"__name__": "get_node",
+                                                         "__module__": "wazuh.core.cluster.cluster",
+                                                         "__qualname__": "get_node",
+                                                         "__type__": "function"}})
+    assert "is not exposed with @dapi_allower decorator" in str(err.value)
+
+    # Test that functions with @dapi_allower decorator are allowed
+    func =  cluster_common.as_wazuh_object({"__callable__": {"__name__": "read_config_wrapper",
+                                                             "__module__": "wazuh.cluster",
+                                                             "__qualname__": "read_config_wrapper",
                                                              "__type__": "function"}})
     assert callable(func)
-    assert func.__module__ == "wazuh.core.cluster.cluster"
-    assert func.__name__ == "get_node"
+    assert func.__module__ == "wazuh.cluster"
+    assert func.__name__ == "read_config_wrapper"
 
     # Test the second condition
     assert isinstance(cluster_common.as_wazuh_object(

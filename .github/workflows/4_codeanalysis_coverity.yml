@@ -21,7 +21,7 @@ env:
 
 jobs:
   prepare:
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     outputs:
       project: ${{ steps.vars.outputs.PROJECT }}
       jobs: ${{ steps.vars.outputs.JOBS }}
@@ -35,17 +35,20 @@ jobs:
 
       - name: Set up project and build variables
         id: vars
+        env:
+          INPUT_PROJECT: ${{ github.event.inputs.project }}
+          INPUT_THREADS: ${{ github.event.inputs.threads }}
         run: |
-          if [[ "${{ github.event.inputs.project }}" == "wazuh" ]]; then
+          if [[ "$INPUT_PROJECT" == "wazuh" ]]; then
             echo "PROJECT=wazuh/wazuh" >> $GITHUB_OUTPUT
           else
             echo "PROJECT=wazuh/ossec-wazuh" >> $GITHUB_OUTPUT
           fi
 
-          if [[ ${{ github.event.inputs.threads }} -le 0 ]]; then
+          if [[ $INPUT_THREADS -le 0 ]]; then
             echo "JOBS=$(nproc)" >> $GITHUB_OUTPUT
           else
-            echo "JOBS=${{ github.event.inputs.threads }}" >> $GITHUB_OUTPUT
+            echo "JOBS=$INPUT_THREADS" >> $GITHUB_OUTPUT
           fi
 
           VERSION=$(jq -r '.version + "-" + .stage' VERSION.json)
@@ -54,7 +57,7 @@ jobs:
           echo "DESCRIPTION=$DESCRIPTION" >> $GITHUB_OUTPUT
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     needs: prepare
     permissions:
       contents: read
@@ -97,7 +100,7 @@ jobs:
           path: wazuh.tgz
 
   upload:
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     needs: [prepare, build]
     steps:
       - name: Checkout code

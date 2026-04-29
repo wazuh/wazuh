@@ -11,6 +11,7 @@
 
 #include "logging_helper.h"
 #include <functional>
+#include <iostream>
 #include <string>
 static std::function<void(const modules_log_level_t, const std::string&)> GS_LOG_FUNCTION;
 
@@ -157,6 +158,20 @@ void RouterSubscriber::subscribe(const std::function<void(const std::vector<char
         RouterFacade::instance().addSubscriberRemote(m_topicName, m_subscriberId, callback);
     }
 }
+
+// LCOV_EXCL_START
+RouterSubscriber::~RouterSubscriber()
+{
+    try
+    {
+        unsubscribe();
+    }
+    catch (...)
+    {
+        std::cerr << "Error in ~RouterSubscriber()" << std::endl;
+    }
+}
+// LCOV_EXCL_STOP
 
 void RouterSubscriber::subscribe(const std::function<void(const std::vector<char>&)>& callback,
                                  const std::function<void()>& onConnect)
