@@ -94,6 +94,22 @@
             "problemMatcher": []
         },
         {
+            "label": "PR: clang-format (format)",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/pr-clang.sh",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "PR: clang-format (check)",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/pr-clang.sh",
+            "args": [
+                "--check"
+            ],
+            "problemMatcher": []
+        },
+        {
             "label": "Build MANAGER - debug",
             "type": "shell",
             "command": "/usr/bin/make",
