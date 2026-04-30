@@ -47,6 +47,7 @@ CREATE TABLE dbsync_osinfo (
     os_minor TEXT,
     os_patch TEXT,
     os_build TEXT,
+    os_type TEXT,
     os_platform TEXT,
     os_kernel_name TEXT,
     os_kernel_release TEXT,

@@ -3794,6 +3794,13 @@ components:
       schema:
         type: string
         format: alphanumeric
+    os.type:
+      in: query
+      name: os.type
+      description: "Filter by OS family"
+      schema:
+        type: string
+        format: alphanumeric
     os.platform:
       in: query
       name: os.platform
@@ -3808,6 +3815,27 @@ components:
       schema:
         type: string
         format: alphanumeric_symbols
+    os.major:
+      in: query
+      name: os.major
+      description: "Filter by OS major version"
+      schema:
+        type: string
+        format: numbers
+    os.minor:
+      in: query
+      name: os.minor
+      description: "Filter by OS minor version"
+      schema:
+        type: string
+        format: numbers
+    os.arch:
+      in: query
+      name: os.arch
+      description: "Filter by OS architecture"
+      schema:
+        type: string
+        format: alphanumeric
     older_than:
       in: query
       name: older_than
@@ -3995,8 +4023,12 @@ paths:
         - $ref: '#/components/parameters/statusDeleteAgentParam'
         - $ref: '#/components/parameters/older_than'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.type'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.major'
+        - $ref: '#/components/parameters/os.minor'
+        - $ref: '#/components/parameters/os.arch'
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
@@ -4058,8 +4090,12 @@ paths:
         - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/olderThanParam'
+        - $ref: '#/components/parameters/os.type'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.major'
+        - $ref: '#/components/parameters/os.minor'
+        - $ref: '#/components/parameters/os.arch'
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
@@ -4746,8 +4782,12 @@ paths:
         - $ref: '#/components/parameters/force'
         - $ref: '#/components/parameters/package_type'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.type'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.major'
+        - $ref: '#/components/parameters/os.minor'
+        - $ref: '#/components/parameters/os.arch'
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
@@ -4801,8 +4841,12 @@ paths:
         - $ref: '#/components/parameters/file_path'
         - $ref: '#/components/parameters/installer'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.type'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.major'
+        - $ref: '#/components/parameters/os.minor'
+        - $ref: '#/components/parameters/os.arch'
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
@@ -4854,8 +4898,12 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.type'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.major'
+        - $ref: '#/components/parameters/os.minor'
+        - $ref: '#/components/parameters/os.arch'
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
