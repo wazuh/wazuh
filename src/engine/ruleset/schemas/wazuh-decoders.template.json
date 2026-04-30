@@ -32,49 +32,30 @@
       "description": "Decoder metadata",
       "additionalProperties": false,
       "required": [
-        "module",
         "title",
-        "description",
-        "compatibility",
-        "versions",
         "author",
-        "references"
+        "description"
       ],
       "properties": {
-        "module": { "type": "string" },
         "title": { "type": "string" },
+        "author": { "type": "string" },
+        "date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation date in ISO 8601 date-time format",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+        },
+        "modified": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last modification date in ISO 8601 date-time format",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+        },
         "description": { "type": "string" },
-        "compatibility": { "type": "string" },
-        "versions": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "author": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["name", "date"],
-          "properties": {
-            "name": { "type": "string" },
-            "email": { "type": "string" },
-            "url": { "type": "string" },
-            "date": {
-              "type": "string",
-              "format": "date",
-              "description": "Creation date in ISO 8601 format (YYYY-MM-DD)",
-              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
-            },
-            "modified": {
-              "type": "string",
-              "format": "date",
-              "description": "Last modification date in ISO 8601 format (YYYY-MM-DD)",
-              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
-            }
-          }
-        },
-        "references": {
-          "type": "array",
-          "items": { "type": "string" }
-        }
+        "references": { "type": "array", "items": { "type": "string" } },
+        "documentation": { "type": "string" },
+        "compatibility": { "type": "array", "items": { "type": "string" } },
+        "supports": { "type": "array", "items": { "type": "string" } }
       }
     },
     "definitions": {
