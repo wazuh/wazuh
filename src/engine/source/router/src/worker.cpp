@@ -4,6 +4,7 @@
 #include <base/logging.hpp>
 #include <base/process.hpp>
 #include <base/utils/timeUtils.hpp>
+#include <base/utils/generator.hpp>
 #include <fastmetrics/registry.hpp>
 #include <rawevtindexer/iraweventindexer.hpp>
 
@@ -12,11 +13,14 @@ namespace router
 
 namespace
 {
-std::string makeRawIndexPayload(const IngestEvent& queuedEvent, const std::string& timestamp)
+std::string makeRawIndexPayload(const IngestEvent& queuedEvent,
+                                const std::string& timestamp,
+                                const std::string& eventId)
 {
     json::Json rawDoc(*queuedEvent.first);
     rawDoc.setString(timestamp, "/@timestamp");
     rawDoc.setString(queuedEvent.second, "/event/original");
+    rawDoc.setString(eventId, "/wazuh/event/id");
     return rawDoc.str();
 }
 } // namespace
@@ -58,16 +62,18 @@ void RouterWorker::start()
                 try
                 {
                     const auto timestamp = base::utils::time::getCurrentISO8601();
+                    const auto eventId   = base::utils::generators::generateUUIDv4();
 
                     // Raw indexing (now throttled by queue drain)
                     if (m_rawIndexer && m_rawIndexer->isEnabled())
                     {
-                        m_rawIndexer->index(makeRawIndexPayload(queuedEvent, timestamp));
+                        m_rawIndexer->index(makeRawIndexPayload(queuedEvent, timestamp, eventId));
                     }
 
                     // Parse + route to pipeline
                     auto event = base::eventParsers::parseLegacyEvent(queuedEvent.second, *queuedEvent.first);
                     event->setString(timestamp, "/@timestamp");
+                    event->setString(eventId, "/wazuh/event/id");
                     m_router->ingest(std::move(event));
 
                     // Track processed events (hot path: direct atomic access ~3ns)
