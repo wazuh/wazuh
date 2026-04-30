@@ -148,7 +148,7 @@ TEST_F(EnvironmentBuilderFixture, MakeControllerThrowsOnBuilderExpired)
 
     builder.reset();
 
-    EXPECT_THROW(eBuilder.makeController(validPolicyName), std::runtime_error);
+    EXPECT_THROW(eBuilder.makeController(validPolicyName, true), std::runtime_error);
 }
 
 TEST_F(EnvironmentBuilderFixture, CreateMultipleEnvironments)

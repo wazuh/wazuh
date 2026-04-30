@@ -92,9 +92,9 @@ public:
     }
 
     /**
-     * @copydoc IAssetBuilder::clearAvailableKvdbs
+     * @copydoc IAssetBuilder::clearIntegrationData
      */
-    void clearAvailableKvdbs() override { m_buildCtx->context().integration.availableKvdbs = std::nullopt; }
+    void clearIntegrationData() override { m_buildCtx->context().integration = {}; }
 };
 
 } // namespace builder::policy

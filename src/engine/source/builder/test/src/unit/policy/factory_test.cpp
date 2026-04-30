@@ -1693,7 +1693,7 @@ public:
         (void)kvdbs; // no-op
     }
 
-    void clearAvailableKvdbs() override {}
+    void clearIntegrationData() override {}
 
 private:
     mutable builder::builders::Context m_ctx {};

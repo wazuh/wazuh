@@ -42,7 +42,7 @@ public:
            const std::shared_ptr<builders::RegistryType>& registry,
            const std::shared_ptr<schemf::IValidator>& schema,
            const std::shared_ptr<IAllowedFields>& allowedFields,
-           const bool isTestMode = false);
+           const bool isTestMode);
 
     /**
      * @copydoc IPolicy::name
