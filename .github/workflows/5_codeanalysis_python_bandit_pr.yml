@@ -18,6 +18,7 @@ env:
 
 jobs:
   bandit-scan:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: wz-linux-amd64
     steps:
       - name: Checkout repo

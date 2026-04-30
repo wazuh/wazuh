@@ -23,7 +23,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build: 
+  build:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
