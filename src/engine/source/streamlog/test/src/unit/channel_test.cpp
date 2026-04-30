@@ -165,6 +165,16 @@ protected:
         return streamlog::ChannelHandler::create(config, name, mockStore, scheduler, "log");
     }
 
+    // Helper to create a handler with scheduler mock and compression cancellation flag
+    std::shared_ptr<streamlog::ChannelHandler>
+    createHandlerWithScheduler(const std::string& name,
+                               const streamlog::RotationConfig& config,
+                               std::shared_ptr<scheduler::mocks::MockIScheduler> scheduler,
+                               std::shared_ptr<const std::atomic<bool>> compressionShouldRun)
+    {
+        return streamlog::ChannelHandler::create(config, name, mockStore, scheduler, "log", compressionShouldRun);
+    }
+
     // Helper to create test file with content
     void createTestFile(const std::string& filePath, const std::string& content = "test content")
     {
@@ -2159,7 +2169,7 @@ TEST_F(ChannelHandlerTest, StorePersistencePreviousFileNotFound)
 
 // ============= RETENTION POLICY TESTS =============
 
-// Test maxFiles retention: create several files in the channel directory, verify oldest are deleted
+// Test maxFiles retention: create several files in the channHeel directory, verify oldest are deleted
 TEST_F(ChannelHandlerTest, RetentionMaxFilesDeletesOldest)
 {
     auto config = defaultConfig;
@@ -2877,4 +2887,163 @@ TEST_F(ChannelHandlerTest, CompressionFailureStillUnregistersInFlight)
 
     writer.reset();
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
+}
+
+// ============================================================================
+// Compression cancellation (shouldRun flag) tests
+// ============================================================================
+
+TEST_F(ChannelHandlerTest, CompressionCancelledWhenShouldRunIsFalse)
+{
+    // Verify that when the shouldRun flag is set to false, compression tasks
+    // are cancelled: the .gz file is NOT produced and the original .log is preserved.
+    using namespace ::testing;
+
+    auto shouldRun = std::make_shared<std::atomic<bool>>(true);
+
+    auto config = defaultConfig;
+    config.shouldCompress = true;
+    config.compressionLevel = 5;
+    config.maxSize = 1 << 20; // 1 MB
+    config.pattern = "${YYYY}-${MM}-${DD}-${name}-${counter}.log";
+
+    auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+
+    // Capture scheduled tasks instead of executing immediately.
+    std::vector<scheduler::TaskConfig> capturedTasks;
+    EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
+        .Times(AtLeast(1))
+        .WillRepeatedly(
+            [&capturedTasks](std::string_view, scheduler::TaskConfig&& taskConfig)
+            { capturedTasks.push_back(std::move(taskConfig)); });
+
+    auto handler = createHandlerWithScheduler("cancel-test", config, mockScheduler, shouldRun);
+    auto writer = handler->createWriter();
+
+    // Trigger rotation by exceeding maxSize.
+    const std::string largeMessage(100000, 'X');
+    for (int i = 0; i < 12; ++i)
+    {
+        (*writer)(largeMessage + std::to_string(i));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    ASSERT_GE(capturedTasks.size(), 1u) << "Expected at least one compression task to be scheduled";
+
+    // Cancel BEFORE executing the captured tasks.
+    shouldRun->store(false, std::memory_order_relaxed);
+
+    for (auto& task : capturedTasks)
+    {
+        task.taskFunction();
+    }
+
+    // After cancellation, .gz files should NOT have been produced.
+    // Original .log files should still exist.
+    size_t gzCount = 0;
+    size_t logCount = 0;
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(tmpDir))
+    {
+        if (!entry.is_regular_file())
+            continue;
+        auto name = entry.path().filename().string();
+        if (name.find("cancel-test") == std::string::npos)
+            continue;
+        if (entry.path().extension() == ".gz")
+            ++gzCount;
+        else if (entry.path().extension() == ".log")
+            ++logCount;
+    }
+
+    EXPECT_EQ(gzCount, 0) << "No .gz files should be produced when shouldRun is false";
+    EXPECT_GE(logCount, 1) << "Original .log files must be preserved after cancelled compression";
+}
+
+TEST_F(ChannelHandlerTest, CompressionSucceedsWhenShouldRunIsTrue)
+{
+    // Verify that with shouldRun=true the compression completes normally.
+    using namespace ::testing;
+
+    auto shouldRun = std::make_shared<std::atomic<bool>>(true);
+
+    auto config = defaultConfig;
+    config.shouldCompress = true;
+    config.compressionLevel = 5;
+    config.maxSize = 1 << 20;
+    config.pattern = "${YYYY}-${MM}-${DD}-${name}-${counter}.log";
+
+    auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+
+    EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
+        .Times(AtLeast(1))
+        .WillRepeatedly(
+            [](std::string_view, scheduler::TaskConfig&& taskConfig) { taskConfig.taskFunction(); });
+
+    auto handler = createHandlerWithScheduler("shouldrun-true", config, mockScheduler, shouldRun);
+    auto writer = handler->createWriter();
+
+    const std::string largeMessage(100000, 'A');
+    for (int i = 0; i < 12; ++i)
+    {
+        (*writer)(largeMessage + std::to_string(i));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    size_t gzCount = 0;
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(tmpDir))
+    {
+        if (entry.is_regular_file() && entry.path().extension() == ".gz"
+            && entry.path().filename().string().find("shouldrun-true") != std::string::npos)
+        {
+            ++gzCount;
+        }
+    }
+
+    EXPECT_GE(gzCount, 1) << "At least one .gz file should be produced when shouldRun is true";
+}
+
+TEST_F(ChannelHandlerTest, CompressionWorksWithNullShouldRun)
+{
+    // Verify that when no shouldRun flag is provided (null), compression still
+    // completes normally via the internal fallback.
+    using namespace ::testing;
+
+    auto config = defaultConfig;
+    config.shouldCompress = true;
+    config.compressionLevel = 5;
+    config.maxSize = 1 << 20;
+    config.pattern = "${YYYY}-${MM}-${DD}-${name}-${counter}.log";
+
+    auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+
+    EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
+        .Times(AtLeast(1))
+        .WillRepeatedly(
+            [](std::string_view, scheduler::TaskConfig&& taskConfig) { taskConfig.taskFunction(); });
+
+    // No compressionShouldRun passed → null → fallback to static alwaysRun.
+    auto handler = createHandlerWithScheduler("null-shouldrun", config, mockScheduler);
+    auto writer = handler->createWriter();
+
+    const std::string largeMessage(100000, 'B');
+    for (int i = 0; i < 12; ++i)
+    {
+        (*writer)(largeMessage + std::to_string(i));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    size_t gzCount = 0;
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(tmpDir))
+    {
+        if (entry.is_regular_file() && entry.path().extension() == ".gz"
+            && entry.path().filename().string().find("null-shouldrun") != std::string::npos)
+        {
+            ++gzCount;
+        }
+    }
+
+    EXPECT_GE(gzCount, 1) << ".gz files should be produced even without a shouldRun flag (fallback)";
 }

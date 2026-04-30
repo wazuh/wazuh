@@ -169,7 +169,7 @@ streamlog/
     │ +ensureAndGetWriter() │         │  m_scheduler (wp)   │
   │ +hasChannel()    │              │ ──────────────────  │
   │ +getConfig()     │              │ +create() [factory] │
-  │ +cleanup()       │              │ +createWriter()     │
+  │ +requestShutdown()│              │ +createWriter()     │
   └──────────────────┘              │ -workerThreadFunc() │
                                     │ -needsRotation()    │
   ┌──────────────────┐              │ -rotateFile()       │

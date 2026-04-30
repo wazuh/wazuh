@@ -266,6 +266,53 @@ TEST_F(WIndexerConnectorTest, ConcurrentIndexingAndShutdown)
     SUCCEED();
 }
 
+// Test requestShutdown is callable and is non-destructive
+TEST_F(WIndexerConnectorTest, RequestShutdownIsNonDestructive)
+{
+    wiconnector::Config config;
+    config.hosts = {"http://localhost:9200"};
+    config.username = "admin";
+    config.password = "admin";
+
+    wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
+
+    // requestShutdown only sets a flag; should not throw and should not destroy the connector
+    EXPECT_NO_THROW({ connector.requestShutdown(); });
+
+    // Indexing should still be possible after requestShutdown (only the destructive shutdown
+    // resets the underlying async connector).
+    EXPECT_NO_THROW({ connector.index("test-index", R"({"field": "value"})"); });
+}
+
+// Test that requestShutdown followed by shutdown works cleanly
+TEST_F(WIndexerConnectorTest, RequestShutdownThenShutdown)
+{
+    wiconnector::Config config;
+    config.hosts = {"http://localhost:9200"};
+    config.username = "admin";
+    config.password = "admin";
+
+    wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
+
+    EXPECT_NO_THROW({ connector.requestShutdown(); });
+    EXPECT_NO_THROW({ connector.shutdown(); });
+}
+
+// Test that requestShutdown is idempotent (safe to call multiple times)
+TEST_F(WIndexerConnectorTest, RequestShutdownIdempotent)
+{
+    wiconnector::Config config;
+    config.hosts = {"http://localhost:9200"};
+    config.username = "admin";
+    config.password = "admin";
+
+    wiconnector::WIndexerConnector connector(config, logFunction, maxHitsPerRequest);
+
+    EXPECT_NO_THROW({ connector.requestShutdown(); });
+    EXPECT_NO_THROW({ connector.requestShutdown(); });
+    EXPECT_NO_THROW({ connector.requestShutdown(); });
+}
+
 // Integration-style test (will be skipped if no real indexer available)
 TEST_F(WIndexerConnectorTest, DISABLED_IntegrationTest)
 {

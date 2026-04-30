@@ -1,6 +1,7 @@
 #ifndef GEO_MANAGER_HPP
 #define GEO_MANAGER_HPP
 
+#include <atomic>
 #include <map>
 #include <memory>
 #include <shared_mutex>
@@ -34,6 +35,9 @@ private:
 
     std::shared_ptr<store::IStore> m_store;    ///< The store used to store the MMDB hash.
     std::shared_ptr<IDownloader> m_downloader; ///< The downloader used to download the MMDB database.
+
+    std::shared_ptr<std::atomic<bool>> m_shouldRun {std::make_shared<std::atomic<bool>>(
+        true)}; ///< Flag for graceful shutdown; false signals sync operations to stop.
 
     /**
      * @brief Upsert the internal store entry for a local database (computes hash from file).
@@ -108,6 +112,16 @@ public:
      * @copydoc IManager::remoteUpsert
      */
     void remoteUpsert(const std::string& manifestUrl, const std::string& cityPath, const std::string& asnPath) override;
+
+    /**
+     * @copydoc IManager::requestShutdown
+     */
+    void requestShutdown() override;
+
+    /**
+     * @brief Get a shared pointer to the should-run flag for sharing with the downloader.
+     */
+    std::shared_ptr<const std::atomic<bool>> shouldRunFlag() const { return m_shouldRun; }
 
     /**
      * @copydoc IManager::getLocator

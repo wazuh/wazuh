@@ -60,6 +60,12 @@ enum class IndexResourceType
     POLICY
 };
 
+/**
+ * @brief Constant that keeps the value of the base path where engine-output queue is going to be
+ *
+ */
+const std::string BASEQUEUEPATH = "queue/";
+
 IndexResourceType fromIndexName(std::string_view indexName)
 {
     // Static regex patterns compiled once
@@ -285,7 +291,7 @@ WIndexerConnector::WIndexerConnector(std::string_view jsonOssecConfig, const std
     }
 
     const auto logFunction = logging::createStandaloneLogFunction();
-    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonParsed, "engine", logFunction);
+    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonParsed, "engine-output", logFunction, BASEQUEUEPATH);
 }
 
 WIndexerConnector::WIndexerConnector(const Config& config,
@@ -308,15 +314,23 @@ WIndexerConnector::WIndexerConnector(const Config& config,
         throw std::runtime_error("Invalid JSON configuration for IndexerConnector");
     }
 
-    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonConfig, "engine", logFunction);
+    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonConfig, "engine-output", logFunction, BASEQUEUEPATH);
 }
 
 WIndexerConnector::~WIndexerConnector() = default;
 
 void WIndexerConnector::shutdown()
 {
-    std::unique_lock lock(m_mutex);
+    LOG_INFO("[indexer-connector] Shutdown initiated");
+    m_shutdownRequested.store(true, std::memory_order_relaxed);
+    std::unique_lock lock(m_mutex); // Wait for any in-flight operations (syncs)
     m_indexerConnectorAsync.reset();
+}
+
+void WIndexerConnector::requestShutdown()
+{
+    m_shutdownRequested.store(true, std::memory_order_relaxed);
+    LOG_INFO("[indexer-connector] Shutdown requested");
 }
 
 uint64_t WIndexerConnector::getQueueSize()
@@ -406,6 +420,11 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
 
     do
     {
+        if (m_shutdownRequested.load(std::memory_order_relaxed))
+        {
+            throw IndexerConnectorException("Shutdown requested during policy retrieval");
+        }
+
         nlohmann::json hits = m_indexerConnectorAsync->search(pit, m_maxHitsPerRequest, query, sort, searchAfter);
 
         if (!searchAfter.has_value())
@@ -800,6 +819,14 @@ std::size_t WIndexerConnector::queryByBatches(std::string_view indexName,
         if (hitArray.size() < effectiveBatchSize)
         {
             break;
+        }
+
+        if (m_shutdownRequested.load(std::memory_order_relaxed))
+        {
+            // Throw to ensure callers (e.g. IOC sync) discard the partial result instead of
+            // promoting an incomplete dataset (e.g. via hot-swap).
+            throw IndexerConnectorException(
+                fmt::format("Shutdown requested during batched query after {} processed docs", processedDocs));
         }
 
         searchAfter = getSearchAfter(hits);

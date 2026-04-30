@@ -142,6 +142,11 @@ public:
     remoteUpsert(const std::string& manifestUrl, const std::string& cityPath, const std::string& asnPath) = 0;
 
     /**
+     * @brief Requests graceful shutdown for in-flight or future sync operations.
+     */
+    virtual void requestShutdown() = 0;
+
+    /**
      * @brief Get a locator for querying the given type of database.
      *
      * @param type The type of the database.

@@ -17,7 +17,9 @@ const base::Name REMOTE_CONF_CACHE_DOC {"remote-config/engine-cnf/0"};
 }
 
 ConfRemoteManager::ConfRemoteManager(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerConnector,
-                                     const std::shared_ptr<store::IStore>& store, const size_t attempts, const size_t waitSeconds)
+                                     const std::shared_ptr<store::IStore>& store,
+                                     const size_t attempts,
+                                     const size_t waitSeconds)
     : m_indexerConnector(indexerConnector)
     , m_store(store)
     , m_attempts(attempts)
@@ -31,19 +33,32 @@ ConfRemoteManager::ConfRemoteManager(const std::shared_ptr<wiconnector::IWIndexe
 
 void ConfRemoteManager::synchronize()
 {
+    if (m_shutdownRequested.load(std::memory_order_relaxed))
+    {
+        LOG_INFO("[ConfRemote] Synchronization aborted before start");
+        return;
+    }
+
     json::Json remoteSettings;
 
     try
     {
         auto connector = base::utils::lockWeakPtr(m_indexerConnector, "IndexerConnector");
         remoteSettings = base::utils::executeWithRetry([&connector]() { return connector->getEngineRemoteConfig(); },
-                                                       "synchronize",
-                                                       "ConfRemoteManager",
+                                                       "ConfRemote",
+                                                       "Checking remote settings from indexer",
                                                        m_attempts,
-                                                       m_waitSeconds);
+                                                       m_waitSeconds,
+                                                       m_shutdownRequested);
     }
     catch (const std::exception& e)
     {
+        if (m_shutdownRequested.load(std::memory_order_relaxed))
+        {
+            LOG_INFO("[ConfRemote] Synchronization aborted during remote fetch");
+            return;
+        }
+
         LOG_WARNING("Failed to synchronize remote settings. Keeping current state.");
         LOG_DEBUG("Synchronize failure detail: {}.", e.what());
         return;
@@ -61,6 +76,12 @@ void ConfRemoteManager::synchronize()
 
     for (const auto& [key, value] : fields.value())
     {
+        if (m_shutdownRequested.load(std::memory_order_relaxed))
+        {
+            LOG_INFO("[ConfRemote] Synchronization aborted during settings application");
+            return;
+        }
+
         const auto it = m_settings.find(key);
         if (it == m_settings.end() || !it->second.onConfigChange)
         {
@@ -100,6 +121,12 @@ void ConfRemoteManager::synchronize()
             LOG_WARNING("Failed to persist remote settings cache: {}", e.what());
         }
     }
+}
+
+void ConfRemoteManager::requestShutdown()
+{
+    m_shutdownRequested.store(true, std::memory_order_relaxed);
+    LOG_INFO("[ConfRemote] Shutdown requested");
 }
 
 json::Json ConfRemoteManager::addTrigger(std::string_view key,

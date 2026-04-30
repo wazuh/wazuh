@@ -6,14 +6,15 @@ metadata:
     Determines whether unclassified events should be indexed based on policy configuration.
     This filter returns true if and only if:
     1. The policy flag 'indexUnclassifiedEvents' is enabled (configured at build time)
-    2. The target field is an array containing exactly 1 element
+    2. The target field is exactly 'wazuh.integration.decoders'
+    3. 'wazuh.integration.decoders' is an array containing exactly 1 element
 
     This helper is used in output routing to decide whether to index events that have only
     one decoder (unclassified events) when the policy allows it. If the policy flag is
     disabled or the array has a different size, the validation fails.
 
-    Note: This helper does not accept any arguments and depends on the policy context
-    configured at build time.
+    Note: This helper does not accept any arguments, rejects any target field other than
+    'wazuh.integration.decoders', and depends on the policy context configured at build time.
   keywords:
     - array
     - policy
@@ -29,6 +30,7 @@ arguments: {}
 target_field:
   type: array
   generate: all
+  path: wazuh.integration.decoders
 
 # Note: These tests assume the policy flag 'indexUnclassifiedEvents' is enabled in the test environment.
 # In production, this flag is configured per policy and evaluated at build time.

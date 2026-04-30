@@ -34,11 +34,12 @@ Server::Server(const std::string& id, size_t payloadMaxBytes, bool enableDetaile
             catch (std::exception& e)
             {
                 LOG_ERROR_L(excptFnName.c_str(),
-                            fmt::format("Server {} uncaught route handler exception: {}", id, e.what()));
+                            fmt::format("[Server] {} uncaught route handler exception: {}", id, e.what()));
             }
             catch (...)
             {
-                LOG_ERROR_L(excptFnName.c_str(), fmt::format("Server {} uncaught route handler unknown exception", id));
+                LOG_ERROR_L(excptFnName.c_str(),
+                            fmt::format("[Server] {} uncaught route handler unknown exception", id));
             }
 
             res.status = httplib::StatusCode::InternalServerError_500;
@@ -101,7 +102,7 @@ Server::Server(const std::string& id, size_t payloadMaxBytes, bool enableDetaile
     {
         auto loggerFnName = fmt::format("Server::Server({})::set_logger", id);
         m_srv->set_logger([id, loggerFnName](const auto& /*req*/, const auto& /*res*/)
-                          { LOG_TRACE_L(loggerFnName.c_str(), "Server {} request received", id); });
+                          { LOG_TRACE_L(loggerFnName.c_str(), "[Server] {} request received", id); });
     }
 }
 
@@ -138,10 +139,10 @@ void Server::addRoute(Method method,
     }
     catch (const std::exception& e)
     {
-        throw std::runtime_error(fmt::format("Server {} failed to add route: {}", m_id, e.what()));
+        throw std::runtime_error(fmt::format("[Server] {} failed to add route: {}", m_id, e.what()));
     }
 
-    LOG_DEBUG("Server {} added route: {} {}", m_id, methodToStr(method), route);
+    LOG_DEBUG("[Server] {} added route: {} {}", m_id, methodToStr(method), route);
 }
 
 void Server::applyPayloadLimit()
@@ -155,26 +156,26 @@ bool Server::bindAndListen()
 {
     if (m_socketPath.empty())
     {
-        LOG_ERROR("Server {} cannot bind and listen: empty socket path", m_id);
+        LOG_ERROR("[Server] {} cannot bind and listen: empty socket path", m_id);
         return false;
     }
 
     if (!m_srv->bind_to_port(m_socketPath.string(), 80))
     {
-        LOG_ERROR("Server {} failed to bind to socket {}", m_id, m_socketPath.string());
+        LOG_ERROR("[Server] {} failed to bind to socket {}", m_id, m_socketPath.string());
         return false;
     }
 
     if (chmod(m_socketPath.c_str(), 0660) != 0)
     {
-        LOG_WARNING("Server {} failed to change socket permissions: {} ({})", m_id, std::strerror(errno), errno);
+        LOG_WARNING("[Server] {} failed to change socket permissions: {} ({})", m_id, std::strerror(errno), errno);
     }
     else
     {
-        LOG_TRACE("Server {} changed socket permissions to 660 for {}", m_id, m_socketPath.string());
+        LOG_TRACE("[Server] {} changed socket permissions to 660 for {}", m_id, m_socketPath.string());
     }
 
-    LOG_DEBUG("Server {} bound to socket {}", m_id, m_socketPath.string());
+    LOG_DEBUG("[Server] {} bound to socket {}", m_id, m_socketPath.string());
 
     return m_srv->listen_after_bind();
 }
@@ -202,7 +203,7 @@ void Server::start(const std::filesystem::path& socketPath, bool useThread)
     if (std::filesystem::exists(socketPath.string()))
     {
         std::filesystem::remove(socketPath);
-        LOG_TRACE("Server {} removed existing socket file {}", m_id, socketPath.string());
+        LOG_TRACE("[Server] {} removed existing socket file {}", m_id, socketPath.string());
     }
     m_socketPath = socketPath;
 
@@ -237,20 +238,20 @@ void Server::start(const std::filesystem::path& socketPath, bool useThread)
             {
                 m_thread.join();
             }
-            throw std::runtime_error(fmt::format("Server {} failed to start at {}", m_id, socketPath.string()));
+            throw std::runtime_error(fmt::format("[Server] {} failed to start at {}", m_id, socketPath.string()));
         }
 
         auto tid = m_thread.get_id();
         std::stringstream ss;
         ss << tid;
-        LOG_DEBUG("Server {} started in thread {} at {}", m_id, ss.str(), socketPath.string());
+        LOG_DEBUG("[Server] {} started in thread {} at {}", m_id, ss.str(), socketPath.string());
     }
     else
     {
         LOG_INFO("Starting server {} at {}", m_id, socketPath.string());
         if (!bindAndListen())
         {
-            throw std::runtime_error(fmt::format("Server {} failed to start at {}", m_id, socketPath.string()));
+            throw std::runtime_error(fmt::format("[Server] {} failed to start at {}", m_id, socketPath.string()));
         }
     }
 }
@@ -274,15 +275,15 @@ void Server::stop() noexcept
         if (!m_socketPath.empty())
         {
             std::filesystem::remove(m_socketPath);
-            LOG_TRACE("Server {} removed socket file {}", m_id, m_socketPath.string());
+            LOG_TRACE("[Server] {} removed socket file {}", m_id, m_socketPath.string());
             m_socketPath.clear();
         }
 
-        LOG_INFO("Server {} stopped", m_id);
+        LOG_INFO("[Server] {} stopped", m_id);
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR("Server {} error while stopping: {}", m_id, e.what());
+        LOG_ERROR("[Server] {} error while stopping: {}", m_id, e.what());
     }
 }
 

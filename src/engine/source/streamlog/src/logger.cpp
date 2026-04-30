@@ -33,10 +33,10 @@ void LogManager::registerLog(const std::string& name, const RotationConfig& cfg,
     }
 
     // Create a new ChannelHandler instance and register it
-    auto handler = ChannelHandler::create(cfg, name, m_store, m_scheduler, ext);
+    auto handler = ChannelHandler::create(cfg, name, m_store, m_scheduler, ext, m_compressionShouldRun);
     m_channels[name] = std::move(handler);
 
-    LOG_DEBUG("Log channel '{}' registered successfully", name);
+    LOG_DEBUG("[Stream logger] Log channel '{}' registered successfully", name);
 }
 
 /**
@@ -78,9 +78,9 @@ void LogManager::updateConfig(const std::string& name, const RotationConfig& cfg
     }
 
     // Replace the existing channel handler with a new one
-    it->second = ChannelHandler::create(validatedConfig, name, m_store, m_scheduler, ext);
+    it->second = ChannelHandler::create(validatedConfig, name, m_store, m_scheduler, ext, m_compressionShouldRun);
 
-    LOG_DEBUG("Log channel '{}' updated successfully", name);
+    LOG_DEBUG("[Stream logger] Log channel '{}' updated successfully", name);
 }
 
 /**
@@ -151,7 +151,7 @@ void LogManager::destroyChannel(const std::string& name)
     // Remove the channel from the map
     m_channels.erase(it);
 
-    LOG_DEBUG("Log channel '{}' destroyed successfully", name);
+    LOG_DEBUG("[Stream logger] Log channel '{}' destroyed successfully", name);
 }
 
 RotationConfig& LogManager::isolatedBasePath(const std::string& channelName, RotationConfig& config)
@@ -179,8 +179,10 @@ RotationConfig& LogManager::isolatedBasePath(const std::string& channelName, Rot
     return config;
 }
 
-void LogManager::cleanup()
+void LogManager::requestShutdown()
 {
+    m_compressionShouldRun->store(false, std::memory_order_relaxed);
+    LOG_INFO("[Stream logger] Shutdown requested.");
     std::unique_lock lock(m_channelsMutex);
     m_channels.clear();
 }
@@ -208,9 +210,9 @@ LogManager::ensureAndGetWriter(const std::string& name, const RotationConfig& cf
         {
             auto config = cfg;
             isolatedBasePath(name, config);
-            auto newHandler = ChannelHandler::create(config, name, m_store, m_scheduler, ext);
+            auto newHandler = ChannelHandler::create(config, name, m_store, m_scheduler, ext, m_compressionShouldRun);
             it = m_channels.emplace(name, std::move(newHandler)).first;
-            LOG_DEBUG("Log channel '{}' created on demand", name);
+            LOG_DEBUG("[Stream logger] Log channel '{}' created on demand", name);
         }
         handler = it->second;
     }

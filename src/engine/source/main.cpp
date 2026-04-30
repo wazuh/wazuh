@@ -322,7 +322,7 @@ int main(int argc, char* argv[])
         {
             auto kvdbPath = std::filesystem::path(confManager.get<std::string>(conf::key::KVDB_IOC_PATH));
             IOCkvdb = std::make_shared<ioc::kvdb::KVDBManager>(kvdbPath, store);
-            LOG_INFO("KVDB IOC initialized.");
+            LOG_INFO("IOC initialized.");
             // Initialize required DBs for iocs
             ioc::kvdb::details::initializeDBs(IOCkvdb);
         }
@@ -332,7 +332,8 @@ int main(int argc, char* argv[])
             auto geoDownloadTimeout = static_cast<long>(confManager.get<size_t>(conf::key::GEO_DOWNLOAD_TIMEOUT));
             auto geoDownloader = std::make_shared<geo::Downloader>(geoDownloadTimeout);
             geoManager = std::make_shared<geo::Manager>(store, geoDownloader);
-            LOG_INFO("Geo initialized.");
+            geoDownloader->setShouldRun(geoManager->shouldRunFlag());
+            LOG_INFO("GEO initialized.");
         }
 
         // Fast Metrics
@@ -380,6 +381,14 @@ int main(int argc, char* argv[])
             LOG_INFO("HLP initialized.");
         }
 
+        // Scheduler -> Should be terminated before all modules to ensure any scheduled are stopped before shutdown
+        {
+            scheduler = std::make_shared<scheduler::Scheduler>();
+            scheduler->start();
+            LOG_INFO("Scheduler initialized and started.");
+            exitHandler.add([scheduler]() { scheduler->stop(); });
+        }
+
         // Check if event processing is enabled
         const bool enableProcessing = confManager.get<bool>(conf::key::SERVER_ENABLE_EVENT_PROCESSING);
 
@@ -418,7 +427,10 @@ int main(int argc, char* argv[])
 
                 // Create indexer connector with enhanced configuration
                 indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf.str(), maxHitsPerRequest);
+                // Register destructive shutdown first so it executes (LIFO) AFTER requestShutdown,
+                // ensuring in-flight pagination loops abort and release shared locks before destroy.
                 exitHandler.add([indexerConnector]() { indexerConnector->shutdown(); });
+                exitHandler.add([indexerConnector]() { indexerConnector->requestShutdown(); });
 
                 // Register pull metric for indexer queue (output/egress)
                 std::weak_ptr<wiconnector::WIndexerConnector> wIndexer = indexerConnector;
@@ -468,30 +480,12 @@ int main(int argc, char* argv[])
             LOG_INFO("Indexer Connector DISABLED - events will not be indexed.");
         }
 
-        // Scheduler
-        {
-            scheduler = std::make_shared<scheduler::Scheduler>();
-            scheduler->start();
-            LOG_INFO("Scheduler initialized and started.");
-            exitHandler.add(
-                [scheduler, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
-                {
-                    scheduler->stop();
-                    LOG_INFO_L(functionName.c_str(), "Scheduler stopped.");
-                });
-        }
-
         // Stream log for alerts an archive
         if (enableProcessing)
         {
 
             streamLogger = std::make_shared<streamlog::LogManager>(store, scheduler);
-            exitHandler.add(
-                [streamLogger, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
-                {
-                    streamLogger->cleanup();
-                    LOG_INFO_L(functionName.c_str(), "Stream logger cleaned up.");
-                });
+            exitHandler.add([streamLogger]() { streamLogger->requestShutdown(); });
 
             LOG_INFO("Stream logger initialized.");
         }
@@ -552,6 +546,8 @@ int main(int argc, char* argv[])
             auto retryInterval = confManager.get<size_t>(conf::key::REMOTE_CONF_INDEXER_CONNECTOR_RETRY_INTERVAL);
             remoteConf =
                 std::make_shared<confremote::ConfRemoteManager>(indexerConnector, store, maxRetries, retryInterval);
+
+            exitHandler.add([remoteConf]() { remoteConf->requestShutdown(); });
         }
 
         // Raw Event Indexer
@@ -594,7 +590,7 @@ int main(int argc, char* argv[])
             orchestrator = std::make_shared<router::Orchestrator>(config);
             orchestrator->start();
 
-            exitHandler.add([orchestrator]() { orchestrator->cleanup(); });
+            exitHandler.add([orchestrator]() { orchestrator->requestShutdown(); });
             const auto epsDescription = qEps > 0 ? std::to_string(qEps) : std::string("unlimited");
             LOG_INFO("Orchestrator initialized and started with event queue size: {}, events per second: {}.",
                      qSize,
@@ -609,6 +605,8 @@ int main(int argc, char* argv[])
             cmSyncService = std::make_shared<cm::sync::CMSync>(
                 indexerConnector, cmCrudService, store, orchestrator, maxRetries, retryInterval);
             LOG_INFO("Content Manager Sync Service initialized.");
+
+            exitHandler.add([cmSyncService]() { cmSyncService->requestShutdown(); });
 
             // Add sync to scheduler
             scheduler->scheduleTask(
@@ -632,6 +630,8 @@ int main(int argc, char* argv[])
             iocSyncService = std::make_shared<ioc::sync::IocSync>(
                 indexerConnector, IOCkvdb, store, maxRetries, retryInterval, iocSyncBatchSize);
             LOG_INFO("IOC Sync Service initialized.");
+
+            exitHandler.add([iocSyncService]() { iocSyncService->requestShutdown(); });
 
             // Add IOC sync to scheduler
             auto iocSyncInterval = confManager.get<std::size_t>(conf::key::IOC_SYNC_INTERVAL);
@@ -661,6 +661,8 @@ int main(int argc, char* argv[])
         // Geo sync
         {
             auto geoSyncInterval = confManager.get<std::size_t>(conf::key::GEO_SYNC_INTERVAL);
+            exitHandler.add([geoManager]() { geoManager->requestShutdown(); });
+
             if (geoSyncInterval > 0)
             {
                 auto geoDbPath = confManager.get<std::string>(conf::key::GEO_DB_PATH);
@@ -733,7 +735,7 @@ int main(int argc, char* argv[])
                 serverApiPayloadMaxBytes = 0;
             }
             apiServer =
-                std::make_shared<httpsrv::Server>("API Server", static_cast<size_t>(serverApiPayloadMaxBytes), true);
+                std::make_shared<httpsrv::Server>("API services", static_cast<size_t>(serverApiPayloadMaxBytes), true);
 
             // API
             exitHandler.add(
@@ -828,7 +830,7 @@ int main(int argc, char* argv[])
         // HTTP enriched events server
         if (enableProcessing)
         {
-            engineRemoteServer = std::make_shared<httpsrv::Server>("Events Server", 0, false);
+            engineRemoteServer = std::make_shared<httpsrv::Server>("Event services", 0, false);
 
             exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
 
@@ -856,10 +858,20 @@ int main(int argc, char* argv[])
 
         if (enableProcessing)
         {
-            // Synchronize on startup
-            cmSyncService->synchronize();
-            iocSyncService->synchronize();
-            remoteConf->synchronize();
+            // Async Synchronize on startup
+            scheduler->scheduleTask("initial-sync",
+                                    scheduler::TaskConfig {.interval = 0,
+                                                           .CPUPriority = 0,
+                                                           .timeout = 0,
+                                                           .taskFunction = [=]()
+                                                           {
+                                                               cmSyncService->synchronize();
+                                                               iocSyncService->synchronize();
+                                                               remoteConf->synchronize();
+                                                               geoManager->remoteUpsert(confManager.get<std::string>(conf::key::GEO_MANIFEST_URL),
+                                                                                      confManager.get<std::string>(conf::key::GEO_DB_PATH) + "/GeoLite2-City.mmdb",
+                                                                                      confManager.get<std::string>(conf::key::GEO_DB_PATH) + "/GeoLite2-ASN.mmdb");
+                                                           }});
 
             while (engineRemoteServer->isRunning())
             {
@@ -871,7 +883,6 @@ int main(int argc, char* argv[])
                 }
             }
             engineRemoteServer.reset();
-            LOG_INFO("Engine remote server stopped.");
         }
         else
         {

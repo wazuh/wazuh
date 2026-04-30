@@ -43,25 +43,9 @@ struct{
 } buff;
 
 /**
- * @brief Represents a single message stored in the event buffer.
- *
- * This structure is used to hold a message that can be either a null-terminated
- * text string or a raw binary data buffer. It pairs a pointer to the data with
- * its explicit size, allowing the system to handle binary content safely
- * without truncation at null bytes.
- */
-typedef struct {
-    /** @brief Pointer to the dynamically allocated message data. */
-    void *data;
-
-    /** @brief The exact size of the data in bytes. */
-    size_t size;
-} buffered_message;
-
-/**
  * @brief The agent's main event buffer.
  */
-static buffered_message *buffer;
+STATIC buffered_message *buffer;
 
 static pthread_mutex_t mutex_lock;
 static pthread_cond_t cond_no_empty;
@@ -147,16 +131,19 @@ int buffer_append(const char *msg, ssize_t msg_len) {
         return(-1);
 
     } else {
-        size_t size_to_alloc;
-        if (msg_len < 0) { // It's a null-terminated string.
-            size_to_alloc = strlen(msg) + 1;
-        } else { // It's a binary buffer with a known length.
-            size_to_alloc = (size_t)msg_len;
+        size_t payload_size;
+        size_t alloc_size;
+        if (msg_len < 0) {
+            payload_size = strlen(msg);
+            alloc_size = payload_size + 1;
+        } else {
+            payload_size = (size_t)msg_len;
+            alloc_size = payload_size;
         }
 
-        os_malloc(size_to_alloc, buffer[i].data);
-        memcpy(buffer[i].data, msg, size_to_alloc);
-        buffer[i].size = size_to_alloc;
+        os_malloc(alloc_size, buffer[i].data);
+        memcpy(buffer[i].data, msg, alloc_size);
+        buffer[i].size = payload_size;
 
         forward(i, agt->buflength + 1);
         w_cond_signal(&cond_no_empty);
