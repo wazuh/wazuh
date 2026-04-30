@@ -35,7 +35,7 @@ set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
 
 # Mocks
 add_library(wIndexerConnector_mocks INTERFACE)
-target_include_directories(wIndexerConnector_mocks INTERFACE ${TEST_MOCK_DIR})
+target_include_directories(wIndexerConnector_mocks INTERFACE ${TEST_MOCK_DIR} ${INC_DIR})
 target_link_libraries(wIndexerConnector_mocks INTERFACE GTest::gmock wIndexerConnector::iwIndexerConnector)
 add_library(wIndexerConnector::mocks ALIAS wIndexerConnector_mocks)
 
@@ -47,6 +47,7 @@ target_link_libraries(wIndexerConnector_utest
     GTest::gtest_main
     GTest::gmock
     wIndexerConnector::wIndexerConnector
+    wIndexerConnector::mocks
 )
 target_include_directories(wIndexerConnector_utest PRIVATE ${SRC_DIR})
 gtest_discover_tests(wIndexerConnector_utest PROPERTIES RESOURCE_LOCK "rocks_db_lock")
