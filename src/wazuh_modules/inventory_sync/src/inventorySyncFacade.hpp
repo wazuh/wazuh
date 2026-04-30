@@ -34,6 +34,7 @@
 #include <rocksdb/slice.h>
 #include <shared_mutex>
 #include <string>
+#include <unordered_set>
 #include <utility>
 
 constexpr int SINGLE_THREAD_COUNT = 1;
@@ -279,9 +280,14 @@ class InventorySyncFacadeImpl final
             auto agentId = startMsg->agentid() ? startMsg->agentid()->string_view() : std::string_view();
             auto moduleName = startMsg->module_() ? startMsg->module_()->string_view() : std::string_view();
 
-            // Check if agent is locked
+            // VDFirst/VDSync sessions bypass the global all-agents lock (held during shutdown)
+            // but are still blocked by per-agent locks. The feed-update scan takes a per-agent
+            // lock before scanning to prevent new inventory sessions from writing data while
+            // the scan reads it.
             std::string agentIdStr(agentId.data(), agentId.size());
-            if (isAgentLocked(agentIdStr))
+            const std::string moduleNameStr(moduleName.data(), moduleName.size());
+            const bool isVDModule = (moduleNameStr == "syscollector_vd");
+            if (isAgentLocked(agentIdStr, isVDModule))
             {
                 logDebug2(LOGGER_DEFAULT_TAG,
                           "InventorySyncFacade::start: Agent %s is locked, rejecting new session",
@@ -631,12 +637,15 @@ public:
             [this](const Response& res)
             {
                 logDebug2(LOGGER_DEFAULT_TAG, "Indexer queue action...");
-                if (auto sessionIt = m_agentSessions.find(res.context->sessionId); sessionIt == m_agentSessions.end())
                 {
-                    logError(LOGGER_DEFAULT_TAG,
-                             "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                             res.context->sessionId);
-                    return;
+                    std::shared_lock sessionLock(m_agentSessionsMutex);
+                    if (m_agentSessions.find(res.context->sessionId) == m_agentSessions.end())
+                    {
+                        logError(LOGGER_DEFAULT_TAG,
+                                 "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                 res.context->sessionId);
+                        return;
+                    }
                 }
 
                 try
@@ -708,7 +717,7 @@ public:
                                 m_responseDispatcher->sendEndAck(
                                     Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
                                 // Delete Session.
-                                if (m_agentSessions.erase(ctx->sessionId) == 0)
+                                if (eraseSession(ctx->sessionId) == 0)
                                 {
                                     logDebug2(LOGGER_DEFAULT_TAG,
                                               "InventorySyncFacade::start: Session not found, sessionId: %llu",
@@ -750,7 +759,7 @@ public:
                                 m_responseDispatcher->sendEndAck(
                                     Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
                                 // Delete Session.
-                                if (m_agentSessions.erase(ctx->sessionId) == 0)
+                                if (eraseSession(ctx->sessionId) == 0)
                                 {
                                     logDebug2(LOGGER_DEFAULT_TAG,
                                               "InventorySyncFacade::start: Session not found, sessionId: %llu",
@@ -783,7 +792,7 @@ public:
                                 m_responseDispatcher->sendEndAck(
                                     Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
                                 // Delete Session.
-                                if (m_agentSessions.erase(ctx->sessionId) == 0)
+                                if (eraseSession(ctx->sessionId) == 0)
                                 {
                                     logDebug2(LOGGER_DEFAULT_TAG,
                                               "InventorySyncFacade::start: Session not found, sessionId: %llu",
@@ -830,7 +839,7 @@ public:
                                 m_responseDispatcher->sendEndAck(
                                     Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
                                 // Delete Session.
-                                if (m_agentSessions.erase(ctx->sessionId) == 0)
+                                if (eraseSession(ctx->sessionId) == 0)
                                 {
                                     logDebug2(LOGGER_DEFAULT_TAG,
                                               "InventorySyncFacade::start: Session not found, sessionId: %llu",
@@ -948,7 +957,7 @@ public:
                                                              res.context->moduleName);
                         }
 
-                        if (m_agentSessions.erase(res.context->sessionId) == 0)
+                        if (eraseSession(res.context->sessionId) == 0)
                         {
                             logDebug2(LOGGER_DEFAULT_TAG,
                                       "InventorySyncFacade::start: Session not found, sessionId: %llu",
@@ -1088,41 +1097,60 @@ public:
                         {
                             if (VulnerabilityScannerFacade::instance().isInitialized())
                             {
-                                // If the CVE feed initial load is still in progress, block this
-                                // session thread until it completes (or the scanner is stopped).
-                                // The agent stays in Status_Processing — already sent at End-message
-                                // time — so it will not mark its VDFirst flag prematurely.
+                                // On the first manager startup the CVE feed may still be downloading.
+                                // Block here until it's ready so the scan doesn't run against empty data.
+                                // The agent stays in Status_Processing (sent at End-message time) and
+                                // gets Status_Ok once the scan finishes.
                                 if (!VulnerabilityScannerFacade::instance().isFeedReady())
                                 {
-                                    logDebug1(LOGGER_DEFAULT_TAG,
-                                              "InventorySyncFacade: CVE feed not yet loaded — agent %s waiting.",
-                                              res.context->agentId.c_str());
                                     VulnerabilityScannerFacade::instance().waitForFeedReady();
                                 }
 
-                                // Run scan only if the scanner was not stopped during the wait.
+                                // waitForFeedReady() also returns when stop() fires before the feed is ready.
                                 if (VulnerabilityScannerFacade::instance().isFeedReady())
                                 {
-                                    logDebug2(LOGGER_DEFAULT_TAG,
-                                              "InventorySyncFacade: Running vulnerability scanner for agent %s...",
-                                              res.context->agentId.c_str());
-                                    try
+                                    // Skip the VDSync delta scan when feed-update scan is already running — it
+                                    // does a full package scan and covers this agent too. If the feed
+                                    // update had no new CVEs, feed-update scan never starts and we must scan here.
+                                    const bool feedUpdateInProgress =
+                                        VulnerabilityScannerFacade::instance().isFeedUpdateScanInProgress();
+                                    const bool skipScan =
+                                        feedUpdateInProgress && res.context->option == Wazuh::SyncSchema::Option_VDSync;
+
+                                    if (skipScan)
                                     {
-                                        VulnerabilityScannerFacade::instance().runScanner(*m_dataStore, *res.context);
+                                        logInfo(LOGGER_DEFAULT_TAG,
+                                                "InventorySyncFacade: Skipping VDSync scan for agent %s — "
+                                                "feed-update full scan in progress, covers all packages.",
+                                                res.context->agentId.c_str());
                                     }
-                                    catch (const std::exception& e)
+                                    else
                                     {
-                                        logError(LOGGER_DEFAULT_TAG,
-                                                 "InventorySyncFacade: Vulnerability scanner exception for agent "
-                                                 "%s: %s",
-                                                 res.context->agentId.c_str(),
-                                                 e.what());
-                                        m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
-                                                                         res.context->agentId,
-                                                                         res.context->sessionId,
-                                                                         res.context->moduleName);
-                                        m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
-                                        m_agentSessions.erase(res.context->sessionId);
+                                        try
+                                        {
+                                            VulnerabilityScannerFacade::instance().runScanner(*m_dataStore,
+                                                                                              *res.context);
+                                            if (res.context->option == Wazuh::SyncSchema::Option_VDFirst)
+                                            {
+                                                VulnerabilityScannerFacade::instance().registerFeedUpdateCoveredAgent(
+                                                    res.context->agentId);
+                                            }
+                                        }
+                                        catch (const std::exception& e)
+                                        {
+                                            logError(LOGGER_DEFAULT_TAG,
+                                                     "InventorySyncFacade: Vulnerability scanner exception for "
+                                                     "agent %s: %s",
+                                                     res.context->agentId.c_str(),
+                                                     e.what());
+                                            m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
+                                                                             res.context->agentId,
+                                                                             res.context->sessionId,
+                                                                             res.context->moduleName);
+                                            m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
+                                            eraseSession(res.context->sessionId);
+                                            m_sessionCompletedCV.notify_all();
+                                        }
                                     }
                                 }
                                 else
@@ -1156,12 +1184,13 @@ public:
                                     // Delete data from database.
                                     m_dataStore->deleteByPrefix(std::to_string(ctx->sessionId));
                                     // Delete Session.
-                                    if (m_agentSessions.erase(ctx->sessionId) == 0)
+                                    if (eraseSession(ctx->sessionId) == 0)
                                     {
                                         logDebug2(LOGGER_DEFAULT_TAG,
                                                   "InventorySyncFacade::start: Session not found, sessionId: %llu",
                                                   ctx->sessionId);
                                     }
+                                    m_sessionCompletedCV.notify_all();
                                 });
                         }
                         else
@@ -1177,12 +1206,13 @@ public:
                                                              res.context->sessionId,
                                                              res.context->moduleName);
                             m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
-                            if (m_agentSessions.erase(res.context->sessionId) == 0)
+                            if (eraseSession(res.context->sessionId) == 0)
                             {
                                 logDebug2(LOGGER_DEFAULT_TAG,
                                           "InventorySyncFacade::start: Session not found, sessionId: %llu",
                                           res.context->sessionId);
                             }
+                            m_sessionCompletedCV.notify_all();
                         }
                     } // End of else block for non-MetadataDelta/GroupDelta modes
 
@@ -1210,12 +1240,13 @@ public:
                     // Delete data from database.
                     m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
                     // Delete Session.
-                    if (m_agentSessions.erase(res.context->sessionId) == 0)
+                    if (eraseSession(res.context->sessionId) == 0)
                     {
                         logDebug2(LOGGER_DEFAULT_TAG,
                                   "InventorySyncFacade::start: Session not found, sessionId: %llu",
                                   res.context->sessionId);
                     }
+                    m_sessionCompletedCV.notify_all();
 
                     m_indexerConnector->invokePendingCallbacks();
                 }
@@ -1238,12 +1269,13 @@ public:
                     // Delete data from database.
                     m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
                     // Delete Session.
-                    if (m_agentSessions.erase(res.context->sessionId) == 0)
+                    if (eraseSession(res.context->sessionId) == 0)
                     {
                         logDebug2(LOGGER_DEFAULT_TAG,
                                   "InventorySyncFacade::start: Session not found, sessionId: %llu",
                                   res.context->sessionId);
                     }
+                    m_sessionCompletedCV.notify_all();
 
                     m_indexerConnector->invokePendingCallbacks();
                 }
@@ -1295,6 +1327,7 @@ public:
                                       }
                                       return false;
                                   });
+                    m_sessionCompletedCV.notify_all();
                 }
             });
 
@@ -1379,10 +1412,17 @@ public:
      * @param agentId Agent ID to check
      * @return true if agent is locked (or all agents are locked)
      */
-    bool isAgentLocked(const std::string& agentId) const
+    bool isAgentLocked(const std::string& agentId, const bool allowVDGlobalExemption = false) const
     {
         std::shared_lock lock(m_blockedAgentsMutex);
-        return m_allAgentsLocked.load() || m_blockedAgents.contains(agentId);
+
+        if (m_blockedAgents.contains(agentId))
+        {
+            return true;
+        }
+
+        const bool allAgentsLocked = m_allAgentsLocked.load();
+        return allAgentsLocked && !allowVDGlobalExemption;
     }
 
     /**
@@ -1414,12 +1454,83 @@ public:
     }
 
     /**
-     * @brief Check if a specific agent has an active session for a specific module
-     * @param agentId Agent ID to check
-     * @param moduleName Module name to check (e.g., "syscollector_vd")
-     * @return true if the agent has an active session for the module, false otherwise
+     * @brief Returns the agents that currently have an active session for the module/option pair.
+     *
+     * @param moduleName Module name to filter (e.g. "syscollector_vd").
+     * @param option Session option to filter.
+     * @return Set of agent IDs with a matching active session.
      */
-    bool hasActiveSessionForModule(const std::string& agentId, const std::string& moduleName) const
+    std::unordered_set<std::string> getAgentsWithActiveSessionForModule(const std::string& moduleName,
+                                                                        Wazuh::SyncSchema::Option option) const
+    {
+        std::unordered_set<std::string> agentIds;
+        std::shared_lock lock(m_agentSessionsMutex);
+
+        for (const auto& [sessionId, session] : m_agentSessions)
+        {
+            const auto& context = session.getContext();
+            if (context->moduleName == moduleName && context->option == option)
+            {
+                agentIds.insert(context->agentId);
+            }
+        }
+
+        return agentIds;
+    }
+
+    /**
+     * @brief Wait for all in-progress VDSync sessions to finish before feed-update scan starts.
+     *
+     * Called from the feed-update callback after prepareFeedUpdateScan() sets the
+     * feed-update scan in-progress flag. VDSync sessions see that flag and self-skip, so they
+     * drain quickly. Iterates up to MAX_OUTER_ITERATIONS times in case new sessions
+     * started between loop iterations.
+     *
+     * @param timeout    Per-agent wait timeout, forwarded to hasActiveSessionForModule.
+     * @param maxRetries Retry count, forwarded to hasActiveSessionForModule.
+     * @return true if at least one VDSync session was active (index refresh recommended).
+     */
+    bool waitForAllVDSyncSessions(std::chrono::seconds timeout, uint32_t maxRetries) const
+    {
+        bool hadActiveSessions = false;
+        constexpr uint32_t MAX_OUTER_ITERATIONS = 3;
+        for (uint32_t i = 0; i < MAX_OUTER_ITERATIONS; ++i)
+        {
+            const auto vdSyncAgents =
+                getAgentsWithActiveSessionForModule("syscollector_vd", Wazuh::SyncSchema::Option_VDSync);
+            if (vdSyncAgents.empty())
+            {
+                break;
+            }
+
+            hadActiveSessions = true;
+            for (const auto& agentId : vdSyncAgents)
+            {
+                hasActiveSessionForModule(agentId, "syscollector_vd", timeout, maxRetries);
+            }
+        }
+        return hadActiveSessions;
+    }
+
+    /**
+     * @brief Check whether an agent has an active session for the given module.
+     *
+     * VDFirst sessions return true immediately — feed-update scan should skip that agent
+     * because VDFirst already runs a full scan with the updated feed.
+     * VDSync sessions wait up to timeout × (maxRetries+1) seconds to finish,
+     * then return false so the scan proceeds with whatever data is available.
+     *
+     * @param agentId    Agent to check.
+     * @param moduleName Module to match (e.g. "syscollector_vd").
+     * @param timeout    Per-attempt wait timeout (zero = no wait).
+     * @param maxRetries Extra wait attempts after the first timeout.
+     * @return true  if a VDFirst session is live (feed-update scan should skip this agent);
+     *         false if no session exists or a VDSync session finished/timed out.
+     */
+    bool hasActiveSessionForModule(const std::string& agentId,
+                                   const std::string& moduleName,
+                                   std::chrono::seconds timeout,
+                                   uint32_t maxRetries) const
     {
         std::shared_lock lock(m_agentSessionsMutex);
 
@@ -1428,10 +1539,75 @@ public:
             const auto& context = session.getContext();
             if (context->agentId == agentId && context->moduleName == moduleName)
             {
-                return true;
+                if (context->option == Wazuh::SyncSchema::Option_VDFirst)
+                {
+                    return true; // VDFirst owns a full scan — feed-update scan should skip this agent
+                }
+
+                if (timeout > std::chrono::seconds(0))
+                {
+                    logInfo(LOGGER_DEFAULT_TAG,
+                            "Feed update scan waiting for VDSync session to complete for agent %s "
+                            "(timeout: %lds, max retries: %u).",
+                            agentId.c_str(),
+                            static_cast<long>(timeout.count()),
+                            maxRetries);
+
+                    const auto isSessionGone = [&]()
+                    {
+                        for (const auto& [sId, s] : m_agentSessions)
+                        {
+                            if (s.getContext()->agentId == agentId && s.getContext()->moduleName == moduleName)
+                            {
+                                return false; // still active
+                            }
+                        }
+                        return true; // session gone
+                    };
+
+                    uint32_t attemptsLeft = maxRetries + 1;
+                    while (attemptsLeft > 0)
+                    {
+                        --attemptsLeft;
+                        const bool completed = m_sessionCompletedCV.wait_for(lock, timeout, isSessionGone);
+
+                        if (completed)
+                        {
+                            break;
+                        }
+
+                        if (attemptsLeft > 0)
+                        {
+                            logWarn(LOGGER_DEFAULT_TAG,
+                                    "Feed update scan timeout waiting for VDSync session for agent %s (%lds). "
+                                    "Retrying (%u retries left).",
+                                    agentId.c_str(),
+                                    static_cast<long>(timeout.count()),
+                                    attemptsLeft);
+                        }
+                        else
+                        {
+                            logWarn(LOGGER_DEFAULT_TAG,
+                                    "Feed update scan timeout waiting for VDSync session for agent %s (%lds). "
+                                    "Proceeding with current indexer data.",
+                                    agentId.c_str(),
+                                    static_cast<long>(timeout.count()));
+                        }
+                    }
+                }
+
+                return false; // VDSync session finished (or timed out) — feed-update scan can proceed
             }
         }
-        return false;
+
+        return false; // no matching session found
+    }
+
+    // Always use this instead of erasing m_agentSessions directly — it holds the exclusive lock.
+    size_t eraseSession(uint64_t sessionId)
+    {
+        std::unique_lock lock(m_agentSessionsMutex);
+        return m_agentSessions.erase(sessionId);
     }
 
     /**
@@ -1487,6 +1663,7 @@ public:
 
         if (cleanedCount > 0)
         {
+            m_sessionCompletedCV.notify_all();
             logInfo(LOGGER_DEFAULT_TAG,
                     "Cleaned up %zu zombie session(s) for agent %s",
                     cleanedCount,
@@ -1686,6 +1863,7 @@ private:
 
                 // Remove session from map
                 m_agentSessions.erase(it);
+                m_sessionCompletedCV.notify_all();
             }
         }
     }
@@ -1693,6 +1871,7 @@ private:
     std::string m_clusterName;
     int m_maxSessions {1000}; // Maximum concurrent sessions (configured from internal_options)
     mutable std::shared_mutex m_agentSessionsMutex;
+    mutable std::condition_variable_any m_sessionCompletedCV;
     std::mutex m_sessionTimeoutMutex;
     std::condition_variable m_sessionTimeoutCv;
     std::atomic<bool> m_stopping {false};
