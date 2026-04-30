@@ -313,14 +313,6 @@ void * wm_command_main(wm_command_t * command) {
 
             size_t base_json_len = 0;
 
-            // Reset payload/truncation state on rebuild.
-            os_free(truncated_output);
-            truncated_output = NULL;
-            payload_output = raw_output;
-            os_free(json_payload);
-            json_payload = NULL;
-            base_json_len = 0;
-
             // Compute JSON overhead with all fields except output content.
             {
                 char *base_payload = wm_command_build_event_payload(event_start,
