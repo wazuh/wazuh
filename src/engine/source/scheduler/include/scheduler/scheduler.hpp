@@ -204,6 +204,26 @@ public:
         std::lock_guard<std::mutex> lock(m_mutex);
         m_tasks.clear();
     }
+
+    /**
+     * @brief Move a task to the front of the queue by name.
+     * @return true if found and moved; false if task is not currently in the queue.
+     */
+    bool reprioritizeToFront(const std::string& taskName)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        auto it = std::find_if(
+            m_tasks.begin(), m_tasks.end(), [&taskName](const TaskItem& item) { return item.name == taskName; });
+        if (it == m_tasks.end())
+        {
+            return false;
+        }
+        TaskItem item = *it;
+        item.nextRun = std::chrono::steady_clock::time_point {};
+        m_tasks.erase(it);
+        m_tasks.push_front(item);
+        return true;
+    }
 };
 ;
 
@@ -229,7 +249,7 @@ struct ScheduledTask
     {
         nextRun = [&]() -> std::chrono::steady_clock::time_point
         {
-            if (isOneTime)
+            if (isOneTime || config.runImmediately)
             {
                 return std::chrono::steady_clock::now();
             }
@@ -370,6 +390,11 @@ public:
      * @copydoc IScheduler::scheduleTask
      */
     void scheduleTask(std::string_view taskName, TaskConfig&& config) override;
+
+    /**
+     * @copydoc IScheduler::scheduleTaskFirst
+     */
+    void scheduleTaskFirst(std::string_view taskName) override;
 
     /**
      * @copydoc IScheduler::removeTask
