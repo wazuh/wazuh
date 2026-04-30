@@ -317,27 +317,8 @@ WIndexerConnector::WIndexerConnector(const Config& config,
         throw std::runtime_error("Invalid JSON configuration for IndexerConnector");
     }
 
-    auto inner = std::make_unique<IndexerConnectorAsync>(jsonConfig, "engine-output", logFunction, BASEQUEUEPATH);
-    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsyncAdapter>(std::move(inner));
-}
-
-WIndexerConnector::WIndexerConnector(std::unique_ptr<IIndexerConnectorAsync> async, const std::size_t maxHitsPerRequest)
-{
-    if (!async)
-    {
-        throw std::runtime_error("IndexerConnectorAsync instance cannot be null");
-    }
-    m_indexerConnectorAsync = std::move(async);
-
-    if (maxHitsPerRequest == 0)
-    {
-        LOG_WARNING("[indexer-connector] maxHitsPerRequest must be greater than zero, default to 1");
-        m_maxHitsPerRequest = 1;
-    }
-    else
-    {
-        m_maxHitsPerRequest = maxHitsPerRequest;
-    }
+    m_indexerConnectorAsync =
+        std::make_unique<IndexerConnectorAsync>(jsonConfig, "engine-output", logFunction, BASEQUEUEPATH);
 }
 
 WIndexerConnector::~WIndexerConnector() = default;
