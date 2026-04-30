@@ -5,7 +5,6 @@
 """
 import os
 import pytest
-import psutil
 import sqlite3
 import sys
 import subprocess
@@ -22,43 +21,9 @@ from . import TEST_DATA_PATH
 
 SCA_DB_DIR = Path(WAZUH_PATH, 'queue', 'sca', 'db')
 
-_WAZUH_AGENT_PROCESS_NAMES = {'wazuh-agent.exe', 'WazuhSvc.exe', 'wazuh-agentd'}
-
-
-def _wait_for_agent_gone(timeout: int = 30, raise_on_timeout: bool = False) -> None:
-    """Block until no wazuh-agent process is alive or timeout expires.
-
-    Windows SCM reports STOPPED before the process fully exits. Starting a new
-    service instance while the old process is still alive causes both processes
-    to compete for the same IPC endpoint used by the SCA C++ module, preventing
-    the scan from starting (Phase 4 deadlock).
-
-    Args:
-        timeout: Maximum seconds to wait.
-        raise_on_timeout: If True, raises TimeoutError when the deadline is
-            exceeded. Use True in setup contexts where a timeout is a real
-            blocker. Use False (default) in teardown contexts where the wait
-            is best-effort.
-    """
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        alive = [
-            p.info['name']
-            for p in psutil.process_iter(attrs=['name'])
-            if (p.info.get('name') or '') in _WAZUH_AGENT_PROCESS_NAMES
-        ]
-        if not alive:
-            return
-        time.sleep(0.5)
-    if raise_on_timeout:
-        raise TimeoutError(
-            f"Wazuh agent process still alive after {timeout}s: {alive}. "
-            f"IPC endpoint will collide with the next service start."
-        )
-
 
 @pytest.fixture()
-def daemons_handler():
+def daemons_handler(wait_for_agent_gone):
     """SCA-specific override: separate stop + start instead of restart.
 
     The global daemons_handler calls control_service('restart'), which internally
@@ -73,7 +38,7 @@ def daemons_handler():
         control_service('stop')
     except Exception:
         pass
-    _wait_for_agent_gone(timeout=30, raise_on_timeout=True)
+    wait_for_agent_gone(timeout=30, raise_on_timeout=True)
     control_service('start')
     yield
     try:
@@ -83,7 +48,7 @@ def daemons_handler():
 
 
 @pytest.fixture()
-def clean_sca_database():
+def clean_sca_database(wait_for_agent_gone):
     '''
     Stops the agent, wipes SCA database contents, and seeds first_sync_completed.
 
@@ -106,7 +71,7 @@ def clean_sca_database():
     except Exception:
         pass
 
-    _wait_for_agent_gone(timeout=30, raise_on_timeout=True)
+    wait_for_agent_gone(timeout=30, raise_on_timeout=True)
 
     for attempt in range(3):
         if SCA_DB_DIR.exists():
@@ -137,6 +102,8 @@ def clean_sca_database():
 
         if sys.platform == WINDOWS:
             time.sleep(2)
+
+    yield
 
 
 @pytest.fixture()

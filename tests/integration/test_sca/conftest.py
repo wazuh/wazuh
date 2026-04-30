@@ -12,6 +12,7 @@ import sys
 import time
 from pathlib import Path
 
+from wazuh_testing.constants.daemons import AGENT_DAEMON, WAZUH_AGENT_WIN
 from wazuh_testing.constants.paths import WAZUH_PATH
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
@@ -23,7 +24,7 @@ from wazuh_testing.utils.services import control_service
 
 SCA_DB_DIR = Path(WAZUH_PATH, 'queue', 'sca', 'db')
 
-_WAZUH_AGENT_PROCESS_NAMES = {'wazuh-agent.exe', 'WazuhSvc.exe', 'wazuh-agentd'}
+_WAZUH_AGENT_PROCESS_NAMES = {AGENT_DAEMON, WAZUH_AGENT_WIN, 'WazuhSvc.exe'}
 
 
 def _wait_for_agent_gone(timeout: int = 60, raise_on_timeout: bool = False) -> None:
@@ -53,6 +54,12 @@ def _wait_for_agent_gone(timeout: int = 60, raise_on_timeout: bool = False) -> N
             f"Wazuh agent process still alive after {timeout}s: {alive}. "
             f"IPC endpoint will collide with the next service start."
         )
+
+
+@pytest.fixture
+def wait_for_agent_gone():
+    """Expose the agent-exit wait helper to child conftests and tests."""
+    return _wait_for_agent_gone
 
 
 # Patterns that distinguish a healthy SCA startup from the known
