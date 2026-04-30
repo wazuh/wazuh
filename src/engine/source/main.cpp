@@ -384,8 +384,7 @@ int main(int argc, char* argv[])
         // Scheduler -> Should be terminated before all modules to ensure any scheduled are stopped before shutdown
         {
             scheduler = std::make_shared<scheduler::Scheduler>();
-            scheduler->start();
-            LOG_INFO("Scheduler initialized and started.");
+            LOG_INFO("Scheduler initialized.");
             exitHandler.add([scheduler]() { scheduler->stop(); });
         }
 
@@ -612,12 +611,9 @@ int main(int argc, char* argv[])
             scheduler->scheduleTask(
                 "cm-sync-task",
                 scheduler::TaskConfig {.interval = confManager.get<std::size_t>(conf::key::CM_SYNC_INTERVAL),
+                                       .runImmediately = false,
                                        .CPUPriority = 0,
-                                       .timeout = 0,
-                                       .taskFunction = [cmSyncService]()
-                                       {
-                                           cmSyncService->synchronize();
-                                       }});
+                                       .taskFunction = [cmSyncService]() { cmSyncService->synchronize(); }});
         }
 
         // IOCSync
@@ -637,14 +633,12 @@ int main(int argc, char* argv[])
             auto iocSyncInterval = confManager.get<std::size_t>(conf::key::IOC_SYNC_INTERVAL);
             if (iocSyncInterval > 0)
             {
-                scheduler->scheduleTask("ioc-sync-task",
-                                        scheduler::TaskConfig {.interval = iocSyncInterval,
-                                                               .CPUPriority = 0,
-                                                               .timeout = 0,
-                                                               .taskFunction = [iocSyncService]()
-                                                               {
-                                                                   iocSyncService->synchronize();
-                                                               }});
+                scheduler->scheduleTask(
+                    "ioc-sync-task",
+                    scheduler::TaskConfig {.interval = iocSyncInterval,
+                                           .runImmediately = false,
+                                           .CPUPriority = 0,
+                                           .taskFunction = [iocSyncService]() { iocSyncService->synchronize(); }});
                 LOG_DEBUG("IOC Sync task scheduled with interval: {} seconds, {} max retries, {} seconds for retry "
                           "interval and {} for batch size",
                           iocSyncInterval,
@@ -675,12 +669,10 @@ int main(int argc, char* argv[])
                 scheduler->scheduleTask(
                     "geo-sync-task",
                     scheduler::TaskConfig {.interval = geoSyncInterval,
+                                           .runImmediately = false,
                                            .CPUPriority = 0,
-                                           .timeout = 0,
                                            .taskFunction = [geoManager, manifestUrl, cityPath, asnPath]()
-                                           {
-                                               geoManager->remoteUpsert(manifestUrl, cityPath, asnPath);
-                                           }});
+                                           { geoManager->remoteUpsert(manifestUrl, cityPath, asnPath); }});
                 LOG_DEBUG("Geo sync scheduled with interval: {} seconds.", geoSyncInterval);
             }
             else
@@ -712,14 +704,12 @@ int main(int argc, char* argv[])
         if (enableProcessing)
         {
             const auto remoteConfSyncInterval = confManager.get<std::size_t>(conf::key::REMOTE_CONF_SYNC_INTERVAL);
-            scheduler->scheduleTask("remote-conf-sync",
-                                    scheduler::TaskConfig {.interval = remoteConfSyncInterval,
-                                                           .CPUPriority = 0,
-                                                           .timeout = 0,
-                                                           .taskFunction = [remoteConf]()
-                                                           {
-                                                               remoteConf->synchronize();
-                                                           }});
+            scheduler->scheduleTask(
+                "remote-conf-sync",
+                scheduler::TaskConfig {.interval = remoteConfSyncInterval,
+                                       .runImmediately = false,
+                                       .CPUPriority = 0,
+                                       .taskFunction = [remoteConf]() { remoteConf->synchronize(); }});
             LOG_DEBUG("Remote configuration synchronize scheduled with interval: {} seconds.", remoteConfSyncInterval);
         }
 
@@ -810,12 +800,10 @@ int main(int argc, char* argv[])
 
                 scheduler::TaskConfig metricsConfig {.interval =
                                                          confManager.get<size_t>(conf::key::METRICS_LOG_INTERVAL),
+                                                     .runImmediately = false,
                                                      .CPUPriority = 0,
-                                                     .timeout = 0,
                                                      .taskFunction = [metricsWriter, metricsManager]()
-                                                     {
-                                                         metricsManager->writeAllMetrics(metricsWriter);
-                                                     }};
+                                                     { metricsManager->writeAllMetrics(metricsWriter); }};
 
                 scheduler->scheduleTask("MetricsLogger", std::move(metricsConfig));
                 LOG_INFO("Metrics stream logging enabled (interval: {} seconds, on-demand channel creation).",
@@ -859,19 +847,26 @@ int main(int argc, char* argv[])
         if (enableProcessing)
         {
             // Async Synchronize on startup
-            scheduler->scheduleTask("initial-sync",
-                                    scheduler::TaskConfig {.interval = 0,
-                                                           .CPUPriority = 0,
-                                                           .timeout = 0,
-                                                           .taskFunction = [=]()
-                                                           {
-                                                               cmSyncService->synchronize();
-                                                               iocSyncService->synchronize();
-                                                               remoteConf->synchronize();
-                                                               geoManager->remoteUpsert(confManager.get<std::string>(conf::key::GEO_MANIFEST_URL),
-                                                                                      confManager.get<std::string>(conf::key::GEO_DB_PATH) + "/GeoLite2-City.mmdb",
-                                                                                      confManager.get<std::string>(conf::key::GEO_DB_PATH) + "/GeoLite2-ASN.mmdb");
-                                                           }});
+            scheduler->scheduleTask(
+                "initial-sync",
+                scheduler::TaskConfig {
+                    .interval = 0,
+                    .runImmediately = false,
+                    .CPUPriority = 0,
+                    .taskFunction = [=]()
+                    {
+                        cmSyncService->synchronize();
+                        iocSyncService->synchronize();
+                        remoteConf->synchronize();
+                        geoManager->remoteUpsert(
+                            confManager.get<std::string>(conf::key::GEO_MANIFEST_URL),
+                            confManager.get<std::string>(conf::key::GEO_DB_PATH) + "/GeoLite2-City.mmdb",
+                            confManager.get<std::string>(conf::key::GEO_DB_PATH) + "/GeoLite2-ASN.mmdb");
+                    }});
+            scheduler->scheduleTaskFirst("initial-sync");
+
+            scheduler->start();
+            LOG_INFO("Scheduler started.");
 
             while (engineRemoteServer->isRunning())
             {
@@ -886,6 +881,8 @@ int main(int argc, char* argv[])
         }
         else
         {
+            scheduler->start();
+            LOG_INFO("Scheduler started.");
             // Event processing disabled, just wait for shutdown signal
             LOG_INFO("Waiting for shutdown signal (event processing is disabled)...");
             while (!g_shutdown_requested)

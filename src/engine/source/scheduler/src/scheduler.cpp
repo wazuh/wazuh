@@ -109,6 +109,27 @@ void Scheduler::scheduleTask(std::string_view taskName, TaskConfig&& config)
     m_taskQueue.push(taskItem);
 }
 
+void Scheduler::scheduleTaskFirst(std::string_view taskName)
+{
+    std::string name(taskName);
+
+    {
+        std::lock_guard<std::mutex> lock(m_tasksMutex);
+        if (m_tasks.find(name) == m_tasks.end())
+        {
+            throw std::invalid_argument("Task with name '" + name + "' is not registered");
+        }
+    }
+
+    if (!m_taskQueue.reprioritizeToFront(name))
+    {
+        LOG_WARNING("[Scheduler] Task '{}' not in queue (mid-execution); skipping reprioritization", name);
+        return;
+    }
+
+    LOG_DEBUG("[Scheduler] Task '{}' moved to front of queue", name);
+}
+
 void Scheduler::removeTask(std::string_view taskName)
 {
     std::lock_guard<std::mutex> lock(m_tasksMutex);

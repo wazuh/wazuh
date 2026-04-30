@@ -15,8 +15,10 @@ namespace scheduler
 struct TaskConfig
 {
     std::size_t interval;               ///< Execution interval in seconds. 0 means run once (one-time task)
+    bool runImmediately;                ///< If true and interval > 0, executes immediately on first schedule,
+                                        ///< then continues with the regular interval cadence.
+                                        ///< Has no effect when interval == 0 (one-time tasks always run immediately).
     int CPUPriority;                    ///< Process nice value for CPU priority. Range: -20 (highest) to 19 (lowest)
-    int timeout;                        ///< Task timeout in seconds. 0 means no timeout (reserved for future use)
     std::function<void()> taskFunction; ///< The callable function/lambda to execute when the task runs
 };
 
@@ -46,8 +48,10 @@ public:
     /**
      * @brief Schedule a new task for execution
      * @details Adds a new task to the scheduler. The task will be executed according
-     *          to its configuration. One-time tasks run immediately, recurring tasks
-     *          are scheduled for their first execution after the specified interval.
+     *          to its configuration. One-time tasks (interval = 0) run immediately.
+     *          Recurring tasks (interval > 0) normally first execute after the
+     *          specified interval, unless runImmediately is true, in which case
+     *          the first execution happens immediately.
      *
      * @param taskName Unique identifier for the task
      * @param config Task configuration including function, interval, and priority
@@ -60,6 +64,26 @@ public:
      * @note This method is thread-safe
      */
     virtual void scheduleTask(std::string_view taskName, TaskConfig&& config) = 0;
+
+    /**
+     * @brief Move an already-registered task to the front of the execution queue.
+     * @details Finds the task by name in the execution queue and reorders it so
+     *          it executes before all other pending tasks. The task must have been
+     *          previously registered via scheduleTask().
+     *
+     *          If the task is currently mid-execution (temporarily out of the queue),
+     *          this is a no-op — the task will reschedule itself normally after finishing.
+     *
+     *          If called multiple times, the last call ends up at position 0
+     *          (each reprioritization uses push_front, so the most recent call wins).
+     *
+     * @param taskName Name of the already-registered task to reprioritize
+     *
+     * @throws std::invalid_argument if no task with taskName is registered
+     *
+     * @note Thread-safe. Works before or after start().
+     */
+    virtual void scheduleTaskFirst(std::string_view taskName) = 0;
 
     /**
      * @brief Remove a scheduled task

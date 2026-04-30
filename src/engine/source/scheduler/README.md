@@ -4,7 +4,7 @@
 
 The **scheduler** module provides a multi-threaded, priority-aware task scheduling system for the Wazuh engine. It manages the execution of periodic and one-time background tasks using a configurable thread pool and a sorted, thread-safe priority queue.
 
-Tasks are identified by unique names and configured with an execution interval, CPU priority (nice value), and a callable function. The scheduler handles task lifecycle—including automatic removal of one-time tasks and rescheduling of recurring ones—while guaranteeing thread safety across all operations.
+Tasks are identified by unique names and configured with an execution interval, an optional immediate-execution flag, CPU priority (nice value), and a callable function. The scheduler handles task lifecycle—including automatic removal of one-time tasks and rescheduling of recurring ones—while guaranteeing thread safety across all operations.
 
 ## Architecture
 
@@ -13,12 +13,15 @@ Tasks are identified by unique names and configured with an execution interval, 
 │                     Consumers                          │
 │  (main.cpp, streamlog, api/ioccrud)                    │
 │                                                        │
-│   scheduleTask("task-name", {interval, prio, fn})      │
+│   scheduleTask("name", {interval, runImmediately, …})  │
+│   scheduleTaskFirst("name", {interval, …})             │
 └──────────────────────┬─────────────────────────────────┘
                        │
               ┌────────▼────────┐
               │   IScheduler     │  (interface)
               │  scheduleTask()  │
+              │  scheduleTask-   │
+              │    First()       │
               │  removeTask()    │
               │  getActiveCount  │
               │  getThreadCount  │
@@ -46,14 +49,17 @@ Defined in `ischeduler.hpp`:
 | Field | Type | Description |
 |-------|------|-------------|
 | `interval` | `std::size_t` | Execution interval in seconds. `0` = one-time task |
+| `runImmediately` | `bool` | If `true` and `interval > 0`, first execution happens immediately; then recurs at `interval`. No effect when `interval == 0` |
 | `CPUPriority` | `int` | Linux nice value (`-20` highest to `19` lowest). `0` = default |
-| `timeout` | `int` | Reserved for future use (currently unused) |
 | `taskFunction` | `std::function<void()>` | The callable to execute |
+
+Fields must be specified in the order listed above when using C++20 designated initializers.
 
 ### One-Time vs Recurring Tasks
 
-- **One-time** (`interval = 0`): Scheduled for immediate execution. Automatically removed from the task map after completion.
-- **Recurring** (`interval > 0`): First execution occurs after `interval` seconds. After each execution, the task is rescheduled with a new `nextRun` time = `now + interval`.
+- **One-time** (`interval = 0`): Scheduled for immediate execution (`nextRun = now()`). Automatically removed from the task map after completion. `runImmediately` has no additional effect.
+- **Recurring** (`interval > 0`, `runImmediately = false`): First execution occurs after `interval` seconds (`nextRun = now() + interval`). After each execution, rescheduled with `nextRun = now() + interval`.
+- **Recurring with immediate first run** (`interval > 0`, `runImmediately = true`): First execution is immediate (`nextRun = now()`). Subsequent executions recur at `interval` seconds.
 
 ### Task Queue (`TaskQueue`)
 
@@ -75,6 +81,14 @@ The scheduler creates a fixed number of worker threads (configurable, minimum 1)
 5. Execute the task function (catching exceptions)
 6. Restore default priority
 7. Reschedule (recurring) or remove (one-time) the task
+
+### Deferred Start
+
+The scheduler is designed to be **created before tasks are registered** and **started only after all tasks have been scheduled**. This ensures workers begin processing a fully populated queue rather than spinning on an empty one during engine initialization.
+
+- Tasks can be enqueued via `scheduleTask()` or `scheduleTaskFirst()` at any time before or after `start()`.
+- Worker threads are launched only when `start()` is explicitly called.
+- In `main.cpp`, `start()` is called immediately after the last `scheduleTaskFirst("initial-sync", …)` call in each execution branch.
 
 ### CPU Priority
 
@@ -105,6 +119,7 @@ scheduler/
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `scheduleTask` | `(string_view name, TaskConfig&& config) → void` | Schedule a new task; throws if name is duplicate or function is null |
+| `scheduleTaskFirst` | `(string_view name, TaskConfig&& config) → void` | Schedule a task forcing it to the front of the queue (executes before all other pending tasks); same validation as `scheduleTask` |
 | `removeTask` | `(string_view name) → void` | Remove a task by name; no-op if not found |
 | `getActiveTasksCount` | `() → size_t` | Number of tasks currently registered |
 | `getThreadCount` | `() → size_t` | Number of worker threads (constant after construction) |
@@ -137,9 +152,17 @@ The implementation uses two separate synchronization mechanisms:
 ```
 scheduleTask()
     ├── Validate: taskFunction != null, name is unique
-    ├── Create ScheduledTask (compute nextRun)
+    ├── Create ScheduledTask (compute nextRun based on interval / runImmediately)
     ├── Insert into m_tasks map
-    └── Push TaskItem into m_taskQueue
+    └── Push TaskItem into m_taskQueue (sorted by nextRun)
+
+scheduleTaskFirst()
+    ├── Validate: taskFunction != null, name is unique
+    ├── Create ScheduledTask
+    ├── Insert into m_tasks map
+    └── Push TaskItem with nextRun = time_point{} (epoch)
+            → lower_bound returns begin() → inserted at position 0
+            → always executes before any other queued task
 
 workerThread()
     ├── pop() from m_taskQueue (blocks)
@@ -150,10 +173,14 @@ workerThread()
         one-time? → erase from m_tasks
 ```
 
+#### `scheduleTaskFirst` ordering guarantee
+
+Multiple calls before `start()` are ordered such that the **last call executes first**. Each new task with `nextRun = epoch` is inserted at position 0 (before any existing epoch-time task), so the most-recently registered task is always at the head of the queue when workers start.
+
 ### Error Handling
 
 - Task functions are executed inside a `try/catch` block; exceptions are logged as warnings but do not crash the scheduler or affect other tasks.
-- `scheduleTask` throws `std::invalid_argument` for null functions and `std::runtime_error` for duplicate names.
+- `scheduleTask` and `scheduleTaskFirst` throw `std::invalid_argument` for null functions and `std::runtime_error` for duplicate names.
 - Worker thread names are set to `"sched-worker"` via `base::process::setThreadName`.
 
 ## CMake Targets
@@ -186,6 +213,11 @@ Use a real 2-thread scheduler with atomic counters and short sleeps to verify be
 | `StartStopScheduler` | Lifecycle transitions |
 | `ScheduleOneTimeTask` | Executes once, auto-removed from task map |
 | `ScheduleRecurringTask` | Executes at least once within interval window |
+| `RunImmediately_ExecutesOnFirstCycle` | `runImmediately=true` fires before one full interval elapses |
+| `RunImmediately_ThenRecurresAtInterval` | Immediate first fire, then normal recurring cadence, task not removed |
+| `RunImmediately_NoEffectOnOneTimeTask` | `runImmediately=true` on one-time task: runs once, removed, no double execution |
+| `ScheduleTaskFirst_ExecutesBeforeOtherPendingTasks` | Task registered via `scheduleTaskFirst` runs before a previously registered one-time task |
+| `ScheduleTaskFirst_LastCallIsFirst` | Second `scheduleTaskFirst` call executes before first call |
 | `RemoveTask` | Task removed before execution does not fire |
 | `MultipleTasks` | Mix of one-time + recurring tasks coexist |
 | `TaskPriority` | Tasks with different CPU priorities all execute |
@@ -194,18 +226,21 @@ Use a real 2-thread scheduler with atomic counters and short sleeps to verify be
 
 ## Consumers
 
-The scheduler is instantiated once in `main.cpp` as `std::make_shared<scheduler::Scheduler>()`, started, and injected into consumers:
+The scheduler is instantiated once in `main.cpp` as `std::make_shared<scheduler::Scheduler>()`. Tasks are registered during engine initialization; `start()` is called only after the last task has been scheduled.
 
-| Task Name | Interval | Consumer | Purpose |
-|-----------|----------|----------|---------|
-| `cm-sync-task` | `CM_SYNC_INTERVAL` | Content Manager | Synchronizes content manager data |
-| `ioc-sync-task` | `IOC_SYNC_INTERVAL` | IOC Sync | Indicator of Compromise synchronization |
-| `geo-sync-task` | `GEO_SYNC_INTERVAL` | Geo Manager | Updates GeoIP databases (GeoLite2-City, GeoLite2-ASN) |
-| `remote-conf-sync` | `REMOTE_CONF_SYNC_INTERVAL` | Remote Config | Remote configuration synchronization |
-| *(dynamic)* | One-time | streamlog | Gzip compression of rotated log files |
+| Task Name | Interval | Method | Consumer | Purpose |
+|-----------|----------|--------|----------|---------|
+| `cm-sync-task` | `CM_SYNC_INTERVAL` | `scheduleTask` | Content Manager | Synchronizes content manager data |
+| `ioc-sync-task` | `IOC_SYNC_INTERVAL` | `scheduleTask` | IOC Sync | Indicator of Compromise synchronization |
+| `geo-sync-task` | `GEO_SYNC_INTERVAL` | `scheduleTask` | Geo Manager | Updates GeoIP databases (GeoLite2-City, GeoLite2-ASN) |
+| `remote-conf-sync` | `REMOTE_CONF_SYNC_INTERVAL` | `scheduleTask` | Remote Config | Remote configuration synchronization |
+| `MetricsLogger` | `METRICS_LOG_INTERVAL` | `scheduleTask` | Metrics | Writes all metrics to the stream logger |
+| `initial-sync` | one-time | `scheduleTaskFirst` | main.cpp | Triggers cm/ioc/geo/remote-conf synchronization at startup; guaranteed to run before all other pending tasks |
+| *(dynamic)* | one-time | `scheduleTask` | streamlog | Gzip compression of rotated log files |
+| *(dynamic)* | one-time | `scheduleTask` | api/ioccrud | On-demand IOC sync triggered via API |
 
 ### Injection Patterns
 
 - **streamlog**: Stores `std::weak_ptr<scheduler::IScheduler>` and dynamically schedules one-time compression tasks when log files rotate.
 - **api/ioccrud**: Receives the scheduler as a parameter in API route handlers for managing IOC sync operations.
-- **main.cpp**: Directly calls `scheduler->scheduleTask()` for all core periodic sync tasks.
+- **main.cpp**: Calls `scheduleTask()` for all periodic tasks during initialization, then `scheduleTaskFirst()` for the one-time `initial-sync` startup task. `start()` is deferred until after all tasks are registered.

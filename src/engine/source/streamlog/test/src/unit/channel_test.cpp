@@ -1743,7 +1743,6 @@ TEST_F(ChannelHandlerTest, CompressionWithMockScheduler)
                 // Verify task configuration
                 EXPECT_EQ(config.interval, 0); // One-time task
                 EXPECT_EQ(config.CPUPriority, 0);
-                EXPECT_EQ(config.timeout, 0);
                 EXPECT_NE(config.taskFunction, nullptr);
 
                 // Verify task name format

@@ -349,14 +349,12 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::ioc::kvdb::IKVDBManager>& 
         // Schedule asynchronous task for IOC synchronization
         try
         {
-            scheduler::TaskConfig taskConfig {.interval = 0,    // One-time task (execute as soon as possible)
-                                              .CPUPriority = 0, // Normal priority
-                                              .timeout = 0,     // No timeout
-                                              .taskFunction = [weakKvdbManager, weakStore, filePath, fileHash]()
-                                              {
-                                                  detail::performIOCSync(
-                                                      weakKvdbManager, weakStore, filePath, fileHash);
-                                              }};
+            scheduler::TaskConfig taskConfig {
+                .interval = 0, // One-time task (execute as soon as possible)
+                .runImmediately = false,
+                .CPUPriority = 0, // Normal priority
+                .taskFunction = [weakKvdbManager, weakStore, filePath, fileHash]()
+                { detail::performIOCSync(weakKvdbManager, weakStore, filePath, fileHash); }};
 
             // Schedule the task with a unique name
             const std::string taskName = "ioc-sync-" + base::utils::generators::randomHexString(8);
