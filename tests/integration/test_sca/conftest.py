@@ -26,13 +26,20 @@ SCA_DB_DIR = Path(WAZUH_PATH, 'queue', 'sca', 'db')
 _WAZUH_AGENT_PROCESS_NAMES = {'wazuh-agent.exe', 'WazuhSvc.exe', 'wazuh-agentd'}
 
 
-def _wait_for_agent_gone(timeout: int = 60) -> None:
+def _wait_for_agent_gone(timeout: int = 60, raise_on_timeout: bool = False) -> None:
     """Block until no wazuh-agent process is alive or timeout expires.
 
     Windows SCM reports STOPPED before the process fully exits. Starting a new
     service instance while the old process is alive causes both to compete for
     the same IPC endpoint used by the SCA C++ module, preventing the scan from
     starting (Phase 4 deadlock).
+
+    Args:
+        timeout: Maximum seconds to wait.
+        raise_on_timeout: If True, raises TimeoutError when the deadline is
+            exceeded. Use True in setup contexts where a timeout is a real
+            blocker. Use False (default) in teardown contexts where the wait
+            is best-effort.
     """
     deadline = time.time() + timeout
     while time.time() < deadline:
@@ -41,6 +48,11 @@ def _wait_for_agent_gone(timeout: int = 60) -> None:
         if not alive:
             return
         time.sleep(0.5)
+    if raise_on_timeout:
+        raise TimeoutError(
+            f"Wazuh agent process still alive after {timeout}s: {alive}. "
+            f"IPC endpoint will collide with the next service start."
+        )
 
 
 # Patterns that distinguish a healthy SCA startup from the known
@@ -139,7 +151,7 @@ def clean_sca_db():
     except Exception:
         pass
 
-    _wait_for_agent_gone(timeout=60)
+    _wait_for_agent_gone(timeout=60, raise_on_timeout=True)
 
     for attempt in range(3):
         if SCA_DB_DIR.exists():
