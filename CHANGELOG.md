@@ -8,6 +8,8 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Improved message decompression handling in remoted. ([#35773](https://github.com/wazuh/wazuh/pull/35773))
+- Improved agent name validation to reject names starting with dot. ([#4503](https://github.com/wazuh/internal-devel-requests/issues/4503))
+
 
 ## [v4.14.5]
 
