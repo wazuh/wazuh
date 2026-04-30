@@ -3,7 +3,7 @@
   configuration_parameters:
     ENABLED: 'yes'
     INTERVAL: 5
-    POLICY_FILE: cis_win_validate_remediation.yaml
+    POLICY_FILE: ruleset/sca/cis_win_validate_remediation.yaml
   metadata:
     policy_file: cis_win_validate_remediation.yaml
     check_id: 1
@@ -15,7 +15,7 @@
   configuration_parameters:
     ENABLED: 'yes'
     INTERVAL: 5
-    POLICY_FILE: cis_win_validate_remediation.yaml
+    POLICY_FILE: ruleset/sca/cis_win_validate_remediation.yaml
   metadata:
     policy_file: cis_win_validate_remediation.yaml
     check_id: 2
