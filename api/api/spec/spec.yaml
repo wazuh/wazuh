@@ -39,8 +39,8 @@ info:
 
     <SecurityDefinitions />
 
-  version: '5.0.0'
-  x-revision: 'beta1'
+  version: '5.9.9'
+  x-revision: 'alpha0'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'

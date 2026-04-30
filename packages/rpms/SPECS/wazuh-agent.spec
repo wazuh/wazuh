@@ -795,6 +795,8 @@ rm -fr %{buildroot}
 %files -n wazuh-agent-debuginfo -f debugfiles.list
 
 %changelog
+* Thu Apr 30 2026 support <info@wazuh.com> - 5.9.9
+- More info: https://documentation.wazuh.com/current/release-notes/release-5-9-9.html
 * Wed Jun 24 2026 support <info@wazuh.com> - 5.0.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-5-0-0.html
 * Thu May 14 2026 support <info@wazuh.com> - 4.14.6
