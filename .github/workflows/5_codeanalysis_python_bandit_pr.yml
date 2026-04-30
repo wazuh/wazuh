@@ -3,6 +3,7 @@ name: 5.X - Python static code analysis on PR
 
 on:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_codeanalysis_python_bandit_pr.yml"
       - 'framework/**/*.py'

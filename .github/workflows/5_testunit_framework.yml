@@ -2,6 +2,7 @@ name: 5.X - Framework - Unit tests
 
 on:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - '.github/workflows/5_testunit_framework.yml'
       - 'framework/**'

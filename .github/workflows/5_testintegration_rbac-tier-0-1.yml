@@ -2,6 +2,7 @@ name: 5.X - RBAC (Framework) - Integration tests - Tier 0 and 1
 
 on:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
         - ".github/workflows/5_testintegration_rbac-tier-0-1.yml"
         - "framework/wazuh/rbac/"
