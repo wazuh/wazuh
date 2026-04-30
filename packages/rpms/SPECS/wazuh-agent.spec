@@ -266,6 +266,24 @@ if [ $1 = 2 ]; then
     touch %{_localstatedir}/tmp/wazuh.restart
   fi
   %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
+
+  UPGRADE_PRESERVE_DIR="%{_localstatedir}/tmp/agent_upgrade_preserve"
+  (
+    set -e
+    if [ -e "${UPGRADE_PRESERVE_DIR}" ]; then
+      echo "ERROR: Existing agent upgrade preserve backup found at ${UPGRADE_PRESERVE_DIR}." >&2
+      echo "ERROR: Recover or move this directory before retrying the upgrade." >&2
+      exit 1
+    fi
+    mkdir -p "${UPGRADE_PRESERVE_DIR}"
+
+    if [ -d "%{_localstatedir}/etc" ]; then
+      cp -a "%{_localstatedir}/etc" "${UPGRADE_PRESERVE_DIR}/"
+    fi
+  ) || {
+    echo "ERROR: Could not prepare agent upgrade preserve backup at ${UPGRADE_PRESERVE_DIR}." >&2
+    exit 1
+  }
 fi
 
 # Remove old databases if upgrading from pre 5.X to 5.X
@@ -323,9 +341,6 @@ fi
 
 # Delete the installation files used to configure the agent
 rm -rf %{_localstatedir}/packages_files
-
-# Remove unnecessary files from shared directory
-rm -f %{_localstatedir}/etc/shared/*.rpmnew
 
 #AlmaLinux
 if [ -r "/etc/almalinux-release" ]; then
@@ -594,16 +609,6 @@ fi
 
 DELETE_WAZUH_USER_AND_GROUP=0
 
-if [ $1 = 1 ]; then
-  if [ ! -f %{_localstatedir}/etc/client.keys ]; then
-    if [ -f %{_localstatedir}/etc/client.keys.rpmsave ]; then
-      mv %{_localstatedir}/etc/client.keys.rpmsave %{_localstatedir}/etc/client.keys
-    elif [ -f %{_localstatedir}/etc/client.keys.rpmnew ]; then
-      mv %{_localstatedir}/etc/client.keys.rpmnew %{_localstatedir}/etc/client.keys
-    fi
-  fi
-fi
-
 # If the package is been uninstalled or we want to delete wazuh user and group
 if [ $1 = 0 ] || [ $DELETE_WAZUH_USER_AND_GROUP = 1 ]; then
   # Remove the wazuh user if it exists
@@ -632,6 +637,37 @@ fi
 
 # posttrans code is the last thing executed in a install/upgrade
 %posttrans
+UPGRADE_PRESERVE_DIR="%{_localstatedir}/tmp/agent_upgrade_preserve"
+
+if [ -d "${UPGRADE_PRESERVE_DIR}" ]; then
+  (
+    set -e
+    if [ -d "${UPGRADE_PRESERVE_DIR}/etc" ]; then
+      mkdir -p "%{_localstatedir}/etc"
+      cp -a "${UPGRADE_PRESERVE_DIR}/etc/." "%{_localstatedir}/etc/"
+    fi
+  ) || {
+    echo "ERROR: Could not restore agent upgrade preserve backup; contents left at ${UPGRADE_PRESERVE_DIR}." >&2
+    exit 1
+  }
+  rm -rf "${UPGRADE_PRESERVE_DIR}"
+fi
+
+if [ -f "%{_localstatedir}/etc/ossec.conf" ]; then
+  chown root:wazuh "%{_localstatedir}/etc/ossec.conf"
+  chmod 0640 "%{_localstatedir}/etc/ossec.conf"
+fi
+
+if [ -f "%{_localstatedir}/etc/local_internal_options.conf" ]; then
+  chown root:wazuh "%{_localstatedir}/etc/local_internal_options.conf"
+  chmod 0640 "%{_localstatedir}/etc/local_internal_options.conf"
+fi
+
+if [ -f "%{_localstatedir}/etc/client.keys" ]; then
+  chown root:wazuh "%{_localstatedir}/etc/client.keys"
+  chmod 0640 "%{_localstatedir}/etc/client.keys"
+fi
+
 if [ -f %{_sysconfdir}/systemd/system/wazuh-agent.service ]; then
   rm -rf %{_sysconfdir}/systemd/system/wazuh-agent.service
   systemctl daemon-reload > /dev/null 2>&1
@@ -685,10 +721,10 @@ rm -fr %{buildroot}
 %attr(750, root, root) %{_localstatedir}/bin/*
 %dir %attr(750, root, wazuh) %{_localstatedir}/backup
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc
-%attr(640, root, wazuh) %config(noreplace) %{_localstatedir}/etc/client.keys
+%attr(640, root, wazuh) %{_localstatedir}/etc/client.keys
 %attr(640, root, wazuh) %{_localstatedir}/etc/internal_options*
 %attr(640, root, wazuh) %{_localstatedir}/etc/localtime
-%attr(640, root, wazuh) %config(noreplace) %{_localstatedir}/etc/local_internal_options.conf
+%attr(640, root, wazuh) %{_localstatedir}/etc/local_internal_options.conf
 %attr(640, root, wazuh) %ghost %{_localstatedir}/etc/ossec.conf
 %attr(640, root, wazuh) %{_localstatedir}/etc/wpk_root.pem
 %dir %attr(770, root, wazuh) %{_localstatedir}/etc/shared

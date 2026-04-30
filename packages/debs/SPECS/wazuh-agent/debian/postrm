@@ -6,12 +6,24 @@ set -e
 
 DIR="/var/ossec"
 WAZUH_TMP_DIR="${DIR}/packages_files/agent_config_files"
+WAZUH_PRESERVE_DIR="${DIR}/packages_files/agent_upgrade_preserve"
 
 case "$1" in
     remove|failed-upgrade|abort-install|abort-upgrade|disappear)
 
         if [ -d ${WAZUH_TMP_DIR} ]; then
             rm -rf ${WAZUH_TMP_DIR}
+        fi
+
+        if [ -d "${WAZUH_PRESERVE_DIR}" ]; then
+            case "$1" in
+                failed-upgrade|abort-upgrade)
+                    echo "Wazuh upgrade recovery files were preserved at ${WAZUH_PRESERVE_DIR}. Restore them manually if needed." >&2
+                    ;;
+                *)
+                    rm -rf "${WAZUH_PRESERVE_DIR}"
+                    ;;
+            esac
         fi
 
         # Back up the old configuration files as .save

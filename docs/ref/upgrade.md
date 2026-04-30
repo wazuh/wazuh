@@ -1,6 +1,6 @@
 # Upgrade
 
-This guide provides instructions for upgrading Wazuh server and agent components from a previous version. The upgrade process preserves your existing configuration and only updates the package binaries. The service is automatically restarted during the upgrade.
+This guide provides instructions for upgrading Wazuh server and agent components from a previous version. The upgrade process preserves the documented configuration and runtime paths while replacing package-managed files with the new version. The service is automatically restarted during the upgrade.
 
 **Important**: Upgrading the Wazuh **manager** from version 4.x to 5.x is **not supported**. For manager major version upgrades, a fresh installation is required. However, Wazuh **agents** support upgrades from 4.x to 5.x and can connect to a 5.x manager.
 
@@ -60,9 +60,36 @@ sudo rpm -Uvh wazuh-manager-*.rpm
 
 The package manager will automatically:
 - Stop the current service
-- Preserve your configuration files
+- Preserve your configuration and runtime data (see [File preservation](#file-preservation))
 - Install the new binaries
 - Start the service
+
+### File preservation
+
+During a 5.x to 5.x upgrade, the package and source upgrade scripts apply a **preserve / restore** mechanism that guarantees the following behavior:
+
+| Path | Result after upgrade |
+|---|---|
+| `etc/` | Preserved from the previous installation, including `localtime`. |
+| `data/*` (except `data/tzdb`) | Preserved from the previous installation. |
+| `data/tzdb` | Not preserved by the upgrade backup/restore flow; updated from the new package or source timezone database. |
+| `bin/`, libraries, assets | Replaced by the new package. |
+
+This applies to `.deb`, `.rpm`, and source-based upgrades.
+
+File contents are preserved for the paths listed above. Permissions and ownership are not preserved; upgrades normalize them back to the installation baseline regardless of any local changes.
+
+**Seeing new defaults.** Because `etc/` is fully preserved, new default values shipped by the package are not automatically applied to existing files. On DEB manager upgrades a `wazuh-manager.conf.new` side-file is written alongside the live config so you can compare changes manually. On RPM no equivalent side-file is generated for the preserved paths; compare against the package defaults manually if needed.
+
+**If the upgrade fails.** Source-based upgrades attempt to restore preserved files automatically when the upgrade fails or is interrupted after the preserve step. If automatic restore fails, or if a package-based upgrade fails before restoration completes, the preserve directory is left in place for manual recovery:
+
+| Stack | Preserve directory |
+|---|---|
+| DEB | `/var/wazuh-manager/packages_files/manager_upgrade_preserve` |
+| RPM | `/var/wazuh-manager/tmp/manager_upgrade_preserve` |
+| Source | `${TMPDIR:-/tmp}/wazuh-manager-upgrade-preserve.*` |
+
+Once you have recovered the data, remove the preserve directory before retrying. DEB and RPM upgrades abort if they find an existing preserve backup. Source upgrades create a new temporary preserve directory for each attempt, so an older source preserve directory does not block a retry, but it should still be removed after manual recovery.
 
 ### Verify upgrade
 
@@ -270,12 +297,34 @@ This section covers agent upgrades across all supported platforms.
 
 Before upgrading agents:
 
-1. Backup agent configuration (`ossec.conf` and `client.keys`)
+1. Back up agent configuration as a precaution (`ossec.conf` and `client.keys` are preserved automatically, but an external backup is still recommended)
 2. Plan upgrades in batches to avoid upgrading all agents simultaneously
 3. Test on non-production agents first
 4. Verify manager compatibility with the new agent version
 
 **Note:** Wazuh agents version 4.x and later support upgrades to version 5.x.
+
+### File preservation
+
+During a 5.x to 5.x agent upgrade the package scripts apply a **preserve / restore** mechanism for agent configuration files:
+
+| Path | Result after upgrade |
+|---|---|
+| `etc/` (`ossec.conf`, `client.keys`, `local_internal_options.conf`, `localtime`, ...) | Preserved from the previous installation. |
+| `bin/`, libraries | Replaced by the new package. |
+
+
+On DEB upgrades a `ossec.conf.new` side-file is written with the new default config for comparison.
+
+As with server upgrades, file contents are preserved for the paths listed above, but permissions and ownership are normalized back to the installation baseline.
+
+Preserve directory locations for recovery:
+
+| Stack | Preserve directory |
+|---|---|
+| DEB | `/var/ossec/packages_files/agent_upgrade_preserve` |
+| RPM | `/var/ossec/tmp/agent_upgrade_preserve` |
+| Source | `${TMPDIR:-/tmp}/wazuh-agent-upgrade-preserve.*` |
 
 ### Download package
 
@@ -533,6 +582,21 @@ sudo systemctl stop wazuh-manager
 sudo cp $BACKUP_DIR/db/global.db /var/wazuh-manager/var/db/global.db
 sudo chown wazuh-manager:wazuh-manager /var/wazuh-manager/var/db/global.db
 sudo systemctl start wazuh-manager
+```
+
+### Upgrade aborted: existing preserve directory
+
+If a previous package-based upgrade was interrupted, a preserve directory may still be present. DEB and RPM upgrades abort with a message like `Existing upgrade preserve backup found`. Source upgrades use a new temporary preserve directory for each attempt, so older source preserve directories do not block retries. To recover:
+
+1. Inspect the preserve directory contents.
+2. Copy any needed files back to `etc/` or, for manager upgrades, `data/`.
+3. Remove the preserve directory, then retry the upgrade.
+
+```bash
+# Example for manager DEB
+ls /var/wazuh-manager/packages_files/manager_upgrade_preserve/
+# Recover if needed, then:
+sudo rm -rf /var/wazuh-manager/packages_files/manager_upgrade_preserve
 ```
 
 ### Agent issues
