@@ -57,14 +57,13 @@ concurrency:
 
 jobs:
   build-package:
-    if: github.event_name == 'pull_request' || inputs.system == matrix.system
     runs-on: wz-linux-${{ matrix.arch }}
     timeout-minutes: 30
     name: Build ${{ matrix.system }} ${{ matrix.arch }} package
     strategy:
       fail-fast: false
       matrix:
-        system: [deb, rpm]
+        system: ${{ github.event_name == 'pull_request' && fromJSON('["deb", "rpm"]') || fromJSON(format('["{0}"]', inputs.system)) }}
         arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64", "arm64"]') || fromJSON(format('["{0}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture == 'aarch64' && 'arm64' || inputs.architecture)) }}
 
     steps:
@@ -163,7 +162,6 @@ jobs:
 
   test-package:
     needs: build-package
-    if: github.event_name == 'pull_request' || inputs.system == matrix.system
     runs-on: wz-linux-${{ matrix.arch }}
     timeout-minutes: 30
     name: Test ${{ matrix.system }} ${{ matrix.arch }} package
@@ -276,7 +274,7 @@ jobs:
 
   upload-to-s3:
     needs: [build-package, test-package]
-    if: success() && (github.event_name == 'pull_request' || inputs.system == matrix.system)
+    if: success()
     runs-on: wz-linux-${{ matrix.arch }}
     timeout-minutes: 15
     name: Upload ${{ matrix.system }} ${{ matrix.arch }} to S3

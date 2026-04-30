@@ -44,7 +44,6 @@ concurrency:
 
 jobs:
   upload-images:
-    if: github.event_name == 'push' || (inputs.system == matrix.system && inputs.architecture == matrix.arch)
     permissions:
       contents: read
       packages: write
@@ -55,8 +54,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        system: [deb, rpm]
-        arch: [amd64, arm64]
+        system: ${{ github.event_name == 'push' && fromJSON('["deb", "rpm"]') || fromJSON(format('["{0}"]', inputs.system)) }}
+        arch: ${{ github.event_name == 'push' && fromJSON('["amd64", "arm64"]') || fromJSON(format('["{0}"]', inputs.architecture)) }}
 
     steps:
       - name: Checkout wazuh/wazuh repository

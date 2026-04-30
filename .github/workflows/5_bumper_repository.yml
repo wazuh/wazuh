@@ -28,11 +28,6 @@ on:
         default: false
         required: false
         type: boolean
-      revert:
-        description: "Revert the bump instead of applying it"
-        default: false
-        required: false
-        type: boolean
       id:
         description: "Optional identifier for the run"
         required: false
