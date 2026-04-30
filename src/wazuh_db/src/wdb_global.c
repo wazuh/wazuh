@@ -28,6 +28,7 @@ static const char *global_db_agent_fields[] = {
     ":os_major",
     ":os_minor",
     ":os_name",
+    ":os_type",
     ":os_platform",
     ":os_version",
     ":version",

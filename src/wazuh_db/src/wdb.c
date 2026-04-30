@@ -43,8 +43,8 @@ static const char *SQL_ROLLBACK = "ROLLBACK;";
 static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_INSERT_AGENT] = "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?,?,?,?,?,?,?);",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_NAME] = "UPDATE agent SET name = ? WHERE id = ?;",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_platform = ?, os_arch = ?, version = ?, merged_sum = ?, node_name = ?, last_keepalive = STRFTIME('%s', 'NOW'), connection_status = ?, sync_status = ?, group_config_status = ? WHERE id = ?;",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION_IP] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_platform = ?, os_arch = ?, version = ?, merged_sum = ?, node_name = ?, last_keepalive = STRFTIME('%s', 'NOW'), ip = ?, connection_status = ?, sync_status = ?, group_config_status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_type = ?, os_platform = ?, os_arch = ?, version = ?, merged_sum = ?, node_name = ?, last_keepalive = STRFTIME('%s', 'NOW'), connection_status = ?, sync_status = ?, group_config_status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION_IP] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_type = ?, os_platform = ?, os_arch = ?, version = ?, merged_sum = ?, node_name = ?, last_keepalive = STRFTIME('%s', 'NOW'), ip = ?, connection_status = ?, sync_status = ?, group_config_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE] = "UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'), connection_status = ?, sync_status = ?, disconnection_time = 0, status_code = 0 WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_CONNECTION_STATUS] = "UPDATE agent SET connection_status = ?, sync_status = ?, disconnection_time = ?, status_code = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE] = "UPDATE agent SET status_code = ?, version = ?, sync_status = ? WHERE id = ?;",

@@ -1208,7 +1208,7 @@ void * save_control_thread(void * control_msg_queue)
     return NULL;
 }
 
-static const char* infer_os_type(const char *os_platform) {
+const char* infer_os_type(const char *os_platform) {
     if (!os_platform) return NULL;
 
     if (strcmp(os_platform, "windows") == 0) {
