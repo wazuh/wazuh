@@ -346,6 +346,11 @@ int OS_IsValidName(const char *u_name)
         return (0);
     }
 
+    /* Reject names starting with "." */
+    if (u_name[0] == '.') {
+        return (0);
+    }
+
     /* Check if it contains any non-alphanumeric characters */
     for (i = 0; i < uname_length; i++) {
         if (!isalnum((int)u_name[i]) && (u_name[i] != '-') &&
