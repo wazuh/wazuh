@@ -11,10 +11,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <wiconnector/iindexerConnectorAsync.hpp>
 #include <wiconnector/iwindexerconnector.hpp>
-
-// Forward declaration
-class IndexerConnectorAsync;
 
 namespace wiconnector
 {
@@ -56,7 +54,7 @@ class WIndexerConnector : public IWIndexerConnector
 {
 
 private:
-    std::unique_ptr<IndexerConnectorAsync> m_indexerConnectorAsync;
+    std::unique_ptr<IIndexerConnectorAsync> m_indexerConnectorAsync;
     std::shared_mutex m_mutex;
     std::size_t m_maxHitsPerRequest;
     std::atomic<bool> m_shutdownRequested {false}; ///< Flag to signal in-flight pagination loops to abort
@@ -89,6 +87,14 @@ public:
      * @param maxHitsPerRequest The maximum number of hits per request
      */
     WIndexerConnector(std::string_view jsonOssecConfig, const std::size_t maxHitsPerRequest);
+
+    /**
+     * @brief Test-only constructor: inject a custom IIndexerConnectorAsync (e.g. a gMock).
+     *
+     * @param async Owned implementation of IIndexerConnectorAsync used for every backend call.
+     * @param maxHitsPerRequest Maximum number of hits per paginated request (clamped to 1 if zero).
+     */
+    WIndexerConnector(std::unique_ptr<IIndexerConnectorAsync> async, const std::size_t maxHitsPerRequest);
 
     /**
      * @copydoc IWIndexerConnector::index
