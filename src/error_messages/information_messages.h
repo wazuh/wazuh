@@ -65,6 +65,10 @@
 
 #define FIM_EBPF_INIT                       "(6047): Initializing eBPF driver for FIM whodata."
 #define FIM_EBPF_HEALTHCHECK_SUCCESS        "(6048): Healthcheck for eBPF FIM whodata module success."
+#define FIM_EBPF_HEALTHCHECK_ACTION_SUCCESS "(6049): eBPF healthcheck action succeeded: %s."
+#define FIM_EBPF_HEALTHCHECK_CLEANUP        "(6050): Removed a leftover eBPF healthcheck file before starting the validation sequence."
+#define FIM_EBPF_LSM_ACTIVE                 "(6051): BPF LSM is active in the running kernel; using LSM hooks for create/modify/delete events."
+#define FIM_EBPF_LSM_INACTIVE               "(6052): BPF LSM is not active (not present in /sys/kernel/security/lsm); falling back to kprobe hooks. To enable LSM-based capture append 'bpf' to the kernel boot parameter 'lsm=' and reboot."
 
 /* wazuh-logtest information messages */
 #define LOGTEST_INITIALIZED                 "(7200): Logtest started"

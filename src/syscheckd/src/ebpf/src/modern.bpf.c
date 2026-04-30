@@ -337,13 +337,16 @@ statfunc void submit_event(const char *filename,
 }
 
 /*
-* Intercepts vfs_open calls. Now it only reports if the file was newly created
-* (FMODE_CREATED or O_CREAT set), for regular files.
+* Intercepts vfs_open calls. Reports newly-created regular files
+* (FMODE_CREATED or O_CREAT set).
+*
+* This program is always compiled in. The user-space loader decides
+* whether to autoload it based on whether BPF LSM hooks are active
+* on the running system (see ebpf_whodata.cpp).
 */
 SEC("kprobe/vfs_open")
 int kprobe__vfs_open(struct pt_regs *ctx)
 {
-if (LINUX_KERNEL_VERSION < KERNEL_VERSION(6, 8, 0)) {
     struct path *path = (struct path *)PT_REGS_PARM1(ctx);
     if (!path)
         return 0;
@@ -352,20 +355,16 @@ if (LINUX_KERNEL_VERSION < KERNEL_VERSION(6, 8, 0)) {
     if (!file)
         return 0;
 
-    /* Check if the file is newly created */
     fmode_t f_mode = 0;
     bpf_probe_read_kernel(&f_mode, sizeof(f_mode), &file->f_mode);
 
-    /* Also retrieve f_flags to handle creation if FMODE_CREATED fails */
     __u32 f_flags = 0;
     bpf_probe_read_kernel(&f_flags, sizeof(f_flags), &file->f_flags);
 
-    /* If not created, skip */
     if (!(f_mode & FMODE_CREATED) && !(f_flags & O_CREAT)) {
         return 0;
     }
 
-    /* Retrieve the dentry. */
     struct dentry *dentry = NULL;
     bpf_probe_read_kernel(&dentry, sizeof(dentry), &path->dentry);
     if (!dentry)
@@ -379,11 +378,9 @@ if (LINUX_KERNEL_VERSION < KERNEL_VERSION(6, 8, 0)) {
     __u32 mode = 0;
     bpf_probe_read_kernel(&mode, sizeof(mode), &d_inode->i_mode);
 
-    /* Only report regular files (0100000 is the S_IFREG mask). */
     if (((mode & 00170000) != 0100000))
         return 0;
 
-    /* Reconstruct the path. */
     struct buffer *string_buf = bpf_map_lookup_elem(&heaps_map, &(u32){0});
     if (!string_buf)
         return 0;
@@ -392,29 +389,34 @@ if (LINUX_KERNEL_VERSION < KERNEL_VERSION(6, 8, 0)) {
     if (get_path_str_from_path(&full_path, path, string_buf) < 0)
         return 0;
 
-    /* Extract inode/device. */
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
 
-    /* Report file creation event. */
     submit_event((const char *)full_path, inode, dev);
-}
     return 0;
 }
 
 SEC("kprobe/security_inode_setattr")
 int kprobe__security_inode_setattr(struct pt_regs *ctx)
 {
+    /*
+     * Conditional ctx field reads must go through PT_REGS_PARM*_CORE
+     * (which expands to BPF_CORE_READ -> bpf_probe_read_kernel) so the
+     * compiler doesn't emit a "modified ctx pointer dereference"
+     * pattern that the strict verifier on recent kernels rejects.
+     *
+     * Argument layout for security_inode_setattr:
+     *   pre-6.0 :  (struct dentry *dentry, struct iattr *attr)               -> dentry @ PARM1
+     *   6.0+    :  (struct {user_namespace,mnt_idmap} *, struct dentry *,...) -> dentry @ PARM2
+     */
     struct dentry *dentry;
     if (LINUX_KERNEL_VERSION < KERNEL_VERSION(6, 0, 0)) {
-        dentry = (struct dentry *)PT_REGS_PARM1(ctx);
-        if (!dentry) // Necessary condition to validate BPF program
-            return 0;
+        dentry = (struct dentry *)PT_REGS_PARM1_CORE(ctx);
     } else {
-        dentry = (struct dentry *)PT_REGS_PARM2(ctx);
-        if (!dentry) // Necessary condition to validate BPF program
-            return 0;
+        dentry = (struct dentry *)PT_REGS_PARM2_CORE(ctx);
     }
+    if (!dentry)
+        return 0;
 
     struct inode *d_inode = NULL;
     bpf_probe_read_kernel(&d_inode, sizeof(d_inode), &dentry->d_inode);
@@ -470,22 +472,33 @@ int kprobe__security_inode_setattr(struct pt_regs *ctx)
 
 /*
 * Intercepts vfs_unlink calls to detect file removal (delete).
-* The path is retrieved from unlink_path_map to record which file was removed.
+*
+* This program is always compiled in. The user-space loader decides
+* whether to autoload it based on whether BPF LSM hooks are active
+* on the running system (see ebpf_whodata.cpp).
+*
+* vfs_unlink signature evolved across kernels:
+*   pre-5.12 :  vfs_unlink(struct inode *dir, struct dentry *dentry, ...)            -> dentry @ PARM2
+*   5.12+    :  vfs_unlink(struct user_namespace *, struct inode *dir, struct dentry *, ...)
+*   6.3+     :  vfs_unlink(struct mnt_idmap *,    struct inode *dir, struct dentry *, ...) -> dentry @ PARM3
 */
 SEC("kprobe/vfs_unlink")
 int kprobe__vfs_unlink(struct pt_regs *ctx)
 {
-if (LINUX_KERNEL_VERSION < KERNEL_VERSION(6, 8, 0)) {
+    /*
+     * Use PT_REGS_PARM*_CORE for the conditional access so the compiler
+     * doesn't fold the two PARM offsets into a "modified ctx pointer +
+     * deref" sequence that the strict verifier on recent kernels (e.g.
+     * Ubuntu 24's 6.8) rejects with -EACCES.
+     */
     struct dentry *dentry;
     if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 12, 0)) {
-        dentry = (struct dentry *)PT_REGS_PARM2(ctx);
-        if (!dentry) // Necessary condition to validate BPF program
-            return 0;
+        dentry = (struct dentry *)PT_REGS_PARM2_CORE(ctx);
     } else {
-        dentry = (struct dentry *)PT_REGS_PARM3(ctx);
-        if (!dentry) // Necessary condition to validate BPF program
-            return 0;
+        dentry = (struct dentry *)PT_REGS_PARM3_CORE(ctx);
     }
+    if (!dentry)
+        return 0;
 
     struct inode *d_inode = NULL;
     bpf_probe_read_kernel(&d_inode, sizeof(d_inode), &dentry->d_inode);
@@ -512,7 +525,6 @@ if (LINUX_KERNEL_VERSION < KERNEL_VERSION(6, 8, 0)) {
     if (!mnt)
         return 0;
 
-    /* Build a path struct from dentry + mnt. */
     struct path path = {
         .dentry = dentry,
         .mnt    = mnt
@@ -526,42 +538,38 @@ if (LINUX_KERNEL_VERSION < KERNEL_VERSION(6, 8, 0)) {
     if (get_path_str_from_path(&full_path, &path, string_buf) < 0)
         return 0;
 
-    /* Extract inode/device. */
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
 
     submit_event((const char *)full_path, inode, dev);
-}
     return 0;
 }
 
+/*
+* LSM hook for file open. Reports newly-created or write-opened regular
+* files. Only invoked when "bpf" is part of the active LSM list
+* (CONFIG_LSM= or kernel cmdline lsm=...,bpf). The user-space loader
+* disables autoload of this program when BPF LSM is not active.
+*/
 SEC("lsm/file_open")
 int BPF_PROG(file_open, struct file *file)
 {
-if (LINUX_KERNEL_VERSION >= KERNEL_VERSION(6, 8, 0)) {
     struct path *path = NULL;
     bpf_probe_read_kernel(&path, sizeof(path), &file->f_path);
     if (!path)
         return 0;
 
-    /* Check if the file is newly created */
     fmode_t f_mode = 0;
     bpf_probe_read_kernel(&f_mode, sizeof(f_mode), &file->f_mode);
-    if (!f_mode)
-        return 0;
 
-    /* Also retrieve f_flags to handle creation if FMODE_CREATED fails */
     __u32 f_flags = 0;
     bpf_probe_read_kernel(&f_flags, sizeof(f_flags), &file->f_flags);
-    if (!f_flags)
-        return 0;
 
-    /* If not created, skip */
+    /* Report on creation OR on any non-read-only open (writes / rw / append). */
     if (!(f_mode & FMODE_CREATED) && !(f_flags & O_CREAT) && !(f_flags & O_ACCMODE)) {
         return 0;
     }
 
-    /* Retrieve the dentry. */
     struct dentry *dentry = NULL;
     bpf_probe_read_kernel(&dentry, sizeof(dentry), &path->dentry);
     if (!dentry)
@@ -574,10 +582,7 @@ if (LINUX_KERNEL_VERSION >= KERNEL_VERSION(6, 8, 0)) {
 
     __u32 mode = 0;
     bpf_probe_read_kernel(&mode, sizeof(mode), &f_inode->i_mode);
-    if (!mode)
-        return 0;
 
-    /* Only report regular files (0100000 is the S_IFREG mask). */
     if (((mode & 00170000) != 0100000))
         return 0;
 
@@ -589,20 +594,21 @@ if (LINUX_KERNEL_VERSION >= KERNEL_VERSION(6, 8, 0)) {
     if (ret < 0)
         return 0;
 
-    /* Extract inode/device. */
     __u64 inode = 0, dev = 0;
     get_inode_dev(f_inode, &inode, &dev);
 
     submit_event((const char *)full_path, inode, dev);
-}
     return 0;
 }
 
 
+/*
+* LSM hook for path-based unlink. Same activation rules as lsm/file_open.
+* Requires CONFIG_SECURITY_PATH=y in the running kernel.
+*/
 SEC("lsm/path_unlink")
 int BPF_PROG(path_unlink, struct path *path, struct dentry *dentry)
 {
-if (LINUX_KERNEL_VERSION >= KERNEL_VERSION(6, 8, 0)) {
     struct inode *d_inode = NULL;
     bpf_probe_read_kernel(&d_inode, sizeof(d_inode), &dentry->d_inode);
     if (!d_inode)
@@ -610,10 +616,7 @@ if (LINUX_KERNEL_VERSION >= KERNEL_VERSION(6, 8, 0)) {
 
     __u32 mode = 0;
     bpf_probe_read_kernel(&mode, sizeof(mode), &d_inode->i_mode);
-    if (!mode)
-        return 0;
 
-    /* Only report regular files (0100000 is the S_IFREG mask). */
     if (((mode & 00170000) != 0100000))
         return 0;
 
@@ -625,13 +628,11 @@ if (LINUX_KERNEL_VERSION >= KERNEL_VERSION(6, 8, 0)) {
     if (ret < 0)
         return 0;
 
-    /* Get the file name pointer from dentry->d_name.name */
     const char *file_name_ptr;
     bpf_probe_read_kernel(&file_name_ptr, sizeof(file_name_ptr), &dentry->d_name.name);
     if (!file_name_ptr)
         return 0;
 
-    /* Reconstruct the path. */
     struct buffer *string_buf = bpf_map_lookup_elem(&heaps_map, &(u32){0});
     if (!string_buf)
         return 0;
@@ -641,12 +642,10 @@ if (LINUX_KERNEL_VERSION >= KERNEL_VERSION(6, 8, 0)) {
     if (ret < 0)
         return 0;
 
-    /* Extract inode/device. */
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
 
     submit_event((const char *)full_path, inode, dev);
-}
     return 0;
 }
 

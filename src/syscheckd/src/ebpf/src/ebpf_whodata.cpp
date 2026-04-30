@@ -9,7 +9,9 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cerrno>
 #include <sstream>
+#include <sys/stat.h>
 #include <unistd.h>
 #include "modern.skel.h"
 #include <fstream>
@@ -30,9 +32,42 @@
 #define LIB_INSTALL_PATH "bpf"
 #define BPF_OBJ_INSTALL_PATH "lib/modern.bpf.o"
 #define WAIT_MS 500
+#define HC_ACTION_TIMEOUT_S 10
+#define LSM_LIST_FILE "/sys/kernel/security/lsm"
 
 // Global
 static bpf_object* global_obj = nullptr;
+static bool g_bpf_lsm_active = false;
+
+/*
+ * Returns true if the running kernel has "bpf" in its active LSM list.
+ *
+ * BPF LSM programs (SEC("lsm/...")) attach successfully whenever
+ * CONFIG_BPF_LSM=y, but their hooks are only invoked when "bpf" is
+ * present in /sys/kernel/security/lsm (controlled by CONFIG_LSM=
+ * and the kernel boot parameter lsm=). Distributions like Ubuntu do
+ * not enable BPF in the active LSM list by default, which makes LSM
+ * BPF programs silently inert. We use this detection to choose
+ * between the LSM and kprobe variants of our hooks at load time.
+ */
+static bool is_bpf_lsm_active() {
+    std::ifstream file(LSM_LIST_FILE);
+    if (!file) {
+        return false;
+    }
+    std::string lsm_list;
+    if (!std::getline(file, lsm_list)) {
+        return false;
+    }
+    std::stringstream ss(lsm_list);
+    std::string token;
+    while (std::getline(ss, token, ',')) {
+        if (token == "bpf") {
+            return true;
+        }
+    }
+    return false;
+}
 
 std::unique_ptr<w_bpf_helpers_t> bpf_helpers = nullptr;
 std::unique_ptr<DefaultDynamicLibraryWrapper> sym_load;
@@ -98,6 +133,170 @@ int healthcheck_event(void* ctx, void* data, size_t data_sz) {
         event_received = true;
     }
     return 0;
+}
+
+using healthcheck_operation_t = bool (*)(const char*, char*, size_t);
+
+static void log_healthcheck_message(modules_log_level_t level,
+                                    const char* format,
+                                    const char* action,
+                                    const char* detail = nullptr) {
+    auto logFn = fimebpf::instance().m_loggingFunction;
+    char log_message[4200] = {0};
+
+    if (!logFn) {
+        return;
+    }
+
+    if (detail) {
+        snprintf(log_message,
+                 sizeof(log_message),
+                 format,
+                 action,
+                 detail);
+    } else {
+        snprintf(log_message,
+                 sizeof(log_message),
+                 format,
+                 action);
+    }
+
+    logFn(level, log_message);
+}
+
+static bool wait_for_healthcheck_event(ring_buffer* rb, char* detail, size_t detail_size) {
+    auto logFn = fimebpf::instance().m_loggingFunction;
+
+    if (!logFn) {
+        return false;
+    }
+
+    event_received = false;
+    time_t start_time = w_time(nullptr);
+
+    while (!event_received) {
+        int ret = bpf_helpers->ring_buffer_poll(rb, WAIT_MS);
+        if (ret < 0) {
+            logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_CONSUME);
+            snprintf(detail, detail_size, "%s", FIM_EBPF_HEALTHCHECK_EVENT_CONSUME_DETAIL);
+            return false;
+        }
+
+        if (w_time(nullptr) - start_time >= HC_ACTION_TIMEOUT_S) {
+            snprintf(detail, detail_size, "%s", FIM_EBPF_HEALTHCHECK_EVENT_TIMEOUT_DETAIL);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static bool create_healthcheck_file(const char* file_path, char* detail, size_t detail_size) {
+    char error_message[4200] = {0};
+    auto logFn = fimebpf::instance().m_loggingFunction;
+
+    if (!logFn) {
+        return false;
+    }
+
+    std::ofstream file(file_path);
+    if (!file.is_open()) {
+        snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_HEALTHCHECK_FILE, file_path);
+        logFn(LOG_ERROR, error_message);
+        snprintf(detail, detail_size, "%s", FIM_EBPF_HEALTHCHECK_CREATE_DETAIL);
+        return false;
+    }
+
+    file << "Testing eBPF healthcheck\n";
+    file.close();
+
+    return true;
+}
+
+static bool modify_healthcheck_file_content(const char* file_path, char* detail, size_t detail_size) {
+    std::ofstream file(file_path, std::ios::app);
+
+    if (!file.is_open()) {
+        snprintf(detail, detail_size, "%s", FIM_EBPF_HEALTHCHECK_CONTENT_DETAIL);
+        return false;
+    }
+
+    file << "Updating eBPF healthcheck\n";
+    file.close();
+
+    return true;
+}
+
+static bool modify_healthcheck_file_metadata(const char* file_path, char* detail, size_t detail_size) {
+    struct stat file_stat = {};
+
+    if (stat(file_path, &file_stat) != 0) {
+        snprintf(detail,
+                 detail_size,
+                 FIM_EBPF_HEALTHCHECK_STAT_DETAIL,
+                 file_path,
+                 strerror(errno));
+        return false;
+    }
+
+    mode_t current_mode = file_stat.st_mode & 0777;
+    mode_t new_mode = (current_mode ^ S_IXUSR) & 0777;
+
+    if (chmod(file_path, new_mode) != 0) {
+        snprintf(detail,
+                 detail_size,
+                 FIM_EBPF_HEALTHCHECK_CHMOD_DETAIL,
+                 file_path,
+                 strerror(errno));
+        return false;
+    }
+
+    return true;
+}
+
+static bool delete_healthcheck_file(const char* file_path, char* detail, size_t detail_size) {
+    char error_message[4200] = {0};
+    auto logFn = fimebpf::instance().m_loggingFunction;
+
+    if (!logFn) {
+        return false;
+    }
+
+    if (std::remove(file_path) != 0) {
+        snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL, file_path);
+        logFn(LOG_ERROR, error_message);
+        snprintf(detail, detail_size, "%s", FIM_EBPF_HEALTHCHECK_DELETE_DETAIL);
+        return false;
+    }
+
+    return true;
+}
+
+static bool run_healthcheck_action(ring_buffer* rb,
+                                   const char* action,
+                                   const char* file_path,
+                                   healthcheck_operation_t operation,
+                                   bool enabled) {
+    char detail[4200] = {0};
+
+    if (!enabled) {
+        log_healthcheck_message(LOG_ERROR,
+                                FIM_ERROR_EBPF_HEALTHCHECK_ACTION_SKIPPED,
+                                action,
+                                FIM_EBPF_HEALTHCHECK_SKIP_DETAIL);
+        return false;
+    }
+
+    if (!operation(file_path, detail, sizeof(detail)) || !wait_for_healthcheck_event(rb, detail, sizeof(detail))) {
+        log_healthcheck_message(LOG_ERROR,
+                                FIM_ERROR_EBPF_HEALTHCHECK_ACTION_FAILED,
+                                action,
+                                detail);
+        return false;
+    }
+
+    log_healthcheck_message(LOG_INFO, FIM_EBPF_HEALTHCHECK_ACTION_SUCCESS, action);
+    return true;
 }
 
 int check_invalid_kernel_version() {
@@ -173,6 +372,10 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load) {
     bpf_helpers->bpf_object_next_program     = (bpf_object__next_program_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__next_program");
     bpf_helpers->bpf_program_attach          = (bpf_program__attach_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_program__attach");
     bpf_helpers->bpf_object_find_map_fd_by_name = (bpf_object__find_map_fd_by_name_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_object__find_map_fd_by_name");
+    bpf_helpers->bpf_program_set_autoload    = (bpf_program__set_autoload_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_program__set_autoload");
+    bpf_helpers->bpf_program_autoload        = (bpf_program__autoload_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_program__autoload");
+    bpf_helpers->bpf_program_section_name    = (bpf_program__section_name_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_program__section_name");
+    bpf_helpers->bpf_program_name            = (bpf_program__name_t)local_sym_load->getFunctionSymbol(bpf_helpers->module, "bpf_program__name");
 
 
     /* Load all required symbols */
@@ -188,6 +391,10 @@ int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load) {
         !bpf_helpers->bpf_object_next_program ||
         !bpf_helpers->bpf_program_attach ||
         !bpf_helpers->bpf_object_find_map_fd_by_name ||
+        !bpf_helpers->bpf_program_set_autoload ||
+        !bpf_helpers->bpf_program_autoload ||
+        !bpf_helpers->bpf_program_section_name ||
+        !bpf_helpers->bpf_program_name ||
         !bpf_helpers->bpf_object_open_skeleton ||
         !bpf_helpers->bpf_object_destroy_skeleton ||
         !bpf_helpers->bpf_object_load_skeleton ||
@@ -214,6 +421,62 @@ void close_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load) {
     }
 }
 
+/*
+ * libbpf encodes attach failures as either NULL or as an ERR_PTR-like
+ * value in the top page of address space. Treat both as failure so we
+ * don't silently keep going with an invalid bpf_link.
+ */
+static inline bool bpf_link_is_error(const struct bpf_link *link) {
+    if (link == nullptr) {
+        return true;
+    }
+    return reinterpret_cast<uintptr_t>(link) >= static_cast<uintptr_t>(-4095UL);
+}
+
+/*
+ * Decide which programs in the loaded object should autoload.
+ *
+ * On systems where BPF LSM is active in /sys/kernel/security/lsm we
+ * prefer the lsm/* programs (cleaner semantics, fewer kernel-version
+ * pitfalls). Otherwise the lsm/* programs would attach but never fire,
+ * so we disable them and rely on the kprobe/* fallbacks instead.
+ *
+ * security_inode_setattr is always enabled regardless of LSM state.
+ */
+static void select_programs(bpf_object* obj, bool use_lsm) {
+    bpf_program* prog;
+    bpf_object__for_each_program(bpf_helpers, prog, obj) {
+        const char* sec  = bpf_helpers->bpf_program_section_name(prog);
+        const char* name = bpf_helpers->bpf_program_name(prog);
+        if (!sec) {
+            continue;
+        }
+
+        const bool is_lsm = (strncmp(sec, "lsm/", 4) == 0);
+        const bool is_create_or_unlink_kprobe =
+            (strncmp(sec, "kprobe/", 7) == 0) &&
+            (strstr(sec, "vfs_open") != nullptr ||
+             strstr(sec, "vfs_unlink") != nullptr);
+
+        bool keep = true;
+        if (use_lsm && is_create_or_unlink_kprobe) {
+            keep = false;
+        } else if (!use_lsm && is_lsm) {
+            keep = false;
+        }
+
+        bpf_helpers->bpf_program_set_autoload(prog, keep);
+
+        if (fimebpf::instance().m_loggingFunction) {
+            char msg[256] = {0};
+            snprintf(msg, sizeof(msg),
+                     "eBPF program '%s' (%s): autoload=%s",
+                     name ? name : "?", sec, keep ? "true" : "false");
+            fimebpf::instance().m_loggingFunction(LOG_DEBUG_VERBOSE, msg);
+        }
+    }
+}
+
 int init_bpfobj() {
     auto logFn = fimebpf::instance().m_loggingFunction;
     auto abspathFn = fimebpf::instance().m_abspath;
@@ -233,6 +496,12 @@ int init_bpfobj() {
     }
     global_obj = obj;
 
+    /* Decide LSM vs kprobe set BEFORE loading so the verifier only sees
+     * the programs we actually intend to attach. */
+    g_bpf_lsm_active = is_bpf_lsm_active();
+    logFn(LOG_INFO, g_bpf_lsm_active ? FIM_EBPF_LSM_ACTIVE : FIM_EBPF_LSM_INACTIVE);
+    select_programs(obj, g_bpf_lsm_active);
+
     int err = bpf_helpers->bpf_object_load(obj);
     if (err) {
         logFn(LOG_ERROR, FIM_ERROR_EBPF_OBJ_LOAD);
@@ -243,7 +512,24 @@ int init_bpfobj() {
 
     bpf_program* prog;
     bpf_object__for_each_program(bpf_helpers, prog, obj) {
-        if (!bpf_helpers->bpf_program_attach(prog)) {
+        /* Skip programs we explicitly disabled in select_programs;
+         * libbpf would otherwise return -EINVAL because they were
+         * never JIT'd. */
+        if (!bpf_helpers->bpf_program_autoload(prog)) {
+            continue;
+        }
+
+        struct bpf_link* link = (struct bpf_link*)bpf_helpers->bpf_program_attach(prog);
+        if (bpf_link_is_error(link)) {
+            const int saved_errno = errno;
+            const char* name = bpf_helpers->bpf_program_name(prog);
+            char error_message[4200] = {0};
+            snprintf(error_message, sizeof(error_message),
+                     FIM_ERROR_EBPF_OBJ_ATTACH_DETAIL,
+                     name ? name : "?",
+                     saved_errno,
+                     strerror(saved_errno));
+            logFn(LOG_ERROR, error_message);
             logFn(LOG_ERROR, FIM_ERROR_EBPF_OBJ_ATTACH);
             bpf_helpers->bpf_object_close(obj);
             global_obj = nullptr;
@@ -342,7 +628,8 @@ int ebpf_whodata_healthcheck() {
     auto logFn = fimebpf::instance().m_loggingFunction;
     auto abspathFn = fimebpf::instance().m_abspath;
     char ebpf_hc_abs_path[PATH_MAX] = {0};
-    char error_message[4200];
+    bool healthcheck_failed = false;
+    bool healthcheck_file_available = false;
 
     if (!bpf_helpers) {
         bpf_helpers = std::make_unique<w_bpf_helpers_t>();
@@ -366,42 +653,51 @@ int ebpf_whodata_healthcheck() {
         return 1;
     }
 
-    time_t start_time = w_time(nullptr);
-    while (!event_received) {
-        int ret = bpf_helpers->ring_buffer_poll(rb, WAIT_MS);
-        if (ret < 0) {
-            logFn(LOG_ERROR, FIM_ERROR_EBPF_RINGBUFF_CONSUME);
-            break;
-        }
-        if (w_time(nullptr) - start_time >= 10) {
-            logFn(LOG_ERROR, FIM_ERROR_EBPF_HEALTHCHECK_TIMEOUT);
-            break;
-        }
+    event_received = false;
+    ebpf_hc_created = false;
+    abspathFn(EBPF_HC_FILE, ebpf_hc_abs_path, sizeof(ebpf_hc_abs_path));
 
-        if (!ebpf_hc_created) {
-            abspathFn(EBPF_HC_FILE, ebpf_hc_abs_path, sizeof(ebpf_hc_abs_path));
-            std::ofstream file(ebpf_hc_abs_path);
-            if (!file.is_open()) {
-                snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_HEALTHCHECK_FILE, ebpf_hc_abs_path);
-                logFn(LOG_ERROR, error_message);
-                break;
-            }
-            file << "Testing eBPF healthcheck\n";
-            file.close();
-            ebpf_hc_created = true;
-        }
+    if (std::remove(ebpf_hc_abs_path) == 0) {
+        logFn(LOG_DEBUG_VERBOSE, FIM_EBPF_HEALTHCHECK_CLEANUP);
     }
 
-    // Remove the tmp file
-    if (std::remove(ebpf_hc_abs_path) != 0) {
-        snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL, ebpf_hc_abs_path);
-        logFn(LOG_ERROR, error_message);
-    }
+    healthcheck_failed |= !run_healthcheck_action(rb,
+                                                  "create file",
+                                                  ebpf_hc_abs_path,
+                                                  create_healthcheck_file,
+                                                  true);
+    ebpf_hc_created = (access(ebpf_hc_abs_path, F_OK) == 0);
+    healthcheck_file_available = ebpf_hc_created;
+
+    healthcheck_failed |= !run_healthcheck_action(rb,
+                                                  "modify content",
+                                                  ebpf_hc_abs_path,
+                                                  modify_healthcheck_file_content,
+                                                  healthcheck_file_available);
+
+    healthcheck_failed |= !run_healthcheck_action(rb,
+                                                  "modify metadata",
+                                                  ebpf_hc_abs_path,
+                                                  modify_healthcheck_file_metadata,
+                                                  healthcheck_file_available);
+
+    healthcheck_failed |= !run_healthcheck_action(rb,
+                                                  "delete file",
+                                                  ebpf_hc_abs_path,
+                                                  delete_healthcheck_file,
+                                                  healthcheck_file_available);
+    healthcheck_file_available = (access(ebpf_hc_abs_path, F_OK) == 0);
 
     // Free healthcheck ring buffer
     bpf_helpers->ring_buffer_free(rb);
 
-    if (!event_received) {
+    if (healthcheck_file_available && std::remove(ebpf_hc_abs_path) != 0 && errno != ENOENT) {
+        char error_message[4200] = {0};
+        snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL, ebpf_hc_abs_path);
+        logFn(LOG_ERROR, error_message);
+    }
+
+    if (healthcheck_failed) {
         return 1;
     }
 

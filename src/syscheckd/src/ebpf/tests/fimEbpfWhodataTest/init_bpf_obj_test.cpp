@@ -36,6 +36,10 @@ TEST_F(InitBpfobjTest, Success) {
     bpf_helpers->bpf_object_close = (bpf_object__close_t)mock_bpf_object_close_called;
     bpf_helpers->bpf_program_attach = (bpf_program__attach_t)mock_bpf_program_attach_success;
     bpf_helpers->bpf_object_next_program = (bpf_object__next_program_t)mock_bpf_object_next_program;
+    bpf_helpers->bpf_program_set_autoload = (bpf_program__set_autoload_t)mock_bpf_program_set_autoload;
+    bpf_helpers->bpf_program_autoload = (bpf_program__autoload_t)mock_bpf_program_autoload_true;
+    bpf_helpers->bpf_program_section_name = (bpf_program__section_name_t)mock_bpf_program_section_name_kprobe;
+    bpf_helpers->bpf_program_name = (bpf_program__name_t)mock_bpf_program_name_default;
 
     MockFimebpf::SetMockFunctions();
     int result = init_bpfobj();
@@ -68,6 +72,10 @@ TEST_F(InitBpfobjTest, FailureDueLoadeBPFobject) {
     bpf_helpers->bpf_program_attach = (bpf_program__attach_t)mock_bpf_program_attach_failure;
     bpf_helpers->bpf_object_next_program = (bpf_object__next_program_t)mock_bpf_object_next_program;
     bpf_helpers->bpf_object_close = (bpf_object__close_t)mock_bpf_object_close_called;
+    bpf_helpers->bpf_program_set_autoload = (bpf_program__set_autoload_t)mock_bpf_program_set_autoload;
+    bpf_helpers->bpf_program_autoload = (bpf_program__autoload_t)mock_bpf_program_autoload_true;
+    bpf_helpers->bpf_program_section_name = (bpf_program__section_name_t)mock_bpf_program_section_name_kprobe;
+    bpf_helpers->bpf_program_name = (bpf_program__name_t)mock_bpf_program_name_default;
 
     int result = init_bpfobj();
     ASSERT_EQ(result, 1);
@@ -79,6 +87,10 @@ TEST_F(InitBpfobjTest, FailureDueAttachBPFobject) {
     bpf_helpers->bpf_object_next_program = (bpf_object__next_program_t)mock_bpf_object_next_program_in;
     bpf_helpers->bpf_object_close = (bpf_object__close_t)mock_bpf_object_close_called;
     bpf_helpers->bpf_program_attach = (bpf_program__attach_t)mock_bpf_program_attach_failure;
+    bpf_helpers->bpf_program_set_autoload = (bpf_program__set_autoload_t)mock_bpf_program_set_autoload;
+    bpf_helpers->bpf_program_autoload = (bpf_program__autoload_t)mock_bpf_program_autoload_true;
+    bpf_helpers->bpf_program_section_name = (bpf_program__section_name_t)mock_bpf_program_section_name_kprobe;
+    bpf_helpers->bpf_program_name = (bpf_program__name_t)mock_bpf_program_name_default;
 
     int result = init_bpfobj();
     ASSERT_EQ(result, 1);
