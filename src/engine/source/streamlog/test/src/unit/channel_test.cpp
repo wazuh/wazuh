@@ -2169,7 +2169,7 @@ TEST_F(ChannelHandlerTest, StorePersistencePreviousFileNotFound)
 
 // ============= RETENTION POLICY TESTS =============
 
-// Test maxFiles retention: create several files in the channHeel directory, verify oldest are deleted
+// Test maxFiles retention: create several files in the channel directory, verify oldest are deleted
 TEST_F(ChannelHandlerTest, RetentionMaxFilesDeletesOldest)
 {
     auto config = defaultConfig;
@@ -2913,9 +2913,8 @@ TEST_F(ChannelHandlerTest, CompressionCancelledWhenShouldRunIsFalse)
     std::vector<scheduler::TaskConfig> capturedTasks;
     EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
         .Times(AtLeast(1))
-        .WillRepeatedly(
-            [&capturedTasks](std::string_view, scheduler::TaskConfig&& taskConfig)
-            { capturedTasks.push_back(std::move(taskConfig)); });
+        .WillRepeatedly([&capturedTasks](std::string_view, scheduler::TaskConfig&& taskConfig)
+                        { capturedTasks.push_back(std::move(taskConfig)); });
 
     auto handler = createHandlerWithScheduler("cancel-test", config, mockScheduler, shouldRun);
     auto writer = handler->createWriter();
@@ -2977,8 +2976,7 @@ TEST_F(ChannelHandlerTest, CompressionSucceedsWhenShouldRunIsTrue)
 
     EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
         .Times(AtLeast(1))
-        .WillRepeatedly(
-            [](std::string_view, scheduler::TaskConfig&& taskConfig) { taskConfig.taskFunction(); });
+        .WillRepeatedly([](std::string_view, scheduler::TaskConfig&& taskConfig) { taskConfig.taskFunction(); });
 
     auto handler = createHandlerWithScheduler("shouldrun-true", config, mockScheduler, shouldRun);
     auto writer = handler->createWriter();
@@ -3020,8 +3018,7 @@ TEST_F(ChannelHandlerTest, CompressionWorksWithNullShouldRun)
 
     EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
         .Times(AtLeast(1))
-        .WillRepeatedly(
-            [](std::string_view, scheduler::TaskConfig&& taskConfig) { taskConfig.taskFunction(); });
+        .WillRepeatedly([](std::string_view, scheduler::TaskConfig&& taskConfig) { taskConfig.taskFunction(); });
 
     // No compressionShouldRun passed → null → fallback to static alwaysRun.
     auto handler = createHandlerWithScheduler("null-shouldrun", config, mockScheduler);

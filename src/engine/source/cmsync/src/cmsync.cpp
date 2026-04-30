@@ -413,13 +413,6 @@ void CMSync::synchronize()
 
     LOG_DEBUG("[CMSync] Checking for namespace updates to synchronize");
 
-    // Check abort before acquiring lock
-    if (m_shutdownRequested.load(std::memory_order_relaxed))
-    {
-        LOG_INFO("[CMSync] Synchronization aborted before start");
-        return;
-    }
-
     const auto cmcrudPtr = base::utils::lockWeakPtr(m_cmcrudPtr, "CMCrud Service");
     const auto routerPtr = base::utils::lockWeakPtr(m_router, "RouterAPI");
     std::unique_lock lock(m_mutex); // Lock the sync process, only 1 at a time
