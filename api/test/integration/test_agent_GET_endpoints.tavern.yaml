@@ -188,8 +188,12 @@ stages:
       save:
         json:
           expected_agent_name: data.affected_items[0].name
+          expected_os_type: data.affected_items[0].os.type
           expected_os_platform: data.affected_items[0].os.platform
           expected_os_version: data.affected_items[0].os.version
+          expected_os_major: data.affected_items[0].os.major
+          expected_os_minor: data.affected_items[0].os.minor
+          expected_os_arch: data.affected_items[0].os.arch
           expected_os_name: data.affected_items[0].os.name
           expected_node_name: data.affected_items[0].node_name
           expected_name: data.affected_items[0].name

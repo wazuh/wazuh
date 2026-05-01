@@ -227,6 +227,11 @@ int wdb_update_agent_data(agent_info_data *agent_data, int *sock) {
         cJSON_AddStringToObject(data_in, "os_version", agent_data->osd->os_version);
         cJSON_AddStringToObject(data_in, "os_major", agent_data->osd->os_major);
         cJSON_AddStringToObject(data_in, "os_minor", agent_data->osd->os_minor);
+
+        if (agent_data->osd->os_type){
+            cJSON_AddStringToObject(data_in, "os_type", agent_data->osd->os_type);
+        }
+
         cJSON_AddStringToObject(data_in, "os_platform", agent_data->osd->os_platform);
         cJSON_AddStringToObject(data_in, "os_arch", agent_data->osd->os_arch);
     }

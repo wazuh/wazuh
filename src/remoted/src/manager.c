@@ -673,6 +673,13 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
                 return;
             }
 
+            if (agent_data->osd && !agent_data->osd->os_type && agent_data->osd->os_platform) {
+                const char *inferred = infer_os_type(agent_data->osd->os_platform);
+                if (inferred) {
+                    os_strdup(inferred, agent_data->osd->os_type);
+                }
+            }
+
             if (node_name) {
                 os_strdup(node_name, agent_data->node_name);
             }

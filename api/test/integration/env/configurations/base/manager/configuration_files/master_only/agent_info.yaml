@@ -6,6 +6,7 @@
     os_version: 18.04.6 LTS
     os_major: 18
     os_minor: 04
+    os_type: linux
     os_platform: ubuntu
     version: Wazuh v4.9.2
     merged_sum: c5c0409668664e790a295bce215b4fa2
@@ -24,6 +25,7 @@
     os_version: 18.04.2 LTS
     os_major: 18
     os_minor: 04
+    os_type: linux
     os_platform: ubuntu
     version: Wazuh v4.9.2
     merged_sum: 5c503afb7c6a5bfafabf10ce548120f5

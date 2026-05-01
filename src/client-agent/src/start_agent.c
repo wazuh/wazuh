@@ -611,6 +611,9 @@ static void populate_early_metadata(void)
         if (os->os_platform) {
             strncpy(metadata.os_platform, os->os_platform, sizeof(metadata.os_platform) - 1);
         }
+        if (os->os_type) {
+            strncpy(metadata.os_type, os->os_type, sizeof(metadata.os_type) - 1);
+        }
         if (os->machine) {
             strncpy(metadata.architecture, os->machine, sizeof(metadata.architecture) - 1);
         }

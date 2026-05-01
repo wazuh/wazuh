@@ -28,6 +28,7 @@ static const char *global_db_agent_fields[] = {
     ":os_major",
     ":os_minor",
     ":os_name",
+    ":os_type",
     ":os_platform",
     ":os_version",
     ":version",
@@ -141,6 +142,7 @@ int wdb_global_update_agent_version(wdb_t *wdb,
                                     const char *os_version,
                                     const char *os_major,
                                     const char *os_minor,
+                                    const char *os_type,
                                     const char *os_platform,
                                     const char *os_arch,
                                     const char *version,
@@ -182,6 +184,11 @@ int wdb_global_update_agent_version(wdb_t *wdb,
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
+    if (sqlite3_bind_text(stmt, index++, os_type, -1, NULL) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
     if (sqlite3_bind_text(stmt, index++, os_platform, -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;

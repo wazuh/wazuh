@@ -914,6 +914,7 @@ void free_osinfo(os_info * osinfo) {
         free(osinfo->os_build);
         free(osinfo->os_version);
         free(osinfo->os_codename);
+        free(osinfo->os_type);
         free(osinfo->os_platform);
         free(osinfo->sysname);
         free(osinfo->nodename);

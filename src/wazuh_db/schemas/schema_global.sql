@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS agent (
     os_version TEXT,
     os_major TEXT,
     os_minor TEXT,
+    os_type TEXT,
     os_platform TEXT,
     os_arch TEXT,
     version TEXT,

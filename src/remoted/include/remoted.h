@@ -186,6 +186,14 @@ void rem_initList(int initial_size);
 void rem_setCounter(int fd, size_t counter);
 size_t rem_getCounter(int fd);
 
+/**
+ * @brief Infers OS family type given a certain OS platform
+ *
+ * @param os_platform Platform of the machine where wazuh is being executed.
+ * @return const char* OS family type associated with the given platform
+ */
+const char* infer_os_type(const char *os_platform);
+
 /** Global variables **/
 
 extern keystore keys;

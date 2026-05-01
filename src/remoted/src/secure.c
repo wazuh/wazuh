@@ -1208,7 +1208,7 @@ void * save_control_thread(void * control_msg_queue)
     return NULL;
 }
 
-static const char* infer_os_type(const char *os_platform) {
+const char* infer_os_type(const char *os_platform) {
     if (!os_platform) return NULL;
 
     if (strcmp(os_platform, "windows") == 0) {
@@ -1216,6 +1216,8 @@ static const char* infer_os_type(const char *os_platform) {
     } else if (strcmp(os_platform, "darwin") == 0) {
         return "macos";
     } else if (strcmp(os_platform, "bsd") == 0) {
+        return "unix";
+    } else if (strcmp(os_platform, "unix") == 0 || strcmp(os_platform, "Unix") == 0) {
         return "unix";
     }
 

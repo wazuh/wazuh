@@ -1073,6 +1073,7 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
     cJSON *j_os_version = NULL;
     cJSON *j_os_major = NULL;
     cJSON *j_os_minor = NULL;
+    cJSON *j_os_type = NULL;
     cJSON *j_os_platform = NULL;
     cJSON *j_os_arch = NULL;
     cJSON *j_version = NULL;
@@ -1095,6 +1096,7 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
         j_os_version = cJSON_GetObjectItem(agent_data, "os_version");
         j_os_major = cJSON_GetObjectItem(agent_data, "os_major");
         j_os_minor = cJSON_GetObjectItem(agent_data, "os_minor");
+        j_os_type = cJSON_GetObjectItem(agent_data, "os_type");
         j_os_platform = cJSON_GetObjectItem(agent_data, "os_platform");
         j_os_arch = cJSON_GetObjectItem(agent_data, "os_arch");
         j_version = cJSON_GetObjectItem(agent_data, "version");
@@ -1112,6 +1114,7 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
             char *os_version = cJSON_IsString(j_os_version) ? j_os_version->valuestring : NULL;
             char *os_major = cJSON_IsString(j_os_major) ? j_os_major->valuestring : NULL;
             char *os_minor = cJSON_IsString(j_os_minor) ? j_os_minor->valuestring : NULL;
+            char *os_type = cJSON_IsString(j_os_type) ? j_os_type->valuestring : NULL;
             char *os_platform = cJSON_IsString(j_os_platform) ? j_os_platform->valuestring : NULL;
             char *os_arch = cJSON_IsString(j_os_arch) ? j_os_arch->valuestring : NULL;
             char *version = cJSON_IsString(j_version) ? j_version->valuestring : NULL;
@@ -1125,7 +1128,7 @@ int wdb_parse_global_update_agent_data(wdb_t * wdb, char * input, char * output)
             char *validated_sync_status = wdb_global_validate_sync_status(wdb, id, sync_status);
 
             if (OS_SUCCESS != wdb_global_update_agent_version(wdb, id, os_name, os_version, os_major, os_minor,
-                                                              os_platform, os_arch, version,
+                                                              os_type, os_platform, os_arch, version,
                                                               merged_sum, node_name, agent_ip, connection_status,
                                                               validated_sync_status, group_config_status)) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
