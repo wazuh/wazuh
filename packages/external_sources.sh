@@ -63,10 +63,17 @@ _reg openssl            "https://www.openssl.org/source/openssl-{version}.tar.gz
 _reg procps             "https://gitlab.com/procps-ng/procps/-/archive/v{version}/procps-v{version}.tar.gz"                       tar.gz  1  procps             false  "https://gitlab.com/procps-ng/procps"
 # Note: procps-ng dropped its 2.x and 3.x history when migrating to GitLab.
 # Versions older than ~v3.3.x are not reachable via this URL.
-_reg sqlite             "https://github.com/sqlite/sqlite/archive/refs/tags/version-{version}.tar.gz"                             tar.gz  1  sqlite             false  "https://github.com/sqlite/sqlite"
-# sqlite's official .tar.gz at sqlite.org uses a year-prefixed path and a
-# version-without-dots filename (e.g. sqlite-autoconf-3500400.tar.gz). The
-# GitHub mirror's auto-archive is more uniform.
+_reg sqlite             "TBD"                                                                                                     tar.gz  1  sqlite             false  "https://github.com/sqlite/sqlite"
+# sqlite is a special case. src/external/CMakeLists.txt expects a
+# pre-amalgamated `sqlite/sqlite3.c`, which is a build artifact published in
+# sqlite.org's autoconf tarball, not in the GitHub source repo. The
+# autoconf URL (https://www.sqlite.org/{year}/sqlite-autoconf-{NNNNNNN}.tar.gz)
+# requires both a year-prefix and a concatenated-digits version (e.g.
+# 3.50.4 -> 3500400), neither of which are derivable from a plain
+# "name:version" input. Bumping sqlite via this workflow needs a manifest
+# schema change (year field) or a post-extract amalgamation step.
+# Until then, sqlite is left to fall back to the Wazuh source mirror
+# (packages.wazuh.com/deps/$DEPS_VERSION/libraries/sources/sqlite.tar.gz).
 _reg zlib               "https://github.com/madler/zlib/releases/download/v{version}/zlib-{version}.tar.gz"                       tar.gz  1  zlib               false  "https://github.com/madler/zlib"
 _reg audit-userspace    "https://github.com/linux-audit/audit-userspace/archive/refs/tags/v{version}.tar.gz"                      tar.gz  1  audit-userspace    false  "https://github.com/linux-audit/audit-userspace"
 _reg msgpack            "https://github.com/msgpack/msgpack-c/archive/refs/tags/cpp-{version}.tar.gz"                              tar.gz  1  msgpack            false  "https://github.com/msgpack/msgpack-c"
