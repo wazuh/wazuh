@@ -56,15 +56,20 @@ _reg() {
 
 _reg cJSON              "https://github.com/DaveGamble/cJSON/archive/refs/tags/v{version}.tar.gz"                                 tar.gz  1  cJSON              false  "https://github.com/DaveGamble/cJSON"
 _reg curl               "https://curl.se/download/curl-{version}.tar.gz"                                                          tar.gz  1  curl               false  "https://github.com/curl/curl"
-_reg libdb              "https://github.com/yasuhirokimura/db18/archive/refs/tags/v{version}.tar.gz"                              tar.gz  1  libdb              false  "https://github.com/yasuhirokimura/db18"
-_reg libffi             "https://github.com/libffi/libffi/releases/download/v{version}/libffi-{version}.tar.gz"                   tar.gz  1  libffi             false  "https://github.com/libffi/libffi"
-_reg libyaml            "https://github.com/yaml/libyaml/releases/download/{version}/yaml-{version}.tar.gz"                       tar.gz  1  libyaml            false  "https://github.com/yaml/libyaml"
+_reg libdb              "https://github.com/yasuhirokimura/db18/archive/refs/tags/{version}.tar.gz"                               tar.gz  1  libdb              false  "https://github.com/yasuhirokimura/db18"
+_reg libffi             "https://github.com/libffi/libffi/archive/refs/tags/v{version}.tar.gz"                                    tar.gz  1  libffi             false  "https://github.com/libffi/libffi"
+_reg libyaml            "https://github.com/yaml/libyaml/archive/refs/tags/{version}.tar.gz"                                      tar.gz  1  libyaml             false  "https://github.com/yaml/libyaml"
 _reg openssl            "https://www.openssl.org/source/openssl-{version}.tar.gz"                                                 tar.gz  1  openssl            false  "https://github.com/openssl/openssl"
 _reg procps             "https://gitlab.com/procps-ng/procps/-/archive/v{version}/procps-v{version}.tar.gz"                       tar.gz  1  procps             false  "https://gitlab.com/procps-ng/procps"
-_reg sqlite             "https://www.sqlite.org/2024/sqlite-autoconf-{version_us}00.tar.gz"                                       tar.gz  1  sqlite             false  "https://github.com/sqlite/sqlite"
+# Note: procps-ng dropped its 2.x and 3.x history when migrating to GitLab.
+# Versions older than ~v3.3.x are not reachable via this URL.
+_reg sqlite             "https://github.com/sqlite/sqlite/archive/refs/tags/version-{version}.tar.gz"                             tar.gz  1  sqlite             false  "https://github.com/sqlite/sqlite"
+# sqlite's official .tar.gz at sqlite.org uses a year-prefixed path and a
+# version-without-dots filename (e.g. sqlite-autoconf-3500400.tar.gz). The
+# GitHub mirror's auto-archive is more uniform.
 _reg zlib               "https://github.com/madler/zlib/releases/download/v{version}/zlib-{version}.tar.gz"                       tar.gz  1  zlib               false  "https://github.com/madler/zlib"
 _reg audit-userspace    "https://github.com/linux-audit/audit-userspace/archive/refs/tags/v{version}.tar.gz"                      tar.gz  1  audit-userspace    false  "https://github.com/linux-audit/audit-userspace"
-_reg msgpack            "https://github.com/msgpack/msgpack-c/releases/download/c-{version}/msgpack-c-{version}.tar.gz"           tar.gz  1  msgpack            false  "https://github.com/msgpack/msgpack-c"
+_reg msgpack            "https://github.com/msgpack/msgpack-c/archive/refs/tags/cpp-{version}.tar.gz"                              tar.gz  1  msgpack            false  "https://github.com/msgpack/msgpack-c"
 _reg bzip2              "https://github.com/libarchive/bzip2/archive/refs/tags/bzip2-{version}.tar.gz"                            tar.gz  1  bzip2              false  "https://github.com/libarchive/bzip2"
 _reg nlohmann           "https://github.com/nlohmann/json/archive/refs/tags/v{version}.tar.gz"                                    tar.gz  1  nlohmann           false  "https://github.com/nlohmann/json"
 _reg googletest         "https://github.com/google/googletest/archive/refs/tags/release-{version}.tar.gz"                         tar.gz  1  googletest         false  "https://github.com/google/googletest"
@@ -73,6 +78,8 @@ _reg libplist           "https://github.com/libimobiledevice/libplist/archive/re
 _reg pacman             "https://gitlab.archlinux.org/pacman/pacman/-/archive/v{version}/pacman-v{version}.tar.gz"                tar.gz  1  pacman             false  "https://gitlab.archlinux.org/pacman/pacman"
 _reg libarchive         "https://github.com/libarchive/libarchive/releases/download/v{version}/libarchive-{version}.tar.gz"       tar.gz  1  libarchive         false  "https://github.com/libarchive/libarchive"
 _reg popt               "https://github.com/rpm-software-management/popt/archive/refs/tags/popt-{version}-release.tar.gz"         tar.gz  1  popt               false  "https://github.com/rpm-software-management/popt"
+# Note: popt versions older than ~1.18 (e.g. 1.16) predate this repo's tag
+# history and are not reachable via this template.
 _reg lua                "https://www.lua.org/ftp/lua-{version}.tar.gz"                                                            tar.gz  1  lua                false  "https://github.com/lua/lua"
 _reg rpm                "https://github.com/rpm-software-management/rpm/archive/refs/tags/rpm-{version}-release.tar.gz"           tar.gz  1  rpm                false  "https://github.com/rpm-software-management/rpm"
 _reg rocksdb            "https://github.com/facebook/rocksdb/archive/refs/tags/v{version}.tar.gz"                                 tar.gz  1  rocksdb            false  "https://github.com/facebook/rocksdb"
@@ -80,7 +87,7 @@ _reg lzma               "https://github.com/tukaani-project/xz/releases/download
 _reg cpp-httplib        "https://github.com/yhirose/cpp-httplib/archive/refs/tags/v{version}.tar.gz"                              tar.gz  1  cpp-httplib        false  "https://github.com/yhirose/cpp-httplib"
 _reg benchmark          "https://github.com/google/benchmark/archive/refs/tags/v{version}.tar.gz"                                 tar.gz  1  benchmark          false  "https://github.com/google/benchmark"
 _reg libbpf-bootstrap   "https://github.com/libbpf/libbpf-bootstrap/archive/refs/tags/v{version}.tar.gz"                          tar.gz  1  libbpf-bootstrap   true   "https://github.com/libbpf/libbpf-bootstrap"
-_reg dbus               "https://gitlab.freedesktop.org/dbus/dbus/-/archive/dbus-{version}/dbus-dbus-{version}.tar.gz"            tar.gz  1  dbus               true   "https://gitlab.freedesktop.org/dbus/dbus"
+_reg dbus               "https://dbus.freedesktop.org/releases/dbus/dbus-{version}.tar.xz"                                        tar.xz  1  dbus               true   "https://gitlab.freedesktop.org/dbus/dbus"
 _reg flatbuffers        "https://github.com/google/flatbuffers/archive/refs/tags/v{version}.tar.gz"                               tar.gz  1  flatbuffers        false  "https://github.com/google/flatbuffers"
 
 # ---------------------------------------------------------------------------
