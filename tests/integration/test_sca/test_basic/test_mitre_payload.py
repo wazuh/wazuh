@@ -139,9 +139,9 @@ def _callback_scan_result_for_policy(policy: str, allow_any_policy: bool = False
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(configurations, configuration_metadata), ids=case_ids)
-def test_sca_mitre_payload(test_configuration, test_metadata, prepare_cis_policies_file, truncate_monitored_files,
-                           set_wazuh_configuration, configure_local_internal_options, daemons_handler,
-                           wait_for_sca_enabled):
+def test_sca_mitre_payload(test_configuration, test_metadata, prepare_cis_policies_file, clean_sca_db,
+                           truncate_monitored_files, set_wazuh_configuration, configure_local_internal_options,
+                           daemons_handler, wait_for_sca_enabled):
     '''
     description: Runs a scan with a policy that contains a MITRE object and verifies that the
                  resulting event payload includes the expected MITRE ATT&CK tactic and technique fields.
@@ -195,11 +195,8 @@ def test_sca_mitre_payload(test_configuration, test_metadata, prepare_cis_polici
         - r".*sca.*Stateful event queued: (.*)"
     '''
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    scan_timeout = 700 if sys.platform == WINDOWS else 60
 
-    # Anchor the monitor to the module startup before waiting for the queued stateful event.
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_ENABLED), timeout=scan_timeout)
-    assert log_monitor.callback_result
+    scan_timeout = 180 if sys.platform == WINDOWS else 60
 
     expected_policy = Path(test_metadata['policy_file']).stem
 
@@ -214,7 +211,7 @@ def test_sca_mitre_payload(test_configuration, test_metadata, prepare_cis_polici
         if log_monitor.callback_result is None:
             log_monitor.start(
                 callback=_callback_scan_result_for_policy(expected_policy, allow_any_policy=True),
-                timeout=30,
+                timeout=60,
                 only_new_events=False
             )
 

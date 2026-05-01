@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   indexerconnector-modules:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     steps:
       - name: Cancel previous runs
@@ -40,6 +41,7 @@ jobs:
           validate_function_coverage: "false"
 
   indexerconnector-asan:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     strategy:
       matrix:
         os: [ubuntu-24.04, ubuntu-22.04]

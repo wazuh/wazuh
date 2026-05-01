@@ -282,6 +282,15 @@ public:
     void registerNotify(std::function<void()> callback);
 
     /**
+     * @brief Force a refresh on one or more indices so recently indexed documents
+     * become immediately searchable.
+     *
+     * @param indexPattern Index name or wildcard pattern (e.g.
+     *                     "wazuh-states-inventory-packages").
+     */
+    void refresh(std::string_view indexPattern);
+
+    /**
      * @brief Check have a server available.
      *
      * @return true if have a server available, false otherwise.

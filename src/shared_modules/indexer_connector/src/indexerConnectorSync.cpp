@@ -109,6 +109,11 @@ public:
         m_impl.registerNotify(std::move(callback));
     }
 
+    void refresh(std::string_view indexPattern)
+    {
+        m_impl.refresh(indexPattern);
+    }
+
     bool isAvailable() const
     {
         return m_impl.isAvailable();
@@ -207,6 +212,11 @@ void IndexerConnectorSync::invokePendingCallbacks()
 void IndexerConnectorSync::registerNotify(std::function<void()> callback)
 {
     m_impl->registerNotify(std::move(callback));
+}
+
+void IndexerConnectorSync::refresh(std::string_view indexPattern)
+{
+    m_impl->refresh(indexPattern);
 }
 
 bool IndexerConnectorSync::isAvailable() const

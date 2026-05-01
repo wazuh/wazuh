@@ -82,6 +82,8 @@
 	},
 
 	"postCreateCommand": {
+		// Fix Docker-in-Docker networking for nftables-based kernels
+		"fix_dind": "sh ${containerWorkspaceFolder}/wazuh/src/engine/tools/devContainer/.devcontainer/fix-dind.sh",
 		// Configure zsh
 	    "zsh_cnf_0": "echo \"setopt APPEND_HISTORY;setopt INC_APPEND_HISTORY\" >> ~/.zshrc",
 		"zsh_cnf_1": "echo \"export HISTFILE=${containerWorkspaceFolder}/.zsh_history\" >> ~/.zshrc",

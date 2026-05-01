@@ -16,6 +16,7 @@ env:
 
 jobs:
   build:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Build Server
     runs-on: ubuntu-latest
     steps:
@@ -55,10 +56,8 @@ jobs:
             src/external/rocksdb/build/librocksdb.so.8.3.2
 
   helper_tests:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Helper Functions Test
-
-    # Only runs if the PR status is different to Draft
-    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     needs: build
     timeout-minutes: 60
@@ -123,10 +122,8 @@ jobs:
         run: engine-helper-test -e /tmp/actions generate-doc --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/ -o /tmp/helper_docs/
 
   api_tests:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: API Endpoints Test
-
-    # Only runs if the PR status is different to Draft
-    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     needs: build
     timeout-minutes: 60

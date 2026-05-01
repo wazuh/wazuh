@@ -3,7 +3,7 @@
   configuration_parameters:
     ENABLED: 'yes'
     INTERVAL: 3600
-    POLICY_FILE: cis_lin_compliance_valid_keys.yaml
+    POLICY_FILE: ruleset/sca/cis_lin_compliance_valid_keys.yaml
   metadata:
     policy_file: cis_lin_compliance_valid_keys.yaml
     results: 2
@@ -36,7 +36,7 @@
   configuration_parameters:
     ENABLED: 'yes'
     INTERVAL: 3600
-    POLICY_FILE: cis_lin_compliance_invalid_keys.yaml
+    POLICY_FILE: ruleset/sca/cis_lin_compliance_invalid_keys.yaml
   metadata:
     policy_file: cis_lin_compliance_invalid_keys.yaml
     results: 1
@@ -63,7 +63,7 @@
   configuration_parameters:
     ENABLED: 'yes'
     INTERVAL: 3600
-    POLICY_FILE: cis_lin_compliance_old_format.yaml
+    POLICY_FILE: ruleset/sca/cis_lin_compliance_old_format.yaml
   metadata:
     policy_file: cis_lin_compliance_old_format.yaml
     results: 1

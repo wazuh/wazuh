@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   call-build-workflow:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     uses: ./.github/workflows/5_builderpackage_engine-standalone.yml
     secrets: inherit
     with:

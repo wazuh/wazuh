@@ -221,10 +221,10 @@ jobs:
             echo "Attempt $((RETRY_COUNT + 1))/$MAX_RETRIES..."
 
             if [ -S sockets/engine-api.sock ] && \
-               curl --silent --unix-socket sockets/engine-api.sock \
+               curl --silent --fail-with-body --unix-socket sockets/engine-api.sock \
                     -X POST -H "Content-Type: application/json" \
-                    -d '{"name":"default"}' \
-                    http://localhost/router/route/get; then
+                    -d '{}' \
+                    http://localhost/_internal/router/table/get; then
               echo "Engine started successfully"
               ENGINE_READY=1
               break

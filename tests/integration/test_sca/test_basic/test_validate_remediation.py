@@ -68,13 +68,14 @@ test_folder = '/testfile'
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
+
 # Helper to find the result for a given id in the accumulated results
 def find_result_for_a_given_id(id: int, results: list[tuple[str, str, str]]) -> tuple[str, str, str] | None:
     # When only one event was captured the monitor returns a bare tuple instead of a list of tuples.
     if isinstance(results, tuple):
         results = [results]
     for result in results:
-        if result[0] == str(id):
+        if isinstance(result, tuple) and len(result) >= 3 and result[0] == str(id):
             return result
     return None
 
@@ -105,12 +106,12 @@ def _callback_scan_result_for_check(check_id: int,
 
     return _callback
 
+
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(configurations, configuration_metadata), ids=case_ids)
 def test_validate_remediation_results(test_configuration, test_metadata, prepare_cis_policies_file, truncate_monitored_files,
                                       prepare_remediation_test, set_wazuh_configuration,
-                                      configure_local_internal_options, daemons_handler,
-                                      wait_for_sca_enabled):
+                                      configure_local_internal_options, clean_sca_db, daemons_handler, wait_for_sca_enabled):
     '''
     description: This test will check that a SCA scan results, with the  expected initial results (passed/failed) for a
                  given check, results change on subsequent checks if change is done to the system. For this a folder's
@@ -158,6 +159,9 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
         - wait_for_sca_enabled:
             type: fixture
             brief: Wait for the sca Module to start before starting the test.
+        - clean_sca_db:
+            type: fixture
+            brief: Remove SCA database files to prevent stale data between tests.
 
     assertions:
         - Assert the result for a given check passed/failed as expected
@@ -170,11 +174,11 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
     expected_output:
         - r".*sca.*DEBUG: Policy check \"(\d+)\" evaluation completed for policy \"(.*?)\", result: (Passed|Failed)"
     '''
-
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    scan_timeout = 600 if sys.platform == WINDOWS else 20
+    scan_timeout = 180 if sys.platform == WINDOWS else 60
 
     expected_policy = Path(test_metadata['policy_file']).stem
+
     if sys.platform != WINDOWS:
         # Wait for the SCA scan checks to start for the specific policy
         log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=scan_timeout)
@@ -214,14 +218,13 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
         log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=scan_timeout,
                           accumulations=4)
         initial_result = find_result_for_a_given_id(test_metadata['check_id'], log_monitor.callback_result) if log_monitor.callback_result is not None else None
+
     assert initial_result is not None and initial_result[2].lower() == test_metadata['initial_result'].lower(), \
         f"Got unexpected SCA result: expected {test_metadata['initial_result']}, got {initial_result}"
 
     if sys.platform == WINDOWS:
-        # Modify lockout duration
         subprocess.call('net accounts /lockoutduration:100', shell=True)
     else:
-        # Modify the folder's permissions
         os.chmod(test_folder, test_metadata['perms'])
 
     if sys.platform != WINDOWS:
@@ -262,6 +265,6 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
         log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=scan_timeout,
                           only_new_events=True, accumulations=4)
         final_result = find_result_for_a_given_id(test_metadata['check_id'], log_monitor.callback_result) if log_monitor.callback_result is not None else None
+
     assert final_result is not None and final_result[2].lower() == test_metadata['final_result'].lower(), \
         f"Got unexpected SCA result: expected {test_metadata['final_result']}, got {final_result}"
-

@@ -1,6 +1,7 @@
 name: 5.X - Unit tests coverage - Python
 on:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testunit_python-coverage.yml"
   workflow_dispatch:
@@ -16,6 +17,7 @@ concurrency:
 
 jobs:
   build:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}

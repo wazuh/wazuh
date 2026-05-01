@@ -294,10 +294,10 @@ wait_for_wazuh_engine_ready()
     fi
 
     while [ $attempts -lt $max_attempts ]; do
-        curl --silent --unix-socket ${DIR}/queue/sockets/analysis \
+        curl --silent --fail-with-body --unix-socket ${DIR}/queue/sockets/analysis \
             -X POST -H "Content-Type: application/json" \
-            -d '{"name":"default"}' \
-            http://localhost/router/route/get \
+            -d '{}' \
+            http://localhost/_internal/router/table/get \
             > /dev/null 2>&1
         if [ $? -eq 0 ]; then
             return 0

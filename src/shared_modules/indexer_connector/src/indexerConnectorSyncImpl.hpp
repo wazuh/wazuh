@@ -1281,6 +1281,29 @@ public:
         m_notify.push_back(std::move(callback));
     }
 
+    void refresh(std::string_view indexPattern)
+    {
+        std::string url;
+        url += m_selector->getNext();
+        url += "/";
+        url += indexPattern;
+        url += "/_refresh";
+        logDebug2(IC_NAME, "Forcing index refresh: %s", url.c_str());
+
+        const auto onSuccess = [](const std::string& response)
+        {
+            logDebug2(IC_NAME, "Index refresh response: %s", response.c_str());
+        };
+        const auto onError = [](const std::string& error, const long statusCode, const std::string&)
+        {
+            logWarn(IC_NAME, "Index refresh failed: %s, status code: %ld", error.c_str(), statusCode);
+        };
+
+        m_httpRequest->post(RequestParameters {.url = HttpURL(url), .secureCommunication = m_secureCommunication},
+                            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                            {});
+    }
+
     bool isAvailable() const
     {
         return m_selector->isAvailable();
