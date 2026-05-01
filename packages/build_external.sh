@@ -14,23 +14,28 @@
 #   JOBS                parallel build jobs (defaults to nproc)
 #   WAZUH_VERBOSE       "yes" enables `set -x`
 #
-# Sources (mounted by the host):
-#   /wazuh-local-src              the working tree
-#   /wazuh-local-src/packages/external_sources.sh   the manifest
+# Sources (location varies by mode):
+#   ${WAZUH_SRC}                  the working tree (default /wazuh-local-src
+#                                 — the path the Linux/Windows builder
+#                                 containers see; macOS native runs override
+#                                 it to the actual checkout path).
+#   ${WAZUH_SRC}/packages/external_sources.sh   the manifest
 #
 # Output:
-#   /var/local/wazuh/external_artifacts/<dep>_src.zip
-#   /var/local/wazuh/external_artifacts/<dep>_<system>_<architecture>.zip
+#   ${ARTIFACTS_DIR}/<dep>_src.zip
+#   ${ARTIFACTS_DIR}/<dep>_<system>_<architecture>.zip
+#   (defaults to /var/local/wazuh/external_artifacts inside containers; on
+#    macOS native runs the host script overrides it to a path on the runner.)
 
 set -e
 
-WAZUH_SRC="/wazuh-local-src"
+WAZUH_SRC="${WAZUH_SRC:-/wazuh-local-src}"
 SRC_DIR="${WAZUH_SRC}/src"
 EXTERNAL_DIR="${SRC_DIR}/external"
-ARTIFACTS_DIR="/var/local/wazuh/external_artifacts"
-DOWNLOAD_DIR="/tmp/external_upstream"
+ARTIFACTS_DIR="${ARTIFACTS_DIR:-/var/local/wazuh/external_artifacts}"
+DOWNLOAD_DIR="${DOWNLOAD_DIR:-/tmp/external_upstream}"
 
-JOBS="${JOBS:-$(nproc 2>/dev/null || echo 2)}"
+JOBS="${JOBS:-$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)}"
 
 if [ "${WAZUH_VERBOSE}" = "yes" ]; then
     set -x
@@ -57,6 +62,10 @@ if [ -n "${_missing}" ]; then
         apt-get install -y ${_missing} >/dev/null 2>&1 || apt-get install -y ${_missing} || true
     elif command -v yum >/dev/null 2>&1; then
         yum install -y ${_missing} >/dev/null 2>&1 || yum install -y ${_missing} || true
+    elif command -v brew >/dev/null 2>&1; then
+        # macOS path. clang ships with Xcode; zip/unzip are in the base system.
+        # In practice only jq is reliably absent and worth installing.
+        brew install ${_missing} >/dev/null 2>&1 || brew install ${_missing} || true
     fi
 fi
 

@@ -21,7 +21,7 @@ SYSTEM=""
 TARGET="manager"
 DOCKER_TAG="latest"
 DEPS_TO_UPDATE=""
-JOBS="$(nproc 2>/dev/null || echo 2)"
+JOBS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)"
 VERBOSE=""
 OUTDIR="${CURRENT_PATH}/output_externals"
 
@@ -66,31 +66,68 @@ if [ -z "${SYSTEM}" ] || [ -z "${ARCHITECTURE}" ]; then
 fi
 
 case "${SYSTEM}" in
-    deb|rpm) ;;
-    *) echo "ERROR: unsupported --system '${SYSTEM}' (valid: deb, rpm)" >&2; exit 1 ;;
+    deb|rpm|macos) ;;
+    *) echo "ERROR: unsupported --system '${SYSTEM}' (valid: deb, rpm, macos)" >&2; exit 1 ;;
 esac
 
 case "${ARCHITECTURE}" in
-    amd64|arm64) ;;
-    *) echo "ERROR: only 'amd64' and 'arm64' are supported" >&2; exit 1 ;;
+    amd64|arm64|intel64) ;;
+    *) echo "ERROR: unsupported --architecture '${ARCHITECTURE}' (valid: amd64, arm64, intel64)" >&2; exit 1 ;;
 esac
+
+# Sanity check: macOS uses intel64/arm64; Linux uses amd64/arm64.
+if [ "${SYSTEM}" = "macos" ] && [ "${ARCHITECTURE}" = "amd64" ]; then
+    echo "ERROR: macOS does not use 'amd64'; pass 'intel64' for x86_64 macs" >&2
+    exit 1
+fi
+if [ "${SYSTEM}" != "macos" ] && [ "${ARCHITECTURE}" = "intel64" ]; then
+    echo "ERROR: 'intel64' is macOS-only; use 'amd64' for Linux" >&2
+    exit 1
+fi
 
 case "${TARGET}" in
     agent|manager) ;;
     *) echo "ERROR: target must be 'agent' or 'manager'" >&2; exit 1 ;;
 esac
 
+# macOS doesn't run the manager.
+if [ "${SYSTEM}" = "macos" ] && [ "${TARGET}" = "manager" ]; then
+    echo "ERROR: macOS legs are agent-only (manager doesn't run on macOS)" >&2
+    exit 1
+fi
+
 if [ -n "${VERBOSE}" ]; then
     set -x
 fi
 
-CONTAINER_NAME="pkg_${SYSTEM}_${TARGET}_builder_${ARCHITECTURE}"
 mkdir -p "${OUTDIR}"
 
-echo "[generate_external] image=${CONTAINER_NAME}:${DOCKER_TAG}"
 echo "[generate_external] target=${TARGET} system=${SYSTEM} arch=${ARCHITECTURE}"
 echo "[generate_external] deps='${DEPS_TO_UPDATE}'"
 echo "[generate_external] output=${OUTDIR}"
+
+# Linux deb/rpm and Windows go through their existing builder Docker images.
+# macOS runs natively on the runner — no container, no bind-mount.
+if [ "${SYSTEM}" = "macos" ]; then
+    echo "[generate_external] mode=native (no docker)"
+    env \
+        WAZUH_SRC="${WAZUH_PATH}" \
+        ARTIFACTS_DIR="${OUTDIR}/external_artifacts" \
+        SYSTEM="${SYSTEM}" \
+        BUILD_TARGET="${TARGET}" \
+        ARCHITECTURE_TARGET="${ARCHITECTURE}" \
+        DEPS_TO_UPDATE="${DEPS_TO_UPDATE}" \
+        JOBS="${JOBS}" \
+        WAZUH_VERBOSE="${VERBOSE}" \
+        bash "${WAZUH_PATH}/packages/build_external.sh"
+
+    echo "[generate_external] artifacts:"
+    ls -la "${OUTDIR}/external_artifacts/" 2>/dev/null || echo "  (none — build may have failed)"
+    exit $?
+fi
+
+CONTAINER_NAME="pkg_${SYSTEM}_${TARGET}_builder_${ARCHITECTURE}"
+echo "[generate_external] image=${CONTAINER_NAME}:${DOCKER_TAG}"
 
 # Run build_external.sh inside the existing builder image.
 # - /wazuh-local-src    working tree (read-write so we can replace src/external/)

@@ -4,9 +4,9 @@ name: 5.X - Package - Build external dependencies
 # Rebuilds Wazuh's external dependencies across one or more (system, architecture)
 # legs and uploads per-dep zips (source-only and source+binaries) as artifacts.
 #
-# Phase 1 covers the 4 Linux Docker legs (deb/rpm x amd64/arm64). macOS and
-# Windows legs are added in follow-up commits — they need separate build
-# paths (native + MinGW respectively) that this workflow doesn't yet wire up.
+# Covers the 4 Linux Docker legs (deb/rpm x amd64/arm64) and the 2 macOS
+# native legs (intel64/arm64). The Windows leg comes in a follow-up commit
+# (it needs the MinGW cross-compile container).
 
 on:
   workflow_dispatch:
@@ -29,8 +29,11 @@ on:
       legs:
         description: |
           Comma-separated list of <system>-<architecture> legs to run.
-          Valid values: deb-amd64, deb-arm64, rpm-amd64, rpm-arm64.
-          Empty = run all four Linux legs.
+          Valid values: deb-amd64, deb-arm64, rpm-amd64, rpm-arm64,
+          macos-intel64, macos-arm64.
+          Empty = run all Linux legs (macOS legs only run when explicitly
+          listed, since they take longer and use different runners).
+          macOS legs are agent-only (target=manager fails on those legs).
         type: string
         required: false
         default: ""
@@ -64,13 +67,15 @@ jobs:
             system="${leg%-*}"
             architecture="${leg##*-}"
             case "${system}" in
-              deb|rpm) ;;
-              *) echo "::error::unsupported system '${system}' in leg '${leg}' (valid: deb, rpm)"; exit 1 ;;
+              deb|rpm|macos) ;;
+              *) echo "::error::unsupported system '${system}' in leg '${leg}' (valid: deb, rpm, macos)"; exit 1 ;;
             esac
-            case "${architecture}" in
-              amd64) runner="wz-linux-amd64" ;;
-              arm64) runner="wz-linux-arm64" ;;
-              *) echo "::error::unsupported architecture '${architecture}' in leg '${leg}' (valid: amd64, arm64)"; exit 1 ;;
+            case "${system}-${architecture}" in
+              deb-amd64|rpm-amd64) runner="wz-linux-amd64" ;;
+              deb-arm64|rpm-arm64) runner="wz-linux-arm64" ;;
+              macos-intel64)       runner="macos-13" ;;
+              macos-arm64)         runner="macos-14" ;;
+              *) echo "::error::unsupported leg '${leg}'"; exit 1 ;;
             esac
             ${first} || json="${json},"
             first=false
@@ -96,6 +101,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Resolve image tag
+        if: matrix.system != 'macos'
         run: |
           VERSION="$(grep '"version"' "${GITHUB_WORKSPACE}/VERSION.json" | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
           if [ "${{ inputs.docker_image_tag }}" = "auto" ]; then
@@ -108,6 +114,7 @@ jobs:
           echo "CONTAINER_NAME=pkg_${{ matrix.system }}_${{ inputs.target }}_builder_${{ matrix.architecture }}" >> "${GITHUB_ENV}"
 
       - name: Pull builder image from GHCR
+        if: matrix.system != 'macos'
         timeout-minutes: 20
         run: |
           bash "${GITHUB_WORKSPACE}/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh" \
@@ -117,13 +124,17 @@ jobs:
         timeout-minutes: 60
         working-directory: packages
         run: |
+          # nproc is Linux-only; macOS runners use sysctl. The scripts also
+          # have this fallback internally, but compute JOBS here so it shows
+          # in the workflow log for diagnosis.
+          jobs="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)"
           bash generate_external.sh \
             --system "${{ matrix.system }}" \
             --architecture "${{ matrix.architecture }}" \
             --target "${{ inputs.target }}" \
-            --tag "${TAG}" \
+            --tag "${TAG:-}" \
             --dependencies "${{ inputs.dependencies }}" \
-            --jobs "$(nproc)" \
+            --jobs "${jobs}" \
             --verbose
 
       - name: List produced artifacts
