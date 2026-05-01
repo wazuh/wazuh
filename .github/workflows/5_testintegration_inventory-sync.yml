@@ -5,10 +5,10 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
-      - 'src/wazuh_modules/inventory_sync/**'
-      - 'src/shared_modules/utils/flatbuffers/**'
-      - '.github/workflows/5_testintegration_inventory-sync.yml'
-      - 'src/shared_modules/indexer_connector/**'
+      - "src/wazuh_modules/inventory_sync/**"
+      - "src/shared_modules/utils/flatbuffers/**"
+      - ".github/workflows/5_testintegration_inventory-sync.yml"
+      - "src/shared_modules/indexer_connector/**"
   workflow_dispatch:
     inputs:
       test_manager:
@@ -48,12 +48,12 @@ jobs:
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@master
         with:
-          cancel_others: 'true'
+          cancel_others: "true"
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          skip_after_successful_duplicate: 'false'
+          skip_after_successful_duplicate: "false"
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
@@ -220,7 +220,6 @@ jobs:
         run: |
           echo "[>] Installing Wazuh manager package (deb amd64)..."
 
-          # Find the amd64 .deb package in the downloaded artifacts
           echo "[*] Downloaded packages:"
           find ./packages -type f -name "*.deb" | sort
 
@@ -294,8 +293,6 @@ jobs:
             echo "[-] Failed to generate FlatBuffers classes"
             exit 1
           fi
-
-
 
       - name: Run inventory sync integration tests
         working-directory: src/wazuh_modules/inventory_sync/qa

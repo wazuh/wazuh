@@ -9,47 +9,18 @@ on:
           Use only '-', '_', '.' and alphanumeric characters.
           Default is '4.x'.
         required: false
-        default: '4.x'
+        default: "4.x"
   push:
     paths:
-      - 'tools/testing/coverity/**'
+      - "tools/testing/coverity/**"
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: wazuh/coverity-scan
 
 jobs:
-  build-and-push-image:
-    runs-on: ubuntu-24.04
-
-    permissions:
-      contents: read
-      packages: write
-
-    env:
-      PROJECT: wazuh/wazuh
-
+  deprecated:
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Download Coverity tarball
-        env:
-          COVERITY_TOKEN: ${{ secrets.COVERITY_SCAN_WAZUH_TOKEN }}
-        run: |
-          wget -q https://scan.coverity.com/download/linux64 \
-            --post-data "token=${COVERITY_TOKEN}&project=${PROJECT//\//%2F}" \
-            -O tools/testing/coverity/coverity_tool.tgz
-
-      - name: Log in to the Container registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: tools/testing/coverity
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.docker_image_tag || '4.x' }}
+      - name: Warning
+        run: echo "This workflow is deprecated. Be careful, you have just run it from main."

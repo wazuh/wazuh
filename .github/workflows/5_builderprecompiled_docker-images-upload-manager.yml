@@ -1,13 +1,13 @@
-run-name: Package - Upload pkg_${{ inputs.system }}_manager_builder_${{ inputs.architecture }} with tag ${{ inputs.docker_image_tag }}
+run-name: 5.X - Package - Upload manager images
 name: 5.X - Package - Upload manager images
 
 on:
   push:
     branches:
-      - '5.[0-9]+.[0-9]+'
-      - 'main'
+      - "5.[0-9]+.[0-9]+"
+      - "main"
     paths:
-      - 'packages/**'
+      - "packages/**"
 
   workflow_dispatch:
     inputs:
@@ -21,8 +21,7 @@ on:
         required: false
         default: auto
       architecture:
-        description: |
-          Architecture of the package [amd64, arm64]
+        description: "Architecture of the package [amd64, arm64]"
         type: choice
         options:
           - amd64
@@ -30,55 +29,68 @@ on:
         required: true
       system:
         type: choice
-        description: |
-          System image to upload [deb, rpm].
+        description: "System image to upload [deb, rpm]."
         options:
           - deb
           - rpm
         required: true
       source_reference:
-        description: |
-          Branch from wazuh/wazuh repository to use.
+        description: "Branch from wazuh/wazuh repository to use."
         required: true
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
-  Upload-package-building-images:
+  upload-images:
     permissions:
       contents: read
       packages: write
       actions: write
-
-    runs-on: ${{ inputs.architecture == 'arm64' && 'wz-linux-arm64' || 'ubuntu-22.04' }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64' || 'ubuntu-22.04' }}
     timeout-minutes: 180
-    name: Package - Upload pkg_${{ inputs.system }}_manager_builder_${{ inputs.architecture }} with tag ${{ inputs.docker_image_tag }}
+    name: Upload pkg_${{ matrix.system }}_manager_builder_${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        system: ${{ github.event_name == 'push' && fromJSON('["deb", "rpm"]') || fromJSON(format('["{0}"]', inputs.system)) }}
+        arch: ${{ github.event_name == 'push' && fromJSON('["amd64", "arm64"]') || fromJSON(format('["{0}"]', inputs.architecture)) }}
 
     steps:
       - name: Checkout wazuh/wazuh repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: wazuh/wazuh
-          ref: ${{ inputs.source_reference }}
+          ref: ${{ inputs.source_reference || github.ref }}
 
-      - name: Set TAG
+      - name: Set environment variables
         run: |
-          VERSION="$(grep '"version"' VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
-          if [ "${{ inputs.docker_image_tag }}" == "auto" ]; then
-            echo "TAG=$VERSION" >> $GITHUB_ENV;
+          VERSION=$(jq -r '.version' VERSION.json)
+
+          if [ "${{ inputs.docker_image_tag || 'auto' }}" == "auto" ]; then
+            TAG="$VERSION"
           elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then
-            echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ inputs.source_reference }})" >> $GITHUB_ENV;
+            REF_NAME="${{ inputs.source_reference || github.ref_name }}"
+            TAG="$(sed 's|[/\]|--|g' <<< $REF_NAME)"
           else
-            echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV;
+            TAG="${{ inputs.docker_image_tag }}"
           fi
+
+          DOCKERFILE_PATH="packages/${{ matrix.system }}s/${{ matrix.arch }}/manager"
+
+          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
+          TAG=$TAG
+          DOCKERFILE_PATH=$DOCKERFILE_PATH
+          CONTAINER_NAME=pkg_${{ matrix.system }}_manager_builder_${{ matrix.arch }}
+          EOF
 
       - name: Copy build.sh and utils to Dockerfile path
         run: |
-          dockerfile_path="packages/${{ inputs.system }}s/${{ inputs.architecture }}/manager"
-          echo "DOCKERFILE_PATH=$dockerfile_path" >> $GITHUB_ENV
-          cp packages/build.sh $dockerfile_path
-          cp packages/${{ inputs.system }}s/utils/* $dockerfile_path
-          cp .github/scripts/run_with_retry.sh $dockerfile_path/retry.sh
+          cp packages/build.sh ${{ env.DOCKERFILE_PATH }}
+          cp packages/${{ matrix.system }}s/utils/* ${{ env.DOCKERFILE_PATH }}
+          cp .github/scripts/run_with_retry.sh ${{ env.DOCKERFILE_PATH }}/retry.sh
 
-      - name: Build and push image pkg_${{ inputs.system }}_manager_builder_${{ inputs.architecture }} with tag ${{ env.TAG }} to Github Container Registry
+      - name: Build and push image to Github Container Registry
         timeout-minutes: 165
-        run:
-          bash .github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} pkg_${{ inputs.system }}_manager_builder_${{ inputs.architecture }} ${{ env.DOCKERFILE_PATH }} ${{ env.TAG }}
+        run: bash .github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor }} ${{ env.CONTAINER_NAME }} ${{ env.DOCKERFILE_PATH }} ${{ env.TAG }}

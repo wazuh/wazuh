@@ -4,22 +4,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  style:
-    runs-on: wz-linux-amd64
-
+  deprecated:
+    runs-on: ubuntu-latest
     steps:
-      - name: Cancel previous runs
-        uses: fkirc/skip-duplicate-actions@master
-        with:
-          cancel_others: 'true'
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          skip_after_successful_duplicate: 'false'
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Inventory harvester - Coding style
-        uses: ./.github/actions/clang_format
-        with:
-          path: src/wazuh_modules/inventory_harvester
+      - name: Warning
+        run: echo "This workflow is deprecated. Be careful, you have just run it from main."

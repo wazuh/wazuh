@@ -4,7 +4,8 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
-      - 'src/engine/**'
+      - "src/engine/**"
+      - ".github/workflows/5_testunit_engine.yml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -19,7 +20,7 @@ jobs:
     name: Build Manager
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install CMake
         uses: ./.github/actions/reinstall_cmake

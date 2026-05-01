@@ -1,0 +1,140 @@
+name: 5.X - Component Tests - RTR Router
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/ci/**"
+      - "src/build.py"
+      - "src/Makefile"
+      - ".github/actions/**"
+      - ".github/workflows/5_testcomponent_rtr-router.yml"
+      - "src/wazuh_modules/sca/**"
+      - "src/config/src/wmodules-sca.c"
+      - "src/syscheckd/**"
+      - "src/config/src/syscheck-config.c"
+      - "src/shared_modules/sync_protocol/**"
+      - "src/shared_modules/file_helper/**"
+      - "src/wazuh_modules/syscollector/**"
+      - "src/shared_modules/dbsync/**"
+      - "src/data_provider/**"
+      - "src/config/src/wmodules-syscollector.c"
+      - "src/shared_modules/agent_metadata/**"
+      - "src/wazuh_modules/agent_info/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-24.04
+    name: Detect changed modules
+    outputs:
+      modules: ${{ steps.set-matrix.outputs.modules }}
+      run_tests: ${{ steps.set-matrix.outputs.run_tests }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Check paths
+        uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            sca:
+              - "src/wazuh_modules/sca/**"
+              - "src/config/src/wmodules-sca.c"
+            syscheck:
+              - "src/syscheckd/**"
+              - "src/config/src/syscheck-config.c"
+            sync_protocol:
+              - "src/shared_modules/sync_protocol/**"
+            file_helper:
+              - "src/shared_modules/file_helper/**"
+            syscollector:
+              - "src/wazuh_modules/syscollector/**"
+              - "src/shared_modules/dbsync/**"
+              - "src/data_provider/**"
+              - "src/config/src/wmodules-syscollector.c"
+            agent_metadata:
+              - "src/shared_modules/agent_metadata/**"
+            agent_info:
+              - "src/wazuh_modules/agent_info/**"
+            global_deps:
+              - "src/ci/**"
+              - "src/build.py"
+              - "src/Makefile"
+              - ".github/actions/**"
+              - ".github/workflows/5_testcomponent_rtr-router.yml"
+
+      - name: Build matrix
+        id: set-matrix
+        run: |
+          MODULES="[]"
+          RUN_TESTS="false"
+
+          add_module() {
+            local json_val="$1"
+            MODULES=$(echo "$MODULES" | jq ". + [$json_val]")
+            RUN_TESTS="true"
+          }
+
+          if [[ "${{ steps.filter.outputs.global_deps }}" == "true" || "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            add_module '"wazuh_modules/sca"'
+            add_module '"syscheckd"'
+            add_module '"shared_modules/sync_protocol"'
+            add_module '"shared_modules/file_helper"'
+            add_module '"wazuh_modules/syscollector"'
+            add_module '"shared_modules/agent_metadata"'
+            add_module '"wazuh_modules/agent_info"'
+          else
+            [[ "${{ steps.filter.outputs.sca }}" == "true" ]] && add_module '"wazuh_modules/sca"'
+            [[ "${{ steps.filter.outputs.syscheck }}" == "true" ]] && add_module '"syscheckd"'
+            [[ "${{ steps.filter.outputs.sync_protocol }}" == "true" ]] && add_module '"shared_modules/sync_protocol"'
+            [[ "${{ steps.filter.outputs.file_helper }}" == "true" ]] && add_module '"shared_modules/file_helper"'
+            [[ "${{ steps.filter.outputs.syscollector }}" == "true" ]] && add_module '"wazuh_modules/syscollector"'
+            [[ "${{ steps.filter.outputs.agent_metadata }}" == "true" ]] && add_module '"shared_modules/agent_metadata"'
+            [[ "${{ steps.filter.outputs.agent_info }}" == "true" ]] && add_module '"wazuh_modules/agent_info"'
+          fi
+
+          echo "modules=$(echo "$MODULES" | jq -c 'unique')" >> $GITHUB_OUTPUT
+          echo "run_tests=$RUN_TESTS" >> $GITHUB_OUTPUT
+
+  run-tests:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.run_tests == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJSON(needs.detect-changes.outputs.modules) }}
+        target: [agent, winagent]
+    runs-on: ubuntu-24.04
+    name: RTR - ${{ matrix.module }} (${{ matrix.target }})
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v6
+      - name: "Install dependencies"
+        uses: ./.github/actions/install_build_deps
+        with:
+          target: ${{ matrix.target }}
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: ".github/workflows/.python-version"
+          architecture: x64
+      - name: "Install a compatible CMake"
+        uses: ./.github/actions/reinstall_cmake
+      - name: Escape module name
+        id: mod-name
+        run: echo "name=$(echo '${{ matrix.module }}' | tr '/' '-')" >> $GITHUB_OUTPUT
+      - name: Run Unit tests
+        run: |
+          cd src/
+          python build.py --target ${{ matrix.target }} --readytoreview ${{ matrix.module }}
+      - name: Uploading coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage_report_${{ matrix.target }}_${{ steps.mod-name.outputs.name }}
+          path: ./**/coverage_report/**
