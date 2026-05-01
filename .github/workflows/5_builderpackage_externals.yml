@@ -4,9 +4,12 @@ name: 5.X - Package - Build external dependencies
 # Rebuilds Wazuh's external dependencies across one or more (system, architecture)
 # legs and uploads per-dep zips (source-only and source+binaries) as artifacts.
 #
-# Covers the 4 Linux Docker legs (deb/rpm x amd64/arm64) and the 2 macOS
-# native legs (intel64/arm64). The Windows leg comes in a follow-up commit
-# (it needs the MinGW cross-compile container).
+# Covers all 7 supported legs:
+#   - 4 Linux Docker legs:  deb-amd64, deb-arm64, rpm-amd64, rpm-arm64
+#   - 2 macOS native legs:  macos-intel64, macos-arm64
+#   - 1 Windows leg:        windows-i686 (MinGW cross-compile on a Linux
+#                                         runner, no Docker)
+# macOS and Windows are agent-only.
 
 on:
   workflow_dispatch:
@@ -30,10 +33,11 @@ on:
         description: |
           Comma-separated list of <system>-<architecture> legs to run.
           Valid values: deb-amd64, deb-arm64, rpm-amd64, rpm-arm64,
-          macos-intel64, macos-arm64.
-          Empty = run all Linux legs (macOS legs only run when explicitly
-          listed, since they take longer and use different runners).
-          macOS legs are agent-only (target=manager fails on those legs).
+          macos-intel64, macos-arm64, windows-i686.
+          Empty = run all 4 Linux legs (macOS and Windows legs only run
+          when explicitly listed — macOS uses paid runner minutes, and
+          windows-i686 is agent-only). macOS and Windows are agent-only;
+          target=manager fails on those legs.
         type: string
         required: false
         default: ""
@@ -67,14 +71,15 @@ jobs:
             system="${leg%-*}"
             architecture="${leg##*-}"
             case "${system}" in
-              deb|rpm|macos) ;;
-              *) echo "::error::unsupported system '${system}' in leg '${leg}' (valid: deb, rpm, macos)"; exit 1 ;;
+              deb|rpm|macos|windows) ;;
+              *) echo "::error::unsupported system '${system}' in leg '${leg}' (valid: deb, rpm, macos, windows)"; exit 1 ;;
             esac
             case "${system}-${architecture}" in
               deb-amd64|rpm-amd64) runner="wz-linux-amd64" ;;
               deb-arm64|rpm-arm64) runner="wz-linux-arm64" ;;
               macos-intel64)       runner="macos-13" ;;
               macos-arm64)         runner="macos-14" ;;
+              windows-i686)        runner="wz-linux-amd64" ;;  # MinGW cross-compile on Linux
               *) echo "::error::unsupported leg '${leg}'"; exit 1 ;;
             esac
             ${first} || json="${json},"
@@ -101,7 +106,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Resolve image tag
-        if: matrix.system != 'macos'
+        if: matrix.system == 'deb' || matrix.system == 'rpm'
         run: |
           VERSION="$(grep '"version"' "${GITHUB_WORKSPACE}/VERSION.json" | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
           if [ "${{ inputs.docker_image_tag }}" = "auto" ]; then
@@ -114,11 +119,21 @@ jobs:
           echo "CONTAINER_NAME=pkg_${{ matrix.system }}_${{ inputs.target }}_builder_${{ matrix.architecture }}" >> "${GITHUB_ENV}"
 
       - name: Pull builder image from GHCR
-        if: matrix.system != 'macos'
+        if: matrix.system == 'deb' || matrix.system == 'rpm'
         timeout-minutes: 20
         run: |
           bash "${GITHUB_WORKSPACE}/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh" \
             "${{ secrets.GITHUB_TOKEN }}" "${{ github.actor }}" "${CONTAINER_NAME}" "${TAG}"
+
+      - name: Install MinGW cross-compiler (windows leg)
+        if: matrix.system == 'windows'
+        run: |
+          # Mirrors what 5_builderpackage_agent-windows.yml does: cross-compile
+          # the Windows agent on a Linux runner using MinGW. The Wazuh CMake
+          # external recipes detect IS_WINDOWS via CMAKE_SYSTEM_NAME (set by
+          # TARGET=winagent) and switch to the i686-w64-mingw32-* toolchain.
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64 g++-mingw-w64 make
 
       - name: Build externals
         timeout-minutes: 60

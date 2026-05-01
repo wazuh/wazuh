@@ -322,6 +322,16 @@ collect_deps_for_target() {
 
 log "BUILD_TARGET=${BUILD_TARGET} SYSTEM=${SYSTEM} ARCH=${ARCHITECTURE_TARGET} JOBS=${JOBS}"
 
+# Map our (system, build-target) tuple to the value src/Makefile expects in
+# its TARGET variable. Windows agent uses TARGET=winagent (not 'agent') —
+# that flag turns on MinGW cross-compile and filters Linux-only deps from
+# the dep list (see src/Makefile:462-465). Linux/macOS pass through.
+if [ "${SYSTEM}" = "windows" ]; then
+    MAKE_TARGET="winagent"
+else
+    MAKE_TARGET="${BUILD_TARGET}"
+fi
+
 # Clean stale tarball intermediates from prior interrupted runs. The Makefile's
 # `make deps` recipe pipes through `gunzip` (no -f) and prompts interactively
 # if `external/<dep>.tar` already exists, which deadlocks the build.
@@ -347,7 +357,7 @@ done
 # src/external/<name>/, so it must run BEFORE we replace specific deps with
 # upstream sources. Otherwise our replacements get overwritten.
 log "running 'make deps' (EXTERNAL_SRC_ONLY=yes) to populate dep sources"
-make -C "${SRC_DIR}" EXTERNAL_SRC_ONLY=yes deps TARGET="${BUILD_TARGET}"
+make -C "${SRC_DIR}" EXTERNAL_SRC_ONLY=yes deps TARGET="${MAKE_TARGET}"
 
 apply_updates
 
@@ -366,7 +376,7 @@ for name in ${DEPS_FOR_LEG}; do
     snapshot_source "${name}"
 done
 
-log "building externals via 'make build-external TARGET=${BUILD_TARGET}'"
+log "building externals via 'make build-external TARGET=${MAKE_TARGET}'"
 # `build-external` (defined at src/Makefile:372) configures cmake then builds
 # only build/external — exactly the subset we want, no Wazuh modules.
 # Wipe any stale build/ dir first: a CMakeCache.txt left over from a local
@@ -378,7 +388,7 @@ rm -rf "${SRC_DIR}/build"
 # whatever deps did build successfully, which is useful for diagnostics. The
 # script's exit code reflects the build-external outcome at the end.
 set +e
-make -j"${JOBS}" -C "${SRC_DIR}" TARGET="${BUILD_TARGET}" build-external
+make -j"${JOBS}" -C "${SRC_DIR}" TARGET="${MAKE_TARGET}" build-external
 build_external_rc=$?
 set -e
 if [ "${build_external_rc}" -ne 0 ]; then

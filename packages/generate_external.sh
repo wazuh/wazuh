@@ -66,33 +66,36 @@ if [ -z "${SYSTEM}" ] || [ -z "${ARCHITECTURE}" ]; then
 fi
 
 case "${SYSTEM}" in
-    deb|rpm|macos) ;;
-    *) echo "ERROR: unsupported --system '${SYSTEM}' (valid: deb, rpm, macos)" >&2; exit 1 ;;
+    deb|rpm|macos|windows) ;;
+    *) echo "ERROR: unsupported --system '${SYSTEM}' (valid: deb, rpm, macos, windows)" >&2; exit 1 ;;
 esac
 
 case "${ARCHITECTURE}" in
-    amd64|arm64|intel64) ;;
-    *) echo "ERROR: unsupported --architecture '${ARCHITECTURE}' (valid: amd64, arm64, intel64)" >&2; exit 1 ;;
+    amd64|arm64|intel64|i686) ;;
+    *) echo "ERROR: unsupported --architecture '${ARCHITECTURE}' (valid: amd64, arm64, intel64, i686)" >&2; exit 1 ;;
 esac
 
-# Sanity check: macOS uses intel64/arm64; Linux uses amd64/arm64.
-if [ "${SYSTEM}" = "macos" ] && [ "${ARCHITECTURE}" = "amd64" ]; then
-    echo "ERROR: macOS does not use 'amd64'; pass 'intel64' for x86_64 macs" >&2
-    exit 1
-fi
-if [ "${SYSTEM}" != "macos" ] && [ "${ARCHITECTURE}" = "intel64" ]; then
-    echo "ERROR: 'intel64' is macOS-only; use 'amd64' for Linux" >&2
-    exit 1
-fi
+# Per-system architecture validation. Each system has a fixed set of valid
+# arches, and arches are not portable across systems.
+case "${SYSTEM}-${ARCHITECTURE}" in
+    deb-amd64|deb-arm64|rpm-amd64|rpm-arm64) ;;
+    macos-intel64|macos-arm64) ;;
+    windows-i686) ;;  # Wazuh's Windows agent is always 32-bit MinGW cross-compile
+    *)
+        echo "ERROR: invalid combination ${SYSTEM}-${ARCHITECTURE}." >&2
+        echo "       Valid: deb-{amd64,arm64}, rpm-{amd64,arm64}, macos-{intel64,arm64}, windows-i686" >&2
+        exit 1
+        ;;
+esac
 
 case "${TARGET}" in
     agent|manager) ;;
     *) echo "ERROR: target must be 'agent' or 'manager'" >&2; exit 1 ;;
 esac
 
-# macOS doesn't run the manager.
-if [ "${SYSTEM}" = "macos" ] && [ "${TARGET}" = "manager" ]; then
-    echo "ERROR: macOS legs are agent-only (manager doesn't run on macOS)" >&2
+# macOS and Windows are agent-only (manager doesn't run on either).
+if { [ "${SYSTEM}" = "macos" ] || [ "${SYSTEM}" = "windows" ]; } && [ "${TARGET}" = "manager" ]; then
+    echo "ERROR: ${SYSTEM} legs are agent-only (manager doesn't run there)" >&2
     exit 1
 fi
 
@@ -106,9 +109,12 @@ echo "[generate_external] target=${TARGET} system=${SYSTEM} arch=${ARCHITECTURE}
 echo "[generate_external] deps='${DEPS_TO_UPDATE}'"
 echo "[generate_external] output=${OUTDIR}"
 
-# Linux deb/rpm and Windows go through their existing builder Docker images.
-# macOS runs natively on the runner — no container, no bind-mount.
-if [ "${SYSTEM}" = "macos" ]; then
+# Linux deb/rpm uses the existing builder Docker images. macOS runs natively
+# on the macOS runner; Windows runs natively on a Linux runner with MinGW
+# installed (the cross-compile target is i686-w64-mingw32, build artifacts
+# are .a/.lib files for Windows). Neither macOS nor Windows uses a Wazuh
+# package builder image.
+if [ "${SYSTEM}" = "macos" ] || [ "${SYSTEM}" = "windows" ]; then
     echo "[generate_external] mode=native (no docker)"
     env \
         WAZUH_SRC="${WAZUH_PATH}" \
