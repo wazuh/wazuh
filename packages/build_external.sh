@@ -157,6 +157,10 @@ replace_dep_source() {
 }
 
 # Stage every dep listed in DEPS_TO_UPDATE.
+# Per-dep download failures are logged and skipped so the run can produce a
+# full validation report of the manifest's URL templates instead of aborting
+# on the first bad URL. Skipped deps fall back to the version `make deps`
+# already extracted from the Wazuh source mirror.
 apply_updates() {
     if [ -z "${DEPS_TO_UPDATE:-}" ]; then
         log "no DEPS_TO_UPDATE provided; rebuilding everything from currently vendored sources"
@@ -164,20 +168,28 @@ apply_updates() {
     fi
 
     local IFS=';'
+    local skipped=""
     for entry in ${DEPS_TO_UPDATE}; do
         [ -z "${entry}" ] && continue
         local name="${entry%%:*}"
         local version="${entry#*:}"
         if [ -z "${name}" ] || [ -z "${version}" ] || [ "${name}" = "${entry}" ]; then
-            err "invalid dep spec '${entry}' (expected 'name:version')"
-            return 1
+            err "invalid dep spec '${entry}' (expected 'name:version'); skipping"
+            skipped="${skipped} ${entry}"
+            continue
         fi
         if [ -z "${EXT_URL[$name]:-}" ]; then
-            err "unknown dep '${name}' (not in external_sources.sh)"
-            return 1
+            err "unknown dep '${name}' (not in external_sources.sh); skipping"
+            skipped="${skipped} ${name}"
+            continue
         fi
-        replace_dep_source "${name}" "${version}"
+        if ! replace_dep_source "${name}" "${version}"; then
+            skipped="${skipped} ${name}:${version}"
+        fi
     done
+    if [ -n "${skipped}" ]; then
+        log "apply_updates: deps that did not get an upstream replacement:${skipped}"
+    fi
 }
 
 # Snapshot src/external/<dep>/ as <dep>_src.zip (pre-build).
