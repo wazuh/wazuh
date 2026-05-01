@@ -48,7 +48,7 @@ err() { echo "[external][ERROR] $*" >&2; }
 #     errors out without a clang executable.
 # All idempotent; quiet on success.
 _missing=""
-for tool in zip unzip clang; do
+for tool in zip unzip clang jq; do
     command -v "$tool" >/dev/null 2>&1 || _missing="${_missing} ${tool}"
 done
 if [ -n "${_missing}" ]; then
@@ -70,6 +70,73 @@ expand_url() {
     template="${template//\{version\}/${version}}"
     template="${template//\{version_us\}/${version_us}}"
     echo "$template"
+}
+
+# Resolve a manifest URL template + version to a concrete download URL.
+# Two URL kinds are supported:
+#   - Plain URL with {version}/{version_us} placeholders (passthrough via
+#     expand_url). Used for non-GitHub upstreams (curl.se, openssl.org, IANA,
+#     freedesktop.org, etc.) and GitHub deps where the auto-archive URL or a
+#     known release-asset URL is hard-coded.
+#   - "gh:owner/repo:tag-template" — call the GitHub releases API for the tag
+#     and pick the first `.tar.{gz,bz2,xz}` named release asset, falling back
+#     to the auto-generated `tarball_url` (the same blob as
+#     `/archive/refs/tags/<tag>.tar.gz`) if the tag has no assets. This
+#     handles two pain points: (a) projects whose asset filenames don't
+#     follow our guessable patterns (e.g. PCRE2 publishes `pcre2-10.42.tar.gz`
+#     under tag `pcre2-10.42`, no patch suffix), (b) future bumps to versions
+#     where upstream changes asset naming conventions.
+#
+# Uses GITHUB_TOKEN for auth when available (CI workflows already set it via
+# secrets.GITHUB_TOKEN). Without auth, the API allows ~60 unauthenticated
+# requests per hour per IP — enough for one full 28-dep run.
+resolve_url() {
+    local template="$1" version="$2" format="${3:-tar.gz}"
+    if [[ "${template}" != gh:* ]]; then
+        expand_url "${template}" "${version}"
+        return 0
+    fi
+
+    # Format: gh:owner/repo:tag-template
+    local rest="${template#gh:}"
+    local owner_repo="${rest%%:*}"
+    local tag_template="${rest#*:}"
+    if [ -z "${owner_repo}" ] || [ -z "${tag_template}" ] || [ "${owner_repo}" = "${tag_template}" ]; then
+        err "malformed gh: URL '${template}' (expected 'gh:owner/repo:tag-template')"
+        return 1
+    fi
+    local tag="${tag_template//\{version\}/${version}}"
+    local api_url="https://api.github.com/repos/${owner_repo}/releases/tags/${tag}"
+
+    local auth_args=()
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+        auth_args=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
+    fi
+
+    local api_response
+    if ! api_response="$(curl -fsSL "${auth_args[@]}" \
+            -H "Accept: application/vnd.github+json" \
+            --connect-timeout 15 --max-time 30 \
+            "${api_url}")"; then
+        err "GitHub API call failed: ${api_url}"
+        return 1
+    fi
+
+    # Pick the first named asset whose extension matches the declared format
+    # (avoids mismatches like resolving to .tar.bz2 when the manifest and
+    # extract logic expect .tar.gz). Fall back to the auto-archive
+    # (tarball_url) — always .tar.gz — when no asset matches.
+    local resolved
+    resolved="$(echo "${api_response}" | jq -r --arg ext ".${format}" '
+        (.assets[]? | select(.name | endswith($ext)) | .browser_download_url),
+        .tarball_url
+    ' | grep -v '^null$' | head -n1)"
+
+    if [ -z "${resolved}" ]; then
+        err "GitHub API returned no usable URL for ${owner_repo} tag ${tag}"
+        return 1
+    fi
+    echo "${resolved}"
 }
 
 # Download $1 to $2, retrying a few times.
@@ -142,7 +209,9 @@ replace_dep_source() {
     fi
 
     local url
-    url="$(expand_url "${url_template}" "${version}")"
+    if ! url="$(resolve_url "${url_template}" "${version}" "${format}")"; then
+        return 1
+    fi
     local archive="${DOWNLOAD_DIR}/${name}.${format}"
 
     log "fetching ${name} ${version} from ${url}"

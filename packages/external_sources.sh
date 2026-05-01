@@ -7,10 +7,19 @@
 # Schema (positional args to _reg):
 #   name           Manifest key. Must match the input passed by the workflow
 #                  (the "<name>" in "name:version;...").
-#   url            Tarball URL template. {version} is substituted with the
-#                  user-provided version. {version_us} is substituted with the
-#                  same version with dots replaced by underscores (only used by
-#                  a couple of upstream URL conventions).
+#   url            Tarball URL template. Two forms are supported:
+#                  - "https://..." with {version}/{version_us} placeholders.
+#                    {version} is substituted with the user-provided version.
+#                    {version_us} replaces dots with underscores.
+#                  - "gh:owner/repo:tag-template". The script calls the GitHub
+#                    releases API for the tag (with {version} substituted into
+#                    the template) and picks the first .tar.{gz,bz2,xz} named
+#                    release asset, falling back to the auto-generated
+#                    tarball_url if no assets are attached. Useful when asset
+#                    filenames don't follow guessable patterns (e.g.
+#                    pcre2 publishes pcre2-10.42.tar.gz under tag pcre2-10.42,
+#                    no patch suffix; msgpack-c publishes msgpack-X.Y.Z.tar.gz
+#                    under cpp-X.Y.Z tags).
 #   format         Archive format. One of: tar.gz, tar.bz2, tar.xz, zip.
 #   strip          Number passed to `tar --strip-components` when extracting
 #                  into src/external/<target_dir>/. Almost always 1 (the
@@ -57,7 +66,10 @@ _reg() {
 _reg cJSON              "https://github.com/DaveGamble/cJSON/archive/refs/tags/v{version}.tar.gz"                                 tar.gz  1  cJSON              false  "https://github.com/DaveGamble/cJSON"
 _reg curl               "https://curl.se/download/curl-{version}.tar.gz"                                                          tar.gz  1  curl               false  "https://github.com/curl/curl"
 _reg libdb              "https://github.com/yasuhirokimura/db18/archive/refs/tags/{version}.tar.gz"                               tar.gz  1  libdb              false  "https://github.com/yasuhirokimura/db18"
-_reg libffi             "https://github.com/libffi/libffi/archive/refs/tags/v{version}.tar.gz"                                    tar.gz  1  libffi             false  "https://github.com/libffi/libffi"
+_reg libffi             "gh:libffi/libffi:v{version}"                                                                             tar.gz  1  libffi             false  "https://github.com/libffi/libffi"
+# libffi versions <3.3 have only a git tag, no published Release. The gh:
+# resolver returns 404 for those; bumps to 3.3+ work because they ship
+# libffi-X.Y.Z.tar.gz as a release asset.
 _reg libyaml            "https://github.com/yaml/libyaml/archive/refs/tags/{version}.tar.gz"                                      tar.gz  1  libyaml             false  "https://github.com/yaml/libyaml"
 _reg openssl            "https://www.openssl.org/source/openssl-{version}.tar.gz"                                                 tar.gz  1  openssl            false  "https://github.com/openssl/openssl"
 _reg procps             "https://gitlab.com/procps-ng/procps/-/archive/v{version}/procps-v{version}.tar.gz"                       tar.gz  1  procps             false  "https://gitlab.com/procps-ng/procps"
@@ -76,11 +88,11 @@ _reg sqlite             "TBD"                                                   
 # (packages.wazuh.com/deps/$DEPS_VERSION/libraries/sources/sqlite.tar.gz).
 _reg zlib               "https://github.com/madler/zlib/releases/download/v{version}/zlib-{version}.tar.gz"                       tar.gz  1  zlib               false  "https://github.com/madler/zlib"
 _reg audit-userspace    "https://github.com/linux-audit/audit-userspace/archive/refs/tags/v{version}.tar.gz"                      tar.gz  1  audit-userspace    false  "https://github.com/linux-audit/audit-userspace"
-_reg msgpack            "https://github.com/msgpack/msgpack-c/archive/refs/tags/cpp-{version}.tar.gz"                              tar.gz  1  msgpack            false  "https://github.com/msgpack/msgpack-c"
+_reg msgpack            "gh:msgpack/msgpack-c:cpp-{version}"                                                                      tar.gz  1  msgpack            false  "https://github.com/msgpack/msgpack-c"
 _reg bzip2              "https://github.com/libarchive/bzip2/archive/refs/tags/bzip2-{version}.tar.gz"                            tar.gz  1  bzip2              false  "https://github.com/libarchive/bzip2"
 _reg nlohmann           "https://github.com/nlohmann/json/archive/refs/tags/v{version}.tar.gz"                                    tar.gz  1  nlohmann           false  "https://github.com/nlohmann/json"
 _reg googletest         "https://github.com/google/googletest/archive/refs/tags/release-{version}.tar.gz"                         tar.gz  1  googletest         false  "https://github.com/google/googletest"
-_reg libpcre2           "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-{version}/pcre2-{version}.tar.gz"          tar.gz  1  libpcre2           false  "https://github.com/PCRE2Project/pcre2"
+_reg libpcre2           "gh:PCRE2Project/pcre2:pcre2-{version}"                                                                   tar.gz  1  libpcre2           false  "https://github.com/PCRE2Project/pcre2"
 _reg libplist           "https://github.com/libimobiledevice/libplist/archive/refs/tags/{version}.tar.gz"                         tar.gz  1  libplist           false  "https://github.com/libimobiledevice/libplist"
 _reg pacman             "https://gitlab.archlinux.org/pacman/pacman/-/archive/v{version}/pacman-v{version}.tar.gz"                tar.gz  1  pacman             false  "https://gitlab.archlinux.org/pacman/pacman"
 _reg libarchive         "https://github.com/libarchive/libarchive/releases/download/v{version}/libarchive-{version}.tar.gz"       tar.gz  1  libarchive         false  "https://github.com/libarchive/libarchive"
