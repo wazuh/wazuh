@@ -7,8 +7,9 @@
 # packages/build_external.sh inside the container, and exposes the per-dep
 # zip artifacts on the host.
 #
-# Proof-of-concept scope: deb/rpm + amd64/arm64 (Linux Docker legs). The
-# macOS leg runs natively (no container) and is added in a follow-up.
+# Currently supports the 4 Linux Docker legs (deb/rpm x amd64/arm64).
+# macOS (native) and Windows (MinGW cross-compile) legs are added in
+# follow-up commits.
 
 set -e
 
@@ -66,7 +67,7 @@ fi
 
 case "${SYSTEM}" in
     deb|rpm) ;;
-    *) echo "ERROR: only 'deb' and 'rpm' are supported in this POC" >&2; exit 1 ;;
+    *) echo "ERROR: unsupported --system '${SYSTEM}' (valid: deb, rpm)" >&2; exit 1 ;;
 esac
 
 case "${ARCHITECTURE}" in

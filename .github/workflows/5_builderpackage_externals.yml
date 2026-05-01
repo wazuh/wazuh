@@ -1,9 +1,12 @@
-run-name: External deps - Build ${{ inputs.system }} ${{ inputs.architecture }} ${{ inputs.target }} ${{ inputs.dependencies && format('- {0}', inputs.dependencies) || '- all (no version overrides)' }}
-name: 5.X - Package - Build external dependencies (POC, deb-amd64-manager)
+run-name: External deps - ${{ inputs.target }} ${{ inputs.legs || 'all linux legs' }} ${{ inputs.dependencies && format('- {0}', inputs.dependencies) || '- (no version overrides)' }}
+name: 5.X - Package - Build external dependencies
 
-# Proof-of-concept scope: a single leg (deb-amd64-manager). Once this works
-# end-to-end the matrix is extended to deb-arm64, rpm-{amd64,arm64},
-# macos-{intel64,arm64}, windows.
+# Rebuilds Wazuh's external dependencies across one or more (system, architecture)
+# legs and uploads per-dep zips (source-only and source+binaries) as artifacts.
+#
+# Phase 1 covers the 4 Linux Docker legs (deb/rpm x amd64/arm64). macOS and
+# Windows legs are added in follow-up commits — they need separate build
+# paths (native + MinGW respectively) that this workflow doesn't yet wire up.
 
 on:
   workflow_dispatch:
@@ -11,46 +14,83 @@ on:
       dependencies:
         description: |
           Semicolon-separated list of deps to update, in "name:version" form.
-          Example: "curl:8.12.1;openssl:3.5.1".
-          Leave empty to rebuild every dep from currently vendored sources
-          (no version replacements).
+          Example: "curl:8.13.0;openssl:3.5.2".
+          Empty = rebuild all deps from currently vendored sources without
+          replacing any.
         type: string
         required: false
         default: ""
       target:
-        description: "Build set: 'agent' or 'manager'."
+        description: "Build set: 'agent' (28 deps) or 'manager' (47 deps, includes the agent set)."
         type: choice
         options: [agent, manager]
         default: manager
         required: true
-      system:
-        description: "Builder image family (POC: only 'deb')."
-        type: choice
-        options: [deb]
-        default: deb
-        required: true
-      architecture:
-        description: "Architecture (POC: only 'amd64')."
-        type: choice
-        options: [amd64]
-        default: amd64
-        required: true
+      legs:
+        description: |
+          Comma-separated list of <system>-<architecture> legs to run.
+          Valid values: deb-amd64, deb-arm64, rpm-amd64, rpm-arm64.
+          Empty = run all four Linux legs.
+        type: string
+        required: false
+        default: ""
       docker_image_tag:
         description: |
-          Tag of the GHCR builder image to pull. Use 'auto' to derive from
-          VERSION.json, 'developer' to use the branch name.
+          GHCR builder image tag. "auto" derives it from VERSION.json,
+          "developer" uses the branch name. Otherwise a literal tag.
         type: string
         default: "auto"
         required: false
 
 jobs:
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.build.outputs.matrix }}
+    steps:
+      - name: Build matrix from inputs
+        id: build
+        run: |
+          legs_input="${{ inputs.legs }}"
+          if [ -z "${legs_input}" ]; then
+            legs_input="deb-amd64,deb-arm64,rpm-amd64,rpm-arm64"
+          fi
+
+          json='{"include":['
+          first=true
+          IFS=','
+          for leg in ${legs_input}; do
+            leg="$(echo "${leg}" | xargs)"  # trim whitespace
+            system="${leg%-*}"
+            architecture="${leg##*-}"
+            case "${system}" in
+              deb|rpm) ;;
+              *) echo "::error::unsupported system '${system}' in leg '${leg}' (valid: deb, rpm)"; exit 1 ;;
+            esac
+            case "${architecture}" in
+              amd64) runner="wz-linux-amd64" ;;
+              arm64) runner="wz-linux-arm64" ;;
+              *) echo "::error::unsupported architecture '${architecture}' in leg '${leg}' (valid: amd64, arm64)"; exit 1 ;;
+            esac
+            ${first} || json="${json},"
+            first=false
+            json="${json}{\"system\":\"${system}\",\"architecture\":\"${architecture}\",\"runner\":\"${runner}\",\"leg\":\"${leg}\"}"
+          done
+          json="${json}]}"
+          echo "matrix=${json}" >> "${GITHUB_OUTPUT}"
+          echo "Matrix: ${json}"
+
   build-externals:
+    needs: prepare-matrix
     permissions:
       contents: read
       packages: write
-    runs-on: ${{ inputs.architecture == 'arm64' && 'wz-linux-arm64' || 'wz-linux-amd64' }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare-matrix.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
-    name: External deps - ${{ inputs.system }}-${{ inputs.architecture }}-${{ inputs.target }}
+    name: Build externals (${{ matrix.leg }}-${{ inputs.target }})
 
     steps:
       - uses: actions/checkout@v4
@@ -65,7 +105,7 @@ jobs:
           else
             echo "TAG=${{ inputs.docker_image_tag }}" >> "${GITHUB_ENV}"
           fi
-          echo "CONTAINER_NAME=pkg_${{ inputs.system }}_${{ inputs.target }}_builder_${{ inputs.architecture }}" >> "${GITHUB_ENV}"
+          echo "CONTAINER_NAME=pkg_${{ matrix.system }}_${{ inputs.target }}_builder_${{ matrix.architecture }}" >> "${GITHUB_ENV}"
 
       - name: Pull builder image from GHCR
         timeout-minutes: 20
@@ -78,8 +118,8 @@ jobs:
         working-directory: packages
         run: |
           bash generate_external.sh \
-            --system "${{ inputs.system }}" \
-            --architecture "${{ inputs.architecture }}" \
+            --system "${{ matrix.system }}" \
+            --architecture "${{ matrix.architecture }}" \
             --target "${{ inputs.target }}" \
             --tag "${TAG}" \
             --dependencies "${{ inputs.dependencies }}" \
@@ -95,12 +135,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          # Single GitHub artifact containing all per-dep zips. The user
-          # downloads it and extracts the individual <dep>_src.zip and
-          # <dep>_<system>_<arch>.zip files. If we ever want each dep as its
-          # own GitHub artifact, this needs a fan-out (matrix or per-name
-          # upload step) — defer until needed.
-          name: externals-${{ inputs.system }}-${{ inputs.architecture }}-${{ inputs.target }}
+          name: externals-${{ matrix.leg }}-${{ inputs.target }}
           path: packages/output_externals/external_artifacts/*.zip
           if-no-files-found: error
           retention-days: 14
