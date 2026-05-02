@@ -453,3 +453,204 @@ TEST_F(SchedulerTest, TaskQueueOrdering)
 
     scheduler->stop();
 }
+
+// --- Input validation ---
+
+TEST_F(SchedulerTest, ScheduleTask_ThrowsOnNullFunction)
+{
+    scheduler::TaskConfig config;
+    config.interval = 1;
+    config.runImmediately = false;
+    config.CPUPriority = 0;
+    config.taskFunction = nullptr;
+
+    EXPECT_THROW(scheduler->scheduleTask("nullTask", std::move(config)), std::invalid_argument);
+    EXPECT_EQ(scheduler->getActiveTasksCount(), 0);
+}
+
+TEST_F(SchedulerTest, ScheduleTask_ThrowsOnDuplicateName)
+{
+    auto makeConfig = []()
+    {
+        scheduler::TaskConfig config;
+        config.interval = 60;
+        config.runImmediately = false;
+        config.CPUPriority = 0;
+        config.taskFunction = []() {};
+        return config;
+    };
+
+    scheduler->scheduleTask("duplicate", makeConfig());
+    EXPECT_THROW(scheduler->scheduleTask("duplicate", makeConfig()), std::runtime_error);
+    EXPECT_EQ(scheduler->getActiveTasksCount(), 1);
+}
+
+TEST_F(SchedulerTest, ScheduleTaskFirst_ThrowsOnUnregisteredTask)
+{
+    EXPECT_THROW(scheduler->scheduleTaskFirst("notRegistered"), std::invalid_argument);
+}
+
+TEST_F(SchedulerTest, RemoveTask_NoopForNonExistentTask)
+{
+    EXPECT_NO_THROW(scheduler->removeTask("doesNotExist"));
+    EXPECT_EQ(scheduler->getActiveTasksCount(), 0);
+}
+
+// --- Lifecycle ---
+
+TEST_F(SchedulerTest, StartStop_Idempotent)
+{
+    scheduler->start();
+    scheduler->start(); // second call must be a no-op — no extra threads spawned
+    EXPECT_TRUE(scheduler->isRunning());
+
+    // Scheduler must still be functional after double-start
+    std::atomic<bool> executed {false};
+    scheduler::TaskConfig config;
+    config.interval = 0;
+    config.runImmediately = false;
+    config.CPUPriority = 0;
+    config.taskFunction = [&executed]() { executed.store(true); };
+    scheduler->scheduleTask("probe", std::move(config));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    EXPECT_TRUE(executed.load());
+
+    scheduler->stop();
+    scheduler->stop(); // second call must be a no-op — no crash or deadlock
+    EXPECT_FALSE(scheduler->isRunning());
+}
+
+TEST_F(SchedulerTest, TasksClearedAfterStop)
+{
+    scheduler->start();
+
+    for (int i = 0; i < 5; ++i)
+    {
+        scheduler::TaskConfig config;
+        config.interval = 60; // far future — won't execute in test window
+        config.runImmediately = false;
+        config.CPUPriority = 0;
+        config.taskFunction = []() {};
+        scheduler->scheduleTask("task" + std::to_string(i), std::move(config));
+    }
+
+    EXPECT_EQ(scheduler->getActiveTasksCount(), 5);
+    scheduler->stop();
+    EXPECT_EQ(scheduler->getActiveTasksCount(), 0);
+}
+
+// --- RC-2 fix: recurring task removed during execution must not re-queue ---
+
+TEST_F(SchedulerTest, RemoveRecurringTask_WhileExecuting_DoesNotReschedule)
+{
+    std::atomic<int> executionCount {0};
+    std::atomic<bool> taskStarted {false};
+    std::atomic<bool> allowFinish {false};
+
+    scheduler::TaskConfig config;
+    config.interval = 1;
+    config.runImmediately = true; // fires immediately so we can catch it mid-execution
+    config.CPUPriority = 0;
+    config.taskFunction = [&]()
+    {
+        executionCount.fetch_add(1);
+        taskStarted.store(true);
+        while (!allowFinish.load())
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+    };
+
+    scheduler->start();
+    scheduler->scheduleTask("recurringTask", std::move(config));
+
+    // Wait until the task is executing
+    while (!taskStarted.load())
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    // Remove while task body is still running
+    scheduler->removeTask("recurringTask");
+    EXPECT_EQ(scheduler->getActiveTasksCount(), 0);
+
+    // Let the task finish — worker must not re-queue it after execution
+    allowFinish.store(true);
+
+    // Wait well past one interval to confirm no second execution
+    std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+
+    EXPECT_EQ(executionCount.load(), 1);
+    EXPECT_EQ(scheduler->getActiveTasksCount(), 0);
+
+    scheduler->stop();
+}
+
+// --- RC-5 fix: scheduleTaskFirst on a running scheduler must execute promptly ---
+
+TEST_F(SchedulerTest, ScheduleTaskFirst_WhileRunning_ReprioritizesImmediately)
+{
+    std::atomic<bool> executed {false};
+
+    scheduler::TaskConfig config;
+    config.interval = 60; // 60 s interval — would never fire in this test
+    config.runImmediately = false;
+    config.CPUPriority = 0;
+    config.taskFunction = [&executed]() { executed.store(true); };
+
+    scheduler->start();
+    scheduler->scheduleTask("slowTask", std::move(config));
+
+    // Confirm the task has not fired yet (nextRun is 60 s in the future)
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    EXPECT_FALSE(executed.load());
+
+    // Reprioritize: worker blocked in wait_until must wake and execute immediately
+    scheduler->scheduleTaskFirst("slowTask");
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    EXPECT_TRUE(executed.load());
+
+    scheduler->stop();
+}
+
+// --- Thread safety: concurrent schedule + remove from multiple threads ---
+
+TEST_F(SchedulerTest, ConcurrentScheduleRemove_IsThreadSafe)
+{
+    scheduler->start();
+
+    const int taskCount = 20;
+    std::vector<std::thread> threads;
+    threads.reserve(taskCount);
+
+    for (int i = 0; i < taskCount; ++i)
+    {
+        threads.emplace_back(
+            [&, i]()
+            {
+                std::string name = "concTask" + std::to_string(i);
+                scheduler::TaskConfig config;
+                config.interval = 0;
+                config.runImmediately = false;
+                config.CPUPriority = 0;
+                config.taskFunction = []() {};
+                scheduler->scheduleTask(name, std::move(config));
+                // removeTask races with execution — both outcomes are valid
+                scheduler->removeTask(name);
+            });
+    }
+
+    for (auto& t : threads)
+    {
+        t.join();
+    }
+
+    // Allow any in-flight tasks to finish
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    // Every task either executed (and was auto-removed) or was removed before execution
+    EXPECT_EQ(scheduler->getActiveTasksCount(), 0);
+
+    scheduler->stop();
+}
