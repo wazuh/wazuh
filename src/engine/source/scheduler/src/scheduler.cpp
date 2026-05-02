@@ -171,18 +171,6 @@ void Scheduler::workerThread()
 
         const auto& task = taskItem.value();
 
-        // Check if it's time to execute
-        auto now = std::chrono::steady_clock::now();
-        if (task.nextRun > now)
-        {
-            // Task is not ready yet, put it back
-            m_taskQueue.push(task);
-
-            // Sleep for a short time to avoid busy waiting
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            continue;
-        }
-
         // Check if task still exists in task map (might have been removed)
         {
             std::lock_guard<std::mutex> tasksLock(m_tasksMutex);
@@ -201,14 +189,19 @@ void Scheduler::workerThread()
         // Reschedule if it's a recurring task, otherwise remove it from task map
         if (!task.isOneTime && task.config.interval > 0)
         {
-            LOG_DEBUG("[Scheduler] Rescheduling recurring task '{}'", task.name);
-            // Create updated task with new next run time
-            auto updatedTask = task; // Copy the task
-            // Update next run time manually since TaskItem doesn't have updateNextRun anymore
-            updatedTask.nextRun = std::chrono::steady_clock::now() + std::chrono::seconds(task.config.interval);
-
-            // Add back to queue
-            m_taskQueue.push(updatedTask);
+            bool stillRegistered;
+            {
+                std::lock_guard<std::mutex> tasksLock(m_tasksMutex);
+                stillRegistered = m_tasks.count(task.name) > 0;
+            }
+            if (stillRegistered)
+            {
+                LOG_DEBUG("[Scheduler] Rescheduling recurring task '{}'", task.name);
+                auto updatedTask = task;
+                updatedTask.nextRun = std::chrono::steady_clock::now() + std::chrono::seconds(task.config.interval);
+                m_taskQueue.push(updatedTask);
+            }
+            // else: task was removed while executing — skip re-queue (RC-2 fix)
         }
         else
         {

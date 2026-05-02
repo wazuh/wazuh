@@ -142,28 +142,41 @@ public:
     }
 
     /**
-     * @brief Get a task from the queue (blocking)
-     * @return TaskItem or empty if shutdown
+     * @brief Get a task from the queue (blocking, timed).
+     * @details Blocks until the front task is due, a new earlier task is pushed,
+     *          reprioritizeToFront() is called, or shutdown is signaled.
+     *          Returns nullopt immediately on shutdown.
+     * @return TaskItem (deep copy) or nullopt on shutdown
      */
     std::optional<TaskItem> pop()
     {
         std::unique_lock<std::mutex> lock(m_mutex);
-        m_condition.wait(lock, [this] { return !m_tasks.empty() || m_shutdown; });
-
-        if (m_shutdown && m_tasks.empty())
+        while (true)
         {
-            return std::nullopt;
-        }
+            if (m_shutdown)
+            {
+                return std::nullopt;
+            }
 
-        if (!m_tasks.empty())
-        {
-            // DEEP COPY to avoid data races
-            TaskItem item = m_tasks.front(); // Copy constructor
-            m_tasks.pop_front();
-            return item;
-        }
+            if (m_tasks.empty())
+            {
+                m_condition.wait(lock, [this] { return !m_tasks.empty() || m_shutdown; });
+                continue;
+            }
 
-        return std::nullopt;
+            auto now = std::chrono::steady_clock::now();
+            if (m_tasks.front().nextRun <= now)
+            {
+                // DEEP COPY to avoid data races
+                TaskItem item = m_tasks.front();
+                m_tasks.pop_front();
+                return item;
+            }
+
+            // Front task not yet due — sleep until its deadline or until interrupted
+            auto deadline = m_tasks.front().nextRun;
+            m_condition.wait_until(lock, deadline);
+        }
     }
 
     /**
@@ -211,17 +224,20 @@ public:
      */
     bool reprioritizeToFront(const std::string& taskName)
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        auto it = std::find_if(
-            m_tasks.begin(), m_tasks.end(), [&taskName](const TaskItem& item) { return item.name == taskName; });
-        if (it == m_tasks.end())
         {
-            return false;
+            std::lock_guard<std::mutex> lock(m_mutex);
+            auto it = std::find_if(
+                m_tasks.begin(), m_tasks.end(), [&taskName](const TaskItem& item) { return item.name == taskName; });
+            if (it == m_tasks.end())
+            {
+                return false;
+            }
+            TaskItem item = *it;
+            item.nextRun = std::chrono::steady_clock::time_point {};
+            m_tasks.erase(it);
+            m_tasks.push_front(item);
         }
-        TaskItem item = *it;
-        item.nextRun = std::chrono::steady_clock::time_point {};
-        m_tasks.erase(it);
-        m_tasks.push_front(item);
+        m_condition.notify_one(); // wake a worker: epoch task is now at front and immediately due
         return true;
     }
 };
