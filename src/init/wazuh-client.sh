@@ -14,7 +14,7 @@ DIR=`dirname $PWD`;
 export LD_LIBRARY_PATH="${DIR}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 # Installation info
-VERSION="v5.9.9"
+VERSION="v10.9.9"
 REVISION="alpha0"
 TYPE="agent"
 

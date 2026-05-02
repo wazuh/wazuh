@@ -39,7 +39,7 @@ info:
 
     <SecurityDefinitions />
 
-  version: '5.9.9'
+  version: '10.9.9'
   x-revision: 'alpha0'
   title: 'Wazuh API REST'
   license:
