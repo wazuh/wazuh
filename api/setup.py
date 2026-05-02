@@ -15,7 +15,7 @@ from setuptools import setup, find_namespace_packages
 
 setup(
     name='api',
-    version='5.9.9',
+    version='10.9.9',
     description="Wazuh API",
     author_email="hello@wazuh.com",
     author="Wazuh",
