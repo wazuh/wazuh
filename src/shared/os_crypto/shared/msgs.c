@@ -20,6 +20,25 @@
 #define static
 #endif
 
+/*
+ * MSG_OVERHEAD encodes the minimum fixed number of bytes in a message that
+ * are not part of the payload. It accounts for:
+ *   - checksum bytes
+ *   - random data
+ *   - counters and formatting/metadata fields
+ *
+ * If the message format/layout changes (e.g., different checksum size,
+ * additional counters, or formatting changes), this value must be reviewed
+ * and updated accordingly so that size checks remain correct.
+ */
+
+#define MD5_CHECKSUM_SIZE 32
+#define RANDOM_DATA_SIZE 5
+#define GLOBAL_COUNTER_SIZE 10
+#define LOCAL_COUNTER_SIZE 4
+#define COUNTER_FORMAT_SIZE 1 /* For the ':' character */
+#define MSG_OVERHEAD (MD5_CHECKSUM_SIZE + RANDOM_DATA_SIZE + GLOBAL_COUNTER_SIZE + LOCAL_COUNTER_SIZE + 2 * COUNTER_FORMAT_SIZE)
+
 /* Prototypes */
 static void StoreSenderCounter(const keystore *keys, unsigned int global, unsigned int local) __attribute((nonnull));
 static void StoreCounter(const keystore *keys, int id, unsigned int global, unsigned int local) __attribute((nonnull));
@@ -40,7 +59,6 @@ static _Atomic (size_t) c_comp_size = 0;
 unsigned int _s_comp_print = 0;
 unsigned int _s_recv_flush = 0;
 int _s_verify_counter = 1;
-
 
 
 /* Crypto methods function */
@@ -311,7 +329,6 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         #endif
     }
 
-
     if (*buffer == ':') {
         buffer++;
     } else {
@@ -355,14 +372,23 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         }
 
         /* Uncompress */
-        if (*final_size = os_zlib_uncompress(cleartext, buffer, buffer_size, OS_MAXSTR), !*final_size) {
+        *final_size = os_zlib_uncompress(cleartext, buffer, buffer_size, OS_MAXSTR);
 #ifdef CLIENT
+        if (*final_size < MSG_OVERHEAD) {
             merror(UNCOMPRESS_ERR);
-#else
-            mwarn(UNCOMPRESS_ERR " Message received from agent '%s' at '%s'", keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
-#endif
             return KS_CORRUPT;
         }
+#else
+        if (*final_size == 0) {
+            mwarn(UNCOMPRESS_ERR " Message received from agent '%s' at '%s'", keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
+            return KS_CORRUPT;
+        }
+
+        if (*final_size < MSG_OVERHEAD) {
+            mwarn("Decompressed message too short from agent '%s'", keys->keyentries[id]->id);
+            return KS_CORRUPT;
+        }
+#endif
 
         /* Check checksum */
         if (f_msg = CheckSum(buffer, *final_size), !f_msg) {
@@ -385,7 +411,15 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
         f_msg++;
 
         msg_local = (unsigned int) atoi(f_msg);
-        f_msg += 5;
+        f_msg += 4;
+
+        /* Check for the right message format */
+        if (*f_msg != ':') {
+            merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
+            return KS_CORRUPT;
+        }
+        f_msg++;
+
         *final_size -= (f_msg - buffer);
 
         w_mutex_lock(&keys->keyentries[id]->mutex);

@@ -80,7 +80,17 @@ All external dependencies (`IWIndexerConnector`, `IKVDBManager`, `store::IStore`
 
 ### Retry Logic
 
-Remote operations (`existIocDataInRemote`, `getRemoteHashesFromRemote`) use `base::utils::executeWithRetry` with configurable `m_attempts` (default: 3) and `m_waitSeconds` (default: 5) for resilience against transient network issues.
+Remote operations (`existIocDataInRemote`, `getRemoteHashesFromRemote`) use `base::utils::executeWithRetry` with configurable `m_attempts` (default: 3) and `m_waitSeconds` (default: 5) for resilience against transient network issues. The shutdown flag `m_shutdownRequested` is passed to `executeWithRetry`, which checks it before each attempt and during inter-retry sleep (split into 1-second chunks).
+
+### Graceful Shutdown
+
+`IocSync` supports responsive shutdown via `requestShutdown()`:
+
+- Sets `m_shutdownRequested` (`std::atomic<bool>`) to `true`.
+- `synchronize()` checks the flag at multiple points: before starting, before each IOC type iteration, and in the outer `catch` block.
+- `executeWithRetry` aborts early when the flag is set.
+- If the underlying indexer throws `IndexerConnectorException` during `streamIocsByType()` (due to `WIndexerConnector::requestShutdown()`), the exception propagates through `downloadAndPopulateDB()` which triggers a rollback of the temporary database — **preventing promotion of a partially-downloaded dataset via hot-swap**.
+- The module is registered in the exit handler in `main.cpp`; on SIGINT/SIGTERM, `requestShutdown()` is called and the sync cycle aborts within one batch round-trip.
 
 ### Rollback on Failure
 
@@ -111,11 +121,13 @@ iocsync/
 namespace ioc::sync {
 class IIocSync {
     virtual void synchronize() = 0;
+    virtual void requestShutdown() = 0;
 };
 }
 ```
 
-Single method: `synchronize()` performs a full sync cycle for all configured IOC types.
+- `synchronize()` performs a full sync cycle for all configured IOC types.
+- `requestShutdown()` signals the module to abort as soon as possible (idempotent, thread-safe).
 
 ## Implementation Details
 
@@ -134,6 +146,7 @@ Single method: `synchronize()` performs a full sync cycle for all configured IOC
 | `m_mutex` | `shared_mutex` | Protects `m_databasesState` and sync operations |
 | `m_attempts` | `size_t` | Retry count for remote operations (default: 3) |
 | `m_waitSeconds` | `size_t` | Wait between retries (default: 5) |
+| `m_shutdownRequested` | `std::atomic<bool>` | Abort flag checked at multiple points during sync |
 
 **`synchronize()`**: Acquires the KVDB manager, checks remote availability, fetches hashes, iterates all configured IOC types calling `syncIOCType()` for each, and persists state if anything changed.
 

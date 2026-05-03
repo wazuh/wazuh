@@ -226,6 +226,8 @@ void start(const LoggingConfig& cfg);
 
 /**
  * @brief Stops logging.
+ *
+ * Cancels any in-progress log compression, then shuts down spdlog.
  */
 void stop();
 

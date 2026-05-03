@@ -987,13 +987,7 @@ void Json::setString(std::string_view value, std::string_view path)
     if (pp.IsValid())
     {
         const auto* data = value.data() ? value.data() : "";
-        auto len = value.size();
-        // Strip trailing null bytes: a JSON string must not contain embedded \0.
-        while (len > 0 && data[len - 1] == '\0')
-        {
-            --len;
-        }
-        rapidjson::Value v(data, static_cast<rapidjson::SizeType>(len), m_document.GetAllocator());
+        rapidjson::Value v(data, static_cast<rapidjson::SizeType>(value.size()), m_document.GetAllocator());
         pp.Set(m_document, v);
         return;
     }

@@ -7,6 +7,8 @@ on:
     paths:
       - "src/**"
       - "packages/**"
+      - "ruleset/**"
+      - ".github/actions/check_files/**"
       - ".github/workflows/5_builderpackage_agent-windows.yml"
       - ".github/test-modules-windows.json"
       - ".github/workflows/5_testintegration_windows-integration-tests.yml"

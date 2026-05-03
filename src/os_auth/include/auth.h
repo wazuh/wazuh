@@ -108,6 +108,11 @@ void authd_sigblock();
 w_err_t w_auth_validate_groups(const char *groups, char *response);
 
 /**
+ * @brief Cleanup compiled regex for group validation (for testing)
+ * */
+void w_auth_validate_groups_cleanup(void);
+
+/**
  * @brief Parse a raw buffer from agent request into enrollment data.
  * @param buf Raw buffer to be parsed
  * @param response 2048 length buffer where the error response will be copied

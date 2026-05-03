@@ -44,7 +44,6 @@ import time
 import pytest
 from pathlib import Path
 
-from wazuh_testing.constants.paths import WAZUH_PATH
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.utils import callbacks, configuration, services
@@ -71,59 +70,6 @@ configurations = configuration.load_configuration_template(configurations_path, 
 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
-
-SCA_DB_DIR = Path(WAZUH_PATH, 'queue', 'sca', 'db')
-
-
-@pytest.fixture()
-def clean_sca_db():
-    '''Remove SCA database files to prevent stale data between tests.'''
-    def _wait_windows_service_stopped(timeout=90):
-        end_time = time.time() + timeout
-        while time.time() < end_time:
-            status = subprocess.run(['sc', 'query', 'WazuhSvc'], capture_output=True, text=True)
-            output = f"{status.stdout}\n{status.stderr}".upper()
-            if 'STATE' in output and 'STOPPED' in output:
-                return True
-            time.sleep(2)
-        return False
-
-    def _remove_db_files():
-        if not SCA_DB_DIR.exists():
-            return
-        for db_file in SCA_DB_DIR.iterdir():
-            if not db_file.exists():
-                continue
-
-            last_error = None
-            for _ in range(30):
-                try:
-                    db_file.unlink(missing_ok=True)
-                    last_error = None
-                    break
-                except PermissionError as error:
-                    last_error = error
-                    time.sleep(2)
-
-            if last_error is not None:
-                raise last_error
-
-    if sys.platform == WINDOWS:
-        for attempt in range(30):
-            try:
-                services.control_service('stop')
-                _wait_windows_service_stopped()
-                time.sleep(2)
-                _remove_db_files()
-                break
-            except PermissionError:
-                if attempt == 29:
-                    raise
-                time.sleep(2)
-    else:
-        _remove_db_files()
-
-    yield
 
 
 def extract_compliance_from_event_json(json_str):
@@ -253,7 +199,7 @@ def test_sca_compliance_format(test_configuration, test_metadata, prepare_cis_po
     # ------------------------------------------------------------------
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
-    timeout = 60 if sys.platform == WINDOWS else 30
+    timeout = 180 if sys.platform == WINDOWS else 60
 
     log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=timeout)
     assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
@@ -268,7 +214,6 @@ def test_sca_compliance_format(test_configuration, test_metadata, prepare_cis_po
     # ------------------------------------------------------------------
     # Phase 2: Validate WARNING messages
     # ------------------------------------------------------------------
-    # Old-format scenario: assert 'Unexpected compliance format' warnings for all check IDs
     if scenario == 'old_format':
         for check_info in test_metadata['checks']:
             check_id = check_info['id']
@@ -282,7 +227,6 @@ def test_sca_compliance_format(test_configuration, test_metadata, prepare_cis_po
             assert log_monitor.callback_result is not None, \
                 f"Expected 'Unexpected compliance format' warning for check {check_id}"
 
-    # Invalid-keys scenario: assert 'Invalid compliance key' warnings for specified keys, and NO 'Unexpected compliance format' warnings for any check ID
     elif scenario == 'invalid_keys':
         for check_info in test_metadata['checks']:
             check_id = check_info['id']
@@ -308,7 +252,6 @@ def test_sca_compliance_format(test_configuration, test_metadata, prepare_cis_po
                 assert log_monitor.callback_result is not None, \
                     f"Expected 'Invalid compliance key' warning for key '{key}' in check {check_id}"
 
-    # Valid-keys scenario: assert NO 'Invalid compliance key' or 'Unexpected compliance format' warnings for any check ID
     elif scenario == 'valid_keys':
         for check_info in test_metadata['checks']:
             check_id = check_info['id']

@@ -1,6 +1,7 @@
 #ifndef _STREAMLOG_LOGGER_HPP
 #define _STREAMLOG_LOGGER_HPP
 
+#include <atomic>
 #include <chrono>
 #include <filesystem>
 #include <functional>
@@ -141,7 +142,7 @@ class ChannelHandler; // Forward declaration of ChannelHandler
  * All public methods are protected by a `shared_mutex`:
  * - Read operations (`hasChannel`, `getConfig`, `getActiveWritersCount`)
  *   take a shared (read) lock.
- * - Write operations (`registerLog`, `updateConfig`, `destroyChannel`, `cleanup`)
+ * - Write operations (`registerLog`, `updateConfig`, `destroyChannel`, `requestShutdown`)
  *   take a unique (write) lock.
  *
  * @see RotationConfig
@@ -157,6 +158,8 @@ private:
     mutable std::shared_mutex m_channelsMutex;        ///< Mutex to protect access to m_channels
     std::weak_ptr<scheduler::IScheduler> m_scheduler; ///< Scheduler for compressing log writes
     std::shared_ptr<store::IStore> m_store;           ///< Store for managing last state
+    /** @brief Flag to cancel in-flight compressions on shutdown  */
+    std::shared_ptr<std::atomic<bool>> m_compressionShouldRun {std::make_shared<std::atomic<bool>>(true)};
 
 public:
     LogManager(const std::shared_ptr<store::IStore>& store, std::weak_ptr<scheduler::IScheduler> scheduler = {})
@@ -263,11 +266,11 @@ public:
     static RotationConfig& isolatedBasePath(const std::string& channelName, RotationConfig& config);
 
     /**
-     * @brief Clean up the logger, releasing all resources.
+     * @brief Request a fast shutdown: cancel in-flight compressions and release all channels.
      *
      * @warning After calling this method, the LogManager instance should not be used again.
      */
-    void cleanup();
+    void requestShutdown();
 
     /**
      * @brief Destructor

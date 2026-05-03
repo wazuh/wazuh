@@ -123,7 +123,7 @@ Example:
     "configData": {
         "consumerName": "Wazuh VulnerabilityDetector",
         "contentSource": "indexer",
-        "databasePath": "queue/vd_updater/rocksdb",
+        "databasePath": "queue/vd/vd_updater/rocksdb",
         "offset": 0,
         "indexer": {
             "hosts": ["https://localhost:9200"],

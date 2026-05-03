@@ -51,18 +51,6 @@ base::Expression postOutputUnclassifiedCounter(const std::string& spaceName,
 std::pair<base::Expression, std::string> getSpaceEnrichment(const cm::store::dataType::Policy& policy, bool isTestMode);
 
 /**
- * @brief Get the filter expression to handle unclassified events according to policy configuration.
- *
- * This filter checks if wazuh.integration.category is "unclassified" and drops the event
- * if the policy's index_unclassified_events flag is false.
- *
- * @param policy Policy data.
- * @param isTestMode Enable tracing in the filter expression.
- * @return std::pair<base::Expression, std::string> The built filter expression and its traceable name.
- */
-std::pair<base::Expression, std::string> getUnclassifiedFilter(const cm::store::dataType::Policy& policy, bool isTestMode);
-
-/**
  * @brief Get the Geo Enrichment Builder
  *
  * @param geoManager Geo manager instance, used to create 1 locator per enrichment.

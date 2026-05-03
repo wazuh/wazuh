@@ -1,6 +1,7 @@
 #ifndef IOCSYNC_IOCSYNC_HPP
 #define IOCSYNC_IOCSYNC_HPP
 
+#include <atomic>
 #include <mutex>
 #include <shared_mutex>
 #include <string>
@@ -33,6 +34,8 @@ private:
 
     mutable std::shared_mutex m_mutex; ///< Mutex to protect access to m_databasesState and sync operations
     std::vector<SyncedIOCDatabase> m_databasesState; ///< State of the IOC databases being synchronized
+
+    std::atomic<bool> m_shutdownRequested {false}; ///< Flag to signal graceful shutdown of sync operations
 
     /**
      * @brief Check if IOC data index exists in wazuh-indexer
@@ -106,6 +109,11 @@ public:
      * @copydoc IIocSync::synchronize
      */
     void synchronize() override;
+
+    /**
+     * @copydoc IIocSync::requestShutdown
+     */
+    void requestShutdown() override;
 };
 
 } // namespace ioc::sync

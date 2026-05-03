@@ -58,6 +58,12 @@ int receive_msg(void);
 int receiver_messages(void);
 #endif
 
+/* Message stored in the event buffer. */
+typedef struct {
+    void *data;
+    size_t size;
+} buffered_message;
+
 /* Initialize agent buffer */
 void buffer_init();
 

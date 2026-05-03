@@ -3,7 +3,7 @@
   configuration_parameters:
     ENABLED: 'yes'
     INTERVAL: 5
-    POLICY_FILE: cis_ubuntu24_04_mitre.yaml
+    POLICY_FILE: ruleset/sca/cis_ubuntu24_04_mitre.yaml
   metadata:
     policy_file: cis_ubuntu24_04_mitre.yaml
     mitre_tactics: ["TA0005"]

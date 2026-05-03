@@ -1,6 +1,7 @@
 #ifndef _WINDEXER_CONNECTOR_HPP
 #define _WINDEXER_CONNECTOR_HPP
 
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <shared_mutex>
@@ -58,6 +59,7 @@ private:
     std::unique_ptr<IndexerConnectorAsync> m_indexerConnectorAsync;
     std::shared_mutex m_mutex;
     std::size_t m_maxHitsPerRequest;
+    std::atomic<bool> m_shutdownRequested {false}; ///< Flag to signal in-flight pagination loops to abort
 
     std::size_t queryByBatches(std::string_view indexName,
                                std::string_view query,
@@ -153,6 +155,21 @@ public:
      * shut down and that all associated resources are released.
      */
     void shutdown();
+
+    /**
+     * @brief Requests a graceful shutdown of in-flight pagination operations.
+     *
+     * Sets an internal flag checked between batches in @ref getPolicy and @ref queryByBatches
+     * (used by @ref streamIocsByType and @ref getIocTypeHashes). This allows long-running
+     * synchronization operations to abort promptly without waiting for full pagination to
+     * complete. Unlike @ref shutdown, this method is non-destructive: it only signals intent
+     * and does not destroy the underlying async connector.
+     *
+     * Intended to be invoked before @ref shutdown so that worker threads holding shared locks
+     * can release them quickly, allowing @ref shutdown to acquire the exclusive lock without
+     * blocking on long pagination loops.
+     */
+    void requestShutdown();
 };
 }; // namespace wiconnector
 

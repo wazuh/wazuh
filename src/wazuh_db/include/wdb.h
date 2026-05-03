@@ -1339,6 +1339,11 @@ int wdb_global_groups_number_get(wdb_t *wdb, int agent_id);
 w_err_t wdb_global_validate_group_name(const char *group_name);
 
 /**
+ * @brief Cleanup compiled regex for group name validation (for testing)
+ */
+void wdb_global_validate_group_name_cleanup(void);
+
+/**
  * @brief Verifies that the number of groups to be assigned is less or equal to 128 and
  *        there's no group longer than 255 characters nor contains a comma as part of its name.
  *

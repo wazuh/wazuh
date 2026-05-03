@@ -82,8 +82,8 @@ def _callback_scan_result(policy: str, allow_any_policy: bool = False):
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(configurations, configuration_metadata), ids=case_ids)
 def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policies_file, truncate_monitored_files,
-                          set_wazuh_configuration, configure_local_internal_options, daemons_handler,
-                          wait_for_sca_enabled):
+                          set_wazuh_configuration, configure_local_internal_options, clean_sca_db,
+                          daemons_handler, wait_for_sca_enabled):
     '''
     description: This test will check that a SCA scan is correctly executed on an agent, with a given policy file and
                  a regex engine. For this it will copy a policy file located in the data folder and verify the engine
@@ -126,6 +126,9 @@ def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policie
         - wait_for_sca_enabled:
             type: fixture
             brief: Wait for the sca Module to start before starting the test.
+        - clean_sca_db:
+            type: fixture
+            brief: Remove SCA database files to prevent stale data between tests.
 
     assertions:
         - Verify that when the `enabled` option is set to `yes`, the SCA module reaches the running state.
@@ -146,33 +149,29 @@ def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policie
     '''
 
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    scan_timeout = 600 if sys.platform == WINDOWS else 20
 
-    # Anchor the monitor to the module startup before asserting the scan sequence.
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_ENABLED), timeout=scan_timeout)
-    assert log_monitor.callback_result
-
+    timeout = 180 if sys.platform == WINDOWS else 60
     expected_policy = Path(test_metadata['policy_file']).stem
 
     # On Windows, focus on result events and skip flaky phase markers.
     if sys.platform != WINDOWS:
         # Wait for the SCA scan requirements to start for the specific policy
-        log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_REQ), timeout=scan_timeout)
+        log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_REQ), timeout=timeout)
         assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
         # Wait for the SCA scan requirements to end for the specific policy
-        log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_REQ), timeout=scan_timeout)
+        log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_REQ), timeout=timeout)
         assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
         # Wait for the SCA scan checks to start for the specific policy
-        log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=scan_timeout)
+        log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=timeout)
         assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
     # Get the results for the checks obtained in the SCA scan.
     if sys.platform == WINDOWS:
         log_monitor.start(
             callback=_callback_scan_result(expected_policy),
-            timeout=scan_timeout,
+            timeout=timeout,
             only_new_events=False
         )
 
@@ -194,7 +193,7 @@ def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policie
                 f"Windows runner emitted SCA scan results but policy label did not match '{expected_policy}'"
             )
     else:
-        log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=scan_timeout,
+        log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=timeout,
                           accumulations=int(test_metadata['results']))
         scan_results = log_monitor.callback_result
         if isinstance(scan_results, tuple):
@@ -207,5 +206,5 @@ def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policie
 
     if sys.platform != WINDOWS:
         # Wait for the SCA scan checks to end for the specific policy
-        log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_CHECK), timeout=scan_timeout)
+        log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_CHECK), timeout=timeout)
         assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy

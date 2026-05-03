@@ -55,6 +55,10 @@ public:
         }
     }
 
+    /**
+     * @brief Class destructor.
+     *
+     */
     ~FakeServer()
     {
         m_server.stop();

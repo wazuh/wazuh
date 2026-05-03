@@ -190,6 +190,18 @@ public:
     ~daily_rotating_file_sink() override { stop_compression_thread_(); }
 
     /**
+     * @brief Request fast shutdown: cancel in-progress and pending compressions.
+     *
+     * After calling this, the destructor will return quickly instead of
+     * draining the full compression queue.  Any in-progress gzipCompress
+     * is interrupted at the next 16 KB chunk boundary, and remaining
+     * queued items are skipped.
+     *
+     * Safe to call from any thread.
+     */
+    void requestShutdown() { compression_should_run_.store(false, std::memory_order_relaxed); }
+
+    /**
      * @brief Returns the current active filename.
      *
      * This is mostly useful for tests/debugging.
@@ -945,6 +957,12 @@ private:
                     continue;
                 }
 
+                // If stop was requested and compression was cancelled, skip remaining items
+                if (compression_stop_ && !compression_should_run_.load(std::memory_order_relaxed))
+                {
+                    return;
+                }
+
                 filepath = std::move(compression_queue_.front());
                 compression_queue_.pop();
             }
@@ -982,7 +1000,7 @@ private:
 
         try
         {
-            Utils::ZlibHelper::gzipCompress(filepath, gz_path, compression_level_);
+            Utils::ZlibHelper::gzipCompress(filepath, gz_path, compression_level_, compression_should_run_);
         }
         catch (const std::exception&)
         {
@@ -1065,6 +1083,7 @@ private:
     std::condition_variable compression_cv_;
     std::queue<std::string> compression_queue_;
     bool compression_stop_;
+    std::atomic<bool> compression_should_run_ {true};
 };
 
 } // namespace logging

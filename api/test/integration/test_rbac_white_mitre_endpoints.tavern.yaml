@@ -7,7 +7,7 @@ stages:
   - name: Request MITRE metadata (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/mitre/metadata"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/mitre/metadata"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -25,7 +25,7 @@ stages:
   - name: Request MITRE mitigations (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/mitre/mitigations"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/mitre/mitigations"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -41,7 +41,7 @@ stages:
   - name: Request MITRE references (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/mitre/references"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/mitre/references"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -57,7 +57,7 @@ stages:
   - name: Request MITRE techniques (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/mitre/techniques"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/mitre/techniques"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -73,7 +73,7 @@ stages:
   - name: Request MITRE tactics (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/mitre/tactics"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/mitre/tactics"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -89,7 +89,7 @@ stages:
   - name: Request MITRE groups (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/mitre/groups"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/mitre/groups"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -105,7 +105,7 @@ stages:
   - name: Request MITRE software (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/mitre/software"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/mitre/software"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

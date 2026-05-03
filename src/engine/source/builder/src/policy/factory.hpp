@@ -228,10 +228,7 @@ base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgrap
  * 3. Pre-Enrichment:
  *    - This stage performs initial enrichment operations before IOCs:
  *      a) Origin Space Mapping: Maps the event to its origin space based on policy configuration.
- *      b) Unclassified Events Filter: Evaluates events with "unclassified" category:
- *         - If policy.index_unclassified_events is true, the event continues normally.
- *         - If policy.index_unclassified_events is false, the event is dropped and pipeline stops.
- *      c) Discarded Events Filter: Evaluates events based on discard criteria defined in the policy:
+ *      b) Discarded Events Filter: Evaluates events based on discard criteria defined in the policy:
  *         - If policy.index_discarded_events is true, the event continues normally despite being discarded.
  *         - If policy.index_discarded_events is false and wazuh.space.event_discarded is true, the event is
  *         dropped and pipeline stops.
@@ -255,7 +252,7 @@ base::Expression buildSubgraphExpression(const Graph<base::Name, Asset>& subgrap
  *    - If no outputs are configured, the pipeline ends after the last filter.
  *
  * @param graph Policy graph containing decoder, filter, and output trees.
- * @param preEnrichmentExpression Expression for pre-enrichment stage (space mapping + unclassified filter).
+ * @param preEnrichmentExpression Expression for pre-enrichment stage.
  * @param enrichmentExpression Expression for enrichment stage (geo, IOCs, etc.).
  *
  * @return base::Expression Complete policy expression with all pipeline stages.

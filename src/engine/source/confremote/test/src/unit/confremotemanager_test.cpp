@@ -12,7 +12,9 @@
 namespace
 {
 using ::testing::_;
+using ::testing::DoAll;
 using ::testing::InSequence;
+using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
 using ::testing::StrictMock;
 using ::testing::Throw;
@@ -332,4 +334,29 @@ TEST(ConfRemoteManagerUnitTest, AddTriggerAfterFirstSynchronizeIsAppliedOnNextSy
     manager.synchronize(); // trigger registered, value changed -> callback(true)
 
     EXPECT_EQ(calls, 1);
+}
+
+TEST(ConfRemoteManagerUnitTest, SynchronizeAbortsBeforeFetchWhenShutdownRequested)
+{
+    auto store = makeEmptyStore();
+    auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
+
+    confremote::ConfRemoteManager manager(connector, store, attempts, waitSeconds);
+    manager.requestShutdown();
+
+    EXPECT_NO_THROW(manager.synchronize());
+}
+
+TEST(ConfRemoteManagerUnitTest, SynchronizeAbortsDuringRetryWaitWhenShutdownRequested)
+{
+    auto store = makeEmptyStore();
+
+    auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
+    auto manager = std::make_unique<confremote::ConfRemoteManager>(connector, store, attempts, 1);
+
+    EXPECT_CALL(*connector, getEngineRemoteConfig())
+        .WillOnce(DoAll(InvokeWithoutArgs([&manager]() { manager->requestShutdown(); }),
+                        Throw(std::runtime_error("network down"))));
+
+    EXPECT_NO_THROW(manager->synchronize());
 }

@@ -30,7 +30,7 @@ void Scheduler::start()
     {
         return;
     }
-    LOG_DEBUG("Starting scheduler with %d threads...", m_numThreads);
+    LOG_DEBUG("[Scheduler] Starting scheduler with %d threads...", m_numThreads);
 
     m_running.store(true);
 
@@ -40,7 +40,6 @@ void Scheduler::start()
     {
         m_workers.emplace_back(&Scheduler::workerThread, this);
     }
-
 }
 
 void Scheduler::stop()
@@ -50,7 +49,7 @@ void Scheduler::stop()
         return;
     }
 
-    LOG_DEBUG("Stopping scheduler...");
+    LOG_INFO("[Scheduler] Requesting scheduler shutdown...");
 
     m_running.store(false);
 
@@ -74,6 +73,8 @@ void Scheduler::stop()
         std::lock_guard<std::mutex> tasksLock(m_tasksMutex);
         m_tasks.clear();
     }
+
+    LOG_INFO("[Scheduler] Scheduler stopped.");
 }
 
 bool Scheduler::isRunning() const
@@ -166,12 +167,12 @@ void Scheduler::workerThread()
             std::lock_guard<std::mutex> tasksLock(m_tasksMutex);
             if (m_tasks.find(task.name) == m_tasks.end())
             {
-                LOG_DEBUG("Task '{}' was removed before execution", task.name);
+                LOG_DEBUG("[Scheduler] Task '{}' was removed before execution", task.name);
                 continue;
             }
         }
 
-        LOG_DEBUG("Executing task '{}'", task.name);
+        LOG_DEBUG("[Scheduler] Executing task '{}'", task.name);
 
         // Execute the task
         executeTask(task);
@@ -179,7 +180,7 @@ void Scheduler::workerThread()
         // Reschedule if it's a recurring task, otherwise remove it from task map
         if (!task.isOneTime && task.config.interval > 0)
         {
-            LOG_DEBUG("Rescheduling recurring task '{}'", task.name);
+            LOG_DEBUG("[Scheduler] Rescheduling recurring task '{}'", task.name);
             // Create updated task with new next run time
             auto updatedTask = task; // Copy the task
             // Update next run time manually since TaskItem doesn't have updateNextRun anymore
@@ -193,7 +194,7 @@ void Scheduler::workerThread()
             // One-time task, remove from task map
             std::lock_guard<std::mutex> tasksLock(m_tasksMutex);
             m_tasks.erase(task.name);
-            LOG_DEBUG("Removed one-time task '{}' after execution", task.name);
+            LOG_DEBUG("[Scheduler] Removed one-time task '{}' after execution", task.name);
         }
     }
 }
@@ -217,11 +218,11 @@ void Scheduler::executeTask(const TaskQueue::TaskItem& task)
     }
     catch (const std::exception& e)
     {
-        LOG_WARNING("Error executing task '{}': {}", task.name, e.what());
+        LOG_WARNING("[Scheduler] Error executing task '{}': {}", task.name, e.what());
     }
     catch (...)
     {
-        LOG_WARNING("Unknown error executing task '{}'", task.name);
+        LOG_WARNING("[Scheduler] Unknown error executing task '{}'", task.name);
     }
 
     // Restore default priority
@@ -239,9 +240,9 @@ void Scheduler::setCurrentThreadPriority(int cpuPriority)
 
     if (setpriority(PRIO_PROCESS, 0, niceValue) != 0)
     {
-        LOG_WARNING("Failed to set thread CPU priority to %d", niceValue);
+        LOG_WARNING("[Scheduler] Failed to set thread CPU priority to %d", niceValue);
     }
-    LOG_DEBUG("Set thread CPU priority to %d", niceValue);
+    LOG_DEBUG("[Scheduler] Set thread CPU priority to %d", niceValue);
 }
 
 } // namespace scheduler

@@ -3,16 +3,14 @@
 #include <exception>
 #include <fmt/format.h>
 
-#include <cmstore/categories.hpp>
 #include <fastmetrics/registry.hpp>
+
+#include "syntax.hpp"
 
 namespace
 {
-constexpr std::string_view JPATH_ORIGIN_SPACE = "/wazuh/space/name";                   ///< wazuh.space.name
-const json::PointerPath PP_INTEGRATION_CATEGORY {"/wazuh/integration/category"};       ///< wazuh.integration.category
-constexpr std::string_view JPATH_INTEGRATION_DECODERS = "/wazuh/integration/decoders"; ///< wazuh.integration.decoders
+constexpr std::string_view JPATH_ORIGIN_SPACE = "/wazuh/space/name"; ///< wazuh.space.name
 const std::string ENRICHMENT_SPACE_TRACEABLE_NAME = "enrichment/OriginSpace";
-const std::string UNCLASSIFIED_FILTER_TRACEABLE_NAME = "filter/UnclassifiedEvents";
 const std::string DISCARDED_EVENTS_FILTER_TRACEABLE_NAME = "filter/DiscardedEvents";
 const std::string CLEANUP_DECODER_VARIABLES_TRACEABLE_NAME = "cleanup/DecoderTemporaryVariables";
 
@@ -45,54 +43,6 @@ std::pair<base::Expression, std::string> getSpaceEnrichment(const cm::store::dat
         });
 
     return std::make_pair(makeTraceableSuccessExpression(op, isTestMode), ENRICHMENT_SPACE_TRACEABLE_NAME);
-}
-
-std::pair<base::Expression, std::string> getUnclassifiedFilter(const cm::store::dataType::Policy& policy, bool isTestMode)
-{
-    // Filter unclassified events based on policy configuration
-    const bool shouldIndex = policy.shouldIndexUnclassifiedEvents();
-
-    auto op = base::Term<base::EngineOp>::create(
-        UNCLASSIFIED_FILTER_TRACEABLE_NAME,
-        [shouldIndex, isTestMode](base::Event event) -> base::result::Result<base::Event>
-        {
-            if (shouldIndex && !isTestMode)
-            {
-                // If indexing unclassified events is enabled and tracing is disabled, allow the event without
-                // modification
-                return base::result::makeSuccess<decltype(event)>(event);
-            }
-
-            // Get the integration category
-            const auto isUnclassified = [&]() -> bool
-            {
-                std::string_view categoryStr;
-                return event->getString(categoryStr, PP_INTEGRATION_CATEGORY) == json::RetGet::Success
-                       && categoryStr == cm::store::categories::UNCLASSIFIED_CATEGORY;
-            }();
-
-            // If category is unclassified and indexing is disabled, drop the event
-            if (isUnclassified && !shouldIndex)
-            {
-                if (isTestMode)
-                {
-                    return base::result::makeFailure<decltype(event)>(
-                        event,
-                        "dropUnclassifiedEvent() -> Event dropped because it is unclassified and policy "
-                        "index_unclassified_events=false");
-                }
-                return base::result::makeFailure<decltype(event)>(event);
-            }
-
-            // Otherwise, allow the event to continue
-            return base::result::makeSuccess<decltype(event)>(
-                event,
-                isUnclassified ? "dropUnclassifiedEvent() -> Event is unclassified but policy "
-                                 "index_unclassified_events=true, allowing event"
-                               : "dropUnclassifiedEvent() -> Event is classified, allowing event");
-        });
-
-    return std::make_pair(makeTraceableSuccessExpression(op, isTestMode), UNCLASSIFIED_FILTER_TRACEABLE_NAME);
 }
 
 std::pair<base::Expression, std::string>
@@ -149,7 +99,7 @@ base::Expression postOutputUnclassifiedCounter(const std::string& spaceName,
         {
             try
             {
-                if (event->size(JPATH_INTEGRATION_DECODERS) == 1)
+                if (event->size(syntax::asset::DECODERS_PATH) == 1)
                 {
                     unclassifiedCounter->add(1);
                 }

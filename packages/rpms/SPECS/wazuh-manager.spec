@@ -479,9 +479,6 @@ if [ -d %{_localstatedir}/queue/ossec ]; then
   rm -rf %{_localstatedir}/queue/ossec/
 fi
 
-# Remove groups backup files
-rm -rf %{_localstatedir}/backup/groups
-
 %triggerin -- glibc
 [ -r %{_sysconfdir}/localtime ] && cp -fpL %{_sysconfdir}/localtime %{_localstatedir}/etc
  chown root:wazuh-manager %{_localstatedir}/etc/localtime
@@ -505,8 +502,6 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh-manager) %{_localstatedir}/api/scripts/*.py
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/backup
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/backup/db
-%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/backup/agents
-%dir %attr(750, root, wazuh-manager) %{_localstatedir}/backup/shared
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/bin
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/agent_groups
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/agent_upgrade
@@ -589,7 +584,6 @@ rm -fr %{buildroot}
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/rhel/*
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/agents-timestamp
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/alerts
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/cluster
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/db
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/rids
@@ -640,7 +634,9 @@ rm -fr %{buildroot}
 %changelog
 * Wed Jun 24 2026 support <info@wazuh.com> - 5.0.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-5-0-0.html
-* Sat Apr 11 2026 support <info@wazuh.com> - 4.14.5
+* Thu May 14 2026 support <info@wazuh.com> - 4.14.6
+- More info: https://documentation.wazuh.com/current/release-notes/release-4-14-6.html
+* Thu Apr 23 2026 support <info@wazuh.com> - 4.14.5
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-5.html
 * Tue Mar 17 2026 support <info@wazuh.com> - 4.14.4
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-4.html

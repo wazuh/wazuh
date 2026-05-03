@@ -178,6 +178,8 @@ public:
                       const std::string& /*asnPath*/) override
     {
     }
+
+    void requestShutdown() override {}
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

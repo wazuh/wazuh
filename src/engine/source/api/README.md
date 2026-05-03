@@ -12,7 +12,7 @@ The API system spans five tightly-coupled locations in the repository:
 | **C++ Handlers** | `src/engine/source/api/` | C++ | HTTP handler implementations (this directory) |
 | **Python transport library** | `src/engine/tools/api-communication/` | Python | Low-level client: proto→JSON over UDS |
 | **Python CLI tools** | `src/engine/tools/engine-suite/` | Python | CLI commands that exercise the API |
-| **OpenAPI spec** | `docs/ref/modules/engine/spec.yaml` | YAML | Public documentation (OpenAPI 3.0.3) |
+| **OpenAPI specs** | `docs/ref/modules/engine/{public-api,private-api}.yaml` | YAML | Public and private API documentation (OpenAPI 3.0.3) |
 
 ### Communication Architecture
 
@@ -21,8 +21,8 @@ The API system spans five tightly-coupled locations in the repository:
 │  Python CLI tools    │  ─────────────────────────►  │   wazuh-engine       │
 │  (engine-suite)      │  ◄─────────────────────────  │   (C++ HTTP server)  │
 │                      │                               │                      │
-│  Uses APIClient      │   Unix socket path            │  httplib server on   │
-│  from                │   /run/wazuh-server/analysis   │  UDS, routes to     │
+│  Uses APIClient      │   Unix socket path            │  httplib server on  │
+│  from                │   /run/wazuh-server/analysis  │  UDS, routes to     │
 │  api-communication   │                               │  handler functions   │
 └──────────────────────┘                               └──────────────────────┘
 ```
@@ -133,9 +133,9 @@ adapter::RouteHandler activateDumper(const std::shared_ptr<::dumper::IDumper>& d
 inline void registerHandlers(const std::shared_ptr<::dumper::IDumper>& dumper,
                              const std::shared_ptr<httpsrv::Server>& server)
 {
-    server->addRoute(httpsrv::Method::POST, "/event-dumper/activate", activateDumper(dumper));
-    server->addRoute(httpsrv::Method::POST, "/event-dumper/deactivate", deactivateDumper(dumper));
-    server->addRoute(httpsrv::Method::POST, "/event-dumper/status", getDumperStatus(dumper));
+    server->addRoute(httpsrv::Method::POST, "/_internal/event-dumper/activate", activateDumper(dumper));
+    server->addRoute(httpsrv::Method::POST, "/_internal/event-dumper/deactivate", deactivateDumper(dumper));
+    server->addRoute(httpsrv::Method::POST, "/_internal/event-dumper/status", getDumperStatus(dumper));
 }
 ```
 
@@ -201,7 +201,7 @@ add_library(api::dumper ALIAS api_dumper)
 | `rawevtindexer.proto` | `com.wazuh.api.engine.rawevtindexer` | Raw event indexer status |
 | `crud.proto` | `com.wazuh.api.engine.content` | Namespace, policy, and resource CRUD |
 | `ioc.proto` | `com.wazuh.api.engine.ioc` | IOC sync: update and state |
-| `metrics.proto` | `com.wazuh.api.engine.metrics` | Metrics dump/get/enable/list (internal only) |
+| `metrics.proto` | `com.wazuh.api.engine.metrics` | Metrics dump/get/enable/list |
 | `request_response.proto` | `com.wazuh.api.engine.test` | Generic test request/response |
 
 ### Naming Convention
@@ -372,12 +372,15 @@ def main():
 
 ---
 
-## OpenAPI Specification (`docs/ref/modules/engine/spec.yaml`)
+## OpenAPI Specifications (`docs/ref/modules/engine/{public-api,private-api}.yaml`)
 
-The spec documents the **public-facing** API endpoints using OpenAPI 3.0.3. It does **not** include internal (`_internal/`) endpoints or the metrics API.
+The engine API is split into two OpenAPI 3.0.3 contracts:
+
+- `public-api.yaml`: public-facing endpoints consumed by supported external integrations.
+- `private-api.yaml`: internal-only endpoints used by development tooling, testing, and maintenance workflows.
 
 ### Tags (Domains)
-`Router`, `Tester`, `Geo`, `Event Dumper`, `Raw Event Indexer`, `Content`, `Logtest`
+`Router`, `Tester`, `Geo`, `Event Dumper`, `Raw Event Indexer`, `Content`, `Logtest`, `Metrics`
 
 ### Schema Conventions
 
@@ -414,28 +417,32 @@ The spec documents the **public-facing** API endpoints using OpenAPI 3.0.3. It d
 | **Content** | `/content/ioc/state` | GET | `GetIocState_Request` | `GetIocState_Response` |
 | **Logtest** | `/logtest` | POST | `PublicRunPost_Request` | `RunPost_Response` |
 | **Logtest** | `/logtest` | DELETE | `LogtestDelete_Request` | `GenericStatus_Response` |
-| **Router** | `/router/route/post` | POST | `RoutePost_Request` | `GenericStatus_Response` |
-| **Router** | `/router/route/delete` | POST | `RouteDelete_Request` | `GenericStatus_Response` |
-| **Router** | `/router/route/get` | POST | `RouteGet_Request` | `RouteGet_Response` |
-| **Router** | `/router/route/reload` | POST | `RouteReload_Request` | `GenericStatus_Response` |
-| **Router** | `/router/route/patchPriority` | POST | `RoutePatchPriority_Request` | `GenericStatus_Response` |
-| **Router** | `/router/table/get` | POST | `TableGet_Request` | `TableGet_Response` |
-| **Tester** | `/tester/session/post` | POST | `SessionPost_Request` | `GenericStatus_Response` |
-| **Tester** | `/tester/session/delete` | POST | `SessionDelete_Request` | `GenericStatus_Response` |
-| **Tester** | `/tester/session/get` | POST | `SessionGet_Request` | `SessionGet_Response` |
-| **Tester** | `/tester/session/reload` | POST | `SessionReload_Request` | `GenericStatus_Response` |
-| **Tester** | `/tester/run/post` | POST | `RunPost_Request` | `RunPost_Response` |
-| **Tester** | `/tester/table/get` | POST | `TableGet_Request` | `TableGet_Response` |
-| **Geo** | `/geo/db/get` | POST | `DbGet_Request` | `DbGet_Response` |
-| **Geo** | `/geo/db/list` | POST | `DbList_Request` | `DbList_Response` |
-| **Event Dumper** | `/event-dumper/activate` | POST | `EventDumperActivate_Request` | `GenericStatus_Response` |
-| **Event Dumper** | `/event-dumper/deactivate` | POST | `EventDumperDeactivate_Request` | `GenericStatus_Response` |
-| **Event Dumper** | `/event-dumper/status` | POST | `EventDumperStatus_Request` | `EventDumperStatus_Response` |
+| **Metrics** | `/metrics/enable` | POST | `MetricsEnable_Request` | `GenericStatus_Response` |
+| **Metrics** | `/metrics/get` | POST | `MetricsGet_Request` | `MetricsGet_Response` |
+| **Metrics** | `/metrics/list` | POST | `MetricsList_Request` | `MetricsList_Response` |
+| **Metrics** | `/metrics/dump` | POST | `EmptyRequest` | `MetricsDump_Response` |
 
 ### Internal Endpoints (prefixed with `/_internal/`)
 
 | Domain | Path | Method | Request Proto | Response Proto |
 |--------|------|--------|---------------|----------------|
+| **Router** | `/_internal/router/route/post` | POST | `RoutePost_Request` | `GenericStatus_Response` |
+| **Router** | `/_internal/router/route/delete` | POST | `RouteDelete_Request` | `GenericStatus_Response` |
+| **Router** | `/_internal/router/route/get` | POST | `RouteGet_Request` | `RouteGet_Response` |
+| **Router** | `/_internal/router/route/reload` | POST | `RouteReload_Request` | `GenericStatus_Response` |
+| **Router** | `/_internal/router/route/patchPriority` | POST | `RoutePatchPriority_Request` | `GenericStatus_Response` |
+| **Router** | `/_internal/router/table/get` | POST | `TableGet_Request` | `TableGet_Response` |
+| **Tester** | `/_internal/tester/session/post` | POST | `SessionPost_Request` | `GenericStatus_Response` |
+| **Tester** | `/_internal/tester/session/delete` | POST | `SessionDelete_Request` | `GenericStatus_Response` |
+| **Tester** | `/_internal/tester/session/get` | POST | `SessionGet_Request` | `SessionGet_Response` |
+| **Tester** | `/_internal/tester/session/reload` | POST | `SessionReload_Request` | `GenericStatus_Response` |
+| **Tester** | `/_internal/tester/run/post` | POST | `RunPost_Request` | `RunPost_Response` |
+| **Tester** | `/_internal/tester/table/get` | POST | `TableGet_Request` | `TableGet_Response` |
+| **Geo** | `/_internal/geo/db/get` | POST | `DbGet_Request` | `DbGet_Response` |
+| **Geo** | `/_internal/geo/db/list` | POST | `DbList_Request` | `DbList_Response` |
+| **Event Dumper** | `/_internal/event-dumper/activate` | POST | `EventDumperActivate_Request` | `GenericStatus_Response` |
+| **Event Dumper** | `/_internal/event-dumper/deactivate` | POST | `EventDumperDeactivate_Request` | `GenericStatus_Response` |
+| **Event Dumper** | `/_internal/event-dumper/status` | POST | `EventDumperStatus_Request` | `EventDumperStatus_Response` |
 | **Raw Event Indexer** | `/_internal/raweventindexer/status` | POST | `RawEvtIndexerStatus_Request` | `RawEvtIndexerStatus_Response` |
 | **Content NS** | `/_internal/content/namespace/list` | POST | `namespaceGet_Request` | `namespaceGet_Response` |
 | **Content NS** | `/_internal/content/namespace/create` | POST | `namespacePost_Request` | `GenericStatus_Response` |
@@ -810,13 +817,16 @@ configure_example_get(example_subparsers)
 
 ### Step 6: Document in OpenAPI Spec
 
-Add the endpoint to `docs/ref/modules/engine/spec.yaml`:
+Add the endpoint to the appropriate OpenAPI contract:
+
+- `docs/ref/modules/engine/public-api.yaml` for public endpoints
+- `docs/ref/modules/engine/private-api.yaml` for internal endpoints
 
 #### Path definition
 
 ```yaml
 paths:
-  /example/action:
+  /_internal/example/action:
     post:
       tags:
         - Example
@@ -953,7 +963,7 @@ Use this checklist when adding or modifying an endpoint:
 - [ ] **Python endpoints**: Add `isinstance` mapping in `api-communication/endpoints.py`
 - [ ] **Python CLI**: Add `configure()` + `run()` command module in `engine-suite`
 - [ ] **Python CLI registration**: Register the command in the appropriate `__main__.py`
-- [ ] **OpenAPI spec**: Add path + schemas in `docs/ref/modules/engine/spec.yaml`
+- [ ] **OpenAPI spec**: Add path + schemas in `docs/ref/modules/engine/public-api.yaml` or `docs/ref/modules/engine/private-api.yaml`
 
 ---
 
@@ -970,5 +980,5 @@ Use this checklist when adding or modifying an endpoint:
 | Python endpoint routing | `src/engine/tools/api-communication/src/api_communication/endpoints.py` |
 | Python API client | `src/engine/tools/api-communication/src/api_communication/client.py` |
 | Default socket path | `src/engine/tools/engine-suite/src/shared/default_settings.py` |
-| OpenAPI spec | `docs/ref/modules/engine/spec.yaml` |
+| OpenAPI specs | `docs/ref/modules/engine/{public-api,private-api}.yaml` |
 | CMake proto option | `src/engine/CMakeLists.txt` (`ENGINE_GENERATE_PROTO`) |

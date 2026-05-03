@@ -6,7 +6,7 @@ stages:
   - name: Get all agents (Partially allowed, user agnostic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -29,7 +29,7 @@ stages:
   - name: Get a list of agents (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -46,7 +46,7 @@ stages:
   - name: Get a list of agents (Partially allowed, user aware)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -73,7 +73,7 @@ stages:
   - name: Get a list of agents (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -100,7 +100,7 @@ stages:
   - name: Try to get agent 009 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -112,7 +112,7 @@ stages:
   - name: Get agent 010 (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -136,7 +136,7 @@ stages:
   - name: Try to get client configuration from agent component for agent 003 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/003/config/agent/client"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/003/config/agent/client"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -146,7 +146,7 @@ stages:
   - name: Get client configuration from agent component for agent 002 (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/002/config/agent/client"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/002/config/agent/client"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -161,7 +161,7 @@ stages:
  - name: Try get key agent 005 (Denied)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/agents/005/key"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/005/key"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -171,7 +171,7 @@ stages:
  - name: Get agent key for 006 (Allowed)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/agents/006/key"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/006/key"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -194,7 +194,7 @@ stages:
   - name: Try to get daemon stats from agent 001 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/daemons/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -204,7 +204,7 @@ stages:
   - name: Get all daemons' stats from agent 002 (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/002/daemons/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/002/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -233,7 +233,7 @@ stages:
  - name: Try to get logcollector stats from agent 002 (Allowed)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/agents/002/stats/logcollector"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/002/stats/logcollector"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -243,7 +243,7 @@ stages:
  - name: Try to get logcollector stats from agent 003 (Denied)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/agents/003/stats/logcollector"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/003/stats/logcollector"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -258,7 +258,7 @@ stages:
  - name: Get all groups (Partially allowed, user agnostic)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/groups"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -278,7 +278,7 @@ stages:
  - name: Try to read group3 (Denied)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/groups"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -290,7 +290,7 @@ stages:
  - name: Get a list of groups (Partially allowed, user aware)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/groups"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -315,7 +315,7 @@ stages:
  - name: Get a list of groups (Allowed)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/groups"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -341,7 +341,7 @@ stages:
  - name: Try get all agents in one group (Partially allowed, user agnostic)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups/group2/agents"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/group2/agents"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -367,7 +367,7 @@ stages:
  - name: Try to get the configuration of a group (Denied)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups/group3/configuration"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/group3/configuration"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -377,7 +377,7 @@ stages:
  - name: Try get the configuration of a group (Allowed)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/group1/configuration"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -392,7 +392,7 @@ stages:
  - name: Try get the files of a group (Denied)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups/group3/files"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/group3/files"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -402,7 +402,7 @@ stages:
  - name: Try get the files of a group (Allow)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups/group2/files"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/group2/files"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -429,7 +429,7 @@ stages:
  - name: Try get one file of a group (Denied)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups/group3/files/agent.conf"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/group3/files/agent.conf"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -439,7 +439,7 @@ stages:
  - name: Try get one file of a group (Allowed)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/agent.conf"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/default/files/agent.conf"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -454,7 +454,7 @@ stages:
  - name: Basic response agents name (Denied)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/agents"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -470,7 +470,7 @@ stages:
  - name: Basic response agents name (Allowed)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/agents"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -496,7 +496,7 @@ stages:
  - name: Get the agents without group (Partially allowed, user agnostic)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/agents/no_group"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/no_group"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -519,7 +519,7 @@ stages:
  - name: Get the outdated agents (Partially allowed, user agnostic)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/agents/outdated"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/outdated"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -544,7 +544,7 @@ stages:
  - name: Get the different combinations for os.platform (Partially allowed, user agnostic)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/agents/stats/distinct"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/stats/distinct"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -572,7 +572,7 @@ stages:
  - name: Get the agents summary (Partially allowed, user agnostic)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/agents/summary"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/summary"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -598,7 +598,7 @@ stages:
  - name: Get the agents status summary (Partially allowed, user agnostic)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/agents/summary/status"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/summary/status"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -626,7 +626,7 @@ stages:
  - name: Get the summary/os of all agents (Partially allowed, user agnostic)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/agents/summary/os"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/summary/os"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -649,7 +649,7 @@ stages:
   - name: Try to remove agent 001 from group1 (Denied group)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/group1"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/group/group1"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -659,7 +659,7 @@ stages:
   - name: Try to remove agent 004 from group3 (Denied agent)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/004/group/group3"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/004/group/group3"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -669,7 +669,7 @@ stages:
   - name: Try to remove agent 999 from default (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/999/group/default"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/999/group/default"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -681,7 +681,7 @@ stages:
   - name: Try to remove agent 999 from group1 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/999/group/group1"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/999/group/group1"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -691,7 +691,7 @@ stages:
   - name: Try to remove agent 002 from group3 (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/002/group/group3"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/002/group/group3"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -703,7 +703,7 @@ stages:
   - name: Remove agent 002 from group2 (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/002/group/group2"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/002/group/group2"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -718,7 +718,7 @@ stages:
   - name: Try to remove agent 009 from all groups (Denied agent)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/009/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/009/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -728,7 +728,7 @@ stages:
   - name: Try to remove agent 001 from group1 (Denied group)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -740,7 +740,7 @@ stages:
   - name: Remove agent 006 from all groups (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/006/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/006/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -759,7 +759,7 @@ stages:
   - name: Try to remove agent 005 from all groups (Partially allowed, user agnostic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/005/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/005/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -777,7 +777,7 @@ stages:
   - name: Try to remove agent 007 from a list of groups (Partially allowed, user aware)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/007/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/007/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -815,7 +815,7 @@ stages:
   - name: Try to remove all agents from a non existing group
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -830,7 +830,7 @@ stages:
   - name: Try to remove all agents from group1 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -843,7 +843,7 @@ stages:
   - name: Remove all agents from group2 (Partially allowed, user agnostic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -864,7 +864,7 @@ stages:
   - name: Remove a list of agents from group3 (Partially allowed, user aware)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -898,7 +898,7 @@ stages:
   - name: Remove a list of agents from group default (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -930,7 +930,7 @@ stages:
   - name: Try to delete group2 (Group denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -942,7 +942,7 @@ stages:
   - name: Delete group3
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -968,7 +968,7 @@ stages:
   - name: Try to delete all groups (Partially allowed, user agnostic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -988,7 +988,7 @@ stages:
   - name: Try to delete a list of groups (Partially allowed, user aware)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1026,7 +1026,7 @@ stages:
   - name: Try to delete agent 002 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1039,7 +1039,7 @@ stages:
   - name: Delete agent 001 (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1067,7 +1067,7 @@ stages:
   - name: Try to delete a list of agents (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1080,7 +1080,7 @@ stages:
   - name: Try to delete a list of agents (Partially allowed, user aware)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1107,7 +1107,7 @@ stages:
   - name: Try to delete all agents (Partially allowed, user agnostic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1137,7 +1137,7 @@ stages:
   - name: Try to create a new agent (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1155,7 +1155,7 @@ stages:
   - name: Try to create a new agent specifying id, ip, key and name (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/insert"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/insert"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1175,7 +1175,7 @@ stages:
   - name: Try to create new agent specifying its name (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/insert/quick"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/insert/quick"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1192,7 +1192,7 @@ stages:
   - name: Try to create a group called group4 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1209,7 +1209,7 @@ stages:
   - name: Try to assign all agents to a non existing group (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1221,7 +1221,7 @@ stages:
   - name: Try to assign all agents to group1 (Group denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1233,7 +1233,7 @@ stages:
   - name: Try to assign a list of agents to group2 (Agents denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1246,7 +1246,7 @@ stages:
   - name: Try to assign a list of agents to group2 (Partially allowed, user aware)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1277,7 +1277,7 @@ stages:
   - name: Try to assign all agents to group2 (Partially allowed, user agnostic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1308,7 +1308,7 @@ stages:
   - name: Update group2 configuration (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/group2/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/group2/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1326,7 +1326,7 @@ stages:
   - name: Try to update group1 configuration (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/group1/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/groups/group1/configuration"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1345,7 +1345,7 @@ stages:
   - name: Restart all agents from group default (Partially allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group/default/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group/default/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1381,7 +1381,7 @@ stages:
   - name: Try to reconnect non existing agent (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reconnect"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1404,7 +1404,7 @@ stages:
   - name: Try to reconnect agent 010 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reconnect"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1416,7 +1416,7 @@ stages:
   - name: Try to reconnect a list of agents (Partially allowed, user aware)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reconnect"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1446,7 +1446,7 @@ stages:
   - name: Try to reconnect all agents (Partially allowed, user agnostic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reconnect"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1470,7 +1470,7 @@ stages:
   - name: Try to restart non existing agent (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1493,7 +1493,7 @@ stages:
   - name: Try to restart agent 010 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1505,7 +1505,7 @@ stages:
   - name: Try to restart a list of agents (Partially allowed, user aware)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1539,7 +1539,7 @@ stages:
   - name: Try to restart all agents (Partially allowed, user agnostic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1566,7 +1566,7 @@ stages:
   - name: Try to assign agent 004 to group2 (Agent denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/004/group/group2"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/004/group/group2"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1576,7 +1576,7 @@ stages:
   - name: Try to assign agent 008 to group1 (Group denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/008/group/group1"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/008/group/group1"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1586,7 +1586,7 @@ stages:
   - name: Try to assign agent 008 to group3 (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/008/group/group3"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/008/group/group3"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1596,7 +1596,7 @@ stages:
   - name: Try to assign agent 001 to group2 (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/group2"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/group/group2"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1618,7 +1618,7 @@ stages:
   - name: Remove agent 008 from group default (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/group"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1644,7 +1644,7 @@ stages:
   - name: Assign agent 008 to default (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/008/group/default"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/008/group/default"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1672,7 +1672,7 @@ stages:
   - name: Try to restart agent 001 (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/001/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1693,7 +1693,7 @@ stages:
   - name: Try to restart agent 010 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/010/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/010/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1703,7 +1703,7 @@ stages:
   - name: Restart agent 004 (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/004/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/004/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1730,7 +1730,7 @@ stages:
   - name: Upgrade agents (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1743,7 +1743,7 @@ stages:
   - name: Try to upgrade agents 003 and 004 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1760,7 +1760,7 @@ stages:
   - name: Customly upgrade agents 007 and 008 using default installer (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1773,7 +1773,7 @@ stages:
   - name: Try to customly upgrade agents 003 and 004 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_custom"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1791,7 +1791,7 @@ stages:
   - name: Get upgrade result from agents list (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_result"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1803,7 +1803,7 @@ stages:
   - name: Try get upgrade result agents 003 and 004 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_result"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1820,7 +1820,7 @@ stages:
   - name: Get unknown-node on failed response
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1837,7 +1837,7 @@ stages:
   - name: Restart all agents belonging to master-node (Deny node_id)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/node/master-node/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/node/master-node/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1852,7 +1852,7 @@ stages:
   - name: Check user's permission to uninstall agents (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/uninstall"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/uninstall"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

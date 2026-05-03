@@ -165,10 +165,11 @@ bool CMSync::existSpaceInRemote(std::string_view space)
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
 
     return base::utils::executeWithRetry([&indexerPtr, space]() { return indexerPtr->existsPolicy(space); },
-                                         fmt::format("{}::exist()", COMPONENT_NAME),
+                                         fmt::format("{}", COMPONENT_NAME),
                                          fmt::format("Check '{}' space in wazuh-indexer", space),
                                          m_attempts,
-                                         m_waitSeconds);
+                                         m_waitSeconds,
+                                         m_shutdownRequested);
 }
 
 void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::NamespaceId& dstNamespace)
@@ -182,7 +183,8 @@ void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::Na
                                       fmt::format("{}::downloadNamespace()", COMPONENT_NAME),
                                       fmt::format("Download '{}' space from wazuh-indexer", originSpace),
                                       m_attempts,
-                                      m_waitSeconds);
+                                      m_waitSeconds,
+                                      m_shutdownRequested);
 
     // Create destNamespace
     try
@@ -221,7 +223,8 @@ std::pair<std::string, bool> CMSync::getPolicyHashAndEnabledFromRemote(std::stri
         fmt::format("{}::getInfoFromRemote()", COMPONENT_NAME),
         fmt::format("Get policy hash and enabled status for '{}' space from wazuh-indexer", space),
         m_attempts,
-        m_waitSeconds);
+        m_waitSeconds,
+        m_shutdownRequested);
 }
 
 cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view originSpace)
@@ -428,18 +431,31 @@ void CMSync::synchronize()
 
     for (auto& nsState : m_namespacesState)
     {
+        // Check abort at the start of each namespace iteration
+        if (m_shutdownRequested.load(std::memory_order_relaxed))
+        {
+            LOG_INFO("[CMSync] Synchronization aborted during namespace iteration");
+            return;
+        }
+
         try
         {
             LOG_DEBUG("[CMSync] Synchronizing namespace for space '{}'", nsState.getOriginSpace());
 
             if (!existSpaceInRemote(nsState.getOriginSpace()))
             {
-                LOG_WARNING("[CMSync] Space '{}' does not exist in remote indexer, skipping synchronization",
+                LOG_WARNING("[CMSync] Space '{}' does not exist in wazuh-indexer, skipping synchronization",
                             nsState.getOriginSpace());
                 continue;
             }
 
             // Get remote policy hash and enabled status
+            if (m_shutdownRequested.load(std::memory_order_relaxed))
+            {
+                LOG_INFO("[CMSync] Synchronization aborted before getting policy info for space '{}'",
+                         nsState.getOriginSpace());
+                return;
+            }
             const auto [remoteHash, remoteEnabled] = getPolicyHashAndEnabledFromRemote(nsState.getOriginSpace());
 
             // Check the current route/ns configuration to avoid unnecessary synchronization.
@@ -524,6 +540,14 @@ void CMSync::synchronize()
             // Cases 3 and 4: Changes detected, perform synchronization
             LOG_INFO("[CMSync] Changes detected for space '{}', updating...", nsState.getOriginSpace());
 
+            // Check abort before download (most expensive operation)
+            if (m_shutdownRequested.load(std::memory_order_relaxed))
+            {
+                LOG_INFO("[CMSync] Synchronization aborted before downloading namespace for space '{}'",
+                         nsState.getOriginSpace());
+                return;
+            }
+
             // Download and enrich the namespace
             const auto newNsId = downloadAndEnrichNamespace(nsState.getOriginSpace());
 
@@ -583,6 +607,12 @@ void CMSync::synchronize()
     }
 
     LOG_DEBUG("[CMSync] Finished synchronization of spaces");
+}
+
+void CMSync::requestShutdown()
+{
+    m_shutdownRequested.store(true, std::memory_order_relaxed);
+    LOG_INFO("[CMSync] Shutdown requested");
 }
 
 } // namespace cm::sync

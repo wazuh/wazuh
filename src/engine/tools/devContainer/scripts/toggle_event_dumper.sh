@@ -12,9 +12,9 @@
 #   sudo ./toggle_event_dumper.sh enable
 
 ANALYSISD_SOCKET="/var/wazuh-manager/queue/sockets/analysis"
-ENDPOINT_ACTIVATE="http://localhost/event-dumper/activate"
-ENDPOINT_STATUS="http://localhost/event-dumper/status"
-ENDPOINT_DISABLE="http://localhost/event-dumper/deactivate"
+ENDPOINT_ACTIVATE="http://localhost/_internal/event-dumper/activate"
+ENDPOINT_STATUS="http://localhost/_internal/event-dumper/status"
+ENDPOINT_DISABLE="http://localhost/_internal/event-dumper/deactivate"
 
 
 if [ "$#" -ne 1 ]; then

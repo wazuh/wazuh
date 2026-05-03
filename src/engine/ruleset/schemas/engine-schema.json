@@ -5520,9 +5520,6 @@
     "vulnerability.published_at": {
       "type": "date"
     },
-    "vulnerability.reference": {
-      "type": "keyword"
-    },
     "vulnerability.report_id": {
       "type": "keyword"
     },
@@ -5752,6 +5749,9 @@
       "type": "keyword"
     },
     "wazuh.cluster.node": {
+      "type": "keyword"
+    },
+    "wazuh.event.id": {
       "type": "keyword"
     },
     "wazuh.integration.category": {

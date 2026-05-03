@@ -73,13 +73,6 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
             m_assets.insert(base::Name(traceable));
         }
 
-        // Unclassified events filter (DISABLED - moved to output stage)
-        // {
-        //     auto [exp, traceable] = builders::enrichment::getUnclassifiedFilter(policyData, trace);
-        //     preEnrichmentOps.push_back(exp);
-        //     m_assets.insert(base::Name(traceable));
-        // }
-
         // Discarded events filter (based on policy configuration)
         {
             auto discardedCounter = fastmetrics::manager().getOrCreateCounter(

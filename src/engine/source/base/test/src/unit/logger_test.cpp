@@ -1257,3 +1257,138 @@ TEST_F(DailyRotatingFileSinkTest, CompressionCleanupWithGzFiles)
         EXPECT_TRUE(ends_with_gz) << "Remaining files should be compressed: " << file;
     }
 }
+
+// ============================================================================
+// requestShutdown() Tests
+// ============================================================================
+
+TEST_F(DailyRotatingFileSinkTest, RequestShutdownSkipsPendingCompressions)
+{
+    // After requestShutdown(), the destructor should exit quickly without
+    // compressing remaining queued files.  Rotated files that were not yet
+    // compressed must remain as .log (not .log.gz).
+
+    // Use large pseudo-random (incompressible) payloads so compression
+    // takes measurable time and the queue is not drained before requestShutdown().
+    constexpr std::size_t ROT_SIZE = 128 * 1024; // 128 KB per rotated file
+    std::string payload(ROT_SIZE - 1024, '\0');
+    for (std::size_t i = 0; i < payload.size(); ++i)
+        payload[i] = static_cast<char>((i * 6364136223846793005ULL) >> 56);
+
+    auto sink = std::make_shared<logging::daily_rotating_file_sink>(
+        logging::daily_rotating_file_sink::Config {.filePath = m_logFile, .maxFileSize = ROT_SIZE});
+    auto logger = std::make_shared<spdlog::logger>("test", sink);
+
+    // Trigger several rotations back-to-back to fill the compression queue.
+    for (int i = 0; i < 5; ++i)
+    {
+        logger->info(payload);
+        logger->flush();
+        logger->info(std::string(2048, 'T')); // push over threshold → rotation
+        logger->flush();
+    }
+
+    // Request fast shutdown BEFORE destruction.
+    sink->requestShutdown();
+    logger.reset();
+    sink.reset();
+
+    // Count uncompressed rotated files (.log but not .log.gz).
+    auto rotatedFiles = getRotatedFiles();
+    ASSERT_GE(rotatedFiles.size(), 1) << "Expected at least one rotated file";
+
+    int uncompressedCount = 0;
+    for (const auto& file : rotatedFiles)
+    {
+        if (file.size() >= 4 && file.substr(file.size() - 4) == ".log")
+        {
+            ++uncompressedCount;
+        }
+    }
+
+    EXPECT_GT(uncompressedCount, 0)
+        << "After requestShutdown(), at least some rotated files should remain uncompressed (.log)";
+}
+
+TEST_F(DailyRotatingFileSinkTest, RequestShutdownPreservesAllRotatedData)
+{
+    // After requestShutdown() + destruction, every rotated file must exist
+    // either as .log or .log.gz — no data loss.  Partial .gz files must be
+    // cleaned up by gzipCompress before throwing.
+
+    constexpr std::size_t ROT_SIZE = 64 * 1024;
+    std::string payload(ROT_SIZE - 512, '\0');
+    for (std::size_t i = 0; i < payload.size(); ++i)
+        payload[i] = static_cast<char>((i * 6364136223846793005ULL) >> 56);
+
+    auto sink = std::make_shared<logging::daily_rotating_file_sink>(
+        logging::daily_rotating_file_sink::Config {.filePath = m_logFile, .maxFileSize = ROT_SIZE});
+    auto logger = std::make_shared<spdlog::logger>("test", sink);
+
+    for (int i = 0; i < 4; ++i)
+    {
+        logger->info(payload);
+        logger->flush();
+        logger->info(std::string(1024, 'X'));
+        logger->flush();
+    }
+
+    sink->requestShutdown();
+    logger.reset();
+    sink.reset();
+
+    // Every file in the directory must be valid: either the active log,
+    // a complete .log.gz, or an uncompressed .log.  No zero-byte .gz files
+    // should remain (gzipCompress removes partial .gz on cancellation).
+    for (const auto& entry : std::filesystem::directory_iterator(m_tmpDir))
+    {
+        auto filename = entry.path().filename().string();
+        auto size = std::filesystem::file_size(entry.path());
+
+        if (filename.size() >= 3 && filename.substr(filename.size() - 3) == ".gz")
+        {
+            EXPECT_GT(size, 0) << "Partial .gz file should not remain after requestShutdown(): " << filename;
+        }
+
+        // Every file must be non-empty (no data loss).
+        EXPECT_GT(size, 0) << "File must not be empty: " << filename;
+    }
+}
+
+TEST_F(DailyRotatingFileSinkTest, RequestShutdownMakesDestructorFast)
+{
+    // Verify that requestShutdown() + destructor completes in bounded time,
+    // even when there are many large files queued for compression.
+
+    constexpr std::size_t ROT_SIZE = 256 * 1024;
+    std::string payload(ROT_SIZE - 1024, '\0');
+    for (std::size_t i = 0; i < payload.size(); ++i)
+        payload[i] = static_cast<char>((i * 6364136223846793005ULL) >> 56);
+
+    auto sink = std::make_shared<logging::daily_rotating_file_sink>(
+        logging::daily_rotating_file_sink::Config {.filePath = m_logFile, .maxFileSize = ROT_SIZE});
+    auto logger = std::make_shared<spdlog::logger>("test", sink);
+
+    // Trigger many rotations with heavy incompressible content.
+    for (int i = 0; i < 8; ++i)
+    {
+        logger->info(payload);
+        logger->flush();
+        logger->info(std::string(2048, 'T'));
+        logger->flush();
+    }
+
+    sink->requestShutdown();
+
+    // Measure destruction time.
+    const auto t0 = std::chrono::steady_clock::now();
+    logger.reset();
+    sink.reset();
+    const auto dt = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0);
+
+    // Without requestShutdown(), compressing 8 × 256 KB of incompressible data
+    // would take hundreds of ms.  With requestShutdown(), the destructor should
+    // return in well under 2 seconds (the in-progress chunk finishes, then exit).
+    EXPECT_LT(dt.count(), 2000)
+        << "Destructor took " << dt.count() << " ms after requestShutdown(); expected < 2000 ms";
+}

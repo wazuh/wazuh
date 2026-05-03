@@ -229,7 +229,10 @@ def update_user(user_id: str = None, password: str = None, current_user: str = N
         elif not _user_password.match(password):
             raise WazuhError(5007)
 
-        if int(user_id[0]) <= MAX_ID_RESERVED and current_user is not None:
+        if int(user_id[0]) <= MAX_ID_RESERVED:
+            if current_user is None:
+                raise WazuhError(5011)
+
             with AuthenticationManager() as auth_manager:
                 current_user_id = auth_manager.get_user(current_user)['id']
 

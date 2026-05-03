@@ -176,7 +176,7 @@ wait_for_ready() {
     log "Verifying route '${ROUTE_NAME}'..."
     local resp
     resp=$(curl -s --unix-socket "${ANALYSIS_SOCK}" \
-        -X POST http://localhost/router/route/get \
+        -X POST http://localhost/_internal/router/route/get \
         -H "Content-Type: application/json" \
         -d "{\"name\": \"${ROUTE_NAME}\"}" 2>&1) || true
 

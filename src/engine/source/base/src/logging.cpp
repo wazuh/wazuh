@@ -23,6 +23,9 @@ std::function<void(const int, const char*, const char*, const int, const char*, 
 namespace logging
 {
 
+// Holds a reference to the rotating sink (if active) so requestShutdown() can reach it.
+static std::shared_ptr<daily_rotating_file_sink> g_rotatingSink;
+
 class CustomSink : public spdlog::sinks::base_sink<std::mutex>
 {
 public:
@@ -101,7 +104,7 @@ void start(const LoggingConfig& cfg)
     {
         // Use our custom sink that combines daily AND size-based rotation
         // This replicates Log4j2 policies: rotates daily OR when reaching max_size
-        auto sink = std::make_shared<daily_rotating_file_sink>(
+        g_rotatingSink = std::make_shared<daily_rotating_file_sink>(
             daily_rotating_file_sink::Config {.filePath = cfg.filePath,
                                               .maxFileSize = cfg.maxFileSize,
                                               .rotationHour = cfg.rotationHour,
@@ -112,7 +115,7 @@ void start(const LoggingConfig& cfg)
                                               .compressionEnabled = cfg.compressionEnabled,
                                               .compressionLevel = cfg.compressionLevel});
 
-        logger = std::make_shared<spdlog::logger>("default", sink);
+        logger = std::make_shared<spdlog::logger>("default", g_rotatingSink);
         spdlog::set_default_logger(logger);
     }
     else
@@ -136,7 +139,12 @@ void start(const LoggingConfig& cfg)
 
 void stop()
 {
+    if (g_rotatingSink)
+    {
+        g_rotatingSink->requestShutdown();
+    }
     spdlog::shutdown();
+    g_rotatingSink.reset();
 }
 
 void testInit(Level lvl)

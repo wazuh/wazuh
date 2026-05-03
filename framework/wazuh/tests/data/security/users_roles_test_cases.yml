@@ -154,6 +154,16 @@ update_user:
       failed_items:
         "5009":
           - 106
+  - params:
+      user_id:
+        - 1
+      password: HackedPassword1!
+      current_user: normal
+    result:
+      affected_items: []
+      failed_items:
+        "5011":
+          - 1
 remove_users:
   - params:
       user_ids:

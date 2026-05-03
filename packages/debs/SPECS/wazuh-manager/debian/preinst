@@ -167,7 +167,6 @@ EOF
           rm /etc/init.d/ossec
         fi
 
-
         if [ -f ${DIR}/etc/client.keys ]; then
             cp -p ${DIR}/etc/client.keys ${WAZUH_TMP_DIR}/client.keys
         fi
@@ -191,11 +190,6 @@ EOF
         # Remove plain-text agent information if exists
         if [ -d ${DIR}/queue/agent-info ]; then
             rm -rf ${DIR}/queue/agent-info/* > /dev/null 2>&1
-        fi
-
-        # Remove groups backup content if exists
-        if [ -d ${DIR}/backup/groups ]; then
-            rm -rf ${DIR}/backup/groups/* > /dev/null 2>&1
         fi
     ;;
 

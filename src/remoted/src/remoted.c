@@ -16,8 +16,6 @@
 #include "os_net.h"
 #include "remoted.h"
 
-#define WM_STRCAT_NO_SEPARATOR 0
-
 /* Global variables */
 keystore keys;
 remoted logr;
@@ -27,8 +25,6 @@ char* cluster_name;
 /* Handle remote connections */
 void HandleRemote(int uid)
 {
-    char * str_protocol = NULL;
-
     // Set resource limit for file descriptors
 
     {
@@ -80,28 +76,6 @@ void HandleRemote(int uid)
     if (CreatePID(ARGV0, getpid()) < 0) {
         merror_exit(PID_ERROR);
     }
-
-    /* Start up message */
-    // If TCP is enabled
-    if (logr.proto & REMOTED_NET_PROTOCOL_TCP) {
-        wm_strcat(&str_protocol, REMOTED_NET_PROTOCOL_TCP_STR, WM_STRCAT_NO_SEPARATOR);
-    }
-    // If UDP is enabled
-    if (logr.proto & REMOTED_NET_PROTOCOL_UDP) {
-        wm_strcat(&str_protocol, REMOTED_NET_PROTOCOL_UDP_STR, (str_protocol == NULL) ? WM_STRCAT_NO_SEPARATOR : ',');
-    }
-
-    /* This should never happen */
-    if (str_protocol == NULL) {
-        merror_exit(REMOTED_NET_PROTOCOL_NOT_SET);
-    }
-
-    minfo(STARTUP_MSG " Listening on port %d/%s (%s).",
-        (int)getpid(),
-        logr.port,
-        str_protocol,
-        "secure");
-    os_free(str_protocol);
 
     HandleSecure();
 }

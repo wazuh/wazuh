@@ -90,7 +90,17 @@ The target namespace gets a unique random ID (`cmsync_<space>_<hex4>`) to avoid 
 
 ### Retry With Back-off
 
-Remote operations (`existsPolicy`, `getPolicy`, `getPolicyHashAndEnabled`) are wrapped in `base::utils::executeWithRetry()`, which retries up to `m_attempts` times with `m_waitSeconds` between each attempt.
+Remote operations (`existsPolicy`, `getPolicy`, `getPolicyHashAndEnabled`) are wrapped in `base::utils::executeWithRetry()`, which retries up to `m_attempts` times with `m_waitSeconds` between each attempt. The shutdown flag `m_shutdownRequested` is passed to `executeWithRetry`, which checks it before each attempt and splits inter-retry sleep into 1-second chunks for responsive cancellation.
+
+### Graceful Shutdown
+
+`CMSync` supports responsive shutdown via `requestShutdown()`:
+
+- Sets `m_shutdownRequested` (`std::atomic<bool>`) to `true`.
+- `synchronize()` checks the flag at multiple points: before starting, before each namespace iteration, and before download.
+- `executeWithRetry` aborts early when the flag is set.
+- If the underlying indexer throws during `getPolicy()` (due to `WIndexerConnector::requestShutdown()`), CMSync catches the exception, rolls back the partial namespace, and aborts the sync loop.
+- The module is registered in the exit handler in `main.cpp`; on SIGINT/SIGTERM, `requestShutdown()` is called and the sync cycle aborts within one batch round-trip.
 
 ### Weak-Pointer Resource Model
 
@@ -130,10 +140,11 @@ class ICMSync
 {
 public:
     virtual ~ICMSync() = default;
+    virtual void requestShutdown() = 0;
 };
 ```
 
-A minimal base interface. The concrete `CMSync` class exposes the full API.
+Base interface with a single lifecycle method for signaling abort.
 
 ### `CMSync`
 
@@ -156,6 +167,14 @@ public:
      * updated content, enriches it, and updates the router routes.
      */
     void synchronize();
+
+    /**
+     * @brief Signal the module to abort as soon as possible.
+     *
+     * Idempotent, thread-safe. Sets an internal flag checked at multiple
+     * checkpoints within synchronize().
+     */
+    void requestShutdown();
 };
 ```
 
@@ -215,7 +234,7 @@ Component tests (`cmsync_ctest`) are defined but currently commented out in the 
 
 ## Testing
 
-- **Unit tests** (`test/src/unit/cmsync_test.cpp`) — test the full lifecycle with all four dependencies mocked (strict mocks): constructor initialisation (first-setup vs. restore), state serialisation to/from store, and the `synchronize()` flow for each of the four cases.
+- **Unit tests** (`test/src/unit/cmsync_test.cpp`) — test the full lifecycle with all four dependencies mocked (strict mocks): constructor initialisation (first-setup vs. restore), state serialisation to/from store, the `synchronize()` flow for each of the four cases, and `requestShutdown()` abort behaviour (before loop, mid-loop, before download, hot-swap failure rollback).
 - **Component tests** (`test/src/component/cmsync_test.cpp`) — exist in the tree but are currently disabled in the build.
 - **Mock** (`test/mocks/cmsync/mockcmsync.hpp`) — provides `MockICMSync` for downstream consumers that need to mock the `ICMSync` interface.
 

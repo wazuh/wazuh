@@ -27,9 +27,9 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str, str]:
 
     # Geo
     if isinstance(message, geo.DbGet_Request):
-        endpoint = 'geo/db/get'
+        endpoint = '_internal/geo/db/get'
     if isinstance(message, geo.DbList_Request):
-        endpoint = 'geo/db/list'
+        endpoint = '_internal/geo/db/list'
 
     # CRUD NS
     if isinstance(message, crud.namespacePost_Request):
@@ -61,42 +61,42 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str, str]:
 
     # Router
     if isinstance(message, router.RoutePost_Request):
-        endpoint = 'router/route/post'
+        endpoint = '_internal/router/route/post'
     if isinstance(message, router.RouteDelete_Request):
-        endpoint = 'router/route/delete'
+        endpoint = '_internal/router/route/delete'
     if isinstance(message, router.RouteGet_Request):
-        endpoint = 'router/route/get'
+        endpoint = '_internal/router/route/get'
     if isinstance(message, router.RouteReload_Request):
-        endpoint = 'router/route/reload'
+        endpoint = '_internal/router/route/reload'
     if isinstance(message, router.RoutePatchPriority_Request):
-        endpoint = 'router/route/patchPriority'
+        endpoint = '_internal/router/route/patchPriority'
     if isinstance(message, router.TableGet_Request):
-        endpoint = 'router/table/get'
+        endpoint = '_internal/router/table/get'
 
     # Tester
     if isinstance(message, tester.SessionPost_Request):
-        endpoint = 'tester/session/post'
+        endpoint = '_internal/tester/session/post'
     if isinstance(message, tester.SessionDelete_Request):
-        endpoint = 'tester/session/delete'
+        endpoint = '_internal/tester/session/delete'
     if isinstance(message, tester.SessionGet_Request):
-        endpoint = 'tester/session/get'
+        endpoint = '_internal/tester/session/get'
     if isinstance(message, tester.SessionReload_Request):
-        endpoint = 'tester/session/reload'
+        endpoint = '_internal/tester/session/reload'
     if isinstance(message, tester.TableGet_Request):
-        endpoint = 'tester/table/get'
+        endpoint = '_internal/tester/table/get'
     if isinstance(message, tester.RunPost_Request):
-        endpoint = 'tester/run/post'
+        endpoint = '_internal/tester/run/post'
     if isinstance(message, tester.LogtestDelete_Request):
         endpoint = 'logtest'
         method = 'delete'
 
     # Event Dumper
     if isinstance(message, event_dumper.EventDumperActivate_Request):
-        endpoint = 'event-dumper/activate'
+        endpoint = '_internal/event-dumper/activate'
     if isinstance(message, event_dumper.EventDumperDeactivate_Request):
-        endpoint = 'event-dumper/deactivate'
+        endpoint = '_internal/event-dumper/deactivate'
     if isinstance(message, event_dumper.EventDumperStatus_Request):
-        endpoint = 'event-dumper/status'
+        endpoint = '_internal/event-dumper/status'
 
     # Raw event indexer
     if isinstance(message, rawevtindexer.RawEvtIndexerStatus_Request):

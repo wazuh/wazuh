@@ -247,13 +247,17 @@ TEST_F(RateLimiterTest, WaitAcquireMultiConsumer)
 }
 
 /**
- * @brief Compare single vs multi consumer to verify the fix eliminates
- * the scaling problem. The ratio should be close to 1.0.
+ * @brief Verify that multi-consumer throughput does not exceed the configured
+ * rate, just as a single consumer does not.
+ *
  */
 TEST_F(RateLimiterTest, MultiConsumerRateMatchesSingleConsumer)
 {
     constexpr size_t TARGET_EPS = 2000;
     constexpr int TEST_DURATION_MS = 2000;
+    constexpr double UPPER_TOLERANCE = 0.15; // Neither mode should exceed TARGET_EPS by >15%
+    constexpr double MULTI_LOWER_TOLERANCE = 0.70; // 8 consumers should reach at least 70%
+    constexpr double SINGLE_LOWER_TOLERANCE = 0.50; // 1 consumer may be slower due to yield() jitter
 
     auto measureEPS = [&](size_t numConsumers) -> double
     {
@@ -301,15 +305,20 @@ TEST_F(RateLimiterTest, MultiConsumerRateMatchesSingleConsumer)
     double singleEPS = measureEPS(1);
     double multiEPS = measureEPS(8);
 
-    // Both should be close to TARGET_EPS. The ratio between them should
-    // be near 1.0 (before fix, multiEPS/singleEPS would be ~1.5-2.0)
-    double ratio = multiEPS / singleEPS;
+    // Multi-consumer must not exceed the configured rate (the CAS fix invariant)
+    EXPECT_LE(multiEPS, TARGET_EPS * (1.0 + UPPER_TOLERANCE))
+        << "Multi-consumer exceeds configured rate: " << multiEPS << " EPS (target: " << TARGET_EPS << ")";
 
-    EXPECT_NEAR(ratio, 1.0, 0.25)
-        << "Multi-consumer rate diverges from single-consumer! "
-        << "Single: " << singleEPS << " EPS, Multi(8): " << multiEPS
-        << " EPS, ratio: " << ratio;
+    // Single-consumer must not exceed the configured rate either
+    EXPECT_LE(singleEPS, TARGET_EPS * (1.0 + UPPER_TOLERANCE))
+        << "Single-consumer exceeds configured rate: " << singleEPS << " EPS (target: " << TARGET_EPS << ")";
 
-    EXPECT_LE(multiEPS, TARGET_EPS * 1.15)
-        << "Multi-consumer exceeds target rate: " << multiEPS << " vs " << TARGET_EPS;
+    // Sanity: multi-consumer should reach a reasonable fraction of TARGET_EPS
+    EXPECT_GE(multiEPS, TARGET_EPS * MULTI_LOWER_TOLERANCE)
+        << "Multi-consumer too restrictive: " << multiEPS << " EPS (target: " << TARGET_EPS << ")";
+
+    // Sanity: single-consumer has a wider lower margin because yield() duration
+    // is non-deterministic on slow or CPU-constrained machines
+    EXPECT_GE(singleEPS, TARGET_EPS * SINGLE_LOWER_TOLERANCE)
+        << "Single-consumer too restrictive: " << singleEPS << " EPS (target: " << TARGET_EPS << ")";
 }

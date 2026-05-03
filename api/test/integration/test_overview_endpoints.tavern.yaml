@@ -5,7 +5,7 @@ stages:
  - name: Get full agents overview
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/overview/agents"
+     url: "{protocol:s}://{host:s}:{balanced_port:d}/overview/agents"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"

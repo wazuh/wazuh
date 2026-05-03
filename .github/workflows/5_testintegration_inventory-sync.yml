@@ -23,6 +23,7 @@ concurrency:
 
 jobs:
   inventory-sync-integration-tests:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: inventory-sync-integration-tests
     runs-on: ubuntu-22.04
 

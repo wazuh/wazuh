@@ -825,6 +825,9 @@ clean-internals:
 # Flatbuffers
 	rm -rf shared_modules/utils/flatbuffers/build
 	rm -rf shared_modules/utils/flatbuffers/include
+	rm -f wazuh_modules/syscollector/include/*_generated.h
+	rm -f wazuh_modules/vulnerability_scanner/include/*_generated.h
+	rm -f wazuh_modules/vulnerability_scanner/include/*_schema.h
 # Selinux
 	rm -f ${SELINUX_MODULE}
 	rm -f ${SELINUX_POLICY}

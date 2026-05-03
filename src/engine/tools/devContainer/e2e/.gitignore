@@ -1,4 +1,5 @@
 certs/*
 wazuh-indexer/*.deb
 wazuh-dashboard/*.deb
+agents/rpm/
 init.log

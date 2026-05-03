@@ -7,6 +7,8 @@ on:
     paths:
       - "src/**"
       - "packages/**"
+      - "ruleset/**"
+      - ".github/actions/check_files/**"
       - ".github/workflows/5_builderpackage_agent-linux.yml"
       - ".github/workflows/5_testintegration_linux-integration-tests.yml"
       - ".github/test_modules_linux.json"

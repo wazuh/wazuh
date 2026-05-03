@@ -356,44 +356,351 @@ Users can create custom Active Response scripts following these guidelines:
 
 ### Requirements
 
-1. **Executable**: Script must have execute permissions
-2. **Location**: Place in `/var/ossec/active-response/bin/`
-3. **JSON Input**: Read JSON from stdin
-4. **Commands**: Support both `add` and `delete` commands
-5. **Exit Codes**: Return 0 on success, 1 on failure
-6. **Logging**: Write to `/var/ossec/logs/active-responses.log`
+1. **Executable**: Script must have execute permissions (chmod 750)
+2. **Location**: Place in `/var/ossec/active-response/bin/` (without file extension)
+3. **Ownership**: Set owner to `root:wazuh`
+4. **Shebang**: Include proper shebang line (e.g., `#!/bin/bash` or `#!/usr/bin/python3`)
+5. **JSON Input**: Read JSON from stdin using `read -r` (bash) or `sys.stdin` (Python)
+6. **Commands**: Support both `enable` and `disable` commands
+7. **Exit Codes**: Return 0 on success, 1 on failure
+8. **Logging**: Write to `/var/ossec/logs/active-responses.log`
 
-### Example: Custom Email Alert Script
+### Example 1: Stateful Bash Script (FIM Response)
+
+This example demonstrates a complete stateful Active Response script for FIM events:
 
 ```bash
 #!/bin/bash
-# custom-email-alert.sh
+# Custom Active Response for FIM events
+# Save as: /var/ossec/active-response/bin/custom-fim-response
 
-INPUT=$(</dev/stdin)
-COMMAND=$(echo "$INPUT" | jq -r '.command')
-SRCIP=$(echo "$INPUT" | jq -r '.parameters.alert.source.ip')
-
+# Log file path
 LOG_FILE="/var/ossec/logs/active-responses.log"
-echo "$(date) custom-email-alert: Received command: $COMMAND for IP: $SRCIP" >> "$LOG_FILE"
 
-if [ "$COMMAND" = "enable" ]; then
-    echo "Alert: Suspicious activity from $SRCIP" | mail -s "Wazuh Alert" admin@example.com
-    echo "$(date) custom-email-alert: Email sent for IP: $SRCIP" >> "$LOG_FILE"
+# Function to write log messages
+log_message() {
+    local timestamp=$(date '+%Y/%m/%d %H:%M:%S')
+    echo "$timestamp $(basename $0): $1" >> "$LOG_FILE"
+}
+
+# Function to send keys for stateful deduplication
+send_keys() {
+    local keys=$1
+    local script_name=$(basename "$0")
+
+    # Build keys message
+    local keys_msg="{\"version\":1,\"origin\":{\"name\":\"$script_name\",\"module\":\"active-response\"},\"command\":\"check_keys\",\"parameters\":{\"keys\":[$keys]}}"
+
+    log_message "Sending keys: $keys_msg"
+    echo "$keys_msg"
+
+    # Read response from execd
+    read -r response
+    log_message "Received response: $response"
+
+    # Check if we should continue or abort
+    local cmd=$(echo "$response" | jq -r '.command // empty')
+    if [ "$cmd" = "abort" ]; then
+        log_message "Duplicate detected, aborting execution"
+        exit 0
+    elif [ "$cmd" = "continue" ]; then
+        log_message "Continuing execution"
+        return 0
+    else
+        log_message "Invalid response from execd: $response"
+        exit 1
+    fi
+}
+
+log_message "Starting script"
+
+# CRITICAL: Use 'read -r' to read ONE line, NOT '$(</dev/stdin)'
+# Using $(</dev/stdin) causes deadlock with execd
+read -r INPUT
+log_message "Received input (${#INPUT} bytes)"
+
+# Parse JSON fields
+COMMAND=$(echo "$INPUT" | jq -r '.command // empty')
+AR_TYPE=$(echo "$INPUT" | jq -r '.wazuh.active_response.type // empty')
+FILE_PATH=$(echo "$INPUT" | jq -r '.file.path // empty')
+
+log_message "Command: $COMMAND, Type: $AR_TYPE, File: $FILE_PATH"
+
+# Validate command
+if [ -z "$COMMAND" ]; then
+    log_message "ERROR: No command found in input"
+    exit 1
 fi
 
+case "$COMMAND" in
+    enable)
+        log_message "Executing enable command"
+
+        # For stateful responses, implement keys protocol
+        if [ "$AR_TYPE" = "stateful" ]; then
+            KEYS="\"$FILE_PATH\""
+            send_keys "$KEYS"
+        fi
+
+        # Execute your custom action here
+        log_message "ACTION: Processing file $FILE_PATH"
+        # Example: Quarantine file, send alert, create backup, etc.
+
+        log_message "Enable command completed successfully"
+        ;;
+
+    disable)
+        log_message "Executing disable command"
+
+        # Revert the action
+        log_message "ACTION: Reverting action for file $FILE_PATH"
+        # Example: Remove backup, restore file, etc.
+
+        log_message "Disable command completed successfully"
+        ;;
+
+    *)
+        log_message "ERROR: Invalid command '$COMMAND'"
+        exit 1
+        ;;
+esac
+
+log_message "Script finished successfully"
 exit 0
+```
+
+### Example 2: Python Script
+
+This example uses a custom Python script:
+
+```python
+#!/usr/bin/python3
+# Save as: /var/ossec/active-response/bin/custom-ar
+
+import os
+import sys
+import json
+import datetime
+from pathlib import PureWindowsPath, PurePosixPath
+import platform
+
+if os.name == 'nt':
+    LOG_FILE = "C:\\Program Files (x86)\\ossec-agent\\active-response\\active-responses.log"
+elif platform.system() == 'Darwin':
+    LOG_FILE = "/Library/Ossec/logs/active-responses.log"
+else:
+    LOG_FILE = "/var/ossec/logs/active-responses.log"
+
+ENABLE_COMMAND = 0
+DISABLE_COMMAND = 1
+CONTINUE_COMMAND = 2
+ABORT_COMMAND = 3
+
+OS_SUCCESS = 0
+OS_INVALID = -1
+
+class message:
+    def __init__(self):
+        self.alert = ""
+        self.command = 0
+
+
+def write_debug_file(ar_name, msg):
+    with open(LOG_FILE, mode="a") as log_file:
+        ar_name_posix = str(PurePosixPath(PureWindowsPath(ar_name[ar_name.find("active-response"):])))
+        log_file.write(str(datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')) + " " + ar_name_posix + ": " + msg +"\n")
+
+
+def setup_and_check_message(argv):
+
+    # get alert from stdin
+    input_str = ""
+    for line in sys.stdin:
+        input_str = line
+        break
+
+    write_debug_file(argv[0], input_str)
+
+    try:
+        data = json.loads(input_str)
+    except ValueError:
+        write_debug_file(argv[0], 'Decoding JSON has failed, invalid input format')
+        message.command = OS_INVALID
+        return message
+
+    message.alert = data
+
+    command = data.get("command")
+
+    if command == "enable":
+        message.command = ENABLE_COMMAND
+    elif command == "disable":
+        message.command = DISABLE_COMMAND
+    else:
+        message.command = OS_INVALID
+        write_debug_file(argv[0], 'Not valid command: ' + command)
+
+    return message
+
+
+def send_keys_and_check_message(argv, keys):
+
+    # build and send message with keys
+    keys_msg = json.dumps({"version": 1,"origin":{"name": argv[0],"module":"active-response"},"command":"check_keys","parameters":{"keys":keys}})
+
+    write_debug_file(argv[0], keys_msg)
+
+    print(keys_msg)
+    sys.stdout.flush()
+
+    # read the response of previous message
+    input_str = ""
+    while True:
+        line = sys.stdin.readline()
+        if line:
+            input_str = line
+            break
+
+    write_debug_file(argv[0], input_str)
+
+    try:
+        data = json.loads(input_str)
+    except ValueError:
+        write_debug_file(argv[0], 'Decoding JSON has failed, invalid input format')
+        return message
+
+    action = data.get("command")
+
+    if "continue" == action:
+        ret = CONTINUE_COMMAND
+    elif "abort" == action:
+        ret = ABORT_COMMAND
+    else:
+        ret = OS_INVALID
+        write_debug_file(argv[0], "Invalid value of 'command'")
+
+    return ret
+
+
+def main(argv):
+
+    write_debug_file(argv[0], "Started")
+
+    # validate json and get command
+    msg = setup_and_check_message(argv)
+
+    if msg.command < 0:
+        sys.exit(OS_INVALID)
+
+    if msg.command == ENABLE_COMMAND:
+
+        """ Start Custom Key
+        At this point, it is necessary to select the keys from the alert and add them into the keys array.
+        """
+
+        alert = msg.alert
+
+        rule_id = alert.get("rule", {}).get("id", "unknown")
+        keys = [rule_id]
+
+        """ End Custom Key """
+
+        action = send_keys_and_check_message(argv, keys)
+
+        # if necessary, abort execution
+        if action != CONTINUE_COMMAND:
+
+            if action == ABORT_COMMAND:
+                write_debug_file(argv[0], "Aborted")
+                sys.exit(OS_SUCCESS)
+            else:
+                write_debug_file(argv[0], "Invalid command")
+                sys.exit(OS_INVALID)
+
+        """ Start Custom Action Enable """
+
+        # Replace this section with your custom action
+        with open("ar-test-result.txt", mode="a") as test_file:
+            test_file.write("Active response triggered by rule ID: <" + str(keys) + ">\n")
+
+        """ End Custom Action Enable """
+
+    elif msg.command == DISABLE_COMMAND:
+
+        """ Start Custom Action Disable """
+
+        # Replace this section with your disable action
+        try:
+            os.remove("ar-test-result.txt")
+        except FileNotFoundError:
+            write_debug_file(argv[0], "File not found, nothing to remove")
+
+        """ End Custom Action Disable """
+
+    else:
+        write_debug_file(argv[0], "Invalid command")
+
+    write_debug_file(argv[0], "Ended")
+
+    sys.exit(OS_SUCCESS)
+
+
+if __name__ == "__main__":
+    main(sys.argv)
+```
+
+**Customization Guide**:
+
+1. **Custom Keys (Line 124-129)**: Define which fields uniquely identify your alert
+   ```python
+   # Example: Use IP and username as keys
+   source_ip = alert.get("source", {}).get("ip", "unknown")
+   username = alert.get("user", {}).get("name", "unknown")
+   keys = [rule_id, source_ip, username]
+   ```
+
+2. **Enable Action (Line 145-149)**: Replace with your custom action
+   ```python
+   # Example: Add firewall rule, lock account, etc.
+   subprocess.run(["iptables", "-I", "INPUT", "-s", source_ip, "-j", "DROP"])
+   ```
+
+3. **Disable Action (Line 155-161)**: Implement reversion logic
+   ```python
+   # Example: Remove firewall rule, unlock account, etc.
+   subprocess.run(["iptables", "-D", "INPUT", "-s", source_ip, "-j", "DROP"])
+   ```
+
+### Installation
+
+```bash
+# Bash script (Example 1)
+sudo cp custom-fim-response.sh /var/ossec/active-response/bin/custom-fim-response
+sudo chmod 750 /var/ossec/active-response/bin/custom-fim-response
+sudo chown root:wazuh /var/ossec/active-response/bin/custom-fim-response
+
+# Python script (Example 2)
+sudo cp custom-ar.py /var/ossec/active-response/bin/custom-ar
+sudo chmod 750 /var/ossec/active-response/bin/custom-ar
+sudo chown root:wazuh /var/ossec/active-response/bin/custom-ar
 ```
 
 ### Best Practices
 
-- **Validate Input**: Check JSON structure and required fields
-- **Implement Deduplication**: For stateful scripts, use the keys protocol
-- **Log Everything**: Detailed logging aids troubleshooting
-- **Test Thoroughly**: Test both enable and disable commands
-- **Handle Errors**: Gracefully handle missing tools or failed commands
-- **Use Absolute Paths**: Don't rely on PATH environment variable
-- **Check Privileges**: Verify script has necessary permissions
-- **Document**: Include comments explaining behavior
+- **⚠️ stdin Reading**: ALWAYS use `read -r INPUT` in bash (never `$(</dev/stdin)` - causes deadlock)
+- **Python stdin**: Use `for line in sys.stdin: input_str = line; break` or `sys.stdin.readline()`
+- **No File Extension**: Save scripts without extension in `/var/ossec/active-response/bin/`
+- **Path Processing**: Use `PurePosixPath(PureWindowsPath())` for cross-platform path handling
+- **Validate Input**: Check JSON structure and required fields before processing
+- **Implement Deduplication**: For stateful scripts, always use the keys protocol
+- **WCS Fields**: Access fields using Wazuh Common Schema (`rule.id`, `source.ip`, `user.name`, `file.path`)
+- **Log Everything**: Detailed logging to `active-responses.log` aids troubleshooting
+- **Test Thoroughly**: Test both enable and disable commands with real alerts
+- **Handle Errors**: Gracefully handle missing fields, invalid JSON, and failed operations
+- **Use Absolute Paths**: Don't rely on PATH environment variable for external commands
+- **Check Privileges**: Verify script has necessary permissions (root/wazuh ownership)
+- **Python3**: Ensure Python 3 is installed on all agents before deployment
+- **Dependencies**: Document any required libraries or external tools (e.g., `jq` for bash)
 
 ---
 

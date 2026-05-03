@@ -310,7 +310,7 @@ def init_cm_resources(api_client: APIClient):
         integ_uuid=INTEG_WAZUH_CORE_UUID,
         integ_title="wazuh-core-test",
         default_parent=DECODER_TEST_UUID,
-        category="unclassified",
+        category="other",
         decoder_uuid=DECODER_TEST_UUID,
     )
 

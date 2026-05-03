@@ -182,8 +182,15 @@ std::filesystem::path getWazuhHome()
     // It resolves the home via /proc/self/exe internally.
     if (base::libwazuhshared::getLibPtr())
     {
-        using WHDir = char* (*)(char*);
-        char executablePath[] = "/proc/self/exe";
+        // Force if we want to avoid the /proc lookup
+        if (std::getenv("WAZUH_ENGINE_FORCE_HOME"))
+        {
+            return std::filesystem::path(std::getenv("WAZUH_ENGINE_FORCE_HOME"));
+        }
+
+        using WHDir = char* (*)(const char*);
+        const char executablePath[] = "/proc/self/exe";
+
         std::unique_ptr<char, decltype(&std::free)> home(
             base::libwazuhshared::getFunction<WHDir>("w_homedir")(executablePath), &std::free);
 

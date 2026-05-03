@@ -100,6 +100,8 @@ class MarkdownGenerator(IExporter):
 
         rows = []
         row = []
+        if getattr(output, "path", None):
+            row.append(output.path)
         if isinstance(output.type_, list):
             row.append(f"[{', '.join(output.type_)}]")
             row.append("-")
@@ -176,17 +178,19 @@ class MarkdownGenerator(IExporter):
                             args_values.append(self._format_call_arg(arg))
 
             if getattr(example, "target_field", None):
-                event_data["target_field"] = example.target_field
+                target_field_name = getattr(doc.target_field, "path", None) or "target_field"
+                event_data[target_field_name] = example.target_field
 
             call_str = f"{doc.name}({', '.join(args_values)})" if args_values else f"{doc.name}()"
+            target_field_name = getattr(doc.target_field, "path", None) or "target_field"
 
             self.content.append(f"{description}\n")
             self.content.append(f"#### Asset\n")
 
             if helper_type == "filter":
-                self.content.append("```yaml\ncheck:\n  - target_field: " + call_str + "\n```\n")
+                self.content.append("```yaml\ncheck:\n  - " + target_field_name + ": " + call_str + "\n```\n")
             else:
-                self.content.append("```yaml\nnormalize:\n  - map:\n      - target_field: " + call_str + "\n```\n")
+                self.content.append("```yaml\nnormalize:\n  - map:\n      - " + target_field_name + ": " + call_str + "\n```\n")
 
             self.content.append("#### Input Event\n")
             self.content.append("```json\n" + json.dumps(event_data, indent=2) + "\n```\n")
@@ -198,7 +202,7 @@ class MarkdownGenerator(IExporter):
                 final_event = dict(event_data)
                 if example.expected is not None:
                     if example.should_pass or doc.helper_type == "transformation":
-                        final_event["target_field"] = example.expected
+                        final_event[target_field_name] = example.expected
 
                 if all(v is None for v in final_event.values()):
                     final_event = {}
@@ -237,7 +241,7 @@ class MarkdownGenerator(IExporter):
 
         if doc.target_field:
             self.content.append(f"## Target Field\n")
-            headers = ["Type", "Possible values"]
+            headers = ["Path", "Type", "Possible values"] if getattr(doc.target_field, "path", None) else ["Type", "Possible values"]
             self.create_output_table(doc.target_field, headers)
 
         if doc.output:

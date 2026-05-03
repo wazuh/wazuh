@@ -50,6 +50,16 @@ Internally the module wraps an asynchronous `IndexerConnectorAsync` instance (fr
 
 Every public method acquires either a **shared lock** (read operations, indexing) or an **exclusive lock** (`shutdown`). After `shutdown()` resets the internal `IndexerConnectorAsync`, subsequent calls degrade gracefully — `index()` silently returns, while query methods throw `std::runtime_error`.
 
+### Graceful Shutdown
+
+`WIndexerConnector` supports a two-phase shutdown for responsive process termination:
+
+1. **`requestShutdown()`** — sets an `std::atomic<bool> m_shutdownRequested` flag (non-destructive, idempotent). This flag is checked between batches in the two pagination loops (`getPolicy()` and `queryByBatches()`). When set, both loops throw `IndexerConnectorException` to abort the current operation. This is critical for preventing promotion of partial datasets (e.g. IocSync would otherwise hot-swap a half-downloaded IOC database).
+
+2. **`shutdown()`** — also sets the flag (defense in depth), then acquires the exclusive lock and destroys the underlying `IndexerConnectorAsync`.
+
+In `main.cpp`, the exit handler registers both: `requestShutdown()` executes first (LIFO) so in-flight pagination loops release their shared locks quickly, then `shutdown()` acquires the exclusive lock without blocking.
+
 ### Point-In-Time (PIT) Pagination
 
 For large result sets (`getPolicy`, `queryByBatches`), the connector opens a **Point-In-Time** snapshot on the wazuh-indexer with a keep-alive of 5 minutes. Results are retrieved in pages using `search_after` cursors, guaranteeing a consistent view even if the index is being concurrently updated. The PIT is automatically deleted via an RAII guard.
@@ -172,13 +182,15 @@ public:
     WIndexerConnector(const Config&, const LogFunctionType& logFunction, std::size_t maxHitsPerRequest);
     WIndexerConnector(std::string_view jsonOssecConfig, std::size_t maxHitsPerRequest);
 
-    void shutdown();
+    void shutdown();          // Destructive: resets the async connector under exclusive lock
+    void requestShutdown();   // Non-destructive: sets abort flag for in-flight pagination loops
     // ... all IWIndexerConnector overrides ...
 
 private:
     std::unique_ptr<IndexerConnectorAsync> m_indexerConnectorAsync;
     std::shared_mutex m_mutex;
     std::size_t m_maxHitsPerRequest;
+    std::atomic<bool> m_shutdownRequested {false}; // Checked between pagination batches
 
     std::size_t queryByBatches(std::string_view indexName,
                                std::string_view query,
@@ -240,7 +252,7 @@ Searches `.wazuh-settings` for a single document, extracts `_source.engine`, val
 
 ## Testing
 
-- **Unit tests** (`test/src/unit/wic_test.cpp`) — cover `Config::toJson()` serialisation, constructor validation (empty/invalid JSON, zero `maxHitsPerRequest`), `index()` graceful handling, `shutdown()` lifecycle, and concurrent access (multi-threaded indexing and concurrent indexing + shutdown).
+- **Unit tests** (`test/src/unit/wic_test.cpp`) — cover `Config::toJson()` serialisation, constructor validation (empty/invalid JSON, zero `maxHitsPerRequest`), `index()` graceful handling, `shutdown()` lifecycle, `requestShutdown()` semantics (non-destructive, idempotent, composable with `shutdown()`), and concurrent access (multi-threaded indexing and concurrent indexing + shutdown).
 - **Mock** (`test/mocks/wiconnector/mockswindexerconnector.hpp`) — `MockWIndexerConnector` in `wiconnector::mocks` implements all `IWIndexerConnector` methods with GMock macros for use by downstream consumers.
 
 ## Consumers
