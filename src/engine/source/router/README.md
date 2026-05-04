@@ -148,8 +148,14 @@ The `Orchestrator` constructor:
 1. Validates the `Options` struct (thread count 0–128, non-null pointers, timeout > 0).
 2. Creates a shared `EnvironmentBuilder` from the builder and controller maker.
 3. Loads persisted router/tester configuration from the Store (`router/router/0`, `router/tester/0`).
-4. Creates N `RouterWorker` instances (defaults to `hardware_concurrency` if thread count is 0), each initialized with the saved route table.
+4. Creates exactly **1** `RouterWorker` synchronously, initialized with the saved route table. Additional workers are deferred to `expandWorkerPool()` (see below).
 5. Creates 1 `TesterWorker` initialized with saved test sessions.
+
+### Deferred Worker Pool Expansion
+
+`expandWorkerPool()` is called at startup, before content synchronization begins. It synchronously builds workers 2..N, each initialized from a snapshot of the first worker's route table.
+
+The write lock (`m_syncMutex`) is held for the full snapshot → build → publish cycle of each worker. This serializes expansion against concurrent route mutations, which is the correct trade-off given that expansion happens once at startup. If a worker fails to initialize or start, the pool remains unchanged and the caller may invoke `expandWorkerPool()` again to retry.
 
 ### Multi-Worker Replication
 
@@ -212,7 +218,7 @@ Unit tests cover each internal class independently using GMock:
 - **`environmentBuilder_test`**: Policy build, controller creation, error handling
 - **`router_test`**: Entry CRUD, priority changes, event ingestion, hot swap
 - **`tester_test`**: Entry CRUD, rename, test ingestion with traces, asset listing
-- **`orchestrator_test`**: Full lifecycle, multi-worker replication, store persistence, queue contention
+- **`orchestrator_test`**: Full lifecycle, multi-worker replication, store persistence, queue contention, worker pool expansion
 - **`entryConverter_test`**: JSON ↔ Entry round-trip conversion
 
 Component tests exercise the integrated subsystems with mock backends.
