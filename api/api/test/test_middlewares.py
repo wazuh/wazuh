@@ -464,3 +464,152 @@ async def test_check_expect_header_middleware_uses_runtime_max_upload_size():
     call_next_mock.assert_not_called()
     assert exc_info.value.status == 417
     assert "Maximum content size limit (5) exceeded" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+@pytest.mark.parametrize("username_with_special_chars,expected_escaped", [
+    ('user\nname', 'user\\nname'),
+    ('user\r\nname', 'user\\r\\nname'),
+    ('user\tname', 'user\\tname'),
+    ('multi\n\r\tline', 'multi\\n\\r\\tline'),
+    ('normal_user', 'normal_user'),
+])
+async def test_access_log_escapes_control_characters_basic_auth(username_with_special_chars, expected_escaped, mock_req):
+    """Test that access_log properly escapes control characters in usernames from Basic auth."""
+    response = MagicMock()
+    response.status_code = 401
+
+    operation = MagicMock(name="operation")
+    operation.method = "post"
+
+    body = {}
+    mock_req.json = AsyncMock(return_value=body)
+    mock_req.query_params = {}
+    mock_req.method = 'GET'
+    mock_req.context = {}
+    mock_req.scope = {'path': LOGIN_ENDPOINT}
+    mock_req.headers = {'content-type': 'None'}
+
+    encoded_creds = f'{username_with_special_chars}:password'
+    sec_header = ('basic', encoded_creds)
+
+    with TestContext(operation=operation), \
+        patch('api.middlewares.custom_logging') as mock_custom_logging, \
+        patch('api.middlewares.base64.b64decode', return_value=encoded_creds.encode("latin1")), \
+        patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value', return_value=sec_header):
+        expected_time = datetime(1970, 1, 1, 0, 0, 10).timestamp()
+        await access_log(request=mock_req, response=response, prev_time=expected_time)
+
+        mock_custom_logging.assert_called_once()
+        logged_username = mock_custom_logging.call_args[0][0]
+        assert logged_username == expected_escaped
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+@pytest.mark.parametrize("username_with_special_chars,expected_escaped", [
+    ('user\nname', 'user\\nname'),
+    ('user\r\nname', 'user\\r\\nname'),
+    ('user\tname', 'user\\tname'),
+])
+async def test_access_log_escapes_control_characters_jwt(username_with_special_chars, expected_escaped, mock_req):
+    """Test that access_log properly escapes control characters in usernames from JWT tokens."""
+    response = MagicMock()
+    response.status_code = 200
+
+    operation = MagicMock(name="operation")
+    operation.method = "post"
+
+    body = {}
+    mock_req.json = AsyncMock(return_value=body)
+    mock_req.query_params = {}
+    mock_req.method = 'GET'
+    mock_req.context = {}
+    mock_req.scope = {'path': '/agents'}
+    mock_req.headers = {'content-type': 'None'}
+
+    sec_header = ('bearer', {'sub': username_with_special_chars})
+
+    with TestContext(operation=operation), \
+        patch('api.middlewares.custom_logging') as mock_custom_logging, \
+        patch('api.middlewares.jwt.decode', return_value=sec_header[1]), \
+        patch('api.middlewares.generate_keypair', return_value=(None, None)), \
+        patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value', return_value=sec_header):
+        expected_time = datetime(1970, 1, 1, 0, 0, 10).timestamp()
+        await access_log(request=mock_req, response=response, prev_time=expected_time)
+
+        mock_custom_logging.assert_called_once()
+        logged_username = mock_custom_logging.call_args[0][0]
+        assert logged_username == expected_escaped
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+@pytest.mark.parametrize("username_with_special_chars", [
+    'user\nname',
+    'user\r\nname',
+    'user\tname',
+])
+async def test_access_log_warns_on_control_characters(username_with_special_chars, mock_req):
+    """Test that access_log logs a warning when usernames contain control characters."""
+    response = MagicMock()
+    response.status_code = 200
+
+    operation = MagicMock(name="operation")
+    operation.method = "post"
+
+    body = {}
+    mock_req.json = AsyncMock(return_value=body)
+    mock_req.query_params = {}
+    mock_req.method = 'GET'
+    mock_req.context = {}
+    mock_req.scope = {'path': '/agents'}
+    mock_req.headers = {'content-type': 'None'}
+
+    encoded_creds = f'{username_with_special_chars}:password'
+    sec_header = ('basic', encoded_creds)
+
+    with TestContext(operation=operation), \
+        patch('api.middlewares.custom_logging'), \
+        patch('api.middlewares.base64.b64decode', return_value=encoded_creds.encode("latin1")), \
+        patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value', return_value=sec_header), \
+        patch('api.middlewares.logger.warning') as mock_warning:
+        expected_time = datetime(1970, 1, 1, 0, 0, 10).timestamp()
+        await access_log(request=mock_req, response=response, prev_time=expected_time)
+
+        mock_warning.assert_called_once()
+        warning_message = mock_warning.call_args[0][0]
+        assert 'Username contains control characters' in warning_message
+
+
+@pytest.mark.asyncio
+@freeze_time(datetime(1970, 1, 1, 0, 0, 10))
+async def test_access_log_no_warning_for_normal_username(mock_req):
+    """Test that access_log does not log a warning for normal usernames without control characters."""
+    response = MagicMock()
+    response.status_code = 200
+
+    operation = MagicMock(name="operation")
+    operation.method = "post"
+
+    body = {}
+    mock_req.json = AsyncMock(return_value=body)
+    mock_req.query_params = {}
+    mock_req.method = 'GET'
+    mock_req.context = {}
+    mock_req.scope = {'path': '/agents'}
+    mock_req.headers = {'content-type': 'None'}
+
+    encoded_creds = 'normal_user:password'
+    sec_header = ('basic', encoded_creds)
+
+    with TestContext(operation=operation), \
+        patch('api.middlewares.custom_logging'), \
+        patch('api.middlewares.base64.b64decode', return_value=encoded_creds.encode("latin1")), \
+        patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value', return_value=sec_header), \
+        patch('api.middlewares.logger.warning') as mock_warning:
+        expected_time = datetime(1970, 1, 1, 0, 0, 10).timestamp()
+        await access_log(request=mock_req, response=response, prev_time=expected_time)
+
+        mock_warning.assert_not_called()
