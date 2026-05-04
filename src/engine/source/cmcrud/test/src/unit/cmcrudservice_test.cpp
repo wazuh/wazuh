@@ -28,6 +28,62 @@ using cm::store::MockICMStoreNSReader;
 using cm::store::NamespaceId;
 using cm::store::ResourceType;
 
+// ── Common base: store + validator + service
+class CrudServiceBase : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        store     = std::make_shared<NiceMock<MockICMstore>>();
+        validator = std::make_shared<NiceMock<MockValidator>>();
+        service   = std::make_unique<CrudService>(store, validator);
+    }
+
+    void TearDown() override {}
+
+    std::shared_ptr<NiceMock<MockICMstore>> store;
+    std::shared_ptr<NiceMock<MockValidator>> validator;
+    std::unique_ptr<CrudService> service;
+};
+
+// ── Constructor tests
+class CrudServiceCtorTest : public ::testing::Test
+{
+protected:
+    void SetUp() override {}
+    void TearDown() override {}
+};
+
+// ── Namespace management tests
+class CrudServiceNamespaceTest : public CrudServiceBase {};
+
+// ── Policy tests
+class CrudServicePolicyTest : public CrudServiceBase {};
+
+// ── List-resources tests
+class CrudServiceListResourcesTest : public CrudServiceBase {};
+
+// ── Get-resource-by-UUID tests
+class CrudServiceGetResourceTest : public CrudServiceBase {};
+
+// ── Upsert Integration tests
+class CrudServiceUpsertIntegrationTest : public CrudServiceBase {};
+
+// ── Upsert KVDB tests
+class CrudServiceUpsertKVDBTest : public CrudServiceBase {};
+
+// ── Upsert Decoder / Asset tests
+class CrudServiceUpsertDecoderTest : public CrudServiceBase {};
+
+// ── Delete-resource tests
+class CrudServiceDeleteResourceTest : public CrudServiceBase {};
+
+// ── Validate-resource tests
+class CrudServiceValidateResourceTest : public CrudServiceBase {};
+
+// ── Import-namespace tests
+class CrudServiceImportNamespaceTest : public CrudServiceBase {};
+
 // ---------------------------------------------------------------------
 // JSON fixtures for realistic resources
 // ---------------------------------------------------------------------
@@ -147,39 +203,35 @@ std::string getStringOrEmpty(const json::Json& json, std::string_view path)
 // Constructor tests
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, Construction_NullStoreThrows)
+TEST_F(CrudServiceCtorTest, Construction_NullStoreThrows)
 {
-    std::shared_ptr<cm::store::ICMStore> nullStore;
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
+  std::shared_ptr<cm::store::ICMStore> nullStore;
+  auto validator = std::make_shared<NiceMock<MockValidator>>();
 
-    EXPECT_THROW(CrudService service(nullStore, validator), std::invalid_argument);
+  EXPECT_THROW(CrudService service(nullStore, validator), std::invalid_argument);
 }
 
-TEST(CrudService_Unit, Construction_NullValidatorThrows)
+TEST_F(CrudServiceCtorTest, Construction_NullValidatorThrows)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    std::shared_ptr<builder::IValidator> nullValidator;
+  auto store = std::make_shared<NiceMock<MockICMstore>>();
+  std::shared_ptr<builder::IValidator> nullValidator;
 
-    EXPECT_THROW(CrudService service(store, nullValidator), std::invalid_argument);
+  EXPECT_THROW(CrudService service(store, nullValidator), std::invalid_argument);
 }
 
 // ---------------------------------------------------------------------
 // listNamespaces
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, ListNamespaces_ForwardsToStore)
+TEST_F(CrudServiceNamespaceTest, ListNamespaces_ForwardsToStore)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     std::vector<NamespaceId> expected;
     expected.emplace_back("ns1");
     expected.emplace_back("ns2");
 
     EXPECT_CALL(*store, getNamespaces()).Times(1).WillOnce(Return(expected));
 
-    auto result = service.listNamespaces();
+    auto result = service->listNamespaces();
     ASSERT_EQ(result.size(), 2u);
     EXPECT_EQ(result[0].toStr(), "ns1");
     EXPECT_EQ(result[1].toStr(), "ns2");
@@ -189,33 +241,25 @@ TEST(CrudService_Unit, ListNamespaces_ForwardsToStore)
 // createNamespace
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, CreateNamespace_Success)
+TEST_F(CrudServiceNamespaceTest, CreateNamespace_Success)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
 
     EXPECT_CALL(*store, createNamespace(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1);
 
-    EXPECT_NO_THROW(service.createNamespace(nsId));
+    EXPECT_NO_THROW(service->createNamespace(nsId));
 }
 
-TEST(CrudService_Unit, CreateNamespace_StoreFailureIsWrapped)
+TEST_F(CrudServiceNamespaceTest, CreateNamespace_StoreFailureIsWrapped)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
 
     EXPECT_CALL(*store, createNamespace(_)).Times(1).WillOnce(Throw(std::runtime_error {"low-level error"}));
 
     try
     {
-        service.createNamespace(nsId);
+        service->createNamespace(nsId);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -229,33 +273,25 @@ TEST(CrudService_Unit, CreateNamespace_StoreFailureIsWrapped)
 // deleteNamespace
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, DeleteNamespace_Success)
+TEST_F(CrudServiceNamespaceTest, DeleteNamespace_Success)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
 
     EXPECT_CALL(*store, deleteNamespace(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1);
 
-    EXPECT_NO_THROW(service.deleteNamespace(nsId));
+    EXPECT_NO_THROW(service->deleteNamespace(nsId));
 }
 
-TEST(CrudService_Unit, DeleteNamespace_StoreFailureIsWrapped)
+TEST_F(CrudServiceNamespaceTest, DeleteNamespace_StoreFailureIsWrapped)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
 
     EXPECT_CALL(*store, deleteNamespace(_)).Times(1).WillOnce(Throw(std::runtime_error {"low-level error"}));
 
     try
     {
-        service.deleteNamespace(nsId);
+        service->deleteNamespace(nsId);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -269,12 +305,8 @@ TEST(CrudService_Unit, DeleteNamespace_StoreFailureIsWrapped)
 // upsertPolicy
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, UpsertPolicy_Success)
+TEST_F(CrudServicePolicyTest, UpsertPolicy_Success)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -287,15 +319,11 @@ TEST(CrudService_Unit, UpsertPolicy_Success)
     EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
     EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
 
-    EXPECT_NO_THROW(service.upsertPolicy(nsId, makeJsonPayload(kPolicyJson)));
+    EXPECT_NO_THROW(service->upsertPolicy(nsId, makeJsonPayload(kPolicyJson)));
 }
 
-TEST(CrudService_Unit, UpsertPolicy_AcceptsJsonPayload)
+TEST_F(CrudServicePolicyTest, UpsertPolicy_AcceptsJsonPayload)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -308,15 +336,11 @@ TEST(CrudService_Unit, UpsertPolicy_AcceptsJsonPayload)
     EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
     EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
 
-    EXPECT_NO_THROW(service.upsertPolicy(nsId, makeJsonPayload(kPolicyJson)));
+    EXPECT_NO_THROW(service->upsertPolicy(nsId, makeJsonPayload(kPolicyJson)));
 }
 
-TEST(CrudService_Unit, UpsertPolicy_ValidationFailureIsWrapped)
+TEST_F(CrudServicePolicyTest, UpsertPolicy_ValidationFailureIsWrapped)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -331,7 +355,7 @@ TEST(CrudService_Unit, UpsertPolicy_ValidationFailureIsWrapped)
 
     try
     {
-        service.upsertPolicy(nsId, makeJsonPayload(kPolicyJson));
+        service->upsertPolicy(nsId, makeJsonPayload(kPolicyJson));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -341,12 +365,8 @@ TEST(CrudService_Unit, UpsertPolicy_ValidationFailureIsWrapped)
     }
 }
 
-TEST(CrudService_Unit, UpsertPolicy_TopLevelArrayIsRejected)
+TEST_F(CrudServicePolicyTest, UpsertPolicy_TopLevelArrayIsRejected)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -359,7 +379,7 @@ TEST(CrudService_Unit, UpsertPolicy_TopLevelArrayIsRejected)
 
     try
     {
-        service.upsertPolicy(nsId, makeJsonPayload(kArrayJSON));
+        service->upsertPolicy(nsId, makeJsonPayload(kArrayJSON));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -368,12 +388,8 @@ TEST(CrudService_Unit, UpsertPolicy_TopLevelArrayIsRejected)
     }
 }
 
-TEST(CrudService_Unit, UpsertPolicy_InvalidOriginSpaceIsRejected)
+TEST_F(CrudServicePolicyTest, UpsertPolicy_InvalidOriginSpaceIsRejected)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -405,7 +421,7 @@ TEST(CrudService_Unit, UpsertPolicy_InvalidOriginSpaceIsRejected)
 
     try
     {
-        service.upsertPolicy(nsId, makeJsonPayload(kPolicyWithInvalidOriginSpace));
+        service->upsertPolicy(nsId, makeJsonPayload(kPolicyWithInvalidOriginSpace));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -419,12 +435,8 @@ TEST(CrudService_Unit, UpsertPolicy_InvalidOriginSpaceIsRejected)
 // deletePolicy
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, DeletePolicy_Success)
+TEST_F(CrudServicePolicyTest, DeletePolicy_Success)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -434,19 +446,15 @@ TEST(CrudService_Unit, DeletePolicy_Success)
 
     EXPECT_CALL(*nsPtr, deletePolicy()).Times(1);
 
-    EXPECT_NO_THROW(service.deletePolicy(nsId));
+    EXPECT_NO_THROW(service->deletePolicy(nsId));
 }
 
 // ---------------------------------------------------------------------
 // listResources
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, ListResources_Success)
+TEST_F(CrudServiceListResourcesTest, ListResources_Success)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsReader = std::make_shared<NiceMock<MockICMStoreNSReader>>();
 
@@ -460,7 +468,7 @@ TEST(CrudService_Unit, ListResources_Success)
 
     EXPECT_CALL(*nsReader, getCollection(ResourceType::DECODER)).Times(1).WillOnce(Return(collection));
 
-    auto result = service.listResources(nsId, ResourceType::DECODER);
+    auto result = service->listResources(nsId, ResourceType::DECODER);
     ASSERT_EQ(result.size(), 2u);
 
     EXPECT_EQ(result[0].uuid, "uuid-1");
@@ -469,31 +477,23 @@ TEST(CrudService_Unit, ListResources_Success)
     EXPECT_EQ(result[1].name, "decoder/other/0");
 }
 
-TEST(CrudService_Unit, ListResources_MissingNamespaceThrows)
+TEST_F(CrudServiceListResourcesTest, ListResources_MissingNamespaceThrows)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
 
     EXPECT_CALL(*store, getNSReader(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(std::shared_ptr<cm::store::ICMStoreNSReader> {}));
 
-    EXPECT_THROW(service.listResources(nsId, ResourceType::DECODER), std::runtime_error);
+    EXPECT_THROW(service->listResources(nsId, ResourceType::DECODER), std::runtime_error);
 }
 
 // ---------------------------------------------------------------------
 // getResourceByUUID - Integration
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, GetResourceByUUID_Integration)
+TEST_F(CrudServiceGetResourceTest, GetResourceByUUID_Integration)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     const std::string uuid {"5c1df6b6-1458-4b2e-9001-96f67a8b12c8"};
 
@@ -522,18 +522,14 @@ TEST(CrudService_Unit, GetResourceByUUID_Integration)
 
     EXPECT_CALL(*nsReader, getIntegrationByUUID(uuid)).Times(1).WillOnce(Return(integ));
 
-    const auto result = service.getResourceByUUID(nsId, uuid);
+    const auto result = service->getResourceByUUID(nsId, uuid);
 
     EXPECT_EQ(getStringOrEmpty(result, "/id"), "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
     EXPECT_EQ(getStringOrEmpty(result, "/metadata/title"), "windows");
 }
 
-TEST(CrudService_Unit, GetResourceByUUID_Integration_ReturnsJsonObject)
+TEST_F(CrudServiceGetResourceTest, GetResourceByUUID_Integration_ReturnsJsonObject)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     const std::string uuid {"5c1df6b6-1458-4b2e-9001-96f67a8b12c8"};
 
@@ -562,7 +558,7 @@ TEST(CrudService_Unit, GetResourceByUUID_Integration_ReturnsJsonObject)
 
     EXPECT_CALL(*nsReader, getIntegrationByUUID(uuid)).Times(1).WillOnce(Return(integ));
 
-    const auto result = service.getResourceByUUID(nsId, uuid);
+    const auto result = service->getResourceByUUID(nsId, uuid);
 
     EXPECT_TRUE(result.isObject());
     EXPECT_EQ(getStringOrEmpty(result, "/id"), "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
@@ -573,12 +569,8 @@ TEST(CrudService_Unit, GetResourceByUUID_Integration_ReturnsJsonObject)
 // getResourceByUUID - KVDB
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, GetResourceByUUID_KVDB)
+TEST_F(CrudServiceGetResourceTest, GetResourceByUUID_KVDB)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     const std::string uuid {"82e215c4-988a-4f64-8d15-b98b2fc03a4f"};
 
@@ -609,7 +601,7 @@ TEST(CrudService_Unit, GetResourceByUUID_KVDB)
 
     EXPECT_CALL(*nsReader, getKVDBByUUID(uuid)).Times(1).WillOnce(Return(kvdb));
 
-    const auto result = service.getResourceByUUID(nsId, uuid);
+    const auto result = service->getResourceByUUID(nsId, uuid);
 
     EXPECT_EQ(getStringOrEmpty(result, "/id"), "82e215c4-988a-4f64-8d15-b98b2fc03a4f");
     EXPECT_EQ(getStringOrEmpty(result, "/metadata/title"), "windows_kerberos_status_code_to_code_name");
@@ -619,12 +611,8 @@ TEST(CrudService_Unit, GetResourceByUUID_KVDB)
 // getResourceByUUID - Asset (decoder)
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, GetResourceByUUID_Decoder)
+TEST_F(CrudServiceGetResourceTest, GetResourceByUUID_Decoder)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     const std::string uuid {"3f086ce2-32a4-42b0-be7e-40dcfb9c6160"};
 
@@ -647,7 +635,7 @@ TEST(CrudService_Unit, GetResourceByUUID_Decoder)
 
     EXPECT_CALL(*nsReader, getAssetByUUID(uuid)).Times(1).WillOnce(Return(assetJson));
 
-    const auto result = service.getResourceByUUID(nsId, uuid);
+    const auto result = service->getResourceByUUID(nsId, uuid);
 
     EXPECT_EQ(getStringOrEmpty(result, "/name"), "decoder/syslog/0");
     EXPECT_EQ(getStringOrEmpty(result, "/id"), "3f086ce2-32a4-42b0-be7e-40dcfb9c6160");
@@ -657,12 +645,8 @@ TEST(CrudService_Unit, GetResourceByUUID_Decoder)
 // upsertResource - Integration (create vs update)
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, UpsertIntegration_CreateWhenUUIDDoesNotExist)
+TEST_F(CrudServiceUpsertIntegrationTest, UpsertIntegration_CreateWhenUUIDDoesNotExist)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -678,15 +662,11 @@ TEST(CrudService_Unit, UpsertIntegration_CreateWhenUUIDDoesNotExist)
     EXPECT_CALL(*nsPtr, createResource("windows", ResourceType::INTEGRATION, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson)));
+    EXPECT_NO_THROW(service->upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson)));
 }
 
-TEST(CrudService_Unit, UpsertIntegration_UpdateWhenUUIDExists)
+TEST_F(CrudServiceUpsertIntegrationTest, UpsertIntegration_UpdateWhenUUIDExists)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -702,15 +682,11 @@ TEST(CrudService_Unit, UpsertIntegration_UpdateWhenUUIDExists)
     EXPECT_CALL(*nsPtr, updateResourceByUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", _)).Times(1);
     EXPECT_CALL(*nsPtr, createResource("windows", ResourceType::INTEGRATION, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson)));
+    EXPECT_NO_THROW(service->upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson)));
 }
 
-TEST(CrudService_Unit, UpsertIntegration_AcceptsJsonPayloadAndPassesJsonToStore)
+TEST_F(CrudServiceUpsertIntegrationTest, UpsertIntegration_AcceptsJsonPayloadAndPassesJsonToStore)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -736,19 +712,15 @@ TEST(CrudService_Unit, UpsertIntegration_AcceptsJsonPayloadAndPassesJsonToStore)
         .Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson)));
+    EXPECT_NO_THROW(service->upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson)));
 }
 
 // ---------------------------------------------------------------------
 // upsertResource - KVDB (create vs update)
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, UpsertKVDB_CreateWhenUUIDDoesNotExist)
+TEST_F(CrudServiceUpsertKVDBTest, UpsertKVDB_CreateWhenUUIDDoesNotExist)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -761,15 +733,11 @@ TEST(CrudService_Unit, UpsertKVDB_CreateWhenUUIDDoesNotExist)
     EXPECT_CALL(*nsPtr, createResource("windows_kerberos_status_code_to_code_name", ResourceType::KVDB, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kKVDBJson)));
+    EXPECT_NO_THROW(service->upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kKVDBJson)));
 }
 
-TEST(CrudService_Unit, UpsertKVDB_UpdateWhenUUIDExists)
+TEST_F(CrudServiceUpsertKVDBTest, UpsertKVDB_UpdateWhenUUIDExists)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -782,19 +750,15 @@ TEST(CrudService_Unit, UpsertKVDB_UpdateWhenUUIDExists)
     EXPECT_CALL(*nsPtr, updateResourceByUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f", _)).Times(1);
     EXPECT_CALL(*nsPtr, createResource("windows_kerberos_status_code_to_code_name", ResourceType::KVDB, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kKVDBJson)));
+    EXPECT_NO_THROW(service->upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kKVDBJson)));
 }
 
 // ---------------------------------------------------------------------
 // upsertResource - Asset (decoder) create vs update by name
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, UpsertDecoder_CreateWhenNameDoesNotExist)
+TEST_F(CrudServiceUpsertDecoderTest, UpsertDecoder_CreateWhenNameDoesNotExist)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -809,15 +773,11 @@ TEST(CrudService_Unit, UpsertDecoder_CreateWhenNameDoesNotExist)
     EXPECT_CALL(*nsPtr, createResource("decoder/syslog/0", ResourceType::DECODER, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByName("decoder/syslog/0", ResourceType::DECODER, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::DECODER, makeJsonPayload(kDecoderJson)));
+    EXPECT_NO_THROW(service->upsertResource(nsId, ResourceType::DECODER, makeJsonPayload(kDecoderJson)));
 }
 
-TEST(CrudService_Unit, UpsertDecoder_UpdateWhenNameExists)
+TEST_F(CrudServiceUpsertDecoderTest, UpsertDecoder_UpdateWhenNameExists)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -832,19 +792,15 @@ TEST(CrudService_Unit, UpsertDecoder_UpdateWhenNameExists)
     EXPECT_CALL(*nsPtr, updateResourceByName("decoder/syslog/0", ResourceType::DECODER, _)).Times(1);
     EXPECT_CALL(*nsPtr, createResource("decoder/syslog/0", ResourceType::DECODER, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::DECODER, makeJsonPayload(kDecoderJson)));
+    EXPECT_NO_THROW(service->upsertResource(nsId, ResourceType::DECODER, makeJsonPayload(kDecoderJson)));
 }
 
 // ---------------------------------------------------------------------
 // deleteResourceByUUID
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, DeleteResourceByUUID_Success)
+TEST_F(CrudServiceDeleteResourceTest, DeleteResourceByUUID_Success)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     const std::string uuid {"some-uuid"};
 
@@ -856,19 +812,15 @@ TEST(CrudService_Unit, DeleteResourceByUUID_Success)
 
     EXPECT_CALL(*nsPtr, deleteResourceByUUID(uuid)).Times(1);
 
-    EXPECT_NO_THROW(service.deleteResourceByUUID(nsId, uuid));
+    EXPECT_NO_THROW(service->deleteResourceByUUID(nsId, uuid));
 }
 
 // ---------------------------------------------------------------------
 // validateResource
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, ValidateResource_Decoder_CallsValidateAssetShallow)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_Decoder_CallsValidateAssetShallow)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     static constexpr const char* kDecoderJsonStr = R"(
     {
       "name": "decoder/syslog/0",
@@ -881,15 +833,11 @@ TEST(CrudService_Unit, ValidateResource_Decoder_CallsValidateAssetShallow)
     payload = cm::store::detail::adaptDecoder(payload);
     EXPECT_CALL(*validator, validateAssetShallow(_)).Times(1).WillOnce(Return(base::noError()));
 
-    EXPECT_NO_THROW(service.validateResource(ResourceType::DECODER, payload));
+    EXPECT_NO_THROW(service->validateResource(ResourceType::DECODER, payload));
 }
 
-TEST(CrudService_Unit, ValidateResource_Decoder_ValidationFailureThrows)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_Decoder_ValidationFailureThrows)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     static constexpr const char* kDecoderJsonStr = R"(
     {
       "name": "decoder/syslog/0",
@@ -904,7 +852,7 @@ TEST(CrudService_Unit, ValidateResource_Decoder_ValidationFailureThrows)
 
     try
     {
-        service.validateResource(ResourceType::DECODER, payload);
+        service->validateResource(ResourceType::DECODER, payload);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -913,12 +861,8 @@ TEST(CrudService_Unit, ValidateResource_Decoder_ValidationFailureThrows)
     }
 }
 
-TEST(CrudService_Unit, ValidateResource_Integration_SuccessDoesNotTouchValidator)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_Integration_SuccessDoesNotTouchValidator)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     static constexpr const char* kIntegrationJsonStr = R"(
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
@@ -941,15 +885,11 @@ TEST(CrudService_Unit, ValidateResource_Integration_SuccessDoesNotTouchValidator
     EXPECT_CALL(*validator, softIntegrationValidate(_, _)).Times(0);
     EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(0);
 
-    EXPECT_NO_THROW(service.validateResource(ResourceType::INTEGRATION, payload));
+    EXPECT_NO_THROW(service->validateResource(ResourceType::INTEGRATION, payload));
 }
 
-TEST(CrudService_Unit, ValidateResource_KVDB_SuccessDoesNotTouchValidator)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_KVDB_SuccessDoesNotTouchValidator)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     static constexpr const char* kKvdbJsonStr = R"(
     {
       "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
@@ -967,19 +907,15 @@ TEST(CrudService_Unit, ValidateResource_KVDB_SuccessDoesNotTouchValidator)
 
     EXPECT_CALL(*validator, validateAssetShallow(_)).Times(0);
 
-    EXPECT_NO_THROW(service.validateResource(ResourceType::KVDB, payload));
+    EXPECT_NO_THROW(service->validateResource(ResourceType::KVDB, payload));
 }
 
 // ---------------------------------------------------------------------
 // validateResource - KVDB validation failures
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, ValidateResource_KVDB_MissingId_Throws)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_KVDB_MissingId_Throws)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     static constexpr const char* kKvdbMissingIdStr = R"(
     {
       "metadata": {
@@ -993,7 +929,7 @@ TEST(CrudService_Unit, ValidateResource_KVDB_MissingId_Throws)
 
     try
     {
-        service.validateResource(ResourceType::KVDB, payload);
+        service->validateResource(ResourceType::KVDB, payload);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -1003,12 +939,8 @@ TEST(CrudService_Unit, ValidateResource_KVDB_MissingId_Throws)
     }
 }
 
-TEST(CrudService_Unit, ValidateResource_KVDB_ContentNotObject_Throws)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_KVDB_ContentNotObject_Throws)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     static constexpr const char* kKvdbBadContentStr = R"(
     {
       "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
@@ -1023,7 +955,7 @@ TEST(CrudService_Unit, ValidateResource_KVDB_ContentNotObject_Throws)
 
     try
     {
-        service.validateResource(ResourceType::KVDB, payload);
+        service->validateResource(ResourceType::KVDB, payload);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -1033,12 +965,8 @@ TEST(CrudService_Unit, ValidateResource_KVDB_ContentNotObject_Throws)
     }
 }
 
-TEST(CrudService_Unit, ValidateResource_KVDB_MissingEnabled_Throws)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_KVDB_MissingEnabled_Throws)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     static constexpr const char* kKvdbMissingEnabledStr = R"(
     {
       "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
@@ -1052,7 +980,7 @@ TEST(CrudService_Unit, ValidateResource_KVDB_MissingEnabled_Throws)
 
     try
     {
-        service.validateResource(ResourceType::KVDB, payload);
+        service->validateResource(ResourceType::KVDB, payload);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -1066,12 +994,8 @@ TEST(CrudService_Unit, ValidateResource_KVDB_MissingEnabled_Throws)
 // validateResource - Integration validation failures
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, ValidateResource_Integration_InvalidDecoderUUID_Throws)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_Integration_InvalidDecoderUUID_Throws)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     static constexpr const char* kIntegrationBadDecoderUUIDStr = R"(
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
@@ -1089,7 +1013,7 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidDecoderUUID_Throws)
 
     try
     {
-        service.validateResource(ResourceType::INTEGRATION, payload);
+        service->validateResource(ResourceType::INTEGRATION, payload);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -1099,12 +1023,8 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidDecoderUUID_Throws)
     }
 }
 
-TEST(CrudService_Unit, ValidateResource_Integration_InvalidKVDBUUID_Throws)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_Integration_InvalidKVDBUUID_Throws)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     static constexpr const char* kIntegrationBadKVDBUUIDStr = R"(
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
@@ -1124,7 +1044,7 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidKVDBUUID_Throws)
 
     try
     {
-        service.validateResource(ResourceType::INTEGRATION, payload);
+        service->validateResource(ResourceType::INTEGRATION, payload);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -1134,12 +1054,8 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidKVDBUUID_Throws)
     }
 }
 
-TEST(CrudService_Unit, ValidateResource_Integration_InvalidCategory_Throws)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_Integration_InvalidCategory_Throws)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     static constexpr const char* kIntegrationBadCategoryStr = R"(
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
@@ -1159,7 +1075,7 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidCategory_Throws)
 
     try
     {
-        service.validateResource(ResourceType::INTEGRATION, payload);
+        service->validateResource(ResourceType::INTEGRATION, payload);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -1173,12 +1089,8 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidCategory_Throws)
 // importNamespace (component-based)
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, ImportNamespace_Success_WithFilters)
+TEST_F(CrudServiceImportNamespaceTest, ImportNamespace_Success_WithFilters)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"imported"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
     auto nsReader = std::static_pointer_cast<cm::store::ICMStoreNSReader>(nsPtr);
@@ -1203,7 +1115,7 @@ TEST(CrudService_Unit, ImportNamespace_Success_WithFilters)
     EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
 
     EXPECT_NO_THROW(
-        service.importNamespace(nsId, kvdbs, decoders, filters, integrations, makeJsonPayload(kPolicyJson), true));
+        service->importNamespace(nsId, kvdbs, decoders, filters, integrations, makeJsonPayload(kPolicyJson), true));
 }
 
 } // namespace cm::crud::test
