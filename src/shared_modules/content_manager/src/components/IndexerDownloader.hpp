@@ -50,7 +50,7 @@
  *
  * Configuration expected under configData["indexer"]:
  * {
- *   "index":               "wazuh-threatintel-vulnerabilities", // Indexer CVE index name
+ *   "index":               ".wazuh-threatintel-vulnerabilities", // Indexer CVE index name
  *   "consumerStatusIndex": ".wazuh-cti-consumers",    // Consumer status index (optional)
  *   "consumerStatusId":    "t1-vulnerabilities-5_public-vulnerabilities-5", // Consumer status document id (optional)
  *   "pageSize":            250,                       // Documents per page (optional, default 250)
