@@ -3,15 +3,16 @@
 
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <list>
 #include <memory>
 #include <shared_mutex>
 
 #include <bk/icontroller.hpp>
 #include <builder/ibuilder.hpp>
-#include <fastqueue/iqueue.hpp>
 #include <fastmetrics/iManager.hpp>
 #include <fastmetrics/slidingWindowRate.hpp>
+#include <fastqueue/iqueue.hpp>
 #include <rawevtindexer/iraweventindexer.hpp>
 #include <store/istore.hpp>
 
@@ -46,17 +47,20 @@ protected:
     mutable std::shared_mutex m_syncMutex;  ///< Mutex for the Workers synchronization (1 query at a time)
     std::atomic<bool> m_isShutdown {false}; ///< Flag to indicate orchestrator has been shutdown
 
+    std::size_t m_targetWorkerCount {1}; ///< Desired router worker pool size (set in constructor)
+
     // Workers configuration
-    std::shared_ptr<ProdQueueType> m_eventQueue;      ///< The event queue
-    std::shared_ptr<TestQueueType> m_testQueue;       ///< The test queue
-    std::shared_ptr<EnvironmentBuilder> m_envBuilder; ///< The environment builder
+    std::shared_ptr<ProdQueueType> m_eventQueue;                        ///< The event queue
+    std::shared_ptr<TestQueueType> m_testQueue;                         ///< The test queue
+    std::shared_ptr<EnvironmentBuilder> m_envBuilder;                   ///< The environment builder
+    std::function<std::shared_ptr<IWorker<IRouter>>()> m_workerFactory; ///< Factory for expansion workers
 
     // Event queue contention monitoring
     std::atomic<bool> m_eventQueueContended {false};       ///< True while queue load is above contention threshold
     std::atomic<int64_t> m_contentionStartUsec {0};        ///< First contention timestamp (steady_clock, usec)
     std::atomic<int64_t> m_lastContentionWarningUsec {0};  ///< Last warning timestamp (steady_clock, usec)
     std::atomic<uint64_t> m_droppedEventsInContention {0}; ///< Failed push count in current contention window
-    std::shared_ptr<fastmetrics::ICounter> m_droppedInputCounter; ///< Total events dropped at input (never resets)
+    std::shared_ptr<fastmetrics::ICounter> m_droppedInputCounter;     ///< Total events dropped at input (never resets)
     static constexpr int64_t CONTENTION_WARNING_INTERVAL_SEC = 600LL; ///< Interval in seconds
     static constexpr int64_t CONTENTION_WARNING_INTERVAL_USEC =
         CONTENTION_WARNING_INTERVAL_SEC * 1000LL * 1000LL;               ///< 10 minutes
@@ -142,6 +146,18 @@ public:
      */
     void requestShutdown();
 
+    /**
+     * @brief Expand the router worker pool up to the configured target size.
+     *
+     * Intended to be called at startup, before content synchronization begins.
+     * Runs synchronously; the caller provides the async context.
+     * Safe no-op if already at target size or after shutdown.
+     *
+     * If worker construction or start fails, the pool remains unchanged and the
+     * caller may invoke this method again to retry.
+     */
+    void expandWorkerPool();
+
     /**************************************************************************
      * IRouterAPI
      *************************************************************************/
@@ -154,8 +170,7 @@ public:
     /**
      * @copydoc router::IRouterAPI::hotSwapNamespace
      */
-    base::OptError hotSwapNamespace(const std::string& name,
-                                    const cm::store::NamespaceId& newNamespace) override;
+    base::OptError hotSwapNamespace(const std::string& name, const cm::store::NamespaceId& newNamespace) override;
 
     /**
      * @copydoc router::IRouterAPI::existsEntry
