@@ -21,7 +21,6 @@ target_link_libraries(wIndexerConnector_wIndexerConnector
     PUBLIC
     base
     wIndexerConnector::iwIndexerConnector
-    PRIVATE
     indexer_connector
 )
 add_library(wIndexerConnector::wIndexerConnector ALIAS wIndexerConnector_wIndexerConnector)

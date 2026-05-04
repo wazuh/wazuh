@@ -77,6 +77,7 @@ public:
      * @param config The configuration object containing settings for the indexer connector
      * @param logFunction The logging function to be used for output and error reporting
      * @param maxHitsPerRequest The maximum number of hits per request
+     * @throws std::runtime_error if the configuration is invalid or if the indexer connector fails to initialize
      */
     WIndexerConnector(const Config&, const LogFunctionType& logFunction, const std::size_t maxHitsPerRequest);
 
@@ -85,6 +86,7 @@ public:
      *
      * @param jsonOssecConfig The JSON string containing the OSSEC configuration for the indexer connector
      * @param maxHitsPerRequest The maximum number of hits per request
+     * @throws std::runtime_error if the JSON configuration is invalid or empty
      */
     WIndexerConnector(std::string_view jsonOssecConfig, const std::size_t maxHitsPerRequest);
 
