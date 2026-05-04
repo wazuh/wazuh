@@ -12,9 +12,12 @@
 #include "wmodules.h"
 #include "time_op.h"
 
+// Each halving reduces allowed_output_len by 2^n; 4 attempts covers worst-case JSON escape expansion
+// (e.g. a single control character encodes to 6 bytes, so 3 halvings are enough with one spare).
+#define WM_COMMAND_TRUNCATE_MAX_ATTEMPTS 4
+
 #ifdef WIN32
 #include <windows.h>
-#else
 #endif
 
 static char *wm_command_build_event_payload(const char *event_start,
@@ -56,7 +59,10 @@ static char *wm_command_build_event_payload(const char *event_start,
     cJSON_AddStringToObject(json_event, "event.module", "wazuh-wodle-cmd");
     cJSON_AddStringToObject(json_event, "event.start", event_start ? event_start : "");
     if (tag) {
-        cJSON_AddStringToObject(json_event, "tags", tag);
+        cJSON *tags_array = cJSON_AddArrayToObject(json_event, "tags");
+        if (tags_array) {
+            cJSON_AddItemToArray(tags_array, cJSON_CreateString(tag));
+        }
     }
 
     cJSON *process = cJSON_AddObjectToObject(json_event, "process");
@@ -234,7 +240,7 @@ void * wm_command_main(wm_command_t * command) {
 
         mtinfo(WM_COMMAND_LOGTAG, "Starting command '%s'.", command->tag);
 
-        int status = 0;
+        int status = -1;
         char *output = NULL;
         char event_start[32] = {0};
         get_iso8601_utc_time(event_start, sizeof(event_start));
@@ -249,10 +255,12 @@ void * wm_command_main(wm_command_t * command) {
             }
             break;
         case WM_ERROR_TIMEOUT:
+            status = -1;
             mterror(WM_COMMAND_LOGTAG, "%s: Timeout overtaken. You can modify your command timeout at '%s'. Exiting...", command->tag, WAZUHCONF);
             break;
 
         default:
+            status = -1;
             mterror(WM_COMMAND_LOGTAG, "Command '%s' failed.", command->tag);
             break;
         }
@@ -388,7 +396,7 @@ void * wm_command_main(wm_command_t * command) {
                         // Reduce and try again (output escaping may enlarge JSON more than expected)
                         allowed_output_len /= 2;
                         attempts++;
-                    } while (allowed_output_len > 0 && attempts < 4);
+                    } while (allowed_output_len > 0 && attempts < WM_COMMAND_TRUNCATE_MAX_ATTEMPTS);
 
                     if (json_payload && strlen(json_payload) > max_message_len) {
                         os_free(json_payload);

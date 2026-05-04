@@ -100,9 +100,13 @@ static int check_wm_sendmsg_message_is_valid_command_json(const LargestIntegralT
     assert_non_null(event_start);
 
     if (g_payload_expectation.tag) {
-        const char *tags = wm_command_json_get_string(root, "tags");
+        const cJSON *tags = wm_command_json_get_array(root, "tags");
         assert_non_null(tags);
-        assert_string_equal(tags, g_payload_expectation.tag);
+        assert_int_equal(cJSON_GetArraySize((cJSON *)tags), 1);
+        const cJSON *tag_item = cJSON_GetArrayItem((cJSON *)tags, 0);
+        assert_non_null(tag_item);
+        assert_true(cJSON_IsString(tag_item));
+        assert_string_equal(tag_item->valuestring, g_payload_expectation.tag);
     }
 
     const cJSON *process = wm_command_json_get_object(root, "process");
@@ -221,7 +225,10 @@ static size_t wm_command_build_base_len_for_test(const char *event_start,
     cJSON_AddStringToObject(json_event, "event.module", "wazuh-wodle-cmd");
     cJSON_AddStringToObject(json_event, "event.start", event_start ? event_start : "");
     if (tag) {
-        cJSON_AddStringToObject(json_event, "tags", tag);
+        cJSON *tags_array = cJSON_AddArrayToObject(json_event, "tags");
+        if (tags_array) {
+            cJSON_AddItemToArray(tags_array, cJSON_CreateString(tag));
+        }
     }
 
     cJSON *process = cJSON_AddObjectToObject(json_event, "process");
@@ -266,7 +273,10 @@ static size_t wm_command_build_payload_len_for_test(const char *event_start,
     cJSON_AddStringToObject(json_event, "event.module", "wazuh-wodle-cmd");
     cJSON_AddStringToObject(json_event, "event.start", event_start ? event_start : "");
     if (tag) {
-        cJSON_AddStringToObject(json_event, "tags", tag);
+        cJSON *tags_array = cJSON_AddArrayToObject(json_event, "tags");
+        if (tags_array) {
+            cJSON_AddItemToArray(tags_array, cJSON_CreateString(tag));
+        }
     }
 
     cJSON *process = cJSON_AddObjectToObject(json_event, "process");
