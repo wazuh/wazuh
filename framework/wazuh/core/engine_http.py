@@ -15,21 +15,17 @@ class EngineHTTPClient:
 
     def __init__(self, timeout: float = 10):
         self.socket_path = str(common.ANALYSISD_SOCKET)
-        transport = httpx.HTTPTransport(uds=self.socket_path)
-        self._client = httpx.Client(transport=transport, timeout=timeout)
+        try:
+            transport = httpx.HTTPTransport(uds=self.socket_path)
+            self._client = httpx.Client(transport=transport, timeout=timeout)
+        except Exception as exc:
+            raise WazuhInternalError(2018, extra_message=str(exc))
 
     def close(self) -> None:
         """Close the Engine HTTP client."""
         self._client.close()
 
     def get_metrics_dump(self) -> dict:
-        """Fetch all engine metrics via the /metrics/dump endpoint.
-
-        Returns
-        -------
-        dict
-            Raw Dump_Response JSON from the Engine API.
-        """
         try:
             response = self._client.post(
                 url=f'{self.API_URL}/metrics/dump',
@@ -48,5 +44,5 @@ class EngineHTTPClient:
 
         try:
             return response.json()
-        except Exception as exc:
+        except ValueError as exc:
             raise WazuhError(2019, extra_message=f'Invalid JSON in Engine API response: {exc}')

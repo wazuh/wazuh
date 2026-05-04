@@ -165,14 +165,18 @@ def get_engine_metrics() -> AffectedItemsWazuhResult:
         some_msg='Could not retrieve engine metrics',
         none_msg='Could not retrieve engine metrics',
     )
-    client = EngineHTTPClient()
+
+    client = None
     try:
+        client = EngineHTTPClient()
         data = client.get_metrics_dump()
         result.affected_items.append(data)
     except WazuhException as e:
         result.add_failed_item(id_='engine', error=e)
     finally:
-        client.close()
+        if client is not None:
+            client.close()
+
     result.total_affected_items = len(result.affected_items)
     return result
 

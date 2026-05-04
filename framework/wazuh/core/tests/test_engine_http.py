@@ -2,36 +2,12 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
+import httpx
 
-_httpx_mock = MagicMock()
-
-
-class _TimeoutException(Exception):
-    pass
-
-
-class _ConnectError(Exception):
-    pass
-
-
-class _RequestError(Exception):
-    pass
-
-
-_httpx_mock.TimeoutException = _TimeoutException
-_httpx_mock.ConnectError = _ConnectError
-_httpx_mock.RequestError = _RequestError
-_httpx_mock.HTTPTransport = MagicMock()
-_httpx_mock.Client = MagicMock()
-
-with patch.dict(sys.modules, {'httpx': _httpx_mock}), \
-     patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/wazuh-manager/queue/sockets/analysis'):
-    from wazuh.core.engine_http import EngineHTTPClient
-
+from wazuh.core.engine_http import EngineHTTPClient
 from wazuh.core.exception import WazuhError, WazuhInternalError
 
 
@@ -48,7 +24,10 @@ METRICS_DUMP_RESPONSE = {
 
 
 def _make_client() -> EngineHTTPClient:
-    client = EngineHTTPClient()
+    with patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/wazuh-manager/queue/sockets/analysis'):
+        with patch('httpx.HTTPTransport'), patch('httpx.Client'):
+            client = EngineHTTPClient()
+
     client._client = MagicMock()
     return client
 
@@ -84,7 +63,7 @@ def test_get_metrics_dump_http_error():
 
 def test_get_metrics_dump_timeout():
     client = _make_client()
-    client._client.post.side_effect = _TimeoutException("timed out")
+    client._client.post.side_effect = httpx.TimeoutException("timed out", request=MagicMock())
 
     with pytest.raises(WazuhInternalError) as exc_info:
         client.get_metrics_dump()
@@ -93,7 +72,7 @@ def test_get_metrics_dump_timeout():
 
 def test_get_metrics_dump_connect_error():
     client = _make_client()
-    client._client.post.side_effect = _ConnectError("refused")
+    client._client.post.side_effect = httpx.ConnectError("refused", request=MagicMock())
 
     with pytest.raises(WazuhInternalError) as exc_info:
         client.get_metrics_dump()
@@ -102,8 +81,18 @@ def test_get_metrics_dump_connect_error():
 
 def test_get_metrics_dump_request_error():
     client = _make_client()
-    client._client.post.side_effect = _RequestError("network error")
+    client._client.post.side_effect = httpx.RequestError("network error", request=MagicMock())
 
     with pytest.raises(WazuhError) as exc_info:
         client.get_metrics_dump()
     assert exc_info.value.code == 2013
+
+
+def test_engine_http_client_init_error():
+    """Test that the client raises WazuhInternalError(2018) if httpx instantiation fails."""
+    with patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/wazuh-manager/queue/sockets/analysis'):
+        # Simulate that httpx cannot open the Unix socket
+        with patch('httpx.HTTPTransport', side_effect=OSError("no socket")):
+            with pytest.raises(WazuhInternalError) as exc_info:
+                EngineHTTPClient()
+            assert exc_info.value.code == 2018

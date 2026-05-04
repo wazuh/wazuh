@@ -267,6 +267,7 @@ class WazuhException(Exception):
         2015: {'message': 'Invalid request URL scheme'},
         2016: {'message': 'Invalid unix socket path'},
         2017: {'message': 'Could not retrieve agents synchronization information from wazuh-manager-db'},
+        # Engine:
         2018: {'message': 'Could not connect to the Engine API unix socket'},
         2019: {'message': 'Invalid Engine API HTTP response'},
         2020: {'message': 'Engine API request timeout'},
