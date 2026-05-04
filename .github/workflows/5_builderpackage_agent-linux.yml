@@ -58,7 +58,7 @@ concurrency:
 jobs:
   # ===================== DEB JOBS =====================
   build-deb:
-    if: github.event_name == 'pull_request' || inputs.system == 'deb'
+    if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.system == 'deb'
     runs-on: wz-linux-amd64
     timeout-minutes: 30
     name: Build DEB ${{ matrix.arch }} package
@@ -328,7 +328,7 @@ jobs:
 
   # ===================== RPM JOBS =====================
   build-rpm:
-    if: github.event_name == 'pull_request' || inputs.system == 'rpm'
+    if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.system == 'rpm'
     runs-on: wz-linux-amd64
     timeout-minutes: 30
     name: Build RPM ${{ matrix.arch }} package
@@ -625,6 +625,7 @@ jobs:
     secrets: inherit
 
   detect-changes:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: wz-linux-amd64
     timeout-minutes: 10
     name: Detect changed Linux test modules

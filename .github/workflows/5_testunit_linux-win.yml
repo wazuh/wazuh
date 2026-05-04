@@ -2,6 +2,7 @@ name: 5.X - Wazuh - Legacy Unit tests
 
 on:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
         - "src/**"
         - ".github/workflows/5_testunit_linux-win.yml"
@@ -18,6 +19,7 @@ concurrency:
 
 jobs:
   Unit-Tests:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     strategy:
           fail-fast: false
           matrix:

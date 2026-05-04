@@ -49,7 +49,7 @@ concurrency:
 
 jobs:
   build-macos-intel64:
-    if: github.event_name == 'pull_request' || inputs.architecture == 'intel64'
+    if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.architecture == 'intel64'
     runs-on: macos-14-large
     timeout-minutes: 90
     name: Build PKG package (intel64)
@@ -280,7 +280,7 @@ jobs:
           fi
 
   build-macos-arm64:
-    if: github.event_name == 'pull_request' || inputs.architecture == 'arm64'
+    if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.architecture == 'arm64'
     runs-on: macos-14
     timeout-minutes: 90
     name: Build PKG package (arm64)
@@ -520,6 +520,7 @@ jobs:
     secrets: inherit
 
   detect-changes:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: wz-linux-amd64
     timeout-minutes: 10
     name: Detect changed macOS test modules

@@ -41,6 +41,7 @@ concurrency:
 
 jobs:
   detect-changes:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     name: Detect changed Windows test modules
     outputs:
