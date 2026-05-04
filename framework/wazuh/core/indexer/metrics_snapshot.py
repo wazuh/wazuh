@@ -259,7 +259,7 @@ class MetricsSnapshotTasks:
                     node_ts = item.get("timestamp", timestamp)
                     for metric_entry in item.get("global", []):
                         docs.append(self._normalize_normalization_doc(
-                            metric_entry, "global", node_ts, cluster_name, node_name
+                            metric_entry, None, node_ts, cluster_name, node_name
                         ))
                     for space in item.get("spaces", []):
                         space_name = space.get("name", "unknown")
