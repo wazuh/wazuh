@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
+#include <deque>
 
 #include <base/logging.hpp>
 #include <queue/mockQueue.hpp>
@@ -37,6 +38,27 @@ MATCHER_P(isEqualsEvent, expectedJson, "is not equal to expected JSON")
     return recv == expected;
 }
 
+std::shared_ptr<testing::NiceMock<MockRouterWorker>> makeMockWorkerOk(std::list<prod::Entry> entries = {})
+{
+    auto w = std::make_shared<testing::NiceMock<MockRouterWorker>>();
+    auto r = std::make_shared<testing::NiceMock<MockRouter>>();
+    auto ir = std::static_pointer_cast<router::IRouter>(r);
+    ON_CALL(*w, get()).WillByDefault(testing::Return(ir));
+    ON_CALL(*r, getEntries()).WillByDefault(testing::Return(entries));
+    ON_CALL(*r, addEntry(testing::_, testing::_)).WillByDefault(testing::Return(std::nullopt));
+    ON_CALL(*r, enableEntry(testing::_)).WillByDefault(testing::Return(std::nullopt));
+    return w;
+}
+
+std::shared_ptr<testing::NiceMock<MockRouterWorker>> makeMockWorkerFailBuild()
+{
+    auto w = std::make_shared<testing::NiceMock<MockRouterWorker>>();
+    auto r = std::make_shared<testing::NiceMock<MockRouter>>();
+    ON_CALL(*w, get()).WillByDefault(testing::Return(std::static_pointer_cast<router::IRouter>(r)));
+    ON_CALL(*r, addEntry(testing::_, testing::_)).WillByDefault(testing::Return(base::Error {"build error"}));
+    return w;
+}
+
 } // namespace
 /// @brief Orchestrator to test, helper class
 class OrchestratorToTest : public router::Orchestrator
@@ -47,6 +69,7 @@ public:
     std::shared_ptr<fastqueue::mocks::MockQueue<test::EventTest>> m_mockTestQueue;
     std::list<std::shared_ptr<MockRouterWorker>> m_routerMocks;
     std::shared_ptr<MockTesterWorker> m_testerWorkerMock;
+    std::deque<std::function<std::shared_ptr<IWorker<IRouter>>()>> m_factoryQueue;
 
     OrchestratorToTest()
         : router::Orchestrator()
@@ -61,6 +84,16 @@ public:
 
         m_testerWorkerMock = std::make_shared<MockTesterWorker>();
         m_testerWorker = m_testerWorkerMock;
+        m_workerFactory = [this]() -> std::shared_ptr<IWorker<IRouter>>
+        {
+            if (!m_factoryQueue.empty())
+            {
+                auto f = std::move(m_factoryQueue.front());
+                m_factoryQueue.pop_front();
+                return f();
+            }
+            return makeMockWorkerOk();
+        };
     };
 
     auto forEachWorkerMock(std::function<void(std::shared_ptr<MockRouterWorker>)> func)
@@ -81,6 +114,15 @@ public:
         return workerMock;
     }
 
+    std::shared_ptr<testing::NiceMock<MockRouterWorker>> addWorkerToPool(std::list<prod::Entry> entries = {})
+    {
+        auto w = makeMockWorkerOk(std::move(entries));
+        m_routerWorkers.emplace_back(w);
+        return w;
+    }
+
+    void simulateShutdown() { m_isShutdown.store(true, std::memory_order_release); }
+
     void setContentionState(bool contended, int64_t startUsec, int64_t lastWarningUsec, uint64_t dropped)
     {
         m_eventQueueContended.store(contended, std::memory_order_relaxed);
@@ -93,6 +135,14 @@ public:
     int64_t contentionStartUsec() const { return m_contentionStartUsec.load(std::memory_order_relaxed); }
     int64_t lastContentionWarningUsec() const { return m_lastContentionWarningUsec.load(std::memory_order_relaxed); }
     uint64_t droppedEventsInContention() const { return m_droppedEventsInContention.load(std::memory_order_relaxed); }
+
+    // Expansion helpers
+    std::size_t workerPoolSize()
+    {
+        std::shared_lock lock {m_syncMutex};
+        return m_routerWorkers.size();
+    }
+    void setTargetWorkerCount(std::size_t n) { m_targetWorkerCount = n; }
 
     /**************************************************************************
      * TESTER EXPECTS CALL
@@ -952,4 +1002,182 @@ TEST_F(OrchestratorTest, postEventLowLoadResetsContentionState)
     EXPECT_EQ(m_orchestrator->contentionStartUsec(), 0);
     EXPECT_EQ(m_orchestrator->lastContentionWarningUsec(), 0);
     EXPECT_EQ(m_orchestrator->droppedEventsInContention(), 0U);
+}
+
+/**************************************************************************
+ * Worker pool expansion tests
+ *************************************************************************/
+
+class ExpansionTest : public ::testing::Test
+{
+protected:
+    std::unique_ptr<OrchestratorToTest> m_orch;
+
+    void SetUp() override { m_orch = std::make_unique<OrchestratorToTest>(); }
+    void TearDown() override { m_orch.reset(); }
+};
+
+TEST_F(ExpansionTest, expandsPoolToTarget)
+{
+    m_orch->setTargetWorkerCount(3);
+    m_orch->addWorkerToPool();
+
+    for (int i = 0; i < 2; ++i)
+    {
+        m_orch->m_factoryQueue.push_back(
+            []()
+            {
+                auto w = makeMockWorkerOk();
+                EXPECT_CALL(*w, start()).Times(1);
+                return w;
+            });
+    }
+
+    m_orch->expandWorkerPool();
+
+    EXPECT_EQ(m_orch->workerPoolSize(), 3U);
+}
+
+TEST_F(ExpansionTest, noopWhenAlreadyAtTarget)
+{
+    m_orch->setTargetWorkerCount(2);
+    m_orch->addWorkerToPool();
+    m_orch->addWorkerToPool();
+
+    m_orch->expandWorkerPool();
+
+    EXPECT_EQ(m_orch->workerPoolSize(), 2U);
+}
+
+TEST_F(ExpansionTest, buildFailurePreservesPool)
+{
+    const std::list<prod::Entry> entries {prod::EntryPost {"route-x", G_NAMESPACE_ALT, 10}};
+
+    m_orch->setTargetWorkerCount(3);
+    m_orch->addWorkerToPool(entries);
+    m_orch->m_factoryQueue.push_back([]() { return makeMockWorkerFailBuild(); });
+
+    m_orch->expandWorkerPool();
+
+    EXPECT_EQ(m_orch->workerPoolSize(), 1U);
+}
+
+TEST_F(ExpansionTest, allWorkersReceiveConsistentEntries)
+{
+    const std::list<prod::Entry> sharedEntries {
+        prod::EntryPost {"route-a", G_NAMESPACE_ALT, 10},
+        prod::EntryPost {"route-b", G_NAMESPACE_ALT, 20},
+    };
+
+    m_orch->setTargetWorkerCount(3);
+    m_orch->addWorkerToPool(sharedEntries);
+
+    std::vector<std::vector<std::string>> capturedNames(2);
+
+    for (std::size_t idx = 0; idx < 2; ++idx)
+    {
+        m_orch->m_factoryQueue.push_back(
+            [&, idx]()
+            {
+                auto w = std::make_shared<testing::NiceMock<MockRouterWorker>>();
+                auto r = std::make_shared<testing::NiceMock<MockRouter>>();
+                ON_CALL(*w, get()).WillByDefault(testing::Return(std::static_pointer_cast<IRouter>(r)));
+                ON_CALL(*r, addEntry(testing::_, testing::_))
+                    .WillByDefault(
+                        [&capturedNames, idx](const prod::EntryPost& e, bool) -> base::OptError
+                        {
+                            capturedNames[idx].push_back(e.name());
+                            return std::nullopt;
+                        });
+                ON_CALL(*r, enableEntry(testing::_)).WillByDefault(testing::Return(std::nullopt));
+                return w;
+            });
+    }
+
+    m_orch->expandWorkerPool();
+
+    ASSERT_EQ(m_orch->workerPoolSize(), 3U);
+    for (std::size_t idx = 0; idx < 2; ++idx)
+    {
+        EXPECT_EQ(capturedNames[idx], (std::vector<std::string> {"route-a", "route-b"}))
+            << "Worker " << idx << " has inconsistent entries";
+    }
+}
+
+TEST_F(ExpansionTest, shutdownPreventsExpansion)
+{
+    m_orch->setTargetWorkerCount(3);
+    m_orch->addWorkerToPool();
+    m_orch->simulateShutdown();
+
+    m_orch->expandWorkerPool();
+
+    EXPECT_EQ(m_orch->workerPoolSize(), 1U);
+}
+
+TEST_F(ExpansionTest, enableEntryFailureStillPublishesWorker)
+{
+    m_orch->setTargetWorkerCount(2);
+    m_orch->addWorkerToPool({prod::EntryPost {"route-a", G_NAMESPACE_ALT, 10}});
+
+    m_orch->m_factoryQueue.push_back(
+        []()
+        {
+            auto w = std::make_shared<testing::NiceMock<MockRouterWorker>>();
+            auto r = std::make_shared<testing::NiceMock<MockRouter>>();
+            ON_CALL(*w, get()).WillByDefault(testing::Return(std::static_pointer_cast<IRouter>(r)));
+            ON_CALL(*r, addEntry(testing::_, testing::_)).WillByDefault(testing::Return(std::nullopt));
+            ON_CALL(*r, enableEntry(testing::_)).WillByDefault(testing::Return(base::Error {"enable failed"}));
+            return w;
+        });
+
+    m_orch->expandWorkerPool();
+
+    EXPECT_EQ(m_orch->workerPoolSize(), 2U);
+}
+
+TEST_F(ExpansionTest, startThrowingPreservesPool)
+{
+    m_orch->setTargetWorkerCount(2);
+    m_orch->addWorkerToPool();
+
+    m_orch->m_factoryQueue.push_back(
+        []()
+        {
+            auto w = makeMockWorkerOk();
+            ON_CALL(*w, start()).WillByDefault(testing::Throw(std::runtime_error {"start failed"}));
+            return w;
+        });
+
+    ASSERT_NO_THROW(m_orch->expandWorkerPool());
+
+    EXPECT_EQ(m_orch->workerPoolSize(), 1U);
+}
+
+TEST_F(ExpansionTest, emptyPoolNoopWithWarning)
+{
+    m_orch->setTargetWorkerCount(3);
+    // No workers added — m_routerWorkers is empty
+
+    ASSERT_NO_THROW(m_orch->expandWorkerPool());
+
+    EXPECT_EQ(m_orch->workerPoolSize(), 0U);
+}
+
+TEST_F(ExpansionTest, shutdownDuringBuildPreventsPublish)
+{
+    m_orch->setTargetWorkerCount(2);
+    m_orch->addWorkerToPool();
+
+    m_orch->m_factoryQueue.push_back(
+        [this]()
+        {
+            // Simulate shutdown completing while the worker is being built
+            m_orch->simulateShutdown();
+            return makeMockWorkerOk();
+        });
+
+    m_orch->expandWorkerPool();
+
+    EXPECT_EQ(m_orch->workerPoolSize(), 1U);
 }
