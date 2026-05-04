@@ -54,7 +54,7 @@ concurrency:
 jobs:
   # ===================== DEB JOBS =====================
   build-deb-arm64:
-    if: github.event_name == 'pull_request' || inputs.system == 'deb'
+    if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.system == 'deb'
     runs-on: wz-linux-arm64
     timeout-minutes: 30
     name: Build DEB package
@@ -304,7 +304,7 @@ jobs:
 
   # ===================== RPM JOBS =====================
   build-rpm-arm64:
-    if: github.event_name == 'pull_request' || inputs.system == 'rpm'
+    if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.system == 'rpm'
     runs-on: wz-linux-arm64
     timeout-minutes: 30
     name: Build RPM package
