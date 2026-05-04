@@ -95,7 +95,7 @@ jobs:
       - name: Build Coverity artifact
         uses: ./.github/actions/coverity/build
         with:
-          command: make -C src TARGET=manager COVERITY=YES -j${{ needs.prepare.outputs.jobs }}
+          command: make -C src TARGET=agent COVERITY=YES -j${{ needs.prepare.outputs.jobs }}
           docker_image_tag: ${{ github.event.inputs.docker_image_tag }}
 
       - name: List files
