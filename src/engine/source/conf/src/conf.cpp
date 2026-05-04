@@ -117,7 +117,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<size_t>(key::STREAMLOG_EVENTS_MAX_SIZE, "WAZUH_STREAMLOG_EVENTS_MAX_SIZE", 0);
     addUnit<size_t>(key::STREAMLOG_EVENTS_BUFFER_SIZE, "WAZUH_STREAMLOG_EVENTS_BUFFER_SIZE", 0x1 << 20);
     addUnit<std::string>(
-        key::STREAMLOG_DUMPER_PATTERN, "WAZUH_STREAMLOG_DUMPER_PATTERN", "${YYYY}/${MMM}/wazuh-${name}-${DD}.json");
+        key::STREAMLOG_DUMPER_PATTERN, "WAZUH_STREAMLOG_DUMPER_PATTERN", "${YYYY}/${MMM}/wazuh-${name}-${DD}.log");
     addUnit<size_t>(key::STREAMLOG_DUMPER_MAX_SIZE, "WAZUH_STREAMLOG_DUMPER_MAX_SIZE", 0);
     addUnit<size_t>(key::STREAMLOG_DUMPER_BUFFER_SIZE, "WAZUH_STREAMLOG_DUMPER_BUFFER_SIZE", 0x1 << 20);
 
