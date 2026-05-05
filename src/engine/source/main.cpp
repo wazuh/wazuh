@@ -606,17 +606,6 @@ int main(int argc, char* argv[])
             LOG_INFO("Content Manager Sync Service initialized.");
 
             exitHandler.add([cmSyncService]() { cmSyncService->requestShutdown(); });
-
-            // Add sync to scheduler
-            scheduler->scheduleTask(
-                "cm-sync-task",
-                scheduler::TaskConfig {.interval = confManager.get<std::size_t>(conf::key::CM_SYNC_INTERVAL),
-                                       .runImmediately = false,
-                                       .CPUPriority = 0,
-                                       .taskFunction = [cmSyncService]()
-                                       {
-                                           cmSyncService->synchronize();
-                                       }});
         }
 
         // IOCSync
@@ -638,7 +627,7 @@ int main(int argc, char* argv[])
             {
                 scheduler->scheduleTask("ioc-sync-task",
                                         scheduler::TaskConfig {.interval = iocSyncInterval,
-                                                               .runImmediately = false,
+                                                               .runImmediately = true,
                                                                .CPUPriority = 0,
                                                                .taskFunction = [iocSyncService]()
                                                                {
@@ -674,7 +663,7 @@ int main(int argc, char* argv[])
                 scheduler->scheduleTask(
                     "geo-sync-task",
                     scheduler::TaskConfig {.interval = geoSyncInterval,
-                                           .runImmediately = false,
+                                           .runImmediately = true,
                                            .CPUPriority = 0,
                                            .taskFunction = [geoManager, manifestUrl, cityPath, asnPath]()
                                            {
@@ -713,7 +702,7 @@ int main(int argc, char* argv[])
             const auto remoteConfSyncInterval = confManager.get<std::size_t>(conf::key::REMOTE_CONF_SYNC_INTERVAL);
             scheduler->scheduleTask("remote-conf-sync",
                                     scheduler::TaskConfig {.interval = remoteConfSyncInterval,
-                                                           .runImmediately = false,
+                                                           .runImmediately = true,
                                                            .CPUPriority = 0,
                                                            .taskFunction = [remoteConf]()
                                                            {
@@ -859,26 +848,20 @@ int main(int argc, char* argv[])
         {
             // Async Synchronize on startup
             scheduler->scheduleTask(
-                "initial-sync",
-                scheduler::TaskConfig {
-                    .interval = 0,
-                    .runImmediately = false,
-                    .CPUPriority = 0,
-                    .taskFunction = [=]()
-                    {
-                        // Expand the router worker pool before the initial content synchronization.
-                        // This ensures the initial sync mutates the complete worker pool instead of
-                        // only the primary worker.
-                        orchestrator->expandWorkerPool();
-                        cmSyncService->synchronize();
-                        iocSyncService->synchronize();
-                        remoteConf->synchronize();
-                        geoManager->remoteUpsert(
-                            confManager.get<std::string>(conf::key::GEO_MANIFEST_URL),
-                            confManager.get<std::string>(conf::key::GEO_DB_PATH) + "/GeoLite2-City.mmdb",
-                            confManager.get<std::string>(conf::key::GEO_DB_PATH) + "/GeoLite2-ASN.mmdb");
-                    }});
-            scheduler->scheduleTaskFirst("initial-sync");
+                "cm-sync-task",
+                scheduler::TaskConfig {.interval = confManager.get<std::size_t>(conf::key::CM_SYNC_INTERVAL),
+                                       .runImmediately = false,
+                                       .CPUPriority = 0,
+                                       .taskFunction = [=]()
+                                       {
+                                           // Expand the router worker pool before the initial
+                                           // content synchronization. This ensures the initial sync
+                                           // mutates the complete worker pool instead of only the
+                                           // primary worker.
+                                           orchestrator->expandWorkerPool();
+                                           cmSyncService->synchronize();
+                                       }});
+            scheduler->scheduleTaskFirst("cm-sync-task");
 
             scheduler->start();
             LOG_INFO("Scheduler started.");

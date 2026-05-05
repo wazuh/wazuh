@@ -15,7 +15,7 @@ namespace scheduler
 
 Scheduler::Scheduler(int threads)
     : m_running(false)
-    , m_numThreads(std::max(1, threads))
+    , m_numThreads(std::max(2, threads))
 {
 }
 

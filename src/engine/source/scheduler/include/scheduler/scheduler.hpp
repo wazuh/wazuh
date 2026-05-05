@@ -359,10 +359,10 @@ public:
      * @details Creates a new scheduler with the specified number of worker threads.
      *          The scheduler is created in stopped state and must be started explicitly.
      *
-     * @param threads Number of worker threads to create (minimum 1)
-     * @note If threads <= 0, exactly 1 thread will be created
+     * @param threads Number of worker threads to create (minimum 2)
+     * @note If threads <= 0, exactly 2 thread will be created
      */
-    Scheduler(int threads = 1);
+    Scheduler(int threads = 2);
 
     /**
      * @brief Destructor
