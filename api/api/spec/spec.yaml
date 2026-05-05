@@ -855,15 +855,17 @@ components:
           properties:
             major:
               type: string
+            minor:
+              type: string
             name:
               type: string
             platform:
               type: string
+            type:
+              type: string
             version:
               type: string
             arch:
-              type: string
-            minor:
               type: string
           description: "Agent OS information"
         status_code:
@@ -3794,6 +3796,13 @@ components:
       schema:
         type: string
         format: alphanumeric
+    os.type:
+      in: query
+      name: os.type
+      description: "Filter by OS family (Linux, Windows, Unix, ...)"
+      schema:
+        type: string
+        format: alphanumeric
     os.platform:
       in: query
       name: os.platform
@@ -3808,6 +3817,27 @@ components:
       schema:
         type: string
         format: alphanumeric_symbols
+    os.major:
+      in: query
+      name: os.major
+      description: "Filter by OS major version"
+      schema:
+        type: string
+        format: numbers
+    os.minor:
+      in: query
+      name: os.minor
+      description: "Filter by OS minor version"
+      schema:
+        type: string
+        format: numbers
+    os.arch:
+      in: query
+      name: os.arch
+      description: "Filter by OS architecture"
+      schema:
+        type: string
+        format: alphanumeric
     older_than:
       in: query
       name: older_than
@@ -3995,8 +4025,12 @@ paths:
         - $ref: '#/components/parameters/statusDeleteAgentParam'
         - $ref: '#/components/parameters/older_than'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.type'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.major'
+        - $ref: '#/components/parameters/os.minor'
+        - $ref: '#/components/parameters/os.arch'
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
@@ -4058,8 +4092,12 @@ paths:
         - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/olderThanParam'
+        - $ref: '#/components/parameters/os.type'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.major'
+        - $ref: '#/components/parameters/os.minor'
+        - $ref: '#/components/parameters/os.arch'
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
@@ -4090,6 +4128,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       lastKeepAlive: '2021-05-26T12:40:40Z'
                       id: '001'
@@ -4110,6 +4149,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       lastKeepAlive: '2021-05-26T12:40:40Z'
                       id: '002'
@@ -4130,6 +4170,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       lastKeepAlive: '2021-05-26T12:40:40Z'
                       id: '003'
@@ -4746,8 +4787,12 @@ paths:
         - $ref: '#/components/parameters/force'
         - $ref: '#/components/parameters/package_type'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.type'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.major'
+        - $ref: '#/components/parameters/os.minor'
+        - $ref: '#/components/parameters/os.arch'
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
@@ -4801,8 +4846,12 @@ paths:
         - $ref: '#/components/parameters/file_path'
         - $ref: '#/components/parameters/installer'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.type'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.major'
+        - $ref: '#/components/parameters/os.minor'
+        - $ref: '#/components/parameters/os.arch'
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
@@ -4854,8 +4903,12 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.type'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.major'
+        - $ref: '#/components/parameters/os.minor'
+        - $ref: '#/components/parameters/os.arch'
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
@@ -5454,6 +5507,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       lastKeepAlive: '2024-02-26T12:40:40Z'
                       id: '001'
@@ -5474,6 +5528,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       lastKeepAlive: '2024-02-26T12:40:40Z'
                       id: '002'
@@ -6063,6 +6118,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       mergedSum: 2c769b2ea138d472ee8f1ba23412b5d4
                       node_name: worker1
@@ -6084,6 +6140,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       node_name: worker1
@@ -6105,6 +6162,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       node_name: worker2
@@ -9894,6 +9952,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: "20.04.02 LTS"
                       node_name: worker1
                       lastKeepAlive: "2021-05-31T10:56:52Z"

@@ -188,8 +188,12 @@ stages:
       save:
         json:
           expected_agent_name: data.affected_items[0].name
+          expected_os_type: data.affected_items[0].os.type
           expected_os_platform: data.affected_items[0].os.platform
           expected_os_version: data.affected_items[0].os.version
+          expected_os_major: data.affected_items[0].os.major
+          expected_os_minor: data.affected_items[0].os.minor
+          expected_os_arch: data.affected_items[0].os.arch
           expected_os_name: data.affected_items[0].os.name
           expected_node_name: data.affected_items[0].node_name
           expected_name: data.affected_items[0].name
@@ -504,6 +508,86 @@ stages:
                 platform: "{expected_os_platform:s}"
           failed_items: []
           total_affected_items: 10
+          total_failed_items: 0
+
+  - name: Filter by agent OS family
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        os.type: "{expected_os_type:s}"
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '001'
+              os:
+                type: "{expected_os_type:s}"
+          failed_items: []
+          total_affected_items: 8
+          total_failed_items: 0
+
+  - name: Filter by agent OS major version
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        os.major: "{expected_os_major:s}"
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '001'
+              os:
+                major: "{expected_os_major:s}"
+          failed_items: []
+          total_affected_items: 8
+          total_failed_items: 0
+
+  - name: Filter by agent OS minor version
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        os.minor: "{expected_os_minor:s}"
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '001'
+              os:
+                minor: "{expected_os_minor:s}"
+          failed_items: []
+          total_affected_items: 8
+          total_failed_items: 0
+
+  - name: Filter by agent OS architecture
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        os.arch: "{expected_os_arch:s}"
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '001'
+              os:
+                arch: "{expected_os_arch:s}"
+          failed_items: []
+          total_affected_items: 8
           total_failed_items: 0
 
   - name: Try to show agents using a non existing OS Platform
@@ -1255,6 +1339,7 @@ stages:
                 major: !anystr
                 minor: !anystr
                 name: !anystr
+                type: !anystr
                 platform: !anystr
                 version: !anystr
               registerIP: !anystr
@@ -2687,6 +2772,7 @@ marks:
         - os.major
         - os.minor
         - os.name
+        - os.type
         - os.platform
         - os.version
         - registerIP
@@ -4206,6 +4292,7 @@ marks:
         - os.major
         - os.minor
         - os.name
+        - os.type
         - os.platform
         - os.version
         - registerIP

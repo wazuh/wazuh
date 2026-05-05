@@ -600,6 +600,7 @@ class Agent:
         "status": "connection_status",
         "os.name": "os_name",
         "os.version": "os_version",
+        "os.type": "os_type",
         "os.platform": "os_platform",
         "version": "version",
         "dateAdd": "date_add",
