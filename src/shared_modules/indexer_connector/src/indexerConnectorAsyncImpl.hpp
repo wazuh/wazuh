@@ -228,10 +228,10 @@ public:
 
         // Read flush interval from config; the template parameter acts as a fallback default.
         // Accept both signed and unsigned JSON integers (nlohmann stores bare literals as signed).
-        m_flushInterval = config.contains("flush_interval_seconds") &&
-                                  config.at("flush_interval_seconds").is_number_integer()
-                              ? config.at("flush_interval_seconds").get<size_t>()
-                              : FlushInterval;
+        m_flushInterval =
+            config.contains("flush_interval_seconds") && config.at("flush_interval_seconds").is_number_integer()
+                ? config.at("flush_interval_seconds").get<size_t>()
+                : FlushInterval;
 
         m_loggerProcessor = std::make_unique<ThreadLoggerQueue>(
             [this](const IndexerResponse& data)

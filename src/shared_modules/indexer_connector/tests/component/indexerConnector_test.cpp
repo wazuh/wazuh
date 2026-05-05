@@ -462,7 +462,7 @@ TEST_F(IndexerConnectorTest, AsyncIndexUnavailableServer)
 
     nlohmann::json config;
     config["hosts"] = nlohmann::json::array({B_ADDRESS}); // red
-    config["flush_interval_seconds"] = 1; // Speed up flush for tests (default is 20 s)
+    config["flush_interval_seconds"] = 1;                 // Speed up flush for tests (default is 20 s)
 
     {
         IndexerConnectorAsync connector(config, "component_test_unavail");
