@@ -179,20 +179,30 @@ TEST_F(IndexerConnectorSyncTest, DeleteByQueryAddsToMap)
 // HTTP error handling tests using GMock
 TEST_F(IndexerConnectorSyncTest, HandleError413PayloadTooLarge)
 {
-    EXPECT_CALL(mockServerSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
+    // The mock always responds with 413.  The expected flow is:
+    //  1. flush() posts the full batch (2 docs) → 413
+    //     → splitAndProcessBulk() splits into two single-doc chunks
+    //  2. processBulkChunk(first chunk, 1 boundary) → 413
+    //     → cannot split further (only 1 op) → throws IndexerConnectorException
+    // The second chunk is never reached because the first throws.
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
-        .Times(AtLeast(0)) // May or may not be called depending on size validation
+        .Times(AtLeast(2)) // initial batch + at least one split chunk
         .WillRepeatedly(Invoke(
             [this](auto requestParams, auto postParams, ConfigurationParameters)
             {
                 this->callCount++;
 
-                // Extract data from variant
                 std::string data;
                 if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
                 {
                     data = std::get<TRequestParameters<std::string>>(requestParams).data;
+                }
+                else if (std::holds_alternative<TRequestParameters<std::string_view>>(requestParams))
+                {
+                    data = std::string(std::get<TRequestParameters<std::string_view>>(requestParams).data);
                 }
                 else
                 {
@@ -211,15 +221,18 @@ TEST_F(IndexerConnectorSyncTest, HandleError413PayloadTooLarge)
                 }
             }));
 
-    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest);
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
-    // Add data to force sending
-    std::string id = "id1";
-    std::string dataValue(2048, 'a');
-    // Why expecting any throw here?
-    EXPECT_ANY_THROW({ connector.bulkIndex(id, "index1", dataValue); });
-    // shouldn't we add an additional check that the call count is 2 or more meaning that the message was spplitted and
-    // retried?
+    connector.bulkIndex("id1", "index1", std::string(600, 'a'));
+    connector.bulkIndex("id2", "index1", std::string(600, 'a'));
+
+    // flush() submits the 2-doc batch; 413 triggers splitting; the first
+    // single-doc chunk also gets 413 and throws because it cannot be split.
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
+
+    // Prove the splitting path was exercised: at least 2 calls (full batch + 1 chunk).
+    EXPECT_GE(callCount, 2)
+        << "Expected at least 2 HTTP calls: the initial 2-doc batch and at least one split chunk after 413";
 }
 
 TEST_F(IndexerConnectorSyncTest, HandleError409VersionConflict)
