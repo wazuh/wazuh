@@ -34,9 +34,9 @@ class CrudServiceBase : public ::testing::Test
 protected:
     void SetUp() override
     {
-        store     = std::make_shared<NiceMock<MockICMstore>>();
+        store = std::make_shared<NiceMock<MockICMstore>>();
         validator = std::make_shared<NiceMock<MockValidator>>();
-        service   = std::make_unique<CrudService>(store, validator);
+        service = std::make_unique<CrudService>(store, validator);
     }
 
     void TearDown() override {}
@@ -55,34 +55,54 @@ protected:
 };
 
 // ── Namespace management tests
-class CrudServiceNamespaceTest : public CrudServiceBase {};
+class CrudServiceNamespaceTest : public CrudServiceBase
+{
+};
 
 // ── Policy tests
-class CrudServicePolicyTest : public CrudServiceBase {};
+class CrudServicePolicyTest : public CrudServiceBase
+{
+};
 
 // ── List-resources tests
-class CrudServiceListResourcesTest : public CrudServiceBase {};
+class CrudServiceListResourcesTest : public CrudServiceBase
+{
+};
 
 // ── Get-resource-by-UUID tests
-class CrudServiceGetResourceTest : public CrudServiceBase {};
+class CrudServiceGetResourceTest : public CrudServiceBase
+{
+};
 
 // ── Upsert Integration tests
-class CrudServiceUpsertIntegrationTest : public CrudServiceBase {};
+class CrudServiceUpsertIntegrationTest : public CrudServiceBase
+{
+};
 
 // ── Upsert KVDB tests
-class CrudServiceUpsertKVDBTest : public CrudServiceBase {};
+class CrudServiceUpsertKVDBTest : public CrudServiceBase
+{
+};
 
 // ── Upsert Decoder / Asset tests
-class CrudServiceUpsertDecoderTest : public CrudServiceBase {};
+class CrudServiceUpsertDecoderTest : public CrudServiceBase
+{
+};
 
 // ── Delete-resource tests
-class CrudServiceDeleteResourceTest : public CrudServiceBase {};
+class CrudServiceDeleteResourceTest : public CrudServiceBase
+{
+};
 
 // ── Validate-resource tests
-class CrudServiceValidateResourceTest : public CrudServiceBase {};
+class CrudServiceValidateResourceTest : public CrudServiceBase
+{
+};
 
 // ── Import-namespace tests
-class CrudServiceImportNamespaceTest : public CrudServiceBase {};
+class CrudServiceImportNamespaceTest : public CrudServiceBase
+{
+};
 
 // ---------------------------------------------------------------------
 // JSON fixtures for realistic resources
@@ -205,18 +225,18 @@ std::string getStringOrEmpty(const json::Json& json, std::string_view path)
 
 TEST_F(CrudServiceCtorTest, Construction_NullStoreThrows)
 {
-  std::shared_ptr<cm::store::ICMStore> nullStore;
-  auto validator = std::make_shared<NiceMock<MockValidator>>();
+    std::shared_ptr<cm::store::ICMStore> nullStore;
+    auto validator = std::make_shared<NiceMock<MockValidator>>();
 
-  EXPECT_THROW(CrudService service(nullStore, validator), std::invalid_argument);
+    EXPECT_THROW(CrudService service(nullStore, validator), std::invalid_argument);
 }
 
 TEST_F(CrudServiceCtorTest, Construction_NullValidatorThrows)
 {
-  auto store = std::make_shared<NiceMock<MockICMstore>>();
-  std::shared_ptr<builder::IValidator> nullValidator;
+    auto store = std::make_shared<NiceMock<MockICMstore>>();
+    std::shared_ptr<builder::IValidator> nullValidator;
 
-  EXPECT_THROW(CrudService service(store, nullValidator), std::invalid_argument);
+    EXPECT_THROW(CrudService service(store, nullValidator), std::invalid_argument);
 }
 
 // ---------------------------------------------------------------------
@@ -1116,6 +1136,798 @@ TEST_F(CrudServiceImportNamespaceTest, ImportNamespace_Success_WithFilters)
 
     EXPECT_NO_THROW(
         service->importNamespace(nsId, kvdbs, decoders, filters, integrations, makeJsonPayload(kPolicyJson), true));
+}
+
+// =========================================================================
+// importNamespace – vector (component) overload – extended coverage
+// =========================================================================
+
+class CrudServiceImportNsFromVectorTest : public CrudServiceBase
+{
+protected:
+    const NamespaceId nsId {"imported"};
+    std::shared_ptr<NiceMock<MockICMstoreNS>> nsPtr;
+
+    void SetUp() override
+    {
+        CrudServiceBase::SetUp();
+
+        nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
+
+        ON_CALL(*store, existsNamespace(_)).WillByDefault(Return(false));
+        ON_CALL(*store, createNamespace(_)).WillByDefault(Return(nsPtr));
+        ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(testing::ReturnRef(nsId));
+    }
+};
+
+// ── Helpers inside the fixture scope
+
+// A decoder whose name first-part is intentionally wrong
+static constexpr const char* kDecoderJsonWrongPrefix = R"({
+  "name": "filter/syslog/0",
+  "id": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
+  "enabled": true,
+  "metadata": {"module": "syslog", "title": "Syslog Decoder"}
+})";
+
+// A filter whose name first-part is intentionally wrong
+static constexpr const char* kFilterJsonWrongPrefix = R"({
+  "name": "decoder/pre-filter/0",
+  "id": "f1111111-1111-4111-a111-111111111111",
+  "enabled": true,
+  "type": "pre-filter",
+  "metadata": {"title": "Test Pre-Filter"}
+})";
+
+// ── 1. Reject when namespace already exists
+
+TEST_F(CrudServiceImportNsFromVectorTest, AlreadyExists_Throws)
+{
+    EXPECT_CALL(*store, existsNamespace(_)).WillOnce(Return(true));
+    EXPECT_CALL(*store, createNamespace(_)).Times(0);
+
+    try
+    {
+        service->importNamespace(
+            nsId, {}, {}, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("already exists"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("imported"));
+    }
+}
+
+// ── 2. Import KVDB resources
+
+TEST_F(CrudServiceImportNsFromVectorTest, ImportsKVDB)
+{
+    std::vector<json::Json> kvdbs = {makeJsonPayload(kKVDBJson)};
+
+    EXPECT_CALL(*nsPtr,
+                createResource("windows_kerberos_status_code_to_code_name", ResourceType::KVDB, _))
+        .Times(1);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(
+        service->importNamespace(nsId, kvdbs, {}, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/true));
+}
+
+// ── 3. Import decoder resources
+
+TEST_F(CrudServiceImportNsFromVectorTest, ImportsDecoder)
+{
+    std::vector<json::Json> decoders = {makeJsonPayload(kDecoderJson)};
+
+    EXPECT_CALL(*nsPtr, createResource("decoder/syslog/0", ResourceType::DECODER, _)).Times(1);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(
+        service->importNamespace(nsId, {}, decoders, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/true));
+}
+
+// ── 4. Import filter resources
+
+TEST_F(CrudServiceImportNsFromVectorTest, ImportsFilter)
+{
+    std::vector<json::Json> filters = {makeJsonPayload(kFilterJson)};
+
+    EXPECT_CALL(*nsPtr, createResource("filter/pre-filter/0", ResourceType::FILTER, _)).Times(1);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(
+        service->importNamespace(nsId, {}, {}, filters, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/true));
+}
+
+// ── 5. Import integration resources
+
+TEST_F(CrudServiceImportNsFromVectorTest, ImportsIntegration)
+{
+    std::vector<json::Json> integrations = {makeJsonPayload(kIntegrationJson)};
+
+    EXPECT_CALL(*nsPtr, createResource("windows", ResourceType::INTEGRATION, _)).Times(1);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(
+        service->importNamespace(nsId, {}, {}, {}, integrations, makeJsonPayload(kPolicyJson), /*softValidation=*/true));
+}
+
+// ── 6. Policy is upserted after all resources
+
+TEST_F(CrudServiceImportNsFromVectorTest, PolicyUpsertedAfterResources)
+{
+    std::vector<json::Json> kvdbs    = {makeJsonPayload(kKVDBJson)};
+    std::vector<json::Json> decoders = {makeJsonPayload(kDecoderJson)};
+
+    ::testing::InSequence seq;
+    EXPECT_CALL(*nsPtr, createResource("windows_kerberos_status_code_to_code_name", ResourceType::KVDB, _)).Times(1);
+    EXPECT_CALL(*nsPtr, createResource("decoder/syslog/0", ResourceType::DECODER, _)).Times(1);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(
+        service->importNamespace(nsId, kvdbs, decoders, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/true));
+}
+
+// ── 7. softValidation=false → decoder is validated
+
+TEST_F(CrudServiceImportNsFromVectorTest, SoftValidationFalse_ValidatesDecoder)
+{
+    std::vector<json::Json> decoders = {makeJsonPayload(kDecoderJson)};
+
+    EXPECT_CALL(*validator, validateAsset(_, _)).Times(1).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(
+        service->importNamespace(nsId, {}, decoders, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/false));
+}
+
+// ── 8. softValidation=false → filter is validated
+
+TEST_F(CrudServiceImportNsFromVectorTest, SoftValidationFalse_ValidatesFilter)
+{
+    std::vector<json::Json> filters = {makeJsonPayload(kFilterJson)};
+
+    EXPECT_CALL(*validator, validateAsset(_, _)).Times(1).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(
+        service->importNamespace(nsId, {}, {}, filters, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/false));
+}
+
+// ── 9. softValidation=false → integration is validated
+
+TEST_F(CrudServiceImportNsFromVectorTest, SoftValidationFalse_ValidatesIntegration)
+{
+    std::vector<json::Json> integrations = {makeJsonPayload(kIntegrationJson)};
+
+    EXPECT_CALL(*validator, softIntegrationValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(
+        service->importNamespace(nsId, {}, {}, {}, integrations, makeJsonPayload(kPolicyJson), /*softValidation=*/false));
+}
+
+// ── 10. softValidation=false → policy is validated
+
+TEST_F(CrudServiceImportNsFromVectorTest, SoftValidationFalse_ValidatesPolicy)
+{
+    EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(
+        service->importNamespace(nsId, {}, {}, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/false));
+}
+
+// ── 11. softValidation=true → no validator calls at all
+
+TEST_F(CrudServiceImportNsFromVectorTest, SoftValidationTrue_SkipsAllValidation)
+{
+    std::vector<json::Json> decoders     = {makeJsonPayload(kDecoderJson)};
+    std::vector<json::Json> filters      = {makeJsonPayload(kFilterJson)};
+    std::vector<json::Json> integrations = {makeJsonPayload(kIntegrationJson)};
+
+    EXPECT_CALL(*validator, validateAsset(_, _)).Times(0);
+    EXPECT_CALL(*validator, softIntegrationValidate(_, _)).Times(0);
+    EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(0);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(service->importNamespace(
+        nsId, {}, decoders, filters, integrations, makeJsonPayload(kPolicyJson), /*softValidation=*/true));
+}
+
+// ── 12. Decoder name prefix mismatch → throws
+
+TEST_F(CrudServiceImportNsFromVectorTest, DecoderNamePrefixMismatch_Throws)
+{
+    std::vector<json::Json> decoders = {makeJsonPayload(kDecoderJsonWrongPrefix)};
+
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+
+    try
+    {
+        service->importNamespace(nsId, {}, decoders, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("must start with prefix"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("decoder"));
+    }
+}
+
+// ── 13. Filter name prefix mismatch → throws
+
+TEST_F(CrudServiceImportNsFromVectorTest, FilterNamePrefixMismatch_Throws)
+{
+    std::vector<json::Json> filters = {makeJsonPayload(kFilterJsonWrongPrefix)};
+
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+
+    try
+    {
+        service->importNamespace(nsId, {}, {}, filters, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("must start with prefix"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("filter"));
+    }
+}
+
+// =========================================================================
+// importNamespace – JSON document overload
+// =========================================================================
+
+// ── JSON document constants
+
+// Minimal valid import document: empty resources, minimal valid policy.
+static constexpr const char* kMinimalImportDoc = R"({
+  "policy": {
+    "enabled": true,
+    "root_decoder": "decoder/wazuh-core-message/0",
+    "integrations": [],
+    "filters": [],
+    "enrichments": [],
+    "index_unclassified_events": false,
+    "index_discarded_events": false
+  },
+  "resources": {}
+})";
+
+// Import document containing a single KVDB resource.
+static constexpr const char* kImportDocWithKVDB = R"({
+  "policy": {
+    "enabled": true,
+    "root_decoder": "decoder/wazuh-core-message/0",
+    "integrations": [],
+    "filters": [],
+    "enrichments": [],
+    "index_unclassified_events": false,
+    "index_discarded_events": false
+  },
+  "resources": {
+    "kvdbs": [
+      {
+        "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
+        "metadata": {"title": "test_kvdb"},
+        "content": {"0x0": "KDC_ERR_NONE"},
+        "enabled": true
+      }
+    ]
+  }
+})";
+
+// Import document containing a single decoder resource.
+static constexpr const char* kImportDocWithDecoder = R"({
+  "policy": {
+    "enabled": true,
+    "root_decoder": "decoder/wazuh-core-message/0",
+    "integrations": [],
+    "filters": [],
+    "enrichments": [],
+    "index_unclassified_events": false,
+    "index_discarded_events": false
+  },
+  "resources": {
+    "decoders": [
+      {
+        "name": "decoder/syslog/0",
+        "id": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
+        "enabled": true,
+        "metadata": {"module": "syslog", "title": "Syslog Decoder"}
+      }
+    ]
+  }
+})";
+
+// Import document containing a single filter resource.
+static constexpr const char* kImportDocWithFilter = R"({
+  "policy": {
+    "enabled": true,
+    "root_decoder": "decoder/wazuh-core-message/0",
+    "integrations": [],
+    "filters": [],
+    "enrichments": [],
+    "index_unclassified_events": false,
+    "index_discarded_events": false
+  },
+  "resources": {
+    "filters": [
+      {
+        "name": "filter/pre-filter/0",
+        "id": "f1111111-1111-4111-a111-111111111111",
+        "enabled": true,
+        "type": "pre-filter",
+        "metadata": {"title": "Test Pre-Filter"}
+      }
+    ]
+  }
+})";
+
+// Import document containing a single output resource.
+static constexpr const char* kImportDocWithOutput = R"({
+  "policy": {
+    "enabled": true,
+    "root_decoder": "decoder/wazuh-core-message/0",
+    "integrations": [],
+    "filters": [],
+    "enrichments": [],
+    "index_unclassified_events": false,
+    "index_discarded_events": false
+  },
+  "resources": {
+    "outputs": [
+      {
+        "name": "output/indexer/0",
+        "id": "b1111111-1111-4111-a111-111111111111",
+        "enabled": true,
+        "metadata": {"title": "Indexer Output"}
+      }
+    ]
+  }
+})";
+
+// Import document containing a single integration resource.
+static constexpr const char* kImportDocWithIntegration = R"({
+  "policy": {
+    "enabled": true,
+    "root_decoder": "decoder/wazuh-core-message/0",
+    "integrations": [],
+    "filters": [],
+    "enrichments": [],
+    "index_unclassified_events": false,
+    "index_discarded_events": false
+  },
+  "resources": {
+    "integrations": [
+      {
+        "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
+        "metadata": {"title": "windows"},
+        "enabled": true,
+        "category": "security",
+        "default_parent": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
+        "decoders": [],
+        "kvdbs": []
+      }
+    ]
+  }
+})";
+
+// ── Fixture
+
+class CrudServiceImportNsFromDocTest : public CrudServiceBase
+{
+protected:
+    const NamespaceId nsId {"imported"};
+    std::shared_ptr<NiceMock<MockICMstoreNS>> nsPtr;
+    std::shared_ptr<cm::store::ICMStoreNSReader> nsReader;
+
+    void SetUp() override
+    {
+        CrudServiceBase::SetUp();
+
+        nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
+        nsReader = std::static_pointer_cast<cm::store::ICMStoreNSReader>(nsPtr);
+
+        ON_CALL(*store, existsNamespace(_)).WillByDefault(Return(false));
+        ON_CALL(*store, createNamespace(_)).WillByDefault(Return(nsPtr));
+        ON_CALL(*store, getNS(_)).WillByDefault(Return(nsPtr));
+        ON_CALL(*store, getNSReader(_)).WillByDefault(Return(nsReader));
+        ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(testing::ReturnRef(nsId));
+        // getPolicy() is called once at the end of the JSON overload to build the return value.
+        ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+    }
+
+    static cm::store::dataType::Policy makeReturnPolicy()
+    {
+        return cm::store::dataType::Policy::fromJson(json::Json {kMinimalImportDoc}.getJson("/policy").value());
+    }
+};
+
+// ── 1. Happy path – empty resources
+
+TEST_F(CrudServiceImportNsFromDocTest, Success_EmptyResources)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*store, existsNamespace(_)).Times(1).WillOnce(Return(false));
+    EXPECT_CALL(*store, createNamespace(_)).Times(1).WillOnce(Return(nsPtr));
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kMinimalImportDoc, "", /*force=*/true));
+}
+
+// ── 2. Destination namespace already exists → throws
+
+TEST_F(CrudServiceImportNsFromDocTest, NamespaceAlreadyExists_Throws)
+{
+    EXPECT_CALL(*store, existsNamespace(_)).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*store, createNamespace(_)).Times(0);
+
+    try
+    {
+        service->importNamespace(nsId, kMinimalImportDoc, "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("already exists"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("imported"));
+    }
+}
+
+// ── 3. Invalid JSON document → throws
+
+TEST_F(CrudServiceImportNsFromDocTest, InvalidJson_Throws)
+{
+    EXPECT_CALL(*store, createNamespace(_)).Times(0);
+
+    try
+    {
+        service->importNamespace(nsId, "{ this is not json }", "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Invalid JSON"));
+    }
+}
+
+// ── 4. Missing /policy key → throws
+
+TEST_F(CrudServiceImportNsFromDocTest, MissingPolicyKey_Throws)
+{
+    EXPECT_CALL(*store, createNamespace(_)).Times(0);
+
+    constexpr const char* kDoc = R"({"resources": {}})";
+
+    try
+    {
+        service->importNamespace(nsId, kDoc, "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("policy"));
+    }
+}
+
+// ── 5. Missing /resources key → throws
+
+TEST_F(CrudServiceImportNsFromDocTest, MissingResourcesKey_Throws)
+{
+    EXPECT_CALL(*store, createNamespace(_)).Times(0);
+
+    constexpr const char* kDoc = R"({"policy": {"enabled": true}})";
+
+    try
+    {
+        service->importNamespace(nsId, kDoc, "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("resources"));
+    }
+}
+
+// ── 6. /policy is not an object → throws
+
+TEST_F(CrudServiceImportNsFromDocTest, PolicyNotObject_Throws)
+{
+    EXPECT_CALL(*store, createNamespace(_)).Times(0);
+
+    constexpr const char* kDoc = R"({"policy": "not-an-object", "resources": {}})";
+
+    try
+    {
+        service->importNamespace(nsId, kDoc, "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("policy"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("object"));
+    }
+}
+
+// ── 7. /resources is not an object → throws
+
+TEST_F(CrudServiceImportNsFromDocTest, ResourcesNotObject_Throws)
+{
+    EXPECT_CALL(*store, createNamespace(_)).Times(0);
+
+    constexpr const char* kDoc = R"({"policy": {"enabled": true}, "resources": [1,2,3]})";
+
+    try
+    {
+        service->importNamespace(nsId, kDoc, "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("resources"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("object"));
+    }
+}
+
+// ── 8. Root object has extra keys → throws
+
+TEST_F(CrudServiceImportNsFromDocTest, ExtraRootKeys_Throws)
+{
+    EXPECT_CALL(*store, createNamespace(_)).Times(0);
+
+    constexpr const char* kDoc = R"({"policy": {}, "resources": {}, "extra": "key"})";
+
+    try
+    {
+        service->importNamespace(nsId, kDoc, "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("2 keys"));
+    }
+}
+
+// ── 9. Namespace created before resources are imported
+
+TEST_F(CrudServiceImportNsFromDocTest, CreatesNamespaceBeforeImport)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    ::testing::InSequence seq;
+    EXPECT_CALL(*store, existsNamespace(_)).WillOnce(Return(false));
+    EXPECT_CALL(*store, createNamespace(_)).WillOnce(Return(nsPtr));
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kMinimalImportDoc, "", /*force=*/true));
+}
+
+// ── 10. Import KVDB resource
+
+TEST_F(CrudServiceImportNsFromDocTest, ImportsKVDB)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*nsPtr, createResource("test_kvdb", ResourceType::KVDB, _)).Times(1);
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kImportDocWithKVDB, "", /*force=*/true));
+}
+
+// ── 11. Import decoder resource
+
+TEST_F(CrudServiceImportNsFromDocTest, ImportsDecoder)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*nsPtr, createResource("decoder/syslog/0", ResourceType::DECODER, _)).Times(1);
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kImportDocWithDecoder, "", /*force=*/true));
+}
+
+// ── 12. Import filter resource
+
+TEST_F(CrudServiceImportNsFromDocTest, ImportsFilter)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*nsPtr, createResource("filter/pre-filter/0", ResourceType::FILTER, _)).Times(1);
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kImportDocWithFilter, "", /*force=*/true));
+}
+
+// ── 13. Import output resource
+
+TEST_F(CrudServiceImportNsFromDocTest, ImportsOutput)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*nsPtr, createResource("output/indexer/0", ResourceType::OUTPUT, _)).Times(1);
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kImportDocWithOutput, "", /*force=*/true));
+}
+
+// ── 14. Import integration resource
+
+TEST_F(CrudServiceImportNsFromDocTest, ImportsIntegration)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*nsPtr, createResource("windows", ResourceType::INTEGRATION, _)).Times(1);
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kImportDocWithIntegration, "", /*force=*/true));
+}
+
+// ── 15. Policy is upserted after resources
+
+TEST_F(CrudServiceImportNsFromDocTest, PolicyImportedAfterResources)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    ::testing::InSequence seq;
+    EXPECT_CALL(*nsPtr, createResource("test_kvdb", ResourceType::KVDB, _)).Times(1);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kImportDocWithKVDB, "", /*force=*/true));
+}
+
+// ── 16. originSpace argument is applied to the policy
+
+TEST_F(CrudServiceImportNsFromDocTest, SetsOriginSpace_WhenProvided)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*nsPtr,
+                upsertPolicy(Truly(
+                    [](const cm::store::dataType::Policy& p)
+                    {
+                        std::string out;
+                        return p.toJson().getString(out, "/origin_space") == json::RetGet::Success;
+                    })))
+        .Times(1);
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kMinimalImportDoc, "my_space", /*force=*/true));
+}
+
+// ── 17. Empty originSpace leaves policy origin untouched
+
+TEST_F(CrudServiceImportNsFromDocTest, EmptyOriginSpace_DoesNotOverride)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    // Just verify it does not throw
+    EXPECT_NO_THROW(service->importNamespace(nsId, kMinimalImportDoc, "", /*force=*/true));
+}
+
+// ── 18. Absent resource arrays are silently skipped
+
+TEST_F(CrudServiceImportNsFromDocTest, SkipsAbsentResourceArrays)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kMinimalImportDoc, "", /*force=*/true));
+}
+
+// ── 19. force=true → validator is never called
+
+TEST_F(CrudServiceImportNsFromDocTest, ForceTrue_SkipsValidation)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*validator, validateAsset(_, _)).Times(0);
+    EXPECT_CALL(*validator, softIntegrationValidate(_, _)).Times(0);
+    EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(0);
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kImportDocWithDecoder, "", /*force=*/true));
+}
+
+// ── 20. force=false → asset validator is called for decoders
+
+TEST_F(CrudServiceImportNsFromDocTest, ForceFalse_ValidatesDecoder)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*validator, validateAsset(_, _)).Times(1).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kImportDocWithDecoder, "", /*force=*/false));
+}
+
+// ── 21. force=false → integration validator is called
+
+TEST_F(CrudServiceImportNsFromDocTest, ForceFalse_ValidatesIntegration)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*validator, softIntegrationValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kImportDocWithIntegration, "", /*force=*/false));
+}
+
+// ── 22. force=false → policy validator is called
+
+TEST_F(CrudServiceImportNsFromDocTest, ForceFalse_ValidatesPolicy)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kMinimalImportDoc, "", /*force=*/false));
+}
+
+// ── 23. force=false + validation failure → throws, no createResource
+
+TEST_F(CrudServiceImportNsFromDocTest, ForceFalse_ValidationFailure_Throws)
+{
+    EXPECT_CALL(*validator, validateAsset(_, _)).Times(1).WillOnce(Return(base::Error {"schema violation"}));
+
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+
+    try
+    {
+        service->importNamespace(nsId, kImportDocWithDecoder, "", /*force=*/false);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Failed to import namespace"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("schema violation"));
+    }
+}
+
+// ── 24. Rollback: deleteNamespace called when import fails post-create
+
+TEST_F(CrudServiceImportNsFromDocTest, RollbackOnFailureAfterNamespaceCreate)
+{
+    // Make upsertPolicy throw to trigger the rollback path.
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1).WillOnce(Throw(std::runtime_error {"policy store failure"}));
+
+    EXPECT_CALL(*store, createNamespace(_)).Times(1).WillOnce(Return(nsPtr));
+
+    EXPECT_CALL(*store, deleteNamespace(_)).Times(1);
+
+    try
+    {
+        service->importNamespace(nsId, kMinimalImportDoc, "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Failed to import namespace"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("policy store failure"));
+    }
+}
+
+// ── 25. Rollback delete also fails: original error is still surfaced
+
+TEST_F(CrudServiceImportNsFromDocTest, RollbackDeleteFails_OriginalErrorSurfaced)
+{
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1).WillOnce(Throw(std::runtime_error {"original error"}));
+    EXPECT_CALL(*store, createNamespace(_)).Times(1).WillOnce(Return(nsPtr));
+
+    // Rollback delete also throws — the original error must still propagate.
+    EXPECT_CALL(*store, deleteNamespace(_)).Times(1).WillOnce(Throw(std::runtime_error {"delete also failed"}));
+
+    try
+    {
+        service->importNamespace(nsId, kMinimalImportDoc, "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Failed to import namespace"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("original error"));
+    }
 }
 
 } // namespace cm::crud::test
