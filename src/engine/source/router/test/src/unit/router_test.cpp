@@ -336,3 +336,121 @@ TEST_F(RouterTest, IngestSuccess)
 
     EXPECT_TRUE(ingestEvent());
 }
+
+/**************************************************************************
+ * Additional coverage tests
+ *************************************************************************/
+
+TEST_F(RouterTest, AddEntryIgnoreFailOnBuildPolicyError)
+{
+    // When ignoreFail=true and build fails, entry is still added with null environment
+    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_))
+        .WillOnce(::testing::Throw(std::runtime_error("error")));
+
+    auto entryPost = router::prod::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, PRIORITY};
+    auto error = m_router->addEntry(entryPost, /*ignoreFail=*/true);
+    EXPECT_FALSE(error.has_value());
+
+    // Verify entry was added (getEntry should succeed)
+    EXPECT_TRUE(getEntry(ENVIRONMENT_NAME));
+}
+
+TEST_F(RouterTest, EnableEntryWithNullEnvironment)
+{
+    // Add entry with ignoreFail=true so environment is null
+    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_))
+        .WillOnce(::testing::Throw(std::runtime_error("error")));
+
+    auto entryPost = router::prod::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, PRIORITY};
+    m_router->addEntry(entryPost, /*ignoreFail=*/true);
+
+    // Enabling should fail because environment is null
+    EXPECT_FALSE(enableEntry(ENVIRONMENT_NAME));
+}
+
+TEST_F(RouterTest, RebuildEntrySuccess)
+{
+    auto entryPost = router::prod::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, PRIORITY};
+    addEntry(entryPost, /*stop=*/false);
+
+    // Rebuild: old env destroyed during rebuild + new env destroyed in TearDown
+    makeControllerNameFilterSuccess();
+    stopControllerCall(2);
+    EXPECT_TRUE(rebuildEntry(ENVIRONMENT_NAME));
+}
+
+TEST_F(RouterTest, ChangePriorityGreaterThanMax)
+{
+    EXPECT_FALSE(changePriority(ENVIRONMENT_NAME, router::prod::Entry::maxPriority() + 1));
+}
+
+TEST_F(RouterTest, HotSwapNamespaceEntryNotFound)
+{
+    // Create succeeds, but entry not found during swap
+    makeControllerNameFilterSuccess();
+    stopControllerCall(); // new env cleaned up when going out of scope
+    auto result = m_router->hotSwapNamespace("nonexistent", POLICY_NAMESPACE);
+    EXPECT_TRUE(result.has_value());
+}
+
+TEST_F(RouterTest, HotSwapNamespaceBuildFails)
+{
+    auto entryPost = router::prod::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, PRIORITY};
+    addEntry(entryPost, /*stop=*/false);
+    enableEntry(ENVIRONMENT_NAME);
+
+    // Hot swap with build failure - original env remains, destroyed in TearDown
+    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_))
+        .WillOnce(::testing::Throw(std::runtime_error("build error")));
+    stopControllerCall();
+
+    auto result = m_router->hotSwapNamespace(ENVIRONMENT_NAME, POLICY_NAMESPACE);
+    EXPECT_TRUE(result.has_value());
+}
+
+TEST_F(RouterTest, HotSwapNamespaceSuccess)
+{
+    auto entryPost = router::prod::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, PRIORITY};
+    addEntry(entryPost, /*stop=*/false);
+    enableEntry(ENVIRONMENT_NAME);
+
+    // Hot swap: old env destroyed during swap + new env destroyed in TearDown
+    makeControllerNameFilterSuccess();
+    stopControllerCall(2);
+    auto result = m_router->hotSwapNamespace(ENVIRONMENT_NAME, POLICY_NAMESPACE);
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(RouterTest, IngestMultipleRoutesEnabled)
+{
+    // Add two entries with different priorities
+    auto entryPost1 = router::prod::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, PRIORITY};
+    addEntry(entryPost1, /*stop=*/false);
+
+    auto entryPost2 = router::prod::EntryPost {ENVIRONMENT_NAME + "second", POLICY_NAMESPACE, PRIORITY + 1};
+    addEntry(entryPost2, /*stop=*/false);
+
+    enableEntry(ENVIRONMENT_NAME);
+    enableEntry(ENVIRONMENT_NAME + "second");
+
+    // Both routes should receive the event (one copy, one move)
+    EXPECT_CALL(*m_mockController, ingest(testing::_)).Times(2);
+    stopControllerCall(2);
+
+    auto event = std::make_shared<json::Json>(R"({"key": "value"})");
+    m_router->ingest(std::move(event));
+}
+
+TEST_F(RouterTest, IngestNoRoutesEnabled)
+{
+    // Add entry but don't enable it
+    auto entryPost = router::prod::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, PRIORITY};
+    addEntry(entryPost, /*stop=*/false);
+
+    // No ingest call expected since route is disabled
+    EXPECT_CALL(*m_mockController, ingest(testing::_)).Times(0);
+    stopControllerCall();
+
+    auto event = std::make_shared<json::Json>(R"({"key": "value"})");
+    m_router->ingest(std::move(event));
+}
