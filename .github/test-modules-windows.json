@@ -5,7 +5,7 @@
       "pytest_target": "test_agentd\\",
       "tiers": ["0 1"],
       "paths": [
-        ".github/workflows/5_builderpackage_agent-windows.yml",
+        ".github/workflows/5_testintegration_windows-integration-tests.yml",
         ".github/test-modules-windows.json",
         "src/client-agent/**",
         "src/config/src/buffer-config.c",
@@ -22,7 +22,7 @@
       "pytest_target": "test_enrollment\\",
       "tiers": ["0 1"],
       "paths": [
-        ".github/workflows/5_builderpackage_agent-windows.yml",
+        ".github/workflows/5_testintegration_windows-integration-tests.yml",
         ".github/test-modules-windows.json",
         "src/client-agent/**",
         "src/config/src/buffer-config.c",
@@ -41,7 +41,7 @@
       "pytest_extra_args": "-m win32",
       "tiers": ["0 1"],
       "paths": [
-        ".github/workflows/5_builderpackage_agent-windows.yml",
+        ".github/workflows/5_testintegration_windows-integration-tests.yml",
         ".github/test-modules-windows.json",
         "src/config/src/active-response.c",
         "src/config/include/active-response.h",
@@ -59,7 +59,7 @@
       "exclude": ["test_fim\\test_files\\test_basic_usage\\test_rename.py"],
       "start_service": true,
       "paths": [
-        ".github/workflows/5_builderpackage_agent-windows.yml",
+        ".github/workflows/5_testintegration_windows-integration-tests.yml",
         ".github/test-modules-windows.json",
         "src/config/src/syscheck-config.c",
         "src/config/include/syscheck-config.h",
@@ -74,7 +74,7 @@
       "pytest_target": "test_github\\",
       "tiers": ["0 1"],
       "paths": [
-        ".github/workflows/5_builderpackage_agent-windows.yml",
+        ".github/workflows/5_testintegration_windows-integration-tests.yml",
         ".github/test-modules-windows.json",
         "src/config/src/wmodules-github.c",
         "src/wazuh_modules/src/wm_github.h",
@@ -90,7 +90,7 @@
       "pytest_target": "test_logcollector\\",
       "tiers": ["0 1"],
       "paths": [
-        ".github/workflows/5_builderpackage_agent-windows.yml",
+        ".github/workflows/5_testintegration_windows-integration-tests.yml",
         ".github/test-modules-windows.json",
         "src/config/src/localfile-config.c",
         "src/config/include/localfile-config.h",
@@ -105,7 +105,7 @@
       "pytest_target": "test_office365\\",
       "tiers": ["0 1"],
       "paths": [
-        ".github/workflows/5_builderpackage_agent-windows.yml",
+        ".github/workflows/5_testintegration_windows-integration-tests.yml",
         ".github/test-modules-windows.json",
         "src/config/src/wmodules-office365.c",
         "src/wazuh_modules/src/wm_office365.h",
@@ -122,7 +122,7 @@
       "pytest_extra_args": "-m win32",
       "tiers": ["0 1"],
       "paths": [
-        ".github/workflows/5_builderpackage_agent-windows.yml",
+        ".github/workflows/5_testintegration_windows-integration-tests.yml",
         ".github/test-modules-windows.json",
         "src/config/src/wmodules-sca.c",
         "src/wazuh_modules/src/wm_sca.c",
@@ -138,7 +138,7 @@
       "pytest_target": "test_syscollector\\",
       "tiers": ["0 1"],
       "paths": [
-        ".github/workflows/5_builderpackage_agent-windows.yml",
+        ".github/workflows/5_testintegration_windows-integration-tests.yml",
         ".github/test-modules-windows.json",
         "src/config/src/wmodules-syscollector.c",
         "src/wazuh_modules/syscollector/**",

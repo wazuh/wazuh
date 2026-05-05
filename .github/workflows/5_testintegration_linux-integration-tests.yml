@@ -1,4 +1,5 @@
 name: 5.X - Linux - Integration tests (generic)
+run-name: "IT Linux: ${{ inputs.module_name }} (${{ inputs.shard_name }}) — ${{ github.ref_name }}"
 
 on:
   workflow_call:
@@ -85,7 +86,7 @@ jobs:
       BUILD_WORKFLOW: 5_builderpackage_agent-linux.yml
       PACKAGES_PATH: /tmp/packages
       AGENT_PACKAGE_REGEXP: wazuh-agent.*amd64.*\.deb
-    runs-on: wz-linux-amd64
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
