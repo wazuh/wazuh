@@ -1,4 +1,4 @@
 [
-    "threat.enrichments.indicator.ip",
-    "threat.indicator.ip"
+    "wazuh.threat.enrichments.indicator.ip",
+    "wazuh.threat.indicator.ip"
 ]

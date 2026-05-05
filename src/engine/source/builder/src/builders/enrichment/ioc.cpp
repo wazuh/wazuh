@@ -21,7 +21,7 @@ namespace builder::builders::enrichment
 namespace
 {
 
-constexpr std::string_view IOC_ENRICHMENT_TARGET_PATH {"/threat/enrichments"};
+constexpr std::string_view IOC_ENRICHMENT_TARGET_PATH {"/wazuh/threat/enrichments"};
 
 constexpr auto FMT_IOC_MATCH_TRACE = "IOC({}) -> Success: IOC match found for field '{}' with key '{}'";
 constexpr auto FMT_IOC_NOT_FOUND_TRACE = "IOC({}) -> Failure: IOC key '{}' not found for field '{}'";
