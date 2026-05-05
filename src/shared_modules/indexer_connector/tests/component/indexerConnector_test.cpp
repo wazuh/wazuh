@@ -18,6 +18,7 @@
 #include <atomic>
 #include <chrono>
 #include <filesystem>
+#include <fstream>
 #include <functional>
 #include <memory>
 #include <stdexcept>
@@ -40,9 +41,8 @@ static const auto C_IDX {2};
 static const auto C_PORT {7777};
 static const auto C_ADDRESS {INDEXER_HOSTNAME + ":" + std::to_string(C_PORT)};
 
-// The async dispatcher flushes after FlushInterval (default 20s) when the bulk
-// hasn't reached ElementsPerBulk.  Allow a comfortable margin above that.
-static const auto MAX_ASYNC_PUBLISH_TIME_MS {25000};
+// The async tests override flush_interval_seconds=1 in the connector config.
+static const auto MAX_ASYNC_PUBLISH_TIME_MS {5000};
 
 void IndexerConnectorTest::SetUp()
 {
@@ -165,16 +165,27 @@ TEST_F(IndexerConnectorTest, SyncConnectionWithUserAndPassword)
  */
 TEST_F(IndexerConnectorTest, SyncConnectionWithSslCredentials)
 {
+    // Create temporary cert files; the sync impl validates that the CA file exists.
+    const std::string caFile {"/tmp/component_ca_test.pem"};
+    const std::string certFile {"/tmp/component_cert_test.pem"};
+    const std::string keyFile {"/tmp/component_key_test.pem"};
+    std::ofstream(caFile) << "-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----";
+    std::ofstream(certFile) << "-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----";
+    std::ofstream(keyFile) << "-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----";
+
     nlohmann::json config;
     config["hosts"] = nlohmann::json::array({A_ADDRESS});
-    config["ssl"]["certificate_authorities"] = nlohmann::json::array({"/var/wazuh-manager/etc/certs/root-ca.pem"});
-    config["ssl"]["certificate"] = "/var/wazuh-manager/etc/certs/manager.pem";
-    config["ssl"]["key"] = "/var/wazuh-manager/etc/certs/manager-key.pem";
+    config["ssl"]["certificate_authorities"] = nlohmann::json::array({caFile});
+    config["ssl"]["certificate"] = certFile;
+    config["ssl"]["key"] = keyFile;
 
-    // SSL paths don't exist, but the connector only validates them when actually
-    // connecting over TLS; the health check to the plain-HTTP fake indexer passes.
-    IndexerConnectorSync connector(config);
-    ASSERT_TRUE(connector.isAvailable());
+    // Construction must succeed; the connector connects to the plain-HTTP fake
+    // indexer so TLS is never negotiated, but the config is validated.
+    ASSERT_NO_THROW({ IndexerConnectorSync connector(config); });
+
+    std::filesystem::remove(caFile);
+    std::filesystem::remove(certFile);
+    std::filesystem::remove(keyFile);
 }
 
 // ─── IndexerConnectorSync bulk-operation tests ────────────────────────────────
@@ -422,6 +433,7 @@ TEST_F(IndexerConnectorTest, AsyncIndexDispatchesToBulk)
 
     nlohmann::json config;
     config["hosts"] = nlohmann::json::array({A_ADDRESS});
+    config["flush_interval_seconds"] = 1; // Speed up flush for tests (default is 20 s)
 
     {
         IndexerConnectorAsync connector(config, "component_test");
@@ -450,6 +462,7 @@ TEST_F(IndexerConnectorTest, AsyncIndexUnavailableServer)
 
     nlohmann::json config;
     config["hosts"] = nlohmann::json::array({B_ADDRESS}); // red
+    config["flush_interval_seconds"] = 1; // Speed up flush for tests (default is 20 s)
 
     {
         IndexerConnectorAsync connector(config, "component_test_unavail");

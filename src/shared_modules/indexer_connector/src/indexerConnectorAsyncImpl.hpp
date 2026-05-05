@@ -119,6 +119,7 @@ class IndexerConnectorAsyncImpl final
     bool m_error413Logged {false};
     size_t m_successCount {0};
     size_t m_maxQueueSize {0};
+    size_t m_flushInterval {FlushInterval};
     std::unique_ptr<ThreadDispatchQueue> m_dispatcher;
 
 public:
@@ -224,6 +225,13 @@ public:
         m_maxQueueSize = config.contains("max_queue_size") && config.at("max_queue_size").is_number_unsigned()
                              ? config.at("max_queue_size").get<size_t>()
                              : 0; // 0 means unlimited
+
+        // Read flush interval from config; the template parameter acts as a fallback default.
+        // Accept both signed and unsigned JSON integers (nlohmann stores bare literals as signed).
+        m_flushInterval = config.contains("flush_interval_seconds") &&
+                                  config.at("flush_interval_seconds").is_number_integer()
+                              ? config.at("flush_interval_seconds").get<size_t>()
+                              : FlushInterval;
 
         m_loggerProcessor = std::make_unique<ThreadLoggerQueue>(
             [this](const IndexerResponse& data)
@@ -495,7 +503,7 @@ public:
             ElementsPerBulk,
             m_maxQueueSize,
             RetryDelay,
-            FlushInterval);
+            m_flushInterval);
     }
 
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data)
