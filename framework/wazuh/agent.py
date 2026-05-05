@@ -1557,7 +1557,7 @@ def get_full_overview() -> WazuhResult:
     stats_distinct_node = get_distinct_agents(fields=['node_name'], q=q).affected_items
     groups = get_agent_groups().affected_items
     stats_distinct_os = get_distinct_agents(fields=['os.name',
-                                                    'os.platform', 'os.version'], q=q).affected_items
+                                                    'os.platform', 'os.type', 'os.version'], q=q).affected_items
     stats_version = get_distinct_agents(fields=['version'], q=q).affected_items
     agent_summary_status = get_agents_summary_status()
     summary = agent_summary_status['data'] if 'data' in agent_summary_status else dict()

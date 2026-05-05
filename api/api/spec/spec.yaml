@@ -2914,6 +2914,9 @@ components:
                   platform:
                     type: string
                     format: alphanumeric_symbols
+                  type:
+                    type: string
+                    format: alphanumeric_symbols
                   version:
                     type: string
                     format: alphanumeric_symbols

@@ -263,6 +263,17 @@ jobs:
           tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
           package_path: /tmp/upgrade_test
 
+      - name: Test agent upgrade rule checks
+        uses: ./.github/actions/5_builderpackage_manager-upgrade-rules-test
+        with:
+          mode: run
+          component: agent
+          system: ${{ env.SYSTEM }}
+          tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
+          old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
+          package_mount: /tmp/upgrade_test
+          package_path: /packages/${{ env.PACKAGE_NAME }}
+
   upload-deb-to-s3:
     needs: [build-deb, test-deb]
     if: success()
@@ -547,6 +558,17 @@ jobs:
           expected_upgrade_version: ${{ env.VERSION }}
           tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
           package_path: /tmp/upgrade_test
+
+      - name: Test agent upgrade rule checks
+        uses: ./.github/actions/5_builderpackage_manager-upgrade-rules-test
+        with:
+          mode: run
+          component: agent
+          system: ${{ env.SYSTEM }}
+          tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
+          old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
+          package_mount: /tmp/upgrade_test
+          package_path: /packages/${{ env.PACKAGE_NAME }}
 
   upload-rpm-to-s3:
     needs: [build-rpm, test-rpm]
