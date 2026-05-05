@@ -297,14 +297,14 @@ wait_for_wazuh_engine_ready()
         curl --silent --fail-with-body --unix-socket ${DIR}/queue/sockets/analysis \
             -X POST -H "Content-Type: application/json" \
             -d '{}' \
-            http://localhost/_internal/router/table/get \
+            http://localhost/_internal/event-dumper/status \
             > /dev/null 2>&1
         if [ $? -eq 0 ]; then
             return 0
         fi
 
         if ! kill -0 "$ENGINE_PID" 2>/dev/null; then
-            echo "wazuh-manager-analysisd died during route check."
+            echo "wazuh-manager-analysisd died during event dumper check."
             return 1
         fi
 

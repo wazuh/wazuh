@@ -33,7 +33,7 @@ Tasks are identified by unique names and configured with an execution interval, 
               │  m_tasks (map)  ←→  m_taskQueue (sorted) │
               │                                          │
               │  ┌──────────┐ ┌──────────┐ ┌──────────┐ │
-              │  │ worker 0 │ │ worker 1 │ │ worker N │ │
+              │  │ worker 0 │ │ worker 2 │ │ worker N │ │
               │  └──────────┘ └──────────┘ └──────────┘ │
               │       ↕             ↕             ↕      │
               │         pop() → execute → reschedule     │
@@ -72,7 +72,7 @@ An internal thread-safe sorted list that orders tasks by their `nextRun` time (e
 
 ### Thread Pool
 
-The scheduler creates a fixed number of worker threads (configurable, minimum 1). Each worker runs a loop:
+The scheduler creates a fixed number of worker threads (configurable, minimum 2). Each worker runs a loop:
 
 1. `pop()` a task from the queue (blocks if empty)
 2. If `nextRun > now`, push the task back and sleep 100 ms
@@ -130,7 +130,7 @@ Extends `IScheduler` with lifecycle control:
 
 | Method | Description |
 |--------|-------------|
-| `Scheduler(int threads = 1)` | Create a stopped scheduler with the given thread count (min 1) |
+| `Scheduler(int threads = 2)` | Create a stopped scheduler with the given thread count (min 2) |
 | `start()` | Launch worker threads; idempotent |
 | `stop()` | Gracefully shut down: signal queue, join all workers, clear tasks; idempotent |
 | `isRunning()` | Check if the scheduler is active |

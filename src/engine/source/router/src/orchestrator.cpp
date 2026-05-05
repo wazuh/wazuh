@@ -443,10 +443,16 @@ void Orchestrator::expandWorkerPool()
     // to allow route mutations to proceed concurrently with the (expensive) build step.
     while (true)
     {
+        if (m_isShutdown.load(std::memory_order_acquire))
+        {
+            return;
+        }
         std::unique_lock lock {m_syncMutex};
 
-        if (m_isShutdown.load(std::memory_order_acquire) || m_routerWorkers.size() >= m_targetWorkerCount)
+        if (m_routerWorkers.size() >= m_targetWorkerCount)
+        {
             return;
+        }
 
         auto entrySnapshot = m_routerWorkers.front()->get()->getEntries();
         std::vector<EntryConverter> converters;
@@ -461,7 +467,9 @@ void Orchestrator::expandWorkerPool()
         }
 
         if (m_isShutdown.load(std::memory_order_acquire))
+        {
             return;
+        }
 
         try
         {
