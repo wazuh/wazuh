@@ -3,6 +3,7 @@
 
 #include <base/json.hpp>
 #include <schemf/ivalidator.hpp>
+#include <schemf/schema.hpp>
 
 using namespace schemf;
 using namespace testing;
