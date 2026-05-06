@@ -73,8 +73,10 @@ void* wm_azure_main(wm_azure_t *azure_config) {
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_AZURE_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);
-            w_sleep_until(next_scan_time);
+            wm_sleep_until_interruptible(next_scan_time);
+            if (wm_shutdown_requested) break;
         }
+        if (wm_shutdown_requested) break;
         mtinfo(WM_AZURE_LOGTAG, "Starting fetching of logs.");
 
         snprintf(msg, OS_SIZE_6144, "Starting Azure-logs scan.");
@@ -103,7 +105,7 @@ void* wm_azure_main(wm_azure_t *azure_config) {
 
         mtdebug1(WM_AZURE_LOGTAG, "Fetching logs finished.");
 
-    } while (FOREVER());
+    } while (FOREVER() && !wm_shutdown_requested);
 
     return NULL;
 }

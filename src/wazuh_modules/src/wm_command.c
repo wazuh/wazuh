@@ -227,8 +227,10 @@ void * wm_command_main(wm_command_t * command) {
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_COMMAND_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);
-            w_sleep_until(next_scan_time);
+            wm_sleep_until_interruptible(next_scan_time);
+            if (wm_shutdown_requested) break;
         }
+        if (wm_shutdown_requested) break;
 
         if (full_path != NULL && verify_command && !command->skip_verification) {
             mtinfo(WM_COMMAND_LOGTAG, "Verifying command checksum '%s'.", command->tag);
@@ -455,7 +457,7 @@ void * wm_command_main(wm_command_t * command) {
         }
 
         mtdebug1(WM_COMMAND_LOGTAG, "Command '%s' finished.", command->tag);
-    } while (FOREVER());
+    } while (FOREVER() && !wm_shutdown_requested);
 
     os_free(full_path);
     free(extag);
