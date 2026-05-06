@@ -802,8 +802,76 @@ bool WIndexerConnector::existsIocDataIndex()
     return existsIndex(IOC_INDEX);
 }
 
-std::unordered_map<std::string, std::string> WIndexerConnector::getIocTypeHashes()
+std::optional<std::unordered_map<std::string, std::string>>
+WIndexerConnector::getIocTypeHashes(const std::optional<std::string_view>& consumerIdToValidate)
 {
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        throw std::runtime_error("IndexerConnectorAsync is not initialized");
+    }
+
+    if (consumerIdToValidate.has_value())
+    {
+        // Use PIT with consumer validation
+        std::vector<std::string> pitIndices = {std::string(IOC_INDEX), std::string(CTI_CONSUMERS_INDEX)};
+        auto pit = m_indexerConnectorAsync->createPointInTime(pitIndices, PIT_KEEP_ALIVE, true);
+
+        auto pitGuard = std::unique_ptr<decltype(pit), std::function<void(decltype(pit)*)>>(
+            &pit,
+            [this](auto* p)
+            {
+                try
+                {
+                    m_indexerConnectorAsync->deletePointInTime(*p);
+                }
+                catch (const IndexerConnectorException& e)
+                {
+                    LOG_WARNING_L("pitGuard", "[indexer-connector] Error deleting Point In Time (PIT): {}", e.what());
+                }
+            });
+
+        // Validate consumer is idle within the PIT snapshot
+        nlohmann::json consumerQuery = {{"ids", {{"values", {*consumerIdToValidate}}}}};
+        nlohmann::json consumerSort = getSortCriteria();
+        nlohmann::json consumerSource = {{"includes", {"status"}}, {"excludes", nlohmann::json::array()}};
+
+        nlohmann::json consumerHits = m_indexerConnectorAsync->search(
+            pit, SINGLE_RESULT_SIZE, consumerQuery, consumerSort, std::nullopt, consumerSource);
+
+        size_t consumerTotalHits = getTotalHits(consumerHits);
+        if (consumerTotalHits == 0)
+        {
+            throw IndexerConnectorException("Consumer document not found in PIT: "
+                                            + std::string(*consumerIdToValidate));
+        }
+
+        const auto& consumerHitArray = consumerHits["hits"];
+        if (!consumerHitArray.is_array() || consumerHitArray.empty() || !consumerHitArray[0].contains("_source"))
+        {
+            throw IndexerConnectorException("Invalid consumer hit in PIT for: " + std::string(*consumerIdToValidate));
+        }
+
+        const auto& consumerSrc = consumerHitArray[0]["_source"];
+        if (!consumerSrc.contains("status") || !consumerSrc["status"].is_string())
+        {
+            throw IndexerConnectorException("Consumer document missing 'status' in PIT for: "
+                                            + std::string(*consumerIdToValidate));
+        }
+
+        const auto preStatus = consumerSrc["status"].get<std::string>();
+        if (preStatus != "idle")
+        {
+            LOG_DEBUG("[indexer-connector] Consumer '{}' is not idle (status: {}), returning nullopt",
+                      std::string(*consumerIdToValidate),
+                      preStatus);
+            return std::nullopt;
+        }
+
+        LOG_DEBUG("[indexer-connector] Consumer '{}' PIT check: idle", std::string(*consumerIdToValidate));
+    }
+
+    // Fall through to normal hash retrieval (either no consumer check or consumer was idle)
     std::optional<json::Json> hashesDoc = std::nullopt;
     const std::string queryBody = fmt::format(R"({{"ids": {{"values": ["{}"]}}}})", IOC_HASHES_DOC_ID);
 
@@ -831,8 +899,11 @@ std::unordered_map<std::string, std::string> WIndexerConnector::getIocTypeHashes
     return parseIocHashesDocument(*hashesDoc);
 }
 
-std::size_t
-WIndexerConnector::streamIocsByType(std::string_view iocType, std::size_t batchSize, const IocRecordCallback& onIoc)
+std::optional<std::size_t>
+WIndexerConnector::streamIocsByType(std::string_view iocType,
+                                    std::size_t batchSize,
+                                    const IocRecordCallback& onIoc,
+                                    const std::optional<std::string_view>& consumerIdToValidate)
 {
     if (iocType.empty())
     {
@@ -848,7 +919,7 @@ WIndexerConnector::streamIocsByType(std::string_view iocType, std::size_t batchS
     const auto sourceFilter = buildIocSourceFilter();
     std::size_t streamedDocs = 0;
 
-    queryByBatches(
+    auto result = queryByBatches(
         IOC_INDEX,
         queryBody,
         batchSize,
@@ -871,16 +942,24 @@ WIndexerConnector::streamIocsByType(std::string_view iocType, std::size_t batchS
             onIoc(docName, optDocument->str());
             ++streamedDocs;
         },
-        sourceFilter);
+        sourceFilter,
+        consumerIdToValidate);
+
+    if (!result.has_value())
+    {
+        return std::nullopt;
+    }
 
     return streamedDocs;
 }
 
-std::size_t WIndexerConnector::queryByBatches(std::string_view indexName,
-                                              std::string_view queryStr,
-                                              std::size_t batchSize,
-                                              const std::function<void(const json::Json&)>& onDocument,
-                                              const std::optional<std::string_view>& sourceFilter)
+std::optional<std::size_t>
+WIndexerConnector::queryByBatches(std::string_view indexName,
+                                  std::string_view queryStr,
+                                  std::size_t batchSize,
+                                  const std::function<void(const json::Json&)>& onDocument,
+                                  const std::optional<std::string_view>& sourceFilter,
+                                  const std::optional<std::string_view>& consumerIdToValidate)
 {
     std::shared_lock lock(m_mutex);
     if (!m_indexerConnectorAsync)
@@ -913,7 +992,14 @@ std::size_t WIndexerConnector::queryByBatches(std::string_view indexName,
 
     const std::size_t effectiveBatchSize = std::max<std::size_t>(1, std::min(batchSize, SAFE_STREAM_PAGE_SIZE));
 
-    auto pit = m_indexerConnectorAsync->createPointInTime({std::string(indexName)}, PIT_KEEP_ALIVE, true);
+    // Build PIT indices: include consumer index when consumer validation is requested
+    std::vector<std::string> pitIndices = {std::string(indexName)};
+    if (consumerIdToValidate.has_value())
+    {
+        pitIndices.emplace_back(std::string(CTI_CONSUMERS_INDEX));
+    }
+
+    auto pit = m_indexerConnectorAsync->createPointInTime(pitIndices, PIT_KEEP_ALIVE, true);
 
     auto pitGuard = std::unique_ptr<decltype(pit), std::function<void(decltype(pit)*)>>(
         &pit,
@@ -928,6 +1014,48 @@ std::size_t WIndexerConnector::queryByBatches(std::string_view indexName,
                 LOG_WARNING_L("pitGuard", "[indexer-connector] Error deleting Point In Time (PIT): {}", e.what());
             }
         });
+
+    // Validate consumer is idle within the PIT snapshot before streaming
+    if (consumerIdToValidate.has_value())
+    {
+        nlohmann::json consumerQuery = {{"ids", {{"values", {*consumerIdToValidate}}}}};
+        nlohmann::json consumerSort = getSortCriteria();
+        nlohmann::json consumerSource = {{"includes", {"status"}}, {"excludes", nlohmann::json::array()}};
+
+        nlohmann::json consumerHits = m_indexerConnectorAsync->search(
+            pit, SINGLE_RESULT_SIZE, consumerQuery, consumerSort, std::nullopt, consumerSource);
+
+        size_t consumerTotalHits = getTotalHits(consumerHits);
+        if (consumerTotalHits == 0)
+        {
+            throw IndexerConnectorException("Consumer document not found in PIT: "
+                                            + std::string(*consumerIdToValidate));
+        }
+
+        const auto& consumerHitArray = consumerHits["hits"];
+        if (!consumerHitArray.is_array() || consumerHitArray.empty() || !consumerHitArray[0].contains("_source"))
+        {
+            throw IndexerConnectorException("Invalid consumer hit in PIT for: " + std::string(*consumerIdToValidate));
+        }
+
+        const auto& consumerSrc = consumerHitArray[0]["_source"];
+        if (!consumerSrc.contains("status") || !consumerSrc["status"].is_string())
+        {
+            throw IndexerConnectorException("Consumer document missing 'status' in PIT for: "
+                                            + std::string(*consumerIdToValidate));
+        }
+
+        const auto preStatus = consumerSrc["status"].get<std::string>();
+        if (preStatus != "idle")
+        {
+            LOG_DEBUG("[indexer-connector] Consumer '{}' is not idle (status: {}), returning nullopt",
+                      std::string(*consumerIdToValidate),
+                      preStatus);
+            return std::nullopt;
+        }
+
+        LOG_DEBUG("[indexer-connector] Consumer '{}' PIT check: idle", std::string(*consumerIdToValidate));
+    }
 
     nlohmann::json sort = getSortCriteria();
     std::optional<nlohmann::json> searchAfter = std::nullopt;

@@ -60,11 +60,13 @@ private:
     std::size_t m_maxHitsPerRequest;
     std::atomic<bool> m_shutdownRequested {false}; ///< Flag to signal in-flight pagination loops to abort
 
-    std::size_t queryByBatches(std::string_view indexName,
-                               std::string_view query,
-                               std::size_t batchSize,
-                               const std::function<void(const json::Json&)>& onDocument,
-                               const std::optional<std::string_view>& sourceFilter = std::nullopt);
+    std::optional<std::size_t>
+    queryByBatches(std::string_view indexName,
+                   std::string_view query,
+                   std::size_t batchSize,
+                   const std::function<void(const json::Json&)>& onDocument,
+                   const std::optional<std::string_view>& sourceFilter = std::nullopt,
+                   const std::optional<std::string_view>& consumerIdToValidate = std::nullopt);
 
     bool existsIndex(std::string_view indexName);
 
@@ -131,13 +133,17 @@ public:
     /**
      * @copydoc IWIndexerConnector::getIocTypeHashes
      */
-    std::unordered_map<std::string, std::string> getIocTypeHashes() override;
+    std::optional<std::unordered_map<std::string, std::string>>
+    getIocTypeHashes(const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) override;
 
     /**
      * @copydoc IWIndexerConnector::streamIocsByType
      */
-    std::size_t
-    streamIocsByType(std::string_view iocType, std::size_t batchSize, const IocRecordCallback& onIoc) override;
+    std::optional<std::size_t>
+    streamIocsByType(std::string_view iocType,
+                     std::size_t batchSize,
+                     const IocRecordCallback& onIoc,
+                     const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) override;
 
     /**
      * @brief Retrieves normalized remote engine configuration from wazuh-indexer.

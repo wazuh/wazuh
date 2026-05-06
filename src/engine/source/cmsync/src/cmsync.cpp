@@ -504,7 +504,8 @@ void CMSync::synchronize()
             const auto hashResult = getPolicyHashAndEnabledFromRemote(nsState.getOriginSpace(), consumerIdOpt);
             if (!hashResult.has_value())
             {
-                LOG_INFO("[CMSync] Synchronization skipped for space '{}' because consumer '{}' is not idle",
+                LOG_INFO("[CMSync] Synchronization skipped for space '{}' because wazuh-indexer is updating the policy "
+                         "or consumer is not idle (consumer ID: '{}')",
                          nsState.getOriginSpace(),
                          nsState.getConsumerId().value_or("unknown"));
                 continue;

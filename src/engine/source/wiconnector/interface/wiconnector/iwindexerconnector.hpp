@@ -24,6 +24,9 @@ namespace wiconnector
 /// @brief Consumer document ID for the standard ruleset in `.wazuh-cti-consumers`
 constexpr std::string_view STANDARD_RULESET_CONSUMER_ID = "beta-2-ruleset-5_public-ruleset-5";
 
+/// @brief Consumer document ID for the IOC enrichment data in `.wazuh-cti-consumers`
+constexpr std::string_view IOC_ENRICHMENT_CONSUMER_ID = "t1-iocs-5_public-iocs-5";
+
 /**
  * @brief Structure to hold policy resources retrieved from the indexer.
  *
@@ -118,10 +121,14 @@ public:
      * Reads `__ioc_type_hashes__` from `wazuh-threatintel-enrichments` and returns all available
      * `hash.sha256` values for the supported IOC types.
      *
-     * @return Map(type -> sha256 hash)
+     * @param consumerIdToValidate Optional consumer document ID in `.wazuh-cti-consumers` to validate.
+     *        When provided, a PIT will include `.wazuh-cti-consumers` and the consumer document
+     *        will be verified as `idle` within the PIT snapshot to ensure consistency.
+     * @return An optional map(type -> sha256 hash). Returns std::nullopt if the consumer is provided and is not idle.
      * @throws IndexerConnectorException if the manifest is missing or invalid
      */
-    virtual std::unordered_map<std::string, std::string> getIocTypeHashes() = 0;
+    virtual std::optional<std::unordered_map<std::string, std::string>>
+    getIocTypeHashes(const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) = 0;
 
     /**
      * @brief Streams IOC documents for a specific IOC type.
@@ -133,11 +140,18 @@ public:
      * @param iocType IOC type (e.g. connection, url_domain, url_full, hash_md5, hash_sha1, hash_sha256)
      * @param batchSize Number of documents requested per page
      * @param onIoc Callback invoked for each valid IOC record
-     * @return Number of IOC documents delivered to the callback
+     * @param consumerIdToValidate Optional consumer document ID in `.wazuh-cti-consumers` to validate.
+     *        When provided, the PIT will include `.wazuh-cti-consumers` and the consumer document
+     *        will be verified as `idle` within the PIT snapshot to ensure consistency.
+     * @return An optional number of IOC documents delivered to the callback.
+     *         Returns std::nullopt if the consumer is provided and is not idle.
      * @throws IndexerConnectorException if there is an indexer/query error
      */
-    virtual std::size_t
-    streamIocsByType(std::string_view iocType, std::size_t batchSize, const IocRecordCallback& onIoc) = 0;
+    virtual std::optional<std::size_t>
+    streamIocsByType(std::string_view iocType,
+                     std::size_t batchSize,
+                     const IocRecordCallback& onIoc,
+                     const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) = 0;
 
     /**
      * @brief Retrieves remote engine runtime configuration from wazuh-indexer.

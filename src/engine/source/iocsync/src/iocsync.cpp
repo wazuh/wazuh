@@ -165,19 +165,20 @@ bool IocSync::existIocDataInRemote()
                                          m_shutdownRequested);
 }
 
-std::unordered_map<std::string, std::string> IocSync::getRemoteHashesFromRemote()
+std::optional<std::unordered_map<std::string, std::string>> IocSync::getRemoteHashesFromRemote()
 {
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "Indexer Connector");
 
-    return base::utils::executeWithRetry([&indexerPtr]() { return indexerPtr->getIocTypeHashes(); },
-                                         fmt::format("{}", COMPONENT_NAME),
-                                         "Get IOC type hashes from wazuh-indexer",
-                                         m_attempts,
-                                         m_waitSeconds,
-                                         m_shutdownRequested);
+    return base::utils::executeWithRetry(
+        [&indexerPtr]() { return indexerPtr->getIocTypeHashes(wiconnector::IOC_ENRICHMENT_CONSUMER_ID); },
+        fmt::format("{}", COMPONENT_NAME),
+        "Get IOC type hashes from wazuh-indexer",
+        m_attempts,
+        m_waitSeconds,
+        m_shutdownRequested);
 }
 
-void IocSync::downloadAndPopulateDB(std::string_view iocType, const std::string& dbName)
+bool IocSync::downloadAndPopulateDB(std::string_view iocType, const std::string& dbName)
 {
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
     auto kvdbiocPtr = base::utils::lockWeakPtr(m_kvdbiocManagerPtr, "KVDBIOCManager");
@@ -187,10 +188,9 @@ void IocSync::downloadAndPopulateDB(std::string_view iocType, const std::string&
 
     try
     {
-        std::size_t processedDocs = 0;
         std::size_t stored = 0;
 
-        processedDocs = indexerPtr->streamIocsByType(
+        auto processedDocsOpt = indexerPtr->streamIocsByType(
             iocType,
             m_iocSyncBatchSize,
             [&stored, &kvdbiocPtr, &dbName](const std::string& key, const std::string& value)
@@ -200,9 +200,28 @@ void IocSync::downloadAndPopulateDB(std::string_view iocType, const std::string&
                 json::Json valueJson {value.c_str()};
                 ioc::kvdb::details::updateValueInDB(kvdbiocPtr, dbName, normalizedKey, valueJson);
                 stored++;
-            });
+            },
+            wiconnector::IOC_ENRICHMENT_CONSUMER_ID);
 
-        LOG_DEBUG("[IOC::Sync] Downloaded {} IOCs of type '{}' (processed {} docs)", stored, iocType, processedDocs);
+        // Consumer is not idle — rollback and signal caller
+        if (!processedDocsOpt.has_value())
+        {
+            LOG_DEBUG(
+                "[IOC::Sync] Consumer is not idle for IOC type '{}', rolling back database '{}'", iocType, dbName);
+            try
+            {
+                kvdbiocPtr->remove(dbName);
+            }
+            catch (const std::exception& ex)
+            {
+                LOG_WARNING(
+                    "[IOC::Sync] Failed to rollback database '{}' after consumer not idle: {}", dbName, ex.what());
+            }
+            return false;
+        }
+
+        LOG_DEBUG(
+            "[IOC::Sync] Downloaded {} IOCs of type '{}' (processed {} docs)", stored, iocType, *processedDocsOpt);
 
         if (stored == 0)
         {
@@ -224,6 +243,8 @@ void IocSync::downloadAndPopulateDB(std::string_view iocType, const std::string&
         }
         throw std::runtime_error(fmt::format("Failed to download IOCs to database '{}': {}", dbName, e.what()));
     }
+
+    return true;
 }
 
 void IocSync::addIOCTypeToSync(std::string_view iocType)
@@ -366,7 +387,11 @@ bool IocSync::syncIOCType(SyncedIOCDatabase& dbState,
 
         try
         {
-            downloadAndPopulateDB(dbState.getIocType(), tempDBName);
+            if (!downloadAndPopulateDB(dbState.getIocType(), tempDBName))
+            {
+                LOG_DEBUG("[IOC::Sync] IOC consumer is not idle for type '{}', skipping", dbState.getIocType());
+                return false;
+            }
         }
         catch (const std::exception& e)
         {
@@ -452,8 +477,15 @@ void IocSync::synchronize()
             return;
         }
 
-        // Get remote hashes
-        const auto remoteTypeHashes = getRemoteHashesFromRemote();
+        // Get remote hashes (returns nullopt if IOC consumer is not idle)
+        const auto remoteTypeHashesOpt = getRemoteHashesFromRemote();
+        if (!remoteTypeHashesOpt.has_value())
+        {
+            LOG_INFO(
+                "[IOC::Sync] IOC syncronization skipped because the IOC consumer is not idle (data is being updated in the indexer)");
+            return;
+        }
+        const auto& remoteTypeHashes = *remoteTypeHashesOpt;
 
         // Synchronize each IOC type
         bool stateChanged = false;
