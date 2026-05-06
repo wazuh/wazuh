@@ -521,18 +521,19 @@ void Syscollector::setAgentdQueryFunction(AgentdQueryFunc queryFunc)
 void Syscollector::start()
 {
     // Don't start if initialization failed
-    if (!m_initialized)
-    {
-        if (m_logFunction)
-        {
-            m_logFunction(LOG_ERROR, "Cannot start Syscollector - module initialization failed");
-        }
-
-        return;
-    }
-
     {
         std::scoped_lock<std::mutex> lock{m_scan_mutex};
+
+        if (!m_initialized)
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_ERROR, "Cannot start Syscollector - module initialization failed");
+            }
+
+            return;
+        }
+
         m_stopping = false;
     }
 

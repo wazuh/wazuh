@@ -260,8 +260,10 @@ void *dispatch_buffer(__attribute__((unused)) void * arg) {
         if (msg_to_dispatch.data != NULL) {
             send_msg(msg_to_dispatch.data, msg_to_dispatch.size);
             os_free(msg_to_dispatch.data);
+            w_mutex_lock(&mutex_lock);
             buffer[original_j_for_nulling].data = NULL;
             buffer[original_j_for_nulling].size = 0;
+            w_mutex_unlock(&mutex_lock);
         }
 
         gettime(&ts1);
