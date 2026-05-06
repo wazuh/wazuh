@@ -486,6 +486,11 @@ void fim_initialize() {
             synced_docs_ptr = &synced_docs_registry_values;
         }
 
+        if (synced_docs_ptr == NULL) {
+            mwarn("fim_initialize: unknown table name '%s', skipping limit check.", table_name);
+            continue;
+        }
+
         *synced_docs_ptr = fim_db_count_synced_docs(table_name);
         if (*synced_docs_ptr != 0) { // No need to check if no scans have been run
             if (limit == 0) { // If moving from limited agent to unlimited, promote everything
