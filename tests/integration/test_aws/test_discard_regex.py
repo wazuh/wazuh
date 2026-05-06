@@ -9,7 +9,6 @@ This module contains all the cases for the discard_regex test suite.
 import pytest
 
 # qa-integration-framework imports
-from wazuh_testing import session_parameters
 from wazuh_testing.constants.paths.aws import S3_CLOUDTRAIL_DB_PATH, AWS_SERVICES_DB_PATH
 from wazuh_testing.modules.aws.utils import path_exist
 
@@ -18,7 +17,9 @@ from . import event_monitor
 from .configurator import configurator
 from .utils import ERROR_MESSAGE, TIMEOUT, local_internal_options
 
-pytestmark = [pytest.mark.server]
+pytestmark = [pytest.mark.agent, pytest.mark.linux]
+
+daemons_handler_configuration = {'all_daemons': True}
 
 # Set module name
 configurator.module = "discard_regex_test_module"
@@ -34,9 +35,8 @@ configurator.configure_test(configuration_file='configuration_bucket_discard_reg
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_bucket_discard_regex(
-        test_configuration, metadata, create_test_bucket, manage_bucket_files,
-        load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
-        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring,
+        test_configuration, metadata, create_test_bucket, manage_bucket_files, set_wazuh_configuration, clean_s3_cloudtrail_db,
+        configure_local_internal_options_function, truncate_monitored_files, daemons_handler, file_monitoring,
 ):
     """
     description: Check that some bucket logs are excluded when the regex and field defined in <discard_regex>
@@ -70,9 +70,6 @@ def test_bucket_discard_regex(
         - manage_bucket_files:
             type: fixture
             brief: S3 buckets manager.
-        - load_wazuh_basic_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -127,7 +124,7 @@ def test_bucket_discard_regex(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_start
     )
 
@@ -135,20 +132,20 @@ def test_bucket_discard_regex(
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     log_monitor.start(
-        timeout=TIMEOUT[20],
+        timeout=TIMEOUT[60],
         callback=event_monitor.callback_detect_event_processed,
         accumulations=expected_results
     )
 
     log_monitor.start(
-        timeout=TIMEOUT[20],
+        timeout=TIMEOUT[60],
         callback=event_monitor.callback_detect_event_skipped(pattern),
         accumulations=skipped_logs
     )
@@ -169,9 +166,8 @@ configurator.configure_test(configuration_file='configuration_cloudwatch_discard
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_cloudwatch_discard_regex_json(
-        test_configuration, metadata, create_test_log_group, create_test_log_stream, manage_log_group_events,
-        load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
-        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring,
+        test_configuration, metadata, create_test_log_group, create_test_log_stream, manage_log_group_events, set_wazuh_configuration, clean_aws_services_db,
+        configure_local_internal_options_function, truncate_monitored_files, daemons_handler, file_monitoring,
 ):
     """
     description: Check that some CloudWatch JSON logs are excluded when the regex and field defined in <discard_regex>
@@ -208,9 +204,6 @@ def test_cloudwatch_discard_regex_json(
         - manage_log_group_events:
             type: fixture
             brief: Manage events for the created log stream and log group.
-        - load_wazuh_basic_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -261,7 +254,7 @@ def test_cloudwatch_discard_regex_json(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_start
     )
 
@@ -269,14 +262,14 @@ def test_cloudwatch_discard_regex_json(
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     log_monitor.start(
-        timeout=TIMEOUT[20],
+        timeout=TIMEOUT[60],
         callback=event_monitor.callback_detect_event_skipped(pattern),
         accumulations=skipped_logs
     )
@@ -297,9 +290,8 @@ configurator.configure_test(configuration_file='configuration_cloudwatch_discard
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_cloudwatch_discard_regex_simple_text(
-        test_configuration, metadata, create_test_log_group, create_test_log_stream, manage_log_group_events,
-        load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
-        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring,
+        test_configuration, metadata, create_test_log_group, create_test_log_stream, manage_log_group_events, set_wazuh_configuration, clean_aws_services_db,
+        configure_local_internal_options_function, truncate_monitored_files, daemons_handler, file_monitoring,
 ):
     """
     description: Check that some CloudWatch simple text logs are excluded when the regex defined in <discard_regex>
@@ -338,9 +330,6 @@ def test_cloudwatch_discard_regex_simple_text(
         - manage_log_group_events:
             type: fixture
             brief: Manage events for the created log stream and log group.
-        - load_wazuh_basic_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -389,7 +378,7 @@ def test_cloudwatch_discard_regex_simple_text(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_start
     )
 
@@ -397,14 +386,14 @@ def test_cloudwatch_discard_regex_simple_text(
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     log_monitor.start(
-        timeout=TIMEOUT[20],
+        timeout=TIMEOUT[60],
         callback=event_monitor.callback_detect_event_skipped(pattern),
         accumulations=skipped_logs
     )
@@ -425,9 +414,9 @@ configurator.configure_test(configuration_file='configuration_inspector_discard_
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_inspector_discard_regex(
-        test_configuration, metadata, load_wazuh_basic_configuration,
+        test_configuration, metadata,
         set_wazuh_configuration, clean_aws_services_db, configure_local_internal_options_function,
-        truncate_monitored_files, restart_wazuh_function, file_monitoring,
+        truncate_monitored_files, daemons_handler, file_monitoring,
 ):
     """
     description: Check that some Inspector logs are excluded when the regex and field defined in <discard_regex>
@@ -455,9 +444,6 @@ def test_inspector_discard_regex(
         - metadata:
             type: dict
             brief: Get metadata from the module.
-        - load_wazuh_basic_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -506,7 +492,7 @@ def test_inspector_discard_regex(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_start
     )
 
@@ -514,14 +500,14 @@ def test_inspector_discard_regex(
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     log_monitor.start(
-        timeout=TIMEOUT[20],
+        timeout=TIMEOUT[60],
         callback=event_monitor.callback_detect_event_skipped(pattern),
         accumulations=skipped_logs
     )

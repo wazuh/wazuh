@@ -9,7 +9,6 @@ This module will contains all cases for the log groups test suite
 import pytest
 
 # qa-integration-framework imports
-from wazuh_testing import session_parameters
 from wazuh_testing.utils.db_queries.aws_db import get_multiple_service_db_row, table_exists
 from wazuh_testing.modules.aws.utils import path_exist
 from wazuh_testing.constants.paths.aws import AWS_SERVICES_DB_PATH
@@ -21,7 +20,9 @@ from .configurator import configurator
 from .utils import ERROR_MESSAGE, TIMEOUT, local_internal_options
 
 
-pytestmark = [pytest.mark.server]
+pytestmark = [pytest.mark.agent, pytest.mark.linux]
+
+daemons_handler_configuration = {'all_daemons': True}
 
 # Set test configurator for the module
 configurator.module = 'log_groups_test_module'
@@ -37,9 +38,8 @@ configurator.configure_test(configuration_file='configuration_log_groups.yaml',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_log_groups(
-        test_configuration, metadata, create_test_log_group, create_test_log_stream, manage_log_group_events,
-        load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
-        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring,
+        test_configuration, metadata, create_test_log_group, create_test_log_stream, manage_log_group_events, set_wazuh_configuration, clean_aws_services_db,
+        configure_local_internal_options_function, truncate_monitored_files, daemons_handler, file_monitoring,
 ):
     """
     description: Only the events for the specified log_group are processed.
@@ -81,9 +81,6 @@ def test_log_groups(
         - create_log_stream:
             type: fixture
             brief: Create a log stream with events for the day of execution.
-        - load_wazuh_basic_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -125,7 +122,7 @@ def test_log_groups(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_start
     )
 
@@ -133,19 +130,19 @@ def test_log_groups(
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
     if expected_results:
         log_monitor.start(
-            timeout=TIMEOUT[20],
+            timeout=TIMEOUT[60],
             callback=event_monitor.callback_detect_service_event_processed(expected_results, service_type),
             accumulations=len(log_group_names.split(','))
         )
     else:
         log_monitor.start(
-            timeout=TIMEOUT[10],
+            timeout=TIMEOUT[40],
             callback=event_monitor.make_aws_callback(pattern=fr"{NON_EXISTENT_SPECIFIED_LOG_GROUPS}")
         )
 
@@ -162,7 +159,7 @@ def test_log_groups(
 
     # Detect any ERROR message
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_all_aws_err
     )
 

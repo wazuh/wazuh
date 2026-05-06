@@ -8,14 +8,15 @@ This module will contain all cases for the basic test suite
 import pytest
 
 # qa-integration-framework imports
-from wazuh_testing import session_parameters
 
 # Local module imports
 from . import event_monitor
-from .utils import ERROR_MESSAGE, local_internal_options
+from .utils import ERROR_MESSAGE, TIMEOUT, local_internal_options
 from .configurator import configurator
 
-pytestmark = [pytest.mark.server]
+pytestmark = [pytest.mark.agent, pytest.mark.linux]
+
+daemons_handler_configuration = {'all_daemons': True}
 
 # Set module name
 configurator.module = "basic_test_module"
@@ -31,9 +32,9 @@ configurator.configure_test(configuration_file='bucket_configuration_defaults.ya
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_bucket_defaults(
-        test_configuration, metadata, create_test_bucket, load_wazuh_basic_configuration, set_wazuh_configuration,
+        test_configuration, metadata, create_test_bucket, set_wazuh_configuration,
         clean_s3_cloudtrail_db, configure_local_internal_options_function, truncate_monitored_files,
-        restart_wazuh_function, file_monitoring
+        daemons_handler, file_monitoring
 ):
     """
     description: The module is invoked with the expected parameters and no error occurs.
@@ -61,9 +62,6 @@ def test_bucket_defaults(
         - create_test_bucket:
             type: fixture
             brief: Create temporal bucket.
-        - load_wazuh_basic_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -98,7 +96,7 @@ def test_bucket_defaults(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_start
     )
 
@@ -106,7 +104,7 @@ def test_bucket_defaults(
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
@@ -114,7 +112,7 @@ def test_bucket_defaults(
 
     # Detect any ERROR message
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_all_aws_err
     )
 
@@ -132,9 +130,9 @@ configurator.configure_test(configuration_file='cloudwatch_configuration_default
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_service_defaults(
-        test_configuration, metadata, create_test_log_group, load_wazuh_basic_configuration,
+        test_configuration, metadata, create_test_log_group,
         set_wazuh_configuration, clean_aws_services_db, configure_local_internal_options_function,
-        truncate_monitored_files, restart_wazuh_function, file_monitoring
+        truncate_monitored_files, daemons_handler, file_monitoring
 ):
     """
     description: The module is invoked with the expected parameters and no error occurs.
@@ -162,9 +160,6 @@ def test_service_defaults(
         - create_test_log_group:
             type: fixture
             brief: Create a log group.
-        - load_wazuh_basic_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -202,7 +197,7 @@ def test_service_defaults(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_start
     )
 
@@ -210,7 +205,7 @@ def test_service_defaults(
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
@@ -218,7 +213,7 @@ def test_service_defaults(
 
     # Detect any ERROR message
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_all_aws_err
     )
 
@@ -236,9 +231,9 @@ configurator.configure_test(configuration_file='inspector_configuration_defaults
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_inspector_defaults(
-        test_configuration, metadata, create_test_log_group, load_wazuh_basic_configuration,
+        test_configuration, metadata, create_test_log_group,
         set_wazuh_configuration, clean_aws_services_db, configure_local_internal_options_function,
-        truncate_monitored_files, restart_wazuh_function, file_monitoring
+        truncate_monitored_files, daemons_handler, file_monitoring
 ):
     """
     description: The module is invoked with the expected parameters and no error occurs.
@@ -266,9 +261,6 @@ def test_inspector_defaults(
         - create_test_log_group:
             type: fixture
             brief: Create a log group.
-        - load_wazuh_basic_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -304,7 +296,7 @@ def test_inspector_defaults(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_start
     )
 
@@ -312,7 +304,7 @@ def test_inspector_defaults(
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
@@ -320,7 +312,7 @@ def test_inspector_defaults(
 
     # Detect any ERROR message
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_all_aws_err
     )
 

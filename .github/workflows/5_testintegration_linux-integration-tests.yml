@@ -33,6 +33,10 @@ on:
         required: false
         type: string
         default: ''
+      setup_aws_credentials:
+        required: false
+        type: boolean
+        default: false
       timeout_minutes:
         required: false
         type: number
@@ -70,6 +74,10 @@ on:
         description: 'Shell command to run before tests (e.g. install auditd)'
         required: false
         default: ''
+      setup_aws_credentials:
+        description: 'Configure AWS credentials from IT_AWS_KEY_ID / IT_AWS_SECRET_ACCESS_KEY secrets'
+        required: false
+        default: 'false'
 
 # Note: Github will force this by default in June 2026, but we set it explicitly to avoid any issues with JavaScript actions in the meantime.
 env:
@@ -156,6 +164,19 @@ jobs:
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
+
+      - name: Configure AWS credentials
+        if: inputs.setup_aws_credentials == true || inputs.setup_aws_credentials == 'true'
+        env:
+          AWS_KEY_ID: ${{ secrets.IT_AWS_KEY_ID }}
+          AWS_SECRET: ${{ secrets.IT_AWS_SECRET_ACCESS_KEY }}
+        run: |
+          sudo aws configure set aws_access_key_id "${AWS_KEY_ID}" --profile default
+          sudo aws configure set aws_secret_access_key "${AWS_SECRET}" --profile default
+          sudo aws configure set default.region us-east-1 --profile default
+          sudo aws configure set aws_access_key_id "${AWS_KEY_ID}" --profile inspector_tests
+          sudo aws configure set aws_secret_access_key "${AWS_SECRET}" --profile inspector_tests
+          sudo aws configure set region us-east-2 --profile inspector_tests
 
       - name: Run pre-install steps
         if: inputs.pre_install != ''
