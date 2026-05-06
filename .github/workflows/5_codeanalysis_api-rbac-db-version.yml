@@ -14,28 +14,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  guard:
+  version-check:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Check version skip
-        id: check_version
+        id: check_skip
         run: |
           VERSION=$(jq -r '.version' VERSION.json)
-          if [[ $VERSION =~ \.0\.0$ ]]; then
-            echo "skip=true" >> $GITHUB_OUTPUT
-          else
-            echo "skip=false" >> $GITHUB_OUTPUT
-          fi
+          [[ "$VERSION" =~ \.0\.0$ ]] && SKIP="true" || SKIP="false"
+          echo "skip=$SKIP" >> $GITHUB_OUTPUT
 
-      - name: Get changes
-        if: steps.check_version.outputs.skip != 'true'
-        uses: dorny/paths-filter@v3
+      - name: Detect file changes
+        if: steps.check_skip.outputs.skip != 'true'
+        uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -44,20 +41,18 @@ jobs:
             orm_handler:
               - 'framework/wazuh/rbac/orm.py'
 
-      - name: Require API RBAC DB version bump when defaults changed
-        if: steps.check_version.outputs.skip != 'true' && steps.filter.outputs.rbac_defaults == 'true'
+      - name: Validate RBAC DB version bump
+        if: steps.check_skip.outputs.skip != 'true' && steps.filter.outputs.rbac_defaults == 'true'
         run: |
-          echo "RBAC default files and ORM handler changed. Checking DB version bump..."
+          set -euo pipefail
+
           if [ "${{ steps.filter.outputs.orm_handler }}" != "true" ]; then
-            echo "Error: RBAC default files were modified but orm.py was not changed."
+            echo "::error::RBAC default files were modified but orm.py was not changed."
             exit 1
           fi
-          git fetch origin ${{ github.base_ref }}
-          DB_VERSION_CHANGED=$(git diff "origin/${{ github.base_ref }}" HEAD -- framework/wazuh/rbac/orm.py | grep -U0 'CURRENT_ORM_VERSION' | wc -l)
-          if [ "$DB_VERSION_CHANGED" -eq "0" ]; then
-            echo "Error: CURRENT_ORM_VERSION was not bumped in orm.py."
+
+          if ! git diff "origin/${{ github.base_ref }}" HEAD -- framework/wazuh/rbac/orm.py | grep -q 'CURRENT_ORM_VERSION'; then
+            echo "::error::CURRENT_ORM_VERSION was not bumped in orm.py."
             exit 1
-          else
-            echo "CURRENT_ORM_VERSION version bump detected."
           fi
-  
+

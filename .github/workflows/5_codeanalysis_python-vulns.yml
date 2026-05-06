@@ -3,6 +3,9 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 0 * * *'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 jobs:
   pick-branches:
     name: Get branches to analyze
@@ -10,7 +13,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -41,14 +44,13 @@ jobs:
       actions: read
     steps:
       - name: Checkout the repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ matrix.ref }}
           fetch-depth: 0
 
       - name: Download and decompress prebuilt embedded Python
-        run:
-          make -C src external/cpython.tar.gz && tar -xzf src/external/cpython.tar.gz -C src/external --one-top-level
+        run: make -C src external/cpython.tar.gz && tar -xzf src/external/cpython.tar.gz -C src/external --one-top-level
 
       - name: Scan prebuilt embedded Python
         uses: anchore/scan-action@v6
