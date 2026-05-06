@@ -68,21 +68,33 @@ static int mq_send_binary_stub(int, const void* msg, size_t, const char*, char)
 
 int main()
 {
-
-    LoggerFunc testLogger =
-        [](modules_log_level_t /*level*/, const std::string & msg)
+    try
     {
-        std::cout << "[Test sync_protocol]: " << msg << std::endl;
-    };
+        LoggerFunc testLogger =
+            [](modules_log_level_t /*level*/, const std::string & msg)
+        {
+            std::cout << "[Test sync_protocol]: " << msg << std::endl;
+        };
 
-    MQ_Functions mq{&mq_start_stub, &mq_send_binary_stub};
-    AgentSyncProtocol proto{"sync_protocol", ":memory:", mq, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(timeout), retries, maxEps, nullptr};
-    g_proto = &proto;
+        MQ_Functions mq{&mq_start_stub, &mq_send_binary_stub};
+        AgentSyncProtocol proto{"sync_protocol", ":memory:", mq, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(timeout), retries, maxEps, nullptr};
+        g_proto = &proto;
 
-    proto.persistDifference("id1", Operation::CREATE, "idx1", "{\"k\":\"v1\"}", 1);
-    proto.persistDifference("id2", Operation::MODIFY, "idx2", "{\"k\":\"v2\"}", 2);
+        proto.persistDifference("id1", Operation::CREATE, "idx1", "{\"k\":\"v1\"}", 1);
+        proto.persistDifference("id2", Operation::MODIFY, "idx2", "{\"k\":\"v2\"}", 2);
 
-    bool ok = proto.synchronizeModule(Mode::FULL);
-    std::cout << (ok ? "OK" : "FAIL") << std::endl;
-    return ok ? 0 : 1;
+        bool ok = proto.synchronizeModule(Mode::FULL);
+        std::cout << (ok ? "OK" : "FAIL") << std::endl;
+        return ok ? 0 : 1;
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "[Test sync_protocol] Unhandled exception: " << e.what() << std::endl;
+        return 1;
+    }
+    catch (...)
+    {
+        std::cerr << "[Test sync_protocol] Unknown unhandled exception" << std::endl;
+        return 1;
+    }
 }
