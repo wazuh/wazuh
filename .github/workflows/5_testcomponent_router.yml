@@ -30,7 +30,7 @@ jobs:
     name: Run tests (${{ matrix.test_type }})
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
 
