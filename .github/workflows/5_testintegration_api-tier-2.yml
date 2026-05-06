@@ -4,9 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       base_branch:
-        description: 'Base branch'
+        description: "Base branch"
         required: true
-        default: 'main'
+        default: "main"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -17,61 +21,28 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      - name: "Install a compatible CMake"
+      - name: Install a compatible CMake
         uses: ./.github/actions/reinstall_cmake
-      # Build wazuh manager for linux.
-      - name: Build wazuh manager for linux
-        run: |
-          make deps -C src TARGET=manager -j2
-          make -C src TARGET=manager -j2
-      # Install wazuh manager for linux.
+      - name: Build wazuh manager
+        uses: ./.github/actions/build_wazuh
+        with:
+          target: manager
       - name: Install wazuh manager for linux
-        run: |
-          echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_INSTALL_TYPE="manager"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo "USER_DIR=$INSTALLATION_DIR" >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_AUTHD="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_AUTO_START="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          sudo sh install.sh
-          rm ./etc/preloaded-vars.conf
+        uses: ./.github/actions/install_wazuh_manager
+        with:
+          install_dir: ${{ env.INSTALLATION_DIR }}
 
-          # Generate dummy SSL certificates for indexer module
-          sudo mkdir -p $INSTALLATION_DIR/etc/certs
-          sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
-            -keyout $INSTALLATION_DIR/etc/certs/root-ca.pem -out $INSTALLATION_DIR/etc/certs/root-ca.pem \
-            -days 1 -subj "/CN=test" 2>/dev/null
-          sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
-            -keyout $INSTALLATION_DIR/etc/certs/manager-key.pem -out $INSTALLATION_DIR/etc/certs/manager.pem \
-            -days 1 -subj "/CN=test" 2>/dev/null
-
-      # Download and install integration tests framework.
-      - name: Download and install integration tests framework
-        run: |
-          VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
-          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
-              QA_BRANCH=${BRANCH_NAME}
-          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
-              QA_BRANCH=${BRANCH_BASE}
-          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${VERSION}`" != "X" ]; then
-              QA_BRANCH=${VERSION}
-          else
-              QA_BRANCH="main"
-          fi
-          git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
-          sudo pip install qa-integration-framework/
-          sudo rm -rf qa-integration-framework/
-      # Run integration tests.
+      - name: Install QA integration framework
+        uses: ./.github/actions/install_qa_framework
+        with:
+          branch_name: ${{ env.BRANCH_NAME }}
+          branch_base: ${{ env.BRANCH_BASE }}
       - name: Run API tests
         run: |
           mkdir -p /tmp/wazuh-logs
@@ -79,24 +50,21 @@ jobs:
           sudo tail -F $INSTALLATION_DIR/logs/wazuh-manager.log >> /tmp/wazuh-logs/wazuh-manager.log 2>/dev/null &
           sudo tail -F $INSTALLATION_DIR/logs/cluster.log >> /tmp/wazuh-logs/cluster.log 2>/dev/null &
           cd tests/integration
-          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" python3 -m pytest --tier 2 test_api/ --html=results.html --self-contained-html
-      # Collect logs if tests fail
+          sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${{ env.BRANCH_NAME }}" python3 -m pytest --tier 2 test_api/ --html=results.html --self-contained-html
       - name: Collect logs on failure
         if: failure()
         run: |
           sudo journalctl -u wazuh-manager > /tmp/wazuh-logs/wazuh-manager.service.log || true
           sudo chown -R $(whoami):$(whoami) /tmp/wazuh-logs || true
-      # Upload logs artifact if test fails
       - name: Upload logs artifact
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wazuh-logs-${{ github.job }}
           path: /tmp/wazuh-logs
-      # Upload the tests result html as an artifact
       - name: Upload failed test results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: api-tier-2-test-results-${{ github.run_id }}
           path: ./tests/integration/results.html
