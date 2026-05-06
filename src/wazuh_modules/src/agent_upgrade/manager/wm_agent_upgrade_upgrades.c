@@ -30,6 +30,9 @@ STATIC w_linked_queue_t *upgrade_queue;
 /* Running threads semaphore */
 sem_t upgrade_semaphore;
 
+/* Unique address used as a non-NULL sentinel to signal shutdown via the upgrade queue */
+static int upgrade_shutdown_sentinel;
+
 /* Definition of upgrade arguments structure */
 typedef struct _wm_upgrade_args {
     wm_manager_configs *config;
@@ -126,8 +129,9 @@ STATIC int wm_agent_upgrade_send_sha1(int agent_id, int wpk_message_format, cons
  * */
 STATIC int wm_agent_upgrade_send_upgrade(int agent_id, int wpk_message_format, const char *wpk_file, const char *installer) __attribute__((nonnull));
 
-void wm_agent_upgrade_init_upgrade_queue() {
+void wm_agent_upgrade_init_upgrade_queue(int max_threads) {
     upgrade_queue = linked_queue_init();
+    sem_init(&upgrade_semaphore, 0, (unsigned int)max_threads);
 }
 
 void wm_agent_upgrade_destroy_upgrade_queue() {
@@ -155,13 +159,23 @@ void* wm_agent_upgrade_dispatch_upgrades(void *arg) {
     wm_manager_configs *config = (wm_manager_configs *)arg;
     wm_upgrade_args *upgrade_config = NULL;
 
-    sem_init(&upgrade_semaphore, 0, config->max_threads);
-
-    while (1) {
+    while (!wm_shutdown_requested) {
         // Blocks until an available thread is ready
         sem_wait(&upgrade_semaphore);
 
-        wm_agent_task *agent_task = linked_queue_pop_ex(upgrade_queue);
+        if (wm_shutdown_requested) {
+            sem_post(&upgrade_semaphore);
+            break;
+        }
+
+        void *raw_task = linked_queue_pop_ex(upgrade_queue);
+
+        if (raw_task == (void *)&upgrade_shutdown_sentinel) {
+            sem_post(&upgrade_semaphore);
+            break;
+        }
+
+        wm_agent_task *agent_task = (wm_agent_task *)raw_task;
 
         os_calloc(1, sizeof(wm_upgrade_args), upgrade_config);
         upgrade_config->config = config;
@@ -178,6 +192,12 @@ void* wm_agent_upgrade_dispatch_upgrades(void *arg) {
     sem_destroy(&upgrade_semaphore);
 
     return NULL;
+}
+
+void wm_agent_upgrade_stop_dispatch() {
+    if (!upgrade_queue) return;
+    sem_post(&upgrade_semaphore);
+    linked_queue_push_ex(upgrade_queue, (void *)&upgrade_shutdown_sentinel);
 }
 
 STATIC void* wm_agent_upgrade_start_upgrade(void *arg) {
