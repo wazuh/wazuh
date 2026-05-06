@@ -49,7 +49,7 @@ jobs:
     name: Build Manager (${{ matrix.arch }})
     runs-on:
       group: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64' || 'wz-linux-amd64' }}
-      labels: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64-2' || 'wz-linux-amd64' }}
+      labels: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64' || 'wz-linux-amd64' }}
     outputs:
       version: ${{ steps.set_version.outputs.version }}
     strategy:
@@ -119,7 +119,7 @@ jobs:
 
     runs-on:
       group: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64' || 'wz-linux-amd64' }}
-      labels: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64-2' || 'wz-linux-amd64' }}
+      labels: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64' || 'wz-linux-amd64' }}
     needs: build
     timeout-minutes: 60
     strategy:
