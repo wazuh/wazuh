@@ -39,6 +39,7 @@ constexpr std::size_t SINGLE_RESULT_SIZE {1};                           ///< Siz
 constexpr std::size_t HASH_QUERY_SIZE {1};                        ///< Size for hash query (expecting single result)
 constexpr std::size_t SAFE_STREAM_PAGE_SIZE {1000};               ///< Hard cap for streaming page size
 constexpr std::string_view REMOTE_CONF_INDEX {".wazuh-settings"}; ///< remote conf index name
+constexpr std::string_view CTI_CONSUMERS_INDEX {".wazuh-cti-consumers"}; ///< CTI consumers index name
 const std::array<std::string_view, 12> IOC_SOURCE_FILTER_INCLUDES = {"document.name",
                                                                      "document.type",
                                                                      "document.id",
@@ -404,7 +405,8 @@ void WIndexerConnector::index(std::string_view index, std::string_view data)
     }
 }
 
-PolicyResources WIndexerConnector::getPolicy(std::string_view space)
+std::optional<PolicyResources> WIndexerConnector::getPolicy(std::string_view space,
+                                                            const std::optional<std::string_view>& consumerIdToValidate)
 {
     std::shared_lock lock(m_mutex);
     if (!m_indexerConnectorAsync)
@@ -414,8 +416,15 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
 
     std::vector<std::pair<IndexResourceType, json::Json>> resourceList;
 
+    // Build PIT indices: policy aliases + optionally the CTI consumers index
+    std::vector<std::string> pitIndices = POLICY_ALIASES;
+    if (consumerIdToValidate.has_value())
+    {
+        pitIndices.emplace_back(CTI_CONSUMERS_INDEX);
+    }
+
     // Create Point In Time (PIT) - Can throw IndexerConnectorException
-    auto pit = m_indexerConnectorAsync->createPointInTime(POLICY_ALIASES, PIT_KEEP_ALIVE, true);
+    auto pit = m_indexerConnectorAsync->createPointInTime(pitIndices, PIT_KEEP_ALIVE, true);
 
     auto pitGuard = std::unique_ptr<decltype(pit), std::function<void(decltype(pit)*)>>(
         &pit,
@@ -430,6 +439,48 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
                 LOG_WARNING_L("pitGuard", "[indexer-connector] Error deleting Point In Time (PIT): {}", e.what());
             }
         });
+
+    // --- Pre-check: validate consumer is idle within the PIT snapshot ---
+    if (consumerIdToValidate.has_value())
+    {
+        nlohmann::json consumerQuery = {{"ids", {{"values", {*consumerIdToValidate}}}}};
+        nlohmann::json consumerSort = getSortCriteria();
+        nlohmann::json consumerSource = {{"includes", {"status"}}, {"excludes", nlohmann::json::array()}};
+
+        nlohmann::json consumerHits = m_indexerConnectorAsync->search(
+            pit, SINGLE_RESULT_SIZE, consumerQuery, consumerSort, std::nullopt, consumerSource);
+
+        size_t consumerTotalHits = getTotalHits(consumerHits);
+        if (consumerTotalHits == 0)
+        {
+            throw IndexerConnectorException("Consumer document not found in PIT: "
+                                            + std::string(*consumerIdToValidate));
+        }
+
+        const auto& consumerHitArray = consumerHits["hits"];
+        if (!consumerHitArray.is_array() || consumerHitArray.empty() || !consumerHitArray[0].contains("_source"))
+        {
+            throw IndexerConnectorException("Invalid consumer hit in PIT for: " + std::string(*consumerIdToValidate));
+        }
+
+        const auto& consumerSrc = consumerHitArray[0]["_source"];
+        if (!consumerSrc.contains("status") || !consumerSrc["status"].is_string())
+        {
+            throw IndexerConnectorException("Consumer document missing 'status' in PIT for: "
+                                            + std::string(*consumerIdToValidate));
+        }
+
+        const auto preStatus = consumerSrc["status"].get<std::string>();
+        if (preStatus != "idle")
+        {
+            LOG_DEBUG("[indexer-connector] Consumer '{}' is not idle (status: {}), returning nullopt",
+                      std::string(*consumerIdToValidate),
+                      preStatus);
+            return std::nullopt;
+        }
+
+        LOG_DEBUG("[indexer-connector] Consumer '{}' PIT check: idle", std::string(*consumerIdToValidate));
+    }
 
     // Prepare query and sort criteria
     nlohmann::json query = getQueryFilter(space);
@@ -472,6 +523,13 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
         for (const auto& hit : hitArray)
         {
             auto indexName = hit["_index"].get<std::string>();
+
+            // Skip documents from the CTI consumers index (they were included only for PIT consistency)
+            if (indexName == CTI_CONSUMERS_INDEX)
+            {
+                continue;
+            }
+
             auto sourceData = extractDocumentFromHit(hit);
             IndexResourceType resourceType = fromIndexName(indexName);
 
@@ -546,7 +604,9 @@ PolicyResources WIndexerConnector::getPolicy(std::string_view space)
     return policyMap;
 }
 
-std::pair<std::string, bool> WIndexerConnector::getPolicyHashAndEnabled(std::string_view space)
+std::optional<std::pair<std::string, bool>>
+WIndexerConnector::getPolicyHashAndEnabled(std::string_view space,
+                                           const std::optional<std::string_view>& consumerIdToValidate)
 {
     std::shared_lock lock(m_mutex);
     if (!m_indexerConnectorAsync)
@@ -557,12 +617,80 @@ std::pair<std::string, bool> WIndexerConnector::getPolicyHashAndEnabled(std::str
     // Prepare query filter for the space
     nlohmann::json query = getQueryFilter(space);
 
-    // Prepare source filter to only retrieve space.hash.sha256
+    // Prepare source filter to only retrieve the needed fields
     nlohmann::json source = {{"includes", {"space.hash.sha256", "document.enabled", "document.integrations"}},
                              {"excludes", nlohmann::json::array()}};
 
-    // Execute search query
-    nlohmann::json hits = m_indexerConnectorAsync->search(POLICY_INDEX, HASH_QUERY_SIZE, query, source);
+    nlohmann::json hits;
+
+    if (consumerIdToValidate.has_value())
+    {
+        // Use PIT with consumer validation
+        std::vector<std::string> pitIndices = {std::string(POLICY_INDEX), std::string(CTI_CONSUMERS_INDEX)};
+        auto pit = m_indexerConnectorAsync->createPointInTime(pitIndices, PIT_KEEP_ALIVE, true);
+
+        auto pitGuard = std::unique_ptr<decltype(pit), std::function<void(decltype(pit)*)>>(
+            &pit,
+            [this](auto* p)
+            {
+                try
+                {
+                    m_indexerConnectorAsync->deletePointInTime(*p);
+                }
+                catch (const IndexerConnectorException& e)
+                {
+                    LOG_WARNING_L("pitGuard", "[indexer-connector] Error deleting Point In Time (PIT): {}", e.what());
+                }
+            });
+
+        // Validate consumer is idle within the PIT snapshot
+        nlohmann::json consumerQuery = {{"ids", {{"values", {*consumerIdToValidate}}}}};
+        nlohmann::json consumerSort = getSortCriteria();
+        nlohmann::json consumerSource = {{"includes", {"status"}}, {"excludes", nlohmann::json::array()}};
+
+        nlohmann::json consumerHits = m_indexerConnectorAsync->search(
+            pit, SINGLE_RESULT_SIZE, consumerQuery, consumerSort, std::nullopt, consumerSource);
+
+        size_t consumerTotalHits = getTotalHits(consumerHits);
+        if (consumerTotalHits == 0)
+        {
+            throw IndexerConnectorException("Consumer document not found in PIT: "
+                                            + std::string(*consumerIdToValidate));
+        }
+
+        const auto& consumerHitArray = consumerHits["hits"];
+        if (!consumerHitArray.is_array() || consumerHitArray.empty() || !consumerHitArray[0].contains("_source"))
+        {
+            throw IndexerConnectorException("Invalid consumer hit in PIT for: " + std::string(*consumerIdToValidate));
+        }
+
+        const auto& consumerSrc = consumerHitArray[0]["_source"];
+        if (!consumerSrc.contains("status") || !consumerSrc["status"].is_string())
+        {
+            throw IndexerConnectorException("Consumer document missing 'status' in PIT for: "
+                                            + std::string(*consumerIdToValidate));
+        }
+
+        const auto preStatus = consumerSrc["status"].get<std::string>();
+        if (preStatus != "idle")
+        {
+            LOG_DEBUG("[indexer-connector] Consumer '{}' is not idle (status: {}), returning nullopt",
+                      std::string(*consumerIdToValidate),
+                      preStatus);
+            return std::nullopt;
+        }
+
+        LOG_DEBUG("[indexer-connector] Consumer '{}' PIT check: idle", std::string(*consumerIdToValidate));
+
+        // Query policy hash within the same PIT
+        nlohmann::json policySort = getSortCriteria();
+        hits = m_indexerConnectorAsync->search(pit, HASH_QUERY_SIZE, query, policySort, std::nullopt, source);
+    }
+    else
+    {
+        // Direct search without PIT (no consumer validation needed)
+        hits = m_indexerConnectorAsync->search(POLICY_INDEX, HASH_QUERY_SIZE, query, source);
+    }
 
     // Check total hits
     size_t totalHits = getTotalHits(hits);
@@ -619,7 +747,7 @@ std::pair<std::string, bool> WIndexerConnector::getPolicyHashAndEnabled(std::str
     const bool hasIntegrations = !source_data["document"]["integrations"].empty();
     const bool enabled = source_data["document"]["enabled"].get<bool>();
 
-    return {source_data["space"]["hash"]["sha256"].get<std::string>(), enabled && hasIntegrations};
+    return std::make_pair(source_data["space"]["hash"]["sha256"].get<std::string>(), enabled && hasIntegrations);
 }
 
 bool WIndexerConnector::existsPolicy(std::string_view space)

@@ -10,10 +10,16 @@ class MockWIndexerConnector : public ::wiconnector::IWIndexerConnector
 {
 public:
     MOCK_METHOD(void, index, (std::string_view index, std::string_view data), (override));
-    MOCK_METHOD(PolicyResources, getPolicy, (std::string_view space), (override));
+    MOCK_METHOD((std::optional<PolicyResources>),
+                getPolicy,
+                (std::string_view space, const std::optional<std::string_view>& consumerIdToValidate),
+                (override));
     MOCK_METHOD(uint64_t, getQueueSize, (), (override));
     MOCK_METHOD(uint64_t, getDroppedEvents, (), (override));
-    MOCK_METHOD((std::pair<std::string, bool>), getPolicyHashAndEnabled, (std::string_view space), (override));
+    MOCK_METHOD((std::optional<std::pair<std::string, bool>>),
+                getPolicyHashAndEnabled,
+                (std::string_view space, const std::optional<std::string_view>& consumerIdToValidate),
+                (override));
     MOCK_METHOD(bool, existsPolicy, (std::string_view space), (override));
     MOCK_METHOD(bool, existsIocDataIndex, (), (override));
     MOCK_METHOD((std::unordered_map<std::string, std::string>), getIocTypeHashes, (), (override));

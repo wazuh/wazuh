@@ -2,6 +2,7 @@
 #define _IWINDEXER_CONNECTOR_HPP
 
 #include <functional>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -19,6 +20,9 @@
  */
 namespace wiconnector
 {
+
+/// @brief Consumer document ID for the standard ruleset in `.wazuh-cti-consumers`
+constexpr std::string_view STANDARD_RULESET_CONSUMER_ID = "beta-2-ruleset-5_public-ruleset-5";
 
 /**
  * @brief Structure to hold policy resources retrieved from the indexer.
@@ -55,12 +59,16 @@ public:
      * @brief Retrieves policy resources associated with the specified space.
      *
      * @param space The name of the space from which to retrieve policy resources
-     * @return A PolicyResources structure containing the retrieved resources
+     * @param consumerIdToValidate Optional consumer document ID in `.wazuh-cti-consumers` to validate.
+     *        When provided, the PIT will include `.wazuh-cti-consumers` and the consumer document
+     *        will be verified as `idle` within the PIT snapshot to ensure consistency.
+     * @return An optional PolicyResources. Returns std::nullopt if the consumer is provided and is not idle.
      * @throws std::invalid_argument if the space name is empty or invalid
      * @throws IndexerConnectorException if there is an error during retrieval
      * @throws std::exception for other unexpected errors
      */
-    virtual PolicyResources getPolicy(std::string_view space) = 0;
+    virtual std::optional<PolicyResources>
+    getPolicy(std::string_view space, const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) = 0;
 
     /**
      * @brief Retrieves the policy hash and enabled status for the specified space.
@@ -70,13 +78,19 @@ public:
      * for the given space name.
      *
      * @param space The name of the space to retrieve the information for
-     * @return A pair containing the SHA-256 hash as a string and a boolean indicating if the policy is enabled
+     * @param consumerIdToValidate Optional consumer document ID in `.wazuh-cti-consumers` to validate.
+     *        When provided, a PIT will include `.wazuh-cti-consumers` and the consumer document
+     *        will be verified as `idle` within the PIT snapshot to ensure consistency.
+     * @return An optional pair containing the SHA-256 hash and enabled status.
+     *         Returns std::nullopt if the consumer is provided and is not idle.
      * @throws std::invalid_argument if the space name is empty
      * @throws IndexerConnectorException if the query returns zero or more than one result, or if required fields are
      * missing
      * @throws std::exception for other unexpected errors
      */
-    virtual std::pair<std::string, bool> getPolicyHashAndEnabled(std::string_view space) = 0;
+    virtual std::optional<std::pair<std::string, bool>>
+    getPolicyHashAndEnabled(std::string_view space,
+                            const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) = 0;
 
     /**
      * @brief Checks if a policy exists for the specified space.

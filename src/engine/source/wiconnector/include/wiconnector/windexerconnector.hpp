@@ -4,6 +4,7 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <shared_mutex>
 #include <stdexcept>
 #include <string>
@@ -106,12 +107,16 @@ public:
     /**
      * @copydoc IWIndexerConnector::getPolicy
      */
-    PolicyResources getPolicy(std::string_view space) override;
+    std::optional<PolicyResources>
+    getPolicy(std::string_view space,
+              const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) override;
 
     /**
-     * @copydoc IWIndexerConnector::getPolicyHash
+     * @copydoc IWIndexerConnector::getPolicyHashAndEnabled
      */
-    std::pair<std::string, bool> getPolicyHashAndEnabled(std::string_view space) override;
+    std::optional<std::pair<std::string, bool>>
+    getPolicyHashAndEnabled(std::string_view space,
+                            const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) override;
 
     /**
      * @copydoc IWIndexerConnector::existsPolicy
