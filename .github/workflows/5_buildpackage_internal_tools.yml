@@ -4,20 +4,20 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
-      - 'src/engine/test/**'
-      - 'src/engine/tools/**'
-      - 'src/engine/internal_packages/**'
-      - '.github/workflows/5_buildpackage_internal_tools.yml'
+      - "src/engine/test/**"
+      - "src/engine/tools/**"
+      - "src/engine/internal_packages/**"
+      - ".github/workflows/5_buildpackage_internal_tools.yml"
   workflow_dispatch:
     inputs:
       branch:
-        description: 'Branch to build'
+        description: "Branch to build"
         required: true
-        default: 'main'
+        default: "main"
       checksum:
-        description: 'Attach checksum (.sha512)'
+        description: "Attach checksum (.sha512)"
         required: false
-        default: 'false'
+        default: "false"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -28,7 +28,6 @@ env:
   SCRIPT: generate_package.sh
   REVISION: "1"
   TAG_NAME: "local"
-  # PR => true; dispatch => inputs.checksum; other => false
   GEN_CHECKSUM: ${{ github.event_name == 'pull_request' && 'true' || (github.event_name == 'workflow_dispatch' && inputs.checksum || 'false') }}
   OUTDIR: /tmp
 
@@ -50,156 +49,74 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || '' }}
 
-      - name: Resolve extension
-        id: meta
-        shell: bash
-        run: |
-          [[ "${{ matrix.system }}" == "deb" ]] && EXT=deb || EXT=rpm
-          echo "EXT=$EXT" | tee -a "$GITHUB_OUTPUT"
-
-      - name: Run generate_package.sh
+      - name: Build package
         working-directory: ${{ env.PKG_TARGET_DIR }}
         shell: bash
-        env:
-          OUTDIR: ${{ env.OUTDIR }}
         run: |
           set -euo pipefail
-          SYS="${{ matrix.system }}"
-          ARCH="${{ matrix.arch }}"
-          ARGS=( "--system" "$SYS" "-a" "$ARCH" "-s" "${{ env.OUTDIR }}" "-r" "${{ env.REVISION }}" "-j" "$(nproc)" "--tag" "${{ env.TAG_NAME }}" "--verbose" )
-          [[ "${{ env.GEN_CHECKSUM }}" == "true" ]] && ARGS+=( "--checksum" )
-          echo "Invoking: ./${{ env.SCRIPT }} ${ARGS[*]}"
-          ./"${{ env.SCRIPT }}" "${ARGS[@]}"
+          ARGS=( "--system" "${{ matrix.system }}" "-a" "${{ matrix.arch }}" "-s" "${{ env.OUTDIR }}" "-r" "${{ env.REVISION }}" "-j" "$(nproc)" "--tag" "${{ env.TAG_NAME }}" "--verbose" )
+          if [ "${{ env.GEN_CHECKSUM }}" == "true" ]; then ARGS+=( "--checksum" ); fi
+          ./${{ env.SCRIPT }} "${ARGS[@]}"
 
-      - name: Locate artifact(s)
-        id: stage
+      - name: Process and rename artifact
         shell: bash
-        env:
-          OUTDIR: ${{ env.OUTDIR }}
         run: |
           set -euo pipefail
           COMMIT="${GITHUB_SHA::7}"
-          EXT="${{ steps.meta.outputs.EXT }}"
-          OUT="${OUTDIR:?OUTDIR must be set}"
 
-          MAT_ARCH="${{ matrix.arch }}"  # amd64|arm64
-          if [[ "$EXT" == "deb" ]]; then
-            ARCH_PAT="$MAT_ARCH"   # deb: amd64|arm64
-            GLOB="$OUT/wazuh-internal-tools_*_${ARCH_PAT}.deb"
+          if [ "${{ matrix.system }}" == "deb" ]; then
+            PKG=$(ls ${{ env.OUTDIR }}/wazuh-internal-tools_*_${{ matrix.arch }}.deb | head -n 1)
+            BASE=$(basename "$PKG" .deb)
+            NEW_PKG="${BASE}_${COMMIT}.deb"
           else
-            # rpm: x86_64|aarch64
-            case "$MAT_ARCH" in
-              amd64) ARCH_PAT="x86_64" ;;
-              arm64) ARCH_PAT="aarch64" ;;
-              *)     ARCH_PAT="$MAT_ARCH" ;;
-            esac
-            GLOB="$OUT/wazuh-internal-tools_*_${ARCH_PAT}.rpm"
+            if [ "${{ matrix.arch }}" == "amd64" ]; then ARCH_PAT="x86_64"; else ARCH_PAT="aarch64"; fi
+            PKG=$(ls ${{ env.OUTDIR }}/wazuh-internal-tools_*_${ARCH_PAT}.rpm | head -n 1)
+            BASE=$(basename "$PKG" .rpm)
+            NEW_PKG="${BASE}_${COMMIT}.rpm"
           fi
 
-          PKG="$(ls -1 $GLOB 2>/dev/null | head -n1 || true)"
-          if [[ -z "$PKG" ]]; then
-            echo "::error::no $EXT found at $GLOB"
-            echo "[debug] ls -l $OUT:" && ls -l "$OUT" || true
-            exit 1
+          if [ -z "$PKG" ]; then exit 1; fi
+
+          sudo mv "$PKG" "${{ env.OUTDIR }}/$NEW_PKG"
+
+          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
+          PKG_NAME=$NEW_PKG
+          EOF
+
+          if [ "${{ env.GEN_CHECKSUM }}" == "true" ]; then
+            sha512sum "${{ env.OUTDIR }}/$NEW_PKG" > "${{ env.OUTDIR }}/${NEW_PKG}.sha512"
           fi
 
-          BASE="$(basename "$PKG")"
-          if [[ "$EXT" == "deb" ]]; then
-            ART_INNER="${BASE%.deb}_${COMMIT}.deb"
-          else
-            ART_INNER="${BASE%.rpm}_${COMMIT}.rpm"
-          fi
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PKG_NAME }}
+          path: ${{ env.OUTDIR }}/${{ env.PKG_NAME }}
+          if-no-files-found: error
+          overwrite: true
 
-          HAS_CHECKSUM="false"
-          SHA_PATH=""
-          SHA_INNER=""
-          if [[ -f "${PKG}.sha512" ]]; then
-            HAS_CHECKSUM="true"
-            SHA_BASE="$(basename "${PKG}.sha512")"
-            if [[ "$EXT" == "deb" ]]; then
-              SHA_INNER="${SHA_BASE%.deb.sha512}_${COMMIT}.deb.sha512"
-            else
-              SHA_INNER="${SHA_BASE%.rpm.sha512}_${COMMIT}.rpm.sha512"
-            fi
-            SHA_PATH="${PKG}.sha512"
-          fi
+      - name: Upload checksum
+        if: env.GEN_CHECKSUM == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PKG_NAME }}.sha512
+          path: ${{ env.OUTDIR }}/${{ env.PKG_NAME }}.sha512
+          if-no-files-found: error
+          overwrite: true
 
-          {
-            echo "pkg_path=$PKG"
-            echo "artifact_inner_name=$ART_INNER"
-            echo "has_checksum=$HAS_CHECKSUM"
-            echo "checksum_path=$SHA_PATH"
-            echo "checksum_inner_name=$SHA_INNER"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Prepare artifact file (flat, renamed)
-        id: prep
+      - name: Test package installation and execution
         shell: bash
-        env:
-          OUTDIR: ${{ env.OUTDIR }}
         run: |
           set -euo pipefail
-          DEST="${OUTDIR}/${{ steps.stage.outputs.artifact_inner_name }}"
-          cp -f "${{ steps.stage.outputs.pkg_path }}" "$DEST"
-          echo "upload_path=$DEST" >> "$GITHUB_OUTPUT"
-
-          if [[ "${{ steps.stage.outputs.has_checksum }}" == "true" ]]; then
-            SHA_DEST="${OUTDIR}/${{ steps.stage.outputs.checksum_inner_name }}"
-            cp -f "${{ steps.stage.outputs.checksum_path }}" "$SHA_DEST"
-            echo "checksum_upload_path=$SHA_DEST" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Upload installer (flat, single file)
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.stage.outputs.artifact_inner_name }}
-          path: ${{ steps.prep.outputs.upload_path }}
-          if-no-files-found: error
-          overwrite: true
-
-      - name: Upload checksum (.sha512) as separate artifact
-        if: ${{ env.GEN_CHECKSUM == 'true' && steps.stage.outputs.has_checksum == 'true' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.stage.outputs.checksum_inner_name }}
-          path: ${{ steps.prep.outputs.checksum_upload_path }}
-          if-no-files-found: error
-          overwrite: true
-
-      - name: Install package for testing
-        shell: bash
-        run: |
-          PKG="${{ steps.stage.outputs.pkg_path }}"
-          if [[ "${{ matrix.system }}" == "rpm" ]]; then
-            PLATFORM="linux/${{ matrix.arch == 'amd64' && 'amd64' || 'arm64' }}"
-            echo "Installing RPM package in Rocky Linux 9 container (${PLATFORM})"
+          if [ "${{ matrix.system }}" == "rpm" ]; then
+            if [ "${{ matrix.arch }}" == "amd64" ]; then PLATFORM="linux/amd64"; else PLATFORM="linux/arm64"; fi
             docker run --rm --platform "${PLATFORM}" \
-              -v "${PKG}:/tmp/package.rpm:ro" \
-              rockylinux:9 bash -c "
-                set -euo pipefail
-                echo '==> Installing package'
-                yum install -y /tmp/package.rpm
-              "
-          else
-            echo "Installing DEB package: $PKG"
-            sudo dpkg -i "$PKG" || sudo apt-get install -f -y
-          fi
-
-      - name: Test installed tools
-        working-directory: ${{ env.PKG_TARGET_DIR }}
-        shell: bash
-        run: |
-          PKG="${{ steps.stage.outputs.pkg_path }}"
-          if [[ "${{ matrix.system }}" == "rpm" ]]; then
-            PLATFORM="linux/${{ matrix.arch == 'amd64' && 'amd64' || 'arm64' }}"
-            echo "Testing installed tools in Rocky Linux 9 container (${PLATFORM})"
-            docker run --rm --platform "${PLATFORM}" \
-              -v "${PKG}:/tmp/package.rpm:ro" \
-              -v "$PWD/test_package.sh:/host/test_package.sh:ro" \
+              -v "${{ env.OUTDIR }}/${{ env.PKG_NAME }}:/tmp/package.rpm:ro" \
+              -v "${{ github.workspace }}/${{ env.PKG_TARGET_DIR }}/test_package.sh:/host/test_package.sh:ro" \
               rockylinux:9 bash -c "
                 set -euo pipefail
                 yum install -y /tmp/package.rpm > /dev/null
@@ -208,26 +125,9 @@ jobs:
                 /tmp/test_package.sh
               "
           else
-            echo "Testing installed tools natively"
+            sudo dpkg -i "${{ env.OUTDIR }}/${{ env.PKG_NAME }}" || sudo apt-get install -f -y
+            cd ${{ env.PKG_TARGET_DIR }}
             chmod +x ./test_package.sh
             ./test_package.sh
-          fi
-
-      - name: Uninstall package
-        if: always()
-        shell: bash
-        run: |
-          PKG="${{ steps.stage.outputs.pkg_path }}"
-          if [[ "${{ matrix.system }}" == "rpm" ]]; then
-            PLATFORM="linux/${{ matrix.arch == 'amd64' && 'amd64' || 'arm64' }}"
-            echo "Uninstalling RPM package from Rocky Linux 9 container (${PLATFORM})"
-            docker run --rm --platform "${PLATFORM}" \
-              -v "${PKG}:/tmp/package.rpm:ro" \
-              rockylinux:9 bash -c "
-                yum install -y /tmp/package.rpm > /dev/null 2>&1 || true
-                yum remove -y wazuh-internal-tools || true
-              " || true
-          else
-            echo "Uninstalling DEB package"
             sudo dpkg -r wazuh-internal-tools || true
           fi

@@ -4,30 +4,36 @@ name: 5.X - Package - Upload Docker package building images
 on:
   push:
     branches:
-      - '5.[0-9]+.[0-9]+'
-      - 'main'
+      - "5.[0-9]+.[0-9]+"
+      - "main"
     paths:
-      - 'packages/**'
+      - "packages/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
-  Upload-package-building-images:
+  detect-changes:
     runs-on: ubuntu-24.04
     permissions:
       actions: write
-
+    outputs:
+      changes: ${{ steps.changes.outputs.changes }}
+      tag: ${{ steps.set-tag.outputs.tag }}
     steps:
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@master
         with:
-          cancel_others: 'true'
+          cancel_others: "true"
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          skip_after_successful_duplicate: 'false'
+          skip_after_successful_duplicate: "false"
 
-      - name: Checkout wazuh/wazuh repository
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v6
 
       - name: Get changed files
-        uses: dorny/paths-filter@v2
+        uses: dorny/paths-filter@v4
         id: changes
         with:
           filters: |
@@ -79,77 +85,78 @@ jobs:
               - 'packages/wpk/generate_wpk_package.sh'
               - 'packages/wpk/common/**'
 
-      - name: Set TAG and WAZUH_AGENT_PACKAGES_BRANCH
+      - name: Get tag
+        id: set-tag
         run: |
           VERSION="$(grep '"version"' VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
-          echo "TAG=$VERSION" >> $GITHUB_ENV;
+          echo "tag=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Request pkg_deb_manager_builder_amd64 update
-        if: steps.changes.outputs.pkg_deb_manager_builder_amd64 == 'true'
-        run: |
-          gh workflow run 5_builderprecompiled_docker-images-upload-manager.yml -r ${{ github.ref_name }} -f architecture=amd64 -f docker_image_tag=${{ env.TAG }} -f system=deb -f source_reference=${{ github.ref_name }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  trigger-workflows:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.changes != '[]' }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - key: pkg_deb_manager_builder_amd64
+            repo: current
+            workflow: 5_builderprecompiled_docker-images-upload-manager.yml
+            arch: amd64
+            system: deb
+          - key: pkg_rpm_manager_builder_amd64
+            repo: current
+            workflow: 5_builderprecompiled_docker-images-upload-manager.yml
+            arch: amd64
+            system: rpm
+          - key: pkg_deb_manager_builder_arm64
+            repo: current
+            workflow: 5_builderprecompiled_docker-images-upload-manager.yml
+            arch: arm64
+            system: deb
+          - key: pkg_rpm_manager_builder_arm64
+            repo: current
+            workflow: 5_builderprecompiled_docker-images-upload-manager.yml
+            arch: arm64
+            system: rpm
+          - key: pkg_deb_agent_builder_amd64
+            repo: wazuh/wazuh-agent-packages
+            workflow: 5_builderpackage_upload-images-amd.yml
+            arch: amd64
+            system: deb
+          - key: pkg_rpm_agent_builder_amd64
+            repo: wazuh/wazuh-agent-packages
+            workflow: 5_builderpackage_upload-images-amd.yml
+            arch: amd64
+            system: rpm
+          - key: pkg_deb_agent_builder_arm64
+            repo: wazuh/wazuh-agent-packages
+            workflow: 5_builderpackage_upload-images-arm.yml
+            arch: arm64
+            system: deb
+          - key: pkg_rpm_agent_builder_arm64
+            repo: wazuh/wazuh-agent-packages
+            workflow: 5_builderpackage_upload-images-arm.yml
+            arch: arm64
+            system: rpm
+          - key: compile_windows_agent
+            repo: wazuh/wazuh-agent-packages
+            workflow: 5_builderpackage_upload-images-amd.yml
+            arch: i386
+            system: windows
+          - key: commom_wpk_builder
+            repo: wazuh/wazuh-agent-packages
+            workflow: 5_builderpackage_upload-images-wpk.yml
 
-      - name: Request pkg_rpm_manager_builder_amd64 update
-        if: steps.changes.outputs.pkg_rpm_manager_builder_amd64 == 'true'
+    steps:
+      - name: Request update for ${{ matrix.key }}
+        if: contains(fromJSON(needs.detect-changes.outputs.changes), matrix.key)
         run: |
-          gh workflow run 5_builderprecompiled_docker-images-upload-manager.yml -r ${{ github.ref_name }} -f architecture=amd64 -f docker_image_tag=${{ env.TAG }} -f system=rpm -f source_reference=${{ github.ref_name }}
+          CMD="gh workflow run ${{ matrix.workflow }} -r ${{ github.ref_name }} -f docker_image_tag=${{ needs.detect-changes.outputs.tag }} -f source_reference=${{ github.ref_name }}"
+          if [ "${{ matrix.repo }}" != "current" ]; then CMD="$CMD --repo ${{ matrix.repo }}"; fi
+          if [ -n "${{ matrix.arch }}" ]; then CMD="$CMD -f architecture=${{ matrix.arch }}"; fi
+          if [ -n "${{ matrix.system }}" ]; then CMD="$CMD -f system=${{ matrix.system }}"; fi
+          eval $CMD
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ matrix.repo == 'current' && secrets.GITHUB_TOKEN || secrets.CI_WAZUH_AGENT_PACKAGES }}
 
-      - name: Request pkg_deb_manager_builder_arm64 update
-        if: steps.changes.outputs.pkg_deb_manager_builder_arm64 == 'true'
-        run: |
-          gh workflow run 5_builderprecompiled_docker-images-upload-manager.yml -r ${{ github.ref_name }} -f architecture=arm64 -f docker_image_tag=${{ env.TAG }} -f system=deb -f source_reference=${{ github.ref_name }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Request pkg_rpm_manager_builder_arm64 update
-        if: steps.changes.outputs.pkg_rpm_manager_builder_arm64 == 'true'
-        run: |
-          gh workflow run 5_builderprecompiled_docker-images-upload-manager.yml -r ${{ github.ref_name }} -f architecture=arm64 -f docker_image_tag=${{ env.TAG }} -f system=rpm -f source_reference=${{ github.ref_name }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Request pkg_deb_agent_builder_amd64 update
-        if: steps.changes.outputs.pkg_deb_agent_builder_amd64 == 'true'
-        run: |
-          gh workflow run 5_builderpackage_upload-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=deb -f architecture=amd64 -f source_reference=${{ github.ref_name }}
-        env:
-          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
-
-      - name: Request pkg_rpm_agent_builder_amd64 update
-        if: steps.changes.outputs.pkg_rpm_agent_builder_amd64 == 'true'
-        run: |
-          gh workflow run 5_builderpackage_upload-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=rpm -f architecture=amd64 -f source_reference=${{ github.ref_name }}
-        env:
-          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
-
-      - name: Request pkg_deb_agent_builder_arm64 update
-        if: steps.changes.outputs.pkg_deb_agent_builder_arm64 == 'true'
-        run: |
-          gh workflow run 5_builderpackage_upload-images-arm.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=deb -f architecture=arm64 -f source_reference=${{ github.ref_name }}
-        env:
-          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
-
-      - name: Request pkg_rpm_agent_builder_arm64 update
-        if: steps.changes.outputs.pkg_rpm_agent_builder_arm64 == 'true'
-        run: |
-          gh workflow run 5_builderpackage_upload-images-arm.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=rpm -f architecture=arm64 -f source_reference=${{ github.ref_name }}
-        env:
-          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
-
-      - name: Request compile_windows_agent update
-        if: steps.changes.outputs.compile_windows_agent == 'true'
-        run: |
-          gh workflow run 5_builderpackage_upload-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=windows -f architecture=i386 -f source_reference=${{ github.ref_name }}
-        env:
-          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
-
-      - name: Request commom_wpk_builder update
-        if: steps.changes.outputs.commom_wpk_builder == 'true'
-        run: |
-          gh workflow run 5_builderpackage_upload-images-wpk.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f source_reference=${{ github.ref_name }}
-        env:
-          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
