@@ -318,7 +318,7 @@ function get_indexer_artifact() {
   #    save it as "wazuh-indexer_5.0.0-latest_amd64.deb"
   fetch_artifacts_with_prefixes \
     "$repo" "$run_id" "wazuh-indexer" \
-    "wazuh-indexer_5.0.0-latest_amd64.deb::wazuh-indexer_5.0.0-latest_amd64.deb"
+    "wazuh-indexer_5.0.0-::wazuh-indexer_5.0.0-latest_amd64.deb"
 }
 
 
@@ -351,7 +351,7 @@ function get_dashboard_artifact() {
   #    save it as "wazuh-dashboard_5.0.0-latest_amd64.deb"
   fetch_artifacts_with_prefixes \
     "$repo" "$run_id" "wazuh-dashboard" \
-    "wazuh-dashboard_5.0.0-latest_amd64.deb::wazuh-dashboard_5.0.0-latest_amd64.deb"
+    "wazuh-dashboard_5.0.0-::wazuh-dashboard_5.0.0-latest_amd64.deb"
 }
 
 ####################################################
