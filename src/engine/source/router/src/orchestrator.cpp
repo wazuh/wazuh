@@ -85,10 +85,15 @@ base::OptError loadTesterOnWorker(const std::vector<EntryConverter>& entries,
 }
 
 base::OptError loadRouterOnWoker(const std::vector<EntryConverter>& entries,
-                                 const std::shared_ptr<IWorker<IRouter>>& worker)
+                                 const std::shared_ptr<IWorker<IRouter>>& worker,
+                                 const std::atomic<bool>& isShutdown)
 {
     for (const auto& entry : entries)
     {
+        if (isShutdown.load(std::memory_order_acquire))
+        {
+            return base::Error {"Loading aborted: orchestrator shutting down"};
+        }
         auto err = worker->get()->addEntry(prod::EntryPost(entry), /*ignoreFail=*/true);
         if (err)
         {
@@ -169,7 +174,7 @@ std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::ISt
 base::OptError Orchestrator::initRouterWorker(const std::shared_ptr<IWorker<IRouter>>& worker,
                                               const std::vector<EntryConverter>& routerEntries)
 {
-    auto error = loadRouterOnWoker(routerEntries, worker);
+    auto error = loadRouterOnWoker(routerEntries, worker, m_isShutdown);
 
     if (error)
     {
@@ -353,15 +358,22 @@ Orchestrator::Orchestrator(const Options& opt)
         LOG_DEBUG("No thread count provided. Using {} worker threads based on system hardware.", numThreads);
     }
 
-    for (std::size_t i = 0; i < numThreads; ++i)
+    m_targetWorkerCount = numThreads;
+    m_workerFactory = [this]()
+    {
+        return std::make_shared<RouterWorker>(m_envBuilder, m_eventQueue, m_rawIndexer, m_epsRate);
+    };
+
     {
         auto r = std::make_shared<router::RouterWorker>(m_envBuilder, m_eventQueue, m_rawIndexer, m_epsRate);
         if (auto err = initRouterWorker(r, routerEntries))
         {
-            LOG_ERROR("Router: Cannot load initial states from store: {}", err->message);
+            LOG_ERROR("Router: Cannot load initial states from store for primary worker: {}", err->message);
         }
         m_routerWorkers.emplace_back(std::move(r));
     }
+    LOG_DEBUG("Router: {} additional worker(s) will be started asynchronously.",
+              m_targetWorkerCount > 1 ? m_targetWorkerCount - 1 : 0);
 
     {
         auto t = std::make_shared<router::TesterWorker>(m_envBuilder, m_testQueue);
@@ -409,6 +421,78 @@ void Orchestrator::requestShutdown()
     m_eventQueue.reset();
     m_testQueue.reset();
     m_wStore.reset();
+    m_workerFactory = nullptr;
+}
+
+/**************************************************************************
+ * Dynamic pool expansion
+ *************************************************************************/
+void Orchestrator::expandWorkerPool()
+{
+    {
+        std::unique_lock lock {m_syncMutex};
+        if (m_isShutdown.load(std::memory_order_acquire))
+            return;
+        if (m_routerWorkers.empty())
+        {
+            LOG_WARNING("[Orchestrator] Cannot expand worker pool: no primary worker available.");
+            return;
+        }
+    }
+
+    // The write lock is held for the full snapshot → build → publish cycle of each worker.
+    // This serializes expansion against all route mutations (postEntry, deleteEntry, …),
+    // which is the correct trade-off given that expansion happens once at startup.
+    // TODO: if contention during expansion becomes measurable, revisit using a generation
+    // counter (snapshot generation, build outside the lock, verify generation before publish)
+    // to allow route mutations to proceed concurrently with the (expensive) build step.
+    while (true)
+    {
+        if (m_isShutdown.load(std::memory_order_acquire))
+        {
+            return;
+        }
+        std::unique_lock lock {m_syncMutex};
+
+        if (m_routerWorkers.size() >= m_targetWorkerCount)
+        {
+            return;
+        }
+
+        auto entrySnapshot = m_routerWorkers.front()->get()->getEntries();
+        std::vector<EntryConverter> converters;
+        converters.reserve(entrySnapshot.size());
+        for (const auto& entry : entrySnapshot) converters.emplace_back(entry);
+
+        auto newWorker = m_workerFactory();
+        if (auto err = initRouterWorker(newWorker, converters))
+        {
+            LOG_ERROR("[Orchestrator] Worker expansion failed: {}", err->message);
+            return;
+        }
+
+        if (m_isShutdown.load(std::memory_order_acquire))
+        {
+            return;
+        }
+
+        try
+        {
+            newWorker->start();
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR("[Orchestrator] Worker start failed during expansion: {}", e.what());
+            return;
+        }
+        catch (...)
+        {
+            LOG_ERROR("[Orchestrator] Worker start failed during expansion with unknown exception.");
+            return;
+        }
+
+        m_routerWorkers.emplace_back(std::move(newWorker));
+    }
 }
 
 /**************************************************************************

@@ -2,8 +2,8 @@
 #define _API_ROUTER_HANDLERS_HPP
 
 #include <api/adapter/adapter.hpp>
-#include <router/iapi.hpp>
 #include <cmstore/icmstore.hpp>
+#include <router/iapi.hpp>
 namespace api::router::handlers
 {
 

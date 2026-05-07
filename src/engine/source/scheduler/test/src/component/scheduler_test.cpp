@@ -54,8 +54,8 @@ TEST_F(SchedulerTest, ScheduleOneTimeTask)
 
     scheduler::TaskConfig config;
     config.interval = 0; // One-time task
+    config.runImmediately = false;
     config.CPUPriority = 10;
-    config.timeout = 0;
     config.taskFunction = [&taskExecuted]()
     {
         taskExecuted.store(true);
@@ -82,8 +82,8 @@ TEST_F(SchedulerTest, ScheduleRecurringTask)
 
     scheduler::TaskConfig config;
     config.interval = 1; // Every 1 second
+    config.runImmediately = false;
     config.CPUPriority = 5;
-    config.timeout = 0;
     config.taskFunction = [&executionCount]()
     {
         executionCount.fetch_add(1);
@@ -103,14 +103,161 @@ TEST_F(SchedulerTest, ScheduleRecurringTask)
     scheduler->stop();
 }
 
+TEST_F(SchedulerTest, RunImmediately_ExecutesOnFirstCycle)
+{
+    std::atomic<int> executionCount {0};
+
+    scheduler::TaskConfig config;
+    config.interval = 5; // 5-second interval — would not fire in test window without flag
+    config.runImmediately = true;
+    config.CPUPriority = 0;
+    config.taskFunction = [&executionCount]()
+    {
+        executionCount.fetch_add(1);
+    };
+
+    scheduler->start();
+    scheduler->scheduleTask("immRecurringTask", std::move(config));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    EXPECT_GE(executionCount.load(), 1);
+
+    scheduler->stop();
+}
+
+TEST_F(SchedulerTest, RunImmediately_ThenRecurresAtInterval)
+{
+    std::atomic<int> executionCount {0};
+
+    scheduler::TaskConfig config;
+    config.interval = 1;
+    config.runImmediately = true;
+    config.CPUPriority = 0;
+    config.taskFunction = [&executionCount]()
+    {
+        executionCount.fetch_add(1);
+    };
+
+    scheduler->start();
+    scheduler->scheduleTask("immRecurringTask2", std::move(config));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    EXPECT_GE(executionCount.load(), 1); // immediate first execution
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+    EXPECT_GE(executionCount.load(), 2); // at least one recurrence after interval
+
+    EXPECT_EQ(scheduler->getActiveTasksCount(), 1); // task not removed (not one-time)
+
+    scheduler->stop();
+}
+
+TEST_F(SchedulerTest, RunImmediately_NoEffectOnOneTimeTask)
+{
+    std::atomic<int> executionCount {0};
+
+    scheduler::TaskConfig config;
+    config.interval = 0;
+    config.runImmediately = true;
+    config.CPUPriority = 0;
+    config.taskFunction = [&executionCount]()
+    {
+        executionCount.fetch_add(1);
+    };
+
+    scheduler->start();
+    scheduler->scheduleTask("oneTimeImmediate", std::move(config));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    EXPECT_EQ(executionCount.load(), 1);            // executed exactly once
+    EXPECT_EQ(scheduler->getActiveTasksCount(), 0); // removed from map
+
+    scheduler->stop();
+}
+
+TEST_F(SchedulerTest, ScheduleTaskFirst_ExecutesBeforeOtherPendingTasks)
+{
+    std::vector<std::string> executionOrder;
+    std::mutex orderMutex;
+
+    scheduler::TaskConfig regularConfig;
+    regularConfig.interval = 0;
+    regularConfig.runImmediately = false;
+    regularConfig.CPUPriority = 0;
+    regularConfig.taskFunction = [&]()
+    {
+        std::lock_guard<std::mutex> lock(orderMutex);
+        executionOrder.push_back("regular");
+    };
+
+    scheduler::TaskConfig firstConfig;
+    firstConfig.interval = 0;
+    firstConfig.runImmediately = false;
+    firstConfig.CPUPriority = 0;
+    firstConfig.taskFunction = [&]()
+    {
+        std::lock_guard<std::mutex> lock(orderMutex);
+        executionOrder.push_back("first");
+    };
+
+    // Register regular first (earlier nextRun), then priority task
+    scheduler->scheduleTask("regularTask", std::move(regularConfig));
+    scheduler->scheduleTask("priorityTask", std::move(firstConfig));
+    // Reprioritize: "priorityTask" must now execute before "regularTask"
+    scheduler->scheduleTaskFirst("priorityTask");
+
+    scheduler->start();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    std::lock_guard<std::mutex> lock(orderMutex);
+    ASSERT_EQ(executionOrder.size(), 2u);
+    EXPECT_EQ(executionOrder[0], "first");
+    EXPECT_EQ(executionOrder[1], "regular");
+}
+
+TEST_F(SchedulerTest, ScheduleTaskFirst_LastCallIsFirst)
+{
+    std::vector<std::string> executionOrder;
+    std::mutex orderMutex;
+
+    auto makeConfig = [&](std::string label)
+    {
+        scheduler::TaskConfig config;
+        config.interval = 0;
+        config.runImmediately = false;
+        config.CPUPriority = 0;
+        config.taskFunction = [&, label = std::move(label)]()
+        {
+            std::lock_guard<std::mutex> lock(orderMutex);
+            executionOrder.push_back(label);
+        };
+        return config;
+    };
+
+    scheduler->scheduleTask("taskA", makeConfig("A"));
+    scheduler->scheduleTask("taskB", makeConfig("B"));
+    scheduler->scheduleTaskFirst("taskA"); // A goes to front
+    scheduler->scheduleTaskFirst("taskB"); // B goes to front, A pushed to position 1
+
+    scheduler->start();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    std::lock_guard<std::mutex> lock(orderMutex);
+    ASSERT_EQ(executionOrder.size(), 2u);
+    EXPECT_EQ(executionOrder[0], "B");
+    EXPECT_EQ(executionOrder[1], "A");
+}
+
 TEST_F(SchedulerTest, RemoveTask)
 {
     std::atomic<bool> taskExecuted {false};
 
     scheduler::TaskConfig config;
     config.interval = 2; // Every 2 seconds
+    config.runImmediately = false;
     config.CPUPriority = 10;
-    config.timeout = 0;
     config.taskFunction = [&taskExecuted]()
     {
         taskExecuted.store(true);
@@ -140,18 +287,18 @@ TEST_F(SchedulerTest, MultipleTasks)
     std::atomic<int> task2Count {0};
 
     scheduler::TaskConfig config1;
-    config1.interval = 0;    // One-time
+    config1.interval = 0; // One-time
+    config1.runImmediately = false;
     config1.CPUPriority = 0; // No priority change for testing
-    config1.timeout = 0;
     config1.taskFunction = [&task1Count]()
     {
         task1Count.fetch_add(1);
     };
 
     scheduler::TaskConfig config2;
-    config2.interval = 1;    // Recurring
+    config2.interval = 1; // Recurring
+    config2.runImmediately = false;
     config2.CPUPriority = 0; // No priority change for testing
-    config2.timeout = 0;
     config2.taskFunction = [&task2Count]()
     {
         task2Count.fetch_add(1);
@@ -180,8 +327,8 @@ TEST_F(SchedulerTest, TaskPriority)
     {
         scheduler::TaskConfig config;
         config.interval = 0; // One-time
+        config.runImmediately = false;
         config.CPUPriority = priority;
-        config.timeout = 0;
         config.taskFunction = [&, taskId]()
         {
             {
@@ -223,8 +370,8 @@ TEST_F(SchedulerTest, TaskExecutionOrder)
     {
         scheduler::TaskConfig config;
         config.interval = 0; // One-time
+        config.runImmediately = false;
         config.CPUPriority = 0;
-        config.timeout = 0;
         config.taskFunction = [&, taskName]()
         {
             {
@@ -271,8 +418,8 @@ TEST_F(SchedulerTest, TaskQueueOrdering)
     {
         scheduler::TaskConfig config;
         config.interval = intervalSeconds; // Recurring task
+        config.runImmediately = false;
         config.CPUPriority = 0;
-        config.timeout = 0;
         config.taskFunction = [&, taskName]()
         {
             {
@@ -303,6 +450,207 @@ TEST_F(SchedulerTest, TaskQueueOrdering)
             EXPECT_EQ(executionOrder[0], "fast"); // Fast task executes first
         }
     }
+
+    scheduler->stop();
+}
+
+// --- Input validation ---
+
+TEST_F(SchedulerTest, ScheduleTask_ThrowsOnNullFunction)
+{
+    scheduler::TaskConfig config;
+    config.interval = 1;
+    config.runImmediately = false;
+    config.CPUPriority = 0;
+    config.taskFunction = nullptr;
+
+    EXPECT_THROW(scheduler->scheduleTask("nullTask", std::move(config)), std::invalid_argument);
+    EXPECT_EQ(scheduler->getActiveTasksCount(), 0);
+}
+
+TEST_F(SchedulerTest, ScheduleTask_ThrowsOnDuplicateName)
+{
+    auto makeConfig = []()
+    {
+        scheduler::TaskConfig config;
+        config.interval = 60;
+        config.runImmediately = false;
+        config.CPUPriority = 0;
+        config.taskFunction = []() {};
+        return config;
+    };
+
+    scheduler->scheduleTask("duplicate", makeConfig());
+    EXPECT_THROW(scheduler->scheduleTask("duplicate", makeConfig()), std::runtime_error);
+    EXPECT_EQ(scheduler->getActiveTasksCount(), 1);
+}
+
+TEST_F(SchedulerTest, ScheduleTaskFirst_ThrowsOnUnregisteredTask)
+{
+    EXPECT_THROW(scheduler->scheduleTaskFirst("notRegistered"), std::invalid_argument);
+}
+
+TEST_F(SchedulerTest, RemoveTask_NoopForNonExistentTask)
+{
+    EXPECT_NO_THROW(scheduler->removeTask("doesNotExist"));
+    EXPECT_EQ(scheduler->getActiveTasksCount(), 0);
+}
+
+// --- Lifecycle ---
+
+TEST_F(SchedulerTest, StartStop_Idempotent)
+{
+    scheduler->start();
+    scheduler->start(); // second call must be a no-op — no extra threads spawned
+    EXPECT_TRUE(scheduler->isRunning());
+
+    // Scheduler must still be functional after double-start
+    std::atomic<bool> executed {false};
+    scheduler::TaskConfig config;
+    config.interval = 0;
+    config.runImmediately = false;
+    config.CPUPriority = 0;
+    config.taskFunction = [&executed]() { executed.store(true); };
+    scheduler->scheduleTask("probe", std::move(config));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    EXPECT_TRUE(executed.load());
+
+    scheduler->stop();
+    scheduler->stop(); // second call must be a no-op — no crash or deadlock
+    EXPECT_FALSE(scheduler->isRunning());
+}
+
+TEST_F(SchedulerTest, TasksClearedAfterStop)
+{
+    scheduler->start();
+
+    for (int i = 0; i < 5; ++i)
+    {
+        scheduler::TaskConfig config;
+        config.interval = 60; // far future — won't execute in test window
+        config.runImmediately = false;
+        config.CPUPriority = 0;
+        config.taskFunction = []() {};
+        scheduler->scheduleTask("task" + std::to_string(i), std::move(config));
+    }
+
+    EXPECT_EQ(scheduler->getActiveTasksCount(), 5);
+    scheduler->stop();
+    EXPECT_EQ(scheduler->getActiveTasksCount(), 0);
+}
+
+// --- RC-2 fix: recurring task removed during execution must not re-queue ---
+
+TEST_F(SchedulerTest, RemoveRecurringTask_WhileExecuting_DoesNotReschedule)
+{
+    std::atomic<int> executionCount {0};
+    std::atomic<bool> taskStarted {false};
+    std::atomic<bool> allowFinish {false};
+
+    scheduler::TaskConfig config;
+    config.interval = 1;
+    config.runImmediately = true; // fires immediately so we can catch it mid-execution
+    config.CPUPriority = 0;
+    config.taskFunction = [&]()
+    {
+        executionCount.fetch_add(1);
+        taskStarted.store(true);
+        while (!allowFinish.load())
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+    };
+
+    scheduler->start();
+    scheduler->scheduleTask("recurringTask", std::move(config));
+
+    // Wait until the task is executing
+    while (!taskStarted.load())
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    // Remove while task body is still running
+    scheduler->removeTask("recurringTask");
+    EXPECT_EQ(scheduler->getActiveTasksCount(), 0);
+
+    // Let the task finish — worker must not re-queue it after execution
+    allowFinish.store(true);
+
+    // Wait well past one interval to confirm no second execution
+    std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+
+    EXPECT_EQ(executionCount.load(), 1);
+    EXPECT_EQ(scheduler->getActiveTasksCount(), 0);
+
+    scheduler->stop();
+}
+
+// --- RC-5 fix: scheduleTaskFirst on a running scheduler must execute promptly ---
+
+TEST_F(SchedulerTest, ScheduleTaskFirst_WhileRunning_ReprioritizesImmediately)
+{
+    std::atomic<bool> executed {false};
+
+    scheduler::TaskConfig config;
+    config.interval = 60; // 60 s interval — would never fire in this test
+    config.runImmediately = false;
+    config.CPUPriority = 0;
+    config.taskFunction = [&executed]() { executed.store(true); };
+
+    scheduler->start();
+    scheduler->scheduleTask("slowTask", std::move(config));
+
+    // Confirm the task has not fired yet (nextRun is 60 s in the future)
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    EXPECT_FALSE(executed.load());
+
+    // Reprioritize: worker blocked in wait_until must wake and execute immediately
+    scheduler->scheduleTaskFirst("slowTask");
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    EXPECT_TRUE(executed.load());
+
+    scheduler->stop();
+}
+
+// --- Thread safety: concurrent schedule + remove from multiple threads ---
+
+TEST_F(SchedulerTest, ConcurrentScheduleRemove_IsThreadSafe)
+{
+    scheduler->start();
+
+    const int taskCount = 20;
+    std::vector<std::thread> threads;
+    threads.reserve(taskCount);
+
+    for (int i = 0; i < taskCount; ++i)
+    {
+        threads.emplace_back(
+            [&, i]()
+            {
+                std::string name = "concTask" + std::to_string(i);
+                scheduler::TaskConfig config;
+                config.interval = 0;
+                config.runImmediately = false;
+                config.CPUPriority = 0;
+                config.taskFunction = []() {};
+                scheduler->scheduleTask(name, std::move(config));
+                // removeTask races with execution — both outcomes are valid
+                scheduler->removeTask(name);
+            });
+    }
+
+    for (auto& t : threads)
+    {
+        t.join();
+    }
+
+    // Allow any in-flight tasks to finish
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    // Every task either executed (and was auto-removed) or was removed before execution
+    EXPECT_EQ(scheduler->getActiveTasksCount(), 0);
 
     scheduler->stop();
 }

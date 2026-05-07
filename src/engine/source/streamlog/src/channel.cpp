@@ -850,8 +850,8 @@ scheduler::TaskConfig ChannelHandler::createCompressionTaskConfig(const std::fil
 
     return scheduler::TaskConfig {
         .interval = 0, // One-time task
+        .runImmediately = false,
         .CPUPriority = 0,
-        .timeout = 0,
         .taskFunction = [filePath,
                          gzPath = std::move(gzPath),
                          compressionLevel = m_config.compressionLevel,
@@ -922,9 +922,7 @@ void ChannelHandler::deleteOldFilesStatic(const std::filesystem::path& basePath,
 
     auto statInode = [](const std::filesystem::path& path, ino_t& inode, struct stat* stOut = nullptr) -> bool
     {
-        struct stat st
-        {
-        };
+        struct stat st {};
         if (::stat(path.c_str(), &st) != 0)
         {
             return false;
@@ -978,9 +976,7 @@ void ChannelHandler::deleteOldFilesStatic(const std::filesystem::path& basePath,
 
                 const auto& filePath = entry.path();
 
-                struct stat fileStat
-                {
-                };
+                struct stat fileStat {};
                 ino_t fileInode {};
                 if (!statInode(filePath, fileInode, &fileStat))
                 {
