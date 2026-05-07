@@ -1350,6 +1350,37 @@ static void drop_consumer(void *data, void *user) {
     dispose_evt_item((evt_item_t *)data);
 }
 
+/**
+ * @brief Append event payload with continuation-line indentation.
+ *
+ * Multi-line payloads contain embedded '\n' characters.  The framing protocol
+ * uses "\nE " to delimit events.  To avoid ambiguity when a continuation line
+ * begins with "E ", we indent every continuation line with a single space.
+ * The receiver strips exactly one leading space from each continuation line to
+ * recover the original payload.
+ */
+static int bulk_append_indented(bulk_t *b, const char *raw, size_t len) {
+    const char *p = raw;
+    const char *end = raw + len;
+
+    while (p < end) {
+        const char *nl = (const char *)memchr(p, '\n', (size_t)(end - p));
+        if (!nl) {
+            // No more newlines: append the remaining chunk
+            return bulk_append(b, p, (size_t)(end - p));
+        }
+        // Append everything up to and including the '\n'
+        size_t chunk = (size_t)(nl - p) + 1;
+        if (bulk_append(b, p, chunk) < 0) return -1;
+        // Prefix the continuation line with a space
+        if (nl + 1 < end) {
+            if (bulk_append(b, " ", 1) < 0) return -1;
+        }
+        p = nl + 1;
+    }
+    return 0;
+}
+
 // Consumer: Only accumulates in ctx->bulk. Releases each item individually.
 static void rr_collect_one(void *data, void *user) {
     evt_item_t *e = (evt_item_t*)data;
@@ -1362,9 +1393,11 @@ static void rr_collect_one(void *data, void *user) {
         }
     }
 
-    // Event Framing: "E <payload>\n"
+    // Event Framing: "E <indented_payload>\n"
+    // Continuation lines within multi-line payloads are space-indented to
+    // prevent false "\nE " delimiter matches inside event content.
     if (bulk_append_fmt(&ctx->bulk, "E ") < 0 ||
-        bulk_append(&ctx->bulk, e->raw, e->len) < 0 ||
+        bulk_append_indented(&ctx->bulk, e->raw, e->len) < 0 ||
         bulk_append(&ctx->bulk, "\n", 1) < 0) {
         mwarn("Unable to append event for agent '%s'", ctx->agent_id ?: "?");
     }
