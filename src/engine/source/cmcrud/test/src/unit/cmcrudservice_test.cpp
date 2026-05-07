@@ -1699,12 +1699,16 @@ TEST_F(CrudServiceImportNsFromDocTest, CreatesNamespaceBeforeImport)
 {
     ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
 
-    ::testing::InSequence seq;
-    EXPECT_CALL(*store, existsNamespace(_)).WillOnce(Return(false));
-    EXPECT_CALL(*store, createNamespace(_)).WillOnce(Return(nsPtr));
-    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+    {
+        ::testing::InSequence seq;
+        EXPECT_CALL(*store, existsNamespace(_)).WillOnce(Return(false));
+        EXPECT_CALL(*store, createNamespace(_)).WillOnce(Return(nsPtr));
+        EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
 
-    EXPECT_NO_THROW(service->importNamespace(nsId, kMinimalImportDoc, "", /*force=*/true));
+        EXPECT_NO_THROW(service->importNamespace(nsId, kMinimalImportDoc, "", /*force=*/true));
+    }
+
+    ::testing::Mock::VerifyAndClearExpectations(nsPtr.get());
 }
 
 // Import KVDB resource
