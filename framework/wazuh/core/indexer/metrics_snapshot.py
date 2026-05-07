@@ -63,7 +63,7 @@ def _build_jsonschema_properties(properties: dict) -> dict:
             base_type = _OPENSEARCH_TO_JSONSCHEMA_TYPE.get(os_type)
             if base_type:
                 json_schema_props[field] = {
-                    "anyOf": [base_type, {"type": "array", "items": base_type}]
+                    "anyOf": [base_type, {"type": "array", "items": base_type}, {"type": "null"}]
                 }
             else:
                 json_schema_props[field] = {}
@@ -241,12 +241,13 @@ class MetricsSnapshotTasks:
         all_node_names = [local_node_name] + list(self.server.clients)
 
         docs = []
+        loop = asyncio.get_running_loop()
         for node_name in all_node_names:
             try:
                 if node_name == local_node_name:
-                    result = get_engine_metrics()
+                    result = await loop.run_in_executor(None, get_engine_metrics)
                 else:
-                    result = DistributedAPI(
+                    result = await DistributedAPI(
                         f=get_engine_metrics,
                         f_kwargs={"node_list": [node_name]},
                         logger=self.logger,
@@ -262,7 +263,7 @@ class MetricsSnapshotTasks:
                             metric_entry, None, node_ts, cluster_name, node_name
                         ))
                     for space in item.get("spaces", []):
-                        space_name = space.get("name", "unknown")
+                        space_name = space.get("name", None)
                         for metric_entry in space.get("metrics", []):
                             docs.append(self._normalize_normalization_doc(
                                 metric_entry, space_name, node_ts, cluster_name, node_name

@@ -19,7 +19,7 @@ class EngineHTTPClient:
             transport = httpx.HTTPTransport(uds=self.socket_path)
             self._client = httpx.Client(transport=transport, timeout=timeout)
         except Exception as exc:
-            raise WazuhInternalError(2018, extra_message=str(exc))
+            raise WazuhInternalError(2018, extra_message=str(exc)) from exc
 
     def close(self) -> None:
         """Close the Engine HTTP client."""
@@ -30,7 +30,7 @@ class EngineHTTPClient:
             response = self._client.post(
                 url=f'{self.API_URL}/metrics/dump',
                 content='{}',
-                headers={'Content-Type': 'text/plain'},
+                headers={'Content-Type': 'application/json'},
             )
         except httpx.TimeoutException as exc:
             raise WazuhInternalError(2020, extra_message=str(exc))
@@ -45,4 +45,4 @@ class EngineHTTPClient:
         try:
             return response.json()
         except ValueError as exc:
-            raise WazuhError(2019, extra_message=f'Invalid JSON in Engine API response: {exc}')
+            raise WazuhInternalError(2022, extra_message=f'Invalid JSON in Engine API response: {exc}')

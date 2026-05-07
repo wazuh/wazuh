@@ -1138,6 +1138,12 @@ def _patch_collect_and_index(
                 new_callable=AsyncMock,
                 return_value=comms_docs if comms_docs is not None else [],
             ) as mock_comms,
+            patch.object(
+                tasks,
+                "_collect_normalization_all_nodes",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
             patch(
                 "wazuh.core.indexer.metrics_snapshot.get_indexer_client",
                 return_value=AsyncMock(
@@ -1249,6 +1255,7 @@ class TestBuildJsonschemaProperties:
             "anyOf": [
                 {"type": "string"},
                 {"type": "array", "items": {"type": "string"}},
+                {"type": "null"},
             ]
         }
         assert "field_b" in result
@@ -1256,6 +1263,7 @@ class TestBuildJsonschemaProperties:
             "anyOf": [
                 {"type": "integer"},
                 {"type": "array", "items": {"type": "integer"}},
+                {"type": "null"},
             ]
         }
 
@@ -1281,6 +1289,7 @@ class TestBuildJsonschemaProperties:
             "anyOf": [
                 {"type": "string"},
                 {"type": "array", "items": {"type": "string"}},
+                {"type": "null"},
             ]
         }
 
@@ -1294,6 +1303,7 @@ class TestBuildJsonschemaProperties:
             "anyOf": [
                 {"type": "integer"},
                 {"type": "array", "items": {"type": "integer"}},
+                {"type": "null"},
             ]
         }
 
@@ -1341,6 +1351,7 @@ class TestOpensearchTemplateToJsonschema:
             "anyOf": [
                 {"type": "string"},
                 {"type": "array", "items": {"type": "string"}},
+                {"type": "null"},
             ]
         }
 
@@ -1352,6 +1363,7 @@ class TestOpensearchTemplateToJsonschema:
             "anyOf": [
                 {"type": "integer"},
                 {"type": "array", "items": {"type": "integer"}},
+                {"type": "null"},
             ]
         }
 
@@ -1398,6 +1410,7 @@ class TestOpensearchTemplateToJsonschema:
             "anyOf": [
                 {"type": "string"},
                 {"type": "array", "items": {"type": "string"}},
+                {"type": "null"},
             ]
         }
 
@@ -1967,3 +1980,348 @@ class TestNormalizeCommsDocZeroPreservation:
         assert doc["queue"]["size"] == 10
         assert doc["events"]["total"] == 1000
         assert doc["tcp"]["sessions"] == 5
+
+# ---------------------------------------------------------------------------
+# Engine metrics fixtures
+# ---------------------------------------------------------------------------
+
+ENGINE_DUMP = {
+    "status": "OK",
+    "name": "wazuh-manager-analysisd",
+    "uptime": "2026-04-14T15:30:53.448Z",
+    "timestamp": "2026-04-14T15:32:46.095Z",
+    "global": [
+        {"name": "indexer.queue.size", "type": "pull", "enabled": True, "value": 0},
+        {"name": "router.events.processed", "type": "counter", "enabled": True, "value": 277},
+        {"name": "server.bytes.received", "type": "counter", "enabled": True, "value": 89710},
+    ],
+    "spaces": [
+        {
+            "name": "standard",
+            "metrics": [
+                {"name": "events.unclassified", "type": "counter", "enabled": True, "value": 264},
+                {"name": "events.discarded", "type": "counter", "enabled": True, "value": 0},
+            ],
+        }
+    ],
+}
+
+EXPECTED_NORMALIZATION_FIELDS = {
+    "@timestamp",
+    "event.module",
+    "event.kind",
+    "metric.name",
+    "metric.type",
+    "metric.enabled",
+    "metric.value",
+    "wazuh.cluster.name",
+    "wazuh.cluster.node",
+    "wazuh.space.name",
+}
+
+
+# ---------------------------------------------------------------------------
+# _normalize_normalization_doc
+# ---------------------------------------------------------------------------
+
+
+class TestNormalizeNormalizationDoc:
+    """Unit tests for MetricsSnapshotTasks._normalize_normalization_doc."""
+
+    def test_global_metric_space_name_is_null(self):
+        """Global metrics have wazuh.space.name == None (null in JSON)."""
+        metric = {"name": "router.queue.size", "type": "pull", "enabled": True, "value": 0}
+        doc = MetricsSnapshotTasks._normalize_normalization_doc(
+            metric, None, TIMESTAMP, "wazuh", "node01"
+        )
+        assert doc["wazuh"]["space"]["name"] is None
+
+    def test_space_metric_space_name_is_set(self):
+        """Space metrics have wazuh.space.name set to the space name."""
+        metric = {"name": "events.unclassified", "type": "counter", "enabled": True, "value": 264}
+        doc = MetricsSnapshotTasks._normalize_normalization_doc(
+            metric, "standard", TIMESTAMP, "wazuh", "node01"
+        )
+        assert doc["wazuh"]["space"]["name"] == "standard"
+
+    def test_all_expected_fields_present(self):
+        """All required fields are present in the output document."""
+        metric = {"name": "router.queue.size", "type": "pull", "enabled": True, "value": 0}
+        doc = MetricsSnapshotTasks._normalize_normalization_doc(
+            metric, None, TIMESTAMP, "wazuh", "node01"
+        )
+        flat_keys = _deep_keys(doc)
+        missing = EXPECTED_NORMALIZATION_FIELDS - flat_keys
+        assert not missing, f"Missing fields: {missing}"
+
+    def test_metric_fields_match_input(self):
+        """metric.name, type, enabled and value are taken verbatim from the entry."""
+        metric = {"name": "server.bytes.received", "type": "counter", "enabled": True, "value": 89710}
+        doc = MetricsSnapshotTasks._normalize_normalization_doc(
+            metric, None, TIMESTAMP, "wazuh", "node01"
+        )
+        assert doc["metric"]["name"] == "server.bytes.received"
+        assert doc["metric"]["type"] == "counter"
+        assert doc["metric"]["enabled"] is True
+        assert doc["metric"]["value"] == 89710
+
+    def test_timestamp_is_set_correctly(self):
+        """@timestamp in the output matches the timestamp argument."""
+        metric = {"name": "router.eps.1m", "type": "pull", "enabled": True, "value": 5}
+        doc = MetricsSnapshotTasks._normalize_normalization_doc(
+            metric, "standard", TIMESTAMP, "wazuh", "node01"
+        )
+        assert doc["@timestamp"] == TIMESTAMP
+
+    def test_cluster_fields_match_arguments(self):
+        """wazuh.cluster.name and node are sourced from the arguments."""
+        metric = {"name": "router.eps.1m", "type": "pull", "enabled": True, "value": 5}
+        doc = MetricsSnapshotTasks._normalize_normalization_doc(
+            metric, None, TIMESTAMP, "my-cluster", "my-node"
+        )
+        assert doc["wazuh"]["cluster"]["name"] == "my-cluster"
+        assert doc["wazuh"]["cluster"]["node"] == "my-node"
+
+    def test_event_module_and_kind_are_correct(self):
+        """event.module and event.kind are always set to the Engine values."""
+        metric = {"name": "indexer.queue.size", "type": "pull", "enabled": True, "value": 0}
+        doc = MetricsSnapshotTasks._normalize_normalization_doc(
+            metric, None, TIMESTAMP, "wazuh", "node01"
+        )
+        assert doc["event"]["module"] == "wazuh-manager-analysisd"
+        assert doc["event"]["kind"] == "metrics"
+
+    def test_zero_value_is_preserved(self):
+        """metric.value == 0 is not dropped."""
+        metric = {"name": "indexer.events.dropped", "type": "pull", "enabled": True, "value": 0}
+        doc = MetricsSnapshotTasks._normalize_normalization_doc(
+            metric, None, TIMESTAMP, "wazuh", "node01"
+        )
+        assert doc["metric"]["value"] == 0
+
+
+# ---------------------------------------------------------------------------
+# _collect_normalization_all_nodes
+# ---------------------------------------------------------------------------
+
+
+class TestCollectNormalizationAllNodes:
+    """Tests for MetricsSnapshotTasks._collect_normalization_all_nodes."""
+
+    @pytest.mark.asyncio
+    async def test_single_master_generates_one_doc_per_metric(self):
+        """Master-only cluster: one document per metric entry (global + spaces)."""
+        tasks = _make_tasks(server=_make_server(node_name="node01"))
+        local_result = _make_dapi_result([dict(ENGINE_DUMP)])
+
+        with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_engine_metrics",
+            return_value=local_result,
+        ):
+            docs = await tasks._collect_normalization_all_nodes(TIMESTAMP)
+
+        # 3 global + 2 space metrics = 5 documents
+        assert len(docs) == 5
+
+    @pytest.mark.asyncio
+    async def test_global_metrics_have_null_space_name(self):
+        """Documents from global[] have wazuh.space.name == None."""
+        tasks = _make_tasks(server=_make_server(node_name="node01"))
+        local_result = _make_dapi_result([dict(ENGINE_DUMP)])
+
+        with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_engine_metrics",
+            return_value=local_result,
+        ):
+            docs = await tasks._collect_normalization_all_nodes(TIMESTAMP)
+
+        global_docs = [d for d in docs if d["metric"]["name"] in {
+            "indexer.queue.size", "router.events.processed", "server.bytes.received"
+        }]
+        assert len(global_docs) == 3
+        for doc in global_docs:
+            assert doc["wazuh"]["space"]["name"] is None
+
+    @pytest.mark.asyncio
+    async def test_space_metrics_have_space_name_set(self):
+        """Documents from spaces[] carry the correct space name."""
+        tasks = _make_tasks(server=_make_server(node_name="node01"))
+        local_result = _make_dapi_result([dict(ENGINE_DUMP)])
+
+        with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_engine_metrics",
+            return_value=local_result,
+        ):
+            docs = await tasks._collect_normalization_all_nodes(TIMESTAMP)
+
+        space_docs = [d for d in docs if d["wazuh"]["space"]["name"] == "standard"]
+        assert len(space_docs) == 2
+
+    @pytest.mark.asyncio
+    async def test_metadata_injected_into_every_document(self):
+        """@timestamp, wazuh.cluster.name and wazuh.cluster.node appear in every doc."""
+        tasks = _make_tasks(server=_make_server(node_name="node01"))
+        local_result = _make_dapi_result([dict(ENGINE_DUMP)])
+
+        with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_engine_metrics",
+            return_value=local_result,
+        ):
+            docs = await tasks._collect_normalization_all_nodes(TIMESTAMP)
+
+        for doc in docs:
+            assert doc["wazuh"]["cluster"]["node"] == "node01"
+            assert doc["wazuh"]["cluster"]["name"] == "wazuh"
+
+    @pytest.mark.asyncio
+    async def test_timestamp_from_engine_dump_takes_precedence(self):
+        """The Engine's own timestamp field is used, not the task-level timestamp."""
+        tasks = _make_tasks(server=_make_server(node_name="node01"))
+        local_result = _make_dapi_result([dict(ENGINE_DUMP)])
+
+        with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_engine_metrics",
+            return_value=local_result,
+        ):
+            docs = await tasks._collect_normalization_all_nodes(TIMESTAMP)
+
+        for doc in docs:
+            assert doc["@timestamp"] == ENGINE_DUMP["timestamp"]
+
+    @pytest.mark.asyncio
+    async def test_worker_node_injects_its_own_node_name(self):
+        """Worker node documents carry their own node name."""
+        server = _make_server(node_name="node01", workers={"node02": MagicMock()})
+        tasks = _make_tasks(server=server)
+
+        master_result = _make_dapi_result([dict(ENGINE_DUMP)])
+        worker_result = _make_dapi_result([dict(ENGINE_DUMP)])
+
+        with (
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.get_engine_metrics",
+                return_value=master_result,
+            ),
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
+                return_value=AsyncMock(
+                    distribute_function=AsyncMock(return_value=worker_result)
+                ),
+            ) as MockDAPI,
+        ):
+            docs = await tasks._collect_normalization_all_nodes(TIMESTAMP)
+
+        # DAPI was called targeting node02, and that exact name is stamped into the docs.
+        call_kwargs = MockDAPI.call_args.kwargs
+        assert call_kwargs["f_kwargs"]["node_list"] == ["node02"]
+
+        node_names = {doc["wazuh"]["cluster"]["node"] for doc in docs}
+        assert "node01" in node_names
+        assert "node02" in node_names
+
+    @pytest.mark.asyncio
+    async def test_dapi_called_for_worker_not_master(self):
+        """DistributedAPI is used for workers; local node calls get_engine_metrics directly."""
+        server = _make_server(node_name="node01", workers={"node02": MagicMock()})
+        tasks = _make_tasks(server=server)
+
+        local_result = _make_dapi_result([dict(ENGINE_DUMP)])
+        worker_result = _make_dapi_result([dict(ENGINE_DUMP)])
+
+        with (
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.get_engine_metrics",
+                return_value=local_result,
+            ) as mock_local,
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
+                return_value=AsyncMock(
+                    distribute_function=AsyncMock(return_value=worker_result)
+                ),
+            ) as MockDAPI,
+        ):
+            await tasks._collect_normalization_all_nodes(TIMESTAMP)
+
+        mock_local.assert_called_once_with()
+        MockDAPI.assert_called_once()
+        call_kwargs = MockDAPI.call_args.kwargs
+        assert call_kwargs["f_kwargs"]["node_list"] == ["node02"]
+        assert call_kwargs["request_type"] == "distributed_master"
+
+    @pytest.mark.asyncio
+    async def test_empty_affected_items_produces_no_documents(self):
+        """If the Engine returns no items, no documents are generated."""
+        tasks = _make_tasks()
+        local_result = _make_dapi_result([])
+
+        with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_engine_metrics",
+            return_value=local_result,
+        ):
+            docs = await tasks._collect_normalization_all_nodes(TIMESTAMP)
+
+        assert docs == []
+
+    @pytest.mark.asyncio
+    async def test_node_failure_is_logged_and_skipped(self):
+        """If local Engine call raises, the error is logged and other nodes continue."""
+        server = _make_server(node_name="node01", workers={"node02": MagicMock()})
+        tasks = _make_tasks(server=server)
+
+        worker_result = _make_dapi_result([dict(ENGINE_DUMP)])
+
+        with (
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.get_engine_metrics",
+                side_effect=RuntimeError("socket error"),
+            ),
+            patch(
+                "wazuh.core.indexer.metrics_snapshot.DistributedAPI",
+                return_value=AsyncMock(
+                    distribute_function=AsyncMock(return_value=worker_result)
+                ),
+            ),
+        ):
+            docs = await tasks._collect_normalization_all_nodes(TIMESTAMP)
+
+        assert all(d["wazuh"]["cluster"]["node"] == "node02" for doc in docs for d in [doc])
+        tasks.logger.exception.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_space_name_none_when_name_key_missing(self):
+        """A space without a 'name' key produces wazuh.space.name == None."""
+        dump_no_space_name = {
+            **ENGINE_DUMP,
+            "global": [],
+            "spaces": [
+                {"metrics": [{"name": "events.unclassified", "type": "counter", "enabled": True, "value": 1}]}
+            ],
+        }
+        tasks = _make_tasks()
+        local_result = _make_dapi_result([dump_no_space_name])
+
+        with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_engine_metrics",
+            return_value=local_result,
+        ):
+            docs = await tasks._collect_normalization_all_nodes(TIMESTAMP)
+
+        assert len(docs) == 1
+        assert docs[0]["wazuh"]["space"]["name"] is None
+
+    @pytest.mark.asyncio
+    async def test_all_expected_fields_in_every_document(self):
+        """Every generated document contains all required fields."""
+        tasks = _make_tasks(server=_make_server(node_name="node01"))
+        local_result = _make_dapi_result([dict(ENGINE_DUMP)])
+
+        with patch(
+            "wazuh.core.indexer.metrics_snapshot.get_engine_metrics",
+            return_value=local_result,
+        ):
+            docs = await tasks._collect_normalization_all_nodes(TIMESTAMP)
+
+        for doc in docs:
+            flat_keys = _deep_keys(doc)
+            missing = EXPECTED_NORMALIZATION_FIELDS - flat_keys
+            assert not missing, f"Missing fields in doc {doc['metric']['name']}: {missing}"

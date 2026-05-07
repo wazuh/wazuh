@@ -272,6 +272,7 @@ class WazuhException(Exception):
         2019: {'message': 'Invalid Engine API HTTP response'},
         2020: {'message': 'Engine API request timeout'},
         2021: {'message': 'Engine API connection error'},
+        2022: {'message': 'Could not parse Engine API response as JSON'},
 
         # Indexer
         2200: {'message': 'Error connecting to the Indexer service'},

@@ -44,7 +44,7 @@ def test_get_metrics_dump_ok():
     client._client.post.assert_called_once_with(
         url='http://localhost/metrics/dump',
         content='{}',
-        headers={'Content-Type': 'text/plain'},
+        headers={'Content-Type': 'application/json'},
     )
     assert result == METRICS_DUMP_RESPONSE
 
@@ -59,6 +59,18 @@ def test_get_metrics_dump_http_error():
     with pytest.raises(WazuhError) as exc_info:
         client.get_metrics_dump()
     assert exc_info.value.code == 2019
+
+
+def test_get_metrics_dump_invalid_json():
+    client = _make_client()
+    mock_response = MagicMock()
+    mock_response.is_error = False
+    mock_response.json.side_effect = ValueError("not valid json")
+    client._client.post.return_value = mock_response
+
+    with pytest.raises(WazuhInternalError) as exc_info:
+        client.get_metrics_dump()
+    assert exc_info.value.code == 2022
 
 
 def test_get_metrics_dump_timeout():
