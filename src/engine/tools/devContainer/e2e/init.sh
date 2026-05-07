@@ -218,36 +218,37 @@ function download_and_unzip_artifact() {
 }
 
 #
-# Find and filter artifacts by prefix, and for each artifact define a "dest_file" # according to the prefix.
+# Find and filter artifacts by regex, and for each artifact define a destination
+# file according to the first matching pattern.
 #   args:
 #     $1 => repo (e.g. "wazuh/wazuh-indexer")
 #     $2 => run_id (e.g. "123456789")
 #     $3 => output_dir (e.g. "wazuh-indexer")
-#     from $4 => list of prefix::filename pairs (e.g.
-#                "prefix1::file1.zip" "wazuh-indexer-setup-5.0::wazuh-indexer-setup-5.0.0.0.zip"
+#     from $4 => list of regex::filename pairs (e.g.
+#                "^prefix1-[[:alnum:]]+\\.zip$::file1.zip"
+#                "^wazuh-indexer_5\\.0\\.0-[[:alnum:]]+_amd64\\.deb$::wazuh-indexer_5.0.0-latest_amd64.deb"
 #
-function fetch_artifacts_with_prefixes() {
+function fetch_artifacts_with_patterns() {
   local repo=$1
   local run_id=$2
   local output_dir=$3
-  shift 3 # Shift the first three arguments to get the prefixes
+  shift 3
 
-  # Build the jq filter to select artifacts by prefix and create the prefix map "NAME URL"
+  # Build the jq filter to select artifacts by regex and create the regex map.
   local jq_filter=""
-  local -a prefix_map=()
+  local -a pattern_map=()
 
   for pair in "$@"; do
-    # pair is in the format "prefix::filename", we split it into prefix and final_filename
-    # prefix is the prefix to match, final_filename is the name of the file to save the artifact as
-    local prefix="${pair%%::*}"
+    local pattern="${pair%%::*}"
+    local jq_pattern="${pattern//\\/\\\\}"
+    jq_pattern="${jq_pattern//\"/\\\"}"
     local final_filename="${pair##*::}"
-    prefix_map+=("$prefix|$final_filename")
+    pattern_map+=("$pattern|$final_filename")
 
-    # Add to jq filter
     if [[ -z "$jq_filter" ]]; then
-      jq_filter="(.name | startswith(\"$prefix\"))"
+      jq_filter="(.name | test(\"$jq_pattern\"))"
     else
-      jq_filter="$jq_filter or (.name | startswith(\"$prefix\"))"
+      jq_filter="$jq_filter or (.name | test(\"$jq_pattern\"))"
     fi
   done
 
@@ -257,29 +258,28 @@ function fetch_artifacts_with_prefixes() {
     gh api "repos/$repo/actions/runs/$run_id/artifacts" \
       -q ".artifacts[]
           | select($jq_filter and (.name | test(\"\\\\.(sha512|sha256|md5)$\") | not))
-          | \"\(.name) \(.archive_download_url)\"" \
+          | [ .name, .archive_download_url ]
+          | @tsv" \
     | cat
   )
 
   if [[ -z "$raw_kv_art" ]]; then
-    echo "==> Cannot find any artifacts matching given prefixes in $repo / run_id $run_id. See http://github.com/$repo/actions/runs/$run_id"
+    echo "==> Cannot find any artifacts matching the given patterns in $repo / run_id $run_id. See http://github.com/$repo/actions/runs/$run_id"
     return 0
   fi
 
   echo ""
   echo "==> Downloading artifacts of interest..."
 
-  while read -r artifact_line; do
-    local artifact_name artifact_url
-    artifact_name="$(echo "$artifact_line" | awk '{print $1}')"
-    artifact_url="$(echo "$artifact_line"  | awk '{print $2}')"
+  while IFS=$'\t' read -r artifact_name artifact_url; do
+    [[ -z "$artifact_name" || -z "$artifact_url" ]] && continue
 
     # Determine the destination file
-    for pm in "${prefix_map[@]}"; do
-      local pre="${pm%%|*}"
+    for pm in "${pattern_map[@]}"; do
+      local pattern="${pm%%|*}"
       local final_f="${pm##*|}"
 
-      if [[ "$artifact_name" == "$pre"* ]]; then
+      if [[ "$artifact_name" =~ $pattern ]]; then
         download_and_unzip_artifact "$repo" "$run_id" "$artifact_url" "$output_dir" "$final_f"
         break
       fi
@@ -314,11 +314,11 @@ function get_indexer_artifact() {
   list_run_artifacts "$repo" "$run_id"
 
   # Download:
-  #  - If artifact_name starts with "wazuh-indexer_5.0.0-latest_amd64.deb",
+  #  - If artifact_name matches wazuh-indexer_5.0.0-${VAR}_amd64.deb,
   #    save it as "wazuh-indexer_5.0.0-latest_amd64.deb"
-  fetch_artifacts_with_prefixes \
+  fetch_artifacts_with_patterns \
     "$repo" "$run_id" "wazuh-indexer" \
-    "wazuh-indexer_5.0.0-::wazuh-indexer_5.0.0-latest_amd64.deb"
+    '^wazuh-indexer_5\.0\.0-[[:alnum:]]+_amd64\.deb$::wazuh-indexer_5.0.0-latest_amd64.deb'
 }
 
 
@@ -347,11 +347,11 @@ function get_dashboard_artifact() {
   list_run_artifacts "$repo" "$run_id"
 
   # Download:
-  #  - If artifact_name starts with "wazuh-dashboard_5.0.0-latest_amd64.deb",
+  #  - If artifact_name matches wazuh-dashboard_5.0.0-${VAR}_amd64.deb,
   #    save it as "wazuh-dashboard_5.0.0-latest_amd64.deb"
-  fetch_artifacts_with_prefixes \
+  fetch_artifacts_with_patterns \
     "$repo" "$run_id" "wazuh-dashboard" \
-    "wazuh-dashboard_5.0.0-::wazuh-dashboard_5.0.0-latest_amd64.deb"
+    '^wazuh-dashboard_5\.0\.0-[[:alnum:]]+_amd64\.deb$::wazuh-dashboard_5.0.0-latest_amd64.deb'
 }
 
 ####################################################

@@ -501,9 +501,10 @@ TEST_F(WIndexerConnectorMockTest, GetPolicyHashAndEnabledHappyPath)
     nlohmann::json hits = {{"total", {{"value", 1}}}, {"hits", {policyHit("abc123", true)}}};
     EXPECT_CALL(*mock, search(An<std::string_view>(), 1U, _, _)).WillOnce(Return(hits));
     auto connector = makeConnector();
-    auto [hash, enabled] = connector->getPolicyHashAndEnabled("default");
-    EXPECT_EQ(hash, "abc123");
-    EXPECT_TRUE(enabled);
+    auto result = connector->getPolicyHashAndEnabled("default");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->first, "abc123");
+    EXPECT_TRUE(result->second);
 }
 
 TEST_F(WIndexerConnectorMockTest, GetPolicyHashAndEnabledDisabledWhenNoIntegrations)
@@ -511,9 +512,10 @@ TEST_F(WIndexerConnectorMockTest, GetPolicyHashAndEnabledDisabledWhenNoIntegrati
     nlohmann::json hits = {{"total", {{"value", 1}}}, {"hits", {policyHit("zz", true, {})}}};
     EXPECT_CALL(*mock, search(An<std::string_view>(), 1U, _, _)).WillOnce(Return(hits));
     auto connector = makeConnector();
-    auto [hash, enabled] = connector->getPolicyHashAndEnabled("default");
-    EXPECT_EQ(hash, "zz");
-    EXPECT_FALSE(enabled);
+    auto result = connector->getPolicyHashAndEnabled("default");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->first, "zz");
+    EXPECT_FALSE(result->second);
 }
 
 TEST_F(WIndexerConnectorMockTest, GetPolicyHashAndEnabledDisabledWhenEnabledFalse)
@@ -522,7 +524,8 @@ TEST_F(WIndexerConnectorMockTest, GetPolicyHashAndEnabledDisabledWhenEnabledFals
     EXPECT_CALL(*mock, search(An<std::string_view>(), 1U, _, _)).WillOnce(Return(hits));
     auto connector = makeConnector();
     auto pair = connector->getPolicyHashAndEnabled("default");
-    EXPECT_FALSE(pair.second);
+    ASSERT_TRUE(pair.has_value());
+    EXPECT_FALSE(pair->second);
 }
 
 TEST_F(WIndexerConnectorMockTest, GetPolicyHashAndEnabledZeroHitsThrows)
@@ -626,16 +629,17 @@ TEST_F(WIndexerConnectorMockTest, GetPolicyHappyPath)
     auto connector = makeConnector(/*maxHits=*/10);
     auto resources = connector->getPolicy("default");
 
-    EXPECT_EQ(resources.kvdbs.size(), 1U);
-    EXPECT_EQ(resources.decoders.size(), 1U);
-    EXPECT_EQ(resources.filters.size(), 1U);
-    EXPECT_EQ(resources.integration.size(), 1U);
-    EXPECT_TRUE(resources.policy.isObject());
+    ASSERT_TRUE(resources.has_value());
+    EXPECT_EQ(resources->kvdbs.size(), 1U);
+    EXPECT_EQ(resources->decoders.size(), 1U);
+    EXPECT_EQ(resources->filters.size(), 1U);
+    EXPECT_EQ(resources->integration.size(), 1U);
+    EXPECT_TRUE(resources->policy.isObject());
     std::string hash;
-    EXPECT_EQ(resources.policy.getString(hash, "/hash"), json::RetGet::Success);
+    EXPECT_EQ(resources->policy.getString(hash, "/hash"), json::RetGet::Success);
     EXPECT_EQ(hash, "HASHX");
     std::string originSpace;
-    EXPECT_EQ(resources.policy.getString(originSpace, "/origin_space"), json::RetGet::Success);
+    EXPECT_EQ(resources->policy.getString(originSpace, "/origin_space"), json::RetGet::Success);
     EXPECT_EQ(originSpace, "default");
 }
 
@@ -650,10 +654,11 @@ TEST_F(WIndexerConnectorMockTest, GetPolicyEmptyResultEndsPagination)
 
     auto connector = makeConnector();
     auto resources = connector->getPolicy("default");
-    EXPECT_TRUE(resources.kvdbs.empty());
-    EXPECT_TRUE(resources.decoders.empty());
-    EXPECT_TRUE(resources.filters.empty());
-    EXPECT_TRUE(resources.integration.empty());
+    ASSERT_TRUE(resources.has_value());
+    EXPECT_TRUE(resources->kvdbs.empty());
+    EXPECT_TRUE(resources->decoders.empty());
+    EXPECT_TRUE(resources->filters.empty());
+    EXPECT_TRUE(resources->integration.empty());
 }
 
 TEST_F(WIndexerConnectorMockTest, GetPolicyEmptySpaceThrows)
@@ -804,9 +809,10 @@ TEST_F(WIndexerConnectorMockTest, GetIocTypeHashesHappyPath)
 
     auto connector = makeConnector();
     auto result = connector->getIocTypeHashes();
-    EXPECT_EQ(result.size(), 2U);
-    EXPECT_EQ(result["ip"], "h-ip");
-    EXPECT_EQ(result["domain"], "h-dom");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->size(), 2U);
+    EXPECT_EQ((*result)["ip"], "h-ip");
+    EXPECT_EQ((*result)["domain"], "h-dom");
 }
 
 TEST_F(WIndexerConnectorMockTest, GetIocTypeHashesNoDocumentThrows)
@@ -841,7 +847,8 @@ TEST_F(WIndexerConnectorMockTest, GetIocTypeHashesFlatFormat)
 
     auto connector = makeConnector();
     auto result = connector->getIocTypeHashes();
-    EXPECT_EQ(result["ip"], "h-ip");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ((*result)["ip"], "h-ip");
 }
 
 /**************************
