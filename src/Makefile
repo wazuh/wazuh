@@ -157,6 +157,11 @@ else
 USE_SELINUX=no
 endif
 
+
+ifeq (${TARGET},manager)
+override USE_SELINUX := no
+endif
+
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		PRECOMPILED_OS:=linux
@@ -335,7 +340,7 @@ agent: ${CPPLIBDEPS}
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 
 ifneq (,$(filter ${USE_SELINUX},YES yes y Y 1))
-server manager agent: selinux
+agent: selinux
 endif
 
 selinux: $(SELINUX_POLICY)

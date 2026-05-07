@@ -841,12 +841,15 @@ InstallCommon()
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/run
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/upgrade
-  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/selinux
 
-  if [ -f selinux/wazuh.pp ]
-  then
-    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} selinux/wazuh.pp ${INSTALLDIR}/var/selinux/
-    InstallSELinuxPolicyPackage
+  # SELinux policy is shipped only with the agent (FIM whodata uses
+  # auditd/audisp). The manager does not install any SELinux policy.
+  if [ "X${INSTYPE}" = "Xagent" ]; then
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/selinux
+    if [ -f selinux/wazuh.pp ]; then
+      ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} selinux/wazuh.pp ${INSTALLDIR}/var/selinux/
+      InstallSELinuxPolicyPackage
+    fi
   fi
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/backup
