@@ -177,9 +177,21 @@ void * wm_command_main(wm_command_t * command) {
 
         // Modify command with full path.
         if (!command->full_command) {
-            os_malloc(strlen(full_path) + strlen(command->command) - strlen(binary) + 1, command->full_command);
+            if (argv[1]) {
+                size_t len = strlen(full_path) + 1;
+                for (int k = 1; argv[k]; k++) {
+                    len += strlen(argv[k]) + 1;
+                }
+                os_malloc(len, command->full_command);
+                snprintf(command->full_command, len, "%s", full_path);
+                for (int k = 1; argv[k]; k++) {
+                    strcat(command->full_command, " ");
+                    strcat(command->full_command, argv[k]);
+                }
+            } else {
+                os_strdup(full_path, command->full_command);
+            }
         }
-        snprintf(command->full_command, strlen(full_path) + strlen(command->command) - strlen(binary) + 1, "%s %s", full_path, command->command + strlen(binary) + 1);
         free_strarray(argv);
 
         if (validate_command_checksums(command, full_path) != 0) {
