@@ -163,22 +163,20 @@ streamlog/
   │  m_scheduler (wp) │              │ ──────────────────  │
   │  m_store          │              │  m_config (const)   │
   │ ─────────────────│              │  m_channelName      │
-  │ +registerLog()   │              │  m_stateData        │
-  │ +updateConfig()  │              │  m_activeWriters    │
-  │ +destroyChannel()│              │  m_store            │
-    │ +ensureAndGetWriter() │         │  m_scheduler (wp)   │
-  │ +hasChannel()    │              │ ──────────────────  │
-  │ +getConfig()     │              │ +create() [factory] │
-  │ +requestShutdown()│              │ +createWriter()     │
-  └──────────────────┘              │ -workerThreadFunc() │
-                                    │ -needsRotation()    │
-  ┌──────────────────┐              │ -rotateFile()       │
-  │  «interface»      │              │ -writeMessage()     │
-  │  WriterEvent      │              │ -compressLogFile()  │
-  │ ─────────────────│              │ -deleteOldFiles()   │
-                                    └──────┬──────────────┘
-  │ +operator()(msg) │                     │ creates
-  └────────┬─────────┘                     ▼
+  │ +destroyChannel()│              │  m_stateData        │
+  │ +ensureAndGetWriter() │         │  m_activeWriters    │
+  │ +hasChannel()    │              │  m_store            │
+  │ +requestShutdown()│              │  m_scheduler (wp)   │
+  └──────────────────┘              │ ──────────────────  │
+                                    │ +create() [factory] │
+                                    │ +createWriter()     │
+  ┌──────────────────┐              │ -workerThreadFunc() │
+  │  «interface»      │              │ -needsRotation()    │
+  │  WriterEvent      │              │ -rotateFile()       │
+  │ ─────────────────│              │ -writeMessage()     │
+                                    │ -compressLogFile()  │
+  │ +operator()(msg) │              │ -deleteOldFiles()   │
+  └────────┬─────────┘              └──────┬──────────────┘
            │ implements          ┌────────────────────────┐
            ▼                     │    ChannelWriter        │
   ┌──────────────────┐          │ ──────────────────────  │
@@ -300,6 +298,7 @@ Both policies are applied **in sequence** (accumulated-size first, then file-cou
 3. Sort by `mtime` ascending (oldest first).
 4. **Strategy 1 — size:** delete oldest non-active files until their combined size ≤ `maxAccumulatedSize`.
 5. **Strategy 2 — count:** delete oldest remaining non-active files until count ≤ `maxFiles`.
+6. **Empty directory pruning:** after any files are deleted, scan `basePath` recursively for empty subdirectories, sorted deepest-first, and remove each one. This keeps the directory tree clean when retention removes all files from a date-based subdirectory (e.g. `2026/Jan/`).
 
 > **Active file is never a deletion candidate.** The file currently being written is excluded from both policies. If it has grown beyond `maxAccumulatedSize` on its own, it will not be deleted — it becomes subject to retention only after the next rotation closes it.
 
@@ -329,20 +328,28 @@ Set either to `0` to disable that specific policy.
 
 ## Crash-Recovery (Store Persistence)
 
-On each rotation (when compression is enabled), the current file path is saved to the `store::IStore` under:
+On each rotation (when compression is enabled), the current file path and counter are saved to the `store::IStore` under:
 
 ```
-streamlog/<channelName>/0  →  { "/last_current": "/path/to/current/file.json" }
+streamlog/<channelName>/0  →  { "/last_current": "/path/to/current/file.json", "/last_counter": 28 }
 ```
 
-On channel construction:
+### Startup sequence (`maxSize > 0`)
 
-1. Read the previous path from the store.
-2. If it differs from the newly computed current path **and** the file exists on disk → schedule compression.
-3. Save the new current path.
-4. If compression is disabled, clear the persisted path.
+1. Read `last_current` and `last_counter` from the store.
+2. If both are present: reconstruct the candidate path using the stored counter via `replacePlaceholders(now)`.
+   - If the reconstructed path equals `last_current` **and** the file exists on disk → **resume writing** to that file (fast path, no disk scan).
+   - Otherwise (time period changed, file deleted by retention, etc.) → fall through to step 3.
+3. If no stored state or resume not possible: start at `counter = 0` and advance it past any existing files (from a prior run in the same time window) by iterating `exists()` until a free slot is found.
+4. Save both `last_current` and `last_counter` to the store.
 
-This ensures that a rotated file that was not yet compressed before a crash will still be compressed after restart.
+`last_counter` is stored alongside `last_current` to make resume a single-shot O(1) path lookup. Without it, resume would require either parsing the counter from the filename (fragile and pattern-dependent) or scanning from 0 (O(N) `stat` calls).
+
+### Compression catch-up on restart
+
+If `last_current` refers to a file that differs from the newly computed current path and the file still exists on disk, a compression task is scheduled for it — ensuring that a file rotated before a crash is still compressed after restart.
+
+If compression is disabled, the stored state is cleared on startup.
 
 ---
 
@@ -365,7 +372,7 @@ This ensures that a rotated file that was not yet compressed before a crash will
 
 - `basePath` must be absolute, exist, and be writable (verified by test-writing a file and directory).
 - `pattern` must not be empty, exceed 255 chars, or contain `../`.
-- If `maxSize > 0` and no `${counter}` in pattern → counter is auto-inserted before the last `.`.
+- If `maxSize > 0` and no `${counter}` in pattern → `-${counter}` is appended to the pattern as a suffix.
 - At least one time placeholder is required when `maxSize == 0`.
 - `bufferSize == 0` → promoted to `1 << 20`.
 - `maxSize` in `(0, 1 MiB)` → clamped to `1 MiB`.
@@ -391,11 +398,11 @@ This ensures that a rotated file that was not yet compressed before a crash will
 | `${name}` | Channel name | `standard-wazuh-events-v5` |
 | `${counter}` | Rotation counter | `3` |
 
-**Example:** pattern `${YYYY}/${MMM}/${name}-${DD}.json` for channel `standard-wazuh-events-v5` on March 26, 2026 → `2026/Mar/standard-wazuh-events-v5-26.json`.
+**Example:** pattern `${YYYY}/${MMM}/${name}-${DD}` with `ext = "json"` for channel `standard-wazuh-events-v5` on March 26, 2026 → `2026/Mar/standard-wazuh-events-v5-26.json`. The file extension is **not** part of the pattern — it is appended automatically from the `ext` parameter passed to `ChannelHandler::create()`.
 
 ### Example Filesystem Layout
 
-With `basePath = "/var/wazuh-manager/logs"`, `name = "standard-wazuh-events-v5"`, `ext = "json"`, `pattern = "${YYYY}/${MMM}/${name}-${DD}.json"`, and `LogManager::isolatedBasePath(name, cfg)`, the resulting layout is:
+With `basePath = "/var/wazuh-manager/logs"`, `name = "standard-wazuh-events-v5"`, `ext = "json"`, `pattern = "${YYYY}/${MMM}/${name}-${DD}"`, and `LogManager::isolatedBasePath(name, cfg)`, the resulting layout is:
 
 ```text
 /var/wazuh-manager/logs/standard-wazuh-events-v5/
@@ -405,7 +412,7 @@ With `basePath = "/var/wazuh-manager/logs"`, `name = "standard-wazuh-events-v5"`
     └── standard-wazuh-events-v5-26.json
 ```
 
-The file at `standard-wazuh-events-v5.json` is the hard link to the current active file.
+The `standard-wazuh-events-v5.json` hard link and all rotated files share the same extension (`ext`); it is never encoded in the pattern itself.
 
 ---
 
@@ -424,7 +431,7 @@ streamlog::LogManager logManager(store, scheduler);
 // Register a channel
 streamlog::RotationConfig cfg {
   "/var/wazuh-manager/logs",
-  "${YYYY}/${MMM}/${name}-${DD}.json",
+  "${YYYY}/${MMM}/${name}-${DD}",  // extension ("json") is passed separately, not part of the pattern
     10 * 1024 * 1024,   // 10 MiB max size
     1 << 20,            // buffer
     true,               // compress
@@ -433,9 +440,8 @@ streamlog::RotationConfig cfg {
     20ULL * 1024 * 1024 * 1024  // max 20 GiB accumulated size in the channel directory
 };
 streamlog::LogManager::isolatedBasePath("standard-wazuh-events-v5", cfg);
-logManager.registerLog("standard-wazuh-events-v5", cfg, "json");
 
-// Obtain a writer (starts the worker thread)
+// Obtain a writer (auto-registers and starts the worker thread)
 auto writer = logManager.ensureAndGetWriter("standard-wazuh-events-v5", cfg, "json");
 
 // Write from any thread
@@ -453,7 +459,7 @@ writer.reset();
 void processEvent(streamlog::ILogManager& logManager) {
     streamlog::RotationConfig cfg {
       "/var/wazuh-manager/logs",
-      "${YYYY}/${MMM}/${name}-${DD}.json",
+      "${YYYY}/${MMM}/${name}-${DD}",  // extension ("json") is passed separately, not part of the pattern
       0,
       1 << 20,
       true,
@@ -473,16 +479,7 @@ void processEvent(streamlog::ILogManager& logManager) {
 streamlog::RotationConfig cfg { /* ... */ };
 streamlog::LogManager::isolatedBasePath("standard-wazuh-events-v5", cfg);
 // cfg.basePath is now "<original>/standard-wazuh-events-v5/"
-logManager.registerLog("standard-wazuh-events-v5", cfg, "json");
-```
-
-### Update config at runtime
-
-```cpp
-// Only allowed when no writers are active
-auto newCfg = logManager.getConfig("standard-wazuh-events-v5");
-newCfg.maxSize = 20 * 1024 * 1024;
-logManager.updateConfig("standard-wazuh-events-v5", newCfg, "json");
+auto writer = logManager.ensureAndGetWriter("standard-wazuh-events-v5", cfg, "json");
 ```
 
 ---
@@ -499,6 +496,7 @@ logManager.updateConfig("standard-wazuh-events-v5", newCfg, "json");
 | Compression fails (`gzipCompress` throws) | Warning logged; original file left on disk, partial `.gz` may remain. In-flight entries are unregistered and retention cleanup runs in best-effort mode on whatever state is on disk. |
 | `scheduleTask()` throws | Warning logged; in-flight entries are unregistered immediately so retention is not permanently blocked. File is left uncompressed. |
 | Retention cleanup fails to delete a file | File remains on disk and stays in the accounting (not marked as freed). |
+| Empty subdirectory removal fails | Directory remains on disk; a debug message is logged. Non-fatal. |
 | Directory creation fails during rotation | Warning logged; channel may enter `ErrorClosed`. |
 
 **Philosophy:** Never crash the process. Log an emergency message and gracefully degrade.
@@ -587,9 +585,6 @@ A: Yes. The `operator()` only performs an atomic load + a queue push. Both are t
 
 **Q: What happens if the queue is full?**
 A: `operator()` returns `false` and the message is dropped. Monitor the return value in latency-sensitive code.
-
-**Q: Can I update a channel's config while writers are active?**
-A: No. `updateConfig()` throws if `getActiveWritersCount() > 0`. Destroy all writers first.
 
 **Q: Why does `maxSize < 1 MiB` get clamped?**
 A: Extremely small files cause excessive rotation and disk I/O. The 1 MiB floor is a safety net.
