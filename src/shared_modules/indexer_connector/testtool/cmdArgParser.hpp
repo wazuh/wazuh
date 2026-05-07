@@ -183,6 +183,8 @@ public:
                   << "\t-w WAIT_TIME\t\tWait time in seconds before closing (0 = wait for enter).\n"
                   << "\t-l LOG_FILE\t\tLog file path.\n"
                   << "\t-I EXTRA_CONFIG\t\tAdd an extra async instance with this config (repeatable, async only).\n"
+                  << "\t-s SPACE\t\tPolicy space name (for export-policy / generate-full-policy).\n"
+                  << "\nCredentials: add \"username\" and \"password\" fields directly to the config JSON.\n"
                   << "\nExamples:" << "\n\t# Index events from file sync mode:\n"
                   << "\t./indexer_connector_tool -c config.json -e events.json\n"
                   << "\n\t# Index events from file async mode:\n"
@@ -192,7 +194,11 @@ public:
                   << "\n\t# Index events and run 30 flush cycles (sync mode):\n"
                   << "\t./indexer_connector_tool -c config.json -e events.json -L 30 -D 1\n"
                   << "\n\t# Test isolation with two async instances (each gets its own RocksDB queue):\n"
-                  << "\t./indexer_connector_tool -c config.json -I config2.json -e events.json -m async -w 10\n\n";
+                  << "\t./indexer_connector_tool -c config.json -I config2.json -e events.json -m async -w 10\n"
+                  << "\n\t# Export policy documents for a space:\n"
+                  << "\t./indexer_connector_tool export-policy -c config.json -s default -l out.json\n"
+                  << "\n\t# Generate full policy asset for a space:\n"
+                  << "\t./indexer_connector_tool generate-full-policy -c config.json -s default -l out.json\n\n";
     }
 
 private:
