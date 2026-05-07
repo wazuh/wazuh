@@ -850,7 +850,7 @@ int main(int argc, char* argv[])
             scheduler->scheduleTask(
                 "cm-sync-task",
                 scheduler::TaskConfig {.interval = confManager.get<std::size_t>(conf::key::CM_SYNC_INTERVAL),
-                                       .runImmediately = false,
+                                       .runImmediately = true,
                                        .CPUPriority = 0,
                                        .taskFunction = [=]()
                                        {

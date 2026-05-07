@@ -85,10 +85,15 @@ base::OptError loadTesterOnWorker(const std::vector<EntryConverter>& entries,
 }
 
 base::OptError loadRouterOnWoker(const std::vector<EntryConverter>& entries,
-                                 const std::shared_ptr<IWorker<IRouter>>& worker)
+                                 const std::shared_ptr<IWorker<IRouter>>& worker,
+                                 const std::atomic<bool>& isShutdown)
 {
     for (const auto& entry : entries)
     {
+        if (isShutdown.load(std::memory_order_acquire))
+        {
+            return base::Error {"Loading aborted: orchestrator shutting down"};
+        }
         auto err = worker->get()->addEntry(prod::EntryPost(entry), /*ignoreFail=*/true);
         if (err)
         {
@@ -169,7 +174,7 @@ std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::ISt
 base::OptError Orchestrator::initRouterWorker(const std::shared_ptr<IWorker<IRouter>>& worker,
                                               const std::vector<EntryConverter>& routerEntries)
 {
-    auto error = loadRouterOnWoker(routerEntries, worker);
+    auto error = loadRouterOnWoker(routerEntries, worker, m_isShutdown);
 
     if (error)
     {
