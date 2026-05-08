@@ -483,7 +483,8 @@ void IocSync::synchronize()
 
             if (!ready)
             {
-                LOG_INFO("[IOC::Sync] IOC consumer is not ready (not idle or no data yet), skipping sync cycle");
+                LOG_INFO("[IOC::Sync] IOC syncronization skipped because wazuh-indexer consumer for IOCs is not ready "
+                         "for sync (might be updating or no data yet)");
                 return;
             }
         }

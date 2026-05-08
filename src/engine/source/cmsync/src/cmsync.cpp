@@ -175,7 +175,7 @@ CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPt
     LOG_DEBUG("[CMSync] First setup detected, initializing default sync spaces");
 
     // Populate directly and dump once to avoid multiple unnecessary store writes
-    m_namespacesState.emplace_back("standard",
+    m_namespacesState.emplace_back(STANDARD_SPACE_NAME,
                                    std::optional<std::string>(std::string(wiconnector::STANDARD_RULESET_CONSUMER_ID)));
     m_namespacesState.emplace_back("custom");
     dumpStateToStore();
@@ -510,7 +510,8 @@ void CMSync::synchronize()
 
                 if (!ready)
                 {
-                    LOG_INFO("[CMSync] Consumer '{}' for space '{}' is not ready (not idle or no data yet), skipping",
+                    LOG_INFO("[CMSync] Synchronization skipped for space '{}' because wazuh-indexer consumer '{}' is "
+                             "not ready for sync (might be updating or no data)",
                              nsState.getConsumerId().value(),
                              nsState.getOriginSpace());
                     continue;
