@@ -1,5 +1,5 @@
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include <chrono>
 #include <thread>
@@ -55,11 +55,10 @@ protected:
         ON_CALL(*m_mockCounter, get()).WillByDefault(Return(0));
         ON_CALL(*m_mockCounter, name()).WillByDefault(ReturnRef(kCounterName));
 
-        EXPECT_CALL(*mockMetrics, getOrCreateCounter(_, _, _))
-            .Times(AnyNumber())
-            .WillRepeatedly(Return(m_mockCounter));
+        EXPECT_CALL(*mockMetrics, getOrCreateCounter(_, _, _)).Times(AnyNumber()).WillRepeatedly(Return(m_mockCounter));
         ON_CALL(*mockMetrics, registerPullMetric(_, _, _, _))
-            .WillByDefault([](const std::string&, std::function<uint64_t()>, const std::string&, const std::string&) {});
+            .WillByDefault(
+                [](const std::string&, std::function<uint64_t()>, const std::string&, const std::string&) {});
         ON_CALL(*mockMetrics, registerPullMetricDouble(_, _, _, _))
             .WillByDefault([](const std::string&, std::function<double()>, const std::string&, const std::string&) {});
 
@@ -75,9 +74,7 @@ protected:
 
 TEST_F(WorkerTest, RouterWorkerNullQueueThrows)
 {
-    ASSERT_THROW(
-        RouterWorker(m_envBuilder, nullptr, m_mockRawIndexer, nullptr),
-        std::logic_error);
+    ASSERT_THROW(RouterWorker(m_envBuilder, nullptr, m_mockRawIndexer, nullptr), std::logic_error);
 }
 
 TEST_F(WorkerTest, RouterWorkerConstructsWithValidQueue)
@@ -232,9 +229,7 @@ TEST_F(WorkerTest, RouterWorkerGetReturnsRouter)
 
 TEST_F(WorkerTest, TesterWorkerNullQueueThrows)
 {
-    ASSERT_THROW(
-        TesterWorker(m_envBuilder, nullptr),
-        std::logic_error);
+    ASSERT_THROW(TesterWorker(m_envBuilder, nullptr), std::logic_error);
 }
 
 TEST_F(WorkerTest, TesterWorkerConstructsWithValidQueue)
@@ -318,6 +313,54 @@ TEST_F(WorkerTest, TesterWorkerProcessesEvent)
     // The callback should have been invoked by the tester
     // Note: it may fail if tester.ingestTest throws because the environment doesn't exist,
     // but the test still verifies the worker loop processes events correctly
+}
+
+TEST_F(WorkerTest, TesterWorkerSetsTimestampAndEventId)
+{
+    auto mockQueue = std::make_shared<fastqueue::mocks::MockQueue<test::EventTest>>();
+
+    auto event = std::make_shared<json::Json>(R"({"test": true})");
+    auto eventRef = event; // Keep a reference to inspect the JSON after processing
+    test::Options opts(test::Options::TraceLevel::NONE, {}, "env1");
+
+    std::atomic<bool> callbackInvoked {false};
+    auto testEventData = std::make_shared<test::TestingTuple>(
+        std::move(event),
+        opts,
+        [&callbackInvoked](base::RespOrError<test::Output>&& /*output*/) { callbackInvoked.store(true); });
+
+    std::atomic<int> callCount {0};
+    ON_CALL(*mockQueue, waitPop(_, _))
+        .WillByDefault(
+            [&](test::EventTest& ev, int64_t) -> bool
+            {
+                if (callCount.fetch_add(1) == 0)
+                {
+                    ev = testEventData;
+                    return true;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(20));
+                return false;
+            });
+
+    TesterWorker worker(m_envBuilder, mockQueue);
+    worker.start();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    worker.stop();
+
+    // Verify @timestamp and wazuh.event.id were set on the event
+    ASSERT_TRUE(eventRef->exists("/@timestamp"));
+    ASSERT_TRUE(eventRef->isString("/@timestamp"));
+    std::string timestamp;
+    ASSERT_EQ(eventRef->getString(timestamp, "/@timestamp"), json::RetGet::Success);
+    ASSERT_FALSE(timestamp.empty());
+
+    ASSERT_TRUE(eventRef->exists("/wazuh/event/id"));
+    ASSERT_TRUE(eventRef->isString("/wazuh/event/id"));
+    std::string eventId;
+    ASSERT_EQ(eventRef->getString(eventId, "/wazuh/event/id"), json::RetGet::Success);
+    ASSERT_FALSE(eventId.empty());
 }
 
 TEST_F(WorkerTest, TesterWorkerSkipsNullEvent)
