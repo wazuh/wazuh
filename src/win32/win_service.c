@@ -84,6 +84,12 @@ int os_stop_service()
             else if (GetLastError() == ERROR_SERVICE_NOT_ACTIVE) {
                 rc = -1; /* already stopped — not a real error */
             }
+            else if (GetLastError() == ERROR_SERVICE_CANNOT_ACCEPT_CTRL) {
+                rc = -1; /* already stopping — wait and restart normally */
+            }
+            else {
+                plain_mdebug1("os_stop_service(): ControlService failed (error %lu).", GetLastError());
+            }
 
             CloseServiceHandle(schService);
         }
