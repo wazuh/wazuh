@@ -8,9 +8,13 @@
 #   name           Manifest key. Must match the input passed by the workflow
 #                  (the "<name>" in "name:version;...").
 #   url            Tarball URL template. Two forms are supported:
-#                  - "https://..." with {version}/{version_us} placeholders.
+#                  - "https://..." with {version}/{version_us}/{version_concat}
+#                    placeholders.
 #                    {version} is substituted with the user-provided version.
 #                    {version_us} replaces dots with underscores.
+#                    {version_concat} maps "X.Y.Z" to sqlite's concatenated
+#                    form (3.51.1 -> 3510100). Used only by the sqlite
+#                    manifest entry today.
 #                  - "gh:owner/repo:tag-template". The script calls the GitHub
 #                    releases API for the tag (with {version} substituted into
 #                    the template) and picks the first .tar.{gz,bz2,xz} named
@@ -75,17 +79,15 @@ _reg openssl            "https://www.openssl.org/source/openssl-{version}.tar.gz
 _reg procps             "https://gitlab.com/procps-ng/procps/-/archive/v{version}/procps-v{version}.tar.gz"                       tar.gz  1  procps             false  "https://gitlab.com/procps-ng/procps"
 # Note: procps-ng dropped its 2.x and 3.x history when migrating to GitLab.
 # Versions older than ~v3.3.x are not reachable via this URL.
-_reg sqlite             "TBD"                                                                                                     tar.gz  1  sqlite             false  "https://github.com/sqlite/sqlite"
-# sqlite is a special case. src/external/CMakeLists.txt expects a
-# pre-amalgamated `sqlite/sqlite3.c`, which is a build artifact published in
-# sqlite.org's autoconf tarball, not in the GitHub source repo. The
-# autoconf URL (https://www.sqlite.org/{year}/sqlite-autoconf-{NNNNNNN}.tar.gz)
-# requires both a year-prefix and a concatenated-digits version (e.g.
-# 3.50.4 -> 3500400), neither of which are derivable from a plain
-# "name:version" input. Bumping sqlite via this workflow needs a manifest
-# schema change (year field) or a post-extract amalgamation step.
-# Until then, sqlite is left to fall back to the Wazuh source mirror
-# (packages.wazuh.com/deps/$DEPS_VERSION/libraries/sources/sqlite.tar.gz).
+# sqlite ships its pre-amalgamated source (sqlite3.c, sqlite3.h) in
+# sqlite.org's "autoconf" tarball, not in the GitHub repo, so we point the
+# manifest there. The URL needs the concatenated-digits version
+# (3.51.1 -> 3510100), produced by expand_url's {version_concat} substitution.
+# The year prefix is hard-coded per release branch — sqlite groups releases
+# by year, and the path is stable until upstream cuts a release in a new
+# year. Bumping sqlite to a version published in a different year is a
+# one-line touch to this template.
+_reg sqlite             "https://www.sqlite.org/2026/sqlite-autoconf-{version_concat}.tar.gz"                                    tar.gz  1  sqlite             false  "https://github.com/sqlite/sqlite"
 _reg zlib               "https://github.com/madler/zlib/releases/download/v{version}/zlib-{version}.tar.gz"                       tar.gz  1  zlib               false  "https://github.com/madler/zlib"
 _reg audit-userspace    "https://github.com/linux-audit/audit-userspace/archive/refs/tags/v{version}.tar.gz"                      tar.gz  1  audit-userspace    false  "https://github.com/linux-audit/audit-userspace"
 _reg msgpack            "gh:msgpack/msgpack-c:cpp-{version}"                                                                      tar.gz  1  msgpack            false  "https://github.com/msgpack/msgpack-c"
