@@ -266,15 +266,19 @@ elseif(IS_LINUX)
   else()
     set(CURL_BUILD_FLAG "")
   endif()
+  # curl ≥ 8.20 needs zlib ≥ 1.2.5.2 (z_const, inflateReset2). centos:6 ships
+  # zlib 1.2.3, so point configure at the externally-built zlib regardless of
+  # leg.
   set(CURL_CONFIGURE_CMD
       ${CMAKE_COMMAND}
       -E
       env
-      "CPPFLAGS=-fPIC -I${EXTERNAL_DIR}/openssl/include"
-      "LDFLAGS=-L${EXTERNAL_DIR}/openssl"
+      "CPPFLAGS=-fPIC -I${EXTERNAL_DIR}/openssl/include -I${EXTERNAL_DIR}/zlib"
+      "LDFLAGS=-L${EXTERNAL_DIR}/openssl -L${EXTERNAL_DIR}/zlib"
       "LIBS=-ldl -lpthread"
       ${EXTERNAL_DIR}/curl/configure
       --with-openssl=${EXTERNAL_DIR}/openssl
+      --with-zlib
       --disable-ldap
       --without-libidn2
       --without-libpsl
@@ -312,7 +316,7 @@ else()
     BUILD_COMMAND ${CMAKE_MAKE_PROGRAM} -C lib
     BUILD_IN_SOURCE TRUE
     INSTALL_COMMAND ""
-    DEPENDS openssl_external
+    DEPENDS openssl_external zlib_external
     BUILD_BYPRODUCTS ${EXTERNAL_DIR}/curl/lib/.libs/libcurl.a)
 endif()
 
@@ -414,12 +418,11 @@ if(NOT IS_AGENT)
     message(STATUS "Using precompiled libffi library: ${LIBFFI_LIBRARY}")
     add_custom_target(libffi_external)
   else()
-    # Detect host architecture triplet for BUILD_BYPRODUCTS
-    execute_process(
-      COMMAND ${EXTERNAL_DIR}/libffi/config.guess
-      OUTPUT_VARIABLE LIBFFI_HOST
-      OUTPUT_STRIP_TRAILING_WHITESPACE)
-
+    # Modern libffi (3.4+) with BUILD_IN_SOURCE TRUE places the static
+    # archive at libffi/.libs/libffi.a directly — no host-triple subdir.
+    # The precompiled tarball Wazuh ships does use a host-triple subdir
+    # (matched by the LIBFFI_PRECOMPILED glob above), but a fresh source
+    # build does not, so we don't need config.guess here.
     ExternalProject_Add(
       libffi_external
       SOURCE_DIR ${EXTERNAL_DIR}/libffi
@@ -428,9 +431,9 @@ if(NOT IS_AGENT)
       BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
       BUILD_IN_SOURCE TRUE
       INSTALL_COMMAND ""
-      BUILD_BYPRODUCTS ${EXTERNAL_DIR}/libffi/${LIBFFI_HOST}/.libs/libffi.a)
+      BUILD_BYPRODUCTS ${EXTERNAL_DIR}/libffi/.libs/libffi.a)
 
-    set(LIBFFI_LIBRARY ${EXTERNAL_DIR}/libffi/${LIBFFI_HOST}/.libs/libffi.a)
+    set(LIBFFI_LIBRARY ${EXTERNAL_DIR}/libffi/.libs/libffi.a)
   endif()
 
   add_library(ext_libffi STATIC IMPORTED GLOBAL)
@@ -799,12 +802,18 @@ if(EXISTS ${EXTERNAL_DIR}/flatbuffers/build/libflatbuffers.a
   message(STATUS "Using precompiled FlatBuffers library")
   add_custom_target(flatbuffers_external)
 else()
+  if(IS_LINUX)
+    set(FLATBUFFERS_EXE_LINKER_FLAGS "-static-libstdc++ -static-libgcc")
+  else()
+    set(FLATBUFFERS_EXE_LINKER_FLAGS "")
+  endif()
   ExternalProject_Add(
     flatbuffers_external
     SOURCE_DIR ${EXTERNAL_DIR}/flatbuffers
     BINARY_DIR ${EXTERNAL_DIR}/flatbuffers/build
     CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DFLATBUFFERS_BUILD_TESTS=0
                -DFLATBUFFERS_INSTALL=0 -DCMAKE_POSITION_INDEPENDENT_CODE=1
+               "-DCMAKE_EXE_LINKER_FLAGS=${FLATBUFFERS_EXE_LINKER_FLAGS}"
     INSTALL_COMMAND ""
     BUILD_BYPRODUCTS ${EXTERNAL_DIR}/flatbuffers/build/libflatbuffers.a
                      ${EXTERNAL_DIR}/flatbuffers/build/flatc)
@@ -1237,6 +1246,7 @@ if(IS_LINUX)
     file(GLOB PROCPS_SOURCES ${EXTERNAL_DIR}/procps/*.c)
     add_library(ext_procps STATIC ${PROCPS_SOURCES})
     target_include_directories(ext_procps PUBLIC ${EXTERNAL_DIR}/procps)
+    target_compile_definitions(ext_procps PRIVATE _GNU_SOURCE)
     set_target_properties(ext_procps PROPERTIES POSITION_INDEPENDENT_CODE ON
                                                 C_STANDARD 99)
   endif()
@@ -1426,7 +1436,9 @@ elseif(IS_WINDOWS)
             wsock32
             ws2_32
             crypt32
-            bcrypt)
+            bcrypt
+            secur32
+            iphlpapi)
 
   # Output .def for delay-import lib creation
   set_target_properties(
