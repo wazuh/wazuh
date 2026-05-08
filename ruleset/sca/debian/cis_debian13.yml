@@ -2270,7 +2270,7 @@ checks:
     condition: all
     rules:
       - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/'' | awk ''/iif(name)? \"lo\"/''" -> r:accept'
-      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/'' | awk ''/ip(6)? saddr (127.0.0.0\/8|::1)/''" -> r:drop'
+      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/'' | awk ''/ip(6)? saddr (127.0.0.0|::1)/''" -> r:drop'
 
   # 4.3.7 Ensure nftables outbound and established connections are configured. (Manual) - Not Implemented
 
