@@ -175,19 +175,29 @@ void * wm_command_main(wm_command_t * command) {
             pthread_exit(NULL);
         }
 
-        // Modify command with full path.
+        // Find end of first token in original command string using the same
+        // quoting/escaping rules as w_strtok, then replace only the binary
+        // portion with the resolved full_path, preserving arguments verbatim.
         if (!command->full_command) {
-            if (argv[1]) {
-                size_t len = strlen(full_path) + 1;
-                for (int k = 1; argv[k]; k++) {
-                    len += strlen(argv[k]) + 1;
+            const char *p = command->command;
+            bool in_quotes = false;
+            while (*p) {
+                if (*p == '\\' && p[1] != '\0') {
+                    p += 2;
+                } else if (*p == '"') {
+                    in_quotes = !in_quotes;
+                    p++;
+                } else if (*p == ' ' && !in_quotes) {
+                    break;
+                } else {
+                    p++;
                 }
+            }
+
+            if (*p == ' ') {
+                size_t len = strlen(full_path) + strlen(p) + 1;
                 os_malloc(len, command->full_command);
-                snprintf(command->full_command, len, "%s", full_path);
-                for (int k = 1; argv[k]; k++) {
-                    strcat(command->full_command, " ");
-                    strcat(command->full_command, argv[k]);
-                }
+                snprintf(command->full_command, len, "%s%s", full_path, p);
             } else {
                 os_strdup(full_path, command->full_command);
             }

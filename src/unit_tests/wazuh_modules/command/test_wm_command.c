@@ -1015,6 +1015,37 @@ static void test_full_command_linux_no_args(void **state) {
     assert_string_equal(command->full_command, "/usr/bin/uptime");
 }
 
+static void test_full_command_quoted_args(void **state) {
+    wm_command_t *command = (wm_command_t *)*state;
+    command->command = strdup("/bin/bash \"my script.sh\" \"arg with spaces\"");
+
+    expect_string(__wrap_get_binary_path, command, "/bin/bash");
+    will_return(__wrap_get_binary_path, strdup("/bin/bash"));
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_any_always(__wrap_wm_validate_command, command);
+    expect_any_always(__wrap_wm_validate_command, digest);
+    expect_any_always(__wrap_wm_validate_command, ctype);
+    will_return_always(__wrap_wm_validate_command, 1);
+
+    expect_any_always(__wrap__mtinfo, tag);
+    expect_any_always(__wrap__mtinfo, formatted_msg);
+    expect_any_always(__wrap__mtdebug1, tag);
+    expect_any_always(__wrap__mtdebug1, formatted_msg);
+
+    expect_string(__wrap_wm_exec, command, "/bin/bash \"my script.sh\" \"arg with spaces\"");
+    expect_any(__wrap_wm_exec, secs);
+    expect_any(__wrap_wm_exec, add_path);
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    will_return(__wrap_FOREVER, 0);
+
+    WM_COMMAND_CONTEXT.start(command);
+
+    assert_string_equal(command->full_command, "/bin/bash \"my script.sh\" \"arg with spaces\"");
+}
+
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
         cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions)
@@ -1039,7 +1070,8 @@ int main(void) {
     const struct CMUnitTest tests_full_command[] = {
         cmocka_unit_test_setup_teardown(test_full_command_windows_no_args, setup_test_full_command, teardown_test_full_command),
         cmocka_unit_test_setup_teardown(test_full_command_windows_with_args, setup_test_full_command, teardown_test_full_command),
-        cmocka_unit_test_setup_teardown(test_full_command_linux_no_args, setup_test_full_command, teardown_test_full_command)
+        cmocka_unit_test_setup_teardown(test_full_command_linux_no_args, setup_test_full_command, teardown_test_full_command),
+        cmocka_unit_test_setup_teardown(test_full_command_quoted_args, setup_test_full_command, teardown_test_full_command)
     };
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);
