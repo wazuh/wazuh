@@ -223,6 +223,7 @@ void wm_sync_agents() {
 
 static router_provider_create_func router_provider_create_ptr = NULL;
 static router_provider_send_func router_provider_send_ptr = NULL;
+static void *router_module = NULL;
 
 /**
  * @brief Initialize router functions for agent deletion notifications
@@ -230,7 +231,7 @@ static router_provider_send_func router_provider_send_ptr = NULL;
  * @return true if router functions were successfully loaded, false otherwise
  */
 static bool initialize_router_functions(void) {
-    void *router_module = so_get_module_handle("router");
+    router_module = so_get_module_handle("router");
     if (router_module) {
         router_provider_create_ptr = so_get_function_sym(router_module, "router_provider_create");
         router_provider_send_ptr = so_get_function_sym(router_module, "router_provider_send");
