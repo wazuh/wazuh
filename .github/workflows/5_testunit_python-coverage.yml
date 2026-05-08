@@ -4,6 +4,9 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - '.github/workflows/5_testunit_python-coverage.yml'
+      - 'api/**'
+      - 'framework/**'
+      - 'wodles/**'
   workflow_dispatch:
     inputs:
       base_branch:
