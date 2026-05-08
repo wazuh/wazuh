@@ -34,10 +34,9 @@ on:
           Comma-separated list of <system>-<architecture> legs to run.
           Valid values: deb-amd64, deb-arm64, rpm-amd64, rpm-arm64,
           macos-intel64, macos-arm64, windows-i686.
-          Empty = run all 4 Linux legs (macOS and Windows legs only run
-          when explicitly listed — macOS uses paid runner minutes, and
-          windows-i686 is agent-only). macOS and Windows are agent-only;
-          target=manager fails on those legs.
+          Empty = run every supported leg for the chosen target. For
+          target=agent that's all 7 legs; for target=manager it's the 4
+          Linux legs (macOS and Windows are agent-only).
         type: string
         required: false
         default: ""
@@ -59,8 +58,16 @@ jobs:
         id: build
         run: |
           legs_input="${{ inputs.legs }}"
+          target="${{ inputs.target }}"
           if [ -z "${legs_input}" ]; then
-            legs_input="deb-amd64,deb-arm64,rpm-amd64,rpm-arm64"
+            # Default = every supported leg. macOS and Windows are agent-only,
+            # so drop them automatically when target=manager rather than
+            # forcing the user to remember.
+            if [ "${target}" = "manager" ]; then
+              legs_input="deb-amd64,deb-arm64,rpm-amd64,rpm-arm64"
+            else
+              legs_input="deb-amd64,deb-arm64,rpm-amd64,rpm-arm64,macos-intel64,macos-arm64,windows-i686"
+            fi
           fi
 
           json='{"include":['
