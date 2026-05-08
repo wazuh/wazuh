@@ -62,13 +62,16 @@ jobs:
           sudo mv /usr/bin/gcc /usr/bin/gcc.bak 2>/dev/null || true
           sudo mv /usr/bin/g++ /usr/bin/g++.bak 2>/dev/null || true
           sudo mv /usr/bin/c++ /usr/bin/c++.bak 2>/dev/null || true
+          sudo mv /usr/bin/gcov /usr/bin/gcov.bak 2>/dev/null || true
           sudo ln -sf /opt/gcc-14/bin/gcc /usr/bin/gcc
           sudo ln -sf /opt/gcc-14/bin/g++ /usr/bin/g++
           sudo ln -sf /opt/gcc-14/bin/g++ /usr/bin/c++
+          sudo ln -sf /opt/gcc-14/bin/gcov /usr/bin/gcov
 
           # Verify compiler works
           gcc --version
           g++ --version
+          gcov --version
       - name: "Build wazuh"
         uses: ./.github/actions/build_test_flags
         with:

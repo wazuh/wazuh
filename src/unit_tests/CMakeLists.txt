@@ -235,13 +235,32 @@ add_custom_target(
     ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} -a coverage.base -a coverage.info
     --rc lcov_branch_coverage=1 --ignore-errors mismatch --output-file
     coverage.total
+  # Excluded paths:
+  #   - external/, unit_tests/, data_provider/, shared_modules/, syscollector/, syscheckd/src/db/:
+  #     out of scope for legacy UT coverage.
+  #   - */include/c++/*  /usr/include/*: libstdc++ + system headers (template instantiations
+  #     inflate the function/branch denominator without representing project code).
+  #   - wazuh_modules/{agent_info,sca,vulnerability_scanner,router,inventory_sync,
+  #     content_manager,indexer_connector}/: C++ modules with their own coverage workflow
+  #     (5_testunit_<module>.yml + coverage_cpp action); they show as 0% here because
+  #     none of their tests run under cmocka.
+  #   - syscheckd/src/ebpf/: C++ subsystem with its own tests; not exercised by cmocka.
   COMMAND
     ${LCOV_PATH} --gcov-tool ${GCOV_PATH} --remove coverage.total "*external/*"
     --remove coverage.total "*unit_tests/*" --remove coverage.total
     "*data_provider/*" --remove coverage.total "*shared_modules/*" --remove
     coverage.total "*syscollector/*" --remove coverage.total
-    "*syscheckd/src/db/*" --rc lcov_branch_coverage=1 --ignore-errors mismatch
-    --output-file coverage.info.cleaned
+    "*syscheckd/src/db/*" --remove coverage.total "*syscheckd/src/ebpf/*"
+    --remove coverage.total "*/include/c++/*" --remove coverage.total
+    "/usr/include/*" --remove coverage.total
+    "*wazuh_modules/agent_info/*" --remove coverage.total
+    "*wazuh_modules/sca/*" --remove coverage.total
+    "*wazuh_modules/vulnerability_scanner/*" --remove coverage.total
+    "*wazuh_modules/router/*" --remove coverage.total
+    "*wazuh_modules/inventory_sync/*" --remove coverage.total
+    "*wazuh_modules/content_manager/*" --remove coverage.total
+    "*wazuh_modules/indexer_connector/*" --rc lcov_branch_coverage=1
+    --ignore-errors mismatch,unused --output-file coverage.info.cleaned
   # Generate HTML report
   COMMAND
     ${GENHTML_PATH} -q --output-directory coverage-report --title

@@ -29,11 +29,11 @@
 #include "shared.h"
 
 #ifndef TEST_WINAGENT
-void wm_agent_upgrade_listen_messages(const wm_agent_configs* agent_configs);
+void* wm_agent_upgrade_listen_messages(void *arg);
 #endif
 void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config);
 bool wm_upgrade_agent_search_upgrade_result(int *queue_fd);
-void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_state state);
+void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_state state, unsigned int raw_code);
 
 // Setup / teardown
 
@@ -95,7 +95,7 @@ void test_wm_upgrade_agent_send_ack_message_successful(void **state)
                                                                  "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
-    wm_upgrade_agent_send_ack_message(&queue, upgrade_state);
+    wm_upgrade_agent_send_ack_message(&queue, upgrade_state, (unsigned int)upgrade_state);
 
     assert_int_equal(queue, 0);
 }
@@ -125,7 +125,7 @@ void test_wm_upgrade_agent_send_ack_message_failed(void **state)
                                                                  "\"message\":\"Upgrade failed\","
                                                                  "\"status\":\"Failed\"}}'");
 
-    wm_upgrade_agent_send_ack_message(&queue, upgrade_state);
+    wm_upgrade_agent_send_ack_message(&queue, upgrade_state, (unsigned int)upgrade_state);
 
     assert_int_equal(queue, 0);
 }
@@ -162,7 +162,7 @@ void test_wm_upgrade_agent_send_ack_message_error(void **state)
                                                                  "\"message\":\"Upgrade failed\","
                                                                  "\"status\":\"Failed\"}}'");
 
-    wm_upgrade_agent_send_ack_message(&queue, upgrade_state);
+    wm_upgrade_agent_send_ack_message(&queue, upgrade_state, (unsigned int)upgrade_state);
 
     assert_int_equal(queue, 1);
 }
@@ -202,7 +202,7 @@ void test_wm_upgrade_agent_send_ack_message_error_exit(void **state)
                                                                  "\"message\":\"Upgrade failed\","
                                                                  "\"status\":\"Failed\"}}'");
 
-    wm_upgrade_agent_send_ack_message(&queue, upgrade_state);
+    wm_upgrade_agent_send_ack_message(&queue, upgrade_state, (unsigned int)upgrade_state);
 
     assert_int_equal(queue, -1);
 }
@@ -258,7 +258,6 @@ void test_wm_upgrade_agent_search_upgrade_result_failed_missing_dependency(void 
     (void) state;
     int queue = 0;
     int result = 0;
-    wm_upgrade_agent_state upgrade_state = WM_UPGRADE_FAILED_DEPENDENCY;
 
     expect_string(__wrap_fopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_fopen, mode, "r");
@@ -279,7 +278,7 @@ void test_wm_upgrade_agent_search_upgrade_result_failed_missing_dependency(void 
     expect_value(__wrap_wm_sendmsg, queue, queue);
     expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
                                                "\"parameters\":{\"error\":1,"
-                                                           "\"message\":\"Upgrade failed due missing dependency\","
+                                                           "\"message\":\"Upgrade failed: intermediate version required\","
                                                            "\"status\":\"Failed\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
     expect_value(__wrap_wm_sendmsg, loc, UPGRADE_MQ);
@@ -290,7 +289,7 @@ void test_wm_upgrade_agent_search_upgrade_result_failed_missing_dependency(void 
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
                                                    "'{\"command\":\"upgrade_update_status\","
                                                      "\"parameters\":{\"error\":1,"
-                                                                 "\"message\":\"Upgrade failed due missing dependency\","
+                                                                 "\"message\":\"Upgrade failed: intermediate version required\","
                                                                  "\"status\":\"Failed\"}}'");
 
     int ret = wm_upgrade_agent_search_upgrade_result(&queue);
