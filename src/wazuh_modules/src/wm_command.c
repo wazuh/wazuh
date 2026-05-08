@@ -156,6 +156,7 @@ void * wm_command_main(wm_command_t * command) {
     #ifndef __clang_analyzer__
         if (!argv) {
             merror("Could not split command: %s", command_cpy);
+            os_free(command_cpy);
             pthread_exit(NULL);
         }
     #endif
@@ -163,7 +164,11 @@ void * wm_command_main(wm_command_t * command) {
 
         if (get_binary_path(binary, &full_path) == OS_INVALID) {
             mterror(WM_COMMAND_LOGTAG, "Cannot check binary: '%s'. Cannot stat binary file.", binary);
+            free_strarray(argv);
+            os_free(command_cpy);
+        #ifndef __clang_analyzer__
             os_free(full_path);
+        #endif
             pthread_exit(NULL);
         }
 
@@ -175,11 +180,12 @@ void * wm_command_main(wm_command_t * command) {
         free_strarray(argv);
 
         if (validate_command_checksums(command, full_path) != 0) {
+            os_free(command_cpy);
             os_free(full_path);
             pthread_exit(NULL);
         }
 
-        free(command_cpy);
+        os_free(command_cpy);
 
     } else {
         command->full_command = strdup(command->command);
