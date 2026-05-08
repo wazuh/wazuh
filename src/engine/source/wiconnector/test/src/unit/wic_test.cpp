@@ -949,3 +949,363 @@ TEST_F(WIndexerConnectorMockTest, StreamIocsByTypePaginatesAndStopsOnShutdown)
     EXPECT_THROW(connector->streamIocsByType("ip", 2, [](const std::string&, const std::string&) {}),
                  IndexerConnectorException);
 }
+
+/****************************************************************************************
+ * Consumer validation (consumerIdToValidate) & PIT tests
+ ****************************************************************************************/
+
+namespace
+{
+/// Helper: consumer hit with given status
+nlohmann::json consumerHit(const std::string& status)
+{
+    return {{"_source", {{"status", status}}}, {"sort", nlohmann::json::array({1, "a"})}};
+}
+
+/// Helper: consumer hit with status and local_offset
+nlohmann::json consumerHitWithOffset(const std::string& status, int64_t offset)
+{
+    return {{"_source", {{"status", status}, {"local_offset", offset}}}, {"sort", nlohmann::json::array({1, "a"})}};
+}
+
+/// Helper: consumer search response
+nlohmann::json consumerResponse(const std::string& status)
+{
+    return {{"total", {{"value", 1}}}, {"hits", {consumerHit(status)}}};
+}
+
+/// Helper: empty consumer response (not found)
+nlohmann::json emptyConsumerResponse()
+{
+    return {{"total", {{"value", 0}}}, {"hits", nlohmann::json::array()}};
+}
+
+/// Helper: consumer response with status and local_offset (for isConsumerReadyForSync)
+nlohmann::json consumerReadyResponse(const std::string& status, int64_t offset)
+{
+    return {{"total", {{"value", 1}}}, {"hits", {consumerHitWithOffset(status, offset)}}};
+}
+} // namespace
+
+/**************************
+ * isConsumerReadyForSync
+ **************************/
+TEST_F(WIndexerConnectorMockTest, IsConsumerReadyForSyncIdleWithOffset)
+{
+    nlohmann::json resp = consumerReadyResponse("idle", 42);
+    EXPECT_CALL(*mock, search(An<std::string_view>(), 1U, _, _)).WillOnce(Return(resp));
+    auto connector = makeConnector();
+    EXPECT_TRUE(connector->isConsumerReadyForSync("my-consumer"));
+}
+
+TEST_F(WIndexerConnectorMockTest, IsConsumerReadyForSyncNotIdle)
+{
+    nlohmann::json resp = consumerReadyResponse("updating", 42);
+    EXPECT_CALL(*mock, search(An<std::string_view>(), 1U, _, _)).WillOnce(Return(resp));
+    auto connector = makeConnector();
+    EXPECT_FALSE(connector->isConsumerReadyForSync("my-consumer"));
+}
+
+TEST_F(WIndexerConnectorMockTest, IsConsumerReadyForSyncIdleWithZeroOffset)
+{
+    nlohmann::json resp = consumerReadyResponse("idle", 0);
+    EXPECT_CALL(*mock, search(An<std::string_view>(), 1U, _, _)).WillOnce(Return(resp));
+    auto connector = makeConnector();
+    EXPECT_FALSE(connector->isConsumerReadyForSync("my-consumer"));
+}
+
+TEST_F(WIndexerConnectorMockTest, IsConsumerReadyForSyncNotFound)
+{
+    nlohmann::json resp = emptyConsumerResponse();
+    EXPECT_CALL(*mock, search(An<std::string_view>(), 1U, _, _)).WillOnce(Return(resp));
+    auto connector = makeConnector();
+    EXPECT_FALSE(connector->isConsumerReadyForSync("my-consumer"));
+}
+
+TEST_F(WIndexerConnectorMockTest, IsConsumerReadyForSyncMissingStatusField)
+{
+    nlohmann::json resp = {
+        {"total", {{"value", 1}}},
+        {"hits", {{{"_source", {{"local_offset", 10}}}, {"sort", nlohmann::json::array({1, "a"})}}}}};
+    EXPECT_CALL(*mock, search(An<std::string_view>(), 1U, _, _)).WillOnce(Return(resp));
+    auto connector = makeConnector();
+    EXPECT_FALSE(connector->isConsumerReadyForSync("my-consumer"));
+}
+
+TEST_F(WIndexerConnectorMockTest, IsConsumerReadyForSyncMissingLocalOffsetField)
+{
+    nlohmann::json resp = {{"total", {{"value", 1}}},
+                           {"hits", {{{"_source", {{"status", "idle"}}}, {"sort", nlohmann::json::array({1, "a"})}}}}};
+    EXPECT_CALL(*mock, search(An<std::string_view>(), 1U, _, _)).WillOnce(Return(resp));
+    auto connector = makeConnector();
+    EXPECT_FALSE(connector->isConsumerReadyForSync("my-consumer"));
+}
+
+TEST_F(WIndexerConnectorMockTest, IsConsumerReadyForSyncReturnsFalseAfterShutdown)
+{
+    auto connector = makeConnector();
+    connector->shutdown();
+    EXPECT_FALSE(connector->isConsumerReadyForSync("my-consumer"));
+}
+
+TEST_F(WIndexerConnectorMockTest, IsConsumerReadyForSyncReturnsFalseOnException)
+{
+    EXPECT_CALL(*mock, search(An<std::string_view>(), 1U, _, _)).WillOnce(Throw(std::runtime_error("network error")));
+    auto connector = makeConnector();
+    EXPECT_FALSE(connector->isConsumerReadyForSync("my-consumer"));
+}
+
+/**************************
+ * getPolicyHashAndEnabled with consumerIdToValidate
+ **************************/
+TEST_F(WIndexerConnectorMockTest, GetPolicyHashAndEnabledWithConsumerIdle)
+{
+    auto pit = makePit();
+    EXPECT_CALL(*mock, createPointInTime(_, _, _)).WillOnce(Return(pit));
+    EXPECT_CALL(*mock, deletePointInTime(_)).Times(1);
+
+    // First PIT search: consumer validation → idle
+    // Second PIT search: policy hash query
+    nlohmann::json consumerResp = consumerResponse("idle");
+    nlohmann::json policyResp = {{"total", {{"value", 1}}}, {"hits", {policyHit("hash-abc", true)}}};
+
+    EXPECT_CALL(*mock, search(An<const PointInTime&>(), _, _, _, _, _))
+        .WillOnce(Return(consumerResp))
+        .WillOnce(Return(policyResp));
+
+    auto connector = makeConnector();
+    auto result = connector->getPolicyHashAndEnabled("default", std::optional<std::string_view>("my-consumer"));
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->first, "hash-abc");
+    EXPECT_TRUE(result->second);
+}
+
+TEST_F(WIndexerConnectorMockTest, GetPolicyHashAndEnabledWithConsumerNotIdle)
+{
+    auto pit = makePit();
+    EXPECT_CALL(*mock, createPointInTime(_, _, _)).WillOnce(Return(pit));
+    EXPECT_CALL(*mock, deletePointInTime(_)).Times(1);
+
+    nlohmann::json consumerResp = consumerResponse("updating");
+
+    EXPECT_CALL(*mock, search(An<const PointInTime&>(), _, _, _, _, _)).WillOnce(Return(consumerResp));
+
+    auto connector = makeConnector();
+    auto result = connector->getPolicyHashAndEnabled("default", std::optional<std::string_view>("my-consumer"));
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(WIndexerConnectorMockTest, GetPolicyHashAndEnabledWithConsumerNotFound)
+{
+    auto pit = makePit();
+    EXPECT_CALL(*mock, createPointInTime(_, _, _)).WillOnce(Return(pit));
+    EXPECT_CALL(*mock, deletePointInTime(_)).Times(1);
+
+    nlohmann::json consumerResp = emptyConsumerResponse();
+    EXPECT_CALL(*mock, search(An<const PointInTime&>(), _, _, _, _, _)).WillOnce(Return(consumerResp));
+
+    auto connector = makeConnector();
+    EXPECT_THROW(connector->getPolicyHashAndEnabled("default", std::optional<std::string_view>("no-such-consumer")),
+                 IndexerConnectorException);
+}
+
+TEST_F(WIndexerConnectorMockTest, GetPolicyHashAndEnabledWithConsumerMissingStatus)
+{
+    auto pit = makePit();
+    EXPECT_CALL(*mock, createPointInTime(_, _, _)).WillOnce(Return(pit));
+    EXPECT_CALL(*mock, deletePointInTime(_)).Times(1);
+
+    nlohmann::json consumerResp = {
+        {"total", {{"value", 1}}},
+        {"hits", {{{"_source", {{"other", "field"}}}, {"sort", nlohmann::json::array({1, "a"})}}}}};
+    EXPECT_CALL(*mock, search(An<const PointInTime&>(), _, _, _, _, _)).WillOnce(Return(consumerResp));
+
+    auto connector = makeConnector();
+    EXPECT_THROW(connector->getPolicyHashAndEnabled("default", std::optional<std::string_view>("my-consumer")),
+                 IndexerConnectorException);
+}
+
+/**************************
+ * getPolicy with consumerIdToValidate
+ **************************/
+TEST_F(WIndexerConnectorMockTest, GetPolicyWithConsumerIdle)
+{
+    auto pit = makePit();
+    EXPECT_CALL(*mock, createPointInTime(_, _, _)).WillOnce(Return(pit));
+    EXPECT_CALL(*mock, deletePointInTime(_)).Times(1);
+
+    // First PIT search: consumer validation → idle
+    nlohmann::json consumerResp = consumerResponse("idle");
+    // Second PIT search: policy resources (includes a consumer index hit that should be skipped)
+    nlohmann::json policyPage = {
+        {"total", {{"value", 3}}},
+        {"hits",
+         {// Consumer hit from PIT — should be skipped
+          {{"_index", ".wazuh-cti-consumers"},
+           {"_source", {{"status", "idle"}}},
+           {"sort", nlohmann::json::array({0, "z"})}},
+          makePolicyHit("wazuh-threatintel-decoders", "d1", nlohmann::json::array({1, "a"})),
+          makePolicyHit(
+              "wazuh-threatintel-policies", "policy1", nlohmann::json::array({2, "b"}), std::string("HASH1"))}}};
+
+    EXPECT_CALL(*mock, search(An<const PointInTime&>(), _, _, _, _, _))
+        .WillOnce(Return(consumerResp))
+        .WillOnce(Return(policyPage));
+
+    auto connector = makeConnector(/*maxHits=*/10);
+    auto resources = connector->getPolicy("standard", std::optional<std::string_view>("my-consumer"));
+    ASSERT_TRUE(resources.has_value());
+    EXPECT_EQ(resources->decoders.size(), 1U);
+    EXPECT_TRUE(resources->policy.isObject());
+    // Consumer index hit was filtered out
+    EXPECT_TRUE(resources->kvdbs.empty());
+}
+
+TEST_F(WIndexerConnectorMockTest, GetPolicyWithConsumerNotIdle)
+{
+    auto pit = makePit();
+    EXPECT_CALL(*mock, createPointInTime(_, _, _)).WillOnce(Return(pit));
+    EXPECT_CALL(*mock, deletePointInTime(_)).Times(1);
+
+    nlohmann::json consumerResp = consumerResponse("updating");
+    EXPECT_CALL(*mock, search(An<const PointInTime&>(), _, _, _, _, _)).WillOnce(Return(consumerResp));
+
+    auto connector = makeConnector();
+    auto resources = connector->getPolicy("standard", std::optional<std::string_view>("my-consumer"));
+    EXPECT_FALSE(resources.has_value());
+}
+
+TEST_F(WIndexerConnectorMockTest, GetPolicyWithConsumerNotFound)
+{
+    auto pit = makePit();
+    EXPECT_CALL(*mock, createPointInTime(_, _, _)).WillOnce(Return(pit));
+    EXPECT_CALL(*mock, deletePointInTime(_)).Times(1);
+
+    nlohmann::json consumerResp = emptyConsumerResponse();
+    EXPECT_CALL(*mock, search(An<const PointInTime&>(), _, _, _, _, _)).WillOnce(Return(consumerResp));
+
+    auto connector = makeConnector();
+    EXPECT_THROW(connector->getPolicy("standard", std::optional<std::string_view>("no-consumer")),
+                 IndexerConnectorException);
+}
+
+/**************************
+ * getIocTypeHashes with consumerIdToValidate
+ **************************/
+TEST_F(WIndexerConnectorMockTest, GetIocTypeHashesWithConsumerIdle)
+{
+    auto pit = makePit();
+    EXPECT_CALL(*mock, createPointInTime(_, _, _)).WillOnce(Return(pit));
+    EXPECT_CALL(*mock, deletePointInTime(_)).Times(1);
+
+    // First PIT search: consumer validation → idle
+    nlohmann::json consumerResp = consumerResponse("idle");
+    // Second PIT search: hash document
+    nlohmann::json hashPage = {{"hits",
+                                {{{"_id", "__ioc_type_hashes__"},
+                                  {"_source", {{"type_hashes", {{"ip", {{"hash", {{"sha256", "h-ip"}}}}}}}}},
+                                  {"sort", nlohmann::json::array({1, "a"})}}}}};
+    nlohmann::json emptyPage = {{"hits", nlohmann::json::array()}};
+
+    EXPECT_CALL(*mock, search(An<const PointInTime&>(), _, _, _, _, _))
+        .WillOnce(Return(consumerResp))
+        .WillOnce(Return(hashPage))
+        .WillOnce(Return(emptyPage));
+
+    auto connector = makeConnector();
+    auto result = connector->getIocTypeHashes(std::optional<std::string_view>("my-consumer"));
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->size(), 1U);
+    EXPECT_EQ((*result)["ip"], "h-ip");
+}
+
+TEST_F(WIndexerConnectorMockTest, GetIocTypeHashesWithConsumerNotIdle)
+{
+    auto pit = makePit();
+    EXPECT_CALL(*mock, createPointInTime(_, _, _)).WillOnce(Return(pit));
+    EXPECT_CALL(*mock, deletePointInTime(_)).Times(1);
+
+    nlohmann::json consumerResp = consumerResponse("updating");
+    EXPECT_CALL(*mock, search(An<const PointInTime&>(), _, _, _, _, _)).WillOnce(Return(consumerResp));
+
+    auto connector = makeConnector();
+    auto result = connector->getIocTypeHashes(std::optional<std::string_view>("my-consumer"));
+    EXPECT_FALSE(result.has_value());
+}
+
+TEST_F(WIndexerConnectorMockTest, GetIocTypeHashesWithConsumerNotFound)
+{
+    auto pit = makePit();
+    EXPECT_CALL(*mock, createPointInTime(_, _, _)).WillOnce(Return(pit));
+    EXPECT_CALL(*mock, deletePointInTime(_)).Times(1);
+
+    nlohmann::json consumerResp = emptyConsumerResponse();
+    EXPECT_CALL(*mock, search(An<const PointInTime&>(), _, _, _, _, _)).WillOnce(Return(consumerResp));
+
+    auto connector = makeConnector();
+    EXPECT_THROW(connector->getIocTypeHashes(std::optional<std::string_view>("no-consumer")),
+                 IndexerConnectorException);
+}
+
+/**************************
+ * streamIocsByType with consumerIdToValidate
+ **************************/
+TEST_F(WIndexerConnectorMockTest, StreamIocsByTypeWithConsumerIdle)
+{
+    auto pit = makePit();
+    EXPECT_CALL(*mock, createPointInTime(_, _, _)).WillOnce(Return(pit));
+    EXPECT_CALL(*mock, deletePointInTime(_)).Times(1);
+
+    nlohmann::json consumerResp = consumerResponse("idle");
+    nlohmann::json iocPage = {{"hits",
+                               {{{"_id", "ioc1"},
+                                 {"_source", {{"document", {{"name", "ioc1"}, {"type", "ip"}}}}},
+                                 {"sort", nlohmann::json::array({1, "a"})}}}}};
+
+    EXPECT_CALL(*mock, search(An<const PointInTime&>(), _, _, _, _, _))
+        .WillOnce(Return(consumerResp))
+        .WillOnce(Return(iocPage));
+
+    std::vector<std::string> received;
+    auto connector = makeConnector();
+    auto count = connector->streamIocsByType(
+        "ip",
+        10,
+        [&received](const std::string& k, const std::string&) { received.push_back(k); },
+        std::optional<std::string_view>("my-consumer"));
+    ASSERT_TRUE(count.has_value());
+    EXPECT_EQ(*count, 1U);
+    EXPECT_EQ(received.size(), 1U);
+    EXPECT_EQ(received[0], "ioc1");
+}
+
+TEST_F(WIndexerConnectorMockTest, StreamIocsByTypeWithConsumerNotIdle)
+{
+    auto pit = makePit();
+    EXPECT_CALL(*mock, createPointInTime(_, _, _)).WillOnce(Return(pit));
+    EXPECT_CALL(*mock, deletePointInTime(_)).Times(1);
+
+    nlohmann::json consumerResp = consumerResponse("updating");
+    EXPECT_CALL(*mock, search(An<const PointInTime&>(), _, _, _, _, _)).WillOnce(Return(consumerResp));
+
+    auto connector = makeConnector();
+    auto count = connector->streamIocsByType(
+        "ip", 10, [](const std::string&, const std::string&) {}, std::optional<std::string_view>("my-consumer"));
+    EXPECT_FALSE(count.has_value());
+}
+
+TEST_F(WIndexerConnectorMockTest, StreamIocsByTypeWithConsumerNotFound)
+{
+    auto pit = makePit();
+    EXPECT_CALL(*mock, createPointInTime(_, _, _)).WillOnce(Return(pit));
+    EXPECT_CALL(*mock, deletePointInTime(_)).Times(1);
+
+    nlohmann::json consumerResp = emptyConsumerResponse();
+    EXPECT_CALL(*mock, search(An<const PointInTime&>(), _, _, _, _, _)).WillOnce(Return(consumerResp));
+
+    auto connector = makeConnector();
+    EXPECT_THROW(
+        connector->streamIocsByType(
+            "ip", 10, [](const std::string&, const std::string&) {}, std::optional<std::string_view>("no-consumer")),
+        IndexerConnectorException);
+}
