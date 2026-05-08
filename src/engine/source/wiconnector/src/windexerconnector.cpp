@@ -802,6 +802,81 @@ bool WIndexerConnector::existsIocDataIndex()
     return existsIndex(IOC_INDEX);
 }
 
+bool WIndexerConnector::isConsumerReadyForSync(std::string_view consumerId)
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        LOG_DEBUG("[indexer-connector] IndexerConnectorAsync not initialized, consumer '{}' not ready",
+                  std::string(consumerId));
+        return false;
+    }
+
+    try
+    {
+        nlohmann::json query = {{"ids", {{"values", {consumerId}}}}};
+        nlohmann::json source = {{"includes", {"status", "local_offset"}}, {"excludes", nlohmann::json::array()}};
+
+        nlohmann::json hits = m_indexerConnectorAsync->search(CTI_CONSUMERS_INDEX, SINGLE_RESULT_SIZE, query, source);
+
+        size_t totalHits = getTotalHits(hits);
+        if (totalHits == 0)
+        {
+            LOG_DEBUG("[indexer-connector] Consumer document '{}' not found", std::string(consumerId));
+            return false;
+        }
+
+        const auto& hitArray = hits["hits"];
+        if (!hitArray.is_array() || hitArray.empty() || !hitArray[0].contains("_source"))
+        {
+            LOG_DEBUG("[indexer-connector] Invalid consumer hit for '{}'", std::string(consumerId));
+            return false;
+        }
+
+        const auto& src = hitArray[0]["_source"];
+
+        // Check status == "idle"
+        if (!src.contains("status") || !src["status"].is_string())
+        {
+            LOG_DEBUG("[indexer-connector] Consumer '{}' missing 'status' field", std::string(consumerId));
+            return false;
+        }
+
+        const auto status = src["status"].get<std::string>();
+        if (status != "idle")
+        {
+            LOG_DEBUG("[indexer-connector] Consumer '{}' is not idle (status: {})", std::string(consumerId), status);
+            return false;
+        }
+
+        // Check local_offset != 0
+        if (!src.contains("local_offset") || !src["local_offset"].is_number())
+        {
+            LOG_DEBUG("[indexer-connector] Consumer '{}' missing or non-numeric 'local_offset' field",
+                      std::string(consumerId));
+            return false;
+        }
+
+        const auto localOffset = src["local_offset"].get<int64_t>();
+        if (localOffset == 0)
+        {
+            LOG_DEBUG("[indexer-connector] Consumer '{}' has local_offset=0, data not yet available",
+                      std::string(consumerId));
+            return false;
+        }
+
+        LOG_DEBUG("[indexer-connector] Consumer '{}' is ready for sync (idle, local_offset={})",
+                  std::string(consumerId),
+                  localOffset);
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        LOG_DEBUG("[indexer-connector] Error checking consumer '{}' readiness: {}", std::string(consumerId), e.what());
+        return false;
+    }
+}
+
 std::optional<std::unordered_map<std::string, std::string>>
 WIndexerConnector::getIocTypeHashes(const std::optional<std::string_view>& consumerIdToValidate)
 {

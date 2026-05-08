@@ -22,10 +22,10 @@ namespace wiconnector
 {
 
 /// @brief Consumer document ID for the standard ruleset in `.wazuh-cti-consumers`
-constexpr std::string_view STANDARD_RULESET_CONSUMER_ID = "beta-2-ruleset-5_public-ruleset-5";
+constexpr std::string_view STANDARD_RULESET_CONSUMER_ID = "cti:catalog:consumer:ruleset";
 
 /// @brief Consumer document ID for the IOC enrichment data in `.wazuh-cti-consumers`
-constexpr std::string_view IOC_ENRICHMENT_CONSUMER_ID = "t1-iocs-5_public-iocs-5";
+constexpr std::string_view IOC_ENRICHMENT_CONSUMER_ID = "cti:catalog:consumer:iocs";
 
 /**
  * @brief Structure to hold policy resources retrieved from the indexer.
@@ -152,6 +152,24 @@ public:
                      std::size_t batchSize,
                      const IocRecordCallback& onIoc,
                      const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) = 0;
+
+    /**
+     * @brief Pre-flight check: is the consumer ready for synchronization?
+     *
+     * Queries `.wazuh-cti-consumers` for the specified consumer document and verifies
+     * two conditions:
+     *   1. `status` == `"idle"` — the indexer is not actively updating data.
+     *   2. `local_offset` != 0 — the consumer has received at least one CTI update,
+     *      so hash/data documents actually exist in the data indices.
+     *
+     * This is a lightweight, non-PIT check intended to be called **before** requesting
+     * hashes or data, to avoid unnecessary network calls when the consumer has no data yet.
+     *
+     * @param consumerId The `_id` of the consumer document (e.g. `STANDARD_RULESET_CONSUMER_ID`).
+     * @return true if the consumer is idle and has a non-zero local_offset; false otherwise
+     *         (including on any error — safe default to skip sync).
+     */
+    virtual bool isConsumerReadyForSync(std::string_view consumerId) = 0;
 
     /**
      * @brief Retrieves remote engine runtime configuration from wazuh-indexer.

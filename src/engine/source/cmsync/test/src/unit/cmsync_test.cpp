@@ -270,6 +270,9 @@ TEST_F(CMSyncSynchronizeTest, Case1_PolicyDisabledWithExistingRoute)
     // existSpaceInRemote
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
 
+    // isConsumerReadyForSync → ready
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
+
     // getPolicyHashAndEnabledFromRemote → disabled
     EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
         .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("hash1"), false))));
@@ -300,6 +303,7 @@ TEST_F(CMSyncSynchronizeTest, Case1_PolicyDisabledNoRoute)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
     EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
         .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("hash1"), false))));
 
@@ -316,6 +320,7 @@ TEST_F(CMSyncSynchronizeTest, Case2_PolicyEnabledHashUnchanged)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
     EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
         .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("same_hash"), true))));
 
@@ -336,6 +341,7 @@ TEST_F(CMSyncSynchronizeTest, Case3_PolicyEnabledNoRouteExists)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
     EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
         .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("new_hash"), true))));
 
@@ -376,6 +382,7 @@ TEST_F(CMSyncSynchronizeTest, Case4_PolicyEnabledHashChanged)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
     EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
         .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("new_hash"), true))));
 
@@ -417,6 +424,7 @@ TEST_F(CMSyncSynchronizeTest, Case4_RouteDisabledHashChanged)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
     EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
         .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("new_hash"), true))));
 
@@ -452,6 +460,7 @@ TEST_F(CMSyncSynchronizeTest, ContinuesWhenGetEntryFails)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
     EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
         .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("hash1"), true))));
 
@@ -470,6 +479,7 @@ TEST_F(CMSyncSynchronizeTest, RollsBackWhenHotSwapFails)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
     EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
         .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("new_hash"), true))));
 
@@ -507,6 +517,7 @@ TEST_F(CMSyncSynchronizeTest, ContinuesWhenImportNamespaceFails)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
     EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
         .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("new_hash"), true))));
 
@@ -575,6 +586,7 @@ TEST_F(CMSyncSynchronizeTest, DoesNotDeleteDummyNamespaceAfterSync)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
     EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
         .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("hash1"), true))));
 
@@ -607,6 +619,7 @@ TEST_F(CMSyncSynchronizeTest, RollsBackWhenPostEntryFails)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
     EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
         .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("hash"), true))));
 
@@ -639,6 +652,7 @@ TEST_F(CMSyncSynchronizeTest, RetriesNamespaceIdGenerationOnCollision)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
     EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
         .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("hash"), true))));
 
@@ -705,6 +719,7 @@ TEST_F(CMSyncSynchronizeTest, AbortsBeforeDownload)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
     EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
         .WillOnce(::testing::DoAll(::testing::InvokeWithoutArgs([&sync]() { sync->requestShutdown(); }),
                                    ::testing::Return(std::optional(std::make_pair(std::string("new_hash"), true)))));
@@ -723,6 +738,7 @@ TEST_F(CMSyncSynchronizeTest, RollsBackOnHotSwapFailure)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
     EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
         .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("new_hash"), true))));
 
@@ -760,6 +776,35 @@ TEST_F(CMSyncSynchronizeTest, WorksNormallyWithoutShutdown)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(false));
+
+    EXPECT_NO_THROW(sync->synchronize());
+}
+
+// Consumer not ready: isConsumerReadyForSync returns false — sync skipped for that space
+TEST_F(CMSyncSynchronizeTest, SkipsWhenConsumerNotReady)
+{
+    auto state = createStoredStateWithNs("standard", "dummy_ns_id");
+    auto sync = createSyncWithState(state);
+
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(false));
+
+    // No getPolicyHashAndEnabled, no download — StrictMock ensures nothing else is called
+    EXPECT_NO_THROW(sync->synchronize());
+}
+
+// Consumer not ready for standard, but custom (no consumer) proceeds normally
+TEST_F(CMSyncSynchronizeTest, SkipsStandardWhenConsumerNotReadyButCustomProceeds)
+{
+    auto state = createStoredState(); // standard + custom
+    auto sync = createSyncWithState(state);
+
+    // Standard — exists but consumer not ready
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(false));
+
+    // Custom — no consumer ID, so no isConsumerReadyForSync check, but space doesn't exist
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("custom"))).WillOnce(::testing::Return(false));
 
     EXPECT_NO_THROW(sync->synchronize());
 }

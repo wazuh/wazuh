@@ -34,6 +34,7 @@ public:
                  const std::optional<std::string_view>& consumerIdToValidate),
                 (override));
     MOCK_METHOD(json::Json, getEngineRemoteConfig, (), (override));
+    MOCK_METHOD(bool, isConsumerReadyForSync, (std::string_view consumerId), (override));
 };
 } // namespace wiconnector::mocks
 

@@ -146,16 +146,14 @@ public:
                      const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) override;
 
     /**
-     * @brief Retrieves normalized remote engine configuration from wazuh-indexer.
-     *
-     * Implements IWIndexerConnector::getEngineRemoteConfig by reading one document
-     * from `.wazuh-settings`, extracting `/_source/engine`, validating it is an object,
-     * and returning only that object.
-     *
-     * @return json::Json Engine settings object with runtime key/value pairs.
-     * @throws std::exception on connector/search failures or invalid payload shape.
+     * @copydoc IWIndexerConnector::getEngineRemoteConfig
      */
     json::Json getEngineRemoteConfig() override;
+
+    /**
+     * @copydoc IWIndexerConnector::isConsumerReadyForSync
+     */
+    bool isConsumerReadyForSync(std::string_view consumerId) override;
 
     /**
      * @copydoc IWIndexerConnector::getQueueSize

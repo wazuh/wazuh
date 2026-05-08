@@ -470,6 +470,24 @@ void IocSync::synchronize()
         const auto kvdbiocPtr = base::utils::lockWeakPtr(m_kvdbiocManagerPtr, "KVDBIOCManager");
         std::unique_lock lock(m_mutex);
 
+        // Pre-flight check: verify IOC consumer is idle and has data (local_offset != 0)
+        {
+            auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
+            const bool ready = base::utils::executeWithRetry(
+                [&indexerPtr]() { return indexerPtr->isConsumerReadyForSync(wiconnector::IOC_ENRICHMENT_CONSUMER_ID); },
+                fmt::format("{}", COMPONENT_NAME),
+                "Check IOC consumer readiness",
+                m_attempts,
+                m_waitSeconds,
+                m_shutdownRequested);
+
+            if (!ready)
+            {
+                LOG_INFO("[IOC::Sync] IOC consumer is not ready (not idle or no data yet), skipping sync cycle");
+                return;
+            }
+        }
+
         // Check if remote index exists
         if (!existIocDataInRemote())
         {
@@ -481,8 +499,8 @@ void IocSync::synchronize()
         const auto remoteTypeHashesOpt = getRemoteHashesFromRemote();
         if (!remoteTypeHashesOpt.has_value())
         {
-            LOG_INFO(
-                "[IOC::Sync] IOC syncronization skipped because the IOC consumer is not idle (data is being updated in the indexer)");
+            LOG_INFO("[IOC::Sync] IOC syncronization skipped because the IOC consumer is not idle (data is being "
+                     "updated in the indexer)");
             return;
         }
         const auto& remoteTypeHashes = *remoteTypeHashesOpt;

@@ -495,13 +495,30 @@ void CMSync::synchronize()
                 return;
             }
 
-            std::optional<std::string_view> consumerIdOpt = std::nullopt;
+            // Pre-flight check: verify consumer is idle and has data (local_offset != 0)
             if (nsState.getConsumerId().has_value())
             {
-                consumerIdOpt = *nsState.getConsumerId();
+                auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
+                const bool ready = base::utils::executeWithRetry(
+                    [&indexerPtr, &consumerId = nsState.getConsumerId().value()]()
+                    { return indexerPtr->isConsumerReadyForSync(consumerId); },
+                    fmt::format("{}", COMPONENT_NAME),
+                    fmt::format("Check consumer readiness for space '{}'", nsState.getOriginSpace()),
+                    m_attempts,
+                    m_waitSeconds,
+                    m_shutdownRequested);
+
+                if (!ready)
+                {
+                    LOG_INFO("[CMSync] Consumer '{}' for space '{}' is not ready (not idle or no data yet), skipping",
+                             nsState.getConsumerId().value(),
+                             nsState.getOriginSpace());
+                    continue;
+                }
             }
 
-            const auto hashResult = getPolicyHashAndEnabledFromRemote(nsState.getOriginSpace(), consumerIdOpt);
+            const auto hashResult =
+                getPolicyHashAndEnabledFromRemote(nsState.getOriginSpace(), nsState.getConsumerId());
             if (!hashResult.has_value())
             {
                 LOG_INFO("[CMSync] Synchronization skipped for space '{}' because wazuh-indexer is updating the policy "
@@ -603,7 +620,7 @@ void CMSync::synchronize()
             }
 
             // Download and enrich the namespace (consumer validated again within PIT)
-            const auto newNsIdOpt = downloadAndEnrichNamespace(nsState.getOriginSpace(), consumerIdOpt);
+            const auto newNsIdOpt = downloadAndEnrichNamespace(nsState.getOriginSpace(), nsState.getConsumerId());
             if (!newNsIdOpt.has_value())
             {
                 LOG_INFO("[CMSync] Download skipped for space '{}' because consumer is not idle",
