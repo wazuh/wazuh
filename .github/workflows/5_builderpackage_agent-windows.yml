@@ -42,7 +42,7 @@ concurrency:
 jobs:
   detect-changes:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: Detect changed Windows test modules
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
@@ -500,7 +500,6 @@ jobs:
     uses: ./.github/workflows/5_testintegration_windows-integration-tests.yml
     with:
       base_branch: ${{ github.event.pull_request.base.ref }}
-      head_sha: ${{ github.event.pull_request.head.sha }}
       build_run_id: ${{ github.run_id }}
       module_name: ${{ matrix.name }}
       shard_name: ${{ matrix.shard_name }}

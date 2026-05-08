@@ -1,13 +1,11 @@
 name: 5.X - Windows - Integration tests (generic)
+run-name: "IT Windows: ${{ inputs.module_name }} (${{ inputs.shard_name }}) — ${{ github.ref_name }}"
 
 on:
   workflow_call:
     inputs:
       base_branch:
         required: true
-        type: string
-      head_sha:
-        required: false
         type: string
       build_run_id:
         required: false
@@ -49,9 +47,10 @@ on:
         description: 'Base branch'
         required: true
         default: 'main'
-      head_sha:
-        description: 'PR head SHA to download artifacts'
+      build_run_id:
+        description: 'Run ID of the build workflow to download artifacts from (optional)'
         required: false
+        default: ''
       module_name:
         description: 'Module name (for artifact naming)'
         required: false
@@ -91,7 +90,7 @@ jobs:
       BRANCH_BASE: ${{ inputs.base_branch || github.base_ref }}
       BUILD_WORKFLOW: 5_builderpackage_agent-windows.yml
       AGENT_PACKAGE_REGEXP: wazuh-agent.*windows.*\.msi
-      PR_HEAD_SHA: ${{ inputs.head_sha || github.event.pull_request.head.sha || github.sha }}
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     runs-on: windows-2025
     name: Run ${{ inputs.module_name }} integration tests (${{ inputs.shard_name }})
     steps:

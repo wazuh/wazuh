@@ -9,14 +9,15 @@ import pytest
 import time
 
 # qa-integration-framework imports
-from wazuh_testing import session_parameters
 
 # Local module imports
 from . import event_monitor
 from .utils import ERROR_MESSAGE, TIMEOUT, local_internal_options
 from .configurator import configurator
 
-pytestmark = [pytest.mark.server]
+pytestmark = [pytest.mark.agent, pytest.mark.linux]
+
+daemons_handler_configuration = {'all_daemons': True}
 
 # Set test configurator for the module
 configurator.module = "custom_bucket_test_module"
@@ -32,10 +33,9 @@ configurator.configure_test(configuration_file='custom_bucket_configuration.yaml
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_custom_bucket_defaults(
-        test_configuration, metadata, create_test_bucket, set_test_sqs_queue,
-        load_wazuh_basic_configuration, set_wazuh_configuration,
+        test_configuration, metadata, create_test_bucket, set_test_sqs_queue, set_wazuh_configuration,
         configure_local_internal_options_function, truncate_monitored_files,
-        restart_wazuh_function, file_monitoring
+        daemons_handler, file_monitoring
 ):
     """
     description: Test the AWS S3 custom bucket module is invoked with the expected parameters and no error occurs.
@@ -67,9 +67,6 @@ def test_custom_bucket_defaults(
         - set_test_sqs_queue:
             type: fixture
             brief: Create temporal SQS queue.
-        - load_wazuh_basic_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -79,7 +76,7 @@ def test_custom_bucket_defaults(
         - truncate_monitored_files:
             type: fixture
             brief: Truncate wazuh logs.
-        - restart_wazuh_function:
+        - daemons_handler:
             type: fixture
             brief: Restart the wazuh service.
         - file_monitoring:
@@ -104,7 +101,7 @@ def test_custom_bucket_defaults(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_start
     )
 
@@ -112,7 +109,7 @@ def test_custom_bucket_defaults(
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.make_aws_callback(expected_log, prefix='^.*')
     )
 
@@ -120,7 +117,7 @@ def test_custom_bucket_defaults(
 
     # Detect any ERROR message
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_all_aws_err
     )
 
@@ -138,9 +135,8 @@ configurator.configure_test(configuration_file='custom_bucket_configuration.yaml
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_custom_bucket_logs(
-        test_configuration, metadata, create_test_bucket, set_test_sqs_queue, manage_bucket_files,
-        load_wazuh_basic_configuration, set_wazuh_configuration,
-        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function,
+        test_configuration, metadata, create_test_bucket, set_test_sqs_queue, manage_bucket_files, set_wazuh_configuration,
+        configure_local_internal_options_function, truncate_monitored_files, daemons_handler,
         file_monitoring
 ):
     """
@@ -180,9 +176,6 @@ def test_custom_bucket_logs(
         - manage_bucket_files:
             type: fixture
             brief: S3 buckets manager.
-        - load_wazuh_basic_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -192,7 +185,7 @@ def test_custom_bucket_logs(
         - truncate_monitored_files:
             type: fixture
             brief: Truncate wazuh logs.
-        - restart_wazuh_function:
+        - daemons_handler:
             type: fixture
             brief: Restart the wazuh service.
         - file_monitoring:
@@ -219,7 +212,7 @@ def test_custom_bucket_logs(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_start
     )
 
@@ -230,7 +223,7 @@ def test_custom_bucket_logs(
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.make_aws_callback(expected_log, prefix='^.*')
     )
 
@@ -258,7 +251,7 @@ def test_custom_bucket_logs(
 
     # Detect any ERROR message
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_all_aws_err
     )
 
