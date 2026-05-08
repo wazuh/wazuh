@@ -152,6 +152,12 @@ void * wm_command_main(wm_command_t * command) {
         pthread_exit(0);
     }
 
+#ifdef WIN32
+    if (verify_command) {
+        SafeWow64DisableWow64FsRedirection(NULL);
+    }
+#endif
+
     if (verify_command) {
         command_cpy = strdup(command->command);
 
