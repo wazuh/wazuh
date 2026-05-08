@@ -851,7 +851,7 @@ checks:
     condition: any
     rules:
       - "not f:/etc/motd"
-      - 'not f:/etc/motd -> r:\\v|\\r|\\m|\s|Debian|Ubuntu'
+      - 'not f:/etc/motd -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
 
   # 1.6.2 Ensure local login warning banner is configured properly. (Automated)
   - id: 33049
