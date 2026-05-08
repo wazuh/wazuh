@@ -24,9 +24,11 @@ on:
         required: false
         default: ""
       target:
-        description: "Build set: 'agent' (28 deps) or 'manager' (47 deps, includes the agent set)."
+        description: |
+          Build set: 'agent' (28 deps), 'manager' (47 deps, includes the
+          agent set), or 'both' to fan out across both targets in one run.
         type: choice
-        options: [agent, manager]
+        options: [agent, manager, both]
         default: manager
         required: true
       legs:
@@ -60,36 +62,50 @@ jobs:
         run: |
           legs_input="${{ inputs.legs }}"
           target="${{ inputs.target }}"
-          if [ -z "${legs_input}" ]; then
-            if [ "${target}" = "manager" ]; then
-              legs_input="deb-amd64,deb-arm64,rpm-amd64,rpm-arm64"
-            else
-              legs_input="deb-amd64,deb-arm64,rpm-amd64,rpm-arm64,macos-intel64,macos-arm64,windows-i686"
-            fi
+          if [ "${target}" = "both" ]; then
+            targets="agent manager"
+          else
+            targets="${target}"
           fi
 
           json='{"include":['
           first=true
-          IFS=','
-          for leg in ${legs_input}; do
-            leg="$(echo "${leg}" | xargs)"  # trim whitespace
-            system="${leg%-*}"
-            architecture="${leg##*-}"
-            case "${system}" in
-              deb|rpm|macos|windows) ;;
-              *) echo "::error::unsupported system '${system}' in leg '${leg}' (valid: deb, rpm, macos, windows)"; exit 1 ;;
-            esac
-            case "${system}-${architecture}" in
-              deb-amd64|rpm-amd64) runner="wz-linux-amd64" ;;
-              deb-arm64|rpm-arm64) runner="wz-linux-arm64" ;;
-              macos-intel64)       runner="macos-14-large" ;;
-              macos-arm64)         runner="macos-14" ;;
-              windows-i686)        runner="wz-linux-amd64" ;;  # MinGW cross-compile on Linux
-              *) echo "::error::unsupported leg '${leg}'"; exit 1 ;;
-            esac
-            ${first} || json="${json},"
-            first=false
-            json="${json}{\"system\":\"${system}\",\"architecture\":\"${architecture}\",\"runner\":\"${runner}\",\"leg\":\"${leg}\"}"
+          for tgt in ${targets}; do
+            if [ -z "${legs_input}" ]; then
+              if [ "${tgt}" = "manager" ]; then
+                tgt_legs="deb-amd64,deb-arm64,rpm-amd64,rpm-arm64"
+              else
+                tgt_legs="deb-amd64,deb-arm64,rpm-amd64,rpm-arm64,macos-intel64,macos-arm64,windows-i686"
+              fi
+            else
+              tgt_legs="${legs_input}"
+            fi
+
+            for leg in $(echo "${tgt_legs}" | tr ',' ' '); do
+              leg="$(echo "${leg}" | xargs)"  # trim whitespace
+              system="${leg%-*}"
+              architecture="${leg##*-}"
+              case "${system}" in
+                deb|rpm|macos|windows) ;;
+                *) echo "::error::unsupported system '${system}' in leg '${leg}' (valid: deb, rpm, macos, windows)"; exit 1 ;;
+              esac
+
+              if [ "${tgt}" = "manager" ] && { [ "${system}" = "macos" ] || [ "${system}" = "windows" ]; }; then
+                continue
+              fi
+
+              case "${system}-${architecture}" in
+                deb-amd64|rpm-amd64) runner="wz-linux-amd64" ;;
+                deb-arm64|rpm-arm64) runner="wz-linux-arm64" ;;
+                macos-intel64)       runner="macos-14-large" ;;
+                macos-arm64)         runner="macos-14" ;;
+                windows-i686)        runner="wz-linux-amd64" ;;  # MinGW cross-compile on Linux
+                *) echo "::error::unsupported leg '${leg}'"; exit 1 ;;
+              esac
+              ${first} || json="${json},"
+              first=false
+              json="${json}{\"system\":\"${system}\",\"architecture\":\"${architecture}\",\"runner\":\"${runner}\",\"leg\":\"${leg}\",\"target\":\"${tgt}\"}"
+            done
           done
           json="${json}]}"
           echo "matrix=${json}" >> "${GITHUB_OUTPUT}"
@@ -105,7 +121,7 @@ jobs:
       matrix: ${{ fromJSON(needs.prepare-matrix.outputs.matrix) }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
-    name: Build externals (${{ matrix.leg }}-${{ inputs.target }})
+    name: Build externals (${{ matrix.leg }}-${{ matrix.target }})
 
     steps:
       - uses: actions/checkout@v4
@@ -121,7 +137,7 @@ jobs:
           else
             echo "TAG=${{ inputs.docker_image_tag }}" >> "${GITHUB_ENV}"
           fi
-          echo "CONTAINER_NAME=pkg_${{ matrix.system }}_${{ inputs.target }}_builder_${{ matrix.architecture }}" >> "${GITHUB_ENV}"
+          echo "CONTAINER_NAME=pkg_${{ matrix.system }}_${{ matrix.target }}_builder_${{ matrix.architecture }}" >> "${GITHUB_ENV}"
 
       - name: Pull builder image from GHCR
         if: matrix.system == 'deb' || matrix.system == 'rpm'
@@ -155,7 +171,7 @@ jobs:
           bash generate_external.sh \
             --system "${{ matrix.system }}" \
             --architecture "${{ matrix.architecture }}" \
-            --target "${{ inputs.target }}" \
+            --target "${{ matrix.target }}" \
             --tag "${TAG:-}" \
             --dependencies "${{ inputs.dependencies }}" \
             --jobs "${jobs}" \
@@ -170,7 +186,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: externals-${{ matrix.leg }}-${{ inputs.target }}
+          name: externals-${{ matrix.leg }}-${{ matrix.target }}
           path: packages/output_externals/external_artifacts/*.zip
           if-no-files-found: error
           retention-days: 14
