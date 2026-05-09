@@ -158,41 +158,6 @@ std::filesystem::path KVDBManager::makeNextInstancePath(std::string_view name)
     return m_root / std::string(name) / buf;
 }
 
-std::shared_ptr<DbHandle> KVDBManager::getOrCreateHandle(std::string_view dbName, bool createIfMissing)
-{
-    const std::string key(dbName);
-    std::shared_ptr<DbHandle> handle;
-
-    // Try read-only access first (concurrent with other readers)
-    {
-        std::shared_lock<std::shared_mutex> lk(m_registryMutex);
-        auto it = m_handles.find(key);
-        if (it != m_handles.end())
-        {
-            return it->second;
-        }
-    }
-
-    // Not found - need exclusive lock to create
-    if (createIfMissing)
-    {
-        std::unique_lock<std::shared_mutex> lk(m_registryMutex);
-        // Double-check: another thread might have created it
-        auto it = m_handles.find(key);
-        if (it != m_handles.end())
-        {
-            return it->second;
-        }
-
-        // Create new handle
-        handle = std::make_shared<DbHandle>(std::string(dbName));
-        m_handles.emplace(key, handle);
-        return handle;
-    }
-
-    return nullptr;
-}
-
 void KVDBManager::add(std::string_view name)
 {
     const std::string key(name);

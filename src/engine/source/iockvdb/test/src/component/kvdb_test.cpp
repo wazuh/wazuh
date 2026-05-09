@@ -37,6 +37,32 @@ protected:
 
     void TearDown() override { fs::remove_all(testDir); }
 
+    std::shared_ptr<::testing::NiceMock<store::mocks::MockStore>> makeStoreWithPersistedState(const json::Json& state)
+    {
+        auto mockStore = std::make_shared<::testing::NiceMock<store::mocks::MockStore>>();
+        ON_CALL(*mockStore, upsertDoc(::testing::_, ::testing::_)).WillByDefault(::testing::Return(std::nullopt));
+        ON_CALL(*mockStore, readDoc(::testing::_)).WillByDefault(::testing::Return(base::Error {"not found"}));
+
+        EXPECT_CALL(*mockStore, existsDoc(::testing::_)).WillOnce(::testing::Return(true));
+        EXPECT_CALL(*mockStore, readDoc(::testing::_)).WillOnce(::testing::Return(state));
+
+        return mockStore;
+    }
+
+    void expectMalformedPersistedEntryStartsFresh(const json::Json& entry)
+    {
+        json::Json state;
+        state.setArray();
+        state.appendJson(entry);
+
+        auto mockStore = makeStoreWithPersistedState(state);
+
+        EXPECT_NO_THROW({
+            ioc::kvdb::KVDBManager manager(testDir, mockStore);
+            EXPECT_THROW(manager.get("testdb", "key"), std::runtime_error);
+        });
+    }
+
     fs::path testDir;
     std::shared_ptr<store::IStore> store;
 };
@@ -1462,6 +1488,551 @@ TEST_F(KVDBComponentTest, PersistenceHandlesMissingFiles)
         // Trying to read should fail
         EXPECT_THROW(manager.get("missing-db", "key1"), std::runtime_error);
     });
+}
+
+// ============================================================================
+// DBState::fromJson() VALIDATION TESTS
+// ============================================================================
+
+TEST_F(KVDBComponentTest, DBStateFromJsonRejectsObjectWithoutName)
+{
+    json::Json entry;
+    entry.setString("/some/path", "/instance_path");
+    entry.setInt64(1234567890, "/created");
+
+    expectMalformedPersistedEntryStartsFresh(entry);
+}
+
+TEST_F(KVDBComponentTest, DBStateFromJsonRejectsNonStringName)
+{
+    json::Json entry;
+    entry.setInt(42, "/name");
+    entry.setString("/some/path", "/instance_path");
+    entry.setInt64(1234567890, "/created");
+
+    expectMalformedPersistedEntryStartsFresh(entry);
+}
+
+TEST_F(KVDBComponentTest, DBStateFromJsonRejectsEmptyName)
+{
+    json::Json entry;
+    entry.setString("", "/name");
+    entry.setString("/some/path", "/instance_path");
+    entry.setInt64(1234567890, "/created");
+
+    expectMalformedPersistedEntryStartsFresh(entry);
+}
+
+TEST_F(KVDBComponentTest, DBStateFromJsonRejectsObjectWithoutInstancePath)
+{
+    json::Json entry;
+    entry.setString("testdb", "/name");
+    entry.setInt64(1234567890, "/created");
+
+    expectMalformedPersistedEntryStartsFresh(entry);
+}
+
+TEST_F(KVDBComponentTest, DBStateFromJsonRejectsNonStringInstancePath)
+{
+    json::Json entry;
+    entry.setString("testdb", "/name");
+    entry.setInt(999, "/instance_path");
+    entry.setInt64(1234567890, "/created");
+
+    expectMalformedPersistedEntryStartsFresh(entry);
+}
+
+TEST_F(KVDBComponentTest, DBStateFromJsonRejectsEmptyInstancePath)
+{
+    json::Json entry;
+    entry.setString("testdb", "/name");
+    entry.setString("", "/instance_path");
+    entry.setInt64(1234567890, "/created");
+
+    expectMalformedPersistedEntryStartsFresh(entry);
+}
+
+TEST_F(KVDBComponentTest, DBStateFromJsonRejectsObjectWithoutCreated)
+{
+    json::Json entry;
+    entry.setString("testdb", "/name");
+    entry.setString("/some/path", "/instance_path");
+
+    expectMalformedPersistedEntryStartsFresh(entry);
+}
+
+TEST_F(KVDBComponentTest, DBStateFromJsonRejectsInvalidCreatedType)
+{
+    json::Json entry;
+    entry.setString("testdb", "/name");
+    entry.setString("/some/path", "/instance_path");
+    entry.setString("not-a-timestamp", "/created");
+
+    expectMalformedPersistedEntryStartsFresh(entry);
+}
+
+TEST_F(KVDBComponentTest, DBStateFromJsonLoadsValidObjectWithoutRestorableInstance)
+{
+    json::Json state;
+    state.setArray();
+    json::Json entry;
+    entry.setString("testdb", "/name");
+    entry.setString("testdb/abcd", "/instance_path");
+    entry.setInt64(1234567890, "/created");
+    state.appendJson(entry);
+
+    auto mockStore = makeStoreWithPersistedState(state);
+
+    EXPECT_NO_THROW({
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
+        EXPECT_FALSE(manager.exists("testdb"));
+        EXPECT_THROW(manager.get("testdb", "key"), std::runtime_error);
+    });
+}
+
+// ============================================================================
+// KVDBManager CONSTRUCTION TESTS
+// ============================================================================
+
+TEST_F(KVDBComponentTest, ConstructionRejectsNullStore)
+{
+    EXPECT_THROW(ioc::kvdb::KVDBManager(testDir, nullptr), std::runtime_error);
+}
+
+TEST_F(KVDBComponentTest, ConstructionCreatesRootDirectoryWhenMissing)
+{
+    auto newRoot = testDir / "new_kvdb_root";
+    ASSERT_FALSE(fs::exists(newRoot));
+
+    EXPECT_NO_THROW({ ioc::kvdb::KVDBManager manager(newRoot, store); });
+
+    EXPECT_TRUE(fs::exists(newRoot));
+}
+
+TEST_F(KVDBComponentTest, ConstructionFailsWhenRootDirectoryCannotBeCreated)
+{
+    auto blockerFile = testDir / "blocker";
+    std::ofstream(blockerFile).close();
+    auto invalidRoot = blockerFile / "subdir";
+
+    EXPECT_THROW(ioc::kvdb::KVDBManager(invalidRoot, store), std::runtime_error);
+}
+
+// ============================================================================
+// PERSISTED STATE LOADING TESTS
+// ============================================================================
+
+TEST_F(KVDBComponentTest, LoadStateHandlesStoreReadFailure)
+{
+    auto mockStore = std::make_shared<::testing::NiceMock<store::mocks::MockStore>>();
+    ON_CALL(*mockStore, upsertDoc(::testing::_, ::testing::_)).WillByDefault(::testing::Return(std::nullopt));
+
+    EXPECT_CALL(*mockStore, existsDoc(::testing::_)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*mockStore, readDoc(::testing::_)).WillOnce(::testing::Return(base::Error {"store unavailable"}));
+
+    EXPECT_NO_THROW({
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
+        EXPECT_THROW(manager.get("anydb", "key"), std::runtime_error);
+    });
+}
+
+TEST_F(KVDBComponentTest, LoadStateRejectsNonArrayDocument)
+{
+    json::Json notAnArray(R"({"name":"testdb","value":42})");
+    auto mockStore = makeStoreWithPersistedState(notAnArray);
+
+    EXPECT_NO_THROW({
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
+        EXPECT_THROW(manager.get("testdb", "key"), std::runtime_error);
+    });
+}
+
+TEST_F(KVDBComponentTest, LoadStateAddsHandleWithoutInstanceWhenRocksDBOpenFails)
+{
+    auto fakePath = testDir / "testdb" / "0000";
+    fs::create_directories(fakePath);
+
+    json::Json state;
+    state.setArray();
+    json::Json entry;
+    entry.setString("testdb", "/name");
+    entry.setString("testdb/0000", "/instance_path");
+    entry.setInt64(1234567890, "/created");
+    state.appendJson(entry);
+
+    auto mockStore = makeStoreWithPersistedState(state);
+
+    EXPECT_NO_THROW({
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
+        EXPECT_THROW(manager.add("testdb"), std::runtime_error);
+        EXPECT_THROW(manager.get("testdb", "key"), std::runtime_error);
+    });
+}
+
+TEST_F(KVDBComponentTest, LoadStateRestoresSubsequentEntriesWhenOneDiskPathIsMissing)
+{
+    std::shared_ptr<json::Json> persistedState;
+    auto writerStore = std::make_shared<::testing::NiceMock<store::mocks::MockStore>>();
+    ON_CALL(*writerStore, existsDoc(::testing::_)).WillByDefault(::testing::Return(false));
+    EXPECT_CALL(*writerStore, upsertDoc(::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::DoAll(
+            ::testing::Invoke([&persistedState](const base::Name&, const json::Json& j)
+                              { persistedState = std::make_shared<json::Json>(j.str().c_str()); }),
+            ::testing::Return(std::nullopt)));
+
+    {
+        ioc::kvdb::KVDBManager manager(testDir, writerStore);
+        ASSERT_NO_THROW(manager.add("db2"));
+        ASSERT_NO_THROW(manager.put("db2", "key", R"({"value":2})"));
+    }
+
+    ASSERT_NE(persistedState, nullptr);
+    auto persistedArray = persistedState->getArray();
+    ASSERT_TRUE(persistedArray.has_value());
+    ASSERT_EQ(persistedArray->size(), 1);
+
+    json::Json state;
+    state.setArray();
+    json::Json entry1;
+    entry1.setString("db1", "/name");
+    entry1.setString("db1/missing", "/instance_path");
+    entry1.setInt64(1234567890, "/created");
+    state.appendJson(entry1);
+    state.appendJson((*persistedArray)[0]);
+
+    auto mockStore = makeStoreWithPersistedState(state);
+
+    EXPECT_NO_THROW({
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
+        EXPECT_THROW(manager.add("db1"), std::runtime_error);
+        EXPECT_THROW(manager.add("db2"), std::runtime_error);
+
+        auto value = manager.get("db2", "key");
+        ASSERT_TRUE(value.has_value());
+        EXPECT_EQ(value->getInt("/value").value(), 2);
+    });
+}
+
+// ============================================================================
+// PERSISTED STATE SAVING TESTS
+// ============================================================================
+
+TEST_F(KVDBComponentTest, SaveStateLogsErrorWhenUpsertFails)
+{
+    auto mockStore = std::make_shared<::testing::NiceMock<store::mocks::MockStore>>();
+    ON_CALL(*mockStore, existsDoc(::testing::_)).WillByDefault(::testing::Return(false));
+    ON_CALL(*mockStore, readDoc(::testing::_)).WillByDefault(::testing::Return(base::Error {"not found"}));
+    ON_CALL(*mockStore, upsertDoc(::testing::_, ::testing::_))
+        .WillByDefault(::testing::Return(base::Error {"store write failed"}));
+
+    EXPECT_NO_THROW({
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
+        EXPECT_NO_THROW(manager.add("testdb"));
+        EXPECT_NO_THROW(manager.put("testdb", "key", R"({"v":1})"));
+
+        auto value = manager.get("testdb", "key");
+        EXPECT_TRUE(value.has_value());
+    });
+}
+
+TEST_F(KVDBComponentTest, SaveStateIgnoresMalformedPreviousState)
+{
+    json::Json previousState;
+    previousState.setArray();
+    json::Json malformedEntry;
+    malformedEntry.setString("testdb/missing", "/instance_path");
+    malformedEntry.setInt64(1234567890, "/created");
+    previousState.appendJson(malformedEntry);
+
+    auto mockStore = std::make_shared<::testing::NiceMock<store::mocks::MockStore>>();
+    ON_CALL(*mockStore, existsDoc(::testing::_)).WillByDefault(::testing::Return(false));
+    ON_CALL(*mockStore, readDoc(::testing::_)).WillByDefault(::testing::Return(previousState));
+    ON_CALL(*mockStore, upsertDoc(::testing::_, ::testing::_)).WillByDefault(::testing::Return(std::nullopt));
+
+    ioc::kvdb::KVDBManager manager(testDir, mockStore);
+
+    EXPECT_NO_THROW(manager.add("testdb"));
+    EXPECT_TRUE(manager.exists("testdb"));
+}
+
+TEST_F(KVDBComponentTest, SaveStatePreservesPreviousInstancePathForHandleWithoutInstance)
+{
+    std::shared_ptr<json::Json> capturedState;
+    auto mockStore = std::make_shared<::testing::NiceMock<store::mocks::MockStore>>();
+
+    EXPECT_CALL(*mockStore, upsertDoc(::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::DoAll(
+            ::testing::Invoke([&capturedState](const base::Name&, const json::Json& j)
+                              { capturedState = std::make_shared<json::Json>(j.str().c_str()); }),
+            ::testing::Return(std::nullopt)));
+
+    {
+        ON_CALL(*mockStore, existsDoc(::testing::_)).WillByDefault(::testing::Return(false));
+        ON_CALL(*mockStore, readDoc(::testing::_)).WillByDefault(::testing::Return(base::Error {"not found"}));
+
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
+        EXPECT_NO_THROW(manager.add("legacy-db"));
+    }
+
+    ASSERT_NE(capturedState, nullptr);
+    auto capturedArray = capturedState->getArray();
+    ASSERT_TRUE(capturedArray.has_value());
+    ASSERT_EQ(capturedArray->size(), 1);
+
+    std::string legacyPath;
+    ASSERT_EQ(json::RetGet::Success, (*capturedArray)[0].getString(legacyPath, "/instance_path"));
+    ASSERT_FALSE(legacyPath.empty());
+
+    fs::remove_all(testDir / "legacy-db");
+
+    EXPECT_CALL(*mockStore, existsDoc(::testing::_)).WillOnce(::testing::Return(true));
+    ON_CALL(*mockStore, readDoc(::testing::_)).WillByDefault(::testing::Return(*capturedState));
+
+    std::shared_ptr<json::Json> finalState;
+    EXPECT_CALL(*mockStore, upsertDoc(::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::DoAll(
+            ::testing::Invoke([&finalState](const base::Name&, const json::Json& j)
+                              { finalState = std::make_shared<json::Json>(j.str().c_str()); }),
+            ::testing::Return(std::nullopt)));
+
+    {
+        ioc::kvdb::KVDBManager manager(testDir, mockStore);
+        EXPECT_THROW(manager.add("legacy-db"), std::runtime_error);
+        EXPECT_NO_THROW(manager.add("new-db"));
+    }
+
+    ASSERT_NE(finalState, nullptr);
+    auto finalArray = finalState->getArray();
+    ASSERT_TRUE(finalArray.has_value());
+    EXPECT_EQ(finalArray->size(), 2);
+
+    bool foundLegacy = false;
+    bool foundNew = false;
+    for (const auto& entry : *finalArray)
+    {
+        std::string name;
+        ASSERT_EQ(json::RetGet::Success, entry.getString(name, "/name"));
+
+        if (name == "legacy-db")
+        {
+            foundLegacy = true;
+            std::string path;
+            ASSERT_EQ(json::RetGet::Success, entry.getString(path, "/instance_path"));
+            EXPECT_EQ(path, legacyPath);
+        }
+        else if (name == "new-db")
+        {
+            foundNew = true;
+        }
+    }
+
+    EXPECT_TRUE(foundLegacy);
+    EXPECT_TRUE(foundNew);
+}
+
+TEST_F(KVDBComponentTest, AddMakesDbVisibleThroughExists)
+{
+    ioc::kvdb::KVDBManager manager(testDir, store);
+
+    EXPECT_FALSE(manager.exists("new-db"));
+
+    EXPECT_NO_THROW(manager.add("new-db"));
+
+    EXPECT_TRUE(manager.exists("new-db"));
+}
+
+TEST_F(KVDBComponentTest, ExistsReturnsFalseForHandleWithoutInstance)
+{
+    json::Json state;
+    state.setArray();
+    json::Json entry;
+    entry.setString("testdb", "/name");
+    entry.setString("testdb/missing", "/instance_path");
+    entry.setInt64(1234567890, "/created");
+    state.appendJson(entry);
+
+    auto mockStore = makeStoreWithPersistedState(state);
+
+    ioc::kvdb::KVDBManager manager(testDir, mockStore);
+    EXPECT_FALSE(manager.exists("testdb"));
+}
+
+TEST_F(KVDBComponentTest, ExistsReturnsFalseAfterRemove)
+{
+    ioc::kvdb::KVDBManager manager(testDir, store);
+
+    EXPECT_NO_THROW(manager.add("testdb"));
+    EXPECT_TRUE(manager.exists("testdb"));
+
+    EXPECT_NO_THROW(manager.remove("testdb"));
+    EXPECT_FALSE(manager.exists("testdb"));
+}
+
+TEST_F(KVDBComponentTest, PutRejectsNonExistentDb)
+{
+    ioc::kvdb::KVDBManager manager(testDir, store);
+
+    EXPECT_THROW(manager.put("nonexistent", "key", R"({"v":1})"), std::runtime_error);
+}
+
+TEST_F(KVDBComponentTest, PutWrapsExceptionWhenHandleHasNoInstance)
+{
+    json::Json state;
+    state.setArray();
+    json::Json entry;
+    entry.setString("stale-db", "/name");
+    entry.setString("stale-db/missing", "/instance_path");
+    entry.setInt64(1234567890, "/created");
+    state.appendJson(entry);
+
+    auto mockStore = makeStoreWithPersistedState(state);
+
+    ioc::kvdb::KVDBManager manager(testDir, mockStore);
+    EXPECT_THROW(manager.put("stale-db", "key", R"({"v":1})"), std::runtime_error);
+}
+
+TEST_F(KVDBComponentTest, GetThrowsWhenStoredValueIsInvalidJson)
+{
+    ioc::kvdb::KVDBManager manager(testDir, store);
+
+    EXPECT_NO_THROW(manager.add("testdb"));
+    EXPECT_NO_THROW(manager.put("testdb", "bad-key", "{broken json"));
+
+    EXPECT_THROW(manager.get("testdb", "bad-key"), std::runtime_error);
+}
+
+TEST_F(KVDBComponentTest, MultiGetThrowsWhenOneValueIsInvalidJson)
+{
+    ioc::kvdb::KVDBManager manager(testDir, store);
+
+    EXPECT_NO_THROW(manager.add("testdb"));
+    EXPECT_NO_THROW(manager.put("testdb", "good-key", R"({"v":1})"));
+    EXPECT_NO_THROW(manager.put("testdb", "bad-key", "{broken json"));
+
+    std::vector<std::string_view> keys = {"good-key", "bad-key"};
+    EXPECT_THROW(manager.multiGet("testdb", keys), std::runtime_error);
+}
+
+TEST_F(KVDBComponentTest, HotSwapRejectsSwapToItself)
+{
+    ioc::kvdb::KVDBManager manager(testDir, store);
+
+    EXPECT_NO_THROW(manager.add("testdb"));
+
+    EXPECT_THROW(manager.hotSwap("testdb", "testdb"), std::runtime_error);
+}
+
+TEST_F(KVDBComponentTest, HotSwapRejectsWhenTargetNotFound)
+{
+    ioc::kvdb::KVDBManager manager(testDir, store);
+
+    EXPECT_NO_THROW(manager.add("source"));
+
+    EXPECT_THROW(manager.hotSwap("source", "nonexistent"), std::runtime_error);
+}
+
+TEST_F(KVDBComponentTest, HotSwapRejectsWhenSourceNotFound)
+{
+    ioc::kvdb::KVDBManager manager(testDir, store);
+
+    EXPECT_NO_THROW(manager.add("target"));
+
+    EXPECT_THROW(manager.hotSwap("nonexistent", "target"), std::runtime_error);
+}
+
+TEST_F(KVDBComponentTest, HotSwapRejectsWhenSourceHasNoInstance)
+{
+    json::Json state;
+    state.setArray();
+    json::Json entry;
+    entry.setString("stale-db", "/name");
+    entry.setString("stale-db/missing", "/instance_path");
+    entry.setInt64(1234567890, "/created");
+    state.appendJson(entry);
+
+    auto mockStore = std::make_shared<::testing::NiceMock<store::mocks::MockStore>>();
+    ON_CALL(*mockStore, upsertDoc(::testing::_, ::testing::_)).WillByDefault(::testing::Return(std::nullopt));
+    ON_CALL(*mockStore, readDoc(::testing::_)).WillByDefault(::testing::Return(state));
+    EXPECT_CALL(*mockStore, existsDoc(::testing::_)).WillOnce(::testing::Return(true));
+
+    ioc::kvdb::KVDBManager manager(testDir, mockStore);
+
+    EXPECT_NO_THROW(manager.add("target"));
+    EXPECT_THROW(manager.hotSwap("stale-db", "target"), std::runtime_error);
+}
+
+TEST_F(KVDBComponentTest, HotSwapToHandleWithoutInstanceSucceeds)
+{
+    json::Json state;
+    state.setArray();
+    json::Json entry;
+    entry.setString("target", "/name");
+    entry.setString("target/missing", "/instance_path");
+    entry.setInt64(1234567890, "/created");
+    state.appendJson(entry);
+
+    auto mockStore = std::make_shared<::testing::NiceMock<store::mocks::MockStore>>();
+    ON_CALL(*mockStore, upsertDoc(::testing::_, ::testing::_)).WillByDefault(::testing::Return(std::nullopt));
+    ON_CALL(*mockStore, readDoc(::testing::_)).WillByDefault(::testing::Return(state));
+    EXPECT_CALL(*mockStore, existsDoc(::testing::_)).WillOnce(::testing::Return(true));
+
+    ioc::kvdb::KVDBManager manager(testDir, mockStore);
+
+    EXPECT_FALSE(manager.exists("target"));
+    EXPECT_NO_THROW(manager.add("source"));
+    EXPECT_NO_THROW(manager.put("source", "key", R"({"v":1})"));
+
+    EXPECT_NO_THROW(manager.hotSwap("source", "target"));
+
+    EXPECT_FALSE(manager.exists("source"));
+    EXPECT_TRUE(manager.exists("target"));
+    auto value = manager.get("target", "key");
+    ASSERT_TRUE(value.has_value());
+    EXPECT_EQ(value->getInt("/v").value(), 1);
+}
+
+TEST_F(KVDBComponentTest, HotSwapPersistenceFailureIsLogged)
+{
+    auto mockStore = std::make_shared<::testing::NiceMock<store::mocks::MockStore>>();
+    ON_CALL(*mockStore, existsDoc(::testing::_)).WillByDefault(::testing::Return(false));
+    ON_CALL(*mockStore, readDoc(::testing::_)).WillByDefault(::testing::Return(base::Error {"not found"}));
+    ON_CALL(*mockStore, upsertDoc(::testing::_, ::testing::_))
+        .WillByDefault(::testing::Return(base::Error {"write failed"}));
+
+    ioc::kvdb::KVDBManager manager(testDir, mockStore);
+
+    EXPECT_NO_THROW(manager.add("staging"));
+    EXPECT_NO_THROW(manager.add("production"));
+    EXPECT_NO_THROW(manager.put("staging", "key", R"({"v":1})"));
+
+    EXPECT_NO_THROW(manager.hotSwap("staging", "production"));
+
+    EXPECT_THROW(manager.get("staging", "key"), std::runtime_error);
+    EXPECT_TRUE(manager.get("production", "key").has_value());
+}
+
+TEST_F(KVDBComponentTest, RemoveRejectsNonExistentDb)
+{
+    ioc::kvdb::KVDBManager manager(testDir, store);
+
+    EXPECT_THROW(manager.remove("nonexistent"), std::runtime_error);
+}
+
+TEST_F(KVDBComponentTest, RemovePersistenceFailureIsLogged)
+{
+    auto mockStore = std::make_shared<::testing::NiceMock<store::mocks::MockStore>>();
+    ON_CALL(*mockStore, existsDoc(::testing::_)).WillByDefault(::testing::Return(false));
+    ON_CALL(*mockStore, readDoc(::testing::_)).WillByDefault(::testing::Return(base::Error {"not found"}));
+    ON_CALL(*mockStore, upsertDoc(::testing::_, ::testing::_))
+        .WillByDefault(::testing::Return(base::Error {"write failed"}));
+
+    ioc::kvdb::KVDBManager manager(testDir, mockStore);
+
+    EXPECT_NO_THROW(manager.add("testdb"));
+    EXPECT_NO_THROW(manager.remove("testdb"));
+
+    EXPECT_FALSE(manager.exists("testdb"));
+    EXPECT_THROW(manager.get("testdb", "key"), std::runtime_error);
 }
 
 // Test persistence survives multiple restart cycles

@@ -446,3 +446,174 @@ TEST_F(TesterTest, SucessUpdateLast)
 
     stopControllerCall();
 }
+
+/**************************************************************************
+ * renameEntry tests
+ *************************************************************************/
+
+TEST_F(TesterTest, RenameEntryFromNotExist)
+{
+    auto error = m_test->renameEntry("nonExistent", "newName");
+    EXPECT_TRUE(error.has_value());
+    EXPECT_STREQ(error.value().message.c_str(),
+                 "Error renaming session: The 'nonExistent' environment does not exist");
+}
+
+TEST_F(TesterTest, RenameEntryToAlreadyExists)
+{
+    auto entryPostOne = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
+    auto entryPostTwo = router::test::EntryPost {"Other", POLICY_NAMESPACE, LIFESPAM};
+    const std::string hash = "hash";
+    std::unordered_set<base::Name> fakeAssets {};
+    fakeAssets.insert(base::Name("asset/test/0"));
+
+    addEntryCallers(fakeAssets, hash);
+    m_test->addEntry(entryPostOne, /*ignoreFail=*/false);
+
+    addEntryCallers(fakeAssets, hash);
+    m_test->addEntry(entryPostTwo, /*ignoreFail=*/false);
+
+    auto error = m_test->renameEntry(ENVIRONMENT_NAME, "Other");
+    EXPECT_TRUE(error.has_value());
+    EXPECT_STREQ(error.value().message.c_str(), "Error renaming session: The 'Other' environment already exists");
+
+    stopControllerCall(2);
+}
+
+TEST_F(TesterTest, RenameEntrySuccess)
+{
+    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
+    const std::string hash = "hash";
+    std::unordered_set<base::Name> fakeAssets {};
+    fakeAssets.insert(base::Name("asset/test/0"));
+
+    addEntryCallers(fakeAssets, hash);
+    m_test->addEntry(entryPost, /*ignoreFail=*/false);
+
+    auto error = m_test->renameEntry(ENVIRONMENT_NAME, "Renamed");
+    EXPECT_FALSE(error.has_value());
+
+    // Verify old name no longer exists
+    auto get = m_test->getEntry(ENVIRONMENT_NAME);
+    EXPECT_TRUE(std::holds_alternative<base::Error>(get));
+
+    // Verify new name exists
+    get = m_test->getEntry("Renamed");
+    EXPECT_FALSE(std::holds_alternative<base::Error>(get));
+
+    stopControllerCall();
+}
+
+/**************************************************************************
+ * addTrace coverage via ingestTest with subscriber callback invocation
+ *************************************************************************/
+
+TEST_F(TesterTest, IngestTestWithTraceAll)
+{
+    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
+    const std::string hash = "hash";
+    std::unordered_set<base::Name> fakeAssets {};
+    fakeAssets.insert(base::Name("asset/test/0"));
+
+    addEntryCallers(fakeAssets, hash);
+    m_test->addEntry(entryPost, /*ignoreFail=*/false);
+    m_test->enableEntry(ENVIRONMENT_NAME);
+
+    std::unordered_set<std::string> fakeAssetsString {};
+    fakeAssetsString.insert("asset/test/0");
+    router::test::Options opt(router::test::Options::TraceLevel::ALL, fakeAssetsString, ENVIRONMENT_NAME);
+
+    bk::Subscriber capturedSub;
+    EXPECT_CALL(*m_mockController, subscribe(testing::_, testing::_))
+        .WillOnce(
+            [&capturedSub](const std::string&, bk::Subscriber sub) -> base::RespOrError<bk::Subscription>
+            {
+                capturedSub = std::move(sub);
+                return bk::Subscription(1);
+            });
+
+    auto event = R"({"key": "value"})";
+    EXPECT_CALL(*m_mockController, ingestGet(testing::_))
+        .WillOnce(
+            [&capturedSub, &event](base::Event&&) -> base::Event
+            {
+                // Simulate trace callbacks during ingestion
+                capturedSub("trace line 1", false);
+                capturedSub("trace line 2", true);
+                capturedSub("SUCCESS", true);
+                capturedSub("", false); // empty trace - should be ignored
+                return std::make_shared<json::Json>(event);
+            });
+    EXPECT_CALL(*m_mockController, unsubscribeAll());
+
+    auto jsonEvent = std::make_shared<json::Json>(R"({"key": "value"})");
+    auto response = m_test->ingestTest(std::move(jsonEvent), opt);
+    EXPECT_FALSE(std::holds_alternative<base::Error>(response));
+
+    auto& output = std::get<router::test::Output>(response);
+    // Verify traces were collected
+    EXPECT_FALSE(output.traceList().empty());
+
+    stopControllerCall();
+}
+
+TEST_F(TesterTest, IngestTestWithTraceAssetOnly)
+{
+    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
+    const std::string hash = "hash";
+    std::unordered_set<base::Name> fakeAssets {};
+    fakeAssets.insert(base::Name("asset/test/0"));
+
+    addEntryCallers(fakeAssets, hash);
+    m_test->addEntry(entryPost, /*ignoreFail=*/false);
+    m_test->enableEntry(ENVIRONMENT_NAME);
+
+    std::unordered_set<std::string> fakeAssetsString {};
+    fakeAssetsString.insert("asset/test/0");
+    router::test::Options opt(router::test::Options::TraceLevel::ASSET_ONLY, fakeAssetsString, ENVIRONMENT_NAME);
+
+    bk::Subscriber capturedSub;
+    EXPECT_CALL(*m_mockController, subscribe(testing::_, testing::_))
+        .WillOnce(
+            [&capturedSub](const std::string&, bk::Subscriber sub) -> base::RespOrError<bk::Subscription>
+            {
+                capturedSub = std::move(sub);
+                return bk::Subscription(1);
+            });
+
+    auto event = R"({"key": "value"})";
+    EXPECT_CALL(*m_mockController, ingestGet(testing::_))
+        .WillOnce(
+            [&capturedSub, &event](base::Event&&) -> base::Event
+            {
+                // With ASSET_ONLY, non-SUCCESS traces should NOT be stored
+                capturedSub("some trace detail", false);
+                capturedSub("SUCCESS", true);
+                return std::make_shared<json::Json>(event);
+            });
+    EXPECT_CALL(*m_mockController, unsubscribeAll());
+
+    auto jsonEvent = std::make_shared<json::Json>(R"({"key": "value"})");
+    auto response = m_test->ingestTest(std::move(jsonEvent), opt);
+    EXPECT_FALSE(std::holds_alternative<base::Error>(response));
+
+    auto& output = std::get<router::test::Output>(response);
+    // Traces should have the asset entry but only SUCCESS marker, no detailed traces
+    EXPECT_FALSE(output.traceList().empty());
+
+    stopControllerCall();
+}
+
+TEST_F(TesterTest, UpdateLastUsedWithExplicitTimestamp)
+{
+    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
+    const std::string hash = "hash";
+    std::unordered_set<base::Name> fakeAssets {};
+    fakeAssets.insert(base::Name("asset/test/0"));
+
+    addEntryCallers(fakeAssets, hash);
+    m_test->addEntry(entryPost, /*ignoreFail=*/false);
+    EXPECT_TRUE(m_test->updateLastUsed(ENVIRONMENT_NAME, 12345));
+
+    stopControllerCall();
+}

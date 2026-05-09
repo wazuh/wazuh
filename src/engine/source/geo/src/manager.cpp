@@ -162,44 +162,6 @@ Manager::addDbUnsafe(const std::string& path, const std::string& hash, const int
     return base::noError();
 }
 
-base::OptError Manager::writeDb(const std::string& path, const std::string& content)
-{
-    auto filePath = std::filesystem::path(path);
-
-    // Create directories if they do not exist
-    try
-    {
-        std::filesystem::create_directories(filePath.parent_path());
-        // Set permissions to 770 (rwxrwx---)
-        std::filesystem::permissions(filePath.parent_path(),
-                                     std::filesystem::perms::owner_all | std::filesystem::perms::group_all,
-                                     std::filesystem::perm_options::replace);
-    }
-    catch (const std::exception& e)
-    {
-        return base::Error {fmt::format("Cannot create directories for '{}': {}", path, e.what())};
-    }
-
-    // Write the content to the file
-    std::ofstream file(path, std::ios::binary);
-    if (!file.is_open())
-    {
-        return base::Error {fmt::format("Cannot open file '{}'", path)};
-    }
-    try
-    {
-        file.write(content.c_str(), content.size());
-        file.close();
-    }
-    catch (const std::exception& e)
-    {
-        file.close();
-        return base::Error {fmt::format("Cannot write to file '{}': {}", path, e.what())};
-    }
-
-    return base::noError();
-}
-
 base::OptError Manager::processDbEntry(const std::string& path,
                                        Type type,
                                        const std::string& gzUrl,

@@ -73,15 +73,6 @@ private:
     base::OptError addDbUnsafe(const std::string& path, const std::string& hash, const int64_t createdAt, Type type);
 
     /**
-     * @brief Write the MMDB database to the filesystem.
-     *
-     * @param path Path to store the database.
-     * @param content The content of the database.
-     * @return base::OptError An error if the database could not be written.
-     */
-    base::OptError writeDb(const std::string& path, const std::string& content);
-
-    /**
      * @brief Process a single database type from the manifest (download, validate, extract, load).
      *
      * @param path Path to store the database.

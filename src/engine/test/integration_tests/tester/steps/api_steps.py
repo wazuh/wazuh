@@ -517,6 +517,13 @@ def step_impl(context, response: str):
     expected_output.get('agent', {}).pop('manager_name', None)
     actual_output.get('agent', {}).pop('manager_name', None)
 
+    # 4b. Remove dynamic fields stamped by TesterWorker (@timestamp, wazuh.event.id)
+    actual_output.pop('@timestamp', None)
+    if 'wazuh' in actual_output and 'event' in actual_output['wazuh']:
+        actual_output['wazuh']['event'].pop('id', None)
+        if not actual_output['wazuh']['event']:
+            del actual_output['wazuh']['event']
+
     # 5. Re-serialize with sorted keys
     def normalize(obj): return json.dumps(obj, sort_keys=True, separators=(",", ":"))
     expected_wrapper['output'] = normalize(expected_output)
