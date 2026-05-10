@@ -1,44 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 72">
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="188 -486 3072 3072" role="img" aria-labelledby="title desc">
+  <title id="title">Overwatch Favicon</title>
+  <desc id="desc">Square icon-only vector favicon for Overwatch branding.</desc>
   <defs>
-    <linearGradient id="og" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FBBC3D"/>
-      <stop offset="40%" stop-color="#F7941D"/>
-      <stop offset="100%" stop-color="#E05A1A"/>
+    <linearGradient id="orangeGradient" x1="0" y1="0" x2="3160" y2="2200" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FAA61A"/>
+      <stop offset="0.48" stop-color="#F7941D"/>
+      <stop offset="1" stop-color="#F15A24"/>
     </linearGradient>
-    <linearGradient id="ogd" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#F7941D"/>
-      <stop offset="100%" stop-color="#D94A1E"/>
+    <linearGradient id="cyanGradient" x1="500" y1="200" x2="1800" y2="1400" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#42BFD9"/>
+      <stop offset="1" stop-color="#5BC7DF"/>
     </linearGradient>
   </defs>
-
-  <!-- ── ICON (same as light — orange reads well on dark) ── -->
-  <g transform="translate(2,2) scale(0.68)">
-    <polygon points="4,50 34,10 52,4 96,50 56,90 34,90" fill="url(#og)"/>
-    <polygon points="4,50 34,10 42,28 24,50 42,70 34,90" fill="url(#ogd)" opacity="0.55"/>
-    <polygon points="30,50 47,30 64,50 47,68" fill="white"/>
-    <polygon points="34,50 47,35 60,50 47,63" fill="white" opacity="0.4"/>
-    <polygon points="36,50 47,39 58,50 47,61" fill="#4DC3D5"/>
-    <circle cx="47" cy="46" r="4.5" fill="white"/>
-    <polygon points="44,46 50,46 48.5,53 45.5,53" fill="white"/>
-    <polygon points="44,11 47,8 50,11 47,14" fill="#4DC3D5"/>
-    <polygon points="32,19 36,15 40,19 36,23" fill="#D94A1E"/>
-    <polygon points="50,21 54,17 58,21 54,25" fill="#D94A1E"/>
-    <g stroke="white" stroke-width="1.4" fill="none" stroke-linecap="round">
-      <polyline points="60,72 72,78 79,80"/>
-      <polyline points="61,77 72,83 78,86"/>
-      <polyline points="62,81 71,87"/>
-    </g>
-    <circle cx="79" cy="80" r="2.2" fill="white"/>
-    <circle cx="78" cy="86" r="2.2" fill="white"/>
-    <circle cx="71" cy="87" r="2.2" fill="white"/>
-  </g>
-
-  <!-- ── TEXT: white for dark backgrounds ── -->
-  <text
-    x="82" y="49"
-    font-family="'Helvetica Neue', Arial, sans-serif"
-    font-weight="700"
-    font-size="32"
-    letter-spacing="-0.5"
-    fill="#FFFFFF">overwatch</text>
+  <path d="M862 478 L845 488 L487 844 L487 1257 L842 1611 L861 1623 L884 1629 L1338 1628 L1350 1616 L1351 1606 L1348 1599 L811 1063 L807 1055 L807 1045 L810 1039 L1008 842 L934 765 L930 742 L937 725 L1072 590 L1085 584 L1098 583 L1115 589 L1189 661 L1347 504 L1351 495 L1349 483 L1337 473 L880 473 Z M1252 193 L1154 292 L1253 390 L1351 291 Z M1247 3 L1235 13 L1228 28 L1228 43 L1234 56 L1746 567 L1805 509 L1822 504 L1834 506 L1999 667 L2006 684 L2003 702 L1943 764 L2209 1029 L2217 1053 L2208 1075 L1236 2043 L1228 2059 L1230 2080 L1249 2099 L1339 2099 L2146 1292 L2141 1279 L2146 1250 L2159 1237 L2184 1231 L2205 1240 L2217 1256 L2219 1279 L2213 1293 L2187 1310 L2159 1304 L1364 2099 L1561 2099 L1703 1957 L1921 1957 L2366 1512 L2360 1487 L2371 1463 L2389 1452 L2413 1453 L2431 1466 L2438 1480 L2439 1497 L2431 1515 L2405 1530 L2379 1524 L1928 1975 L1711 1975 L1587 2099 L1964 2099 L2332 1731 L2326 1706 L2339 1681 L2360 1671 L2387 1677 L2399 1689 L2405 1705 L2404 1721 L2396 1736 L2371 1750 L2345 1744 L1990 2099 L2093 2099 L2120 2090 L2162 2060 L3151 1074 L3159 1055 L3156 1037 L2153 33 L2127 15 L2077 0 Z M2195 1484 L2204 1494 L2210 1512 L2208 1528 L2202 1539 L2191 1549 L2179 1554 L2162 1554 L2149 1549 L1958 1740 L1963 1754 L1963 1769 L1959 1780 L1949 1792 L1939 1798 L1927 1801 L1915 1800 L1900 1793 L1890 1782 L1885 1770 L1884 1763 L1887 1746 L1894 1735 L1902 1728 L1917 1722 L1931 1722 L1945 1727 L2136 1536 L2131 1522 L2131 1508 L2136 1495 L2147 1483 L2163 1476 L2178 1476 Z" fill="url(#orangeGradient)" fill-rule="evenodd" aria-label="orange icon body"/>
+  <path d="M486 845 L291 1040 L288 1050 L292 1062 L486 1256 Z M1094 640 L987 747 L1094 855 L1201 748 Z M1822 565 L1700 688 L1823 810 L1945 687 Z" fill="#F15A24" fill-rule="evenodd" aria-label="orange-red accent diamonds"/>
+  <path d="M1524 803 L1227 1100 L1525 1397 L1822 1100 Z M1498 951 L1518 946 L1531 946 L1548 950 L1562 957 L1571 964 L1583 978 L1588 987 L1594 1010 L1594 1021 L1591 1036 L1580 1057 L1559 1076 L1618 1230 L1616 1233 L1431 1232 L1490 1076 L1473 1062 L1460 1042 L1455 1023 L1456 1002 L1460 989 L1471 971 L1484 959 Z M1012 194 L955 251 L1011 308 L1013 308 L1069 252 Z" fill="url(#cyanGradient)" fill-rule="evenodd" aria-label="cyan logo accents"/>
+  <path d="M1373 654 L1371 654 L1315 710 L1315 712 L1371 768 L1429 711 Z" fill="#9EDADC" fill-rule="evenodd" aria-label="pale cyan accent"/>
+  <path d="M2395 1685 L2387 1678 L2371 1672 L2355 1673 L2339 1682 L2332 1691 L2327 1706 L2328 1720 L2333 1731 L1963 2101 L1987 2101 L2345 1743 L2356 1748 L2371 1749 L2379 1747 L2391 1740 L2398 1732 L2404 1716 L2403 1700 Z M2195 1485 L2178 1477 L2163 1477 L2147 1484 L2137 1495 L2132 1508 L2132 1522 L2137 1536 L1945 1728 L1931 1723 L1917 1723 L1902 1729 L1895 1735 L1888 1746 L1885 1763 L1886 1770 L1891 1782 L1900 1792 L1915 1799 L1927 1800 L1939 1797 L1949 1791 L1958 1780 L1962 1769 L1962 1754 L1957 1740 L2149 1548 L2162 1553 L2179 1553 L2191 1548 L2201 1539 L2207 1528 L2209 1512 L2203 1494 Z M2430 1466 L2421 1458 L2405 1452 L2389 1453 L2372 1463 L2364 1475 L2361 1487 L2362 1500 L2367 1512 L1921 1958 L1703 1958 L1560 2101 L1584 2101 L1711 1974 L1928 1974 L2379 1523 L2390 1528 L2405 1529 L2421 1523 L2430 1515 L2435 1507 L2438 1497 L2437 1480 Z M2210 1246 L2201 1238 L2184 1232 L2167 1234 L2156 1240 L2147 1250 L2142 1263 L2142 1279 L2147 1292 L1338 2101 L1361 2101 L2159 1303 L2173 1309 L2187 1309 L2203 1302 L2212 1293 L2218 1279 L2218 1263 L2216 1256 Z M1495 954 L1481 963 L1472 972 L1465 982 L1458 1000 L1457 1025 L1463 1045 L1473 1060 L1488 1072 L1491 1077 L1433 1231 L1616 1231 L1557 1075 L1574 1062 L1583 1050 L1589 1037 L1592 1024 L1592 1007 L1588 991 L1576 971 L1561 958 L1549 952 L1533 948 L1516 948 Z" fill="#FFFFFF" fill-rule="evenodd" aria-label="white connector/lock details"/>
 </svg>
