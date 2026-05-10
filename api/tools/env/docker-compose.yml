@@ -169,7 +169,10 @@ services:
                 condition: service_started
 
     wazuh.dashboard:
-        image: public.ecr.aws/wazuh-cicd/wazuh/wazuh-dashboard:5.0.0-latest
+        build:
+            context: ./wazuh-dashboard
+        pull_policy: never
+        image: overwatch-dashboard
         container_name: wazuh.dashboard
         hostname: wazuh.dashboard
         networks:
