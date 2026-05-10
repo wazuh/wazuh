@@ -175,6 +175,8 @@ services:
         image: overwatch-dashboard
         container_name: wazuh.dashboard
         hostname: wazuh.dashboard
+        extra_hosts:
+            - "host-gateway:host-gateway"
         networks:
             - wazuh.net
         ports:
