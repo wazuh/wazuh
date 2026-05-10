@@ -54,12 +54,21 @@ install_build_deps() {
             export DEBIAN_FRONTEND=noninteractive
             apt-get update -qq >> "$LOG_FILE" 2>&1
             apt-get install -y -qq \
-                git curl wget gcc g++ make cmake \
+                git curl wget \
+                gcc g++ make cmake ninja-build pkg-config \
                 automake autoconf libtool \
-                python3 python3-pip \
-                libssl-dev libaudit-dev \
+                python3 python3-pip python3-dev python3-venv \
+                libssl-dev libaudit-dev libffi-dev \
+                zlib1g-dev libbz2-dev libsqlite3-dev \
+                libncurses5-dev libreadline-dev liblzma-dev \
+                libpcre2-dev libxml2-dev libdbus-1-dev \
+                clang llvm \
                 policycoreutils sqlite3 \
                 gnupg lsb-release >> "$LOG_FILE" 2>&1
+            # eBPF kernel headers (best-effort; non-fatal if unavailable)
+            apt-get install -y -qq "linux-headers-$(uname -r)" >> "$LOG_FILE" 2>&1 \
+                || apt-get install -y -qq linux-headers-generic >> "$LOG_FILE" 2>&1 \
+                || warn "linux-headers not installed — eBPF features may be limited."
             ;;
         rhel|centos|almalinux|rocky|ol)
             yum install -y \
