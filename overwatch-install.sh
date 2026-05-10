@@ -163,6 +163,51 @@ run_installer() {
     ok "Installation complete."
 }
 
+# ── generate indexer TLS certificates ─────────────────────────────────────────
+generate_indexer_certs() {
+    local cert_dir="/var/wazuh-manager/etc/certs"
+    local manager_dir="/var/wazuh-manager"
+
+    # Skip if all three certs already exist (e.g. re-run / upgrade)
+    if [ -f "$cert_dir/root-ca.pem" ] && \
+       [ -f "$cert_dir/manager.pem" ] && \
+       [ -f "$cert_dir/manager-key.pem" ]; then
+        ok "Indexer certs already present. Skipping generation."
+        return
+    fi
+
+    log "Generating self-signed TLS certificates for indexer module..."
+    mkdir -p "$cert_dir"
+
+    # Root CA
+    openssl genrsa -out "$cert_dir/root-ca-key.pem" 2048 >> "$LOG_FILE" 2>&1
+    openssl req -new -x509 -days 3650 \
+        -key  "$cert_dir/root-ca-key.pem" \
+        -out  "$cert_dir/root-ca.pem" \
+        -subj "/CN=Overwatch-CA/O=Overwatch SIEM/C=US" >> "$LOG_FILE" 2>&1
+
+    # Manager cert signed by the root CA
+    openssl genrsa -out "$cert_dir/manager-key.pem" 2048 >> "$LOG_FILE" 2>&1
+    openssl req -new \
+        -key  "$cert_dir/manager-key.pem" \
+        -out  "$cert_dir/manager.csr" \
+        -subj "/CN=wazuh-manager/O=Overwatch SIEM/C=US" >> "$LOG_FILE" 2>&1
+    openssl x509 -req -days 3650 \
+        -in   "$cert_dir/manager.csr" \
+        -CA   "$cert_dir/root-ca.pem" \
+        -CAkey "$cert_dir/root-ca-key.pem" \
+        -CAcreateserial \
+        -out  "$cert_dir/manager.pem" >> "$LOG_FILE" 2>&1
+    rm -f "$cert_dir/manager.csr" "$cert_dir/root-ca.srl"
+
+    # Restrict key permissions
+    chmod 640 "$cert_dir"/*.pem
+    chown -R root:wazuh-manager "$cert_dir" 2>/dev/null || \
+        chown -R root:wazuh      "$cert_dir" 2>/dev/null || true
+
+    ok "Indexer TLS certs written to $cert_dir"
+}
+
 # ── post-install summary ───────────────────────────────────────────────────────
 print_summary() {
     local manager_dir="/var/wazuh-manager"
@@ -178,6 +223,7 @@ print_summary() {
     echo ""
     echo -e "  ${BOLD}Config:${RESET}  $manager_dir/etc/ossec.conf"
     echo -e "  ${BOLD}Logs:${RESET}    $manager_dir/logs/ossec.log"
+    echo -e "  ${BOLD}Certs:${RESET}   $manager_dir/etc/certs/"
     echo -e "  ${BOLD}API port:${RESET} 55000 (HTTPS)"
     echo ""
     echo -e "  Build log → $LOG_FILE"
@@ -193,6 +239,7 @@ main() {
     prepare_source
     fetch_external_deps
     run_installer
+    generate_indexer_certs
     print_summary
 }
 
