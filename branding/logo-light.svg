@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 72">
+  <defs>
+    <linearGradient id="og" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FBBC3D"/>
+      <stop offset="40%" stop-color="#F7941D"/>
+      <stop offset="100%" stop-color="#E05A1A"/>
+    </linearGradient>
+    <linearGradient id="ogd" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F7941D"/>
+      <stop offset="100%" stop-color="#D94A1E"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ── ICON (scaled to 68px tall, centered in 72px height) ── -->
+  <g transform="translate(2,2) scale(0.68)">
+    <!-- Outer chevron -->
+    <polygon points="4,50 34,10 52,4 96,50 56,90 34,90" fill="url(#og)"/>
+    <!-- Depth overlay -->
+    <polygon points="4,50 34,10 42,28 24,50 42,70 34,90" fill="url(#ogd)" opacity="0.55"/>
+    <!-- White inner diamond -->
+    <polygon points="30,50 47,30 64,50 47,68" fill="white"/>
+    <polygon points="34,50 47,35 60,50 47,63" fill="white" opacity="0.4"/>
+    <!-- Teal center -->
+    <polygon points="36,50 47,39 58,50 47,61" fill="#4DC3D5"/>
+    <!-- Keyhole -->
+    <circle cx="47" cy="46" r="4.5" fill="white"/>
+    <polygon points="44,46 50,46 48.5,53 45.5,53" fill="white"/>
+    <!-- Accent diamonds -->
+    <polygon points="44,11 47,8 50,11 47,14" fill="#4DC3D5"/>
+    <polygon points="32,19 36,15 40,19 36,23" fill="#D94A1E"/>
+    <polygon points="50,21 54,17 58,21 54,25" fill="#D94A1E"/>
+    <!-- Circuit traces -->
+    <g stroke="white" stroke-width="1.4" fill="none" stroke-linecap="round">
+      <polyline points="60,72 72,78 79,80"/>
+      <polyline points="61,77 72,83 78,86"/>
+      <polyline points="62,81 71,87"/>
+    </g>
+    <circle cx="79" cy="80" r="2.2" fill="white"/>
+    <circle cx="78" cy="86" r="2.2" fill="white"/>
+    <circle cx="71" cy="87" r="2.2" fill="white"/>
+  </g>
+
+  <!-- ── TEXT: "overwatch" in orange-red ── -->
+  <text
+    x="82" y="49"
+    font-family="'Helvetica Neue', Arial, sans-serif"
+    font-weight="700"
+    font-size="32"
+    letter-spacing="-0.5"
+    fill="#E05A1A">overwatch</text>
+</svg>
