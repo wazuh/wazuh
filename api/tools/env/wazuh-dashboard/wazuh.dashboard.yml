@@ -46,8 +46,8 @@ opensearchDashboards.branding:
     defaultUrl: '/ui/overwatch-logo-light.svg'
     darkModeUrl: '/ui/overwatch-logo-dark.svg'
   loadingLogo:
-    defaultUrl: '/ui/overwatch-logo-light.svg'
-    darkModeUrl: '/ui/overwatch-logo-dark.svg'
+    defaultUrl: '/ui/overwatch-icon.svg'
+    darkModeUrl: '/ui/overwatch-icon.svg'
   mark:
     defaultUrl: '/ui/overwatch-icon.svg'
     darkModeUrl: '/ui/overwatch-icon.svg'
