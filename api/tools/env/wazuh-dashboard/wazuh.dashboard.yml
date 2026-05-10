@@ -52,6 +52,7 @@ opensearchDashboards.branding:
     defaultUrl: '/ui/overwatch-icon.svg'
     darkModeUrl: '/ui/overwatch-icon.svg'
   faviconUrl: '/ui/overwatch-icon.svg'
+  customCssUrl: '/ui/login-overrides.css'
 
 # -----------------------
 # Session settings
