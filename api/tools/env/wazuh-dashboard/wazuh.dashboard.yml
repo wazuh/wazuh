@@ -52,7 +52,6 @@ opensearchDashboards.branding:
     defaultUrl: '/ui/overwatch-icon.svg'
     darkModeUrl: '/ui/overwatch-icon.svg'
   faviconUrl: '/ui/overwatch-icon.svg'
-  customCssUrl: '/ui/login-overrides.css'
 
 # -----------------------
 # Session settings
@@ -66,8 +65,8 @@ opensearch_security.session.keepalive: true
 # -----------------------
 wazuh_core.hosts:
   default:
-    url: https://wazuh.manager
+    url: https://host-gateway
     port: 55000
     username: wazuh-wui
     password: wazuh-wui
-    run_as: true
+    run_as: false
