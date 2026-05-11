@@ -56,8 +56,11 @@ static char *wm_command_build_event_payload(const char *event_start,
         return NULL;
     }
 
-    cJSON_AddStringToObject(json_event, "event.module", "wazuh-wodle-cmd");
-    cJSON_AddStringToObject(json_event, "event.start", event_start ? event_start : "");
+    cJSON *event_obj = cJSON_AddObjectToObject(json_event, "event");
+    if (event_obj) {
+        cJSON_AddStringToObject(event_obj, "module", "wazuh-wodle-cmd");
+        cJSON_AddStringToObject(event_obj, "start", event_start ? event_start : "");
+    }
     if (tag) {
         cJSON *tags_array = cJSON_AddArrayToObject(json_event, "tags");
         if (tags_array) {
