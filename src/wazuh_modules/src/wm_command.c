@@ -186,6 +186,16 @@ void * wm_command_main(wm_command_t * command) {
         // portion with the resolved full_path, preserving arguments verbatim.
         if (!command->full_command) {
             const char *p = command->command;
+            bool binary_was_quoted = false;
+
+            while (*p == ' ') {
+                p++;
+            }
+
+            if (*p == '"') {
+                binary_was_quoted = true;
+            }
+
             bool in_quotes = false;
             while (*p) {
                 if (*p == '\\' && p[1] != '\0') {
@@ -200,12 +210,17 @@ void * wm_command_main(wm_command_t * command) {
                 }
             }
 
+            bool need_quotes = !binary_was_quoted && strchr(full_path, ' ') != NULL;
+            const char *qc = (binary_was_quoted || need_quotes) ? "\"" : "";
+
             if (*p == ' ') {
-                size_t len = strlen(full_path) + strlen(p) + 1;
+                size_t len = strlen(full_path) + strlen(p) + strlen(qc) * 2 + 1;
                 os_malloc(len, command->full_command);
-                snprintf(command->full_command, len, "%s%s", full_path, p);
+                snprintf(command->full_command, len, "%s%s%s%s", qc, full_path, qc, p);
             } else {
-                os_strdup(full_path, command->full_command);
+                size_t len = strlen(full_path) + strlen(qc) * 2 + 1;
+                os_malloc(len, command->full_command);
+                snprintf(command->full_command, len, "%s%s%s", qc, full_path, qc);
             }
         }
         free_strarray(argv);
