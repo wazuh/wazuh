@@ -1894,9 +1894,10 @@ bool AgentInfoImpl::shouldPerformIntegrityCheck(const std::string& table, int in
         lock.unlock();
         updateLastIntegrityTime(table);
         m_logFunction(LOG_DEBUG, "Initialized integrity check timestamp for " + table);
-        // coverity[double_unlock] - unique_lock owns_ is false after explicit unlock() above;
-        // destructor will not call unlock() again. Coverity's built-in model does not track
-        // the owns_ flag correctly when updateLastIntegrityTime re-acquires the same mutex.
+        /* unique_lock owns_ is false after explicit unlock() above; destructor will not call
+         * unlock() again. Coverity's built-in model does not track the owns_ flag correctly
+         * when updateLastIntegrityTime re-acquires the same mutex. */
+        // coverity[double_unlock]
         return false;
     }
 

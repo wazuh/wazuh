@@ -1015,9 +1015,10 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
 
                 // Manager auto-enqueues when all gaps are filled and sends EndAck{Ok}
                 // without needing us to resend End. Wait again in the next iteration.
+                /* unique_lock tracks ownership via owns_ flag; destructor will not call
+                 * unlock() again after the explicit lock.unlock() above. */
                 resendEnd = false;
-                // coverity[double_unlock] - unique_lock tracks ownership via owns_ flag;
-                // destructor will not call unlock() again after explicit lock.unlock() above.
+                // coverity[double_unlock]
                 continue;
             }
 

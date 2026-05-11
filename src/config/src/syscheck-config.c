@@ -201,8 +201,9 @@ OSList *fim_copy_directory_list(const OSList *source) {
     OSListNode *node_it;
     w_rwlock_rdlock((pthread_rwlock_t *)&source->wr_mutex);
 
-    // coverity[missing_lock] - source->first_node is protected by source->wr_mutex (rwlock),
-    // not by source->mutex. The rdlock above is the correct guard for this field.
+    /* source->first_node is protected by source->wr_mutex (rwlock),
+     * not by source->mutex. The rdlock above is the correct guard for this field. */
+    // coverity[missing_lock]
     for (node_it = source->first_node; node_it != NULL; node_it = node_it->next) {
         directory_t *dir = (directory_t *)node_it->data;
         directory_t *dir_copy = fim_copy_directory(dir);
