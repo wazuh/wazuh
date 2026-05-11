@@ -2,9 +2,13 @@
 
 ## Introduction
 
-The **Wazuh Engine** is the decoding, enrichment and routing engine of the Wazuh manager (it ships as the `wazuh-manager-analysisd` daemon). It receives raw events from `wazuh-manager-remoted`, normalizes them to the Wazuh Common Schema using user-defined decoders, enriches them (GeoIP, IOC, key-value lookups), evaluates them against one or more security policies, and forwards the resulting documents to `wazuh-indexer`.
+The **Wazuh Engine** is the decoding, enrichment and routing events of the Wazuh manager (it ships as the `wazuh-manager-analysisd` daemon). It receives raw events from `wazuh-manager-remoted`, normalizes them to the Wazuh Common Schema using user-defined decoders, enriches them (GeoIP, IOC, key-value lookups), evaluates them against one or more security policies, and forwards the resulting documents to `wazuh-indexer`.
 
-The engine never communicates with agents or with Wazuh CTI directly. Its only inbound peer for events is `remoted`, and its only outbound peer is `wazuh-indexer`. Content (decoders, integrations, policies, IOC databases) is also pulled from `wazuh-indexer` rather than from a CTI feed. For the runtime concepts referenced throughout this document — events, decoders, security policies, spaces, helper functions, assets — see the [quick-start](./README.md). For the API surface, see [api-reference.md](./api-reference.md).
+The engine never communicates with agents or with Wazuh CTI directly. Its only inbound peer for events is `remoted` and `vd`, and its only outbound peer for event/content flows is `wazuh-indexer`. The only external Internet connectivity it requires is downloading GeoIP/ASN databases from official Wazuh servers for geolocation updates. Content (decoders, integrations, policies, IOC databases) is also pulled from `wazuh-indexer` rather than from a CTI feed. For the runtime concepts referenced throughout this document — events, decoders, security policies, spaces, helper functions, assets — see the [quick-start](./README.md). For the API surface, see [api-reference.md](./api-reference.md).
+
+
+> [!NOTE]
+> When this document mentions "Content Management" it is referring to the engine's internal content management system, which is separate from the Wazuh manager's external content management used by vulnerability detector.
 
 ---
 
@@ -22,8 +26,8 @@ classDef ExternalClass font-size:14px,stroke-width:2px,fill:#3f51b5,color:#fff,r
 classDef ModuleClass font-size:14px,stroke-width:2px,rx:10,ry:10
 classDef HubClass font-size:14px,stroke-width:2px,fill:#e8eaf6,rx:10,ry:10
 
-remoted["wazuh-manager-remoted"]:::ExternalClass
-operator["Operator / CLI"]:::ExternalClass
+remoted["wazuh-manager-remoted / vulnerability detector"]:::ExternalClass
+operator["Wazuh-indexer / Internal CLI"]:::ExternalClass
 indexer["wazuh-indexer"]:::ExternalClass
 
 subgraph engine["Wazuh Engine"]
@@ -34,7 +38,7 @@ subgraph engine["Wazuh Engine"]
   backend["Backend"]:::ModuleClass
   builder["Builder"]:::ModuleClass
   schema["Schema"]:::ModuleClass
-  cm["Content Manager"]:::HubClass
+  cm["Engine Content Manager"]:::HubClass
   kvdb["KVDB"]:::ModuleClass
   ioc["IOC"]:::ModuleClass
   geo["Geo"]:::ModuleClass
@@ -63,7 +67,7 @@ ic --> indexer
 indexer --> ic
 ```
 
-The diagram shows the engine boundary and its relationships with the outside world. Events enter through the **Server** module, are routed by the **Orchestrator** to the active security policies, and are processed by the **Backend** using the executable graph produced by the **Builder**. Content (decoders, integrations, policies, KVDBs) is pulled from `wazuh-indexer` by the **Content Manager** through the **Indexer Connector**, which is also the channel for outbound processed events.
+The diagram shows the engine boundary and its relationships with the outside world. Events enter through the **Server** module, are routed by the **Orchestrator** to the active security policies, and are processed by the **Backend** using the executable graph produced by the **Builder**. Content (decoders, integrations, policies, KVDBs) is pulled from `wazuh-indexer` by the **Engine Content Manager** through the **Indexer Connector**, which is also the channel for outbound processed events.
 
 ---
 
@@ -75,7 +79,7 @@ The diagram shows the engine boundary and its relationships with the outside wor
 | Orchestrator | Routes incoming events to active security policies; runs the tester | [Policy processing](./README.md#policy-processing) |
 | Builder | Compiles assets and policies into an executable graph | [Assets](./README.md#assets), [Execution Graph Summary](./README.md#execution-graph-summary) |
 | Backend | Runtime that executes the compiled graph for each event | [Policy processing](./README.md#policy-processing) |
-| Content Manager | Mirrors policies, integrations, decoders, filters and KVDBs from `wazuh-indexer` | [Content Management](./README.md#content-management-managing-the-engines-processing), [Spaces](./README.md#spaces) |
+| Engine Content Manager | Mirrors policies, integrations, decoders, filters and KVDBs from `wazuh-indexer` | [Content Management](./README.md#content-management-managing-the-engines-processing), [Spaces](./README.md#spaces) |
 | Schema | Validates events against the Wazuh Common Schema | [Schema](./README.md#schema) |
 | KVDB | Per-space key-value lookups used by decoders and filters | [Key Value Databases (KVDBs)](./README.md#key-value-databases-kvdbs) |
 | IOC | Global Indicator-of-Compromise databases consumed by enrichment | [IOC enrichment](./README.md#ioc-enrichment) |
@@ -90,7 +94,7 @@ The diagram shows the engine boundary and its relationships with the outside wor
 
 ### Server
 
-Two HTTP servers running on Unix Domain Sockets. The **events** socket receives raw events from `wazuh-manager-remoted`. The **management API** socket exposes the operations used by CLI tools and the rest of the Wazuh manager: managing routes, running tester sessions, applying content changes, querying GeoIP/IOC state, toggling raw event indexing, and reading metrics. Both sockets speak HTTP with JSON bodies; the schema for every request and response is defined in protobuf.
+Two HTTP servers running on Unix Domain Sockets. The **events** socket receives raw events from `wazuh-manager-remoted` or `vulnerability dectector`. The **management API** socket exposes the operations used by internal client dev tools and the rest of the Wazuh manager: managing routes, running tester sessions, applying content changes, querying GeoIP/IOC state, toggling raw event indexing, and reading metrics. Both sockets speak HTTP with JSON bodies; the schema for every request and response is defined in protobuf.
 
 ### Orchestrator
 
@@ -98,15 +102,15 @@ The runtime hub. It owns the **routes** table that maps each space to the active
 
 ### Builder
 
-The Builder turns the declarative content stored in the Content Manager — policies, integrations, decoders, filters, KVDB references — into an executable graph that the Backend can run. It validates field types against the Schema, resolves variables and definitions, and links every helper function used in `check`, `parse` and `normalize` stages. The Content Manager calls the Builder whenever content changes; the resulting graph is what the Orchestrator ultimately registers as a route.
+The Builder turns the declarative content stored in the Engine Content Manager — policies, integrations, decoders, filters, KVDB references — into an executable graph that the Backend can run. It validates field types against the Schema, resolves variables and definitions, and links every helper function used in `check`, `parse` and `normalize` stages. The Engine Content Manager calls the Builder whenever content changes; the resulting graph is what the Orchestrator ultimately registers as a route.
 
 ### Backend
 
 The Backend is the runtime that executes the compiled graph for every event. It walks the stages described in [Policy processing](./README.md#policy-processing): pre-filter, decoders (including KVDB lookups), enrichment (Geo and IOC), post-filter, and outputs. The Backend is policy-agnostic — it has no domain knowledge of decoders or rules; it only knows how to evaluate the graph the Builder produced.
 
-### Content Manager
+### Engine Content Manager
 
-Local mirror of the content managed in `wazuh-indexer`. It is organized by **space** — Standard (Wazuh-curated) and Custom (user-defined) — exactly mirroring the layout in the indexer. The Content Manager has three responsibilities: **storage** of decoders, filters, KVDBs, integrations and policies on the engine host; **synchronization** with the indexer (CMSync), which periodically compares per-space content hashes and pulls the full content when they differ — see [Synchronization process](./README.md#synchronization-process); and **CRUD**, which validates and applies any mutations issued through the management API. After every applied change, the Content Manager hands the affected policies to the Builder and asks the Orchestrator to swap the corresponding routes.
+Local mirror of the content managed in `wazuh-indexer`. It is organized by **space** — Standard (Wazuh-curated) and Custom (user-defined) — exactly mirroring the layout in the indexer. The Engine Content Manager has three responsibilities: **storage** of decoders, filters, KVDBs, integrations and policies on the engine host; **synchronization** with the indexer (CMSync), which periodically compares per-space content hashes and pulls the full content when they differ — see [Synchronization process](./README.md#synchronization-process); and **CRUD**, which validates and applies any mutations issued through the management API. After every applied change, the Engine Content Manager hands the affected policies to the Builder and asks the Orchestrator to swap the corresponding routes.
 
 ### Schema
 
@@ -126,7 +130,7 @@ The Geo module performs GeoIP and ASN lookups using MaxMind MMDB databases. Like
 
 ### Indexer Connector
 
-The Indexer Connector is the single component that talks to `wazuh-indexer`. It carries three flows: **outbound** processed events (driven by policy outputs), **inbound** content (consumed by the Content Manager and the IOC synchronizer), and **inbound** runtime configuration (consumed by the Configuration module). Concentrating all `wazuh-indexer` traffic in one place is what allows the rest of the engine to stay independent of the indexer's transport details.
+The Indexer Connector is the single component that talks to `wazuh-indexer`. It carries three flows: **outbound** processed events (driven by policy outputs), **inbound** content (consumed by the Engine Content Manager and the IOC synchronizer), and **inbound** runtime configuration (consumed by the Configuration module). Concentrating all `wazuh-indexer` traffic in one place is what allows the rest of the engine to stay independent of the indexer's transport details.
 
 ### Stream Log
 
@@ -134,7 +138,7 @@ Stream Log provides asynchronous, rotating log channels with size-based and time
 
 ### Configuration
 
-The local configuration is loaded from the Wazuh manager's YAML at startup; every module reads from it. A subset of runtime parameters is also pulled periodically from `wazuh-indexer` as **remote configuration**, so operators can tune behaviour without restarting the engine. Remote configuration changes are applied with rollback if a module rejects the new values.
+The local configuration is loaded from the Wazuh manager's XML/ini at startup; every module reads from it. A subset of runtime parameters is also pulled periodically from `wazuh-indexer` as **remote configuration**, so operators can tune behaviour without restarting the engine. Remote configuration changes are applied with rollback if a module rejects the new values.
 
 ---
 
@@ -183,7 +187,7 @@ classDef ModuleClass stroke-width:2px,rx:10,ry:10
 operator["Operator"]:::ExternalClass
 indexer["wazuh-indexer"]:::ExternalClass
 ic["Indexer Connector"]:::ModuleClass
-cm["Content Manager (CMSync)"]:::ModuleClass
+cm["Engine Content Manager (CMSync)"]:::ModuleClass
 builder["Builder"]:::ModuleClass
 orchestrator["Orchestrator"]:::ModuleClass
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The **httpsrv** module provides an HTTP server over Unix Domain Sockets (UDS) for the Wazuh engine's internal API. Built on top of [cpp-httplib](https://github.com/yhiber/cpp-httplib), it handles route registration, request dispatching, payload size enforcement, and lifecycle management (start/stop with optional background thread). The engine runs two server instances: one for API services (management, metrics, geo, etc.) and one for event ingestion.
+The **httpsrv** module provides an HTTP server over Unix Domain Sockets (UDS) for the Wazuh engine's internal API. Built on top of [cpp-httplib](https://github.com/yhirose/cpp-httplib), it handles route registration, request dispatching, payload size enforcement, and lifecycle management (start/stop with optional background thread). The engine runs two server instances: one for API services (management, metrics, geo, etc.) and one for event ingestion.
 
 ## Architecture
 
@@ -21,7 +21,7 @@ The **httpsrv** module provides an HTTP server over Unix Domain Sockets (UDS) fo
                 │   │  POST /events/enriched      → pushEvent        │   │
                 │   │  POST /_internal/router/*    → router handlers  │   │
                 │   │  POST /_internal/geo/db/*    → geo handlers     │   │
-                │   │  POST /_internal/metrics/*   → metrics handlers │   │
+                │   │  POST /metrics/*             → metrics handlers │   │
                 │   │  POST /_internal/event-*     → dumper handlers  │   │
                 │   │  ...                                           │   │
                 │   └───────────────────────────────────────────────┘   │
@@ -132,7 +132,7 @@ Eight API sub-modules register handlers on the API server, plus one direct route
 
 | Sub-module | Routes | Server |
 |------------|--------|--------|
-| `api::metrics` | `/_internal/metrics/{enable,get,list,dump}` | API |
+| `api::metrics` | `/metrics/{enable,get,list,dump}` | API |
 | `api::geo` | `/_internal/geo/db/{get,list}` | API |
 | `api::router` | `/_internal/router/route/*`, `/_internal/router/table/get` | API |
 | `api::tester` | `/_internal/tester/*` | API |

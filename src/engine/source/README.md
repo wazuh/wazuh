@@ -2,7 +2,7 @@
 
 `wazuh-engine` is the decoding, enrichment and routing engine of the Wazuh manager (it ships as the `wazuh-manager-analysisd` daemon). It receives raw security events from `remoted` and external producers, parses them into the **Wazuh Common Schema (WCS)** using user-defined **decoders**, enriches them (GeoIP, IOC, KVDB lookups), runs them through one or more **policies**, and forwards the resulting normalized JSON documents to the Wazuh Indexer (and optional file outputs).
 
-The engine can also run standalone (`WAZUH_ENGINE_STANDALONE=true`) for development and testing.
+The engine can also run standalone (`WAZUH_ENGINE_STANDALONE=true`) for development, testing or if run inside wazuh-indexer as a standalone content processor/validator.
 
 This README is the **developer / source-tree** view: what each directory does, how modules depend on each other, and how the process is wired together at startup. For operator-facing documentation (configuration, ruleset authoring, CLI usage), see the [user manual](../../../docs/ref/modules/engine/README.md).
 
@@ -11,9 +11,9 @@ This README is the **developer / source-tree** view: what each directory does, h
 ## Event pipeline (data flow)
 
 ```
-                          +----------------------+
-   remoted / agents ─────►│   httpsrv (events)   │  UDS HTTP ingestion
-                          +----------┬-----------+
+                           +----------------------+
+   remoted / VD / Others ─►│   httpsrv (events)   │  UDS HTTP ingestion
+                           +---------┬------------+
                                      │ JSON event
                                      ▼
                           +----------------------+
@@ -46,7 +46,7 @@ This README is the **developer / source-tree** view: what each directory does, h
 
 ## Architectural layers
 
-`source/` contains 33 modules. Below they are grouped by their role; arrows point in the direction of the dependency (a layer depends on the layers above it). Each entry links to that module's own README — the deep dive lives there, this index does not duplicate it.
+`source/` contains the modules. Below they are grouped by their role; arrows point in the direction of the dependency (a layer depends on the layers above it). Each entry links to that module's own README — the deep dive lives there, this index does not duplicate it.
 
 ### Foundation
 
@@ -55,7 +55,7 @@ Used by virtually every other module.
 - [base/](base/) — Shared primitives: logging (spdlog), JSON wrappers, error types (`base::Error`, `RespOrError`), expression trees (`base::Term`, `base::Event`), process and time utilities. No README; see [base/include/base/](base/include/base/).
 - [proto/](proto/) — Protobuf (`*.proto`) schema for the API. Wire format is JSON, but protobuf is the single source of truth shared by C++ handlers and the Python clients. No README; the `.proto` files in this directory are the contract.
 - [yml/](yml/) — yaml-cpp ↔ RapidJSON conversion used during config and content loading.
-- [conf/](conf/README.md) — Three-tier config (env → YAML file → defaults) with typed validation. Read by every module at startup.
+- [conf/](conf/README.md) — Three-tier config (env → json file → defaults) with typed validation. Read by every module at startup.
 - [hlp/](hlp/README.md) — Type-specific parsers (IP, date, JSON, CSV, …). The parser library that decoders are built from.
 - [parsec/](parsec/README.md) — Header-only parser-combinator library that underlies `logpar` and `logicexpr`.
 - [logicexpr/](logicexpr/README.md) — Boolean expression parser/evaluator (Shunting-Yard) used in `check` stages.
@@ -164,7 +164,7 @@ Key relationships:
 Modules are wired together in [main.cpp](main.cpp) using `std::shared_ptr` and a `StackExecutor` that records teardown callbacks for LIFO shutdown. Construction is staged so each phase only depends on phases above it. Some phases are gated by `conf::key::SERVER_ENABLE_EVENT_PROCESSING`.
 
 1. **Process bootstrap** — option parsing, logging (standalone vs `libwazuhshared`), signal handlers (`SIGINT`, `SIGTERM`, `SIGPIPE` → ignore), optional `goDaemon()`.
-2. **Configuration** — `conf::Conf` loads from YAML; every later module reads it via `confManager.get<T>(key::…)`.
+2. **Configuration** — `conf::Conf` loads from ini file; every later module reads it via `confManager.get<T>(key::…)`.
 3. **Core data layer** — `store::Store` (with `FileDriver`) → `cmstore::CMStore` → `kvdbstore::KVDBManager` → `iockvdb::KVDBManager(store)` → `geo::Manager(store, downloader)` → `fastmetrics::registerManager()` → `schemf::Schema` (loads `schema/engine-schema/0` from `store`).
 4. **Parsing** — `hlp::initTZDB(...)` then `logpar::Logpar` (uses `schema/wazuh-logpar-overrides/0` from `store` and the schema validator); `hlp::registerParsers(logpar)`.
 5. **Scheduler & I/O** (always, but most consumers gated on `enableProcessing`) — `scheduler::Scheduler` (registered for early shutdown). When `enableProcessing` is on: `wiconnector::WIndexerConnector` (queue metrics registered as pull callbacks) and `streamlog::LogManager(store, scheduler)`.
@@ -202,7 +202,6 @@ The engine uses a small but specific vocabulary, mirrored across the codebase, t
 - Each module exposes an `I<Module>` interface in `include/<module>/`, implementations in `src/`, GoogleTest unit tests in `test/src/unit/`, and mocks for use by other modules' tests in `test/mocks/`.
 - Dependencies are injected as `std::shared_ptr` and wired exclusively in [main.cpp](main.cpp); modules never instantiate their own dependencies.
 - API handlers follow a factory pattern; see [api/README.md](api/README.md) for the contract.
-- Build commands, sanitizers and environment variables are documented in [CLAUDE.md](../../../../.claude/CLAUDE.md) at the repository root.
 
 ---
 
