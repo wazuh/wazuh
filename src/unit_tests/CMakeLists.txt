@@ -219,24 +219,20 @@ endif()
 # These paths exist in the source tree of every target but only matter to the
 # manager/server flow, so we drop them only from the agent report. The manager
 # report keeps measuring them as before.
-#   - wazuh_modules/src/wm_{router,content_manager,inventory_sync,database,
-#     vulnerability_scanner}.c: server-only module bridges (wm_*_read() registered
-#     only under #ifndef CLIENT in wmodules.c). Compiled into the agent binary
-#     because of the GLOB but never registered/exercised on agent.
+#   - wazuh_modules/src/wm_database.c: server-only module bridge. Has a cmocka
+#     test in manager (test_wm_database) so it stays in the manager report.
 #   - config/src/{authd-config,remote-config,wazuh_db-config}.c: server-only config
 #     parsers. Compiled in the agent binary because they are not in config/CMakeLists.txt
 #     REMOVE_ITEM list, but never exercised because the corresponding subsystems
-#     (authd, remoted, wazuh-db) are not part of the agent runtime.
+#     (authd, remoted, wazuh-db) are not part of the agent runtime. Manager has
+#     cmocka tests for all three (test_authd-config, test_remote-config,
+#     test_wazuh_db-config).
 #   - shared/os_crypto/shared/: msgs.c has #ifdef CLIENT branches that diverge from
 #     the manager flow the tests were written against; tests stay manager-only.
 set(TARGET_LCOV_EXTRA_REMOVE)
 if(${TARGET} STREQUAL "agent")
   list(APPEND TARGET_LCOV_EXTRA_REMOVE
-       --remove coverage.total "*wazuh_modules/src/wm_router.c"
-       --remove coverage.total "*wazuh_modules/src/wm_content_manager.c"
-       --remove coverage.total "*wazuh_modules/src/wm_inventory_sync.c"
        --remove coverage.total "*wazuh_modules/src/wm_database.c"
-       --remove coverage.total "*wazuh_modules/src/wm_vulnerability_scanner.c"
        --remove coverage.total "*config/src/authd-config.c"
        --remove coverage.total "*config/src/remote-config.c"
        --remove coverage.total "*config/src/wazuh_db-config.c"
@@ -269,10 +265,17 @@ add_custom_target(
   #   - */include/c++/*  /usr/include/*: libstdc++ + system headers (template
   #     instantiations inflate the function/branch denominator without representing
   #     project code).
+  #   - engine/: wazuh-engine has its own coverage workflow (5_testunit_engine.yml);
+  #     legacy UT cmocka does not exercise any of its sources.
   #   - wazuh_modules/{agent_info,sca,vulnerability_scanner,router,inventory_sync,
   #     content_manager,indexer_connector}/: C++ modules with their own coverage
   #     workflow (5_testunit_<module>.yml + coverage_cpp action); legacy UT cmocka
   #     does not exercise them in any target.
+  #   - wazuh_modules/src/wm_{router,content_manager,inventory_sync,
+  #     vulnerability_scanner}.c: C bridge files for the above C++ modules. Their
+  #     wm_*_read() entry points are registered only under #ifndef CLIENT, but no
+  #     cmocka test exercises them in either target — the logic is covered by each
+  #     module's dedicated workflow.
   # Target-specific exclusions live in TARGET_LCOV_EXTRA_REMOVE (set above).
   COMMAND
     ${LCOV_PATH} --gcov-tool ${GCOV_PATH} --remove coverage.total "*external/*"
@@ -281,14 +284,18 @@ add_custom_target(
     coverage.total "*syscollector/*" --remove coverage.total
     "*syscheckd/src/db/*" --remove coverage.total "*syscheckd/src/ebpf/*"
     --remove coverage.total "*/include/c++/*" --remove coverage.total
-    "/usr/include/*" --remove coverage.total
-    "*wazuh_modules/agent_info/*" --remove coverage.total
+    "/usr/include/*" --remove coverage.total "*engine/*"
+    --remove coverage.total "*wazuh_modules/agent_info/*" --remove coverage.total
     "*wazuh_modules/sca/*" --remove coverage.total
     "*wazuh_modules/vulnerability_scanner/*" --remove coverage.total
     "*wazuh_modules/router/*" --remove coverage.total
     "*wazuh_modules/inventory_sync/*" --remove coverage.total
     "*wazuh_modules/content_manager/*" --remove coverage.total
-    "*wazuh_modules/indexer_connector/*"
+    "*wazuh_modules/indexer_connector/*" --remove coverage.total
+    "*wazuh_modules/src/wm_router.c" --remove coverage.total
+    "*wazuh_modules/src/wm_content_manager.c" --remove coverage.total
+    "*wazuh_modules/src/wm_inventory_sync.c" --remove coverage.total
+    "*wazuh_modules/src/wm_vulnerability_scanner.c"
     ${TARGET_LCOV_EXTRA_REMOVE} --rc branch_coverage=1
     --ignore-errors mismatch,mismatch,unused,unused --output-file coverage.info.cleaned
   # Generate HTML report
