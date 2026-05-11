@@ -842,8 +842,6 @@ InstallCommon()
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/run
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/upgrade
 
-  # SELinux policy is shipped only with the agent (FIM whodata uses
-  # auditd/audisp). The manager does not install any SELinux policy.
   if [ "X${INSTYPE}" = "Xagent" ]; then
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/selinux
     if [ -f selinux/wazuh.pp ]; then

@@ -58,7 +58,7 @@ make clean
 
 # Build Wazuh sources
 make deps TARGET=manager
-make -j%{_threads} TARGET=manager USE_SELINUX=no DEBUG=%{_debugenabled}
+make -j%{_threads} TARGET=manager DEBUG=%{_debugenabled}
 
 popd
 
