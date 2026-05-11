@@ -36,7 +36,33 @@ build_wazuh_unit_tests() {
     elif [[ $target == "manager" ]]; then
         cmake -DTARGET=${target} -DGCOV_PATH="${gcov_path}" ..
     elif [[ $target == "winagent" ]]; then
-        cmake -DTARGET=${target} -DCMAKE_TOOLCHAIN_FILE=../Toolchain-win32.cmake ..
+        # winagent is cross-compiled with mingw 10.3; the matching gcov is the
+        # cross tool, not the host's GCC 14.x. We pin to the -posix variant
+        # because that's what `g++-mingw-w64-i686-posix` (the toolchain's
+        # default in winagent.cmake) was built with.
+        #
+        # lcov 2.x detects the gcov version by parsing `<gcov> --version` with
+        # a `[0-9.]+` regex. The mingw cross-gcov prints
+        #   gcov (GCC) 10-posix YYYYMMDD
+        # The `-posix` suffix breaks the regex, lcov silently falls back to
+        # GCOV 4.2 format and can't parse the GCOV 10 .gcno files (every file
+        # ends up as "no functions found"). We wrap the cross-gcov so
+        # `--version` emits a parseable banner; all other invocations pass
+        # through unchanged.
+        local win_gcov_wrapper="${PWD}/winagent-gcov-wrapper.sh"
+        cat > "${win_gcov_wrapper}" <<'EOF'
+#!/bin/bash
+if [[ "$1" == "-v" || "$1" == "--version" ]]; then
+    echo "gcov (GCC) 10.3.0"
+    echo "Copyright (C) 2020 Free Software Foundation, Inc."
+    echo "This is free software; see the source for copying conditions."
+    exit 0
+fi
+exec /usr/bin/i686-w64-mingw32-gcov-posix "$@"
+EOF
+        chmod +x "${win_gcov_wrapper}"
+        cmake -DTARGET=${target} -DCMAKE_TOOLCHAIN_FILE=../Toolchain-win32.cmake \
+              -DGCOV_PATH="${win_gcov_wrapper}" ..
     fi
     make -j$(nproc)
 }
@@ -52,7 +78,21 @@ run_wazuh_unit_tests() {
         ctest --output-on-failure  > "test_results.txt" || true
         make coverage > "coverage_results.txt" || true
     elif [[ $target == "winagent" ]]; then
-        WINEARCH="win32" WINEPATH="/usr/i686-w64-mingw32/lib;/usr/lib/gcc/i686-w64-mingw32/13-posix;$(realpath $(pwd)/../..);$(realpath $(pwd)/../../build/bin)" ctest --output-on-failure > test_results.txt || true
+        # Tests run via wine (CMAKE_CROSSCOMPILING_EMULATOR in Toolchain-win32.cmake).
+        # libgcov writes .gcda alongside the .gcno using the absolute Linux paths
+        # baked at build time; wine maps the host root through drive Z: so the
+        # writes land back in the expected build-tree locations.
+        #
+        # `export` (not inline assignment) because `make coverage` invokes
+        # `ctest` a second time inside add_custom_target(coverage) — without
+        # the wine env those re-run binaries can't find their DLLs and every
+        # test fails, leaving no .gcda for lcov to capture.
+        export WINEARCH="win32"
+        export WINEPATH="/usr/i686-w64-mingw32/lib;/usr/lib/gcc/i686-w64-mingw32/13-posix;$(realpath $(pwd)/../..);$(realpath $(pwd)/../../build/bin)"
+        ctest --output-on-failure > test_results.txt || true
+        # Capture coverage. lcov invokes ${GCOV_PATH} which we pinned to the
+        # mingw cross-gcov wrapper at configure time so the .gcda format matches.
+        make coverage > "coverage_results.txt" || true
     fi
 }
 
@@ -72,9 +112,6 @@ format_display_test_results() {
 
 format_display_test_coverage() {
     local target=$1
-    if [[ $target == "winagent" ]]; then
-        return 0
-    fi
 
     echo "Formatting and displaying test coverage"
     cd "$GITHUB_WORKSPACE/src/unit_tests/build"

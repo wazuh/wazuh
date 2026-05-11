@@ -22,13 +22,12 @@ runs:
         source .github/actions/legacy_unit_tests.sh
         format_display_test_results ${{ inputs.target }}
     - name: Format and Display Test Coverage
-      if: ${{ inputs.target != 'winagent' }}
       shell: bash
       run: |
         source .github/actions/legacy_unit_tests.sh
         format_display_test_coverage ${{ inputs.target }}
     - name: Upload coverage artifacts
-      if: ${{ always() && inputs.target != 'winagent' }}
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: legacy-unit-tests-coverage-${{ inputs.target }}
