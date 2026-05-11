@@ -124,7 +124,7 @@ namespace SchemaValidator
                 if (m_schema.contains("template") && m_schema["template"].contains("mappings") &&
                         m_schema["template"]["mappings"].contains("properties"))
                 {
-                    m_properties = m_schema["template"]["mappings"]["properties"];
+                    m_properties = std::move(m_schema["template"]["mappings"]["properties"]);
                 }
                 else
                 {

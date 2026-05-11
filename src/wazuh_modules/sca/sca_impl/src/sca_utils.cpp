@@ -80,13 +80,13 @@ namespace
         }
 
         // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        const auto match = rc >= 2 ? content.substr(ovector[2], ovector[3] - ovector[2])
-                           : content.substr(ovector[0], ovector[1] - ovector[0]);
+        auto match = rc >= 2 ? content.substr(ovector[2], ovector[3] - ovector[2])
+                     : content.substr(ovector[0], ovector[1] - ovector[0]);
         // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
         pcre2CleanUp();
 
-        return {true, match};
+        return {true, std::move(match)};
         // return {true, ""};
     }
 

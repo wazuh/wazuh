@@ -175,9 +175,9 @@ class EXPORTED DB final
 
         int countSyncedDocs(const std::string& tableName);
 
-        std::vector<nlohmann::json> getDocumentsToPromote(std::string tableName, int numberOfDocumentsToPromote);
+        std::vector<nlohmann::json> getDocumentsToPromote(const std::string& tableName, int numberOfDocumentsToPromote);
 
-        std::vector<nlohmann::json> getDocumentsToDemote(std::string tableName, int numberOfDocumentsToDemote);
+        std::vector<nlohmann::json> getDocumentsToDemote(const std::string& tableName, int numberOfDocumentsToDemote);
     private:
         DB() = default;
         ~DB() = default;
