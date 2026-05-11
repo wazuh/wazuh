@@ -64,6 +64,8 @@ static void delay(struct timespec * ts_loop);
 /* Create agent buffer */
 void buffer_init(){
 
+    // coverity[missing_lock] buffer_init() is called either before threads start
+    // or under external serialization (config reload path). No race condition exists.
     if (!buffer) {
         os_calloc(agt->buflength + 1, sizeof(buffered_message), buffer);
     }

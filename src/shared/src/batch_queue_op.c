@@ -354,8 +354,9 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
         pthread_mutex_lock(&sched->ring_mu);
         void *val2 = NULL;
         if (hm_get(&sched->agent_index, agent_key, &val2) && (w_rr_agent_slot_t *)val2 == slot) {
-            if (!slot->in_ring) {
-                ring_append(sched, slot);
+            w_rr_agent_slot_t *current_slot = (w_rr_agent_slot_t *)val2;
+            if (!current_slot->in_ring) {
+                ring_append(sched, current_slot);
                 pthread_cond_signal(&sched->any_available);
             }
         }
