@@ -190,7 +190,7 @@ CommandRuleEvaluator::CommandRuleEvaluator(PolicyEvaluationContext ctx,
     else
     {
         // LCOV_EXCL_START
-        m_commandExecFunc = [timeout = ctx.commandsTimeout](const std::string & command) -> std::optional<ExecResult>
+        m_commandExecFunc = [timeout = m_ctx.commandsTimeout](const std::string & command) -> std::optional<ExecResult>
         {
             auto wmExecCallback = SecurityConfigurationAssessment::GetGlobalWmExecFunction();
 
