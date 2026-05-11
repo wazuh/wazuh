@@ -8,7 +8,7 @@
 # Tests list and flags
 list(APPEND tests_names "test_wm_docker")
 list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror \
-                         -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=FOREVER,--wrap=wpclose,--wrap=fgets \
+                         -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=FOREVER,--wrap=wm_sleep_until_interruptible,--wrap=wpclose,--wrap=fgets \
                          -Wl,--wrap=wpopenl,--wrap=fclose,--wrap=fflush,--wrap=fprintf,--wrap=fopen,--wrap=fread,--wrap=fseek \
                          -Wl,--wrap=fwrite,--wrap=remove,--wrap=atexit -Wl,--wrap,fgetpos -Wl,--wrap=fgetc -Wl,--wrap=wfopen -Wl,--wrap,popen -Wl,--wrap=w_query_agentd")
 list(APPEND use_shared_libs 1)

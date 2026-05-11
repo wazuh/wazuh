@@ -142,14 +142,16 @@ void* wm_gcp_pubsub_main(wm_gcp_pubsub *data) {
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_GCP_PUBSUB_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);
-            w_sleep_until(next_scan_time);
+            wm_sleep_until_interruptible(next_scan_time);
+            if (wm_shutdown_requested) break;
         }
+        if (wm_shutdown_requested) break;
         mtdebug1(WM_GCP_PUBSUB_LOGTAG, "Starting fetching of logs.");
 
         wm_gcp_pubsub_run(data);
 
         mtdebug1(WM_GCP_PUBSUB_LOGTAG, "Fetching logs finished.");
-    } while (FOREVER());
+    } while (FOREVER() && !wm_shutdown_requested);
 
 #ifdef WIN32
     return 0;
@@ -183,8 +185,10 @@ void* wm_gcp_bucket_main(wm_gcp_bucket_base *data) {
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_GCP_BUCKET_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);
-            w_sleep_until(next_scan_time);
+            wm_sleep_until_interruptible(next_scan_time);
+            if (wm_shutdown_requested) break;
         }
+        if (wm_shutdown_requested) break;
         mtdebug1(WM_GCP_BUCKET_LOGTAG, "Starting fetching of logs.");
 
         for (cur_bucket = data->buckets; cur_bucket; cur_bucket = cur_bucket->next) {
@@ -223,7 +227,7 @@ void* wm_gcp_bucket_main(wm_gcp_bucket_base *data) {
         }
 
         mtdebug1(WM_GCP_BUCKET_LOGTAG, "Fetching logs finished.");
-    } while (FOREVER());
+    } while (FOREVER() && !wm_shutdown_requested);
 
 #ifdef WIN32
     return 0;

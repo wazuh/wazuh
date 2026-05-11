@@ -137,22 +137,17 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
         return NULL;
     }
 
-    while (1) {
+    while (!wm_shutdown_requested) {
 
-        // Wait for socket
-        FD_ZERO(&fdset);
-        FD_SET(sock, &fdset);
 
-        switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
+        switch (wm_select_interruptible(sock, &fdset)) {
         case -1:
-            if (errno != EINTR) {
-                merror_exit("At wmcom_main(): select(): %s", strerror(errno));
-            }
-
-            continue;
-
+            merror_exit("At wmcom_main(): select(): %s", strerror(errno));
+            break;
         case 0:
             continue;
+        default:
+            break;
         }
 
         if (peer = accept(sock, NULL, NULL), peer < 0) {
