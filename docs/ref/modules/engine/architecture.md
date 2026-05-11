@@ -2,288 +2,207 @@
 
 ## Introduction
 
+The **Wazuh Engine** is the decoding, enrichment and routing engine of the Wazuh manager (it ships as the `wazuh-manager-analysisd` daemon). It receives raw events from `wazuh-manager-remoted`, normalizes them to the Wazuh Common Schema using user-defined decoders, enriches them (GeoIP, IOC, key-value lookups), evaluates them against one or more security policies, and forwards the resulting documents to `wazuh-indexer`.
+
+The engine never communicates with agents or with Wazuh CTI directly. Its only inbound peer for events is `remoted`, and its only outbound peer is `wazuh-indexer`. Content (decoders, integrations, policies, IOC databases) is also pulled from `wazuh-indexer` rather than from a CTI feed. For the runtime concepts referenced throughout this document — events, decoders, security policies, spaces, helper functions, assets — see the [quick-start](./README.md). For the API surface, see [api-reference.md](./api-reference.md).
+
+---
+
+## High-level view
+
 ```mermaid
 ---
 config:
-  title: "Simplified architecture"
-  nodeSpacing: 30
-  rankSpacing: 25
   flowchart:
     curve: stepAfter
-    subGraphTitleMargin:
-      top: 20
-      bottom: 20
 ---
 flowchart LR
 
-classDef SubmoduleClass font-size:15px,stroke-width:2px,stroke-dasharray:10px,rx:15,ry:15
-classDef ModuleClass  font-size:15px,stroke-width:2px,rx:15,ry:15
+classDef ExternalClass font-size:14px,stroke-width:2px,fill:#3f51b5,color:#fff,rx:6,ry:6
+classDef ModuleClass font-size:14px,stroke-width:2px,rx:10,ry:10
+classDef HubClass font-size:14px,stroke-width:2px,fill:#e8eaf6,rx:10,ry:10
 
-%% ----------------------------------
-%%                  API
-%% ----------------------------------
+remoted["wazuh-manager-remoted"]:::ExternalClass
+operator["Operator / CLI"]:::ExternalClass
+indexer["wazuh-indexer"]:::ExternalClass
 
-subgraph apiModule["API"]
-   direction LR
-   api_orchestrator@{ shape: stadium, label: "Orchestrator manager" }
-   api_kvdb@{ shape: stadium, label: "KVDB manager" }
-   api_metrics@{ shape: stadium, label: "Metric manager" }
-   api_geo@{ shape: stadium, label: "Geo manager" }
-   api_orchestrator ~~~ api_kvdb
-   api_metrics ~~~ api_geo
+subgraph engine["Wazuh Engine"]
+  direction LR
 
-   api_catalog@{ shape: disk, label: "Catalog of assets" }
-   api_policies@{ shape: disk, label: "Policies" }
-   api_policies ~~~ api_catalog
-end
-apiModule:::ModuleClass
+  server["Server (UDS HTTP)"]:::HubClass
+  orchestrator["Orchestrator"]:::HubClass
+  backend["Backend"]:::ModuleClass
+  builder["Builder"]:::ModuleClass
+  schema["Schema"]:::ModuleClass
+  cm["Content Manager"]:::HubClass
+  kvdb["KVDB"]:::ModuleClass
+  ioc["IOC"]:::ModuleClass
+  geo["Geo"]:::ModuleClass
+  ic["Indexer Connector"]:::HubClass
+  streamlog["Stream Log"]:::ModuleClass
+  conf["Configuration"]:::ModuleClass
 
-
-%% ----------------------------------
-%%                  Geo module
-%% ----------------------------------
-subgraph geoModule["Geolocator"]
-  geo_mmdb@{ shape: disk, label: "MaxMind DBs" }
-end
-geoModule:::ModuleClass
-
-%% ----------------------------------
-%%                  KVDB
-%% ----------------------------------
-subgraph kvdbModule["KVDB"]
-    direction TB
-    kvdb_db_2@{ shape: docs, label: "Key-Value DataBases" }
-end
-kvdbModule:::ModuleClass
-
-%% ----------------------------------
-%%              Global module
-%% ----------------------------------
-subgraph globalModule["Global"]
-    global_metrics("Metrics")
-    global_logger("Logger")
-end
-globalModule:::ModuleClass
-
-%% ----------------------------------
-%%                  Server
-%% ----------------------------------
-
-subgraph serverModule["Server"]
-   direction RL
-   server_API>Server API]
-   server_engine>Server engine]
-end
-serverModule:::ModuleClass
-
-%% ----------------------------------
-%%           Storage
-%% ----------------------------------
-storageModule@{ shape: cyl, label: "Persistent</br>Storage" }
-storageModule:::ModuleClass
-
-%% ----------------------------------
-%%           Builder
-%% ----------------------------------
-subgraph builderModule["Builder"]
- builder_asset@{ shape: stadium, label: "Builder asset" }
- builder_policy@{ shape: stadium, label: "Builder policy" }
- builder_parser@{ shape: stadium, label: "Builder parser" }
- builder_hp@{ shape: stadium, label: "Builder helper function" }
-
- builder_policy ~~~ builder_asset --- builder_parser & builder_hp
- builder_parser --- builder_catalog_hf@{ shape: disk, label: "Catalog of helper functions" }
- builder_hp --- builder_catalog_parser@{ shape: disk, label: "Catalog of parser" }
-
-end
-builderModule:::ModuleClass
-
-%% ----------------------------------
-%%           Orchestrator
-%% ----------------------------------
-subgraph orchestratorModule["Orchestrator"]
-   direction RL
-   orchestrator_router@{ shape: stadium, label: "Router" }
-   orchestrator_tester@{ shape: stadium, label: "Tester" }
-   orchestrator_routerTable@{ shape: disk, label: "Routes" }
-   orchestrator_sessionTable@{ shape: disk, label: "Session" }
-   orchestrator_router --- orchestrator_routerTable
-   orchestrator_tester --- orchestrator_sessionTable
-end
-orchestratorModule:::ModuleClass
-
-subgraph backendModule["Backend"]
-
+  server --> orchestrator
+  server --> cm
+  orchestrator --> backend
+  cm --> builder
+  builder --> backend
+  builder --> schema
+  backend --> kvdb
+  backend --> ioc
+  backend --> geo
+  backend --> ic
+  backend --> streamlog
+  cm --> ic
+  conf --> ic
 end
 
-%% ----------------------------------
-%%           Modules conexion
-%% ----------------------------------
-serverModule ------- orchestratorModule & apiModule
-orchestratorModule ---- backendModule
-builderModule & apiModule --- geoModule & kvdbModule
-apiModule --- storageModule
-
-apiModule ------ builderModule
-
-orchestratorModule  ------ builderModule
-orchestratorModule ----- apiModule
-storageModule --- builderModule
-
+remoted --> server
+operator --> server
+ic --> indexer
+indexer --> ic
 ```
-<center><i>Simplified architecture of the Wazuh engine</i></center>
 
-The **Wazuh-Engine** is composed of multiple modules that work together to provide all engine functionality. Below is a summary of each module’s responsibilities and interactions.
-
----
-
-## Main Modules
-
-1. **Server**
-   The Server module exposes the Wazuh-Engine to the rest of the Wazuh-Server system. It creates two Unix stream sockets:
-   - **engine.socket**: Receives events from Wazuh agents and forwards them to the Orchestrator module for processing.
-   - **api.socket**: Exposes the engine’s REST API, forwarding requests to the API module. These requests manage engine state (policies, assets, routes, DB updates, etc.).
-
-2. **Orchestrator**
-   The Orchestrator module manages runtime routes and policy testing:
-   - **Router**: Decides which policy to apply for each incoming event. It refers to a **Routes Table** that defines priorities and mappings to specific policies.
-   - **Tester**: Evaluates events against the assigned policies. It uses a **Session Table** to store context/state of session. The Tester returns the outcome of policy checks (e.g., alerts and traces).
-
-3. **Backend**
-   While Orchestrator handles routing and policy instantiation, the Backend module executes the code produced by the Builder module. The Backend is effectively the runtime environment for those policies.
-
-4. **Builder**
-   The Builder module generates executable code based on policies and assets. It has four components:
-   - **Policy**: Constructs code representing policy logic.
-   - **Asset**: Constructs code for asset definitions.
-   - **Parser**: Constructs code for any parsing functionalities.
-   - **Helper Functions**: Builds code for auxiliary or common utility functions.
-
-5. **API**
-   The API module manages interactions between the Wazuh-Engine and external modules or services via a REST interface. Its major components include:
-   - **Orchestrator Manager**: Handles orchestrator-related tasks.
-   - **KVDB Manager**: Manages access to the KVDB module.
-   - **Metric Manager**: Interfaces with the metrics system in the Global module.
-   - **Geo Manager**: Manages the Geo module.
-   - **Catalog of Assets**: Maintains definitions of assets used across the engine.
-   - **Policies**: Maintains definitions of policies used across the engine.
-
-6. **KVDB**
-   The KVDB module provides key-value database functionality, using [RocksDB](https://rocksdb.org/) under the hood. It is typically employed by helper functions.
-
-7. **Geo**
-   The Geo module manages geolocation data, relying on [MaxMind](https://www.maxmind.com/) databases. It exposes an internal API for updating and querying geolocation information.
-
-8. **Persistent Storage**
-   The Storage module oversees long-term persistence for policies, assets, sessions, and other data (e.g., routes, schemas, configurations). It currently uses the local file system.
-
-9. **Global**
-   The Global module offers cross-cutting engine resources:
-   - **Metrics**: Tracks performance and usage statistics for Wazuh-Engine.
-   - **Logger**: Centralizes logging features for all modules.
+The diagram shows the engine boundary and its relationships with the outside world. Events enter through the **Server** module, are routed by the **Orchestrator** to the active security policies, and are processed by the **Backend** using the executable graph produced by the **Builder**. Content (decoders, integrations, policies, KVDBs) is pulled from `wazuh-indexer` by the **Content Manager** through the **Indexer Connector**, which is also the channel for outbound processed events.
 
 ---
 
-## Module: Server
+## Module overview
 
-The **Server** module provides the primary interface for both incoming agent events and external API requests:
-
-- **engine.socket**:
-  - Receives raw events from Wazuh agents.
-  - Forwards these events to the Orchestrator for routing and policy application.
-
-- **api.socket**:
-  - Exposes the REST API of the Wazuh-Engine.
-  - Forwards requests to the API module, which then manages tasks such as policy updates, asset management, and configuration changes.
-
----
-
-## Module: Orchestrator
-
-The **Orchestrator** determines how incoming events are routed and tested against policies:
-
-- **Router**:
-  - Uses a **Routes Table** to map events to policies based on defined priorities.
-  - Example of a routes table:
-
-    | Route name (ID)   | Priority | Policy                   |
-    |-------------------|----------|--------------------------|
-    | router_example    | 1        | policy_1                 |
-    | ...               | ...      | policy_2                 |
-    | default           | 255      | wazuh-default-policy     |
-
-- **Tester**:
-  - Uses a **Session Table** to maintain session state.
-  - Receives an event and a sesion, then produces a result (alerts sample and traces).
+| Module | Role | Related quick-start sections |
+|--------|------|------------------------------|
+| Server | HTTP-over-UDS entry: event ingestion socket and management API socket | [Data flow](./README.md#data-flow) |
+| Orchestrator | Routes incoming events to active security policies; runs the tester | [Policy processing](./README.md#policy-processing) |
+| Builder | Compiles assets and policies into an executable graph | [Assets](./README.md#assets), [Execution Graph Summary](./README.md#execution-graph-summary) |
+| Backend | Runtime that executes the compiled graph for each event | [Policy processing](./README.md#policy-processing) |
+| Content Manager | Mirrors policies, integrations, decoders, filters and KVDBs from `wazuh-indexer` | [Content Management](./README.md#content-management-managing-the-engines-processing), [Spaces](./README.md#spaces) |
+| Schema | Validates events against the Wazuh Common Schema | [Schema](./README.md#schema) |
+| KVDB | Per-space key-value lookups used by decoders and filters | [Key Value Databases (KVDBs)](./README.md#key-value-databases-kvdbs) |
+| IOC | Global Indicator-of-Compromise databases consumed by enrichment | [IOC enrichment](./README.md#ioc-enrichment) |
+| Geo | GeoIP/ASN enrichment using MaxMind databases | [Geo enrichment](./README.md#geo-enrichment) |
+| Indexer Connector | Sole channel to `wazuh-indexer`: outbound events, inbound content, inbound configuration | [Output process](./README.md#output-process) |
+| Stream Log | Async rotating log channels backing file outputs and the event dumper | [Output directory structure](./README.md#output-directory-structure) |
+| Configuration | Local YAML configuration plus runtime settings pulled from `wazuh-indexer` | — |
 
 ---
 
-## Module: Backend
+## Module details
 
-The **Backend** executes the compiled policy and routing code generated by the Builder module. It effectively serves as the runtime environment for custom logic crafted by the Builder and orchestrated by the Orchestrator.
+### Server
 
----
+Two HTTP servers running on Unix Domain Sockets. The **events** socket receives raw events from `wazuh-manager-remoted`. The **management API** socket exposes the operations used by CLI tools and the rest of the Wazuh manager: managing routes, running tester sessions, applying content changes, querying GeoIP/IOC state, toggling raw event indexing, and reading metrics. Both sockets speak HTTP with JSON bodies; the schema for every request and response is defined in protobuf.
 
-## Module: Geo
+### Orchestrator
 
-The **Geo** module offers geolocation capabilities:
+The runtime hub. It owns the **routes** table that maps each space to the active security policy and the priority at which events are evaluated, plus the session table used by the tester. When an event arrives the Orchestrator forwards an independent copy to each active policy, so a single incoming event can produce multiple output documents — one per active policy. Routes can be added, replaced or removed at runtime without restarting the engine, which is what makes hot-swapping of synchronized content possible.
 
-- Relies on [MaxMind](https://www.maxmind.com/) databases.
-- Provides an internal interface for updating these databases and querying geolocation data.
+### Builder
 
----
+The Builder turns the declarative content stored in the Content Manager — policies, integrations, decoders, filters, KVDB references — into an executable graph that the Backend can run. It validates field types against the Schema, resolves variables and definitions, and links every helper function used in `check`, `parse` and `normalize` stages. The Content Manager calls the Builder whenever content changes; the resulting graph is what the Orchestrator ultimately registers as a route.
 
-## Module: KVDB
+### Backend
 
-The **KVDB** module manages key-value databases for various engine operations:
+The Backend is the runtime that executes the compiled graph for every event. It walks the stages described in [Policy processing](./README.md#policy-processing): pre-filter, decoders (including KVDB lookups), enrichment (Geo and IOC), post-filter, and outputs. The Backend is policy-agnostic — it has no domain knowledge of decoders or rules; it only knows how to evaluate the graph the Builder produced.
 
-- Primarily used by helper functions.
-- Internally uses [RocksDB](https://rocksdb.org/) for data management.
+### Content Manager
 
----
+Local mirror of the content managed in `wazuh-indexer`. It is organized by **space** — Standard (Wazuh-curated) and Custom (user-defined) — exactly mirroring the layout in the indexer. The Content Manager has three responsibilities: **storage** of decoders, filters, KVDBs, integrations and policies on the engine host; **synchronization** with the indexer (CMSync), which periodically compares per-space content hashes and pulls the full content when they differ — see [Synchronization process](./README.md#synchronization-process); and **CRUD**, which validates and applies any mutations issued through the management API. After every applied change, the Content Manager hands the affected policies to the Builder and asks the Orchestrator to swap the corresponding routes.
 
-## Module: Persistent Storage
+### Schema
 
-The **Persistent Storage** module handles local storage for:
+The Schema module loads the Wazuh Common Schema document at startup and exposes it to the Builder for build-time field validation and to the Backend for runtime validation of dynamic values. It guarantees that every document the engine emits is type-consistent with the mappings configured in `wazuh-indexer`. See [Schema](./README.md#schema).
 
-- Policies, routes, assets, sessions, configurations, and other engine-related data.
-- Uses the file system for data persistence.
+### KVDB
 
----
+Per-space key-value databases that decoders and filters consult during processing — for example to map identifiers to canonical names or to merge default values into events. Regular KVDBs are part of the per-space content: they are synchronized along with the rest of the space's assets and rebuilt on the engine when their source changes. See [Key Value Databases (KVDBs)](./README.md#key-value-databases-kvdbs).
 
-## Module: Global
+### IOC
 
-The **Global** module unifies core engine-wide features:
+Indicator-of-Compromise databases used by the IOC enrichment stage to match fields in incoming events against threat intelligence. These databases are **shared across spaces** and are **independent of the regular content sync**: they are kept up to date by a dedicated IOC synchronizer that downloads updates into a temporary database and then atomically swaps it in, so readers never observe a partially-updated database. See [IOC enrichment](./README.md#ioc-enrichment).
 
-- **Metrics**: Collects real-time performance statistics and usage data.
-- **Logger**: Centralizes logging, enabling consistent log output for all modules.
+### Geo
 
----
+The Geo module performs GeoIP and ASN lookups using MaxMind MMDB databases. Like the IOC databases, the Geo databases are global rather than per-space; they are refreshed in the background and hot-reloaded without restarting the engine. See [Geo enrichment](./README.md#geo-enrichment).
 
-## Module: Builder
+### Indexer Connector
 
-The **Builder** module translates high-level definitions of policies, assets, parsers, and helper functions into executable code:
+The Indexer Connector is the single component that talks to `wazuh-indexer`. It carries three flows: **outbound** processed events (driven by policy outputs), **inbound** content (consumed by the Content Manager and the IOC synchronizer), and **inbound** runtime configuration (consumed by the Configuration module). Concentrating all `wazuh-indexer` traffic in one place is what allows the rest of the engine to stay independent of the indexer's transport details.
 
-1. **Policy**: Generates policy-related logic.
-2. **Asset**: Defines and compiles asset representation.
-3. **Parser**: Builds parser logic.
-4. **Helper Functions**: Compiles shared utility code used by assets.
+### Stream Log
 
----
+Stream Log provides asynchronous, rotating log channels with size-based and time-based rotation, gzip compression and retention by file count and total size. It backs the file outputs that policies can configure, and it is also what the optional event dumper uses to persist raw events for forensic investigation. Hot-path writes never block on disk I/O.
 
-## Module: API
+### Configuration
 
-The **API** module offers a REST interface for external tools and internal modules:
-
-- **Orchestrator Manager**: Oversees orchestrator tasks (e.g., route administration).
-- **KVDB Manager**: Interfaces with KVDB for data operations.
-- **Metric Manager**: Exposes engine metrics for monitoring.
-- **Geo Manager**: Manages geolocation data updates and queries.
-- **Catalog of Assets**: Maintains a registry of asset definitions.
-- **Policies**: Maintains a registry of policies used throughout the engine.
+The local configuration is loaded from the Wazuh manager's YAML at startup; every module reads from it. A subset of runtime parameters is also pulled periodically from `wazuh-indexer` as **remote configuration**, so operators can tune behaviour without restarting the engine. Remote configuration changes are applied with rollback if a module rejects the new values.
 
 ---
 
-**Note**: This architecture is intentionally simplified to illustrate high-level relationships and flows. For more specific implementation details (such as internal data structures, APIs, or design patterns), please refer to the respective module documentation or source code.
+## Event lifecycle
+
+The diagram below shows the journey of a single event through the engine, with each step labelled by the module that owns it.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Remoted as wazuh-manager-remoted
+    participant Server
+    participant Orchestrator
+    participant Backend
+    participant Geo
+    participant IOC
+    participant KVDB
+    participant IC as Indexer Connector
+    participant Indexer as wazuh-indexer
+
+    Remoted->>Server: Raw event (HTTP/UDS, JSON)
+    Server->>Orchestrator: Forward event
+    Orchestrator->>Backend: Fan-out (one copy per active policy)
+    Note over Backend: pre-filter → decoders → enrichment → post-filter → outputs
+    Backend->>KVDB: Lookups during decoding
+    Backend->>Geo: Geo enrichment
+    Backend->>IOC: IOC enrichment
+    Backend->>IC: Output (processed event)
+    IC->>Indexer: Index document
+```
+
+The Backend executes the same five stages described in the quick-start's [Data flow](./README.md#data-flow) and [Policy processing](./README.md#policy-processing) sections; this diagram only shows which module is responsible for each step. File outputs follow the same path but reach **Stream Log** instead of (or in addition to) the **Indexer Connector**.
 
 ---
+
+## Content lifecycle
+
+Content does not originate in the engine. The single source of truth for decoders, integrations, filters, KVDBs and policies is `wazuh-indexer`; the engine pulls and mirrors it locally. The diagram below shows that flow.
+
+```mermaid
+flowchart LR
+
+classDef ExternalClass fill:#3f51b5,color:#fff,stroke-width:2px,rx:6,ry:6
+classDef ModuleClass stroke-width:2px,rx:10,ry:10
+
+operator["Operator"]:::ExternalClass
+indexer["wazuh-indexer"]:::ExternalClass
+ic["Indexer Connector"]:::ModuleClass
+cm["Content Manager (CMSync)"]:::ModuleClass
+builder["Builder"]:::ModuleClass
+orchestrator["Orchestrator"]:::ModuleClass
+
+operator -- "Edits content per space" --> indexer
+indexer -- "Hash + content" --> ic
+ic --> cm
+cm -- "Per-space hash compare<br/>full fetch on change" --> cm
+cm -- "Updated policies/assets" --> builder
+builder -- "Compiled graph" --> orchestrator
+orchestrator -- "Hot-swap routes" --> orchestrator
+```
+
+CMSync runs periodically per space (Standard and Custom). For each space it compares the indexer's content hash with the local one; when they differ it downloads the full content for the space, applies it to the local store and notifies the Builder, which recompiles the affected policy graphs. The Orchestrator then swaps the routes atomically, so events that arrive during the change always see either the previous or the new graph — never a partial one. See [Synchronization process](./README.md#synchronization-process) for the per-space details and [Spaces](./README.md#spaces) for what each space contains.
+
+IOC databases follow a parallel, independent pipeline: their own synchronizer pulls from `wazuh-indexer`, writes into a temporary database, and atomically hot-swaps it in. There is no per-space split for IOCs, and they are not part of CMSync.
+
+---
+
+## Notes
+
+- This document covers the structure of the engine and the contracts between its modules. For runtime semantics — stages, helpers, asset structure, examples — read the [quick-start](./README.md). For the API surface, read [api-reference.md](./api-reference.md).
+- The diagrams are intentionally simplified. Cross-cutting facilities such as logging, metrics and configuration loading are not drawn but are described in the corresponding module subsection above.
