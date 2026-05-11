@@ -263,9 +263,18 @@ int UninstallService()
 /* "Signal" handler */
 VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
 {
+    /* Re-entry guard: merror_exit() calls WinSetError() which re-enters this
+     * handler. Without the guard the second pass runs stop_wmodules a second
+     * time on top of the first, racing the SCM transitions. */
+    static volatile LONG stop_in_progress = 0;
+
     if (ossecServiceStatusHandle) {
         switch (dwOpcode) {
             case SERVICE_CONTROL_STOP:
+                if (InterlockedCompareExchange(&stop_in_progress, 1, 0) != 0) {
+                    return;
+                }
+
                 ossecServiceStatus.dwWin32ExitCode          = 0;
                 ossecServiceStatus.dwCheckPoint             = 0;
                 ossecServiceStatus.dwWaitHint               = 0;
