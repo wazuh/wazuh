@@ -50,28 +50,29 @@ void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_jso
         "uid":  "0",
         "owner":    "fakeUser"
     }])"_json;
-    const cJSON* dbsync_event = NULL;
-    cJSON* json_path = NULL;
-    ASSERT_EQ(INSERTED, resultType);
-    ASSERT_EQ(FIM_ADD, event_data->event->type);
+const cJSON* dbsync_event = NULL;
+cJSON* json_path = NULL;
+ASSERT_EQ(INSERTED, resultType);
+ASSERT_EQ(FIM_ADD, event_data->event->type);
 
-    if (cJSON_IsArray(result_json))
+if (cJSON_IsArray(result_json))
+{
+    if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event != NULL)
     {
-        if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event != NULL)
-        {
-            dbsync_event = result_json;
+        dbsync_event = result_json;
 
-            if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path != NULL)
-            {
-                ASSERT_EQ(cJSON_GetStringValue(json_path), expectedValue.at("path"));
-            }
+        if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path != NULL)
+        {
+            ASSERT_EQ(cJSON_GetStringValue(json_path), expectedValue.at("path"));
         }
     }
+}
 }
 
 TEST_F(DBTestFixture, TestFimDBInit)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         const auto fileFIMTest {std::make_unique<FileItem>(insertFileStatement)};
         ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
     });
@@ -79,7 +80,8 @@ TEST_F(DBTestFixture, TestFimDBInit)
 
 TEST_F(DBTestFixture, TestTransactionsFile)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         auto handler = fim_db_transaction_start(FIMDB_FILE_TXN_TABLE, transaction_callback, &txn_ctx);
         ASSERT_TRUE(handler);
         const auto fileFIMTest {std::make_unique<FileItem>(insertFileStatement)};
@@ -92,7 +94,8 @@ TEST_F(DBTestFixture, TestTransactionsFile)
 #ifdef WIN32
 TEST_F(DBTestFixture, TestTransactionsRegistryKey)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         auto handler = fim_db_transaction_start(FIMDB_REGISTRY_KEY_TXN_TABLE, transaction_callback, &txn_ctx);
         ASSERT_TRUE(handler);
         const auto registryKeyFIMTest {std::make_unique<RegistryKey>(insertRegistryKeyStatement)};
@@ -105,7 +108,8 @@ TEST_F(DBTestFixture, TestTransactionsRegistryKey)
 
 TEST_F(DBTestFixture, TestTransactionsRegistryValue)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         auto handler = fim_db_transaction_start(FIMDB_REGISTRY_VALUE_TXN_TABLE, transaction_callback, &txn_ctx);
         ASSERT_TRUE(handler);
         const auto registryValueFIMTest {std::make_unique<RegistryValue>(insertRegistryValueStatement)};
@@ -152,7 +156,7 @@ TEST(DBTest, TestInvalidFimLimit)
 
     EXPECT_CALL(*mockLog,
                 loggingFunction(LOG_ERROR, "Error, id: dbEngine: Invalid row limit, values below 0 not allowed."))
-        .Times(1);
+    .Times(1);
     auto result {fim_db_init(FIM_DB_MEMORY, mockLoggingFunction, -1, -1, nullptr)};
     ASSERT_EQ(result, FIMDB_ERR);
 
@@ -171,7 +175,8 @@ TEST(DBTest, TestValidFimLimit)
 
 TEST_F(DBTestFixture, TestFimDBCloseAndDelete)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         const auto fileFIMTest {std::make_unique<FileItem>(insertFileStatement)};
         ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
         fim_db_close_and_delete_database();
@@ -182,7 +187,8 @@ TEST(DBTest, TestFimDBCloseAndDeleteWithoutInit)
 {
     mockLog = new MockLoggingCall();
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         fim_db_close_and_delete_database();
     });
 
@@ -191,7 +197,8 @@ TEST(DBTest, TestFimDBCloseAndDeleteWithoutInit)
 
 TEST_F(DBTestFixture, TestFimDBGetLastSyncTimeNewTable)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         // On first call, should return 0 (no row exists yet, lazy initialization)
         auto lastSyncTime = fim_db_get_last_sync_time(FIMDB_FILE_TABLE_NAME);
         ASSERT_EQ(lastSyncTime, 0);
@@ -200,7 +207,8 @@ TEST_F(DBTestFixture, TestFimDBGetLastSyncTimeNewTable)
 
 TEST_F(DBTestFixture, TestFimDBGetLastSyncTimeNullParameter)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         auto lastSyncTime = fim_db_get_last_sync_time(nullptr);
         ASSERT_EQ(lastSyncTime, 0);
     });
@@ -208,7 +216,8 @@ TEST_F(DBTestFixture, TestFimDBGetLastSyncTimeNullParameter)
 
 TEST_F(DBTestFixture, TestFimDBUpdateAndGetLastSyncTime)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         const int64_t testTimestamp = 1234567890;
 
         // Update the last sync time
@@ -229,7 +238,8 @@ TEST_F(DBTestFixture, TestFimDBUpdateAndGetLastSyncTime)
 
 TEST_F(DBTestFixture, TestFimDBUpdateLastSyncTimeValueNullParameter)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         // Should not crash, just log error
         fim_db_update_last_sync_time_value(nullptr, 1234567890);
     });
@@ -237,7 +247,8 @@ TEST_F(DBTestFixture, TestFimDBUpdateLastSyncTimeValueNullParameter)
 
 TEST_F(DBTestFixture, TestFimDBUpdateLastSyncTime)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         // Get initial sync time (should be 0)
         auto initialSyncTime = fim_db_get_last_sync_time(FIMDB_FILE_TABLE_NAME);
         ASSERT_EQ(initialSyncTime, 0);
@@ -253,7 +264,8 @@ TEST_F(DBTestFixture, TestFimDBUpdateLastSyncTime)
 
 TEST_F(DBTestFixture, TestFimDBCalculateTableChecksumEmptyTable)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         char* checksum = fim_db_calculate_table_checksum(FIMDB_FILE_TABLE_NAME);
         ASSERT_TRUE(checksum != nullptr);
         // Empty table should produce SHA1 of empty string
@@ -266,7 +278,8 @@ TEST_F(DBTestFixture, TestFimDBCalculateTableChecksumWithEntries)
 {
     const auto fileFIMTest {std::make_unique<FileItem>(insertFileStatement)};
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         // Insert a file entry
         ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
 
@@ -293,7 +306,8 @@ TEST_F(DBTestFixture, TestFimDBCalculateTableChecksumWithEntries)
 
 TEST_F(DBTestFixture, TestFimDBCalculateTableChecksumNullParameter)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         char* checksum = fim_db_calculate_table_checksum(nullptr);
         ASSERT_TRUE(checksum == nullptr);
     });
@@ -301,7 +315,8 @@ TEST_F(DBTestFixture, TestFimDBCalculateTableChecksumNullParameter)
 
 TEST_F(DBTestFixture, TestFimDBGetEveryElementEmptyTable)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         cJSON* elements = fim_db_get_every_element(FIMDB_FILE_TABLE_NAME, NULL);
         ASSERT_TRUE(elements != nullptr);
         ASSERT_TRUE(cJSON_IsArray(elements));
@@ -314,7 +329,8 @@ TEST_F(DBTestFixture, TestFimDBGetEveryElementWithSingleEntry)
 {
     const auto fileFIMTest {std::make_unique<FileItem>(insertFileStatement)};
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         // Insert a file entry
         ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
 
@@ -346,7 +362,8 @@ TEST_F(DBTestFixture, TestFimDBGetEveryElementWithMultipleEntries)
 {
     const auto fileFIMTest1 {std::make_unique<FileItem>(insertFileStatement)};
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         // Insert first entry
         ASSERT_EQ(fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added), FIMDB_OK);
 
@@ -369,7 +386,8 @@ TEST_F(DBTestFixture, TestFimDBGetEveryElementWithMultipleEntries)
 
 TEST_F(DBTestFixture, TestFimDBGetEveryElementNullParameter)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         cJSON* elements = fim_db_get_every_element(nullptr, NULL);
         ASSERT_TRUE(elements == nullptr);
     });
@@ -377,7 +395,8 @@ TEST_F(DBTestFixture, TestFimDBGetEveryElementNullParameter)
 
 TEST_F(DBTestFixture, TestFimDBIncreaseEachEntryVersionEmptyTable)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         // Should succeed with empty table
         int result = fim_db_increase_each_entry_version(FIMDB_FILE_TABLE_NAME);
         ASSERT_EQ(result, 0);
@@ -388,7 +407,8 @@ TEST_F(DBTestFixture, TestFimDBIncreaseEachEntryVersionSingleEntry)
 {
     const auto fileFIMTest {std::make_unique<FileItem>(insertFileStatement)};
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         // Insert a file entry with version 1
         ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
 
@@ -425,7 +445,8 @@ TEST_F(DBTestFixture, TestFimDBIncreaseEachEntryVersionMultipleEntries)
 {
     const auto fileFIMTest1 {std::make_unique<FileItem>(insertFileStatement)};
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         // Insert first entry
         ASSERT_EQ(fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added), FIMDB_OK);
 
@@ -480,7 +501,8 @@ TEST_F(DBTestFixture, TestFimDBIncreaseEachEntryVersionMultipleEntries)
 
 TEST_F(DBTestFixture, TestFimDBIncreaseEachEntryVersionNullParameter)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         // Should handle NULL gracefully
         int result = fim_db_increase_each_entry_version(nullptr);
         ASSERT_EQ(result, -1);
@@ -491,7 +513,8 @@ TEST_F(DBTestFixture, TestFimDBIncreaseEachEntryVersionNullParameter)
 
 TEST_F(DBTestFixture, TestFimDBCountSyncedDocsEmptyTable)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         int count = fim_db_count_synced_docs(FIMDB_FILE_TABLE_NAME);
         ASSERT_EQ(count, 0);
     });
@@ -510,7 +533,8 @@ TEST_F(DBTestFixture, TestFimDBCountSyncedDocsOnlySynced)
     fileStatement2["inode"] = 22222;
     const auto fileFIMTest2 {std::make_unique<FileItem>(fileStatement2)};
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         ASSERT_EQ(fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added), FIMDB_OK);
         ASSERT_EQ(fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added), FIMDB_OK);
 
@@ -547,7 +571,8 @@ TEST_F(DBTestFixture, TestFimDBCountSyncedDocsOnlyUnsynced)
     fileStatement2["sync"] = 0;
     const auto fileFIMTest2 {std::make_unique<FileItem>(fileStatement2)};
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         ASSERT_EQ(fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added), FIMDB_OK);
         ASSERT_EQ(fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added), FIMDB_OK);
 
@@ -558,7 +583,8 @@ TEST_F(DBTestFixture, TestFimDBCountSyncedDocsOnlyUnsynced)
 
 TEST_F(DBTestFixture, TestFimDBCountSyncedDocsNullParameter)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         int count = fim_db_count_synced_docs(nullptr);
         ASSERT_EQ(count, 0);
     });
@@ -568,7 +594,8 @@ TEST_F(DBTestFixture, TestFimDBCountSyncedDocsNullParameter)
 
 TEST_F(DBTestFixture, TestFimDBGetDocumentsToPromoteEmptyTable)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         cJSON* docs = fim_db_get_documents_to_promote((char*)FIMDB_FILE_TABLE_NAME, 10);
         ASSERT_TRUE(docs != nullptr);
         ASSERT_EQ(cJSON_GetArraySize(docs), 0);
@@ -591,7 +618,8 @@ TEST_F(DBTestFixture, TestFimDBGetDocumentsToPromoteOnlyUnsynced)
     fileStatement2["sync"] = 0;
     const auto fileFIMTest2 {std::make_unique<FileItem>(fileStatement2)};
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         ASSERT_EQ(fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added), FIMDB_OK);
         ASSERT_EQ(fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added), FIMDB_OK);
 
@@ -622,7 +650,8 @@ TEST_F(DBTestFixture, TestFimDBGetDocumentsToPromoteWithLimit)
         ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
     }
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         // Request only 3 documents
         cJSON* docs = fim_db_get_documents_to_promote((char*)FIMDB_FILE_TABLE_NAME, 3);
         ASSERT_TRUE(docs != nullptr);
@@ -639,7 +668,8 @@ TEST_F(DBTestFixture, TestFimDBGetDocumentsToPromoteAllSynced)
     fileStatement["inode"] = 11111;
     const auto fileFIMTest {std::make_unique<FileItem>(fileStatement)};
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
 
         // Set sync=1
@@ -660,7 +690,8 @@ TEST_F(DBTestFixture, TestFimDBGetDocumentsToPromoteAllSynced)
 
 TEST_F(DBTestFixture, TestFimDBGetDocumentsToDemoteEmptyTable)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         cJSON* docs = fim_db_get_documents_to_demote((char*)FIMDB_FILE_TABLE_NAME, 10);
         ASSERT_TRUE(docs != nullptr);
         ASSERT_EQ(cJSON_GetArraySize(docs), 0);
@@ -681,7 +712,8 @@ TEST_F(DBTestFixture, TestFimDBGetDocumentsToDemoteOnlySynced)
     fileStatement2["inode"] = 22222;
     const auto fileFIMTest2 {std::make_unique<FileItem>(fileStatement2)};
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         ASSERT_EQ(fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added), FIMDB_OK);
         ASSERT_EQ(fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added), FIMDB_OK);
 
@@ -730,7 +762,8 @@ TEST_F(DBTestFixture, TestFimDBGetDocumentsToDemoteWithLimit)
         cJSON_Delete(item.json);
     }
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         // Request only 3 documents
         cJSON* docs = fim_db_get_documents_to_demote((char*)FIMDB_FILE_TABLE_NAME, 3);
         ASSERT_TRUE(docs != nullptr);
@@ -748,7 +781,8 @@ TEST_F(DBTestFixture, TestFimDBGetDocumentsToDemoteAllUnsynced)
     fileStatement["sync"] = 0;
     const auto fileFIMTest {std::make_unique<FileItem>(fileStatement)};
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added), FIMDB_OK);
 
         cJSON* docs = fim_db_get_documents_to_demote((char*)FIMDB_FILE_TABLE_NAME, 10);

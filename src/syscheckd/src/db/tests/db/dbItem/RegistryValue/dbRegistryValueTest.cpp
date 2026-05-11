@@ -42,7 +42,8 @@ void RegistryValueTest::TearDown()
 
 TEST_F(RegistryValueTest, registryValueConstructorFromFIM)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         auto value = new RegistryValue(fimEntryTest);
         delete value;
     });
@@ -51,7 +52,8 @@ TEST_F(RegistryValueTest, registryValueConstructorFromFIM)
 TEST_F(RegistryValueTest, registryValueConstructorFromJSON)
 {
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         auto value = new RegistryValue(inputJson);
         delete value;
     });
