@@ -512,8 +512,8 @@ void CMSync::synchronize()
                 {
                     LOG_INFO("[CMSync] Synchronization skipped for space '{}' because wazuh-indexer consumer '{}' is "
                              "not ready for sync (might be updating or no data)",
-                             nsState.getConsumerId().value(),
-                             nsState.getOriginSpace());
+                             nsState.getOriginSpace()),
+                             nsState.getConsumerId().value();
                     continue;
                 }
             }
