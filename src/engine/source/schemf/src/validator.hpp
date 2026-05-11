@@ -1,6 +1,7 @@
 #include "schema.hpp"
 
 #include <unordered_map>
+#include <unordered_set>
 
 namespace schemf
 {
@@ -10,10 +11,11 @@ namespace schemf
  */
 struct ValidationInfo
 {
-    json::Json::Type type;    ///< Associated JSON type.
-    ValueValidator validator; ///< Validator for the json value.
+    std::unordered_set<json::Json::Type> types; ///< Accepted JSON types (one or more).
+    ValueValidator validator;                   ///< Validator for the json value.
     /// Compatible types. The bool value indicates whether the compatible type needs additional validation.
     std::unordered_map<schemf::Type, bool> compatibles;
+    bool skipArrayWrap {false};                 ///< When true, validator is not wrapped in asArray().
 };
 
 /**
@@ -67,6 +69,17 @@ public:
     }
 
     base::RespOrError<TargetFieldKind> validateTargetField(const DotPath& name) const;
+
+    /**
+     * @brief Return all accepted JSON types for a field.
+     *
+     * @param name Dot-separated field path.
+     * @return std::unordered_set<json::Json::Type> All accepted JSON types.
+     * */
+    std::unordered_set<json::Json::Type> getJsonTypes(const DotPath& name) const
+    {
+        return m_compatibles.at(m_schema.getType(name)).types;
+    }
 
     /**
      * @brief Validate a field against a validation token (dispatch to typed overloads).
