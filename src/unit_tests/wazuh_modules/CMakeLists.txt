@@ -27,6 +27,16 @@ if(${TARGET} STREQUAL "agent")
   add_subdirectory(agent_upgrade)
 endif()
 
+if(${TARGET} STREQUAL "winagent")
+  # The agent-side flow of agent_upgrade is built into the winagent binary
+  # (src/wazuh_modules/CMakeLists.txt:111-112 picks up agent_upgrade/*.c and
+  # agent_upgrade/agent/*.c for non-server builds). The cmocka tests were
+  # already authored with #ifdef TEST_WINAGENT guards in
+  # test_wm_agent_upgrade_agent.c and winagent.cmake defines TEST_WINAGENT,
+  # so wiring the subdirectory here is enough to compile/run them.
+  add_subdirectory(agent_upgrade)
+endif()
+
 if(${TARGET} STREQUAL "manager")
   add_subdirectory(control)
 endif()

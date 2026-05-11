@@ -262,8 +262,9 @@ add_custom_target(
   # Globally excluded paths (apply to every target):
   #   - external/, unit_tests/, data_provider/, shared_modules/, syscollector/,
   #     syscheckd/src/db/, syscheckd/src/ebpf/: out of scope for legacy UT coverage.
-  #   - */include/c++/*  /usr/include/*: libstdc++ + system headers (template
-  #     instantiations inflate the function/branch denominator without representing
+  #   - */include/c++/*  /usr/include/*  *usr/share/mingw-w64/*: libstdc++,
+  #     glibc and mingw-w64 system headers (template instantiations and inline
+  #     definitions inflate the function/branch denominator without representing
   #     project code).
   #   - engine/: wazuh-engine has its own coverage workflow (5_testunit_engine.yml);
   #     legacy UT cmocka does not exercise any of its sources.
@@ -284,7 +285,8 @@ add_custom_target(
     coverage.total "*syscollector/*" --remove coverage.total
     "*syscheckd/src/db/*" --remove coverage.total "*syscheckd/src/ebpf/*"
     --remove coverage.total "*/include/c++/*" --remove coverage.total
-    "/usr/include/*" --remove coverage.total "*engine/*"
+    "/usr/include/*" --remove coverage.total "*usr/share/mingw-w64/*"
+    --remove coverage.total "*engine/*"
     --remove coverage.total "*wazuh_modules/agent_info/*" --remove coverage.total
     "*wazuh_modules/sca/*" --remove coverage.total
     "*wazuh_modules/vulnerability_scanner/*" --remove coverage.total

@@ -55,9 +55,16 @@ void OS_SHA1_File_Nbytes_unable_open_file (void **state)
 
     int mode = OS_BINARY;
 
+#ifdef TEST_WINAGENT
+    // On winagent OS_SHA1_File_Nbytes uses w_fopen_r (3-arg) instead of wfopen.
+    expect_string(__wrap_w_fopen_r, file, path);
+    expect_string(__wrap_w_fopen_r, mode, "rb");
+    will_return(__wrap_w_fopen_r, NULL);
+#else
     expect_value(__wrap_wfopen, path, path);
     expect_string(__wrap_wfopen, mode, "rb");
     will_return(__wrap_wfopen, NULL);
+#endif
 
     assert_int_equal(OS_SHA1_File_Nbytes(path, &context, output, mode, nbytes), -1);
 
@@ -73,9 +80,15 @@ void OS_SHA1_File_Nbytes_ok (void **state)
 
     int mode = OS_BINARY;
 
+#ifdef TEST_WINAGENT
+    expect_string(__wrap_w_fopen_r, file, path);
+    expect_string(__wrap_w_fopen_r, mode, "rb");
+    will_return(__wrap_w_fopen_r, 1);
+#else
     expect_value(__wrap_wfopen, path, path);
     expect_string(__wrap_wfopen, mode, "rb");
     will_return(__wrap_wfopen, 1);
+#endif
 
     will_return(__wrap_fread, "test");
     will_return(__wrap_fread, 0);
@@ -100,9 +113,15 @@ void OS_SHA1_File_Nbytes_num_bytes_exceded (void **state)
 
     int mode = OS_BINARY;
 
+#ifdef TEST_WINAGENT
+    expect_string(__wrap_w_fopen_r, file, path);
+    expect_string(__wrap_w_fopen_r, mode, "rb");
+    will_return(__wrap_w_fopen_r, 1);
+#else
     expect_value(__wrap_wfopen, path, path);
     expect_string(__wrap_wfopen, mode, "rb");
     will_return(__wrap_wfopen, 1);
+#endif
 
     will_return(__wrap_fread, "test");
     will_return(__wrap_fread, 0);
