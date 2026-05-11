@@ -184,15 +184,11 @@ void * w_rootcheck_thread(__attribute__((unused)) void * args) {
     syscheck_config *syscheck = args;
 
     while (1) {
-        int run_now = 0;
-
-        /* Check if syscheck should be restarted */
-        run_now = os_check_restart_rootcheck();
         curr_time = time(0);
 
         /* If time elapsed is higher than the rootcheck_time, run it */
         if (syscheck->rootcheck) {
-            if (((curr_time - prev_time_rk) > rootcheck.time) || run_now) {
+            if ((curr_time - prev_time_rk) > rootcheck.time) {
                 log_realtime_status_rk(2);
                 run_rk_check();
                 prev_time_rk = time(0);

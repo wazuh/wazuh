@@ -19,17 +19,6 @@ const cm::store::NamespaceId DUMMY_NAMESPACE_ID {"dummy_ns_id"}; ///< Dummy name
 constexpr std::string_view COMPONENT_NAME = "CMSync";            ///< Component name for logging
 
 /**
- * @brief Generate a route name for the given origin space
- *
- * @param originSpace Origin space name
- * @return std::string Generated route name
- */
-std::string generateRouteName(std::string_view originSpace)
-{
-    return fmt::format("cmsync_{}", originSpace);
-}
-
-/**
  * @brief Generate a random namespace ID for the given origin space
  *
  * @param originSpace Origin space name
@@ -124,33 +113,35 @@ public:
      */
     static SyncedNamespace fromJson(const json::Json& j)
     {
-        auto optOrigin = j.getString(JPATH_ORIGIN);
-        if (!optOrigin.has_value() || optOrigin->empty())
+        std::string origin;
+        if (j.getString(origin, JPATH_ORIGIN) != json::RetGet::Success || origin.empty())
         {
-            throw std::runtime_error("NsSyncState::fromJson: Missin/empty origin_space field");
+            throw std::runtime_error("NsSyncState::fromJson: Missing/empty origin_space field");
         }
 
-        auto optNsId = j.getString(JPATH_NAMESPACE_ID);
-        if (!optNsId.has_value())
+        std::string nsId;
+        if (j.getString(nsId, JPATH_NAMESPACE_ID) != json::RetGet::Success)
         {
             throw std::runtime_error("NsSyncState::fromJson: Missing namespace_id field");
         }
 
-        return {*optOrigin, cm::store::NamespaceId(*optNsId)};
+        return {origin, cm::store::NamespaceId(nsId)};
     }
 };
 
 CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPtr,
                const std::shared_ptr<cm::crud::ICrudService>& cmcrudPt,
                const std::shared_ptr<::store::IStore>& storePtr,
-               const std::shared_ptr<router::IRouterAPI>& routerPtr)
+               const std::shared_ptr<router::IRouterAPI>& routerPtr,
+               const size_t attempts,
+               const size_t waitSeconds)
     : m_indexerPtr(indexerPtr)
     , m_cmcrudPtr(cmcrudPt)
     , m_store(storePtr)
     , m_router(routerPtr)
     , m_mutex()
-    , m_attemps(3)
-    , m_waitSeconds(5)
+    , m_attempts(attempts)
+    , m_waitSeconds(waitSeconds)
 {
     // Check if is the first setup
     if (storePtr->existsDoc(STORE_NAME_CMSYNC))
@@ -159,10 +150,11 @@ CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPt
         return;
     }
 
-    LOG_INFO("[CMSync] First setup detected, initializing default sync spaces");
+    LOG_DEBUG("[CMSync] First setup detected, initializing default sync spaces");
 
-    addSpaceToSync("standard");
-    addSpaceToSync("custom");
+    // Populate directly and dump once to avoid multiple unnecessary store writes
+    m_namespacesState.emplace_back("standard");
+    m_namespacesState.emplace_back("custom");
     dumpStateToStore();
 }
 
@@ -173,10 +165,11 @@ bool CMSync::existSpaceInRemote(std::string_view space)
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
 
     return base::utils::executeWithRetry([&indexerPtr, space]() { return indexerPtr->existsPolicy(space); },
-                                         fmt::format("{}::exist()", COMPONENT_NAME),
+                                         fmt::format("{}", COMPONENT_NAME),
                                          fmt::format("Check '{}' space in wazuh-indexer", space),
-                                         m_attemps,
-                                         m_waitSeconds);
+                                         m_attempts,
+                                         m_waitSeconds,
+                                         m_shutdownRequested);
 }
 
 void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::NamespaceId& dstNamespace)
@@ -189,8 +182,9 @@ void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::Na
         base::utils::executeWithRetry([&indexerPtr, originSpace]() { return indexerPtr->getPolicy(originSpace); },
                                       fmt::format("{}::downloadNamespace()", COMPONENT_NAME),
                                       fmt::format("Download '{}' space from wazuh-indexer", originSpace),
-                                      m_attemps,
-                                      m_waitSeconds);
+                                      m_attempts,
+                                      m_waitSeconds,
+                                      m_shutdownRequested);
 
     // Create destNamespace
     try
@@ -198,6 +192,7 @@ void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::Na
         cmcrudPtr->importNamespace(dstNamespace,
                                    policyResource.kvdbs,
                                    policyResource.decoders,
+                                   policyResource.filters,
                                    policyResource.integration,
                                    policyResource.policy,
                                    /*softValidation=*/true);
@@ -227,8 +222,9 @@ std::pair<std::string, bool> CMSync::getPolicyHashAndEnabledFromRemote(std::stri
         [&indexerPtr, space]() { return indexerPtr->getPolicyHashAndEnabled(space); },
         fmt::format("{}::getInfoFromRemote()", COMPONENT_NAME),
         fmt::format("Get policy hash and enabled status for '{}' space from wazuh-indexer", space),
-        m_attemps,
-        m_waitSeconds);
+        m_attempts,
+        m_waitSeconds,
+        m_shutdownRequested);
 }
 
 cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view originSpace)
@@ -311,7 +307,6 @@ void CMSync::syncNamespaceInRoute(const SyncedNamespace& nsState, const cm::stor
             if (usedPriorities.find(priority) == usedPriorities.end())
             {
                 return priority;
-                ;
             }
         }
         throw std::runtime_error("No available priority for new route");
@@ -340,12 +335,10 @@ void CMSync::addSpaceToSync(std::string_view space)
         }
     }
 
-    // Add the new space to the sync list
+    // Add the new space to the sync list (constructor already sets DUMMY_NAMESPACE_ID)
     m_namespacesState.emplace_back(space);
-    // SET Dummy namespace id
-    m_namespacesState.back().setNamespaceId(DUMMY_NAMESPACE_ID);
 
-    LOG_INFO("[CMSync] Added space '{}' to the sync list", space);
+    LOG_DEBUG("[CMSync] Added space '{}' to the sync list", space);
 
     dumpStateToStore();
 }
@@ -438,18 +431,31 @@ void CMSync::synchronize()
 
     for (auto& nsState : m_namespacesState)
     {
+        // Check abort at the start of each namespace iteration
+        if (m_shutdownRequested.load(std::memory_order_relaxed))
+        {
+            LOG_INFO("[CMSync] Synchronization aborted during namespace iteration");
+            return;
+        }
+
         try
         {
             LOG_DEBUG("[CMSync] Synchronizing namespace for space '{}'", nsState.getOriginSpace());
 
             if (!existSpaceInRemote(nsState.getOriginSpace()))
             {
-                LOG_WARNING("[CMSync] Space '{}' does not exist in remote indexer, skipping synchronization",
+                LOG_WARNING("[CMSync] Space '{}' does not exist in wazuh-indexer, skipping synchronization",
                             nsState.getOriginSpace());
                 continue;
             }
 
             // Get remote policy hash and enabled status
+            if (m_shutdownRequested.load(std::memory_order_relaxed))
+            {
+                LOG_INFO("[CMSync] Synchronization aborted before getting policy info for space '{}'",
+                         nsState.getOriginSpace());
+                return;
+            }
             const auto [remoteHash, remoteEnabled] = getPolicyHashAndEnabledFromRemote(nsState.getOriginSpace());
 
             // Check the current route/ns configuration to avoid unnecessary synchronization.
@@ -534,6 +540,14 @@ void CMSync::synchronize()
             // Cases 3 and 4: Changes detected, perform synchronization
             LOG_INFO("[CMSync] Changes detected for space '{}', updating...", nsState.getOriginSpace());
 
+            // Check abort before download (most expensive operation)
+            if (m_shutdownRequested.load(std::memory_order_relaxed))
+            {
+                LOG_INFO("[CMSync] Synchronization aborted before downloading namespace for space '{}'",
+                         nsState.getOriginSpace());
+                return;
+            }
+
             // Download and enrich the namespace
             const auto newNsId = downloadAndEnrichNamespace(nsState.getOriginSpace());
 
@@ -570,7 +584,6 @@ void CMSync::synchronize()
             // Delete old namespace if it exists and is different from the new one
             if (oldNsId != DUMMY_NAMESPACE_ID && oldNsId != newNsId)
             {
-                auto cmcrudPtr = base::utils::lockWeakPtr(m_cmcrudPtr, "CMCrud Service");
                 try
                 {
                     cmcrudPtr->deleteNamespace(oldNsId);
@@ -594,6 +607,12 @@ void CMSync::synchronize()
     }
 
     LOG_DEBUG("[CMSync] Finished synchronization of spaces");
+}
+
+void CMSync::requestShutdown()
+{
+    m_shutdownRequested.store(true, std::memory_order_relaxed);
+    LOG_INFO("[CMSync] Shutdown requested");
 }
 
 } // namespace cm::sync

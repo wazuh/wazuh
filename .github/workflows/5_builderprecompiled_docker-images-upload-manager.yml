@@ -49,7 +49,7 @@ jobs:
       actions: write
 
     runs-on: ${{ inputs.architecture == 'arm64' && 'wz-linux-arm64' || 'ubuntu-22.04' }}
-    timeout-minutes: 140
+    timeout-minutes: 180
     name: Package - Upload pkg_${{ inputs.system }}_manager_builder_${{ inputs.architecture }} with tag ${{ inputs.docker_image_tag }}
 
     steps:
@@ -76,7 +76,9 @@ jobs:
           echo "DOCKERFILE_PATH=$dockerfile_path" >> $GITHUB_ENV
           cp packages/build.sh $dockerfile_path
           cp packages/${{ inputs.system }}s/utils/* $dockerfile_path
+          cp .github/scripts/run_with_retry.sh $dockerfile_path/retry.sh
 
       - name: Build and push image pkg_${{ inputs.system }}_manager_builder_${{ inputs.architecture }} with tag ${{ env.TAG }} to Github Container Registry
+        timeout-minutes: 165
         run:
           bash .github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} pkg_${{ inputs.system }}_manager_builder_${{ inputs.architecture }} ${{ env.DOCKERFILE_PATH }} ${{ env.TAG }}

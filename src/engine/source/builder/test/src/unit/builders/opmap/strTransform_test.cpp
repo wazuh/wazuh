@@ -187,7 +187,13 @@ INSTANTIATE_TEST_SUITE_P(
         MapT({makeValue(R"("begin")")}, opBuilderHelperHexToNumber, FAILURE()),
         MapT({makeValue(R"("48656C6C6F20776F726C6421")")}, opBuilderHelperHexToNumber, FAILURE()),
         MapT({makeRef("ref")}, opBuilderHelperHexToNumber, SUCCESS(customRefExpected())),
-        MapT({makeRef("ref"), makeRef("ref")}, opBuilderHelperHexToNumber, FAILURE())),
+        MapT({makeRef("ref"), makeRef("ref")}, opBuilderHelperHexToNumber, FAILURE()),
+        MapT({makeRef("ref")}, opBuilderHelperHexToNumber, SUCCESS(jTypeRefExpected(json::Json::Type::String))),
+        MapT({makeRef("ref")}, opBuilderHelperHexToNumber, FAILURE(jTypeRefExpected(json::Json::Type::Number))),
+        MapT({makeRef("ref")}, opBuilderHelperHexToNumber, FAILURE(jTypeRefExpected(json::Json::Type::Boolean))),
+        MapT({makeRef("ref")}, opBuilderHelperHexToNumber, FAILURE(jTypeRefExpected(json::Json::Type::Array))),
+        MapT({makeRef("ref")}, opBuilderHelperHexToNumber, FAILURE(jTypeRefExpected(json::Json::Type::Object))),
+        MapT({makeRef("ref")}, opBuilderHelperHexToNumber, FAILURE(jTypeRefExpected(json::Json::Type::Null)))),
     testNameFormatter<MapBuilderTest>("StrTransform"));
 } // namespace mapbuildtest
 

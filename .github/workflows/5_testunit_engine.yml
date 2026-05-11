@@ -1,13 +1,12 @@
 name: 5.X - Engine - Unit tests
 
 on:
-  # Triggers the workflow on pull request but only changes in the src/engine/ directory.
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - 'src/engine/**'
+  workflow_dispatch:
 
-# Ensures only one instance of this workflow is running per PR
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
 
@@ -17,6 +16,7 @@ env:
 
 jobs:
   build:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Build Manager
     runs-on: ubuntu-latest
     steps:

@@ -27,10 +27,11 @@ with patch('wazuh.core.common.wazuh_uid'):
 
         from wazuh.agent import add_agent, assign_agents_to_group, create_group, delete_agents, delete_groups, \
             get_agent_conf, get_agent_config, get_agent_groups, get_agents, get_agents_in_group, get_agents_keys, \
-            get_agents_summary, get_agents_summary_os, get_agents_summary_status, get_agents_sync_group, \
+            get_agents_summary, get_agents_summary_os, get_agents_summary_status, \
             get_distinct_agents, get_file_conf, get_full_overview, get_group_files, get_outdated_agents, \
             get_upgrade_result, remove_agent_from_group, remove_agent_from_groups, remove_agents_from_group, \
             restart_agents, upgrade_agents, upload_group_file, restart_agents_by_node, reconnect_agents, \
+            reload_agents, reload_agents_by_node, \
             check_uninstall_permission, ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST, ERROR_CODES_UPGRADE_SOCKET
         from wazuh.core.agent import Agent
         from wazuh import WazuhError, WazuhException, WazuhInternalError
@@ -43,7 +44,6 @@ with patch('wazuh.core.common.wazuh_uid'):
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_agent_path = os.path.join(test_data_path, 'agent')
 test_shared_path = os.path.join(test_agent_path, 'shared')
-test_multigroup_path = os.path.join(test_agent_path, 'multigroups')
 test_global_bd_path = os.path.join(test_data_path, 'global.db')
 
 test_data = InitAgent(data_path=test_data_path)
@@ -238,8 +238,10 @@ def test_agent_reconnect_agents(socket_mock, send_mock, agents_info_mock, reconn
 
 
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [
-    (['001', '002'], ['001', '002'], None),
-    (['001', '500'], ['001'], 1701)
+    (['010'],        ['010'], None),   # v5.0.0 - succeeds
+    (['001', '002'], [],      1761),   # v4.x agents - version guard rejects both
+    (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
+    (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
 ])
 @patch('wazuh.agent.send_restart_command')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
@@ -267,8 +269,10 @@ async def test_agent_restart_agents(socket_mock, send_http_mock, agents_info_moc
 
 
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [
-    (['001', '002'], ['001', '002'], 1703),
-    (['001', '500'], ['001'], 1701)
+    (['010'],        ['010'], None),   # v5.0.0 - succeeds
+    (['001', '002'], [],      1761),   # v4.x agents - version guard rejects both
+    (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
+    (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
 ])
 @patch('wazuh.agent.send_restart_command')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
@@ -288,6 +292,68 @@ async def test_agent_restart_agents_by_node(socket_mock, send_http_mock, agents_
         The expected error code.
     """
     result = await restart_agents_by_node(agent_list)
+    assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
+    assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
+    if result.failed_items:
+        code = next(iter(result.failed_items.keys())).code
+        assert code == error_code, f'"{error_code}" code was expected but "{code}" was received.'
+
+
+@pytest.mark.parametrize('agent_list, expected_items, error_code', [
+    (['010'],        ['010'], None),   # v5.0.0 - succeeds
+    (['001', '002'], [],      1761),   # v4.x agents - version guard rejects both
+    (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
+    (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
+])
+@patch('wazuh.agent.send_reload_command')
+@patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
+@patch('wazuh.core.wdb_http.WazuhDBHTTPClient._post', side_effect=send_msg_to_wdb_http_post_restartinfo)
+@patch('socket.socket.connect')
+async def test_agent_reload_agents(socket_mock, send_http_mock, agents_info_mock, send_reload_mock, agent_list,
+                                   expected_items, error_code):
+    """Test `reload_agents` function from agent module.
+
+    Parameters
+    ----------
+    agent_list : List of str
+        List of agent ID's.
+    expected_items : List of str
+        List of expected agent ID's returned by 'reload_agents'.
+    error_code : int
+        The expected error code.
+    """
+    result = await reload_agents(agent_list)
+    assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
+    assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
+    if result.failed_items:
+        code = next(iter(result.failed_items.keys())).code
+        assert code == error_code, f'"{error_code}" code was expected but "{code}" was received.'
+
+
+@pytest.mark.parametrize('agent_list, expected_items, error_code', [
+    (['010'],        ['010'], None),   # v5.0.0 - succeeds
+    (['001', '002'], [],      1761),   # v4.x agents - version guard rejects both
+    (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
+    (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
+])
+@patch('wazuh.agent.send_reload_command')
+@patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
+@patch('wazuh.core.wdb_http.WazuhDBHTTPClient._post', side_effect=send_msg_to_wdb_http_post_restartinfo)
+@patch('socket.socket.connect')
+async def test_agent_reload_agents_by_node(socket_mock, send_http_mock, agents_info_mock, send_reload_mock,
+                                           agent_list, expected_items, error_code):
+    """Test `reload_agents_by_node` function from agent module.
+
+    Parameters
+    ----------
+    agent_list : List of str
+        List of agent ID's.
+    expected_items : List of str
+        List of expected agent ID's returned by 'reload_agents_by_node'.
+    error_code : int
+        The expected error code.
+    """
+    result = await reload_agents_by_node(agent_list)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
     if result.failed_items:
@@ -423,15 +489,11 @@ def test_agent_get_agents_keys(socket_mock, send_mock, agent_list, expected_item
     (full_agent_list, {'status': 'all', 'older_than': '1s', 'name': 'agent-6'}, None, 1731, ['006']),
     (full_agent_list, {'status': 'all', 'older_than': '1s', 'node_name': 'random'}, None, 1731, []),
     (full_agent_list, {'status': 'all', 'older_than': '1s', 'version': 'Wazuh v4.2.0'}, None, 1731, ['002']),
-    (full_agent_list, {'status': 'all', 'older_than': '1s', 'manager': 'master'}, None, 1731,
-     ['001', '002', '005', '006', '007', '008', '009', '010']),
     (full_agent_list, {'status': 'all', 'older_than': '1s', 'os.name': 'ubuntu'}, None, 1731,
      ['001', '002', '005', '007', '010']),
     (full_agent_list, {'status': 'all', 'older_than': '1s', 'os.version': '16.04.1 LTS'}, None, 1731, ['002']),
     (full_agent_list, {'status': 'all', 'older_than': '1s', 'os.platform': 'centos'}, None, 1731, []),
     (full_agent_list, {'status': 'all', 'older_than': '1s', 'node_name': 'random'}, None, 1731, []),
-    (full_agent_list, {'status': 'all', 'older_than': '1s'}, 'manager=master;registerIP!=any', 1731,
-    ['002', '005', '010']),
     (['001', '500'], {'status': 'all', 'older_than': '1s'}, None, 1701, ['001']),
     (['001', '002'], {'status': 'all', 'older_than': '1s'}, None, WazuhError(1726), None),
 ])
@@ -502,7 +564,7 @@ def test_agent_add_agent(manager_status_mock, socket_mock, name, agent_id, key, 
     (['group-1', 'group-2'], None, ['group-1', 'group-2']),
     (['invalid_group'], None, []),
     (['group-1', 'group-2'], 'name~1', ['group-1']),
-    (['group-1', 'group-2', 'group-3'], 'mergedSum=a336982f3c020cd558a16113f752fd5b', ['group-1', 'group-2']),
+    (['group-1', 'group-2', 'group-3'], 'mergedSum=53639ee219f6ba6854bb0e8f86d5abf1', ['group-1', 'group-2']),
     ([], '', []) # An empty group_list should return nothing
 ])
 @patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
@@ -542,20 +604,18 @@ def test_agent_get_agent_groups_exceptions(socket_mock, send_mock, mock_get_grou
 
     """
     mock_get_groups.return_value = {'valid-group'}
-    with patch('wazuh.core.common.DATABASE_PATH_GLOBAL', new=db_global):
-        try:
-            group_result = get_agent_groups(group_list=[system_groups])
-            assert group_result.failed_items
-            assert next(iter(group_result.failed_items)).code == error_code
-        except WazuhException as e:
-            assert e.code == error_code, 'The exception was raised as expected but "error_code" does not match.'
+    try:
+        group_result = get_agent_groups(group_list=[system_groups])
+        assert group_result.failed_items
+        assert next(iter(group_result.failed_items)).code == error_code
+    except WazuhException as e:
+        assert e.code == error_code, 'The exception was raised as expected but "error_code" does not match.'
 
 
 @pytest.mark.parametrize('group_list', [
     ['group-1'],
     ['invalid-group']
 ])
-@patch('wazuh.core.common.DATABASE_PATH_GLOBAL', new=test_global_bd_path)
 @patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
 def test_agent_get_group_files(group_list):
@@ -567,13 +627,13 @@ def test_agent_get_group_files(group_list):
         List of groups to get their files.
     """
     result = get_group_files(group_list=group_list)
-    # Assert 'items' contains agent.conf, merged.mg and ar.conf and 'hash' is not empty
+    # Assert 'items' contains agent.conf and merged.mg and 'hash' is not empty
     if result.total_failed_items != 0:
         assert list(result.failed_items.keys())[0].code == 1710
     else:
-        assert result.total_affected_items == 3
+        assert result.total_affected_items == 2
         assert set(item['filename'] for item in result.affected_items).difference(
-            set(['agent.conf', 'merged.mg', 'ar.conf'])) == set()
+            set(['agent.conf', 'merged.mg'])) == set()
         for item in result.affected_items:
             assert item['hash']
 
@@ -653,7 +713,6 @@ def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
     ('group-1', WazuhError, 1711),
     ('invalid!', WazuhError, 1722),
     ('delete-me', WazuhInternalError, 1005),
-    ('ar.conf', WazuhError, 1713),
     ('agent-template.conf', WazuhError, 1713)
 ])
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
@@ -826,7 +885,6 @@ async def test_agent_assign_agents_to_group_exceptions(socket_mock, send_mock, m
     ('default', '001'),
     ('group-1', '005')
 ])
-@patch('wazuh.core.common.DATABASE_PATH_GLOBAL', new=test_global_bd_path)
 @patch('wazuh.core.agent.Agent.unset_single_group_agent')
 @patch('wazuh.agent.get_groups')
 @patch('wazuh.agent.get_agents_info')
@@ -1318,57 +1376,9 @@ def test_agent_get_agent_config_exceptions(socket_mock, send_mock, agent_list):
         assert error == WazuhError(1740)
 
 
-@pytest.mark.parametrize('agent_list', [
-    full_agent_list
-])
-@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
-@patch('wazuh.core.common.MULTI_GROUPS_PATH', new=test_multigroup_path)
-@patch('wazuh.agent.get_agents_info', return_value=full_agent_list)
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_agents_sync_group(socket_mock, send_mock, get_agent_mock, agent_list):
-    """Test `get_agents_sync_group` function from agent module.
-
-    Parameters
-    ----------
-    agent_list : List of str
-        List of agent ID's.
-    """
-    result = get_agents_sync_group(agent_list=agent_list)
-    assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
-    # Check affected items
-    assert result.total_affected_items == len(agent_list)
-    assert len([item for item in result.affected_items if 'synced' in item]) == len(agent_list)
-
-
-@pytest.mark.parametrize('agent_list, expected_error', [
-    (['100'], WazuhResourceNotFound(1701))
-])
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_agents_sync_group_exceptions(socket_mock, send_mock, agent_list, expected_error):
-    """Test `get_agents_sync_group` function from agent module returns the expected exceptions when using invalid
-    parameters.
-
-    Parameters
-    ----------
-    agent_list : List of str
-        List of agent ID's.
-    expected_error : WazuhError
-        Expected WazuhError to be returned (not raised) by the function.
-    """
-    result = get_agents_sync_group(agent_list=agent_list)
-    assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
-    # Check failed items
-    assert result.total_failed_items == len(agent_list)
-    assert isinstance(result.failed_items, dict)
-    assert result.failed_items == {expected_error: {agent_list[0]}}
-
-
 @pytest.mark.parametrize('filename, group_list', [
     ('agent.conf', ['default'])
 ])
-@patch('wazuh.core.common.DATABASE_PATH_GLOBAL', new=test_global_bd_path)
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
 def test_agent_get_file_conf(filename, group_list):
     """Test `get_file_conf` from agent module.
@@ -1391,7 +1401,6 @@ def test_agent_get_file_conf(filename, group_list):
 @pytest.mark.parametrize('group_list', [
     ['default']
 ])
-@patch('wazuh.core.common.DATABASE_PATH_GLOBAL', new=test_global_bd_path)
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
 def test_agent_get_agent_conf(group_list):
     """Test `get_agent_agent_conf` function from agent module.

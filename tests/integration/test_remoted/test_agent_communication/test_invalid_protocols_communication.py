@@ -60,7 +60,7 @@ def test_invalid_protocols_communication(test_configuration, test_metadata, conf
             brief: Test case metadata.
         - truncate_monitored_files:
             type: fixture
-            brief: Truncate all the log files and json alerts files before and after the test execution.
+            brief: Truncate all monitored log files before and after the test execution.
         - configure_local_internal_options:
             type: fixture
             brief: Configure the Wazuh local internal options using the values from `local_internal_options`.
@@ -81,7 +81,7 @@ def test_invalid_protocols_communication(test_configuration, test_metadata, conf
             brief: Connect to a given list of sockets.
         - waiting_for_analysisd_startup:
             type: fixture
-            brief: Wait until the 'wazuh-manager-analysisd' has begun and the 'alerts.json' file is created.
+            brief: Wait until the 'wazuh-manager-analysisd' has begun.
         - validate_agent_manager_protocol_communication
             type: fixture
             brief: connect agent , launch thread and send events

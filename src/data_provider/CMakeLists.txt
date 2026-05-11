@@ -179,6 +179,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
             ws2_32
             wbemuuid
             uuid
+            wuguid
             ole32
             oleaut32
             shell32

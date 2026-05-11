@@ -82,7 +82,11 @@
              os_free(manager_node_name);
 
              // Add max sessions from internal_options (inventory_sync specific)
+#ifdef CLIENT
              int max_sessions = getDefine_Int("wazuh_modules", "max_sessions", 1, 100000);
+#else
+             int max_sessions = getDefine_Int_default("wazuh_modules", "max_sessions", 1, 100000, 1000);
+#endif
              cJSON_AddNumberToObject(config_json, "maxSessions", max_sessions);
 
              wm_inventory_sync_log_config(config_json);
@@ -129,7 +133,7 @@
      os_calloc(1, sizeof(wmodule), module);
      module->context = &WM_INVENTORY_SYNC_CONTEXT;
      module->tag = strdup(module->context->name);
-     mtinfo(WM_INVENTORY_SYNC_LOGTAG, "Loaded Inventory sync module.");
+     mtdebug1(WM_INVENTORY_SYNC_LOGTAG, "Loaded Inventory sync module.");
      return module;
  }
 

@@ -5,7 +5,6 @@
 import asyncio
 import functools
 import json
-import logging
 import os
 import random
 from typing import Tuple, Union, Dict
@@ -193,7 +192,7 @@ class LocalServer(server.AbstractServer):
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         loop = asyncio.get_running_loop()
         loop.set_exception_handler(c_common.asyncio_exception_handler)
-        socket_path = os.path.join(common.WAZUH_PATH, 'queue', 'cluster', 'c-internal.sock')
+        socket_path = common.CLUSTERD_SOCKET
 
         try:
             local_server = await loop.create_unix_server(
@@ -288,7 +287,10 @@ class LocalServerHandlerMaster(LocalServerHandler):
         dict
             Dict object containing nodes information.
         """
-        return b'ok', json.dumps(self.server.node.get_health(json.loads(filter_nodes))).encode()
+        return b'ok', json.dumps(
+            self.server.node.get_health(json.loads(filter_nodes)),
+            default=str
+        ).encode()
 
     def send_file_request(self, path, node_name):
         """Send a file from the API to the cluster.

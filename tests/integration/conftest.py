@@ -9,6 +9,7 @@ import subprocess
 import pytest
 import sys
 
+from wazuh_testing.constants.platforms import WINDOWS, MACOS
 from py.xml import html
 from wazuh_testing import session_parameters
 from wazuh_testing.constants import platforms
@@ -21,7 +22,7 @@ from wazuh_testing.constants.paths.logs import (
     WAZUH_API_LOG_FILE_PATH,
     WAZUH_API_JSON_LOG_FILE_PATH,
 )
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, SHARED_CONFIGURATIONS_PATH
+from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, SHARED_CONFIGURATIONS_PATH, WAZUH_CONF_PATH
 from wazuh_testing.logger import logger
 from wazuh_testing.tools import socket_controller
 from wazuh_testing.tools.monitors import queue_monitor
@@ -175,7 +176,7 @@ def backup_wazuh_configuration() -> None:
 
 
 @pytest.fixture()
-def set_wazuh_configuration(test_configuration: dict) -> None:
+def set_wazuh_configuration(request: pytest.FixtureRequest, test_configuration: dict) -> None:
     """Set wazuh configuration
 
     Args:
@@ -185,8 +186,22 @@ def set_wazuh_configuration(test_configuration: dict) -> None:
     backup_config = configuration.get_wazuh_conf()
 
     # Configuration for testing
+    template = None
+    template_spec = getattr(request.module, "wazuh_configuration_template", None)
+    use_minimal_template = getattr(request.module, "use_minimal_wazuh_configuration", False)
+
+    if use_minimal_template:
+        template = configuration.get_minimal_configuration()
+    elif template_spec is not None:
+        if template_spec == "minimal":
+            template = configuration.get_minimal_configuration()
+        elif isinstance(template_spec, list):
+            template = template_spec
+        else:
+            template = file.read_file_lines(os.fspath(template_spec))
+
     test_config = configuration.set_section_wazuh_conf(
-        test_configuration.get("sections")
+        test_configuration.get("sections"), template=template
     )
 
     # Set new configuration
@@ -858,3 +873,31 @@ def simulate_agents(test_metadata):
     control_service("start")
     remove_agents([a.id for a in agents], "manage_agents")
     control_service("stop")
+
+@pytest.fixture(scope="session", autouse=True)
+def fix_ossec_conf_multiple_roots():
+    """Temporary fix: DEB/RPM packages install ossec.conf with two <ossec_config> root
+    blocks. The test framework's XML parser only supports a single root element, so we
+    merge both blocks by removing the closing tag of the first block and the opening tag
+    of the second block before the test session begins.
+    """
+    if sys.platform == WINDOWS:
+        return
+
+    try:
+        with open(WAZUH_CONF_PATH, 'r') as f:
+            content = f.read()
+
+        # Only act when two root blocks are present
+        if content.count('</ossec_config>') < 2:
+            return
+
+        # Remove the boundary between the two blocks: </ossec_config>...<ossec_config>
+        import re
+        fixed = re.sub(r'</ossec_config>\s*<ossec_config>', '', content, count=1)
+
+        with open(WAZUH_CONF_PATH, 'w') as f:
+            f.write(fixed)
+    except OSError:
+        # Not installed or no permission — tests will fail on their own if needed
+        pass

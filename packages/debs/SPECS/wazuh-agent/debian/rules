@@ -61,9 +61,9 @@ override_dh_install:
 
 	# Copying init.d script
 	mkdir -p ${TARGET_DIR}/etc/init.d/
-	sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/ossec-hids-debian.init
+	sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/wazuh-debian.init
 
-	cp src/init/templates/ossec-hids-debian.init ${TARGET_DIR}/etc/init.d/wazuh-agent
+	cp src/init/templates/wazuh-debian.init ${TARGET_DIR}/etc/init.d/wazuh-agent
 
 	# Copying systemd file
 	mkdir -p ${TARGET_DIR}/usr/lib/systemd/system/

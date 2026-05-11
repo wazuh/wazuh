@@ -21,6 +21,14 @@
               - report_changes: 'yes'
         - nodiff:
             value: NODIFF_FILE
+        - synchronization:
+            elements:
+            - enabled:
+                value: 'yes'
+            - response_timeout:
+                value: 1
+            - interval:
+                value: 9999999
 
     - section: sca
       elements:

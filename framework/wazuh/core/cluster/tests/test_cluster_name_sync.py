@@ -184,7 +184,7 @@ class TestRunClusterNameSync:
         await task.run_cluster_name_sync()
 
         task.logger.warning.assert_called_with(
-            "Cluster name not found in ossec.conf; aborting sync"
+            "Cluster name not found in wazuh-manager.conf; aborting sync"
         )
         assert task._cluster_name_sync_done
 

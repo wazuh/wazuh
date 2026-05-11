@@ -281,6 +281,16 @@ FIMDBErrorCode fim_db_file_update(fim_entry* data, callback_context_t callback)
                     }
                 }
 
+                if (patchedJson.contains("new"))
+                {
+                    convert_inode(patchedJson["new"]);
+                }
+
+                if (patchedJson.contains("old"))
+                {
+                    convert_inode(patchedJson["old"]);
+                }
+
                 const std::unique_ptr<cJSON, CJsonSmartDeleter> spJson
                 {
                     cJSON_Parse(patchedJson.dump().c_str())};

@@ -14,10 +14,10 @@ There are two types of nodes in a Wazuh server cluster: **master nodes** and **w
 
 A Wazuh server cluster can have only one master node. During synchronization, data from the master node always takes precedence over data from worker nodes. This ensures consistency and uniformity across the cluster.
 
-> **Note**  
-> Configuration changes applied to the file  
-> `/var/wazuh-manager/etc/wazuh-manager.conf`  
-> on the master node are **not automatically synchronized** to worker nodes.  
+> **Note**
+> Configuration changes applied to the file
+> `/var/wazuh-manager/etc/wazuh-manager.conf`
+> on the master node are **not automatically synchronized** to worker nodes.
 > You must manually replicate these changes and restart the nodes for them to take effect.
 
 ---
@@ -28,15 +28,11 @@ The master node centralizes coordination and ensures that critical data remains 
 
 - Receiving and managing agent registration and deletion requests
 - Creating and managing shared configuration groups
-- Updating custom rules, decoders, SCA policies, and CDB lists
 
 The following data is synchronized from the master node to worker nodes:
 
 - Agent registration information
 - Shared configuration
-- CDB lists
-- Custom SCA policies
-- Custom decoders and rules
 
 During synchronization, any existing versions of these files on worker nodes are overwritten with the versions from the master node.
 
@@ -61,22 +57,22 @@ The Wazuh server cluster is managed by the `wazuh-clusterd` daemon, which implem
 
 Several internal threads handle different cluster operations:
 
-- **Keep-alive thread**  
+- **Keep-alive thread**
   Maintains persistent connections by sending periodic keep-alive messages from workers to the master.
 
-- **Agent info thread**  
+- **Agent info thread**
   Sends agent operating system details and status information. The master validates agent existence before storing updates to avoid stale data.
 
-- **Agent groups send thread**  
+- **Agent groups send thread**
   Distributes agent group assignment information to worker nodes. This data is calculated by the master when agents connect for the first time.
 
-- **Local agent-groups thread**  
+- **Local agent-groups thread**
   Periodically retrieves agent group information from the database and caches it on the master to avoid redundant queries for each worker.
 
-- **Integrity thread**  
+- **Integrity thread**
   Synchronizes shared files from the master node to worker nodes.
 
-- **Local integrity thread**  
+- **Local integrity thread**
   Periodically calculates file integrity using MD5 checksums and modification timestamps. This avoids recalculating integrity data for each worker connection.
 
 All cluster logs are written to `/var/wazuh-manager/logs/cluster.log`.

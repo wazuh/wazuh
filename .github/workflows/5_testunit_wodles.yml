@@ -1,6 +1,12 @@
 name: 5.X - Wodles - Unit tests
 
 on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - '.github/workflows/5_testunit_wodles.yml'
+      - 'wodles/**'
+      - 'src/Makefile'
   workflow_dispatch:
     inputs:
       generate_report:
@@ -12,14 +18,14 @@ on:
         description: 'QA repository branch'
         required: false
         default: 'main'
-  pull_request:
-    paths:
-      - '.github/workflows/5_testunit_wodles.yml'
-      - 'wodles/**'
-      - 'src/Makefile'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   build:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false

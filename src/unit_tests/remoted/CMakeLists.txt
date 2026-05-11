@@ -12,7 +12,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 list(APPEND remoted_names "test_manager")
 list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_parser_get_agent \
                             -Wl,--wrap,_merror -Wl,--wrap,_merror_exit -Wl,--wrap,popen \
-                            -Wl,--wrap,MergeAppendFile -Wl,--wrap,OS_MoveFile -Wl,--wrap,w_parser_get_group \
+                            -Wl,--wrap,MergeAppendFile -Wl,--wrap,OS_MoveFile \
                             -Wl,--wrap,wurl_request -Wl,--wrap,TestUnmergeFiles -Wl,--wrap,OS_MD5_File \
                             -Wl,--wrap,open_memstream -Wl,--wrap,OS_MD5_Str -Wl,--wrap,fprintf\
                             -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete -Wl,--wrap,OSHash_Get \
@@ -27,7 +27,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_
                             -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek -Wl,--wrap,fgetpos -Wl,--wrap=fgetc \
                             -Wl,--wrap,w_copy_file -Wl,--wrap,OSHash_Begin -Wl,--wrap,OSHash_Begin_ex \
                             -Wl,--wrap,req_save -Wl,--wrap,send_msg -Wl,--wrap,send_msg_with_key_control \
-                            -Wl,--wrap,wdb_update_agent_keepalive -Wl,--wrap,parse_agent_update_msg -Wl,--wrap,req_save \
+                            -Wl,--wrap,wdb_update_agent_keepalive -Wl,--wrap,parse_agent_update_msg -Wl,--wrap,parse_json_keepalive -Wl,--wrap,req_save \
                             -Wl,--wrap,wdb_update_agent_data -Wl,--wrap,linked_queue_push_ex \
                             -Wl,--wrap,wdb_update_agent_connection_status -Wl,--wrap,wdb_update_agent_status_code -Wl,--wrap,SendMSG -Wl,--wrap,StartMQ \
                             -Wl,--wrap,get_ipv4_string -Wl,--wrap,get_ipv6_string \
@@ -56,10 +56,11 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,save_controlmsg -Wl,--wrap,validate_control_msg -Wl,--wrap,sleep -Wl,--wrap,stat -Wl,--wrap,time \
                             -Wl,--wrap,agent_meta_from_agent_info -Wl,--wrap,agent_meta_upsert_locked \
                             -Wl,--wrap,batch_queue_enqueue_ex \
-                            -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock -Wl,--wrap,getDefine_Int \
+                            -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default \
                             -Wl,--wrap,wnotify_add -Wl,--wrap,SendMSG -Wl,--wrap,rem_inc_recv_evt \
                             -Wl,--wrap,OS_DupKeyEntry -Wl,--wrap,OS_FreeKey ${DEBUG_OP_WRAPPERS} \
-                            -Wl,--wrap,router_provider_send -Wl,--wrap,w_query_agentd ${HASH_OP_WRAPPERS}")
+                            -Wl,--wrap,router_provider_send -Wl,--wrap,router_provider_send_sync \
+                            -Wl,--wrap,w_query_agentd ${HASH_OP_WRAPPERS}")
 
 list(APPEND remoted_names "test_save_ctrlmsg_thread")
 list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accept -Wl,--wrap,close \
@@ -84,7 +85,7 @@ list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_IsAllowedID -Wl,--
                             -Wl,--wrap,sendto -Wl,--wrap,fcntl -Wl,--wrap,rem_add_send -Wl,--wrap,w_query_agentd")
 
 list(APPEND remoted_names "test_remote-config")
-list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,ReadConfig -Wl,--wrap,getDefine_Int -Wl,--wrap,get_node_name -Wl,--wrap,get_cluster_name -Wl,--wrap,w_query_agentd")
+list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,ReadConfig -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default -Wl,--wrap,get_node_name -Wl,--wrap,get_cluster_name -Wl,--wrap,w_query_agentd")
 
 list(APPEND remoted_names "test_remote-state")
 list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_qsize -Wl,--wrap,rem_get_tsize \

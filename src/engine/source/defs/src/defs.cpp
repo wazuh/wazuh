@@ -70,7 +70,8 @@ void Definitions::preResolveDefinitions()
     // Cache raw definitions as strings
     for (const auto& [name, value] : defObj)
     {
-        rawDefinitions[name] = value.getString().value_or(value.str());
+        std::string strVal;
+        rawDefinitions[name] = (value.getString(strVal) == json::RetGet::Success) ? strVal : value.str();
     }
 
     std::unordered_set<std::string> visited;

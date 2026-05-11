@@ -3,16 +3,23 @@ name: 5.X - Python static code analysis on PR
 
 on:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_codeanalysis_python_bandit_pr.yml"
       - 'framework/**/*.py'
       - 'api/**/*.py'
       - 'wodles/**/*.py'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   PYTHON_DIRS: "api wodles framework"
 
 jobs:
   bandit-scan:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: wz-linux-amd64
     steps:
       - name: Checkout repo
@@ -30,12 +37,16 @@ jobs:
           pip install bandit
 
       - name: Generate baseline from target branch
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          git fetch origin ${{ github.event.pull_request.base.ref }}:baseline_branch
+          git fetch origin ${BASE_REF}:baseline_branch
           git checkout baseline_branch
           bandit -r ${{ env.PYTHON_DIRS }} -f json -o bandit_baseline.json -x '**/test/**,**/tests/**' --exit-zero
 
       - name: Run bandit scan on PR changes
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
-          git checkout ${{ github.event.pull_request.head.ref }}
+          git checkout ${HEAD_REF}
           bandit -r ${{ env.PYTHON_DIRS }} -x '**/test/**,**/tests/**' --baseline bandit_baseline.json

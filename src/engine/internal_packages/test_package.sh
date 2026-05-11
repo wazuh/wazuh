@@ -5,13 +5,14 @@
 set -uo pipefail  # Removed -e to allow test failures without stopping script
 
 TOOLS=(
-  engine-archiver
+  engine-event-dumper
   engine-helper-test
   engine-test
   engine-public
   engine-private
   engine-it
   engine-router
+  engine-metrics
 )
 
 EXTRA_TESTS=(

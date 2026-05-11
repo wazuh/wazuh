@@ -21,7 +21,6 @@ class WazuhException(Exception):
         900: 'One of the API child processes terminated abruptly. The API process pool is not usable anymore. '
              'Please restart the Wazuh API',
         901: 'API executor subprocess broke. A service restart may be needed',
-        902: 'API Endpoint only available on master node',
 
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',
@@ -29,9 +28,6 @@ class WazuhException(Exception):
                'remediation': 'Please, check `WAZUH_HOME/logs/wazuh-manager.log`, `WAZUH_HOME/logs/cluster.log` and '
                               '`WAZUH_HOME/logs/api.log` to get more information about the error'},
         1001: 'Error importing module',
-        1002: 'Error executing command',
-        1003: 'Command output not in JSON',
-        1004: 'Malformed command output ',
         1005: {'message': 'Error reading file',
                'remediation': 'Please, ensure you have the right file permissions in Wazuh directories'},
         1006: {'message': 'File/directory does not exist or there is a problem with the permissions',
@@ -124,11 +120,6 @@ class WazuhException(Exception):
                'remediation': 'Please, check that the update is correct, there is a problem while reading the results, '
                               'contact us at [official repository](https://github.com/wazuh/wazuh/issues)'
                },
-        1308: {'message': 'Stats file does not exist',
-               'remediation': 'Stats files are usually generated at 12 PM on a daily basis'},
-        1309: 'Statistics file damaged',
-        1310: {'message': 'Invalid agent ID',
-               'remediation': 'This component only exists in real agents'},
 
         # Utils: 1400 - 1499
         1400: 'Invalid offset',
@@ -148,19 +139,8 @@ class WazuhException(Exception):
         1407: 'Query does not match expected format',
         1408: 'Field does not exist',
         1409: 'Invalid query operator',
-        1410: 'Selecting more than one field in distinct mode',
         1411: 'TimeFrame is not valid',
         1412: 'Date filter not valid. Valid formats are YYYY-MM-DD HH:mm:ss, YYYY-MM-DDTHH:mm:ssZ or YYYY-MM-DD',
-
-        # Syscheck/AR: 1600 - 1699
-        1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
-        1650: 'Active response - Command not specified',
-
-        1652: {'message': 'The command used is not defined in the configuration.',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/capabilities/active-response/how-to-configure.html)'
-                              'to get more information'
-               },
 
         # Agents: 1700 - 1799
         1701: {'message': 'Agent does not exist',
@@ -221,7 +201,6 @@ class WazuhException(Exception):
                'remediation': 'Make sure the name is correct and that the node is up. You can check it using '
                               f'`cluster_control -l` (https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/'
                               f'reference/tools/cluster_control.html#get-connected-nodes)'},
-
         1731: {'message': 'Agent is not eligible for the action to be performed',
                'remediation': 'Please, make sure the agent meets the requirements.'},
         1734: {'message': 'Error removing agent from group',
@@ -243,15 +222,13 @@ class WazuhException(Exception):
                },
         1743: 'Error running Wazuh syntax validator',
         1745: "Agent only belongs to 'default' and it cannot be unassigned from this group.",
-        1750: {'message': 'Could not send restart command, active-response is disabled in the agent',
-               'remediation': "You can activate it in agents' `WAZUH_HOME/etc/wazuh-manager.conf`"},
         1751: {'message': 'Could not assign agent to group',
                'remediation': 'Agent already belongs to specified group, please select another agent'},
         1752: {'message': 'Could not force single group for the agent'},
         1757: {'message': 'Error deleting an agent',
                'remediation': 'Please check all data fields and try again'
                },
-        1760: {'message': 'Feature only available for older agent versions, it doesn\'t apply for more recent ones.'
+        1761: {'message': 'Could not send restart/reload command. This operation via API requires agent version 5.0 or higher.'
                },
 
         # Manager:
@@ -259,23 +236,9 @@ class WazuhException(Exception):
                },
         1902: {'message': 'Connection to control socket failed'
                },
-        1905: {'message': 'File could not be updated, it already exists',
-               'remediation': 'Please, provide a different file or set overwrite=True to overwrite actual file'
-               },
-        1906: {'message': 'File does not exist',
-               'remediation': 'Please, provide a different file or make sure provided file path is correct'
-               },
-        1907: {'message': 'File could not be deleted',
-               'remediation': 'Please, ensure you have the right file permissions'
-               },
         1908: {'message': 'Error validating configuration',
                'remediation': 'Please, fix the corrupted files'
                },
-        1910: {'message': 'Content-type header is mandatory',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/api/reference.html#operation/api.controllers.'
-                              f'cluster_controller.put_files_node)'
-                              ' to get more information about how to configure a cluster'},
         1911: {'message': 'Error parsing body request to UTF-8',
                'remediation': 'Please, check if the file content is valid UTF-8'},
         1912: {'message': 'Body is empty',
@@ -287,7 +250,6 @@ class WazuhException(Exception):
         # Database:
         2000: {'message': 'No such database file'},
         2001: {'message': 'Incompatible version of SQLite'},
-        2002: {'message': 'Maximum attempts exceeded for sqlite3 execute'},
         2003: {'message': 'Error in wazuhdb request',
                'remediation': 'Make sure the request is correct'},
         2004: {'message': 'Database query not valid'},
@@ -305,9 +267,6 @@ class WazuhException(Exception):
         2015: {'message': 'Invalid request URL scheme'},
         2016: {'message': 'Invalid unix socket path'},
         2017: {'message': 'Could not retrieve agents synchronization information from wazuh-manager-db'},
-
-        # External services
-        2100: {'message': 'Error in CTI service request'},
 
         # Indexer
         2200: {'message': 'Error connecting to the Indexer service'},
@@ -383,7 +342,8 @@ class WazuhException(Exception):
         3046: "Invalid credentials for the Proxy API",
         3047: "Invalid HAProxy Dataplane API specification configured",
         3048: "Could not detect a valid HAProxy process linked to the Dataplane API",
-        3049: "Unexpected response from HAProxy Dataplane API",
+        3050: "Payload size exceeds maximum allowed limit",
+        3051: "Too many concurrent divided messages",
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
@@ -470,7 +430,6 @@ class WazuhException(Exception):
                'remediation': f'You can enable it using the following endpoint: https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/api/reference.html#operation/api.controllers.'
                               f'security_controller.edit_run_as'},
-        6005: {'message': 'Maximum number of requests per minute reached'},
     }
 
     # Reserve agent upgrade custom errors
@@ -766,3 +725,10 @@ class WazuhNotAcceptable(WazuhError):
     """
     _default_type = "about:blank"
     _default_title = "Not Acceptable"
+
+class IndexerUnavailableError(WazuhIndexerError):
+    """
+    Raised when the indexer is temporarily unavailable after exhausting retries
+    """
+    _default_type = "about:blank"
+    _default_title = "Wazuh Indexer Unavailable"

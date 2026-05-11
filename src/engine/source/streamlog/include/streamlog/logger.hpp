@@ -1,6 +1,7 @@
 #ifndef _STREAMLOG_LOGGER_HPP
 #define _STREAMLOG_LOGGER_HPP
 
+#include <atomic>
 #include <chrono>
 #include <filesystem>
 #include <functional>
@@ -27,11 +28,13 @@
  *
  * ## Concepts
  *
- * - **Channel Registration**
- *   Clients call `registerLog(name, config)` to declare a log stream,
+ * - **Channel Auto-Registration**
+ *   Clients call `ensureAndGetWriter(name, config, ext)` to obtain a writer.
+ *   If the channel doesn't exist yet, it is created on demand with an isolated basePath.
  *
  * - **RotationConfig**
- *   Defines `basePath`, `pattern`, optional `maxSize`, `bufferSize`, and optional compression settings.
+ *   Defines `basePath`, `pattern`, optional `maxSize`, `bufferSize`, optional compression settings,
+ *   and optional retention policies (`maxFiles`, `maxAccumulatedSize`).
  *   E.g.
  *   ```cpp
  *   RotationConfig cfg {
@@ -40,12 +43,14 @@
  *     10*1024*1024,              // rotate after 10 MiB
  *     1<<20,                     // 1 MiB write buffer
  *     true,                      // compress rotated files
- *      5                         // compression level (1-9)
+ *      5,                        // compression level (1-9)
+ *     30,                        // keep at most 30 files in the channel directory
+ *     20ULL*1024*1024*1024       // max 20 GiB accumulated size in the channel directory
  *   };
  *   ```
  *
  * - **Writer Functor**
- *   `auto writer = logManager.getWriter("alerts");`
+ *   `auto writer = logManager.ensureAndGetWriter("standard-wazuh-events-v5", cfg, "json");`
  *   `writer(jsonString);` enqueues one line (JSON string + ‘\n’) to the log.
  *
  * - **Asynchronous I/O**
@@ -63,9 +68,9 @@
  *   The log files are named according to the `pattern` provided in the `RotationConfig`.
  *   Placeholders like `${YYYY}`, `${MMM}`, `${DD}`, and `${name}` are
  *   replaced with the current date and the log channel name.
- *   For example, if the pattern is `"${YYYY}/${MMM}/wazuh-${name}-${DD}.json"`,
- *   and the channel name is `"alerts"`, the log file might be named
- *   `"2025/Jul/wazuh-alerts-01.json"` for logs written on July 1, 2025.
+ *   For example, if the pattern is `"${YYYY}/${MMM}/${name}-${DD}.json"`,
+ *   and the channel name is `"standard-wazuh-events-v5"`, the log file might be named
+ *   `"2026/Mar/standard-wazuh-events-v5-26.json"` for logs written on March 26, 2026.
  *
  * - **Suported Patterns**
  *  The following placeholders are supported in the `pattern`:
@@ -105,8 +110,8 @@
  *  to the current log file.
  *
  * - **Runtime API**
- *   - `updateConfig(name, newConfig)` modifies rotation parameters on the fly.
- *   - `rotateNow(name)` forces immediate rotation.
+ *   - `destroyChannel(name)` destroys a channel (only when no active writers).
+ *   - `requestShutdown()` cancels in-flight compressions and releases all channels.
  *
  * - **Error Handling**
  *   - On I/O failure, writes are discarded and an emergency error log is emitted.
@@ -119,37 +124,6 @@ namespace streamlog
 {
 
 class ChannelHandler; // Forward declaration of ChannelHandler
-
-/**
- * @brief Configuration for a single log channel's rotation and compression policy.
- *
- * A `RotationConfig` is passed to `LogManager::registerLog()` (or `updateConfig()`) and
- * fully describes **where** log files are written, **how** they are named, and **when**
- * they are rotated and optionally compressed.
- *
- * ### Validation & Normalisation
- * `ChannelHandler::validateAndNormalizeConfig()` is called automatically during channel
- * creation. It enforces the following rules:
- * - `basePath` must be an existing, writable, absolute directory.
- * - `pattern` must contain at least one time placeholder unless `maxSize > 0`.
- * - If `maxSize > 0` and the pattern lacks `${counter}`, it is inserted before the last dot.
- * - `bufferSize` of 0 is promoted to the default (1 Mi events).
- * - `maxSize` below 1 MiB is clamped to 1 MiB.
- * - `compressionLevel` must be in [1, 9] when `shouldCompress` is `true`.
- *
- * @see LogManager::registerLog
- * @see ChannelHandler::validateAndNormalizeConfig
- * @ingroup StreamlogModule
- */
-struct RotationConfig
-{
-    std::filesystem::path basePath; ///< Absolute directory where log files are written. Must exist and be writable.
-    std::string pattern;            ///< File-name pattern with placeholders (see namespace docs for the full list).
-    size_t maxSize;              ///< Maximum file size in bytes before size-based rotation. `0` disables size rotation.
-    size_t bufferSize = 1 << 20; ///< Queue capacity in events (default 1 Mi). `0` is promoted to the default.
-    bool shouldCompress {true};  ///< Compress rotated files with gzip when `true`.
-    size_t compressionLevel {5}; ///< Gzip compression level: 1 (fastest) – 9 (best). Only used when `shouldCompress`.
-};
 
 /**
  * @brief Manages multiple named log channels with rotation and asynchronous writes.
@@ -167,9 +141,9 @@ struct RotationConfig
  *
  * ### Thread Safety
  * All public methods are protected by a `shared_mutex`:
- * - Read operations (`hasChannel`, `getConfig`, `getWriter`, `getActiveWritersCount`)
+ * - Read operations (`hasChannel`, `getActiveWritersCount`)
  *   take a shared (read) lock.
- * - Write operations (`registerLog`, `updateConfig`, `destroyChannel`, `cleanup`)
+ * - Write operations (`destroyChannel`, `requestShutdown`, `ensureAndGetWriter`)
  *   take a unique (write) lock.
  *
  * @see RotationConfig
@@ -185,6 +159,8 @@ private:
     mutable std::shared_mutex m_channelsMutex;        ///< Mutex to protect access to m_channels
     std::weak_ptr<scheduler::IScheduler> m_scheduler; ///< Scheduler for compressing log writes
     std::shared_ptr<store::IStore> m_store;           ///< Store for managing last state
+    /** @brief Flag to cancel in-flight compressions on shutdown  */
+    std::shared_ptr<std::atomic<bool>> m_compressionShouldRun {std::make_shared<std::atomic<bool>>(true)};
 
 public:
     LogManager(const std::shared_ptr<store::IStore>& store, std::weak_ptr<scheduler::IScheduler> scheduler = {})
@@ -192,22 +168,6 @@ public:
         , m_channels()
         , m_channelsMutex()
         , m_store(store) {};
-
-    /**
-     * @brief Register a new named log channel.
-     *
-     * Creates a `ChannelHandler`, validates and normalises `cfg`, opens the initial output
-     * file, and creates the hard-link shortcut `<basePath>/<name>.<ext>`. The worker
-     * thread is **not** started until the first `getWriter()` call.
-     *
-     * @param name Unique channel name (alphanumeric, dashes, underscores; max 255 chars).
-     * @param cfg  Rotation and compression configuration.
-     * @param ext  File extension for the "latest" hard-link (e.g. `"json"`, `"log"`).
-     *
-     * @throws std::runtime_error If `name` is already registered, `cfg` is invalid,
-     *         the base path does not exist, or the initial file cannot be opened.
-     */
-    void registerLog(const std::string& name, const RotationConfig& cfg, std::string_view ext);
 
     /**
      * @brief Checks if a log channel with the specified name exists.
@@ -221,42 +181,9 @@ public:
         return m_channels.find(name) != m_channels.end();
     }
 
-    /**
-     * @brief Replace the configuration of an existing log channel.
-     *
-     * The channel is destroyed and re-created with the new configuration. This is only
-     * allowed when there are **no active writers**; otherwise an exception is thrown.
-     *
-     * @param name Existing channel name.
-     * @param cfg  New rotation and compression configuration.
-     * @param ext  File extension for the "latest" hard-link.
-     *
-     * @throws std::runtime_error If the channel does not exist, has active writers, or
-     *         the new configuration is invalid.
-     */
-    void updateConfig(const std::string& name, const RotationConfig& cfg, std::string_view ext);
-
-    /**
-     * @brief Obtain a writer handle for asynchronous log writing.
-     *
-     * The first call for a channel starts its worker thread. The returned handle
-     * is reference-counted; when the last copy is destroyed the active-writer
-     * counter is decremented and the worker thread may be joined.
-     *
-     * @param name A previously registered channel name.
-     * @return Shared pointer to a `WriterEvent` bound to the channel.
-     * @throws std::runtime_error If the channel does not exist or is in error state.
-     */
-    [[nodiscard]] std::shared_ptr<WriterEvent> getWriter(const std::string& name) override;
-
-    /**
-     * @brief Gets the current configuration of a log channel.
-     *
-     * @param name The name of the log channel.
-     * @return The current rotation configuration of the log channel.
-     * @throws std::runtime_error if the log channel does not exist.
-     */
-    const RotationConfig& getConfig(const std::string& name) const;
+    /// @copydoc ILogManager::ensureAndGetWriter
+    [[nodiscard]] std::shared_ptr<WriterEvent>
+    ensureAndGetWriter(const std::string& name, const RotationConfig& cfg, std::string_view ext) override;
 
     /**
      * @brief Get the Active Writers Count for a specific channel.
@@ -300,11 +227,11 @@ public:
     static RotationConfig& isolatedBasePath(const std::string& channelName, RotationConfig& config);
 
     /**
-     * @brief Clean up the logger, releasing all resources.
+     * @brief Request a fast shutdown: cancel in-flight compressions and release all channels.
      *
      * @warning After calling this method, the LogManager instance should not be used again.
      */
-    void cleanup();
+    void requestShutdown();
 
     /**
      * @brief Destructor

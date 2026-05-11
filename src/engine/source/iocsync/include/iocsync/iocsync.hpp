@@ -1,6 +1,7 @@
 #ifndef IOCSYNC_IOCSYNC_HPP
 #define IOCSYNC_IOCSYNC_HPP
 
+#include <atomic>
 #include <mutex>
 #include <shared_mutex>
 #include <string>
@@ -24,14 +25,17 @@ class IocSync : public IIocSync
 
 private:
     std::weak_ptr<wiconnector::IWIndexerConnector> m_indexerPtr; ///< Indexer connector resource
-    std::weak_ptr<ioc::kvdb::IKVDBManager> m_kvdbiocManagerPtr;    ///< KVDB IOC manager
+    std::weak_ptr<ioc::kvdb::IKVDBManager> m_kvdbiocManagerPtr;  ///< KVDB IOC manager
     std::weak_ptr<::store::IStore> m_store;                      ///< Internal config store
 
-    std::size_t m_attempts;    ///< Number of attempts to connect or retry operations before failing
-    std::size_t m_waitSeconds; ///< Seconds to wait between attempts
+    std::size_t m_attempts;         ///< Number of attempts to connect or retry operations before failing
+    std::size_t m_waitSeconds;      ///< Seconds to wait between attempts
+    std::size_t m_iocSyncBatchSize; ///< Number of documents to retrieve per batch from indexer during sync
 
     mutable std::shared_mutex m_mutex; ///< Mutex to protect access to m_databasesState and sync operations
     std::vector<SyncedIOCDatabase> m_databasesState; ///< State of the IOC databases being synchronized
+
+    std::atomic<bool> m_shutdownRequested {false}; ///< Flag to signal graceful shutdown of sync operations
 
     /**
      * @brief Check if IOC data index exists in wazuh-indexer
@@ -81,15 +85,35 @@ private:
 
 public:
     IocSync() = delete;
+
+    /**
+     * @brief Construct a new Ioc Sync object
+     *
+     * @param indexerPtr Pointer to the indexer connector resource, used to retrieve IOC data and hashes from the remote
+     * indexer
+     * @param kvdbiocManagerPtr Pointer to the KVDB IOC manager, used to create and manage IOC databases
+     * @param storePtr Pointer to the internal config store
+     * @param maxRetries Maximum number of attempts to connect or retry operations before failing
+     * @param retryIntervalSeconds Seconds to wait between attempts
+     * @param iocSyncBatchSize Number of documents to retrieve per batch from indexer during sync
+     */
     IocSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPtr,
             const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbiocManagerPtr,
-            const std::shared_ptr<::store::IStore>& storePtr);
+            const std::shared_ptr<::store::IStore>& storePtr,
+            const size_t maxRetries,
+            const size_t retryIntervalSeconds,
+            const size_t iocSyncBatchSize);
     ~IocSync() override;
 
     /**
      * @copydoc IIocSync::synchronize
      */
     void synchronize() override;
+
+    /**
+     * @copydoc IIocSync::requestShutdown
+     */
+    void requestShutdown() override;
 };
 
 } // namespace ioc::sync

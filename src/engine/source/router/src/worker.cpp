@@ -3,7 +3,9 @@
 #include <base/eventParser.hpp>
 #include <base/logging.hpp>
 #include <base/process.hpp>
+#include <base/utils/generator.hpp>
 #include <base/utils/timeUtils.hpp>
+#include <fastmetrics/registry.hpp>
 #include <rawevtindexer/iraweventindexer.hpp>
 
 namespace router
@@ -11,11 +13,13 @@ namespace router
 
 namespace
 {
-std::string makeRawIndexPayload(const IngestEvent& queuedEvent, const std::string& timestamp)
+std::string
+makeRawIndexPayload(const IngestEvent& queuedEvent, const std::string& timestamp, const std::string& eventId)
 {
     json::Json rawDoc(*queuedEvent.first);
     rawDoc.setString(timestamp, "/@timestamp");
     rawDoc.setString(queuedEvent.second, "/event/original");
+    rawDoc.setString(eventId, "/wazuh/event/id");
     return rawDoc.str();
 }
 } // namespace
@@ -36,6 +40,10 @@ void RouterWorker::start()
 
             base::process::setThreadName("ORProd-" + std::to_string(tID));
 
+            // Cache metric pointer before hot path loop (one-time map lookup ~50ns)
+            auto eventsProcessedCounter =
+                fastmetrics::manager().getOrCreateCounter(fastmetrics::names::ROUTER_EVENTS_PROCESSED);
+
             while (m_isRunning)
             {
                 IngestEvent queuedEvent {};
@@ -53,18 +61,24 @@ void RouterWorker::start()
                 try
                 {
                     const auto timestamp = base::utils::time::getCurrentISO8601();
+                    const auto eventId = base::utils::generators::generateUUIDv4();
 
                     // Raw indexing (now throttled by queue drain)
                     if (m_rawIndexer && m_rawIndexer->isEnabled())
                     {
-                        m_rawIndexer->index(makeRawIndexPayload(queuedEvent, timestamp));
+                        m_rawIndexer->index(makeRawIndexPayload(queuedEvent, timestamp, eventId));
                     }
 
                     // Parse + route to pipeline
                     auto event = base::eventParsers::parseLegacyEvent(queuedEvent.second, *queuedEvent.first);
                     event->setString(timestamp, "/@timestamp");
+                    event->setString(eventId, "/wazuh/event/id");
                     m_router->ingest(std::move(event));
-                    // TODO: Log metrics
+
+                    // Track processed events (hot path: direct atomic access ~3ns)
+                    eventsProcessedCounter->add(1);
+                    if (m_epsRate)
+                        m_epsRate->increment();
                 }
                 catch (const std::exception& e)
                 {
@@ -112,6 +126,12 @@ void TesterWorker::start()
                 if (m_tQueue->waitPop(testEvent, fastqueue::WAIT_DEQUEUE_TIMEOUT_USEC) && testEvent != nullptr)
                 {
                     auto& [event, opt, callback] = *testEvent;
+
+                    const auto timestamp = base::utils::time::getCurrentISO8601();
+                    const auto eventId = base::utils::generators::generateUUIDv4();
+                    event->setString(timestamp, "/@timestamp");
+                    event->setString(eventId, "/wazuh/event/id");
+
                     auto output = m_tester->ingestTest(std::move(event), opt);
                     try
                     {

@@ -688,7 +688,7 @@ void audit_read_events(int *audit_sock, atomic_int_t *running) {
             }
             // Send alert
             char msg_alert[512 + 1];
-            snprintf(msg_alert, 512, "ossec: Audit: Connection closed");
+            snprintf(msg_alert, 512, "wazuh: Audit: Connection closed");
             SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
             break;
         }

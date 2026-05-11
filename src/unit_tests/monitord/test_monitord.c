@@ -55,7 +55,6 @@ int setup_monitord(void **state) {
     mond.delete_old_agents = 0;
     mond.day_wait = 0;
     mond.compress = 0;
-    mond.sign = 0;
     mond.monitor_agents = 0;
     mond.keep_log_days = 0;
     mond.rotate_log = 0;
@@ -82,7 +81,6 @@ int teardown_monitord(void **state) {
     mond.delete_old_agents = 0;
     mond.day_wait = 0;
     mond.compress = 0;
-    mond.sign = 0;
     mond.monitor_agents = 0;
     mond.keep_log_days = 0;
     mond.rotate_log = 0;
@@ -317,7 +315,6 @@ void test_getMonitorInternalOptions_success(void **state) {
     // Arbitrary configuration
     mond.day_wait = 2;
     mond.compress = 1;
-    mond.sign = 0;
     mond.monitor_agents = 1;
     mond.keep_log_days = 10;
     mond.rotate_log = 1;
@@ -332,8 +329,6 @@ void test_getMonitorInternalOptions_success(void **state) {
         assert_int_equal(object->valueint, mond.day_wait);
         object = cJSON_GetObjectItem(root->child, "compress");
         assert_int_equal(object->valueint, mond.compress);
-        object = cJSON_GetObjectItem(root->child, "sign");
-        assert_int_equal(object->valueint, mond.sign);
         object = cJSON_GetObjectItem(root->child, "monitor_agents");
         assert_int_equal(object->valueint, mond.monitor_agents);
         object = cJSON_GetObjectItem(root->child, "keep_log_days");
@@ -381,7 +376,7 @@ void test_MonitordConfig_success(void **state) {
     int no_agents = 0;
     short day_wait = -1;
 
-    will_return_count(__wrap_getDefine_Int, 1, -1);
+    will_return_count(__wrap_getDefine_Int_default, 1, -1);
 
     expect_value(__wrap_ReadConfig, modules, CGLOBAL);
     expect_string(__wrap_ReadConfig, cfgfile, cfg);
@@ -393,11 +388,8 @@ void test_MonitordConfig_success(void **state) {
     assert_int_equal(mond.global.agents_disconnection_time, 900);
     assert_int_equal(mond.global.agents_disconnection_alert_time, 0);
 
-    assert_null(mond.agents);
-
     assert_int_equal(mond.day_wait, 1);
     assert_int_equal(mond.compress, 1);
-    assert_int_equal(mond.sign, 1);
     assert_int_equal(mond.monitor_agents, 1);
     assert_int_equal(mond.rotate_log, 1);
     assert_int_equal(mond.keep_log_days, 1);
@@ -411,7 +403,7 @@ void test_MonitordConfig_fail(void **state) {
     int no_agents = 0;
     short day_wait = -1;
 
-    will_return_count(__wrap_getDefine_Int, 1, -1);
+    will_return_count(__wrap_getDefine_Int_default, 1, -1);
 
     expect_value(__wrap_ReadConfig, modules, CGLOBAL);
     expect_string(__wrap_ReadConfig, cfgfile, cfg);

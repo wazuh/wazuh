@@ -11,7 +11,6 @@
 #  cert: "manager.crt"
 #  use_ca: False
 #  ca: "ca.crt"
-#  ssl_protocol: "auto"
 #  ssl_ciphers: ""
 
 # Modify API's intervals (time in seconds)
@@ -55,9 +54,6 @@
 # Uploadable Wazuh configuration sections
 # upload_configuration:
 #   remote_commands:
-#     localfile:
-#       allow: yes
-#       exceptions: []
 #     wodle_command:
 #       allow: yes
 #       exceptions: []

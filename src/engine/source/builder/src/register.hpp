@@ -1,5 +1,5 @@
-#ifndef _BUILDER2_REGISTER_HPP
-#define _BUILDER2_REGISTER_HPP
+#ifndef BUILDER2_REGISTER_HPP
+#define BUILDER2_REGISTER_HPP
 
 #include <memory>
 
@@ -61,8 +61,6 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
                                                      {schemf::runtimeValidation(), builders::opfilter::existsBuilder});
     registry->template add<builders::OpBuilderEntry>(
         "not_exists", {schemf::runtimeValidation(), builders::opfilter::notExistsBuilder});
-    registry->template add<builders::OpBuilderEntry>(
-        "is_test_session", {schemf::runtimeValidation(), builders::opfilter::opBuilderHelperIsTestSession});
     registry->template add<builders::OpBuilderEntry>(
         "array_contains", {schemf::elementValidationToken(), builders::opfilter::opBuilderHelperContains});
     registry->template add<builders::OpBuilderEntry>(
@@ -184,6 +182,11 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
     registry->template add<builders::OpBuilderEntry>(
         "exists_key_in",
         {schemf::JTypeToken::create(json::Json::Type::String), builders::opfilter::opBuilderHelperMatchKey});
+    registry->template add<builders::OpBuilderEntry>(
+        "array_length_eq", {schemf::elementValidationToken(), builders::opfilter::opBuilderHelperArrayLength});
+    registry->template add<builders::OpBuilderEntry>(
+        "index_unclassified_events",
+        {schemf::elementValidationToken(), builders::opfilter::opBuilderHelperIndexUnclassifiedEvents});
 
     // Map builders
     registry->template add<builders::OpBuilderEntry>("map",
@@ -411,8 +414,8 @@ void registerStageBuilders(const std::shared_ptr<Registry>& registry, const Buil
                                                    builders::getParseBuilder(deps.logpar, deps.logparDebugLvl));
     registry->template add<builders::StageBuilder>(syntax::asset::OUTPUTS_KEY, builders::outputsBuilder);
     registry->template add<builders::StageBuilder>(syntax::asset::FIRST_OF_KEY, builders::firstOfBuilder);
-    registry->template add<builders::StageBuilder>(syntax::asset::FILE_OUTPUT_KEY,
-                                                   builders::getFileOutputBuilder(deps.logManager));
+    registry->template add<builders::StageBuilder>(
+        syntax::asset::FILE_OUTPUT_KEY, builders::getFileOutputBuilder(deps.logManager, deps.fileOutputConfig));
     registry->template add<builders::StageBuilder>(syntax::asset::INDEXER_OUTPUT_KEY,
                                                    builders::getIndexerOutputBuilder(deps.iConnector));
 }
@@ -459,4 +462,4 @@ void registerEnrichmentBuilders(const std::shared_ptr<Registry>& registry,
 
 } // namespace builder::detail
 
-#endif // _BUILDER2_REGISTER_HPP
+#endif // BUILDER2_REGISTER_HPP

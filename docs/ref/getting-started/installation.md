@@ -6,9 +6,13 @@ This guide provides instructions for installing Wazuh server and agent component
 
 This section covers single-node and multi-node server installation.
 
+### Download package
+
+Download the Wazuh manager package for your platform and version. See the [Package Download](packages.md#package-download) section for available repositories and download instructions.
+
 ### Installation
 
-Install the Wazuh manager package for your platform:
+Install the downloaded Wazuh manager package for your platform:
 
 **Debian-based platforms:**
 
@@ -192,6 +196,10 @@ List of master node IP addresses for worker nodes to connect to.
 Whether the node is hidden from the cluster. Default: `no`.
 
 ## Agent
+
+### Download package
+
+Download the Wazuh agent package for your platform and version. See the [Package Download](packages.md#package-download) section for available repositories and download instructions.
 
 ### Linux
 

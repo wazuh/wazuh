@@ -52,7 +52,7 @@
   description: Check default state interval
   configuration_parameters:
   metadata:
-    event_monitor: '.*State file updating thread started.*'
+    event_monitor: '.*Agent state cleanup thread started.*'
     state_file_exist: True
     agentd_ends: False
     local_internal_options:

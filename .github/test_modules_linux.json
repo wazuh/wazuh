@@ -1,0 +1,314 @@
+{
+  "modules": [
+    {
+      "name": "agentd",
+      "pytest_target": "test_agentd/",
+      "tiers": ["0 1"],
+      "timeout_minutes": 120,
+      "paths": [
+        ".github/workflows/5_testintegration_linux-integration-tests.yml",
+        ".github/test_modules_linux.json",
+        "src/client-agent/**",
+        "src/config/src/buffer-config.c",
+        "src/config/src/client-config.c",
+        "src/config/include/client-config.h",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_agentd/**"
+      ]
+    },
+    {
+      "name": "aws",
+      "pytest_target": "test_aws/",
+      "tiers": ["0 1"],
+      "timeout_minutes": 120,
+      "setup_aws_credentials": true,
+      "paths": [
+        ".github/workflows/5_testintegration_linux-integration-tests.yml",
+        ".github/test_modules_linux.json",
+        "src/config/src/wmodules-aws.c",
+        "src/wazuh_modules/src/wm_aws.c",
+        "src/wazuh_modules/src/wm_aws.h",
+        "wodles/aws/wazuh_integration.py",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_aws/**"
+      ]
+    },
+    {
+      "name": "aws_parser",
+      "pytest_target": "test_aws/test_parser.py",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/aws_s3.py",
+        "wodles/aws/aws_tools.py"
+      ]
+    },
+    {
+      "name": "aws_bucket_base",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k \"cloudtrail or guardduty or config or alb or clb or nlb or server_access or cisco or vpc or waf or kms or macie or trusted_advisor\"",
+      "tiers": ["0 1"],
+      "timeout_minutes": 120,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/buckets_s3/aws_bucket.py"
+      ]
+    },
+    {
+      "name": "aws_cloudtrail",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k cloudtrail",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/buckets_s3/cloudtrail.py"
+      ]
+    },
+    {
+      "name": "aws_config",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k config",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/buckets_s3/config.py"
+      ]
+    },
+    {
+      "name": "aws_guardduty",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k guardduty",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/buckets_s3/guardduty.py"
+      ]
+    },
+    {
+      "name": "aws_loadbalancers",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k \"alb or clb or nlb\"",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/buckets_s3/load_balancers.py"
+      ]
+    },
+    {
+      "name": "aws_server_access",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k server_access",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/buckets_s3/server_access.py"
+      ]
+    },
+    {
+      "name": "aws_umbrella",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k cisco",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/buckets_s3/umbrella.py"
+      ]
+    },
+    {
+      "name": "aws_vpcflow",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k vpc",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/buckets_s3/vpcflow.py"
+      ]
+    },
+    {
+      "name": "aws_waf",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k waf",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/buckets_s3/waf.py"
+      ]
+    },
+    {
+      "name": "aws_cloudwatch",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k cloudwatch",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/services/cloudwatchlogs.py",
+        "wodles/aws/services/aws_service.py"
+      ]
+    },
+    {
+      "name": "aws_inspector",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k inspector",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/services/inspector.py",
+        "wodles/aws/services/aws_service.py"
+      ]
+    },
+    {
+      "name": "aws_custom_bucket",
+      "pytest_target": "test_aws/test_custom_bucket.py",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/subscribers/**"
+      ]
+    },
+    {
+      "name": "enrollment",
+      "pytest_target": "test_enrollment/",
+      "tiers": ["0 1"],
+      "timeout_minutes": 120,
+      "paths": [
+        ".github/workflows/5_testintegration_linux-integration-tests.yml",
+        ".github/test_modules_linux.json",
+        "src/client-agent/**",
+        "src/config/src/buffer-config.c",
+        "src/config/src/client-config.c",
+        "src/config/include/client-config.h",
+        "src/os_auth/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_enrollment/**"
+      ]
+    },
+    {
+      "name": "execd",
+      "pytest_target": "test_execd/",
+      "tiers": ["0 1"],
+      "timeout_minutes": 120,
+      "paths": [
+        ".github/workflows/5_testintegration_linux-integration-tests.yml",
+        ".github/test_modules_linux.json",
+        "src/config/src/active-response.c",
+        "src/config/include/active-response.h",
+        "src/execd/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_execd/**"
+      ]
+    },
+    {
+      "name": "fim",
+      "pytest_target": "test_fim/",
+      "tiers": ["0", "1"],
+      "timeout_minutes": 120,
+      "pre_install": "sudo apt-get update && sudo apt-get install auditd -y",
+      "paths": [
+        ".github/workflows/5_testintegration_linux-integration-tests.yml",
+        ".github/test_modules_linux.json",
+        "src/config/src/syscheck-config.c",
+        "src/config/include/syscheck-config.h",
+        "src/syscheckd/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_fim/**"
+      ]
+    },
+    {
+      "name": "github",
+      "pytest_target": "test_github/",
+      "tiers": ["0 1"],
+      "timeout_minutes": 120,
+      "paths": [
+        ".github/workflows/5_testintegration_linux-integration-tests.yml",
+        ".github/test_modules_linux.json",
+        "src/config/src/wmodules-github.c",
+        "src/wazuh_modules/src/wm_github.h",
+        "src/wazuh_modules/src/wm_github.c",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_github/**"
+      ]
+    },
+    {
+      "name": "logcollector",
+      "pytest_target": "test_logcollector/",
+      "tiers": ["0 1"],
+      "timeout_minutes": 120,
+      "paths": [
+        ".github/workflows/5_testintegration_linux-integration-tests.yml",
+        ".github/test_modules_linux.json",
+        "src/config/src/localfile-config.c",
+        "src/config/include/localfile-config.h",
+        "src/logcollector/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_logcollector/**"
+      ]
+    },
+    {
+      "name": "office365",
+      "pytest_target": "test_office365/",
+      "tiers": ["0 1"],
+      "timeout_minutes": 120,
+      "paths": [
+        ".github/workflows/5_testintegration_linux-integration-tests.yml",
+        ".github/test_modules_linux.json",
+        "src/config/src/wmodules-office365.c",
+        "src/wazuh_modules/src/wm_office365.h",
+        "src/wazuh_modules/src/wm_office365.c",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_office365/**"
+      ]
+    },
+    {
+      "name": "sca",
+      "pytest_target": "test_sca/",
+      "tiers": ["0 1"],
+      "timeout_minutes": 120,
+      "paths": [
+        ".github/workflows/5_testintegration_linux-integration-tests.yml",
+        ".github/test_modules_linux.json",
+        "src/config/src/wmodules-sca.c",
+        "src/wazuh_modules/src/wm_sca.c",
+        "src/wazuh_modules/src/wm_sca.h",
+        "src/wazuh_modules/sca/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_sca/**"
+      ]
+    },
+    {
+      "name": "syscollector",
+      "pytest_target": "test_syscollector/",
+      "tiers": ["0 1"],
+      "timeout_minutes": 120,
+      "paths": [
+        ".github/workflows/5_testintegration_linux-integration-tests.yml",
+        ".github/test_modules_linux.json",
+        "src/config/src/wmodules-syscollector.c",
+        "src/wazuh_modules/syscollector/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_syscollector/**"
+      ]
+    }
+  ]
+}

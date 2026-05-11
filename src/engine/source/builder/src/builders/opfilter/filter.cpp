@@ -20,20 +20,20 @@ FilterOp filterValue(const Reference& targetField, const Value& value, const std
             targetNotFound,
             valueMissmatch,
             successTrace,
-            runState = buildCtx->runState(),
+            isTestMode = buildCtx->isTestMode(),
             jValue = std::move(jValue)](base::ConstEvent event) -> FilterResult
     {
         if (!event->exists(targetField))
         {
-            RETURN_FAILURE(runState, false, targetNotFound);
+            RETURN_FAILURE(isTestMode, false, targetNotFound);
         }
 
         if (!event->equals(targetField, jValue))
         {
-            RETURN_FAILURE(runState, false, valueMissmatch);
+            RETURN_FAILURE(isTestMode, false, valueMissmatch);
         }
 
-        RETURN_SUCCESS(runState, true, successTrace);
+        RETURN_SUCCESS(isTestMode, true, successTrace);
     };
 }
 
@@ -52,7 +52,7 @@ FilterOp filterReference(const Reference& targetField,
     const auto successTrace = fmt::format("{} -> Success", buildCtx->context().opName);
     return [targetField = targetField.jsonPath(),
             successTrace,
-            runState = buildCtx->runState(),
+            isTestMode = buildCtx->isTestMode(),
             referenceNotFound,
             targetNotFound,
             valueMissmatch,
@@ -60,20 +60,20 @@ FilterOp filterReference(const Reference& targetField,
     {
         if (!event->exists(targetField))
         {
-            RETURN_FAILURE(runState, false, targetNotFound);
+            RETURN_FAILURE(isTestMode, false, targetNotFound);
         }
 
         if (!event->exists(referencePath))
         {
-            RETURN_FAILURE(runState, false, referenceNotFound);
+            RETURN_FAILURE(isTestMode, false, referenceNotFound);
         }
 
         if (!event->equals(targetField, referencePath))
         {
-            RETURN_FAILURE(runState, false, valueMissmatch);
+            RETURN_FAILURE(isTestMode, false, valueMissmatch);
         }
 
-        RETURN_SUCCESS(runState, true, successTrace);
+        RETURN_SUCCESS(isTestMode, true, successTrace);
     };
 }
 } // namespace

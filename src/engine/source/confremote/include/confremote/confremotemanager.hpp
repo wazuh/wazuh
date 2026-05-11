@@ -1,6 +1,7 @@
 #ifndef CONFREMOTE_CONFREMOTEMANAGER_HPP
 #define CONFREMOTE_CONFREMOTEMANAGER_HPP
 
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -33,14 +34,26 @@ public:
      *
      * Loads the last persisted runtime settings from store, registers per-key
      * callbacks, and synchronizes updated values from wazuh-indexer.
+     *
+     * @param indexerConnector Shared pointer to the indexer connector for fetching remote settings.
+     * @param store Shared pointer to the internal store for persisting settings.
+     * @param attempts Number of attempts to connect or retry operations before failing.
+     * @param waitSeconds Seconds to wait between attempts.
      */
     explicit ConfRemoteManager(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerConnector,
-                               const std::shared_ptr<store::IStore>& store);
+                               const std::shared_ptr<store::IStore>& store,
+                               const size_t attempts,
+                               const size_t waitSeconds);
 
     /**
      * @brief Synchronizes runtime settings from wazuh-indexer.
      */
     void synchronize() override;
+
+    /**
+     * @brief Requests graceful shutdown for synchronization operations.
+     */
+    void requestShutdown() override;
 
     /**
      * @brief Registers a callback trigger for a runtime setting key.
@@ -49,12 +62,12 @@ public:
      * otherwise returns the provided default value.
      *
      * @param key Setting key.
-     * @param onConfigChange Callback invoked with the candidate value. Return true to accept/apply it.
+     * @param onConfigChange Callback invoked with the candidate value. Throw to reject and keep current value.
      * @param defaultValue Fallback value returned when no persisted value is available.
      * @return json::Json Persisted value or provided default value.
      */
     json::Json addTrigger(std::string_view key,
-                          std::function<bool(const json::Json&)> onConfigChange,
+                          std::function<void(const json::Json&)> onConfigChange,
                           const json::Json& defaultValue);
 
 private:
@@ -64,7 +77,7 @@ private:
     struct SettingEntry
     {
         std::optional<json::Json> lastConfig;
-        std::function<bool(const json::Json&)> onConfigChange;
+        std::function<void(const json::Json&)> onConfigChange;
     };
 
     void loadSettingsFromStore();
@@ -74,6 +87,7 @@ private:
     std::weak_ptr<store::IStore> m_store;
     mutable std::shared_mutex m_mutex;
     std::unordered_map<std::string, SettingEntry> m_settings;
+    std::atomic<bool> m_shutdownRequested {false};
     std::size_t m_attempts;
     std::size_t m_waitSeconds;
 };

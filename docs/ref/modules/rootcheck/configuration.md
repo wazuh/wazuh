@@ -217,18 +217,6 @@ List of files or directories to ignore during scans (one entry per line).
 </rootcheck>
 ```
 
-### Deprecated Options (No Effect in 5.0)
-
-The following options existed in previous versions but no longer have any effect in Wazuh 5.0:
-
-#### `scanall`
-
-> **Deprecated in 5.0:** This option was used for comprehensive rootkit file scanning, which has been removed.
-
-#### `readall`
-
-> **Deprecated in 5.0:** This option controlled whether rootcheck would read all system files to compare bytes read with file size, which has been removed.
-
 ## Complete Configuration Example
 
 ### Default Configuration

@@ -60,7 +60,7 @@ runInit()
         if [ -d /etc/rc.d/init.d ]; then
             echo " - ${systemis} Redhat Linux."
             echo " - ${modifiedinit}"
-            GenerateService ossec-hids-rh.init > /etc/rc.d/init.d/${service}
+            GenerateService wazuh-rh.init > /etc/rc.d/init.d/${service}
             chmod 755 /etc/rc.d/init.d/${service}
             chown root:$file_permissions /etc/rc.d/init.d/${service}
 
@@ -76,7 +76,7 @@ runInit()
     if [ -r "/etc/gentoo-release" ]; then
         echo " - ${systemis} Gentoo Linux."
         echo " - ${modifiedinit}"
-        GenerateService ossec-hids-gentoo.init > /etc/init.d/${service}
+        GenerateService wazuh-gentoo.init > /etc/init.d/${service}
         chmod 755 /etc/init.d/${service}
         chown root:$file_permissions /etc/init.d/${service}
 
@@ -92,7 +92,7 @@ runInit()
     if [ -r "/etc/SuSE-release" ]; then
         echo " - ${systemis} Suse Linux."
         echo " - ${modifiedinit}"
-        GenerateService ossec-hids-suse.init > /etc/init.d/${service}
+        GenerateService wazuh-suse.init > /etc/init.d/${service}
         chmod 755 /etc/init.d/${service}
         chown root:$file_permissions /etc/init.d/${service}
 
@@ -108,7 +108,7 @@ runInit()
     if [ -r "/etc/slackware-version" ]; then
         echo " - ${systemis} Slackware Linux."
         echo " - ${modifiedinit}"
-        GenerateService ossec-hids.init > /etc/rc.d/rc.${service}
+        GenerateService wazuh.init > /etc/rc.d/rc.${service}
         chmod 755 /etc/rc.d/rc.${service}
         chown root:$file_permissions /etc/rc.d/rc.${service}
 
@@ -156,7 +156,7 @@ runInit()
         elif [ -d "/etc/rc.d/init.d" ]; then
             echo " - ${systemis} Linux (SysV)."
             echo " - ${modifiedinit}"
-            GenerateService ossec-hids.init > /etc/rc.d/init.d/${service}
+            GenerateService wazuh.init > /etc/rc.d/init.d/${service}
             chmod 755 /etc/rc.d/init.d/${service}
             chown root:$file_permissions /etc/rc.d/init.d/${service}
             return 0;
@@ -164,7 +164,7 @@ runInit()
         elif [ -d "/etc/init.d" -a -f "/usr/sbin/update-rc.d" ]; then
             echo " - ${systemis} Debian (Ubuntu or derivative)."
             echo " - ${modifiedinit}"
-            GenerateService ossec-hids-debian.init > /etc/init.d/${service}
+            GenerateService wazuh-debian.init > /etc/init.d/${service}
             chmod +x /etc/init.d/${service}
             chmod go-w /etc/init.d/${service}
             chown root:$file_permissions /etc/init.d/${service}

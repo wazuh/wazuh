@@ -7,9 +7,7 @@
 from time import strftime
 
 from wazuh.core import common
-from wazuh.core.wdb import WazuhDBConnection
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
-from wazuh.core.common import get_installation_uid
 
 """
 Wazuh HIDS Python package
@@ -49,7 +47,6 @@ class Wazuh:
         self.type = 'server'
         self.path = common.WAZUH_PATH
         self.max_agents = 'unlimited'
-        self.openssl_support = 'N/A'
         self.tz_offset = None
         self.tz_name = None
 
@@ -69,7 +66,6 @@ class Wazuh:
                 'version': self.version,
                 'type': self.type,
                 'max_agents': self.max_agents,
-                'openssl_support': self.openssl_support,
                 'tz_offset': self.tz_offset,
                 'tz_name': self.tz_name,
                 }
@@ -78,14 +74,6 @@ class Wazuh:
         """
         Calculates all Wazuh installation metadata
         """
-        # info DB if possible
-        try:
-            wdb_conn = WazuhDBConnection()
-            open_ssl = wdb_conn.execute("global sql SELECT value FROM info WHERE key = 'openssl_support'")[0]['value']
-            self.openssl_support = open_ssl
-        except Exception:
-            self.openssl_support = "N/A"
-
         # Timezone info
         try:
             self.tz_offset = strftime("%z")
@@ -95,7 +83,3 @@ class Wazuh:
             self.tz_name = None
 
         return self.to_dict()
-
-
-def main():
-    print("Wazuh HIDS Library")

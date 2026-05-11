@@ -8,6 +8,7 @@ on:
         required: true
         default: 'main'
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
         - ".github/workflows/5_testintegration_api-tier-0-1.yml"
         - "api/**"
@@ -15,8 +16,13 @@ on:
         - "tests/integration/conftest.py"
         - "tests/integration/test_api/**"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   build:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
@@ -46,23 +52,9 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           echo "USER_DIR=$INSTALLATION_DIR" >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_EMAIL="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SCA="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_WHITE_LIST="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_AUTHD="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_UPDATE_CHECK="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_AUTO_START="y"' >> ./etc/preloaded-vars.conf
+          echo 'USER_AUTO_START="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           sudo sh install.sh
           rm ./etc/preloaded-vars.conf
@@ -75,7 +67,7 @@ jobs:
           sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
             -keyout $INSTALLATION_DIR/etc/certs/manager-key.pem -out $INSTALLATION_DIR/etc/certs/manager.pem \
             -days 1 -subj "/CN=test" 2>/dev/null
-          sudo $INSTALLATION_DIR/bin/wazuh-manager-control restart
+
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |

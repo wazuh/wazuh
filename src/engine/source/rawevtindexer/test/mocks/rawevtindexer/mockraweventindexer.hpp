@@ -16,6 +16,7 @@ public:
     MOCK_METHOD(void, enable, (), (override));
     MOCK_METHOD(void, disable, (), (override));
     MOCK_METHOD(bool, isEnabled, (), (const, override));
+    MOCK_METHOD(void, hotReloadConf, (const json::Json& value), (override));
 };
 } // namespace raweventindexer::mocks
 

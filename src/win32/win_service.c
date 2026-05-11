@@ -81,6 +81,9 @@ int os_stop_service()
             if (ControlService(schService, SERVICE_CONTROL_STOP, &lpServiceStatus)) {
                 rc = 1;
             }
+            else if (GetLastError() == ERROR_SERVICE_NOT_ACTIVE) {
+                rc = -1; /* already stopped — not a real error */
+            }
 
             CloseServiceHandle(schService);
         }
@@ -92,7 +95,9 @@ int os_stop_service()
     * Sleep for a short period of time to avoid possible race-conditions with
     * newer instances of wazuh-agent.
     */
-    Sleep(300); //milliseconds
+    if (rc == 1 || rc == -1) {
+        Sleep(300);
+    }
 
     return (rc);
 }

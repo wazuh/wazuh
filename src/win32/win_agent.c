@@ -34,7 +34,7 @@
 /* Help message */
 void agent_help()
 {
-    printf("\n%s %s %s .\n", __ossec_name, ARGV0, __ossec_version);
+    printf("\n%s %s %s .\n", __wazuh_name, ARGV0, __wazuh_version);
     printf("Available options:\n");
     printf("\t/?                This help message.\n");
     printf("\t-h                This help message.\n");
@@ -51,6 +51,10 @@ int main(int argc, char **argv)
     char mypath[OS_MAXSTR + 1];
     char myfinalpath[OS_MAXSTR + 1];
     char myfile[OS_MAXSTR + 1];
+    DWORD startTime = 0;
+    const DWORD timeoutMs = 30000;           // 30 seconds
+    const DWORD sleepIntervalMs = 500;       // 0.5 seconds
+    const DWORD waitForServiceStopMs = 1000; // 1 second
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -86,6 +90,32 @@ int main(int argc, char **argv)
             return (UninstallService());
         } else if (strcmp(argv[1], "start") == 0) {
             return (local_start());
+        } else if (strcmp(argv[1], "service-restart") == 0) {
+            /* Invoked by control_run_detached() as a detached process.
+             * Sleep briefly so the calling service has time to send its "ok"
+             * response before we stop it, then perform stop + start. */
+            Sleep(waitForServiceStopMs);
+            /* Attempt to send the SERVICE_CONTROL_STOP command.
+             * If this fails, the stop signal was not delivered to the SCM,
+             * so there is no point in waiting for the service to stop. */
+            if (os_stop_service() == 0) {
+                plain_merror("Failure running stop service.");
+                return 1;
+            }
+            /* Wait until the service fully transitions to the STOPPED state. */
+            startTime = GetTickCount();
+            while (CheckServiceRunning()) {
+                if (GetTickCount() - startTime > timeoutMs) {
+                    plain_merror("Failure service did not stop within the expected time.");
+                    return 1;
+                }
+                Sleep(sleepIntervalMs);
+            }
+            if (os_start_service() == 0) {
+                plain_merror("Failure running start service.");
+                return 1;
+            }
+            return 0;
         } else if (strcmp(argv[1], "/?") == 0) {
             agent_help();
         } else if (strcmp(argv[1], "-h") == 0) {

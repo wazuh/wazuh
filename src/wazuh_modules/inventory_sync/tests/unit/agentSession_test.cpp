@@ -605,3 +605,87 @@ TEST_F(AgentSessionTest, Constructor_ValidSize_ModuleCheck)
     ASSERT_NO_THROW(
         { AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher); });
 }
+
+TEST_F(AgentSessionTest, HandleData_ReserializedFromDataBatch)
+{
+    // Simulates what inventorySyncFacade does when handling a DataBatch:
+    // each DataValue is re-serialized as a standalone Message{DataValue} FlatBuffer
+    // and stored via handleData. Verifies the roundtrip preserves seq/session/id.
+    constexpr size_t ITEM_COUNT = 3;
+
+    auto startMsg = createStartMessage(ITEM_COUNT, "001");
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    EXPECT_CALL(mockStore, put(_, _)).Times(static_cast<int>(ITEM_COUNT));
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+
+    // Build a DataBatch containing ITEM_COUNT DataValues
+    flatbuffers::FlatBufferBuilder batchBuilder;
+    std::vector<flatbuffers::Offset<Wazuh::SyncSchema::DataValue>> dvOffsets;
+    for (uint64_t i = 0; i < ITEM_COUNT; ++i)
+    {
+        auto idStr = batchBuilder.CreateString(std::string("id-") + std::to_string(i));
+        auto idxStr = batchBuilder.CreateString("network");
+        std::vector<int8_t> rawData = {static_cast<int8_t>(i), 0x02, 0x03};
+        auto dataVec = batchBuilder.CreateVector(rawData);
+
+        Wazuh::SyncSchema::DataValueBuilder dvBuilder(batchBuilder);
+        dvBuilder.add_seq(i);
+        dvBuilder.add_session(sessionId);
+        dvBuilder.add_id(idStr);
+        dvBuilder.add_index(idxStr);
+        dvBuilder.add_data(dataVec);
+        dvOffsets.push_back(dvBuilder.Finish());
+    }
+    auto valuesVec = batchBuilder.CreateVector(dvOffsets);
+    Wazuh::SyncSchema::DataBatchBuilder dataBatchBuilder(batchBuilder);
+    dataBatchBuilder.add_values(valuesVec);
+    auto batchOffset = dataBatchBuilder.Finish();
+    auto batchMsgOffset =
+        Wazuh::SyncSchema::CreateMessage(batchBuilder, Wazuh::SyncSchema::MessageType_DataBatch, batchOffset.Union());
+    batchBuilder.Finish(batchMsgOffset);
+
+    // Unpack DataBatch and re-serialize each DataValue as a standalone Message{DataValue}
+    auto batchMsg = Wazuh::SyncSchema::GetMessage(batchBuilder.GetBufferPointer());
+    const auto* dataBatch = batchMsg->content_as<Wazuh::SyncSchema::DataBatch>();
+    ASSERT_NE(dataBatch, nullptr);
+    ASSERT_NE(dataBatch->values(), nullptr);
+    ASSERT_EQ(dataBatch->values()->size(), ITEM_COUNT);
+
+    for (const auto* dv : *dataBatch->values())
+    {
+        ASSERT_NE(dv, nullptr);
+        flatbuffers::FlatBufferBuilder dvBuilder;
+        const auto* idRaw = dv->id();
+        const auto* idxRaw = dv->index();
+        const auto* dataRaw = dv->data();
+        auto idStr = dvBuilder.CreateString(idRaw ? idRaw->string_view() : std::string_view {});
+        auto idxStr = dvBuilder.CreateString(idxRaw ? idxRaw->string_view() : std::string_view {});
+        auto dataVec =
+            dataRaw ? dvBuilder.CreateVector(dataRaw->data(), dataRaw->size()) : dvBuilder.CreateVector<int8_t>({});
+
+        Wazuh::SyncSchema::DataValueBuilder dataValueBuilder(dvBuilder);
+        dataValueBuilder.add_seq(dv->seq());
+        dataValueBuilder.add_session(dv->session());
+        dataValueBuilder.add_id(idStr);
+        dataValueBuilder.add_index(idxStr);
+        dataValueBuilder.add_version(dv->version());
+        dataValueBuilder.add_operation(dv->operation());
+        dataValueBuilder.add_data(dataVec);
+        auto dvOffset = dataValueBuilder.Finish();
+
+        auto msgOffset =
+            Wazuh::SyncSchema::CreateMessage(dvBuilder, Wazuh::SyncSchema::MessageType_DataValue, dvOffset.Union());
+        dvBuilder.Finish(msgOffset);
+
+        auto reserializedMsg = Wazuh::SyncSchema::GetMessage(dvBuilder.GetBufferPointer());
+        auto reserialized = reserializedMsg->content_as<Wazuh::SyncSchema::DataValue>();
+        ASSERT_NE(reserialized, nullptr);
+        EXPECT_EQ(reserialized->seq(), dv->seq());
+        EXPECT_EQ(reserialized->session(), sessionId);
+
+        ASSERT_NO_THROW({ session.handleData(reserialized, dvBuilder.GetBufferPointer(), dvBuilder.GetSize()); });
+    }
+}

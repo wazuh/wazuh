@@ -239,7 +239,7 @@ else()
 endif()
 
 # syscheck.c tests
-set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int -Wl,--wrap,wfopen \
+set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default -Wl,--wrap,wfopen \
                          -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
                          -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                          -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
@@ -405,6 +405,23 @@ if(NOT ${TARGET} STREQUAL "winagent")
   target_include_directories(test_check_rc_sys PRIVATE ${SRC_FOLDER}/rootcheck/include)
   target_link_libraries(test_check_rc_sys SYSCHECK_O ${TEST_DEPS} "${CHECK_RC_SYS_FLAGS}")
   add_test(NAME test_check_rc_sys COMMAND test_check_rc_sys)
+
+  set(COMMON_FLAGS "-Wl,--wrap,wopendir \
+                    -Wl,--wrap,closedir \
+                    -Wl,--wrap,w_stat \
+                    -Wl,--wrap,waccess \
+                    -Wl,--wrap,wfopen \
+                    -Wl,--wrap,fclose \
+                    -Wl,--wrap,OS_Regex \
+                    -Wl,--wrap,OS_Match2 \
+                    -Wl,--wrap,OSList_GetFirstNode \
+                    -Wl,--wrap,OSList_GetNextNode \
+                    ${DEBUG_OP_WRAPPERS}")
+
+  add_executable(test_common test_common.c)
+  target_include_directories(test_common PRIVATE ${SRC_FOLDER}/rootcheck/include)
+  target_link_libraries(test_common SYSCHECK_O ${TEST_DEPS} "${COMMON_FLAGS}")
+  add_test(NAME test_common COMMAND test_common)
 endif()
 
 # fim_scan.c tests

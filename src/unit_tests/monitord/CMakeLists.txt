@@ -7,7 +7,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 list(APPEND monitord_tests_names "test_monitord")
 list(APPEND monitord_tests_flags "-Wl,--wrap,time\
-                                  -Wl,--wrap,getDefine_Int -Wl,--wrap,ReadConfig\
+                                  -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default -Wl,--wrap,ReadConfig\
                                   ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND monitord_tests_names "test_monitor_actions")

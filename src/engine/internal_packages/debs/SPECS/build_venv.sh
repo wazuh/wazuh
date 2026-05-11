@@ -61,6 +61,11 @@ python -m pip install requests
 python -m pip install graphviz
 python -m pip install argcomplete
 
+# Flask + SocketIO (engine-metrics dashboard)
+python -m pip install flask==3.0.0
+python -m pip install flask-socketio==5.3.5
+python -m pip install "python-socketio[client]==5.10.0"
+
 # --- Helper: install a local package if pyproject/setup is present -------------
 # Arguments:
 #   $1 -> path to the local package directory
@@ -99,13 +104,16 @@ install_local "$BASE/tools/api-communication" "api-communication" "--no-build-is
 # 2) engine-suite
 install_local "$BASE/tools/engine-suite" "engine-suite"
 
-# 3) engine-test-utils
+# 3) engine-metrics
+install_local "$BASE/tools/engine-metrics" "engine-metrics"
+
+# 4) engine-test-utils
 install_local "$BASE/test/engine-test-utils" "engine-test-utils"
 
-# 4) helper_tests
+# 5) helper_tests
 install_local "$BASE/test/helper_tests/engine-helper-test" "helper_tests"
 
-# 5) integration_tests
+# 6) integration_tests
 install_local "$BASE/test/integration_tests/engine-it" "integration_tests"
 
 echo "[i] Environment is ready at: ${VENV_DIR}"

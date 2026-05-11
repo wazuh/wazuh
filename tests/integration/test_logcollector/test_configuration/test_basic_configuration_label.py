@@ -64,6 +64,8 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.constants.daemons import LOGCOLLECTOR_DAEMON
+from wazuh_testing.modules.agentd import configuration as agentd_configuration
+from wazuh_testing.modules.logcollector import configuration as logcollector_configuration
 from wazuh_testing.modules.logcollector import patterns
 from wazuh_testing.modules.logcollector import utils
 from wazuh_testing.tools.monitors import file_monitor
@@ -97,9 +99,14 @@ test_configuration = configuration.load_configuration_template(config_path, test
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
+local_internal_options = {logcollector_configuration.LOGCOLLECTOR_DEBUG: '2'}
+if sys.platform == WINDOWS:
+    local_internal_options.update({agentd_configuration.AGENTD_WINDOWS_DEBUG: '2'})
+
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_configuration_label(test_configuration, test_metadata, set_wazuh_configuration, daemons_handler_module, stop_logcollector):
+def test_configuration_label(test_configuration, test_metadata, configure_local_internal_options, set_wazuh_configuration,
+                             daemons_handler_module, stop_logcollector):
     '''
     description: Check if the 'wazuh-logcollector' daemon can monitor log files configured to use labels.
                  For this purpose, the test will configure the logcollector to use labels, setting them

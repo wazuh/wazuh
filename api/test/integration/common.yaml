@@ -4,11 +4,12 @@ name: Common test information
 description: File with information such as global variables or repeteable stages to use with integration tests
 
 # Common variables
-# port: 55000 -> Master, 55001 -> Worker1, 55002 -> Worker2
+# port: 55000 -> Master, 55001 -> Worker1, 55002 -> Worker2, 55010 -> HAProxy LB
 variables:
   protocol: https
   host: localhost
-  port: 55010
+  balanced_port: 55010
+  master_port: 55000
   user: testing
   user_auth_context: wazuh-wui
   pass: wazuh
@@ -31,30 +32,15 @@ variables:
 
   file_xml:
     <agent_config>
-    <labels>
-    <label key="aws.instance-id">i-052a1838c</label>
-    <label key="aws.sec-group">sg-1103</label>
-    <label key="network.ip">172.17.0.0</label>
-    <label key="network.mac">02:42:ac:11:00:02</label>
-    <label key="installation" hidden="yes">January 1st, 2017</label>
-    </labels>
     </agent_config>
 
   invalid_file_xml:
     agent_config>
-    <labels>
-    <label key="aws.instance-id">i-052a1838c</label>
-    <label key="aws.sec-group">sg-1103</label>
-    <label key="network.ip">172.17.0.0</label>
-    <label key="network.mac">02:42:ac:11:00:02</label>
-    <label key="installation" hidden="yes">January 1st, 2017</label>
-    </labels>
+    <localfile>
+    <location>/var/log/test.log</location>
+    <log_format>syslog</log_format>
+    </localfile>
     </agent_config>
-
-  empty_file_xml:
-    <?xml version="1.0" ?>
-    <metadata>
-    </metadata>
 
   wrong_file_xml:
     <agent_confi>
@@ -123,35 +109,6 @@ variables:
       <global>
         <agents_disconnection_time>20s</agents_disconnection_time>
         <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
-        <update_check>no</update_check>
-      </global>
-
-      <logging>
-        <log_format>plain</log_format>
-      </logging>
-
-      <remote>
-        <port>1514</port>
-        <protocol>tcp</protocol>
-      </remote>
-
-      <syscheck>
-        <disabled>yes</disabled>
-      </syscheck>
-
-      <vulnerability-detection>
-        <enabled>no</enabled>
-        <feed-update-interval>60m</feed-update-interval>
-      </vulnerability-detection>
-    </wazuh_config>
-
-  valid_wazuh_conf_with_update_check_enabled:
-    <wazuh_config>
-      <global>
-        <agents_disconnection_time>20s</agents_disconnection_time>
-        <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
-        <update_check>yes</update_check>
-        <cti-url>http://cti:4041</cti-url>
       </global>
 
       <logging>
@@ -184,54 +141,4 @@ variables:
       </vulnerability-detection>
 
       <remote>
-    </wazuh_config>
-
-  invalid_wazuh_xml:
-    <wazuh_config>
-      <global>
-        <agents_disconnection_time>20s</agents_disconnection_time>
-        <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
-        <update_checkkk>no</update_checkkk>
-      </global>
-
-      <logging>
-        <log_format>plain</log_format>
-      </logging>
-
-      <remote>
-        <port>1514</port>
-        <protocol>tcp</protocol>
-      </remote>
-
-      <syscheck>
-        <disabled>yes</disabled>
-      </syscheck>
-    </wazuh_config>
-
-  wazuh_conf_with_invalid_cti_url:
-    <wazuh_config>
-      <global>
-        <agents_disconnection_time>20s</agents_disconnection_time>
-        <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
-        <update_check>yes</update_check>
-        <cti-url>http://localhost:4041</cti-url>
-      </global>
-
-      <logging>
-        <log_format>plain</log_format>
-      </logging>
-
-      <remote>
-        <port>1514</port>
-        <protocol>tcp</protocol>
-      </remote>
-
-      <syscheck>
-        <disabled>yes</disabled>
-      </syscheck>
-
-      <vulnerability-detection>
-        <enabled>no</enabled>
-        <feed-update-interval>60m</feed-update-interval>
-      </vulnerability-detection>
     </wazuh_config>

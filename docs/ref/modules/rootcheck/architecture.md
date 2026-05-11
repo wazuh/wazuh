@@ -258,7 +258,6 @@ ossec: output: 'rootcheck' message: <detection_details>
 - Alerts processed through rules engine
 - Logged to `alerts.log` and `alerts.json`
 - Not stored in wazuh-manager-db
-- No `/rootcheck` API data persistence
 
 ## Performance Characteristics
 
@@ -412,7 +411,6 @@ Rootcheck alerts are processed by rules in the 510-550 range:
 
 - Existing rootcheck queries against API return limited data
 - Historical rootcheck data not migrated
-- Configuration remains compatible (deprecated options ignored)
 
 ## Internal Options
 

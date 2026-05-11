@@ -15,8 +15,8 @@ builder::builders::Context& AssetBuilder::getContext() const
 
 base::Name AssetBuilder::getName(const json::Json& value) const
 {
-    auto resp = value.getString();
-    if (!resp)
+    std::string respStr;
+    if (value.getString(respStr) != json::RetGet::Success)
     {
         throw std::runtime_error(
             fmt::format("Expected '{}' to be a 'string' but got '{}'", syntax::asset::NAME_KEY, value.typeName()));
@@ -24,11 +24,11 @@ base::Name AssetBuilder::getName(const json::Json& value) const
     base::Name name;
     try
     {
-        name = base::Name(resp.value());
+        name = base::Name(respStr);
     }
     catch (const std::exception& e)
     {
-        throw std::runtime_error(fmt::format("Invalid name '{}': {}", resp.value(), e.what()));
+        throw std::runtime_error(fmt::format("Invalid name '{}': {}", respStr, e.what()));
     }
 
     return name;
@@ -46,8 +46,8 @@ std::vector<base::Name> AssetBuilder::getParents(const json::Json& value) const
     for (const auto& jParent : resp.value())
     {
         // Check for string
-        auto parentStr = jParent.getString();
-        if (!parentStr)
+        std::string parentStr;
+        if (jParent.getString(parentStr) != json::RetGet::Success)
         {
             throw std::runtime_error(
                 fmt::format("Found non-string value '{}' in '{}'", jParent.typeName(), syntax::asset::PARENTS_KEY));
@@ -57,15 +57,12 @@ std::vector<base::Name> AssetBuilder::getParents(const json::Json& value) const
         base::Name parentName;
         try
         {
-            parentName = base::Name(parentStr.value());
+            parentName = base::Name(parentStr);
         }
         catch (const std::exception& e)
         {
-            throw std::runtime_error(fmt::format("Invalid parent name '{}': {}", parentStr.value(), e.what()));
+            throw std::runtime_error(fmt::format("Invalid parent name '{}': {}", parentStr, e.what()));
         }
-
-        // TODO : check parent is the same type as the asset??
-        // if (parentName.parts().front() != name.parts().front()) -> error
 
         // Check for duplicates
         if (std::find(parents.begin(), parents.end(), parentName) != parents.end())
@@ -169,7 +166,13 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
                     auto arr = value.getArray().value();
                     for (size_t i = 0; i < arr.size(); i++)
                     {
-                        auto parseValue = arr[i].getString().value();
+                        std::string parseValue;
+                        if (arr[i].getString(parseValue) != json::RetGet::Success)
+                        {
+                            throw std::runtime_error(
+                                fmt::format("Stage parse: Expected array of strings but found value of type '{}'",
+                                            arr[i].typeName()));
+                        }
                         tmp.setString(parseValue, json::Json::formatJsonPath(targetField, true));
                         stageParseValue.appendJson(tmp);
                     }
@@ -214,8 +217,8 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
     if (isDecoder)
     {
         // Inject integration.categories from context (non-invasive, independent of "normalize")
-        const auto integrationName = newContext->context().integrationName;
-        const auto integrationCategory = newContext->context().integrationCategory;
+        const auto& integrationName = newContext->context().integration.name;
+        const auto& integrationCategory = newContext->context().integration.category;
 
         auto automapping = base::Term<base::EngineOp>::create(
             "Automapping",

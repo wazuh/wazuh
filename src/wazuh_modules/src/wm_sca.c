@@ -397,21 +397,21 @@ static wm_sca_startup_action_t wm_sca_get_startup_action(bool* first_sync_comple
         return SCA_STARTUP_ACTION_WAIT;
     }
 
-    mdebug1("SCA initial scan data is not ready yet. First synchronization will wait for scan data.");
+    mdebug1("SCA initial scan has not completed yet. First synchronization will wait for a full scan.");
 
     while (sca_sync_module_running && !g_shutting_down)
     {
-        int version = 0;
+        int scan_completed = 0;
 
-        if (!wm_sca_query_int("{\"command\":\"get_version\"}", "version", &version))
+        if (!wm_sca_query_int("{\"command\":\"get_scan_completed\"}", "scan_completed", &scan_completed))
         {
-            mdebug1("Failed to detect initial SCA scan data. Keeping startup synchronization delay.");
+            mdebug1("Failed to detect initial SCA scan completion. Keeping startup synchronization delay.");
             return SCA_STARTUP_ACTION_WAIT;
         }
 
-        if (version > 0)
+        if (scan_completed > 0)
         {
-            mdebug1("Initial SCA scan data is ready. Triggering first synchronization without startup delay.");
+            mdebug1("Initial SCA scan completed. Triggering first synchronization.");
             return SCA_STARTUP_ACTION_IMMEDIATE;
         }
 
@@ -425,11 +425,11 @@ static void wm_handle_sca_disable_and_notify_data_clean()
 {
     if (w_is_file(SCA_DB_DISK_PATH))
     {
-        minfo("SCA is disabled, SCA database file exists. Proceeding with data clean notification.");
+        mdebug1("SCA is disabled, SCA database file exists. Proceeding with data clean notification.");
     }
     else
     {
-        minfo("SCA is disabled, SCA database file does not exist. Skipping data clean notification.");
+        mdebug1("SCA is disabled, SCA database file does not exist. Skipping data clean notification.");
         return;
     }
     // Load the SCA module first
@@ -509,10 +509,10 @@ void * wm_sca_main(wm_sca_t * data) {
 #endif
     // If module is disabled, exit
     if (data->enabled) {
-        minfo("SCA module enabled.");
+        mdebug1("SCA module enabled.");
     } else {
         wm_handle_sca_disable_and_notify_data_clean();
-        minfo("SCA module disabled. Exiting.");
+        mdebug1("SCA module disabled. Exiting.");
         pthread_exit(NULL);
     }
 
@@ -580,8 +580,8 @@ void * wm_sca_main(wm_sca_t * data) {
         pthread_exit(NULL);
     }
 
-    data->commands_timeout = getDefine_Int("sca", "commands_timeout", 1, 300);
-    data->remote_commands = getDefine_Int("sca", "remote_commands", 0, 1);
+    data->commands_timeout = getDefine_Int_default("sca", "commands_timeout", 1, 300, 30);
+    data->remote_commands = getDefine_Int_default("sca", "remote_commands", 0, 1, 0);
 
     if (sca_init_ptr) {
         sca_init_ptr();
@@ -612,7 +612,7 @@ void * wm_sca_main(wm_sca_t * data) {
         sca_set_sync_limit_ptr(sync_limit);
     }
 
-    minfo("Starting SCA module...");
+    mdebug1("Starting SCA module...");
 
     wm_sca_start(data);
 
@@ -634,7 +634,8 @@ static int wm_sca_start(wm_sca_t *sca) {
     g_shutting_down = 0;
     atomic_int_set(&g_n_msg_sent, 0);
 
-    minfo("SCA message queue initialized successfully.");
+    mdebug1("SCA message queue initialized successfully.");
+    minfo(STARTUP_MSG, (int)getpid());
 
     if (sca->max_eps) {
         g_max_eps = sca->max_eps;

@@ -11,7 +11,7 @@ def _get_release_architecture(system: str, architecture: str) -> str | None:
         system: (str): for linux packages, packages manager system:
             [rpm, deb].
         architecture: (str): package architecture one of following:
-            [amd64, intel64, arm64, armhf, i386, ppc64].
+            [amd64, intel64, arm64].
     Returns:
         arch: (str): Released package arc.
     """
@@ -19,8 +19,6 @@ def _get_release_architecture(system: str, architecture: str) -> str | None:
     match system:
         case "deb":
             match architecture:
-                case "ppc64":
-                    arch = "ppc64el"
                 case "x86_64":
                     arch = "amd64"
                 case "aarch64":
@@ -34,12 +32,6 @@ def _get_release_architecture(system: str, architecture: str) -> str | None:
                     arch = "x86_64"
                 case "arm64":
                     arch = "aarch64"
-                case "armhf":
-                    arch = "armv7hl"
-                case "ppc64":
-                    arch = "ppc64le"
-                case "i386":
-                    arch = "i386"
                 case _:
                     arch = architecture
             return arch
@@ -58,7 +50,7 @@ def get_release_package_url(component: str, os: str, system: str,
             [rpm, deb].
         wazuh_version: (str): version of the package we are looking for.
         architecture: (str): package architecture one of following:
-            [amd64, intel64, arm64, armhf, i386, ppc64, sparc].
+            [amd64, intel64, arm64].
     Returns:
         url: (str): Released package url.
     """
@@ -126,7 +118,7 @@ def main():
                         required=True, help="Wazuh component version.")
     parser.add_argument("-a", "--architecture", type=str, action="store",
                         required=False, choices = ["amd64", "intel64", "arm64",
-                        "armhf", "i386", "ppc64", "sparc", ""],
+                        ""],
                         help="Wazuh component architecture")
 
     args = parser.parse_args()

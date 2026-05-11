@@ -21,36 +21,6 @@ def test_wazuh_db_query_task__init__():
         mock_wdb_backend.assert_called_with(query_format='task')
 
 
-@patch('wazuh.core.wazuh_socket.WazuhSocket._connect')
-@patch('wazuh.core.wazuh_socket.WazuhSocket.receive', return_value=b'"{\'test\':\'test\'}"')
-@patch('wazuh.core.wazuh_socket.WazuhSocket.send')
-@patch('wazuh.core.wazuh_socket.WazuhSocket.close')
-def test_send_to_tasks_socket(mock_close, mock_send, mock_receive, mock_connect):
-    """Check if the function send_to_tasks_socket works properly.
-
-    Parameters
-    ----------
-        mock_send: MagicMock
-            Mock of WazuhSocket's method send.
-        mock_connect: MagicMock
-            Mock of WazuhSocket's method connect.
-        mock_close: MagicMock
-            Mock of WazuhSocket's method close.
-        mock_receive: MagicMock
-            Mock of WazuhSocket's method receive.
-    """
-    command = {'test': 'test'}
-    send_to_tasks_socket(command)
-    mock_send.assert_called_with(b'{"test": "test"}')
-    mock_close.assert_called_once()
-
-
-def test_send_to_tasks_socket_ko():
-    """Check if the function send_to_tasks_socket raises an exception when there's an error with the socket."""
-    with pytest.raises(WazuhInternalError, match=".* 1121 .*"):
-        send_to_tasks_socket({'test': 'test'})
-
-
 def test_wazuh_db_query_task__final_query():
     """Check if WazuhDBQueryTask's method _final_query works properly."""
     with patch('wazuh.core.utils.WazuhDBBackend.__init__', return_value=None), \

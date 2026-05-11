@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from wazuh.core.exception import WazuhClusterError
 import ast
 import asyncio
 import base64
@@ -17,16 +18,17 @@ import struct
 import time
 import traceback
 from importlib import import_module
-from typing import Tuple, Dict, Callable, List, Iterable, Union, Any
+from typing import Any, Callable, Coroutine, Dict, Iterable, List, Tuple, Union
 from uuid import uuid4
 
 import cryptography.fernet
 
 import wazuh.core.results as wresults
 from wazuh import Wazuh
-from wazuh.core import common, exception
-from wazuh.core import utils
-from wazuh.core.cluster import cluster, utils as cluster_utils
+from wazuh.core import common, exception, utils
+from wazuh.core.cluster import cluster
+from wazuh.core.cluster import utils as cluster_utils
+from wazuh.core.indexer.indexer import get_indexer_client
 from wazuh.core.wdb import AsyncWazuhDBConnection, WazuhDBConnection
 from wazuh.core.wdb_http import get_wdb_http_client
 
@@ -37,6 +39,12 @@ _ALLOWED_PREFIXES = (
 )
 
 ALLOWED_CALLABLES_PACKAGES = ["wazuh", "api"]
+
+MAX_TOTAL_SIZE = 268435456  # maximum total size of the message to receive in bytes (256 MiB)
+
+MAX_CHUNK_SIZE = 10485760  # maximum chunk size of the message to receive in bytes (10 MiB)
+
+MAX_CONCURRENT_DIVIDED_MSGS = 10  # maximum number of concurrent divided messages being received. This is used to mitigate DoS attacks with many divided messages.
 
 class Response:
     """
@@ -82,6 +90,8 @@ class InBuffer:
         total : int
             Size of the payload buffer in bytes.
         """
+        if total > MAX_TOTAL_SIZE:
+            raise exception.WazuhClusterError(3050, extra_message=str(total))
         self.payload = bytearray(total)  # array to store the message's data
         self.total = total  # total of bytes to receive
         self.received = 0  # number of received bytes
@@ -113,6 +123,8 @@ class InBuffer:
 
         # Command is the first 11 B of command without dashes (in case they were added)
         self.cmd = cmd[:-1].split(b' ')[0]
+        if self.total > MAX_TOTAL_SIZE :
+            raise exception.WazuhClusterError(3050, extra_message=f"Header total size out of range: {self.total}")
         self.payload = bytearray(self.total)
         return header[header_size:]
 
@@ -782,35 +794,58 @@ class Handler(asyncio.Protocol):
             Received data.
         """
         self.in_buffer += message
-        for command, counter, payload, flag_divided in self.get_messages():
-            # If the message is a divided one
-            if flag_divided == InBuffer.divide_flag:
-                try:
-                    self.div_msg_box[counter] = self.div_msg_box[counter] + payload
-                except KeyError:
-                    self.div_msg_box[counter] = payload
-            else:
-                # If the message is the last part of a division, join it.
-                if counter in self.div_msg_box:
-                    payload = self.div_msg_box[counter] + payload
-                    del self.div_msg_box[counter]
-                    # Decrypt the joined payload
-                    try:
-                        payload = self.my_fernet.decrypt(bytes(payload)) if self.my_fernet is not \
-                                                                            None else bytes(payload)
-                    except cryptography.fernet.InvalidToken:
-                        raise exception.WazuhClusterError(3025)
+        try:
+            for command, counter, payload, flag_divided in self.get_messages():
+                # If the message is a divided one
+                if flag_divided == InBuffer.divide_flag:
+                    # Check number of concurrent divided messages
+                    if len(self.div_msg_box) >= MAX_CONCURRENT_DIVIDED_MSGS and counter not in self.div_msg_box:
+                        raise WazuhClusterError(3051, extra_message=str(len(self.div_msg_box)))
 
-                # If the message is the response of a previously sent request.
-                if counter in self.box:
-                    if self.box[counter] is None:
-                        # Delete entry for previously expired request, just in case is received too late.
-                        del self.box[counter]
-                    else:
-                        self.box[counter].write(self.process_response(command, payload))
-                # If the message is not related to any previously sent request.
+                    current_size = len(self.div_msg_box.get(counter, b''))
+                    if current_size + len(payload) > MAX_TOTAL_SIZE:
+                        raise WazuhClusterError(3050, extra_message=str(current_size + len(payload)))
+                    try:
+                        self.div_msg_box[counter] = self.div_msg_box[counter] + payload
+                    except KeyError:
+                        self.div_msg_box[counter] = payload
+
                 else:
-                    self.dispatch(command, counter, payload)
+                    # If the message is the last part of a division, join it.
+                    if counter in self.div_msg_box:
+                        payload = self.div_msg_box[counter] + payload
+                        del self.div_msg_box[counter]
+                        # Decrypt the joined payload
+                        try:
+                            payload = self.my_fernet.decrypt(bytes(payload)) if self.my_fernet else bytes(payload)
+                        except cryptography.fernet.InvalidToken:
+                            raise exception.WazuhClusterError(3025)
+                    # If the message is the response of a previously sent request.
+                    if counter in self.box:
+                        if self.box[counter] is None:
+                            # Delete entry for previously expired request, just in case is received too late.
+                            del self.box[counter]
+                        else:
+                            # If the message is not related to any previously sent request.
+                            self.box[counter].write(self.process_response(command, payload))
+                    else:
+                        self.dispatch(command, counter, payload)
+
+        except exception.WazuhClusterError as e:
+            if e.code == 3050:
+                self.logger.warning(
+                    f"[Cluster] Payload too large. Possible DoS attempt. "
+                    f"Details: {e.message} bytes received, but the maximum allowed is {MAX_TOTAL_SIZE} bytes. "
+                    f"Closing connection."
+                )
+                if self.transport:
+                    self.close()
+                return
+            else:
+                raise e
+
+        except Exception:
+            self.logger.exception("[Cluster] Unexpected error in data_received")
 
     def dispatch(self, command: bytes, counter: int, payload: bytes) -> None:
         """Process a received message and send a response.
@@ -1058,8 +1093,14 @@ class Handler(asyncio.Protocol):
         bytes
             String ID.
         """
+        requested_size = int(data)
+
+        if requested_size > MAX_TOTAL_SIZE:
+            return b"error", b"Requested size exceeds maximum allowed limit"
+
         name = str(random.SystemRandom().randint(0, 2 ** 32 - 1)).encode()
-        self.in_str[name] = InBuffer(total=int(data))
+        self.in_str[name] = InBuffer(total=requested_size)
+
         return b"ok", name
 
     def str_upd(self, data: bytes) -> Tuple[bytes, bytes]:
@@ -1916,3 +1957,108 @@ def as_wazuh_object(dct: Dict):
         raise exception.WazuhInternalError(1000,
                                            extra_message=f"Wazuh object cannot be decoded from JSON {dct}",
                                            cmd_error=True)
+class IndexerTaskManager:
+    """
+    Mixin class for managing the lifecycle of indexer-dependent tasks.
+
+    Supervises a set of asyncio tasks that require the Wazuh Indexer to be
+    available, starting them when the indexer is reachable and stopping them
+    with exponential backoff when it is not.
+
+    This class is intended to be used as a mixin alongside classes that already
+    expose a ``self.logger`` attribute (e.g. ``Master``, ``Worker``). If no
+    logger is found on the instance, a fallback logger named ``'wazuh'`` is
+    created automatically.
+    """
+
+    def __init__(self):
+        """Class constructor.
+
+        Initializes the internal task registry and sets up a fallback logger.
+        """
+        self.indexer_tasks: Dict[str, asyncio.Task] = {}
+        self.logger = logging.getLogger('wazuh')
+
+    async def manage_indexer_tasks(
+        self,
+        task_factories: List[Callable[[], Coroutine[Any, Any, None]]],
+        base_delay: int = 300,
+        max_delay: int = 3600
+    ) -> None:
+        """Manage the lifecycle of indexer-dependent asyncio tasks.
+
+        Runs an infinite loop that periodically checks indexer availability.
+        When the indexer is reachable and no tasks are running, it creates and
+        starts a task for each factory in ``task_factories``. If the indexer
+        becomes unavailable, any active tasks are cancelled and an exponential
+        backoff strategy is applied before the next retry.
+
+        Parameters
+        ----------
+        task_factories : list of callable
+            Zero-argument callables, each returning a coroutine to be wrapped
+            in an ``asyncio.Task``.
+        base_delay : int, optional
+            Seconds to wait between availability checks when the indexer is
+            reachable, by default 300.
+        max_delay : int, optional
+            Upper bound in seconds for the exponential backoff delay applied
+            when the indexer is unavailable, by default 3600.
+
+        Returns
+        -------
+        None
+        """
+        delay = base_delay
+        active_tasks: List[asyncio.Task] = []
+
+        while True:
+            try:
+                self.logger.info("Checking if the indexer is available to initiate indexer tasks.")
+                async with get_indexer_client() as client:
+                    await client.healthcheck()
+
+                is_running = any(not t.done() for t in active_tasks) if active_tasks else False
+
+                if not is_running:
+                    if active_tasks:
+                        await self._stop_indexer_tasks(active_tasks)
+                    self.logger.info("Indexer is available. Starting indexer tasks.")
+                    active_tasks = [asyncio.create_task(factory()) for factory in task_factories]
+                    self.indexer_tasks = {
+                        getattr(f, '__name__', repr(f)): t
+                        for f, t in zip(task_factories, active_tasks)
+                    }
+
+                delay = base_delay
+                await asyncio.sleep(base_delay)
+
+            except Exception as e:
+                self.logger.warning(f"Indexer is not configured or unavailable: {e}.")
+
+                if active_tasks:
+                    await self._stop_indexer_tasks(active_tasks)
+                    active_tasks = []
+                    self.indexer_tasks = {}
+
+                self.logger.info(f"Retrying indexer check in {delay} seconds.")
+                await asyncio.sleep(delay)
+                delay = min(delay * 2, max_delay)
+
+    async def _stop_indexer_tasks(self, tasks: List[asyncio.Task]) -> None:
+        """Cancel and await all active indexer tasks.
+
+        Parameters
+        ----------
+        tasks : list of asyncio.Task
+            Tasks to cancel and clean up.
+
+        Returns
+        -------
+        None
+        """
+        for t in tasks:
+            if not t.done():
+                t.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)

@@ -23,6 +23,7 @@
 #ifdef WIN32
 #define get_agent_ip_legacy_win32 wrap_get_agent_ip_legacy_win32
 #define getDefine_Int __wrap_getDefine_Int
+#define getDefine_Int_default __wrap_getDefine_Int_default
 #endif
 #else
 #define STATIC static
@@ -61,7 +62,11 @@ log_builder_t * log_builder_init(bool update) {
     os_calloc(1, sizeof(log_builder_t), builder);
 
     {
-        g_ip_update_interval = getDefine_Int("logcollector","ip_update_interval", 0, 3600);
+#ifdef CLIENT
+        g_ip_update_interval = getDefine_Int("logcollector", "ip_update_interval", 0, 3600);
+#else
+        g_ip_update_interval = getDefine_Int_default("logcollector", "ip_update_interval", 0, 3600, 60);
+#endif
         rwlock_init(&builder->rwlock);
     }
 

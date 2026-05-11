@@ -13,6 +13,7 @@
 #define _SHARED_DEFS_H
 
 #include "conditionSync.hpp"
+#include "json.hpp"
 #include <atomic>
 #include <functional>
 #include <string>
@@ -22,6 +23,6 @@
 #include "loggerHelper.h"
 
 using FileProcessingResult = std::tuple<int, std::string, bool>;
-using FileProcessingCallback = std::function<FileProcessingResult(const std::string& message)>;
+using FileProcessingCallback = std::function<FileProcessingResult(nlohmann::json message)>;
 
 #endif // _SHARED_DEFS_H

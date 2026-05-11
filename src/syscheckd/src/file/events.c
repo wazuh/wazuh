@@ -9,6 +9,19 @@
 
 #include "syscheck.h"
 
+#ifdef WIN32
+#define gmtime_r(x, y) (gmtime_s(y, x) == 0 ? (y) : NULL)
+#endif
+
+bool fim_epoch_to_iso8601(time_t timestamp, char *buffer, size_t buffer_size) {
+    struct tm tm_info;
+    if (gmtime_r(&timestamp, &tm_info) &&
+        strftime(buffer, buffer_size, "%Y-%m-%dT%H:%M:%S.000Z", &tm_info) > 0) {
+        return true;
+    }
+    return false;
+}
+
 void fim_calculate_dbsync_difference(const directory_t *configuration,
                                      const cJSON* old_data,
                                      cJSON* changed_attributes,
@@ -116,7 +129,17 @@ void fim_calculate_dbsync_difference(const directory_t *configuration,
 
     if (configuration->options & CHECK_MTIME) {
         if (aux = cJSON_GetObjectItem(old_data, "mtime"), aux != NULL) {
-            cJSON_AddNumberToObject(old_attributes, "mtime", aux->valueint);
+            if (cJSON_IsString(aux)) {
+                cJSON_AddStringToObject(old_attributes, "mtime", cJSON_GetStringValue(aux));
+            } else if (cJSON_IsNumber(aux)) {
+                char mtime_str[25];
+                time_t t = (time_t)cJSON_GetNumberValue(aux);
+                if (fim_epoch_to_iso8601(t, mtime_str, sizeof(mtime_str))) {
+                    cJSON_AddStringToObject(old_attributes, "mtime", mtime_str);
+                } else {
+                    cJSON_AddNumberToObject(old_attributes, "mtime", cJSON_GetNumberValue(aux));
+                }
+            }
             cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("file.mtime"));
         }
     }
@@ -239,7 +262,12 @@ cJSON * fim_attributes_json(const cJSON *dbsync_event, const fim_file_data *data
         }
 
         if (configuration->options & CHECK_MTIME) {
-            cJSON_AddNumberToObject(attributes, "mtime", data->mtime);
+            char mtime_str[25];
+            if (fim_epoch_to_iso8601((time_t)data->mtime, mtime_str, sizeof(mtime_str))) {
+                cJSON_AddStringToObject(attributes, "mtime", mtime_str);
+            } else {
+                cJSON_AddNumberToObject(attributes, "mtime", data->mtime);
+            }
         }
 
         bool has_hash = false;
@@ -375,7 +403,17 @@ cJSON * fim_attributes_json(const cJSON *dbsync_event, const fim_file_data *data
 
         if (configuration->options & CHECK_MTIME) {
             if (aux = cJSON_GetObjectItem(dbsync_event, "mtime"), aux != NULL) {
-                cJSON_AddNumberToObject(attributes, "mtime", aux->valueint);
+                if (cJSON_IsString(aux)) {
+                    cJSON_AddStringToObject(attributes, "mtime", cJSON_GetStringValue(aux));
+                } else if (cJSON_IsNumber(aux)) {
+                    char mtime_str[25];
+                    time_t t = (time_t)cJSON_GetNumberValue(aux);
+                    if (fim_epoch_to_iso8601(t, mtime_str, sizeof(mtime_str))) {
+                        cJSON_AddStringToObject(attributes, "mtime", mtime_str);
+                    } else {
+                        cJSON_AddNumberToObject(attributes, "mtime", cJSON_GetNumberValue(aux));
+                    }
+                }
             }
         }
 

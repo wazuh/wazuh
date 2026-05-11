@@ -1,6 +1,6 @@
 - name: REMOVE_USER_ROLE_RELATION
   description: Check if the resources exist after removing their relation
-  configuration_parameters:
+  configuration_parameters: null
   metadata:
     resources:
       user_ids:
@@ -16,7 +16,7 @@
 
 - name: REMOVE_ROLE_POLICY_RELATION
   description: Check if the resources exist after removing their relation
-  configuration_parameters:
+  configuration_parameters: null
   metadata:
     resources:
       role_ids:
@@ -37,7 +37,7 @@
 
 - name: REMOVE_ROLE_RULE_RELATION
   description: Check if the resources exist after removing their relation
-  configuration_parameters:
+  configuration_parameters: null
   metadata:
     resources:
       role_ids:

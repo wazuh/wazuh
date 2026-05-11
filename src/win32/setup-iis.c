@@ -21,7 +21,7 @@
 #include "os_regex.h"
 
 
-#define OSSECCONF   "ossec.conf"
+#define WAZUHCONF   "ossec.conf"
 #define OS_MAXSTR   1024
 
 #define localtime_r(x, y) localtime_s(y, x)
@@ -101,7 +101,7 @@ int config_dir(char *name, char *dir, char *vfile)
         return (0);
     }
 
-    if (dogrep(OSSECCONF, vfile)) {
+    if (dogrep(WAZUHCONF, vfile)) {
         printf("%s: Log file already configured: '%s'.\n",
                name, vfile);
         return (1);
@@ -114,7 +114,7 @@ int config_dir(char *name, char *dir, char *vfile)
     printf("%s: https://documentation.wazuh.com\n\n", name);
 
     /* Add IIS config */
-    fp = wfopen(OSSECCONF, "a");
+    fp = wfopen(WAZUHCONF, "a");
     if (!fp) {
         printf("%s: Unable to edit configuration file.\n", name);
         return (1);
@@ -149,7 +149,7 @@ int config_iis(char *name, char *file, char *vfile)
 
     total++;
 
-    if (dogrep(OSSECCONF, vfile)) {
+    if (dogrep(WAZUHCONF, vfile)) {
         printf("%s: Log file already configured: '%s'.\n",
                name, vfile);
         return (1);
@@ -158,7 +158,7 @@ int config_iis(char *name, char *file, char *vfile)
     printf("%s: Adding IIS log file to be monitored: '%s'.\n", name, vfile);
 
     /* Add iis config config */
-    fp = wfopen(OSSECCONF, "a");
+    fp = wfopen(WAZUHCONF, "a");
     if (!fp) {
         printf("%s: Unable to edit configuration file.\n", name);
         return (1);
@@ -195,9 +195,9 @@ int main(int argc, char **argv)
         }
     }
 
-    /* Check if ossec was installed already */
-    if (!fileexist(OSSECCONF)) {
-        printf("%s: Unable to find ossec config: '%s'", argv[0], OSSECCONF);
+    /* Check if wazuh was installed already */
+    if (!fileexist(WAZUHCONF)) {
+        printf("%s: Unable to find wazuh config: '%s'", argv[0], WAZUHCONF);
         exit(0);
     }
 

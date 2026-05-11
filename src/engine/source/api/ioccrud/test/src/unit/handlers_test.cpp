@@ -500,10 +500,12 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_Success_UpdatesHashAndClearsError)
         .WillOnce(
             [&testHash](const base::Name& name, const store::Doc& doc)
             {
-                auto hash = doc.getString("/hash");
-                auto lastError = doc.getString("/lastError");
-                EXPECT_EQ(hash.value_or(""), testHash);
-                EXPECT_EQ(lastError.value_or("not_empty"), "");
+                std::string hashStr;
+                std::string lastErrorStr;
+                doc.getString(hashStr, "/hash");
+                doc.getString(lastErrorStr, "/lastError");
+                EXPECT_EQ(hashStr, testHash);
+                EXPECT_EQ(lastErrorStr, "");
                 return store::mocks::storeOk();
             });
 
@@ -530,10 +532,12 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_FileNotFound_StoresError)
         .WillOnce(
             [&existingHash](const base::Name& name, const store::Doc& doc)
             {
-                auto hash = doc.getString("/hash");
-                auto lastError = doc.getString("/lastError");
-                EXPECT_EQ(hash.value_or(""), existingHash); // Hash should be preserved
-                EXPECT_THAT(lastError.value_or(""), HasSubstr("Failed to open file"));
+                std::string hashStr;
+                std::string lastErrorStr;
+                doc.getString(hashStr, "/hash");
+                doc.getString(lastErrorStr, "/lastError");
+                EXPECT_EQ(hashStr, existingHash); // Hash should be preserved
+                EXPECT_THAT(lastErrorStr, HasSubstr("Failed to open file"));
                 return store::mocks::storeOk();
             });
 
@@ -565,11 +569,13 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_InvalidJSON_StoresError)
         .WillOnce(
             [&testHash](const base::Name& name, const store::Doc& doc)
             {
-                auto hash = doc.getString("/hash");
-                auto lastError = doc.getString("/lastError");
-                EXPECT_EQ(hash.value_or(""), testHash); // Hash is updated even with skipped lines
+                std::string hashStr;
+                std::string lastErrorStr;
+                doc.getString(hashStr, "/hash");
+                doc.getString(lastErrorStr, "/lastError");
+                EXPECT_EQ(hashStr, testHash); // Hash is updated even with skipped lines
                 // LastError should contain message about skipped lines
-                EXPECT_THAT(lastError.value_or(""), HasSubstr("skipped"));
+                EXPECT_THAT(lastErrorStr, HasSubstr("skipped"));
                 return store::mocks::storeOk();
             });
 
@@ -596,10 +602,12 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_KVDBNotAvailable_StoresError)
         .WillOnce(
             [&existingHash](const base::Name& name, const store::Doc& doc)
             {
-                auto hash = doc.getString("/hash");
-                auto lastError = doc.getString("/lastError");
-                EXPECT_EQ(hash.value_or(""), existingHash); // Hash should be preserved
-                EXPECT_THAT(lastError.value_or(""), HasSubstr("KVDB Manager is not available"));
+                std::string hashStr;
+                std::string lastErrorStr;
+                doc.getString(hashStr, "/hash");
+                doc.getString(lastErrorStr, "/lastError");
+                EXPECT_EQ(hashStr, existingHash); // Hash should be preserved
+                EXPECT_THAT(lastErrorStr, HasSubstr("KVDB Manager is not available"));
                 return store::mocks::storeOk();
             });
 
@@ -744,10 +752,12 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_MixedValidInvalid_ProcessesValid)
         .WillOnce(
             [&testHash](const base::Name& name, const store::Doc& doc)
             {
-                auto hash = doc.getString("/hash");
-                auto lastError = doc.getString("/lastError");
-                EXPECT_EQ(hash.value_or(""), testHash);
-                EXPECT_THAT(lastError.value_or(""), HasSubstr("skipped"));
+                std::string hashStr;
+                std::string lastErrorStr;
+                doc.getString(hashStr, "/hash");
+                doc.getString(lastErrorStr, "/lastError");
+                EXPECT_EQ(hashStr, testHash);
+                EXPECT_THAT(lastErrorStr, HasSubstr("skipped"));
                 return store::mocks::storeOk();
             });
 
@@ -799,10 +809,12 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_MultipleTypes_CreatesMultipleDatabases
         .WillOnce(
             [&testHash](const base::Name& name, const store::Doc& doc)
             {
-                auto hash = doc.getString("/hash");
-                auto lastError = doc.getString("/lastError");
-                EXPECT_EQ(hash.value_or(""), testHash);
-                EXPECT_EQ(lastError.value_or("not_empty"), "");
+                std::string hashStr;
+                std::string lastErrorStr;
+                doc.getString(hashStr, "/hash");
+                doc.getString(lastErrorStr, "/lastError");
+                EXPECT_EQ(hashStr, testHash);
+                EXPECT_EQ(lastErrorStr, "");
                 return store::mocks::storeOk();
             });
 
@@ -834,8 +846,9 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_ProductionDbNotExist_CleansUpTemp)
         .WillOnce(
             [&testHash](const base::Name& name, const store::Doc& doc)
             {
-                auto hash = doc.getString("/hash");
-                EXPECT_EQ(hash.value_or(""), testHash);
+                std::string hashStr;
+                doc.getString(hashStr, "/hash");
+                EXPECT_EQ(hashStr, testHash);
                 return store::mocks::storeOk();
             });
 
@@ -869,10 +882,12 @@ TEST_F(SyncIocHandlerTest, PerformIOCSync_EmptyFile_UpdatesHashWithoutError)
         .WillOnce(
             [&testHash](const base::Name& name, const store::Doc& doc)
             {
-                auto hash = doc.getString("/hash");
-                auto lastError = doc.getString("/lastError");
-                EXPECT_EQ(hash.value_or(""), testHash);
-                EXPECT_EQ(lastError.value_or("not_empty"), "");
+                std::string hashStr;
+                std::string lastErrorStr;
+                doc.getString(hashStr, "/hash");
+                doc.getString(lastErrorStr, "/lastError");
+                EXPECT_EQ(hashStr, testHash);
+                EXPECT_EQ(lastErrorStr, "");
                 return store::mocks::storeOk();
             });
 

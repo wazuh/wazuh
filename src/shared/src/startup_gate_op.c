@@ -122,7 +122,7 @@ void startup_gate_wait_for_ready(const char *module_name) {
         got_status = startup_gate_query_status(&ready, reason, sizeof(reason));
         if (got_status && ready) {
             if (waiting_logged) {
-                minfo("Startup hash gate released for '%s' (%s).", name, reason[0] ? reason : "unknown");
+                mdebug1("Startup hash gate released for '%s' (%s).", name, reason[0] ? reason : "unknown");
             }
             return;
         }
@@ -134,10 +134,10 @@ void startup_gate_wait_for_ready(const char *module_name) {
 
         if (should_log) {
             if (got_status) {
-                minfo("Startup hash gate is blocking '%s' (%s).", name, reason[0] ? reason : "unknown");
+                mdebug1("Startup hash gate is blocking '%s' (%s).", name, reason[0] ? reason : "unknown");
                 snprintf(last_reason, sizeof(last_reason), "%s", reason);
             } else {
-                minfo("Startup hash gate is blocking '%s' (waiting for agentd startup gate status).", name);
+                mdebug1("Startup hash gate is blocking '%s' (waiting for agentd startup gate status).", name);
                 last_reason[0] = '\0';
             }
         }

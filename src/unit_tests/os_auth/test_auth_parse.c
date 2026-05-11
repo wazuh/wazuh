@@ -36,7 +36,7 @@ void set_expected_log (mocked_log* log) {
             expect_string(__wrap__mwarn, formatted_msg, log->mwarn);
     }
     if (log->minfo) {
-            expect_string(__wrap__minfo, formatted_msg, log->minfo);
+            expect_string(__wrap__mdebug1, formatted_msg, log->minfo);
     }
     if (log->mdebug) {
             expect_string(__wrap__mdebug1, formatted_msg, log->mdebug);
@@ -89,7 +89,7 @@ parse_evaluator parse_values_default_cfg [] = {
     { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3 K:'ABC123'", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated IP field"}, {"Unterminated IP field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
     { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3' K:'ABC123", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated key field"}, {"Unterminated key field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
     { "OSSEC A:'agent3' V:'v4.5.0", "192.0.0.1", NULL,                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated version field"},    {"Unterminated version field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", NULL} },
-    { "OSSEC A:'agent4' V:'v4.6.0'", "192.0.0.1", NULL,                 {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Agent version must be lower or equal to manager version"},          {"Incompatible version for new agent from: 192.0.0.1", NULL, "Received request for a new agent (agent4) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent4' V:'v5.6.0'", "192.0.0.1", NULL,                 {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Agent version must be lower or equal to manager version"},          {"Incompatible version for new agent from: 192.0.0.1", NULL, "Received request for a new agent (agent4) from: 192.0.0.1", NULL} },
 
     {0}
 };

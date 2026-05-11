@@ -245,6 +245,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                             OS_ClearNode(children);
                             return OS_INVALID;
                         }
+
                     } else if (!strcmp(children[j]->element, XML_ACCESS_KEY)) {
                         if (strlen(children[j]->content) != 0) {
                             mwarn(DEPRECATED_MESSAGE, children[j]->element, WM_AWS_CONTEXT.name, "4.4", AUTHENTICATION_OPTIONS_URL);

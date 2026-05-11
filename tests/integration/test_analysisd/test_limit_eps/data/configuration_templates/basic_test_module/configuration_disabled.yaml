@@ -1,5 +1,0 @@
-- sections:
-    - section: vulnerability-detection
-      elements:
-        - enabled:
-            value: 'no'

@@ -7,6 +7,7 @@
 
 #include <base/json.hpp>
 #include <base/logging.hpp>
+#include <fastmetrics/registry.hpp>
 
 #include <router/orchestrator.hpp>
 
@@ -84,10 +85,15 @@ base::OptError loadTesterOnWorker(const std::vector<EntryConverter>& entries,
 }
 
 base::OptError loadRouterOnWoker(const std::vector<EntryConverter>& entries,
-                                 const std::shared_ptr<IWorker<IRouter>>& worker)
+                                 const std::shared_ptr<IWorker<IRouter>>& worker,
+                                 const std::atomic<bool>& isShutdown)
 {
     for (const auto& entry : entries)
     {
+        if (isShutdown.load(std::memory_order_acquire))
+        {
+            return base::Error {"Loading aborted: orchestrator shutting down"};
+        }
         auto err = worker->get()->addEntry(prod::EntryPost(entry), /*ignoreFail=*/true);
         if (err)
         {
@@ -148,9 +154,9 @@ std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::ISt
     const auto jsonEntry = store->readDoc(tableName);
     if (base::isError(jsonEntry))
     {
-        LOG_INFO("Router: {} table not found in store. Creating new table: {}",
-                 tableName.toStr(),
-                 base::getError(jsonEntry).message);
+        LOG_DEBUG("Router: {} table not found in store. Creating new table: {}",
+                  tableName.toStr(),
+                  base::getError(jsonEntry).message);
         store->createDoc(tableName, json::Json {"[]"});
         return {};
     }
@@ -158,8 +164,9 @@ std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::ISt
     auto json = base::getResponse(jsonEntry);
     if (json.isEmpty())
     {
-        LOG_WARNING("Router: {} table is empty", tableName.toStr());
+        LOG_DEBUG("Router: {} table is empty", tableName.toStr());
     }
+    // Create empty table.
 
     return EntryConverter::fromJsonArray(json);
 }
@@ -167,7 +174,7 @@ std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::ISt
 base::OptError Orchestrator::initRouterWorker(const std::shared_ptr<IWorker<IRouter>>& worker,
                                               const std::vector<EntryConverter>& routerEntries)
 {
-    auto error = loadRouterOnWoker(routerEntries, worker);
+    auto error = loadRouterOnWoker(routerEntries, worker, m_isShutdown);
 
     if (error)
     {
@@ -193,7 +200,18 @@ base::OptError Orchestrator::initTesterWorker(const std::shared_ptr<IWorker<ITes
 // Public
 void Orchestrator::postEvent(IngestEvent&& event)
 {
-    if (m_eventQueue->push(std::move(event)))
+    const auto pushed = m_eventQueue->push(std::move(event));
+    const auto nowUsec =
+        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())
+            .count();
+
+    const auto queueSize = m_eventQueue->size();
+    const auto freeSlots = m_eventQueue->aproxFreeSlots();
+    const auto totalSlots = queueSize + freeSlots;
+
+    const bool isContended = totalSlots > 0 && (queueSize * 100) >= (totalSlots * CONTENTION_LOAD_PERCENT_THRESHOLD);
+
+    if (!isContended)
     {
         if (m_eventQueueContended.exchange(false, std::memory_order_relaxed))
         {
@@ -204,11 +222,14 @@ void Orchestrator::postEvent(IngestEvent&& event)
         return;
     }
 
-    const auto nowUsec =
-        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())
-            .count();
-
-    m_droppedEventsInContention.fetch_add(1, std::memory_order_relaxed);
+    if (!pushed)
+    {
+        m_droppedEventsInContention.fetch_add(1, std::memory_order_relaxed);
+        if (m_droppedInputCounter)
+        {
+            m_droppedInputCounter->add(1);
+        }
+    }
 
     bool expected = false;
     if (m_eventQueueContended.compare_exchange_strong(
@@ -233,11 +254,12 @@ void Orchestrator::postEvent(IngestEvent&& event)
 
     m_lastContentionWarningUsec.store(nowUsec, std::memory_order_relaxed);
 
-    LOG_WARNING("Event queue has remained contended for at least 60 seconds. Dropped events during contention: {}. "
+    LOG_WARNING("Event queue has remained contended for at least {} seconds. Dropped events during contention: {}. "
                 "Approx queue size: {}, approx free slots: {}.",
+                CONTENTION_WARNING_INTERVAL_SEC,
                 m_droppedEventsInContention.load(std::memory_order_relaxed),
-                m_eventQueue->size(),
-                m_eventQueue->aproxFreeSlots());
+                queueSize,
+                freeSlots);
 }
 
 void Orchestrator::Options::validate() const
@@ -275,6 +297,46 @@ Orchestrator::Orchestrator(const Options& opt)
     m_testTimeout = opt.m_testTimeout;
     m_wStore = opt.m_wStore;
 
+    std::weak_ptr<decltype(m_eventQueue)::element_type> wEventQueue = m_eventQueue;
+    FASTMETRICS_PULL(size_t,
+                     fastmetrics::names::ROUTER_QUEUE_SIZE,
+                     [wEventQueue]()
+                     {
+                         auto eventQueue = wEventQueue.lock();
+                         return eventQueue ? eventQueue->size() : 0;
+                     });
+
+    FASTMETRICS_PULL(double,
+                     fastmetrics::names::ROUTER_QUEUE_USAGE_PERCENT,
+                     [wEventQueue]()
+                     {
+                         auto eventQueue = wEventQueue.lock();
+                         if (!eventQueue)
+                             return 0.0;
+                         auto size = eventQueue->size();
+                         auto freeSlots = eventQueue->aproxFreeSlots();
+                         auto total = size + freeSlots;
+                         return total > 0 ? (static_cast<double>(size) * 100.0 / total) : 0.0;
+                     });
+
+    // Total events dropped at input (never resets, unlike contention window counter)
+    m_droppedInputCounter = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::ROUTER_EVENTS_DROPPED);
+
+    // EPS sliding-window rates (1m, 5m, 30m) derived from the processed counter
+    m_epsRate = std::make_shared<fastmetrics::SlidingWindowRate>();
+
+    FASTMETRICS_PULL(double,
+                     fastmetrics::names::ROUTER_EPS_1M,
+                     [epsRate = m_epsRate]() { return epsRate->getRate(std::chrono::seconds(60)); });
+
+    FASTMETRICS_PULL(double,
+                     fastmetrics::names::ROUTER_EPS_5M,
+                     [epsRate = m_epsRate]() { return epsRate->getRate(std::chrono::seconds(300)); });
+
+    FASTMETRICS_PULL(double,
+                     fastmetrics::names::ROUTER_EPS_30M,
+                     [epsRate = m_epsRate]() { return epsRate->getRate(std::chrono::seconds(1800)); });
+
     // Get the initial states from the store
     auto store = m_wStore.lock();
     if (!store)
@@ -293,18 +355,26 @@ Orchestrator::Orchestrator(const Options& opt)
         {
             numThreads = 1; // Fallback if hardware_concurrency cannot be determined
         }
-        LOG_INFO("No thread count provided. Using {} worker threads based on system hardware.", numThreads);
+        LOG_DEBUG("No thread count provided. Using {} worker threads based on system hardware.", numThreads);
     }
 
-    for (std::size_t i = 0; i < numThreads; ++i)
+    m_targetWorkerCount = numThreads;
+    m_workerFactory = [this]()
     {
-        auto r = std::make_shared<router::RouterWorker>(m_envBuilder, m_eventQueue, m_rawIndexer);
+        return std::make_shared<RouterWorker>(m_envBuilder, m_eventQueue, m_rawIndexer, m_epsRate);
+    };
+
+    {
+        auto r = std::make_shared<router::RouterWorker>(m_envBuilder, m_eventQueue, m_rawIndexer, m_epsRate);
         if (auto err = initRouterWorker(r, routerEntries))
         {
-            LOG_ERROR("Router: Cannot load initial states from store: {}", err->message);
+            LOG_ERROR("Router: Cannot load initial states from store for primary worker: {}", err->message);
         }
         m_routerWorkers.emplace_back(std::move(r));
     }
+    LOG_DEBUG("Router: Primary worker initialized. Target pool size: {} (expansion requires explicit call to "
+              "expandWorkerPool).",
+              m_targetWorkerCount);
 
     {
         auto t = std::make_shared<router::TesterWorker>(m_envBuilder, m_testQueue);
@@ -340,10 +410,11 @@ void Orchestrator::stop()
     m_testerWorker->stop();
 }
 
-void Orchestrator::cleanup()
+void Orchestrator::requestShutdown()
 {
-    this->stop();
+    LOG_INFO("[Orchestrator] Shutdown requested, stopping workers...");
     m_isShutdown.store(true, std::memory_order_release);
+    this->stop();
     std::unique_lock lock {m_syncMutex};
     m_routerWorkers.clear();
     m_testerWorker.reset();
@@ -351,6 +422,78 @@ void Orchestrator::cleanup()
     m_eventQueue.reset();
     m_testQueue.reset();
     m_wStore.reset();
+    m_workerFactory = nullptr;
+}
+
+/**************************************************************************
+ * Dynamic pool expansion
+ *************************************************************************/
+void Orchestrator::expandWorkerPool()
+{
+    {
+        std::unique_lock lock {m_syncMutex};
+        if (m_isShutdown.load(std::memory_order_acquire))
+            return;
+        if (m_routerWorkers.empty())
+        {
+            LOG_WARNING("[Orchestrator] Cannot expand worker pool: no primary worker available.");
+            return;
+        }
+    }
+
+    // The write lock is held for the full snapshot → build → publish cycle of each worker.
+    // This serializes expansion against all route mutations (postEntry, deleteEntry, …),
+    // which is the correct trade-off given that expansion happens once at startup.
+    // TODO: if contention during expansion becomes measurable, revisit using a generation
+    // counter (snapshot generation, build outside the lock, verify generation before publish)
+    // to allow route mutations to proceed concurrently with the (expensive) build step.
+    while (true)
+    {
+        if (m_isShutdown.load(std::memory_order_acquire))
+        {
+            return;
+        }
+        std::unique_lock lock {m_syncMutex};
+
+        if (m_routerWorkers.size() >= m_targetWorkerCount)
+        {
+            return;
+        }
+
+        auto entrySnapshot = m_routerWorkers.front()->get()->getEntries();
+        std::vector<EntryConverter> converters;
+        converters.reserve(entrySnapshot.size());
+        for (const auto& entry : entrySnapshot) converters.emplace_back(entry);
+
+        auto newWorker = m_workerFactory();
+        if (auto err = initRouterWorker(newWorker, converters))
+        {
+            LOG_ERROR("[Orchestrator] Worker expansion failed: {}", err->message);
+            return;
+        }
+
+        if (m_isShutdown.load(std::memory_order_acquire))
+        {
+            return;
+        }
+
+        try
+        {
+            newWorker->start();
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR("[Orchestrator] Worker start failed during expansion: {}", e.what());
+            return;
+        }
+        catch (...)
+        {
+            LOG_ERROR("[Orchestrator] Worker start failed during expansion with unknown exception.");
+            return;
+        }
+
+        m_routerWorkers.emplace_back(std::move(newWorker));
+    }
 }
 
 /**************************************************************************
@@ -409,8 +552,16 @@ base::OptError Orchestrator::hotSwapNamespace(const std::string& name, const cm:
     // 2. Create new environment WITHOUT lock
     // 3. Swap atomically with unique lock (swap environment and enable it for each worker independently)
     std::unique_lock lock {m_syncMutex};
-    auto error = forEachRouterWorker([&](const std::shared_ptr<IWorker<IRouter>>& worker)
-                                     { return worker->get()->hotSwapNamespace(name, newNamespace); });
+    auto error = forEachRouterWorker(
+        [&](const std::shared_ptr<IWorker<IRouter>>& worker)
+        {
+            // Check shutdown before each worker's hot swap (environment build is expensive)
+            if (m_isShutdown.load(std::memory_order_acquire))
+            {
+                return base::OptError {base::Error {"Hot swap aborted: orchestrator shutting down"}};
+            }
+            return worker->get()->hotSwapNamespace(name, newNamespace);
+        });
 
     if (error)
     {

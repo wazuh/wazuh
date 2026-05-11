@@ -10,7 +10,6 @@ from signal import signal, SIGINT
 
 try:
     from wazuh import WazuhError
-    from wazuh.core.results import AffectedItemsWazuhResult
     from wazuh.core.cluster import utils as cluster_utils
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))

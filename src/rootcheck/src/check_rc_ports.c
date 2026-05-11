@@ -146,7 +146,7 @@ void check_rc_ports()
     int i = 0;
 
     if (!is_program_available("netstat")) {
-        minfo("netstat not available. Skipping port check.");
+        mdebug1("netstat not available. Skipping port check.");
         notify_rk(ALERT_SYSTEM_ERR, "netstat not available. "
                  "Skipping port check.");
         return;

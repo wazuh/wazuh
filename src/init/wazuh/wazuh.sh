@@ -153,37 +153,19 @@ WazuhUpgrade()
 
     # Remove deprecated Wazuh tools
 
-    rm -f $PREINSTALLEDDIR/bin/agent_control
     rm -f $PREINSTALLEDDIR/bin/clear_stats
-    rm -f $PREINSTALLEDDIR/bin/ossec-control
-    rm -f $PREINSTALLEDDIR/bin/ossec-regex
-    rm -f $PREINSTALLEDDIR/bin/ossec-logtest
-    rm -f $PREINSTALLEDDIR/bin/ossec-makelists
     rm -f $PREINSTALLEDDIR/bin/manage_agents
     rm -f $PREINSTALLEDDIR/bin/util.sh
     rm -f $PREINSTALLEDDIR/bin/rootcheck_control
     rm -f $PREINSTALLEDDIR/bin/syscheck_control
     rm -f $PREINSTALLEDDIR/bin/syscheck_update
-    rm -f $PREINSTALLEDDIR/bin/wazuh-logtest
-    rm -f $PREINSTALLEDDIR/bin/wazuh-logtest-legacy
-    rm -f $PREINSTALLEDDIR/bin/wazuh-regex
 
     # Remove old Wazuh daemons
 
     rm -f $PREINSTALLEDDIR/bin/ossec-agentd
-    rm -f $PREINSTALLEDDIR/bin/ossec-authd
-    rm -f $PREINSTALLEDDIR/bin/ossec-dbd
     rm -f $PREINSTALLEDDIR/bin/ossec-execd
     rm -f $PREINSTALLEDDIR/bin/ossec-logcollector
-    rm -f $PREINSTALLEDDIR/bin/ossec-monitord
-    rm -f $PREINSTALLEDDIR/bin/ossec-remoted
     rm -f $PREINSTALLEDDIR/bin/ossec-syscheckd
-    rm -f $PREINSTALLEDDIR/bin/wazuh-agentlessd
-    rm -f $PREINSTALLEDDIR/bin/wazuh-csyslogd
-    rm -f $PREINSTALLEDDIR/bin/wazuh-dbd
-    rm -f $PREINSTALLEDDIR/bin/wazuh-integratord
-    rm -f $PREINSTALLEDDIR/bin/wazuh-maild
-    rm -f $PREINSTALLEDDIR/bin/wazuh-reportd
 
     # Remove existing ruleset version file
 
@@ -207,6 +189,22 @@ WazuhUpgrade()
     rm -f $PREINSTALLEDDIR/active-response/bin/ossec-slack.sh
     rm -f $PREINSTALLEDDIR/active-response/bin/ossec-tweeter.sh
 
+    # Remove old Active Response binaries (renamed in 5.x)
+
+    rm -f $PREINSTALLEDDIR/active-response/bin/firewall-drop
+    rm -f $PREINSTALLEDDIR/active-response/bin/default-firewall-drop
+    rm -f $PREINSTALLEDDIR/active-response/bin/pf
+    rm -f $PREINSTALLEDDIR/active-response/bin/npf
+    rm -f $PREINSTALLEDDIR/active-response/bin/ipfw
+    rm -f $PREINSTALLEDDIR/active-response/bin/firewalld-drop
+    rm -f $PREINSTALLEDDIR/active-response/bin/host-deny
+    rm -f $PREINSTALLEDDIR/active-response/bin/ip-customblock
+    rm -f $PREINSTALLEDDIR/active-response/bin/route-null
+    rm -f $PREINSTALLEDDIR/active-response/bin/wazuh-slack
+    rm -f $PREINSTALLEDDIR/active-response/bin/kaspersky
+    rm -f $PREINSTALLEDDIR/active-response/bin/kaspersky.py
+    rm -f $PREINSTALLEDDIR/active-response/bin/restart.sh
+
     # Remove old databases if upgrading from pre 5.X to 5.X
     if [ $MAJOR -lt 5 ]; then
         if [ -f $PREINSTALLEDDIR/queue/syscollector/db/local.db ]; then
@@ -228,14 +226,23 @@ WazuhUpgrade()
             find $PREINSTALLEDDIR -group $OSSEC_GROUP -exec chown $file_permissions:$file_permissions {} \;
         fi
     fi
-    ./src/init/delete-oldusers.sh $OSSEC_GROUP
 
     # Set merged.mg permissions to new ones
     find $PREINSTALLEDDIR/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} \;
 
-    # Remove unnecessary `execa` socket
-    if [ -f "$DIRECTORY/queue/alerts/execa" ]; then
-        rm -f $DIRECTORY/queue/alerts/execa
+    # Removing  execq socket if exists
+    if [ -S "$PREINSTALLEDDIR/queue/alerts/execq" ]; then
+        rm -f $PREINSTALLEDDIR/queue/alerts/execq
+    fi
+
+    # Remove deprecated cfgaq socket
+    if [ -S "$PREINSTALLEDDIR/queue/alerts/cfgaq" ]; then
+        rm -f $PREINSTALLEDDIR/queue/alerts/cfgaq
+    fi
+
+    # Remove old alerts queue
+    if [ -d "$PREINSTALLEDDIR/queue/alerts" ]; then
+        rm -rf $PREINSTALLEDDIR/queue/alerts
     fi
 
 }

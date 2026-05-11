@@ -1,139 +1,111 @@
 # Configuration
 
-The **Inventory Sync** module is designed to run with minimal configuration, working out of the box with default settings. It acts as a synchronization intermediary, relying primarily on the **Indexer Connector** configuration for indexing operations.
+Inventory Sync does not use its own `<inventory_sync>` block in `wazuh-manager.conf`, but it is not configuration-free. At startup, the manager wrapper builds a JSON configuration object and passes it into the shared library.
 
-The module itself does not expose dedicated options in **`wazuh-manager.conf`**. Instead, it inherits operational parameters from the Indexer Connector.
+## Configuration sources
 
----
+The runtime configuration passed to Inventory Sync contains:
 
-## Connection to Wazuh Indexer
+- **`indexer`**: duplicated from the manager indexer configuration.
+- **`clusterName`**: the manager cluster name.
+- **`clusterNodeName`**: the local manager node name.
+- **`maxSessions`**: the session cap derived from internal options.
 
-Inventory Sync delegates all indexing tasks to the **Indexer Connector**.
-Incoming FlatBuffer messages from agents are processed and grouped into **bulk operations**, which are then sent to the Indexer for efficient storage.
+The module refuses to start if `clusterName` is missing.
 
-**Default Indexer Connector configuration block:**
+## Indexer configuration
 
-```xml
-  <indexer>
-    <hosts>
-      <host>https://127.0.0.1:9200</host>
-    </hosts>
-    <ssl>
-      <certificate_authorities>
-        <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
-      </certificate_authorities>
-      <certificate>/var/wazuh-manager/etc/certs/manager.pem</certificate>
-      <key>/var/wazuh-manager/etc/certs/manager-key.pem</key>
-    </ssl>
-  </indexer>
-```
+Inventory Sync depends on the manager indexer configuration because all indexing, delete-by-query, search, and update-by-query operations are delegated to the Indexer Connector.
 
-> **Note**: Only secure (TLS/SSL) connections are supported. Plaintext connections to the Indexer are not allowed.
-
----
-
-## Module Parameters
-
-The module relies on internal constants that define synchronization behavior:
-
-| Parameter           | Default Value                  | Purpose                                                          |
-| ------------------- | ------------------------------ | ---------------------------------------------------------------- |
-| **Session Timeout** | 10 seconds (2 × DEFAULT\_TIME) | Defines how long a session remains active without receiving data |
-| **Thread Count**    | 1                              | Dedicated thread for Indexer operations                          |
-| **Topic**           | `inventory-states`             | Router topic subscription                                        |
-| **Subscriber ID**   | `inventory-sync-module`        | Router subscriber identity                                       |
-| **Storage Path**    | `inventory_sync/`              | RocksDB directory for session data                               |
-
----
-
-## Connection Verification
-
-Before starting synchronization, verify Indexer health via the **`/_cluster/health`** endpoint.
-
-**Example response:**
+Example configuration payload passed to the module:
 
 ```json
 {
-  "cluster_name": "wazuh-cluster",
-  "status": "green",
-  "number_of_nodes": 1,
-  "active_primary_shards": 15,
-  "active_shards_percent_as_number": 100
+  "indexer": {
+    "hosts": ["https://127.0.0.1:9200"],
+    "ssl": {
+      "certificate_authorities": [
+        "/var/wazuh-manager/etc/certs/root-ca.pem"
+      ],
+      "certificate": "/var/wazuh-manager/etc/certs/manager.pem",
+      "key": "/var/wazuh-manager/etc/certs/manager-key.pem"
+    }
+  },
+  "clusterName": "wazuh",
+  "clusterNodeName": "node01",
+  "maxSessions": 1000
 }
 ```
 
-A **green** status indicates the cluster is healthy and ready.
+## Internal options
 
----
+### Maximum sessions
 
-## Connection Testing
+Inventory Sync reads the session cap from the internal option `wazuh_modules.max_sessions`.
 
-The connection can be validated manually with `curl`, using the proper CA, certificate, and key:
+Current manager-side behavior:
+
+- Allowed range: `1` to `100000`.
+- Default on manager builds: `1000`.
+- New Start messages are rejected when the active session count reaches that limit.
+
+## Operational constants
+
+The current implementation also relies on fixed runtime constants.
+
+| Parameter                                 | Current behavior                                        |
+| ----------------------------------------- | ------------------------------------------------------- |
+| Router topic                              | `inventory-states`                                      |
+| Subscriber id                             | `inventory-sync-module`                                 |
+| RocksDB path                              | `inventory_sync/`                                       |
+| Worker threads                            | `std::thread::hardware_concurrency()`                   |
+| Session activity window                   | `DEFAULT_TIME = 10 minutes`                             |
+| Stale session cleanup threshold           | `20 minutes` without activity                           |
+| Cleanup sweep interval                    | `10 minutes`                                            |
+| Wait for metadata or group reconciliation | up to `60 seconds` for other sessions of the same agent |
+
+## Session storage
+
+Inventory Sync stores in-flight session data in RocksDB under `inventory_sync/`.
+
+Storage conventions:
+
+- `DataValue` entries use `{session}_{seq}`.
+- `DataContext` entries use `{session}_{seq}_context`.
+- Session data is deleted after successful completion, error handling, or stale-session cleanup.
+- The RocksDB directory is cleared when the module starts.
+
+## Router dependency
+
+The module subscribes to the Router and expects FlatBuffer messages on `inventory-states`.
+
+That means Inventory Sync depends on:
+
+- the Router being active on the manager,
+- agents emitting the synchronization protocol,
+- and the response path being available so `StartAck`, `EndAck`, and retransmission messages can be returned.
+
+## Vulnerability Scanner interaction
+
+No dedicated Inventory Sync configuration flag enables or disables vulnerability processing. Instead:
+
+- the session Start message carries the `option` field (`Sync`, `VDFirst`, or `VDSync`),
+- Inventory Sync checks whether the Vulnerability Scanner is initialized,
+- and then it either triggers or skips the downstream scan.
+
+## Verifying the indexer connection
+
+Before troubleshooting Inventory Sync, verify that the Wazuh Indexer is healthy:
 
 ```console
-curl --cacert <root_CA_path> --cert <cert_path> --key <key_path> \
-     https://<indexer-ip>:9200/_cluster/health
+curl --cacert <root_ca> --cert <manager_cert> --key <manager_key> \
+  https://<indexer-host>:9200/_cluster/health
 ```
 
----
+A healthy indexer is required for:
 
-## Session Storage
-
-The Inventory Sync module uses **RocksDB** for temporary session data:
-
-* **Location**: `inventory_sync/` directory (relative to Wazuh working dir)
-* **Key Format**: `<session_id>_<sequence>` to isolate per-session data
-* **Cleanup Policy**: Automatic cleanup at startup and after session completion
-
-This ensures persistence during ongoing syncs without exhausting memory.
-
----
-
-## Router Configuration
-
-The module relies on the **Router** for message delivery from agents:
-
-* **Topic**: `inventory-states`
-* **Subscriber ID**: `inventory-sync-module`
-* **Message Format**: FlatBuffer-encoded synchronization messages
-
-The Router must be properly configured and running for Inventory Sync to receive agent updates.
-
----
-
-# Synchronization Sequence
-
-The following diagram illustrates the three synchronization phases (**Start → Data → End**) between Agent, Inventory Sync, and Indexer:
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Agent
-    participant InventorySync
-    participant RocksDB
-    participant IndexerConnector
-    participant Indexer
-
-    Agent->>InventorySync: START (agent_id, mode=full/delta)
-    InventorySync->>RocksDB: Initialize session storage
-
-    loop Data Phase
-        Agent->>InventorySync: DATA (seq, payload)
-        InventorySync->>RocksDB: Store <session_id, seq>
-    end
-
-    Agent->>InventorySync: END (agent_id)
-    InventorySync->>IndexerConnector: Bulk request (events)
-    IndexerConnector->>Indexer: _bulk (insert/delete)
-    Indexer-->>IndexerConnector: Bulk response
-
-    alt Success
-        IndexerConnector-->>InventorySync: ACK OK
-        InventorySync-->>Agent: ACK OK
-    else Failure
-        IndexerConnector-->>InventorySync: ACK ERROR (details)
-        InventorySync-->>Agent: ACK ERROR
-    end
-
-    InventorySync->>RocksDB: Cleanup session
-```
+- session acceptance,
+- bulk indexing,
+- delete-by-query,
+- update-by-query,
+- and checksum validation searches.

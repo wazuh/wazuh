@@ -168,6 +168,48 @@ public:
                                           std::function<void(const nlohmann::json&)> onResponse);
 
     /**
+     * @brief Create a Point In Time (PIT) for the specified indices.
+     *
+     * @param indices List of index names to include in the PIT.
+     * @param keepAlive Time to keep the PIT alive (e.g., "5m").
+     * @param expandWildcards If true, expands wildcard patterns to match indices.
+     * @return A PointInTime object containing the PIT ID and creation time.
+     * @throws IndexerConnectorException if the PIT creation fails.
+     */
+    PointInTime createPointInTime(const std::vector<std::string>& indices,
+                                  std::string_view keepAlive,
+                                  bool expandWildcards = false);
+
+    /**
+     * @brief Delete a Point In Time (PIT) on the server.
+     *
+     * @param pit The PointInTime object to delete.
+     * @throws IndexerConnectorException if the PIT deletion fails.
+     */
+    void deletePointInTime(const PointInTime& pit);
+
+    /**
+     * @brief Execute a search query using Point In Time for consistent pagination.
+     *
+     * @param pit The PointInTime object to use for the search.
+     * @param size Maximum number of documents to return per page.
+     * @param query The query object.
+     * @param sort The sort array.
+     * @param searchAfter Optional search_after array for pagination.
+     * @param source Optional source filtering configuration.
+     * @param slice Optional slice object for parallel PIT consumption (e.g. {"id": 0, "max": 4}).
+     * @return The hits object from the search response.
+     * @throws IndexerConnectorException if the search fails.
+     */
+    nlohmann::json search(const PointInTime& pit,
+                          std::size_t size,
+                          const nlohmann::json& query,
+                          const nlohmann::json& sort,
+                          const std::optional<nlohmann::json>& searchAfter = std::nullopt,
+                          const std::optional<nlohmann::json>& source = std::nullopt,
+                          const std::optional<nlohmann::json>& slice = std::nullopt);
+
+    /**
      * @brief Bulk delete.
      *
      * @param id ID.
@@ -198,6 +240,15 @@ public:
      * @brief Flush the bulk data.
      */
     void flush();
+
+    /**
+     * @brief Invoke pending callbacks registered via registerNotify().
+     *
+     * This method executes all callbacks that were registered and are pending
+     * after bulk operations complete. It should be called after releasing any
+     * locks acquired via scopeLock() to avoid deadlocks.
+     */
+    void invokePendingCallbacks();
 
     /**
      * @brief Acquires and returns a unique lock on the internal mutex.
@@ -231,6 +282,15 @@ public:
     void registerNotify(std::function<void()> callback);
 
     /**
+     * @brief Force a refresh on one or more indices so recently indexed documents
+     * become immediately searchable.
+     *
+     * @param indexPattern Index name or wildcard pattern (e.g.
+     *                     "wazuh-states-inventory-packages").
+     */
+    void refresh(std::string_view indexPattern);
+
+    /**
      * @brief Check have a server available.
      *
      * @return true if have a server available, false otherwise.
@@ -252,14 +312,19 @@ public:
     /**
      * @brief Class constructor that initializes the publisher.
      *
-     * @param config Indexer configuration, including database_path and servers.
+     * @param config Indexer configuration, including servers and SSL settings.
+     * @param queueId Identifier for this connector instance. Combined with basePath to form
+     *                the RocksDB queue directory: basePath / queueId.
+     *                Must be unique per instance to guarantee queue isolation.
      * @param logFunction Callback function to be called when trying to log a message.
-     * @param timeout Server selector time interval.
+     * @param basePath Base directory for the RocksDB queue. Defaults to "queue/indexer/".
      */
     explicit IndexerConnectorAsync(
         const nlohmann::json& config,
+        std::string queueId,
         const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
-            logFunction = {});
+            logFunction = {},
+        std::string basePath = "queue/indexer/");
 
     ~IndexerConnectorAsync();
 
@@ -313,6 +378,13 @@ public:
     uint64_t getQueueSize() const;
 
     /**
+     * @brief Get the total number of dropped events.
+     *
+     * @return The number of events that have been dropped.
+     */
+    uint64_t getDroppedEvents() const;
+
+    /**
      * @brief Create a Point In Time (PIT) for the specified indices.
      *
      * Creates a PIT context that can be used for consistent pagination across multiple search requests.
@@ -325,7 +397,7 @@ public:
      * @throws IndexerConnectorException if the PIT creation fails.
      *
      * Example:
-     * auto pit = connector.createPointInTime({".cti-kvdbs", ".cti-decoders"}, "5m", true);
+     * auto pit = connector.createPointInTime({"wazuh-threatintel-kvdbs", "wazuh-threatintel-decoders"}, "5m", true);
      * std::string pitId = pit.getPitId(); // Use for subsequent searches
      * // ... perform searches ...
      * connector.deletePointInTime(pit); // Clean up when done
@@ -367,7 +439,8 @@ public:
                           const nlohmann::json& query,
                           const nlohmann::json& sort,
                           const std::optional<nlohmann::json>& searchAfter = std::nullopt,
-                          const std::optional<nlohmann::json>& source = std::nullopt);
+                          const std::optional<nlohmann::json>& source = std::nullopt,
+                          const std::optional<nlohmann::json>& slice = std::nullopt);
 
     /**
      * @brief Execute a search query on an index or alias.
@@ -385,7 +458,7 @@ public:
      * Example:
      * nlohmann::json query = {{"bool", {{"filter", {{{{"term", {{"space.name", "free"}}}}}}}}};
      * nlohmann::json source = {{"includes", {"space.hash.sha256"}}, {"excludes", nlohmann::json::array()}};
-     * auto hits = connector.search(".cti-policies", 10, query, source);
+     * auto hits = connector.search("wazuh-threatintel-policies", 10, query, source);
      */
     nlohmann::json search(std::string_view index,
                           std::size_t size,

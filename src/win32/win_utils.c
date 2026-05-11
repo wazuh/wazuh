@@ -118,7 +118,7 @@ int local_start()
     // This must be always the first instruction
     enable_dll_verification();
 
-    char *cfg = OSSECCONF;
+    char *cfg = WAZUHCONF;
     WSADATA wsaData;
     DWORD  threadID;
     DWORD  threadID2;

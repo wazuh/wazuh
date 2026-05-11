@@ -14,9 +14,9 @@
 #include "wm_agent_upgrade_validate.h"
 
 #ifdef WAZUH_UNIT_TESTING
-// Redefine ossec_version
-#undef __ossec_version
-#define __ossec_version "v5.0.0"
+// Redefine wazuh_version
+#undef __wazuh_version
+#define __wazuh_version "v5.0.0"
 #endif
 
 // Mutex needed to download a WPK file
@@ -160,7 +160,7 @@ int wm_agent_upgrade_validate_version(const char *wazuh_version, const char *pla
             } else if (WM_UPGRADE_UPGRADE == command) {
                 wm_upgrade_task *upgrade_task = (wm_upgrade_task *)task;
 
-                if (manager_version = strchr(__ossec_version, 'v'), manager_version) {
+                if (manager_version = strchr(__wazuh_version, 'v'), manager_version) {
                     return_code = WM_UPGRADE_SUCCESS;
 
                     os_strdup(upgrade_task->custom_version ? upgrade_task->custom_version : manager_version, upgrade_task->wpk_version);

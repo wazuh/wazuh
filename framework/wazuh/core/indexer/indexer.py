@@ -9,9 +9,15 @@ from urllib.parse import urlparse
 from opensearchpy import AsyncOpenSearch
 from opensearchpy.exceptions import ImproperlyConfigured, TransportError
 from wazuh.core.configuration import get_ossec_conf
-from wazuh.core.exception import WazuhException, WazuhIndexerError
+from wazuh.core.exception import WazuhIndexerError, IndexerUnavailableError
 from wazuh.core.indexer.credential_manager import KeystoreClient
 from wazuh.core.indexer.max_version_components import MaxVersionIndex
+from wazuh.core.indexer.metrics import MetricsIndex
+
+MAX_RETRIES = 3
+BACKOFF_TIMEOUT = 60
+
+logger = getLogger("wazuh")
 
 
 class Indexer:
@@ -50,13 +56,14 @@ class Indexer:
         The list of configured ports.
     max_version_components : MaxVersionIndex
         Component to manage index versioning.
+    metrics : MetricsIndex
+        Component to handle metrics snapshot bulk indexing.
 
     Raises
     ------
     WazuhIndexerError
         If the number of hosts does not match the number of ports.
     """
-
     def __init__(
         self,
         hosts: List[str],
@@ -71,7 +78,7 @@ class Indexer:
     ) -> None:
         if len(hosts) != len(ports):
             raise WazuhIndexerError(
-                2001, extra_message="Hosts and ports lists must have the same length"
+                2001, None, "Hosts and ports lists must have the same length"
             )
 
         self.hosts = hosts
@@ -86,6 +93,7 @@ class Indexer:
 
         self._client = self._get_opensearch_client()
         self.max_version_components = MaxVersionIndex(client=self._client)
+        self.metrics = MetricsIndex(client=self._client)
 
     def _get_opensearch_client(self) -> AsyncOpenSearch:
         """
@@ -117,7 +125,7 @@ class Indexer:
             parameters["http_auth"] = (self.user, self.password)
         else:
             raise WazuhIndexerError(
-                2201, extra_message="'user' and 'password' are required"
+                2201, None, "'user' and 'password' are required"
             )
 
         if self.use_ssl:
@@ -128,7 +136,7 @@ class Indexer:
             else:
                 raise WazuhIndexerError(
                     2201,
-                    extra_message="SSL certificates paths missing",
+                    None, "SSL certificates paths missing",
                 )
 
         return AsyncOpenSearch(**parameters)
@@ -149,27 +157,87 @@ class Indexer:
             or improper configuration.
         """
         try:
-            return await self._client.info()
+            return await self.healthcheck()
         except (ConnectionError, TransportError) as e:
-            raise WazuhIndexerError(2200, extra_message=e.error)
+            raise WazuhIndexerError(2200, None, e.error)
         except ssl.SSLError as e:
-            raise WazuhIndexerError(2200, extra_message=e.reason)
+            raise WazuhIndexerError(2200, None, e.reason)
         except ImproperlyConfigured as e:
             raise WazuhIndexerError(
                 2200,
-                extra_message=f"{e}. Check your indexer configuration"
-                f"and SSL certificates",
+                None, f"{e}. Check your indexer configuration and SSL certificates"
             )
 
     async def close(self) -> None:
         """
         Close the Wazuh Indexer client session asynchronously.
         """
-        getLogger("wazuh").debug("Closing the indexer client session.")
+        logger.debug("Closing the indexer client session.")
         await self._client.close()
 
+    async def search(self, *args, **kwargs):
+        """
+        Perform a search query against the Wazuh Indexer.
 
-async def create_indexer(retries: int = 5, backoff: int = 1, **kwargs) -> Indexer:
+        This method is a wrapper around the OpenSearch client's `search` method,
+        allowing for direct query execution.
+
+        Parameters
+        ----------
+        *args
+            Positional arguments to pass to the OpenSearch client's `search` method.
+        **kwargs
+            Keyword arguments to pass to the OpenSearch client's `search` method.
+        Returns
+        -------
+        dict
+            The search results returned by the OpenSearch client.
+        """
+        return await self._client.search(*args, **kwargs)
+
+    async def mget(self, *args, **kwargs):
+        """
+        Perform a multi-get query against the Wazuh Indexer.
+
+        This method is a wrapper around the OpenSearch client's `mget` method,
+        allowing for retrieval of multiple documents by ID.
+
+        Parameters
+        ----------
+        *args
+            Positional arguments to pass to the OpenSearch client's `mget` method.
+        **kwargs
+            Keyword arguments to pass to the OpenSearch client's `mget` method.
+        Returns
+        -------
+        dict
+            The multi-get results returned by the OpenSearch client.
+        """
+        return await self._client.mget(*args, **kwargs)
+
+    async def healthcheck(self) -> bool:
+        """Check the health of the Wazuh Indexer connection.
+
+        Attempts to call the `info()` endpoint of the OpenSearch client.
+        If the call succeeds, the method returns `None`. If any exception
+        occurs (e.g., network issues, authentication failure), a
+        `WazuhIndexerError` is raised with the appropriate error code and
+        message.
+
+        Raises
+        ------
+        WazuhIndexerError
+            If the indexer is unreachable or does not respond correctly.
+            The error code is `2200` and the message includes the original
+            exception details.
+        """
+        try:
+            await self._client.info()
+        except Exception as e:
+            raise WazuhIndexerError(2200, extra_message=f"Failed to create indexer client: {e}")
+
+
+async def create_indexer(retries: int = MAX_RETRIES, backoff: int = BACKOFF_TIMEOUT, **kwargs) -> Indexer:
     """
     Create and initialize the Indexer instance with a retry mechanism.
 
@@ -179,9 +247,9 @@ async def create_indexer(retries: int = 5, backoff: int = 1, **kwargs) -> Indexe
     Parameters
     ----------
     retries : int, optional
-        Maximum number of reconnection attempts, by default 5.
+        Maximum number of reconnection attempts, by default 3.
     backoff : int, optional
-        Base wait time in seconds for exponential backoff, by default 1.
+        Base wait time in seconds for exponential backoff, by default 60.
     **kwargs : dict
         Arguments passed directly to the `Indexer` constructor
         (hosts, ports, user, password, etc.).
@@ -194,10 +262,14 @@ async def create_indexer(retries: int = 5, backoff: int = 1, **kwargs) -> Indexe
     Raises
     ------
     WazuhIndexerError
-        If the maximum number of retries is reached without a
-        successful connection.
+        If the Indexer constructor receives invalid arguments (TypeError).
+    IndexerUnavailableError
+        If the maximum number of retries is reached without a successful connection.
     """
-    indexer = Indexer(**kwargs)
+    try:
+        indexer = Indexer(**kwargs)
+    except TypeError as e:
+        raise WazuhIndexerError(2201, extra_message=f"Invalid arguments for Indexer: Error:{e}") from e
 
     for attempt in range(retries + 1):
         try:
@@ -206,10 +278,19 @@ async def create_indexer(retries: int = 5, backoff: int = 1, **kwargs) -> Indexe
         except WazuhIndexerError as e:
             if attempt == retries:
                 await indexer.close()
-                raise e
+                logger.warning(
+                    f"Indexer service is unavailable after multiple connection attempts. Some functionality may be limited. "
+                    f"Error: {e}. Verify indexer connectivity and configuration."
+                )
+                raise IndexerUnavailableError(
+                    2200, extra_message=f"Indexer unavailable after {retries} retries. Error: {e}"
+                ) from e
 
             # Exponential backoff with jitter to avoid "thundering herd"
             wait_time = (backoff * 2**attempt) + random.random() # nosec B311
+            logger.warning(
+                f"Connection attempt {attempt + 1} failed: {e}. Retrying in {wait_time:.2f} seconds..."
+            )
             await sleep(wait_time)
 
 
@@ -236,27 +317,26 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
     CredentialsError
         If credentials are missing or invalid.
     """
-    MAX_RETRIES = 3
     try:
         wazuh_config = get_ossec_conf(section="indexer")
         if not wazuh_config:
-            raise WazuhException(
-                code=1002, message="Missing indexer configuration in Wazuh config"
+            raise IndexerUnavailableError(
+                code=2200, extra_message="Missing indexer configuration in Wazuh config"
             )
     except Exception as e:
-        raise WazuhException(
-            code=1003, message=f"Failed to parse Wazuh configuration: {e}"
+        raise IndexerUnavailableError(
+            code=2200, extra_message=f"Failed to parse Wazuh configuration: {e}"
         )
 
     indexer_section = wazuh_config.get("indexer", {})
     if not indexer_section:
-        raise WazuhException(
-            code=1004, message="Empty indexer section in configuration"
+        raise IndexerUnavailableError(
+            code=2200, extra_message="Empty indexer section in configuration"
         )
 
     ssl_config = indexer_section.get("ssl", {})
     if not ssl_config:
-        raise WazuhException(code=1005, message="Missing SSL configuration")
+        raise IndexerUnavailableError(code=2200, extra_message="Missing SSL configuration")
 
     try:
         with KeystoreClient() as ks_client:
@@ -264,37 +344,37 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
                 user_response = ks_client.get("indexer", "username")
                 pass_response = ks_client.get("indexer", "password")
             except KeyError as e:
-                raise WazuhException(
-                    code=1006, message=f"Missing credential entry in keystore: {e}"
+                raise IndexerUnavailableError(
+                    code=2201, extra_message=f"Missing credential entry in keystore: {e}"
                 )
             except Exception as e:
-                raise WazuhException(
-                    code=1007, message=f"Keystore operation failed: {e}"
+                raise IndexerUnavailableError(
+                    code=2201, extra_message=f"Keystore operation failed: {e}"
                 )
 
             indexer_user = user_response.get("value") if user_response else None
             indexer_pass = pass_response.get("value") if pass_response else None
 
             if not indexer_user:
-                raise WazuhException(
-                    code=1008, message="Empty or missing username in keystore"
+                raise IndexerUnavailableError(
+                    code=2201, extra_message="Empty or missing username in keystore"
                 )
             if not indexer_pass:
-                raise WazuhException(
-                    code=1009, message="Empty or missing password in keystore"
+                raise IndexerUnavailableError(
+                    code=2201, extra_message="Empty or missing password in keystore"
                 )
-    except WazuhException:
+    except IndexerUnavailableError:
         raise
     except Exception as e:
-        raise WazuhException(
-            code=1010, message=f"Failed to retrieve indexer credentials: {e}"
+        raise IndexerUnavailableError(
+            code=2201, extra_message=f"Failed to retrieve indexer credentials: {e}"
         )
 
     # Parse host URLs
     hosts_raw = indexer_section.get("hosts", [])
     if not hosts_raw:
-        raise WazuhException(
-            code=1011, message="No hosts specified in indexer configuration"
+        raise IndexerUnavailableError(
+            code=2200, extra_message="No hosts specified in indexer configuration"
         )
 
     try:
@@ -304,14 +384,14 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
 
         for i, p in enumerate(parsed_urls):
             if not p.hostname:
-                raise WazuhException(
-                    code=1012,
-                    message=f"Invalid host URL at position {i}: {hosts_raw[i]}",
+                raise IndexerUnavailableError(
+                    code=2200,
+                    extra_message=f"Invalid host URL at position {i}: {hosts_raw[i]}",
                 )
             list_of_hosts.append(p.hostname)
             list_of_ports.append(p.port)
     except Exception as e:
-        raise WazuhException(code=1013, message=f"Failed to parse host URLs: {e}")
+        raise IndexerUnavailableError(code=2200, extra_message=f"Failed to parse host URLs: {e}")
 
     # Validate SSL certificate paths
     required_cert_paths = [
@@ -322,8 +402,8 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
 
     for cert_name, cert_path_list in required_cert_paths:
         if not cert_path_list or not cert_path_list[0]:
-            raise WazuhException(
-                code=1014, message=f"Missing or empty {cert_name} path"
+            raise IndexerUnavailableError(
+                code=2200, extra_message=f"Missing or empty {cert_name} path"
             )
 
     # Create indexer client
@@ -335,23 +415,24 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
             password=indexer_pass,
             use_ssl=True,
             verify_certs=True,
-            retries=MAX_RETRIES,
             client_cert_path=ssl_config["certificate"][0],
             client_key_path=ssl_config["key"][0],
             ca_certs_path=ssl_config["certificate_authorities"][0]["ca"][0],
         )
+    except IndexerUnavailableError:
+        raise
     except Exception as e:
-        raise WazuhException(code=1015, message=f"Failed to create indexer client: {e}")
+        raise IndexerUnavailableError(code=2200, extra_message=f"Failed to create indexer client: {e}")
 
     try:
         yield client
     except Exception as e:
-        getLogger("wazuh").logger.error(f"Error in indexer client context: {e}")
+        logger.error(f"Error in indexer client context: {e}")
         raise
     finally:
         try:
             await client.close()
         except Exception as e:
-            getLogger("wazuh").logger.warning(
+            logger.warning(
                 f"Failed to close indexer client gracefully: {e}"
             )

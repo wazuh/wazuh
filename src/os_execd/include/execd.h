@@ -16,10 +16,10 @@
 #endif
 
 /* Arguments for the commands */
-#define ADD_ENTRY       "add"
-#define DELETE_ENTRY    "delete"
-#define CONTINUE_ENTRY  "continue"
-#define ABORT_ENTRY     "abort"
+#define ENABLE_ENTRY       "enable"
+#define DISABLE_ENTRY      "disable"
+#define CONTINUE_ENTRY     "continue"
+#define ABORT_ENTRY        "abort"
 
 /* Maximum number of active responses active */
 #define MAX_AR      64
@@ -38,11 +38,9 @@ extern int max_restart_lock;
 
 /** Function prototypes **/
 
-int ReadExecConfig(void);
 cJSON *getARConfig(void);
 cJSON *getExecdInternalOptions(void);
 cJSON *getClusterConfig(void);
-char *GetCommandbyName(const char *name, int *timeout) __attribute__((nonnull));
 void ExecCmd(char *const *cmd) __attribute__((nonnull));
 void ExecCmd_Win32(char *cmd);
 int ExecdConfig(const char *cfgfile) __attribute__((nonnull));
@@ -65,8 +63,6 @@ void ExecdShutdown(int sig) __attribute__((noreturn));
 
 size_t wcom_unmerge(const char *file_path, char **output);
 size_t wcom_uncompress(const char * source, const char * target, char ** output);
-size_t wcom_restart(char **output);
-size_t wcom_reload(char ** output);
 size_t wcom_dispatch(char *command, char **output);
 size_t lock_restart(int timeout);
 size_t wcom_getconfig(const char * section, char ** output);

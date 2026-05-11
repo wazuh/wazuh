@@ -110,12 +110,13 @@ TransformOp specificHLPBuilder(const Reference& targetField,
     for (const auto& param : newParameters)
     {
         auto value = std::static_pointer_cast<Value>(param);
-        if (!value->value().isString())
-        {
-            throw std::runtime_error(fmt::format("Got non 'string' parameter '{}'", value->value().str()));
-        }
 
-        hlpOptionsList.emplace_back(value->value().getString().value());
+        std::string optStr;
+        if (value->value().getString(optStr) != json::RetGet::Success)
+        {
+            throw std::runtime_error(fmt::format("Got non 'string' parameter {}", value->value().str()));
+        }
+        hlpOptionsList.emplace_back(std::move(optStr));
     }
 
     hlp::parser::Parser parser;
@@ -145,29 +146,29 @@ TransformOp specificHLPBuilder(const Reference& targetField,
     const auto traceName = buildCtx->context().opName;
     const auto successTrace = fmt::format("{} -> Success", traceName);
     const auto failureTrace = fmt::format("{} -> ", traceName);
-    const auto failureTrace1 =
-        fmt::format("{} -> Reference '{}' is not a string or it doesn't exist", traceName, source.dotPath());
+    const auto failureTrace1 = fmt::format("{} -> Reference '{}' doesn't exist", traceName, source.dotPath());
+    const auto failureTrace2 = fmt::format("{} -> Reference '{}' is not a string", traceName, source.dotPath());
     const auto failureTrace3 = fmt::format("{} -> There is still text to analyze after parsing", traceName);
 
     // Return Op
-    return [=, source = source.jsonPath(), runState = buildCtx->runState(), parser = std::move(parser)](
+    return [=, source = source.jsonPath(), isTestMode = buildCtx->isTestMode(), parser = std::move(parser)](
                base::Event event) -> TransformResult
     {
         // Check if source is a reference
-        const auto sourceValue = event->getString(source);
-        if (!sourceValue)
+        std::string sourceValue;
+        if (auto ret = event->getString(sourceValue, source); ret != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, event, failureTrace1);
+            RETURN_FAILURE(isTestMode, event, ret == json::RetGet::NotFound ? failureTrace1 : failureTrace2);
         }
 
         // Parse source
-        auto error = hlp::parser::run(parser, sourceValue.value(), *event);
+        auto error = hlp::parser::run(parser, sourceValue, *event, isTestMode);
         if (error)
         {
-            RETURN_FAILURE(runState, event, failureTrace + error.value().message);
+            RETURN_FAILURE(isTestMode, event, failureTrace + error.value().message);
         }
 
-        RETURN_SUCCESS(runState, event, successTrace);
+        RETURN_SUCCESS(isTestMode, event, successTrace);
     };
 }
 

@@ -13,6 +13,7 @@
 namespace fileutils
 {
 
+/// @brief Characters forbidden in resource file names.
 constexpr std::string_view INVALID_FILENAME_CHARS = R"(\ / : * ? " < > | )";
 
 /**

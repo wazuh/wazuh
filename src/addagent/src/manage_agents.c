@@ -32,10 +32,6 @@ static int setenv(const char *name, const char *val, __attribute__((unused)) int
 
 /* Global variables */
 time_t time1;
-time_t time2;
-time_t time3;
-long int rand1;
-long int rand2;
 
 /* Remove spaces, newlines, etc from a string */
 char *chomp(char *str)

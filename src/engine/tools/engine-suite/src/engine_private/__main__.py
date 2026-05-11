@@ -134,12 +134,8 @@ def parse_args():
         dest='rawevt_command'
     )
 
-    configure_rawevt_enable = import_module('engine_private.cmds.rawevt.enable').configure
-    configure_rawevt_disable = import_module('engine_private.cmds.rawevt.disable').configure
     configure_rawevt_status = import_module('engine_private.cmds.rawevt.status').configure
 
-    configure_rawevt_enable(rawevt_subparsers)
-    configure_rawevt_disable(rawevt_subparsers)
     configure_rawevt_status(rawevt_subparsers)
 
     try:

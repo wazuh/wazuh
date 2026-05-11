@@ -186,7 +186,7 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
 
         // TransformOp
         return [successTrace,
-                runState = buildCtx->runState(),
+                isTestMode = buildCtx->isTestMode(),
                 targetField = targetField.jsonPath(),
                 valueValidator,
                 failureTrace,
@@ -196,7 +196,7 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
         {
             if (event->exists(targetField) && !event->isArray(targetField))
             {
-                RETURN_FAILURE(runState, event, failureNotArray);
+                RETURN_FAILURE(isTestMode, event, failureNotArray);
             }
 
             auto resp = event->getArray(targetField);
@@ -213,13 +213,13 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
                 auto res = appendOps[i](targetArray, valueType, event);
                 if (base::isError(res))
                 {
-                    RETURN_FAILURE(runState, event, failureTrace + base::getError(res).message);
+                    RETURN_FAILURE(isTestMode, event, failureTrace + base::getError(res).message);
                 }
             }
 
             if (targetArray.size() == initialSize)
             {
-                RETURN_FAILURE(runState, event, referencesNotFound);
+                RETURN_FAILURE(isTestMode, event, referencesNotFound);
             }
 
             auto jArray = json::Json();
@@ -235,13 +235,13 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
                 auto res = valueValidator(jArray);
                 if (base::isError(res))
                 {
-                    RETURN_FAILURE(runState, event, failureTrace + base::getError(res).message);
+                    RETURN_FAILURE(isTestMode, event, failureTrace + base::getError(res).message);
                 }
             }
 
             event->set(targetField, jArray);
 
-            RETURN_SUCCESS(runState, event, successTrace);
+            RETURN_SUCCESS(isTestMode, event, successTrace);
         };
     };
 }

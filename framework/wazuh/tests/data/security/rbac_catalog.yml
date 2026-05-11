@@ -80,7 +80,6 @@ get_rbac_actions:
         related_endpoints:
           - GET /agents
           - GET /agents/{agent_id}/config/{component}/{configuration}
-          - GET /agents/{agent_id}/group/is_sync
           - GET /agents/{agent_id}/key
           - GET /agents/{agent_id}/daemons/stats
           - GET /agents/{agent_id}/stats/{component}
@@ -171,6 +170,23 @@ get_rbac_actions:
           - PUT /agents/group/{group_id}/restart
           - PUT /agents/node/{node_id}/restart
           - PUT /agents/restart
+      agent:reload:
+        description: Reload agents
+        resources:
+          - agent:id
+          - agent:group
+        example:
+          actions:
+            - agent:reload
+          resources:
+            - agent:id:050
+            - agent:id:049
+          effect: deny
+        related_endpoints:
+          - PUT /agents/{agent_id}/reload
+          - PUT /agents/group/{group_id}/reload
+          - PUT /agents/node/{node_id}/reload
+          - PUT /agents/reload
       agent:uninstall:
         description: Check user's permission to uninstall agents
         example:
@@ -265,6 +281,7 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - PUT /agents/node/{node_id}/restart
+          - PUT /agents/node/{node_id}/reload
           - GET /cluster/local/info
           - GET /cluster/local/config
           - GET /cluster/nodes
@@ -273,11 +290,6 @@ get_rbac_actions:
           - GET /cluster/{node_id}/info
           - GET /cluster/{node_id}/configuration
           - GET /cluster/{node_id}/daemons/stats
-          - GET /cluster/{node_id}/stats
-          - GET /cluster/{node_id}/stats/hourly
-          - GET /cluster/{node_id}/stats/weekly
-          - GET /cluster/{node_id}/stats/analysisd
-          - GET /cluster/{node_id}/stats/remoted
           - GET /cluster/{node_id}/logs
           - GET /cluster/{node_id}/logs/summary
           - PUT /cluster/restart
@@ -352,32 +364,6 @@ get_rbac_actions:
           - GET /mitre/software
           - GET /mitre/tactics
           - GET /mitre/techniques
-      rootcheck:run:
-        description: Run agents rootcheck scan
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - rootcheck:run
-          resources:
-            - agent:id:*
-          effect: allow
-        related_endpoints:
-          - PUT /rootcheck
-      syscheck:run:
-        description: Run agents syscheck scan
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - syscheck:run
-          resources:
-            - agent:id:*
-          effect: allow
-        related_endpoints:
-          - PUT /syscheck
       security:edit_run_as:
         description: Change the value of the allow_run_as flag for a user
         resources:

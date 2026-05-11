@@ -1,0 +1,80 @@
+# Name of the helper function
+name: array_length_eq
+
+metadata:
+  description: |
+    Checks if an array has a specific length.
+    The helper expects exactly one parameter: the expected length as a non-negative integer.
+    Returns true if the target field is an array and its size matches the expected length.
+    If the field doesn't exist, is not an array, or has a different length, the validation fails.
+    This helper is useful for validating array sizes in event processing pipelines.
+  keywords:
+    - array
+
+helper_type: filter
+
+skipped:
+  - success_cases
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  expected_length:
+    type: number
+    generate: integer
+    source: value # only literal values, not references
+
+target_field:
+  type: array
+  generate: all
+
+test:
+  - arguments:
+      expected_length: 1
+    target_field:
+      - "single_element"
+    should_pass: true
+    description: Array with one element
+  - arguments:
+      expected_length: 3
+    target_field:
+      - "first"
+      - "second"
+      - "third"
+    should_pass: true
+    description: Array with three elements
+  - arguments:
+      expected_length: 5
+    target_field:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+    should_pass: true
+    description: Array with five numeric elements
+  - arguments:
+      expected_length: 2
+    target_field:
+      - "element"
+    should_pass: false
+    description: Array length 1 does not match expected length 2
+  - arguments:
+      expected_length: 1
+    target_field:
+      - "first"
+      - "second"
+    should_pass: false
+    description: Array length 2 does not match expected length 1
+  - arguments:
+      expected_length: 1
+    target_field: "not_an_array"
+    should_pass: false
+    description: Target field is not an array
+  - arguments:
+      expected_length: 0
+    target_field: 42
+    should_pass: false
+    description: Target field is a number, not an array

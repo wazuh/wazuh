@@ -193,16 +193,14 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1)
     }
 
     //Policy Monitoring Module
-    if (!strcmp(node->element, WM_SCA_CONTEXT.name)) {
 #ifdef CLIENT
+    if (!strcmp(node->element, WM_SCA_CONTEXT.name)) {
         if (wm_sca_read(xml,children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
-#else
-        mwarn("The '%s' module only works for the agent", node->element);
-#endif
     }
+#endif
     OS_ClearNode(children);
     return 0;
 }

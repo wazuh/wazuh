@@ -2,7 +2,7 @@
 
 This document covers the key API endpoints with practical examples, the Wazuh Query Language (WQL), error handling, and input validation.
 
-> All paths are validated against `api/api/spec/spec.yaml` (OpenAPI 3.0).  
+> All paths are validated against `api/api/spec/spec.yaml` (OpenAPI 3.0).
 > For the complete endpoint specification, refer to the [official Wazuh API Reference](https://documentation.wazuh.com/current/user-manual/api/reference.html).
 
 ---
@@ -78,7 +78,7 @@ curl -k -X GET "https://localhost:55000/?pretty=true" \
   "data": {
     "title": "Wazuh API REST",
     "api_version": "5.0.0",
-    "revision": "alpha0",
+    "revision": "beta1",
     "license_name": "GPL 2.0",
     "hostname": "wazuh-manager",
     "timestamp": "2026-02-20T12:00:00Z"
@@ -134,10 +134,51 @@ curl -k -X POST "https://localhost:55000/agents?pretty=true" \
 
 #### Restart agent
 
-**`PUT /agents/{agent_id}/restart`** — Restart a specific agent.
+**`PUT /agents/{agent_id}/restart`** — Restart a specific agent. Requires agent v5.0.0+.
 
 ```bash
 curl -k -X PUT "https://localhost:55000/agents/002/restart?pretty=true" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+#### Reload agent
+
+**`PUT /agents/{agent_id}/reload`** — Reload configuration on a specific agent without a full restart. Requires agent v5.0.0+.
+
+```bash
+curl -k -X PUT "https://localhost:55000/agents/002/reload?pretty=true" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+#### Reload agents
+
+**`PUT /agents/reload`** — Reload configuration on all agents or a specified list. Requires agent v5.0.0+.
+
+```bash
+# Reload all agents
+curl -k -X PUT "https://localhost:55000/agents/reload?pretty=true" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Reload specific agents
+curl -k -X PUT "https://localhost:55000/agents/reload?agents_list=001,002&pretty=true" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+#### Reload agents in group
+
+**`PUT /agents/group/{group_id}/reload`** — Reload configuration on all agents belonging to a group. Requires agent v5.0.0+.
+
+```bash
+curl -k -X PUT "https://localhost:55000/agents/group/web-servers/reload?pretty=true" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+#### Reload agents in node
+
+**`PUT /agents/node/{node_id}/reload`** — Reload configuration on all agents connected to a cluster node. Requires agent v5.0.0+.
+
+```bash
+curl -k -X PUT "https://localhost:55000/agents/node/worker-01/reload?pretty=true" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -235,19 +276,6 @@ curl -k -X PUT "https://localhost:55000/cluster/restart?pretty=true" \
 
 ---
 
-### Active Response
-
-**`PUT /active-response`** — Execute an active response command on agents.
-
-```bash
-curl -k -X PUT "https://localhost:55000/active-response?agents_list=001,002&pretty=true" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"command": "!firewall-drop", "arguments": ["-srcip", "10.0.0.50"]}'
-```
-
----
-
 ### Security
 
 #### List users
@@ -265,24 +293,6 @@ curl -k -X GET "https://localhost:55000/security/users?pretty=true" \
 
 ```bash
 curl -k -X PUT "https://localhost:55000/security/user/revoke?pretty=true" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
----
-
-### Syscheck & Rootcheck
-
-**`PUT /syscheck`** — Run a syscheck (FIM) scan on agents.
-
-```bash
-curl -k -X PUT "https://localhost:55000/syscheck?agents_list=001,002&pretty=true" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-**`PUT /rootcheck`** — Run a rootcheck scan on agents.
-
-```bash
-curl -k -X PUT "https://localhost:55000/rootcheck?agents_list=001&pretty=true" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -335,21 +345,24 @@ curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
 | DELETE | `/agents` | Delete agents |
 | POST | `/agents/insert` | Insert agent with key |
 | POST | `/agents/insert/quick` | Quick insertion |
-| PUT | `/agents/{agent_id}/restart` | Restart agent |
+| PUT | `/agents/{agent_id}/restart` | Restart agent (v5.0.0+) |
+| PUT | `/agents/{agent_id}/reload` | Reload agent config (v5.0.0+) |
 | GET | `/agents/{agent_id}/key` | Get agent key |
 | DELETE | `/agents/{agent_id}/group` | Remove from all groups |
 | PUT | `/agents/{agent_id}/group/{group_id}` | Assign to group |
 | DELETE | `/agents/{agent_id}/group/{group_id}` | Remove from group |
-| GET | `/agents/{agent_id}/group/is_sync` | Sync status |
 | GET | `/agents/{agent_id}/config/{component}/{configuration}` | Active config |
 | GET | `/agents/{agent_id}/daemons/stats` | Daemon stats |
 | GET | `/agents/{agent_id}/stats/{component}` | Component stats |
-| PUT | `/agents/restart` | Restart all |
+| PUT | `/agents/restart` | Restart all (v5.0.0+) |
+| PUT | `/agents/reload` | Reload all agents config (v5.0.0+) |
 | PUT | `/agents/reconnect` | Force reconnect |
 | PUT | `/agents/group` | Bulk assign to group |
 | DELETE | `/agents/group` | Bulk remove from group |
-| PUT | `/agents/group/{group_id}/restart` | Restart group |
-| PUT | `/agents/node/{node_id}/restart` | Restart by node |
+| PUT | `/agents/group/{group_id}/restart` | Restart group (v5.0.0+) |
+| PUT | `/agents/group/{group_id}/reload` | Reload group config (v5.0.0+) |
+| PUT | `/agents/node/{node_id}/restart` | Restart by node (v5.0.0+) |
+| PUT | `/agents/node/{node_id}/reload` | Reload node agents config (v5.0.0+) |
 | GET | `/agents/no_group` | Without group |
 | GET | `/agents/outdated` | Outdated agents |
 | PUT | `/agents/upgrade` | Upgrade agents |
@@ -384,18 +397,12 @@ curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
 | GET | `/cluster/api/config` | API config |
 | PUT | `/cluster/restart` | Restart cluster |
 | GET | `/cluster/configuration/validation` | Validate config |
-| GET | `/cluster/version/check` | Version check |
 | GET | `/cluster/{node_id}/status` | Node status |
 | GET | `/cluster/{node_id}/info` | Node info |
 | GET | `/cluster/{node_id}/configuration` | Node config |
 | PUT | `/cluster/{node_id}/configuration` | Update node config |
 | GET | `/cluster/{node_id}/configuration/{component}/{configuration}` | Active config |
 | GET | `/cluster/{node_id}/daemons/stats` | Daemon stats |
-| GET | `/cluster/{node_id}/stats` | Node stats |
-| GET | `/cluster/{node_id}/stats/hourly` | Hourly stats |
-| GET | `/cluster/{node_id}/stats/weekly` | Weekly stats |
-| GET | `/cluster/{node_id}/stats/analysisd` | Analysisd stats |
-| GET | `/cluster/{node_id}/stats/remoted` | Remoted stats |
 | GET | `/cluster/{node_id}/logs` | Node logs |
 | GET | `/cluster/{node_id}/logs/summary` | Log summary |
 
@@ -435,13 +442,6 @@ curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
 | GET | `/security/config` | Security config |
 | PUT | `/security/config` | Update config |
 | DELETE | `/security/config` | Reset config |
-
-### Syscheck, Rootcheck & Active Response
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| PUT | `/syscheck` | Run syscheck scan |
-| PUT | `/rootcheck` | Run rootcheck scan |
-| PUT | `/active-response` | Run AR command |
 
 ### MITRE
 | Method | Endpoint | Description |

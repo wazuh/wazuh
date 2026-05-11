@@ -60,7 +60,6 @@
 #define MAX_EVENTS      1024                      /* Max number of epoll events       */
 #define EPOLL_MILLIS    -1                        /* Epoll wait time                  */
 #define MAX_TAG_COUNTER 256                       /* Max retrying counter             */
-#define SOCK_RECV_TIME0 300                       /* Socket receiving timeout (s)     */
 #define MIN_ORDER_SIZE  32                        /* Minimum size of orders array     */
 #define KEEPALIVE_SIZE  700                       /* Random keepalive string size     */
 #define MAX_DYN_STR     4194304                   /* Max message size received 4MiB   */
@@ -68,8 +67,8 @@
 #define OS_MAX_LOG_SIZE OS_MAXSTR - OS_LOG_HEADER /* Maximum log size with a header protection */
 
 /* Some global names */
-#define __ossec_name    "Wazuh"
-#define __ossec_version "v5.0.0"
+#define __wazuh_name    "Wazuh"
+#define __wazuh_version "v5.0.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -131,7 +130,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define MON_LOCAL_SOCK     "queue/sockets/monitor"
 #define CLUSTER_SOCK       "queue/cluster/c-internal.sock"
 #define CONTROL_SOCK       "queue/sockets/control"
-#define LOGTEST_SOCK       "queue/sockets/logtest"
 #define AGENT_UPGRADE_SOCK "queue/sockets/upgrade"
 
 // Tasks socket
@@ -149,23 +147,20 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WM_TASK_MODULE_SOCK "queue/tasks/task"
 
 /* Active Response files */
-#define DEFAULTAR_FILE "ar.conf"
 #define AR_BINDIR      "active-response/bin"
 #ifndef WIN32
-#define DEFAULTAR    "etc/shared/" DEFAULTAR_FILE
 #define AGENTCONFIG  "etc/shared/agent.conf"
 #define DEF_CA_STORE "etc/wpk_root.pem"
 #else
-#define DEFAULTAR    "shared/" DEFAULTAR_FILE
 #define AGENTCONFIG  "shared/agent.conf"
 #define DEF_CA_STORE "wpk_root.pem"
 #endif
 
 /* Exec queue */
-#define EXECQUEUE "queue/alerts/execq"
+#define EXECQUEUE "queue/sockets/execq"
 
 /* Active Response queue */
-#define ARQUEUE "queue/alerts/ar"
+#define ARQUEUE "queue/sockets/ar"
 
 /* Agent groups location */
 #define GROUPS_DIR "queue/agent-groups"
@@ -243,27 +238,18 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Internal definitions files */
 #ifndef WIN32
-#define OSSEC_DEFINES  "etc/internal_options.conf"
-#define OSSEC_LDEFINES "etc/local_internal_options.conf"
+#ifdef CLIENT
+#define WAZUH_DEFINES  "etc/internal_options.conf"
+#define WAZUH_LDEFINES "etc/local_internal_options.conf"
 #else
-#define OSSEC_DEFINES  "internal_options.conf"
-#define OSSEC_LDEFINES "local_internal_options.conf"
+/* Manager: defaults live in code via getDefine_Int_default(); only the
+ * user-overrides file is needed. WAZUH_DEFINES is intentionally not defined. */
+#define WAZUH_LDEFINES "etc/wazuh-manager-internal-options.conf"
 #endif
-
-/* Log directories */
-#define EVENTS           "logs/archives"
-#define EVENTS_DAILY     "logs/archives/archives.log"
-#define ALERTS           "logs/alerts"
-#define ALERTS_DAILY     "logs/alerts/alerts.log"
-#define ALERTSJSON_DAILY "logs/alerts/alerts.json"
-#define FWLOGS           "logs/firewall"
-#define FWLOGS_DAILY     "logs/firewall/firewall.log"
-#define EVENTSJSON_DAILY "logs/archives/archives.json"
-
-/* Stats directories */
-#define STATWQUEUE "stats/weekly-average"
-#define STATQUEUE  "stats/hourly-average"
-#define STATSAVED  "stats/totals"
+#else
+#define WAZUH_DEFINES  "internal_options.conf"
+#define WAZUH_LDEFINES "local_internal_options.conf"
+#endif
 
 /* Authentication keys file */
 #ifndef WIN32
@@ -309,32 +295,32 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Built-in defines */
 
-#ifndef OSSECCONF
+#ifndef WAZUHCONF
 #ifndef WIN32
 #ifdef CLIENT
-#define OSSECCONF "etc/ossec.conf"
+#define WAZUHCONF "etc/ossec.conf"
 #else
-#define OSSECCONF "etc/wazuh-manager.conf"
+#define WAZUHCONF "etc/wazuh-manager.conf"
 #endif
 #else
-#define OSSECCONF "ossec.conf"
+#define WAZUHCONF "ossec.conf"
 #endif
 #endif
 
-#ifndef OSSECCONFIG
+#ifndef WAZUHCONFIG
 #ifndef WIN32
 #ifdef CLIENT
-#define OSSECCONFIG       "ossec_config"
+#define WAZUHCONFIG "ossec_config"
 #else
-#define OSSECCONFIG       "wazuh_config"
+#define WAZUHCONFIG "wazuh_config"
 #endif
 #else
-#define OSSECCONFIG       "ossec_config"
+#define WAZUHCONFIG "ossec_config"
 #endif
 #endif
 
-#define SHAREDCFG_FILE      SHAREDCFG_DIR "/merged.mg"
-#define SHAREDCFG_FILENAME  "merged.mg"
+#define SHAREDCFG_FILE     SHAREDCFG_DIR "/merged.mg"
+#define SHAREDCFG_FILENAME "merged.mg"
 
 #define MAX_QUEUED_EVENTS_PATH "/proc/sys/fs/inotify/max_queued_events"
 

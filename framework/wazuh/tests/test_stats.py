@@ -3,7 +3,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import sys
-from datetime import date
 from json import dumps
 from unittest.mock import call, MagicMock, patch
 
@@ -35,28 +34,6 @@ def send_msg_to_wdb(msg, raw=False):
     query = ' '.join(msg.split(' ')[2:])
     result = list(map(remove_nones_to_dict, map(dict, test_data.cur.execute(query).fetchall())))
     return ['ok', dumps(result)] if raw else result
-
-
-def test_totals():
-    """Verify totals() function works and returns correct data"""
-    with patch('wazuh.stats.totals_', return_value=({})):
-        response = stats.totals(date(2019, 8, 13))
-        assert response.total_affected_items == len(response.affected_items)
-        assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
-
-
-def test_hourly():
-    """Makes sure hourly() fit with the expected."""
-    response = stats.hourly()
-    assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
-    assert response.total_affected_items == len(response.affected_items)
-
-
-def test_weekly():
-    """Makes sure weekly() fit with the expected."""
-    response = stats.weekly()
-    assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
-    assert response.total_affected_items == len(response.affected_items)
 
 
 @patch('wazuh.core.common.REMOTED_SOCKET', '/var/wazuh-manager/queue/sockets/remote')
@@ -162,14 +139,6 @@ def test_get_daemons_stats_all_agents(mock_get_daemons_stats_socket, daemons_lis
     assert not result.failed_items
 
     assert isinstance(result, AffectedItemsWazuhResult), 'The result is not an AffectedItemsWazuhResult object'
-
-
-@patch('wazuh.stats.get_daemons_stats_', return_value=[{"events_decoded": 1.0}])
-def test_deprecated_get_daemons_stats(mock_daemons_stats_):
-    """Makes sure deprecated_get_daemons_stats() fit with the expected."""
-    response = stats.deprecated_get_daemons_stats('filename')
-    assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
-    assert response.total_affected_items == len(response.affected_items)
 
 
 @pytest.mark.parametrize('component', [

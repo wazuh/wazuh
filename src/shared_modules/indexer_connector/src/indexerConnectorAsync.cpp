@@ -25,8 +25,10 @@ private:
 public:
     Impl(const nlohmann::json& config,
          const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
-             logFunction)
-        : m_impl(config, logFunction)
+             logFunction,
+         std::string queueId,
+         std::string basePath)
+        : m_impl(config, logFunction, std::move(queueId), nullptr, nullptr, std::move(basePath))
     {
     }
 
@@ -60,6 +62,11 @@ public:
         return m_impl.getQueueSize();
     }
 
+    uint64_t getDroppedEvents() const
+    {
+        return m_impl.getDroppedEvents();
+    }
+
     PointInTime
     createPointInTime(const std::vector<std::string>& indices, std::string_view keepAlive, bool expandWildcards)
     {
@@ -76,9 +83,10 @@ public:
                           const nlohmann::json& query,
                           const nlohmann::json& sort,
                           const std::optional<nlohmann::json>& searchAfter,
-                          const std::optional<nlohmann::json>& source)
+                          const std::optional<nlohmann::json>& source,
+                          const std::optional<nlohmann::json>& slice = std::nullopt)
     {
-        return m_impl.search(pit, size, query, sort, searchAfter, source);
+        return m_impl.search(pit, size, query, sort, searchAfter, source, slice);
     }
 
     nlohmann::json search(std::string_view index,
@@ -92,9 +100,11 @@ public:
 
 IndexerConnectorAsync::IndexerConnectorAsync(
     const nlohmann::json& config,
+    std::string queueId,
     const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
-        logFunction)
-    : m_impl(std::make_unique<Impl>(config, logFunction))
+        logFunction,
+    std::string basePath)
+    : m_impl(std::make_unique<Impl>(config, logFunction, std::move(queueId), std::move(basePath)))
 {
 }
 
@@ -133,6 +143,11 @@ uint64_t IndexerConnectorAsync::getQueueSize() const
     return m_impl->getQueueSize();
 }
 
+uint64_t IndexerConnectorAsync::getDroppedEvents() const
+{
+    return m_impl->getDroppedEvents();
+}
+
 PointInTime IndexerConnectorAsync::createPointInTime(const std::vector<std::string>& indices,
                                                      std::string_view keepAlive,
                                                      bool expandWildcards)
@@ -150,9 +165,10 @@ nlohmann::json IndexerConnectorAsync::search(const PointInTime& pit,
                                              const nlohmann::json& query,
                                              const nlohmann::json& sort,
                                              const std::optional<nlohmann::json>& searchAfter,
-                                             const std::optional<nlohmann::json>& source)
+                                             const std::optional<nlohmann::json>& source,
+                                             const std::optional<nlohmann::json>& slice)
 {
-    return m_impl->search(pit, size, query, sort, searchAfter, source);
+    return m_impl->search(pit, size, query, sort, searchAfter, source, slice);
 }
 
 nlohmann::json IndexerConnectorAsync::search(std::string_view index,

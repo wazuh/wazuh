@@ -23,6 +23,9 @@ std::function<void(const int, const char*, const char*, const int, const char*, 
 namespace logging
 {
 
+// Holds a reference to the rotating sink (if active) so requestShutdown() can reach it.
+static std::shared_ptr<daily_rotating_file_sink> g_rotatingSink;
+
 class CustomSink : public spdlog::sinks::base_sink<std::mutex>
 {
 public:
@@ -101,16 +104,18 @@ void start(const LoggingConfig& cfg)
     {
         // Use our custom sink that combines daily AND size-based rotation
         // This replicates Log4j2 policies: rotates daily OR when reaching max_size
-        auto sink = std::make_shared<daily_rotating_file_sink>(
+        g_rotatingSink = std::make_shared<daily_rotating_file_sink>(
             daily_rotating_file_sink::Config {.filePath = cfg.filePath,
                                               .maxFileSize = cfg.maxFileSize,
                                               .rotationHour = cfg.rotationHour,
                                               .rotationMinute = cfg.rotationMinute,
                                               .maxFiles = cfg.maxFiles,
                                               .maxAccumulatedSize = cfg.maxAccumulatedSize,
-                                              .truncate = cfg.truncate});
+                                              .truncate = cfg.truncate,
+                                              .compressionEnabled = cfg.compressionEnabled,
+                                              .compressionLevel = cfg.compressionLevel});
 
-        logger = std::make_shared<spdlog::logger>("default", sink);
+        logger = std::make_shared<spdlog::logger>("default", g_rotatingSink);
         spdlog::set_default_logger(logger);
     }
     else
@@ -134,7 +139,12 @@ void start(const LoggingConfig& cfg)
 
 void stop()
 {
+    if (g_rotatingSink)
+    {
+        g_rotatingSink->requestShutdown();
+    }
     spdlog::shutdown();
+    g_rotatingSink.reset();
 }
 
 void testInit(Level lvl)
@@ -278,6 +288,8 @@ LoggingConfig getStandaloneLoggingConfig()
         //   WAZUH_STANDALONE_LOG_ROTATION_MINUTE      (default: 0)
         //   WAZUH_STANDALONE_LOG_MAX_FILES            (default: 7)
         //   WAZUH_STANDALONE_LOG_MAX_ACCUMULATED_SIZE (default: 2147483648 = 2 GB)
+        //   WAZUH_STANDALONE_LOG_COMPRESSION_ENABLED  (default: true)
+        //   WAZUH_STANDALONE_LOG_COMPRESSION_LEVEL    (default: 5)
 
         auto verbosity = base::process::getEnvOrDefault("WAZUH_STANDALONE_LOG_LEVEL", "info");
         cfg.level = strToLevel(verbosity);
@@ -292,6 +304,10 @@ LoggingConfig getStandaloneLoggingConfig()
         cfg.maxFiles = static_cast<uint16_t>(base::process::getEnvIntOrDefault("WAZUH_STANDALONE_LOG_MAX_FILES", 7));
         cfg.maxAccumulatedSize =
             base::process::getEnvSizeOrDefault("WAZUH_STANDALONE_LOG_MAX_ACCUMULATED_SIZE", 2147483648); // 2 GB
+
+        // Compression configuration
+        cfg.compressionEnabled = base::process::getEnvBoolOrDefault("WAZUH_STANDALONE_LOG_COMPRESSION_ENABLED", true);
+        cfg.compressionLevel = base::process::getEnvIntOrDefault("WAZUH_STANDALONE_LOG_COMPRESSION_LEVEL", 5);
 
         return cfg;
     }();

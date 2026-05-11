@@ -23,11 +23,12 @@ with patch('wazuh.common.wazuh_uid'):
             get_agents_summary, get_agent_summary_os, get_agent_summary_status,
             get_agent_uninstall_permission, get_agent_upgrade, get_agents, get_agents_in_group,
             get_daemon_stats, get_component_stats, get_group_config, get_group_file,
-            get_group_files, get_list_group, get_sync_agent, insert_agent, post_group,
+            get_group_files, get_list_group, insert_agent, post_group,
             post_new_agent, put_agent_single_group, put_group_config,
             put_multiple_agent_single_group, put_upgrade_agents,
             put_upgrade_custom_agents, reconnect_agents, restart_agent,
-            restart_agents, restart_agents_by_group, restart_agents_by_node)
+            restart_agents, restart_agents_by_group, restart_agents_by_node,
+            reload_agent, reload_agents, reload_agents_by_group, reload_agents_by_node)
         from wazuh import agent, stats
         from wazuh.core.common import DATABASE_LIMIT
         from wazuh.tests.util import RBAC_bypasser
@@ -54,7 +55,6 @@ async def test_delete_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
                 'filters': {
                     'status': None,
                     'older_than': None,
-                    'manager': None,
                     'version': None,
                     'group': None,
                     'node_name': None,
@@ -64,7 +64,7 @@ async def test_delete_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
                 },
                 'q': None
                 }
-    nested = ['os.version', 'os.name', 'os.platform']
+    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
     for field in nested:
         f_kwargs['filters'][field] = mock_request.query_params.get(field, None)
     mock_dapi.awaited_once_with(f=agent.delete_agents,
@@ -99,7 +99,6 @@ async def test_get_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp
                 'filters': {
                     'status': None,
                     'older_than': None,
-                    'manager': None,
                     'version': None,
                     'group': None,
                     'node_name': None,
@@ -111,7 +110,7 @@ async def test_get_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp
                 'q': None,
                 'distinct': False
                 }
-    nested = ['os.version', 'os.name', 'os.platform']
+    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
     for field in nested:
         f_kwargs['filters'][field] = mock_request.query_params.get(field, None)
     mock_dapi.assert_called_once_with(f=agent.get_agents,
@@ -301,31 +300,6 @@ async def test_delete_single_agent_multiple_groups(mock_exc, mock_dapi, mock_rem
 @patch('api.controllers.agent_controller.remove_nones_to_dict')
 @patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_get_sync_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
-    """Verify 'get_sync_agent' endpoint is working as expected."""
-    result = await get_sync_agent(agent_id='001')
-    f_kwargs = {'agent_list': ['001']
-                }
-    mock_dapi.assert_called_once_with(f=agent.get_agents_sync_group,
-                                      f_kwargs=mock_remove.return_value,
-                                      request_type='local_master',
-                                      is_async=False,
-                                      wait_for_complete=False,
-                                      logger=ANY,
-                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
-                                      )
-    mock_exc.assert_called_once_with(mock_dfunc.return_value)
-    mock_remove.assert_called_once_with(f_kwargs)
-    assert isinstance(result, ConnexionResponse)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
-@patch('api.configuration.api_conf')
-@patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.agent_controller.remove_nones_to_dict')
-@patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_delete_single_agent_single_group(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
                                                mock_request):
     """Verify 'delete_single_agent_single_group' endpoint is working as expected."""
@@ -449,7 +423,6 @@ async def test_put_upgrade_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
                 'force': False,
                 'package_type': None,
                 'filters': {
-                    'manager': None,
                     'version': None,
                     'group': None,
                     'node_name': None,
@@ -460,7 +433,7 @@ async def test_put_upgrade_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
                 'q': None
                 }
 
-    nested = ['os.version', 'os.name', 'os.platform']
+    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
     for field in nested:
         f_kwargs['filters'][field] = mock_request.query_params.get(field, None)
 
@@ -501,7 +474,6 @@ async def test_put_upgrade_custom_agents(mock_exc, mock_dapi, mock_remove, mock_
                 'file_path': file_path,
                 'installer': None,
                 'filters': {
-                    'manager': None,
                     'version': None,
                     'group': None,
                     'node_name': None,
@@ -512,7 +484,7 @@ async def test_put_upgrade_custom_agents(mock_exc, mock_dapi, mock_remove, mock_
                 'q': None
                 }
 
-    nested = ['os.version', 'os.name', 'os.platform']
+    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
     for field in nested:
         f_kwargs['filters'][field] = mock_request.query_params.get(field, None)
 
@@ -595,7 +567,6 @@ async def test_get_agent_upgrade(mock_exc, mock_dapi, mock_remove, mock_dfunc,
     result = await get_agent_upgrade()
     f_kwargs = {'agent_list': None,
                 'filters': {
-                    'manager': None,
                     'version': None,
                     'group': None,
                     'node_name': None,
@@ -607,7 +578,7 @@ async def test_get_agent_upgrade(mock_exc, mock_dapi, mock_remove, mock_dfunc,
                 }
 
     # Add nested fields to kwargs filters
-    nested = ['os.version', 'os.name', 'os.platform']
+    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
     for field in nested:
         f_kwargs['filters'][field] = mock_request.query_params.get(field, None)
 
@@ -1016,6 +987,133 @@ async def test_restart_agents_by_group(mock_aiwr, mock_dapi, mock_remove, mock_d
                         }
             mock_dapi.assert_has_calls(calls_get_agents,
                                        calls_restart_agents_by_group)
+            assert mock_dapi.call_count == 2
+            mock_exc.assert_has_calls([call(mock_dfunc.return_value),
+                                       call(mock_dfunc.return_value)])
+            assert mock_exc.call_count == 2
+            mock_remove.assert_called_once_with(f_kwargs)
+        assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
+@patch('api.configuration.api_conf')
+@patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.agent_controller.remove_nones_to_dict')
+@patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
+async def test_reload_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
+    """Verify 'reload_agents' endpoint is working as expected."""
+    result = await reload_agents()
+    f_kwargs = {'agent_list': '*'}
+    mock_dapi.assert_called_once_with(f=agent.reload_agents,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='distributed_master',
+                                      is_async=True,
+                                      wait_for_complete=False,
+                                      broadcasting=True,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
+                                      )
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_remove.assert_called_once_with(f_kwargs)
+    assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
+@patch('api.configuration.api_conf')
+@patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.agent_controller.remove_nones_to_dict')
+@patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
+async def test_reload_agents_by_node(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
+    """Verify 'reload_agents_by_node' endpoint is working as expected."""
+    with patch('api.controllers.agent_controller.get_system_nodes', return_value=AsyncMock()) as mock_snodes:
+        result = await reload_agents_by_node(node_id='001')
+        f_kwargs = {'node_id': '001', 'agent_list': '*'}
+        mock_dapi.assert_called_once_with(f=agent.reload_agents_by_node,
+                                          f_kwargs=mock_remove.return_value,
+                                          request_type='distributed_master',
+                                          is_async=True,
+                                          wait_for_complete=False,
+                                          logger=ANY,
+                                          rbac_permissions=mock_request.context['token_info']['rbac_policies'],
+                                          nodes=mock_exc.return_value
+                                          )
+        mock_exc.assert_has_calls([call(mock_snodes.return_value),
+                                   call(mock_dfunc.return_value)])
+        assert mock_exc.call_count == 2
+        mock_remove.assert_called_once_with(f_kwargs)
+        assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
+@patch('api.configuration.api_conf')
+@patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.agent_controller.remove_nones_to_dict')
+@patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
+async def test_reload_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
+    """Verify 'reload_agent' endpoint is working as expected."""
+    result = await reload_agent(agent_id='001')
+    f_kwargs = {'agent_list': ['001']}
+    mock_dapi.assert_called_once_with(f=agent.reload_agents,
+                                      f_kwargs=mock_remove.return_value,
+                                      request_type='distributed_master',
+                                      is_async=True,
+                                      wait_for_complete=False,
+                                      logger=ANY,
+                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
+                                      )
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_remove.assert_called_once_with(f_kwargs)
+    assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
+@pytest.mark.parametrize('mock_alist', [CustomAffectedItems(empty=True), CustomAffectedItems()])
+@patch('api.configuration.api_conf')
+@patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.agent_controller.remove_nones_to_dict')
+@patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.agent_controller.AffectedItemsWazuhResult', return_value={})
+async def test_reload_agents_by_group(mock_aiwr, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_alist,
+                                      mock_request):
+    """Verify 'reload_agents_by_group' endpoint is working as expected."""
+    with patch('api.controllers.agent_controller.raise_if_exc', return_value=mock_alist) as mock_exc:
+        result = await reload_agents_by_group(group_id='001')
+        f_kwargs = {'group_list': ['001'],
+                    'select': ['id'],
+                    'limit': None
+                    }
+        calls_get_agents = [call(f=agent.get_agents_in_group,
+                                 f_kwargs=f_kwargs,
+                                 request_type='local_master',
+                                 is_async=False,
+                                 wait_for_complete=False,
+                                 logger=ANY,
+                                 rbac_permissions=mock_request.context['token_info']['rbac_policies']
+                                 )
+                            ]
+        calls_reload_agents_by_group = [call(f=agent.reload_agents_by_group,
+                                             f_kwargs=mock_remove.return_value,
+                                             request_type='distributed_master',
+                                             is_async=True,
+                                             wait_for_complete=False,
+                                             logger=ANY,
+                                             rbac_permissions=mock_request.context['token_info']['rbac_policies']
+                                             )
+                                        ]
+        if not mock_alist.affected_items:
+            mock_dapi.assert_has_calls(calls_get_agents)
+            assert mock_dapi.call_count == 1
+            mock_aiwr.assert_called_once_with(none_msg='Reload command was not sent to any agent')
+        else:
+            f_kwargs = {'agent_list': [mock_exc.return_value.affected_items[0]['id']]}
+            mock_dapi.assert_has_calls(calls_get_agents, calls_reload_agents_by_group)
             assert mock_dapi.call_count == 2
             mock_exc.assert_has_calls([call(mock_dfunc.return_value),
                                        call(mock_dfunc.return_value)])

@@ -208,11 +208,11 @@ endif()
 
 list(APPEND shared_tests_names "test_log_builder")
 if(${TARGET} STREQUAL "winagent")
-list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
+list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                                 -Wl,--wrap=fim_db_teardown")
 else()
-list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int,--wrap,getPrimaryIP \
+list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int,--wrap,getPrimaryIP,--wrap,getDefine_Int_default \
                                 -Wl,--wrap,getpid,--wrap,fcntl")
 endif()
 
@@ -326,12 +326,6 @@ list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 endif()
 
 if(${TARGET} STREQUAL "manager")
-list(APPEND shared_tests_names "test_json-queue")
-list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,wfopen \
-                                -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite \
-                                -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets -Wl,--wrap,w_ftell \
-                                -Wl,--wrap,fgetpos -Wl,--wrap,fgetc,--wrap,stat,--wrap,sleep,--wrap,getpid,--wrap,clearerr -Wl,--wrap,popen")
-
 list(APPEND shared_tests_names "test_bqueue")
 list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug2")
 

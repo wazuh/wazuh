@@ -37,15 +37,14 @@ static const char *SQL_SELECT_PAGE_FREE = "SELECT freelist_count FROM pragma_fre
 static const char *SQL_VACUUM = "VACUUM;";
 static const char *SQL_METADATA_UPDATE_FRAGMENTATION_DATA = "INSERT INTO metadata (key, value) VALUES ('last_vacuum_time', ?), ('last_vacuum_value', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value;";
 static const char *SQL_METADATA_GET_FRAGMENTATION_DATA = "SELECT key, value FROM metadata WHERE key in ('last_vacuum_time', 'last_vacuum_value');";
-static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (?, ?);";
 static const char *SQL_BEGIN = "BEGIN;";
 static const char *SQL_COMMIT = "COMMIT;";
 static const char *SQL_ROLLBACK = "ROLLBACK;";
 static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_INSERT_AGENT] = "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?,?,?,?,?,?,?);",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_NAME] = "UPDATE agent SET name = ? WHERE id = ?;",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ?, last_keepalive = STRFTIME('%s', 'NOW'), connection_status = ?, sync_status = ?, group_config_status = ? WHERE id = ?;",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION_IP] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ?, last_keepalive = STRFTIME('%s', 'NOW'), ip = ?, connection_status = ?, sync_status = ?, group_config_status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_type = ?, os_platform = ?, os_arch = ?, version = ?, merged_sum = ?, node_name = ?, last_keepalive = STRFTIME('%s', 'NOW'), connection_status = ?, sync_status = ?, group_config_status = ? WHERE id = ?;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION_IP] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_type = ?, os_platform = ?, os_arch = ?, version = ?, merged_sum = ?, node_name = ?, last_keepalive = STRFTIME('%s', 'NOW'), ip = ?, connection_status = ?, sync_status = ?, group_config_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_KEEPALIVE] = "UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'), connection_status = ?, sync_status = ?, disconnection_time = 0, status_code = 0 WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_CONNECTION_STATUS] = "UPDATE agent SET connection_status = ?, sync_status = ?, disconnection_time = ?, status_code = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_STATUS_CODE] = "UPDATE agent SET status_code = ?, version = ?, sync_status = ? WHERE id = ?;",
@@ -63,7 +62,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_GROUP_BELONG_FIND] = "SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?);",
     [WDB_STMT_GLOBAL_GROUP_BELONG_GET] = "SELECT id_agent FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ?) AND id_agent > ?;",
     [WDB_STMT_GLOBAL_SELECT_GROUPS] = "SELECT name FROM `group`;",
-    [WDB_STMT_GLOBAL_SYNC_REQ_FULL_GET] = "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, last_keepalive, connection_status, disconnection_time, group_config_status, status_code FROM agent WHERE id > ? AND sync_status = 'syncreq' LIMIT 1;",
+    [WDB_STMT_GLOBAL_SYNC_REQ_FULL_GET] = "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, version, merged_sum, node_name, last_keepalive, connection_status, disconnection_time, group_config_status, status_code FROM agent WHERE id > ? AND sync_status = 'syncreq' LIMIT 1;",
     [WDB_STMT_GLOBAL_SYNC_REQ_STATUS_GET] = "SELECT id, last_keepalive, connection_status, disconnection_time, status_code FROM agent WHERE id > ? AND sync_status = 'syncreq_status' LIMIT 1;",
     [WDB_STMT_GLOBAL_SYNC_REQ_KEEPALIVE_GET] = "SELECT id, last_keepalive FROM agent WHERE id > ? AND sync_status = 'syncreq_keepalive' LIMIT 1;",
     [WDB_STMT_GLOBAL_SYNC_GET] = "SELECT sync_status FROM agent WHERE id = ?;",
@@ -78,13 +77,13 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_GROUP_CTX_SET] = "UPDATE agent SET 'group' = ?, group_hash = ?, group_sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_GROUP_HASH_GET] = "SELECT group_hash FROM agent WHERE id > 0 AND group_hash IS NOT NULL ORDER BY id;",
     [WDB_STMT_GLOBAL_GROUP_HASH_SET] = "UPDATE agent SET 'group' = ?, group_hash = ? WHERE id = ?;",
-    [WDB_STMT_GLOBAL_UPDATE_AGENT_INFO] = "UPDATE agent SET config_sum = :config_sum, ip = :ip, manager_host = :manager_host, merged_sum = :merged_sum, name = :name, node_name = :node_name, os_arch = :os_arch, os_build = :os_build, os_codename = :os_codename, os_major = :os_major, os_minor = :os_minor, os_name = :os_name, os_platform = :os_platform, os_uname = :os_uname, os_version = :os_version, version = :version, last_keepalive = :last_keepalive, connection_status = :connection_status, disconnection_time = :disconnection_time, group_config_status = :group_config_status, status_code= :status_code, sync_status = :sync_status WHERE id = :id;",
+    [WDB_STMT_GLOBAL_UPDATE_AGENT_INFO] = "UPDATE agent SET ip = :ip, merged_sum = :merged_sum, name = :name, node_name = :node_name, os_arch = :os_arch, os_major = :os_major, os_minor = :os_minor, os_name = :os_name, os_platform = :os_platform, os_type = :os_type, os_version = :os_version, version = :version, last_keepalive = :last_keepalive, connection_status = :connection_status, disconnection_time = :disconnection_time, group_config_status = :group_config_status, status_code= :status_code, sync_status = :sync_status WHERE id = :id;",
     [WDB_STMT_GLOBAL_GET_GROUPS] = "SELECT DISTINCT `group`, group_hash from agent WHERE id > 0 AND group_hash > ? ORDER BY group_hash;",
     [WDB_STMT_GLOBAL_GET_AGENTS] = "SELECT id FROM agent WHERE id > ?;",
     [WDB_STMT_GLOBAL_GET_AGENTS_AND_GROUP] = "SELECT id, `group` FROM agent WHERE id > ?;",
     [WDB_STMT_GLOBAL_GET_AGENTS_CONTEXT] =
         "SELECT id, version, name, ip, os_arch AS architecture, name AS hostname, os_name, os_platform, "
-        "os_uname AS os_type, os_version, `group`, node_name, connection_status FROM agent;",
+        "os_version, `group`, node_name, connection_status FROM agent;",
     [WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS] = "SELECT id FROM agent WHERE id > ? AND connection_status = ?;",
     [WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE] = "SELECT id FROM agent WHERE id > ? AND connection_status = ? AND node_name = ? ORDER BY id LIMIT ?;",
     [WDB_STMT_GLOBAL_GET_AGENT_INFO] = "SELECT * FROM agent WHERE id = ?;",
@@ -308,18 +307,10 @@ int wdb_rollback(wdb_t * wdb) {
     return wdb_any_transaction(wdb, SQL_ROLLBACK);
 }
 
-int wdb_rollback2(wdb_t * wdb) {
-    return wdb_write_state_transaction(wdb, 0, wdb_rollback);
-}
 
 /* Create global database */
 int wdb_create_global(const char *path) {
-    if (OS_SUCCESS != wdb_create_file(path, schema_global_sql))
-        return OS_INVALID;
-    else if (OS_SUCCESS != wdb_insert_info("openssl_support", "yes"))
-        return OS_INVALID;
-    else
-        return OS_SUCCESS;
+    return wdb_create_file(path, schema_global_sql);
 }
 
 /* Create new database file from SQL script */
@@ -533,36 +524,6 @@ STATIC int wdb_select_from_temp_table(wdb_t * wdb) {
     return result;
 }
 
-/* Insert key-value pair into global.db info table */
-int wdb_insert_info(const char *key, const char *value) {
-    char path[PATH_MAX + 1] = "";
-    sqlite3 *db = NULL;
-    sqlite3_stmt *stmt = NULL;
-    int result = OS_SUCCESS;
-
-    snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-
-    if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
-        mdebug1("Couldn't open SQLite database '%s': %s", path, sqlite3_errmsg(db));
-        sqlite3_close_v2(db);
-        return OS_INVALID;
-    }
-
-    if (wdb_prepare(db, SQL_INSERT_INFO, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(db));
-        return OS_INVALID;
-    }
-
-    sqlite3_bind_text(stmt, 1, key, -1, NULL);
-    sqlite3_bind_text(stmt, 2, value, -1, NULL);
-
-    result = wdb_step(stmt) == SQLITE_DONE ? OS_SUCCESS : OS_INVALID;
-
-    sqlite3_finalize(stmt);
-    sqlite3_close_v2(db);
-
-    return result;
-}
 
 wdb_t * wdb_init(const char * id) {
     wdb_t * wdb;
@@ -1125,20 +1086,6 @@ int wdb_sql_exec(wdb_t *wdb, const char *sql_exec) {
     return result;
 }
 
-// Set the database journal mode to write-ahead logging
-int wdb_journal_wal(sqlite3 *db) {
-    char *sql_error = NULL;
-
-    sqlite3_exec(db, SQL_STMT[WDB_STMT_PRAGMA_JOURNAL_WAL], NULL, NULL, &sql_error);
-
-    if (sql_error != NULL) {
-        merror("Cannot set database journaling mode to WAL: '%s'", sql_error);
-        sqlite3_free(sql_error);
-        return -1;
-    }
-
-    return 0;
-}
 
 int wdb_enable_foreign_keys(sqlite3 *db) {
     char *sql_error = NULL;

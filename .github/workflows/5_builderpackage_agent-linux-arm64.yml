@@ -47,11 +47,15 @@ on:
         required: false
         default: false
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   # ===================== DEB JOBS =====================
   build-deb-arm64:
-    if: github.event_name == 'pull_request' || inputs.system == 'deb'
-    runs-on: ubuntu-24.04-arm
+    if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.system == 'deb'
+    runs-on: wz-linux-arm64
     timeout-minutes: 30
     name: Build DEB package
     outputs:
@@ -137,7 +141,7 @@ jobs:
 
   test-deb-arm64:
     needs: build-deb-arm64
-    runs-on: ubuntu-24.04-arm
+    runs-on: wz-linux-arm64
     timeout-minutes: 30
     name: Test DEB package
 
@@ -218,10 +222,21 @@ jobs:
           expected_upgrade_version: ${{ env.VERSION }}
           tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
 
+      - name: Test agent upgrade rule checks
+        uses: ./.github/actions/5_builderpackage_manager-upgrade-rules-test
+        with:
+          mode: run
+          component: agent
+          system: ${{ env.SYSTEM }}
+          tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
+          old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
+          package_mount: /tmp
+          package_path: /packages/${{ env.PACKAGE_NAME }}
+
   upload-deb-arm64-to-s3:
     needs: [build-deb-arm64, test-deb-arm64]
     if: success()
-    runs-on: ubuntu-24.04-arm
+    runs-on: wz-linux-arm64
     timeout-minutes: 15
     name: Upload DEB to S3
 
@@ -300,8 +315,8 @@ jobs:
 
   # ===================== RPM JOBS =====================
   build-rpm-arm64:
-    if: github.event_name == 'pull_request' || inputs.system == 'rpm'
-    runs-on: ubuntu-24.04-arm
+    if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.system == 'rpm'
+    runs-on: wz-linux-arm64
     timeout-minutes: 30
     name: Build RPM package
     outputs:
@@ -387,7 +402,7 @@ jobs:
 
   test-rpm-arm64:
     needs: build-rpm-arm64
-    runs-on: ubuntu-24.04-arm
+    runs-on: wz-linux-arm64
     timeout-minutes: 30
     name: Test RPM package
 
@@ -468,10 +483,21 @@ jobs:
           expected_upgrade_version: ${{ env.VERSION }}
           tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
 
+      - name: Test agent upgrade rule checks
+        uses: ./.github/actions/5_builderpackage_manager-upgrade-rules-test
+        with:
+          mode: run
+          component: agent
+          system: ${{ env.SYSTEM }}
+          tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
+          old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
+          package_mount: /tmp
+          package_path: /packages/${{ env.PACKAGE_NAME }}
+
   upload-rpm-arm64-to-s3:
     needs: [build-rpm-arm64, test-rpm-arm64]
     if: success()
-    runs-on: ubuntu-24.04-arm
+    runs-on: wz-linux-arm64
     timeout-minutes: 15
     name: Upload RPM to S3
 

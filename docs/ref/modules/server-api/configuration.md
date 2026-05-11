@@ -40,7 +40,6 @@ This module centralizes all Wazuh paths, limits, and runtime context.
 |----------|-------------|
 | `find_wazuh_path()` | Auto-discovers the Wazuh installation root |
 | `wazuh_uid()` / `wazuh_gid()` | Gets the wazuh-manager system user/group IDs |
-| `get_installation_uid()` | Returns (or creates) a persistent UUID |
 | `reset_context_cache()` | Decorator for request-scoped caching |
 
 ### Important Limits

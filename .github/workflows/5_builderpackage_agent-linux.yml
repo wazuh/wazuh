@@ -1,4 +1,4 @@
-run-name: Build Wazuh agent Linux - ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }} - ${{ inputs.system || 'deb,rpm' }} - ${{ inputs.architecture || 'amd64,i386' }}
+run-name: Build Wazuh agent Linux - ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }} - ${{ inputs.system || 'deb,rpm' }} - ${{ inputs.architecture || 'amd64' }}
 name: 5.X - Build Wazuh agent Linux (DEB/RPM)
 
 on:
@@ -7,18 +7,21 @@ on:
     paths:
       - "src/**"
       - "packages/**"
+      - "ruleset/**"
+      - ".github/actions/check_files/**"
       - ".github/workflows/5_builderpackage_agent-linux.yml"
+      - ".github/workflows/5_testintegration_linux-integration-tests.yml"
+      - ".github/test_modules_linux.json"
   workflow_dispatch:
     inputs:
       architecture:
         type: choice
-        description: Package architecture [x86_64, amd64, i386].
+        description: Package architecture [x86_64, amd64].
         required: true
         default: amd64
         options:
           - x86_64
           - amd64
-          - i386
       system:
         type: choice
         description: Package OS [deb, rpm].
@@ -48,16 +51,20 @@ on:
         required: false
         default: false
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   # ===================== DEB JOBS =====================
   build-deb:
-    if: github.event_name == 'pull_request' || inputs.system == 'deb'
-    runs-on: ubuntu-latest
+    if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.system == 'deb'
+    runs-on: wz-linux-amd64
     timeout-minutes: 30
     name: Build DEB ${{ matrix.arch }} package
     strategy:
       matrix:
-        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64", "i386"]') || fromJSON(format('["{{0}}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{0}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
       fail-fast: false
 
     steps:
@@ -138,12 +145,12 @@ jobs:
 
   test-deb:
     needs: build-deb
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     timeout-minutes: 30
     name: Test DEB ${{ matrix.arch }} package
     strategy:
       matrix:
-        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64", "i386"]') || fromJSON(format('["{{0}}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{0}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
       fail-fast: false
 
     steps:
@@ -256,15 +263,26 @@ jobs:
           tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
           package_path: /tmp/upgrade_test
 
+      - name: Test agent upgrade rule checks
+        uses: ./.github/actions/5_builderpackage_manager-upgrade-rules-test
+        with:
+          mode: run
+          component: agent
+          system: ${{ env.SYSTEM }}
+          tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
+          old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
+          package_mount: /tmp/upgrade_test
+          package_path: /packages/${{ env.PACKAGE_NAME }}
+
   upload-deb-to-s3:
     needs: [build-deb, test-deb]
     if: success()
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     timeout-minutes: 15
     name: Upload DEB ${{ matrix.arch }} to S3
     strategy:
       matrix:
-        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64", "i386"]') || fromJSON(format('["{{0}}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{0}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
       fail-fast: false
 
     steps:
@@ -321,13 +339,13 @@ jobs:
 
   # ===================== RPM JOBS =====================
   build-rpm:
-    if: github.event_name == 'pull_request' || inputs.system == 'rpm'
-    runs-on: ubuntu-latest
+    if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.system == 'rpm'
+    runs-on: wz-linux-amd64
     timeout-minutes: 30
     name: Build RPM ${{ matrix.arch }} package
     strategy:
       matrix:
-        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64", "i386"]') || fromJSON(format('["{{0}}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{0}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
       fail-fast: false
 
     steps:
@@ -415,12 +433,12 @@ jobs:
 
   test-rpm:
     needs: build-rpm
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     timeout-minutes: 30
     name: Test RPM ${{ matrix.arch }} package
     strategy:
       matrix:
-        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64", "i386"]') || fromJSON(format('["{{0}}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{0}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
       fail-fast: false
 
     steps:
@@ -541,15 +559,26 @@ jobs:
           tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
           package_path: /tmp/upgrade_test
 
+      - name: Test agent upgrade rule checks
+        uses: ./.github/actions/5_builderpackage_manager-upgrade-rules-test
+        with:
+          mode: run
+          component: agent
+          system: ${{ env.SYSTEM }}
+          tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
+          old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
+          package_mount: /tmp/upgrade_test
+          package_path: /packages/${{ env.PACKAGE_NAME }}
+
   upload-rpm-to-s3:
     needs: [build-rpm, test-rpm]
     if: success()
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     timeout-minutes: 15
     name: Upload RPM ${{ matrix.arch }} to S3
     strategy:
       matrix:
-        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64", "i386"]') || fromJSON(format('["{{0}}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{0}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
       fail-fast: false
 
     steps:
@@ -615,4 +644,110 @@ jobs:
     with:
       base_branch: ''
       platform: 'linux'
+    secrets: inherit
+
+  detect-changes:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    name: Detect changed Linux test modules
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      any_matched: ${{ steps.set-matrix.outputs.any_matched }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build matrix from changed files
+        id: set-matrix
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: python
+        run: |
+          import json, os, subprocess
+          from pathlib import PurePosixPath
+
+          base_sha = os.environ.get("BASE_SHA", "").strip()
+          head_sha = os.environ.get("HEAD_SHA", "").strip()
+
+          none_matrix = {
+              "include": [{
+                  "name": "none",
+                  "shard_name": "none",
+                  "pytest_target": "",
+                  "pytest_extra_args": "",
+                  "pytest_tier_args": "",
+                  "pre_install": "",
+                  "setup_aws_credentials": False,
+                  "timeout_minutes": 1
+              }]
+          }
+
+          if not base_sha or not head_sha:
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  f.write(f"matrix={json.dumps(none_matrix)}\n")
+                  f.write("any_matched=false\n")
+              raise SystemExit(0)
+
+          result = subprocess.run(
+              ["git", "diff", "--name-only", base_sha, head_sha],
+              capture_output=True, text=True
+          )
+          changed = set(result.stdout.splitlines())
+
+          with open(".github/test_modules_linux.json") as f:
+              config = json.load(f)
+
+          matched = []
+          for mod in config["modules"]:
+              for pattern in mod["paths"]:
+                  if any(PurePosixPath(fp).match(pattern) for fp in changed):
+                      tiers = mod.get("tiers", ["0 1"])
+                      for tier in tiers:
+                          tier_args = " ".join(f"--tier {t}" for t in tier.split())
+                          shard_name = f"tier-{tier.replace(' ', '-')}"
+                          matched.append({
+                              "name": mod["name"],
+                              "shard_name": shard_name,
+                              "pytest_target": mod["pytest_target"],
+                              "pytest_extra_args": mod.get("pytest_extra_args", ""),
+                              "pytest_tier_args": tier_args,
+                              "pre_install": mod.get("pre_install", ""),
+                              "setup_aws_credentials": mod.get("setup_aws_credentials", False),
+                              "timeout_minutes": mod.get("timeout_minutes", 120)
+                          })
+                      break
+
+          matrix = {"include": matched} if matched else none_matrix
+          any_matched = "true" if matched else "false"
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"matrix={json.dumps(matrix)}\n")
+              f.write(f"any_matched={any_matched}\n")
+
+  run-integration-tests:
+    needs: [upload-deb-to-s3, detect-changes]
+    if: >
+      needs.upload-deb-to-s3.result == 'success' &&
+      needs.detect-changes.result == 'success'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
+    name: ${{ matrix.name == 'none' && 'Skipped IT Linux - no relevant changes' || format('IT Linux - {0} ({1})', matrix.name, matrix.shard_name) }}
+    uses: ./.github/workflows/5_testintegration_linux-integration-tests.yml
+    with:
+      base_branch: ${{ github.event.pull_request.base.ref }}
+      build_run_id: ${{ github.run_id }}
+      module_name: ${{ matrix.name }}
+      shard_name: ${{ matrix.shard_name }}
+      pytest_target: ${{ matrix.pytest_target }}
+      pytest_extra_args: ${{ matrix.pytest_extra_args }}
+      pytest_tier_args: ${{ matrix.pytest_tier_args }}
+      pre_install: ${{ matrix.pre_install }}
+      setup_aws_credentials: ${{ matrix.setup_aws_credentials || false }}
+      timeout_minutes: ${{ matrix.timeout_minutes }}
     secrets: inherit

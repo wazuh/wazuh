@@ -284,15 +284,20 @@ def test_validate_mitre(response, data, index=0):
             assert v == response.json()['data']['affected_items'][index][k]
 
 
-def test_validate_restart_by_node(response, data):
-    data = json.loads(data.replace("'", '"'))
-    affected_items = list()
-    for item in data['affected_items']:
-        if item['status'] == 'active':
-            affected_items.append(item['id'])
-    assert response.json()['data']['affected_items'] == affected_items
-    assert not response.json()['data']['failed_items']
-    healthcheck_agent_restart(response, affected_items)
+def test_validate_restart_by_node(response, node_connected_agents_response , non_restartable_agents : list = None):
+
+    non_restartable_agents = non_restartable_agents or []
+
+    node_connected_agents_response = json.loads(node_connected_agents_response.replace("'", '"'))
+
+    expected_affected_items = list()
+    for item in node_connected_agents_response['affected_items']:
+        if item['status'] == 'active' and item['id'] not in non_restartable_agents:
+            expected_affected_items.append(item['id'])
+
+    assert response.json()['data']['affected_items'] == expected_affected_items
+
+    healthcheck_agent_restart(response, expected_affected_items)
 
 
 def test_validate_restart_by_node_rbac(response, permitted_agents):
@@ -404,7 +409,7 @@ def check_agentd_started(response, agents_list, restarted=True):
         agentd_started_regex = (
             re.compile(r"agentd.+Started")
             if restarted
-            else re.compile(r"agentd.+(Reload|Started)")
+            else re.compile(r"agentd.+(Reload|reloading|Started)")
         )
         while tries < 80:
             try:
@@ -478,43 +483,3 @@ def healthcheck_agent_restart(response, agents_list, restarted=True):
     time.sleep(20)
     # Wait for active agent status (up to 25 seconds)
     check_agent_active_status(agents_list)
-
-
-def validate_update_check_response(response, current_version, update_check):
-    """Check that the update check response contains the expected fields, and verify if the 'last_available_*'
-    dictionaries have the correct keys and values.
-
-    Parameters
-    ----------
-    response : Request response
-    """
-    error_code = response.json()['error']
-    if response.status_code == 500:
-        assert error_code == 2100
-        return
-
-    available_update_keys = ["last_available_major", "last_available_minor", "last_available_patch"]
-    keys_to_check = [
-        ("tag", str), ("description", (str, type(None))), ("title", str), ("published_date", str), ("semver", dict)
-    ]
-
-    data = response.json()['data']
-
-    assert error_code == 0
-    assert data['current_version'] == current_version
-    assert data['update_check'] == update_check
-    assert data['uuid'] is not None
-    last_check_date = data['last_check_date']
-    if update_check:
-        assert last_check_date is not None
-    else:
-        assert last_check_date == ''
-
-    for available_update in available_update_keys:
-        available_update_data = data[available_update]
-
-        assert isinstance(available_update_data, dict)
-
-        if available_update_data != {}:
-            for key, value_type in keys_to_check:
-                assert isinstance(available_update_data[key], value_type)

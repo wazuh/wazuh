@@ -1722,13 +1722,27 @@
           ]
         },
         "enrichments.indicator.confidence": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nIndicator confidence rating.",
+          "description": "Module: ecs\nIndexerType: short\n\nIndicator confidence rating.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "enrichments.indicator.feed.name": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nName of the feed that supplied the indicator.",
           "type": [
             "string"
           ]
         },
         "enrichments.indicator.first_seen": {
           "description": "Module: ecs\nIndexerType: date\n\nDate/time indicator was first reported.",
+          "type": [
+            "string"
+          ]
+        },
+        "enrichments.indicator.id": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nUnique identifier for the enrichment data, such as a hash of the indicator data or a unique ID from the provider.",
           "type": [
             "string"
           ]
@@ -1753,6 +1767,41 @@
         },
         "enrichments.indicator.reference": {
           "description": "Module: ecs\nIndexerType: keyword\n\nIndicator reference URL.",
+          "type": [
+            "string"
+          ]
+        },
+        "enrichments.indicator.software": {
+          "additionalProperties": false,
+          "description": "Module: ecs\nIndexerType: object\n\nName of the software associated with the indicator, such as malware or attack framework.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "properties": {
+            "alias": {
+              "description": "Module: ecs\nIndexerType: keyword\n\nAlias or alternative names for the software associated with the indicator.",
+              "type": [
+                "string"
+              ]
+            },
+            "name": {
+              "description": "Module: ecs\nIndexerType: keyword\n\nName of the software associated with the indicator.",
+              "type": [
+                "string"
+              ]
+            },
+            "type": {
+              "description": "Module: ecs\nIndexerType: keyword\n\nType of software associated with the indicator, such as malware, attack framework, or tool.",
+              "type": [
+                "string"
+              ]
+            }
+          },
+          "type": [
+            "object",
+            "string"
+          ]
+        },
+        "enrichments.indicator.tags": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nList of tags associated with the indicator.",
           "type": [
             "string"
           ]
@@ -7325,6 +7374,66 @@
             "string"
           ]
         },
+        "rule.compliance.cmmc": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nCMMC requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.fedramp": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nFedRAMP requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.gdpr": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nGDPR requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.hipaa": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nHIPAA requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.iso_27001": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nISO 27001 requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.nis2": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nNIS2 requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.nist_800_171": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nNIST 800-171 requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.nist_800_53": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nNIST 800-53 requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.pci_dss": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nPCI DSS requirements.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.compliance.tsc": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nTSC requirements.",
+          "type": [
+            "string"
+          ]
+        },
         "rule.description": {
           "description": "Module: ecs\nIndexerType: keyword\n\nThe description of the rule generating the event.",
           "type": [
@@ -7339,6 +7448,24 @@
         },
         "rule.license": {
           "description": "Module: ecs\nIndexerType: keyword\n\nName of the license under which the rule used to generate this event is made available.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.mitre.subtechnique": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nMITRE ATT&CK subtechniques.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.mitre.tactic": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nMITRE ATT&CK tactics.",
+          "type": [
+            "string"
+          ]
+        },
+        "rule.mitre.technique": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nMITRE ATT&CK techniques.",
           "type": [
             "string"
           ]
@@ -8061,6 +8188,12 @@
                 },
                 "email.address": {
                   "description": "Module: ecs\nIndexerType: keyword\n\nIdentifies a threat indicator as an email address (irrespective of direction).",
+                  "type": [
+                    "string"
+                  ]
+                },
+                "feed.name": {
+                  "description": "Module: ecs\nIndexerType: keyword\n\nName of the feed that supplied the indicator.",
                   "type": [
                     "string"
                   ]
@@ -8984,6 +9117,12 @@
                     "string"
                   ]
                 },
+                "id": {
+                  "description": "Module: ecs\nIndexerType: keyword\n\nUnique identifier for the enrichment data, such as a hash of the indicator data or a unique ID from the provider.",
+                  "type": [
+                    "string"
+                  ]
+                },
                 "ip": {
                   "description": "Module: ecs\nIndexerType: ip\n\nIdentifies a threat indicator as an IP address (irrespective of direction).",
                   "type": [
@@ -9095,6 +9234,41 @@
                   "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                   "type": [
                     "number",
+                    "string"
+                  ]
+                },
+                "software": {
+                  "additionalProperties": false,
+                  "description": "Module: ecs\nIndexerType: object\n\nName of the software associated with the indicator, such as malware or attack framework.",
+                  "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                  "properties": {
+                    "alias": {
+                      "description": "Module: ecs\nIndexerType: keyword\n\nAlias or alternative names for the software associated with the indicator.",
+                      "type": [
+                        "string"
+                      ]
+                    },
+                    "name": {
+                      "description": "Module: ecs\nIndexerType: keyword\n\nName of the software associated with the indicator.",
+                      "type": [
+                        "string"
+                      ]
+                    },
+                    "type": {
+                      "description": "Module: ecs\nIndexerType: keyword\n\nType of software associated with the indicator, such as malware, attack framework, or tool.",
+                      "type": [
+                        "string"
+                      ]
+                    }
+                  },
+                  "type": [
+                    "object",
+                    "string"
+                  ]
+                },
+                "tags": {
+                  "description": "Module: ecs\nIndexerType: keyword\n\nList of tags associated with the indicator.",
+                  "type": [
                     "string"
                   ]
                 },
@@ -11883,6 +12057,12 @@
             "string"
           ]
         },
+        "vulnerability.detected_at": {
+          "description": "Module: ecs\nIndexerType: date\n\nVulnerability's detection date.",
+          "type": [
+            "string"
+          ]
+        },
         "vulnerability.enumeration": {
           "description": "Module: ecs\nIndexerType: keyword\n\nThe type of identifier used for this vulnerability. For example (https://cve.mitre.org/about/)",
           "type": [
@@ -11895,8 +12075,8 @@
             "string"
           ]
         },
-        "vulnerability.reference": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nA resource that provides additional information, context, and mitigations for the identified vulnerability.",
+        "vulnerability.published_at": {
+          "description": "Module: ecs\nIndexerType: date\n\nVulnerability's publication date.",
           "type": [
             "string"
           ]
@@ -11907,8 +12087,20 @@
             "string"
           ]
         },
+        "vulnerability.scanner.condition": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nThe condition matched by the package that led the scanner to consider it vulnerable.",
+          "type": [
+            "string"
+          ]
+        },
         "vulnerability.scanner.reference": {
           "description": "Module: ecs\nIndexerType: keyword\n\nScanner's resource that provides additional information, context, and mitigations for the identified vulnerability.",
+          "type": [
+            "string"
+          ]
+        },
+        "vulnerability.scanner.source": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nThe origin of the decision of the scanner (AKA feed used to detect the vulnerability).",
           "type": [
             "string"
           ]
@@ -11952,6 +12144,14 @@
         "vulnerability.severity": {
           "description": "Module: ecs\nIndexerType: keyword\n\nThe severity of the vulnerability can help with metrics and internal prioritization regarding remediation. For example (https://nvd.nist.gov/vuln-metrics/cvss)",
           "type": [
+            "string"
+          ]
+        },
+        "vulnerability.under_evaluation": {
+          "description": "Module: ecs\nIndexerType: boolean\n\nIndicates if the vulnerability is awaiting analysis by the NVD.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+          "type": [
+            "boolean",
             "string"
           ]
         },
@@ -12412,6 +12612,12 @@
             "string"
           ]
         },
+        "wazuh.event.id": {
+          "description": "Module: ecs\nIndexerType: keyword\n\nUnique identifier shared across all related events, generated by Wazuh.",
+          "type": [
+            "string"
+          ]
+        },
         "wazuh.integration.category": {
           "description": "Module: ecs\nIndexerType: keyword\n\nWazuh integration category.",
           "type": [
@@ -12632,43 +12838,30 @@
       "description": "Decoder metadata",
       "properties": {
         "author": {
-          "additionalProperties": false,
-          "properties": {
-            "date": {
-              "description": "Creation date in ISO 8601 format (YYYY-MM-DD)",
-              "format": "date",
-              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
-              "type": "string"
-            },
-            "email": {
-              "type": "string"
-            },
-            "modified": {
-              "description": "Last modification date in ISO 8601 format (YYYY-MM-DD)",
-              "format": "date",
-              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
-              "type": "string"
-            },
-            "name": {
-              "type": "string"
-            },
-            "url": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "name",
-            "date"
-          ],
-          "type": "object"
+          "type": "string"
         },
         "compatibility": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "date": {
+          "description": "Creation date in ISO 8601 date-time format",
+          "format": "date-time",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$",
           "type": "string"
         },
         "description": {
           "type": "string"
         },
-        "module": {
+        "documentation": {
+          "type": "string"
+        },
+        "modified": {
+          "description": "Last modification date in ISO 8601 date-time format",
+          "format": "date-time",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$",
           "type": "string"
         },
         "references": {
@@ -12677,24 +12870,20 @@
           },
           "type": "array"
         },
-        "title": {
-          "type": "string"
-        },
-        "versions": {
+        "supports": {
           "items": {
             "type": "string"
           },
           "type": "array"
+        },
+        "title": {
+          "type": "string"
         }
       },
       "required": [
-        "module",
         "title",
-        "description",
-        "compatibility",
-        "versions",
         "author",
-        "references"
+        "description"
       ],
       "type": "object"
     },

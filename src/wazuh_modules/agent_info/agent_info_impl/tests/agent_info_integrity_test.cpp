@@ -3,6 +3,7 @@
 
 #include <agent_info_impl.hpp>
 #include <agent_sync_protocol.hpp>
+#include <metadata_provider.h>
 
 #include <mock_dbsync.hpp>
 #include <mock_file_io_utils.hpp>
@@ -12,6 +13,7 @@
 #include <memory>
 #include <string>
 #include <chrono>
+#include <filesystem>
 
 /**
  * @brief Test fixture for AgentInfoImpl integrity check functionality
@@ -29,6 +31,10 @@ class AgentInfoIntegrityTest : public ::testing::Test
         {
             m_logOutput.clear();
             m_reportedEvents.clear();
+
+            // Create directory for shared memory file (required on Unix/macOS)
+            // The metadata provider uses "var/run/.wazuh_agent_metadata" as shared memory path
+            std::filesystem::create_directories("var/run");
 
             m_reportDiffFunc = [this](const std::string & event)
             {
@@ -263,6 +269,11 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckTriggeredWhenIntervalElapsed)
         {
             callback("123 test-agent 10.0.0.1 key");
         }
+        else if (pathStr.find("merged.mg") != std::string::npos)
+        {
+            // Simulate merged.mg content with group information
+            callback("<!-- Source file: default/agent.conf -->");
+        }
     }));
 
     nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}};
@@ -270,6 +281,22 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckTriggeredWhenIntervalElapsed)
     .WillRepeatedly(::testing::Return(osData));
 
     m_logOutput.clear();
+
+    // Initialize metadata provider manually to ensure it's available before start()
+    agent_metadata_t metadata = {};
+    strncpy(metadata.agent_id, "123", sizeof(metadata.agent_id) - 1);
+    strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
+    strncpy(metadata.agent_version, "4.5.0", sizeof(metadata.agent_version) - 1);
+    strncpy(metadata.architecture, "test64", sizeof(metadata.architecture) - 1);
+    strncpy(metadata.hostname, "test-host", sizeof(metadata.hostname) - 1);
+    strncpy(metadata.os_name, "TestOS", sizeof(metadata.os_name) - 1);
+    strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
+    strncpy(metadata.os_platform, "ubuntu", sizeof(metadata.os_platform) - 1);
+    strncpy(metadata.os_version, "20.04", sizeof(metadata.os_version) - 1);
+    char* groups[] = {const_cast<char*>("default")};
+    metadata.groups = groups;
+    metadata.groups_count = 1;
+    metadata_provider_update(&metadata);
 
     // Use very short integrity interval (1 second) to trigger check immediately
     m_agentInfo->start(1, 1, []()
@@ -344,6 +371,11 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckRunsAfterDeltaSyncCompletes)
         {
             callback("123 test-agent 10.0.0.1 key");
         }
+        else if (pathStr.find("merged.mg") != std::string::npos)
+        {
+            // Simulate merged.mg content with group information
+            callback("<!-- Source file: default/agent.conf -->");
+        }
     }));
 
     nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}};
@@ -351,6 +383,22 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckRunsAfterDeltaSyncCompletes)
     .WillRepeatedly(::testing::Return(osData));
 
     m_logOutput.clear();
+
+    // Initialize metadata provider manually to ensure it's available before start()
+    agent_metadata_t metadata = {};
+    strncpy(metadata.agent_id, "123", sizeof(metadata.agent_id) - 1);
+    strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
+    strncpy(metadata.agent_version, "4.5.0", sizeof(metadata.agent_version) - 1);
+    strncpy(metadata.architecture, "test64", sizeof(metadata.architecture) - 1);
+    strncpy(metadata.hostname, "test-host", sizeof(metadata.hostname) - 1);
+    strncpy(metadata.os_name, "TestOS", sizeof(metadata.os_name) - 1);
+    strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
+    strncpy(metadata.os_platform, "ubuntu", sizeof(metadata.os_platform) - 1);
+    strncpy(metadata.os_version, "20.04", sizeof(metadata.os_version) - 1);
+    char* groups[] = {const_cast<char*>("default")};
+    metadata.groups = groups;
+    metadata.groups_count = 1;
+    metadata_provider_update(&metadata);
 
     // Short integrity interval, but delta sync is pending
     m_agentInfo->start(1, 1, []()
@@ -428,6 +476,11 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckForBothMetadataAndGroups)
         {
             callback("123 test-agent 10.0.0.1 key");
         }
+        else if (pathStr.find("merged.mg") != std::string::npos)
+        {
+            // Simulate merged.mg content with group information
+            callback("<!-- Source file: default/agent.conf -->");
+        }
     }));
 
     nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}};
@@ -435,6 +488,22 @@ TEST_F(AgentInfoIntegrityTest, IntegrityCheckForBothMetadataAndGroups)
     .WillRepeatedly(::testing::Return(osData));
 
     m_logOutput.clear();
+
+    // Initialize metadata provider manually to ensure it's available before start()
+    agent_metadata_t metadata = {};
+    strncpy(metadata.agent_id, "123", sizeof(metadata.agent_id) - 1);
+    strncpy(metadata.agent_name, "test-agent", sizeof(metadata.agent_name) - 1);
+    strncpy(metadata.agent_version, "4.5.0", sizeof(metadata.agent_version) - 1);
+    strncpy(metadata.architecture, "test64", sizeof(metadata.architecture) - 1);
+    strncpy(metadata.hostname, "test-host", sizeof(metadata.hostname) - 1);
+    strncpy(metadata.os_name, "TestOS", sizeof(metadata.os_name) - 1);
+    strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
+    strncpy(metadata.os_platform, "ubuntu", sizeof(metadata.os_platform) - 1);
+    strncpy(metadata.os_version, "20.04", sizeof(metadata.os_version) - 1);
+    char* groups[] = {const_cast<char*>("default")};
+    metadata.groups = groups;
+    metadata.groups_count = 1;
+    metadata_provider_update(&metadata);
 
     // Use very short integrity interval to trigger both checks
     m_agentInfo->start(1, 1, []()

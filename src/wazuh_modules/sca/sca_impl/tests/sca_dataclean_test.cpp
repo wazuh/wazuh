@@ -77,6 +77,7 @@ class SCADataCleanTest : public ::testing::Test
             // Mock selectRows to return count > 0 for hasDataInDatabase()
             EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
             .WillOnce(::testing::Return()) // Sync manager initialization query
+            .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
             .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
                                            std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
             {
@@ -154,6 +155,7 @@ TEST_F(SCADataCleanTest, AllPoliciesRemovedAtStartup_DataCleanFailure_Retries)
     // Mock selectRows to return count > 0 for hasDataInDatabase()
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
     .WillOnce(::testing::Return()) // Sync manager initialization query
+    .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
     .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
                                    std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
     {
@@ -197,6 +199,7 @@ TEST_F(SCADataCleanTest, NoPoliciesNoData_ExitsCleanly)
     // Mock selectRows to return count = 0 for hasDataInDatabase()
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
     .WillOnce(::testing::Return()) // Sync manager initialization query
+    .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
     .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
                                    std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
     {
@@ -235,6 +238,7 @@ TEST_F(SCADataCleanTest, HandleAllPoliciesRemoved_SendsDataCleanAndExits)
     // Mock selectRows to indicate data exists
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
     .WillOnce(::testing::Return()) // Sync manager initialization query
+    .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
     .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
                                    std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
     {
@@ -341,6 +345,7 @@ TEST_F(SCADataCleanTest, DataClean_WithoutSyncProtocol_Fails)
     // Mock selectRows to indicate data exists
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
     .WillOnce(::testing::Return()) // Sync manager initialization query
+    .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
     .WillOnce(::testing::Invoke([](const nlohmann::json& /* query */,
                                    std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
     {
@@ -375,6 +380,7 @@ TEST_F(SCADataCleanTest, DataClean_WaitsForSyncInProgress)
     // Mock selectRows to indicate data exists
     EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
     .WillOnce(::testing::Return()) // Sync manager initialization query
+    .WillOnce(::testing::Return()) // first_sync_completed metadata lookup
     .WillOnce(::testing::Invoke(
                   [](const nlohmann::json& /* query */,
                      std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)

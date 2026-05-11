@@ -107,16 +107,6 @@ Scans network interfaces for promiscuous mode, which allows capturing all networ
 | [Architecture](architecture.md) | Technical architecture and detection methods |
 | [Output Samples](output-samples.md) | Alert formats and examples |
 
-## Migration from Deprecated Features
-
-If you were using rootcheck features removed in Wazuh 5.0, here are the recommended alternatives:
-
-| Removed Feature | Alternative Solution |
-|----------------|---------------------|
-| **File check** (rootkit_files.txt) | Use [FIM](../fim/README.md) with threat intelligence integration |
-| **Trojan scan** (rootkit_trojans.txt) | Use [FIM](../fim/README.md) with YARA rules or VirusTotal integration |
-| **Policy check** (system_audit_*.txt) | Use [SCA](../sca/README.md) module with YAML policies |
-
 ## Related Modules
 
 - **[Security Configuration Assessment (SCA)](../sca/README.md)**: Policy and configuration compliance checking

@@ -7,7 +7,7 @@ stages:
   - name: Try to show the roles of the system
     request: &all_roles_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/roles"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -368,7 +368,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    
+
   - name: Try to get security roles using an invalid query
     request:
       verify: False
@@ -400,7 +400,7 @@ stages:
   - name: Try to show the policies of the system
     request: &all_policies_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -680,7 +680,7 @@ stages:
       status_code: 200
       json:
         <<: *response_error
-    
+
   - name: Get security policies using query parameter
     request:
       verify: False
@@ -698,7 +698,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    
+
   - name: Try to get security policies using an invalid query
     request:
       verify: False
@@ -730,7 +730,7 @@ stages:
   - name: Try to show the rules of the system
     request: &all_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/rules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -842,7 +842,7 @@ stages:
   - name: Search in rules
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/rules"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1066,7 +1066,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    
+
   - name: Try to get security rules using an invalid query
     request:
       verify: False
@@ -1090,38 +1090,6 @@ stages:
         function: tavern_utils:test_distinct_key
 
 ---
-test_name: GET /security/user/authenticate
-
-stages:
-
-  - name: Get an API token in raw format
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/user/authenticate"
-      headers:
-        Authorization: "Basic {basic_auth:s}"
-      params:
-        raw: True
-      method: GET
-    response:
-      status_code: 200
-      verify_response_with:
-        - function: tavern_utils:test_token_raw_format
-      save:
-        $ext:
-          function: tavern_utils:test_save_token_raw_format
-
-  - name: Test generated token
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/"
-      headers:
-        Authorization: "Bearer {login_token}"
-      method: GET
-    response:
-      status_code: 200
-
----
 test_name: GET /security/users
 
 marks:
@@ -1136,7 +1104,7 @@ stages:
   - name: Get all users in the system
     request: &all_users_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1568,7 +1536,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    
+
   - name: Try to get security users using an invalid query
     request:
       verify: False
@@ -1599,7 +1567,7 @@ stages:
   - name: Get information about the current user
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/me"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/me"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1629,7 +1597,7 @@ stages:
   - name: Get information about the current user processed policies
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/me/policies"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/users/me/policies"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1647,7 +1615,7 @@ stages:
   - name: Testing RBAC's actions catalog
     request: &rbac_actions_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/actions"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/actions"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1678,7 +1646,7 @@ stages:
   - name: Testing RBAC's actions catalog
     request: &rbac_resources_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/resources"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/resources"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1726,7 +1694,7 @@ stages:
   - name: Get current security configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/config"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/config"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET

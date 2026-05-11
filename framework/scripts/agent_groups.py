@@ -82,25 +82,6 @@ async def show_group(agent_id: str):
     print(msg)
 
 
-async def show_synced_agent(agent_id: str):
-    """Show if a specified agent has its groups configuration synchronized.
-
-    Parameters
-    ----------
-    agent_id : str
-        ID of the agent.
-    """
-    result = await cluster_utils.forward_function(func=agent.get_agents_sync_group, f_kwargs={'agent_list': [agent_id]})
-    cluster_utils.raise_if_exc(result)
-
-    if result.total_affected_items == 0:
-        msg = list(result.failed_items.keys())[0]
-    else:
-        msg = f"Agent '{agent_id}' is{'' if result.affected_items[0]['synced'] else ' not'} synchronized. "
-
-    print(msg)
-
-
 async def show_agents_with_group(group_id: str):
     """Print the ID and name of the agents belonging to a specified group.
 
@@ -273,7 +254,7 @@ async def create_group(group_id: str, quiet: bool = False):
 
 def usage():
     msg = """
-    {0} [ -l [ -g group_id ] | -c -g group_id | -a (-i agent_id -g group_id | -g group_id) [-q] [-f] | -s -i agent_id | -S -i agent_id | -r (-g group_id | -i agent_id) [-q] ]
+    {0} [ -l [ -g group_id ] | -c -g group_id | -a (-i agent_id -g group_id | -g group_id) [-q] [-f] | -s -i agent_id | -r (-g group_id | -i agent_id) [-q] ]
 
     Usage:
     \t-l                                    # List all groups
@@ -283,7 +264,6 @@ def usage():
     \t-a -i agent_id -g group_id [-q] [-f]  # Add group to agent
     \t-r -i agent_id [-q] [-g group_id]     # Remove all groups from agent [or single group]
     \t-s -i agent_id                        # Show group of agent
-    \t-S -i agent_id                        # Show sync status of agent
     \t
     \t-a -g group_id [-q]                   # Create group
     \t-r -g group_id [-q]                   # Remove group
@@ -295,7 +275,6 @@ def usage():
     \t-a, --add-group
     \t-f, --force-single-group
     \t-s, --show-group
-    \t-S, --show-sync
     \t-r, --remove-group
 
     \t-i, --agent-id
@@ -339,8 +318,6 @@ def get_script_arguments() -> argparse.Namespace:
     parser.add_argument("-a", "--add", action='store_true', dest="add", help="Add new group or new agent to group.")
     parser.add_argument("-f", "--force", action='store_true', dest="force", help="Force single group.")
     parser.add_argument("-s", "--show-group", action='store_true', dest="show_group", help="Show group of agent.")
-    parser.add_argument("-S", "--show-sync", action='store_true', dest="show_sync",
-                        help="Show sync status of agent.")
     parser.add_argument("-r", "--remove", action='store_true', dest="remove",
                         help="Remove group or agent from group.")
     parser.add_argument("-i", "--agent-id", type=str, dest="agent_id", help="Specify the agent ID.")
@@ -350,7 +327,7 @@ def get_script_arguments() -> argparse.Namespace:
     parser.add_argument("-u", "--usage", action='store_true', dest="usage", help="Show usage.")
 
     args = parser.parse_args()
-    if sum([args.list, args.list_files, args.add, args.show_group, args.show_sync, args.remove]) > 1:
+    if sum([args.list, args.list_files, args.add, args.show_group, args.remove]) > 1:
         invalid_option("Bad argument combination.")
 
     return args
@@ -380,9 +357,6 @@ async def main():
     # -s -i agent_id
     elif args.show_group:
         await show_group(args.agent_id) if args.agent_id else invalid_option("Missing agent ID.")
-    # -S -i agent_id
-    elif args.show_sync:
-        await show_synced_agent(args.agent_id) if args.agent_id else invalid_option("Missing agent ID.")
     # -r (-g group_id | -i agent_id) [-q]
     elif args.remove:
         if args.agent_id:

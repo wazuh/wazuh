@@ -31,7 +31,7 @@ Mapper getUriMapper(std::map<std::string, std::string>&& uriAttrs, std::string_v
 
 SemParser getUriSemParser(const std::map<CURLUPart, std::string>& mapCurlFields, const std::string& targetField)
 {
-    return [mapCurlFields, targetField](std::string_view parsed) -> std::variant<Mapper, base::Error>
+    return [mapCurlFields, targetField](std::string_view parsed, bool enableTrace) -> std::variant<Mapper, base::Error>
     {
         const auto urlstr = std::string(parsed);
         auto urlCleanup = [](auto* url)
@@ -42,13 +42,21 @@ SemParser getUriSemParser(const std::map<CURLUPart, std::string>& mapCurlFields,
 
         if (!url)
         {
-            return base::Error {"Unable to initialize the url container"};
+            if (enableTrace)
+            {
+                return base::Error {"Unable to initialize the url container"};
+            }
+            return base::Error {};
         }
 
         auto uc = curl_url_set(url.get(), CURLUPART_URL, urlstr.c_str(), 0);
         if (uc)
         {
-            return base::Error {"Error parsing url"};
+            if (enableTrace)
+            {
+                return base::Error {"Error parsing url"};
+            }
+            return base::Error {};
         }
 
         // TODO curl will parse and copy the URL into an allocated
@@ -95,7 +103,7 @@ Mapper getStrMapper(std::string_view parsed, std::string_view targetField)
 
 SemParser getStrSemParser(const std::string& targetField)
 {
-    return [targetField](std::string_view parsed)
+    return [targetField](std::string_view parsed, bool)
     {
         return getStrMapper(parsed, targetField);
     };
@@ -112,7 +120,7 @@ Mapper getUAMapper(std::string_view parsed, std::string_view targetField)
 
 SemParser getUASemParser(const std::string& targetField)
 {
-    return [targetField](std::string_view parsed)
+    return [targetField](std::string_view parsed, bool)
     {
         return getUAMapper(parsed, targetField);
     };

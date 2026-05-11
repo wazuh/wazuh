@@ -23,15 +23,11 @@ int __wrap_wdb_global_update_agent_version(wdb_t* wdb,
                                            const char* os_version,
                                            const char* os_major,
                                            const char* os_minor,
-                                           const char* os_codename,
+                                           const char* os_type,
                                            const char* os_platform,
-                                           const char* os_build,
-                                           const char* os_uname,
                                            const char* os_arch,
                                            const char* version,
-                                           const char* config_sum,
                                            const char* merged_sum,
-                                           const char* manager_host,
                                            const char* node_name,
                                            const char* agent_ip,
                                            const char* connection_status,
@@ -110,8 +106,6 @@ cJSON* __wrap_wdb_global_get_agents_to_disconnect(
     wdb_t* wdb, int last_agent_id, int keep_alive, const char* sync_status, wdbc_result* status);
 
 int __wrap_wdb_global_agent_exists(wdb_t* wdb, int agent_id);
-
-int __wrap_wdb_global_adjust_v4(wdb_t* wdb);
 
 cJSON* __wrap_wdb_global_get_backups();
 

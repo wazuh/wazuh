@@ -74,34 +74,6 @@ async def test_show_group(print_mock: MagicMock):
 
 @pytest.mark.asyncio
 @patch('builtins.print')
-async def test_show_synced_agent(print_mock):
-    """Check that the synchronization status of an agent's groups is returned correctly."""
-    class AffectedItems:
-        called = False
-
-        def __init__(self, affected_items, failed_items):
-            self.affected_items = affected_items
-            self.failed_items = failed_items
-            self.total_affected_items = 0 if AffectedItems.called else len(affected_items)
-            AffectedItems.called = True
-
-    async def forward_function(func, f_kwargs):
-        return AffectedItems(affected_items=[{'id': 1, 'name': 'a', 'synced': True},
-                                             {'id': 2, 'name': 'b', 'synced': False}],
-                             failed_items={'a': 'b'})
-
-    with patch('scripts.agent_groups.cluster_utils.forward_function', side_effect=forward_function) as forward_mock:
-        agent_id = 0
-        await agent_groups.show_synced_agent(agent_id)
-        forward_mock.assert_called_once_with(func=agent.get_agents_sync_group, f_kwargs={'agent_list': [agent_id]})
-        print_mock.assert_has_calls([call("Agent '0' is synchronized. ")])
-        print_mock.reset_mock()
-        await agent_groups.show_synced_agent(0)
-        print_mock.assert_has_calls([call('a')])
-
-
-@pytest.mark.asyncio
-@patch('builtins.print')
 async def test_show_agents_with_group(print_mock):
     """Check that agents belonging to a certain group are returned."""
     class AffectedItems:
@@ -305,7 +277,7 @@ async def test_create_group(print_mock):
 def test_usage(basename_mock, print_mock):
     """Test if the usage is being correctly printed."""
     msg = """
-    {0} [ -l [ -g group_id ] | -c -g group_id | -a (-i agent_id -g group_id | -g group_id) [-q] [-f] | -s -i agent_id | -S -i agent_id | -r (-g group_id | -i agent_id) [-q] ]
+    {0} [ -l [ -g group_id ] | -c -g group_id | -a (-i agent_id -g group_id | -g group_id) [-q] [-f] | -s -i agent_id | -r (-g group_id | -i agent_id) [-q] ]
 
     Usage:
     \t-l                                    # List all groups
@@ -315,7 +287,6 @@ def test_usage(basename_mock, print_mock):
     \t-a -i agent_id -g group_id [-q] [-f]  # Add group to agent
     \t-r -i agent_id [-q] [-g group_id]     # Remove all groups from agent [or single group]
     \t-s -i agent_id                        # Show group of agent
-    \t-S -i agent_id                        # Show sync status of agent
     \t
     \t-a -g group_id [-q]                   # Create group
     \t-r -g group_id [-q]                   # Remove group
@@ -327,7 +298,6 @@ def test_usage(basename_mock, print_mock):
     \t-a, --add-group
     \t-f, --force-single-group
     \t-s, --show-group
-    \t-S, --show-sync
     \t-r, --remove-group
 
     \t-i, --agent-id
@@ -373,7 +343,6 @@ def test_get_script_arguments(argument_parser_mock, invalid_option_mock):
              call('-a', '--add', action='store_true', dest='add', help='Add new group or new agent to group.'),
              call('-f', '--force', action='store_true', dest='force', help='Force single group.'),
              call('-s', '--show-group', action='store_true', dest='show_group', help='Show group of agent.'),
-             call('-S', '--show-sync', action='store_true', dest='show_sync', help='Show sync status of agent.'),
              call('-r', '--remove', action='store_true', dest='remove', help='Remove group or agent from group.'),
              call('-i', '--agent-id', type=str, dest='agent_id', help='Specify the agent ID.'),
              call('-g', '--group-id', type=str, dest='group_id', help='Specify group ID.'),
@@ -390,7 +359,6 @@ def test_get_script_arguments(argument_parser_mock, invalid_option_mock):
 @patch('scripts.agent_groups.exit', side_effect=exit)
 @patch('scripts.agent_groups.remove_group')
 @patch('scripts.agent_groups.unset_group')
-@patch('scripts.agent_groups.show_synced_agent')
 @patch('scripts.agent_groups.show_group')
 @patch('scripts.agent_groups.invalid_option')
 @patch('scripts.agent_groups.create_group')
@@ -401,18 +369,17 @@ def test_get_script_arguments(argument_parser_mock, invalid_option_mock):
 @patch('scripts.agent_groups.usage')
 @patch('builtins.print')
 async def test_main(print_mock, usage_mock, show_groups_mock, show_agents_with_group_mock, show_group_files_mock,
-                    set_group_mock, create_group_mock, invalid_option_mock, show_group_mock, show_synced_agent_mock,
-                    unset_group_mock, remove_group_mock, exit_mock):
+                    set_group_mock, create_group_mock, invalid_option_mock, show_group_mock, unset_group_mock,
+                    remove_group_mock, exit_mock):
     """Test the main function."""
     class Arguments:
-        def __init__(self, list=None, list_files=None, add=None, show_group=None, show_sync=None, force=False,
+        def __init__(self, list=None, list_files=None, add=None, show_group=None, force=False,
                      remove=None, agent_id=None, group_id=None, quiet=False, debug=False, usage=None):
             self.list = list
             self.list_files = list_files
             self.add = add
             self.force = force
             self.show_group = show_group
-            self.show_sync = show_sync
             self.remove = remove
             self.agent_id = agent_id
             self.group_id = group_id
@@ -498,17 +465,6 @@ async def test_main(print_mock, usage_mock, show_groups_mock, show_agents_with_g
     agent_groups.args = Arguments(show_group=True, agent_id='002')
     await agent_groups.main()
     show_group_mock.assert_called_once_with("002")
-
-    # -S
-    agent_groups.args = Arguments(show_sync=True)
-    await agent_groups.main()
-    invalid_option_mock.assert_called_once_with("Missing agent ID.")
-    invalid_option_mock.reset_mock()
-
-    # -S -i agent_id
-    agent_groups.args = Arguments(show_sync=True, agent_id='003')
-    await agent_groups.main()
-    show_synced_agent_mock.assert_called_once_with("003")
 
     # -r -i agent_id
     agent_groups.args = Arguments(remove=True, agent_id='004')

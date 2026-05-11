@@ -20,11 +20,6 @@ MQueueTransport::MQueueTransport(const std::string& moduleName, MQ_Functions mqF
 {
 }
 
-void MQueueTransport::shutdown()
-{
-    // MQueue does not have a shutdown function
-}
-
 bool MQueueTransport::checkStatus()
 {
     if (!ensureQueueAvailable())

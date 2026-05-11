@@ -22,11 +22,6 @@ char *read_from_user(void);
 int k_import(const char *cmdimport);
 char *chomp(char *str);
 extern time_t time1;
-extern time_t time2;
-extern time_t time3;
-extern long int rand1;
-extern long int rand2;
-extern fpos_t fp_pos;
 extern char shost[];
 #define USER_SIZE       514
 #define QUIT                "\\q"

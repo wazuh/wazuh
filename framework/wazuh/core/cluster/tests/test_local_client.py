@@ -5,7 +5,7 @@
 from asyncio import Event, Transport
 from asyncio.transports import BaseTransport
 from collections.abc import Callable
-from unittest.mock import patch, AsyncMock, call
+from unittest.mock import patch, AsyncMock, MagicMock, call
 
 import pytest
 from uvloop import EventLoopPolicy, new_event_loop
@@ -133,7 +133,7 @@ async def test_localclient_start():
 
     with patch("uvloop.Loop.create_unix_connection", side_effect=create_unix_connection) as mock_create_unix_connection:
         mocked_loop = new_event_loop()
-        with patch("os.path.join", return_value="path/test"):
+        with patch("wazuh.core.cluster.local_client.common.CLUSTERD_SOCKET", new="path/test"):
             with patch("wazuh.core.cluster.client.asyncio.get_running_loop", return_value=mocked_loop):
                 lc = LocalClient()
                 await lc.start()
@@ -145,23 +145,25 @@ async def test_localclient_start():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "exception, expected_error",
+    [
+        (MemoryError, 1119),
+        (FileNotFoundError, 3009),
+        (ConnectionRefusedError, 3009),
+    ],
+)
 @patch("wazuh.core.cluster.client.asyncio.get_running_loop")
-async def test_localclient_start_ko(mock_get_running_loop):
-    """Check the behavior of the start function for the different types of exceptions that may occur."""
-    with pytest.raises(WazuhInternalError, match=r'.* 3009 .*'):
+async def test_localclient_start_exceptions(
+    mock_get_running_loop, exception, expected_error
+):
+    mock_loop = MagicMock()
+    mock_get_running_loop.return_value = mock_loop
+
+    mock_loop.create_unix_connection = AsyncMock(side_effect=exception)
+
+    with pytest.raises(WazuhInternalError, match=rf".* {expected_error} .*"):
         await LocalClient().start()
-
-    with patch("wazuh.core.cluster.local_client.os.path.join", side_effect=MemoryError):
-        with pytest.raises(WazuhInternalError, match=r'.* 1119 .*'):
-            await LocalClient().start()
-
-    with patch("wazuh.core.cluster.local_client.os.path.join", side_effect=FileNotFoundError):
-        with pytest.raises(WazuhInternalError, match=r'.* 3009 .*'):
-            await LocalClient().start()
-
-    with patch("wazuh.core.cluster.local_client.os.path.join", side_effect=ConnectionRefusedError):
-        with pytest.raises(WazuhInternalError, match=r'.* 3009 .*'):
-            await LocalClient().start()
 
 @pytest.mark.asyncio
 async def test_wait_for_response():

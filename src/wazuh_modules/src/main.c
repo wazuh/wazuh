@@ -41,7 +41,11 @@ int main(int argc, char **argv)
     }
 
     wmodule *cur_module;
+#ifdef CLIENT
     wm_debug_level = getDefine_Int("wazuh_modules", "debug", 0, 2);
+#else
+    wm_debug_level = getDefine_Int_default("wazuh_modules", "debug", 0, 2, 0);
+#endif
 
     // Get command line options
 
@@ -81,7 +85,11 @@ int main(int argc, char **argv)
     mdebug1(WAZUH_HOMEDIR, home_path);
     os_free(home_path);
 
+#ifdef CLIENT
     int nofile = getDefine_Int("wazuh_modules", "rlimit_nofile", 8192, 1048576);
+#else
+    int nofile = getDefine_Int_default("wazuh_modules", "rlimit_nofile", 8192, 1048576, 8192);
+#endif
     struct rlimit rlimit = { .rlim_cur=(rlim_t)nofile, .rlim_max=(rlim_t)nofile };
 
     if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
@@ -101,11 +109,26 @@ int main(int argc, char **argv)
     // triggers graceful cleanup even when modules are blocked.
     wm_signals_configure();
 
+    // wm_control provides the control socket used by agentd to trigger
+    // reloads that resolve the startup gate — start it before blocking.
+    for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+        if (cur_module->tag && strcmp(cur_module->tag, "control") == 0) {
+            if (CreateThreadJoinable(&cur_module->thread, cur_module->context->start, cur_module->data) < 0) {
+                merror_exit("CreateThreadJoinable() for '%s': %s", cur_module->tag, strerror(errno));
+            }
+            mdebug2("Created new thread for the '%s' module.", cur_module->tag);
+            break;
+        }
+    }
+
     startup_gate_wait_for_ready(ARGV0);
 
     // Run modules
 
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+        if (cur_module->tag && strcmp(cur_module->tag, "control") == 0) {
+            continue;  // already started above
+        }
         if (CreateThreadJoinable(&cur_module->thread, cur_module->context->start, cur_module->data) < 0) {
             merror_exit("CreateThreadJoinable() for '%s': %s", cur_module->tag, strerror(errno));
         }
@@ -128,7 +151,7 @@ int main(int argc, char **argv)
 
 void wm_help()
 {
-    print_out("Wazuh Module Manager - %s\nWazuh Inc.", __ossec_version);
+    print_out("Wazuh Module Manager - %s\nWazuh Inc.", __wazuh_version);
     print_out(" ");
     print_out("Usage: %s -[d|f|h|t]", ARGV0);
     print_out(" ");
@@ -169,7 +192,7 @@ void wm_setup()
     wm_setGroupID(gid);
 
     if (wm_check() < 0) {
-        minfo("No configuration defined. Exiting...");
+        mdebug1("No configuration defined. Exiting...");
         exit(EXIT_SUCCESS);
     }
 
@@ -241,7 +264,7 @@ void wm_handler(int signum)
     case SIGTERM:
         // For the moment only gracefull shutdown will be for syscollector, in the future
         // it will be modified for all wmodules, modifying the mainloop of each thread.
-        minfo("Shutting down Wazuh modules.");
+        mdebug1("Shutting down Wazuh modules.");
         for (cur_module = wmodules; cur_module && cur_module->context && cur_module->context->name; cur_module = cur_module->next) {
             if (cur_module->context->stop) {
                 cur_module->context->stop(cur_module->data);

@@ -2,7 +2,7 @@
 
 # Copyright (C) 2015, Wazuh Inc.
 # wazuh-manager-control        This shell script takes care of starting
-#                      or stopping ossec-hids
+#                      or stopping wazuh-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
 # Getting where we are installed
@@ -18,7 +18,7 @@ export LD_LIBRARY_PATH="${DIR}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 # Installation info
 VERSION="v5.0.0"
-REVISION="alpha0"
+REVISION="beta1"
 TYPE="manager"
 WAZUH_ENGINE_GROUP="${WAZUH_ENGINE_GROUP:-wazuh-manager}"
 export WAZUH_ENGINE_GROUP
@@ -34,7 +34,6 @@ fi
 AUTHOR="Wazuh Inc."
 USE_JSON=false
 DAEMONS="wazuh-manager-clusterd wazuh-manager-modulesd wazuh-manager-monitord wazuh-manager-remoted wazuh-manager-analysisd wazuh-manager-db wazuh-manager-authd wazuh-manager-apid"
-DEPRECATED_DAEMONS="ossec-authd"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
@@ -122,9 +121,6 @@ help()
     exit 1;
 }
 
-AUTHD_MSG="This option is deprecated because Authd is now enabled by default."
-DATABASE_MSG="This option is deprecated because the database output is now enabled by default."
-
 # Enables additional daemons
 enable()
 {
@@ -135,11 +131,7 @@ enable()
         exit 1;
     fi
 
-    if [ "X$2" = "Xdatabase" ]; then
-        echo "$DATABASE_MSG"
-    elif [ "X$2" = "Xauth" ]; then
-        echo "$AUTHD_MSG"
-    elif [ "X$2" = "Xdebug" ]; then
+    if [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"-d\"" >> ${PLIST};
     else
         echo ""
@@ -163,9 +155,7 @@ disable()
     fi
     daemon=''
 
-    if [ "X$2" = "Xdatabase" ]; then
-        echo "$DATABASE_MSG"
-    elif [ "X$2" = "Xdebug" ]; then
+    if [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"\"" >> ${PLIST};
     else
         echo ""
@@ -305,17 +295,17 @@ wait_for_wazuh_engine_ready()
     fi
 
     while [ $attempts -lt $max_attempts ]; do
-        curl --silent --unix-socket ${DIR}/queue/sockets/analysis \
+        curl --silent --fail-with-body --unix-socket ${DIR}/queue/sockets/analysis \
             -X POST -H "Content-Type: application/json" \
-            -d '{"name":"default"}' \
-            http://localhost/router/route/get \
+            -d '{}' \
+            http://localhost/_internal/event-dumper/status \
             > /dev/null 2>&1
         if [ $? -eq 0 ]; then
             return 0
         fi
 
         if ! kill -0 "$ENGINE_PID" 2>/dev/null; then
-            echo "wazuh-manager-analysisd died during route check."
+            echo "wazuh-manager-analysisd died during event dumper check."
             return 1
         fi
 
@@ -340,17 +330,7 @@ start_service()
 
     # Delete all files in temporary folder
     TO_DELETE="$DIR/tmp"
-    find $TO_DELETE -mindepth 1 -not -path "$TO_DELETE/vd_*_vd_*.tar" -not -path "$TO_DELETE/vd_*_vd_*.tar.xz" -delete
-
-    # Stop deprecated daemons that could keep alive on updates
-    for i in ${DEPRECATED_DAEMONS}; do
-        ls ${DIR}/var/run/${i}-*.pid > /dev/null 2>&1
-        if [ $? = 0 ]; then
-            pid=`cat ${DIR}/var/run/${i}-*.pid`
-            kill $pid
-            rm -f ${DIR}/var/run/${i}-${pid}.pid
-        fi
-    done
+    find "$TO_DELETE" -mindepth 1 -delete
 
     node_type=$(grep '<node_type>' ${DIR}/etc/${WAZUH_CONF} | sed 's/<node_type>\(.*\)<\/node_type>/\1/' | tr -d ' ');
     if [ -z $node_type ]; then

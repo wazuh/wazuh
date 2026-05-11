@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
-# Enable debug mode for the modulesd daemon
+# Enable debug mode for the modulesd and agentd daemons
 echo 'wazuh_modules.debug=2' >> /var/ossec/etc/local_internal_options.conf
+echo 'agent.debug=2' >> /var/ossec/etc/local_internal_options.conf
 
 # Apply test.keys
 cp /tmp_volume/configuration_files/test.keys /var/ossec/etc/test.keys
@@ -29,6 +30,6 @@ for sh_file in /tmp_volume/configuration_files/*.sh; do
   . $sh_file
 done
 
-/var/ossec/bin/wazuh-control start || /var/ossec/bin/ossec-control start
+/var/ossec/bin/wazuh-control start
 
 tail -f /var/ossec/logs/ossec.log

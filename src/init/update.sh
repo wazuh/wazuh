@@ -33,6 +33,8 @@ doUpdatecleanup()
 ##########
 getPreinstalledDirByType()
 {
+    SERVICE_UNIT_PATH=""
+
     # Checking for Systemd
     if hash ps 2>&1 > /dev/null && hash grep 2>&1 > /dev/null && [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
 
@@ -46,8 +48,13 @@ getPreinstalledDirByType()
 
         # Get the unit file and extract the Wazuh home path
         PREINSTALLEDDIR=$(systemctl cat wazuh-${type}.service 2>/dev/null | sed -n "${SED_EXTRACT_PREINSTALLEDDIR}")
-        if [ -n "${PREINSTALLEDDIR}" ] && [ -d "${PREINSTALLEDDIR}" ]; then
-            return 0;
+        if [ -n "${PREINSTALLEDDIR}" ]; then
+            if [ -d "${PREINSTALLEDDIR}" ]; then
+                return 0;
+            else
+                PREINSTALL_DETECTION_ERROR="Detected wazuh-${type}.service metadata pointing to '${PREINSTALLEDDIR}', but that directory does not exist."
+                return 2;
+            fi
         fi
 
         # If fail, find the service file
@@ -64,8 +71,12 @@ getPreinstalledDirByType()
             PREINSTALLEDDIR=$(sed -n "${SED_EXTRACT_PREINSTALLEDDIR}" "${SERVICE_UNIT_PATH}")
             if [ -d "$PREINSTALLEDDIR" ]; then
                 return 0;
+            elif [ -n "${PREINSTALLEDDIR}" ]; then
+                PREINSTALL_DETECTION_ERROR="Detected service file '${SERVICE_UNIT_PATH}' pointing to '${PREINSTALLEDDIR}', but that directory does not exist."
+                return 2;
             else
-                return 1;
+                PREINSTALL_DETECTION_ERROR="Detected service file '${SERVICE_UNIT_PATH}', but no installation directory could be extracted from it."
+                return 2;
             fi
         else
             return 1;
@@ -207,8 +218,6 @@ isWazuhInstalled()
         return 0;
     elif [ -f "${1}/bin/wazuh-control" ]; then
         return 0;
-    elif [ -f "${1}/bin/ossec-control" ]; then
-        return 0;
     else
         return 1;
     fi
@@ -252,6 +261,12 @@ getPreinstalledType()
         TYPE=`$PREINSTALLEDDIR/bin/wazuh-control info -t`
     fi
 
+    case "$TYPE" in
+        server)
+            TYPE="manager"
+            ;;
+    esac
+
     echo $TYPE
     return 0;
 }
@@ -277,7 +292,7 @@ getPreinstalledName()
     echo $NAME
 }
 
-UpdateStartOSSEC()
+UpdateStartWAZUH()
 {
     if [ "X$TYPE" = "X" ]; then
         getPreinstalledType
@@ -304,7 +319,7 @@ UpdateStartOSSEC()
     fi
 }
 
-UpdateStopOSSEC()
+UpdateStopWAZUH()
 {
     MAJOR_VERSION=`echo ${VERSION} | cut -f1 -d'.' | cut -f2 -d'v'`
 
@@ -330,9 +345,7 @@ UpdateStopOSSEC()
         getPreinstalledDir
     fi
 
-    if [ -f "$PREINSTALLEDDIR/bin/ossec-control" ]; then
-        $PREINSTALLEDDIR/bin/ossec-control stop > /dev/null 2>&1
-    elif [ -f "$PREINSTALLEDDIR/bin/wazuh-manager-control" ]; then
+    if [ -f "$PREINSTALLEDDIR/bin/wazuh-manager-control" ]; then
         $PREINSTALLEDDIR/bin/wazuh-manager-control stop > /dev/null 2>&1
     else
         $PREINSTALLEDDIR/bin/wazuh-control stop > /dev/null 2>&1
@@ -358,11 +371,6 @@ UpdateStopOSSEC()
     if [ -d "$PREINSTALLEDDIR/queue/rootcheck" ]; then
         rm -rf $PREINSTALLEDDIR/queue/rootcheck > /dev/null 2>&1
     fi
-
-    # Deleting groups backup folder if exists
-    if [ -d "$PREINSTALLEDDIR/backup/groups" ]; then
-        rm -rf $PREINSTALLEDDIR/backup/groups > /dev/null 2>&1
-    fi
 }
 
 UpdateOldVersions()
@@ -377,11 +385,11 @@ UpdateOldVersions()
         getPreinstalledDir
     fi
 
-    OSSEC_CONF_FILE="$PREINSTALLEDDIR/etc/${WAZUH_CONF:-ossec.conf}"
-    OSSEC_CONF_FILE_ORIG="$PREINSTALLEDDIR/etc/${WAZUH_CONF:-ossec.conf}.orig"
+    WAZUH_CONF_FILE="$PREINSTALLEDDIR/etc/${WAZUH_CONF:-ossec.conf}"
+    WAZUH_CONF_FILE_ORIG="$PREINSTALLEDDIR/etc/${WAZUH_CONF:-ossec.conf}.orig"
 
     # config file -> config file.orig
-    cp -pr $OSSEC_CONF_FILE $OSSEC_CONF_FILE_ORIG
+    cp -pr $WAZUH_CONF_FILE $WAZUH_CONF_FILE_ORIG
 
     # Delete old service
     if [ -f /etc/init.d/ossec ]; then
@@ -390,12 +398,12 @@ UpdateOldVersions()
 
     if [ ! "$INSTYPE" = "agent" ]; then
         # New manager config by default
-        ./src/init/gen_ossec.sh conf "manager" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
+        ./src/init/gen_wazuh.sh conf "manager" $DIST_NAME $DIST_VER > $WAZUH_CONF_FILE
     else
         # New agent config by default
-        ./src/init/gen_ossec.sh conf "agent" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
+        ./src/init/gen_wazuh.sh conf "agent" $DIST_NAME $DIST_VER > $WAZUH_CONF_FILE
         # Replace IP
-        ./src/init/replace_manager_ip.sh $OSSEC_CONF_FILE_ORIG $OSSEC_CONF_FILE
-        ./src/init/add_localfiles.sh $PREINSTALLEDDIR >> $OSSEC_CONF_FILE
+        ./src/init/replace_manager_ip.sh $WAZUH_CONF_FILE_ORIG $WAZUH_CONF_FILE
+        ./src/init/add_localfiles.sh $PREINSTALLEDDIR >> $WAZUH_CONF_FILE
     fi
 }

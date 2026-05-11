@@ -4,6 +4,8 @@
 #include <string>
 #include <string_view>
 
+#include <base/json.hpp>
+
 namespace raweventindexer
 {
 
@@ -49,6 +51,14 @@ public:
      * @return true if the indexer is enabled, false otherwise.
      */
     virtual bool isEnabled() const = 0;
+
+    /**
+     * @brief Applies a remote configuration value to the raw event indexer.
+     *
+     * @param value Candidate remote value for this module.
+     * @throws std::invalid_argument if the value is not a valid boolean.
+     */
+    virtual void hotReloadConf(const json::Json& value) = 0;
 };
 
 } // namespace raweventindexer

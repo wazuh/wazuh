@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import hashlib
 import operator
 from os import chmod, path, listdir
 from typing import Union
@@ -12,12 +11,13 @@ from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, Agent, \
     WazuhDBQueryGroup, create_upgrade_tasks, get_agents_info, get_groups, get_rbac_filters, send_restart_command, \
+    send_reload_command, \
     GROUP_FIELDS, GROUP_REQUIRED_FIELDS, GROUP_FILES_FIELDS, GROUP_FILES_REQUIRED_FIELDS
 from wazuh.core.wdb_http import get_wdb_http_client
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-from wazuh.core.utils import WazuhVersion, chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array, clear_temporary_caches, \
+from wazuh.core.utils import WazuhVersion, chmod_r, chown_r, get_hash, mkdir_with_mode, process_array, clear_temporary_caches, \
     full_copy
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.rbac.decorators import expose_resources, async_list_handler
@@ -272,22 +272,26 @@ async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
         # Convert list of dictionaries to dictionary
         active_agents = {agent['id']: agent['version'] for agent in active_agents}
 
-        with WazuhQueue(common.AR_SOCKET) as wq:
-            for agent_id in agent_list:
-                # Add non existent and inactive agents to failed_items
-                if agent_id not in system_agents:
-                    result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
-                    continue
+        for agent_id in agent_list:
+            # Add non existent and inactive agents to failed_items
+            if agent_id not in system_agents:
+                result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
+                continue
 
-                if agent_id not in active_agents:
-                    result.add_failed_item(id_=agent_id, error=WazuhError(1707))
-                    continue
+            if agent_id not in active_agents:
+                result.add_failed_item(id_=agent_id, error=WazuhError(1707))
+                continue
 
-                try:
-                    send_restart_command(agent_id, active_agents[agent_id], wq)
-                    result.affected_items.append(agent_id)
-                except WazuhException as e:
-                    result.add_failed_item(id_=agent_id, error=e)
+            version = active_agents[agent_id]
+            if not version or WazuhVersion(version) < WazuhVersion('v5.0.0'):
+                result.add_failed_item(id_=agent_id, error=WazuhError(1761))
+                continue
+
+            try:
+                send_restart_command(agent_id)
+                result.affected_items.append(agent_id)
+            except WazuhException as e:
+                result.add_failed_item(id_=agent_id, error=e)
 
         result.total_affected_items = len(result.affected_items)
         result.affected_items.sort(key=int)
@@ -331,6 +335,105 @@ async def restart_agents_by_group(agent_list: list = None) -> AffectedItemsWazuh
         Affected items.
     """
     return await restart_agents(agent_list=agent_list)
+
+
+@expose_resources(actions=["agent:reload"], resources=["agent:id:{agent_list}"],
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]},
+                  post_proc_func=async_list_handler)
+async def reload_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
+    """Reload a list of agents.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of agents IDs.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Affected items.
+    """
+    result = AffectedItemsWazuhResult(all_msg='Reload command was sent to all agents',
+                                      some_msg='Reload command was not sent to some agents',
+                                      none_msg='Reload command was not sent to any agent'
+                                      )
+    agent_list = set(agent_list)
+
+    if agent_list:
+        system_agents = get_agents_info()
+        rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=list(agent_list))
+
+        async with get_wdb_http_client() as wdb_client:
+            active_agents = await wdb_client.get_agents_restart_info(
+                rbac_filters['filters']['rbac_ids'],
+                rbac_filters['rbac_negate']
+            )
+
+        # Convert list of dictionaries to dictionary
+        active_agents = {agent['id']: agent['version'] for agent in active_agents}
+
+        for agent_id in agent_list:
+            if agent_id not in system_agents:
+                result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
+                continue
+
+            if agent_id not in active_agents:
+                result.add_failed_item(id_=agent_id, error=WazuhError(1707))
+                continue
+
+            version = active_agents[agent_id]
+            if not version or WazuhVersion(version) < WazuhVersion('v5.0.0'):
+                result.add_failed_item(id_=agent_id, error=WazuhError(1761))
+                continue
+
+            try:
+                send_reload_command(agent_id)
+                result.affected_items.append(agent_id)
+            except WazuhException as e:
+                result.add_failed_item(id_=agent_id, error=e)
+
+        result.total_affected_items = len(result.affected_items)
+        result.affected_items.sort(key=int)
+
+    return result
+
+
+@expose_resources(actions=['cluster:read', 'agent:reload'], resources=[f'node:id:{node_id}', 'agent:id:{agent_list}'],
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707], 'force': True},
+                  post_proc_func=async_list_handler)
+async def reload_agents_by_node(agent_list: list = None) -> AffectedItemsWazuhResult:
+    """Reload all agents belonging to a node.
+
+    Parameters
+    ----------
+    agent_list : list, optional
+        List of agents. Default `None`
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Affected items.
+    """
+    return await reload_agents(agent_list=agent_list)
+
+
+@expose_resources(actions=["agent:reload"], resources=["agent:id:{agent_list}"],
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707], 'force': True},
+                  post_proc_func=async_list_handler)
+async def reload_agents_by_group(agent_list: list = None) -> AffectedItemsWazuhResult:
+    """Reload all agents belonging to a group.
+
+    Parameters
+    ----------
+    agent_list : list, optional
+        List of agents. Default `None`
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Affected items.
+    """
+    return await reload_agents(agent_list=agent_list)
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
@@ -745,9 +848,6 @@ def get_group_files(group_list: list = None, offset: int = 0, limit: int = None,
             item['hash'] = get_hash(path.join(group_path, entry), hash_algorithm)
             data.append(item)
 
-        # ar.conf
-        ar_path = path.join(common.SHARED_PATH, 'ar.conf')
-        data.append({'filename': "ar.conf", 'hash': get_hash(ar_path, hash_algorithm)})
         data = process_array(data, search_text=search_text, search_in_fields=search_in_fields,
                              complementary_search=complementary_search, sort_by=sort_by,
                              sort_ascending=sort_ascending, offset=offset, limit=limit, q=q, select=select,
@@ -1361,59 +1461,6 @@ def get_agent_config(agent_list: list = None, component: str = None, config: str
         {'data': my_agent.get_config(component=component, config=config, agent_version=my_agent.version)})
 
 
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703]})
-def get_agents_sync_group(agent_list: list = None) -> AffectedItemsWazuhResult:
-    """Get agents configuration sync status.
-
-    Notes
-    -----
-    To be deprecated in v5.0.
-
-    Parameters
-    ----------
-    agent_list : list
-        List of agent IDs.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Agent group sync status information.
-    """
-    result = AffectedItemsWazuhResult(all_msg='Sync info was returned for all selected agents',
-                                      some_msg='Sync info was not returned for some selected agents',
-                                      none_msg='No sync info was returned',
-                                      )
-
-    system_agents = get_agents_info()
-    for agent_id in agent_list:
-        try:
-            if agent_id not in system_agents:
-                raise WazuhResourceNotFound(1701)
-            else:
-                # Check if agent exists and it is active
-                agent_info = Agent(agent_id).get_basic_information()
-                # Check if it has a multigroup
-                if len(agent_info['group']) > 1:
-                    multi_group = ','.join(agent_info['group'])
-                    multi_group = hashlib.sha256(multi_group.encode()).hexdigest()[:8]
-                    group_merged_path = path.join(common.MULTI_GROUPS_PATH, multi_group, "merged.mg")
-                else:
-                    group_merged_path = path.join(common.SHARED_PATH, agent_info['group'][0], "merged.mg")
-                result.affected_items.append({'id': agent_id,
-                                              'synced': md5(group_merged_path) == agent_info['mergedSum']})
-        except (IOError, KeyError):
-            # The file couldn't be opened and therefore the group has not been synced
-            result.affected_items.append({'id': agent_id, 'synced': False})
-        except WazuhException as e:
-            result.add_failed_item(id_=agent_id, error=e)
-
-    result.total_affected_items = len(result.affected_items)
-    result.affected_items.sort(key=lambda i: i['id'])
-
-    return result
-
-
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
 def get_file_conf(group_list: list = None, type_conf: str = None, raw: bool = False,
                   filename: str = None) -> WazuhResult:
@@ -1510,7 +1557,7 @@ def get_full_overview() -> WazuhResult:
     stats_distinct_node = get_distinct_agents(fields=['node_name'], q=q).affected_items
     groups = get_agent_groups().affected_items
     stats_distinct_os = get_distinct_agents(fields=['os.name',
-                                                    'os.platform', 'os.version'], q=q).affected_items
+                                                    'os.platform', 'os.type', 'os.version'], q=q).affected_items
     stats_version = get_distinct_agents(fields=['version'], q=q).affected_items
     agent_summary_status = get_agents_summary_status()
     summary = agent_summary_status['data'] if 'data' in agent_summary_status else dict()

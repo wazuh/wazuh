@@ -41,11 +41,7 @@ CONF_SECTIONS = MappingProxyType({
     'client': {'type': 'merge', 'list_options': []},
     'global': {
         'type': 'merge',
-        'list_options': ['white_list']
-    },
-    'cis-cat': {
-        'type': 'merge',
-        'list_options': ['content']
+        'list_options': []
     },
     'syscollector': {
         'type': 'merge',
@@ -72,14 +68,6 @@ CONF_SECTIONS = MappingProxyType({
         'type': 'last',
         'list_options': ['nodes']
     },
-    'osquery': {
-        'type': 'merge',
-        'list_options': ['pack']
-    },
-    'labels': {
-        'type': 'duplicate',
-        'list_options': ['label']
-    },
     'sca': {
         'type': 'merge',
         'list_options': ['policies']
@@ -99,11 +87,6 @@ CONF_SECTIONS = MappingProxyType({
 })
 
 GETCONFIG_COMMAND = "getconfig"
-UPDATE_CHECK_OSSEC_FIELD = 'update_check'
-GLOBAL_KEY = 'global'
-YES_VALUE = 'yes'
-CTI_URL_FIELD = 'cti-url'
-DEFAULT_CTI_URL = 'https://cti.wazuh.com'
 
 
 def _insert(json_dst: dict, section_name: str, option: str, value: str):
@@ -211,10 +194,6 @@ def _read_option(section_name: str, opt: str) -> tuple:
             (section_name == 'sca' and opt_name == 'policies') or \
             (section_name == 'indexer' and opt_name == 'hosts')    :
         opt_value = [child.text for child in opt]
-    elif section_name == 'labels' and opt_name == 'label':
-        opt_value = {'value': opt.text}
-        for a in opt.attrib:
-            opt_value[a] = opt.attrib[a]
     elif section_name == 'localfile' and opt_name == 'query':
         # Remove new lines, empty spaces and backslashes
         regex = rf'<{opt_name}>(.*)</{opt_name}>'
@@ -290,7 +269,7 @@ def _conf2json(src_xml: str, dst_json: dict):
         _insert_section(dst_json, section_name, section_json)
 
 
-def _ossecconf2json(xml_conf: str) -> dict:
+def _wazuhconf2json(xml_conf: str) -> dict:
     """Return wazuh-manager.conf in JSON from XML.
 
     Parameters
@@ -450,24 +429,6 @@ def _rcl2json(filepath: str) -> dict:
     return data
 
 
-def _ar_conf2json(file_path: str) -> dict:
-    """Return the lines of the ar.conf file.
-
-    Parameters
-    ----------
-    file_path : str
-        Path to the ar.conf file.
-
-    Returns
-    -------
-    dict
-        ar.conf file as dictionary.
-    """
-    with open(file_path) as f:
-        data = [line.strip('\n') for line in f.readlines()]
-    return data
-
-
 def _merged_mg2json(file_path: str) -> List[dict]:
     """Parse the merged.mg file.
 
@@ -556,7 +517,7 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
         xml_data = load_wazuh_xml(conf_file)
 
         # Parse XML to JSON
-        data = _ossecconf2json(xml_data)
+        data = _wazuhconf2json(xml_data)
     except Exception as e:
         if not from_import:
             raise WazuhError(1101, extra_message=str(e))
@@ -642,57 +603,6 @@ def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DA
     return {'total_affected_items': len(data), 'affected_items': cut_array(data, offset=offset, limit=limit)}
 
 
-def get_agent_conf_multigroup(multigroup_id: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
-                              filename: str = None) -> dict:
-    """Return agent.conf as dictionary.
-
-    Parameters
-    ----------
-    multigroup_id : str
-        ID of the group with the agent.conf we want to get.
-    offset : int
-        First element to return in the collection.
-    limit : int
-        Maximum number of elements to return.
-    filename : str
-        Name of the file to get. Default: 'agent.conf'
-
-    Raises
-    ------
-    WazuhResourceNotFound(1710)
-        Group was not found.
-    WazuhError(1006)
-        agent.conf does not exist or there is a problem with the permissions.
-    WazuhError(1101)
-        Requested component does not exist.
-
-    Returns
-    -------
-    dict
-        agent.conf as dictionary.
-    """
-    # Check if a multigroup_id is provided and it exists
-    if multigroup_id and not os_path.exists(os_path.join(common.MULTI_GROUPS_PATH, multigroup_id)) or not multigroup_id:
-        raise WazuhResourceNotFound(1710, extra_message=multigroup_id if multigroup_id else "No multigroup provided")
-
-    agent_conf_name = filename if filename else 'agent.conf'
-    agent_conf = os_path.join(common.MULTI_GROUPS_PATH, multigroup_id, agent_conf_name)
-
-    if not os_path.exists(agent_conf):
-        raise WazuhError(1006, extra_message=os_path.join("WAZUH_PATH", "var", "multigroups", agent_conf))
-
-    try:
-        # Read XML
-        xml_data = load_wazuh_xml(agent_conf)
-
-        # Parse XML to JSON
-        data = _agentconf2json(xml_data)
-    except Exception:
-        raise WazuhError(1101)
-
-    return {'totalItems': len(data), 'items': cut_array(data, offset=offset, limit=limit)}
-
-
 def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, raw: bool = False) -> dict | str:
     """Return the configuration file content.
 
@@ -724,7 +634,7 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
     if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
 
-    file_path = os_path.join(common.SHARED_PATH, group_id if not filename == 'ar.conf' else '', filename)
+    file_path = os_path.join(common.SHARED_PATH, group_id, filename)
 
     if not os_path.exists(file_path):
         raise WazuhError(1006, file_path)
@@ -750,8 +660,6 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
     else:
         if filename == 'agent.conf':
             data = get_agent_conf(group_id, limit=None, filename=filename, raw=raw)
-        elif filename == 'ar.conf':
-            data = _ar_conf2json(file_path)
         elif filename == 'merged.mg':
             data = _merged_mg2json(file_path)
         else:
@@ -761,7 +669,7 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
 
 
 def parse_internal_options(high_name: str, low_name: str) -> str:
-    """Parse internal_options.conf file.
+    """Parse wazuh-manager-internal-options.conf file.
 
     Parameters
     ----------
@@ -775,12 +683,12 @@ def parse_internal_options(high_name: str, low_name: str) -> str:
     WazuhInternalError(1107)
         Internal options file not found.
     WazuhInternalError(1108)
-        Value not found in internal_options.conf.
+        Value not found in wazuh-manager-internal-options.conf.
 
     Returns
     -------
     str
-        Value of the internal_options.conf option.
+        Value of the wazuh-manager-internal-options.conf option.
     """
 
     def get_config(config_path: str) -> dict:
@@ -807,13 +715,6 @@ def parse_internal_options(high_name: str, low_name: str) -> str:
     if not os_path.exists(common.INTERNAL_OPTIONS_CONF):
         raise WazuhInternalError(1107)
 
-    # Check if the option exists at local internal options
-    if os_path.exists(common.LOCAL_INTERNAL_OPTIONS_CONF):
-        try:
-            return get_config(common.LOCAL_INTERNAL_OPTIONS_CONF).get('root', f'{high_name}.{low_name}')
-        except NoOptionError:
-            pass
-
     try:
         return get_config(common.INTERNAL_OPTIONS_CONF).get('root', f'{high_name}.{low_name}')
     except NoOptionError as e:
@@ -821,7 +722,7 @@ def parse_internal_options(high_name: str, low_name: str) -> str:
 
 
 def get_internal_options_value(high_name: str, low_name: str, max_: int, min_: int) -> int:
-    """Get value of a specific internal option from internal_options.conf.
+    """Get value of a specific internal option from wazuh-manager-internal-options.conf.
 
     Parameters
     ----------
@@ -844,7 +745,7 @@ def get_internal_options_value(high_name: str, low_name: str, max_: int, min_: i
     Returns
     -------
     int
-        Value of the internal_options.conf option.
+        Value of the wazuh-manager-internal-options.conf option.
     """
     option = parse_internal_options(high_name, low_name)
     if not option.isdigit():
@@ -1188,35 +1089,3 @@ def write_ossec_conf(new_conf: str):
     except Exception as e:
         raise WazuhError(1126, extra_message=str(e))
 
-
-def update_check_is_enabled() -> bool:
-    """Read the wazuh-manager.conf and check UPDATE_CHECK_OSSEC_FIELD value.
-
-    Returns
-    -------
-    bool
-        True if UPDATE_CHECK_OSSEC_FIELD is 'yes' or isn't present, else False.
-    """
-    try:
-        global_configurations = get_ossec_conf(section=GLOBAL_KEY).get(GLOBAL_KEY, {})
-        return global_configurations.get(UPDATE_CHECK_OSSEC_FIELD, YES_VALUE) == YES_VALUE
-    except WazuhError as e:
-        if e.code != 1106:
-            raise e
-        return True
-
-
-def get_cti_url() -> str:
-    """Get the CTI service URL from the configuration.
-
-    Returns
-    -------
-    str
-        CTI service URL. The default value is returned if CTI_URL_FIELD isn't present.
-    """
-    try:
-        return get_ossec_conf(section=GLOBAL_KEY).get(GLOBAL_KEY, {}).get(CTI_URL_FIELD, DEFAULT_CTI_URL)
-    except WazuhError as e:
-        if e.code != 1106:
-            raise e
-        return DEFAULT_CTI_URL

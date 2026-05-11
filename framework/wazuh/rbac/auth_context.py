@@ -4,7 +4,6 @@
 
 import json
 import re
-from collections import defaultdict
 from typing import Union
 
 from wazuh.rbac import orm
@@ -74,16 +73,6 @@ class RBAChecker:
                         processed_roles_list[-1]['rules'] = rules
 
         self.roles_list = processed_roles_list
-
-    def get_authorization_context(self) -> str:
-        """Return the authorization context.
-
-        Returns
-        -------
-        str
-            Provided authorization context.
-        """
-        return self.authorization_context
 
     def get_roles(self) -> list:
         """Return all roles.
@@ -378,25 +367,6 @@ class RBAChecker:
 
         return list_roles
 
-    def run_auth_context(self) -> defaultdict:
-        """This function will return the final policies of a user according to the roles matching the authorization
-        context.
-
-        Returns
-        -------
-        defaultdict
-            Final policies of a user according to the roles matching the authorization context.
-        """
-        user_roles = self.get_user_roles()
-        user_roles_policies = defaultdict(list)
-        with orm.RolesPoliciesManager() as rpm:
-            for role in user_roles:
-                for policy in rpm.get_all_policies_from_role(role):
-                    user_roles_policies['policies'].append(json.loads(policy.policy))
-                user_roles_policies['roles'].append(role)
-
-        return user_roles_policies
-
     def run_auth_context_roles(self) -> list:
         """This function will return the roles of a user matching the authorization context.
 
@@ -408,31 +378,6 @@ class RBAChecker:
         user_roles = self.get_user_roles()
 
         return user_roles
-
-    @staticmethod
-    def run_user_role_link(user_id: int) -> defaultdict:
-        """This function will return the final policies of a user according to its roles in the RBAC database.
-
-        Parameters
-        ----------
-        user_id : int
-            User to get the policies from.
-
-        Returns
-        -------
-        defaultdict
-            Final policies of a user according to its roles in the RBAC database.
-        """
-        with orm.UserRolesManager() as urm:
-            user_roles = list(role for role in urm.get_all_roles_from_user(user_id=user_id))
-        user_roles_policies = defaultdict(list)
-        with orm.RolesPoliciesManager() as rpm:
-            for role in user_roles:
-                for policy in rpm.get_all_policies_from_role(role_id=role.id):
-                    user_roles_policies['policies'].append(policy.to_dict()['policy'])
-                user_roles_policies['roles'].append(role.id)
-
-        return user_roles_policies
 
     @staticmethod
     def run_user_role_link_roles(user_id: int) -> list:

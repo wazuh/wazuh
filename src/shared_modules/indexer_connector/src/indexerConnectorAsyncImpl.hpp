@@ -115,8 +115,11 @@ class IndexerConnectorAsyncImpl final
     std::atomic<bool> m_stopping {false};
     std::unique_ptr<ThreadLoggerQueue> m_loggerProcessor;
     const std::string m_queueId;
+    const std::string m_dbPath;
     bool m_error413Logged {false};
     size_t m_successCount {0};
+    size_t m_maxQueueSize {0};
+    size_t m_flushInterval {FlushInterval};
     std::unique_ptr<ThreadDispatchQueue> m_dispatcher;
 
 public:
@@ -126,12 +129,28 @@ public:
         const nlohmann::json& config,
         const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
             logFunction,
+        std::string queueId,
         THttpRequest* httpRequest = nullptr,
         std::unique_ptr<TSelector> selector = nullptr,
-        std::string queueId = "")
+        std::string basePath = DATABASE_BASE_PATH)
         : m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
         , m_queueId(std::move(queueId))
+        , m_dbPath((std::filesystem::path(std::move(basePath)) / m_queueId).string())
     {
+        if (m_queueId.empty())
+        {
+            throw IndexerConnectorException("queueId cannot be empty: each IndexerConnectorAsync instance "
+                                            "must have a unique identifier (e.g. \"engine\", \"inventory-sync\").");
+        }
+
+        if (m_queueId.find('/') != std::string::npos || m_queueId.find('\\') != std::string::npos ||
+            m_queueId.find("..") != std::string::npos)
+        {
+            throw IndexerConnectorException(
+                "queueId must not contain path separators ('/', '\\') or traversal sequences ('..'): \"" + m_queueId +
+                "\".");
+        }
+
         if (logFunction)
         {
             Log::assignLogFunction(logFunction);
@@ -201,6 +220,18 @@ public:
 
         m_selector =
             selector ? std::move(selector) : std::make_unique<TSelector>(config.at("hosts"), 10, m_secureCommunication);
+
+        // Read max queue size from config, default to unlimited if not specified
+        m_maxQueueSize = config.contains("max_queue_size") && config.at("max_queue_size").is_number_unsigned()
+                             ? config.at("max_queue_size").get<size_t>()
+                             : 0; // 0 means unlimited
+
+        // Read flush interval from config; the template parameter acts as a fallback default.
+        // Accept both signed and unsigned JSON integers (nlohmann stores bare literals as signed).
+        m_flushInterval =
+            config.contains("flush_interval_seconds") && config.at("flush_interval_seconds").is_number_integer()
+                ? config.at("flush_interval_seconds").get<size_t>()
+                : FlushInterval;
 
         m_loggerProcessor = std::make_unique<ThreadLoggerQueue>(
             [this](const IndexerResponse& data)
@@ -468,11 +499,11 @@ public:
                                     PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
                                     {});
             },
-            DATABASE_BASE_PATH + m_queueId,
+            m_dbPath,
             ElementsPerBulk,
-            UNLIMITED_QUEUE_SIZE,
+            m_maxQueueSize,
             RetryDelay,
-            FlushInterval);
+            m_flushInterval);
     }
 
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data)
@@ -586,6 +617,11 @@ public:
     uint64_t getQueueSize() const
     {
         return m_dispatcher->size();
+    }
+
+    uint64_t getDroppedEvents() const
+    {
+        return m_dispatcher->getDroppedEvents();
     }
 
     PointInTime
@@ -751,7 +787,8 @@ public:
                           const nlohmann::json& query,
                           const nlohmann::json& sort,
                           const std::optional<nlohmann::json>& searchAfter,
-                          const std::optional<nlohmann::json>& source)
+                          const std::optional<nlohmann::json>& source,
+                          const std::optional<nlohmann::json>& slice = std::nullopt)
     {
         // Build the search request body
         nlohmann::json requestBody;
@@ -764,6 +801,11 @@ public:
         if (source.has_value())
         {
             requestBody["_source"] = source.value();
+        }
+
+        if (slice.has_value())
+        {
+            requestBody["slice"] = slice.value();
         }
 
         // Add track_total_hits only if searchAfter is not provided

@@ -1,0 +1,7 @@
+- name: trailing-NUL handling on the wire
+  description: >
+    Legacy text events with trailing NUL bytes must reach analysisd without
+    the padding.
+  configuration_parameters: {}
+  metadata:
+    agents_number: 1

@@ -2,13 +2,6 @@ run-name: Inventory Sync Integration Tests - ${{ github.event.pull_request.numbe
 name: 5.X - Inventory Sync - Integration tests
 
 on:
-  workflow_dispatch:
-    inputs:
-      test_manager:
-        description: "Manager IP for testing (default: 127.0.0.1)"
-        type: string
-        default: "127.0.0.1"
-        required: false
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
@@ -16,14 +9,21 @@ on:
       - 'src/shared_modules/utils/flatbuffers/**'
       - '.github/workflows/5_testintegration_inventory-sync.yml'
       - 'src/shared_modules/indexer_connector/**'
+  workflow_dispatch:
+    inputs:
+      test_manager:
+        description: "Manager IP for testing (default: 127.0.0.1)"
+        type: string
+        default: "127.0.0.1"
+        required: false
 
-# Ensures only one instance of this workflow is running per PR
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   inventory-sync-integration-tests:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: inventory-sync-integration-tests
     runs-on: ubuntu-22.04
 
@@ -299,6 +299,8 @@ jobs:
 
       - name: Run inventory sync integration tests
         working-directory: src/wazuh_modules/inventory_sync/qa
+        env:
+          TEST_MANAGER: ${{ github.event.inputs.test_manager || '127.0.0.1' }}
         run: |
           echo "[>] Running inventory sync integration tests..."
           source venv/bin/activate
@@ -309,8 +311,6 @@ jobs:
 
           # Run all tests
           echo "[>] Running all integration tests..."
-          TEST_MANAGER="${{ github.event.inputs.test_manager || '127.0.0.1' }}"
-
           python3 run_tests.py --manager "$TEST_MANAGER" --verbose
 
       - name: Cleanup and collect logs

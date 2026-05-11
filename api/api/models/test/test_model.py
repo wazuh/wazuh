@@ -119,69 +119,6 @@ def test_model_operator_overloading():
         assert test_model != equal_model
 
 
-def test_allof():
-    model1 = TestModel('a', 1)
-    model2 = TestModel('a', 2)
-
-    allof = bm.AllOf(model1, model2)
-    assert allof.models == (model1, model2)
-
-
-def test_allof_to_dict():
-    """Test class AllOf class `to_dict` method."""
-    args1 = ('one', 1)
-    args2 = ('two', 2)
-
-    allof = bm.AllOf(TestModel(*args1), TestModel(*args2))
-    # Same model means that the second model values will overwrite the first
-    assert tuple(allof.to_dict().values()) == args2
-
-    allof = bm.AllOf(TestModel(*args2), TestModel(*args1))
-    assert tuple(allof.to_dict().values()) == args1
-
-
-def test_data():
-    """Test class Data."""
-    model = TestModel('one', 1)
-    data_model = bm.Data(model)
-
-    assert data_model.swagger_types == {'data': bm.Model}
-    assert data_model.attribute_map == {'data': 'data'}
-    assert data_model._data == model
-
-    # Test class properties
-    new_data = {'new': 'data'}
-    data_model.data = new_data
-    assert data_model.data == new_data
-
-
-def test_data_from_dict():
-    """Test class Data `from_dict` class method."""
-    test_dict = {'test_key': 'test_value'}
-    assert bm.Data.from_dict(test_dict) == deserialize_model(test_dict, bm.Data)
-
-
-def test_items():
-    """Test class Items."""
-    l = [TestModel('one', 2)]
-    items_model = bm.Items(l)
-
-    assert items_model.swagger_types == {'items': bm.List[bm.Model]}
-    assert items_model.attribute_map == {'items': 'items'}
-    assert items_model._items == l
-
-    # Test class properties
-    new_items = [TestModel('new', 9)]
-    items_model.items = new_items
-    assert items_model.items == new_items
-
-
-def test_items_from_dict():
-    """Test class Items `from_dict` class method."""
-    test_dict_list = [{'test_key': 'test_value'}, {'test_key2': 'test_value2'}]
-    assert bm.Items.from_dict(test_dict_list) == deserialize_model(test_dict_list, bm.Items)
-
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize('additional_kwargs', [
     {},

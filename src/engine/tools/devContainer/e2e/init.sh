@@ -9,6 +9,18 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 trap 'cd "$OLD_DIR"' EXIT
 cd "$SCRIPT_DIR"
 
+# ------------------------------------------------------------------------------
+# Logging: mirror all stdout and stderr to a timestamped log file
+# ------------------------------------------------------------------------------
+LOG_FILE="${SCRIPT_DIR}/init.log"
+: > "$LOG_FILE"  # Truncate log file on each run
+exec > >(tee "$LOG_FILE") 2>&1
+
+echo "==========================================================="
+echo "  init.sh started at $(date '+%Y-%m-%d %H:%M:%S')"
+echo "==========================================================="
+echo ""
+
 
 # ==============================================================================
 #                          Certificates
@@ -191,6 +203,17 @@ function download_and_unzip_artifact() {
   fi
 
   rm "$tmp_file"
+
+  # ---- Record download summary in the log ----
+  echo "    ---------------------------------------------------"
+  echo "    [Download Summary]"
+  echo "      Repo:              $repo"
+  echo "      Run ID:            $run_id"
+  echo "      Run URL:           https://github.com/$repo/actions/runs/$run_id"
+  echo "      Artifact URL:      $artifact_url"
+  echo "      Original file:     $unzipped_file"
+  echo "      Saved as:          ${output_dir}/${final_filename}"
+  echo "    ---------------------------------------------------"
   echo ""
 }
 
@@ -344,5 +367,11 @@ get_dashboard_artifact
 
 # Init certs
 upsert_certs
+
+echo ""
+echo "==========================================================="
+echo "  init.sh finished at $(date '+%Y-%m-%d %H:%M:%S')"
+echo "  Log: $LOG_FILE"
+echo "==========================================================="
 
 exit 0

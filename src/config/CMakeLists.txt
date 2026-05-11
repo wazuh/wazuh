@@ -49,6 +49,14 @@ if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
     "${CMAKE_CURRENT_SOURCE_DIR}/src/wmodules-syscollector.c")
 endif()
 
+# Remove manager-only config parsers from agent builds
+if("${TARGET}" STREQUAL "agent" OR "${TARGET}" STREQUAL "winagent")
+  list(REMOVE_ITEM CONFIG_CORE_SRC
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/indexer-config.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/wmodules-task-manager.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/wmodules-vulnerability-detection.c")
+endif()
+
 # Create config library
 add_library(config STATIC ${CONFIG_CORE_SRC})
 

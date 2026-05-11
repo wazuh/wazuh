@@ -3,6 +3,10 @@
 #include "hlp_test.hpp"
 #include <base/logging.hpp>
 
+#ifndef HLP_TEST_TZDB_PATH
+#define HLP_TEST_TZDB_PATH "data/tzdb"
+#endif
+
 auto constexpr NAME = "dateParser";
 static const std::string TARGET = "/TargetField";
 auto BUILD_YEAR = std::string(__DATE__).substr(7);
@@ -13,7 +17,7 @@ auto initAndGetDateParser() -> hlp::ParserBuilder
     static bool hasInitiated = false;
     if (!hasInitiated)
     {
-        hlp::initTZDB("data/tzdb", false);
+        hlp::initTZDB(HLP_TEST_TZDB_PATH, false);
         hasInitiated = true;
     }
     return hlp::parsers::getDateParser;

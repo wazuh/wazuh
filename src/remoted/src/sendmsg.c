@@ -47,7 +47,7 @@ int check_keyupdate()
         return (0);
     }
 
-    minfo(ENCFILE_CHANGED);
+    mdebug1(ENCFILE_CHANGED);
     key_lock_write();
     OS_UpdateKeys(&keys);
     key_unlock();

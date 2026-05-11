@@ -74,7 +74,7 @@ static int g_stopFD[2] = {-1, -1};
 static void help_authd(char * home_path)
 {
     print_header();
-    print_out("  %s: -[Vhdtfi] [-g group] [-D dir] [-p port] [-P] [-c ciphers] [-v path [-s]] [-x path] [-k path]", ARGV0);
+    print_out("  %s: -[VhdtfPaL] [-g group] [-D dir] [-p port] [-c ciphers] [-v path [-s]] [-x path] [-k path] [-C days] [-B bits] [-K path] [-X path] [-S subject]", ARGV0);
     print_out("    -V          Version and license message.");
     print_out("    -h          This help message.");
     print_out("    -d          Debug mode. Use this parameter multiple times to increase the debug level.");
@@ -90,7 +90,6 @@ static void help_authd(char * home_path)
     print_out("    -x <path>   Full path to server certificate. Default: %s.", CERTFILE);
     print_out("    -k <path>   Full path to server key. Default: %s.", KEYFILE);
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
-    print_out("    -L          Force insertion though agent limit reached.");
     print_out("    -C          Specify the certificate validity in days.");
     print_out("    -B          Specify the certificate key size in bits.");
     print_out("    -K          Specify the path to store the certificate key.");
@@ -136,9 +135,6 @@ int main(int argc, char **argv)
     // Define current working directory
     char * home_path = w_homedir(argv[0]);
 
-    /* Initialize some variables */
-    bio_err = 0;
-
     /* Change working directory */
     if (chdir(home_path) == -1) {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
@@ -164,7 +160,7 @@ int main(int argc, char **argv)
         unsigned long days_val = 0;
         unsigned long key_bits = 0;
 
-        while (c = getopt(argc, argv, "Vdhtfigj:D:p:c:v:sx:k:PF:ar:L:C:B:K:X:S:"), c != -1) {
+        while (c = getopt(argc, argv, "Vdhtfg:D:p:c:v:sx:k:PaL:C:B:K:X:S:"), c != -1) {
             switch (c) {
                 case 'V':
                     print_version();
@@ -177,10 +173,6 @@ int main(int argc, char **argv)
                 case 'd':
                     debug_level = 1;
                     nowDebug();
-                    break;
-
-                case 'i':
-                    mwarn(DEPRECATED_OPTION_WARN, "-i", OSSECCONF);
                     break;
 
                 case 'g':
@@ -256,20 +248,8 @@ int main(int argc, char **argv)
                     server_key = optarg;
                     break;
 
-                case 'F':
-                    mwarn(DEPRECATED_OPTION_WARN, "-F", OSSECCONF);
-                    break;
-
-                case 'r':
-                    mwarn(DEPRECATED_OPTION_WARN, "-r", OSSECCONF);
-                    break;
-
                 case 'a':
                     auto_method = 1;
-                    break;
-
-                case 'L':
-                    mwarn("This option no longer applies. The agent limit has been removed.");
                     break;
 
                 case 'C':
@@ -384,7 +364,7 @@ int main(int argc, char **argv)
         /* Set the Debug level */
         if (debug_level == 0 && test_config == 0) {
             /* Get debug level */
-            debug_level = getDefine_Int("authd", "debug", 0, 2);
+            debug_level = getDefine_Int_default("authd", "debug", 0, 2, 0);
             while (debug_level != 0) {
                 nowDebug();
                 debug_level--;
@@ -392,8 +372,8 @@ int main(int argc, char **argv)
         }
 
         // Return -1 if not configured
-        if (authd_read_config(OSSECCONF) < 0) {
-            merror_exit(CONFIG_ERROR, OSSECCONF);
+        if (authd_read_config(WAZUHCONF) < 0) {
+            merror_exit(CONFIG_ERROR, WAZUHCONF);
         }
 
         // Overwrite arguments
@@ -446,7 +426,7 @@ int main(int argc, char **argv)
 
     /* Exit here if disabled */
     if (config.flags.disabled) {
-        minfo("Daemon is disabled. Closing.");
+        mdebug1("Daemon is disabled. Closing.");
         exit(0);
     }
 
@@ -591,17 +571,17 @@ int main(int argc, char **argv)
             }
 
             if (buf[0] != '\0') {
-                minfo("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHD_PASS);
+                mdebug1("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHD_PASS);
             } else {
                 /* Getting temporary pass. */
                 if (authpass = w_generate_random_pass(), authpass) {
-                    minfo("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
+                    mdebug1("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
                 } else {
                     merror_exit("Unable to generate random password. Exiting.");
                 }
             }
         } else {
-            minfo("Accepting connections on port %hu. No password required.", config.port);
+            mdebug1("Accepting connections on port %hu. No password required.", config.port);
         }
     }
 
@@ -733,7 +713,7 @@ static void process_message(struct client *client) {
         snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "OSSEC K:'%s %s %s %s'", client->new_id, client->agentname, client->ip, new_key);
         client->write_len = strlen(client->write_buffer);
 
-        minfo("Agent key generated for '%s' (requested by %s)", client->agentname, client->ip);
+        mdebug1("Agent key generated for '%s' (requested by %s)", client->agentname, client->ip);
     } else {
         snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "%s. %s", response, "Unable to add agent");
         client->write_len = strlen(client->write_buffer);
@@ -858,14 +838,19 @@ void enqueue_pending_key(int ret, uint32_t index_client) {
                 merror("Agent key not saved for %s", g_client_pool[index_client]->agentname);
                 ERR_print_errors_fp(stderr);
                 w_mutex_lock(&mutex_keys);
-                OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
+                if (g_client_pool[index_client]->new_id) {
+                    OS_DeleteKey(&keys, g_client_pool[index_client]->new_id, 1);
+                }
                 w_mutex_unlock(&mutex_keys);
             } else {
                 /* Add pending key to write */
                 w_mutex_lock(&mutex_keys);
-                add_insert(keys.keyentries[keys.keysize - 1], g_client_pool[index_client]->centralized_group);
-                write_pending = 1;
-                w_cond_signal(&cond_pending);
+                int key_index = OS_IsAllowedID(&keys, g_client_pool[index_client]->new_id);
+                if (key_index >= 0) {
+                    add_insert(keys.keyentries[key_index], g_client_pool[index_client]->centralized_group);
+                    write_pending = 1;
+                    w_cond_signal(&cond_pending);
+                }
                 w_mutex_unlock(&mutex_keys);
             }
         }
@@ -883,7 +868,7 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
     authd_sigblock();
 
     if (config.timeout_sec || config.timeout_usec) {
-        minfo("Setting network timeout to %.6f sec.", config.timeout_sec + config.timeout_usec / 1000000.);
+        mdebug1("Setting network timeout to %.6f sec.", config.timeout_sec + config.timeout_usec / 1000000.);
     } else {
         mdebug1("Network timeout is disabled.");
     }

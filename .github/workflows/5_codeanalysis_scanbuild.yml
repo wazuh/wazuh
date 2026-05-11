@@ -2,12 +2,18 @@ name: 5.X - Scan build
 on:
   workflow_dispatch:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - "src/**"
       - ".github/workflows/5_codeanalysis_scanbuild.yml"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   scan-build-linux:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -41,6 +47,7 @@ jobs:
         run: exit 1
 
   scan-build-ubuntu-mingw-windows:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
@@ -72,6 +79,7 @@ jobs:
         run: exit 1
 
   scan-build-macos-agent:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3

@@ -1,7 +1,6 @@
 name: 5.X - Engine Standalone
 
 on:
-  # Triggers the workflow on demand
   workflow_dispatch:
     inputs:
       wazuh-branch:
@@ -48,7 +47,9 @@ env:
 jobs:
   build:
     name: Build Manager (${{ matrix.arch }})
-    runs-on: ${{ (matrix.arch == 'arm64') && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    runs-on:
+      group: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64' || 'wz-linux-amd64' }}
+      labels: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64' || 'wz-linux-amd64' }}
     outputs:
       version: ${{ steps.set_version.outputs.version }}
     strategy:
@@ -84,6 +85,17 @@ jobs:
               ;;
           esac
 
+      - name: Install docker
+        run: |
+          if ! command -v docker &> /dev/null; then
+            echo "Installing Docker..."
+
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            sudo systemctl start docker
+            sudo chmod 666 /var/run/docker.sock
+          fi
+
       - name: Download docker image for package building
         run: |
           bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} ${CONTAINER_NAME} ${TAG}
@@ -105,7 +117,9 @@ jobs:
   check_standalone_engine:
     name: Test standalone engine (${{ matrix.arch }})
 
-    runs-on: ${{ (matrix.arch == 'arm64') && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    runs-on:
+      group: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64' || 'wz-linux-amd64' }}
+      labels: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64' || 'wz-linux-amd64' }}
     needs: build
     timeout-minutes: 60
     strategy:
@@ -204,10 +218,10 @@ jobs:
           echo "Attempt $((RETRY_COUNT + 1))/$MAX_RETRIES..."
 
           if [ -S sockets/engine-api.sock ] && \
-             curl --silent --unix-socket sockets/engine-api.sock \
+            curl --silent --fail-with-body --unix-socket sockets/engine-api.sock \
                   -X POST -H "Content-Type: application/json" \
-                  -d '{"name":"default"}' \
-                  http://localhost/router/route/get; then
+                  -d '{}' \
+                  http://localhost/_internal/router/table/get; then
             echo "Engine started successfully"
             ENGINE_READY=1
             break

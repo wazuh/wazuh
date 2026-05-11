@@ -43,6 +43,17 @@ auto builderArrayRefWrongElement(const std::string& refName)
     };
 }
 
+auto builderArrayRefTyped(const std::string& refName, json::Json::Type jType)
+{
+    return [=](const BuildersMocks& mocks)
+    {
+        expectValidatorAccess(mocks);
+        EXPECT_CALL(*mocks.validator, hasField(DotPath(refName))).WillRepeatedly(testing::Return(true));
+        EXPECT_CALL(*mocks.validator, getJsonType(DotPath(refName))).WillRepeatedly(testing::Return(jType));
+        return None {};
+    };
+}
+
 auto opArrayRefNotInSchemaSuccess(const std::string& refName, const json::Json& expectedJson)
 {
     return [=](const BuildersMocks& mocks)
@@ -110,7 +121,26 @@ INSTANTIATE_TEST_SUITE_P(
                          FAILURE(builderArrayRefNotArray("ExtendedProperties"))),
                     MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
                          opBuilderHelperArrayObjToMapkv,
-                         FAILURE(builderArrayRefWrongElement("ExtendedProperties")))),
+                         FAILURE(builderArrayRefWrongElement("ExtendedProperties"))),
+                    /*** Array ref type validation (getJsonType -> Object) ***/
+                    MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
+                         opBuilderHelperArrayObjToMapkv,
+                         SUCCESS(builderArrayRefTyped("ExtendedProperties", json::Json::Type::Object))),
+                    MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
+                         opBuilderHelperArrayObjToMapkv,
+                         FAILURE(builderArrayRefTyped("ExtendedProperties", json::Json::Type::String))),
+                    MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
+                         opBuilderHelperArrayObjToMapkv,
+                         FAILURE(builderArrayRefTyped("ExtendedProperties", json::Json::Type::Number))),
+                    MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
+                         opBuilderHelperArrayObjToMapkv,
+                         FAILURE(builderArrayRefTyped("ExtendedProperties", json::Json::Type::Boolean))),
+                    MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
+                         opBuilderHelperArrayObjToMapkv,
+                         FAILURE(builderArrayRefTyped("ExtendedProperties", json::Json::Type::Array))),
+                    MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
+                         opBuilderHelperArrayObjToMapkv,
+                         FAILURE(builderArrayRefTyped("ExtendedProperties", json::Json::Type::Null)))),
     testNameFormatter<MapBuilderTest>("ArrayObjToMapKv"));
 } // namespace mapbuildtest
 

@@ -100,7 +100,6 @@ The following configuration sections can be distributed via `agent.conf`:
 | `<sca>` | Security configuration assessment policies |
 | `<wodle>` | Wazuh module (wodle) settings |
 | `<active-response>` | Active response configuration |
-| `<labels>` | Agent labels for alert enrichment |
 
 ## Verifying the configuration
 

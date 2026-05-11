@@ -10,19 +10,19 @@ namespace streamlog::mocks
 class MockILogManager : public ::streamlog::ILogManager
 {
 public:
-    MOCK_METHOD(std::shared_ptr<::streamlog::WriterEvent>, getWriter, (const std::string& name), (override));
+    MOCK_METHOD(std::shared_ptr<::streamlog::WriterEvent>,
+                ensureAndGetWriter,
+                (const std::string& name, const ::streamlog::RotationConfig& cfg, std::string_view ext),
+                (override));
 };
 
 class MockWriterEvent : public ::streamlog::WriterEvent
 {
 public:
-   // Mocking the operator()
+    // Mocking the operator()
     MOCK_METHOD(bool, CallOperator, (const std::string& message), ());
 
-   bool operator()(std::string&& message) override
-   {
-       return CallOperator(message);
-   }
+    bool operator()(std::string&& message) override { return CallOperator(message); }
 };
 
 } // namespace streamlog::mocks

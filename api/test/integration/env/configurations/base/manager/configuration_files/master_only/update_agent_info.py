@@ -55,15 +55,6 @@ def create_and_send_query(agent_info_file):
             except KeyError:
                 pass
 
-            # Insert fields of labels table
-            try:
-                for key, value in agent['labels'].items():
-                    query = f"INSERT INTO labels ('id', 'key', 'value') VALUES " \
-                            f"({agent['extra_params']['agent_id']}, '{key}', '{value}')"
-                    # Send query to wdb
-                    f.write(str(send_msg("global sql " + query)) + '\n')
-            except KeyError:
-                pass
 
 
 def add_agent_group_relationships(agent_groups_file: str) -> None:

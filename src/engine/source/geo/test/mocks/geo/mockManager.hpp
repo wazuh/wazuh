@@ -1,5 +1,5 @@
-#ifndef _GEO_MOCK_MANAGER_HPP
-#define _GEO_MOCK_MANAGER_HPP
+#ifndef GEO_MOCK_MANAGER_HPP
+#define GEO_MOCK_MANAGER_HPP
 
 #include <gmock/gmock.h>
 
@@ -14,8 +14,9 @@ public:
                 remoteUpsert,
                 (const std::string& manifestUrl, const std::string& cityPath, const std::string& asnPath),
                 (override));
+    MOCK_METHOD(void, requestShutdown, (), (override));
     MOCK_METHOD(std::vector<DbInfo>, listDbs, (), (const, override));
-    MOCK_METHOD(base::RespOrError<std::shared_ptr<ILocator>>, getLocator, (Type type), (const, override));
+    MOCK_METHOD(Result<std::shared_ptr<ILocator>>, getLocator, (Type type), (const, override));
 };
 } // namespace geo::mocks
-#endif // _GEO_MOCK_MANAGER_HPP
+#endif // GEO_MOCK_MANAGER_HPP

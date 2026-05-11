@@ -131,7 +131,7 @@ void test_w_journald_can_read_first_time_init_ofe_yes(void ** state) {
 
     will_return(__wrap_w_journal_context_seek_most_recent, 0);
 
-    expect_string(__wrap__minfo, formatted_msg, "(9203): Monitoring journal entries.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(9203): Monitoring journal entries.");
     will_return(__wrap_w_journal_rotation_detected, false);
 
     assert_true(w_journald_can_read(tid));
@@ -149,7 +149,7 @@ void test_w_journald_can_read_first_time_init_ofe_no(void ** state) {
     expect_value(__wrap_w_journal_context_seek_timestamp, timestamp, 123);
     will_return(__wrap_w_journal_context_seek_timestamp, 0);
 
-    expect_string(__wrap__minfo, formatted_msg, "(9203): Monitoring journal entries.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(9203): Monitoring journal entries.");
     will_return(__wrap_w_journal_rotation_detected, false);
 
     assert_true(w_journald_can_read(tid));
@@ -188,7 +188,7 @@ void test_w_journald_rotation_succeeded(void** state) {
     expect_value(__wrap_w_journal_context_seek_timestamp, timestamp, 123);
     will_return(__wrap_w_journal_context_seek_timestamp, 0);
 
-    expect_string(__wrap__minfo, formatted_msg, "(9204): 'Journald' timestamp was refreshed due to rotation.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(9204): 'Journald' timestamp was refreshed due to rotation.");
 
     assert_true(w_journald_can_read(tid));
     assert_false(journald_isDisabled());

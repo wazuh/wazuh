@@ -55,8 +55,6 @@ class WazuhDAPI:
     """Class to call Wazuh DAPI functions."""
 
     AGENTS_MAX_LIMIT = 100000
-    API_RETRIES = 5
-    TIMEOUT_ERROR_CODE = 3021
 
     def __init__(
         self,

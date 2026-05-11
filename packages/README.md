@@ -5,13 +5,13 @@ This script automates the process of building Wazuh packages (manager or agent) 
 **Features:**
 
 - Supports building packages for different targets (manager/agent).
-- Selectable architectures (amd64, i386, arm64, armhf).
+- Selectable architectures (amd64, arm64).
 - Optional debug builds.
 - Generates checksums for built packages.
 - Uses local source code or downloads from GitHub.
 - Builds future test packages (x.30.0).
 
-***Note:** Support for *arm64 and armhf* architectures **is not** currently **available** in the **workflow**.
+***Note:** Only *amd64* and *arm64* architectures are supported.
 
 **Requirements:**
 
@@ -29,7 +29,7 @@ wazuh# cd packages
 |----------------------|---------------------------------------------------------------------|-------------------------|
 | -b, --branch         | Git branch to use (optional)                                        | main                    |
 | -t, --target         | Target package to build (required): manager or agent                | -                       |
-| -a, --architecture   | Target architecture (optional): amd64, i386, etc.                   | -                       |
+| -a, --architecture   | Target architecture (optional): amd64, arm64                        | -                       |
 | -j, --jobs           | Number of parallel jobs (optional)                                  | 2                       |
 | -r, --revision       | Package revision (optional)                                         | 0                       |
 | -s, --store          | Destination path for the package (optional)                         | (output folder created) |
@@ -61,8 +61,8 @@ wazuh# cd packages
 1. Build a manager package for amd64 architecture:
 ./wazuh_package_builder.sh -t manager -a amd64 -s /tmp --system rpm
 
-2. Build a debug agent package for i386 architecture with checksum generation:
-./wazuh_package_builder.sh -t agent -a i386 -s /tmp -d -c --system rpm
+2. Build a debug agent package for arm64 architecture with checksum generation:
+./wazuh_package_builder.sh -t agent -a arm64 -s /tmp -d -c --system rpm
 
 3. Build a package using local Wazuh source code:
 ./wazuh_package_builder.sh -t manager -a amd64 --sources /path/to/wazuh/source --system rpm
@@ -73,7 +73,6 @@ wazuh# cd packages
 - For RPM packages, we use the following architecture equivalences:
     * amd64 -> x86_64
     * arm64 -> aarch64
-    * armhf -> armv7hl
 
 # Workflow
 

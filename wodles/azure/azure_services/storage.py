@@ -20,8 +20,6 @@ from dateutil.parser import parse
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 
 from azure_utils import (
-    CREDENTIALS_URL,
-    DEPRECATED_MESSAGE,
     offset_to_datetime,
     read_auth_file,
     send_message,
@@ -41,15 +39,6 @@ def start_storage(args):
         name, key = read_auth_file(
             auth_path=args.storage_auth_path, fields=('account_name', 'account_key')
         )
-    elif args.account_name and args.account_key:
-        logging.debug(f"Storage: Using path account name and account key for authentication")
-        logging.warning(
-            DEPRECATED_MESSAGE.format(
-                name='account_name and account_key', release='4.4', url=CREDENTIALS_URL
-            )
-        )
-        name = args.account_name
-        key = args.account_key
     else:
         logging.error('Storage: No parameters have been provided for authentication.')
         sys.exit(1)

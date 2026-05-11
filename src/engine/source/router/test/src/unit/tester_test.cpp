@@ -34,7 +34,7 @@ public:
 
     void addEntryCallers(const std::unordered_set<base::Name>& fakeAssets, const std::string& hash)
     {
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_, testing::_))
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_))
             .WillOnce(::testing::Return(m_mockPolicy));
         EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(fakeAssets));
         EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_))
@@ -48,13 +48,13 @@ public:
 
     void rebuildEntryFailture()
     {
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_, testing::_))
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_))
             .WillOnce(::testing::Throw(std::runtime_error("Policy was not building")));
     }
 
     void rebuildEntryCallersSuccess(const std::unordered_set<base::Name>& fakeAssets, const std::string& hash)
     {
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_, testing::_))
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_))
             .WillOnce(::testing::Return(m_mockPolicy));
         EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(fakeAssets));
         EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_))
@@ -98,7 +98,7 @@ TEST_F(TesterTest, AddEntryRepeatdly)
     error = m_test->addEntry(entryPost, /*ignoreFail=*/false);
     stopControllerCall();
 
-    EXPECT_STREQ(error.value().message.c_str(), "The name of the testing environment already exist");
+    EXPECT_STREQ(error.value().message.c_str(), "The 'Test' environment already exists.");
 }
 
 TEST_F(TesterTest, AddEntrySuccess)
@@ -125,7 +125,7 @@ TEST_F(TesterTest, FailedCreatingEnvironment)
 {
     auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, cm::store::NamespaceId {"decoder"}, LIFESPAM};
 
-    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_, testing::_)).WillOnce(::testing::Return(nullptr));
+    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_)).WillOnce(::testing::Return(nullptr));
     EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_)).Times(0);
 
     auto error = m_test->addEntry(entryPost, /*ignoreFail=*/false);
@@ -142,7 +142,7 @@ TEST_F(TesterTest, FailedCreatingEnvironmentControllerNull)
     std::unordered_set<base::Name> fakeAssets {};
     fakeAssets.insert(base::Name("asset/test/0"));
 
-    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_, testing::_))
+    EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_))
         .WillOnce(::testing::Return(m_mockPolicy));
     EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(fakeAssets));
     EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(base::Expression {}));
@@ -163,7 +163,7 @@ TEST_F(TesterTest, FailedRemovingEnvironment)
 
     EXPECT_TRUE(error.has_value());
 
-    EXPECT_STREQ(error.value().message.c_str(), "The testing environment not exist");
+    EXPECT_STREQ(error.value().message.c_str(), "The 'Test' environment does not exist.");
 }
 
 TEST_F(TesterTest, SuccessRemovingEnvironment)
@@ -188,7 +188,7 @@ TEST_F(TesterTest, FaildedRebuildingEnvironment)
 
     EXPECT_TRUE(error.has_value());
 
-    EXPECT_STREQ(error.value().message.c_str(), "The testing environment not exist");
+    EXPECT_STREQ(error.value().message.c_str(), "The 'Test' environment does not exist.");
 }
 
 TEST_F(TesterTest, FaildedRebuildingEnvironmentMakeControllerError)
@@ -206,7 +206,7 @@ TEST_F(TesterTest, FaildedRebuildingEnvironmentMakeControllerError)
     auto error = m_test->rebuildEntry(ENVIRONMENT_NAME);
 
     EXPECT_TRUE(error.has_value());
-    EXPECT_STREQ(error.value().message.c_str(), "Failed to create the testing environment: Policy was not building");
+    EXPECT_STREQ(error.value().message.c_str(), "Failed to create the 'Test' environment: Policy was not building");
 }
 
 TEST_F(TesterTest, SuccessRebuildingEnvironment)
@@ -232,7 +232,7 @@ TEST_F(TesterTest, FailedEnableEntry)
 
     EXPECT_TRUE(error.has_value());
 
-    EXPECT_STREQ(error.value().message.c_str(), "The testing environment not exist");
+    EXPECT_STREQ(error.value().message.c_str(), "The 'Test' environment does not exist.");
 }
 
 TEST_F(TesterTest, SuccessEnableEntry)
@@ -277,7 +277,7 @@ TEST_F(TesterTest, FailtureGetEntry)
 
     EXPECT_TRUE(std::holds_alternative<base::Error>(error));
 
-    EXPECT_STREQ(std::get<base::Error>(error).message.c_str(), "The testing environment not exist");
+    EXPECT_STREQ(std::get<base::Error>(error).message.c_str(), "The 'Test' environment does not exist.");
 }
 
 TEST_F(TesterTest, SuccessGetEntry)
@@ -385,7 +385,7 @@ TEST_F(TesterTest, FailtureGetAssetsNameNotExist)
 
     EXPECT_TRUE(std::holds_alternative<base::Error>(error));
 
-    EXPECT_STREQ(std::get<base::Error>(error).message.c_str(), "The testing environment not exist");
+    EXPECT_STREQ(std::get<base::Error>(error).message.c_str(), "The 'Test' environment does not exist.");
 }
 
 TEST_F(TesterTest, FailtureGetAssetsNameNotEnabled)
@@ -402,7 +402,7 @@ TEST_F(TesterTest, FailtureGetAssetsNameNotEnabled)
 
     EXPECT_TRUE(std::holds_alternative<base::Error>(error));
 
-    EXPECT_STREQ(std::get<base::Error>(error).message.c_str(), "The testing environment is not builded");
+    EXPECT_STREQ(std::get<base::Error>(error).message.c_str(), "The 'Test' environment is not builded");
 
     stopControllerCall();
 }
@@ -443,6 +443,177 @@ TEST_F(TesterTest, SucessUpdateLast)
     addEntryCallers(fakeAssets, hash);
     m_test->addEntry(entryPost, /*ignoreFail=*/false);
     EXPECT_TRUE(m_test->updateLastUsed(ENVIRONMENT_NAME));
+
+    stopControllerCall();
+}
+
+/**************************************************************************
+ * renameEntry tests
+ *************************************************************************/
+
+TEST_F(TesterTest, RenameEntryFromNotExist)
+{
+    auto error = m_test->renameEntry("nonExistent", "newName");
+    EXPECT_TRUE(error.has_value());
+    EXPECT_STREQ(error.value().message.c_str(),
+                 "Error renaming session: The 'nonExistent' environment does not exist");
+}
+
+TEST_F(TesterTest, RenameEntryToAlreadyExists)
+{
+    auto entryPostOne = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
+    auto entryPostTwo = router::test::EntryPost {"Other", POLICY_NAMESPACE, LIFESPAM};
+    const std::string hash = "hash";
+    std::unordered_set<base::Name> fakeAssets {};
+    fakeAssets.insert(base::Name("asset/test/0"));
+
+    addEntryCallers(fakeAssets, hash);
+    m_test->addEntry(entryPostOne, /*ignoreFail=*/false);
+
+    addEntryCallers(fakeAssets, hash);
+    m_test->addEntry(entryPostTwo, /*ignoreFail=*/false);
+
+    auto error = m_test->renameEntry(ENVIRONMENT_NAME, "Other");
+    EXPECT_TRUE(error.has_value());
+    EXPECT_STREQ(error.value().message.c_str(), "Error renaming session: The 'Other' environment already exists");
+
+    stopControllerCall(2);
+}
+
+TEST_F(TesterTest, RenameEntrySuccess)
+{
+    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
+    const std::string hash = "hash";
+    std::unordered_set<base::Name> fakeAssets {};
+    fakeAssets.insert(base::Name("asset/test/0"));
+
+    addEntryCallers(fakeAssets, hash);
+    m_test->addEntry(entryPost, /*ignoreFail=*/false);
+
+    auto error = m_test->renameEntry(ENVIRONMENT_NAME, "Renamed");
+    EXPECT_FALSE(error.has_value());
+
+    // Verify old name no longer exists
+    auto get = m_test->getEntry(ENVIRONMENT_NAME);
+    EXPECT_TRUE(std::holds_alternative<base::Error>(get));
+
+    // Verify new name exists
+    get = m_test->getEntry("Renamed");
+    EXPECT_FALSE(std::holds_alternative<base::Error>(get));
+
+    stopControllerCall();
+}
+
+/**************************************************************************
+ * addTrace coverage via ingestTest with subscriber callback invocation
+ *************************************************************************/
+
+TEST_F(TesterTest, IngestTestWithTraceAll)
+{
+    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
+    const std::string hash = "hash";
+    std::unordered_set<base::Name> fakeAssets {};
+    fakeAssets.insert(base::Name("asset/test/0"));
+
+    addEntryCallers(fakeAssets, hash);
+    m_test->addEntry(entryPost, /*ignoreFail=*/false);
+    m_test->enableEntry(ENVIRONMENT_NAME);
+
+    std::unordered_set<std::string> fakeAssetsString {};
+    fakeAssetsString.insert("asset/test/0");
+    router::test::Options opt(router::test::Options::TraceLevel::ALL, fakeAssetsString, ENVIRONMENT_NAME);
+
+    bk::Subscriber capturedSub;
+    EXPECT_CALL(*m_mockController, subscribe(testing::_, testing::_))
+        .WillOnce(
+            [&capturedSub](const std::string&, bk::Subscriber sub) -> base::RespOrError<bk::Subscription>
+            {
+                capturedSub = std::move(sub);
+                return bk::Subscription(1);
+            });
+
+    auto event = R"({"key": "value"})";
+    EXPECT_CALL(*m_mockController, ingestGet(testing::_))
+        .WillOnce(
+            [&capturedSub, &event](base::Event&&) -> base::Event
+            {
+                // Simulate trace callbacks during ingestion
+                capturedSub("trace line 1", false);
+                capturedSub("trace line 2", true);
+                capturedSub("SUCCESS", true);
+                capturedSub("", false); // empty trace - should be ignored
+                return std::make_shared<json::Json>(event);
+            });
+    EXPECT_CALL(*m_mockController, unsubscribeAll());
+
+    auto jsonEvent = std::make_shared<json::Json>(R"({"key": "value"})");
+    auto response = m_test->ingestTest(std::move(jsonEvent), opt);
+    EXPECT_FALSE(std::holds_alternative<base::Error>(response));
+
+    auto& output = std::get<router::test::Output>(response);
+    // Verify traces were collected
+    EXPECT_FALSE(output.traceList().empty());
+
+    stopControllerCall();
+}
+
+TEST_F(TesterTest, IngestTestWithTraceAssetOnly)
+{
+    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
+    const std::string hash = "hash";
+    std::unordered_set<base::Name> fakeAssets {};
+    fakeAssets.insert(base::Name("asset/test/0"));
+
+    addEntryCallers(fakeAssets, hash);
+    m_test->addEntry(entryPost, /*ignoreFail=*/false);
+    m_test->enableEntry(ENVIRONMENT_NAME);
+
+    std::unordered_set<std::string> fakeAssetsString {};
+    fakeAssetsString.insert("asset/test/0");
+    router::test::Options opt(router::test::Options::TraceLevel::ASSET_ONLY, fakeAssetsString, ENVIRONMENT_NAME);
+
+    bk::Subscriber capturedSub;
+    EXPECT_CALL(*m_mockController, subscribe(testing::_, testing::_))
+        .WillOnce(
+            [&capturedSub](const std::string&, bk::Subscriber sub) -> base::RespOrError<bk::Subscription>
+            {
+                capturedSub = std::move(sub);
+                return bk::Subscription(1);
+            });
+
+    auto event = R"({"key": "value"})";
+    EXPECT_CALL(*m_mockController, ingestGet(testing::_))
+        .WillOnce(
+            [&capturedSub, &event](base::Event&&) -> base::Event
+            {
+                // With ASSET_ONLY, non-SUCCESS traces should NOT be stored
+                capturedSub("some trace detail", false);
+                capturedSub("SUCCESS", true);
+                return std::make_shared<json::Json>(event);
+            });
+    EXPECT_CALL(*m_mockController, unsubscribeAll());
+
+    auto jsonEvent = std::make_shared<json::Json>(R"({"key": "value"})");
+    auto response = m_test->ingestTest(std::move(jsonEvent), opt);
+    EXPECT_FALSE(std::holds_alternative<base::Error>(response));
+
+    auto& output = std::get<router::test::Output>(response);
+    // Traces should have the asset entry but only SUCCESS marker, no detailed traces
+    EXPECT_FALSE(output.traceList().empty());
+
+    stopControllerCall();
+}
+
+TEST_F(TesterTest, UpdateLastUsedWithExplicitTimestamp)
+{
+    auto entryPost = router::test::EntryPost {ENVIRONMENT_NAME, POLICY_NAMESPACE, LIFESPAM};
+    const std::string hash = "hash";
+    std::unordered_set<base::Name> fakeAssets {};
+    fakeAssets.insert(base::Name("asset/test/0"));
+
+    addEntryCallers(fakeAssets, hash);
+    m_test->addEntry(entryPost, /*ignoreFail=*/false);
+    EXPECT_TRUE(m_test->updateLastUsed(ENVIRONMENT_NAME, 12345));
 
     stopControllerCall();
 }

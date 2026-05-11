@@ -74,7 +74,8 @@ INSTANTIATE_TEST_SUITE_P(
                                      "UNDEFINED",
                                      "",
                                      false,
-                                     false),
+                                     false,
+                                     true),
 
                     FAILURE(FailureExpected::Behaviour {
                         [](const auto& store, const auto& reader)
@@ -97,7 +98,8 @@ INSTANTIATE_TEST_SUITE_P(
                                      "UNDEFINED",
                                      "",
                                      false,
-                                     false),
+                                     false,
+                                     true),
                     FAILURE(FailureExpected::Behaviour {
                         [](const auto& store, const auto& reader)
                         {
@@ -124,7 +126,8 @@ INSTANTIATE_TEST_SUITE_P(
                                      "UNDEFINED",
                                      "",
                                      false,
-                                     false),
+                                     false,
+                                     true),
                     SUCCESS(SuccessExpected::Behaviour {
                         [](const auto& store, const auto& reader)
                         {

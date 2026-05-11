@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import re
 import sys
 from os import path
 import json
@@ -9,11 +10,6 @@ from aws_bucket import AWSBucket, AWSCustomBucket, AWSLogsBucket
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
-
-GUARDDUTY_URL = 'https://documentation.wazuh.com/current/amazon/services/supported-services/guardduty.html'
-GUARDDUTY_DEPRECATED_MESSAGE = 'The functionality to process GuardDuty logs stored in S3 via Kinesis was deprecated ' \
-                               'in {release}. Consider configuring GuardDuty to store its findings directly in an S3 ' \
-                               'bucket instead. Check {url} for more information.'
 
 
 class AWSGuardDutyBucket(AWSCustomBucket):
@@ -27,7 +23,8 @@ class AWSGuardDutyBucket(AWSCustomBucket):
             self.type = "GuardDutyNative"
             self.empty_bucket_message_template = AWSBucket.empty_bucket_message_template
         else:
-            self.type = "GuardDutyKinesis"
+            aws_tools.error("Invalid type of bucket")
+            sys.exit(12)
 
     def check_guardduty_type(self):
         try:
@@ -46,24 +43,36 @@ class AWSGuardDutyBucket(AWSCustomBucket):
         return AWSLogsBucket.get_service_prefix(self, account_id)
 
     def get_full_prefix(self, account_id, account_region):
-        if self.type == "GuardDutyNative":
-            return AWSLogsBucket.get_full_prefix(self, account_id, account_region)
-        else:
-            return self.prefix
+        return AWSLogsBucket.get_full_prefix(self, account_id, account_region)
 
     def get_base_prefix(self):
+        return AWSLogsBucket.get_base_prefix(self)
+
+    def already_processed(self, downloaded_file, aws_account_id, aws_region, **kwargs):
         if self.type == "GuardDutyNative":
-            return AWSLogsBucket.get_base_prefix(self)
-        else:
-            return self.prefix
+            cursor = self.db_cursor.execute(
+                self.sql_already_processed.format(table_name=self.db_table_name), {
+                    'bucket_path': self.bucket_path,
+                    'aws_account_id': aws_account_id,
+                    'log_key': downloaded_file})
+            return cursor.fetchone()[0] > 0
+        return AWSCustomBucket.already_processed(self, downloaded_file, aws_account_id, aws_region, **kwargs)
+
+    def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False, custom_delimiter='', **kwargs):
+        filter_args = AWSCustomBucket.build_s3_filter_args(
+            self, aws_account_id, aws_region, iterating, custom_delimiter, **kwargs)
+
+        if self.type == "GuardDutyNative" and not iterating and 'StartAfter' in filter_args:
+            start_after = filter_args['StartAfter']
+            match = re.match(r'(.*?/GuardDuty/[^/]+/\d{4}/\d{2}/\d{2}/)', start_after)
+            if match:
+                filter_args['StartAfter'] = match.group(1)
+                aws_tools.debug(f"+++ GuardDuty: Rewound marker to day folder: {filter_args['StartAfter']}", 2)
+
+        return filter_args
 
     def iter_regions_and_accounts(self, account_id, regions):
-        if self.type == "GuardDutyNative":
-            AWSBucket.iter_regions_and_accounts(self, account_id, regions)
-        else:
-            print(GUARDDUTY_DEPRECATED_MESSAGE.format(release="4.5", url=GUARDDUTY_URL))
-            self.check_prefix = True
-            AWSCustomBucket.iter_regions_and_accounts(self, account_id, regions)
+        AWSBucket.iter_regions_and_accounts(self, account_id, regions)
 
     def send_event(self, event):
         # Send the message (splitted if it is necessary)

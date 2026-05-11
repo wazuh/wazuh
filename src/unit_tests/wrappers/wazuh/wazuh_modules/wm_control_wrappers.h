@@ -14,7 +14,7 @@
 #include <stddef.h>
 #include <sys/types.h>
 
-size_t __wrap_wm_control_execute_action(const char *action, char **output);
+size_t __wrap_wm_control_execute_action(const char *action, const char *service, char **output);
 bool __wrap_wm_control_check_systemd(void);
 pid_t __wrap_fork(void);
 

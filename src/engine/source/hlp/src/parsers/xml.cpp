@@ -136,7 +136,7 @@ Mapper getMapper(const json::Json& parsed, std::string_view targetField)
 
 SemParser getSemParser(const std::string& targetField, xmlModule moduleFn)
 {
-    return [targetField, moduleFn](std::string_view parsed) -> std::variant<Mapper, base::Error>
+    return [targetField, moduleFn](std::string_view parsed, bool enableTrace) -> std::variant<Mapper, base::Error>
     {
         json::Json jParsed;
         pugi::xml_document xmlDoc;
@@ -145,7 +145,11 @@ SemParser getSemParser(const std::string& targetField, xmlModule moduleFn)
 
         if (parseResult.status != pugi::status_ok)
         {
-            return base::Error {"Invalid XML"};
+            if (enableTrace)
+            {
+                return base::Error {"Invalid XML"};
+            }
+            return base::Error {};
         }
         xmlToJson(xmlDoc, jParsed, moduleFn);
 

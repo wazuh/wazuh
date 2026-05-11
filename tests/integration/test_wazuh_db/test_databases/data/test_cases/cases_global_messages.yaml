@@ -64,42 +64,42 @@
     - input: global update-agent-name {"id":1,"name":"TestName2"}
       output: ok
       stage: global update-agent-name success
-    - input: global update-agent-data {"id":1,"os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_codename":"TestOsCodeName","os_platform":"TestOsPlatfor","os_build":"TestOsBuild","os_uname":"TestOsUname","os_arch":"TestOsArch","version":"TestVersion","config_sum":"TestConfigSum","merged_sum":"TestMergedSum","manager_host":"TestManagerHost","node_name":"TestNodeName","agent_ip":"0.0.0.1","sync_status":"syncreq","group_config_status":"not synced","connection_status":"never_connected"}
+    - input: global update-agent-data {"id":1,"os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_platform":"TestOsPlatfor","os_arch":"TestOsArch","version":"TestVersion","merged_sum":"TestMergedSum","node_name":"TestNodeName","agent_ip":"0.0.0.1","sync_status":"syncreq","group_config_status":"not synced","connection_status":"never_connected"}
       output: ok
       stage: global update-agent-data success
     - input: global update-connection-status {"id":1,"connection_status":"pending","sync_status":"syncreq","status_code":1}
       output: ok
       stage: global update-connection-status pending success
     - input: global get-agent-info 1
-      output: ok [{"id":1,"name":"TestName2","ip":"0.0.0.1","register_ip":"0.0.0.1","internal_key":"TopSecret","os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_codename":"TestOsCodeName","os_build":"TestOsBuild","os_platform":"TestOsPlatfor","os_uname":"TestOsUname","os_arch":"TestOsArch","version":"TestVersion","config_sum":"TestConfigSum","merged_sum":"TestMergedSum","manager_host":"TestManagerHost","node_name":"TestNodeName","date_add":1599223378,"last_keepalive":*,"group":"TestGroup1","group_sync_status":"synced","sync_status":"syncreq","connection_status":"pending","disconnection_time":0,"group_config_status":"not synced","status_code":1}]
+      output: ok [{"id":1,"name":"TestName2","ip":"0.0.0.1","register_ip":"0.0.0.1","internal_key":"TopSecret","os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_platform":"TestOsPlatfor","os_arch":"TestOsArch","version":"TestVersion","merged_sum":"TestMergedSum","node_name":"TestNodeName","date_add":1599223378,"last_keepalive":*,"group":"TestGroup1","group_sync_status":"synced","sync_status":"syncreq","connection_status":"pending","disconnection_time":0,"group_config_status":"not synced","status_code":1}]
       stage: global get-agent-info success after updates
       use_regex: "yes"
     - input: global update-connection-status {"id":1,"connection_status":"active","sync_status":"synced","status_code":0}
       output: ok
       stage: global update-connection-status active success
     - input: global get-agent-info 1
-      output: ok [{"id":1,"name":"TestName2","ip":"0.0.0.1","register_ip":"0.0.0.1","internal_key":"TopSecret","os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_codename":"TestOsCodeName","os_build":"TestOsBuild","os_platform":"TestOsPlatfor","os_uname":"TestOsUname","os_arch":"TestOsArch","version":"TestVersion","config_sum":"TestConfigSum","merged_sum":"TestMergedSum","manager_host":"TestManagerHost","node_name":"TestNodeName","date_add":1599223378,"last_keepalive":*,"group":"TestGroup1","group_sync_status":"synced","sync_status":"synced","connection_status":"active","disconnection_time":0,"group_config_status":"not synced","status_code":0}]
+      output: ok [{"id":1,"name":"TestName2","ip":"0.0.0.1","register_ip":"0.0.0.1","internal_key":"TopSecret","os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_platform":"TestOsPlatfor","os_arch":"TestOsArch","version":"TestVersion","merged_sum":"TestMergedSum","node_name":"TestNodeName","date_add":1599223378,"last_keepalive":*,"group":"TestGroup1","group_sync_status":"synced","sync_status":"synced","connection_status":"active","disconnection_time":0,"group_config_status":"not synced","status_code":0}]
       stage: global get-agent-info success after updates
       use_regex: "yes"
     - input: global update-connection-status {"id":1,"connection_status":"disconnected","sync_status":"syncreq","status_code":1}
       output: ok
       stage: global update-connection-status disconnected success
     - input: global get-agent-info 1
-      output: ok [{"id":1,"name":"TestName2","ip":"0.0.0.1","register_ip":"0.0.0.1","internal_key":"TopSecret","os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_codename":"TestOsCodeName","os_build":"TestOsBuild","os_platform":"TestOsPlatfor","os_uname":"TestOsUname","os_arch":"TestOsArch","version":"TestVersion","config_sum":"TestConfigSum","merged_sum":"TestMergedSum","manager_host":"TestManagerHost","node_name":"TestNodeName","date_add":1599223378,"last_keepalive":*,"group":"TestGroup1","group_sync_status":"synced","sync_status":"syncreq","connection_status":"disconnected","disconnection_time":*,"group_config_status":"not synced","status_code":1}]
+      output: ok [{"id":1,"name":"TestName2","ip":"0.0.0.1","register_ip":"0.0.0.1","internal_key":"TopSecret","os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_platform":"TestOsPlatfor","os_arch":"TestOsArch","version":"TestVersion","merged_sum":"TestMergedSum","node_name":"TestNodeName","date_add":1599223378,"last_keepalive":*,"group":"TestGroup1","group_sync_status":"synced","sync_status":"syncreq","connection_status":"disconnected","disconnection_time":*,"group_config_status":"not synced","status_code":1}]
       stage: global get-agent-info success after updates
       use_regex: "yes"
     - input: global update-connection-status {"id":1,"connection_status":"dummy_status","sync_status":"synced","status_code":0}
       output: "err Cannot execute Global database query; CHECK constraint failed: connection_status IN ('pending', 'never_connected', 'active', 'disconnected')"
       stage: global update-connection-status dummy_status error
     - input: global get-agent-info 1
-      output: ok [{"id":1,"name":"TestName2","ip":"0.0.0.1","register_ip":"0.0.0.1","internal_key":"TopSecret","os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_codename":"TestOsCodeName","os_build":"TestOsBuild","os_platform":"TestOsPlatfor","os_uname":"TestOsUname","os_arch":"TestOsArch","version":"TestVersion","config_sum":"TestConfigSum","merged_sum":"TestMergedSum","manager_host":"TestManagerHost","node_name":"TestNodeName","date_add":1599223378,"last_keepalive":*,"group":"TestGroup1","group_sync_status":"synced","sync_status":"syncreq","connection_status":"disconnected","disconnection_time":*}]
+      output: ok [{"id":1,"name":"TestName2","ip":"0.0.0.1","register_ip":"0.0.0.1","internal_key":"TopSecret","os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_platform":"TestOsPlatfor","os_arch":"TestOsArch","version":"TestVersion","merged_sum":"TestMergedSum","node_name":"TestNodeName","date_add":1599223378,"last_keepalive":*,"group":"TestGroup1","group_sync_status":"synced","sync_status":"syncreq","connection_status":"disconnected","disconnection_time":*}]
       stage: global get-agent-info success after updates
       use_regex: "yes"
     - input: global update-keepalive {"id":1,"sync_status":"syncreq","connection_status":"active"}
       output: ok
       stage: global update-keepalive success
     - input: global get-agent-info 1
-      output: ok [{"id":1,"name":"TestName2","ip":"0.0.0.1","register_ip":"0.0.0.1","internal_key":"TopSecret","os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_codename":"TestOsCodeName","os_build":"TestOsBuild","os_platform":"TestOsPlatfor","os_uname":"TestOsUname","os_arch":"TestOsArch","version":"TestVersion","config_sum":"TestConfigSum","merged_sum":"TestMergedSum","manager_host":"TestManagerHost","node_name":"TestNodeName","date_add":1599223378,"last_keepalive":*,"group":"TestGroup1","group_sync_status":"synced","sync_status":"syncreq","connection_status":"active","disconnection_time":0,"group_config_status":"not synced","status_code":0}]
+      output: ok [{"id":1,"name":"TestName2","ip":"0.0.0.1","register_ip":"0.0.0.1","internal_key":"TopSecret","os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_platform":"TestOsPlatfor","os_arch":"TestOsArch","version":"TestVersion","merged_sum":"TestMergedSum","node_name":"TestNodeName","date_add":1599223378,"last_keepalive":*,"group":"TestGroup1","group_sync_status":"synced","sync_status":"syncreq","connection_status":"active","disconnection_time":0,"group_config_status":"not synced","status_code":0}]
       stage: global get-agent-info success after updates
       use_regex: "yes"
 
@@ -150,9 +150,7 @@
     test_case:
     - input:
         global sync-agent-info-set [{"id":3,"name":"TestName3","ip":"0.0.0.3","os_name":"TestOsName",
-        "os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_codename":"TestOsCodeName",
-        "os_build":"TestOsBuild","os_platform":"TestOsPlatfor","os_uname":"TestOsUname","os_arch":"TestOsArch",
-        "config_sum":"TestConfigSum","merged_sum":"TestMergedSum","manager_host":"TestManagerHost",
+        "os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_platform":"TestOsPlatfor","os_arch":"TestOsArch","merged_sum":"TestMergedSum",
         "node_name":"TestNodeName","last_keepalive":200,"group_config_status":"not synced","status_code":0}]
       output: ok
       stage: global sync-agent-info-set non-existent agent
@@ -169,16 +167,13 @@
       stage: global insert-agent success
     - input:
         global sync-agent-info-set [{"id":3,"name":"TestName3","ip":"0.0.0.3","os_name":"TestOsName",
-        "os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor",
-        "os_codename":"TestOsCodeName","os_build":"TestOsBuild","os_platform":"TestOsPlatfor",
-        "os_uname":"TestOsUname","os_arch":"TestOsArch","config_sum":"TestConfigSum","merged_sum":"TestMergedSum",
-        "manager_host":"TestManagerHost","node_name":"TestNodeName","last_keepalive":200,
+        "os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_platform":"TestOsPlatfor","os_arch":"TestOsArch","merged_sum":"TestMergedSum","node_name":"TestNodeName","last_keepalive":200,
         "connection_status":"never_connected","disconnection_time":0, "group_config_status":"not synced",
         "status_code":0}]
       output: ok
       stage: global sync-agent-info-set success
     - input: global get-agent-info 3
-      output: ok [{"id":3,"name":"TestName3","ip":"0.0.0.3","register_ip":"0.0.0.3","internal_key":"TopSecret","os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_codename":"TestOsCodeName","os_build":"TestOsBuild","os_platform":"TestOsPlatfor","os_uname":"TestOsUname","os_arch":"TestOsArch","config_sum":"TestConfigSum","merged_sum":"TestMergedSum","manager_host":"TestManagerHost","node_name":"TestNodeName","date_add":1599223378,"last_keepalive":200,"group_sync_status":"synced","sync_status":"synced","connection_status":"never_connected","disconnection_time":0,"group_config_status":"not synced","status_code":0}]
+      output: ok [{"id":3,"name":"TestName3","ip":"0.0.0.3","register_ip":"0.0.0.3","internal_key":"TopSecret","os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_platform":"TestOsPlatfor","os_arch":"TestOsArch","merged_sum":"TestMergedSum","node_name":"TestNodeName","date_add":1599223378,"last_keepalive":200,"group_sync_status":"synced","sync_status":"synced","connection_status":"never_connected","disconnection_time":0,"group_config_status":"not synced","status_code":0}]
       stage: global get-agent-info success after sync-agent-info-set success
 
 - name: Reset connection status
@@ -206,7 +201,7 @@
       stage: global manager get-agent-info success post reset connection status
       use_regex: "yes"
     - input: global get-agent-info 1
-      output: ok [{"id":1,"name":"TestName2","ip":"0.0.0.1","register_ip":"0.0.0.1","internal_key":"TopSecret","os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_codename":"TestOsCodeName","os_build":"TestOsBuild","os_platform":"TestOsPlatfor","os_uname":"TestOsUname","os_arch":"TestOsArch","version":"TestVersion","config_sum":"TestConfigSum","merged_sum":"TestMergedSum","manager_host":"TestManagerHost","node_name":"TestNodeName","date_add":1599223378,"last_keepalive":*,"group":"TestGroup1","group_sync_status":"synced","sync_status":"syncreq","connection_status":"disconnected","disconnection_time":*,"group_config_status":"not synced","status_code":5}]
+      output: ok [{"id":1,"name":"TestName2","ip":"0.0.0.1","register_ip":"0.0.0.1","internal_key":"TopSecret","os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_platform":"TestOsPlatfor","os_arch":"TestOsArch","version":"TestVersion","merged_sum":"TestMergedSum","node_name":"TestNodeName","date_add":1599223378,"last_keepalive":*,"group":"TestGroup1","group_sync_status":"synced","sync_status":"syncreq","connection_status":"disconnected","disconnection_time":*,"group_config_status":"not synced","status_code":5}]
       stage: global agent get-agent-info success post reset connection status
       use_regex: "yes"
     - input: global get-agent-info 2
@@ -214,7 +209,7 @@
       stage: global agent get-agent-info success post reset connection status
       use_regex: "yes"
     - input: global get-agent-info 3
-      output: ok [{"id":3,"name":"TestName3","ip":"0.0.0.3","register_ip":"0.0.0.3","internal_key":"TopSecret","os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_codename":"TestOsCodeName","os_build":"TestOsBuild","os_platform":"TestOsPlatfor","os_uname":"TestOsUname","os_arch":"TestOsArch","config_sum":"TestConfigSum","merged_sum":"TestMergedSum","manager_host":"TestManagerHost","node_name":"TestNodeName","date_add":1599223378,"last_keepalive":*,"group_sync_status":"synced","sync_status":"syncreq","connection_status":"disconnected","disconnection_time":*,"group_config_status":"not synced","status_code":5}]
+      output: ok [{"id":3,"name":"TestName3","ip":"0.0.0.3","register_ip":"0.0.0.3","internal_key":"TopSecret","os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_platform":"TestOsPlatfor","os_arch":"TestOsArch","merged_sum":"TestMergedSum","node_name":"TestNodeName","date_add":1599223378,"last_keepalive":*,"group_sync_status":"synced","sync_status":"syncreq","connection_status":"disconnected","disconnection_time":*,"group_config_status":"not synced","status_code":5}]
       stage: global agent get-agent-info success post reset connection status
       use_regex: "yes"
 
@@ -322,9 +317,7 @@
       use_regex: "yes"
     - input:
         global update-agent-data {"id":0,"os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor",
-        "os_minor":"TestOsMinor","os_codename":"TestOsCodeName","os_platform":"TestOsPlatfor","os_build":"TestOsBuild",
-        "os_uname":"TestOsUname","os_arch":"TestOsArch","version":"TestVersion","group_config_status":"not synced",
-        "config_sum":"TestConfigSum","merged_sum":"TestMergedSum","manager_host":"TestManagerHost",
+        "os_minor":"TestOsMinor","os_platform":"TestOsPlatfor","os_arch":"TestOsArch","version":"TestVersion","group_config_status":"not synced","merged_sum":"TestMergedSum",
         "node_name":"TestNodeName","agent_ip":"127.0.0.1","sync_status":"synced","connection_status":"active",
         "disconnection_time":0,"status_code":0}
       output: ok
@@ -335,9 +328,7 @@
       use_regex: "yes"
     - input:
         global update-agent-data {"id":0,"os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor",
-        "os_minor":"TestOsMinor","os_codename":"TestOsCodeName","os_platform":"TestOsPlatfor",
-        "os_build":"TestOsBuild","os_uname":"TestOsUname","os_arch":"TestOsArch","version":"TestVersion",
-        "config_sum":"TestConfigSum","merged_sum":"TestMergedSum","manager_host":"TestManagerHost",
+        "os_minor":"TestOsMinor","os_platform":"TestOsPlatfor","os_arch":"TestOsArch","version":"TestVersion","merged_sum":"TestMergedSum",
         "node_name":"TestNodeName","sync_status":"synced","connection_status":"active","group_config_status":"synced","status_code":0}
       output: ok
       stage: global manager update-agent-data success

@@ -16,8 +16,6 @@ relationships:
         - agents_all
         - security_all
         - cluster_all
-        - rootcheck_run
-        - syscheck_run
         - mitre_read
         - task_status
       rule_ids:

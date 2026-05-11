@@ -58,6 +58,12 @@ int receive_msg(void);
 int receiver_messages(void);
 #endif
 
+/* Message stored in the event buffer. */
+typedef struct {
+    void *data;
+    size_t size;
+} buffered_message;
+
 /* Initialize agent buffer */
 void buffer_init();
 
@@ -221,8 +227,17 @@ void startup_gate_get_status(bool *ready, char *reason, size_t reason_size);
 // Query startup gate state.
 bool startup_gate_is_ready(void);
 
+// Check if local hash matches expected without updating gate state.
+bool startup_gate_check_hash_match(void);
+
 size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);
+
+#ifdef WIN32
+size_t control_dispatch(char *command, char **output);
+int os_start_service();
+int os_stop_service();
+#endif
 size_t agcom_gethandshake(char ** output);
 size_t agcom_getstartupgate(char **output);
 cJSON *getDocumentLimits(const char *module);

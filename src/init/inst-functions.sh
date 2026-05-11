@@ -18,9 +18,6 @@
 
 HEADER_TEMPLATE="./etc/templates/config/generic/header-comments.template"
 GLOBAL_TEMPLATE="./etc/templates/config/generic/global.template"
-GLOBAL_AR_TEMPLATE="./etc/templates/config/generic/global-ar.template"
-AR_COMMANDS_TEMPLATE="./etc/templates/config/generic/ar-commands.template"
-AR_DEFINITIONS_TEMPLATE="./etc/templates/config/generic/ar-definitions.template"
 LOGGING_TEMPLATE="./etc/templates/config/generic/logging.template"
 REMOTE_SEC_TEMPLATE="./etc/templates/config/generic/remote-secure.template"
 
@@ -31,7 +28,6 @@ CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 
 VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detection.manager.template"
 INDEXER_TEMPLATE="./etc/templates/config/generic/wodle-indexer.manager.template"
-AGENT_UPGRADE_TEMPLATE="./etc/templates/config/generic/agent-upgrade.manager.template"
 
 SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca.template"
 
@@ -52,9 +48,6 @@ WriteSyscheck()
       if [ "$1" = "manager" ]; then
         echo "  <syscheck>" >> $NEWCONFIG
         echo "    <disabled>yes</disabled>" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
-        echo "    <!-- Generate alert when new file detected -->" >> $NEWCONFIG
-        echo "    <alert_new_files>yes</alert_new_files>" >> $NEWCONFIG
         echo "" >> $NEWCONFIG
         echo "  </syscheck>" >> $NEWCONFIG
         echo "" >> $NEWCONFIG
@@ -195,20 +188,17 @@ GenerateAuthCert()
 ##########
 WriteLogs()
 {
+  MODE="$1"
   LOCALFILES_TMP=`cat ${LOCALFILES_TEMPLATE}`
   HAS_JOURNALD=`command -v journalctl`
 
-  # If has journald, add journald to the configuration file
-  if [ "X$HAS_JOURNALD" != "X" ]; then
-    if [ "$1" = "echo" ]; then
-      echo "    -- journald"
-    elif [ "$1" = "add" ]; then
-      echo "  <localfile>" >> $NEWCONFIG
-      echo "    <log_format>journald</log_format>" >> $NEWCONFIG
-      echo "    <location>journald</location>" >> $NEWCONFIG
-      echo "  </localfile>" >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
-    fi
+  # If journald is available, add it to the generated configuration.
+  if [ "X$HAS_JOURNALD" != "X" ] && [ "$MODE" = "add" ]; then
+    echo "  <localfile>" >> $NEWCONFIG
+    echo "    <log_format>journald</log_format>" >> $NEWCONFIG
+    echo "    <location>journald</location>" >> $NEWCONFIG
+    echo "  </localfile>" >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
   fi
 
   OLD_IFS="$IFS"  # Save the current IFS
@@ -250,10 +240,16 @@ WriteLogs()
       # If log file present or skip file
       if [ -f "$FILE" ] || [ "X$SKIP_CHECK_FILE" = "Xyes" ]; then
         # Print
-        if [ "$1" = "echo" ]; then
-            echo "    -- $FILE"
+        if [ "$MODE" = "echo" ]; then
+            case "$FILE" in
+                */logs/active-responses.log|/var/log/dpkg.log)
+                    ;;
+                *)
+                    echo "    -- $FILE"
+                    ;;
+            esac
         # Add to the configuration file
-        elif [ "$1" = "add" ]; then
+        elif [ "$MODE" = "add" ]; then
           echo "  <localfile>" >> $NEWCONFIG
           if [ "$FILE" = "snort" ]; then
             head -n 1 $FILE|grep "\[**\] "|grep -v "Classification:" > /dev/null
@@ -353,7 +349,7 @@ WriteAgent()
     echo "    <!-- Agent buffer options -->" >> $NEWCONFIG
     echo "    <disabled>no</disabled>" >> $NEWCONFIG
     echo "    <queue_size>5000</queue_size>" >> $NEWCONFIG
-    echo "    <events_per_second>500</events_per_second>" >> $NEWCONFIG
+    echo "    <events_per_second>600</events_per_second>" >> $NEWCONFIG
     echo "  </client_buffer>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
@@ -437,10 +433,6 @@ WriteManager()
 
     GLOBAL_CONTENT=$(cat ${GLOBAL_TEMPLATE})
 
-    if [ "$UPDATE_CHECK" = "no" ]; then
-        GLOBAL_CONTENT=$(echo "$GLOBAL_CONTENT" | sed "s|<update_check>yes</update_check>|<update_check>no</update_check>|g")
-    fi
-
     echo "$GLOBAL_CONTENT" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
@@ -457,42 +449,6 @@ WriteManager()
 
     # Indexer
     cat ${INDEXER_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Agent upgrade
-    cat ${AGENT_UPGRADE_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Active response
-    if [ "$SET_WHITE_LIST"="true" ]; then
-       sed -e "/  <\/global>/d" "${GLOBAL_AR_TEMPLATE}" >> $NEWCONFIG
-      # Nameservers in /etc/resolv.conf
-      for ip in ${NAMESERVERS} ${NAMESERVERS2};
-        do
-          if [ ! "X${ip}" = "X" -a ! "${ip}" = "0.0.0.0" ]; then
-              echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
-          fi
-      done
-      # Read string
-      for ip in ${IPS};
-        do
-          if [ ! "X${ip}" = "X" -a ! "${ip}" = "0.0.0.0" ]; then
-            echo $ip | grep -E "^[0-9./]{5,20}$" > /dev/null 2>&1
-            if [ $? = 0 ]; then
-              echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
-            fi
-          fi
-        done
-        echo "  </global>" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
-    else
-      cat ${GLOBAL_AR_TEMPLATE} >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
-    fi
-
-    cat ${AR_COMMANDS_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-    cat ${AR_DEFINITIONS_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Writting auth configuration
@@ -520,11 +476,11 @@ InstallCommon()
   if [ ${INSTYPE} = 'manager' ]; then
       WAZUH_GROUP='wazuh-manager'
       WAZUH_USER='wazuh-manager'
-      OSSEC_CONTROL_SRC='./init/wazuh-server.sh'
-      OSSEC_CONF_SRC='../etc/ossec-server.conf'
+      WAZUH_CONTROL_SRC='./init/wazuh-server.sh'
+      WAZUH_CONF_SRC='../etc/wazuh-manager.conf'
   elif [ ${INSTYPE} = 'agent' ]; then
-      OSSEC_CONTROL_SRC='./init/wazuh-client.sh'
-      OSSEC_CONF_SRC='../etc/ossec-agent.conf'
+      WAZUH_CONTROL_SRC='./init/wazuh-client.sh'
+      WAZUH_CONF_SRC='../etc/ossec-agent.conf'
   fi
 
   if [ ${INSTYPE} = 'manager' ]; then
@@ -795,13 +751,12 @@ InstallCommon()
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-modulesd ${INSTALLDIR}/bin/
   fi
   if [ "X${INSTYPE}" = "Xmanager" ]; then
-    ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-manager-control
+    ${INSTALL} -m 0750 -o root -g 0 ${WAZUH_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-manager-control
   else
-    ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-control
+    ${INSTALL} -m 0750 -o root -g 0 ${WAZUH_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-control
   fi
 
   ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue
-  ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/alerts
   ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/sockets
   if [ "X${INSTYPE}" = "Xagent" ]; then
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/diff
@@ -827,7 +782,7 @@ InstallCommon()
 
     if [ -f /etc/localtime ]
     then
-         ${INSTALL} -m 0640 -o root -g 0 /etc/localtime ${INSTALLDIR}/etc
+         ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /etc/localtime ${INSTALLDIR}/etc
     fi
 
   ${INSTALL} -d -m 1770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/tmp
@@ -836,13 +791,16 @@ InstallCommon()
          ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /etc/TIMEZONE ${INSTALLDIR}/etc/
     fi
 
-    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../etc/internal_options.conf ${INSTALLDIR}/etc/
     if [ "X${INSTYPE}" = "Xagent" ]; then
+        ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../etc/internal_options.conf ${INSTALLDIR}/etc/
         ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} wazuh_modules/syscollector/norm_config.json ${INSTALLDIR}/queue/syscollector
-    fi
-
-    if [ ! -f ${INSTALLDIR}/etc/local_internal_options.conf ]; then
-        ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/local_internal_options.conf ${INSTALLDIR}/etc/local_internal_options.conf
+        if [ ! -f ${INSTALLDIR}/etc/local_internal_options.conf ]; then
+            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/local_internal_options.conf ${INSTALLDIR}/etc/local_internal_options.conf
+        fi
+    else
+        if [ ! -f ${INSTALLDIR}/etc/wazuh-manager-internal-options.conf ]; then
+            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/wazuh-manager-internal-options.conf ${INSTALLDIR}/etc/wazuh-manager-internal-options.conf
+        fi
     fi
 
     if [ ! -f ${INSTALLDIR}/etc/client.keys ]; then
@@ -854,44 +812,30 @@ InstallCommon()
     fi
 
     if [ ! -f ${INSTALLDIR}/etc/${WAZUH_CONF} ]; then
-        if [ ! -f ../etc/ossec.mc ]; then
-            echo "WARNING: missing ../etc/ossec.mc. Regenerating configuration template."
-            if ! ./init/gen_ossec.sh conf "${INSTYPE}" "${DIST_NAME}" "${DIST_VER}.${DIST_SUBVER}" "${INSTALLDIR}" > ../etc/ossec.mc; then
-                rm -f ../etc/ossec.mc
-                echo "WARNING: unable to regenerate ../etc/ossec.mc."
+        if [ ! -f ../etc/wazuh.mc ]; then
+            echo "WARNING: missing ../etc/wazuh.mc. Regenerating configuration template."
+            if ! ./init/gen_wazuh.sh conf "${INSTYPE}" "${DIST_NAME}" "${DIST_VER}.${DIST_SUBVER}" "${INSTALLDIR}" > ../etc/wazuh.mc; then
+                rm -f ../etc/wazuh.mc
+                echo "WARNING: unable to regenerate ../etc/wazuh.mc."
             fi
         fi
 
-        if [ -f ../etc/ossec.mc ]; then
-            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../etc/ossec.mc ${INSTALLDIR}/etc/${WAZUH_CONF}
+        if [ -f ../etc/wazuh.mc ]; then
+            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../etc/wazuh.mc ${INSTALLDIR}/etc/${WAZUH_CONF}
         else
-            echo "WARNING: unable to generate ossec.conf file with desired configurations, using default configurations from ${OSSEC_CONF_SRC}"
-            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ${OSSEC_CONF_SRC} ${INSTALLDIR}/etc/${WAZUH_CONF}
+            echo "WARNING: unable to generate ${WAZUH_CONF} with desired configurations, using default configurations from ${WAZUH_CONF_SRC}"
+            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ${WAZUH_CONF_SRC} ${INSTALLDIR}/etc/${WAZUH_CONF}
         fi
     fi
 
 
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/shared
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response/bin
-
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} active-response/src/*.sh ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} active-response/src/*.py ${INSTALLDIR}/active-response/bin/
   if [ "X${INSTYPE}" = "Xagent" ]; then
-    ./init/fw-check.sh execute
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/firewall-drop ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/default-firewall-drop ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/pf ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/npf ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/ipfw ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/firewalld-drop ${INSTALLDIR}/active-response/bin/
+    # Active response scripts and helpers are agent runtime assets.
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response/bin
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/block-ip ${INSTALLDIR}/active-response/bin/
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/disable-account ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/host-deny ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/ip-customblock ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/restart-wazuh ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/route-null ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/kaspersky ${INSTALLDIR}/active-response/bin/
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/wazuh-slack ${INSTALLDIR}/active-response/bin/
   fi
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var
@@ -929,8 +873,8 @@ generateSchemaFiles()
 
 installEngineStore()
 {
-    DEST_FULL_PATH=${INSTALLDIR}/engine
-    ENGINE_SRC_PATH=./engine
+    local DEST_FULL_PATH=${INSTALLDIR}/data
+    local ENGINE_SRC_PATH=./engine
 
     # Fallback store installation
     local STORE_PATH=${DEST_FULL_PATH}/store
@@ -942,7 +886,7 @@ installEngineStore()
     local ENGINE_ENRICHMENT_GEO=${ENRICHMENT_PATH}/geo
     local ENGINE_ENRICHMENT_IOC=${ENRICHMENT_PATH}/ioc
 
-    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${STORE_PATH}
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${STORE_PATH}
     mkdir -p "${ENGINE_SCHEMA_PATH}"
     mkdir -p "${ENGINE_LOGPAR_TYPE_PATH}"
     mkdir -p "${ENGINE_ALLOWED_FIELDS_PATH}"
@@ -969,22 +913,23 @@ installEngineStore()
 
     echo "Engine store installed successfully."
 
-    # Copy default *. output configuration files TODO: Change this path
-    local OUTPUTS_PATH=${DEST_FULL_PATH}/outputs
-    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${OUTPUTS_PATH}
-    cp "${ENGINE_SRC_PATH}/ruleset/outputs/"*.yml "${OUTPUTS_PATH}/"
+    # Copy default output configuration files
+    local OUTPUTS_PATH=${INSTALLDIR}/etc/outputs
+    local DEFAULT_OUTPUTS_PATH=${OUTPUTS_PATH}/default
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${DEFAULT_OUTPUTS_PATH}
+    cp "${ENGINE_SRC_PATH}/ruleset/outputs/"*.yml "${DEFAULT_OUTPUTS_PATH}/"
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${OUTPUTS_PATH}
-    find ${OUTPUTS_PATH} -type d -exec chmod 770 {} \; -o -type f -exec chmod 660 {} \;
+    find ${OUTPUTS_PATH} -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
 
-    # Create /var/wazuh-manager/etc/ruleset
-    install -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/ruleset
+    # Create /var/wazuh-manager/data/ruleset
+    install -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/data/ruleset
 
     echo "Engine output configuration files installed successfully."
 }
 
 installGeoIP()
 {
-    DEST_FULL_PATH=${INSTALLDIR}/engine
+    DEST_FULL_PATH=${INSTALLDIR}/data
     GEOIP_SRC_PATH=./external/geo_db
 
     local MMDB_PATH=${DEST_FULL_PATH}/mmdb
@@ -993,6 +938,7 @@ installGeoIP()
 
     # Create directories
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${MMDB_PATH}
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${DEST_FULL_PATH}/store/geo
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${STORE_GEO_PATH}
 
     # Check if GeoIP files exist
@@ -1040,6 +986,29 @@ EOF
     echo "GeoIP databases installed successfully."
 }
 
+installTZDB()
+{
+    local TZDB_SRC_PATH=./external/tzdata
+    local TZDB_DST_PATH=${INSTALLDIR}/data/tzdb/iana
+
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/data/tzdb
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${TZDB_DST_PATH}
+
+    if [ ! -f "${TZDB_SRC_PATH}/version" ]; then
+        echo "Warning: Timezone database not found in ${TZDB_SRC_PATH}. Skipping TZDB installation."
+        return 0
+    fi
+
+    echo "Installing timezone database..."
+
+    cp -r "${TZDB_SRC_PATH}/." "${TZDB_DST_PATH}/"
+    chown -R ${WAZUH_USER}:${WAZUH_GROUP} "${TZDB_DST_PATH}"
+    find "${TZDB_DST_PATH}" -type f -exec chmod 0640 {} +
+    find "${TZDB_DST_PATH}" -type d -exec chmod 0750 {} +
+
+    echo "Timezone database installed successfully."
+}
+
 InstallLocal()
 {
 
@@ -1048,9 +1017,6 @@ InstallLocal()
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/var/multigroups
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/db
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/download
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/archives
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/alerts
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/firewall
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/api
 
     ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-monitord ${INSTALLDIR}/bin
@@ -1071,12 +1037,15 @@ InstallLocal()
 
     generateSchemaFiles
 
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/data
+
     installEngineStore
 
     installGeoIP
 
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tzdb
+    installTZDB
 
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/data/kvdb-ioc
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/db
 
     if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
@@ -1093,7 +1062,7 @@ InstallLocal()
 
     ### Backup old API
     if [ "X${update_only}" = "Xyes" ]; then
-      ${MAKEBIN} --quiet -C ../api backup INSTALLDIR=${INSTALLDIR} REVISION=${REVISION} WAZUH_GROUP=${WAZUH_GROUP}
+      ${MAKEBIN} --quiet -C ../api backup INSTALLDIR=${INSTALLDIR} WAZUH_GROUP=${WAZUH_GROUP}
     fi
 
     ### Install API
@@ -1101,7 +1070,7 @@ InstallLocal()
 
     ### Restore old API
     if [ "X${update_only}" = "Xyes" ]; then
-      ${MAKEBIN} --quiet -C ../api restore INSTALLDIR=${INSTALLDIR} REVISION=${REVISION} WAZUH_GROUP=${WAZUH_GROUP}
+      ${MAKEBIN} --quiet -C ../api restore INSTALLDIR=${INSTALLDIR} WAZUH_GROUP=${WAZUH_GROUP}
     fi
 
     ### Install router library
@@ -1118,22 +1087,7 @@ InstallLocal()
 TransferShared()
 {
     rm -f ${INSTALLDIR}/etc/shared/merged.mg
-    find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec cp -pf {} ${INSTALLDIR}/backup/shared \;
-    find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec mv -f {} ${INSTALLDIR}/etc/shared/default \;
-}
-
-checkDownloadContent()
-{
-    VD_FILENAME='vd_1.0.0_vd_4.13.0.tar.xz'
-    VD_FULL_PATH=${INSTALLDIR}/tmp/${VD_FILENAME}
-
-    if [ "X${DOWNLOAD_CONTENT}" = "Xy" ]; then
-        echo "Download ${VD_FILENAME} file"
-        wget -O ${VD_FULL_PATH} http://packages.wazuh.com/deps/vulnerability_model_database/${VD_FILENAME}
-
-        chmod 640 ${VD_FULL_PATH}
-        chown ${WAZUH_USER}:${WAZUH_GROUP} ${VD_FULL_PATH}
-    fi
+    find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -exec mv -f {} ${INSTALLDIR}/etc/shared/default \;
 }
 
 InstallServer()
@@ -1182,15 +1136,11 @@ InstallServer()
         fi
     fi
 
-    # Check if the content needs to be downloaded.
-    checkDownloadContent
-
     # Install cluster files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/cluster
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/cluster
 
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/shared/default
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/shared
 
     TransferShared
 
@@ -1204,7 +1154,6 @@ InstallServer()
         ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/queue/agents-timestamp
     fi
 
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/agents
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/db
 
     if [ ! -f ${INSTALLDIR}/etc/shared/default/agent.conf ]; then

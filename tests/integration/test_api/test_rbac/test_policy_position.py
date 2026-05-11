@@ -71,7 +71,7 @@ test_cases_path = Path(TEST_CASES_FOLDER_PATH, "cases_policy_position.yaml")
 
 # Configurations
 _, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
-daemons_handler_configuration = {"daemons": API_DAEMONS_REQUIREMENTS}
+daemons_handler_configuration = {'all_daemons': True}
 
 
 def get_policies_from_resource(origin_resource: dict) -> list:

@@ -22,7 +22,6 @@
           "package.name",
           "package.version",
           "vulnerability.id",
-          "vulnerability.description.text",
           "vulnerability.severity",
           "wazuh.agent.id",
           "wazuh.cluster.name"
@@ -147,38 +146,10 @@
               "ignore_above": 1024,
               "type": "keyword"
             },
-            "classification": {
-              "ignore_above": 1024,
-              "type": "keyword"
-            },
-            "description": {
-              "fields": {
-                "text": {
-                  "type": "text"
-                }
-              },
-              "ignore_above": 1024,
-              "type": "keyword"
-            },
             "detected_at": {
               "type": "date"
             },
-            "enumeration": {
-              "ignore_above": 1024,
-              "type": "keyword"
-            },
             "id": {
-              "ignore_above": 1024,
-              "type": "keyword"
-            },
-            "published_at": {
-              "type": "date"
-            },
-            "reference": {
-              "ignore_above": 1024,
-              "type": "keyword"
-            },
-            "report_id": {
               "ignore_above": 1024,
               "type": "keyword"
             },
@@ -193,12 +164,6 @@
             "score": {
               "properties": {
                 "base": {
-                  "type": "float"
-                },
-                "environmental": {
-                  "type": "float"
-                },
-                "temporal": {
                   "type": "float"
                 },
                 "version": {

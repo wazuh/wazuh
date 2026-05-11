@@ -23,7 +23,7 @@ all: backup install restore
 
 backup:
 	# Backup previous configuration
-	. ../api/service/inst-api-functions.sh; backup_old_api ${REVISION}
+	. ../api/service/inst-api-functions.sh; backup_old_api
 
 install:
     # Copy files and create folders
@@ -44,4 +44,4 @@ install:
 
 restore:
     # Restore old API config
-	. ../api/service/inst-api-functions.sh; restore_old_api ${REVISION}
+	. ../api/service/inst-api-functions.sh; restore_old_api

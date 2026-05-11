@@ -132,24 +132,41 @@ public:
 private:
     /**
      * @brief Refill tokens based on elapsed time
+     *
+     * Uses CAS on m_lastRefillTime to ensure only one thread wins the refill
+     * for any given time interval, preventing duplicate token additions.
+     * Uses CAS on m_tokens to avoid overwriting concurrent consumeTokens updates.
      */
     void refillTokens()
     {
         auto now = std::chrono::steady_clock::now().time_since_epoch();
         int64_t currentTime = std::chrono::duration_cast<std::chrono::microseconds>(now).count();
-        int64_t lastTime = m_lastRefillTime.load(std::memory_order_relaxed);
+        int64_t lastTime = m_lastRefillTime.load(std::memory_order_acquire);
 
         int64_t elapsed = currentTime - lastTime;
-        if (elapsed > 0)
+        if (elapsed <= 0)
         {
-            double tokensToAdd = elapsed * m_refillRate;
-            double currentTokens = m_tokens.load(std::memory_order_relaxed);
-            double newTokens = std::min(currentTokens + tokensToAdd, m_maxTokens);
-
-            // Update tokens and time atomically (best effort)
-            m_tokens.store(newTokens, std::memory_order_relaxed);
-            m_lastRefillTime.store(currentTime, std::memory_order_relaxed);
+            return;
         }
+
+        // Atomically claim this time interval - only one thread wins
+        if (!m_lastRefillTime.compare_exchange_strong(
+                lastTime, currentTime, std::memory_order_acq_rel, std::memory_order_relaxed))
+        {
+            // Another thread already claimed this interval, skip refill
+            return;
+        }
+
+        // Only the winning thread adds tokens. Use CAS loop to avoid
+        // overwriting concurrent consumeTokens() subtractions.
+        double tokensToAdd = elapsed * m_refillRate;
+        double currentTokens = m_tokens.load(std::memory_order_relaxed);
+        double newTokens;
+        do
+        {
+            newTokens = std::min(currentTokens + tokensToAdd, m_maxTokens);
+        } while (!m_tokens.compare_exchange_weak(
+            currentTokens, newTokens, std::memory_order_release, std::memory_order_relaxed));
     }
 
     /**

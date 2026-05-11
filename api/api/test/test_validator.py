@@ -3,22 +3,17 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import os
-
 import jsonschema as js
 import pytest
 
 from api.validator import (
     check_exp,
-    check_xml,
     _alphanumeric_param,
     _hashes,
     _names,
     _numbers,
     _wazuh_key,
     _paths,
-    _query_param,
-    _ranges,
     _search_param,
     _sort_param,
     _timeframe_type,
@@ -36,8 +31,6 @@ from api.validator import (
     _wpk_path,
 )
 from wazuh import WazuhError
-
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
 
 
 @pytest.mark.parametrize(
@@ -71,12 +64,9 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data
         ("12h", _timeframe_type),
         ("40m", _timeframe_type),
         ("60s", _timeframe_type),
-        # query parameters
-        ("field1=3;field2!=4", _query_param),
+        # sort and search parameters
         ("sort param-", _sort_param),
         ("search param3", _search_param),
-        # ranges
-        ("5-35", _ranges),
         # paths
         ("/var/wazuh-manager/etc/internal_options", _paths),
         ("correct.wpk", _wpk_path),
@@ -124,9 +114,6 @@ def test_validation_check_exp_ok(exp, regex_name):
         # time
         ("1j", _timeframe_type),
         ("12x", _timeframe_type),
-        # ranges
-        ("5-35-32", _ranges),
-        ("param1,param2,param3", _query_param),
         # paths
         ("/var/wazuh-manager/etc/internal_options$", _paths),
         ("incorrect.txt", _wpk_path),
@@ -143,27 +130,6 @@ def test_validation_check_exp_ok(exp, regex_name):
 def test_validation_check_exp_ko(exp, regex_name):
     """Verify that check_exp() returns False with incorrect params"""
     assert not check_exp(exp, regex_name)
-
-
-@pytest.mark.parametrize(
-    "xml_file", [(os.path.join(test_data_path, "test_xml_1.xml")), (os.path.join(test_data_path, "test_xml_2.xml"))]
-)
-def test_validation_xml_ok(xml_file):
-    """Verify that check_xml() returns True with well-formed XML files."""
-    with open(xml_file) as f:
-        xml_content = f.read()
-    assert check_xml(xml_content)
-
-
-@pytest.mark.parametrize(
-    "xml_file",
-    [(os.path.join(test_data_path, "test_xml_ko_1.xml")), (os.path.join(test_data_path, "test_xml_ko_2.xml"))],
-)
-def test_validation_xml_ko(xml_file):
-    """Verify that check_xml() returns True with malformed XML files."""
-    with open(xml_file) as f:
-        xml_content = f.read()
-    assert not check_xml(xml_content)
 
 
 def test_allowed_fields():
@@ -190,10 +156,6 @@ def test_is_safe_path():
         ("file_test-33.xml", "names"),
         ("651403650840", "numbers"),
         ("/var/wazuh/test", "path"),
-        ("field=0", "query"),
-        ("field=0,field2!=3;field3~hi", "query"),
-        ("34", "range"),
-        ("34-36", "range"),
         ("test,.", "search"),
         ("+field", "sort"),
         ("-field,+field.subfield", "sort"),
@@ -203,12 +165,6 @@ def test_is_safe_path():
         ("asdfASD0101", "wazuh_key"),
         ("2019-02-26", "date"),
         ("2020-06-24T17:02:53Z", "date-time"),
-        ("2020-06-24T17:02:53Z", "date-time_or_empty"),
-        ("8743b52063cd84097a65d1633f5c74f5", "hash_or_empty"),
-        ("test_name", "names_or_empty"),
-        ("", "names_or_empty"),
-        ("12345", "numbers_or_empty"),
-        ("", "numbers_or_empty"),
         ("group_name.test", "group_names"),
     ],
 )
@@ -233,9 +189,6 @@ def test_validation_json_ok(value, format):
         ("../../file_test-33.xml", "names"),
         ("a651403650840", "numbers"),
         ("!/var/wazuh/test", "path"),
-        ("1234", "query"),
-        ("34-", "range"),
-        ("34-36-9", "range"),
         ("test,.&", "search"),
         ("+field&", "sort"),
         ("-field;+field.subfield", "sort"),
@@ -244,10 +197,6 @@ def test_validation_json_ok(value, format):
         ("asdfASD0101!", "wazuh_key"),
         ("2019-02-26-test", "date"),
         ("2020-06-24 17:02:53.034374", "date-time"),
-        ("2020-06-24 17:02:53.034374", "date-time_or_empty"),
-        ("testtest", "hash_or_empty"),
-        ("test_name test", "names_or_empty"),
-        ("12345abc", "numbers_or_empty"),
         ("group_name.test ", "group_names"),
     ],
 )
@@ -262,7 +211,8 @@ def test_validation_json_ko(value, format):
 
 
 @pytest.mark.parametrize(
-    "component, configuration, expected_response", [("agent", "client", None), ("agent", "wmodules", WazuhError(1128))]
+    "component, configuration, expected_response",
+    [("agent", "client", None), ("agent", "labels", WazuhError(1128)), ("agent", "wmodules", WazuhError(1128))]
 )
 def test_check_component_configuration_pair(component, configuration, expected_response):
     """Verify that `check_component_configuration_pair` function returns an exception when the configuration does

@@ -241,10 +241,10 @@ void agent_meta_cleanup_expired(time_t expire_threshold, w_rr_queue_t *events_qu
     pthread_rwlock_unlock(&agent_meta_lock);
 
     if (deleted_count > 0) {
-        minfo("Agent metadata cache cleanup: removed %zu expired entries", deleted_count);
+        mdebug1("Agent metadata cache cleanup: removed %zu expired entries", deleted_count);
     }
     if (shutdown_deleted_count > 0) {
-        minfo("Agent metadata cache cleanup: removed %zu shutdown entries", shutdown_deleted_count);
+        mdebug1("Agent metadata cache cleanup: removed %zu shutdown entries", shutdown_deleted_count);
     }
 }
 

@@ -15,7 +15,6 @@
 #include "cluster_utils.h"
 #include "wazuhdb_queries_op.h"
 #include "os_net.h"
-#include "shared_download.h"
 #include "sha256_op.h"
 #include <pthread.h>
 
@@ -31,9 +30,9 @@
 // Remove STATIC qualifier from tests
   #define STATIC
 
-// Redefine ossec_version
-#undef __ossec_version
-#define __ossec_version "v4.5.0"
+// Redefine wazuh_version
+  #undef __wazuh_version
+  #define __wazuh_version "v5.0.0"
 #else
   #define STATIC static
 #endif
@@ -113,22 +112,6 @@ STATIC void process_deleted_multi_groups(bool initial_scan);
  * @param m_time File last modified time
  */
 STATIC void ftime_add(OSHash **_f_time, const char *name, const time_t m_time);
-
-/**
- * @brief Find a group structure from a file name and md5
- * @param md5 MD5 of the file
- * @param group_name Array to store the group name if exists
- * @return Group structure if exists, NULL otherwise
- */
-STATIC group_t* find_group_from_sum(const char * md5, char group_name[OS_SIZE_65536]);
-
-/**
- * @brief Find a multigroup structure from a file name and md5
- * @param md5 MD5 of the file
- * @param multigroup_name Array to store the multigroup name if exists
- * @return Multigroup structure if exists, NULL otherwise
- */
-STATIC group_t* find_multi_group_from_sum(const char * md5, char multigroup_name[OS_SIZE_65536]);
 
 /**
  * @brief Compare and check if the file time has changed
@@ -449,7 +432,7 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
                     // Update agent data to keep context of events to forward
                     OSHash_Set_ex(agent_data_hash, key->id, strdup(version->valuestring));
                     if (!logr.allow_higher_versions &&
-                        compare_wazuh_versions(__ossec_version, version->valuestring, false) < 0) {
+                        compare_wazuh_versions(__wazuh_version, version->valuestring, false) < 0) {
 
                         // For version errors, we need database access, so queue the message
                         cJSON_Delete(agent_info);
@@ -548,7 +531,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
                 cJSON *version = NULL;
                 if (version = cJSON_GetObjectItem(agent_info, "version"), cJSON_IsString(version)) {
                     if (!logr.allow_higher_versions &&
-                        compare_wazuh_versions(__ossec_version, version->valuestring, false) < 0) {
+                        compare_wazuh_versions(__wazuh_version, version->valuestring, false) < 0) {
 
                         send_wrong_version_response(key->id, HC_INVALID_VERSION,
                                                     INVALID_VERSION, version->valuestring,
@@ -589,9 +572,14 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
     if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && msg && strcmp(data->message, msg) == 0) {
         w_mutex_unlock(&lastmsg_mutex);
 
-        char *sync_status = logr.worker_node ? (*post_startup ? "syncreq" : "syncreq_keepalive") : "synced";
+        // Only set syncreq if keepalive is complete (has full metadata)
+        bool is_complete = (msg[0] != '{') || is_keepalive_complete(msg);
+        char *sync_status = logr.worker_node ? (*post_startup && is_complete ? "syncreq" : "syncreq_keepalive") : "synced";
 
-        *post_startup = false;
+        // Only clear post_startup flag if keepalive is complete
+        if (is_complete) {
+            *post_startup = false;
+        }
 
         agent_id = atoi(key->id);
 
@@ -685,10 +673,11 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
                 return;
             }
 
-            os_calloc(HOST_NAME_MAX, sizeof(char), agent_data->manager_host);
-
-            if (gethostname(agent_data->manager_host, HOST_NAME_MAX) < 0) {
-                mwarn("Unable to get hostname due to: '%s'", strerror(errno));
+            if (agent_data->osd && !agent_data->osd->os_type && agent_data->osd->os_platform) {
+                const char *inferred = infer_os_type(agent_data->osd->os_platform);
+                if (inferred) {
+                    os_strdup(inferred, agent_data->osd->os_type);
+                }
             }
 
             if (node_name) {
@@ -697,9 +686,18 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
 
             agent_data->id = atoi(key->id);
             os_strdup(AGENT_CS_ACTIVE, agent_data->connection_status);
-            os_strdup(logr.worker_node ? (*post_startup ? "syncreq" : "syncreq_keepalive") : "synced", agent_data->sync_status);
 
-            *post_startup = false;
+            // Only set syncreq if keepalive is complete (has full metadata)
+            bool is_complete = (msg[0] != '{') || is_keepalive_complete(msg);
+            if (!is_complete && *post_startup) {
+                mdebug1("Agent '%s' sent incomplete keepalive, deferring cluster sync (syncreq) until complete metadata is received", key->id);
+            }
+            os_strdup(logr.worker_node ? (*post_startup && is_complete ? "syncreq" : "syncreq_keepalive") : "synced", agent_data->sync_status);
+
+            // Only clear post_startup flag if keepalive is complete
+            if (is_complete) {
+                *post_startup = false;
+            }
 
             w_mutex_lock(&lastmsg_mutex);
 
@@ -806,7 +804,6 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
     char *finalbuf = NULL;
     size_t finalsize = 0;
     int merged_ok = 1;
-    remote_files_group *r_group = NULL;
 
     if ((*_f_time) = OSHash_Create(), (*_f_time) == NULL) {
         merror_exit("OSHash_Create() failed");
@@ -815,66 +812,7 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
     snprintf(merged, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, SHAREDCFG_FILENAME);
     snprintf(merged_tmp, PATH_MAX + 1, "%s/%s/%s.tmp", sharedcfg_dir, group, SHAREDCFG_FILENAME);
 
-    if (create_merged && (r_group = w_parser_get_group(group), r_group)) {
-        if (r_group->current_polling_time <= 0) {
-            r_group->current_polling_time = r_group->poll;
-
-            char *file_url;
-            char *file_name;
-            char destination_path[PATH_MAX + 1];
-            char download_path[PATH_MAX + 1];
-            int downloaded;
-
-            // Check if we have merged.mg file in this group
-            if (r_group->merge_file_index >= 0) {
-                file_url = r_group->files[r_group->merge_file_index].url;
-                file_name = SHAREDCFG_FILENAME;
-                snprintf(destination_path, PATH_MAX + 1, "%s/%s", DOWNLOAD_DIR, file_name);
-                mdebug1("Downloading shared file '%s' from '%s'", merged, file_url);
-                downloaded = wurl_request(file_url, destination_path, NULL, NULL, 0);
-                w_download_status(downloaded, file_url, destination_path);
-                r_group->merged_is_downloaded = !downloaded;
-
-                // Validate the file
-                if (r_group->merged_is_downloaded) {
-                    // File is invalid
-                    if (!TestUnmergeFiles(destination_path, OS_TEXT)) {
-                        int fd = unlink(destination_path);
-
-                        merror("The downloaded file '%s' is corrupted.", destination_path);
-
-                        if (fd == -1) {
-                            merror("Failed to delete file '%s'", destination_path);
-                        }
-                        return;
-                    }
-
-                    OS_MoveFile(destination_path, merged);
-                }
-            } else { // Download all files
-                int i;
-
-                if (r_group->files) {
-                    for (i = 0; r_group->files[i].name; i++) {
-                        file_url = r_group->files[i].url;
-                        file_name = r_group->files[i].name;
-                        snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, file_name);
-                        snprintf(download_path, PATH_MAX + 1, "%s/%s", DOWNLOAD_DIR, file_name);
-                        mdebug1("Downloading shared file '%s' from '%s'", destination_path, file_url);
-                        downloaded = wurl_request(file_url, download_path, NULL, NULL, 0);
-
-                        if (!w_download_status(downloaded, file_url, destination_path)) {
-                            OS_MoveFile(download_path, destination_path);
-                        }
-                    }
-                }
-            }
-        } else {
-            r_group->current_polling_time -= poll_interval_time;
-        }
-    }
-
-    if ((!r_group || !r_group->merged_is_downloaded) && (!is_multigroup || create_merged)) {
+    if (!is_multigroup || create_merged) {
         if (create_merged) {
             if (disk_storage) {
                 if (finalfp = wfopen(merged_tmp, "w"), finalfp == NULL) {
@@ -889,20 +827,6 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
                 }
             }
             fprintf(finalfp, "#%s\n", group);
-        }
-
-        // Merge ar.conf always
-        if (w_stat(DEFAULTAR, &attrib) == 0) {
-            if (create_merged) {
-                if (merged_ok = MergeAppendFile(finalfp, DEFAULTAR, -1), merged_ok == 0) {
-                    fclose(finalfp);
-                    os_free(finalbuf);
-                    return;
-                }
-            }
-            if (!is_multigroup) {
-                ftime_add(_f_time, DEFAULTAR_FILE, attrib.st_mtime);
-            }
         }
 
         snprintf(group_path, PATH_MAX + 1, "%s/%s", sharedcfg_dir, group);
@@ -1225,7 +1149,7 @@ STATIC void process_multi_groups() {
                     if (merge_shared) {
                         OSHash_Clean(multigroup->f_time, free_file_time);
                         c_multi_group(key, &multigroup->f_time, &multigroup->merged_sum, data, true);
-                        mwarn("Multigroup '%s' was modified from outside, so it was regenerated.", multigroup->name);
+                        mdebug2("Multigroup '%s' was modified from outside, so it was regenerated.", multigroup->name);
                     } else {
                         mdebug2("Multigroup '%s' was modified from outside.", multigroup->name);
                     }
@@ -1400,7 +1324,7 @@ STATIC int validate_shared_files(const char *src_path, FILE *finalfp, OSHash **_
                     } else {
                         os_free(modify_time);
                         OSHash_Delete(invalid_files, file);
-                        minfo("File '%s' is valid after last modification.", file);
+                        mdebug1("File '%s' is valid after last modification.", file);
                         ignored = 0;
                     }
                 }
@@ -1538,47 +1462,6 @@ STATIC void ftime_add(OSHash **_f_time, const char *name, const time_t m_time) {
     }
 }
 
-STATIC group_t* find_group_from_sum(const char * md5, char group_name[OS_SIZE_65536]) {
-    group_t *group;
-    OSHashNode *my_node;
-    unsigned int i;
-
-    my_node = OSHash_Begin(groups, &i);
-
-    while (my_node) {
-        group = my_node->data;
-
-        if (!strcmp(group->merged_sum, md5)) {
-            snprintf(group_name, OS_SIZE_65536, "%s", group->name);
-            return group;
-        }
-
-        my_node = OSHash_Next(groups, &i, my_node);
-    }
-
-    return NULL;
-}
-
-STATIC group_t* find_multi_group_from_sum(const char * md5, char multigroup_name[OS_SIZE_65536]) {
-    group_t *multigroup;
-    OSHashNode *my_node;
-    unsigned int i;
-
-    my_node = OSHash_Begin(multi_groups, &i);
-
-    while (my_node) {
-        multigroup = my_node->data;
-
-        if (!strcmp(multigroup->merged_sum, md5)) {
-            snprintf(multigroup_name, OS_SIZE_65536, "%s", multigroup->name);
-            return multigroup;
-        }
-
-        my_node = OSHash_Next(multi_groups, &i, my_node);
-    }
-
-    return NULL;
-}
 
 STATIC bool ftime_changed(OSHash *old_time, OSHash *new_time) {
     unsigned int size_old, size_new = 0;
@@ -1956,12 +1839,6 @@ void *update_shared_files(__attribute__((unused)) void *none)
          */
 
         if ((_ctime - _stime) >= shared_reload_interval) {
-            // Check if the yaml file has changed and reload it
-            if (w_yaml_file_has_changed()) {
-                w_yaml_file_update_structs();
-                w_yaml_create_groups();
-            }
-
             c_files(false);
             _stime = _ctime;
         }
@@ -1995,8 +1872,6 @@ void manager_init()
 
     /* Run initial groups and multigroups scan */
     c_files(true);
-
-    w_yaml_create_groups();
 
     pending_queue = linked_queue_init();
     pending_data = OSHash_Create();

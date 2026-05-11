@@ -39,40 +39,28 @@ Manager::Manager(const std::shared_ptr<store::IStore>& store, const std::shared_
     }
 
     auto doc = base::getResponse(docResp);
-
-    // Load city database if present
-    auto cityPath = doc.getString("/city/path");
-    auto cityHash = doc.getString("/city/hash");
-    auto cityCreatedAt = doc.getInt64("/city/generated_at");
-    if (cityPath.has_value() && cityHash.has_value() && cityCreatedAt.has_value())
+    auto checkAndLoadDb = [&](Type type)
     {
-        auto addResp = addDbUnsafe(cityPath.value(), cityHash.value(), cityCreatedAt.value(), Type::CITY);
-        if (base::isError(addResp))
+        std::string pathStr, hashStr;
+        auto pathRet = doc.getString(pathStr, fmt::format("/{}/path", typeName(type)));
+        auto hashRet = doc.getString(hashStr, fmt::format("/{}/hash", typeName(type)));
+        auto createdAt = doc.getInt64(fmt::format("/{}/generated_at", typeName(type)));
+        if (pathRet == json::RetGet::Success && hashRet == json::RetGet::Success && createdAt.has_value())
         {
-            LOG_ERROR("Geo cannot add city db '{}': {}", cityPath.value(), base::getError(addResp).message);
+            auto addResp = addDbUnsafe(pathStr, hashStr, createdAt.value(), type);
+            if (base::isError(addResp))
+            {
+                LOG_ERROR("Geo cannot add {} db '{}': {}", typeName(type), pathStr, base::getError(addResp).message);
+            }
         }
-    }
-    else if (cityPath.has_value() || cityHash.has_value() || cityCreatedAt.has_value())
-    {
-        LOG_WARNING("Geo store has incomplete city database information, skipping");
-    }
-
-    // Load asn database if present
-    auto asnPath = doc.getString("/asn/path");
-    auto asnHash = doc.getString("/asn/hash");
-    auto asnCreatedAt = doc.getInt64("/asn/generated_at");
-    if (asnPath.has_value() && asnHash.has_value() && asnCreatedAt.has_value())
-    {
-        auto addResp = addDbUnsafe(asnPath.value(), asnHash.value(), asnCreatedAt.value(), Type::ASN);
-        if (base::isError(addResp))
+        else
         {
-            LOG_ERROR("Geo cannot add asn db '{}': {}", asnPath.value(), base::getError(addResp).message);
+            LOG_WARNING("Geo store has incomplete {} database information, skipping", typeName(type));
         }
-    }
-    else if (asnPath.has_value() || asnHash.has_value() || asnCreatedAt.has_value())
-    {
-        LOG_WARNING("Geo store has incomplete asn database information, skipping");
-    }
+    };
+
+    checkAndLoadDb(Type::CITY);
+    checkAndLoadDb(Type::ASN);
 }
 
 base::OptError
@@ -118,24 +106,24 @@ bool Manager::needsUpdate(const std::string& name, const std::string& remoteHash
     auto doc = base::getResponse(internalResp);
     auto typePrefix = fmt::format("/{}", typeName(type));
 
-    auto storedHash = doc.getString(typePrefix + "/hash");
-    if (!storedHash.has_value())
+    std::string storedHash;
+    if (doc.getString(storedHash, typePrefix + "/hash") != json::RetGet::Success)
     {
         return true;
     }
 
     // Check if file exists physically
-    auto storedPath = doc.getString(typePrefix + "/path");
-    if (storedPath.has_value())
+    std::string storedPath;
+    if (doc.getString(storedPath, typePrefix + "/path") == json::RetGet::Success)
     {
-        if (!std::filesystem::exists(storedPath.value()))
+        if (!std::filesystem::exists(storedPath))
         {
             // File was deleted, needs update
             return true;
         }
     }
 
-    return storedHash.value() != remoteHash;
+    return storedHash != remoteHash;
 }
 
 base::OptError
@@ -170,44 +158,6 @@ Manager::addDbUnsafe(const std::string& path, const std::string& hash, const int
     // Publish
     m_dbs.emplace(name, handle);
     m_dbTypes.emplace(type, name);
-
-    return base::noError();
-}
-
-base::OptError Manager::writeDb(const std::string& path, const std::string& content)
-{
-    auto filePath = std::filesystem::path(path);
-
-    // Create directories if they do not exist
-    try
-    {
-        std::filesystem::create_directories(filePath.parent_path());
-        // Set permissions to 770 (rwxrwx---)
-        std::filesystem::permissions(filePath.parent_path(),
-                                     std::filesystem::perms::owner_all | std::filesystem::perms::group_all,
-                                     std::filesystem::perm_options::replace);
-    }
-    catch (const std::exception& e)
-    {
-        return base::Error {fmt::format("Cannot create directories for '{}': {}", path, e.what())};
-    }
-
-    // Write the content to the file
-    std::ofstream file(path, std::ios::binary);
-    if (!file.is_open())
-    {
-        return base::Error {fmt::format("Cannot open file '{}'", path)};
-    }
-    try
-    {
-        file.write(content.c_str(), content.size());
-        file.close();
-    }
-    catch (const std::exception& e)
-    {
-        file.close();
-        return base::Error {fmt::format("Cannot write to file '{}': {}", path, e.what())};
-    }
 
     return base::noError();
 }
@@ -261,9 +211,20 @@ base::OptError Manager::processDbEntry(const std::string& path,
 
     for (int i = 0; i < MAX_RETRIES; ++i)
     {
+        if (!m_shouldRun->load())
+        {
+            return base::Error {"Shutdown requested, aborting geo database download"};
+        }
+
         auto downloadResp = m_downloader->downloadHTTPS(gzUrl);
         if (base::isError(downloadResp))
         {
+            // If shutdown was requested mid-transfer, exit immediately instead of retrying
+            if (!m_shouldRun->load())
+            {
+                return base::Error {"Shutdown requested, aborting geo database download"};
+            }
+
             error = base::Error {
                 fmt::format("Cannot download database from '{}': {}", gzUrl, base::getError(downloadResp).message)};
             continue;
@@ -345,6 +306,12 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
 {
     LOG_DEBUG("[Geo::Manager] Checking for geo database updates from manifest '{}'", manifestUrl);
 
+    if (!m_shouldRun->load())
+    {
+        LOG_DEBUG("[Geo::Manager] Shutdown requested, skipping geo sync");
+        return;
+    }
+
     // Download and parse manifest
     auto manifestResp = m_downloader->downloadManifest(manifestUrl);
     if (base::isError(manifestResp))
@@ -363,11 +330,11 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
     // Lambda to process database entries
     auto processDatabase = [&](Type type,
                                const std::string& path,
-                               const std::optional<std::string>& url,
-                               const std::optional<std::string>& md5,
+                               const std::string& url,
+                               const std::string& md5,
                                const std::string& typeName)
     {
-        if (!url.has_value() || !md5.has_value() || path.empty())
+        if (url.empty() || md5.empty() || path.empty())
         {
             LOG_WARNING("[Geo::Manager] {} database not present in manifest or path not provided", typeName);
             return;
@@ -376,20 +343,20 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
         const auto dbName = std::filesystem::path(path).filename().string();
 
         // Check if database needs update
-        if (!needsUpdate(dbName, md5.value(), type))
+        if (!needsUpdate(dbName, md5, type))
         {
             LOG_DEBUG("[Geo::Manager] No changes detected for {} database '{}'", typeName, dbName);
             return;
         }
 
         LOG_INFO("[Geo::Manager] Changes detected for {} database '{}', updating...", typeName, dbName);
-        auto error = processDbEntry(path, type, url.value(), md5.value(), createdAt.value());
+        auto error = processDbEntry(path, type, url, md5, createdAt.value());
         if (base::isError(error))
         {
-            LOG_ERROR("[Geo::Manager] Failed to process {} database '{}': {}",
-                      typeName,
-                      dbName,
-                      base::getError(error).message);
+            LOG_WARNING("[Geo::Manager] Failed to process {} database '{}': {}",
+                        typeName,
+                        dbName,
+                        base::getError(error).message);
         }
         else
         {
@@ -398,15 +365,33 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
     };
 
     // Process city database if present
-    processDatabase(Type::CITY, cityPath, manifest.getString("/city/url"), manifest.getString("/city/md5"), "CITY");
+    std::string cityUrl, cityMd5;
+    manifest.getString(cityUrl, "/city/url");
+    manifest.getString(cityMd5, "/city/md5");
+    processDatabase(Type::CITY, cityPath, cityUrl, cityMd5, "CITY");
+
+    if (!m_shouldRun->load())
+    {
+        LOG_DEBUG("[Geo::Manager] Shutdown requested, skipping ASN database sync");
+        return;
+    }
 
     // Process ASN database if present
-    processDatabase(Type::ASN, asnPath, manifest.getString("/asn/url"), manifest.getString("/asn/md5"), "ASN");
+    std::string asnUrl, asnMd5;
+    manifest.getString(asnUrl, "/asn/url");
+    manifest.getString(asnMd5, "/asn/md5");
+    processDatabase(Type::ASN, asnPath, asnUrl, asnMd5, "ASN");
 
     LOG_DEBUG("[Geo::Manager] Finished synchronization of geo databases");
 }
 
-base::RespOrError<std::shared_ptr<ILocator>> Manager::getLocator(Type type) const
+void Manager::requestShutdown()
+{
+    m_shouldRun->store(false);
+    LOG_INFO("[Geo::Manager] Shutdown requested.");
+}
+
+Result<std::shared_ptr<ILocator>> Manager::getLocator(Type type) const
 {
     // Search the database with read lock
     std::shared_lock lock(m_rwMapMutex);
@@ -414,14 +399,14 @@ base::RespOrError<std::shared_ptr<ILocator>> Manager::getLocator(Type type) cons
     // Check if the type has a database
     if (m_dbTypes.find(type) == m_dbTypes.end())
     {
-        return base::Error {fmt::format("Type '{}' does not have a database", typeName(type))};
+        return ErrorCode::DB_TYPE_NOT_AVAILABLE;
     }
 
     // Get the database handle and return the locator
     auto handle = m_dbs.at(m_dbTypes.at(type));
     auto locator = std::make_shared<Locator>(handle);
 
-    return locator;
+    return Result<std::shared_ptr<ILocator>>(locator);
 }
 
 std::vector<DbInfo> Manager::listDbs() const

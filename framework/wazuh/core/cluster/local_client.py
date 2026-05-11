@@ -4,7 +4,6 @@
 
 import asyncio
 import logging
-import os
 import time
 from typing import Tuple
 
@@ -131,7 +130,7 @@ class LocalClient(client.AbstractClientManager):
 
     def __init__(self):
         """Class constructor"""
-        super().__init__(configuration=wazuh.core.cluster.utils.read_config(), enable_ssl=False, performance_test=0,
+        super().__init__(configuration=wazuh.core.cluster.utils.read_config(), performance_test=0,
                          concurrency_test=0, file='', string=0, logger=logging.getLogger(), tag="Local Client",
                          cluster_items=wazuh.core.cluster.utils.get_cluster_items())
         self.request_result = None
@@ -150,7 +149,7 @@ class LocalClient(client.AbstractClientManager):
                                                                                          name=self.name, logger=self.logger,
                                                                                          fernet_key='', manager=self,
                                                                                          cluster_items=self.cluster_items),
-                                             path=os.path.join(common.WAZUH_PATH, 'queue', 'cluster', 'c-internal.sock'))
+                                             path=common.CLUSTERD_SOCKET)
         except MemoryError:
             raise exception.WazuhInternalError(1119)
         except Exception as e:

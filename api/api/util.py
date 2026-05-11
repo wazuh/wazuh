@@ -2,19 +2,15 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import logging
 import datetime
 import os
 import typing
-from functools import wraps
 from typing import Union
 
 import six
 from connexion import ProblemException
 
 from wazuh.core import common, exception
-
-logger = logging.getLogger('wazuh-api')
 
 
 def serialize(item: object) -> object:
@@ -298,25 +294,6 @@ def _parse_sort_param(sort: str) -> typing.Dict:
     return {'fields': sort_fields.split(','), 'order': 'desc' if sort[0] == '-' else 'asc'}
 
 
-def _parse_q_param(query: str) -> str:
-    """Search and parse q parameter inside the query string.
-
-    Parameters
-    ----------
-    query : str
-        String query which can contain q parameter.
-
-    Returns
-    -------
-    str
-        Parsed query.
-    """
-    q = next((q for q in query.split('&') if q.startswith('q=')), None)
-
-    if q:
-        return q[2:]
-
-
 def to_relative_path(full_path: str) -> str:
     """Return a relative path from Wazuh base directory.
 
@@ -421,28 +398,3 @@ def get_invalid_keys(original_dict: dict, des_dict: dict) -> set:
                 invalid_keys.add(key)
 
     return invalid_keys
-
-
-def deprecate_endpoint(link: str = ''):
-    """Decorator to add deprecation headers to API response.
-
-    Parameters
-    ----------
-    link : str
-        Documentation related to this deprecation.
-    """
-
-    def add_deprecation_headers(func):
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            api_response = await func(*args, **kwargs)
-
-            api_response.headers['Deprecated'] = 'true'
-            if link:
-                api_response.headers['Link'] = f'<{link}>; rel="Deprecated"'
-
-            return api_response
-
-        return wrapper
-
-    return add_deprecation_headers

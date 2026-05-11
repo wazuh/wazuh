@@ -161,13 +161,6 @@ typedef enum wdb_backup_db {
 
 extern char *schema_global_sql;
 extern char *schema_task_manager_sql;
-extern char *schema_global_upgrade_v1_sql;
-extern char *schema_global_upgrade_v2_sql;
-extern char *schema_global_upgrade_v3_sql;
-extern char *schema_global_upgrade_v4_sql;
-extern char *schema_global_upgrade_v5_sql;
-extern char *schema_global_upgrade_v6_sql;
-extern char *schema_global_upgrade_v7_sql;
 extern _Config gconfig;
 
 /**
@@ -257,18 +250,13 @@ wdbc_result wdb_parse_chunk_to_rbtree(char* input, rb_tree** output, const char*
  */
 sqlite3_stmt* wdb_init_stmt_in_cache(wdb_t* wdb, wdb_stmt statement_index);
 
-/* Get value data in output variable. Returns 0 if doesn't found, 1 on success or -1 on error. */
-int wdb_metadata_get_entry (wdb_t * wdb, const char *key, char *output);
-
 /**
- * @brief Gets the count of the tables that match the provided name
- *
- * @param[in] wdb Database to query for the table existence.
- * @param[in] key Name of the table to find.
- * @param[in] returns the count
- * @return function success.
+ * @brief Reads the SQLite PRAGMA user_version from the database header.
+ * @param wdb Database connection.
+ * @param[out] version The current user_version value.
+ * @return OS_SUCCESS or OS_INVALID.
  */
- int wdb_count_tables_with_name(wdb_t * wdb, const char * key, int* count);
+int wdb_user_version_get(wdb_t *wdb, int *version);
 
 /* Prepare SQL query with availability waiting */
 int wdb_prepare(sqlite3 *db, const char *zSql, int nByte, sqlite3_stmt **stmt, const char **pzTail);
@@ -291,12 +279,6 @@ int wdb_commit2(wdb_t * wdb);
 */
 int wdb_rollback(wdb_t * wdb);
 
-/**
- * @brief Rollback transaction and write status
- * @param[in] wdb Database to query for the table existence.
- * @return 0 when succeed, !=0 otherwise.
-*/
-int wdb_rollback2(wdb_t * wdb);
 
 /* Create global database */
 int wdb_create_global(const char *path);
@@ -337,26 +319,9 @@ int wdb_get_db_free_pages_percentage(wdb_t * wdb);
  */
 int wdb_update_last_vacuum_data(wdb_t* wdb, const char *last_vacuum_time, const char *last_vacuum_value);
 
-/* Insert key-value pair into info table */
-int wdb_insert_info(const char *key, const char *value);
-
 wdb_t * wdb_init(const char * id);
 
 void wdb_destroy(wdb_t * wdb);
-
-void wdb_pool_append(wdb_t * wdb);
-
-void wdb_pool_remove(wdb_t * wdb);
-
-/**
- * @brief Duplicate the database pool
- *
- * Gets a copy of the database pool. This function fills the member "id" and
- * creates the mutex only.
- *
- * @return Pointer to a database list.
- */
-wdb_t * wdb_pool_copy();
 
 void wdb_close_all();
 
@@ -469,8 +434,6 @@ int wdb_close(wdb_t * wdb, bool commit);
  * @param wdb The database struct pointer.
  */
 void wdb_finalize_all_statements(wdb_t * wdb);
-
-wdb_t * wdb_pool_find_prev(wdb_t * wdb);
 
 int wdb_stmt_cache(wdb_t * wdb, int index);
 
@@ -943,36 +906,6 @@ int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, os_sha1 hexdig
  */
 wdb_t * wdb_upgrade_global(wdb_t *wdb);
 
-/**
- * @brief Function to recreate Global DB in case of an upgrading an old version.
- *
- * @param [in] wdb The global.db database to backup.
- * @return wdb The new empty global.db database on success or NULL on error
- */
-wdb_t * wdb_recreate_global(wdb_t *wdb);
-
-/**
- * @brief Check if the db version is older than 3.10
- *
- * This is a hacky way to check if the database version is older than 3.10
- * For newer versions of the db the table "agent" must have a tuple with id=0(manager) and last_keepalive=9999/12/31 23:59:59 UTC.
- * If this value is missing it means that the db is older than 3.10 or is corrupt
- *
- * @return Db version is older than 3.10.
- * @retval 1 the db is older than 3.10
- * @retval 0 the db is newer than 3.10.
- * @retval 0 The table "agent" is missing or an error occurred.
- */
-bool wdb_is_older_than_v310(wdb_t *wdb);
-
-/**
- * @brief Set the database journal mode to write-ahead logging
- *
- * @param [in] db Pointer to an open database.
- * @retval 0 On success.
- * @retval -1 On error.
- */
-int wdb_journal_wal(sqlite3 *db);
 
 /**
  * @brief Enables foreign keys usage into the specified database.
@@ -1017,15 +950,11 @@ int wdb_global_update_agent_name(wdb_t *wdb, int id, char* name);
  * @param [in] os_version The agent's operating system version.
  * @param [in] os_major The agent's operating system major version.
  * @param [in] os_minor The agent's operating system minor version.
- * @param [in] os_codename The agent's operating system code name.
+ * @param [in] os_type The agent's operating system family (linux, windows, unix, ...).
  * @param [in] os_platform The agent's operating system platform.
- * @param [in] os_build The agent's operating system build number.
- * @param [in] os_uname The agent's operating system uname.
  * @param [in] os_arch The agent's operating system architecture.
  * @param [in] version The agent's version.
- * @param [in] config_sum The agent's configuration sum.
  * @param [in] merged_sum The agent's merged sum.
- * @param [in] manager_host The agent's manager host name.
  * @param [in] node_name The agent's manager node name.
  * @param [in] agent_ip The agent's IP address.
  * @param [in] connection_status The agent's connection status.
@@ -1039,15 +968,11 @@ int wdb_global_update_agent_version(wdb_t *wdb,
                                     const char *os_version,
                                     const char *os_major,
                                     const char *os_minor,
-                                    const char *os_codename,
+                                    const char *os_type,
                                     const char *os_platform,
-                                    const char *os_build,
-                                    const char *os_uname,
                                     const char *os_arch,
                                     const char *version,
-                                    const char *config_sum,
                                     const char *merged_sum,
-                                    const char *manager_host,
                                     const char *node_name,
                                     const char *agent_ip,
                                     const char *connection_status,
@@ -1133,26 +1058,6 @@ int wdb_global_delete_agent_belong(wdb_t *wdb, int id);
  */
 cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip);
 
-/**
- * @brief Function to update the agent's groups_hash column. It reads the group column, calculates and stores its hash
- *        but if the group column is NULL, the method returns without modifying groups_hash.
- *
- * @param [in] wdb The Global struct database.
- * @param [in] id The agent ID
- * @param [in] groups_string The comma separated groups string to hash and store in groups_hash column. If not set,
- *                           it will be read from 'group' column.
- * @return Returns 0 on success or -1 on error.
- */
-int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_string);
-
-/**
- * @brief Function to update the agent's groups_hash column for all agents. It gets all agents and calls
- *        wdb_global_update_agent_groups_hash() for each one.
- *
- * @param [in] wdb The Global struct database.
- * @return Returns 0 on success or -1 on error.
- */
-int wdb_global_adjust_v4(wdb_t* wdb);
 
 /**
  * @brief Function to get a group id using the group name.
@@ -1434,6 +1339,11 @@ int wdb_global_groups_number_get(wdb_t *wdb, int agent_id);
  * @return w_err_t OS_SUCCESS if valid. OS_INVALID otherwise.
  */
 w_err_t wdb_global_validate_group_name(const char *group_name);
+
+/**
+ * @brief Cleanup compiled regex for group name validation (for testing)
+ */
+void wdb_global_validate_group_name_cleanup(void);
 
 /**
  * @brief Verifies that the number of groups to be assigned is less or equal to 128 and

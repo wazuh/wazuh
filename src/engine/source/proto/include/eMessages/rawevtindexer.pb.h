@@ -51,12 +51,6 @@ namespace wazuh {
 namespace api {
 namespace engine {
 namespace rawevtindexer {
-class RawEvtIndexerDisable_Request;
-struct RawEvtIndexerDisable_RequestDefaultTypeInternal;
-extern RawEvtIndexerDisable_RequestDefaultTypeInternal _RawEvtIndexerDisable_Request_default_instance_;
-class RawEvtIndexerEnable_Request;
-struct RawEvtIndexerEnable_RequestDefaultTypeInternal;
-extern RawEvtIndexerEnable_RequestDefaultTypeInternal _RawEvtIndexerEnable_Request_default_instance_;
 class RawEvtIndexerStatus_Request;
 struct RawEvtIndexerStatus_RequestDefaultTypeInternal;
 extern RawEvtIndexerStatus_RequestDefaultTypeInternal _RawEvtIndexerStatus_Request_default_instance_;
@@ -69,8 +63,6 @@ extern RawEvtIndexerStatus_ResponseDefaultTypeInternal _RawEvtIndexerStatus_Resp
 }  // namespace wazuh
 }  // namespace com
 PROTOBUF_NAMESPACE_OPEN
-template<> ::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerDisable_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerDisable_Request>(Arena*);
-template<> ::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerEnable_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerEnable_Request>(Arena*);
 template<> ::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerStatus_Request* Arena::CreateMaybeMessage<::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerStatus_Request>(Arena*);
 template<> ::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerStatus_Response* Arena::CreateMaybeMessage<::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerStatus_Response>(Arena*);
 PROTOBUF_NAMESPACE_CLOSE
@@ -81,242 +73,6 @@ namespace engine {
 namespace rawevtindexer {
 
 // ===================================================================
-
-class RawEvtIndexerEnable_Request final :
-    public ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.rawevtindexer.RawEvtIndexerEnable_Request) */ {
- public:
-  inline RawEvtIndexerEnable_Request() : RawEvtIndexerEnable_Request(nullptr) {}
-  explicit PROTOBUF_CONSTEXPR RawEvtIndexerEnable_Request(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
-
-  RawEvtIndexerEnable_Request(const RawEvtIndexerEnable_Request& from);
-  RawEvtIndexerEnable_Request(RawEvtIndexerEnable_Request&& from) noexcept
-    : RawEvtIndexerEnable_Request() {
-    *this = ::std::move(from);
-  }
-
-  inline RawEvtIndexerEnable_Request& operator=(const RawEvtIndexerEnable_Request& from) {
-    CopyFrom(from);
-    return *this;
-  }
-  inline RawEvtIndexerEnable_Request& operator=(RawEvtIndexerEnable_Request&& from) noexcept {
-    if (this == &from) return *this;
-    if (GetOwningArena() == from.GetOwningArena()
-  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
-        && GetOwningArena() != nullptr
-  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
-    ) {
-      InternalSwap(&from);
-    } else {
-      CopyFrom(from);
-    }
-    return *this;
-  }
-
-  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
-    return GetDescriptor();
-  }
-  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
-    return default_instance().GetMetadata().descriptor;
-  }
-  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
-    return default_instance().GetMetadata().reflection;
-  }
-  static const RawEvtIndexerEnable_Request& default_instance() {
-    return *internal_default_instance();
-  }
-  static inline const RawEvtIndexerEnable_Request* internal_default_instance() {
-    return reinterpret_cast<const RawEvtIndexerEnable_Request*>(
-               &_RawEvtIndexerEnable_Request_default_instance_);
-  }
-  static constexpr int kIndexInFileMessages =
-    0;
-
-  friend void swap(RawEvtIndexerEnable_Request& a, RawEvtIndexerEnable_Request& b) {
-    a.Swap(&b);
-  }
-  inline void Swap(RawEvtIndexerEnable_Request* other) {
-    if (other == this) return;
-  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
-    if (GetOwningArena() != nullptr &&
-        GetOwningArena() == other->GetOwningArena()) {
-   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
-    if (GetOwningArena() == other->GetOwningArena()) {
-  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
-      InternalSwap(other);
-    } else {
-      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
-    }
-  }
-  void UnsafeArenaSwap(RawEvtIndexerEnable_Request* other) {
-    if (other == this) return;
-    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
-    InternalSwap(other);
-  }
-
-  // implements Message ----------------------------------------------
-
-  RawEvtIndexerEnable_Request* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
-    return CreateMaybeMessage<RawEvtIndexerEnable_Request>(arena);
-  }
-  using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyFrom;
-  inline void CopyFrom(const RawEvtIndexerEnable_Request& from) {
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl(*this, from);
-  }
-  using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeFrom;
-  void MergeFrom(const RawEvtIndexerEnable_Request& from) {
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl(*this, from);
-  }
-  public:
-
-  private:
-  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
-  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
-    return "com.wazuh.api.engine.rawevtindexer.RawEvtIndexerEnable_Request";
-  }
-  protected:
-  explicit RawEvtIndexerEnable_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                       bool is_message_owned = false);
-  public:
-
-  static const ClassData _class_data_;
-  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
-
-  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
-
-  // nested types ----------------------------------------------------
-
-  // accessors -------------------------------------------------------
-
-  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.rawevtindexer.RawEvtIndexerEnable_Request)
- private:
-  class _Internal;
-
-  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
-  typedef void InternalArenaConstructable_;
-  typedef void DestructorSkippable_;
-  struct Impl_ {
-  };
-  friend struct ::TableStruct_rawevtindexer_2eproto;
-};
-// -------------------------------------------------------------------
-
-class RawEvtIndexerDisable_Request final :
-    public ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.rawevtindexer.RawEvtIndexerDisable_Request) */ {
- public:
-  inline RawEvtIndexerDisable_Request() : RawEvtIndexerDisable_Request(nullptr) {}
-  explicit PROTOBUF_CONSTEXPR RawEvtIndexerDisable_Request(::PROTOBUF_NAMESPACE_ID::internal::ConstantInitialized);
-
-  RawEvtIndexerDisable_Request(const RawEvtIndexerDisable_Request& from);
-  RawEvtIndexerDisable_Request(RawEvtIndexerDisable_Request&& from) noexcept
-    : RawEvtIndexerDisable_Request() {
-    *this = ::std::move(from);
-  }
-
-  inline RawEvtIndexerDisable_Request& operator=(const RawEvtIndexerDisable_Request& from) {
-    CopyFrom(from);
-    return *this;
-  }
-  inline RawEvtIndexerDisable_Request& operator=(RawEvtIndexerDisable_Request&& from) noexcept {
-    if (this == &from) return *this;
-    if (GetOwningArena() == from.GetOwningArena()
-  #ifdef PROTOBUF_FORCE_COPY_IN_MOVE
-        && GetOwningArena() != nullptr
-  #endif  // !PROTOBUF_FORCE_COPY_IN_MOVE
-    ) {
-      InternalSwap(&from);
-    } else {
-      CopyFrom(from);
-    }
-    return *this;
-  }
-
-  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
-    return GetDescriptor();
-  }
-  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
-    return default_instance().GetMetadata().descriptor;
-  }
-  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
-    return default_instance().GetMetadata().reflection;
-  }
-  static const RawEvtIndexerDisable_Request& default_instance() {
-    return *internal_default_instance();
-  }
-  static inline const RawEvtIndexerDisable_Request* internal_default_instance() {
-    return reinterpret_cast<const RawEvtIndexerDisable_Request*>(
-               &_RawEvtIndexerDisable_Request_default_instance_);
-  }
-  static constexpr int kIndexInFileMessages =
-    1;
-
-  friend void swap(RawEvtIndexerDisable_Request& a, RawEvtIndexerDisable_Request& b) {
-    a.Swap(&b);
-  }
-  inline void Swap(RawEvtIndexerDisable_Request* other) {
-    if (other == this) return;
-  #ifdef PROTOBUF_FORCE_COPY_IN_SWAP
-    if (GetOwningArena() != nullptr &&
-        GetOwningArena() == other->GetOwningArena()) {
-   #else  // PROTOBUF_FORCE_COPY_IN_SWAP
-    if (GetOwningArena() == other->GetOwningArena()) {
-  #endif  // !PROTOBUF_FORCE_COPY_IN_SWAP
-      InternalSwap(other);
-    } else {
-      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
-    }
-  }
-  void UnsafeArenaSwap(RawEvtIndexerDisable_Request* other) {
-    if (other == this) return;
-    GOOGLE_DCHECK(GetOwningArena() == other->GetOwningArena());
-    InternalSwap(other);
-  }
-
-  // implements Message ----------------------------------------------
-
-  RawEvtIndexerDisable_Request* New(::PROTOBUF_NAMESPACE_ID::Arena* arena = nullptr) const final {
-    return CreateMaybeMessage<RawEvtIndexerDisable_Request>(arena);
-  }
-  using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyFrom;
-  inline void CopyFrom(const RawEvtIndexerDisable_Request& from) {
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl(*this, from);
-  }
-  using ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeFrom;
-  void MergeFrom(const RawEvtIndexerDisable_Request& from) {
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl(*this, from);
-  }
-  public:
-
-  private:
-  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
-  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
-    return "com.wazuh.api.engine.rawevtindexer.RawEvtIndexerDisable_Request";
-  }
-  protected:
-  explicit RawEvtIndexerDisable_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                       bool is_message_owned = false);
-  public:
-
-  static const ClassData _class_data_;
-  const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*GetClassData() const final;
-
-  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
-
-  // nested types ----------------------------------------------------
-
-  // accessors -------------------------------------------------------
-
-  // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.rawevtindexer.RawEvtIndexerDisable_Request)
- private:
-  class _Internal;
-
-  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
-  typedef void InternalArenaConstructable_;
-  typedef void DestructorSkippable_;
-  struct Impl_ {
-  };
-  friend struct ::TableStruct_rawevtindexer_2eproto;
-};
-// -------------------------------------------------------------------
 
 class RawEvtIndexerStatus_Request final :
     public ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase /* @@protoc_insertion_point(class_definition:com.wazuh.api.engine.rawevtindexer.RawEvtIndexerStatus_Request) */ {
@@ -365,7 +121,7 @@ class RawEvtIndexerStatus_Request final :
                &_RawEvtIndexerStatus_Request_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    2;
+    0;
 
   friend void swap(RawEvtIndexerStatus_Request& a, RawEvtIndexerStatus_Request& b) {
     a.Swap(&b);
@@ -484,7 +240,7 @@ class RawEvtIndexerStatus_Response final :
                &_RawEvtIndexerStatus_Response_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    3;
+    1;
 
   friend void swap(RawEvtIndexerStatus_Response& a, RawEvtIndexerStatus_Response& b) {
     a.Swap(&b);
@@ -623,14 +379,6 @@ class RawEvtIndexerStatus_Response final :
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 #endif  // __GNUC__
-// RawEvtIndexerEnable_Request
-
-// -------------------------------------------------------------------
-
-// RawEvtIndexerDisable_Request
-
-// -------------------------------------------------------------------
-
 // RawEvtIndexerStatus_Request
 
 // -------------------------------------------------------------------
@@ -748,10 +496,6 @@ inline void RawEvtIndexerStatus_Response::set_enabled(bool value) {
 #ifdef __GNUC__
   #pragma GCC diagnostic pop
 #endif  // __GNUC__
-// -------------------------------------------------------------------
-
-// -------------------------------------------------------------------
-
 // -------------------------------------------------------------------
 
 

@@ -16,7 +16,7 @@ from wazuh_testing.tools.simulators.agent_simulator import connect
 
 @pytest.fixture(scope='module')
 def waiting_for_analysisd_startup(request):
-    """Wait until analysisd has begun and alerts.json is created."""
+    """Wait until analysisd has begun."""
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
     log_monitor.start(callback=callbacks.generate_callback(ANALYSISD_STARTED))
 

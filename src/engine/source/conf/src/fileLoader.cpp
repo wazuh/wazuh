@@ -90,30 +90,13 @@ OptionMap FileLoader::load() const
 {
     OptionMap config {};
 
-    // First load internal options
     try
     {
-        auto base = parseFile(m_internal);
-        config.insert(base.begin(), base.end());
+        config = parseFile(m_path);
     }
     catch (const std::exception& e)
     {
-        LOG_WARNING("Failed to load internal options configuration: {}", e.what());
-    }
-
-    // Then overwrite with local internal options
-    try
-    {
-        auto local = parseFile(m_local);
-        config.insert(local.begin(), local.end()); // does not overwrite if it already exists
-        for (const auto& [k, v] : local)
-        {
-            config[k] = v; // this does overwrite
-        }
-    }
-    catch (const std::exception& e)
-    {
-        LOG_WARNING("Failed to load local internal options configuration: {}", e.what());
+        LOG_WARNING("Failed to load configuration: {}", e.what());
     }
 
     return config;

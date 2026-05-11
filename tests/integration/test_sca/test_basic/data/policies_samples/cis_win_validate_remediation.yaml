@@ -7,7 +7,7 @@ policy:
     - https://documentation.wazuh.com/current/user-manual/capabilities/sec-config-assessment/index.html
 
 requirements:
-  title: Check Windows family platform
+  name: Check Windows family platform
   description: Requirements for running the policy against Windows family.
   condition: any
   rules:
@@ -17,7 +17,7 @@ checks:
 
   # Check that user lockout duration is >= 50
   - id: 1
-    title: Test_1
+    name: Test_1
     description: Test sca rules
     rationale: Test_1
     remediation: The user lockout duration should be >= 50. Use net accounts /lockoutduration:100 command to fix duration
@@ -29,7 +29,7 @@ checks:
 
   # Check that user lockout duration is < 50
   - id: 2
-    title: Test_2
+    name: Test_2
     description: Test sca rules
     rationale: Test_2
     remediation: The testfile permissions should be '644'. Use net accounts /lockoutduration:30 command to fix duration

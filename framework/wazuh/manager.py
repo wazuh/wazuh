@@ -8,12 +8,12 @@ from os.path import exists
 from wazuh import Wazuh
 from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
-from wazuh.core.cluster.utils import manager_restart, manager_reload, running_in_master_node
+from wazuh.core.cluster.utils import manager_restart, manager_reload
 from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
 from wazuh.core.exception import WazuhError, WazuhInternalError
-from wazuh.core.manager import status, get_api_conf, get_update_information_template, get_ossec_logs, \
-    get_logs_summary, validate_ossec_conf, OSSEC_LOG_FIELDS, query_update_check_service as query_update_check_service_core
-from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
+from wazuh.core.manager import status, get_api_conf, get_wazuh_logs, \
+    get_logs_summary, validate_ossec_conf, WAZUH_LOG_FIELDS
+from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, full_copy
 from wazuh.rbac.decorators import expose_resources, mask_sensitive_config
 
@@ -87,7 +87,7 @@ def ossec_log(level: str = None, tag: str = None, offset: int = 0, limit: int = 
                                       none_msg=f"Could not read logs"
                                                f"{' in specified node' if node_id != 'manager' else ''}"
                                       )
-    logs = get_ossec_logs()
+    logs = get_wazuh_logs()
 
     query = []
     level and query.append(f'level={level}')
@@ -98,7 +98,7 @@ def ossec_log(level: str = None, tag: str = None, offset: int = 0, limit: int = 
     data = process_array(logs, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by,
                          sort_ascending=sort_ascending, offset=offset, limit=limit, q=query,
-                         select=select, allowed_select_fields=OSSEC_LOG_FIELDS, distinct=distinct)
+                         select=select, allowed_select_fields=WAZUH_LOG_FIELDS, distinct=distinct)
     result.affected_items.extend(data['items'])
     result.total_affected_items = data['totalItems']
 
@@ -256,7 +256,7 @@ def validation() -> AffectedItemsWazuhResult:
 
 
 @mask_sensitive_config()
-@expose_resources(actions=["cluster:read"], resources=f'node:id:{node_id}')
+@expose_resources(actions=["cluster:read"], resources=[f'node:id:{node_id}'])
 def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhResult:
     """Wrapper for get_active_configuration.
 
@@ -291,7 +291,7 @@ def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhR
 
 
 @mask_sensitive_config()
-@expose_resources(actions=["cluster:read"], resources=f'node:id:{node_id}')
+@expose_resources(actions=["cluster:read"], resources=[f'node:id:{node_id}'])
 def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
                     distinct: bool = False) -> AffectedItemsWazuhResult:
     """Wrapper for get_ossec_conf.
@@ -349,10 +349,6 @@ def get_basic_info() -> AffectedItemsWazuhResult:
 
     try:
         result.affected_items.append(Wazuh().to_dict())
-        if running_in_master_node():
-            result.affected_items[0]['uuid'] = common.get_installation_uid()
-        else:
-            result.affected_items[0]['uuid'] = None
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
     result.total_affected_items = len(result.affected_items)
@@ -410,47 +406,3 @@ def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
 
     result.total_affected_items = len(result.affected_items)
     return result
-
-
-def get_update_information(installation_uid: str, update_information: dict) -> WazuhResult:
-    """Process update information into a wazuh result.
-
-    Parameters
-    ----------
-    installation_uid : str
-        Wazuh UID to include in the result.
-    update_information : dict
-        Data to process.
-
-    Returns
-    -------
-    WazuhResult
-        Result with update information.
-    """
-
-    if not update_information:
-        # Return a response with minimal data because the update_check is disabled
-        return WazuhResult({'data': get_update_information_template(uuid=installation_uid, update_check=False)})
-    status_code = update_information.pop('status_code')
-    uuid = update_information.get('uuid')
-    tag = update_information.get('current_version')
-
-    if status_code != 200:
-        extra_message = f"{uuid}, {tag}" if status_code == 401 else update_information['message']
-        raise WazuhInternalError(2100, extra_message=extra_message)
-
-    update_information.pop('message', None)
-
-    return WazuhResult({'data': update_information})
-
-
-@expose_resources(actions=['manager:read'], resources=['*:*:*'])
-async def query_update_check_service(installation_uid: str) -> dict:
-    """Query the update check service and return the information.
-
-    Returns
-    -------
-    WazuhResult
-        Result with update information.
-    """
-    return (await query_update_check_service_core(installation_uid))

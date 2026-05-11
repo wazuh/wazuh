@@ -83,28 +83,6 @@ def test_invalid_run_as_tokens(mock_add_user_roles_rules, db_setup):
     mock_add_user_roles_rules.assert_called_with(run_as=True)
 
 
-@pytest.mark.parametrize('role_list, expected_users', [
-    ([100, 101], {100, 103, 102}),
-    ([102], {104}),
-    ([102, 103, 104], {101, 104, 102})
-])
-def test_check_relationships(db_setup, role_list, expected_users):
-    """Check that the relationship between role and user is correct according to
-    `schema_security_test.sql`.
-
-    Parameters
-    ----------
-    db_setup: callable
-        This function creates the rbac.db file.
-    role_list : list
-        List of role IDs.
-    expected_users : set
-        Expected users.
-    """
-    _, _, core_security = db_setup
-    assert core_security.check_relationships(roles=[role_id for role_id in role_list]) == expected_users
-
-
 @pytest.mark.parametrize('user_list, expected_users', [
     ([104], {104}),
     ([102, 103], {102, 103}),

@@ -13,9 +13,6 @@ from api.api_exception import APIError
 
 logger = logging.getLogger('wazuh-api')
 
-# Variable used to specify an unknown user
-UNKNOWN_USER_STRING = "unknown_user"
-
 
 class APILoggerSize:
     size_regex = re.compile(r"(\d+)([KM])")

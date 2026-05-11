@@ -4,7 +4,6 @@
 
 import json
 import os
-import uuid
 from contextvars import ContextVar
 from copy import deepcopy
 from functools import lru_cache, wraps
@@ -114,39 +113,7 @@ def reset_context_cache() -> None:
         context_var.set(None)
 
 
-def get_context_cache() -> dict:
-    """Get the context cache.
-
-    Returns
-    -------
-    dict
-        Dictionary with the context variables representing the cache.
-    """
-
-    return _context_cache
-
-
-def get_installation_uid() -> str:
-    """Get the installation UID, creating it if it does not exist.
-    Returns
-    -------
-    str
-        A string containing the installation UID.
-    """
-    if os.path.exists(INSTALLATION_UID_PATH):
-        with open(INSTALLATION_UID_PATH, 'r') as f:
-            installation_uid = f.read().strip()
-    else:
-        installation_uid = str(uuid.uuid4())
-        with open(INSTALLATION_UID_PATH, 'w') as f:
-            f.write(installation_uid)
-            os.chown(f.name, wazuh_uid(), wazuh_gid())
-            os.chmod(f.name, 0o660)
-
-    return installation_uid
-
-
-# ================================================= Context variables ==================================================
+# ================================================= Context variables ==================================================================================================
 rbac: ContextVar[Dict] = ContextVar('rbac', default={'rbac_mode': 'black'})
 current_user: ContextVar[str] = ContextVar('current_user', default='')
 broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
@@ -164,11 +131,6 @@ _WAZUH_GID = None
 GROUP_NAME = 'wazuh-manager'
 USER_NAME = 'wazuh-manager'
 WAZUH_PATH = find_wazuh_path()
-
-
-# ============================================= Wazuh constants - Commands =============================================
-CHECK_CONFIG_COMMAND = 'check-manager-configuration'
-RESTART_WAZUH_COMMAND = 'restart-wazuh'
 
 
 # =========================================== Wazuh constants - Date format ============================================
@@ -191,15 +153,12 @@ WPK_REPO_URL_4_X = "packages.wazuh.com/4.x/wpk/"
 # Agent component stats required version.
 AGENT_COMPONENT_STATS_REQUIRED_VERSION = {'logcollector': 'v4.2.0', 'agent': 'v4.2.0'}
 # Version variables (legacy, required, etc).
-AR_LEGACY_VERSION = 'Wazuh v4.2.0'
 ACTIVE_CONFIG_VERSION = 'Wazuh v4.0.0'
 
 
 # ================================================ Wazuh path - Config =================================================
 OSSEC_CONF = os.path.join(WAZUH_PATH, 'etc', 'wazuh-manager.conf')
-INTERNAL_OPTIONS_CONF = os.path.join(WAZUH_PATH, 'etc', 'internal_options.conf')
-LOCAL_INTERNAL_OPTIONS_CONF = os.path.join(WAZUH_PATH, 'etc', 'local_internal_options.conf')
-AR_CONF = os.path.join(WAZUH_PATH, 'etc', 'shared', 'ar.conf')
+INTERNAL_OPTIONS_CONF = os.path.join(WAZUH_PATH, 'etc', 'wazuh-manager-internal-options.conf')
 CLIENT_KEYS = os.path.join(WAZUH_PATH, 'etc', 'client.keys')
 SHARED_PATH = os.path.join(WAZUH_PATH, 'etc', 'shared')
 
@@ -208,24 +167,19 @@ SHARED_PATH = os.path.join(WAZUH_PATH, 'etc', 'shared')
 WAZUH_LOGS = os.path.join(WAZUH_PATH, 'logs')
 WAZUH_LOG = os.path.join(WAZUH_LOGS, 'wazuh-manager.log')
 WAZUH_LOG_JSON = os.path.join(WAZUH_LOGS, 'wazuh-manager.json')
-DATABASE_PATH = os.path.join(WAZUH_PATH, 'var', 'db')
-DATABASE_PATH_GLOBAL = os.path.join(DATABASE_PATH, 'global.db')
-ANALYSISD_STATS = os.path.join(WAZUH_PATH, 'var', 'run', 'wazuh-manager-analysisd.state')
-REMOTED_STATS = os.path.join(WAZUH_PATH, 'var', 'run', 'wazuh-manager-remoted.state')
 OSSEC_TMP_PATH = os.path.join(WAZUH_PATH, 'tmp')
 OSSEC_PIDFILE_PATH = os.path.join(WAZUH_PATH, 'var', 'run')
 OS_PIDFILE_PATH = os.path.join('var', 'run')
 WDB_PATH = os.path.join(WAZUH_PATH, 'queue', 'db')
-STATS_PATH = os.path.join(WAZUH_PATH, 'stats')
-BACKUP_PATH = os.path.join(WAZUH_PATH, 'backup')
-MULTI_GROUPS_PATH = os.path.join(WAZUH_PATH, 'var', 'multigroups')
 DEFAULT_RBAC_RESOURCES = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'rbac', 'default')
 WAZUH_LOCALTIME_PATH = os.path.join(WAZUH_PATH, 'etc', 'localtime')
+CLUSTERD_WORKINGDIR = os.path.join(WAZUH_PATH, 'queue', 'cluster')
+INDEXER_PLUGINS_PATH = os.path.join(WAZUH_PATH, 'etc', 'indexer-plugins')
 
 
 # ================================================ Wazuh path - Sockets ================================================
 ANALYSISD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'analysis')
-AR_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'alerts', 'ar')
+AR_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'ar')
 AUTHD_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'auth')
 CONTROL_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'control')
 UPGRADE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'upgrade')
@@ -233,9 +187,12 @@ REMOTED_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'remote')
 TASKS_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'tasks', 'task')
 WDB_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'db', 'wdb')
 WDB_HTTP_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wdb-http')
-WMODULES_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'wmodules')
 KEY_STORE_SOCKET = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'keystore')
+CLUSTERD_SOCKET = os.path.join(CLUSTERD_WORKINGDIR, 'c-internal.sock')
+
+# ================================================ Wazuh misc files ====================================================
+
+AR_BOOKMARK_FILEPATH = os.path.join(CLUSTERD_WORKINGDIR, "ar_bookmark.json")
 
 # ========================================== INSTALLATION UID PATH ====================================================
 SECURITY_PATH = os.path.join(WAZUH_PATH, 'api', 'configuration', 'security')
-INSTALLATION_UID_PATH = os.path.join(SECURITY_PATH, 'installation_uid')

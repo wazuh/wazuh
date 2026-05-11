@@ -14,12 +14,22 @@ INSTANTIATE_TEST_SUITE_P(
         FilterT({makeValue(R"("str")")}, opfilter::opBuilderHelperRegexMatch, SUCCESS()),
         FilterT({makeRef("ref")}, opfilter::opBuilderHelperRegexMatch, FAILURE()),
         FilterT({makeValue(R"("InvalidRegex[")")}, opfilter::opBuilderHelperRegexMatch, FAILURE()),
+        FilterT({makeValue(R"(2)")}, opfilter::opBuilderHelperRegexMatch, FAILURE()),
+        FilterT({makeValue(R"([1,2,3])")}, opfilter::opBuilderHelperRegexMatch, FAILURE()),
+        FilterT({makeValue(R"(3.4)")}, opfilter::opBuilderHelperRegexMatch, FAILURE()),
+        FilterT({makeValue(R"(true)")}, opfilter::opBuilderHelperRegexMatch, FAILURE()),
+        FilterT({makeValue(R"(null)")}, opfilter::opBuilderHelperRegexMatch, FAILURE()),
         /*** RegexNotMatch ***/
         FilterT({}, opfilter::opBuilderHelperRegexNotMatch, FAILURE()),
         FilterT({makeValue(R"("str")"), makeValue(R"("str")")}, opfilter::opBuilderHelperRegexNotMatch, FAILURE()),
         FilterT({makeValue(R"("str")")}, opfilter::opBuilderHelperRegexNotMatch, SUCCESS()),
         FilterT({makeRef("ref")}, opfilter::opBuilderHelperRegexNotMatch, FAILURE()),
-        FilterT({makeValue(R"("InvalidRegex[")")}, opfilter::opBuilderHelperRegexNotMatch, FAILURE())),
+        FilterT({makeValue(R"("InvalidRegex[")")}, opfilter::opBuilderHelperRegexNotMatch, FAILURE()),
+        FilterT({makeValue(R"(2)")}, opfilter::opBuilderHelperRegexNotMatch, FAILURE()),
+        FilterT({makeValue(R"([1,2,3])")}, opfilter::opBuilderHelperRegexNotMatch, FAILURE()),
+        FilterT({makeValue(R"(3.4)")}, opfilter::opBuilderHelperRegexNotMatch, FAILURE()),
+        FilterT({makeValue(R"(true)")}, opfilter::opBuilderHelperRegexNotMatch, FAILURE()),
+        FilterT({makeValue(R"(null)")}, opfilter::opBuilderHelperRegexNotMatch, FAILURE())),
     testNameFormatter<FilterBuilderTest>("Regex"));
 } // namespace filterbuildtest
 

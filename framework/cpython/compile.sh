@@ -44,7 +44,7 @@ get_wazuh_repo() {
     if [ -z "${WAZUH_BRANCH:-}" ]; then
         cp -rf $WAZUH_HOST_DIR $WAZUH_ROOT_DIR
         # Clean previous builds
-        rm -rf $WAZUH_ROOT_DIR/src/external/*
+        find "$WAZUH_ROOT_DIR/src/external" -mindepth 1 ! -name 'CMakeLists.txt' -exec rm -rf {} +
         make clean -j -C "$WAZUH_ROOT_DIR/src"
     else
         git clone --branch "$WAZUH_BRANCH" --depth 1 https://github.com/wazuh/wazuh.git  "$WAZUH_ROOT_DIR"
@@ -61,12 +61,12 @@ customize_cpython() {
 }
 
 build_cpython() {
-    make -j -C "$WAZUH_ROOT_DIR/src" build_python INSTALLDIR=$WAZUH_INSTALLDIR OPTIMIZE_CPYTHON=yes
+    make -j -C "$WAZUH_ROOT_DIR/src" build_python TARGET=manager INSTALLDIR=$WAZUH_INSTALLDIR OPTIMIZE_CPYTHON=yes
 }
 
 mimic_full_wazuh_installation() {
     # Force build of libwazuhext
-    make -j -C "$WAZUH_ROOT_DIR/src" external INSTALLDIR=$WAZUH_INSTALLDIR
+    make -j -C "$WAZUH_ROOT_DIR/src" build-external TARGET=manager INSTALLDIR=$WAZUH_INSTALLDIR
     # Install only libwazuhext to avoid full server compilation & installation
     mkdir -p "$WAZUH_INSTALLDIR/lib"
     install -m 0750 $WAZUH_ROOT_DIR/src/build/lib/libwazuhext.so "$WAZUH_INSTALLDIR/lib"

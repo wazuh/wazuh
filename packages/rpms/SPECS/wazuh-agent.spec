@@ -44,7 +44,7 @@ This package provides debug information for package %{name}.
 %prep
 %setup -q
 
-./src/init/gen_ossec.sh conf agent centos %rhel %{_localstatedir} > etc/ossec-agent.conf
+./src/init/gen_wazuh.sh conf agent centos %rhel %{_localstatedir} > etc/ossec-agent.conf
 
 %build
 pushd src
@@ -82,8 +82,8 @@ cp -pr %{_localstatedir}/* ${RPM_BUILD_ROOT}%{_localstatedir}/
 # Ensure mandatory package paths exist even when install.sh does not populate SCA files.
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/ruleset/sca
 mkdir -p ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
-sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/ossec-hids-rh.init
-install -m 0755 src/init/templates/ossec-hids-rh.init ${RPM_BUILD_ROOT}%{_initrddir}/wazuh-agent
+sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-rh.init
+install -m 0755 src/init/templates/wazuh-rh.init ${RPM_BUILD_ROOT}%{_initrddir}/wazuh-agent
 sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-agent.service
 install -m 0644 src/init/templates/wazuh-agent.service ${RPM_BUILD_ROOT}/usr/lib/systemd/system/
 
@@ -166,8 +166,8 @@ mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_sc
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/etc/templates/config/sles
 
 # Add SUSE initscript
-sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/ossec-hids-suse.init
-cp -rp src/init/templates/ossec-hids-suse.init ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/src/init/
+sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/wazuh-suse.init
+cp -rp src/init/templates/wazuh-suse.init ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/src/init/
 
 # Copy scap templates
 cp -rp  etc/templates/config/generic/* ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/agent_installation_scripts/etc/templates/config/generic
@@ -209,7 +209,7 @@ elif [ -f %{_localstatedir}/VERSION.json ]; then
 fi
 
 # Validate upgrade constraints for Agent (only during upgrade)
-if [ $1 = 2 ]; then
+if [ "$1" -eq 2 ]; then
   ERROR_TYPE=""
 
   # Determine if upgrade should be blocked
@@ -249,7 +249,7 @@ EOF
 fi
 
 # Stop the services to upgrade the package
-if [ $1 = 2 ]; then
+if [ "$1" -eq 2 ]; then
   if [ ! -d "%{_localstatedir}" ]; then
     echo "Error: Directory %{_localstatedir} does not exist. Cannot perform upgrade" >&2
     exit 1
@@ -264,10 +264,26 @@ if [ $1 = 2 ]; then
     touch %{_localstatedir}/tmp/wazuh.restart
   elif %{_localstatedir}/bin/wazuh-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
     touch %{_localstatedir}/tmp/wazuh.restart
-  elif %{_localstatedir}/bin/ossec-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
-    touch %{_localstatedir}/tmp/wazuh.restart
   fi
-  %{_localstatedir}/bin/ossec-control stop > /dev/null 2>&1 || %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
+  %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
+
+  UPGRADE_PRESERVE_DIR="%{_localstatedir}/tmp/agent_upgrade_preserve"
+  (
+    set -e
+    if [ -e "${UPGRADE_PRESERVE_DIR}" ]; then
+      echo "ERROR: Existing agent upgrade preserve backup found at ${UPGRADE_PRESERVE_DIR}." >&2
+      echo "ERROR: Recover or move this directory before retrying the upgrade." >&2
+      exit 1
+    fi
+    mkdir -p "${UPGRADE_PRESERVE_DIR}"
+
+    if [ -d "%{_localstatedir}/etc" ]; then
+      cp -a "%{_localstatedir}/etc" "${UPGRADE_PRESERVE_DIR}/"
+    fi
+  ) || {
+    echo "ERROR: Could not prepare agent upgrade preserve backup at ${UPGRADE_PRESERVE_DIR}." >&2
+    exit 1
+  }
 fi
 
 # Remove old databases if upgrading from pre 5.X to 5.X
@@ -282,7 +298,7 @@ fi
 
 %post
 
-if [ $1 = 2 ]; then
+if [ "$1" -eq 2 ]; then
   if [ -d %{_localstatedir}/logs/ossec ]; then
     rm -rf %{_localstatedir}/logs/wazuh
     cp -rp %{_localstatedir}/logs/ossec %{_localstatedir}/logs/wazuh
@@ -294,7 +310,7 @@ if [ $1 = 2 ]; then
   fi
 fi
 # If the package is being installed
-if [ $1 = 1 ]; then
+if [ "$1" -eq 1 ]; then
 
   touch %{_localstatedir}/logs/active-responses.log
   chown wazuh:wazuh %{_localstatedir}/logs/active-responses.log
@@ -303,7 +319,7 @@ if [ $1 = 1 ]; then
   . %{_localstatedir}/packages_files/agent_installation_scripts/src/init/dist-detect.sh
 
   # Generating ossec.conf file
-  %{_localstatedir}/packages_files/agent_installation_scripts/src/init/gen_ossec.sh conf agent ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > %{_localstatedir}/etc/ossec.conf
+  %{_localstatedir}/packages_files/agent_installation_scripts/src/init/gen_wazuh.sh conf agent ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > %{_localstatedir}/etc/ossec.conf
   chown root:wazuh %{_localstatedir}/etc/ossec.conf
   chmod 640 %{_localstatedir}/etc/ossec.conf
 
@@ -315,7 +331,7 @@ if [ $1 = 1 ]; then
 fi
 
 if [ -r /etc/SuSE-release ] && grep -q "VERSION = 11" /etc/SuSE-release 2>/dev/null; then
-    cp -p %{_localstatedir}/packages_files/agent_installation_scripts/src/init/ossec-hids-suse.init /etc/init.d/wazuh-agent
+    cp -p %{_localstatedir}/packages_files/agent_installation_scripts/src/init/wazuh-suse.init /etc/init.d/wazuh-agent
     chmod 755 /etc/init.d/wazuh-agent
 fi
 
@@ -325,9 +341,6 @@ fi
 
 # Delete the installation files used to configure the agent
 rm -rf %{_localstatedir}/packages_files
-
-# Remove unnecessary files from shared directory
-rm -f %{_localstatedir}/etc/shared/*.rpmnew
 
 #AlmaLinux
 if [ -r "/etc/almalinux-release" ]; then
@@ -596,24 +609,6 @@ fi
 
 DELETE_WAZUH_USER_AND_GROUP=0
 
-# If the upgrade downgrades to earlier versions, it will create the ossec
-# group and user, we need to delete wazuh ones
-if [ $1 = 1 ]; then
-  if command -v %{_localstatedir}/bin/ossec-control > /dev/null 2>&1; then
-    find %{_localstatedir} -group wazuh -exec chgrp ossec {} +
-    find %{_localstatedir} -user wazuh -exec chown ossec {} +
-    DELETE_WAZUH_USER_AND_GROUP=1
-  fi
-
-  if [ ! -f %{_localstatedir}/etc/client.keys ]; then
-    if [ -f %{_localstatedir}/etc/client.keys.rpmsave ]; then
-      mv %{_localstatedir}/etc/client.keys.rpmsave %{_localstatedir}/etc/client.keys
-    elif [ -f %{_localstatedir}/etc/client.keys.rpmnew ]; then
-      mv %{_localstatedir}/etc/client.keys.rpmnew %{_localstatedir}/etc/client.keys
-    fi
-  fi
-fi
-
 # If the package is been uninstalled or we want to delete wazuh user and group
 if [ $1 = 0 ] || [ $DELETE_WAZUH_USER_AND_GROUP = 1 ]; then
   # Remove the wazuh user if it exists
@@ -642,6 +637,22 @@ fi
 
 # posttrans code is the last thing executed in a install/upgrade
 %posttrans
+UPGRADE_PRESERVE_DIR="%{_localstatedir}/tmp/agent_upgrade_preserve"
+
+if [ -d "${UPGRADE_PRESERVE_DIR}" ]; then
+  (
+    set -e
+    if [ -d "${UPGRADE_PRESERVE_DIR}/etc" ]; then
+      mkdir -p "%{_localstatedir}/etc"
+      cp -a "${UPGRADE_PRESERVE_DIR}/etc/." "%{_localstatedir}/etc/"
+    fi
+  ) || {
+    echo "ERROR: Could not restore agent upgrade preserve backup; contents left at ${UPGRADE_PRESERVE_DIR}." >&2
+    exit 1
+  }
+  rm -rf "${UPGRADE_PRESERVE_DIR}"
+fi
+
 if [ -f %{_sysconfdir}/systemd/system/wazuh-agent.service ]; then
   rm -rf %{_sysconfdir}/systemd/system/wazuh-agent.service
   systemctl daemon-reload > /dev/null 2>&1
@@ -667,6 +678,18 @@ if [ -d %{_localstatedir}/queue/ossec ]; then
   rm -rf %{_localstatedir}/queue/ossec/
 fi
 
+if [ -S %{_localstatedir}/queue/alerts/execq ]; then
+  rm -f %{_localstatedir}/queue/alerts/execq
+fi
+
+if [ -S %{_localstatedir}/queue/alerts/cfgaq ]; then
+  rm -f %{_localstatedir}/queue/alerts/cfgaq
+fi
+
+if [ -d %{_localstatedir}/queue/alerts ]; then
+  rm -rf %{_localstatedir}/queue/alerts
+fi
+
 %clean
 rm -fr %{buildroot}
 
@@ -683,10 +706,10 @@ rm -fr %{buildroot}
 %attr(750, root, root) %{_localstatedir}/bin/*
 %dir %attr(750, root, wazuh) %{_localstatedir}/backup
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc
-%attr(640, root, wazuh) %config(noreplace) %{_localstatedir}/etc/client.keys
+%attr(640, root, wazuh) %{_localstatedir}/etc/client.keys
 %attr(640, root, wazuh) %{_localstatedir}/etc/internal_options*
 %attr(640, root, wazuh) %{_localstatedir}/etc/localtime
-%attr(640, root, wazuh) %config(noreplace) %{_localstatedir}/etc/local_internal_options.conf
+%attr(640, root, wazuh) %{_localstatedir}/etc/local_internal_options.conf
 %attr(640, root, wazuh) %ghost %{_localstatedir}/etc/ossec.conf
 %attr(640, root, wazuh) %{_localstatedir}/etc/wpk_root.pem
 %dir %attr(770, root, wazuh) %{_localstatedir}/etc/shared
@@ -718,7 +741,6 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/agent_info
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/agent_info/db
 %attr(640, root, wazuh) %{_localstatedir}/queue/syscollector/norm_config.json
-%dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/alerts
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/rids
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/logcollector
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset/
@@ -794,9 +816,11 @@ rm -fr %{buildroot}
 %files -n wazuh-agent-debuginfo -f debugfiles.list
 
 %changelog
-* Sun Apr 12 2026 support <info@wazuh.com> - 5.0.0
+* Wed Jun 24 2026 support <info@wazuh.com> - 5.0.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-5-0-0.html
-* Sat Apr 11 2026 support <info@wazuh.com> - 4.14.5
+* Thu May 14 2026 support <info@wazuh.com> - 4.14.6
+- More info: https://documentation.wazuh.com/current/release-notes/release-4-14-6.html
+* Thu Apr 23 2026 support <info@wazuh.com> - 4.14.5
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-5.html
 * Tue Mar 17 2026 support <info@wazuh.com> - 4.14.4
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-4.html

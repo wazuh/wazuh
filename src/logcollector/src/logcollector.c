@@ -333,7 +333,7 @@ void LogCollectorStart()
             if (current->command) {
                 current->read = read_command;
 
-                minfo("Monitoring output of command(%d): %s", current->ign, current->command);
+                mdebug1("Monitoring output of command(%d): %s", current->ign, current->command);
                 tg = 0;
                 if (current->target) {
                     while (current->target[tg]) {
@@ -361,7 +361,7 @@ void LogCollectorStart()
             if (current->command) {
                 current->read = read_fullcommand;
 
-                minfo("Monitoring full output of command(%d): %s", current->ign, current->command);
+                mdebug1("Monitoring full output of command(%d): %s", current->ign, current->command);
                 tg = 0;
                 if (current->target){
                     while (current->target[tg]) {
@@ -426,7 +426,7 @@ void LogCollectorStart()
         else if (j < 0) {
             set_read(current, i, j);
             if (current->file) {
-                minfo(READING_FILE, current->file);
+                mdebug1(READING_FILE, current->file);
             }
             /* More tweaks for Windows. For some reason IIS places
              * some weird characters at the end of the files and getc
@@ -447,7 +447,7 @@ void LogCollectorStart()
 #endif
         } else {
             if (current->file) {
-                minfo(READING_FILE, current->file);
+                mdebug1(READING_FILE, current->file);
             }
 
         /* On Windows we need to forward the seek for wildcard files */
@@ -640,7 +640,7 @@ void LogCollectorStart()
 
                     /* To help detect a file rollover, temporarily open the file a second time.
                      * Previously the fstat would work on "cached" file data, but this should
-                     * ensure it's fresh when hardlinks are used (like alerts.log).
+                     * ensure it's fresh when hardlinks are used on rotated log files.
                      */
                     FILE *tf;
                     tf = wfopen(current->file, "r");
@@ -738,7 +738,7 @@ void LogCollectorStart()
 
                         char msg_alert[512 + 1];
 
-                        snprintf(msg_alert, 512, "ossec: File rotated (inode "
+                        snprintf(msg_alert, 512, "wazuh: File rotated (inode "
                                  "changed): '%s'.",
                                  current->file);
 
@@ -771,7 +771,7 @@ void LogCollectorStart()
                         current->exists = 1;
                         char msg_alert[512 + 1];
 
-                        snprintf(msg_alert, 512, "ossec: File size reduced "
+                        snprintf(msg_alert, 512, "wazuh: File size reduced "
                                  "(inode remained): '%s'.",
                                  current->file);
 
@@ -1236,8 +1236,8 @@ void set_read(logreader *current, int i, int j) {
         current->read = read_snortfull;
     }
 #ifndef WIN32
-    if (strcmp("ossecalert", current->logformat) == 0) {
-        current->read = read_ossecalert;
+    if (strcmp("wazuhalert", current->logformat) == 0) {
+        current->read = read_wazuhalert;
     }
 #endif
     else if (strcmp("nmapg", current->logformat) == 0) {
@@ -1942,7 +1942,7 @@ void * w_output_thread(void * args){
                 // Retry to connect infinitely.
                 logr_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
-                minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
+                mdebug1("Successfully reconnected to '%s'", DEFAULTQUEUE);
 
                 if (result = SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target),
                     result != 0) {

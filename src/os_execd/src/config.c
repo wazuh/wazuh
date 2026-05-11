@@ -22,7 +22,7 @@ int ExecdConfig(const char *cfgfile)
 {
     is_disabled = 0;
 
-    const char *(xmlf[]) = {"ossec_config", "active-response", "disabled", NULL};
+    const char *(xmlf[]) = {WAZUHCONFIG, "active-response", "disabled", NULL};
     char *disable_entry;
     char *repeated_t = NULL;
     char **repeated_a;

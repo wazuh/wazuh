@@ -105,7 +105,7 @@ bool w_journald_can_read(unsigned long owner_id) {
             return false;
         }
 
-        minfo(LOGCOLLECTOR_JOURNALD_MONITORING);
+        mdebug1(LOGCOLLECTOR_JOURNALD_MONITORING);
 
     } else if (gs_journald_global.owner_id != owner_id) {
         return false;
@@ -118,7 +118,7 @@ bool w_journald_can_read(unsigned long owner_id) {
             return false;
         }
 
-        minfo(LOGCOLLECTOR_TIMESTAMP_REFRESHED);
+        mdebug1(LOGCOLLECTOR_TIMESTAMP_REFRESHED);
     }
 
     return true;

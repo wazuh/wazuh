@@ -63,7 +63,12 @@ json::Json preProcessParseStage(std::string& key, json::Json& value)
     {
         json::Json tmp;
         tmp.setObject();
-        const auto parseValue = item.getString().value();
+        std::string parseValue;
+        if (item.getString(parseValue) != json::RetGet::Success)
+        {
+            throw std::runtime_error(
+                fmt::format("Stage parse: expects an array of strings but got an item of type '{}'", item.typeName()));
+        }
         tmp.setString(parseValue, json::Json::formatJsonPath(targetField, true));
         stageParseValue.appendJson(tmp);
     }

@@ -171,9 +171,14 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
 
             if (!requirements.rules.empty() || !requirements.condition.empty())
             {
-                if (requirementsNode.contains("title") && requirementsNode["title"].is_string())
+                // Support both 'name' (preferred) and 'title' (legacy) for backward compatibility
+                if (requirementsNode.contains("name") && requirementsNode["name"].is_string())
                 {
-                    requirementsOutput["title"] = requirementsNode["title"];
+                    requirementsOutput["name"] = requirementsNode["name"];
+                }
+                else if (requirementsNode.contains("title") && requirementsNode["title"].is_string())
+                {
+                    requirementsOutput["name"] = requirementsNode["title"];
                 }
 
                 if (!requirements.condition.empty())

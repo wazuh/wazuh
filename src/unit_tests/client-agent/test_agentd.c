@@ -68,7 +68,7 @@ static void test_check_uninstall_permission_granted(void **state) {
 
     expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/agents/uninstall", NULL, OS_SIZE_8192, 30, NULL, ssl_verify, response);
 
-    expect_string(__wrap__minfo, formatted_msg, AG_UNINSTALL_VALIDATION_GRANTED);
+    expect_string(__wrap__mdebug1, formatted_msg, AG_UNINSTALL_VALIDATION_GRANTED);
 
     expect_value(__wrap_wurl_free_response, response, response);
 
@@ -86,7 +86,7 @@ static void test_check_uninstall_permission_denied(void **state) {
 
     expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/agents/uninstall", NULL, OS_SIZE_8192, 30, NULL, ssl_verify, response);
 
-    expect_string(__wrap__minfo, formatted_msg, AG_UNINSTALL_VALIDATION_DENIED);
+    expect_string(__wrap__mdebug1, formatted_msg, AG_UNINSTALL_VALIDATION_DENIED);
 
     expect_value(__wrap_wurl_free_response, response, response);
 
@@ -197,13 +197,13 @@ static void test_package_uninstall_validation_token_success(void **state) {
     curl_response *response = *state;
     response->status_code = 200;
 
-    expect_string(__wrap__minfo, formatted_msg, AG_UNINSTALL_VALIDATION_START);
+    expect_string(__wrap__mdebug1, formatted_msg, AG_UNINSTALL_VALIDATION_START);
 
     // check_uninstall_permission
     {
         expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/agents/uninstall", NULL, OS_SIZE_8192, 30, NULL, ssl_verify, response);
 
-        expect_string(__wrap__minfo, formatted_msg, AG_UNINSTALL_VALIDATION_GRANTED);
+        expect_string(__wrap__mdebug1, formatted_msg, AG_UNINSTALL_VALIDATION_GRANTED);
 
         expect_value(__wrap_wurl_free_response, response, response);
     }
@@ -220,13 +220,13 @@ static void test_package_uninstall_validation_token_denied(void **state) {
     curl_response *response = *state;
     response->status_code = 403;
 
-    expect_string(__wrap__minfo, formatted_msg, AG_UNINSTALL_VALIDATION_START);
+    expect_string(__wrap__mdebug1, formatted_msg, AG_UNINSTALL_VALIDATION_START);
 
     // check_uninstall_permission
     {
         expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/agents/uninstall", NULL, OS_SIZE_8192, 30, NULL, ssl_verify, response);
 
-        expect_string(__wrap__minfo, formatted_msg, AG_UNINSTALL_VALIDATION_DENIED);
+        expect_string(__wrap__mdebug1, formatted_msg, AG_UNINSTALL_VALIDATION_DENIED);
 
         expect_value(__wrap_wurl_free_response, response, response);
     }
@@ -244,7 +244,7 @@ static void test_package_uninstall_validation_login_success(void **state) {
     curl_response *response = *state;
     response->status_code = 200;
 
-    expect_string(__wrap__minfo, formatted_msg, AG_UNINSTALL_VALIDATION_START);
+    expect_string(__wrap__mdebug1, formatted_msg, AG_UNINSTALL_VALIDATION_START);
 
     // authenticate_and_get_token
     {
@@ -257,7 +257,7 @@ static void test_package_uninstall_validation_login_success(void **state) {
     {
         expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/agents/uninstall", NULL, OS_SIZE_8192, 30, uninstall_auth_login, ssl_verify, response);
 
-        expect_string(__wrap__minfo, formatted_msg, AG_UNINSTALL_VALIDATION_GRANTED);
+        expect_string(__wrap__mdebug1, formatted_msg, AG_UNINSTALL_VALIDATION_GRANTED);
 
         expect_value(__wrap_wurl_free_response, response, response);
     }
@@ -275,7 +275,7 @@ static void test_package_uninstall_validation_login_denied(void **state) {
     curl_response *response = *state;
     response->status_code = 200;
 
-    expect_string(__wrap__minfo, formatted_msg, AG_UNINSTALL_VALIDATION_START);
+    expect_string(__wrap__mdebug1, formatted_msg, AG_UNINSTALL_VALIDATION_START);
 
     // authenticate_and_get_token
     {
@@ -302,7 +302,7 @@ static void test_package_uninstall_validation_login_no_token(void **state) {
     char* headers[] = { "Authorization: Bearer 123abc456def", NULL };
     char* empty_headers[] = { NULL };
 
-    expect_string(__wrap__minfo, formatted_msg, AG_UNINSTALL_VALIDATION_START);
+    expect_string(__wrap__mdebug1, formatted_msg, AG_UNINSTALL_VALIDATION_START);
 
     // authenticate_and_get_token
     {

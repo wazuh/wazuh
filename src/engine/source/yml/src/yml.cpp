@@ -71,6 +71,14 @@ YAML::Node Converter::parseScalar(const rapidjson::Value& node)
     {
         n = node.GetInt();
     }
+    else if (node.IsInt64())
+    {
+        n = node.GetInt64();
+    }
+    else if (node.IsUint64())
+    {
+        n = node.GetUint64();
+    }
     else if (node.IsDouble())
     {
         n = node.GetDouble();
@@ -233,5 +241,6 @@ std::string ymlToPrettyYaml(const std::string& ymlStr, bool sort)
 
     return out.c_str();
 };
+
 } // namespace utils
 } // namespace yml

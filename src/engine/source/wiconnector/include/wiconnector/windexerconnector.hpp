@@ -1,6 +1,7 @@
 #ifndef _WINDEXER_CONNECTOR_HPP
 #define _WINDEXER_CONNECTOR_HPP
 
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <shared_mutex>
@@ -10,10 +11,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <wiconnector/iindexerConnectorAsync.hpp>
 #include <wiconnector/iwindexerconnector.hpp>
-
-// Forward declaration
-class IndexerConnectorAsync;
 
 namespace wiconnector
 {
@@ -26,6 +25,7 @@ struct Config
     std::vector<std::string> hosts; ///< The list of hosts to connect to. i.e. ["https://localhost:9200"]
     std::string username;           ///< The username to authenticate with OpenSearch, admin by default.
     std::string password;           ///< The password to authenticate with OpenSearch, admin by default.
+    size_t maxQueueSize {0};        ///< Maximum number of events in the indexer queue. 0 means unlimited.
 
     struct
     {
@@ -54,9 +54,10 @@ class WIndexerConnector : public IWIndexerConnector
 {
 
 private:
-    std::unique_ptr<IndexerConnectorAsync> m_indexerConnectorAsync;
+    std::unique_ptr<IIndexerConnectorAsync> m_indexerConnectorAsync;
     std::shared_mutex m_mutex;
-    std::size_t m_maxHitsPerRequest {100};
+    std::size_t m_maxHitsPerRequest;
+    std::atomic<bool> m_shutdownRequested {false}; ///< Flag to signal in-flight pagination loops to abort
 
     std::size_t queryByBatches(std::string_view indexName,
                                std::string_view query,
@@ -75,15 +76,27 @@ public:
      *
      * @param config The configuration object containing settings for the indexer connector
      * @param logFunction The logging function to be used for output and error reporting
+     * @param maxHitsPerRequest The maximum number of hits per request
+     * @throws std::runtime_error if the configuration is invalid or if the indexer connector fails to initialize
      */
-    WIndexerConnector(const Config&, const LogFunctionType& logFunction);
+    WIndexerConnector(const Config&, const LogFunctionType& logFunction, const std::size_t maxHitsPerRequest);
 
     /**
      * @brief Constructs a WIndexerConnector instance using a JSON OSSEC configuration string.
      *
      * @param jsonOssecConfig The JSON string containing the OSSEC configuration for the indexer connector
+     * @param maxHitsPerRequest The maximum number of hits per request
+     * @throws std::runtime_error if the JSON configuration is invalid or empty
      */
-    WIndexerConnector(std::string_view jsonOssecConfig);
+    WIndexerConnector(std::string_view jsonOssecConfig, const std::size_t maxHitsPerRequest);
+
+    /**
+     * @brief Test-only constructor: inject a custom IIndexerConnectorAsync (e.g. a gMock).
+     *
+     * @param async Owned implementation of IIndexerConnectorAsync used for every backend call.
+     * @param maxHitsPerRequest Maximum number of hits per paginated request (clamped to 1 if zero).
+     */
+    WIndexerConnector(std::unique_ptr<IIndexerConnectorAsync> async, const std::size_t maxHitsPerRequest);
 
     /**
      * @copydoc IWIndexerConnector::index
@@ -134,12 +147,37 @@ public:
     json::Json getEngineRemoteConfig() override;
 
     /**
+     * @copydoc IWIndexerConnector::getQueueSize
+     */
+    uint64_t getQueueSize() override;
+
+    /**
+     * @copydoc IWIndexerConnector::getDroppedEvents
+     */
+    uint64_t getDroppedEvents() override;
+
+    /**
      * @brief Shuts down the indexer connector, releasing resources and stopping operations.
      *
      * This method ensures that the underlying asynchronous indexer connector is properly
      * shut down and that all associated resources are released.
      */
     void shutdown();
+
+    /**
+     * @brief Requests a graceful shutdown of in-flight pagination operations.
+     *
+     * Sets an internal flag checked between batches in @ref getPolicy and @ref queryByBatches
+     * (used by @ref streamIocsByType and @ref getIocTypeHashes). This allows long-running
+     * synchronization operations to abort promptly without waiting for full pagination to
+     * complete. Unlike @ref shutdown, this method is non-destructive: it only signals intent
+     * and does not destroy the underlying async connector.
+     *
+     * Intended to be invoked before @ref shutdown so that worker threads holding shared locks
+     * can release them quickly, allowing @ref shutdown to acquire the exclusive lock without
+     * blocking on long pagination loops.
+     */
+    void requestShutdown();
 };
 }; // namespace wiconnector
 

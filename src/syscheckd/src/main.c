@@ -37,7 +37,7 @@ __attribute__((noreturn)) static void help_syscheckd()
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -c <config> Configuration file to use (default: %s)", WAZUHCONF);
     print_out(" ");
     exit(1);
 }
@@ -69,7 +69,7 @@ int main(int argc, char **argv)
     int c, r;
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
-    const char *cfg = OSSECCONF;
+    const char *cfg = WAZUHCONF;
     gid_t gid;
     const char *group = QUOTE(GROUPGLOBAL);
     directory_t *dir_it = NULL;
@@ -219,10 +219,10 @@ int main(int argc, char **argv)
             char optstr[ 1024 ];
 
             if (dir_it->symbolic_links == NULL) {
-                minfo(FIM_MONITORING_DIRECTORY, dir_it->path,
+                mdebug1(FIM_MONITORING_DIRECTORY, dir_it->path,
                       syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));
             } else {
-                minfo(FIM_MONITORING_LDIRECTORY, dir_it->path, dir_it->symbolic_links,
+                mdebug1(FIM_MONITORING_LDIRECTORY, dir_it->path, dir_it->symbolic_links,
                       syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));
             }
 
@@ -250,18 +250,18 @@ int main(int argc, char **argv)
         /* Print ignores. */
         if(syscheck.ignore)
             for (r = 0; syscheck.ignore[r] != NULL; r++)
-                minfo(FIM_PRINT_IGNORE_ENTRY, "file", syscheck.ignore[r]);
+                mdebug1(FIM_PRINT_IGNORE_ENTRY, "file", syscheck.ignore[r]);
 
         /* Print sregex ignores. */
         if(syscheck.ignore_regex)
             for (r = 0; syscheck.ignore_regex[r] != NULL; r++)
-                minfo(FIM_PRINT_IGNORE_SREGEX, "file", syscheck.ignore_regex[r]->raw);
+                mdebug1(FIM_PRINT_IGNORE_SREGEX, "file", syscheck.ignore_regex[r]->raw);
 
         /* Print files with no diff. */
         if (syscheck.nodiff){
             r = 0;
             while (syscheck.nodiff[r] != NULL) {
-                minfo(FIM_NO_DIFF, syscheck.nodiff[r]);
+                mdebug1(FIM_NO_DIFF, syscheck.nodiff[r]);
                 r++;
             }
         }

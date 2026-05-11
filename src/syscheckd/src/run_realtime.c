@@ -221,7 +221,7 @@ void realtime_process() {
         if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
             mwarn("Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
             fim_realtime_set_queue_overflow(true);
-            send_log_msg("ossec: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
+            send_log_msg("wazuh: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
             continue;
         }
 

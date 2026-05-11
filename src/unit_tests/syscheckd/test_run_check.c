@@ -1273,14 +1273,11 @@ void test_fim_run_integrity_pause_still_waits_after_skip_is_consumed(void **stat
 
     call_real_fim_run_integrity();
 
-    assert_int_equal(syscheck.fim_pausing_is_allowed.data, 1);
-
     stop_fim_integrity_on_sleep = false;
     request_pause_after_sync = false;
     syscheck.sync_handle = original_handle;
     syscheck.sync_interval = original_sync_interval;
     syscheck.fim_pause_requested.data = 0;
-    syscheck.fim_pausing_is_allowed.data = 0;
 }
 
 void test_fim_run_integrity_pause_and_flush_syncs_without_wait_and_marks_completion(void **state) {
@@ -1311,12 +1308,9 @@ void test_fim_run_integrity_pause_and_flush_syncs_without_wait_and_marks_complet
 
     assert_int_equal(fim_flush_in_progress.data, 0);
     assert_int_equal(fim_flush_result.data, 0);
-    assert_int_equal(syscheck.fim_pausing_is_allowed.data, 1);
-
     stop_fim_integrity_on_sync = false;
     syscheck.sync_handle = original_handle;
     syscheck.fim_pause_requested.data = 0;
-    syscheck.fim_pausing_is_allowed.data = 0;
     fim_flush_in_progress.data = 0;
     fim_flush_result.data = 0;
 }

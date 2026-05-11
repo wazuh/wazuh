@@ -52,7 +52,7 @@ It simulates agent inventory data ingestion with real **FlatBuffer** messages an
 │   Scanner        │   Sends results to Indexer
 └────────┬─────────┘
          │
-         ├─► ResponseDispatcher (queue/alerts/ar)
+         ├─► ResponseDispatcher (queue/sockets/ar)
          │
          ▼
 ┌──────────────────┐
@@ -432,7 +432,7 @@ Controlled by `Start.option`:
 - RouterModule creates UNIX domain socket at `queue/inventory-states`.
 - InventorySync opens RocksDB database.
 - VulnerabilityScanner loads CVE feed database.
-- ResponseServer binds to `queue/alerts/ar` for ack messages.
+- ResponseServer binds to `queue/sockets/ar` for ack messages.
 
 ### 2. **Start Message**
 
@@ -658,7 +658,7 @@ Example:
 **Possible Causes:**
 
 - InventorySync not running correctly.
-- Incorrect socket path (`queue/alerts/ar`).
+- Incorrect socket path (`queue/sockets/ar`).
 - ResponseDispatcher not sending messages.
 - Start message malformed (check `Start` object in the JSON).
 
@@ -729,7 +729,7 @@ Example:
    UNIX domain sockets may persist after crashes:
 
    ```bash
-   rm -f queue/inventory-states queue/alerts/ar
+   rm -f queue/inventory-states queue/sockets/ar
    ```
 
 3. **Indexer Indices**

@@ -18,9 +18,6 @@ target_link_libraries(api_tester
     cmstore::icmstore
     api::event
     schemf::ischema
-
-    PRIVATE
-    api::shared
 )
 add_library(api::tester ALIAS api_tester)
 

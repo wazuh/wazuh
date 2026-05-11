@@ -181,11 +181,6 @@ class WazuhDBConnection:
                 (query_elements[2] == 'select',
                  'Wrong SQL query for Mitre database')
             ]
-        elif query_elements[sql_first_index] == 'rootcheck':
-            input_val_errors = [
-                (query_elements[sql_first_index + 1] == 'delete' or query_elements[sql_first_index + 1] == 'save',
-                 'Only "save" or "delete" requests can be sent to WDB')
-            ]
         else:
             input_val_errors = [
                 (query_elements[sql_first_index] == 'sql', "Incorrect WDB request type."),
@@ -321,26 +316,6 @@ class WazuhDBConnection:
                 to_lower = True
 
         return new_query
-
-    def delete_agents_db(self, agents_id: List[str]) -> dict:
-        """Delete agents db through wazuh-manager-db service.
-
-        Parameters
-        ----------
-        agents_id : List[str]
-            List of agents.
-
-        Returns
-        -------
-        dict
-            Dict received from wazuh db in the form: {"agents": {"ID": "MESSAGE"}}, where MESSAGE may be one of the
-            following:
-                - Ok
-                - Invalid agent ID
-                - DB waiting for deletion
-                - DB not found
-        """
-        return self._send(f"wazuhdb remove {' '.join(agents_id)}")
 
     def send(self, query: str, raw: bool = True) -> Union[str, dict]:
         """Send a message to the wdb socket.

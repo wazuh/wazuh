@@ -25,28 +25,6 @@ namespace wazuh {
 namespace api {
 namespace engine {
 namespace rawevtindexer {
-PROTOBUF_CONSTEXPR RawEvtIndexerEnable_Request::RawEvtIndexerEnable_Request(
-    ::_pbi::ConstantInitialized) {}
-struct RawEvtIndexerEnable_RequestDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR RawEvtIndexerEnable_RequestDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~RawEvtIndexerEnable_RequestDefaultTypeInternal() {}
-  union {
-    RawEvtIndexerEnable_Request _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 RawEvtIndexerEnable_RequestDefaultTypeInternal _RawEvtIndexerEnable_Request_default_instance_;
-PROTOBUF_CONSTEXPR RawEvtIndexerDisable_Request::RawEvtIndexerDisable_Request(
-    ::_pbi::ConstantInitialized) {}
-struct RawEvtIndexerDisable_RequestDefaultTypeInternal {
-  PROTOBUF_CONSTEXPR RawEvtIndexerDisable_RequestDefaultTypeInternal()
-      : _instance(::_pbi::ConstantInitialized{}) {}
-  ~RawEvtIndexerDisable_RequestDefaultTypeInternal() {}
-  union {
-    RawEvtIndexerDisable_Request _instance;
-  };
-};
-PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 RawEvtIndexerDisable_RequestDefaultTypeInternal _RawEvtIndexerDisable_Request_default_instance_;
 PROTOBUF_CONSTEXPR RawEvtIndexerStatus_Request::RawEvtIndexerStatus_Request(
     ::_pbi::ConstantInitialized) {}
 struct RawEvtIndexerStatus_RequestDefaultTypeInternal {
@@ -79,23 +57,11 @@ PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORIT
 }  // namespace api
 }  // namespace wazuh
 }  // namespace com
-static ::_pb::Metadata file_level_metadata_rawevtindexer_2eproto[4];
+static ::_pb::Metadata file_level_metadata_rawevtindexer_2eproto[2];
 static constexpr ::_pb::EnumDescriptor const** file_level_enum_descriptors_rawevtindexer_2eproto = nullptr;
 static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors_rawevtindexer_2eproto = nullptr;
 
 const uint32_t TableStruct_rawevtindexer_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
-  ~0u,  // no _has_bits_
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerEnable_Request, _internal_metadata_),
-  ~0u,  // no _extensions_
-  ~0u,  // no _oneof_case_
-  ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
-  ~0u,  // no _has_bits_
-  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerDisable_Request, _internal_metadata_),
-  ~0u,  // no _extensions_
-  ~0u,  // no _oneof_case_
-  ~0u,  // no _weak_field_map_
-  ~0u,  // no _inlined_string_donated_
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerStatus_Request, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -116,15 +82,11 @@ const uint32_t TableStruct_rawevtindexer_2eproto::offsets[] PROTOBUF_SECTION_VAR
   ~0u,
 };
 static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
-  { 0, -1, -1, sizeof(::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerEnable_Request)},
-  { 6, -1, -1, sizeof(::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerDisable_Request)},
-  { 12, -1, -1, sizeof(::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerStatus_Request)},
-  { 18, 27, -1, sizeof(::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerStatus_Response)},
+  { 0, -1, -1, sizeof(::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerStatus_Request)},
+  { 6, 15, -1, sizeof(::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerStatus_Response)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
-  &::com::wazuh::api::engine::rawevtindexer::_RawEvtIndexerEnable_Request_default_instance_._instance,
-  &::com::wazuh::api::engine::rawevtindexer::_RawEvtIndexerDisable_Request_default_instance_._instance,
   &::com::wazuh::api::engine::rawevtindexer::_RawEvtIndexerStatus_Request_default_instance_._instance,
   &::com::wazuh::api::engine::rawevtindexer::_RawEvtIndexerStatus_Response_default_instance_._instance,
 };
@@ -132,21 +94,20 @@ static const ::_pb::Message* const file_default_instances[] = {
 const char descriptor_table_protodef_rawevtindexer_2eproto[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) =
   "\n\023rawevtindexer.proto\022\"com.wazuh.api.eng"
   "ine.rawevtindexer\032\014engine.proto\"\035\n\033RawEv"
-  "tIndexerEnable_Request\"\036\n\034RawEvtIndexerD"
-  "isable_Request\"\035\n\033RawEvtIndexerStatus_Re"
-  "quest\"\201\001\n\034RawEvtIndexerStatus_Response\0222"
-  "\n\006status\030\001 \001(\0162\".com.wazuh.api.engine.Re"
-  "turnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\017\n\007enable"
-  "d\030\003 \001(\010B\010\n\006_errorb\006proto3"
+  "tIndexerStatus_Request\"\201\001\n\034RawEvtIndexer"
+  "Status_Response\0222\n\006status\030\001 \001(\0162\".com.wa"
+  "zuh.api.engine.ReturnStatus\022\022\n\005error\030\002 \001"
+  "(\tH\000\210\001\001\022\017\n\007enabled\030\003 \001(\010B\010\n\006_errorb\006prot"
+  "o3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_rawevtindexer_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_rawevtindexer_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_rawevtindexer_2eproto = {
-    false, false, 305, descriptor_table_protodef_rawevtindexer_2eproto,
+    false, false, 242, descriptor_table_protodef_rawevtindexer_2eproto,
     "rawevtindexer.proto",
-    &descriptor_table_rawevtindexer_2eproto_once, descriptor_table_rawevtindexer_2eproto_deps, 1, 4,
+    &descriptor_table_rawevtindexer_2eproto_once, descriptor_table_rawevtindexer_2eproto_deps, 1, 2,
     schemas, file_default_instances, TableStruct_rawevtindexer_2eproto::offsets,
     file_level_metadata_rawevtindexer_2eproto, file_level_enum_descriptors_rawevtindexer_2eproto,
     file_level_service_descriptors_rawevtindexer_2eproto,
@@ -162,86 +123,6 @@ namespace wazuh {
 namespace api {
 namespace engine {
 namespace rawevtindexer {
-
-// ===================================================================
-
-class RawEvtIndexerEnable_Request::_Internal {
- public:
-};
-
-RawEvtIndexerEnable_Request::RawEvtIndexerEnable_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase(arena, is_message_owned) {
-  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.rawevtindexer.RawEvtIndexerEnable_Request)
-}
-RawEvtIndexerEnable_Request::RawEvtIndexerEnable_Request(const RawEvtIndexerEnable_Request& from)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase() {
-  RawEvtIndexerEnable_Request* const _this = this; (void)_this;
-  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.rawevtindexer.RawEvtIndexerEnable_Request)
-}
-
-
-
-
-
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData RawEvtIndexerEnable_Request::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl,
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl,
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*RawEvtIndexerEnable_Request::GetClassData() const { return &_class_data_; }
-
-
-
-
-
-
-
-::PROTOBUF_NAMESPACE_ID::Metadata RawEvtIndexerEnable_Request::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_rawevtindexer_2eproto_getter, &descriptor_table_rawevtindexer_2eproto_once,
-      file_level_metadata_rawevtindexer_2eproto[0]);
-}
-
-// ===================================================================
-
-class RawEvtIndexerDisable_Request::_Internal {
- public:
-};
-
-RawEvtIndexerDisable_Request::RawEvtIndexerDisable_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
-                         bool is_message_owned)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase(arena, is_message_owned) {
-  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.rawevtindexer.RawEvtIndexerDisable_Request)
-}
-RawEvtIndexerDisable_Request::RawEvtIndexerDisable_Request(const RawEvtIndexerDisable_Request& from)
-  : ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase() {
-  RawEvtIndexerDisable_Request* const _this = this; (void)_this;
-  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
-  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.rawevtindexer.RawEvtIndexerDisable_Request)
-}
-
-
-
-
-
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData RawEvtIndexerDisable_Request::_class_data_ = {
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::CopyImpl,
-    ::PROTOBUF_NAMESPACE_ID::internal::ZeroFieldsBase::MergeImpl,
-};
-const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*RawEvtIndexerDisable_Request::GetClassData() const { return &_class_data_; }
-
-
-
-
-
-
-
-::PROTOBUF_NAMESPACE_ID::Metadata RawEvtIndexerDisable_Request::GetMetadata() const {
-  return ::_pbi::AssignDescriptors(
-      &descriptor_table_rawevtindexer_2eproto_getter, &descriptor_table_rawevtindexer_2eproto_once,
-      file_level_metadata_rawevtindexer_2eproto[1]);
-}
 
 // ===================================================================
 
@@ -280,7 +161,7 @@ const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*RawEvtIndexerStatus_Request::G
 ::PROTOBUF_NAMESPACE_ID::Metadata RawEvtIndexerStatus_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_rawevtindexer_2eproto_getter, &descriptor_table_rawevtindexer_2eproto_once,
-      file_level_metadata_rawevtindexer_2eproto[2]);
+      file_level_metadata_rawevtindexer_2eproto[0]);
 }
 
 // ===================================================================
@@ -560,7 +441,7 @@ void RawEvtIndexerStatus_Response::InternalSwap(RawEvtIndexerStatus_Response* ot
 ::PROTOBUF_NAMESPACE_ID::Metadata RawEvtIndexerStatus_Response::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_rawevtindexer_2eproto_getter, &descriptor_table_rawevtindexer_2eproto_once,
-      file_level_metadata_rawevtindexer_2eproto[3]);
+      file_level_metadata_rawevtindexer_2eproto[1]);
 }
 
 // @@protoc_insertion_point(namespace_scope)
@@ -570,14 +451,6 @@ void RawEvtIndexerStatus_Response::InternalSwap(RawEvtIndexerStatus_Response* ot
 }  // namespace wazuh
 }  // namespace com
 PROTOBUF_NAMESPACE_OPEN
-template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerEnable_Request*
-Arena::CreateMaybeMessage< ::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerEnable_Request >(Arena* arena) {
-  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerEnable_Request >(arena);
-}
-template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerDisable_Request*
-Arena::CreateMaybeMessage< ::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerDisable_Request >(Arena* arena) {
-  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerDisable_Request >(arena);
-}
 template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerStatus_Request*
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerStatus_Request >(Arena* arena) {
   return Arena::CreateMessageInternal< ::com::wazuh::api::engine::rawevtindexer::RawEvtIndexerStatus_Request >(arena);

@@ -1,5 +1,5 @@
-#ifndef _OP_BUILDER_HELPER_FILTER_H
-#define _OP_BUILDER_HELPER_FILTER_H
+#ifndef OP_BUILDER_HELPER_FILTER_H
+#define OP_BUILDER_HELPER_FILTER_H
 
 #include "builders/types.hpp"
 
@@ -508,20 +508,6 @@ FilterOp opBuilderHelperIsIpv6(const Reference& targetField,
                                const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Evaluate whether the current environment is test or production.
- *
- * @param targetField target field of the helper
- * @param opArgs Vector of operation arguments containing numeric values to be converted.
- * @param buildCtx Shared pointer to the build context used for the conversion operation.
- * @return FilterOp
- *
- * @throws std::runtime_error if cannot create the filter.
- */
-FilterOp opBuilderHelperIsTestSession(const Reference& targetField,
-                                      const std::vector<OpArg>& opArgs,
-                                      const std::shared_ptr<const IBuildCtx>& buildCtx);
-
-/**
  * @brief Create the helper function `array_not_contains_any` that filters events if the field
  * is an array and does not contain at least one of the specified values.
  *
@@ -747,6 +733,45 @@ FilterOp opBuilderHelperKeysExistInList(const Reference& targetField,
                                         const std::vector<OpArg>& opArgs,
                                         const std::shared_ptr<const IBuildCtx>& buildCtx);
 
+//*************************************************
+//*              Array and Policy filters         *
+//*************************************************
+
+/**
+ * @brief Create `array_length` helper function that checks if an array has a specific length.
+ *
+ * This helper verifies that the target field is an array and has the specified length.
+ * The length is provided as a numeric parameter.
+ *
+ * @param targetField Reference to the array field to check
+ * @param opArgs Vector containing one numeric argument: the expected length
+ * @param buildCtx Build context
+ * @return FilterOp The filter operation
+ *
+ * @throws std::runtime_error if parameter is not a valid integer
+ */
+FilterOp opBuilderHelperArrayLength(const Reference& targetField,
+                                    const std::vector<OpArg>& opArgs,
+                                    const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
+ * @brief Create `index_unclassified_events` helper function that checks policy settings and array size.
+ *
+ * This helper returns true if:
+ * - The policy has indexUnclassifiedEvents flag set to true AND
+ * - $wazuh.integration.decoders has exactly 1 element
+ *
+ * Otherwise, it returns false.
+ *
+ * @param targetField Reference to $wazuh.integration.decoders. Any other field is rejected at build-time.
+ * @param opArgs Vector of operation arguments (empty for this helper)
+ * @param buildCtx Build context containing policy configuration
+ * @return FilterOp The filter operation
+ */
+FilterOp opBuilderHelperIndexUnclassifiedEvents(const Reference& targetField,
+                                                const std::vector<OpArg>& opArgs,
+                                                const std::shared_ptr<const IBuildCtx>& buildCtx);
+
 } // namespace builder::builders::opfilter
 
-#endif // _OP_BUILDER_HELPER_FILTER_H
+#endif // OP_BUILDER_HELPER_FILTER_H

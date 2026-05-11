@@ -24,7 +24,7 @@ Mapper getMapper(const json::Json& parsed, std::string_view targetField)
 
 SemParser getSemParser(std::string_view targetField, json::Json&& parsed)
 {
-    return [targetField, parsed = std::move(parsed)](std::string_view)
+    return [targetField, parsed = std::move(parsed)](std::string_view, bool)
     {
         return getMapper(parsed, targetField);
     };

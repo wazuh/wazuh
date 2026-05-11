@@ -47,7 +47,7 @@ def get_worker_handler(loop):
     with patch('asyncio.get_running_loop', return_value=loop):
         abstract_client = client.AbstractClientManager(configuration=configuration,
                                                        cluster_items=cluster_items,
-                                                       enable_ssl=False, performance_test=False, logger=None,
+                                                       performance_test=False, logger=None,
                                                        concurrency_test=False, file='None', string=20)
 
     return worker.WorkerHandler(cluster_name='Testing', node_type='master', version='4.0.0',
@@ -1312,7 +1312,7 @@ async def test_worker_init(api_request_queue, event_loop):
     """Check if the object Worker is being properly initialized."""
 
     task_pool = {'task_pool': ''}
-    nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items, enable_ssl=False,
+    nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items,
                                   performance_test=False, logger=None, concurrency_test=False, file='None', string=20,
                                   task_pool=task_pool)
 
@@ -1331,8 +1331,13 @@ async def test_worker_init(api_request_queue, event_loop):
 
 @pytest.mark.asyncio
 @patch("wazuh.core.cluster.client.AbstractClientManager.add_tasks", return_value=["task"])
+@patch("wazuh.core.cluster.worker.IndexerTaskManager.manage_indexer_tasks", new_callable=MagicMock,
+         return_value=("True", ()))
+@patch("wazuh.core.cluster.worker.get_ossec_conf", return_value={"enabled": True})
 @patch("wazuh.core.cluster.worker.dapi.APIRequestQueue", return_value="APIRequestQueue object")
-async def test_worker_add_tasks(api_request_queue, acm_mock, event_loop):
+@patch("wazuh.core.cluster.worker.ActiveResponseFetchTask", return_value="ActiveResponseFetchTask object")
+async def test_worker_add_tasks(ar_task, api_request_queue, get_ossec_conf_mock, manage_indexer_tasks_mock,
+                                acm_mock, event_loop):
     """Check if the tasks that the worker will run are defined."""
 
     class DapiMock:
@@ -1348,15 +1353,32 @@ async def test_worker_add_tasks(api_request_queue, acm_mock, event_loop):
             self.sync_integrity = "0101"
             self.sync_agent_info = "info"
 
+    class ActiveResponseTaskMock:
+        """Auxiliary class."""
+
+        def run(self):
+            return "True"
+
     task_pool = {'task_pool': ''}
 
-    nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items, enable_ssl=False,
+    nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items,
                                   performance_test=False, logger=None, concurrency_test=False, file='None', string=20,
                                   task_pool=task_pool)
 
     nested_worker.client = ClientMock()
     nested_worker.dapi = DapiMock()
-    assert nested_worker.add_tasks() == ['task', ('0101', ()), ('info', ()), ('True', ())]
+    nested_worker.active_response_task = ActiveResponseTaskMock()
+
+    tasks = nested_worker.add_tasks()
+    assert tasks[:4] == ['task', ('0101', ()), ('info', ()), ('True', ())]
+    assert callable(tasks[4][0])
+    assert tasks[4][1] == ()
+    get_ossec_conf_mock.assert_called_once_with(section="indexer")
+
+    # Indexer tasks are lazily executed through the callable added to tasks.
+    run_active_response_job = tasks[4][0]
+    assert run_active_response_job() == ("True", ())
+    manage_indexer_tasks_mock.assert_called_once_with([nested_worker.active_response_task.run])
 
 
 @pytest.mark.asyncio
@@ -1365,7 +1387,7 @@ async def test_worker_get_node(api_request_queue, event_loop):
     """Check if the basic cluster information is returned."""
     task_pool = {'task_pool': ''}
 
-    nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items, enable_ssl=False,
+    nested_worker = worker.Worker(configuration=configuration, cluster_items=cluster_items,
                                   performance_test=False, logger=None, concurrency_test=False, file='None', string=20,
                                   task_pool=task_pool)
 

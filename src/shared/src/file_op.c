@@ -1174,7 +1174,7 @@ const char *getuname()
                     read_version->os_name,
                     read_version->os_platform,
                     read_version->os_version,
-                    __ossec_name, __ossec_version);
+                    __wazuh_name, __wazuh_version);
 
             free_osinfo(read_version);
         }
@@ -1185,10 +1185,10 @@ const char *getuname()
                      uts_buf.release,
                      uts_buf.version,
                      uts_buf.machine,
-                     __ossec_name, __ossec_version);
+                     __wazuh_name, __wazuh_version);
         } else {
             snprintf(muname, 512, "No system info available - %s %s",
-                     __ossec_name, __ossec_version);
+                     __wazuh_name, __wazuh_version);
         }
     }
 
@@ -1581,13 +1581,13 @@ const char *getuname()
                 read_version->os_version ? read_version->os_version : "unknown",
                 read_version->nodename ? read_version->nodename : "unknown",
                 read_version->machine ? read_version->machine : "unknown",
-                __ossec_name, __ossec_version);
+                __wazuh_name, __wazuh_version);
 
         free_osinfo(read_version);
         return ret;
     }
 
-    snprintf(ret, OS_SIZE_1024, "Microsoft Windows - %s %s", __ossec_name, __ossec_version);
+    snprintf(ret, OS_SIZE_1024, "Microsoft Windows - %s %s", __wazuh_name, __wazuh_version);
     return ret;
 }
 

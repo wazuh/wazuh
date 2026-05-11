@@ -36,7 +36,7 @@ static void help_agentd(char *home_path)
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -c <config> Configuration file to use (default: %s)", WAZUHCONF);
     print_out(" ");
     os_free(home_path);
     exit(1);
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
 
     const char *user = USER;
     const char *group = GROUPGLOBAL;
-    const char *cfg = OSSECCONF;
+    const char *cfg = WAZUHCONF;
     const char *uninstall_auth_login = NULL;
     const char *uninstall_auth_token = NULL;
     const char *uninstall_auth_host = NULL;
@@ -82,7 +82,7 @@ int main(int argc, char **argv)
         {NULL, no_argument, NULL, 0}
     };
 
-    while ((c = getopt_long(argc, argv, "Vtdfhu:g:D:c:", long_opts, NULL)) != -1) {
+    while ((c = getopt_long(argc, argv, "Vtdfhu:g:c:", long_opts, NULL)) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -111,12 +111,6 @@ int main(int argc, char **argv)
                 break;
             case 't':
                 test_config = 1;
-                break;
-            case 'D':
-                if (!optarg) {
-                    merror_exit("-D needs an argument");
-                }
-                mwarn("-D is deprecated.");
                 break;
             case 'c':
                 if (!optarg) {
@@ -216,7 +210,7 @@ int main(int argc, char **argv)
     }
     if (agt->max_time_reconnect_try <= agt->notify_time) {
         agt->max_time_reconnect_try = (agt->notify_time * 3);
-        minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
+        mdebug1("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
 
     /* Check if the user/group given are valid */

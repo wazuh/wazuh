@@ -1,0 +1,26 @@
+- name: Command execution succeed
+  description: Checks the block-ip command succeed
+  configuration_parameters:
+  metadata:
+    input: '#!-execd {"wazuh":{"active_response":{"name":"block-ip","executable":"block-ip.exe","type":"stateful","stateful_timeout":5,"location":"agent","agent_id":"001"}},"event":{"original":"Test event","kind":"event"},"source":{"ip":"3.3.3.3"},"user":{"name":"Test."}}'
+
+- name: Command execution fail - missing 'source.ip'
+  description: Checks the block-ip command does not succeed because the 'source.ip' is not sent.
+  configuration_parameters:
+  metadata:
+    input: '#!-execd {"wazuh":{"active_response":{"name":"block-ip","executable":"block-ip.exe","type":"stateless","location":"agent","agent_id":"001"}},"event":{"original":"Test event","kind":"event"},"user":{"name":"Test."}}'
+    expected_error: .*Cannot read 'source.ip' from data
+
+- name: Command execution fail - invalid format no wazuh
+  description: Checks the block-ip command does not succeed because the input is invalid.
+  configuration_parameters:
+  metadata:
+    input: '#!-execd {"event":{"original":"Test event","kind":"event"},"source":{"ip":"3.3.3.3"},"user":{"name":"Test."}}'
+    expected_error: .*Invalid AR command
+
+- name: Command execution fail - invalid format no active_response
+  description: Checks the block-ip command does not succeed because the 'active_response' is not sent.
+  configuration_parameters:
+  metadata:
+    input: '#!-execd {"wazuh":{},"event":{"original":"Test event","kind":"event"},"source":{"ip":"3.3.3.3"},"user":{"name":"Test."}}'
+    expected_error: .*Invalid AR command

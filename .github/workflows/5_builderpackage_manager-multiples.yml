@@ -1,6 +1,16 @@
 name: 5.X - Package - Build multiple Wazuh Manager Packages
 
 on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - "api/**"
+      - "framework/**"
+      - "src/**"
+      - ".github/workflows/5_builderpackage_manager-multiples.yml"
+      - "packages/*/SPECS/wazuh-manager/**"
+      - "packages/*"
+      - "packages/*/utils/*"
   workflow_dispatch:
     inputs:
       targets:
@@ -28,19 +38,14 @@ on:
           By default: false
         type: boolean
         required: false
-  pull_request:
-    types: [synchronize, opened, reopened, ready_for_review]
-    paths:
-      - "api/**"
-      - "framework/**"
-      - "src/**"
-      - ".github/workflows/5_builderpackage_manager-multiples.yml"
-      - "packages/*/SPECS/wazuh-manager/**"
-      - "packages/*"
-      - "packages/*/utils/*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   select-targets:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Select build targets (Wazuh Managers)
     runs-on: ubuntu-24.04
     outputs:
@@ -60,6 +65,7 @@ jobs:
             return { include: matrix };
           result-encoding: json
   build-wazuh-manager:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Build Wazuh Manager
     needs: select-targets
     permissions:

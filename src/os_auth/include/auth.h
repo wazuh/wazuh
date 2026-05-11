@@ -40,7 +40,6 @@
 
 #define DEFAULT_PORT 1515
 #define DEFAULT_CENTRALIZED_GROUP "default"
-#define DEPRECATED_OPTION_WARN "Option '%s' is deprecated. Configure it in the file '%s'."
 #define MAX_SSL_MSG_SIZE (OS_SIZE_65536 + OS_SIZE_4096)
 #define SERVER_INDEX 0
 #define STOP_FD (AUTH_POOL+1)
@@ -107,6 +106,11 @@ void authd_sigblock();
  * @param response 2048 length buffer where the error response will be copied. NULL if no response is required
  * */
 w_err_t w_auth_validate_groups(const char *groups, char *response);
+
+/**
+ * @brief Cleanup compiled regex for group validation (for testing)
+ * */
+void w_auth_validate_groups_cleanup(void);
 
 /**
  * @brief Parse a raw buffer from agent request into enrollment data.

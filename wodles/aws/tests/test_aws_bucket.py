@@ -456,7 +456,7 @@ def test_aws_bucket_build_s3_filter_args(mock_get_script_arguments, mock_get_ful
     if aws_region == 'region_for_empty_db':
         filter_marker = bucket.marker_only_logs_after(aws_region, aws_account_id) if bucket.only_logs_after \
             else bucket.marker_custom_date(aws_region, aws_account_id, bucket.default_date)
-        
+
     if (not bucket.reparse
             and bucket.db_table_name in aws_bucket.LATE_ARRIVAL_LOG_TABLES
             and aws_region != 'region_for_empty_db'):
@@ -471,7 +471,7 @@ def test_aws_bucket_build_s3_filter_args(mock_get_script_arguments, mock_get_ful
         if config_type == 'config':
             filter_marker = re.match(r'(.*?/\d{4}/)', filter_marker).group(1)
             expected_filter_args['StartAfter'] = filter_marker
-            
+
             assert expected_filter_args == bucket.build_s3_filter_args(aws_account_id, aws_region, iterating,
                                                                 custom_delimiter)
         else:

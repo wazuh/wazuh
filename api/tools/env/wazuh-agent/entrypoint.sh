@@ -5,11 +5,7 @@ sed -i "s:agent.debug=0:agent.debug=2:g" /var/ossec/etc/internal_options.conf
 
 sleep 1
 
-if [ $2  \< "4.2.0" ]; then
-  /var/ossec/bin/ossec-control start
-else
-  /var/ossec/bin/wazuh-control start
-fi
+/var/ossec/bin/wazuh-control start
 
 # Keep the container running
 while true; do

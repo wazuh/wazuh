@@ -46,7 +46,7 @@ int ClientConf(const char *cfgfile)
     agt->profile = NULL;
     agt->buffer = 1;
     agt->buflength = 5000;
-    agt->events_persec = 500;
+    agt->events_persec = 600;
     agt->flags.auto_restart = 1;
     agt->notify_time = 0;
     agt->max_time_reconnect_try = 0;
@@ -221,6 +221,10 @@ cJSON *getAgentInternalOptions(void) {
     cJSON_AddNumberToObject(agent,"state_interval",interval);
     cJSON_AddNumberToObject(agent,"min_eps",min_eps);
     cJSON_AddNumberToObject(agent,"remote_conf",remote_conf);
+    cJSON_AddNumberToObject(agent,"request_pool",request_pool);
+    cJSON_AddNumberToObject(agent,"request_rto_sec",rto_sec);
+    cJSON_AddNumberToObject(agent,"request_rto_msec",rto_msec);
+    cJSON_AddNumberToObject(agent,"max_attempts",max_attempts);
 
     cJSON_AddItemToObject(internals,"agent",agent);
 
@@ -234,18 +238,6 @@ cJSON *getAgentInternalOptions(void) {
     cJSON_AddNumberToObject(monitord,"daily_rotations",daily_rotations);
 
     cJSON_AddItemToObject(internals,"monitord",monitord);
-
-    cJSON *remoted = cJSON_CreateObject();
-
-    cJSON_AddNumberToObject(remoted,"request_pool",request_pool);
-    cJSON_AddNumberToObject(remoted,"request_rto_sec",rto_sec);
-    cJSON_AddNumberToObject(remoted,"request_rto_msec",rto_msec);
-    cJSON_AddNumberToObject(remoted,"max_attempts",max_attempts);
-    cJSON_AddNumberToObject(remoted,"comp_average_printout",_s_comp_print);
-    cJSON_AddNumberToObject(remoted,"recv_counter_flush",_s_recv_flush);
-    cJSON_AddNumberToObject(remoted,"verify_msg_id",_s_verify_counter);
-
-    cJSON_AddItemToObject(internals,"remoted",remoted);
 
     cJSON_AddItemToObject(root,"internal",internals);
 

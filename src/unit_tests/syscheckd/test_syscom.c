@@ -88,33 +88,6 @@ void test_syscom_dispatch_getconfig_noargs(void **state)
 }
 
 
-void test_syscom_dispatch_restart_agent(void **state)
-{
-    (void) state;
-    size_t ret;
-
-    char command[] = "syscheck restart";
-    char *output;
-
-    ret = syscom_dispatch(command, strlen(command), &output);
-
-    assert_int_equal(ret, 0);
-}
-
-void test_syscom_dispatch_restart_manager(void **state)
-{
-    (void) state;
-    size_t ret;
-
-    char command[] = "restart";
-    char *output;
-
-    ret = syscom_dispatch(command, strlen(command), &output);
-
-    assert_int_equal(ret, 0);
-}
-
-
 void test_syscom_dispatch_getconfig_unrecognized(void **state)
 {
     (void) state;
@@ -344,8 +317,6 @@ int main(void) {
         cmocka_unit_test_teardown(test_syscom_dispatch_getconfig_agent, delete_string),
         cmocka_unit_test_teardown(test_syscom_dispatch_getconfig_manager, delete_string),
         cmocka_unit_test_teardown(test_syscom_dispatch_getconfig_noargs, delete_string),
-        cmocka_unit_test(test_syscom_dispatch_restart_agent),
-        cmocka_unit_test(test_syscom_dispatch_restart_manager),
         cmocka_unit_test_teardown(test_syscom_dispatch_getconfig_unrecognized, delete_string),
         cmocka_unit_test_teardown(test_syscom_dispatch_null_command, delete_string),
         cmocka_unit_test(test_syscom_dispatch_null_output),

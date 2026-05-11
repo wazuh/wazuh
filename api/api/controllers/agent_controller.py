@@ -14,7 +14,7 @@ from api.models.agent_added_model import AgentAddedModel
 from api.models.agent_group_added_model import GroupAddedModel
 from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
-from api.util import deprecate_endpoint, parse_api_param, raise_if_exc, remove_nones_to_dict
+from api.util import parse_api_param, raise_if_exc, remove_nones_to_dict
 from api.validator import check_component_configuration_pair
 from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
@@ -27,7 +27,7 @@ logger = logging.getLogger('wazuh-api')
 
 async def delete_agents(pretty: bool = False, wait_for_complete: bool = False, agents_list: str = None,
                         purge: bool = False, status: str = None, q: str = None, older_than: str = None,
-                        manager: str = None, version: str = None, group: str = None, node_name: str = None,
+                        version: str = None, group: str = None, node_name: str = None,
                         name: str = None, ip: str = None) -> ConnexionResponse:
     """Delete all agents or a list of them based on optional criteria.
 
@@ -48,8 +48,6 @@ async def delete_agents(pretty: bool = False, wait_for_complete: bool = False, a
     older_than : str
         Filter out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
         ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, use the register date.
-    manager : str
-        Filter by the name of the manager to which agents are connected.
     version : str
         Filter by agents version.
     group : str
@@ -73,7 +71,6 @@ async def delete_agents(pretty: bool = False, wait_for_complete: bool = False, a
                 'filters': {
                     'status': status,
                     'older_than': older_than,
-                    'manager': manager,
                     'version': version,
                     'group': group,
                     'node_name': node_name,
@@ -85,7 +82,7 @@ async def delete_agents(pretty: bool = False, wait_for_complete: bool = False, a
                 }
 
     # Add nested fields to kwargs filters
-    nested = ['os.version', 'os.name', 'os.platform']
+    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
     for field in nested:
         f_kwargs['filters'][field] = request.query_params.get(field, None)
 
@@ -104,7 +101,7 @@ async def delete_agents(pretty: bool = False, wait_for_complete: bool = False, a
 
 async def get_agents(pretty: bool = False, wait_for_complete: bool = False, agents_list: str = None,
                      offset: int = 0, limit: int = DATABASE_LIMIT, select: str = None, sort: str = None,
-                     search: str = None, status: str = None, q: str = None, older_than: str = None, manager: str = None,
+                     search: str = None, status: str = None, q: str = None, older_than: str = None,
                      version: str = None, group: str = None, node_name: str = None, name: str = None, ip: str = None,
                      group_config_status: str = None, distinct: bool = False) -> ConnexionResponse:
     """Get information about all agents or a list of them.
@@ -135,8 +132,6 @@ async def get_agents(pretty: bool = False, wait_for_complete: bool = False, agen
     older_than : str
         Filter out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
         ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, use the register date.
-    manager : str
-        Filter by manager hostname to which agents are connected.
     version : str
         Filter by agents version.
     group : str
@@ -166,7 +161,6 @@ async def get_agents(pretty: bool = False, wait_for_complete: bool = False, agen
                 'filters': {
                     'status': status,
                     'older_than': older_than,
-                    'manager': manager,
                     'version': version,
                     'group': group,
                     'node_name': node_name,
@@ -179,7 +173,7 @@ async def get_agents(pretty: bool = False, wait_for_complete: bool = False, agen
                 'distinct': distinct
                 }
     # Add nested fields to kwargs filters
-    nested = ['os.version', 'os.name', 'os.platform']
+    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
     for field in nested:
         f_kwargs['filters'][field] = request.query_params.get(field, None)
 
@@ -414,42 +408,6 @@ async def delete_single_agent_multiple_groups(agent_id: str, groups_list: str = 
 
     return json_response(data, pretty=pretty)
 
-
-@deprecate_endpoint()
-async def get_sync_agent(agent_id: str, pretty: bool = False, wait_for_complete=False) -> ConnexionResponse:
-    """Get agent configuration sync status.
-
-    Return whether the agent group configuration has been synchronized with the agent or not.
-
-    Parameters
-    ----------
-    agent_id : str
-        Agent ID.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-
-    Returns
-    -------
-    web.Reponse
-        API response with the agent configuration sync status.
-    """
-    f_kwargs = {'agent_list': [agent_id]}
-
-    dapi = DistributedAPI(f=agent.get_agents_sync_group,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
 async def delete_single_agent_single_group(agent_id: str, group_id: str, pretty: bool = False,
                                            wait_for_complete: bool = False) -> ConnexionResponse:
     """Remove agent from a single group.
@@ -594,8 +552,8 @@ async def restart_agent(agent_id: str, pretty: bool = False, wait_for_complete: 
 
 async def put_upgrade_agents(agents_list: str = None, pretty: bool = False, wait_for_complete: bool = False,
                              wpk_repo: str = None, upgrade_version: str = None, use_http: bool = False,
-                             force: bool = False, package_type: str = None, q: str = None, manager: str = None,
-                             version: str = None, group: str = None, node_name: str = None, name: str = None,
+                             force: bool = False, package_type: str = None, q: str = None, version: str = None,
+                             group: str = None, node_name: str = None, name: str = None,
                              ip: str = None) -> ConnexionResponse:
     """Upgrade agents using a WPK file from an online repository.
 
@@ -619,8 +577,6 @@ async def put_upgrade_agents(agents_list: str = None, pretty: bool = False, wait
         Default package type (rpm, deb).
     q : str
         Query to filter agents by.
-    manager : str
-        Filter by manager hostname to which agents are connected.
     version : str
         Filter by agents version.
     group : str
@@ -648,7 +604,6 @@ async def put_upgrade_agents(agents_list: str = None, pretty: bool = False, wait
                 'force': force,
                 'package_type': package_type,
                 'filters': {
-                    'manager': manager,
                     'version': version,
                     'group': group,
                     'node_name': node_name,
@@ -660,7 +615,7 @@ async def put_upgrade_agents(agents_list: str = None, pretty: bool = False, wait
                 }
 
     # Add nested fields to kwargs filters
-    nested = ['os.version', 'os.name', 'os.platform']
+    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
     for field in nested:
         f_kwargs['filters'][field] = request.query_params.get(field, None)
 
@@ -680,7 +635,7 @@ async def put_upgrade_agents(agents_list: str = None, pretty: bool = False, wait
 
 async def put_upgrade_custom_agents(agents_list: str = None, pretty: bool = False,
                                     wait_for_complete: bool = False, file_path: str = None, installer: str = None,
-                                    q: str = None, manager: str = None, version: str = None, group: str = None,
+                                    q: str = None, version: str = None, group: str = None,
                                     node_name: str = None, name: str = None, ip: str = None) -> ConnexionResponse:
     """Upgrade agents using a local WPK file.
 
@@ -698,8 +653,6 @@ async def put_upgrade_custom_agents(agents_list: str = None, pretty: bool = Fals
         Installation file.
     q : str
         Query to filter agents by.
-    manager : str
-        Filter by manager hostname to which agents are connected.
     version : str
         Filter by agents version.
     group : str
@@ -724,7 +677,6 @@ async def put_upgrade_custom_agents(agents_list: str = None, pretty: bool = Fals
                 'file_path': file_path,
                 'installer': installer,
                 'filters': {
-                    'manager': manager,
                     'version': version,
                     'group': group,
                     'node_name': node_name,
@@ -736,7 +688,7 @@ async def put_upgrade_custom_agents(agents_list: str = None, pretty: bool = Fals
                 }
 
     # Add nested fields to kwargs filters
-    nested = ['os.version', 'os.name', 'os.platform']
+    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
     for field in nested:
         f_kwargs['filters'][field] = request.query_params.get(field, None)
 
@@ -755,7 +707,7 @@ async def put_upgrade_custom_agents(agents_list: str = None, pretty: bool = Fals
 
 
 async def get_agent_upgrade(agents_list: str = None, pretty: bool = False, wait_for_complete: bool = False,
-                            q: str = None, manager: str = None, version: str = None, group: str = None,
+                            q: str = None, version: str = None, group: str = None,
                             node_name: str = None, name: str = None, ip: str = None) -> ConnexionResponse:
     """Get upgrade results from agents.
 
@@ -769,8 +721,6 @@ async def get_agent_upgrade(agents_list: str = None, pretty: bool = False, wait_
         List of agent IDs.
     q : str
         Query to filter agents by.
-    manager : str
-        Filter by manager hostname to which agents are connected.
     version : str
         Filter by agents version.
     group : str
@@ -789,7 +739,6 @@ async def get_agent_upgrade(agents_list: str = None, pretty: bool = False, wait_
     """
     f_kwargs = {'agent_list': agents_list,
                 'filters': {
-                    'manager': manager,
                     'version': version,
                     'group': group,
                     'node_name': node_name,
@@ -801,7 +750,7 @@ async def get_agent_upgrade(agents_list: str = None, pretty: bool = False, wait_
                 }
 
     # Add nested fields to kwargs filters
-    nested = ['os.version', 'os.name', 'os.platform']
+    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
     for field in nested:
         f_kwargs['filters'][field] = request.query_params.get(field, None)
 
@@ -1387,6 +1336,108 @@ async def get_group_file(group_id: str, file_name: str, raw: bool = False, prett
     return json_response(data, pretty=pretty)
 
 
+async def reload_agents(pretty: bool = False, wait_for_complete: bool = False,
+                        agents_list: str = '*') -> ConnexionResponse:
+    """Reload all agents or a list of them.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    agents_list : str
+        List of agents IDs. Default: `*`
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    f_kwargs = {'agent_list': agents_list}
+
+    dapi = DistributedAPI(f=agent.reload_agents,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=True,
+                          wait_for_complete=wait_for_complete,
+                          rbac_permissions=request.context['token_info']['rbac_policies'],
+                          broadcasting=agents_list == '*',
+                          logger=logger
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
+
+
+async def reload_agents_by_node(node_id: str, pretty: bool = False,
+                                wait_for_complete: bool = False) -> ConnexionResponse:
+    """Reload all agents belonging to a node.
+
+    Parameters
+    ----------
+    node_id : str
+        Cluster node name.
+    pretty : bool, optional
+        Show results in human-readable format. Default `False`
+    wait_for_complete : bool, optional
+        Disable timeout response. Default `False`
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    nodes = raise_if_exc(await get_system_nodes())
+
+    f_kwargs = {'node_id': node_id, 'agent_list': '*'}
+
+    dapi = DistributedAPI(f=agent.reload_agents_by_node,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=True,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request.context['token_info']['rbac_policies'],
+                          nodes=nodes
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
+
+
+async def reload_agent(agent_id: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+    """Reload an agent.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    agent_id : str
+        Agent ID.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    f_kwargs = {'agent_list': [agent_id]}
+
+    dapi = DistributedAPI(f=agent.reload_agents,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=True,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
+
+
 async def restart_agents_by_group(group_id: str, pretty: bool = False,
                                   wait_for_complete: bool = False) -> ConnexionResponse:
     """Restart all agents from a group.
@@ -1423,6 +1474,55 @@ async def restart_agents_by_group(group_id: str, pretty: bool = False,
 
     f_kwargs = {'agent_list': agent_list}
     dapi = DistributedAPI(f=agent.restart_agents_by_group,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=True,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          )
+
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
+
+
+async def reload_agents_by_group(group_id: str, pretty: bool = False,
+                                 wait_for_complete: bool = False) -> ConnexionResponse:
+    """Reload all agents from a group.
+
+    Parameters
+    ----------
+    group_id : str
+        Group name.
+    pretty : bool, optional
+        Show results in human-readable format. Default `False`
+    wait_for_complete : bool, optional
+        Disable timeout response. Default `False`
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    f_kwargs = {'group_list': [group_id], 'select': ['id'], 'limit': None}
+    dapi = DistributedAPI(f=agent.get_agents_in_group,
+                          f_kwargs=f_kwargs,
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          )
+    agents = raise_if_exc(await dapi.distribute_function())
+
+    agent_list = [a['id'] for a in agents.affected_items]
+    if not agent_list:
+        data = AffectedItemsWazuhResult(none_msg='Reload command was not sent to any agent')
+        return json_response(data, pretty=pretty)
+
+    f_kwargs = {'agent_list': agent_list}
+    dapi = DistributedAPI(f=agent.reload_agents_by_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=True,

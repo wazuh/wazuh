@@ -106,14 +106,8 @@ echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking for Wazuh Agent control script." >
 if [ -f "./bin/wazuh-control" ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Restarting Wazuh Agent." >> ./logs/upgrade.log
     ./bin/wazuh-control restart >> ./logs/upgrade.log 2>&1
-elif [ -f "./bin/ossec-control" ]; then
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed: wazuh-control not found. Attempting to restart using ossec-control." >> ./logs/upgrade.log
-    ./bin/ossec-control restart >> ./logs/upgrade.log 2>&1
-    echo -ne "2" > ./var/upgrade/upgrade_result
-    rm -f $LOCK
-    exit 1
 else
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed: Neither wazuh-control nor ossec-control were found." >> ./logs/upgrade.log
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed: wazuh-control not found." >> ./logs/upgrade.log
     echo -ne "2" > ./var/upgrade/upgrade_result
     rm -f $LOCK
     exit 1

@@ -22,7 +22,6 @@ static void * run_dealer(void * args);
 static void * run_worker(void * args);
 static void * run_gc(void * args);
 static void * run_backup(void * args);
-static void * cleanup_deprecated_dbs(void * args);
 
 extern wdb_state_t wdb_state;
 
@@ -45,7 +44,6 @@ int main(int argc, char ** argv)
     pthread_t * worker_pool = NULL;
     pthread_t thread_gc;
     pthread_t thread_backup;
-    pthread_t thread_cleanup;
 
     OS_SetName(ARGV0);
 
@@ -90,17 +88,17 @@ int main(int argc, char ** argv)
 
     // Read internal options
 
-    wconfig.worker_pool_size = getDefine_Int("wazuh_db", "worker_pool_size", 1, 32);
-    wconfig.commit_time_min = getDefine_Int("wazuh_db", "commit_time_min", 1, 3600);
-    wconfig.commit_time_max = getDefine_Int("wazuh_db", "commit_time_max", 1, 3600);
-    wconfig.open_db_limit = getDefine_Int("wazuh_db", "open_db_limit", 1, 4096);
-    nofile = getDefine_Int("wazuh_db", "rlimit_nofile", 1024, 1048576);
+    wconfig.worker_pool_size = getDefine_Int_default("wazuh_db", "worker_pool_size", 1, 32, 8);
+    wconfig.commit_time_min = getDefine_Int_default("wazuh_db", "commit_time_min", 1, 3600, 10);
+    wconfig.commit_time_max = getDefine_Int_default("wazuh_db", "commit_time_max", 1, 3600, 60);
+    wconfig.open_db_limit = getDefine_Int_default("wazuh_db", "open_db_limit", 1, 4096, 64);
+    nofile = getDefine_Int_default("wazuh_db", "rlimit_nofile", 1024, 1048576, 458752);
 
-    wconfig.fragmentation_threshold = getDefine_Int("wazuh_db", "fragmentation_threshold", 0, 100);
-    wconfig.fragmentation_delta = getDefine_Int("wazuh_db", "fragmentation_delta", 0, 100);
-    wconfig.free_pages_percentage = getDefine_Int("wazuh_db", "free_pages_percentage", 0, 99);
-    wconfig.max_fragmentation = getDefine_Int("wazuh_db", "max_fragmentation", 0, 100);
-    wconfig.check_fragmentation_interval = getDefine_Int("wazuh_db", "check_fragmentation_interval", 1, 30758400);
+    wconfig.fragmentation_threshold = getDefine_Int_default("wazuh_db", "fragmentation_threshold", 0, 100, 75);
+    wconfig.fragmentation_delta = getDefine_Int_default("wazuh_db", "fragmentation_delta", 0, 100, 5);
+    wconfig.free_pages_percentage = getDefine_Int_default("wazuh_db", "free_pages_percentage", 0, 99, 0);
+    wconfig.max_fragmentation = getDefine_Int_default("wazuh_db", "max_fragmentation", 0, 100, 90);
+    wconfig.check_fragmentation_interval = getDefine_Int_default("wazuh_db", "check_fragmentation_interval", 1, 30758400, 7200);
 
     wconfig.is_worker_node = w_is_worker() == 1;
 
@@ -109,17 +107,16 @@ int main(int argc, char ** argv)
 
     int modules = 0;
     modules |= WAZUHDB;
-    modules |= CCLUSTER;
 
     // Read wazuh configuration file
-    if (ReadConfig(modules, OSSECCONF, &gconfig, NULL) < 0) {
+    if (ReadConfig(modules, WAZUHCONF, &gconfig, NULL) < 0) {
         merror_exit("Invalid configuration block for Wazuh-DB.");
     }
 
     if (!isDebug()) {
         int debug_level;
 
-        for (debug_level = getDefine_Int("wazuh_db", "debug", 0, 2); debug_level; debug_level--) {
+        for (debug_level = getDefine_Int_default("wazuh_db", "debug", 0, 2, 0); debug_level; debug_level--) {
             nowDebug();
         }
     }
@@ -244,11 +241,6 @@ int main(int argc, char ** argv)
         }
     }
 
-    if (status = pthread_create(&thread_cleanup, NULL, cleanup_deprecated_dbs, NULL), status != 0) {
-        merror("Couldn't create 'cleanup_deprecated_dbs' thread: %s", strerror(status));
-        goto failure;
-    }
-
     // Join threads
     pthread_join(thread_dealer, NULL);
 
@@ -264,7 +256,6 @@ int main(int argc, char ** argv)
     if(backups_enabled) {
         pthread_join(thread_backup, NULL);
     }
-    pthread_join(thread_cleanup, NULL);
     wdb_close_all();
     wdb_free_conf();
 
@@ -484,53 +475,6 @@ void * run_backup(__attribute__((unused)) void * args) {
     return NULL;
 }
 
-void * cleanup_deprecated_dbs(__attribute__((unused)) void * args) {
-    char path[PATH_MAX];
-    char * end = NULL;
-    struct dirent * dirent = NULL;
-    DIR * dir;
-
-    if (!(dir = wopendir(WDB2_DIR))) {
-        merror("Couldn't open directory '%s': %s.", WDB2_DIR, strerror(errno));
-        return NULL;
-    }
-
-    while ((dirent = readdir(dir)) != NULL) {
-        // Delete .template.db
-        if (strcmp(dirent->d_name, ".template.db") == 0) {
-            if (snprintf(path, sizeof(path), "%s/%s", WDB2_DIR, dirent->d_name) < (int)sizeof(path)) {
-                minfo("Removing deprecated template database: '%s'", path);
-                if (remove(path) < 0) {
-                    mdebug1(DELETE_ERROR, path, errno, strerror(errno));
-                }
-            }
-            continue;
-        }
-
-        // Taking only databases with numbers as a first character in the names to
-        // exclude global.db, global.db-journal, wdb socket, and current directory.
-        if (dirent->d_name[0] >= '0' && dirent->d_name[0] <= '9') {
-            if (end = strchr(dirent->d_name, '.'), end) {
-                int id = (int)strtol(dirent->d_name, &end, 10);
-                if (id >= 0 && strncmp(end, ".db", 3) == 0) {
-                    // Delete all numeric databases (deprecated in this version)
-                    if (snprintf(path, sizeof(path), "%s/%s", WDB2_DIR, dirent->d_name) < (int)sizeof(path)) {
-                        minfo("Removing deprecated numeric database: '%s'", path);
-                        if (remove(path) < 0) {
-                            mdebug1(DELETE_ERROR, path, errno, strerror(errno));
-                        }
-                    }
-                }
-            } else {
-                mwarn("Strange file found: '%s/%s'", WDB2_DIR, dirent->d_name);
-            }
-        }
-    }
-
-    closedir(dir);
-
-    return NULL;
-}
 
 void wdb_help() {
     print_header();

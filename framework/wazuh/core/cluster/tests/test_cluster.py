@@ -118,7 +118,7 @@ def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
             mock.reset_mock()
 
     # Check the first if and nested else
-    assert cluster.walk_dir(dirname="/foo/bar", recursive=False, files=['all'], excluded_files=['ar.conf'],
+    assert cluster.walk_dir(dirname="/foo/bar", recursive=False, files=['all'], excluded_files=[],
                             excluded_extensions=[".xml", ".txt"], get_cluster_item_key="") == ({},
                                                                                                {'debug': defaultdict(
                                                                                                    list),
@@ -132,7 +132,7 @@ def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
     reset_mocks(all_mocks)
 
     # Check nested if
-    assert cluster.walk_dir(dirname="/foo/bar", recursive=True, files=['all'], excluded_files=['ar.conf', 'spam'],
+    assert cluster.walk_dir(dirname="/foo/bar", recursive=True, files=['all'], excluded_files=['spam'],
                             excluded_extensions=[".xml", ".txt"], get_cluster_item_key="",
                             previous_status={path_join_mock.return_value: {'mod_time': 45}}) == (
                {path_join_mock.return_value: {'mod_time': 45}},
@@ -148,7 +148,7 @@ def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
 
     reset_mocks(all_mocks)
 
-    assert cluster.walk_dir(dirname="/foo/bar", recursive=True, files=['all'], excluded_files=['ar.conf', 'spam'],
+    assert cluster.walk_dir(dirname="/foo/bar", recursive=True, files=['all'], excluded_files=['spam'],
                             excluded_extensions=[".xml", ".txt"], get_cluster_item_key="",
                             previous_status={path_join_mock.return_value: {'mod_time': 35}}) == (
                {'/mock/foo/bar': {'mod_time': 45, 'cluster_item_key': '', 'merged': True, 'merge_type': 'TYPE',
@@ -166,7 +166,7 @@ def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
     reset_mocks(all_mocks)
 
     # Check the key error
-    assert cluster.walk_dir(dirname="/foo/bar", recursive=True, files=['all'], excluded_files=['ar.conf', 'spam'],
+    assert cluster.walk_dir(dirname="/foo/bar", recursive=True, files=['all'], excluded_files=['spam'],
                             excluded_extensions=[".xml", ".txt"], get_cluster_item_key="",
                             previous_status={path_join_mock.return_value: {'mod_mock_time': 35}}) == (
                {'/mock/foo/bar': {'mod_time': 45, 'cluster_item_key': '', 'merged': True, 'merge_type': 'TYPE',
@@ -188,22 +188,22 @@ def test_walk_dir_ko(mock_path_join, mock_walk):
     """Check all errors that can be raised by the function walk_dir."""
 
     with patch('os.path.getmtime', side_effect=FileNotFoundError):
-        _, logs = cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "",
+        _, logs = cluster.walk_dir("/foo/bar", True, ["all"], [], [".xml", ".txt"], "",
                          {'/foo/bar/': {'mod_time': True}})
         assert logs['debug']['/foo/bar'] == ["File spam was deleted in previous iteration: "]
 
     with patch('os.path.getmtime', side_effect=PermissionError):
-        _, logs = cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "",
+        _, logs = cluster.walk_dir("/foo/bar", True, ["all"], [], [".xml", ".txt"], "",
                          {'/foo/bar/': {'mod_time': True}})
         assert logs['error']['/foo/bar'] == ["Can't read metadata from file spam: "]
 
     with patch('wazuh.core.cluster.cluster.walk', side_effect=OSError):
         with pytest.raises(WazuhInternalError, match=r'.* 3015 .*'):
-            cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "",
+            cluster.walk_dir("/foo/bar", True, ["all"], [], [".xml", ".txt"], "",
                              {'/foo/bar/': {'mod_time': True}})
 
     with patch('os.path.getmtime', return_value=35):
-        cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "",
+        cluster.walk_dir("/foo/bar", True, ["all"], [], [".xml", ".txt"], "",
                          {'/foo/bar/': {'mod_time': False}})
 
 
@@ -222,7 +222,6 @@ def test_walk_dir_ko(mock_path_join, mock_walk):
             "description": "client keys file database"
         },
         "excluded_files": [
-            "ar.conf",
             "wazuh-manager.conf"
         ],
         "excluded_extensions": [
@@ -458,7 +457,7 @@ def test_clean_up_ok():
 
                 path_exists_mock.return_value = True
                 with patch('wazuh.core.cluster.cluster.listdir',
-                           return_value=["c-internal.sock", "other_file.txt"]):
+                           return_value=["c-internal.sock", "ar_bookmark.json", "other_file.txt"]):
                     with patch('os.path.isdir', return_value=True) as is_dir_mock:
                         with patch('shutil.rmtree'):
                             cluster.clean_up("worker1")
@@ -488,7 +487,7 @@ def test_clean_up_ko():
 
                 with patch('os.path.exists', return_value=True):
                     with patch('wazuh.core.cluster.cluster.listdir',
-                               return_value=["c-internal.sock", "other_file.txt"]):
+                               return_value=["c-internal.sock", "ar_bookmark.json", "other_file.txt"]):
                         with patch('shutil.rmtree', side_effect=Exception):
                             cluster.clean_up("worker1")
                             mock_debug_logger.assert_any_call(f"Removing '{Exception}'.")

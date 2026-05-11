@@ -10,7 +10,6 @@
 
 #include "shared.h"
 #include "remoted.h"
-#include "shared_download.h"
 #include <unistd.h>
 
 /* Prototypes */
@@ -31,7 +30,7 @@ static void help_remoted(char *home_path)
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -c <config> Configuration file to use (default: %s)", WAZUHCONF);
     print_out("    -D <dir>    Directory to chroot into (default: %s)", home_path);
     print_out("    -m          Avoid creating shared merged file (read only)");
     print_out(" ");
@@ -54,7 +53,7 @@ int main(int argc, char **argv)
     // Define current working directory
     char * home_path = w_homedir(argv[0]);
 
-    const char *cfg = OSSECCONF;
+    const char *cfg = WAZUHCONF;
     const char *user = USER;
     const char *group = GROUPGLOBAL;
 
@@ -120,7 +119,7 @@ int main(int argc, char **argv)
      */
     if (debug_level == 0) {
         /* Get debug level */
-        debug_level = getDefine_Int("remoted", "debug", 0, 2);
+        debug_level = getDefine_Int_default("remoted", "debug", 0, 2, 0);
         while (debug_level != 0) {
             nowDebug();
             debug_level--;
@@ -203,9 +202,6 @@ int main(int argc, char **argv)
 
     /* Start up message */
     mdebug2(STARTUP_MSG, (int)getpid());
-
-    //Start shared download
-    w_init_shared_download();
 
     /* Really start the program */
     HandleRemote(uid);

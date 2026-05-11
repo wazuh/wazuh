@@ -27,10 +27,9 @@ base::Expression createDummyEnrichment()
 base::Expression createDummyPreEnrichment()
 {
     auto originSpaceExp = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
-    auto unclassifiedExp = base::Term<base::EngineOp>::create("filter/UnclassifiedEvents", nullptr);
     auto discardedExp = base::Term<base::EngineOp>::create("filter/DiscardedEvents", nullptr);
     auto cleanupVarsExp = base::Term<base::EngineOp>::create("CleanupDecoderVariables", nullptr);
-    return base::And::create("preEnrichment", {originSpaceExp, unclassifiedExp, discardedExp, cleanupVarsExp});
+    return base::And::create("preEnrichment", {originSpaceExp, discardedExp, cleanupVarsExp});
 }
 } // namespace
 namespace buildgraphtest
@@ -181,10 +180,9 @@ INSTANTIATE_TEST_SUITE_P(
                        auto decoder = Or::create("DecodersTree/Input", {assetExpr("decoder/asset/0")});
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
                        auto originSpace = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
-                       auto unclassified = base::Term<base::EngineOp>::create("filter/UnclassifiedEvents", nullptr);
                        auto discarded = base::Term<base::EngineOp>::create("filter/DiscardedEvents", nullptr);
                        auto cleanupVars = base::Term<base::EngineOp>::create("CleanupDecoderVariables", nullptr);
-                       auto phase2 = And::create("preEnrichment", {originSpace, unclassified, discarded, cleanupVars});
+                       auto phase2 = And::create("preEnrichment", {originSpace, discarded, cleanupVars});
                        auto enrichment = base::Term<base::EngineOp>::create("enrichment/geo", nullptr);
                        return And::create("test", {phase1, phase2, enrichment});
                    })),
@@ -197,10 +195,9 @@ INSTANTIATE_TEST_SUITE_P(
                        auto decoder = Or::create("DecodersTree/Input", {assetExpr("decoder/root/0")});
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
                        auto originSpace = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
-                       auto unclassified = base::Term<base::EngineOp>::create("filter/UnclassifiedEvents", nullptr);
                        auto discarded = base::Term<base::EngineOp>::create("filter/DiscardedEvents", nullptr);
                        auto cleanupVars = base::Term<base::EngineOp>::create("CleanupDecoderVariables", nullptr);
-                       auto phase2 = And::create("preEnrichment", {originSpace, unclassified, discarded, cleanupVars});
+                       auto phase2 = And::create("preEnrichment", {originSpace, discarded, cleanupVars});
                        auto enrichment = base::Term<base::EngineOp>::create("enrichment/geo", nullptr);
                        auto output = Broadcast::create("OutputsTree/Input", {assetExpr("output/asset/0")});
                        return And::create("test", {phase1, phase2, enrichment, output});
@@ -218,10 +215,9 @@ INSTANTIATE_TEST_SUITE_P(
                        auto decoder = Or::create("DecodersTree/Input", {parentExpr});
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
                        auto originSpace = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
-                       auto unclassified = base::Term<base::EngineOp>::create("filter/UnclassifiedEvents", nullptr);
                        auto discarded = base::Term<base::EngineOp>::create("filter/DiscardedEvents", nullptr);
                        auto cleanupVars = base::Term<base::EngineOp>::create("CleanupDecoderVariables", nullptr);
-                       auto phase2 = And::create("preEnrichment", {originSpace, unclassified, discarded, cleanupVars});
+                       auto phase2 = And::create("preEnrichment", {originSpace, discarded, cleanupVars});
                        auto enrichment = base::Term<base::EngineOp>::create("enrichment/geo", nullptr);
                        return And::create("test", {phase1, phase2, enrichment});
                    })),
@@ -234,10 +230,9 @@ INSTANTIATE_TEST_SUITE_P(
                        auto decoder = Or::create("DecodersTree/Input", {assetExpr("decoder/root/0")});
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
                        auto originSpace = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
-                       auto unclassified = base::Term<base::EngineOp>::create("filter/UnclassifiedEvents", nullptr);
                        auto discarded = base::Term<base::EngineOp>::create("filter/DiscardedEvents", nullptr);
                        auto cleanupVars = base::Term<base::EngineOp>::create("CleanupDecoderVariables", nullptr);
-                       auto phase2 = And::create("preEnrichment", {originSpace, unclassified, discarded, cleanupVars});
+                       auto phase2 = And::create("preEnrichment", {originSpace, discarded, cleanupVars});
                        auto enrichment = base::Term<base::EngineOp>::create("enrichment/geo", nullptr);
                        auto childExpr = assetExpr("output/child/0");
                        auto childrenOp = Broadcast::create("output/parent/0/Children", {childExpr});
@@ -261,10 +256,9 @@ INSTANTIATE_TEST_SUITE_P(
                        auto decoder = Or::create("DecodersTree/Input", {parentExpr});
                        auto phase1 = Chain::create("Phase1_Decoders", {decoder});
                        auto originSpace = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
-                       auto unclassified = base::Term<base::EngineOp>::create("filter/UnclassifiedEvents", nullptr);
                        auto discarded = base::Term<base::EngineOp>::create("filter/DiscardedEvents", nullptr);
                        auto cleanupVars = base::Term<base::EngineOp>::create("CleanupDecoderVariables", nullptr);
-                       auto phase2 = And::create("preEnrichment", {originSpace, unclassified, discarded, cleanupVars});
+                       auto phase2 = And::create("preEnrichment", {originSpace, discarded, cleanupVars});
                        auto enrichment = base::Term<base::EngineOp>::create("enrichment/geo", nullptr);
                        return And::create("test", {phase1, phase2, enrichment});
                    })),
@@ -285,10 +279,9 @@ INSTANTIATE_TEST_SUITE_P(
 
                        // Phase 2: Enrichment/IOCs
                        auto originSpace = base::Term<base::EngineOp>::create("enrichment/OriginSpace", nullptr);
-                       auto unclassified = base::Term<base::EngineOp>::create("filter/UnclassifiedEvents", nullptr);
                        auto discarded = base::Term<base::EngineOp>::create("filter/DiscardedEvents", nullptr);
                        auto cleanupVars = base::Term<base::EngineOp>::create("CleanupDecoderVariables", nullptr);
-                       auto phase2 = And::create("preEnrichment", {originSpace, unclassified, discarded, cleanupVars});
+                       auto phase2 = And::create("preEnrichment", {originSpace, discarded, cleanupVars});
                        auto enrichment = base::Term<base::EngineOp>::create("enrichment/geo", nullptr);
 
                        // Phase 3: Outputs
@@ -788,6 +781,39 @@ class BuildAssets : public testing::TestWithParam<BuildAssetsT>
 {
 };
 
+TEST(BuildAssetsOutputs, ProductionUsesOriginSpaceWhenLoadingOutputs)
+{
+    auto policy = dataType::Policy("test_policy",
+                                   true,
+                                   "550e8400-e29b-41d4-a716-446655440003",
+                                   {},
+                                   {},
+                                   {},
+                                   {},
+                                   "standard",
+                                   "",
+                                   false,
+                                   false,
+                                   true);
+
+    auto cmStoreNSReader = std::make_shared<MockICMStoreNSReader>();
+    auto buildCtx = std::make_shared<builder::builders::BuildCtx>();
+    auto registry = builder::mocks::MockMetaRegistry<builder::builders::OpBuilderEntry,
+                                                     builder::builders::StageBuilder,
+                                                     builder::builders::EnrichmentBuilder>::createMock();
+    auto definitionsBuilder = std::make_shared<defs::mocks::MockDefinitionsBuilder>();
+    buildCtx->setRegistry(registry);
+    auto assetBuilder = std::make_shared<AssetBuilder>(buildCtx, definitionsBuilder);
+
+    EXPECT_CALL(*cmStoreNSReader, resolveNameFromUUID("550e8400-e29b-41d4-a716-446655440003"))
+        .WillOnce(testing::Return(std::make_tuple(std::string {"decoder/root/0"}, cm::store::ResourceType::DECODER)));
+
+    EXPECT_CALL(*cmStoreNSReader, getOutputsForSpace(testing::Eq(std::string_view {"standard"})))
+        .WillOnce(testing::Return(std::vector<json::Json> {}));
+
+    EXPECT_NO_THROW((void)factory::buildAssets(policy, cmStoreNSReader, assetBuilder, false));
+}
+
 TEST_P(BuildAssets, KVDBAvailability)
 {
     auto [policy, expected] = GetParam();
@@ -841,7 +867,8 @@ INSTANTIATE_TEST_SUITE_P(
                              "UNDEFINED",
                              "",
                              false,
-                             false),
+                             false,
+                             true),
             SUCCESS(SuccessExpected::Behaviour {
                 [](const auto& reader, const auto& buildCtx)
                 {
@@ -883,7 +910,8 @@ INSTANTIATE_TEST_SUITE_P(
                              "UNDEFINED",
                              "",
                              false,
-                             false),
+                             false,
+                             true),
             FAILURE(FailureExpected::Behaviour {
                 [](const auto& reader, const auto& buildCtx)
                 {
@@ -924,7 +952,8 @@ INSTANTIATE_TEST_SUITE_P(
                                       "UNDEFINED",
                                       "",
                                       false,
-                                      false),
+                                      false,
+                                      true),
                      SUCCESS(SuccessExpected::Behaviour {
                          [](const auto& reader, const auto& buildCtx)
                          {
@@ -957,7 +986,8 @@ INSTANTIATE_TEST_SUITE_P(
                                       "UNDEFINED",
                                       "",
                                       false,
-                                      false),
+                                      false,
+                                      true),
                      FAILURE(FailureExpected::Behaviour {
                          [](const auto& reader, const auto& buildCtx)
                          {
@@ -1192,11 +1222,10 @@ TEST(OrderPreservation, PreEnrichmentCleanupIsLast)
     auto preEnrichmentOp = preEnrichment->getPtr<base::And>();
     const auto& ops = preEnrichmentOp->getOperands();
 
-    ASSERT_EQ(ops.size(), 4);
+    ASSERT_EQ(ops.size(), 3);
     EXPECT_EQ(ops[0]->getName(), "enrichment/OriginSpace");
-    EXPECT_EQ(ops[1]->getName(), "filter/UnclassifiedEvents");
-    EXPECT_EQ(ops[2]->getName(), "filter/DiscardedEvents");
-    EXPECT_EQ(ops[3]->getName(), "CleanupDecoderVariables");
+    EXPECT_EQ(ops[1]->getName(), "filter/DiscardedEvents");
+    EXPECT_EQ(ops[2]->getName(), "CleanupDecoderVariables");
 }
 
 // Test order preservation with parent-child relationships
@@ -1645,14 +1674,13 @@ class PassthroughAssetBuilder final : public builder::policy::IAssetBuilder
 public:
     Asset operator()(const json::Json& document) const override
     {
-        const auto nameOpt = document.getString(json::Json::formatJsonPath(builder::syntax::asset::NAME_KEY));
-
-        if (!nameOpt)
+        std::string nameStr;
+        if (document.getString(nameStr, json::Json::formatJsonPath(builder::syntax::asset::NAME_KEY)) != json::RetGet::Success)
         {
             throw std::runtime_error("Test asset json missing name");
         }
 
-        base::Name n {*nameOpt};
+        base::Name n {nameStr};
         auto expr = buildgraphtest::assetExpr(n); // assetExpr(const base::Name&) -> Expression
 
         return Asset {std::move(n), std::move(expr), std::vector<base::Name> {}};
@@ -1665,7 +1693,7 @@ public:
         (void)kvdbs; // no-op
     }
 
-    void clearAvailableKvdbs() override {}
+    void clearIntegrationData() override {}
 
 private:
     mutable builder::builders::Context m_ctx {};
@@ -1694,7 +1722,7 @@ TEST_P(BuildAssetsOrder, DecoderOrderPreservedInGraph)
         const auto orderCheck = expected.succCase()(cmStoreNSReader, buildCtx);
 
         factory::BuiltAssets built;
-        EXPECT_NO_THROW(built = factory::buildAssets(policy, cmStoreNSReader, assetBuilder, /*sandbox=*/true));
+        EXPECT_NO_THROW(built = factory::buildAssets(policy, cmStoreNSReader, assetBuilder, /*isTestMode=*/true));
 
         factory::PolicyGraph graph;
         EXPECT_NO_THROW(graph = factory::buildGraph(built));
@@ -1715,7 +1743,7 @@ TEST_P(BuildAssetsOrder, DecoderOrderPreservedInGraph)
             {
                 try
                 {
-                    (void)factory::buildAssets(policy, cmStoreNSReader, assetBuilder, /*sandbox=*/true);
+                    (void)factory::buildAssets(policy, cmStoreNSReader, assetBuilder, /*isTestMode=*/true);
                 }
                 catch (const std::runtime_error& e)
                 {
@@ -1743,7 +1771,8 @@ INSTANTIATE_TEST_SUITE_P(
                                         "UNDEFINED",
                                         "",
                                         false,
-                                        false),
+                                        false,
+                                        true),
             SUCCESS(SuccessExpected::Behaviour {
                 [](const auto& reader, const auto&)
                 {
@@ -1798,7 +1827,8 @@ INSTANTIATE_TEST_SUITE_P(
                                                  "UNDEFINED",
                                                  "",
                                                  false,
-                                                 false),
+                                                 false,
+                                                 true),
                      SUCCESS(SuccessExpected::Behaviour {
                          [](const auto& reader, const auto&)
                          {
@@ -1855,7 +1885,8 @@ INSTANTIATE_TEST_SUITE_P(
                                                  "UNDEFINED",
                                                  "",
                                                  false,
-                                                 false),
+                                                 false,
+                                                 true),
                      SUCCESS(SuccessExpected::Behaviour {
                          [](const auto& reader, const auto&)
                          {

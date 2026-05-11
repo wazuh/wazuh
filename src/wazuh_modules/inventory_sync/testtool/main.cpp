@@ -29,11 +29,18 @@ namespace Log
         GLOBAL_LOG_FUNCTION;
 } // namespace Log
 
+// Testtool-only override for the weak hook in vulnerabilityScannerFacade.cpp.
+// Returning true skips automatic full scans triggered after feed updates.
+extern "C" bool vdTesttoolSkipPostUpdateScan()
+{
+    return true;
+}
+
 constexpr auto MAX_LEN = 65536;
 constexpr auto DEFAULT_SOCKETS_PATH = "queue/sockets";
 constexpr auto DEFAULT_QUEUE_PATH = "queue/sockets/queue";
-constexpr auto DEFAULT_ARQUEUE_DIR = "queue/alerts";
-constexpr auto DEFAULT_ARQUEUE = "queue/alerts/ar";
+constexpr auto DEFAULT_ARQUEUE_DIR = "queue/sockets";
+constexpr auto DEFAULT_ARQUEUE = "queue/sockets/ar";
 constexpr auto IS_TOPIC = "inventory-states";
 constexpr auto MIN_ARGS = 3;
 

@@ -8,12 +8,10 @@ import json
 import operator
 import os
 import re
-import stat
 import sys
-import tempfile
 import typing
 from copy import deepcopy
-from datetime import datetime, timedelta, timezone, tzinfo
+from datetime import datetime, timezone, tzinfo
 from dateutil.tz import gettz
 from functools import wraps
 from itertools import groupby, chain
@@ -68,53 +66,6 @@ def clean_pid_files(daemon: str) -> None:
                 print(f'{daemon}: Non existent process {pid}, removing from {common.WAZUH_PATH}/var/run...')
             finally:
                 os.remove(path.join(common.OSSEC_PIDFILE_PATH, pid_file))
-
-
-def find_nth(string: str, substring: str, n: int) -> int:
-    """Return the index corresponding to the n'th occurrence of a substring within a string.
-
-    Parameters
-    ----------
-    string : str
-        String where the substring is searched.
-    substring : str
-        String to be found in "string".
-    n : int
-        Occurrence to be found.
-
-    Returns
-    -------
-    int
-        Index of the n'th occurrence of a substring within a string.
-    """
-
-    start = string.find(substring)
-    while start >= 0 and n > 1:
-        start = string.find(substring, start + len(substring))
-        n -= 1
-    return start
-
-
-def previous_month(n: int = 1) -> datetime.date:
-    """Return the first date of the previous n month.
-
-    Parameters
-    ----------
-    n : int
-        Number of months.
-
-    Returns
-    -------
-    datetime.date
-        First date of the previous n month.
-    """
-
-    date = get_utc_now().replace(day=1)  # First day of current month
-
-    for i in range(0, int(n)):
-        date = (date - timedelta(days=1)).replace(day=1)  # (first_day - 1) = previous month
-
-    return date.replace(hour=00, minute=00, second=00, microsecond=00)
 
 
 def process_array(array: list, search_text: str = None, complementary_search: bool = False,
@@ -494,58 +445,6 @@ def select_array(array: list, select: list = None, required_fields: set = None,
     return result_list
 
 
-_filemode_table = (
-    ((stat.S_IFLNK, "l"),
-     (stat.S_IFREG, "-"),
-     (stat.S_IFBLK, "b"),
-     (stat.S_IFDIR, "d"),
-     (stat.S_IFCHR, "c"),
-     (stat.S_IFIFO, "p")),
-
-    ((stat.S_IRUSR, "r"),),
-    ((stat.S_IWUSR, "w"),),
-    ((stat.S_IXUSR | stat.S_ISUID, "s"),
-     (stat.S_ISUID, "S"),
-     (stat.S_IXUSR, "x")),
-
-    ((stat.S_IRGRP, "r"),),
-    ((stat.S_IWGRP, "w"),),
-    ((stat.S_IXGRP | stat.S_ISGID, "s"),
-     (stat.S_ISGID, "S"),
-     (stat.S_IXGRP, "x")),
-
-    ((stat.S_IROTH, "r"),),
-    ((stat.S_IWOTH, "w"),),
-    ((stat.S_IXOTH | stat.S_ISVTX, "t"),
-     (stat.S_ISVTX, "T"),
-     (stat.S_IXOTH, "x"))
-)
-
-
-def filemode(mode: int) -> str:
-    """Convert a file's mode to a string of the form '-rwxrwxrwx'.
-
-    Parameters
-    ----------
-    mode : int
-        Mode.
-
-    Returns
-    -------
-    str
-        String.
-    """
-    perm = []
-    for table in _filemode_table:
-        for bit, char in table:
-            if mode & bit == bit:
-                perm.append(char)
-                break
-        else:
-            perm.append("-")
-    return "".join(perm)
-
-
 def tail(filename: str, n: int = 20) -> list:
     """Returns last 'n' lines of the file 'filename'.
 
@@ -632,39 +531,6 @@ def chown_r(file_path: str, uid: int, gid: int):
                 chown(item_path, uid, gid)
             elif path.isdir(item_path):
                 chown_r(item_path, uid, gid)
-
-
-def delete_wazuh_file(full_path: str) -> bool:
-    """Delete a Wazuh file.
-
-    Parameters
-    ----------
-    full_path : str
-        Full path of the file to delete.
-
-    Raises
-    ------
-    WazuhError(1906)
-        File does not exist.
-    WazuhError(1907)
-        File could not be deleted.
-
-    Returns
-    -------
-    bool
-        True if success.
-    """
-    if not full_path.startswith(common.WAZUH_PATH) or '..' in full_path:
-        raise WazuhError(1907)
-
-    if path.exists(full_path):
-        try:
-            remove(full_path)
-            return True
-        except IOError:
-            raise WazuhError(1907)
-    else:
-        raise WazuhError(1906)
 
 
 def safe_move(source: str, target: str, ownership: tuple = None, time: tuple = None, permissions: int = None):
@@ -778,12 +644,6 @@ def get_hash(filename, hash_algorithm='md5', return_hex=True):
         return None
 
     return hashing.hexdigest() if return_hex else hashing.digest()
-
-
-def get_hash_str(my_str, hash_algorithm='md5'):
-    hashing = _get_hashing_algorithm(hash_algorithm)
-    hashing.update(my_str.encode())
-    return hashing.hexdigest()
 
 
 def get_fields_to_nest(fields, force_fields=[], split_character="_"):
@@ -1184,16 +1044,6 @@ class WazuhVersion:
             self.__dev_ver = m.group(5)
         else:
             raise ValueError("Invalid version format.")
-
-    def to_array(self):
-        array = [str(self.__mayor)]
-        array.extend(str(self.__minor))
-        array.extend(str(self.__patch))
-        if self.__dev:
-            array.append(self.__dev)
-        if self.__dev_ver:
-            array.append(self.__dev_ver)
-        return array
 
     def __to_string(self):
         if self.__mayor == 0 and self.__minor == 0 and self.__patch == 0:
@@ -1995,32 +1845,6 @@ class WazuhDBQuery(object):
         return value == "all"
 
 
-class WazuhDBQueryDistinct(WazuhDBQuery):
-    """Retrieve unique values for a given field."""
-
-    def _default_query(self):
-        return "SELECT DISTINCT {0} FROM " + self.table
-
-    def _default_count_query(self):
-        return "COUNT (DISTINCT {0})".format(','.join(map(lambda x: self.fields[x], self.select)))
-
-    def _add_filters_to_query(self):
-        WazuhDBQuery._add_filters_to_query(self)
-        self.query += ' WHERE ' if not self.q and 'WHERE' not in self.query else ' AND '
-        self.query += ' AND '.join(
-            ["{0} IS NOT null AND {0} != ''".format(self.fields[field]) for field in self.select])
-
-    def _add_select_to_query(self):
-        if len(self.select) > 1:
-            raise WazuhError(1410)
-
-        WazuhDBQuery._add_select_to_query(self)
-
-    def _format_data_into_dictionary(self):
-        self._data = [next(iter(x.values())) for x in self._data]
-        return WazuhDBQuery._format_data_into_dictionary(self)
-
-
 class WazuhDBQueryGroupBy(WazuhDBQuery):
     """Retrieve unique values for multiple fields using group by."""
 
@@ -2044,33 +1868,6 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
                 'fields': set(self.filter_fields)
             }
         self.select = self.select & self.filter_fields['fields']
-
-
-
-
-def add_dynamic_detail(detail: str, value: str, attribs: dict, details: dict):
-    """Add a detail with attributes (i.e. regex with negate or type).
-
-    Parameters
-    ----------
-    detail : str
-        Name of the detail.
-    value : str
-        Detail value.
-    attribs : dict
-        Dictionary with the XML attributes.
-    details : dict
-        Dictionary with all the current details.
-    """
-    if detail in details:
-        new_pattern = details[detail]['pattern'] + value
-        details[detail].clear()
-        details[detail]['pattern'] = new_pattern
-    else:
-        details[detail] = dict()
-        details[detail]['pattern'] = value
-
-    details[detail].update(attribs)
 
 
 def validate_wazuh_xml(content: str):
@@ -2119,99 +1916,6 @@ def validate_wazuh_xml(content: str):
         raise e
     except Exception as e:
         raise WazuhError(1113, str(e))
-
-
-def upload_file(content: str, file_path: str, check_xml_formula_values: bool = True):
-    """Upload files (wazuh-manager.conf).
-
-    Parameters
-    ----------
-    content: str
-        Content of the XML file.
-    file_path: str
-        Destination of the new XML file.
-    check_xml_formula_values: bool
-        Check formula values in the resulting XML if true.
-
-    Raises
-    ------
-    WazuhInternalError(1005)
-        Error reading file.
-    WazuhInternalError(1016)
-        Error moving file.
-    WazuhError(1006)
-        Permision error accessing File or Directory.
-
-    Returns
-    -------
-    WazuhResult
-        Confirmation message.
-    """
-
-    def escape_formula_values(xml_string):
-        """Prepend with a single quote possible formula injections."""
-        formula_characters = ('=', '+', '-', '@')
-        et = fromstring(f'<root>{xml_string}</root>')
-        full_preprend, beginning_preprend = list(), list()
-        for node in et.iter():
-            if node.tag and node.tag.startswith(formula_characters):
-                full_preprend.append(node.tag)
-            if node.text and node.text.startswith(formula_characters) and ("'" in node.text or '"' in node.text):
-                beginning_preprend.append(node.text)
-
-        for text in full_preprend:
-            xml_string = re.sub(f'<{re.escape(text)}>', f"<'{text}'>", xml_string)
-            xml_string = re.sub(f'</{re.escape(text)}>', f"</'{text}'>", xml_string)
-
-        for text in beginning_preprend:
-            xml_string = re.sub(f'>{re.escape(text)}<', f">'{text}<", xml_string)
-
-        return xml_string
-
-    # Path of temporary files for parsing xml input
-    handle, tmp_file_path = tempfile.mkstemp(prefix='api_tmp_file_', suffix='.tmp', dir=common.OSSEC_TMP_PATH)
-    try:
-        with open(handle, 'w') as tmp_file:
-            final_file = escape_formula_values(content) if check_xml_formula_values else content
-            tmp_file.write(final_file)
-        chmod(tmp_file_path, 0o660)
-    except IOError as exc:
-        raise WazuhInternalError(1005) from exc
-
-    # Move temporary file to group folder
-    try:
-        new_conf_path = path.join(common.WAZUH_PATH, file_path)
-        safe_move(tmp_file_path, new_conf_path, ownership=(common.wazuh_uid(), common.wazuh_gid()), permissions=0o660)
-    except PermissionError as exc:
-        raise WazuhError(1006) from exc
-    except Error as exc:
-        raise WazuhInternalError(1016) from exc
-
-    return results.WazuhResult({'message': 'File was successfully updated'})
-
-
-def delete_file_with_backup(backup_file: str, abs_path: str, delete_function: callable):
-    """Try to delete a file doing a backup beforehand.
-
-    Parameters
-    ----------
-    backup_file : str
-        Name of the backup file.
-    abs_path : str
-        Absolute path of the file to delete.
-    delete_function : callable
-        Function that will be used to delete the file.
-
-    Raises
-    ------
-    WazuhError(1019)
-        If there is any `IOError` while doing the backup.
-    """
-    try:
-        full_copy(abs_path, backup_file)
-    except IOError:
-        raise WazuhError(1019)
-    delete_function(filename=path.basename(abs_path))
 
 
 def replace_in_comments(original_content, to_be_replaced, replacement):

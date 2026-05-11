@@ -12,23 +12,24 @@
 #include "wdb.h"
 #include "wazuhdb_op.h"
 
+/* Static regex for group name validation */
+static regex_t wdb_global_group_regex;
+static bool wdb_global_group_regex_compiled = false;
+static pthread_mutex_t wdb_global_group_regex_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 // List of agent information fields in global DB
 // The ":" is used for parameter binding
 static const char *global_db_agent_fields[] = {
-    ":config_sum",
     ":ip",
-    ":manager_host",
     ":merged_sum",
     ":name",
     ":node_name",
     ":os_arch",
-    ":os_build",
-    ":os_codename",
     ":os_major",
     ":os_minor",
     ":os_name",
+    ":os_type",
     ":os_platform",
-    ":os_uname",
     ":os_version",
     ":version",
     ":last_keepalive",
@@ -44,6 +45,25 @@ static const char *SQL_VACUUM_INTO = "VACUUM INTO ?;";
 
 int wdb_global_insert_agent(wdb_t *wdb, int id, char* name, char* ip, char* register_ip, char* internal_key, char* group, int date_add) {
     sqlite3_stmt *stmt = NULL;
+
+    // Validate group names before inserting
+    if (group && group[0] != '\0') {
+        char *tmp_groups = NULL;
+        os_strdup(group, tmp_groups);
+        char *save_ptr = NULL;
+        const char delim[] = {MULTIGROUP_SEPARATOR, '\0'};
+        char *group_name = strtok_r(tmp_groups, delim, &save_ptr);
+
+        while (group_name != NULL) {
+            if (OS_INVALID == wdb_global_validate_group_name(group_name)) {
+                merror("Invalid group name '%s' in multigroup '%s' for agent %d", group_name, group, id);
+                os_free(tmp_groups);
+                return OS_INVALID;
+            }
+            group_name = strtok_r(NULL, delim, &save_ptr);
+        }
+        os_free(tmp_groups);
+    }
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
@@ -122,15 +142,11 @@ int wdb_global_update_agent_version(wdb_t *wdb,
                                     const char *os_version,
                                     const char *os_major,
                                     const char *os_minor,
-                                    const char *os_codename,
+                                    const char *os_type,
                                     const char *os_platform,
-                                    const char *os_build,
-                                    const char *os_uname,
                                     const char *os_arch,
                                     const char *version,
-                                    const char *config_sum,
                                     const char *merged_sum,
-                                    const char *manager_host,
                                     const char *node_name,
                                     const char *agent_ip,
                                     const char *connection_status,
@@ -168,19 +184,12 @@ int wdb_global_update_agent_version(wdb_t *wdb,
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
-    if (sqlite3_bind_text(stmt, index++, os_codename, -1, NULL) != SQLITE_OK) {
+    if (sqlite3_bind_text(stmt, index++, os_type, -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
+
     if (sqlite3_bind_text(stmt, index++, os_platform, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
-    if (sqlite3_bind_text(stmt, index++, os_build, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
-    if (sqlite3_bind_text(stmt, index++, os_uname, -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
@@ -192,15 +201,7 @@ int wdb_global_update_agent_version(wdb_t *wdb,
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
-    if (sqlite3_bind_text(stmt, index++, config_sum, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
     if (sqlite3_bind_text(stmt, index++, merged_sum, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
-    if (sqlite3_bind_text(stmt, index++, manager_host, -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
@@ -468,97 +469,6 @@ cJSON* wdb_global_find_agent(wdb_t *wdb, const char *name, const char *ip) {
     return result;
 }
 
-int wdb_global_update_agent_groups_hash(wdb_t* wdb, int agent_id, char* groups_string) {
-    char groups_hash[WDB_GROUP_HASH_SIZE+1] = {0};
-
-    // If the comma-separated groups string is not sent, read it from 'group' column
-    if (groups_string) {
-        OS_SHA256_String_sized(groups_string, groups_hash, WDB_GROUP_HASH_SIZE);
-    }
-    else {
-        cJSON* root_j = wdb_global_select_agent_group(wdb, agent_id);
-        cJSON* agent_group_j = NULL;
-        if (root_j && (agent_group_j = cJSON_GetObjectItem(root_j->child, "group")) && cJSON_IsString(agent_group_j)) {
-            OS_SHA256_String_sized(agent_group_j->valuestring, groups_hash, WDB_GROUP_HASH_SIZE);
-            cJSON_Delete(root_j);
-        }
-        else {
-            mdebug2("Unable to get group column for agent '%d'. The groups_hash column won't be updated", agent_id);
-            cJSON_Delete(root_j);
-            return OS_SUCCESS;
-        }
-	}
-
-    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("Cannot begin transaction");
-        return OS_INVALID;
-    }
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_UPDATE_AGENT_GROUPS_HASH) < 0) {
-        mdebug1("Cannot cache statement");
-        return OS_INVALID;
-    }
-
-    sqlite3_stmt* stmt = wdb->stmt[WDB_STMT_GLOBAL_UPDATE_AGENT_GROUPS_HASH];
-    if (sqlite3_bind_text(stmt, 1, groups_hash, -1, NULL) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
-
-    if (sqlite3_bind_int(stmt, 2, agent_id) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
-
-    return wdb_exec_stmt_silent(stmt);
-}
-
-int wdb_global_adjust_v4(wdb_t* wdb) {
-    int step_result = -1;
-    int update_result = OS_SUCCESS;
-    int result = OS_INVALID;
-    int agent_id = -1;
-
-    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
-        mdebug1("Cannot begin transaction");
-        return OS_INVALID;
-    }
-
-    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GET_AGENTS) < 0) {
-        mdebug1("Cannot cache statement");
-        return OS_INVALID;
-    }
-
-    sqlite3_stmt* stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_AGENTS];
-
-    if (sqlite3_bind_int(stmt, 1, 0) != SQLITE_OK) {
-        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
-
-    do {
-        step_result = wdb_step(stmt);
-        switch (step_result) {
-        case SQLITE_ROW:
-            agent_id = sqlite3_column_int(stmt, 0);
-            update_result = wdb_global_update_agent_groups_hash(wdb, agent_id, NULL);
-            break;
-        case SQLITE_DONE:
-            result = OS_SUCCESS;
-            break;
-        default:
-            mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
-            result = OS_INVALID;
-        }
-    } while(step_result == SQLITE_ROW && update_result == OS_SUCCESS);
-
-    if (result == OS_SUCCESS && wdb_commit2(wdb) < 0) {
-        merror("DB(%s) The commit statement could not be executed.", wdb->id);
-        return -1;
-    }
-
-    return result;
-}
 
 cJSON* wdb_global_find_group(wdb_t *wdb, char* group_name) {
     sqlite3_stmt *stmt = NULL;
@@ -1331,27 +1241,49 @@ int wdb_global_groups_number_get(wdb_t *wdb, int agent_id) {
 }
 
 w_err_t wdb_global_validate_group_name(const char *group_name) {
-    const char *current_directory = ".";
-    const char *parent_directory = "..";
+    /* Compile regex once on first call */
+    w_mutex_lock(&wdb_global_group_regex_mutex);
+    if (!wdb_global_group_regex_compiled) {
+        if (regcomp(&wdb_global_group_regex, "^[a-zA-Z0-9_\\.\\-]+$", REG_EXTENDED | REG_NOSUB) != 0) {
+            mwarn("Failed to compile group validation regex");
+            w_mutex_unlock(&wdb_global_group_regex_mutex);
+            return OS_INVALID;
+        }
+        wdb_global_group_regex_compiled = true;
+    }
 
     if (strlen(group_name) > MAX_GROUP_NAME) {
         mwarn("Invalid group name. The group '%s' exceeds the maximum length of %d characters permitted", group_name, MAX_GROUP_NAME);
+        w_mutex_unlock(&wdb_global_group_regex_mutex);
         return OS_INVALID;
     }
-    if (!w_regexec("^[a-zA-Z0-9_\\.\\-]+$", group_name, 0, NULL)) {
+    if (regexec(&wdb_global_group_regex, group_name, 0, NULL, 0) != 0) {
         mwarn("Invalid group name. '%s' contains invalid characters", group_name);
+        w_mutex_unlock(&wdb_global_group_regex_mutex);
         return OS_INVALID;
     }
-    if (!strcmp(group_name, parent_directory)) {
-        mwarn("Invalid group name. '%s' represents the parent directory in unix systems", group_name);
+    w_mutex_unlock(&wdb_global_group_regex_mutex);
+
+    /* Explicit check for directory references (. and ..) */
+    if (strcmp(group_name, ".") == 0) {
+        mwarn("Invalid group name. '.' represents the current directory in unix systems");
         return OS_INVALID;
     }
-    if (!strcmp(group_name, current_directory)) {
-        mwarn("Invalid group name. '%s' represents the current directory in unix systems", group_name);
+    if (strcmp(group_name, "..") == 0) {
+        mwarn("Invalid group name. '..' represents the parent directory in unix systems");
         return OS_INVALID;
     }
 
     return OS_SUCCESS;
+}
+
+void wdb_global_validate_group_name_cleanup(void) {
+    w_mutex_lock(&wdb_global_group_regex_mutex);
+    if (wdb_global_group_regex_compiled) {
+        regfree(&wdb_global_group_regex);
+        wdb_global_group_regex_compiled = false;
+    }
+    w_mutex_unlock(&wdb_global_group_regex_mutex);
 }
 
 w_err_t wdb_global_validate_groups(wdb_t *wdb, cJSON *j_groups, int agent_id) {
@@ -2038,7 +1970,7 @@ int wdb_global_create_backup(wdb_t* wdb, char* output, const char* tag) {
         result = w_compress_gzfile(path, path_compressed);
         unlink(path);
         if(OS_SUCCESS == result) {
-            minfo("Created Global database backup \"%s\"", path_compressed);
+            mdebug1("Created Global database backup \"%s\"", path_compressed);
             wdb_global_remove_old_backups();
             cJSON* j_path = cJSON_CreateArray();
             cJSON_AddItemToArray(j_path, cJSON_CreateString(path_compressed));

@@ -30,7 +30,12 @@ inline Mapper noMapper()
     return [](json::Json&) {
     };
 }
-using SemParser = std::function<std::variant<Mapper, base::Error>(std::string_view)>; ///< Semantic parser: validates parsed text and returns a Mapper or Error.
+
+/**
+ * @brief Semantic parser function type. Takes the parsed string and a boolean
+ * indicating whether to enable trace, and returns either a Mapper or an Error.
+ */
+using SemParser = std::function<std::variant<Mapper, base::Error>(std::string_view, bool)>;
 
 /**
  * @brief Token produced by the syntax parsing phase.
@@ -48,45 +53,54 @@ struct SemToken
  */
 inline SemParser noSemParser()
 {
-    return [](std::string_view) -> std::variant<Mapper, base::Error>
+    return [](std::string_view, bool) -> std::variant<Mapper, base::Error>
     {
         return noMapper();
     };
 }
 
-using ResultT = SemToken;              ///< Result value type for HLP parsers.
-using Result = abs::Result<ResultT>;   ///< HLP parser result type.
-using Parser = abs::Parser<ResultT>;   ///< HLP parser type.
+using ResultT = SemToken;            ///< Result value type for HLP parsers.
+using Result = abs::Result<ResultT>; ///< HLP parser result type.
+using Parser = abs::Parser<ResultT>; ///< HLP parser type.
 
 /**
  * @brief Runs three steps of parsing: syntax, semantic and mapping. Returns an error if any of the steps fails at any
- * point.
+ * point. When enableTrace is false, error messages are omitted to avoid string allocation overhead.
  *
  * @param parser Parser to run
  * @param text Text to parse
  * @param event Event to map to
+ * @param enableTrace If true, builds detailed error messages on failure. If false, returns empty error messages.
  * @return std::optional<base::Error>
  */
-inline std::optional<base::Error> run(const Parser& parser, std::string_view text, json::Json& event)
+inline std::optional<base::Error>
+run(const Parser& parser, std::string_view text, json::Json& event, bool enableTrace = true)
 {
     // Syntax parsing
     auto synRes = parser(text);
     if (synRes.failure())
     {
-        const auto error = fmt::format("Parser {} failed at: {}", synRes.trace(), synRes.remaining());
-        return base::Error {error};
+        if (enableTrace)
+        {
+            return base::Error {fmt::format("Parser {} failed at: {}", synRes.trace(), synRes.remaining())};
+        }
+        return base::Error {};
     }
 
-    // Semantinc parsing
+    // Semantic parsing
     std::vector<Mapper> mappers;
-    auto semVisitor = [&mappers](const Result& result, auto& recurRef) -> std::optional<base::Error>
+    auto semVisitor = [&mappers, enableTrace](const Result& result, auto& recurRef) -> std::optional<base::Error>
     {
         if (result.hasValue())
         {
-            auto res = result.value().semParser(result.value().parsed);
+            auto res = result.value().semParser(result.value().parsed, enableTrace);
             if (std::holds_alternative<base::Error>(res))
             {
-                return std::get<base::Error>(res);
+                if (enableTrace)
+                {
+                    return std::get<base::Error>(std::move(res));
+                }
+                return base::Error {};
             }
 
             mappers.emplace_back(std::get<Mapper>(std::move(res)));
