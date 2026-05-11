@@ -152,9 +152,11 @@ void Schema::Validator::registerCompatibles()
                           ValidationInfo {{json::Json::Type::Object}, validators::getObjectValidator(), {}});
     m_compatibles.emplace(Type::FLAT_OBJECT,
                           ValidationInfo {{json::Json::Type::Object}, validators::getObjectValidator(), {}});
-    m_compatibles.emplace(
-        Type::GEO_POINT,
-        ValidationInfo {{json::Json::Type::Object, json::Json::Type::String}, validators::getGeoValidator(), {}, true});
+    m_compatibles.emplace(Type::GEO_POINT,
+                          ValidationInfo {{json::Json::Type::Object, json::Json::Type::String},
+                                          validators::getGeoValidator(),
+                                          {},
+                                          true});
     m_compatibles.emplace(Type::UNSIGNED_LONG,
                           ValidationInfo {{json::Json::Type::Number}, validators::getUnsignedLongValidator(), {}});
     m_compatibles.emplace(Type::COMPLETION,
