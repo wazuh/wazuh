@@ -1967,3 +1967,43 @@ class TestNormalizeCommsDocZeroPreservation:
         assert doc["queue"]["size"] == 10
         assert doc["events"]["total"] == 1000
         assert doc["tcp"]["sessions"] == 5
+
+class TestClusterNameFallback:
+    """wazuh.cluster.name must be omitted when cluster_name is absent from config."""
+
+    @pytest.mark.asyncio
+    async def test_collect_comms_cluster_name_is_none_when_missing(self):
+        """_collect_comms_all_nodes omits wazuh.cluster.name when cluster_name is absent."""
+        server = MagicMock()
+        server.configuration = {"node_name": "node01"}  # no cluster_name key
+        server.clients = {}
+        server.setup_task_logger.return_value = MagicMock()
+
+        tasks = MetricsSnapshotTasks(server=server, cluster_items=CLUSTER_ITEMS)
+
+        with patch("wazuh.core.indexer.metrics_snapshot.get_daemons_stats") as mock_stats:
+            mock_stats.return_value = MagicMock(affected_items=[{"name": "wazuh-manager-remoted"}])
+            docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
+
+        assert docs, "Expected at least one document"
+        for doc in docs:
+            cluster = doc.get("wazuh", {}).get("cluster", {})
+            assert "name" not in cluster
+
+    @pytest.mark.asyncio
+    async def test_collect_comms_cluster_name_present(self):
+        """_collect_comms_all_nodes correctly propagates cluster_name when present in config."""
+        server = MagicMock()
+        server.configuration = {"node_name": "node01", "cluster_name": "wazuh"}
+        server.clients = {}
+        server.setup_task_logger.return_value = MagicMock()
+
+        tasks = MetricsSnapshotTasks(server=server, cluster_items=CLUSTER_ITEMS)
+
+        with patch("wazuh.core.indexer.metrics_snapshot.get_daemons_stats") as mock_stats:
+            mock_stats.return_value = MagicMock(affected_items=[{"name": "wazuh-manager-remoted"}])
+            docs = await tasks._collect_comms_all_nodes(TIMESTAMP)
+
+        assert docs
+        for doc in docs:
+            assert doc["wazuh"]["cluster"]["name"] == "wazuh"
