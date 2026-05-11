@@ -4816,7 +4816,7 @@ std::string Syscollector::buildOrderByClause(const std::string& fields, bool asc
 
         if (!field.empty())
         {
-            fieldList.push_back(field);
+            fieldList.push_back(std::move(field));
         }
 
         start = end + 1;
@@ -4830,7 +4830,7 @@ std::string Syscollector::buildOrderByClause(const std::string& fields, bool asc
 
     if (!lastField.empty())
     {
-        fieldList.push_back(lastField);
+        fieldList.push_back(std::move(lastField));
     }
 
     // Build ORDER BY with COLLATE NOCASE for case-insensitive ordering

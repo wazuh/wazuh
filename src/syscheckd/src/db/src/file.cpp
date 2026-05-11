@@ -93,7 +93,7 @@ void DB::getFile(const std::string& path, std::function<void(const nlohmann::jso
 
 void DB::updateFile(const nlohmann::json& file, std::function<void(int, const nlohmann::json&)> callback)
 {
-    const auto internalCallback {[file, callback, this](ReturnTypeCallback type, const nlohmann::json resultJson)
+    const auto internalCallback {[file, callback, this](ReturnTypeCallback type, const nlohmann::json& resultJson)
     {
         callback(type, resultJson);
     }};

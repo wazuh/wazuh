@@ -105,7 +105,7 @@ void AgentSyncProtocol::persistDifferenceInMemory(const std::string& id,
         persistedData.operation = operation;
         persistedData.version = version;
 
-        m_inMemoryData.push_back(persistedData);
+        m_inMemoryData.push_back(std::move(persistedData));
     }
     // LCOV_EXCL_START
     catch (const std::exception& e)
@@ -420,7 +420,7 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
         item.seq = i;
         item.index = indices[i];
         // id, data, and operation are not used for DataClean messages
-        dataToSync.push_back(item);
+        dataToSync.push_back(std::move(item));
     }
 
     bool success = false;

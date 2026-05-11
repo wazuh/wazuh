@@ -54,7 +54,7 @@ void getSnapInfo(std::function<void(nlohmann::json&)> callback);
 class FactoryPackagesCreator final
 {
     public:
-        static void getPackages(std::function<void(nlohmann::json&)> callback)
+        static void getPackages(const std::function<void(nlohmann::json&)>& callback)
         {
             const file_system::FileSystemWrapper fs;
 

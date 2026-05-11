@@ -9,7 +9,7 @@
 namespace file_system
 {
     FileSystemUtils::FileSystemUtils(std::shared_ptr<IFileSystemWrapper> fsWrapper)
-        : m_fsWrapper(fsWrapper ? fsWrapper : std::make_shared<FileSystemWrapper>())
+        : m_fsWrapper(fsWrapper ? std::move(fsWrapper) : std::make_shared<FileSystemWrapper>())
     {
     }
 
