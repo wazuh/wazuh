@@ -4173,6 +4173,78 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanLogsErrorWithoutQueue)
     EXPECT_TRUE(foundError);
 }
 
+TEST_F(AgentSyncProtocolTest, NotifyDataCleanWithReqRetSuccess)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 1; },
+        .send_binary = [](int, const void*, size_t, const char*, char) { return 1; }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>(
+                   "test_module", ":memory:", mqFuncs, testLogger,
+                   std::chrono::seconds(0),
+                   std::chrono::seconds(min_timeout),
+                   retries, maxEps, mockQueue);
+
+    std::vector<std::string> indices = {"idx_a", "idx_b", "idx_c"};
+
+    EXPECT_CALL(*mockQueue, clearItemsByIndex("idx_a")).Times(1);
+    EXPECT_CALL(*mockQueue, clearItemsByIndex("idx_b")).Times(1);
+    EXPECT_CALL(*mockQueue, clearItemsByIndex("idx_c")).Times(1);
+
+    std::thread syncThread([this, &indices]()
+    {
+        bool result = protocol->notifyDataClean(indices);
+        EXPECT_TRUE(result);
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    {
+        flatbuffers::FlatBufferBuilder b;
+        Wazuh::SyncSchema::StartAckBuilder sab(b);
+        sab.add_status(Wazuh::SyncSchema::Status::Ok);
+        sab.add_session(session);
+        auto off = sab.Finish();
+        auto msg = Wazuh::SyncSchema::CreateMessage(
+                       b, Wazuh::SyncSchema::MessageType::StartAck, off.Union());
+        b.Finish(msg);
+        protocol->parseResponseBuffer(b.GetBufferPointer(), b.GetSize());
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    {
+        flatbuffers::FlatBufferBuilder b;
+        std::vector<flatbuffers::Offset<Wazuh::SyncSchema::Pair>> ranges;
+        ranges.push_back(Wazuh::SyncSchema::CreatePair(b, 0, 2));
+        auto seqVec = b.CreateVector(ranges);
+        Wazuh::SyncSchema::ReqRetBuilder rb(b);
+        rb.add_session(session);
+        rb.add_seq(seqVec);
+        auto off = rb.Finish();
+        auto msg = Wazuh::SyncSchema::CreateMessage(
+                       b, Wazuh::SyncSchema::MessageType::ReqRet, off.Union());
+        b.Finish(msg);
+        protocol->parseResponseBuffer(b.GetBufferPointer(), b.GetSize());
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    {
+        flatbuffers::FlatBufferBuilder b;
+        Wazuh::SyncSchema::EndAckBuilder eab(b);
+        eab.add_status(Wazuh::SyncSchema::Status::Ok);
+        eab.add_session(session);
+        auto off = eab.Finish();
+        auto msg = Wazuh::SyncSchema::CreateMessage(
+                       b, Wazuh::SyncSchema::MessageType::EndAck, off.Union());
+        b.Finish(msg);
+        protocol->parseResponseBuffer(b.GetBufferPointer(), b.GetSize());
+    }
+
+    syncThread.join();
+}
+
 TEST_F(AgentSyncProtocolTest, DeleteDatabaseLogsErrorWithoutQueue)
 {
     MQ_Functions mqFuncs =

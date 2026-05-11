@@ -9,14 +9,15 @@ This module will contain all cases for the parser test suite
 import pytest
 
 # qa-integration-framework imports
-from wazuh_testing import session_parameters
 
 # Local module imports
 from . import event_monitor
 from .configurator import configurator
 from .utils import ERROR_MESSAGE, TIMEOUT, local_internal_options
 
-pytestmark = [pytest.mark.server]
+pytestmark = [pytest.mark.agent, pytest.mark.linux]
+
+daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
 
 # Set test configurator for the module
 configurator.module = 'parser_test_module'
@@ -32,8 +33,8 @@ configurator.configure_test(configuration_file='configuration_bucket_and_service
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_bucket_and_service_missing(
-        test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
-        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function_without_exception,
+        test_configuration, metadata, set_wazuh_configuration,
+        configure_local_internal_options_function, truncate_monitored_files, daemons_handler,
         file_monitoring
 ):
     """
@@ -58,9 +59,6 @@ def test_bucket_and_service_missing(
         - metadata:
             type: dict
             brief: Get metadata from the module.
-        - load_wazuh_basic_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -70,7 +68,7 @@ def test_bucket_and_service_missing(
         - truncate_monitored_files:
             type: fixture
             brief: Truncate wazuh logs.
-        - restart_wazuh_function_without_exception:
+        - daemons_handler:
             type: fixture
             brief: Restart the wazuh service catching the exception.
         - file_monitoring:
@@ -83,7 +81,7 @@ def test_bucket_and_service_missing(
         - The `configuration_bucket_and_service_missing` file provides the configuration for this test.
     """
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_warning,
     )
 
@@ -101,8 +99,8 @@ configurator.configure_test(configuration_file='configuration_type_missing_in_bu
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_type_missing_in_bucket(
-        test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
-        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function_without_exception,
+        test_configuration, metadata, set_wazuh_configuration,
+        configure_local_internal_options_function, truncate_monitored_files, daemons_handler,
         file_monitoring
 ):
     """
@@ -127,9 +125,6 @@ def test_type_missing_in_bucket(
         - metadata:
             type: dict
             brief: Get metadata from the module.
-        - load_wazuh_basic_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -139,7 +134,7 @@ def test_type_missing_in_bucket(
         - truncate_monitored_files:
             type: fixture
             brief: Truncate wazuh logs.
-        - restart_wazuh_function_without_exception:
+        - daemons_handler:
             type: fixture
             brief: Restart the wazuh service catching the exception.
         - file_monitoring:
@@ -151,7 +146,7 @@ def test_type_missing_in_bucket(
         - The `configuration_type_missing_in_bucket` file provides the configuration for this test.
     """
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_legacy_module_warning,
     )
 
@@ -169,8 +164,8 @@ configurator.configure_test(configuration_file='configuration_type_missing_in_se
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_type_missing_in_service(
-        test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
-        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function_without_exception,
+        test_configuration, metadata, set_wazuh_configuration,
+        configure_local_internal_options_function, truncate_monitored_files, daemons_handler,
         file_monitoring
 ):
     """
@@ -195,9 +190,6 @@ def test_type_missing_in_service(
         - metadata:
             type: dict
             brief: Get metadata from the module.
-        - load_wazuh_basic_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -207,7 +199,7 @@ def test_type_missing_in_service(
         - truncate_monitored_files:
             type: fixture
             brief: Truncate wazuh logs.
-        - restart_wazuh_function_without_exception:
+        - daemons_handler:
             type: fixture
             brief: Restart the wazuh service catching the exception.
         - file_monitoring:
@@ -220,7 +212,7 @@ def test_type_missing_in_service(
         - The `configuration_type_missing_in_service` file provides the configuration for this test.
     """
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_error_for_missing_type,
     )
 
@@ -238,8 +230,8 @@ configurator.configure_test(configuration_file='configuration_values_in_bucket.y
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_empty_values_in_bucket(
-        test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
-        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function_without_exception,
+        test_configuration, metadata, set_wazuh_configuration,
+        configure_local_internal_options_function, truncate_monitored_files, daemons_handler,
         file_monitoring
 ):
     """
@@ -264,9 +256,6 @@ def test_empty_values_in_bucket(
         - metadata:
             type: dict
             brief: Get metadata from the module.
-        - load_wazuh_basic_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -276,7 +265,7 @@ def test_empty_values_in_bucket(
         - truncate_monitored_files:
             type: fixture
             brief: Truncate wazuh logs.
-        - restart_wazuh_function_without_exception:
+        - daemons_handler:
             type: fixture
             brief: Restart the wazuh service catching the exception.
         - file_monitoring:
@@ -288,7 +277,7 @@ def test_empty_values_in_bucket(
         - The `configuration_values_in_bucket` file provides the configuration for this test.
     """
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_empty_value,
     )
 
@@ -306,8 +295,8 @@ configurator.configure_test(configuration_file='configuration_values_in_service.
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_empty_values_in_service(
-        test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
-        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function_without_exception,
+        test_configuration, metadata, set_wazuh_configuration,
+        configure_local_internal_options_function, truncate_monitored_files, daemons_handler,
         file_monitoring
 ):
     """
@@ -332,9 +321,6 @@ def test_empty_values_in_service(
         - metadata:
             type: dict
             brief: Get metadata from the module.
-        - load_wazuh_basic_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -344,7 +330,7 @@ def test_empty_values_in_service(
         - truncate_monitored_files:
             type: fixture
             brief: Truncate wazuh logs.
-        - restart_wazuh_function_without_exception:
+        - daemons_handler:
             type: fixture
             brief: Restart the wazuh service catching the exception.
         - file_monitoring:
@@ -357,7 +343,7 @@ def test_empty_values_in_service(
         - The `configuration_values_in_service` file provides the configuration for this test.
     """
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_empty_value,
     )
 
@@ -375,8 +361,8 @@ configurator.configure_test(configuration_file='configuration_values_in_bucket.y
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_invalid_values_in_bucket(
-        test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
-        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function_without_exception,
+        test_configuration, metadata, set_wazuh_configuration,
+        configure_local_internal_options_function, truncate_monitored_files, daemons_handler,
         file_monitoring
 ):
     """
@@ -401,9 +387,6 @@ def test_invalid_values_in_bucket(
         - metadata:
             type: dict
             brief: Get metadata from the module.
-        - load_wazuh_basic_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -413,7 +396,7 @@ def test_invalid_values_in_bucket(
         - truncate_monitored_files:
             type: fixture
             brief: Truncate wazuh logs.
-        - restart_wazuh_function_without_exception:
+        - daemons_handler:
             type: fixture
             brief: Restart the wazuh service catching the exception.
         - file_monitoring:
@@ -443,8 +426,8 @@ configurator.configure_test(configuration_file='configuration_values_in_service.
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_invalid_values_in_service(
-        test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
-        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function_without_exception,
+        test_configuration, metadata, set_wazuh_configuration,
+        configure_local_internal_options_function, truncate_monitored_files, daemons_handler,
         file_monitoring
 ):
     """
@@ -469,9 +452,6 @@ def test_invalid_values_in_service(
         - metadata:
             type: dict
             brief: Get metadata from the module.
-        - load_wazuh_basic_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -481,7 +461,7 @@ def test_invalid_values_in_service(
         - truncate_monitored_files:
             type: fixture
             brief: Truncate wazuh logs.
-        - restart_wazuh_function_without_exception:
+        - daemons_handler:
             type: fixture
             brief: Restart the wazuh service catching the exception.
         - file_monitoring:
@@ -493,7 +473,7 @@ def test_invalid_values_in_service(
         - The `configuration_values_in_service` file provides the configuration for this test.
     """
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_invalid_value,
     )
 
@@ -511,8 +491,8 @@ configurator.configure_test(configuration_file='configuration_multiple_bucket_an
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_multiple_bucket_and_service_tags(
-        test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
-        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function_without_exception,
+        test_configuration, metadata, set_wazuh_configuration,
+        configure_local_internal_options_function, truncate_monitored_files, daemons_handler,
         file_monitoring
 ):
     """
@@ -537,9 +517,6 @@ def test_multiple_bucket_and_service_tags(
         - metadata:
             type: dict
             brief: Get metadata from the module.
-        - load_wazuh_basic_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -549,7 +526,7 @@ def test_multiple_bucket_and_service_tags(
         - truncate_monitored_files:
             type: fixture
             brief: Truncate wazuh logs.
-        - restart_wazuh_function_without_exception:
+        - daemons_handler:
             type: fixture
             brief: Restart the wazuh service catching the exception.
         - file_monitoring:

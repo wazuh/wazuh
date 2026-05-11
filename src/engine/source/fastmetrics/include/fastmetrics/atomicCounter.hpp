@@ -65,7 +65,14 @@ public:
     void reset() override { m_value.store(0, std::memory_order_relaxed); }
 
     /** @copydoc fastmetrics::IMetric::value() */
-    double value() const override { return static_cast<double>(get()); }
+    double value() const override
+    {
+        if (!m_enabled.load(std::memory_order_relaxed)) [[unlikely]]
+        {
+            return 0.0;
+        }
+        return static_cast<double>(get());
+    }
 
     /** @copydoc fastmetrics::ICounter::add() */
     void add(uint64_t delta = 1) override

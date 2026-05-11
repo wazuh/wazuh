@@ -41,9 +41,9 @@ The **Router** module is the event-processing core of the Wazuh Engine, responsi
 
 ### Event Flow
 
-1. **Production path**: An external caller invokes `postEvent()` on the Orchestrator, which pushes the `IngestEvent` (JSON + original string) into the shared `ProdQueue`. N `RouterWorker` threads compete to dequeue events. Each worker optionally indexes the raw event, parses it via `parseLegacyEvent`, and calls `Router::ingest()` which iterates the priority-sorted `Table` and feeds the event into every *enabled* `Environment`.
+1. **Production path**: An external caller invokes `postEvent()` on the Orchestrator, which pushes the `IngestEvent` (JSON + original string) into the shared `ProdQueue`. N `RouterWorker` threads compete to dequeue events. Each worker stamps the event with `@timestamp` (ISO 8601) and `wazuh/event/id` (UUIDv4), optionally indexes the raw event, parses it via `parseLegacyEvent`, and calls `Router::ingest()` which iterates the priority-sorted `Table` and feeds the event into every *enabled* `Environment`.
 
-2. **Testing path**: A caller invokes `ingestTest()`, which wraps the event + options + callback into a `TestingTuple` and pushes it into the `TestQueue`. A single `TesterWorker` dequeues the tuple, subscribes to the requested asset traces on the `bk::IController`, runs the event through the pipeline, collects trace output, and delivers the result via the callback/future.
+2. **Testing path**: A caller invokes `ingestTest()`, which wraps the event + options + callback into a `TestingTuple` and pushes it into the `TestQueue`. A single `TesterWorker` dequeues the tuple, stamps the event with `@timestamp` (ISO 8601) and `wazuh/event/id` (UUIDv4), subscribes to the requested asset traces on the `bk::IController`, runs the event through the pipeline, collects trace output, and delivers the result via the callback/future.
 
 ## Key Concepts
 
@@ -187,7 +187,7 @@ Every route mutation (add, remove, rebuild, priority change, hot swap) is replic
 3. Runs the event through the controller (`ingestGet`).
 4. Collects trace output into `test::Output` and unsubscribes.
 
-The `TesterWorker` thread picks `TestingTuple` items from the test queue and invokes the callback with the result. The `Orchestrator` exposes both a `std::future`-based and callback-based API for test ingestion.
+The `TesterWorker` thread picks `TestingTuple` items from the test queue, stamps the event with `@timestamp` and `wazuh/event/id` (mirroring the production path), and invokes `Tester::ingestTest()`. The result is delivered to the caller via the callback. The `Orchestrator` exposes both a `std::future`-based and callback-based API for test ingestion.
 
 ### Table (Priority Container)
 
@@ -218,6 +218,7 @@ Unit tests cover each internal class independently using GMock:
 - **`environmentBuilder_test`**: Policy build, controller creation, error handling
 - **`router_test`**: Entry CRUD, priority changes, event ingestion, hot swap
 - **`tester_test`**: Entry CRUD, rename, test ingestion with traces, asset listing
+- **`worker_test`**: RouterWorker/TesterWorker lifecycle, event processing, sentinel skipping, `@timestamp`/`wazuh.event.id` stamping
 - **`orchestrator_test`**: Full lifecycle, multi-worker replication, store persistence, queue contention, worker pool expansion
 - **`entryConverter_test`**: JSON ↔ Entry round-trip conversion
 

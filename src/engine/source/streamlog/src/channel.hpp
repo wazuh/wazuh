@@ -159,9 +159,9 @@ private:
     const RotationConfig m_config;   ///< The rotation configuration for the log channel.
     const std::string m_channelName; ///< The name of the log channel.
 
-    std::weak_ptr<scheduler::IScheduler> m_scheduler; ///< Scheduler for compressing log writes
-    const std::string m_fileExtension;                ///< The file extension for log files.
-    std::shared_ptr<store::IStore> m_store;           ///< Store for managing last state
+    std::weak_ptr<scheduler::IScheduler> m_scheduler;                ///< Scheduler for compressing log writes
+    const std::string m_fileExtension;                               ///< The file extension for log files.
+    std::shared_ptr<store::IStore> m_store;                          ///< Store for managing last state
     std::shared_ptr<const std::atomic<bool>> m_compressionShouldRun; ///< Flag to cancel in-flight compressions
 
     struct ActiveWriters
@@ -249,9 +249,10 @@ private:
     RotationRequirement needsRotation(size_t messageSize) const;
 
     /**
-     * @brief Rotates the log file for the current channel based
+     * @brief Rotates the log file for the current channel based on size or time criteria.
+     * @return true if rotation completed successfully, false on error or no-op.
      */
-    void rotateFile(RotationRequirement rotationType);
+    bool rotateFile(RotationRequirement rotationType);
 
     /**
      * @brief Opens the output file for the current channel and creates or updates a hard link to the latest file.
@@ -362,20 +363,29 @@ private:
     base::Name getStoreBaseName() const { return base::Name(STORE_STREAMLOG_BASE_NAME) + m_channelName + "/0"; }
 
     /**
-     * @brief Get the last file used to write logs from the store
-     * @return The last file path if it exists in the store, std::nullopt
+     * @brief Persisted rotation state recovered from the store on restart.
      */
-    std::optional<std::filesystem::path> getPreviousCurrentFilePathFromStore() const;
+    struct RotationState
+    {
+        std::filesystem::path currentFile; ///< Last file path being written to.
+        size_t counter {0};                ///< Last counter value for size-based rotation.
+    };
 
     /**
-     * @brief Save the current file used to write logs to the store
+     * @brief Load the persisted rotation state (file path and counter) from the store.
+     * @return The rotation state if available, std::nullopt otherwise.
      */
-    void savePreviousCurrentFilePathFromStore() const;
+    std::optional<RotationState> loadCurrentRotationStateFromStore() const;
 
     /**
-     * @brief Clear the last file used to write logs from the store, avoid compression of old files
+     * @brief Persist the current rotation state (file path and counter) to the store.
      */
-    void clearPreviousCurrentFilePathFromStore() const;
+    void saveCurrentRotationStateToStore() const;
+
+    /**
+     * @brief Clear the persisted rotation state from the store.
+     */
+    void clearCurrentRotationStateFromStore() const;
 
     /**
      * @brief Private constructor - use create() instead

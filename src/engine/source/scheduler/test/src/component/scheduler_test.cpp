@@ -454,6 +454,205 @@ TEST_F(SchedulerTest, TaskQueueOrdering)
     scheduler->stop();
 }
 
+/**************************************************************************
+ * Additional tests for uncovered paths
+ *************************************************************************/
+
+TEST_F(SchedulerTest, StartWhenAlreadyRunning)
+{
+    scheduler->start();
+    EXPECT_TRUE(scheduler->isRunning());
+
+    // Calling start again should be a no-op (covers L31 early return)
+    scheduler->start();
+    EXPECT_TRUE(scheduler->isRunning());
+
+    scheduler->stop();
+}
+
+TEST_F(SchedulerTest, ScheduleTaskWithNullFunction)
+{
+    scheduler::TaskConfig config;
+    config.interval = 0;
+    config.runImmediately = false;
+    config.CPUPriority = 0;
+    config.taskFunction = nullptr;
+
+    scheduler->start();
+
+    // Should throw std::invalid_argument (covers L89)
+    EXPECT_THROW(scheduler->scheduleTask("nullTask", std::move(config)), std::invalid_argument);
+
+    scheduler->stop();
+}
+
+TEST_F(SchedulerTest, ScheduleTaskDuplicateName)
+{
+    scheduler::TaskConfig config1;
+    config1.interval = 5;
+    config1.runImmediately = false;
+    config1.CPUPriority = 0;
+    config1.taskFunction = []() {};
+
+    scheduler::TaskConfig config2;
+    config2.interval = 5;
+    config2.runImmediately = false;
+    config2.CPUPriority = 0;
+    config2.taskFunction = []() {};
+
+    scheduler->start();
+    scheduler->scheduleTask("duplicateTask", std::move(config1));
+
+    // Second schedule with same name should throw (covers L101)
+    EXPECT_THROW(scheduler->scheduleTask("duplicateTask", std::move(config2)), std::runtime_error);
+
+    scheduler->stop();
+}
+
+TEST_F(SchedulerTest, TaskRemovedBeforeExecution)
+{
+    std::atomic<bool> taskExecuted {false};
+
+    scheduler::TaskConfig config;
+    config.interval = 1; // Recurring, first run after 1 second
+    config.runImmediately = false;
+    config.CPUPriority = 0;
+    config.taskFunction = [&taskExecuted]()
+    {
+        taskExecuted.store(true);
+    };
+
+    scheduler->start();
+    scheduler->scheduleTask("removedBeforeExec", std::move(config));
+
+    // Remove immediately before first execution (covers L170-171)
+    scheduler->removeTask("removedBeforeExec");
+
+    // Wait past the interval to ensure the popped task won't find it in m_tasks
+    std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+
+    EXPECT_FALSE(taskExecuted.load());
+
+    scheduler->stop();
+}
+
+TEST_F(SchedulerTest, TaskThrowsStdException)
+{
+    std::atomic<bool> afterThrow {false};
+
+    scheduler::TaskConfig throwConfig;
+    throwConfig.interval = 0;
+    throwConfig.runImmediately = false;
+    throwConfig.CPUPriority = 0;
+    throwConfig.taskFunction = []()
+    {
+        throw std::runtime_error("intentional test error");
+    };
+
+    scheduler::TaskConfig afterConfig;
+    afterConfig.interval = 0;
+    afterConfig.runImmediately = false;
+    afterConfig.CPUPriority = 0;
+    afterConfig.taskFunction = [&afterThrow]()
+    {
+        afterThrow.store(true);
+    };
+
+    scheduler->start();
+    scheduler->scheduleTask("throwingTask", std::move(throwConfig));
+
+    // Wait for the throwing task to execute
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+    // Schedule another task to prove scheduler is still alive after exception
+    scheduler->scheduleTask("afterThrow", std::move(afterConfig));
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+    EXPECT_TRUE(afterThrow.load());
+
+    scheduler->stop();
+}
+
+TEST_F(SchedulerTest, TaskThrowsUnknownException)
+{
+    std::atomic<bool> afterThrow {false};
+
+    scheduler::TaskConfig throwConfig;
+    throwConfig.interval = 0;
+    throwConfig.runImmediately = false;
+    throwConfig.CPUPriority = 0;
+    throwConfig.taskFunction = []()
+    {
+        throw 42; // non-std exception
+    };
+
+    scheduler::TaskConfig afterConfig;
+    afterConfig.interval = 0;
+    afterConfig.runImmediately = false;
+    afterConfig.CPUPriority = 0;
+    afterConfig.taskFunction = [&afterThrow]()
+    {
+        afterThrow.store(true);
+    };
+
+    scheduler->start();
+    scheduler->scheduleTask("unknownThrowTask", std::move(throwConfig));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+    // Scheduler should survive unknown exceptions
+    scheduler->scheduleTask("afterUnknownThrow", std::move(afterConfig));
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+    EXPECT_TRUE(afterThrow.load());
+
+    scheduler->stop();
+}
+
+TEST_F(SchedulerTest, DestructorStopsScheduler)
+{
+    std::atomic<int> counter {0};
+
+    scheduler::TaskConfig config;
+    config.interval = 1;
+    config.runImmediately = false;
+    config.CPUPriority = 0;
+    config.taskFunction = [&counter]()
+    {
+        counter.fetch_add(1);
+    };
+
+    scheduler->start();
+    scheduler->scheduleTask("destructorTest", std::move(config));
+
+    // Destroy the scheduler - should call stop() in destructor
+    scheduler.reset();
+
+    // Scheduler should be gone, no crash
+    EXPECT_EQ(scheduler, nullptr);
+}
+
+TEST_F(SchedulerTest, StopWithoutStart)
+{
+    // Calling stop without start should be safe (early return in stop)
+    EXPECT_FALSE(scheduler->isRunning());
+    EXPECT_NO_THROW(scheduler->stop());
+    EXPECT_FALSE(scheduler->isRunning());
+}
+
+TEST_F(SchedulerTest, ConstructorWithZeroThreads)
+{
+    // Constructor should enforce minimum 2 threads
+    auto sched = std::make_unique<scheduler::Scheduler>(0);
+    EXPECT_EQ(sched->getThreadCount(), 2);
+}
+
+TEST_F(SchedulerTest, ConstructorWithNegativeThreads)
+{
+    auto sched = std::make_unique<scheduler::Scheduler>(-5);
+    EXPECT_EQ(sched->getThreadCount(), 2);
+}
+
 // --- Input validation ---
 
 TEST_F(SchedulerTest, ScheduleTask_ThrowsOnNullFunction)
@@ -510,7 +709,10 @@ TEST_F(SchedulerTest, StartStop_Idempotent)
     config.interval = 0;
     config.runImmediately = false;
     config.CPUPriority = 0;
-    config.taskFunction = [&executed]() { executed.store(true); };
+    config.taskFunction = [&executed]()
+    {
+        executed.store(true);
+    };
     scheduler->scheduleTask("probe", std::move(config));
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     EXPECT_TRUE(executed.load());
@@ -596,7 +798,10 @@ TEST_F(SchedulerTest, ScheduleTaskFirst_WhileRunning_ReprioritizesImmediately)
     config.interval = 60; // 60 s interval — would never fire in this test
     config.runImmediately = false;
     config.CPUPriority = 0;
-    config.taskFunction = [&executed]() { executed.store(true); };
+    config.taskFunction = [&executed]()
+    {
+        executed.store(true);
+    };
 
     scheduler->start();
     scheduler->scheduleTask("slowTask", std::move(config));

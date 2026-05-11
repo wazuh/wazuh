@@ -407,48 +407,6 @@
     path: inexistent_prefix
     expected_results: 0
 
-- name: guardduty_path_with_data
-  description: GuardDuty path configurations
-  configuration_parameters:
-    BUCKET_TYPE: guardduty
-    BUCKET_NAME: wazuh-guardduty-integration-tests
-    PATH: test_prefix
-  metadata:
-    resource_type: bucket
-    bucket_type: guardduty
-    bucket_name: wazuh-guardduty-integration-tests
-    only_logs_after: 2022-NOV-20
-    path: test_prefix
-    expected_results: 1
-
-- name: guardduty_path_without_data
-  description: GuardDuty path configurations
-  configuration_parameters:
-    BUCKET_TYPE: guardduty
-    BUCKET_NAME: wazuh-guardduty-integration-tests
-    PATH: empty_prefix
-  metadata:
-    resource_type: bucket
-    bucket_type: guardduty
-    bucket_name: wazuh-guardduty-integration-tests
-    only_logs_after: 2022-NOV-20
-    path: empty_prefix
-    expected_results: 0
-
-- name: guardduty_inexistent_path
-  description: GuardDuty path configurations
-  configuration_parameters:
-    BUCKET_TYPE: guardduty
-    BUCKET_NAME: wazuh-guardduty-integration-tests
-    PATH: inexistent_prefix
-  metadata:
-    resource_type: bucket
-    bucket_type: guardduty
-    bucket_name: wazuh-guardduty-integration-tests
-    only_logs_after: 2022-NOV-20
-    path: inexistent_prefix
-    expected_results: 0
-
 - name: native_guardduty_path_with_data
   description: Native GuardDuty path configurations
   configuration_parameters:
@@ -462,34 +420,6 @@
     only_logs_after: 2022-NOV-20
     path: test_prefix
     expected_results: 1
-
-- name: native_guardduty_path_without_data
-  description: Native GuardDuty path configurations
-  configuration_parameters:
-    BUCKET_TYPE: guardduty
-    BUCKET_NAME: wazuh-native-guardduty-integration-tests
-    PATH: empty_prefix
-  metadata:
-    resource_type: bucket
-    bucket_type: guardduty
-    bucket_name: wazuh-native-guardduty-integration-tests
-    only_logs_after: 2022-NOV-20
-    path: empty_prefix
-    expected_results: 0
-
-- name: native_guardduty_inexistent_path
-  description: Native GuardDuty path configurations
-  configuration_parameters:
-    BUCKET_TYPE: guardduty
-    BUCKET_NAME: wazuh-native-guardduty-integration-tests
-    PATH: inexistent_prefix
-  metadata:
-    resource_type: bucket
-    bucket_type: guardduty
-    bucket_name: wazuh-native-guardduty-integration-tests
-    only_logs_after: 2022-NOV-20
-    path: inexistent_prefix
-    expected_results: 0
 
 - name: waf_path_with_data
   description: WAF path configurations

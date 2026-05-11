@@ -77,7 +77,7 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
         int i;
         wm_ms_graph_auth *it;
 
-        while (FOREVER()) {
+        while (FOREVER() && !wm_shutdown_requested) {
             const time_t time_sleep = sched_scan_get_time_until_next_scan(&ms_graph->scan_config, WM_MS_GRAPH_LOGTAG, ms_graph->run_on_start);
 
             if (ms_graph->state.next_time == 0) {
@@ -89,7 +89,8 @@ void* wm_ms_graph_main(wm_ms_graph* ms_graph) {
                 timestamp = w_get_timestamp(next_scan_time);
                 mtdebug1(WM_MS_GRAPH_LOGTAG, "Waiting until: %s", timestamp);
                 os_free(timestamp);
-                w_sleep_until(next_scan_time);
+                wm_sleep_until_interruptible(next_scan_time);
+                if (wm_shutdown_requested) break;
             }
 
             for (i = 0; ms_graph->auth_config[i]; i++) {
@@ -228,7 +229,8 @@ static curl_response* wm_ms_graph_http_get_with_retry(char** headers, const char
                 relationship_name, retry_after, attempt + 1, WM_MS_GRAPH_MAX_RETRIES);
             wurl_free_response(response);
             response = NULL;
-            w_sleep_until(time(NULL) + retry_after);
+            wm_sleep_until_interruptible(time(NULL) + retry_after);
+            if (wm_shutdown_requested) break;
             continue;
         }
         break;

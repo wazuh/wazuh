@@ -16,9 +16,12 @@
 #include <semaphore.h>
 
 /**
- * Upgrade queue initialization
+ * Upgrade queue and dispatcher semaphore initialization. Both are initialized
+ * together so that stop_dispatch() can safely call sem_post() as soon as
+ * upgrade_queue is non-NULL.
+ * @param max_threads Maximum number of concurrent upgrade threads
  * */
-void wm_agent_upgrade_init_upgrade_queue();
+void wm_agent_upgrade_init_upgrade_queue(int max_threads);
 
 /**
  * Upgrade queue destructor
@@ -35,6 +38,11 @@ void wm_agent_upgrade_prepare_upgrades();
  * @param arg Module configuration
  * */
 void* wm_agent_upgrade_dispatch_upgrades(void *arg) __attribute__((nonnull));
+
+/**
+ * Signal the dispatch loop to stop
+ * */
+void wm_agent_upgrade_stop_dispatch(void);
 
 /**
  * Send a command to the agent and return the response

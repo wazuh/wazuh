@@ -954,7 +954,7 @@ class AWSCustomBucket(AWSBucket):
     def already_processed(self, downloaded_file, aws_account_id, aws_region, **kwargs):
         cursor = self.db_cursor.execute(self.sql_already_processed.format(table_name=self.db_table_name), {
             'bucket_path': self.bucket_path,
-            'aws_account_id': self.aws_account_id,
+            'aws_account_id': aws_account_id or self.aws_account_id,
             'log_key': downloaded_file})
         return cursor.fetchone()[0] > 0
 

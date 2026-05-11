@@ -107,8 +107,9 @@ void * wm_github_main(wm_github* github_config) {
         // Execute initial scan
         wm_github_execute_scan(github_config, 1);
 
-        while (1) {
-            sleep(github_config->interval);
+        while (!wm_shutdown_requested) {
+            wm_sleep_interruptible(github_config->interval);
+            if (wm_shutdown_requested) break;
             wm_github_execute_scan(github_config, 0);
             #ifdef WAZUH_UNIT_TESTING
                 break;

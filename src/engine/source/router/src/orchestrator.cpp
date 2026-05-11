@@ -372,8 +372,9 @@ Orchestrator::Orchestrator(const Options& opt)
         }
         m_routerWorkers.emplace_back(std::move(r));
     }
-    LOG_DEBUG("Router: {} additional worker(s) will be started asynchronously.",
-              m_targetWorkerCount > 1 ? m_targetWorkerCount - 1 : 0);
+    LOG_DEBUG("Router: Primary worker initialized. Target pool size: {} (expansion requires explicit call to "
+              "expandWorkerPool).",
+              m_targetWorkerCount);
 
     {
         auto t = std::make_shared<router::TesterWorker>(m_envBuilder, m_testQueue);
