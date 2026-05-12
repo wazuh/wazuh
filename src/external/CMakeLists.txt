@@ -1161,10 +1161,10 @@ if(UNIT_TEST OR WAZUH_ENGINE_TEST)
 endif()
 
 # ------------------------------------------------------------------------------
-# Google Benchmark (test builds only)
+# Google Benchmark (test builds only; server/manager targets)
 # ------------------------------------------------------------------------------
 
-if(UNIT_TEST OR WAZUH_ENGINE_TEST)
+if((UNIT_TEST OR WAZUH_ENGINE_TEST) AND NOT IS_AGENT)
   if(EXISTS ${EXTERNAL_DIR}/benchmark/build/src/libbenchmark.a)
     message(STATUS "Using precompiled benchmark library")
     add_custom_target(benchmark_external)
