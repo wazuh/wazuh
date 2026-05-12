@@ -2068,11 +2068,11 @@ nlohmann::json Syscollector::addPreviousFields(nlohmann::json& current, const nl
                     {
                         std::string relativePath = currentPath.substr(dotPos + 1);
                         nlohmann::json::json_pointer pointer("/" + std::regex_replace(relativePath, std::regex("\\."), "/"));
-                        current[topLevelKey]["previous"][pointer] = value;
+                        current[std::move(topLevelKey)]["previous"][pointer] = value;
                     }
                     else
                     {
-                        current[topLevelKey]["previous"][key] = value;
+                        current[std::move(topLevelKey)]["previous"][key] = value;
                     }
                 }
             }

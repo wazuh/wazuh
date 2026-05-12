@@ -325,6 +325,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
         return RuleResult::Invalid;
     }
 
+    
     auto resolved = TryFunc([&] { return m_fileSystemWrapper->canonical(m_ctx.rule); });
 
     if (!resolved)
@@ -350,7 +351,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
 
     while (!dirs.empty())
     {
-        const auto currentDir = dirs.top();
+        auto currentDir = std::move(dirs.top());
         dirs.pop();
 
         const auto filesOpt = TryFunc([&] { return m_fileSystemWrapper->list_directory(currentDir); });
@@ -652,9 +653,9 @@ RuleEvaluatorFactory::CreateEvaluator(const std::string& input,
         return nullptr;
     }
 
-    const auto [ruleType, cleanedRule] = ruleTypeAndValue.value();
+    auto [ruleType, cleanedRule] = ruleTypeAndValue.value();
 
-    PolicyEvaluationContext ctx {cleanedRule, pattern, isNegated, commandsTimeout, commandsEnabled, regexEngine};
+    PolicyEvaluationContext ctx {std::move(cleanedRule), pattern, isNegated, commandsTimeout, commandsEnabled, regexEngine};
 
     switch (ruleType)
     {

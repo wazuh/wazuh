@@ -1,3 +1,4 @@
+
 #include "schemaValidator.hpp"
 #include "schemaResources.hpp"
 #include <sstream>
@@ -152,7 +153,7 @@ namespace SchemaValidator
                     }
                     else
                     {
-                        m_schemaName = pattern;
+                        m_schemaName = std::move(pattern);
                     }
                 }
 

@@ -2,6 +2,7 @@
 
 #include "agent_sync_protocol.hpp"
 #include "defs.h"
+
 #include "hashHelper.h"
 #include "metadata_provider.h"
 #include "stringHelper.h"
@@ -665,7 +666,7 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
                     if (!looksLikeHash)
                     {
                         // Single-group format: the first line is the actual group name
-                        groups.push_back(firstLineValue);
+                        groups.push_back(std::move(firstLineValue));
                         return false; // Stop reading, we have the single group
                     }
 
@@ -704,7 +705,7 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
 
                 if (!groupName.empty())
                 {
-                    groups.push_back(groupName);
+                    groups.push_back(std::move(groupName));
                 }
             }
         }
