@@ -4179,7 +4179,10 @@ TEST_F(AgentSyncProtocolTest, NotifyDataCleanWithReqRetSuccess)
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 1; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 1; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 1;
+        }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     protocol = std::make_unique<AgentSyncProtocol>(
