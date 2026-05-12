@@ -139,7 +139,7 @@ def _make_server(node_name="node01", workers=None):
     server = MagicMock()
     server.configuration = {
         "node_name": node_name,
-        "cluster_name": "wazuh",
+        "name": "wazuh",
     }
     server.clients = workers or {}
     server.setup_task_logger.return_value = MagicMock()
@@ -1063,7 +1063,7 @@ class TestInit:
     def test_no_setup_task_logger_uses_logging_getLogger(self):
         """server without setup_task_logger falls back to logging.getLogger."""
         server = MagicMock(spec=[])
-        server.configuration = {"node_name": "node01", "cluster_name": "wazuh"}
+        server.configuration = {"node_name": "node01", "name": "wazuh"}
 
         with patch("wazuh.core.indexer.metrics_snapshot.logging") as mock_logging:
             tasks = MetricsSnapshotTasks(server=server, cluster_items=CLUSTER_ITEMS)
@@ -1982,13 +1982,13 @@ class TestNormalizeCommsDocZeroPreservation:
         assert doc["tcp"]["sessions"] == 5
 
 class TestClusterNameFallback:
-    """wazuh.cluster.name must be omitted when cluster_name is absent from config."""
+    """wazuh.cluster.name must be omitted when 'name' is absent from config."""
 
     @pytest.mark.asyncio
     async def test_collect_comms_cluster_name_is_none_when_missing(self):
-        """_collect_comms_all_nodes omits wazuh.cluster.name when cluster_name is absent."""
+        """_collect_comms_all_nodes omits wazuh.cluster.name when 'name' is absent."""
         server = MagicMock()
-        server.configuration = {"node_name": "node01"}  # no cluster_name key
+        server.configuration = {"node_name": "node01"}  # no 'name' key
         server.clients = {}
         server.setup_task_logger.return_value = MagicMock()
 
@@ -2007,7 +2007,7 @@ class TestClusterNameFallback:
     async def test_collect_comms_cluster_name_present(self):
         """_collect_comms_all_nodes correctly propagates cluster_name when present in config."""
         server = MagicMock()
-        server.configuration = {"node_name": "node01", "cluster_name": "wazuh"}
+        server.configuration = {"node_name": "node01", "name": "wazuh"}
         server.clients = {}
         server.setup_task_logger.return_value = MagicMock()
 
