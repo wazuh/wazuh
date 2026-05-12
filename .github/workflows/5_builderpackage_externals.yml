@@ -2,10 +2,16 @@ run-name: External deps - ${{ inputs.target }} ${{ inputs.legs || 'all linux leg
 name: 5.X - Package - Build external dependencies
 
 # Rebuilds Wazuh's external dependencies across one or more (system, architecture)
-# legs and uploads per-dep zips (source-only and source+binaries) as artifacts.
+# legs. Each runner uploads a per-leg .tar.gz already laid out in the S3
+# layout expected by `make deps` (libraries/<os>/<arch>/<dep>.tar.gz plus
+# libraries/sources/<dep>.tar.gz). Downloading every artifact from a run and
+# extracting each archive in turn into the same destination yields a complete
+# libraries/ tree ready for upload to packages.wazuh.com/deps/<version>/.
 #
-# Covers all 7 supported legs:
-#   - 4 Linux Docker legs:  deb-amd64, deb-arm64, rpm-amd64, rpm-arm64
+# Covers all 5 supported legs:
+#   - 2 Linux Docker legs:  rpm-amd64, rpm-arm64 (rpm is the oldest common
+#                           denominator — its glibc is forward-compatible
+#                           with deb, so we don't build deb separately)
 #   - 2 macOS native legs:  macos-intel64, macos-arm64
 #   - 1 Windows leg:        windows-i686 (MinGW cross-compile on a Linux
 #                                         runner, no Docker)
@@ -35,10 +41,10 @@ on:
       legs:
         description: |
           Comma-separated list of <system>-<architecture> legs to run.
-          Valid values: deb-amd64, deb-arm64, rpm-amd64, rpm-arm64,
-          macos-intel64, macos-arm64, windows-i686.
+          Valid values: rpm-amd64, rpm-arm64, macos-intel64, macos-arm64,
+          windows-i686.
           Empty = run every supported leg for the chosen target(s). For
-          agent that's all 7 legs; for manager it's the 4 Linux legs
+          agent that's all 5 legs; for manager it's the 2 Linux rpm legs
           (macOS and Windows are agent-only). When an explicit list
           contains macOS or Windows legs and target=both, those legs are
           dropped from the manager half automatically.
@@ -77,9 +83,9 @@ jobs:
               # Default = every supported leg for this target. macOS and
               # Windows are agent-only.
               if [ "${tgt}" = "manager" ]; then
-                tgt_legs="deb-amd64,deb-arm64,rpm-amd64,rpm-arm64"
+                tgt_legs="rpm-amd64,rpm-arm64"
               else
-                tgt_legs="deb-amd64,deb-arm64,rpm-amd64,rpm-arm64,macos-intel64,macos-arm64,windows-i686"
+                tgt_legs="rpm-amd64,rpm-arm64,macos-intel64,macos-arm64,windows-i686"
               fi
             else
               tgt_legs="${legs_input}"
@@ -90,8 +96,8 @@ jobs:
               system="${leg%-*}"
               architecture="${leg##*-}"
               case "${system}" in
-                deb|rpm|macos|windows) ;;
-                *) echo "::error::unsupported system '${system}' in leg '${leg}' (valid: deb, rpm, macos, windows)"; exit 1 ;;
+                rpm|macos|windows) ;;
+                *) echo "::error::unsupported system '${system}' in leg '${leg}' (valid: rpm, macos, windows)"; exit 1 ;;
               esac
 
               # macOS/Windows have no manager builder image. When target=both
@@ -102,8 +108,8 @@ jobs:
               fi
 
               case "${system}-${architecture}" in
-                deb-amd64|rpm-amd64) runner="wz-linux-amd64" ;;
-                deb-arm64|rpm-arm64) runner="wz-linux-arm64" ;;
+                rpm-amd64)           runner="wz-linux-amd64" ;;
+                rpm-arm64)           runner="wz-linux-arm64" ;;
                 macos-intel64)       runner="macos-14-large" ;;
                 macos-arm64)         runner="macos-14" ;;
                 windows-i686)        runner="wz-linux-amd64" ;;  # MinGW cross-compile on Linux
@@ -134,7 +140,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Resolve image tag
-        if: matrix.system == 'deb' || matrix.system == 'rpm'
+        if: matrix.system == 'rpm'
         run: |
           VERSION="$(grep '"version"' "${GITHUB_WORKSPACE}/VERSION.json" | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
           if [ "${{ inputs.docker_image_tag }}" = "auto" ]; then
@@ -147,7 +153,7 @@ jobs:
           echo "CONTAINER_NAME=pkg_${{ matrix.system }}_${{ matrix.target }}_builder_${{ matrix.architecture }}" >> "${GITHUB_ENV}"
 
       - name: Pull builder image from GHCR
-        if: matrix.system == 'deb' || matrix.system == 'rpm'
+        if: matrix.system == 'rpm'
         timeout-minutes: 20
         run: |
           bash "${GITHUB_WORKSPACE}/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh" \
@@ -187,13 +193,14 @@ jobs:
       - name: List produced artifacts
         if: always()
         run: |
-          ls -la packages/output_externals/external_artifacts/ 2>/dev/null || echo "no artifacts produced"
+          ls -lh packages/output_externals/externals-*.tar.gz 2>/dev/null || echo "no per-leg tarball produced"
+          ls -la packages/output_externals/libraries/ 2>/dev/null || echo "no libraries/ tree"
 
-      - name: Upload per-dep zips
+      - name: Upload per-leg tarball
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: externals-${{ matrix.leg }}-${{ matrix.target }}
-          path: packages/output_externals/external_artifacts/*.zip
+          path: packages/output_externals/externals-*.tar.gz
           if-no-files-found: error
           retention-days: 14

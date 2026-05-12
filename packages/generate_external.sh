@@ -126,33 +126,105 @@ if [ "${SYSTEM}" = "macos" ] || [ "${SYSTEM}" = "windows" ]; then
         JOBS="${JOBS}" \
         WAZUH_VERBOSE="${VERBOSE}" \
         bash "${WAZUH_PATH}/packages/build_external.sh"
+else
+    CONTAINER_NAME="pkg_${SYSTEM}_${TARGET}_builder_${ARCHITECTURE}"
+    echo "[generate_external] image=${CONTAINER_NAME}:${DOCKER_TAG}"
 
-    echo "[generate_external] artifacts:"
-    ls -la "${OUTDIR}/external_artifacts/" 2>/dev/null || echo "  (none — build may have failed)"
-    exit $?
+    # Run build_external.sh inside the existing builder image.
+    # - /wazuh-local-src    working tree (read-write so we can replace src/external/)
+    # - /var/local/wazuh    artifact output (build_external.sh writes
+    #                       external_artifacts/ subdir here, we pull from there)
+    # We override the image entrypoint because the default entrypoint
+    # (docker_builder.sh) drives a full package build.
+    docker run --rm -t \
+        -v "${WAZUH_PATH}:/wazuh-local-src:Z" \
+        -v "${OUTDIR}:/var/local/wazuh:Z" \
+        -e SYSTEM="${SYSTEM}" \
+        -e BUILD_TARGET="${TARGET}" \
+        -e ARCHITECTURE_TARGET="${ARCHITECTURE}" \
+        -e DEPS_TO_UPDATE="${DEPS_TO_UPDATE}" \
+        -e JOBS="${JOBS}" \
+        -e WAZUH_VERBOSE="${VERBOSE}" \
+        --entrypoint /bin/bash \
+        "${CONTAINER_NAME}:${DOCKER_TAG}" \
+        /wazuh-local-src/packages/build_external.sh
 fi
 
-CONTAINER_NAME="pkg_${SYSTEM}_${TARGET}_builder_${ARCHITECTURE}"
-echo "[generate_external] image=${CONTAINER_NAME}:${DOCKER_TAG}"
-
-# Run build_external.sh inside the existing builder image.
-# - /wazuh-local-src    working tree (read-write so we can replace src/external/)
-# - /var/local/wazuh    artifact output (build_external.sh writes
-#                       external_artifacts/ subdir here, we pull from there)
-# We override the image entrypoint because the default entrypoint
-# (docker_builder.sh) drives a full package build.
-docker run --rm -t \
-    -v "${WAZUH_PATH}:/wazuh-local-src:Z" \
-    -v "${OUTDIR}:/var/local/wazuh:Z" \
-    -e SYSTEM="${SYSTEM}" \
-    -e BUILD_TARGET="${TARGET}" \
-    -e ARCHITECTURE_TARGET="${ARCHITECTURE}" \
-    -e DEPS_TO_UPDATE="${DEPS_TO_UPDATE}" \
-    -e JOBS="${JOBS}" \
-    -e WAZUH_VERBOSE="${VERBOSE}" \
-    --entrypoint /bin/bash \
-    "${CONTAINER_NAME}:${DOCKER_TAG}" \
-    /wazuh-local-src/packages/build_external.sh
-
-echo "[generate_external] artifacts:"
+echo "[generate_external] per-dep zips:"
 ls -la "${OUTDIR}/external_artifacts/" 2>/dev/null || echo "  (none — build may have failed)"
+
+# Re-pack the per-dep zips into the S3 layout `make deps` consumes from
+# packages.wazuh.com/deps/<version>/libraries/. Each runner emits a single
+# tarball that already contains its slice of the libraries/ tree, so
+# downloading every artifact from a run and extracting each into the same
+# destination yields the complete tree — no aggregation job needed.
+#
+# Layout written by this leg:
+#   libraries/<os>/<arch>/<dep>.tar.gz    binaries for this (system, arch)
+#   libraries/sources/<dep>.tar.gz        upstream sources (every leg writes
+#                                         identical content, so the final
+#                                         tree has one copy regardless of
+#                                         extract order)
+#
+# Inner and outer tarballs use owner=0/group=0 so they extract under any UID.
+case "${SYSTEM}-${ARCHITECTURE}" in
+    deb-amd64|rpm-amd64) S3_PATH="linux/amd64" ;;
+    deb-arm64|rpm-arm64) S3_PATH="linux/aarch64" ;;
+    macos-intel64)       S3_PATH="darwin/amd64" ;;
+    macos-arm64)         S3_PATH="darwin/aarch64" ;;
+    windows-i686)        S3_PATH="windows" ;;
+    *)                   S3_PATH="" ;;
+esac
+
+if [ -z "${S3_PATH}" ]; then
+    echo "[generate_external] no S3 path mapping for ${SYSTEM}-${ARCHITECTURE}; skipping pack step"
+    exit 0
+fi
+
+if [ ! -d "${OUTDIR}/external_artifacts" ]; then
+    echo "[generate_external] no external_artifacts/ dir; nothing to pack"
+    exit 0
+fi
+
+LIBS_DIR="${OUTDIR}/libraries"
+PLATFORM_DIR="${LIBS_DIR}/${S3_PATH}"
+SOURCES_DIR="${LIBS_DIR}/sources"
+rm -rf "${LIBS_DIR}"
+mkdir -p "${PLATFORM_DIR}" "${SOURCES_DIR}"
+
+echo "[generate_external] packing zips into libraries/${S3_PATH}/ and libraries/sources/"
+
+repack() {
+    local zip="$1" dep="$2" dest="$3"
+    local tmp
+    tmp="$(mktemp -d)"
+    unzip -q "${zip}" -d "${tmp}"
+    if [ ! -d "${tmp}/${dep}" ]; then
+        echo "[generate_external] WARN: ${zip} missing '${dep}/' dir — skipping" >&2
+        rm -rf "${tmp}"
+        return 0
+    fi
+    ( cd "${tmp}" && tar -czf "${dest}/${dep}.tar.gz" --owner=0 --group=0 --no-same-owner "${dep}" )
+    rm -rf "${tmp}"
+}
+
+bin_suffix="_${SYSTEM}_${ARCHITECTURE}.zip"
+for zip in "${OUTDIR}/external_artifacts/"*.zip; do
+    [ -f "${zip}" ] || continue
+    base="$(basename "${zip}")"
+    case "${base}" in
+        *_src.zip)
+            dep="${base%_src.zip}"
+            repack "${zip}" "${dep}" "${SOURCES_DIR}"
+            ;;
+        *"${bin_suffix}")
+            dep="${base%${bin_suffix}}"
+            repack "${zip}" "${dep}" "${PLATFORM_DIR}"
+            ;;
+    esac
+done
+
+OUT_TARBALL="${OUTDIR}/externals-${SYSTEM}-${ARCHITECTURE}-${TARGET}.tar.gz"
+( cd "${OUTDIR}" && tar -czf "${OUT_TARBALL}" --owner=0 --group=0 --no-same-owner libraries )
+echo "[generate_external] packed: ${OUT_TARBALL}"
+ls -lh "${OUT_TARBALL}"
