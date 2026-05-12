@@ -8,7 +8,33 @@ DIR="/var/ossec"
 WAZUH_TMP_DIR="${DIR}/packages_files/agent_config_files"
 
 case "$1" in
-    remove|failed-upgrade|abort-install|abort-upgrade|disappear)
+    failed-upgrade|abort-upgrade)
+        # dpkg is rolling back to the previously installed package after a
+        # failed upgrade (for example, the new preinst rejected the version).
+        # The previous package's files are still on disk untouched, so the
+        # new postrm MUST NOT mutate ${DIR}/etc/ or any other agent state.
+        # Just point the operator at any preserve directory and restart
+        # the agent service that old-prerm stopped before the abort, so
+        # the agent can report upgrade_result back to the manager.
+
+        if [ -d "${WAZUH_TMP_DIR}" ]; then
+            echo "Wazuh upgrade recovery files were preserved at ${WAZUH_TMP_DIR}. Restore them manually if needed." >&2
+        fi
+
+        if [ -f ${WAZUH_TMP_DIR}/wazuh.restart ] ; then
+            rm -f ${WAZUH_TMP_DIR}/wazuh.restart
+            if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
+                systemctl daemon-reload > /dev/null 2>&1
+                systemctl restart wazuh-agent.service > /dev/null 2>&1 || true
+            elif command -v service > /dev/null 2>&1 ; then
+                service wazuh-agent restart > /dev/null 2>&1 || true
+            elif [ -x ${DIR}/bin/wazuh-control ]; then
+                ${DIR}/bin/wazuh-control restart > /dev/null 2>&1 || true
+            fi
+        fi
+        ;;
+
+    remove|abort-install|disappear)
 
         if [ -d ${WAZUH_TMP_DIR} ]; then
             rm -rf ${WAZUH_TMP_DIR}
