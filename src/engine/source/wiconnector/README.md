@@ -65,8 +65,8 @@ This pattern is used by:
 
 | Constant | Value | Used By | Purpose |
 |---|---|---|---|
-| `STANDARD_RULESET_CONSUMER_ID` | `"beta-2-ruleset-5_public-ruleset-5"` | cmsync | Validates policy consumer before sync |
-| `IOC_ENRICHMENT_CONSUMER_ID` | `"t1-iocs-5_public-iocs-5"` | iocsync | Validates IOC consumer before sync |
+| `STANDARD_RULESET_CONSUMER_ID` | `"cti:catalog:consumer:ruleset"` | cmsync | Validates policy consumer before sync |
+| `IOC_ENRICHMENT_CONSUMER_ID` | `"cti:catalog:consumer:iocs"` | iocsync | Validates IOC consumer before sync |
 
 ### Thread Safety
 

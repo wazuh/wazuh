@@ -877,12 +877,6 @@ bool WIndexerConnector::isConsumerReadyForSync(std::string_view consumerId)
 std::optional<std::unordered_map<std::string, std::string>>
 WIndexerConnector::getIocTypeHashes(const std::optional<std::string_view>& consumerIdToValidate)
 {
-    std::shared_lock lock(m_mutex);
-    if (!m_indexerConnectorAsync)
-    {
-        throw std::runtime_error("IndexerConnectorAsync is not initialized");
-    }
-
     // Hash retrieval with consumer validation delegated to queryByBatches
     // (creates a single PIT including CTI consumers index and validates idle atomically)
     std::optional<json::Json> hashesDoc = std::nullopt;
