@@ -18,6 +18,20 @@
 
 #ifdef WIN32
 #include <windows.h>
+
+// On Windows, the XML config convention uses double backslashes (C:\\Windows)
+// because w_strtok treats backslash as an escape character. Reduce consecutive
+// backslashes to single ones so the executed command receives valid paths.
+static void wm_command_reduce_win_backslashes(char *str) {
+    char *r = str, *w = str;
+    while (*r) {
+        if (r[0] == '\\' && r[1] == '\\') {
+            r++;
+        }
+        *w++ = *r++;
+    }
+    *w = '\0';
+}
 #endif
 
 static char *wm_command_build_event_payload(const char *event_start,
@@ -236,6 +250,12 @@ void * wm_command_main(wm_command_t * command) {
     } else {
         command->full_command = strdup(command->command);
     }
+
+#ifdef WIN32
+    if (command->full_command) {
+        wm_command_reduce_win_backslashes(command->full_command);
+    }
+#endif
 
     mtinfo(WM_COMMAND_LOGTAG, "Module command:%s started", command->tag);
 
