@@ -840,11 +840,6 @@ flowchart TD
     linkStyle 2,3 stroke:#D50000,fill:none
 ```
 
-> [!WARNING]
-> The output files in `default/` are **replaced on every installation or update** of `wazuh-manager`.
-> Modifications to those files will be overwritten. To preserve custom outputs across updates, place
-> them in a space-specific folder (`standard/` or `custom/`) instead of `default/`.
-
 #### Unclassified events
 
 An event is considered **unclassified** when it was only processed by the root decoder and no other decoder

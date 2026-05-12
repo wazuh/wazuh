@@ -173,8 +173,8 @@ firewall_result_t try_firewalld(const char *srcip, int action, int ip_version, c
                 wpclose(wfd);
             }
         }
-        os_free(systemctl_path);
     }
+    os_free(systemctl_path);
 
     // Acquire lock
     if (acquire_ar_lock(&lock_ctx) == OS_INVALID) {

@@ -789,9 +789,20 @@ void wm_sys_stop(__attribute__((unused))wm_sys_t* data)
         mtdebug1(WM_SYS_LOGTAG, "Stop called from syscollector worker thread. Skipping synchronous shutdown wait.");
     }
 
-    while (need_shutdown_wait && !called_from_sys_main_thread)
+    if (need_shutdown_wait && !called_from_sys_main_thread)
     {
-        w_cond_wait(&sys_stop_condition, &sys_stop_mutex);
+        struct timespec ts;
+        clock_gettime(CLOCK_REALTIME, &ts);
+        ts.tv_sec += 10;
+
+        while (need_shutdown_wait)
+        {
+            if (pthread_cond_timedwait(&sys_stop_condition, &sys_stop_mutex, &ts) == ETIMEDOUT)
+            {
+                mtwarn(WM_SYS_LOGTAG, "Timeout waiting for Syscollector to complete shutdown.");
+                break;
+            }
+        }
     }
 
     w_mutex_unlock(&sys_stop_mutex);

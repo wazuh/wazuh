@@ -9,6 +9,11 @@
  * Foundation.
  */
 
+// Required for pthread_timedjoin_np on Linux (GNU extension)
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include "wmodules.h"
 #include <sys/types.h>
 #include "startup_gate_op.h"
@@ -262,14 +267,40 @@ void wm_handler(int signum)
     case SIGHUP:
     case SIGINT:
     case SIGTERM:
-        // For the moment only gracefull shutdown will be for syscollector, in the future
-        // it will be modified for all wmodules, modifying the mainloop of each thread.
         mdebug1("Shutting down Wazuh modules.");
+
+        // Signal all module loops to exit before calling their stop() callbacks
+        // so that modules blocked in wm_sleep_interruptible / wm_select_interruptible
+        // wake up immediately.
+        wm_shutdown_requested = 1;
+
         for (cur_module = wmodules; cur_module && cur_module->context && cur_module->context->name; cur_module = cur_module->next) {
             if (cur_module->context->stop) {
                 cur_module->context->stop(cur_module->data);
             }
         }
+
+        // Wait for all module threads to finish cleanly, with a shared 30-second
+        // total budget. This prevents RocksDB lock leaks and other resource
+        // corruption caused by abrupt thread termination.
+        {
+            struct timespec deadline;
+            clock_gettime(CLOCK_REALTIME, &deadline);
+            deadline.tv_sec += 30;
+
+            for (cur_module = wmodules; cur_module && cur_module->context && cur_module->context->name; cur_module = cur_module->next) {
+                if (cur_module->thread == (pthread_t)0) continue;
+                if (cur_module->thread == pthread_self()) continue;
+#ifdef __linux__
+                if (pthread_timedjoin_np(cur_module->thread, NULL, &deadline) != 0) {
+                    mwarn("Module '%s' did not stop within the shutdown timeout.", cur_module->context->name);
+                }
+#else
+                pthread_join(cur_module->thread, NULL);
+#endif
+            }
+        }
+
         exit(EXIT_SUCCESS);
     default:
         merror("unknown signal (%d)", signum);
