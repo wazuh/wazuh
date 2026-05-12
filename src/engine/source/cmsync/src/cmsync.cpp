@@ -18,6 +18,7 @@ const base::Name STORE_NAME_CMSYNC {"cmsync/status/0"};          ///< Name of th
 const cm::store::NamespaceId DUMMY_NAMESPACE_ID {"dummy_ns_id"}; ///< Dummy namespace ID
 constexpr std::string_view COMPONENT_NAME = "CMSync";            ///< Component name for logging
 constexpr std::string_view STANDARD_SPACE_NAME = "standard";     ///< Standard space name
+constexpr std::string_view CUSTOM_SPACE_NAME = "custom";       ///< Custom space name
 
 /**
  * @brief Generate a random namespace ID for the given origin space
@@ -177,7 +178,7 @@ CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPt
     // Populate directly and dump once to avoid multiple unnecessary store writes
     m_namespacesState.emplace_back(STANDARD_SPACE_NAME,
                                    std::optional<std::string>(std::string(wiconnector::STANDARD_RULESET_CONSUMER_ID)));
-    m_namespacesState.emplace_back("custom");
+    m_namespacesState.emplace_back(CUSTOM_SPACE_NAME);
     dumpStateToStore();
 }
 
@@ -512,8 +513,8 @@ void CMSync::synchronize()
                 {
                     LOG_INFO("[CMSync] Synchronization skipped for space '{}' because wazuh-indexer consumer '{}' is "
                              "not ready for sync (might be updating or no data)",
-                             nsState.getOriginSpace()),
-                             nsState.getConsumerId().value();
+                             nsState.getOriginSpace(),
+                             nsState.getConsumerId().value());
                     continue;
                 }
             }
