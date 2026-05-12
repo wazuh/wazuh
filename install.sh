@@ -211,15 +211,10 @@ Install()
     elif [ "X$NUNAME" = "XBitrig" ]; then
           MAKEBIN=gmake
     fi
-    if grep -q "Alpine Linux" /etc/os-release 2>/dev/null; then
-        ALPINE_DEPS="EXTERNAL_SRC_ONLY=1"
-    fi
-
     # Legacy RHEL/CentOS versions cannot build all modules.
     OS_VERSION_FOR_SYSC="${DIST_NAME}"
     if ([ "X${OS_VERSION_FOR_SYSC}" = "Xrhel" ] || [ "X${OS_VERSION_FOR_SYSC}" = "Xcentos" ]) && [ ${DIST_VER} -le 5 ]; then
         AUDIT_FLAG="USE_AUDIT=no"
-        MSGPACK_FLAG="USE_MSGPACK_OPT=no"
         if [ ${DIST_VER} -lt 5 ]; then
             SYSC_FLAG="DISABLE_SYSC=yes"
         fi
@@ -236,14 +231,14 @@ Install()
     # "binary-install" reuses prebuilt artifacts from the workspace and skips compilation.
     if [ "X${USER_BINARYINSTALL}" = "X" ]; then
         # Download external libraries only when the folder is still empty.
-        [ -z "$(find external -mindepth 1 -maxdepth 1 -type d 2>/dev/null)" ] && ${MAKEBIN} deps ${ALPINE_DEPS} TARGET=${INSTYPE}
+        [ -z "$(find external -mindepth 1 -maxdepth 1 -type d 2>/dev/null)" ] && ${MAKEBIN} deps TARGET=${INSTYPE}
 
         if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
             CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
         fi
 
         # DATABASE=pgsql|mysql enables alert output through those backends.
-        ${MAKEBIN} TARGET=${INSTYPE} INSTALLDIR=${INSTALLDIR} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
+        ${MAKEBIN} TARGET=${INSTYPE} INSTALLDIR=${INSTALLDIR} ${SYSC_FLAG} ${AUDIT_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
 
         if [ $? != 0 ]; then
             cd ../

@@ -152,10 +152,8 @@ Here you can find all the automation tools maintained by the Wazuh team.
 | [liblzma](https://github.com/tukaani-project/xz)                        | 5.4.2   | Lasse Collin, Jia Tan et al.  | GNU Public License version 3                  |
 | [Linux Audit userspace](https://github.com/linux-audit/audit-userspace) | 2.8.4   | Rik Faith                     | GNU Lesser General Public License             |
 | [Lua](https://github.com/lua/lua)                                       | 5.4.8   | PUC-Rio                       | MIT License                                   |
-| [msgpack](https://github.com/msgpack/msgpack-c)                         | 3.1.1   | Sadayuki Furuhashi            | Boost Software License version 1.0            |
 | [nlohmann](https://github.com/nlohmann/json)                            | 3.11.2  | Niels Lohmann                 | MIT License                                   |
-| [OpenSSL](https://github.com/openssl/openssl)                           | 3.5.1   | OpenSSL Software Foundation   | Apache 2.0 License                            |
-| [pacman](https://gitlab.archlinux.org/pacman/pacman)                    | 5.2.2   | Judd Vinet                    | GNU Public License version 2                  |
+| [OpenSSL](https://github.com/openssl/openssl)                           | 3.6.2   | OpenSSL Software Foundation   | Apache 2.0 License                            |
 | [popt](https://github.com/rpm-software-management/popt)                 | 1.16    | Jeff Johnson & Erik Troan     | MIT License                                   |
 | [procps](https://gitlab.com/procps-ng/procps)                           | 2.8.3   | Brian Edmonds et al.          | GNU Lesser General Public License             |
 | [RocksDB](https://github.com/facebook/rocksdb/)                         | 8.3.2   | Facebook Inc.                 | Apache 2.0 License                            |

@@ -56,8 +56,7 @@ include_directories(
   ${SRC_FOLDER}/external/bzip2/
   ${SRC_FOLDER}/external/sqlite/
   ${SRC_FOLDER}/external/openssl/include/
-  ${SRC_FOLDER}/external/zlib/
-  ${SRC_FOLDER}/external/msgpack/include/)
+  ${SRC_FOLDER}/external/zlib/)
 
 # Common Windows system libraries
 set(WIN_SYSTEM_LIBS
