@@ -412,6 +412,7 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
 
     // Create PersistedData vector for DataClean messages
     std::vector<PersistedData> dataToSync;
+    
     dataToSync.reserve(indices.size());
 
     for (size_t i = 0; i < indices.size(); ++i)

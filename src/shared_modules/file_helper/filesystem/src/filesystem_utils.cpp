@@ -1,3 +1,4 @@
+
 #include <filesystem>
 #include <filesystem_utils.hpp>
 #include <filesystem_wrapper.hpp>
@@ -93,7 +94,7 @@ namespace file_system
                 }
                 else if (Utils::patternMatch(baseDir, pattern))
                 {
-                    output.push_back(baseDir);
+                    output.push_back(std::move(baseDir));
                 }
             }
         }
