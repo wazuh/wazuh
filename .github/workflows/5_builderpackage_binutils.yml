@@ -1,4 +1,4 @@
-run-name: External deps - ${{ inputs.target }} ${{ inputs.legs || 'all linux legs' }} ${{ inputs.dependencies && format('- {0}', inputs.dependencies) || '- (no version overrides)' }}
+run-name: External deps - ${{ inputs.target }} ${{ inputs.legs || 'all 5 legs' }} ${{ inputs.dependencies && format('- {0}', inputs.dependencies) || '- (no version overrides)' }}
 name: 5.X - Package - Build external dependencies
 
 # Rebuilds Wazuh's external dependencies across one or more (system, architecture)
@@ -161,7 +161,10 @@ jobs:
 
       - name: Install build tools (macOS leg)
         if: matrix.system == 'macos'
-        run: brew install bash automake
+        # gnu-tar provides `gtar`. The system /usr/bin/tar (BSD) rejects
+        # --owner/--group/--no-same-owner, which we use to keep the packed
+        # tarballs reproducible across runners.
+        run: brew install bash automake gnu-tar
 
       - name: Install MinGW cross-compiler (windows leg)
         if: matrix.system == 'windows'
