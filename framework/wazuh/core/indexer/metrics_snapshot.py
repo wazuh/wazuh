@@ -168,7 +168,7 @@ class MetricsSnapshotTasks:
 
         agents_data = await loop.run_in_executor(None, self._get_agents_sync)
         node_name = self.server.configuration.get("node_name", "unknown")
-        cluster_name = self.server.configuration.get("cluster_name", "unknown")
+        cluster_name = self.server.configuration.get("name", None)
 
         normalized = []
         for agent in agents_data:
@@ -196,7 +196,7 @@ class MetricsSnapshotTasks:
             ``wazuh.cluster.name``.
         """
         local_node_name = self.server.configuration.get("node_name", "unknown")
-        cluster_name = self.server.configuration.get("cluster_name", "unknown")
+        cluster_name = self.server.configuration.get("name", None)
 
         all_node_names = [local_node_name]
         for worker_name in self.server.clients:
@@ -236,7 +236,7 @@ class MetricsSnapshotTasks:
     async def _collect_normalization_all_nodes(self, timestamp: str) -> list:
         """Collect Engine metrics from all cluster nodes via DAPI fan-out."""
         local_node_name = self.server.configuration.get("node_name", "unknown")
-        cluster_name = self.server.configuration.get("cluster_name", "unknown")
+        cluster_name = self.server.configuration.get("name", None)
 
         all_node_names = [local_node_name] + list(self.server.clients)
 

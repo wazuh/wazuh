@@ -125,7 +125,7 @@ def _make_server(node_name="master-node"):
     server = MagicMock()
     server.configuration = {
         "node_name": node_name,
-        "cluster_name": "wazuh-cluster",
+        "name": "wazuh-cluster",
     }
     server.clients = {}
     server.setup_task_logger.return_value = MagicMock()
