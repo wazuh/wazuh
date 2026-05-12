@@ -58,7 +58,7 @@ make clean
 
 # Build Wazuh sources
 make deps TARGET=manager
-make -j%{_threads} TARGET=manager USE_SELINUX=yes DEBUG=%{_debugenabled}
+make -j%{_threads} TARGET=manager DEBUG=%{_debugenabled}
 
 popd
 
@@ -367,14 +367,6 @@ rm -f %{_localstatedir}/etc/shared/merged.mg  >/dev/null 2>&1
 # Set merged.mg permissions to new ones
 find %{_localstatedir}/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} \;
 
-# Add the SELinux policy
-if command -v getenforce > /dev/null 2>&1 && command -v semodule > /dev/null 2>&1; then
-  if [ $(getenforce) != "Disabled" ]; then
-    semodule -i %{_localstatedir}/var/selinux/wazuh.pp
-    semodule -e wazuh
-  fi
-fi
-
 # Restore wazuh-manager.conf permissions after upgrading
 chown root:wazuh-manager %{_localstatedir}/etc/wazuh-manager.conf
 chmod 0660 %{_localstatedir}/etc/wazuh-manager.conf
@@ -417,15 +409,6 @@ if [ $1 = 0 ]; then
   fi
   %{_localstatedir}/bin/wazuh-manager-control stop > /dev/null 2>&1
 
-  # Remove the SELinux policy
-  if command -v getenforce > /dev/null 2>&1 && command -v semodule > /dev/null 2>&1; then
-    if [ $(getenforce) != "Disabled" ]; then
-      if (semodule -l | grep wazuh > /dev/null); then
-        semodule -r wazuh > /dev/null
-      fi
-    fi
-  fi
-
 fi
 
 %postun
@@ -467,14 +450,6 @@ if [ $1 = 0 ];then
   rm -rf %{_localstatedir}/logs/
   rm -rf %{_localstatedir}/tmp
   rm -rf %{_localstatedir}/data
-
-  # Delete audisp wazuh plugin if exists
-  if [ -e /etc/audit/plugins.d/af_wazuh.conf ]; then
-    rm -f -- /etc/audit/plugins.d/af_wazuh.conf
-  fi
-  if [ -e /etc/audisp/plugins.d/af_wazuh.conf ]; then
-    rm -f -- /etc/audisp/plugins.d/af_wazuh.conf
-  fi
 fi
 
 # posttrans code is the last thing executed in a install/upgrade
@@ -675,8 +650,6 @@ rm -fr %{buildroot}
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/download
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/var/multigroups
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/run
-%dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/selinux
-%attr(640, root, wazuh-manager) %{_localstatedir}/var/selinux/*
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/upgrade
 
 %files -n wazuh-manager-debuginfo -f debugfiles.list

@@ -92,9 +92,6 @@ else
 WAZUH_USER?=wazuh
 WAZUH_GROUP?=wazuh
 endif
-SELINUX_MODULE=selinux/wazuh.mod
-SELINUX_ENFORCEMENT=selinux/wazuh.te
-SELINUX_POLICY=selinux/wazuh.pp
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
 USE_AUDIT=no
@@ -155,6 +152,10 @@ USE_SELINUX=no
 endif
 else
 USE_SELINUX=no
+endif
+
+ifeq (${TARGET},manager)
+override USE_SELINUX := no
 endif
 
 ifneq (${TARGET},winagent)
@@ -335,8 +336,10 @@ agent: ${CPPLIBDEPS}
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 
 ifneq (,$(filter ${USE_SELINUX},YES yes y Y 1))
-server manager agent: selinux
-endif
+SELINUX_MODULE=selinux/wazuh.mod
+SELINUX_ENFORCEMENT=selinux/wazuh.te
+SELINUX_POLICY=selinux/wazuh.pp
+agent: selinux
 
 selinux: $(SELINUX_POLICY)
 
@@ -345,6 +348,7 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
+endif
 
 ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
@@ -829,8 +833,8 @@ clean-internals:
 	rm -f wazuh_modules/vulnerability_scanner/include/*_generated.h
 	rm -f wazuh_modules/vulnerability_scanner/include/*_schema.h
 # Selinux
-	rm -f ${SELINUX_MODULE}
-	rm -f ${SELINUX_POLICY}
+	rm -f selinux/wazuh.mod
+	rm -f selinux/wazuh.pp
 
 clean-framework:
 	${MAKE} -C ../framework clean

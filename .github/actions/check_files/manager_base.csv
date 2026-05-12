@@ -146,6 +146,4 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/wazuh-manager/var/download,root,wazuh-manager,770,directory,drwxrwx---,,
 /var/wazuh-manager/var/multigroups,wazuh-manager,wazuh-manager,770,directory,drwxrwx---,,
 /var/wazuh-manager/var/run,root,wazuh-manager,770,directory,drwxrwx---,,
-/var/wazuh-manager/var/selinux,root,wazuh-manager,770,directory,drwxrwx---,,
-/var/wazuh-manager/var/selinux/wazuh.pp,root,wazuh-manager,640,file,-rw-r-----,,
 /var/wazuh-manager/var/upgrade,root,wazuh-manager,770,directory,drwxrwx---,,

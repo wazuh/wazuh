@@ -2,7 +2,7 @@ Source: wazuh-manager
 Section: admin
 Priority: extra
 Maintainer: Wazuh <info@wazuh.com>
-Build-Depends: debhelper (>= 7.0.50~), libssl-dev, linux-libc-dev, gawk, libaudit-dev, selinux-basics
+Build-Depends: debhelper (>= 7.0.50~), libssl-dev, linux-libc-dev, gawk, libaudit-dev
 Standards-Version: 3.8.4
 Homepage: http://www.wazuh.com
 
