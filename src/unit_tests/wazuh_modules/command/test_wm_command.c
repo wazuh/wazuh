@@ -92,11 +92,14 @@ static int check_wm_sendmsg_message_is_valid_command_json(const LargestIntegralT
     cJSON *root = cJSON_Parse(message);
     assert_non_null(root);
 
-    const char *event_module = wm_command_json_get_string(root, "event.module");
+    const cJSON *event_obj = wm_command_json_get_object(root, "event");
+    assert_non_null(event_obj);
+
+    const char *event_module = wm_command_json_get_string(event_obj, "module");
     assert_non_null(event_module);
     assert_string_equal(event_module, "wazuh-wodle-cmd");
 
-    const char *event_start = wm_command_json_get_string(root, "event.start");
+    const char *event_start = wm_command_json_get_string(event_obj, "start");
     assert_non_null(event_start);
 
     if (g_payload_expectation.tag) {
@@ -222,8 +225,11 @@ static size_t wm_command_build_base_len_for_test(const char *event_start,
     cJSON *json_event = cJSON_CreateObject();
     assert_non_null(json_event);
 
-    cJSON_AddStringToObject(json_event, "event.module", "wazuh-wodle-cmd");
-    cJSON_AddStringToObject(json_event, "event.start", event_start ? event_start : "");
+    cJSON *event_obj = cJSON_AddObjectToObject(json_event, "event");
+    if (event_obj) {
+        cJSON_AddStringToObject(event_obj, "module", "wazuh-wodle-cmd");
+        cJSON_AddStringToObject(event_obj, "start", event_start ? event_start : "");
+    }
     if (tag) {
         cJSON *tags_array = cJSON_AddArrayToObject(json_event, "tags");
         if (tags_array) {
@@ -270,8 +276,11 @@ static size_t wm_command_build_payload_len_for_test(const char *event_start,
     cJSON *json_event = cJSON_CreateObject();
     assert_non_null(json_event);
 
-    cJSON_AddStringToObject(json_event, "event.module", "wazuh-wodle-cmd");
-    cJSON_AddStringToObject(json_event, "event.start", event_start ? event_start : "");
+    cJSON *event_obj = cJSON_AddObjectToObject(json_event, "event");
+    if (event_obj) {
+        cJSON_AddStringToObject(event_obj, "module", "wazuh-wodle-cmd");
+        cJSON_AddStringToObject(event_obj, "start", event_start ? event_start : "");
+    }
     if (tag) {
         cJSON *tags_array = cJSON_AddArrayToObject(json_event, "tags");
         if (tags_array) {
