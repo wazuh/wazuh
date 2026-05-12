@@ -70,6 +70,9 @@ err() { echo "[external][ERROR] $*" >&2; }
 #     expat-devel is missing the .pc file — see EXPAT_CFLAGS workaround later).
 #   - perl-IPC-Cmd: openssl 3.x Configure requires it (yum-only; apt's perl
 #     ships IPC::Cmd in core).
+#   - perl-Time-Piece: openssl ≥ 3.5.x Makefile.in uses Time::Piece for
+#     build-date stamping. centos:7's minimal perl install omits it
+#     (apt's perl ships Time::Piece in core).
 # Per-package install: a single missing candidate would otherwise abort the
 # whole apt/yum transaction. Each package fails independently.
 if command -v apt-get >/dev/null 2>&1; then
@@ -83,7 +86,7 @@ if command -v apt-get >/dev/null 2>&1; then
     done
 elif command -v yum >/dev/null 2>&1; then
     log "installing tooling via yum (per-package)"
-    for _pkg in zip unzip clang elfutils-libelf-devel pkgconfig perl-IPC-Cmd expat-devel; do
+    for _pkg in zip unzip clang elfutils-libelf-devel pkgconfig perl-IPC-Cmd perl-Time-Piece expat-devel; do
         yum install -y "${_pkg}" >/dev/null 2>&1 || \
         yum install -y "${_pkg}" || \
         err "yum install ${_pkg} failed; downstream build may fail"

@@ -181,6 +181,15 @@ if [ -z "${S3_PATH}" ]; then
     exit 0
 fi
 
+# macOS's /usr/bin/tar is BSD tar and rejects --owner/--group/--no-same-owner.
+# Workflow installs gnu-tar (gtar) via brew on macOS legs; everywhere else
+# `tar` already is GNU tar.
+if command -v gtar >/dev/null 2>&1; then
+    TAR="gtar"
+else
+    TAR="tar"
+fi
+
 if [ ! -d "${OUTDIR}/external_artifacts" ]; then
     echo "[generate_external] no external_artifacts/ dir; nothing to pack"
     exit 0
@@ -204,7 +213,7 @@ repack() {
         rm -rf "${tmp}"
         return 0
     fi
-    ( cd "${tmp}" && tar -czf "${dest}/${dep}.tar.gz" --owner=0 --group=0 --no-same-owner "${dep}" )
+    ( cd "${tmp}" && "${TAR}" -czf "${dest}/${dep}.tar.gz" --owner=0 --group=0 --no-same-owner "${dep}" )
     rm -rf "${tmp}"
 }
 
@@ -225,6 +234,6 @@ for zip in "${OUTDIR}/external_artifacts/"*.zip; do
 done
 
 OUT_TARBALL="${OUTDIR}/externals-${SYSTEM}-${ARCHITECTURE}-${TARGET}.tar.gz"
-( cd "${OUTDIR}" && tar -czf "${OUT_TARBALL}" --owner=0 --group=0 --no-same-owner libraries )
+( cd "${OUTDIR}" && "${TAR}" -czf "${OUT_TARBALL}" --owner=0 --group=0 --no-same-owner libraries )
 echo "[generate_external] packed: ${OUT_TARBALL}"
 ls -lh "${OUT_TARBALL}"
