@@ -1,5 +1,5 @@
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include <memory>
 #include <optional>
@@ -37,8 +37,7 @@ bool evalExpression(const base::Expression& expression, const base::Event& event
     if (expression->isChain())
     {
         auto op = expression->getPtr<base::Chain>();
-        for (auto& operand : op->getOperands())
-            evalExpression(operand, event);
+        for (auto& operand : op->getOperands()) evalExpression(operand, event);
         return true;
     }
 
@@ -75,8 +74,7 @@ bool evalExpression(const base::Expression& expression, const base::Event& event
     if (expression->isBroadcast())
     {
         auto op = expression->getPtr<base::Broadcast>();
-        for (auto& operand : op->getOperands())
-            evalExpression(operand, event);
+        for (auto& operand : op->getOperands()) evalExpression(operand, event);
         return true;
     }
 
@@ -150,7 +148,7 @@ TEST(IocEnrichmentTest, LookupKeySingleSource)
     evalExpression(expr, event);
 
     // Verify enrichment was appended
-    EXPECT_TRUE(event->exists("/threat/enrichments"));
+    EXPECT_TRUE(event->exists("/wazuh/threat/enrichments"));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -162,8 +160,7 @@ TEST(IocEnrichmentTest, LookupKeyMultipleSources)
     auto config = makeMultiSourceHashConfig({"file.hash.md5", "file.hash.sha1"});
 
     // Each source becomes an independent lookup
-    EXPECT_CALL(*mockKvdb, get(std::string_view("ioc_hashes_md5"), _))
-        .WillRepeatedly(Return(std::nullopt));
+    EXPECT_CALL(*mockKvdb, get(std::string_view("ioc_hashes_md5"), _)).WillRepeatedly(Return(std::nullopt));
 
     auto enrichBuilder = getIocEnrichmentBuilder(mockKvdb, config, "hash_md5");
     auto [expr, name] = enrichBuilder(false);
@@ -172,7 +169,7 @@ TEST(IocEnrichmentTest, LookupKeyMultipleSources)
     evalExpression(expr, event);
 
     // No match found so no enrichments
-    EXPECT_FALSE(event->exists("/threat/enrichments"));
+    EXPECT_FALSE(event->exists("/wazuh/threat/enrichments"));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -193,7 +190,7 @@ TEST(IocEnrichmentTest, LookupKeyConnection)
     auto event = makeEvent(R"({"source": {"ip": "192.168.1.1", "port": 8080}})");
     evalExpression(expr, event);
 
-    EXPECT_TRUE(event->exists("/threat/enrichments"));
+    EXPECT_TRUE(event->exists("/wazuh/threat/enrichments"));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -211,7 +208,7 @@ TEST(IocEnrichmentTest, MissingSourceField)
     auto event = makeEvent(R"({"file": {"name": "test.txt"}})");
     evalExpression(expr, event);
 
-    EXPECT_FALSE(event->exists("/threat/enrichments"));
+    EXPECT_FALSE(event->exists("/wazuh/threat/enrichments"));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -222,8 +219,7 @@ TEST(IocEnrichmentTest, KvdbLookupNoMatch)
     auto mockKvdb = std::make_shared<ioc::kvdb::MockKVDBManager>();
     auto config = makeHashConfig("file.hash.md5");
 
-    EXPECT_CALL(*mockKvdb, get(std::string_view("ioc_hashes_md5"), _))
-        .WillOnce(Return(std::nullopt));
+    EXPECT_CALL(*mockKvdb, get(std::string_view("ioc_hashes_md5"), _)).WillOnce(Return(std::nullopt));
 
     auto enrichBuilder = getIocEnrichmentBuilder(mockKvdb, config, "hash_md5");
     auto [expr, name] = enrichBuilder(false);
@@ -231,7 +227,7 @@ TEST(IocEnrichmentTest, KvdbLookupNoMatch)
     auto event = makeEvent(R"({"file": {"hash": {"md5": "deadbeef"}}})");
     evalExpression(expr, event);
 
-    EXPECT_FALSE(event->exists("/threat/enrichments"));
+    EXPECT_FALSE(event->exists("/wazuh/threat/enrichments"));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -253,9 +249,9 @@ TEST(IocEnrichmentTest, KvdbLookupMatch)
     evalExpression(expr, event);
 
     // Verify enrichment array exists and has expected structure
-    EXPECT_TRUE(event->exists("/threat/enrichments"));
-    EXPECT_TRUE(event->exists("/threat/enrichments/0/indicator"));
-    EXPECT_TRUE(event->exists("/threat/enrichments/0/matched/field"));
+    EXPECT_TRUE(event->exists("/wazuh/threat/enrichments"));
+    EXPECT_TRUE(event->exists("/wazuh/threat/enrichments/0/indicator"));
+    EXPECT_TRUE(event->exists("/wazuh/threat/enrichments/0/matched/field"));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -313,7 +309,7 @@ TEST(IocEnrichmentTest, TestModeIocMatchFound)
     auto event = makeEvent(R"({"file": {"hash": {"md5": "DEADBEEF"}}})");
     evalExpression(expr, event);
 
-    EXPECT_TRUE(event->exists("/threat/enrichments"));
+    EXPECT_TRUE(event->exists("/wazuh/threat/enrichments"));
 }
 
 TEST(IocEnrichmentTest, TestModeIocNotFound)
@@ -321,8 +317,7 @@ TEST(IocEnrichmentTest, TestModeIocNotFound)
     auto mockKvdb = std::make_shared<ioc::kvdb::MockKVDBManager>();
     auto config = makeHashConfig("file.hash.md5");
 
-    EXPECT_CALL(*mockKvdb, get(std::string_view("ioc_hashes_md5"), _))
-        .WillOnce(Return(std::nullopt));
+    EXPECT_CALL(*mockKvdb, get(std::string_view("ioc_hashes_md5"), _)).WillOnce(Return(std::nullopt));
 
     auto enrichBuilder = getIocEnrichmentBuilder(mockKvdb, config, "hash_md5");
     auto [expr, name] = enrichBuilder(true);
@@ -330,7 +325,7 @@ TEST(IocEnrichmentTest, TestModeIocNotFound)
     auto event = makeEvent(R"({"file": {"hash": {"md5": "deadbeef"}}})");
     evalExpression(expr, event);
 
-    EXPECT_FALSE(event->exists("/threat/enrichments"));
+    EXPECT_FALSE(event->exists("/wazuh/threat/enrichments"));
 }
 
 TEST(IocEnrichmentTest, TestModeMissingSourceField)
@@ -344,7 +339,7 @@ TEST(IocEnrichmentTest, TestModeMissingSourceField)
     auto event = makeEvent(R"({"file": {"name": "test.txt"}})");
     evalExpression(expr, event);
 
-    EXPECT_FALSE(event->exists("/threat/enrichments"));
+    EXPECT_FALSE(event->exists("/wazuh/threat/enrichments"));
 }
 
 TEST(IocEnrichmentTest, TestModeConnectionMatchFound)
@@ -361,5 +356,5 @@ TEST(IocEnrichmentTest, TestModeConnectionMatchFound)
     auto event = makeEvent(R"({"source": {"ip": "10.0.0.1", "port": 443}})");
     evalExpression(expr, event);
 
-    EXPECT_TRUE(event->exists("/threat/enrichments"));
+    EXPECT_TRUE(event->exists("/wazuh/threat/enrichments"));
 }
