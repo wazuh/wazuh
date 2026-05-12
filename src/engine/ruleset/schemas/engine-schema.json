@@ -4369,7 +4369,7 @@
       "type": "keyword"
     },
     "threat.indicator.confidence": {
-      "type": "keyword"
+      "type": "short"
     },
     "threat.indicator.description": {
       "type": "keyword"
@@ -6439,7 +6439,7 @@
       "type": "keyword"
     },
     "wazuh.threat.indicator.confidence": {
-      "type": "keyword"
+      "type": "short"
     },
     "wazuh.threat.indicator.description": {
       "type": "keyword"
