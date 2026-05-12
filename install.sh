@@ -257,7 +257,7 @@ Install()
         UpdateStopWAZUH
     fi
 
-    if [ "X${update_only}" = "Xyes" ] && { [ "X${INSTYPE}" = "Xmanager" ] || [ "X${INSTYPE}" = "Xagent" ]; }; then
+    if [ "X${update_only}" = "Xyes" ] && { [ "X${INSTYPE}" = "Xmanager" ]; }; then
         PrepareUpgradePreserve || PrepareErrorExit "Could not prepare ${INSTYPE} upgrade preserve backup."
         trap 'HandleUpgradeInterrupt' HUP INT TERM
         trap 'HandleUpgradeExit' 0
@@ -268,14 +268,14 @@ Install()
     INSTALL_STATUS=$?
 
     if [ "${INSTALL_STATUS}" != "0" ]; then
-        if [ "X${update_only}" = "Xyes" ] && { [ "X${INSTYPE}" = "Xmanager" ] || [ "X${INSTYPE}" = "Xagent" ]; }; then
+        if [ "X${update_only}" = "Xyes" ] && { [ "X${INSTYPE}" = "Xmanager" ]; }; then
             trap - HUP INT TERM 0
             AttemptUpgradePreserveRestore "ERROR: Upgrade failed"
         fi
         exit "${INSTALL_STATUS}"
     fi
 
-    if [ "X${update_only}" = "Xyes" ] && { [ "X${INSTYPE}" = "Xmanager" ] || [ "X${INSTYPE}" = "Xagent" ]; }; then
+    if [ "X${update_only}" = "Xyes" ] && { [ "X${INSTYPE}" = "Xmanager" ]; }; then
         trap - HUP INT TERM 0
         RestoreUpgradePreserve || RestoreErrorExit "Could not restore ${INSTYPE} upgrade preserve backup."
     fi
