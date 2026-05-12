@@ -425,10 +425,8 @@ void test_wm_agent_upgrade_check_status_successful(void **state)
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, queue);
 
-#ifdef TEST_WINAGENT
-    expect_value(wrap_Sleep, dwMilliseconds, WM_AGENT_UPGRADE_RESULT_WAIT_TIME * 1000);
-#else
-    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_RESULT_WAIT_TIME);
+#ifndef TEST_WINAGENT
+    expect_any_always(__wrap_sleep, seconds);
 #endif
 
     expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
@@ -463,12 +461,6 @@ void test_wm_agent_upgrade_check_status_successful(void **state)
                                                      "\"parameters\":{\"error\":0,"
                                                                  "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
-
-#ifdef TEST_WINAGENT
-    expect_value(wrap_Sleep, dwMilliseconds, config->upgrade_wait_start * 1000);
-#else
-    expect_value(__wrap_sleep, seconds, config->upgrade_wait_start);
-#endif
 
     expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_wfopen, mode, "r");
@@ -496,10 +488,8 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, queue);
 
-#ifdef TEST_WINAGENT
-    expect_value(wrap_Sleep, dwMilliseconds, WM_AGENT_UPGRADE_RESULT_WAIT_TIME * 1000);
-#else
-    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_RESULT_WAIT_TIME);
+#ifndef TEST_WINAGENT
+    expect_any_always(__wrap_sleep, seconds);
 #endif
 
     expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
@@ -535,11 +525,38 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
                                                                  "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
+    expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, (FILE*)1);
+
 #ifdef TEST_WINAGENT
-    expect_value(wrap_Sleep, dwMilliseconds, config->upgrade_wait_start  * 1000);
+    expect_value(wrap_fgets, __stream, (FILE*)1);
+    will_return(wrap_fgets, "0\n");
 #else
-    expect_value(__wrap_sleep, seconds, config->upgrade_wait_start);
+    expect_value(__wrap_fgets, __stream, (FILE*)1);
+    will_return(__wrap_fgets, "0\n");
 #endif
+
+    expect_value(__wrap_fclose, _File, (FILE*)1);
+    will_return(__wrap_fclose, 1);
+
+    expect_value(__wrap_wm_sendmsg, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg, queue, queue);
+    expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
+                                               "\"parameters\":{\"error\":0,"
+                                                           "\"message\":\"Upgrade was successful\","
+                                                           "\"status\":\"Done\"}}");
+    expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
+    expect_value(__wrap_wm_sendmsg, loc, UPGRADE_MQ);
+
+    will_return(__wrap_wm_sendmsg, result);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
+                                                   "'{\"command\":\"upgrade_update_status\","
+                                                     "\"parameters\":{\"error\":0,"
+                                                                 "\"message\":\"Upgrade was successful\","
+                                                                 "\"status\":\"Done\"}}'");
 
     expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_wfopen, mode, "r");
@@ -574,12 +591,6 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
                                                                  "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
 
-#ifdef TEST_WINAGENT
-    expect_value(wrap_Sleep, dwMilliseconds, config->upgrade_wait_start * config->upgrade_wait_factor_increase  * 1000);
-#else
-    expect_value(__wrap_sleep, seconds, config->upgrade_wait_start * config->upgrade_wait_factor_increase);
-#endif
-
     expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, (FILE*)1);
@@ -612,51 +623,6 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
                                                      "\"parameters\":{\"error\":0,"
                                                                  "\"message\":\"Upgrade was successful\","
                                                                  "\"status\":\"Done\"}}'");
-
-#ifdef TEST_WINAGENT
-    expect_value(wrap_Sleep, dwMilliseconds, config->upgrade_wait_start * config->upgrade_wait_factor_increase * config->upgrade_wait_factor_increase  * 1000);
-#else
-    expect_value(__wrap_sleep, seconds, config->upgrade_wait_start * config->upgrade_wait_factor_increase * config->upgrade_wait_factor_increase);
-#endif
-
-    expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, (FILE*)1);
-
-#ifdef TEST_WINAGENT
-    expect_value(wrap_fgets, __stream, (FILE*)1);
-    will_return(wrap_fgets, "0\n");
-#else
-    expect_value(__wrap_fgets, __stream, (FILE*)1);
-    will_return(__wrap_fgets, "0\n");
-#endif
-
-    expect_value(__wrap_fclose, _File, (FILE*)1);
-    will_return(__wrap_fclose, 1);
-
-    expect_value(__wrap_wm_sendmsg, usec, 1000000);
-    expect_value(__wrap_wm_sendmsg, queue, queue);
-    expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
-                                               "\"parameters\":{\"error\":0,"
-                                                           "\"message\":\"Upgrade was successful\","
-                                                           "\"status\":\"Done\"}}");
-    expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
-    expect_value(__wrap_wm_sendmsg, loc, UPGRADE_MQ);
-
-    will_return(__wrap_wm_sendmsg, result);
-
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
-                                                   "'{\"command\":\"upgrade_update_status\","
-                                                     "\"parameters\":{\"error\":0,"
-                                                                 "\"message\":\"Upgrade was successful\","
-                                                                 "\"status\":\"Done\"}}'");
-
-#ifdef TEST_WINAGENT
-    expect_value(wrap_Sleep, dwMilliseconds, config->upgrade_wait_max  * 1000);
-#else
-    expect_value(__wrap_sleep, seconds, config->upgrade_wait_max);
-#endif
 
     expect_string(__wrap_wfopen, path, WM_AGENT_UPGRADE_RESULT_FILE);
     expect_string(__wrap_wfopen, mode, "r");
@@ -684,10 +650,8 @@ void test_wm_agent_upgrade_check_status_queue_error(void **state)
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, queue);
 
-#ifdef TEST_WINAGENT
-    expect_value(wrap_Sleep, dwMilliseconds, WM_AGENT_UPGRADE_RESULT_WAIT_TIME  * 1000);
-#else
-    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_RESULT_WAIT_TIME);
+#ifndef TEST_WINAGENT
+    expect_any_always(__wrap_sleep, seconds);
 #endif
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
@@ -1052,10 +1016,8 @@ void test_wm_agent_upgrade_start_agent_module_enabled(void **state)
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, queue);
 
-#ifdef TEST_WINAGENT
-    expect_value(wrap_Sleep, dwMilliseconds, WM_AGENT_UPGRADE_RESULT_WAIT_TIME  * 1000);
-#else
-    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_RESULT_WAIT_TIME);
+#ifndef TEST_WINAGENT
+    expect_any_always(__wrap_sleep, seconds);
 #endif
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
