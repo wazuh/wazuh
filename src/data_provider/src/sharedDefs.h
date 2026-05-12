@@ -31,11 +31,6 @@ constexpr auto DPKG_INFO_PATH {"/var/lib/dpkg/info/"};
 constexpr auto DPKG_STATUS_PATH {"/var/lib/dpkg/status"};
 
 constexpr auto RPM_PATH {"/var/lib/rpm/"};
-
-constexpr auto PACMAN_PATH {"/var/lib/pacman"};
-
-constexpr auto APK_PATH {"/lib/apk/db"};
-constexpr auto APK_DB_PATH {"/lib/apk/db/installed"};
 constexpr auto SNAP_PATH {"/var/lib/snapd"};
 
 constexpr auto UNKNOWN_VALUE {" "};

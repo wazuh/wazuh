@@ -1223,29 +1223,6 @@ add_library(sqlite3 ALIAS ext_sqlite)
 add_library(sqlite ALIAS ext_sqlite)
 
 # ------------------------------------------------------------------------------
-# msgpack (not winagent)
-# ------------------------------------------------------------------------------
-
-if(NOT IS_WINDOWS)
-  if(EXISTS ${EXTERNAL_DIR}/msgpack/libmsgpack.a)
-    message(STATUS "Using precompiled msgpack library")
-    add_library(ext_msgpack STATIC IMPORTED GLOBAL)
-    set_target_properties(
-      ext_msgpack PROPERTIES IMPORTED_LOCATION
-                             ${EXTERNAL_DIR}/msgpack/libmsgpack.a)
-    target_include_directories(ext_msgpack
-                               INTERFACE ${EXTERNAL_DIR}/msgpack/include)
-  else()
-    file(GLOB MSGPACK_SOURCES ${EXTERNAL_DIR}/msgpack/src/*.c)
-    add_library(ext_msgpack STATIC ${MSGPACK_SOURCES})
-    target_include_directories(ext_msgpack
-                               PUBLIC ${EXTERNAL_DIR}/msgpack/include)
-    set_target_properties(ext_msgpack PROPERTIES POSITION_INDEPENDENT_CODE ON
-                                                 C_STANDARD 99)
-  endif()
-endif()
-
-# ------------------------------------------------------------------------------
 # procps (Linux only)
 # ------------------------------------------------------------------------------
 
@@ -1264,45 +1241,6 @@ if(IS_LINUX)
                                                 C_STANDARD 99)
   endif()
   add_library(proc ALIAS ext_procps)
-endif()
-
-# ------------------------------------------------------------------------------
-# libalpm/pacman (Linux only)
-# ------------------------------------------------------------------------------
-
-if(IS_LINUX)
-  if(EXISTS ${EXTERNAL_DIR}/pacman/lib/libalpm/libalpm.a)
-    message(STATUS "Using precompiled libalpm library")
-    add_library(ext_libalpm STATIC IMPORTED GLOBAL)
-    set_target_properties(
-      ext_libalpm PROPERTIES IMPORTED_LOCATION
-                             ${EXTERNAL_DIR}/pacman/lib/libalpm/libalpm.a)
-    target_include_directories(ext_libalpm
-                               INTERFACE ${EXTERNAL_DIR}/pacman/lib/libalpm)
-  else()
-    file(GLOB LIBALPM_SOURCES ${EXTERNAL_DIR}/pacman/lib/libalpm/*.c)
-    add_library(ext_libalpm STATIC ${LIBALPM_SOURCES})
-    target_include_directories(
-      ext_libalpm
-      PRIVATE ${EXTERNAL_DIR}/libarchive/libarchive
-              ${EXTERNAL_DIR}/openssl/include
-              ${EXTERNAL_DIR}/pacman/lib/libalpm)
-    target_compile_definitions(
-      ext_libalpm
-      PRIVATE SYSHOOKDIR="/usr/share/libalpm/hooks"
-              LDCONFIG="${LDCONFIG_PATH}"
-              FSSTATSTYPE=struct\ statvfs
-              SCRIPTLET_SHELL="/bin/sh"
-              HAVE_SYS_STATVFS_H
-              LIB_VERSION=""
-              PATH_MAX=4096
-              HAVE_STRNLEN
-              HAVE_LIBSSL)
-    set_target_properties(ext_libalpm PROPERTIES POSITION_INDEPENDENT_CODE ON
-                                                 C_STANDARD 99)
-    add_dependencies(ext_libalpm openssl_external)
-  endif()
-  add_library(alpm ALIAS ext_libalpm)
 endif()
 
 # ------------------------------------------------------------------------------
@@ -1426,7 +1364,7 @@ endif()
 
 # Non-Windows additions
 if(NOT IS_WINDOWS)
-  list(APPEND WAZUHEXT_WHOLE_LIBS ext_msgpack ext_bzip2)
+  list(APPEND WAZUHEXT_WHOLE_LIBS ext_bzip2)
   if(NOT IS_AGENT)
     list(APPEND WAZUHEXT_WHOLE_LIBS ext_libffi)
   endif()
@@ -1440,7 +1378,6 @@ if(NOT IS_WINDOWS)
       ext_popt
       ext_audit
       ext_procps
-      ext_libalpm
       ext_libarchive)
   endif()
 endif()
