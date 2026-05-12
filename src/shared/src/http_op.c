@@ -110,12 +110,21 @@ static size_t _write_cb(char* ptr, size_t size, size_t nmemb, void* userdata)
 
 static void _apply_timeouts(uhttp_client_t* c)
 {
+    CURLcode rc;
     if (!c)
         return;
     if (c->timeout_ms > 0)
-        curl_easy_setopt(c->easy, CURLOPT_TIMEOUT_MS, c->timeout_ms);
+    {
+        rc = curl_easy_setopt(c->easy, CURLOPT_TIMEOUT_MS, c->timeout_ms);
+        if (rc != CURLE_OK)
+            mdebug1("Failed to set CURLOPT_TIMEOUT_MS: %d", rc);
+    }
     if (c->connect_timeout_ms > 0)
-        curl_easy_setopt(c->easy, CURLOPT_CONNECTTIMEOUT_MS, c->connect_timeout_ms);
+    {
+        rc = curl_easy_setopt(c->easy, CURLOPT_CONNECTTIMEOUT_MS, c->connect_timeout_ms);
+        if (rc != CURLE_OK)
+            mdebug1("Failed to set CURLOPT_CONNECTTIMEOUT_MS: %d", rc);
+    }
 }
 
 static void uhttp_client_free_partial(uhttp_client_t* c, struct curl_slist* hdrs)
@@ -265,11 +274,17 @@ int uhttp_client_add_header(uhttp_client_t* c, const char* header_line)
 {
     if (!c || !header_line)
         return -1;
-    struct curl_slist* h = curl_slist_append(c->headers, header_line);
-    if (!h)
+    struct curl_slist* new_list = curl_slist_append(c->headers, header_line);
+    if (!new_list)
         return -1;
-    c->headers = h;
-    curl_easy_setopt(c->easy, CURLOPT_HTTPHEADER, c->headers);
+
+    c->headers = new_list;
+    CURLcode rc = curl_easy_setopt(c->easy, CURLOPT_HTTPHEADER, c->headers);
+    if (rc != CURLE_OK)
+    {
+        return -rc;
+    }
+
     return 0;
 }
 
@@ -281,12 +296,17 @@ void uhttp_client_clear_headers(uhttp_client_t* c)
 {
     if (!c)
         return;
-    if (c->headers)
+    CURLcode rc = curl_easy_setopt(c->easy, CURLOPT_HTTPHEADER, NULL);
+    if (rc != CURLE_OK)
+    {
+        mdebug1("Failed to set CURLOPT_HTTPHEADER: %d", rc);
+    }
+
+    if (c->headers) 
     {
         curl_slist_free_all(c->headers);
         c->headers = NULL;
     }
-    curl_easy_setopt(c->easy, CURLOPT_HTTPHEADER, c->headers);
 }
 
 /* ---------------------------- Response capture API ---------------------------- */
@@ -337,13 +357,24 @@ int uhttp_post(uhttp_client_t* c, const void* data, size_t len, uhttp_result_t* 
 {
     if (!c || !c->easy || !data || len == 0)
         return -1;
+    CURLcode rc_opt;
 
 #if CURL_AT_LEAST_VERSION(7, 58, 0)
-    curl_easy_setopt(c->easy, CURLOPT_POSTFIELDS, data);
-    curl_easy_setopt(c->easy, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)len);
+    if ((rc_opt = curl_easy_setopt(c->easy, CURLOPT_POSTFIELDS, data)) != CURLE_OK)
+        return -rc_opt;
+    if ((rc_opt = curl_easy_setopt(c->easy, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)len)) != CURLE_OK)
+    {
+        curl_easy_setopt(c->easy, CURLOPT_POSTFIELDS, NULL);
+        return -rc_opt;
+    }
 #else
-    curl_easy_setopt(c->easy, CURLOPT_POSTFIELDS, data);
-    curl_easy_setopt(c->easy, CURLOPT_POSTFIELDSIZE, (long)len);
+    if ((rc_opt = curl_easy_setopt(c->easy, CURLOPT_POSTFIELDS, data)) != CURLE_OK)
+        return -rc_opt;
+    if ((rc_opt = curl_easy_setopt(c->easy, CURLOPT_POSTFIELDSIZE, (long)len)) != CURLE_OK)
+    {
+        curl_easy_setopt(c->easy, CURLOPT_POSTFIELDS, NULL);
+        return -rc_opt;
+    }
 #endif
 
     _apply_timeouts(c);
@@ -351,12 +382,15 @@ int uhttp_post(uhttp_client_t* c, const void* data, size_t len, uhttp_result_t* 
 
     CURLcode rc = curl_easy_perform(c->easy);
 
-    // Defensive reset of payload pointers on the handle
-    curl_easy_setopt(c->easy, CURLOPT_POSTFIELDS, NULL);
+    // Defensive reset of payload pointers on the handle (best-effort)
+    if ((rc_opt = curl_easy_setopt(c->easy, CURLOPT_POSTFIELDS, NULL)) != CURLE_OK)
+        mdebug1("Failed to reset CURLOPT_POSTFIELDS: %d", rc_opt);
 #if CURL_AT_LEAST_VERSION(7, 58, 0)
-    curl_easy_setopt(c->easy, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)0);
+    if ((rc_opt = curl_easy_setopt(c->easy, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)0)) != CURLE_OK)
+        mdebug1("Failed to reset CURLOPT_POSTFIELDSIZE_LARGE: %d", rc_opt);
 #else
-    curl_easy_setopt(c->easy, CURLOPT_POSTFIELDSIZE, 0L);
+    if ((rc_opt = curl_easy_setopt(c->easy, CURLOPT_POSTFIELDSIZE, 0L)) != CURLE_OK)
+        mdebug1("Failed to reset CURLOPT_POSTFIELDSIZE: %d", rc_opt);
 #endif
 
     long http = 0;
