@@ -28,7 +28,7 @@ runs:
         format_display_test_coverage ${{ inputs.target }}
     - name: Upload coverage artifacts
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: legacy-unit-tests-coverage-${{ inputs.target }}
         path: |
