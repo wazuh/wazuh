@@ -1,192 +1,102 @@
-run-name: External deps - ${{ inputs.target }} ${{ inputs.legs || 'all linux legs' }} ${{ inputs.dependencies && format('- {0}', inputs.dependencies) || '- (no version overrides)' }}
-name: 5.X - Package - Build external dependencies
-
-# Rebuilds Wazuh's external dependencies across one or more (system, architecture)
-# legs and uploads per-dep zips (source-only and source+binaries) as artifacts.
-#
-# Covers all 7 supported legs:
-#   - 4 Linux Docker legs:  deb-amd64, deb-arm64, rpm-amd64, rpm-arm64
-#   - 2 macOS native legs:  macos-intel64, macos-arm64
-#   - 1 Windows leg:        windows-i686 (MinGW cross-compile on a Linux
-#                                         runner, no Docker)
-# macOS and Windows are agent-only.
+name: 5.X - Build Binutils Packages
 
 on:
   workflow_dispatch:
     inputs:
-      dependencies:
-        description: |
-          Semicolon-separated list of deps to update, in "name:version" form.
-          Example: "curl:8.13.0;openssl:3.5.2".
-          Empty = rebuild all deps from currently vendored sources without
-          replacing any.
-        type: string
-        required: false
-        default: ""
-      target:
-        description: |
-          Build set: 'agent' (28 deps), 'manager' (47 deps, includes the
-          agent set), or 'both' to fan out across both targets in one run.
-        type: choice
-        options: [agent, manager, both]
-        default: manager
+      binutils_major_version:
+        description: "Binutils major version"
         required: true
-      legs:
-        description: |
-          Comma-separated list of <system>-<architecture> legs to run.
-          Valid values: deb-amd64, deb-arm64, rpm-amd64, rpm-arm64,
-          macos-intel64, macos-arm64, windows-i686.
-          Empty = run all 4 Linux legs (macOS and Windows legs only run
-          when explicitly listed — macOS uses paid runner minutes, and
-          windows-i686 is agent-only). macOS and Windows are agent-only;
-          target=manager fails on those legs.
-        type: string
-        required: false
-        default: ""
-      docker_image_tag:
-        description: |
-          GHCR builder image tag. "auto" derives it from VERSION.json,
-          "developer" uses the branch name. Otherwise a literal tag.
-        type: string
-        default: "auto"
-        required: false
+        default: "2"
+      binutils_minor_version:
+        description: "Binutils minor version"
+        required: true
+        default: "38"
 
 jobs:
-  prepare-matrix:
+  build-deb:
     runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.build.outputs.matrix }}
     steps:
-      - name: Build matrix from inputs
-        id: build
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Docker build
+        env:
+          BINUTILS_MAJOR_VERSION: ${{ github.event.inputs.binutils_major_version }}
+          BINUTILS_MINOR_VERSION: ${{ github.event.inputs.binutils_minor_version }}
         run: |
-          legs_input="${{ inputs.legs }}"
-          target="${{ inputs.target }}"
-          if [ "${target}" = "both" ]; then
-            targets="agent manager"
-          else
-            targets="${target}"
-          fi
+          docker build -t binutils-deb -f packages/debs/amd64/binutils/Dockerfile \
+            --build-arg BINUTILS_MAJOR_VERSION="$BINUTILS_MAJOR_VERSION" \
+            --build-arg BINUTILS_MINOR_VERSION="$BINUTILS_MINOR_VERSION" .
+          docker run -v /tmp:/tmp binutils-deb /bin/bash -c "cp /packages/* /tmp/"
 
-          json='{"include":['
-          first=true
-          for tgt in ${targets}; do
-            if [ -z "${legs_input}" ]; then
-              if [ "${tgt}" = "manager" ]; then
-                tgt_legs="deb-amd64,deb-arm64,rpm-amd64,rpm-arm64"
-              else
-                tgt_legs="deb-amd64,deb-arm64,rpm-amd64,rpm-arm64,macos-intel64,macos-arm64,windows-i686"
-              fi
-            else
-              tgt_legs="${legs_input}"
-            fi
-
-            for leg in $(echo "${tgt_legs}" | tr ',' ' '); do
-              leg="$(echo "${leg}" | xargs)"  # trim whitespace
-              system="${leg%-*}"
-              architecture="${leg##*-}"
-              case "${system}" in
-                deb|rpm|macos|windows) ;;
-                *) echo "::error::unsupported system '${system}' in leg '${leg}' (valid: deb, rpm, macos, windows)"; exit 1 ;;
-              esac
-
-              if [ "${tgt}" = "manager" ] && { [ "${system}" = "macos" ] || [ "${system}" = "windows" ]; }; then
-                continue
-              fi
-
-              case "${system}-${architecture}" in
-                deb-amd64|rpm-amd64) runner="wz-linux-amd64" ;;
-                deb-arm64|rpm-arm64) runner="wz-linux-arm64" ;;
-                macos-intel64)       runner="macos-14-large" ;;
-                macos-arm64)         runner="macos-14" ;;
-                windows-i686)        runner="wz-linux-amd64" ;;  # MinGW cross-compile on Linux
-                *) echo "::error::unsupported leg '${leg}'"; exit 1 ;;
-              esac
-              ${first} || json="${json},"
-              first=false
-              json="${json}{\"system\":\"${system}\",\"architecture\":\"${architecture}\",\"runner\":\"${runner}\",\"leg\":\"${leg}\",\"target\":\"${tgt}\"}"
-            done
-          done
-          json="${json}]}"
-          echo "matrix=${json}" >> "${GITHUB_OUTPUT}"
-          echo "Matrix: ${json}"
-
-  build-externals:
-    needs: prepare-matrix
-    permissions:
-      contents: read
-      packages: write
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJSON(needs.prepare-matrix.outputs.matrix) }}
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 90
-    name: Build externals (${{ matrix.leg }}-${{ matrix.target }})
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Resolve image tag
-        if: matrix.system == 'deb' || matrix.system == 'rpm'
-        run: |
-          VERSION="$(grep '"version"' "${GITHUB_WORKSPACE}/VERSION.json" | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
-          if [ "${{ inputs.docker_image_tag }}" = "auto" ]; then
-            echo "TAG=${VERSION}" >> "${GITHUB_ENV}"
-          elif [ "${{ inputs.docker_image_tag }}" = "developer" ]; then
-            echo "TAG=$(sed 's|[/\\]|--|g' <<< "${{ github.ref_name }}")" >> "${GITHUB_ENV}"
-          else
-            echo "TAG=${{ inputs.docker_image_tag }}" >> "${GITHUB_ENV}"
-          fi
-          echo "CONTAINER_NAME=pkg_${{ matrix.system }}_${{ matrix.target }}_builder_${{ matrix.architecture }}" >> "${GITHUB_ENV}"
-
-      - name: Pull builder image from GHCR
-        if: matrix.system == 'deb' || matrix.system == 'rpm'
-        timeout-minutes: 20
-        run: |
-          bash "${GITHUB_WORKSPACE}/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh" \
-            "${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}" "${{ github.actor }}" "${CONTAINER_NAME}" "${TAG}"
-
-      - name: Install build tools (macOS leg)
-        if: matrix.system == 'macos'
-        run: brew install bash automake
-
-      - name: Install MinGW cross-compiler (windows leg)
-        if: matrix.system == 'windows'
-        run: |
-          # Mirrors what 5_builderpackage_agent-windows.yml does: cross-compile
-          # the Windows agent on a Linux runner using MinGW. The Wazuh CMake
-          # external recipes detect IS_WINDOWS via CMAKE_SYSTEM_NAME (set by
-          # TARGET=winagent) and switch to the i686-w64-mingw32-* toolchain.
-          sudo apt-get update
-          sudo apt-get install -y gcc-mingw-w64 g++-mingw-w64 make
-
-      - name: Build externals
-        timeout-minutes: 60
-        working-directory: packages
-        run: |
-          # nproc is Linux-only; macOS runners use sysctl. The scripts also
-          # have this fallback internally, but compute JOBS here so it shows
-          # in the workflow log for diagnosis.
-          jobs="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)"
-          bash generate_external.sh \
-            --system "${{ matrix.system }}" \
-            --architecture "${{ matrix.architecture }}" \
-            --target "${{ matrix.target }}" \
-            --tag "${TAG:-}" \
-            --dependencies "${{ inputs.dependencies }}" \
-            --jobs "${jobs}" \
-            --verbose
-
-      - name: List produced artifacts
-        if: always()
-        run: |
-          ls -la packages/output_externals/external_artifacts/ 2>/dev/null || echo "no artifacts produced"
-
-      - name: Upload per-dep zips
-        if: always()
+      - name: Upload .deb artifact
         uses: actions/upload-artifact@v4
         with:
-          name: externals-${{ matrix.leg }}-${{ matrix.target }}
-          path: packages/output_externals/external_artifacts/*.zip
-          if-no-files-found: error
-          retention-days: 14
+          name: binutils-deb
+          path: /tmp/*.deb
+
+  build-rpm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Docker build
+        env:
+          BINUTILS_MAJOR_VERSION: ${{ github.event.inputs.binutils_major_version }}
+          BINUTILS_MINOR_VERSION: ${{ github.event.inputs.binutils_minor_version }}
+        run: |
+          docker build -t binutils-rpm -f packages/rpms/amd64/binutils/Dockerfile \
+            --build-arg BINUTILS_MAJOR_VERSION="$BINUTILS_MAJOR_VERSION" \
+            --build-arg BINUTILS_MINOR_VERSION="$BINUTILS_MINOR_VERSION" .
+          docker run -v /tmp:/tmp binutils-rpm /bin/bash -c "cp /packages/* /tmp/"
+
+      - name: Upload .rpm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binutils-rpm
+          path: /tmp/*.rpm
+
+  build-deb-arm64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Docker build
+        env:
+          BINUTILS_MAJOR_VERSION: ${{ github.event.inputs.binutils_major_version }}
+          BINUTILS_MINOR_VERSION: ${{ github.event.inputs.binutils_minor_version }}
+        run: |
+          docker build -t binutils-deb-arm64 -f packages/debs/arm64/binutils/Dockerfile \
+            --build-arg BINUTILS_MAJOR_VERSION="$BINUTILS_MAJOR_VERSION" \
+            --build-arg BINUTILS_MINOR_VERSION="$BINUTILS_MINOR_VERSION" .
+          docker run -v /tmp:/tmp binutils-deb-arm64 /bin/bash -c "cp /packages/* /tmp/"
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binutils-deb-arm64
+          path: /tmp/*.deb
+
+  build-rpm-arm64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Docker build
+        env:
+          BINUTILS_MAJOR_VERSION: ${{ github.event.inputs.binutils_major_version }}
+          BINUTILS_MINOR_VERSION: ${{ github.event.inputs.binutils_minor_version }}
+        run: |
+          docker build -t binutils-rpm-arm64 -f packages/rpms/arm64/binutils/Dockerfile \
+            --build-arg BINUTILS_MAJOR_VERSION="$BINUTILS_MAJOR_VERSION" \
+            --build-arg BINUTILS_MINOR_VERSION="$BINUTILS_MINOR_VERSION" .
+          docker run -v /tmp:/tmp binutils-rpm-arm64 /bin/bash -c "cp /packages/* /tmp/"
+
+      - name: Upload .rpm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binutils-rpm-arm64
+          path: /tmp/*.rpm
