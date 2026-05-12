@@ -23,10 +23,8 @@ private:
     IndexerConnectorSyncImpl<TServerSelector<HTTPRequest>, HTTPRequest> m_impl;
 
 public:
-    Impl(const nlohmann::json& config,
-         const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
-             logFunction)
-        : m_impl(config, logFunction)
+    Impl(const nlohmann::json& config, LoggingContext logging)
+        : m_impl(config, std::move(logging.second), nullptr, nullptr, std::move(logging.first))
     {
     }
 
@@ -120,11 +118,8 @@ public:
     }
 };
 
-IndexerConnectorSync::IndexerConnectorSync(
-    const nlohmann::json& config,
-    const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
-        logFunction)
-    : m_impl(std::make_unique<Impl>(config, logFunction))
+IndexerConnectorSync::IndexerConnectorSync(const nlohmann::json& config, LoggingContext logging)
+    : m_impl(std::make_unique<Impl>(config, std::move(logging)))
 {
 }
 

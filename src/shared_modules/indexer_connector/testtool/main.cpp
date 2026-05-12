@@ -195,7 +195,8 @@ int runPushEvents(const int argc, const char* argv[])
                     throw std::runtime_error("Could not open configuration file: " + cfgPath);
                 const auto cfg = nlohmann::json::parse(cfgFile);
 
-                connectors.push_back(std::make_unique<IndexerConnectorAsync>(cfg, queueId, loggingFunction));
+                connectors.push_back(std::make_unique<IndexerConnectorAsync>(
+                    cfg, queueId, LoggingContext {"testtool", loggingFunction}));
 
                 const std::string idxName = (cfg.contains("index") && cfg["index"].is_string())
                                                 ? cfg["index"].get<std::string>()
@@ -266,12 +267,14 @@ int runPushEvents(const int argc, const char* argv[])
         if (useAsync)
         {
             std::cout << "Using Indexer Connector ASYNC implementation.\n";
-            asyncConnector = std::make_unique<IndexerConnectorAsync>(configuration, "tool", loggingFunction);
+            asyncConnector = std::make_unique<IndexerConnectorAsync>(
+                configuration, "tool", LoggingContext {"testtool", loggingFunction});
         }
         else
         {
             std::cout << "Using Indexer Connector SYNC implementation.\n";
-            syncConnector = std::make_unique<IndexerConnectorSync>(configuration, loggingFunction);
+            syncConnector =
+                std::make_unique<IndexerConnectorSync>(configuration, LoggingContext {"testtool", loggingFunction});
         }
 
         const std::string indexName = (configuration.contains("index") && configuration["index"].is_string())
@@ -394,7 +397,7 @@ int runExportPolicy(const int argc, const char* argv[])
         std::ofstream logFile;
         auto loggingFunction = makeLoggingFunction(logFile);
         seedCredentials(configuration);
-        IndexerConnectorSync connector(configuration, loggingFunction);
+        IndexerConnectorSync connector(configuration, LoggingContext {"testtool", loggingFunction});
 
         const std::string outputPath = args.getLogFilePath().empty() ? "exported_policy.json" : args.getLogFilePath();
         std::ofstream out(outputPath);
@@ -457,7 +460,7 @@ int runGenerateFullPolicy(const int argc, const char* argv[])
         std::ofstream logFile;
         auto loggingFunction = makeLoggingFunction(logFile);
         seedCredentials(configuration);
-        IndexerConnectorSync connector(configuration, loggingFunction);
+        IndexerConnectorSync connector(configuration, LoggingContext {"testtool", loggingFunction});
 
         const std::string outputPath = args.getLogFilePath().empty() ? "full_policy_asset.json" : args.getLogFilePath();
         std::ofstream out(outputPath);

@@ -88,7 +88,7 @@ inline void appendEscapedId(std::string& bulkData, std::string_view id)
  * It treats version conflicts where the same document version already exists as success.
  * Memory-safe: uses nlohmann::json which handles large documents efficiently.
  */
-inline bool validateBulkResponse(const std::string& response)
+inline bool validateBulkResponse(const std::string& response, const char* tag)
 {
     try
     {
@@ -98,21 +98,21 @@ inline bool validateBulkResponse(const std::string& response)
         // Check if response has errors flag
         if (!responseJson.contains("errors"))
         {
-            logDebug2(IC_NAME, "Bulk response missing 'errors' field, treating as success");
+            logDebug2(tag, "Bulk response missing 'errors' field, treating as success");
             return true;
         }
 
         // If no errors reported, success
         if (!responseJson["errors"].get<bool>())
         {
-            logDebug2(IC_NAME, "Bulk operation completed with no errors");
+            logDebug2(tag, "Bulk operation completed with no errors");
             return true;
         }
 
         // Errors were reported, validate each item
         if (!responseJson.contains("items") || !responseJson["items"].is_array())
         {
-            logError(IC_NAME, "Bulk response has errors but missing 'items' array");
+            logError(tag, "Bulk response has errors but missing 'items' array");
             return false;
         }
 
@@ -139,7 +139,7 @@ inline bool validateBulkResponse(const std::string& response)
             // Check status code
             if (!result.contains("status"))
             {
-                logError(IC_NAME, "Item missing status field");
+                logError(tag, "Item missing status field");
                 realFailureCount++;
                 continue;
             }
@@ -171,7 +171,7 @@ inline bool validateBulkResponse(const std::string& response)
                         {
                             isAcceptableConflict = true;
                             versionConflictAcceptedCount++;
-                            logDebug2(IC_NAME,
+                            logDebug2(tag,
                                       "Document version conflict (same version already indexed) for %s operation - "
                                       "treating as success",
                                       operation.c_str());
@@ -182,7 +182,7 @@ inline bool validateBulkResponse(const std::string& response)
                 if (!isAcceptableConflict)
                 {
                     // Version conflict without the expected error type - treat as failure
-                    logWarn(IC_NAME,
+                    logWarn(tag,
                             "Version conflict without version_conflict_engine_exception for %s operation",
                             operation.c_str());
                     realFailureCount++;
@@ -205,16 +205,13 @@ inline bool validateBulkResponse(const std::string& response)
                 }
             }
 
-            logError(IC_NAME,
-                     "Indexing failure for %s operation (status %d): %s",
-                     operation.c_str(),
-                     status,
-                     errorMsg.c_str());
+            logError(
+                tag, "Indexing failure for %s operation (status %d): %s", operation.c_str(), status, errorMsg.c_str());
             realFailureCount++;
         }
 
         // Log summary
-        logInfo(IC_NAME,
+        logInfo(tag,
                 "Bulk operation summary: %zu total, %zu success, %zu acceptable version conflicts, %zu failures",
                 totalItems,
                 successCount,
@@ -226,12 +223,12 @@ inline bool validateBulkResponse(const std::string& response)
     }
     catch (const nlohmann::json::exception& e)
     {
-        logError(IC_NAME, "Failed to parse bulk response: %s", e.what());
+        logError(tag, "Failed to parse bulk response: %s", e.what());
         return false;
     }
     catch (const std::exception& e)
     {
-        logError(IC_NAME, "Error validating bulk response: %s", e.what());
+        logError(tag, "Error validating bulk response: %s", e.what());
         return false;
     }
 }
@@ -243,6 +240,7 @@ template<typename TSelector,
          size_t FlushInterval = 20>
 class IndexerConnectorSyncImpl final
 {
+    const std::string m_logTag;
     SecureCommunication m_secureCommunication;
     std::unique_ptr<TSelector> m_selector;
     THttpRequest* m_httpRequest;
@@ -266,9 +264,9 @@ class IndexerConnectorSyncImpl final
         }
 
         auto serverUrl = m_selector->getNext();
-        const auto onSuccessDeleteByQuery = [](const std::string& response)
+        const auto onSuccessDeleteByQuery = [this](const std::string& response)
         {
-            logDebug2(IC_NAME, "Response: %s", response.c_str());
+            logDebug2(m_logTag.c_str(), "Response: %s", response.c_str());
         };
 
         const auto onErrorDeleteByQuery =
@@ -277,24 +275,24 @@ class IndexerConnectorSyncImpl final
             if (statusCode == HTTP_NOT_FOUND)
             {
                 // Index doesn't exist - this is OK, nothing to delete
-                logDebug2(IC_NAME, "Index not found (404) for deleteByQuery - nothing to delete, continuing.");
+                logDebug2(m_logTag.c_str(), "Index not found (404) for deleteByQuery - nothing to delete, continuing.");
                 return;
             }
             else if (statusCode == HTTP_VERSION_CONFLICT)
             {
-                logDebug2(IC_NAME, "Document version conflict for deleteByQuery - continuing.");
+                logDebug2(m_logTag.c_str(), "Document version conflict for deleteByQuery - continuing.");
                 // For deleteByQuery, we don't retry - just log and continue
                 return;
             }
             else if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
-                logDebug2(IC_NAME, "Too many requests for deleteByQuery - continuing.");
+                logDebug2(m_logTag.c_str(), "Too many requests for deleteByQuery - continuing.");
                 // For deleteByQuery, we don't retry - just log and continue
                 return;
             }
             else
             {
-                logError(IC_NAME, "deleteByQuery error: %s, status code: %ld.", error.c_str(), statusCode);
+                logError(m_logTag.c_str(), "deleteByQuery error: %s, status code: %ld.", error.c_str(), statusCode);
                 m_bulkData.clear();
                 m_lastBulkTime = std::chrono::steady_clock::now();
                 throw IndexerConnectorException(error);
@@ -311,7 +309,7 @@ class IndexerConnectorSyncImpl final
             url += "/";
             url += index;
             url += "/_delete_by_query";
-            logDebug2(IC_NAME, "Deleting by query: %s", url.c_str());
+            logDebug2(m_logTag.c_str(), "Deleting by query: %s", url.c_str());
             m_httpRequest->post(
                 RequestParameters {
                     .url = HttpURL(url), .data = query.dump(), .secureCommunication = m_secureCommunication},
@@ -321,12 +319,12 @@ class IndexerConnectorSyncImpl final
 
         const auto onSuccess = [this, &needToRetry](const std::string& response)
         {
-            logDebug2(IC_NAME, "Response: %s", response.c_str());
+            logDebug2(m_logTag.c_str(), "Response: %s", response.c_str());
 
             // Validate bulk response at document level
-            if (!validateBulkResponse(response))
+            if (!validateBulkResponse(response, m_logTag.c_str()))
             {
-                logError(IC_NAME, "Bulk operation had indexing failures");
+                logError(m_logTag.c_str(), "Bulk operation had indexing failures");
                 m_bulkData.clear();
                 m_boundaries.clear();
                 m_lastBulkTime = std::chrono::steady_clock::now();
@@ -341,13 +339,13 @@ class IndexerConnectorSyncImpl final
                                                   const long statusCode,
                                                   const std::string& responseBody) -> void
         {
-            logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+            logError(m_logTag.c_str(), "%s, status code: %ld.", error.c_str(), statusCode);
             if (statusCode == HTTP_CONTENT_LENGTH)
             {
-                logDebug2(IC_NAME, "Received 413 error (Payload Too Large). Splitting bulk data.");
+                logDebug2(m_logTag.c_str(), "Received 413 error (Payload Too Large). Splitting bulk data.");
                 if (const size_t currentOperations = m_boundaries.size(); currentOperations <= 1)
                 {
-                    logError(IC_NAME,
+                    logError(m_logTag.c_str(),
                              "Unable to send data even with single operation. "
                              "Consider increasing http.max_content_length in OpenSearch settings. "
                              "Current data size: %zu bytes.",
@@ -360,7 +358,7 @@ class IndexerConnectorSyncImpl final
             }
             else if (statusCode == HTTP_VERSION_CONFLICT)
             {
-                logWarn(IC_NAME,
+                logWarn(m_logTag.c_str(),
                         "Bulk request returned 409 version conflict at request level. Document-level conflicts are "
                         "handled by validateBulkResponse().");
                 m_bulkData.clear();
@@ -371,11 +369,11 @@ class IndexerConnectorSyncImpl final
             else if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
                 needToRetry = true;
-                logDebug2(IC_NAME, "Too many requests, retrying in 1 second.");
+                logDebug2(m_logTag.c_str(), "Too many requests, retrying in 1 second.");
             }
             else
             {
-                logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+                logError(m_logTag.c_str(), "%s, status code: %ld.", error.c_str(), statusCode);
                 m_bulkData.clear();
                 m_boundaries.clear();
                 m_lastBulkTime = std::chrono::steady_clock::now();
@@ -390,15 +388,15 @@ class IndexerConnectorSyncImpl final
             {
                 if (m_stopping.load())
                 {
-                    logDebug2(IC_NAME, "Stopping requested, aborting bulk processing");
+                    logDebug2(m_logTag.c_str(), "Stopping requested, aborting bulk processing");
                     return;
                 }
 
                 std::string url;
                 url += m_selector->getNext();
                 url += "/_bulk";
-                logDebug2(IC_NAME, "Sending bulk data to: %s", url.c_str());
-                logDebug2(IC_NAME, "Bulk data: %s", m_bulkData.c_str());
+                logDebug2(m_logTag.c_str(), "Sending bulk data to: %s", url.c_str());
+                logDebug2(m_logTag.c_str(), "Bulk data: %s", m_bulkData.c_str());
 
                 m_httpRequest->post(RequestParameters {.url = HttpURL(url),
                                                        .data = m_bulkData,
@@ -432,7 +430,7 @@ class IndexerConnectorSyncImpl final
                 "Cannot split bulk data with less than two operations. Consider increasing http.max_content_length in "
                 "Wazuh-Indexer settings.");
         }
-        logDebug2(IC_NAME, "Splitting %zu operations into two halves", totalOperations);
+        logDebug2(m_logTag.c_str(), "Splitting %zu operations into two halves", totalOperations);
 
         const size_t midPoint = totalOperations / 2;
         std::span<size_t> firstBoundaries(m_boundaries.begin(), m_boundaries.begin() + midPoint);
@@ -451,7 +449,7 @@ class IndexerConnectorSyncImpl final
             }
             catch (const IndexerConnectorException& e)
             {
-                logError(IC_NAME, "Failed to process first half: %s", e.what());
+                logError(m_logTag.c_str(), "Failed to process first half: %s", e.what());
                 allProcessed = false;
                 throw;
             }
@@ -464,7 +462,7 @@ class IndexerConnectorSyncImpl final
             }
             catch (const IndexerConnectorException& e)
             {
-                logError(IC_NAME, "Failed to process second half: %s", e.what());
+                logError(m_logTag.c_str(), "Failed to process second half: %s", e.what());
                 allProcessed = false;
                 throw;
             }
@@ -485,26 +483,26 @@ class IndexerConnectorSyncImpl final
         url += "/_bulk";
         bool needToRetry = false;
 
-        const auto onSuccess = [](const std::string& response)
+        const auto onSuccess = [this](const std::string& response)
         {
-            logDebug2(IC_NAME, "Chunk processed successfully: %s", response.c_str());
+            logDebug2(m_logTag.c_str(), "Chunk processed successfully: %s", response.c_str());
 
             // Validate bulk response at document level
-            if (!validateBulkResponse(response))
+            if (!validateBulkResponse(response, m_logTag.c_str()))
             {
-                logError(IC_NAME, "Bulk chunk operation had indexing failures");
+                logError(m_logTag.c_str(), "Bulk chunk operation had indexing failures");
                 throw IndexerConnectorException("Bulk chunk operation had indexing failures");
             }
         };
         const auto onError = [this, &needToRetry, boundaries](
                                  const std::string& error, const long statusCode, const std::string& responseBody)
         {
-            logError(IC_NAME, "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
+            logError(m_logTag.c_str(), "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
             if (statusCode == HTTP_CONTENT_LENGTH)
             {
                 if (boundaries.size() > 1)
                 {
-                    logDebug2(IC_NAME, "Chunk still too large, splitting recursively");
+                    logDebug2(m_logTag.c_str(), "Chunk still too large, splitting recursively");
                     const size_t midPoint = boundaries.size() / 2;
                     std::span<size_t> firstBoundaries(boundaries.begin(),
                                                       boundaries.begin() + static_cast<long>(midPoint));
@@ -518,19 +516,19 @@ class IndexerConnectorSyncImpl final
                     processBulkChunk(secondHalf, secondBoundaries);
                     return;
                 }
-                logError(IC_NAME, "Single operation too large for server limits");
+                logError(m_logTag.c_str(), "Single operation too large for server limits");
                 throw IndexerConnectorException("Single operation exceeds server limits");
             }
             else if (statusCode == HTTP_VERSION_CONFLICT)
             {
-                logWarn(IC_NAME,
+                logWarn(m_logTag.c_str(),
                         "Bulk chunk returned 409 version conflict at request level. Document-level conflicts are "
                         "handled by validateBulkResponse().");
                 throw IndexerConnectorException("Bulk version conflict at request level");
             }
             else if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
-                logDebug2(IC_NAME, "Too many requests, retrying in 1 second.");
+                logDebug2(m_logTag.c_str(), "Too many requests, retrying in 1 second.");
                 needToRetry = true;
             }
             else
@@ -542,11 +540,11 @@ class IndexerConnectorSyncImpl final
         {
             if (m_stopping.load())
             {
-                logDebug2(IC_NAME, "Stopping requested, aborting bulk chunk processing");
+                logDebug2(m_logTag.c_str(), "Stopping requested, aborting bulk chunk processing");
                 return;
             }
             needToRetry = false;
-            logDebug2(IC_NAME, "Sending bulk chunk to: %s", url.c_str());
+            logDebug2(m_logTag.c_str(), "Sending bulk chunk to: %s", url.c_str());
             m_httpRequest->post(RequestParametersStringView {.url = HttpURL(url),
                                                              .data = data,
                                                              .secureCommunication = m_secureCommunication},
@@ -578,8 +576,10 @@ public:
         const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
             logFunction,
         THttpRequest* httpRequest = nullptr,
-        std::unique_ptr<TSelector> selector = nullptr)
-        : m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
+        std::unique_ptr<TSelector> selector = nullptr,
+        std::string callerName = "")
+        : m_logTag(callerName.empty() ? "indexer-connector" : callerName + " (indexer-connector)")
+        , m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
     {
         if (logFunction)
         {
@@ -635,12 +635,12 @@ public:
         {
             username = "admin";
             password = "admin";
-            logWarn(IC_NAME, "No username and password found in the keystore, using default values.");
+            logWarn(m_logTag.c_str(), "No username and password found in the keystore, using default values.");
         }
         if (username.empty())
         {
             username = "admin";
-            logWarn(IC_NAME, "No username found in the keystore, using default value.");
+            logWarn(m_logTag.c_str(), "No username found in the keystore, using default value.");
         }
         m_secureCommunication = SecureCommunication::builder();
         m_secureCommunication.basicAuth(username + ":" + password)
@@ -685,11 +685,11 @@ public:
                         }
                         catch (const IndexerConnectorException& e)
                         {
-                            logError(IC_NAME, "Error processing bulk: %s", e.what());
+                            logError(m_logTag.c_str(), "Error processing bulk: %s", e.what());
                         }
                         catch (const std::exception& e)
                         {
-                            logDebug2(IC_NAME, "Cannot process bulk: %s", e.what());
+                            logDebug2(m_logTag.c_str(), "Cannot process bulk: %s", e.what());
                         }
                     }
 
@@ -725,7 +725,7 @@ public:
 
         const auto onSuccess = [this](const std::string& response)
         {
-            logDebug2(IC_NAME, "Update by query response: %s", response.c_str());
+            logDebug2(m_logTag.c_str(), "Update by query response: %s", response.c_str());
 
             // Parse response to extract update statistics and check for failures
             try
@@ -736,13 +736,13 @@ public:
                 if (responseJson.contains("failures") && !responseJson["failures"].empty())
                 {
                     auto failures = responseJson["failures"];
-                    logError(IC_NAME, "Update by query completed with %zu failures", failures.size());
+                    logError(m_logTag.c_str(), "Update by query completed with %zu failures", failures.size());
 
                     // Log first few failures for debugging
                     size_t logCount = std::min<size_t>(failures.size(), 3);
                     for (size_t i = 0; i < logCount; ++i)
                     {
-                        logError(IC_NAME, "Failure %zu: %s", i + 1, failures[i].dump().c_str());
+                        logError(m_logTag.c_str(), "Failure %zu: %s", i + 1, failures[i].dump().c_str());
                     }
                 }
 
@@ -755,7 +755,7 @@ public:
 
                     if (updated > 0)
                     {
-                        logInfo(IC_NAME,
+                        logInfo(m_logTag.c_str(),
                                 "Update by query completed: %d documents updated out of %d total (%d unchanged, %zu "
                                 "failures)",
                                 updated,
@@ -765,7 +765,7 @@ public:
                     }
                     else
                     {
-                        logDebug2(IC_NAME,
+                        logDebug2(m_logTag.c_str(),
                                   "Update by query completed: no documents needed updating (all %d documents already "
                                   "up-to-date, %zu failures)",
                                   total,
@@ -775,7 +775,7 @@ public:
             }
             catch (const std::exception& e)
             {
-                logDebug2(IC_NAME, "Could not parse update by query response: %s", e.what());
+                logDebug2(m_logTag.c_str(), "Could not parse update by query response: %s", e.what());
             }
 
             m_shouldNotifyAfterBulk = true;
@@ -786,7 +786,7 @@ public:
         {
             if (statusCode == HTTP_VERSION_CONFLICT)
             {
-                logWarn(IC_NAME,
+                logWarn(m_logTag.c_str(),
                         "Update by query returned 409 version conflict. This indicates documents were modified by "
                         "another process.");
                 m_notify.clear();
@@ -795,11 +795,11 @@ public:
             else if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
                 needToRetry = true;
-                logDebug2(IC_NAME, "Too many requests, retrying in 1 second.");
+                logDebug2(m_logTag.c_str(), "Too many requests, retrying in 1 second.");
             }
             else
             {
-                logError(IC_NAME, "Update by query failed: %s, status code: %ld.", error.c_str(), statusCode);
+                logError(m_logTag.c_str(), "Update by query failed: %s, status code: %ld.", error.c_str(), statusCode);
                 m_notify.clear();
                 throw IndexerConnectorException(error);
             }
@@ -809,7 +809,7 @@ public:
         {
             if (m_stopping.load())
             {
-                logDebug2(IC_NAME, "Stopping requested, aborting update by query");
+                logDebug2(m_logTag.c_str(), "Stopping requested, aborting update by query");
                 m_notify.clear();
                 return;
             }
@@ -839,15 +839,15 @@ public:
     {
         nlohmann::json resultJson;
 
-        const auto onSuccess = [&resultJson](const std::string& response)
+        const auto onSuccess = [this, &resultJson](const std::string& response)
         {
-            logDebug2(IC_NAME, "Search query response: %s", response.c_str());
+            logDebug2(m_logTag.c_str(), "Search query response: %s", response.c_str());
             resultJson = nlohmann::json::parse(response);
         };
 
-        const auto onError = [](const std::string& error, const long statusCode, const std::string&)
+        const auto onError = [this](const std::string& error, const long statusCode, const std::string&)
         {
-            logError(IC_NAME, "Search query failed: %s, status code: %ld", error.c_str(), statusCode);
+            logError(m_logTag.c_str(), "Search query failed: %s, status code: %ld", error.c_str(), statusCode);
             throw IndexerConnectorException("Search query failed: " + error);
         };
 
@@ -858,7 +858,7 @@ public:
         url += index;
         url += "/_search";
 
-        logDebug2(IC_NAME, "Executing search query on: %s", url.c_str());
+        logDebug2(m_logTag.c_str(), "Executing search query on: %s", url.c_str());
 
         m_httpRequest->post(RequestParameters {.url = HttpURL(url),
                                                .data = searchQuery.dump(),
@@ -885,14 +885,14 @@ public:
             const auto itHits = searchResult.find("hits");
             if (itHits == searchResult.end())
             {
-                logDebug2(IC_NAME, "No 'hits' object in response, breaking pagination loop");
+                logDebug2(m_logTag.c_str(), "No 'hits' object in response, breaking pagination loop");
                 break;
             }
 
             const auto itInner = itHits->find("hits");
             if (itInner == itHits->end() || !itInner->is_array() || itInner->empty())
             {
-                logDebug2(IC_NAME, "No 'hits' array in response or it is empty, breaking pagination loop");
+                logDebug2(m_logTag.c_str(), "No 'hits' array in response or it is empty, breaking pagination loop");
                 break;
             }
 
@@ -901,7 +901,7 @@ public:
             // If we got less results than requested, this is the last page
             if (currentQuery.contains("size") && hits.size() < currentQuery["size"].template get<size_t>())
             {
-                logDebug2(IC_NAME, "Fewer results than page size, breaking pagination loop");
+                logDebug2(m_logTag.c_str(), "Fewer results than page size, breaking pagination loop");
                 break;
             }
 
@@ -917,7 +917,7 @@ public:
             }
             else
             {
-                logDebug2(IC_NAME,
+                logDebug2(m_logTag.c_str(),
                           "Pagination loop finished: Last hit has no 'sort' field, it is not an array, or it is "
                           "empty.");
                 break;
@@ -965,7 +965,7 @@ public:
         bool success = false;
         std::string errorMessage;
 
-        const auto onSuccess = [&pitId, &creationTime, &success, &errorMessage](const std::string& response)
+        const auto onSuccess = [this, &pitId, &creationTime, &success, &errorMessage](const std::string& response)
         {
             try
             {
@@ -987,20 +987,22 @@ public:
                 creationTime = jsonResponse["creation_time"].get<uint64_t>();
                 success = true;
 
-                logDebug2(
-                    IC_NAME, "PIT created successfully. PIT ID: %s, Creation time: %lu", pitId.c_str(), creationTime);
+                logDebug2(m_logTag.c_str(),
+                          "PIT created successfully. PIT ID: %s, Creation time: %lu",
+                          pitId.c_str(),
+                          creationTime);
             }
             catch (const std::exception& e)
             {
                 errorMessage = std::string("Failed to parse PIT response: ") + e.what();
-                logDebug1(IC_NAME, "%s", errorMessage.c_str());
+                logDebug1(m_logTag.c_str(), "%s", errorMessage.c_str());
             }
         };
 
-        const auto onError = [&errorMessage](const std::string& error, const long statusCode, const std::string&)
+        const auto onError = [this, &errorMessage](const std::string& error, const long statusCode, const std::string&)
         {
             errorMessage = "Failed to create PIT. Error: " + error + ", Status code: " + std::to_string(statusCode);
-            logDebug1(IC_NAME, "%s", errorMessage.c_str());
+            logDebug1(m_logTag.c_str(), "%s", errorMessage.c_str());
         };
 
         m_httpRequest->post(RequestParameters {.url = HttpURL(url), .secureCommunication = m_secureCommunication},
@@ -1030,9 +1032,9 @@ public:
         nlohmann::json deleteBody;
         deleteBody["pit_id"] = pitId;
 
-        const auto onSuccess = [](const std::string& response)
+        const auto onSuccess = [this](const std::string& response)
         {
-            logDebug2(IC_NAME, "PIT successfully deleted. Response: %s", response.c_str());
+            logDebug2(m_logTag.c_str(), "PIT successfully deleted. Response: %s", response.c_str());
         };
 
         const auto onError = [&pitId](const std::string& error, const long statusCode, const std::string&)
@@ -1159,13 +1161,16 @@ public:
         // Validate input parameters
         if (index.empty())
         {
-            logError(IC_NAME, "Index name cannot be empty for document: %.*s", static_cast<int>(id.size()), id.data());
+            logError(m_logTag.c_str(),
+                     "Index name cannot be empty for document: %.*s",
+                     static_cast<int>(id.size()),
+                     id.data());
             throw IndexerConnectorException("Index name cannot be empty");
         }
 
         if (data.empty())
         {
-            logWarn(IC_NAME,
+            logWarn(m_logTag.c_str(),
                     "Empty data provided for document %.*s in index %.*s",
                     static_cast<int>(id.size()),
                     id.data(),
@@ -1192,14 +1197,14 @@ public:
             }
             else
             {
-                logError(IC_NAME, "Id must be provided if version value is provided");
+                logError(m_logTag.c_str(), "Id must be provided if version value is provided");
                 throw IndexerConnectorException("Id must be provided if version value is provided");
             }
 
             m_bulkData.append(R"(","version":")");
             m_bulkData.append(version);
             m_bulkData.append(R"(","version_type":"external_gte)");
-            logDebug2(IC_NAME,
+            logDebug2(m_logTag.c_str(),
                       "Using external version %.*s for document %.*s",
                       static_cast<int>(version.size()),
                       version.data(),
@@ -1213,7 +1218,7 @@ public:
                 m_bulkData.append(R"(","_id":")");
                 appendEscapedId(m_bulkData, id);
             }
-            logDebug2(IC_NAME,
+            logDebug2(m_logTag.c_str(),
                       "No version specified for document %.*s, using default versioning",
                       static_cast<int>(id.size()),
                       id.data());
@@ -1289,15 +1294,15 @@ public:
         url += "/";
         url += indexPattern;
         url += "/_refresh";
-        logDebug2(IC_NAME, "Forcing index refresh: %s", url.c_str());
+        logDebug2(m_logTag.c_str(), "Forcing index refresh: %s", url.c_str());
 
-        const auto onSuccess = [](const std::string& response)
+        const auto onSuccess = [this](const std::string& response)
         {
-            logDebug2(IC_NAME, "Index refresh response: %s", response.c_str());
+            logDebug2(m_logTag.c_str(), "Index refresh response: %s", response.c_str());
         };
-        const auto onError = [](const std::string& error, const long statusCode, const std::string&)
+        const auto onError = [this](const std::string& error, const long statusCode, const std::string&)
         {
-            logWarn(IC_NAME, "Index refresh failed: %s, status code: %ld", error.c_str(), statusCode);
+            logWarn(m_logTag.c_str(), "Index refresh failed: %s, status code: %ld", error.c_str(), statusCode);
         };
 
         m_httpRequest->post(RequestParameters {.url = HttpURL(url), .secureCommunication = m_secureCommunication},

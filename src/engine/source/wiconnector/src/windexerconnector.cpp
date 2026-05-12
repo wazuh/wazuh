@@ -293,7 +293,8 @@ WIndexerConnector::WIndexerConnector(std::string_view jsonOssecConfig, const std
     }
 
     const auto logFunction = logging::createStandaloneLogFunction();
-    auto inner = std::make_unique<IndexerConnectorAsync>(jsonParsed, "engine-output", logFunction, BASEQUEUEPATH);
+    auto inner = std::make_unique<IndexerConnectorAsync>(
+        jsonParsed, "engine-output", LoggingContext {logging::default_tag(), logFunction}, BASEQUEUEPATH);
     m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsyncAdapter>(std::move(inner));
 }
 
@@ -317,7 +318,8 @@ WIndexerConnector::WIndexerConnector(const Config& config,
         throw std::runtime_error("Invalid JSON configuration for IndexerConnector");
     }
 
-    auto inner = std::make_unique<IndexerConnectorAsync>(jsonConfig, "engine-output", logFunction, BASEQUEUEPATH);
+    auto inner = std::make_unique<IndexerConnectorAsync>(
+        jsonConfig, "engine-output", LoggingContext {logging::default_tag(), logFunction}, BASEQUEUEPATH);
     m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsyncAdapter>(std::move(inner));
 }
 

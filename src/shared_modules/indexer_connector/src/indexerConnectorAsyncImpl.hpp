@@ -116,6 +116,7 @@ class IndexerConnectorAsyncImpl final
     std::unique_ptr<ThreadLoggerQueue> m_loggerProcessor;
     const std::string m_queueId;
     const std::string m_dbPath;
+    const std::string m_logTag;
     bool m_error413Logged {false};
     size_t m_successCount {0};
     size_t m_maxQueueSize {0};
@@ -132,10 +133,12 @@ public:
         std::string queueId,
         THttpRequest* httpRequest = nullptr,
         std::unique_ptr<TSelector> selector = nullptr,
-        std::string basePath = DATABASE_BASE_PATH)
+        std::string basePath = DATABASE_BASE_PATH,
+        std::string callerName = "")
         : m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
         , m_queueId(std::move(queueId))
         , m_dbPath((std::filesystem::path(std::move(basePath)) / m_queueId).string())
+        , m_logTag(callerName.empty() ? "indexer-connector" : callerName + " (indexer-connector)")
     {
         if (m_queueId.empty())
         {
@@ -205,12 +208,12 @@ public:
         {
             username = "admin";
             password = "admin";
-            logWarn(IC_NAME, "No username and password found in the keystore, using default values.");
+            logWarn(m_logTag.c_str(), "No username and password found in the keystore, using default values.");
         }
         if (username.empty())
         {
             username = "admin";
-            logWarn(IC_NAME, "No username found in the keystore, using default value.");
+            logWarn(m_logTag.c_str(), "No username found in the keystore, using default value.");
         }
         m_secureCommunication = SecureCommunication::builder();
         m_secureCommunication.basicAuth(username + ":" + password)
@@ -243,7 +246,7 @@ public:
                 if (auto parseResult = parser.parse(data.m_response).get(parsedResponse);
                     parseResult != simdjson::SUCCESS)
                 {
-                    logDebug2(IC_NAME, "Failed to parse the indexer response %s", data.m_response.c_str());
+                    logDebug2(m_logTag.c_str(), "Failed to parse the indexer response %s", data.m_response.c_str());
                     return;
                 }
 
@@ -265,7 +268,7 @@ public:
                 const size_t itemsSize = itemsArray.size();
                 if (data.m_boundaries.size() != itemsSize)
                 {
-                    logWarn(IC_NAME,
+                    logWarn(m_logTag.c_str(),
                             "Mismatch between the number of events (%zu) and response items (%zu)",
                             data.m_boundaries.size(),
                             itemsSize);
@@ -350,7 +353,7 @@ public:
                     // Build error message with caused_by info if available
                     if (!causedByReason.empty() && !causedByType.empty())
                     {
-                        logWarn(IC_NAME,
+                        logWarn(m_logTag.c_str(),
                                 "Error indexing document (type %.*s - reason: '%.*s' - caused by: %.*s - '%.*s') - "
                                 "Associated event: %.*s",
                                 static_cast<int>(errorType.size()),
@@ -366,7 +369,7 @@ public:
                     }
                     else
                     {
-                        logWarn(IC_NAME,
+                        logWarn(m_logTag.c_str(),
                                 "Error indexing document (type %.*s - reason: '%.*s') - Associated event: %.*s",
                                 static_cast<int>(errorType.size()),
                                 errorType.data(),
@@ -385,7 +388,7 @@ public:
             {
                 if (m_stopping.load())
                 {
-                    logDebug2(IC_NAME, "IndexerConnector is stopping, event processing will be skipped.");
+                    logDebug2(m_logTag.c_str(), "IndexerConnector is stopping, event processing will be skipped.");
                     throw IndexerConnectorException("IndexerConnector is stopping, event processing will be skipped.");
                 }
 
@@ -408,7 +411,7 @@ public:
                 {
                     if (m_dispatcher->bulkSize() != ElementsPerBulk && m_successCount == MaxSuccessCount)
                     {
-                        logDebug2(IC_NAME, "Resetting bulk size to %zu.", ElementsPerBulk);
+                        logDebug2(m_logTag.c_str(), "Resetting bulk size to %zu.", ElementsPerBulk);
                         m_dispatcher->bulkSize(ElementsPerBulk);
                         m_error413Logged = false;
                     }
@@ -426,13 +429,14 @@ public:
                                                                  const long statusCode,
                                                                  const std::string& responseBody)
                 {
-                    logError(IC_NAME, "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
+                    logError(
+                        m_logTag.c_str(), "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
                     if (statusCode == HTTP_CONTENT_LENGTH)
                     {
-                        logDebug2(IC_NAME, "Received 413 error (Payload Too Large). Splitting bulk data.");
+                        logDebug2(m_logTag.c_str(), "Received 413 error (Payload Too Large). Splitting bulk data.");
                         if (const size_t currentOperations = bulkData.size(); currentOperations <= 1)
                         {
-                            logError(IC_NAME,
+                            logError(m_logTag.c_str(),
                                      "Unable to send data even with single operation. "
                                      "Consider increasing http.max_content_length in OpenSearch settings. "
                                      "Current data size: %zu bytes.",
@@ -448,7 +452,7 @@ public:
                                 if (m_error413Logged == false)
                                 {
                                     m_error413Logged = true;
-                                    logError(IC_NAME,
+                                    logError(m_logTag.c_str(),
                                              "The amount of elements to process is too small, review the "
                                              "'http.max_content_length' value in "
                                              "the wazuh-indexer settings. Current data size: %llu.",
@@ -462,8 +466,9 @@ public:
                             }
                             else
                             {
-                                logDebug2(
-                                    IC_NAME, "Reducing the elements to be sent to the indexer: %llu.", bulkSize / 2);
+                                logDebug2(m_logTag.c_str(),
+                                          "Reducing the elements to be sent to the indexer: %llu.",
+                                          bulkSize / 2);
                                 this->m_dispatcher->bulkSize(bulkSize / 2);
                                 m_successCount = 0;
                                 throw IndexerConnectorException(
@@ -474,24 +479,24 @@ public:
                     }
                     else if (statusCode == HTTP_VERSION_CONFLICT)
                     {
-                        logDebug2(IC_NAME, "Document version conflict, retrying in 1 second.");
+                        logDebug2(m_logTag.c_str(), "Document version conflict, retrying in 1 second.");
                         throw IndexerConnectorException(error);
                     }
                     else if (statusCode == HTTP_TOO_MANY_REQUESTS)
                     {
-                        logDebug2(IC_NAME, "Too many requests, retrying in 1 second.");
+                        logDebug2(m_logTag.c_str(), "Too many requests, retrying in 1 second.");
                         throw IndexerConnectorException(error);
                     }
                     else
                     {
-                        logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+                        logError(m_logTag.c_str(), "%s, status code: %ld.", error.c_str(), statusCode);
                     }
                 };
 
                 std::string url;
                 url = m_selector->getNext();
                 url += "/_bulk";
-                logDebug2(IC_NAME, "Bulk data: %s", bulkData.c_str());
+                logDebug2(m_logTag.c_str(), "Bulk data: %s", bulkData.c_str());
 
                 m_httpRequest->post(RequestParameters {.url = HttpURL(url),
                                                        .data = bulkData,
@@ -520,13 +525,16 @@ public:
         // Validate input parameters
         if (index.empty())
         {
-            logError(IC_NAME, "Index name cannot be empty for document: %.*s", static_cast<int>(id.size()), id.data());
+            logError(m_logTag.c_str(),
+                     "Index name cannot be empty for document: %.*s",
+                     static_cast<int>(id.size()),
+                     id.data());
             throw IndexerConnectorException("Index name cannot be empty");
         }
 
         if (data.empty())
         {
-            logWarn(IC_NAME,
+            logWarn(m_logTag.c_str(),
                     "Empty data provided for document %.*s in index %.*s",
                     static_cast<int>(id.size()),
                     id.data(),
@@ -549,14 +557,14 @@ public:
             }
             else
             {
-                logError(IC_NAME, "Id must be provided if version value is provided");
+                logError(m_logTag.c_str(), "Id must be provided if version value is provided");
                 throw IndexerConnectorException("Id must be provided if version value is provided");
             }
 
             bulkData.append(R"(","version":")");
             bulkData.append(version);
             bulkData.append(R"(","version_type":"external_gte)");
-            logDebug2(IC_NAME,
+            logDebug2(m_logTag.c_str(),
                       "Using external version %.*s for document %.*s",
                       static_cast<int>(version.size()),
                       version.data(),
@@ -570,7 +578,7 @@ public:
                 bulkData.append(R"(","_id":")");
                 appendEscapedId(bulkData, id);
             }
-            logDebug2(IC_NAME,
+            logDebug2(m_logTag.c_str(),
                       "No version specified for document %.*s, using default versioning",
                       static_cast<int>(id.size()),
                       id.data());
@@ -682,7 +690,7 @@ public:
         bool success = false;
         std::string errorMessage;
 
-        const auto onSuccess = [&pitId, &creationTime, &success, &errorMessage](std::string&& response)
+        const auto onSuccess = [this, &pitId, &creationTime, &success, &errorMessage](std::string&& response)
         {
             try
             {
@@ -704,22 +712,24 @@ public:
                 creationTime = jsonResponse["creation_time"].get<uint64_t>();
                 success = true;
 
-                logDebug2(
-                    IC_NAME, "PIT created successfully. PIT ID: %s, Creation time: %lu", pitId.c_str(), creationTime);
+                logDebug2(m_logTag.c_str(),
+                          "PIT created successfully. PIT ID: %s, Creation time: %lu",
+                          pitId.c_str(),
+                          creationTime);
             }
             catch (const std::exception& e)
             {
                 errorMessage = std::string("Failed to parse PIT response: ") + e.what();
-                logDebug1(IC_NAME, "%s", errorMessage.c_str());
+                logDebug1(m_logTag.c_str(), "%s", errorMessage.c_str());
             }
         };
 
         const auto onError =
-            [&errorMessage](const std::string& error, const long statusCode, const std::string& responseBody)
+            [this, &errorMessage](const std::string& error, const long statusCode, const std::string& responseBody)
         {
             errorMessage = "Failed to create PIT. Error: " + error + ", Status code: " + std::to_string(statusCode) +
                            ", Response: " + responseBody;
-            logDebug1(IC_NAME, "%s", errorMessage.c_str());
+            logDebug1(m_logTag.c_str(), "%s", errorMessage.c_str());
         };
 
         // Execute the POST request synchronously
@@ -755,9 +765,9 @@ public:
             nlohmann::json deleteBody;
             deleteBody["pit_id"] = pitId;
 
-            const auto onSuccess = [](const std::string& response)
+            const auto onSuccess = [this](const std::string& response)
             {
-                logDebug2(IC_NAME, "PIT successfully deleted. Response: %s", response.c_str());
+                logDebug2(m_logTag.c_str(), "PIT successfully deleted. Response: %s", response.c_str());
             };
 
             const auto onError =

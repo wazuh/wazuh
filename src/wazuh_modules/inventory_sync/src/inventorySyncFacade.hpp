@@ -42,6 +42,7 @@ constexpr int DEFAULT_TIME {60 * 10}; // 10 minutes
 constexpr auto INVENTORY_SYNC_PATH {"queue/inventory_sync"};
 constexpr auto INVENTORY_SYNC_TOPIC {"inventory-states"};
 constexpr auto INVENTORY_SYNC_SUBSCRIBER_ID {"inventory-sync-module"};
+constexpr auto WM_INVENTORY_SYNC_LOGTAG {"wazuh-manager-modulesd:inventory-sync"};
 constexpr auto WAZUH_STATES_INDEX_PATTERN {"wazuh-states-*"};
 constexpr auto SOCKET_KEYSTORE_PATH {"queue/sockets/keystore"};
 
@@ -568,7 +569,8 @@ public:
         m_responseDispatcher = std::make_unique<TResponseDispatcher>();
 
         logDebug2(LOGGER_DEFAULT_TAG, "Configuration: %s", configuration.dump().c_str());
-        m_indexerConnector = std::make_unique<TIndexerConnector>(configuration.at("indexer"), logFunction);
+        m_indexerConnector = std::make_unique<TIndexerConnector>(
+            configuration.at("indexer"), LoggingContext {WM_INVENTORY_SYNC_LOGTAG, logFunction});
 
         if (!configuration.contains("clusterName"))
         {

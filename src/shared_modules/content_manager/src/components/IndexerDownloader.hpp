@@ -196,7 +196,7 @@ private:
             return true;
         }
 
-        IndexerConnectorSync syncConnector(m_config.at("indexer"));
+        IndexerConnectorSync syncConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
 
         while (true)
         {
@@ -443,7 +443,7 @@ private:
 
         const auto& sourceFilter = getSourceFilter();
 
-        IndexerConnectorSync syncConnector(m_config.at("indexer"));
+        IndexerConnectorSync syncConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
 
         auto pit = syncConnector.createPointInTime({indexName}, PIT_KEEP_ALIVE);
         auto pitGuard = std::unique_ptr<PointInTime, std::function<void(PointInTime*)>>(
@@ -532,7 +532,7 @@ private:
 
         const auto& sourceFilter = getSourceFilter();
 
-        IndexerConnectorSync syncConnector(m_config.at("indexer"));
+        IndexerConnectorSync syncConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
 
         auto pit = syncConnector.createPointInTime({indexName}, PIT_KEEP_ALIVE);
         auto pitGuard = std::unique_ptr<PointInTime, std::function<void(PointInTime*)>>(
@@ -566,7 +566,7 @@ private:
             try
             {
                 // Each slice gets its own connector to avoid sharing HTTP state across threads.
-                IndexerConnectorSync sliceConnector(m_config.at("indexer"));
+                IndexerConnectorSync sliceConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
 
                 const nlohmann::json sliceParam = {{"id", sliceId}, {"max", numSlices}};
                 std::optional<nlohmann::json> searchAfter = std::nullopt;
