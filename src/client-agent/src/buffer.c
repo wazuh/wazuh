@@ -230,7 +230,11 @@ void *dispatch_buffer(__attribute__((unused)) void * arg) {
         }
 
         buffered_message msg_to_dispatch = buffer[j];
-        unsigned int original_j_for_nulling = j;
+        /* Clear the slot while still holding the lock, before advancing the
+         * consumer index. This prevents the producer from wrapping around and
+         * reusing this slot while it still holds a stale pointer. */
+        buffer[j].data = NULL;
+        buffer[j].size = 0;
         forward(j, agt->buflength + 1);
         w_mutex_unlock(&mutex_lock);
 
@@ -263,10 +267,6 @@ void *dispatch_buffer(__attribute__((unused)) void * arg) {
         if (msg_to_dispatch.data != NULL) {
             send_msg(msg_to_dispatch.data, msg_to_dispatch.size);
             os_free(msg_to_dispatch.data);
-            w_mutex_lock(&mutex_lock);
-            buffer[original_j_for_nulling].data = NULL;
-            buffer[original_j_for_nulling].size = 0;
-            w_mutex_unlock(&mutex_lock);
         }
 
         gettime(&ts1);
