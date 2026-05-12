@@ -1259,6 +1259,66 @@ void test_wm_agent_upgrade_validate_version_upgrade_custom_non_minimal(void **st
     assert_int_equal(ret, WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED);
 }
 
+void test_wm_agent_upgrade_validate_version_upgrade_custom_v5_from_413(void **state)
+{
+    (void) state;
+    wm_upgrade_custom_task *task = wm_agent_upgrade_init_upgrade_custom_task();
+    os_strdup("/tmp/wazuh_agent_v5.0.0_linux_amd64.deb.wpk", task->custom_file_path);
+    char *wazuh_version = "v4.13.0";
+    char *platform = "ubuntu";
+
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE_CUSTOM, task);
+
+    assert_int_equal(ret, WM_UPGRADE_INTERMEDIATE_VERSION_REQUIRED);
+
+    wm_agent_upgrade_free_upgrade_custom_task(task);
+}
+
+void test_wm_agent_upgrade_validate_version_upgrade_custom_v5_from_414(void **state)
+{
+    (void) state;
+    wm_upgrade_custom_task *task = wm_agent_upgrade_init_upgrade_custom_task();
+    os_strdup("wazuh_agent_v5.0.0_linux_amd64.deb.wpk", task->custom_file_path);
+    char *wazuh_version = "v4.14.0";
+    char *platform = "ubuntu";
+
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE_CUSTOM, task);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+
+    wm_agent_upgrade_free_upgrade_custom_task(task);
+}
+
+void test_wm_agent_upgrade_validate_version_upgrade_custom_v414_from_413(void **state)
+{
+    (void) state;
+    wm_upgrade_custom_task *task = wm_agent_upgrade_init_upgrade_custom_task();
+    os_strdup("wazuh_agent_v4.14.4_linux_amd64.deb.wpk", task->custom_file_path);
+    char *wazuh_version = "v4.13.0";
+    char *platform = "ubuntu";
+
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE_CUSTOM, task);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+
+    wm_agent_upgrade_free_upgrade_custom_task(task);
+}
+
+void test_wm_agent_upgrade_validate_version_upgrade_custom_renamed_filename(void **state)
+{
+    (void) state;
+    wm_upgrade_custom_task *task = wm_agent_upgrade_init_upgrade_custom_task();
+    os_strdup("/tmp/myfile.wpk", task->custom_file_path);
+    char *wazuh_version = "v4.13.0";
+    char *platform = "ubuntu";
+
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE_CUSTOM, task);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+
+    wm_agent_upgrade_free_upgrade_custom_task(task);
+}
+
 void test_wm_agent_upgrade_validate_version_upgrade_older_version(void **state)
 {
     wm_upgrade_task *task = state[1];
@@ -1842,6 +1902,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_custom_ok, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_non_minimal, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_custom_non_minimal, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_version_upgrade_custom_v5_from_413),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_version_upgrade_custom_v5_from_414),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_version_upgrade_custom_v414_from_413),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_version_upgrade_custom_renamed_filename),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_older_version, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_greater_version, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_force, setup_validate_wpk_version, teardown_validate_wpk_version),
