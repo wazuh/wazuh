@@ -63,8 +63,8 @@ WAZUH_4X_VERSION="${WAZUH_4X_VERSION:-4.14.3-1}"
 WAZUH_4X_DEB_URL="https://packages.wazuh.com/4.x/apt/pool/main/w/wazuh-agent/wazuh-agent_${WAZUH_4X_VERSION}_amd64.deb"
 WAZUH_4X_RPM_URL="https://packages.wazuh.com/4.x/yum/wazuh-agent-${WAZUH_4X_VERSION}.x86_64.rpm"
 
-WAZUH_5X_YAML_URL="https://packages-staging.xdrsiem.wazuh.info/nightly/5.0.0/artifact_urls_5.0.0-latest.yaml"
-
+#  WAZUH_5X_YAML_URL="https://packages-staging.xdrsiem.wazuh.info/nightly/5.0.0/artifact-urls/artifact_urls_5.0.0-latest.yaml"
+WAZUH_5X_YAML_URL="https://packages-staging.xdrsiem.wazuh.info/nightly-backup/artifact_urls_5.0.0-latest.yaml"
 PKGS_DIR="${SCRIPT_DIR}/pkgs"
 mkdir -p "$PKGS_DIR"
 

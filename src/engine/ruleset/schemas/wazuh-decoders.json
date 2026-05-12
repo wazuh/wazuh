@@ -9659,8 +9659,10 @@
           ]
         },
         "threat.indicator.confidence": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nIdentifies the vendor-neutral confidence rating using the None/Low/Medium/High scale defined in Appendix A of the STIX 2.1 framework. Vendor-specific confidence scales may be added as custom fields.",
+          "description": "Module: ecs\nIndexerType: short\n\nIndicator confidence rating.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
           "type": [
+            "number",
             "string"
           ]
         },
@@ -14099,8 +14101,10 @@
           ]
         },
         "wazuh.threat.indicator.confidence": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nIdentifies the vendor-neutral confidence rating using the None/Low/Medium/High scale defined in Appendix A of the STIX 2.1 framework. Vendor-specific confidence scales may be added as custom fields.",
+          "description": "Module: ecs\nIndexerType: short\n\nIndicator confidence rating.",
+          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
           "type": [
+            "number",
             "string"
           ]
         },

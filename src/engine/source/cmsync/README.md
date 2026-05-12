@@ -47,6 +47,23 @@ The module persists its own state (which spaces are tracked and their current na
 
 ## Key Concepts
 
+### Consumer Validation for Consistency
+
+To prevent partial policy downloads when the wazuh-indexer is mid-update, `CMSync` implements **consumer validation via Point-In-Time (PIT)**:
+
+1. **Hash check phase**: `getPolicyHashAndEnabledFromRemote()` passes `STANDARD_RULESET_CONSUMER_ID` to the indexer connector.
+   - The connector creates a multi-index PIT (policy indices + `.wazuh-cti-consumers`).
+   - It validates the consumer is in the `idle` status within that PIT snapshot.
+   - If idle: returns the hash and enabled status (and the check is consistent).
+   - If not idle: returns `std::nullopt` → sync cycle is skipped.
+
+2. **Download phase**: `downloadAndEnrichNamespace()` → `downloadNamespace()` calls `getPolicy()` with the same consumer ID.
+   - The connector again validates the consumer is idle within a NEW PIT snapshot.
+   - If idle: retrieves full policy resources within that PIT.
+   - If not idle: returns `std::nullopt` → download is skipped, partial namespace is rolled back.
+
+This two-phase validation ensures the indexer is NOT actively updating policy/decoder/KVDB assets before or during the download.
+
 ### Synchronization Lifecycle
 
 The `synchronize()` method iterates through all tracked spaces and handles four cases:
@@ -74,9 +91,10 @@ An internal class (defined in `cmsync.cpp`) that tracks the state of a single sy
 
 ### Download and Enrich
 
-`downloadAndEnrichNamespace()` performs a two-phase operation:
+`downloadAndEnrichNamespace()` performs a two-phase operation with consumer validation:
 
-1. **Download** — fetches KVDBs, decoders, integrations, and the policy from the wazuh-indexer via `wiconnector::getPolicy()`, then imports them into a new namespace via `cmcrud::importNamespace()` with `softValidation = true`.
+1. **Download** — fetches KVDBs, decoders, integrations, and the policy from the wazuh-indexer via `wiconnector::getPolicy(consumerIdToValidate=STANDARD_RULESET_CONSUMER_ID)`, then imports them into a new namespace via `cmcrud::importNamespace()` with `softValidation = true`.
+   - If the consumer is not idle (returns `std::nullopt`), download is skipped and `std::nullopt` is returned (sync cycle aborts gracefully).
 2. **Enrich** — placeholder for adding local-only assets (outputs, default filters) that don't come from the indexer.
 
 The target namespace gets a unique random ID (`cmsync_<space>_<hex4>`) to avoid collisions. On failure the namespace is rolled back.
@@ -206,8 +224,8 @@ for each SyncedNamespace in m_namespacesState:
 | Method | Purpose |
 |---|---|
 | `existSpaceInRemote(space)` | Checks policy existence in indexer with retry |
-| `downloadNamespace(origin, dst)` | Downloads policy resources and imports into namespace via `cmcrud::importNamespace()` |
-| `getPolicyHashAndEnabledFromRemote(space)` | Gets SHA-256 hash and enabled flag with retry |
+| `downloadNamespace(origin, dst)` | Downloads policy resources via `getPolicy(consumerIdToValidate)` and imports into namespace. Returns `bool` (false if consumer not idle). |
+| `getPolicyHashAndEnabledFromRemote(space)` | Gets SHA-256 hash and enabled flag with retry, passing consumer validation. Returns `std::optional` (nullopt if consumer not idle). |
 | `downloadAndEnrichNamespace(origin)` | Generates unique NS ID, downloads, enriches (placeholder), returns NS ID |
 | `syncNamespaceInRoute(nsState, newNsId)` | Hot-swaps or creates router route |
 | `addSpaceToSync(space)` | Adds a space to the tracked list |

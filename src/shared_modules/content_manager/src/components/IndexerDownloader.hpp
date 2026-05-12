@@ -52,7 +52,7 @@
  * {
  *   "index":               ".wazuh-threatintel-vulnerabilities", // Indexer CVE index name
  *   "consumerStatusIndex": ".wazuh-cti-consumers",    // Consumer status index (optional)
- *   "consumerStatusId":    "t1-vulnerabilities-5_public-vulnerabilities-5", // Consumer status document id (optional)
+ *   "consumerStatusId":    "cti:catalog:consumer:vulnerabilities", // Consumer status document id (optional)
  *   "pageSize":            250,                       // Documents per page (optional, default 250)
  *   "numSlices":           2,                         // Parallel PIT slices (optional, default 2)
  *   <standard IndexerConnector SSL/auth config>

@@ -2,6 +2,7 @@
 #define _IWINDEXER_CONNECTOR_HPP
 
 #include <functional>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -19,6 +20,12 @@
  */
 namespace wiconnector
 {
+
+/// @brief Consumer document ID for the standard ruleset in `.wazuh-cti-consumers`
+constexpr std::string_view STANDARD_RULESET_CONSUMER_ID = "cti:catalog:consumer:ruleset";
+
+/// @brief Consumer document ID for the IOC enrichment data in `.wazuh-cti-consumers`
+constexpr std::string_view IOC_ENRICHMENT_CONSUMER_ID = "cti:catalog:consumer:iocs";
 
 /**
  * @brief Structure to hold policy resources retrieved from the indexer.
@@ -55,12 +62,16 @@ public:
      * @brief Retrieves policy resources associated with the specified space.
      *
      * @param space The name of the space from which to retrieve policy resources
-     * @return A PolicyResources structure containing the retrieved resources
+     * @param consumerIdToValidate Optional consumer document ID in `.wazuh-cti-consumers` to validate.
+     *        When provided, the PIT will include `.wazuh-cti-consumers` and the consumer document
+     *        will be verified as `idle` within the PIT snapshot to ensure consistency.
+     * @return An optional PolicyResources. Returns std::nullopt if the consumer is provided and is not idle.
      * @throws std::invalid_argument if the space name is empty or invalid
      * @throws IndexerConnectorException if there is an error during retrieval
      * @throws std::exception for other unexpected errors
      */
-    virtual PolicyResources getPolicy(std::string_view space) = 0;
+    virtual std::optional<PolicyResources>
+    getPolicy(std::string_view space, const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) = 0;
 
     /**
      * @brief Retrieves the policy hash and enabled status for the specified space.
@@ -70,13 +81,19 @@ public:
      * for the given space name.
      *
      * @param space The name of the space to retrieve the information for
-     * @return A pair containing the SHA-256 hash as a string and a boolean indicating if the policy is enabled
+     * @param consumerIdToValidate Optional consumer document ID in `.wazuh-cti-consumers` to validate.
+     *        When provided, a PIT will include `.wazuh-cti-consumers` and the consumer document
+     *        will be verified as `idle` within the PIT snapshot to ensure consistency.
+     * @return An optional pair containing the SHA-256 hash and enabled status.
+     *         Returns std::nullopt if the consumer is provided and is not idle.
      * @throws std::invalid_argument if the space name is empty
      * @throws IndexerConnectorException if the query returns zero or more than one result, or if required fields are
      * missing
      * @throws std::exception for other unexpected errors
      */
-    virtual std::pair<std::string, bool> getPolicyHashAndEnabled(std::string_view space) = 0;
+    virtual std::optional<std::pair<std::string, bool>>
+    getPolicyHashAndEnabled(std::string_view space,
+                            const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) = 0;
 
     /**
      * @brief Checks if a policy exists for the specified space.
@@ -104,10 +121,14 @@ public:
      * Reads `__ioc_type_hashes__` from `wazuh-threatintel-enrichments` and returns all available
      * `hash.sha256` values for the supported IOC types.
      *
-     * @return Map(type -> sha256 hash)
+     * @param consumerIdToValidate Optional consumer document ID in `.wazuh-cti-consumers` to validate.
+     *        When provided, a PIT will include `.wazuh-cti-consumers` and the consumer document
+     *        will be verified as `idle` within the PIT snapshot to ensure consistency.
+     * @return An optional map(type -> sha256 hash). Returns std::nullopt if the consumer is provided and is not idle.
      * @throws IndexerConnectorException if the manifest is missing or invalid
      */
-    virtual std::unordered_map<std::string, std::string> getIocTypeHashes() = 0;
+    virtual std::optional<std::unordered_map<std::string, std::string>>
+    getIocTypeHashes(const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) = 0;
 
     /**
      * @brief Streams IOC documents for a specific IOC type.
@@ -119,11 +140,36 @@ public:
      * @param iocType IOC type (e.g. connection, url_domain, url_full, hash_md5, hash_sha1, hash_sha256)
      * @param batchSize Number of documents requested per page
      * @param onIoc Callback invoked for each valid IOC record
-     * @return Number of IOC documents delivered to the callback
+     * @param consumerIdToValidate Optional consumer document ID in `.wazuh-cti-consumers` to validate.
+     *        When provided, the PIT will include `.wazuh-cti-consumers` and the consumer document
+     *        will be verified as `idle` within the PIT snapshot to ensure consistency.
+     * @return An optional number of IOC documents delivered to the callback.
+     *         Returns std::nullopt if the consumer is provided and is not idle.
      * @throws IndexerConnectorException if there is an indexer/query error
      */
-    virtual std::size_t
-    streamIocsByType(std::string_view iocType, std::size_t batchSize, const IocRecordCallback& onIoc) = 0;
+    virtual std::optional<std::size_t>
+    streamIocsByType(std::string_view iocType,
+                     std::size_t batchSize,
+                     const IocRecordCallback& onIoc,
+                     const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) = 0;
+
+    /**
+     * @brief Pre-flight check: is the consumer ready for synchronization?
+     *
+     * Queries `.wazuh-cti-consumers` for the specified consumer document and verifies
+     * two conditions:
+     *   1. `status` == `"idle"` — the indexer is not actively updating data.
+     *   2. `local_offset` != 0 — the consumer has received at least one CTI update,
+     *      so hash/data documents actually exist in the data indices.
+     *
+     * This is a lightweight, non-PIT check intended to be called **before** requesting
+     * hashes or data, to avoid unnecessary network calls when the consumer has no data yet.
+     *
+     * @param consumerId The `_id` of the consumer document (e.g. `STANDARD_RULESET_CONSUMER_ID`).
+     * @return true if the consumer is idle and has a non-zero local_offset; false otherwise
+     *         (including on any error — safe default to skip sync).
+     */
+    virtual bool isConsumerReadyForSync(std::string_view consumerId) = 0;
 
     /**
      * @brief Retrieves remote engine runtime configuration from wazuh-indexer.
