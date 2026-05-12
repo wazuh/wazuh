@@ -21,13 +21,7 @@ on:
           the provided image.
         required: false
         default: ""
-  push:
-    branches:
-      - "[0-9]+.[0-9]+.[0-9]+"
-      - "main"
-    paths:
-      - "VERSION.json"
-      - "src/VERSION"
+
 
 jobs:
   deprecated:
