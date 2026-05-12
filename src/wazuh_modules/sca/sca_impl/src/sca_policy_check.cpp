@@ -629,7 +629,11 @@ RuleEvaluatorFactory::CreateEvaluator(const std::string& input,
         sysInfo = std::make_unique<SysInfo>();
     }
 
+#ifdef _WIN32
+    auto ruleInput = Utils::trim(sca::win::ExpandEnvironmentVariables(input), " \t");
+#else
     auto ruleInput = Utils::trim(input, " \t");
+#endif
     auto isNegated = false;
 
     if (ruleInput.size() >= 4 && ruleInput.compare(0, 4, "not ") == 0)
