@@ -19,9 +19,6 @@
 #ifdef WIN32
 #include <windows.h>
 
-// On Windows, the XML config convention uses double backslashes (C:\\Windows)
-// because w_strtok treats backslash as an escape character. Reduce consecutive
-// backslashes to single ones so the executed command receives valid paths.
 static void wm_command_reduce_win_backslashes(char *str) {
     char *r = str, *w = str;
     while (*r) {
@@ -175,6 +172,36 @@ void * wm_command_main(wm_command_t * command) {
     if (verify_command) {
         command_cpy = strdup(command->command);
 
+#ifdef WIN32
+        // On Windows, reduce \\\\ to \\ before extracting the binary token.
+        // This normalizes both conventions (single and double backslash) so
+        // that get_binary_path receives a valid Windows path and error
+        // messages show the path as the user intended.
+        wm_command_reduce_win_backslashes(command_cpy);
+
+        // Extract binary token without w_strtok (which treats \\ as escape
+        // and would strip the remaining single backslashes).
+        {
+            const char *s = command_cpy;
+            while (*s == ' ') s++;
+
+            char *bin_start = (char *)s;
+            if (*s == '"') {
+                s++;
+                bin_start = (char *)s;
+                while (*s && *s != '"') s++;
+                if (*s == '"') {
+                    *(char *)s = '\0';
+                }
+            } else {
+                while (*s && *s != ' ') s++;
+                if (*s == ' ') {
+                    *(char *)s = '\0';
+                }
+            }
+            os_strdup(bin_start, binary);
+        }
+#else
         argv = w_strtok(command_cpy);
     #ifndef __clang_analyzer__
         if (!argv) {
@@ -184,10 +211,15 @@ void * wm_command_main(wm_command_t * command) {
         }
     #endif
         binary = argv[0];
+#endif
 
         if (get_binary_path(binary, &full_path) == OS_INVALID) {
             mterror(WM_COMMAND_LOGTAG, "Cannot check binary: '%s'. Cannot stat binary file.", binary);
+#ifdef WIN32
+            os_free(binary);
+#else
             free_strarray(argv);
+#endif
             os_free(command_cpy);
         #ifndef __clang_analyzer__
             os_free(full_path);
@@ -196,8 +228,8 @@ void * wm_command_main(wm_command_t * command) {
         }
 
         // Find end of first token in original command string using the same
-        // quoting/escaping rules as w_strtok, then replace only the binary
-        // portion with the resolved full_path, preserving arguments verbatim.
+        // quoting rules, then replace only the binary portion with the
+        // resolved full_path, preserving arguments verbatim.
         if (!command->full_command) {
             const char *p = command->command;
             bool binary_was_quoted = false;
@@ -212,9 +244,12 @@ void * wm_command_main(wm_command_t * command) {
 
             bool in_quotes = false;
             while (*p) {
+#ifndef WIN32
                 if (*p == '\\' && p[1] != '\0') {
                     p += 2;
-                } else if (*p == '"') {
+                } else
+#endif
+                if (*p == '"') {
                     in_quotes = !in_quotes;
                     p++;
                 } else if (*p == ' ' && !in_quotes) {
@@ -237,7 +272,11 @@ void * wm_command_main(wm_command_t * command) {
                 snprintf(command->full_command, len, "%s%s%s", qc, full_path, qc);
             }
         }
+#ifdef WIN32
+        os_free(binary);
+#else
         free_strarray(argv);
+#endif
 
         if (validate_command_checksums(command, full_path) != 0) {
             os_free(command_cpy);
