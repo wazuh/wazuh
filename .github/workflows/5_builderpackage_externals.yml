@@ -104,7 +104,7 @@ jobs:
               case "${system}-${architecture}" in
                 deb-amd64|rpm-amd64) runner="wz-linux-amd64" ;;
                 deb-arm64|rpm-arm64) runner="wz-linux-arm64" ;;
-                macos-intel64)       runner="macos-13" ;;
+                macos-intel64)       runner="macos-14-large" ;;
                 macos-arm64)         runner="macos-14" ;;
                 windows-i686)        runner="wz-linux-amd64" ;;  # MinGW cross-compile on Linux
                 *) echo "::error::unsupported leg '${leg}'"; exit 1 ;;
@@ -152,6 +152,10 @@ jobs:
         run: |
           bash "${GITHUB_WORKSPACE}/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh" \
             "${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}" "${{ github.actor }}" "${CONTAINER_NAME}" "${TAG}"
+
+      - name: Install build tools (macOS leg)
+        if: matrix.system == 'macos'
+        run: brew install bash automake
 
       - name: Install MinGW cross-compiler (windows leg)
         if: matrix.system == 'windows'
