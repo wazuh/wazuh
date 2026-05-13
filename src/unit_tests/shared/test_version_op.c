@@ -2311,6 +2311,50 @@ void test_compare_wazuh_versions_null(void **state)
     assert_int_equal(ret, 0);
 }
 
+void test_compare_wazuh_versions_long_string_v1(void **state)
+{
+    (void) state;
+    char *v1 = "AAAAAAAAA";
+    char *v2 = "v4.0.0";
+
+    int ret = compare_wazuh_versions(v1, v2, true);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_compare_wazuh_versions_long_string_v2(void **state)
+{
+    (void) state;
+    char *v1 = "v4.0.0";
+    char *v2 = "AAAAAAAAA";
+
+    int ret = compare_wazuh_versions(v1, v2, true);
+
+    assert_int_equal(ret, 1);
+}
+
+void test_compare_wazuh_versions_long_string_both(void **state)
+{
+    (void) state;
+    char *v1 = "BBBBBBBBB";
+    char *v2 = "AAAAAAAAA";
+
+    int ret = compare_wazuh_versions(v1, v2, true);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_compare_wazuh_versions_truncated_version(void **state)
+{
+    (void) state;
+    char *v1 = "v5.123456";
+    char *v2 = "v4.0.0";
+
+    int ret = compare_wazuh_versions(v1, v2, true);
+
+    assert_int_equal(ret, 1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
 #ifdef __linux__
@@ -2357,7 +2401,11 @@ int main(void) {
             cmocka_unit_test(test_compare_wazuh_versions_lower_patch),
             cmocka_unit_test(test_compare_wazuh_versions_lower_minor),
             cmocka_unit_test(test_compare_wazuh_versions_lower_major),
-            cmocka_unit_test(test_compare_wazuh_versions_null)
+            cmocka_unit_test(test_compare_wazuh_versions_null),
+            cmocka_unit_test(test_compare_wazuh_versions_long_string_v1),
+            cmocka_unit_test(test_compare_wazuh_versions_long_string_v2),
+            cmocka_unit_test(test_compare_wazuh_versions_long_string_both),
+            cmocka_unit_test(test_compare_wazuh_versions_truncated_version)
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
