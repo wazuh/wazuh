@@ -204,3 +204,60 @@ jobs:
           path: packages/output_externals/externals-*.tar.gz
           if-no-files-found: error
           retention-days: 14
+
+  consolidate:
+    # Merge every per-leg tarball into a single libraries/ tree shaped
+    # like the packages.wazuh.com/deps/<version>/ layout: sources/ holds
+    # the union of upstream blobs (byte-identical across legs, so any
+    # leg's copy works), linux/<arch>/ holds the agent-set binaries
+    # (agent leg) plus manager-exclusive ones (manager leg), darwin/<arch>/
+    # holds the macOS leg binaries, and windows/ holds the MinGW leg
+    # binaries. Output is a single externals-all.tar.gz the user can
+    # extract straight into S3.
+    needs: build-externals
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Download all per-leg tarballs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: externals-*
+          path: per-leg
+
+      - name: Merge into single libraries/ tree
+        run: |
+          mkdir -p consolidated
+          # Each per-leg artifact unzips into its own subdir with one
+          # externals-<leg>-<target>.tar.gz inside. Extract them all into
+          # the same consolidated/ root: manager-Linux legs already dropped
+          # the agent-set binaries (see packages/generate_external.sh
+          # DEDUPE_AGAINST_AGENT) so binary paths don't collide, and source
+          # tarballs are byte-equivalent across legs.
+          for tar in per-leg/*/externals-*.tar.gz; do
+            echo "extracting ${tar}"
+            tar -xzf "${tar}" -C consolidated/
+          done
+          echo "---"
+          echo "consolidated libraries/ tree layout:"
+          find consolidated/libraries -maxdepth 2 -type d | sort
+          echo "---"
+          echo "per-subtree dep counts:"
+          for d in consolidated/libraries/*/ consolidated/libraries/*/*/; do
+            n="$(find "${d}" -maxdepth 1 -name '*.tar.gz' | wc -l | xargs)"
+            [ "${n}" -gt 0 ] && echo "  ${d}  ${n} tarballs"
+          done
+
+      - name: Pack consolidated tarball
+        run: |
+          tar -czf externals-all.tar.gz \
+              --owner=0 --group=0 --no-same-owner \
+              -C consolidated libraries
+          ls -lh externals-all.tar.gz
+
+      - name: Upload consolidated tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: externals-all
+          path: externals-all.tar.gz
+          if-no-files-found: error
+          retention-days: 14
