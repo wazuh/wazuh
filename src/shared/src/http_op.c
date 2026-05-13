@@ -282,7 +282,7 @@ int uhttp_client_add_header(uhttp_client_t* c, const char* header_line)
     CURLcode rc = curl_easy_setopt(c->easy, CURLOPT_HTTPHEADER, c->headers);
     if (rc != CURLE_OK)
     {
-        return -rc;
+        return -1;
     }
 
     return 0;
