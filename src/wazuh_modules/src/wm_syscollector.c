@@ -576,9 +576,6 @@ void* wm_sys_main(wm_sys_t* sys)
 
     sys->flags.running = true;
 
-    w_cond_init(&sys_stop_condition, NULL);
-    w_mutex_init(&sys_stop_mutex, NULL);
-    w_mutex_init(&sys_reconnect_mutex, NULL);
     w_mutex_lock(&sys_stop_mutex);
     sys_main_thread = pthread_self();
     sys_main_thread_initialized = true;
@@ -753,10 +750,6 @@ void* wm_sys_main(wm_sys_t* sys)
 
 void wm_sys_destroy(wm_sys_t* data)
 {
-    w_cond_destroy(&sys_stop_condition);
-    w_mutex_destroy(&sys_stop_mutex);
-    w_mutex_destroy(&sys_reconnect_mutex);
-
     free(data);
 }
 
