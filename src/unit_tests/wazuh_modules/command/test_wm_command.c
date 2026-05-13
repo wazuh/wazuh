@@ -25,6 +25,7 @@
 #include "../scheduling/wmodules_scheduling_helpers.h"
 #include "../../wrappers/common.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/binaries_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 #include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
@@ -464,6 +465,10 @@ void test_interval_execution(void **state) {
     module_data->scan_config.interval = 60; // 1min
     module_data->scan_config.month_interval = false;
 
+    expect_any(__wrap_get_binary_path, command);
+    will_return(__wrap_get_binary_path, strdup("/bin/bash"));
+    will_return(__wrap_get_binary_path, 0);
+
     expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, 0);
@@ -523,6 +528,10 @@ static void test_command_payload_normal_output(void **state) {
     will_return(__wrap_wm_exec, 7);
     will_return(__wrap_wm_exec, 0);
 
+    expect_any(__wrap_get_binary_path, command);
+    will_return(__wrap_get_binary_path, strdup("/bin/echo"));
+    will_return(__wrap_get_binary_path, 0);
+
     // status > 0 triggers mtwarn + mtdebug2(OUTPUT).
     expect_any(__wrap__mtwarn, tag);
     expect_any(__wrap__mtwarn, formatted_msg);
@@ -559,6 +568,10 @@ static void test_command_payload_empty_output(void **state) {
     will_return(__wrap_wm_exec, (char *)output);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
+
+    expect_any(__wrap_get_binary_path, command);
+    will_return(__wrap_get_binary_path, strdup("/bin/echo"));
+    will_return(__wrap_get_binary_path, 0);
 
     expect_any_count(__wrap__mtinfo, tag, 2);
     expect_any_count(__wrap__mtinfo, formatted_msg, 2);
@@ -600,6 +613,10 @@ static void test_command_payload_long_output_truncates(void **state) {
     will_return(__wrap_wm_exec, output);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
+
+    expect_any(__wrap_get_binary_path, command);
+    will_return(__wrap_get_binary_path, strdup("/bin/echo"));
+    will_return(__wrap_get_binary_path, 0);
 
     // Truncation path emits one warning.
     expect_any(__wrap__mtwarn, tag);
@@ -689,6 +706,10 @@ static void test_command_payload_metadata_only_fallback(void **state) {
     will_return(__wrap_wm_exec, (char *)output);
     will_return(__wrap_wm_exec, 0);
     will_return(__wrap_wm_exec, 0);
+
+    expect_any(__wrap_get_binary_path, command);
+    will_return(__wrap_get_binary_path, strdup("/bin/echo"));
+    will_return(__wrap_get_binary_path, 0);
 
     // First warning: truncation attempt; second warning: still too large, metadata-only fallback.
     expect_any_count(__wrap__mtwarn, tag, 2);
@@ -868,6 +889,256 @@ void test_validate_command_checksums_failure(void **state) {
     assert_int_equal(validate_command_checksums(command, "/test/file.sh"), -1);
 }
 
+static int setup_test_full_command(void **state) {
+    wm_command_t *command = calloc(1, sizeof(wm_command_t));
+    assert_non_null(command);
+
+    command->enabled = 1;
+    command->run_on_start = 1;
+    command->ignore_output = 1;
+    command->agent_cfg = 0;
+    command->timeout = 0;
+    command->skip_verification = 0;
+
+    command->tag = strdup("test-cmd");
+    command->sha1_hash = strdup("da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    command->scan_config = init_config_from_string("<interval>10s</interval>\n");
+
+    wm_max_eps = 1000000;
+    *state = command;
+    return 0;
+}
+
+static int teardown_test_full_command(void **state) {
+    wm_command_t *command = (wm_command_t *)*state;
+    if (command) {
+        sched_scan_free(&(command->scan_config));
+        free(command->tag);
+        free(command->command);
+        free(command->full_command);
+        free(command->sha1_hash);
+        free(command);
+    }
+    return 0;
+}
+
+static void test_full_command_windows_no_args(void **state) {
+    wm_command_t *command = (wm_command_t *)*state;
+    command->command = strdup("C:\\\\Windows\\\\System32\\\\whoami.exe");
+
+    expect_string(__wrap_get_binary_path, command, "C:\\Windows\\System32\\whoami.exe");
+    will_return(__wrap_get_binary_path, strdup("C:\\Windows\\System32\\whoami.exe"));
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_any_always(__wrap_wm_validate_command, command);
+    expect_any_always(__wrap_wm_validate_command, digest);
+    expect_any_always(__wrap_wm_validate_command, ctype);
+    will_return_always(__wrap_wm_validate_command, 1);
+
+    expect_any_always(__wrap__mtinfo, tag);
+    expect_any_always(__wrap__mtinfo, formatted_msg);
+    expect_any_always(__wrap__mtdebug1, tag);
+    expect_any_always(__wrap__mtdebug1, formatted_msg);
+
+    expect_string(__wrap_wm_exec, command, "C:\\Windows\\System32\\whoami.exe");
+    expect_any(__wrap_wm_exec, secs);
+    expect_any(__wrap_wm_exec, add_path);
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    will_return(__wrap_FOREVER, 0);
+
+    WM_COMMAND_CONTEXT.start(command);
+
+    assert_string_equal(command->full_command, "C:\\Windows\\System32\\whoami.exe");
+}
+
+static void test_full_command_windows_with_args(void **state) {
+    wm_command_t *command = (wm_command_t *)*state;
+    command->command = strdup("C:\\\\Windows\\\\System32\\\\cmd.exe /c dir");
+
+    expect_string(__wrap_get_binary_path, command, "C:\\Windows\\System32\\cmd.exe");
+    will_return(__wrap_get_binary_path, strdup("C:\\Windows\\System32\\cmd.exe"));
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_any_always(__wrap_wm_validate_command, command);
+    expect_any_always(__wrap_wm_validate_command, digest);
+    expect_any_always(__wrap_wm_validate_command, ctype);
+    will_return_always(__wrap_wm_validate_command, 1);
+
+    expect_any_always(__wrap__mtinfo, tag);
+    expect_any_always(__wrap__mtinfo, formatted_msg);
+    expect_any_always(__wrap__mtdebug1, tag);
+    expect_any_always(__wrap__mtdebug1, formatted_msg);
+
+    expect_string(__wrap_wm_exec, command, "C:\\Windows\\System32\\cmd.exe /c dir");
+    expect_any(__wrap_wm_exec, secs);
+    expect_any(__wrap_wm_exec, add_path);
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    will_return(__wrap_FOREVER, 0);
+
+    WM_COMMAND_CONTEXT.start(command);
+
+    assert_string_equal(command->full_command, "C:\\Windows\\System32\\cmd.exe /c dir");
+}
+
+static void test_full_command_linux_no_args(void **state) {
+    wm_command_t *command = (wm_command_t *)*state;
+    command->command = strdup("/usr/bin/uptime");
+
+    expect_string(__wrap_get_binary_path, command, "/usr/bin/uptime");
+    will_return(__wrap_get_binary_path, strdup("/usr/bin/uptime"));
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_any_always(__wrap_wm_validate_command, command);
+    expect_any_always(__wrap_wm_validate_command, digest);
+    expect_any_always(__wrap_wm_validate_command, ctype);
+    will_return_always(__wrap_wm_validate_command, 1);
+
+    expect_any_always(__wrap__mtinfo, tag);
+    expect_any_always(__wrap__mtinfo, formatted_msg);
+    expect_any_always(__wrap__mtdebug1, tag);
+    expect_any_always(__wrap__mtdebug1, formatted_msg);
+
+    expect_string(__wrap_wm_exec, command, "/usr/bin/uptime");
+    expect_any(__wrap_wm_exec, secs);
+    expect_any(__wrap_wm_exec, add_path);
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    will_return(__wrap_FOREVER, 0);
+
+    WM_COMMAND_CONTEXT.start(command);
+
+    assert_string_equal(command->full_command, "/usr/bin/uptime");
+}
+
+static void test_full_command_quoted_args(void **state) {
+    wm_command_t *command = (wm_command_t *)*state;
+    command->command = strdup("/bin/bash \"my script.sh\" \"arg with spaces\"");
+
+    expect_string(__wrap_get_binary_path, command, "/bin/bash");
+    will_return(__wrap_get_binary_path, strdup("/bin/bash"));
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_any_always(__wrap_wm_validate_command, command);
+    expect_any_always(__wrap_wm_validate_command, digest);
+    expect_any_always(__wrap_wm_validate_command, ctype);
+    will_return_always(__wrap_wm_validate_command, 1);
+
+    expect_any_always(__wrap__mtinfo, tag);
+    expect_any_always(__wrap__mtinfo, formatted_msg);
+    expect_any_always(__wrap__mtdebug1, tag);
+    expect_any_always(__wrap__mtdebug1, formatted_msg);
+
+    expect_string(__wrap_wm_exec, command, "/bin/bash \"my script.sh\" \"arg with spaces\"");
+    expect_any(__wrap_wm_exec, secs);
+    expect_any(__wrap_wm_exec, add_path);
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    will_return(__wrap_FOREVER, 0);
+
+    WM_COMMAND_CONTEXT.start(command);
+
+    assert_string_equal(command->full_command, "/bin/bash \"my script.sh\" \"arg with spaces\"");
+}
+
+static void test_full_command_quoted_binary_with_spaces(void **state) {
+    wm_command_t *command = (wm_command_t *)*state;
+    command->command = strdup("\"C:\\\\Program Files\\\\app.exe\" --flag value");
+
+    expect_string(__wrap_get_binary_path, command, "C:\\Program Files\\app.exe");
+    will_return(__wrap_get_binary_path, strdup("C:\\Program Files\\app.exe"));
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_any_always(__wrap_wm_validate_command, command);
+    expect_any_always(__wrap_wm_validate_command, digest);
+    expect_any_always(__wrap_wm_validate_command, ctype);
+    will_return_always(__wrap_wm_validate_command, 1);
+
+    expect_any_always(__wrap__mtinfo, tag);
+    expect_any_always(__wrap__mtinfo, formatted_msg);
+    expect_any_always(__wrap__mtdebug1, tag);
+    expect_any_always(__wrap__mtdebug1, formatted_msg);
+
+    expect_string(__wrap_wm_exec, command, "\"C:\\Program Files\\app.exe\" --flag value");
+    expect_any(__wrap_wm_exec, secs);
+    expect_any(__wrap_wm_exec, add_path);
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    will_return(__wrap_FOREVER, 0);
+
+    WM_COMMAND_CONTEXT.start(command);
+
+    assert_string_equal(command->full_command, "\"C:\\Program Files\\app.exe\" --flag value");
+}
+
+static void test_full_command_leading_spaces(void **state) {
+    wm_command_t *command = (wm_command_t *)*state;
+    command->command = strdup("  /usr/bin/echo hello");
+
+    expect_string(__wrap_get_binary_path, command, "/usr/bin/echo");
+    will_return(__wrap_get_binary_path, strdup("/usr/bin/echo"));
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_any_always(__wrap_wm_validate_command, command);
+    expect_any_always(__wrap_wm_validate_command, digest);
+    expect_any_always(__wrap_wm_validate_command, ctype);
+    will_return_always(__wrap_wm_validate_command, 1);
+
+    expect_any_always(__wrap__mtinfo, tag);
+    expect_any_always(__wrap__mtinfo, formatted_msg);
+    expect_any_always(__wrap__mtdebug1, tag);
+    expect_any_always(__wrap__mtdebug1, formatted_msg);
+
+    expect_string(__wrap_wm_exec, command, "/usr/bin/echo hello");
+    expect_any(__wrap_wm_exec, secs);
+    expect_any(__wrap_wm_exec, add_path);
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    will_return(__wrap_FOREVER, 0);
+
+    WM_COMMAND_CONTEXT.start(command);
+
+    assert_string_equal(command->full_command, "/usr/bin/echo hello");
+}
+
+static void test_full_command_unquoted_path_with_spaces(void **state) {
+    wm_command_t *command = (wm_command_t *)*state;
+    command->command = strdup("C:\\\\Program\\ Files\\\\app.exe --verbose");
+
+    expect_string(__wrap_get_binary_path, command, "C:\\Program Files\\app.exe");
+    will_return(__wrap_get_binary_path, strdup("C:\\Program Files\\app.exe"));
+    will_return(__wrap_get_binary_path, 0);
+
+    expect_any_always(__wrap_wm_validate_command, command);
+    expect_any_always(__wrap_wm_validate_command, digest);
+    expect_any_always(__wrap_wm_validate_command, ctype);
+    will_return_always(__wrap_wm_validate_command, 1);
+
+    expect_any_always(__wrap__mtinfo, tag);
+    expect_any_always(__wrap__mtinfo, formatted_msg);
+    expect_any_always(__wrap__mtdebug1, tag);
+    expect_any_always(__wrap__mtdebug1, formatted_msg);
+
+    expect_string(__wrap_wm_exec, command, "\"C:\\Program Files\\app.exe\" --verbose");
+    expect_any(__wrap_wm_exec, secs);
+    expect_any(__wrap_wm_exec, add_path);
+    will_return(__wrap_wm_exec, 0);
+    will_return(__wrap_wm_exec, 0);
+
+    will_return(__wrap_FOREVER, 0);
+
+    WM_COMMAND_CONTEXT.start(command);
+
+    assert_string_equal(command->full_command, "\"C:\\Program Files\\app.exe\" --verbose");
+}
+
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
         cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions)
@@ -889,10 +1160,20 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_command_payload_long_output_truncates, setup_test_payload, teardown_test_payload),
         cmocka_unit_test_setup_teardown(test_command_payload_metadata_only_fallback, setup_test_payload, teardown_test_payload)
     };
+    const struct CMUnitTest tests_full_command[] = {
+        cmocka_unit_test_setup_teardown(test_full_command_windows_no_args, setup_test_full_command, teardown_test_full_command),
+        cmocka_unit_test_setup_teardown(test_full_command_windows_with_args, setup_test_full_command, teardown_test_full_command),
+        cmocka_unit_test_setup_teardown(test_full_command_linux_no_args, setup_test_full_command, teardown_test_full_command),
+        cmocka_unit_test_setup_teardown(test_full_command_quoted_args, setup_test_full_command, teardown_test_full_command),
+        cmocka_unit_test_setup_teardown(test_full_command_quoted_binary_with_spaces, setup_test_full_command, teardown_test_full_command),
+        cmocka_unit_test_setup_teardown(test_full_command_leading_spaces, setup_test_full_command, teardown_test_full_command),
+        cmocka_unit_test_setup_teardown(test_full_command_unquoted_path_with_spaces, setup_test_full_command, teardown_test_full_command)
+    };
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);
     result += cmocka_run_group_tests(tests_without_startup, NULL, NULL);
     result += cmocka_run_group_tests(tests_validate_command_checksums, NULL, NULL);
     result += cmocka_run_group_tests(tests_payload_json, NULL, NULL);
+    result += cmocka_run_group_tests(tests_full_command, NULL, NULL);
     return result;
 }

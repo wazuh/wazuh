@@ -78,6 +78,7 @@
     - [Schemas](ref/modules/vulnerability-scanner/flatbuffers.md)
     - [Test Tools](ref/modules/vulnerability-scanner/test-tools.md)
     - [Events description](ref/modules/vulnerability-scanner/events.md)
+  - [Command](ref/modules/command/README.md)
   - [Inventory Sync](ref/modules/inventory-sync/README.md)
     - [Architecture](ref/modules/inventory-sync/architecture.md)
     - [API Reference](ref/modules/inventory-sync/api-reference.md)

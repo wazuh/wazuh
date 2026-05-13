@@ -11,7 +11,8 @@ list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_unti
                          -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=_mtdebug1 \
                          -Wl,--wrap=wm_exec,--wrap=StartMQ,--wrap=FOREVER,--wrap=wm_sleep_until_interruptible \
                          -Wl,--wrap=wm_sendmsg \
-                         -Wl,--wrap=wm_validate_command -Wl,--wrap=w_query_agentd")
+                         -Wl,--wrap=wm_validate_command -Wl,--wrap=w_query_agentd \
+                         -Wl,--wrap=get_binary_path")
 list(APPEND use_shared_libs 1)
 
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.h")
