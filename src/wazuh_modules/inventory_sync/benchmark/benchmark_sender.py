@@ -27,6 +27,7 @@ Dependencies:
 """
 
 import argparse
+import copy
 import csv
 import hashlib
 import json
@@ -110,6 +111,19 @@ PAYLOAD_KINDS: dict[str, dict[str, str]] = {
     "hotfix":    {"file": "syscollector_hotfix.json",  "module": "syscollector", "index": "wazuh-states-inventory-hotfixes"},
     "fim_file":  {"file": "fim_file.json",             "module": "fim",          "index": "wazuh-states-fim-files"},
     "sca_check": {"file": "sca_check.json",            "module": "sca",          "index": "wazuh-states-sca"},
+}
+
+# Pad target for --payload-size: dotted path to an existing free-text string
+# field in the mapping. Adding a new top-level field (e.g. "_pad") would be
+# rejected by the dynamic:strict mappings of wazuh-states-* indices with
+# (status 400) 'mapping set to strict, dynamic introduction of [_pad] within
+# [_doc] is not allowed' — so we extend an existing field instead.
+PAD_FIELD_BY_KIND: dict[str, str] = {
+    "package":   "package.description",
+    "system":    "host.os.full",
+    "hotfix":    "package.hotfix.name",
+    "fim_file":  "file.path",
+    "sca_check": "check.description",
 }
 
 
@@ -994,9 +1008,16 @@ def parse_args() -> argparse.Namespace:
                    help="Seconds to wait after registration for remoted key reload (default: 35)")
     p.add_argument("--payload-size", type=int, default=0,
                    help="If > 0, pad each DataValue payload to at least N bytes "
-                        "by appending a '_pad' field with filler chars. Used by "
+                        "by extending a free-text field of the payload. Target "
+                        "field is picked from PAD_FIELD_BY_KIND based on "
+                        "--payload-kind (e.g. file.path for fim_file). Used by "
                         "large_payload.json / heavy_payload_burst.json to stress "
                         "the m_workersQueue with heavy elements (default: 0).")
+    p.add_argument("--pad-field", type=str, default=None,
+                   help="Dotted path of the payload field to extend with the "
+                        "'_pad' filler. Overrides PAD_FIELD_BY_KIND default. "
+                        "Must be an existing string field — wazuh-states-* "
+                        "indices are dynamic:strict, so new fields are rejected.")
     p.add_argument("--drop-every", type=int, default=0,
                    help="If > 0, skip every Nth DataValue (drops seq=N-1, 2N-1, "
                         "...). Forces ReqRet/missing_ranges on the manager. "
@@ -1016,20 +1037,50 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-def _pad_payload_to_size(template: dict, target_size: int) -> dict:
-    """Return a shallow copy of `template` with a '_pad' filler field so the
-    JSON-encoded payload reaches at least `target_size` bytes. Used by
-    --payload-size for heavy-payload stress scenarios.
+def _get_dotted(d: dict, path: str) -> Any:
+    cur: Any = d
+    for part in path.split("."):
+        if not isinstance(cur, dict) or part not in cur:
+            return None
+        cur = cur[part]
+    return cur
+
+
+def _set_dotted(d: dict, path: str, value: Any) -> None:
+    parts = path.split(".")
+    cur = d
+    for part in parts[:-1]:
+        if part not in cur or not isinstance(cur[part], dict):
+            cur[part] = {}
+        cur = cur[part]
+    cur[parts[-1]] = value
+
+
+def _pad_payload_to_size(template: dict, target_size: int, pad_field: str) -> dict:
+    """Return a deep copy of `template` with `pad_field` (dotted path) extended
+    so the JSON-encoded payload reaches at least `target_size` bytes.
+
+    The pad target must be an existing free-text field in the mapping; padding
+    via a new top-level field is rejected by the dynamic:strict mappings of
+    wazuh-states-* indices (see PAD_FIELD_BY_KIND).
     """
-    base = dict(template)
+    base = copy.deepcopy(template)
+    existing = _get_dotted(base, pad_field)
+    if not isinstance(existing, str):
+        existing = "" if existing is None else str(existing)
+
     current = len(json.dumps(base).encode("utf-8"))
     if current >= target_size:
         return base
-    # Account for the JSON overhead of adding "_pad":"" (quotes, colon, comma).
-    overhead = len(json.dumps({**base, "_pad": ""}).encode("utf-8"))
-    pad_len = max(0, target_size - overhead)
-    if pad_len > 0:
-        base["_pad"] = "x" * pad_len
+
+    pad_len = target_size - current
+    _set_dotted(base, pad_field, existing + ("x" * pad_len))
+
+    # Re-roll if JSON quoting overhead left us under target.
+    encoded = len(json.dumps(base).encode("utf-8"))
+    if encoded < target_size:
+        extra = target_size - encoded
+        _set_dotted(base, pad_field, existing + ("x" * (pad_len + extra)))
     return base
 
 
@@ -1059,13 +1110,22 @@ def main() -> None:
             payload_template = json.load(f)
 
     payload_pad_applied = 0
+    pad_field_used = ""
     if args.payload_size > 0:
+        pad_field_used = args.pad_field or PAD_FIELD_BY_KIND.get(args.payload_kind, "")
+        if not pad_field_used:
+            logger.error("No pad-field default for payload_kind=%s and "
+                         "--pad-field not given. Indexer will reject the docs.",
+                         args.payload_kind)
+            return
         original = len(json.dumps(payload_template).encode("utf-8"))
-        payload_template = _pad_payload_to_size(payload_template, args.payload_size)
+        payload_template = _pad_payload_to_size(
+            payload_template, args.payload_size, pad_field_used,
+        )
         payload_pad_applied = len(json.dumps(payload_template).encode("utf-8"))
         logger.info(
-            "Payload padded: %d -> %d bytes (target=%d).",
-            original, payload_pad_applied, args.payload_size,
+            "Payload padded into '%s': %d -> %d bytes (target=%d).",
+            pad_field_used, original, payload_pad_applied, args.payload_size,
         )
 
     cfg = {
@@ -1094,7 +1154,7 @@ def main() -> None:
     print(f"  Index:             {index}")
     print(f"  Output:            {args.output}")
     if args.payload_size > 0:
-        print(f"  Payload size:      target={args.payload_size}B  applied={payload_pad_applied}B")
+        print(f"  Payload size:      target={args.payload_size}B  applied={payload_pad_applied}B  field={pad_field_used}")
     if args.drop_every > 0:
         print(f"  Drop every:        {args.drop_every} (forces ReqRet)")
     if args.no_end:
@@ -1177,6 +1237,7 @@ def main() -> None:
         "session_delay":     cfg["session_delay"],
         "payload_size":      args.payload_size,
         "payload_size_applied": payload_pad_applied,
+        "pad_field":         pad_field_used,
         "drop_every":        args.drop_every,
         "no_end":            args.no_end,
         "use_databatch":     args.use_databatch,

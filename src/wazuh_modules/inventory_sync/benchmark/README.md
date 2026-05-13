@@ -212,7 +212,8 @@ passed manually to `run_benchmark.sh`. The CLI wins over the scenario.
 
 | Flag (`run_benchmark.sh` / `benchmark_sender.py`) | Field in `load` | What it does |
 |---|---|---|
-| `--payload-size N`     | `payload_size_bytes` | Inflates each DataValue by adding `_pad` to the JSON until ≥ N bytes. For queue stress with heavy elements. |
+| `--payload-size N`     | `payload_size_bytes` | Inflates each DataValue by extending an existing free-text field (chosen per `--payload-kind` from `PAD_FIELD_BY_KIND`; e.g. `file.path` for `fim_file`) until the JSON reaches ≥ N bytes. Adding a new top-level field would be rejected by the dynamic:strict mappings (`HTTP 400 mapping set to strict, dynamic introduction of [_pad] within [_doc] is not allowed`). **Hard ceiling ~50 KB**: remoted's uncompress buffer is `OS_MAXSTR=65536` (`shared/include/defs.h:51`); larger plaintext triggers `(2202) Error uncompressing string` and the connection is closed before reaching `m_workersQueue`. To stress queue weight beyond that, scale `agents`/`data_size` rather than per-message size. |
+| `--pad-field PATH`     | `pad_field`          | Dotted path of the payload field to inflate. Overrides the per-kind default. Must point to an existing string field in the mapping. |
 | `--drop-every N`       | `drop_every`         | Skips DataValues where `(seq+1) % N == 0`. Forces ReqRet/missing_ranges. |
 | `--no-end`             | `no_end: true`       | Does not send End or wait for EndAck. The session stays open and `session_timeout` reclaims it. |
 | `--use-databatch`      | `use_databatch: true`| Sends DataValues as `Message{DataBatch{DataValue[]}}` in batches. |

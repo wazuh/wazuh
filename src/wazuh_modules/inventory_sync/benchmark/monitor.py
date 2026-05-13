@@ -83,13 +83,44 @@ def find_process(pid: int | None, name: str | None) -> psutil.Process:
             logger.critical("PID %d does not exist.", pid)
             sys.exit(1)
 
+    # Collect every process matching the name so we can pick the right one
+    # when there are stale duplicates (e.g. a zombie modulesd from a previous
+    # restart still parented to init). Picking the first match is fragile —
+    # psutil.process_iter() order is not deterministic, and attaching to a
+    # zombie gives 0% CPU / flat RSS readings while the real process does
+    # the work elsewhere.
+    matches: list[psutil.Process] = []
     for proc in psutil.process_iter(["pid", "name"]):
-        if proc.info["name"] == name:
-            logger.info("Found process '%s' with PID %d", name, proc.pid)
-            return proc
+        try:
+            if proc.info["name"] == name:
+                matches.append(proc)
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
 
-    logger.critical("No running process named '%s' found.", name)
-    sys.exit(1)
+    if not matches:
+        logger.critical("No running process named '%s' found.", name)
+        sys.exit(1)
+
+    # Prefer the most recently started process: a fresh service restart
+    # spawns the new instance with a later create_time(), while orphaned
+    # zombies keep their old timestamp.
+    matches.sort(key=lambda p: p.create_time(), reverse=True)
+    chosen = matches[0]
+
+    if len(matches) > 1:
+        others = ", ".join(f"PID {p.pid} (started {time.ctime(p.create_time())})"
+                           for p in matches[1:])
+        logger.warning(
+            "Multiple processes named '%s' detected (%d). Attaching to the "
+            "newest: PID %d (started %s). Stale instances: %s. "
+            "Consider 'pkill -9 -f %s && service wazuh-manager restart' "
+            "before re-running.",
+            name, len(matches), chosen.pid,
+            time.ctime(chosen.create_time()), others, name,
+        )
+    else:
+        logger.info("Found process '%s' with PID %d", name, chosen.pid)
+    return chosen
 
 
 # ---------------------------------------------------------------------------

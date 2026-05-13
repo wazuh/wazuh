@@ -60,6 +60,7 @@ SESSION_DELAY=0
 DRAIN_TIMEOUT=60
 CLEANUP_AFTER=false
 PAYLOAD_SIZE=0
+PAD_FIELD=""
 DROP_EVERY=0
 NO_END=false
 USE_DATABATCH=false
@@ -112,6 +113,9 @@ Benchmark mode:
       --manager-log PATH  Manager log path for log_parser.py (default: $MANAGER_LOG)
       --payload-size N    Pad each DataValue payload to >= N bytes (default: 0).
                           Used by large_payload / heavy_payload_burst scenarios.
+      --pad-field PATH    Dotted path of the payload field to inflate (e.g.
+                          file.path). Default: per --payload-kind. Required if
+                          the kind has no default and --payload-size > 0.
       --drop-every N      Skip every Nth DataValue to force ReqRet/missing
                           ranges (default: 0). Used by missing_seq.
       --no-end            Skip End message and EndAck wait; the manager
@@ -156,6 +160,7 @@ while [[ $# -gt 0 ]]; do
         --scenario)       SCENARIO="$2"; shift 2 ;;
         --manager-log)    MANAGER_LOG="$2"; shift 2 ;;
         --payload-size)   PAYLOAD_SIZE="$2"; shift 2 ;;
+        --pad-field)      PAD_FIELD="$2"; shift 2 ;;
         --drop-every)     DROP_EVERY="$2"; shift 2 ;;
         --no-end)         NO_END=true; shift ;;
         --use-databatch)  USE_DATABATCH=true; shift ;;
@@ -223,6 +228,7 @@ if [[ -n "$SCENARIO" ]]; then
     SC_KIND=$("$PYTHON"  -c "import json,sys; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('payload_kind',''))")
     SC_NAME=$("$PYTHON"  -c "import json,sys; d=json.load(open('$SCENARIO')); print(d.get('name',''))")
     SC_PSIZE=$("$PYTHON" -c "import json,sys; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('payload_size_bytes',''))")
+    SC_PFIELD=$("$PYTHON" -c "import json,sys; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('pad_field',''))")
     SC_DROP=$("$PYTHON"  -c "import json,sys; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('drop_every',''))")
     SC_NOEND=$("$PYTHON" -c "import json,sys; d=json.load(open('$SCENARIO')); v=d.get('load',{}).get('no_end'); print('true' if v is True else ('false' if v is False else ''))")
     SC_DBATCH=$("$PYTHON" -c "import json,sys; d=json.load(open('$SCENARIO')); v=d.get('load',{}).get('use_databatch'); print('true' if v is True else ('false' if v is False else ''))")
@@ -232,6 +238,7 @@ if [[ -n "$SCENARIO" ]]; then
     [[ -n "$SC_DUR" ]]    && DURATION="$SC_DUR"
     [[ -n "$SC_DELAY" ]]  && SESSION_DELAY="$SC_DELAY"
     [[ -n "$SC_PSIZE" ]]  && PAYLOAD_SIZE="$SC_PSIZE"
+    [[ -n "$SC_PFIELD" ]] && PAD_FIELD="$SC_PFIELD"
     [[ -n "$SC_DROP" ]]   && DROP_EVERY="$SC_DROP"
     [[ "$SC_NOEND" == "true" ]]   && NO_END=true
     [[ "$SC_DBATCH" == "true" ]]  && USE_DATABATCH=true
@@ -299,6 +306,7 @@ cat > "$RESULTS_DIR/params.json" <<PARAMS
     "process": "$PROCESS_NAME",
     "session_delay": $SESSION_DELAY,
     "payload_size": $PAYLOAD_SIZE,
+    "pad_field": "$PAD_FIELD",
     "drop_every": $DROP_EVERY,
     "no_end": $NO_END,
     "use_databatch": $USE_DATABATCH,
@@ -386,6 +394,7 @@ SENDER_ARGS=(
 [[ -n "$MODULE" ]]                 && SENDER_ARGS+=(--module "$MODULE")
 [[ -n "$INDEX"  ]]                 && SENDER_ARGS+=(--index  "$INDEX")
 [[ "$PAYLOAD_SIZE" != "0" ]]       && SENDER_ARGS+=(--payload-size "$PAYLOAD_SIZE")
+[[ -n "$PAD_FIELD" ]]              && SENDER_ARGS+=(--pad-field    "$PAD_FIELD")
 [[ "$DROP_EVERY"   != "0" ]]       && SENDER_ARGS+=(--drop-every   "$DROP_EVERY")
 [[ "$NO_END"        == "true" ]]   && SENDER_ARGS+=(--no-end)
 [[ "$USE_DATABATCH" == "true" ]]   && SENDER_ARGS+=(--use-databatch --batch-size "$BATCH_SIZE")
