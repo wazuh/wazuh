@@ -66,6 +66,12 @@ All notable changes to this project will be documented in this file.
 - Fixed agent automatic reload failing after receiving centralized configuration. ([#35169](https://github.com/wazuh/wazuh/issues/35169))
 - Fixed syscollector false positive package detection on macOS. ([#35248](https://github.com/wazuh/wazuh/issues/35248))
 
+### Packages
+
+#### Changed
+
+- Reduced `wazuh-agent` Debian package dependencies by removing `adduser`, `lsb-release`, and `debconf`, replacing them with POSIX-standard utilities from `passwd` (`useradd`, `groupadd`, `userdel`, `groupdel`) and `/etc/os-release` from `base-files`, both guaranteed present on any Debian-based system. ([#35880](https://github.com/wazuh/wazuh/issues/35880))
+
 ## [v4.14.6]
 
 ## [v4.14.5]
