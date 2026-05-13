@@ -217,6 +217,41 @@ repack() {
     rm -rf "${tmp}"
 }
 
+# Manager Linux legs ship binaries only for manager-exclusive deps. The
+# agent Linux leg owns the binaries for the agent dep set: agent's builder
+# image (centos:6 / wheezy-era) has glibc 2.12, manager's (centos:7) has
+# 2.17, and the merged S3 tree at libraries/linux/<arch>/<dep>.tar.gz keeps
+# one binary per dep. If manager-built binaries land there they import
+# memcpy@GLIBC_2.14 / secure_getenv@GLIBC_2.17, and the Wazuh agent package
+# build (which runs inside the older agent builder image) blows up at
+# codegen time — e.g. `flatc: /lib64/libc.so.6: version 'GLIBC_2.14' not
+# found`. Source zips are byte-identical across legs so we pack them on
+# every leg; downstream extract-order doesn't matter.
+AGENT_DEP_SET=""
+DEDUPE_AGAINST_AGENT=""
+if { [ "${SYSTEM}" = "deb" ] || [ "${SYSTEM}" = "rpm" ]; } && [ "${TARGET}" = "manager" ]; then
+    DEDUPE_AGAINST_AGENT="yes"
+    # EXTERNAL_RES baseline from src/Makefile is the agent dep set; the
+    # `+=` line below it adds manager-only deps and we skip it here.
+    AGENT_DEP_SET="$(awk '
+        /^EXTERNAL_RES[[:space:]]*:=/ {
+            sub(/.*:=[[:space:]]*/, "", $0)
+            gsub(/\$\(CPYTHON\)/, "cpython", $0)
+            print $0
+            exit
+        }
+    ' "${WAZUH_PATH}/src/Makefile")"
+    echo "[generate_external] manager Linux leg: deduping vs agent set"
+    echo "[generate_external] agent-owned deps: ${AGENT_DEP_SET}"
+fi
+
+is_agent_dep() {
+    case " ${AGENT_DEP_SET} " in
+        *" $1 "*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 bin_suffix="_${SYSTEM}_${ARCHITECTURE}.zip"
 for zip in "${OUTDIR}/external_artifacts/"*.zip; do
     [ -f "${zip}" ] || continue
@@ -228,6 +263,10 @@ for zip in "${OUTDIR}/external_artifacts/"*.zip; do
             ;;
         *"${bin_suffix}")
             dep="${base%${bin_suffix}}"
+            if [ "${DEDUPE_AGAINST_AGENT}" = "yes" ] && is_agent_dep "${dep}"; then
+                echo "[generate_external] skip ${dep} binary (agent leg owns it)"
+                continue
+            fi
             repack "${zip}" "${dep}" "${PLATFORM_DIR}"
             ;;
     esac

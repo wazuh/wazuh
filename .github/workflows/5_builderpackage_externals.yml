@@ -1,4 +1,4 @@
-run-name: External deps - ${{ inputs.target }} ${{ inputs.legs || 'all 5 legs' }} ${{ inputs.dependencies && format('- {0}', inputs.dependencies) || '- (no version overrides)' }}
+run-name: External deps - ${{ inputs.legs || 'all 5 legs' }} ${{ inputs.dependencies && format('- {0}', inputs.dependencies) || '- (no version overrides)' }}
 name: 5.X - Package - Build external dependencies
 
 # Rebuilds Wazuh's external dependencies across one or more (system, architecture)
@@ -15,7 +15,19 @@ name: 5.X - Package - Build external dependencies
 #   - 2 macOS native legs:  macos-intel64, macos-arm64
 #   - 1 Windows leg:        windows-i686 (MinGW cross-compile on a Linux
 #                                         runner, no Docker)
-# macOS and Windows are agent-only.
+# macOS and Windows are agent-only (no manager binaries exist for them).
+#
+# Each Linux leg always runs twice — once with the agent builder image and
+# once with the manager builder image. The agent image is the oldest common
+# denominator (centos:6 / wheezy era, glibc 2.12), so any binary produced
+# there runs everywhere we ship; the manager image (centos:7, glibc 2.17)
+# can build deps the agent image's older toolchain can't handle. For deps
+# in the agent+manager intersection (the full agent set: flatbuffers,
+# openssl, curl, ...) the agent-built `.tar.gz` lands in libraries/<os>/<arch>/;
+# the manager leg is told to skip those binaries (see packages/generate_external.sh,
+# DEDUPE_AGAINST_AGENT). For manager-exclusive deps (cpython, jemalloc,
+# simdjson, ...) the manager leg's binaries are what ship. Sources are
+# identical across legs.
 
 on:
   workflow_dispatch:
@@ -29,25 +41,14 @@ on:
         type: string
         required: false
         default: ""
-      target:
-        description: |
-          Build set: 'agent' (28 deps), 'manager' (47 deps, includes the
-          agent set), or 'both' to fan out across both targets in one run
-          (agent legs + manager Linux legs).
-        type: choice
-        options: [agent, manager, both]
-        default: manager
-        required: true
       legs:
         description: |
           Comma-separated list of <system>-<architecture> legs to run.
           Valid values: rpm-amd64, rpm-arm64, macos-intel64, macos-arm64,
           windows-i686.
-          Empty = run every supported leg for the chosen target(s). For
-          agent that's all 5 legs; for manager it's the 2 Linux rpm legs
-          (macOS and Windows are agent-only). When an explicit list
-          contains macOS or Windows legs and target=both, those legs are
-          dropped from the manager half automatically.
+          Empty = every supported leg. Each Linux leg fans out to both
+          agent and manager builder images automatically. macOS and
+          Windows are agent-only.
         type: string
         required: false
         default: ""
@@ -69,19 +70,15 @@ jobs:
         id: build
         run: |
           legs_input="${{ inputs.legs }}"
-          target="${{ inputs.target }}"
-          if [ "${target}" = "both" ]; then
-            targets="agent manager"
-          else
-            targets="${target}"
-          fi
 
+          # Always fan out to both agent and manager targets. Linux legs
+          # run twice (agent image, then manager image); macOS/Windows only
+          # have agent builder images so the manager pass is skipped for
+          # those systems inside the loop.
           json='{"include":['
           first=true
-          for tgt in ${targets}; do
+          for tgt in agent manager; do
             if [ -z "${legs_input}" ]; then
-              # Default = every supported leg for this target. macOS and
-              # Windows are agent-only.
               if [ "${tgt}" = "manager" ]; then
                 tgt_legs="rpm-amd64,rpm-arm64"
               else
@@ -100,9 +97,9 @@ jobs:
                 *) echo "::error::unsupported system '${system}' in leg '${leg}' (valid: rpm, macos, windows)"; exit 1 ;;
               esac
 
-              # macOS/Windows have no manager builder image. When target=both
-              # an explicit legs list might include them — drop those combos
-              # from the manager half rather than failing the run.
+              # macOS/Windows have no manager builder image. An explicit
+              # legs list might include them — silently drop those combos
+              # from the manager pass rather than failing the run.
               if [ "${tgt}" = "manager" ] && { [ "${system}" = "macos" ] || [ "${system}" = "windows" ]; }; then
                 continue
               fi
