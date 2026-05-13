@@ -2,7 +2,6 @@
 
 #include "agent_sync_protocol.hpp"
 #include "defs.h"
-
 #include "hashHelper.h"
 #include "metadata_provider.h"
 #include "stringHelper.h"

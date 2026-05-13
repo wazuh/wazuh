@@ -325,7 +325,6 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
         return RuleResult::Invalid;
     }
 
-
     auto resolved = TryFunc([&] { return m_fileSystemWrapper->canonical(m_ctx.rule); });
 
     if (!resolved)

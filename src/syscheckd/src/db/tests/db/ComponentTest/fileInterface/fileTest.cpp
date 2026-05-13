@@ -172,19 +172,19 @@ TEST_F(DBTestFixture, TestFimDBWithUTF8Path)
         "size":4925, "uid":"0", "owner":"utf8User", "version":1, "sync":0}]
     })"_json;
 
-EXPECT_NO_THROW(
-{
-    const auto fileUTF8 {std::make_unique<FileItem>(utf8_insert["data"].front())};
-    auto result = fim_db_file_update(fileUTF8->toFimEntry(), callback_data_added);
-    ASSERT_EQ(result, FIMDB_OK);
+    EXPECT_NO_THROW(
+    {
+        const auto fileUTF8 {std::make_unique<FileItem>(utf8_insert["data"].front())};
+        auto result = fim_db_file_update(fileUTF8->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
 
-    callback_context_t callback_data;
-    callback_data.callback = callBackTestFIMEntry;
-    callback_data.context = fileUTF8->toFimEntry();
+        callback_context_t callback_data;
+        callback_data.callback = callBackTestFIMEntry;
+        callback_data.context = fileUTF8->toFimEntry();
 
-    result = fim_db_get_path("/tmp/naïve.txt", callback_data, false);
-    ASSERT_EQ(result, FIMDB_OK);
-});
+        result = fim_db_get_path("/tmp/naïve.txt", callback_data, false);
+        ASSERT_EQ(result, FIMDB_OK);
+    });
 }
 
 TEST_F(DBTestFixture, TestFimDBGetCountFileEntry)

@@ -1,4 +1,3 @@
-
 #include "schemaValidator.hpp"
 #include "schemaResources.hpp"
 #include <sstream>

@@ -50,23 +50,23 @@ void transaction_callback(ReturnTypeCallback resultType, const cJSON* result_jso
         "uid":  "0",
         "owner":    "fakeUser"
     }])"_json;
-const cJSON* dbsync_event = NULL;
-cJSON* json_path = NULL;
-ASSERT_EQ(INSERTED, resultType);
-ASSERT_EQ(FIM_ADD, event_data->event->type);
+    const cJSON* dbsync_event = NULL;
+    cJSON* json_path = NULL;
+    ASSERT_EQ(INSERTED, resultType);
+    ASSERT_EQ(FIM_ADD, event_data->event->type);
 
-if (cJSON_IsArray(result_json))
-{
-    if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event != NULL)
+    if (cJSON_IsArray(result_json))
     {
-        dbsync_event = result_json;
-
-        if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path != NULL)
+        if (dbsync_event = cJSON_GetArrayItem(result_json, 0), dbsync_event != NULL)
         {
-            ASSERT_EQ(cJSON_GetStringValue(json_path), expectedValue.at("path"));
+            dbsync_event = result_json;
+
+            if (json_path = cJSON_GetObjectItem(dbsync_event, "path"), json_path != NULL)
+            {
+                ASSERT_EQ(cJSON_GetStringValue(json_path), expectedValue.at("path"));
+            }
         }
     }
-}
 }
 
 TEST_F(DBTestFixture, TestFimDBInit)
@@ -791,4 +791,3 @@ TEST_F(DBTestFixture, TestFimDBGetDocumentsToDemoteAllUnsynced)
         cJSON_Delete(docs);
     });
 }
-
