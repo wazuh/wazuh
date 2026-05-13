@@ -49,6 +49,7 @@ All notable changes to this project will be documented in this file.
 - Updated logcollector file-tailing initial read strategy for more consistent behavior across log rotation scenarios. ([#33382](https://github.com/wazuh/wazuh/issues/33382))
 - Updated Windows Event Channel log collection to emit native XML from `EvtRender()` without an XML declaration header. ([#34462](https://github.com/wazuh/wazuh/issues/34462))
 - Increased default limits for agent event throughput and inventory message sizes. ([#35330](https://github.com/wazuh/wazuh/issues/35330))
+- Reduced `wazuh-agent` Debian package dependencies, removed `adduser`, `lsb-release`, and `debconf`. ([#35880](https://github.com/wazuh/wazuh/issues/35880))
 
 #### Removed
 
@@ -65,12 +66,6 @@ All notable changes to this project will be documented in this file.
 - Fixed FIM inventory reporting file modification time as 1970-01-01. ([#35162](https://github.com/wazuh/wazuh/issues/35162))
 - Fixed agent automatic reload failing after receiving centralized configuration. ([#35169](https://github.com/wazuh/wazuh/issues/35169))
 - Fixed syscollector false positive package detection on macOS. ([#35248](https://github.com/wazuh/wazuh/issues/35248))
-
-### Packages
-
-#### Changed
-
-- Reduced `wazuh-agent` Debian package dependencies by removing `adduser`, `lsb-release`, and `debconf`, replacing them with POSIX-standard utilities from `passwd` (`useradd`, `groupadd`, `userdel`, `groupdel`) and `/etc/os-release` from `base-files`, both guaranteed present on any Debian-based system. ([#35880](https://github.com/wazuh/wazuh/issues/35880))
 
 ## [v4.14.6]
 
