@@ -14,7 +14,7 @@ on:
 
 jobs:
   deprecated:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Warning
         run: echo "This workflow is deprecated. Be careful, you have just run it from main."
