@@ -526,14 +526,18 @@ stage_precompiled() {
 }
 
 if { [ "${SYSTEM}" = "deb" ] || [ "${SYSTEM}" = "rpm" ]; }; then
-    # libbpf-bootstrap: IS_LINUX AND IS_AGENT — agent target only.
-    if [ "${BUILD_TARGET}" = "agent" ]; then
-        stage_precompiled libbpf-bootstrap libbpf-bootstrap/build/modern.bpf.o
-    fi
-    # libffi: NOT IS_AGENT — manager target only.
-    if [ "${BUILD_TARGET}" = "manager" ]; then
-        stage_precompiled libffi libffi/server/.libs/libffi.a
-    fi
+    # Stage on every Linux leg regardless of BUILD_TARGET, so the per-leg
+    # tarball is binary-complete for these deps. Otherwise a consumer that
+    # extracts manager-leg output (or merges several legs into one S3 tree)
+    # gets a source-only libbpf-bootstrap.tar.gz and a later agent build
+    # blows up in tools/cmake/FindBpfObject.cmake with
+    # `BPFOBJECT_CLANG_EXE-NOTFOUND` because the builder image has no
+    # BPF-capable clang. Same idea for libffi on agent legs.
+    # The CMakeLists.txt if(EXISTS ...) short-circuits decide whether the
+    # current leg actually consumes the staged binary, so staging unused
+    # binaries is harmless.
+    stage_precompiled libbpf-bootstrap libbpf-bootstrap/build/modern.bpf.o
+    stage_precompiled libffi libffi/server/.libs/libffi.a
 fi
 
 log "building externals via 'make build-external TARGET=${MAKE_TARGET}'"
