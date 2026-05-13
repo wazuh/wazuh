@@ -7,8 +7,8 @@ set -e
 case "$1" in
     configure)
 
-    OS=$(lsb_release -si)
-    VER=$(lsb_release -sr)
+    OS=$(. /etc/os-release && printf '%s\n' "$ID" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')
+    VER=$(. /etc/os-release && echo "${VERSION_ID}")
     DIR="/var/ossec"
     USER="wazuh"
     GROUP="wazuh"
@@ -30,10 +30,10 @@ case "$1" in
     fi
 
     if ! getent group ${GROUP} > /dev/null 2>&1; then
-        addgroup --system ${GROUP} > /dev/null 2>&1
+        groupadd --system ${GROUP} > /dev/null 2>&1
     fi
     if ! getent passwd ${USER} > /dev/null 2>&1; then
-        adduser --system --home ${DIR} --shell ${OSMYSHELL} --ingroup ${GROUP} ${USER} > /dev/null 2>&1
+        useradd --system --home-dir ${DIR} --shell ${OSMYSHELL} --gid ${GROUP} --no-create-home ${USER} > /dev/null 2>&1
     fi
 
     if [ -z "$2" ] || [ -f ${WAZUH_TMP_DIR}/create_conf ] ; then
@@ -150,18 +150,18 @@ case "$1" in
         find ${DIR}/ -group ossec -user root -exec chown root:wazuh {} \; > /dev/null 2>&1 || true
         if getent passwd ossec > /dev/null 2>&1; then
             find ${DIR}/ -group ossec -user ossec -exec chown wazuh:wazuh {} \; > /dev/null 2>&1 || true
-            deluser ossec > /dev/null 2>&1
+            userdel ossec > /dev/null 2>&1
         fi
         if getent passwd ossecm > /dev/null 2>&1; then
             find ${DIR}/ -group ossec -user ossecm -exec chown wazuh:wazuh {} \; > /dev/null 2>&1 || true
-            deluser ossecm > /dev/null 2>&1
+            userdel ossecm > /dev/null 2>&1
         fi
         if getent passwd ossecr > /dev/null 2>&1; then
             find ${DIR}/ -group ossec -user ossecr -exec chown wazuh:wazuh {} \; > /dev/null 2>&1 || true
-            deluser ossecr > /dev/null 2>&1
+            userdel ossecr > /dev/null 2>&1
         fi
         if getent group ossec > /dev/null 2>&1; then
-            delgroup ossec > /dev/null 2>&1
+            groupdel ossec > /dev/null 2>&1
         fi
     fi
 

@@ -49,6 +49,7 @@ All notable changes to this project will be documented in this file.
 - Updated logcollector file-tailing initial read strategy for more consistent behavior across log rotation scenarios. ([#33382](https://github.com/wazuh/wazuh/issues/33382))
 - Updated Windows Event Channel log collection to emit native XML from `EvtRender()` without an XML declaration header. ([#34462](https://github.com/wazuh/wazuh/issues/34462))
 - Increased default limits for agent event throughput and inventory message sizes. ([#35330](https://github.com/wazuh/wazuh/issues/35330))
+- Reduced `wazuh-agent` Debian package dependencies, removed `adduser`, `lsb-release`, and `debconf`. ([#35880](https://github.com/wazuh/wazuh/issues/35880))
 
 #### Removed
 
