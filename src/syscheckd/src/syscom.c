@@ -95,6 +95,9 @@ int fim_execute_is_pause_completed(void) {
 
     atomic_int_set(&syscheck.fim_pausing_is_allowed, 1);
     mdebug1("FIM pause acknowledged — scan mutexes acquired for coordination");
+    // Locks are intentionally held here: ownership is transferred to fim_execute_resume(),
+    // which releases fim_scan_mutex (and fim_realtime_mutex / fim_registry_scan_mutex on WIN32).
+    // coverity[missing_unlock]
     return 0;
 }
 

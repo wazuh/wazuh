@@ -75,6 +75,11 @@ namespace file_io
             }
         }
 
+        if (!spBuffer)
+        {
+            return std::vector<char> {};
+        }
+
         return std::vector<char> {spBuffer.get(), spBuffer.get() + static_cast<std::size_t>(size)};
     }
 }; // namespace file_io
