@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 - Improved agent name validation to reject names starting with dot. ([#4503](https://github.com/wazuh/internal-devel-requests/issues/4503))
 - Fixed segfault in vulnerability scanner module shutdown when disabled. ([#36011](https://github.com/wazuh/wazuh/pull/36011))
 - Fixed string buffer handling in version comparison function. ([#36059](https://github.com/wazuh/wazuh/pull/36059))
+- Improved cluster file synchronization security. ([#36060](https://github.com/wazuh/wazuh/pull/36060))
 
 
 ## [v4.14.5]
