@@ -403,17 +403,6 @@ DEPS_FOR_LEG="$(collect_deps_for_target "${BUILD_TARGET}")"
 log "deps for this leg: ${DEPS_FOR_LEG}"
 
 # Populate source directories via `make deps EXTERNAL_SRC_ONLY=yes`.
-#
-# The Makefile recipe for external/%.tar.gz is a file target: if the output
-# file already exists, make skips the recipe entirely (no download). We use
-# this to skip Linux-only deps on macOS/Windows by pre-creating sentinel
-# files before running make deps.
-#
-# pacman (libalpm) is filtered from the build by if(IS_LINUX) in
-# external/CMakeLists.txt but is not excluded from EXTERNAL_RES in the
-# Makefile on macOS/Windows, so its download would otherwise run and fail
-# (packages.wazuh.com/deps/.../pacman.tar.gz is unreachable from macOS
-# GitHub Actions runners).
 log "removing stale tar/tar.gz intermediates under src/external/"
 find "${EXTERNAL_DIR}" -maxdepth 1 \( -name '*.tar' -o -name '*.tar.gz' \) -type f -delete 2>/dev/null || true
 
@@ -421,14 +410,6 @@ log "pre-cleaning src/external/<dep>/ dirs for clean tar extract"
 for name in ${DEPS_FOR_LEG}; do
     rm -rf "${EXTERNAL_DIR:?}/${name}"
 done
-
-if [ "${SYSTEM}" != "deb" ] && [ "${SYSTEM}" != "rpm" ]; then
-    for sentinel_dep in pacman; do
-        log "creating sentinel for Linux-only dep '${sentinel_dep}' (skips download on ${SYSTEM})"
-        mkdir -p "${EXTERNAL_DIR}/${sentinel_dep}"
-        touch "${EXTERNAL_DIR}/${sentinel_dep}.tar.gz"
-    done
-fi
 
 log "running 'make deps' (EXTERNAL_SRC_ONLY=yes) to populate dep sources"
 make -C "${SRC_DIR}" EXTERNAL_SRC_ONLY=yes deps TARGET="${MAKE_TARGET}"

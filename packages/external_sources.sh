@@ -22,8 +22,7 @@
 #                    tarball_url if no assets are attached. Useful when asset
 #                    filenames don't follow guessable patterns (e.g.
 #                    pcre2 publishes pcre2-10.42.tar.gz under tag pcre2-10.42,
-#                    no patch suffix; msgpack-c publishes msgpack-X.Y.Z.tar.gz
-#                    under cpp-X.Y.Z tags).
+#                    no patch suffix).
 #   format         Archive format. One of: tar.gz, tar.bz2, tar.xz, zip.
 #   strip          Number passed to `tar --strip-components` when extracting
 #                  into src/external/<target_dir>/. Almost always 1 (the
@@ -90,13 +89,11 @@ _reg procps             "https://gitlab.com/procps-ng/procps/-/archive/v{version
 _reg sqlite             "https://www.sqlite.org/2026/sqlite-autoconf-{version_concat}.tar.gz"                                    tar.gz  1  sqlite             false  "https://github.com/sqlite/sqlite"
 _reg zlib               "https://github.com/madler/zlib/releases/download/v{version}/zlib-{version}.tar.gz"                       tar.gz  1  zlib               false  "https://github.com/madler/zlib"
 _reg audit-userspace    "https://github.com/linux-audit/audit-userspace/archive/refs/tags/v{version}.tar.gz"                      tar.gz  1  audit-userspace    false  "https://github.com/linux-audit/audit-userspace"
-_reg msgpack            "gh:msgpack/msgpack-c:cpp-{version}"                                                                      tar.gz  1  msgpack            false  "https://github.com/msgpack/msgpack-c"
 _reg bzip2              "https://github.com/libarchive/bzip2/archive/refs/tags/bzip2-{version}.tar.gz"                            tar.gz  1  bzip2              false  "https://github.com/libarchive/bzip2"
 _reg nlohmann           "https://github.com/nlohmann/json/archive/refs/tags/v{version}.tar.gz"                                    tar.gz  1  nlohmann           false  "https://github.com/nlohmann/json"
 _reg googletest         "https://github.com/google/googletest/archive/refs/tags/release-{version}.tar.gz"                         tar.gz  1  googletest         false  "https://github.com/google/googletest"
 _reg libpcre2           "gh:PCRE2Project/pcre2:pcre2-{version}"                                                                   tar.gz  1  libpcre2           false  "https://github.com/PCRE2Project/pcre2"
 _reg libplist           "https://github.com/libimobiledevice/libplist/archive/refs/tags/{version}.tar.gz"                         tar.gz  1  libplist           false  "https://github.com/libimobiledevice/libplist"
-_reg pacman             "https://gitlab.archlinux.org/pacman/pacman/-/archive/v{version}/pacman-v{version}.tar.gz"                tar.gz  1  pacman             false  "https://gitlab.archlinux.org/pacman/pacman"
 _reg libarchive         "https://github.com/libarchive/libarchive/releases/download/v{version}/libarchive-{version}.tar.gz"       tar.gz  1  libarchive         false  "https://github.com/libarchive/libarchive"
 _reg popt               "https://github.com/rpm-software-management/popt/archive/refs/tags/popt-{version}-release.tar.gz"         tar.gz  1  popt               false  "https://github.com/rpm-software-management/popt"
 # Note: popt versions older than ~1.18 (e.g. 1.16) predate this repo's tag
