@@ -433,6 +433,17 @@ fi
 log "running 'make deps' (EXTERNAL_SRC_ONLY=yes) to populate dep sources"
 make -C "${SRC_DIR}" EXTERNAL_SRC_ONLY=yes deps TARGET="${MAKE_TARGET}"
 
+# Some cached source tarballs at packages.wazuh.com (notably the openssl one)
+# were originally packed with bsdtar on macOS, so every file has a
+# `com.apple.provenance` xattr and the archive carries an AppleDouble `._<file>`
+# sibling for each. GNU tar on the Linux runners extracts those AppleDouble
+# files as regular files; without this step they flow through snapshot_src and
+# snapshot_built into every per-leg tarball (6149 `._*` entries in the openssl
+# leg output, confirmed by raw byte-walk of the cached tarball at
+# `packages.wazuh.com/deps/99-29585/libraries/sources/openssl.tar.gz`).
+log "stripping AppleDouble (._*) files from extracted source trees"
+find "${SRC_DIR}/external" -name '._*' -delete
+
 apply_updates
 
 # Pre-build source snapshots.
