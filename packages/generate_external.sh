@@ -233,6 +233,17 @@ for zip in "${OUTDIR}/external_artifacts/"*.zip; do
     esac
 done
 
+# Pass-through tarballs: already in upstream tar.gz form (e.g. precompiled
+# cpython blob), so just drop them into libraries/sources/ with the
+# .passthrough.tar.gz marker stripped. No unzip/retar dance needed.
+for tar in "${OUTDIR}/external_artifacts/"*.passthrough.tar.gz; do
+    [ -f "${tar}" ] || continue
+    base="$(basename "${tar}")"
+    dep="${base%.passthrough.tar.gz}"
+    cp "${tar}" "${SOURCES_DIR}/${dep}.tar.gz"
+    echo "[generate_external] pass-through ${dep}.tar.gz"
+done
+
 OUT_TARBALL="${OUTDIR}/externals-${SYSTEM}-${ARCHITECTURE}-${TARGET}.tar.gz"
 ( cd "${OUTDIR}" && "${TAR}" -czf "${OUT_TARBALL}" --owner=0 --group=0 --no-same-owner libraries )
 echo "[generate_external] packed: ${OUT_TARBALL}"

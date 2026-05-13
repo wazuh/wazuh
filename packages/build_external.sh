@@ -364,17 +364,26 @@ snapshot_built() {
 
 # Read EXTERNAL_RES out of src/Makefile so we don't duplicate the dep list here.
 # Returns (whitespace-separated) the deps that apply to this BUILD_TARGET.
+#
+# Substitutes the literal token `$(CPYTHON)` to `cpython` (defined at
+# src/Makefile:404 as `CPYTHON := cpython`). awk doesn't expand make
+# variables, so without this the manager dep list would carry an unresolved
+# `$(CPYTHON)` token that no downstream step matches.
 collect_deps_for_target() {
     local target="$1"
     awk -v target="${target}" '
+        function expand(s) {
+            gsub(/\$\(CPYTHON\)/, "cpython", s)
+            return s
+        }
         /^EXTERNAL_RES[[:space:]]*:=/ {
             sub(/.*:=[[:space:]]*/, "", $0)
-            base = $0
+            base = expand($0)
             getline_done = 0
         }
         target == "manager" && /EXTERNAL_RES[[:space:]]*\+=/ {
             sub(/.*\+=[[:space:]]*/, "", $0)
-            extra = $0
+            extra = expand($0)
         }
         END {
             print base " " extra
@@ -426,6 +435,33 @@ log "stripping AppleDouble (._*) files from extracted source trees"
 find "${SRC_DIR}/external" -name '._*' -delete
 
 apply_updates
+
+# cpython is a precompiled pass-through, not a from-source rebuild. The
+# `make deps` step above already pulled the per-arch precompiled blob
+# (cpython_x86_64.tar.gz or cpython_arm64.tar.gz) from
+# packages.wazuh.com/deps/<ver>/libraries/sources/ and dropped it at
+# src/external/cpython.tar.gz (file rename happens in the Makefile recipe;
+# the tarball's internal layout is still `cpython_<arch>/`). Stage that
+# file as a *.passthrough.tar.gz artifact so generate_external.sh ships it
+# verbatim as libraries/sources/cpython_<arch>.tar.gz — matching the S3
+# layout the downstream `make deps` consumes. Only manager legs ever
+# trigger this; the agent EXTERNAL_RES has no $(CPYTHON) entry.
+if [ "${BUILD_TARGET}" = "manager" ]; then
+    case "${ARCHITECTURE_TARGET}" in
+        amd64) cpython_arch="x86_64" ;;
+        arm64) cpython_arch="arm64" ;;
+        *)     cpython_arch="" ;;
+    esac
+    if [ -n "${cpython_arch}" ]; then
+        if [ -f "${EXTERNAL_DIR}/cpython.tar.gz" ]; then
+            cp "${EXTERNAL_DIR}/cpython.tar.gz" \
+                "${ARTIFACTS_DIR}/cpython_${cpython_arch}.passthrough.tar.gz"
+            log "staged cpython pass-through: cpython_${cpython_arch}.tar.gz"
+        else
+            err "cpython pass-through skipped: ${EXTERNAL_DIR}/cpython.tar.gz missing after make deps"
+        fi
+    fi
+fi
 
 # Pre-build source snapshots.
 for name in ${DEPS_FOR_LEG}; do
