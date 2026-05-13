@@ -529,6 +529,39 @@ if [ "${build_external_rc}" -ne 0 ]; then
     err "make build-external returned ${build_external_rc}; continuing to snapshot whatever built"
 fi
 
+# Pattern B deps: src/external/CMakeLists.txt has two arms — an "imported"
+# arm that consumes a precompiled .a in the source tree, and a fallback that
+# does `add_library(ext_<name> STATIC ${EXTERNAL_DIR}/<dir>/<source>.c)`. The
+# fallback emits libext_<name>.a into the cmake build tree, NOT into the
+# source tree where the precompiled-detection arm looks on the next run /
+# in a downstream consumer. snapshot_built() zips the source tree only, so
+# without this step the produced tarball is source-only and the downstream
+# Wazuh build re-compiles from source instead of consuming the precompiled
+# archive we just produced. Copy each build-tree output to the path the
+# detection arm reads from.
+#
+# Source for the (target, expected_path) pairs:
+#   src/external/CMakeLists.txt lines 1199 / 1217 / 1239 (detection)
+#                              lines 1206 / 1224 / 1247 (fallback)
+PATTERN_B_PAIRS=(
+    "ext_cjson:cJSON/libcjson.a"
+    "ext_sqlite:sqlite/libsqlite3.a"
+    "ext_procps:procps/libproc.a"
+)
+for pair in "${PATTERN_B_PAIRS[@]}"; do
+    target="${pair%%:*}"
+    dst_rel="${pair#*:}"
+    build_lib="${SRC_DIR}/build/external/lib${target}.a"
+    dst_path="${EXTERNAL_DIR}/${dst_rel}"
+    if [ -f "${build_lib}" ]; then
+        mkdir -p "$(dirname "${dst_path}")"
+        cp -f "${build_lib}" "${dst_path}"
+        log "restored pattern-B precompiled archive: ${dst_path} <- ${build_lib}"
+    else
+        log "pattern-B archive missing in build tree: ${build_lib} (build-external probably failed for this target)"
+    fi
+done
+
 # Post-build snapshots.
 for name in ${DEPS_FOR_LEG}; do
     if [ "${EXT_LINUX_ONLY[$name]:-false}" = "true" ] && \
