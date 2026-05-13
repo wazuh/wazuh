@@ -107,8 +107,10 @@ When `ignore_output` is `no`, the command module sends a JSON event with command
 
 ```json
 {
-  "event.module": "wazuh-wodle-cmd",
-  "event.start": "2026-05-11T12:00:00Z",
+  "event": {
+    "module": "wazuh-wodle-cmd",
+    "start": "2026-05-11T12:00:00Z"
+  },
   "tags": ["periodic-whoami"],
   "process": {
     "args": [],

@@ -149,7 +149,9 @@ void * wm_command_main(wm_command_t * command) {
     char *command_cpy;
     char *binary;
     char *full_path = NULL;
+#ifndef WIN32
     char **argv;
+#endif
     char * timestamp = NULL;
     bool verify_command = command->md5_hash || command->sha1_hash || command->sha256_hash;
 
@@ -163,13 +165,10 @@ void * wm_command_main(wm_command_t * command) {
         pthread_exit(0);
     }
 
+    if (verify_command) {
 #ifdef WIN32
-    if (verify_command) {
         SafeWow64DisableWow64FsRedirection(NULL);
-    }
 #endif
-
-    if (verify_command) {
         command_cpy = strdup(command->command);
 
 #ifdef WIN32
@@ -288,13 +287,27 @@ void * wm_command_main(wm_command_t * command) {
 
     } else {
         command->full_command = strdup(command->command);
-    }
-
 #ifdef WIN32
-    if (command->full_command) {
-        wm_command_reduce_win_backslashes(command->full_command);
-    }
+        {
+            char *p = command->full_command;
+            while (*p == ' ') p++;
+            bool in_q = (*p == '"');
+            if (in_q) p++;
+            char *start = p;
+            while (*p) {
+                if (in_q && *p == '"') { p++; break; }
+                if (!in_q && *p == ' ') break;
+                p++;
+            }
+            char saved = *p;
+            *p = '\0';
+            wm_command_reduce_win_backslashes(start);
+            size_t new_len = strlen(start);
+            *p = saved;
+            memmove(start + new_len, p, strlen(p) + 1);
+        }
 #endif
+    }
 
     mtinfo(WM_COMMAND_LOGTAG, "Module command:%s started", command->tag);
 
