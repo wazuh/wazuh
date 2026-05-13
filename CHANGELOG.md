@@ -19,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - Adapted Vulnerability Detector input pipeline to the new Wazuh 5.0 synchronization algorithm, covering first-scan, inventory-change, and feed-update scenarios. ([#30535](https://github.com/wazuh/wazuh/issues/30535))
 - Revamped Role-Based Access Control (RBAC) management and introduced an upgrade mechanism for existing RBAC configurations. ([#27706](https://github.com/wazuh/wazuh/issues/27706))
 - Removed legacy configuration surfaces, database schemas, build targets, and compatibility layers in the second server cleanup phase. ([#34608](https://github.com/wazuh/wazuh/issues/34608))
+- Reduced `wazuh-manager` Debian package dependencies, removed `adduser`, `lsb-release`, `debconf`, and `libc6`. ([#35881](https://github.com/wazuh/wazuh/issues/35881))
 
 #### Removed
 
