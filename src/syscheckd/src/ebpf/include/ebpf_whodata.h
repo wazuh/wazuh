@@ -27,13 +27,13 @@ extern "C" {
  * @param loggingFn Pointer to loggingFunction.
  * @param abspathFn Pointer to abspath.
  */
-void fimebpf_initialize(directory_t *(*fim_conf)(const char *, bool),
-                        char *(*getUser)(int),
-                        char *(*getGroup)(int),
-                        void (*fimWhodataEvent)(whodata_evt *),
-                        void (*freeWhodataEvent)(whodata_evt *),
-                        void (*loggingFn)(modules_log_level_t, const char *),
-                        char *(*abspathFn)(const char *, char *, size_t),
+void fimebpf_initialize(directory_t* (*fim_conf)(const char*, bool),
+                        char* (*getUser)(int),
+                        char* (*getGroup)(int),
+                        void (*fimWhodataEvent)(whodata_evt*),
+                        void (*freeWhodataEvent)(whodata_evt*),
+                        void (*loggingFn)(modules_log_level_t, const char*),
+                        char* (*abspathFn)(const char*, char*, size_t),
                         bool (*fimShutdownProcessOn)(),
                         unsigned int syscheckQueueSize);
 

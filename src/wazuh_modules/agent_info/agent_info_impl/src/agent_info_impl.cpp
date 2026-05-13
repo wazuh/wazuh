@@ -665,7 +665,7 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
                     if (!looksLikeHash)
                     {
                         // Single-group format: the first line is the actual group name
-                        groups.push_back(firstLineValue);
+                        groups.push_back(std::move(firstLineValue));
                         return false; // Stop reading, we have the single group
                     }
 
@@ -704,7 +704,7 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
 
                 if (!groupName.empty())
                 {
-                    groups.push_back(groupName);
+                    groups.push_back(std::move(groupName));
                 }
             }
         }
@@ -724,7 +724,7 @@ bool AgentInfoImpl::updateChanges(const std::string& table, const nlohmann::json
 {
     bool hasChanges = false;
 
-    const auto callback = [this, table, &hasChanges](ReturnTypeCallback result, const nlohmann::json & data)
+    const auto callback = [this, &table, &hasChanges](ReturnTypeCallback result, const nlohmann::json & data)
     {
         if (result == INSERTED || result == MODIFIED || result == DELETED)
         {
@@ -775,7 +775,7 @@ void AgentInfoImpl::processEvent(ReturnTypeCallback result, const nlohmann::json
 {
     try
     {
-        nlohmann::json eventData = result == MODIFIED && data.contains("new") ? data["new"] : data;
+        const auto& eventData = result == MODIFIED && data.contains("new") ? data["new"] : data;
         nlohmann::json ecsFormattedData = ecsData(eventData, table);
 
         // Remove checksum from ECS data before sending stateless event

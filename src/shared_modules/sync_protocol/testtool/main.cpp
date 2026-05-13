@@ -77,7 +77,7 @@ int main()
         };
 
         MQ_Functions mq{&mq_start_stub, &mq_send_binary_stub};
-        AgentSyncProtocol proto{"sync_protocol", ":memory:", mq, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(timeout), retries, maxEps, nullptr};
+        AgentSyncProtocol proto{"sync_protocol", ":memory:", mq, std::move(testLogger), std::chrono::seconds(syncEndDelay), std::chrono::seconds(timeout), retries, maxEps, nullptr};
         g_proto = &proto;
 
         proto.persistDifference("id1", Operation::CREATE, "idx1", "{\"k\":\"v1\"}", 1);

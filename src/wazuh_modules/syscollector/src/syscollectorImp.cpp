@@ -2068,11 +2068,11 @@ nlohmann::json Syscollector::addPreviousFields(nlohmann::json& current, const nl
                     {
                         std::string relativePath = currentPath.substr(dotPos + 1);
                         nlohmann::json::json_pointer pointer("/" + std::regex_replace(relativePath, std::regex("\\."), "/"));
-                        current[topLevelKey]["previous"][pointer] = value;
+                        current[std::move(topLevelKey)]["previous"][pointer] = value;
                     }
                     else
                     {
-                        current[topLevelKey]["previous"][key] = value;
+                        current[std::move(topLevelKey)]["previous"][key] = value;
                     }
                 }
             }
@@ -4806,7 +4806,7 @@ std::string Syscollector::buildOrderByClause(const std::string& fields, bool asc
 
         if (!field.empty())
         {
-            fieldList.push_back(field);
+            fieldList.push_back(std::move(field));
         }
 
         start = end + 1;
@@ -4820,7 +4820,7 @@ std::string Syscollector::buildOrderByClause(const std::string& fields, bool asc
 
     if (!lastField.empty())
     {
-        fieldList.push_back(lastField);
+        fieldList.push_back(std::move(lastField));
     }
 
     // Build ORDER BY with COLLATE NOCASE for case-insensitive ordering

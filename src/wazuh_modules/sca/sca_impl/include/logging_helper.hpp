@@ -26,7 +26,7 @@ class LoggingHelper
 
         static void setLogCallback(std::function<void(const modules_log_level_t level, const char* log)> callback)
         {
-            getInstance().m_externalLogCallback = callback;
+            getInstance().m_externalLogCallback = std::move(callback);
         }
 
         void log(const modules_log_level_t level, const std::string& message) const

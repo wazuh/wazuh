@@ -24,7 +24,8 @@ extern "C" {
 
             std::optional<std::string> dbPathOpt = db_path ? std::make_optional(std::string(db_path)) : std::nullopt;
 
-            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, dbPathOpt, *mq_funcs, logger_wrapper, std::chrono::seconds(syncEndDelay), std::chrono::seconds(timeout), retries,
+            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, std::move(dbPathOpt), *mq_funcs, std::move(logger_wrapper), std::chrono::seconds(syncEndDelay),
+                                                                                           std::chrono::seconds(timeout), retries,
                                                                                            maxEps));
         }
         catch (const std::exception& ex)
