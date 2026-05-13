@@ -437,15 +437,16 @@ find "${SRC_DIR}/external" -name '._*' -delete
 apply_updates
 
 # cpython is a precompiled pass-through, not a from-source rebuild. The
-# `make deps` step above already pulled the per-arch precompiled blob
-# (cpython_x86_64.tar.gz or cpython_arm64.tar.gz) from
-# packages.wazuh.com/deps/<ver>/libraries/sources/ and dropped it at
-# src/external/cpython.tar.gz (file rename happens in the Makefile recipe;
-# the tarball's internal layout is still `cpython_<arch>/`). Stage that
-# file as a *.passthrough.tar.gz artifact so generate_external.sh ships it
-# verbatim as libraries/sources/cpython_<arch>.tar.gz — matching the S3
-# layout the downstream `make deps` consumes. Only manager legs ever
-# trigger this; the agent EXTERNAL_RES has no $(CPYTHON) entry.
+# `make deps` step above already pulled the per-arch precompiled blob from
+# packages.wazuh.com/deps/<ver>/libraries/sources/cpython_<arch>.tar.gz —
+# but the Makefile recipe (src/Makefile:541-547) consumes the tarball
+# during extraction (curl, gunzip, tar -xf, rm cpython.tar), so by the
+# time we get here only the extracted directory remains. Re-fetch the
+# upstream tarball directly so we ship a byte-for-byte copy, matching the
+# S3 layout downstream `make deps` consumes. DEPS_VERSION is read from
+# src/Makefile to stay in sync with whatever the workflow built against.
+# Only manager legs trigger this; the agent EXTERNAL_RES has no
+# $(CPYTHON) entry.
 if [ "${BUILD_TARGET}" = "manager" ]; then
     case "${ARCHITECTURE_TARGET}" in
         amd64) cpython_arch="x86_64" ;;
@@ -453,12 +454,15 @@ if [ "${BUILD_TARGET}" = "manager" ]; then
         *)     cpython_arch="" ;;
     esac
     if [ -n "${cpython_arch}" ]; then
-        if [ -f "${EXTERNAL_DIR}/cpython.tar.gz" ]; then
-            cp "${EXTERNAL_DIR}/cpython.tar.gz" \
-                "${ARTIFACTS_DIR}/cpython_${cpython_arch}.passthrough.tar.gz"
-            log "staged cpython pass-through: cpython_${cpython_arch}.tar.gz"
+        deps_version="$(awk -F'[[:space:]=]+' '/^DEPS_VERSION/{print $2; exit}' "${SRC_DIR}/Makefile")"
+        cpython_url="https://packages.wazuh.com/deps/${deps_version}/libraries/sources/cpython_${cpython_arch}.tar.gz"
+        cpython_out="${ARTIFACTS_DIR}/cpython_${cpython_arch}.passthrough.tar.gz"
+        log "fetching cpython pass-through from ${cpython_url}"
+        if curl -fsSL "${cpython_url}" -o "${cpython_out}"; then
+            log "staged cpython pass-through: $(basename "${cpython_out}") ($(stat -c %s "${cpython_out}" 2>/dev/null || stat -f %z "${cpython_out}") bytes)"
         else
-            err "cpython pass-through skipped: ${EXTERNAL_DIR}/cpython.tar.gz missing after make deps"
+            err "cpython pass-through fetch failed from ${cpython_url}"
+            rm -f "${cpython_out}"
         fi
     fi
 fi
