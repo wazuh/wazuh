@@ -185,6 +185,14 @@ class RegistryRuleEvaluator : public RuleEvaluator
         GetValueFunc m_getValue = nullptr;
 };
 
+namespace sca::win
+{
+    /// @brief Expands Win32 environment variables (e.g. "%PROGRAMFILES%\\foo")
+    ///        in SCA rule inputs. Unknown %VAR% tokens are left literal.
+    ///        Returns the input unchanged on failure.
+    std::string ExpandEnvironmentVariables(const std::string& input);
+}
+
 class RuleEvaluatorFactory
 {
     public:
