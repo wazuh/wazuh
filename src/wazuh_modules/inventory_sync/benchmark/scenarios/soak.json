@@ -1,0 +1,20 @@
+{
+  "name": "soak",
+  "description": "Soak test 30-60 min to detect slow memory leaks.",
+  "load": {
+    "agents":       30,
+    "data_size":    200,
+    "duration_sec": 3600,
+    "rate":         0.5,
+    "session_delay": 0
+  },
+  "expectations": {
+    "rss_growth_mb_max":        150,
+    "drops_max":                0,
+    "session_success_rate_min": 99.0
+  },
+  "notes": [
+    "RSS final - RSS stable (at 5 min) > 150 MB suggests a leak.",
+    "Intended to run off-peak, not per-PR."
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "no_end",
+  "description": "Sends Start + DataValue without End, waits for the module timeout (20 min by default).",
+  "load": {
+    "agents":       50,
+    "data_size":    100,
+    "duration_sec": 1500,
+    "rate":         0,
+    "session_delay": 0,
+    "no_end":       true
+  },
+  "expectations": {
+    "rss_growth_mb_max": 200
+  },
+  "notes": [
+    "Expect 'Session N has timed out' logs to appear in logs.csv.",
+    "RSS should drop after timeouts when the RocksDB prefix is deleted."
+  ]
+}

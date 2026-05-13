@@ -1,0 +1,25 @@
+{
+  "name": "intra_session_race",
+  "description": "Triggers the intra-session race between handleEnd and handleData in the module's WorkersQueue. With small data_size and many concurrent agents, the End is dispatched by one worker before other workers finish observing all DataValues of the same session in GapSet → handleEnd sends ReqRet even though TCP delivered everything. This is NOT a queue drop; the DataValues are in RocksDB. It is a consequence of worker parallelism sharing m_workersQueue (std::thread::hardware_concurrency()).",
+  "load": {
+    "agents":        20,
+    "data_size":     30,
+    "duration_sec":  60,
+    "rate":          0,
+    "session_delay": 0,
+    "payload_kind":  "fim_file"
+  },
+  "expectations": {
+    "rss_growth_mb_max":  100,
+    "status_offline_max": 0
+  },
+  "notes": [
+    "Expected symptoms: reqret > 0, missing_ranges_total > 0, sessions_failed > 0.",
+    "indexer_error and inventory_sync_error stay at 0 (not an indexer problem).",
+    "Diagnostic hint: compare with scenarios/baseline.json (data_size=50, agents=10) — the race is reduced or disappears with longer sessions or less parallelism.",
+    "Plausible mitigations (NOT included, these are production changes):",
+    "  - Process messages from the same session on the same worker (sharding by sessionId).",
+    "  - Wait for the session to drain before evaluating handleEnd.",
+    "  - Reduce worker count for short sessions."
+  ]
+}

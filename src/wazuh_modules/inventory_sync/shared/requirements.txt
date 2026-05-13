@@ -1,0 +1,2 @@
+pycryptodome==3.19.0
+flatbuffers==23.5.26

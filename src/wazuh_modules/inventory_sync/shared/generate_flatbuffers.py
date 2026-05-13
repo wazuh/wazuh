@@ -18,7 +18,12 @@ def find_flatc_executable():
         "/usr/bin/flatc",
         "flatc"  # Try PATH
     ]
-    
+
+    # Also look in the wazuh source tree (built from external deps)
+    script_dir = Path(__file__).parent
+    src_root = script_dir.parent.parent.parent  # .../src
+    common_paths.insert(0, str(src_root / "external" / "flatbuffers" / "build" / "flatc"))
+
     for path in common_paths:
         try:
             result = subprocess.run([path, "--version"], 

@@ -5,6 +5,7 @@ Tests the inventory_sync module using the Wazuh agent protocol with FlatBuffers.
 """
 import json
 import os
+import sys
 import pytest
 import subprocess
 import time
@@ -15,8 +16,11 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 from jsonschema import validate, ValidationError
 
+# Resolve shared/ helpers (moved out of qa/ to share code with benchmark/).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "shared"))
+
 # Import the agent controller from the script provided
-from wazuh_agent_controller import WazuhAgent
+from agent_controller import WazuhAgent
 from flatbuffers_manager import create_message, parse_message, get_schema
 
 # Global OpenSearch URL

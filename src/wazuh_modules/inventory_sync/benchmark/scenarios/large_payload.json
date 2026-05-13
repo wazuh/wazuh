@@ -1,0 +1,19 @@
+{
+  "name": "large_payload",
+  "description": "Large payloads to validate the implicit m_bulkDataSize=10MB limit.",
+  "load": {
+    "agents":       30,
+    "data_size":    100,
+    "duration_sec": 120,
+    "rate":         0,
+    "session_delay": 0,
+    "payload_size_bytes": 65536
+  },
+  "expectations": {
+    "session_success_rate_min": 80.0
+  },
+  "notes": [
+    "Payload is inflated via load.payload_size_bytes ('_pad' field added to the DataValue JSON).",
+    "Expect end_ack_error if the indexer HTTP response returns 413."
+  ]
+}

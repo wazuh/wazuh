@@ -1,0 +1,22 @@
+{
+  "name": "heavy_payload_burst",
+  "description": "Few messages but huge. Each m_workersQueue element is a std::vector<char> ~1 MB; a moderate backlog weighs several GB. Validates that OOM risk doesn't require 'many' messages — heavy ones are enough.",
+  "load": {
+    "agents":       100,
+    "data_size":    50,
+    "duration_sec": 120,
+    "rate":         0,
+    "session_delay": 0,
+    "payload_kind": "fim_file",
+    "payload_size_bytes": 1048576
+  },
+  "expectations": {
+    "session_success_rate_min": 50.0
+  },
+  "notes": [
+    "Payload is inflated to 1 MB via load.payload_size_bytes ('_pad' field added to the DataValue JSON).",
+    "Hypothesis: 100 agents × 50 DataValue = 5000 messages/window. If the queue retains 5000 × 1 MB = 5 GB, RSS spikes even though throughput looks low.",
+    "Proxy: monitor_rss_mb.png + monitor_vms_mb.png — RSS peaks correlated with Start bursts, not with duration.",
+    "Expect end_ack_error if the indexer HTTP response returns 413 (inherited from the large_payload scenario)."
+  ]
+}

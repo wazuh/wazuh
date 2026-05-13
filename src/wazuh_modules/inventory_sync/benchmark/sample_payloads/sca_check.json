@@ -1,0 +1,40 @@
+{
+    "policy": {
+        "id":          "cis_ubuntu_22-04",
+        "name":        "CIS Ubuntu Linux 22.04 LTS Benchmark",
+        "file":        "cis_ubuntu22-04.yml",
+        "description": "CIS Ubuntu 22.04 benchmark",
+        "references":  "https://www.cisecurity.org/benchmark/ubuntu_linux"
+    },
+    "check": {
+        "id":            "10000",
+        "name":          "Ensure permissions on /etc/passwd are configured",
+        "description":   "The /etc/passwd file must have 0644 permissions and be owned by root",
+        "rationale":     "Loss of confidentiality if world-writable",
+        "remediation":   "chmod 0644 /etc/passwd && chown root:root /etc/passwd",
+        "condition":     "all",
+        "rules":         "f:/etc/passwd -> mode=0644;",
+        "result":        "passed",
+        "reason":        "All rules matched",
+        "references":    "CIS Benchmark",
+        "compliance": {
+            "pci_dss":      "2.2.4",
+            "cmmc":         "AC.L1-3.1.1",
+            "hipaa":        "164.312(a)(1)",
+            "nist_800_53":  "AC-3",
+            "nist_800_171": "3.1.1",
+            "gdpr":         "Article 32",
+            "iso_27001":    "A.9.4.1",
+            "tsc":          "CC6.1",
+            "fedramp":      "AC-3",
+            "nis2":         "Article 21"
+        },
+        "mitre": {
+            "tactic":       "Initial Access",
+            "technique":    "T1078",
+            "subtechnique": "T1078.001"
+        }
+    },
+    "checksum": {"hash": {"sha1": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4"}},
+    "state":    {"document_version": 1, "modified_at": "2024-01-15T10:30:00Z"}
+}
