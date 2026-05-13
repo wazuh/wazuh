@@ -527,7 +527,7 @@ stages:
               os:
                 type: "{expected_os_type:s}"
           failed_items: []
-          total_affected_items: 8
+          total_affected_items: 10
           total_failed_items: 0
 
   - name: Filter by agent OS major version
@@ -547,7 +547,7 @@ stages:
               os:
                 major: "{expected_os_major:s}"
           failed_items: []
-          total_affected_items: 8
+          total_affected_items: 4
           total_failed_items: 0
 
   - name: Filter by agent OS minor version
@@ -567,7 +567,7 @@ stages:
               os:
                 minor: "{expected_os_minor:s}"
           failed_items: []
-          total_affected_items: 8
+          total_affected_items: 10
           total_failed_items: 0
 
   - name: Filter by agent OS architecture
@@ -587,7 +587,7 @@ stages:
               os:
                 arch: "{expected_os_arch:s}"
           failed_items: []
-          total_affected_items: 8
+          total_affected_items: 10
           total_failed_items: 0
 
   - name: Try to show agents using a non existing OS Platform
