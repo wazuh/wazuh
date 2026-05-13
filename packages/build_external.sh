@@ -436,6 +436,18 @@ find "${SRC_DIR}/external" -name '._*' -delete
 
 apply_updates
 
+# sqlite's autoconf tarball ships a `VERSION` text file (just the version
+# string, e.g. "3.53.1"). src/external/CMakeLists.txt adds external/sqlite/
+# itself to the include path for sqlite3.h; on case-insensitive filesystems
+# (macOS APFS) libc++'s `#include <version>` (C++20 feature-test header,
+# transitively pulled in by <atomic>, <vector>, <string>, ...) resolves to
+# sqlite/VERSION instead of the standard header and the compile aborts with
+# "expected unqualified-id" on the version-string line. Strip it before
+# snapshotting so the per-leg tarball never ships it. Sources don't need
+# it at runtime — sqlite3.h carries SQLITE_VERSION as a #define.
+log "stripping case-collision files that shadow C++ standard headers"
+rm -f "${SRC_DIR}/external/sqlite/VERSION" "${SRC_DIR}/external/sqlite/version" 2>/dev/null || true
+
 # cpython is a precompiled pass-through, not a from-source rebuild. The
 # `make deps` step above already pulled the per-arch precompiled blob from
 # packages.wazuh.com/deps/<ver>/libraries/sources/cpython_<arch>.tar.gz —
