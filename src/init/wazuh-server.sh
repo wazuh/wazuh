@@ -285,7 +285,7 @@ get_wazuh_engine_pid()
 wait_for_wazuh_engine_ready()
 {
     local attempts=0
-    local max_attempts=240 # TODO Improve this value
+    local max_attempts=120
 
     ENGINE_PID=$(get_wazuh_engine_pid)
     if [ $? -ne 0 ]; then
@@ -294,7 +294,7 @@ wait_for_wazuh_engine_ready()
     fi
 
     while [ $attempts -lt $max_attempts ]; do
-        curl --silent --fail-with-body --unix-socket ${DIR}/queue/sockets/analysis \
+        curl --silent --fail --unix-socket ${DIR}/queue/sockets/analysis \
             -X POST -H "Content-Type: application/json" \
             -d '{}' \
             http://localhost/_internal/event-dumper/status \
