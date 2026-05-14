@@ -85,7 +85,7 @@ jobs:
       BUILD_WORKFLOW: 5_builderpackage_agent-macos.yml
       PACKAGES_PATH: /tmp/packages
       AGENT_PKG_REGEXP: wazuh-agent_.*arm64.*\.pkg
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3

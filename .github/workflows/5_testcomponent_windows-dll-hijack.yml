@@ -60,11 +60,7 @@ jobs:
           path: src/configuration_files
 
   check_dll_on_windows:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-2025, windows-2022]
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-2025
     needs: build
     steps:
       - uses: actions/checkout@v4
