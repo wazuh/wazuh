@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 
 ### Manager
 
+#### Changed
+
+- Masked `authd.pass` in configuration API responses for users without update permissions. ([#34128](https://github.com/wazuh/wazuh/pull/34128))
+
 #### Fixed
 
 - Fixed analysisd plugin decoder argument alignment. ([#35222](https://github.com/wazuh/wazuh/pull/35222))
@@ -15,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - Fixed protected settings checks when multiple `<ossec_config>` blocks are present. ([#34690](https://github.com/wazuh/wazuh/pull/34690))
 - Restricted cluster file transfer write paths. ([#34659](https://github.com/wazuh/wazuh/pull/34659))
 - Improved cluster file synchronization path handling by adding safe path joins. ([#35008](https://github.com/wazuh/wazuh/pull/35008))
+- Fixed Vulnerability Detector offset DB update to occur only after processing (backport from 4.12.0). ([#31901](https://github.com/wazuh/wazuh/pull/31901))
 
 ### Agent
 
@@ -35,6 +40,7 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - Updated curl dependency to 8.12.1. ([#34687](https://github.com/wazuh/wazuh/pull/34687))
+- Updated `starlette` dependency to 0.49.1. ([#33383](https://github.com/wazuh/wazuh/pull/33383))
 - Upgraded Python embedded interpreter to 3.10.19. ([#32790](https://github.com/wazuh/wazuh/pull/32790))
 
 
