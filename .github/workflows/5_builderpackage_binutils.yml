@@ -421,11 +421,25 @@ jobs:
           grep -nE 'Using precompiled' "${log}" || echo "  (none found — unexpected for a precompiled-deps build)"
           echo
           echo "## Dependencies COMPILED from source"
-          # ExternalProject_Add emits "Performing build step for '<dep>_external'"
-          # only when the precompiled short-circuit did NOT fire. For a build
-          # against a complete consolidated tree this should be empty (or just
-          # the deps that are always built from source, e.g. googletest).
-          if grep -nE "Performing build step for '[^']+_external'" "${log}"; then
+          # A dependency that wasn't consumed precompiled shows up two ways in
+          # src/external/CMakeLists.txt, so check both:
+          #  - ExternalProject deps (rocksdb, lzma, flatbuffers, openssl, ...):
+          #    a real run emits "Creating directories for '<dep>_external'" and
+          #    "Performing build step for '<dep>_external'". The precompiled
+          #    short-circuit instead defines a no-op add_custom_target — no
+          #    such lines.
+          #  - "pattern B" deps (cJSON, sqlite, procps): the fallback is
+          #    add_library(ext_<dep> STATIC <dep>.c), which compiles into
+          #    ext_<dep>.dir/. (wazuhext is Wazuh's own aggregation lib, not a
+          #    dep — its target is `wazuhext`, never `ext_<name>`, so the
+          #    \bext_ word boundary below does not match it.)
+          # For a build against a complete consolidated tree both should be
+          # empty.
+          ep="$(grep -nE "(Performing build step for|Creating directories for) '[^']+_external'" "${log}" || true)"
+          pb="$(grep -nE 'Building (C|CXX) object .*\bext_[a-z0-9_]+\.dir/' "${log}" || true)"
+          if [ -n "${ep}${pb}" ]; then
+            [ -n "${ep}" ] && printf '%s\n' "${ep}"
+            [ -n "${pb}" ] && printf '%s\n' "${pb}"
             echo "::warning::one or more external dependencies were recompiled from source — check whether their precompiled archive was packed at the path src/external/CMakeLists.txt expects"
           else
             echo "  (none — every external dependency was consumed precompiled)"
