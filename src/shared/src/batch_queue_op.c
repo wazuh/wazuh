@@ -106,7 +106,7 @@ size_t batch_queue_ring_size(const w_rr_queue_t *sched) {
     if (!sched) return 0;
     pthread_mutex_lock((pthread_mutex_t *)&sched->ring_mu);
     size_t n = sched->ring_slots;
-    pthread_mutex_unlock((pthread_mutex_t *)&sched->ring_mu);
+    w_mutex_unlock((pthread_mutex_t *)&sched->ring_mu);
     return n;
 }
 
@@ -128,7 +128,7 @@ static size_t steal_chain(w_linked_queue_t *q, w_linked_queue_node_t **out_first
     size_t cnt = q->elements;
     q->first = q->last = NULL;
     q->elements = 0;
-    pthread_mutex_unlock(&q->mutex);
+    w_mutex_unlock(&q->mutex);
     *out_first = first;
     return cnt;
 }
@@ -237,7 +237,7 @@ void batch_queue_set_dispose(w_rr_queue_t *sched, void (*dispose)(void *)) {
     if (!sched) return;
     pthread_mutex_lock(&sched->ring_mu);
     sched->dispose = dispose;
-    pthread_mutex_unlock(&sched->ring_mu);
+    w_mutex_unlock(&sched->ring_mu);
 }
 
 /**
@@ -247,7 +247,7 @@ void batch_queue_set_agent_max(w_rr_queue_t *sched, size_t max_items_per_agent) 
     if (!sched) return;
     pthread_mutex_lock(&sched->ring_mu);
     sched->max_items_per_agent = max_items_per_agent;
-    pthread_mutex_unlock(&sched->ring_mu);
+    w_mutex_unlock(&sched->ring_mu);
 }
 
 // ======================= Enqueue (multi-producer) =======================
@@ -289,13 +289,13 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
     } else {
         slot = make_slot(agent_key);
         if (!slot) {
-            pthread_mutex_unlock(&sched->ring_mu);
+            w_mutex_unlock(&sched->ring_mu);
             atomic_fetch_sub_explicit(&sched->items_global, 1, memory_order_relaxed);
             if (sched->dispose) sched->dispose(data);
             return -ENOMEM;
         }
         if (hm_put(&sched->agent_index, agent_key, slot) != 0) {
-            pthread_mutex_unlock(&sched->ring_mu);
+            w_mutex_unlock(&sched->ring_mu);
             free_slot(sched, slot, /*adjust_global=*/0);
             atomic_fetch_sub_explicit(&sched->items_global, 1, memory_order_relaxed);
             if (sched->dispose) sched->dispose(data);
@@ -310,7 +310,7 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
     const size_t max_per_agent = sched->max_items_per_agent;
 
     // 3) Release ring_mu to reduce global contention
-    pthread_mutex_unlock(&sched->ring_mu);
+    w_mutex_unlock(&sched->ring_mu);
 
     // 4) Enqueue into the agent queue
     int reject = 0;
@@ -322,7 +322,7 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
         w_linked_queue_node_t *n;
         os_malloc(sizeof(*n), n);
         if (!n) {
-            pthread_mutex_unlock(&slot->q->mutex);
+            w_mutex_unlock(&slot->q->mutex);
             atomic_fetch_sub_explicit(&sched->items_global, 1, memory_order_relaxed);
             if (sched->dispose) sched->dispose(data);
             return -ENOMEM;
@@ -341,7 +341,7 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
         slot->q->elements++;
     }
 
-    pthread_mutex_unlock(&slot->q->mutex);
+    w_mutex_unlock(&slot->q->mutex);
 
     if (reject) {
         atomic_fetch_sub_explicit(&sched->items_global, 1, memory_order_relaxed);
@@ -360,7 +360,7 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
                 pthread_cond_signal(&sched->any_available);
             }
         }
-        pthread_mutex_unlock(&sched->ring_mu);
+        w_mutex_unlock(&sched->ring_mu);
     }
 
     return 0;
@@ -387,8 +387,8 @@ size_t batch_queue_drain_next_ex(w_rr_queue_t *sched,
     while (!sched->cursor) {
         if (abstime) {
             int r = pthread_cond_timedwait(&sched->any_available, &sched->ring_mu, abstime);
-            if (r == ETIMEDOUT) { pthread_mutex_unlock(&sched->ring_mu); return 0; }
-            if (r != 0)        { pthread_mutex_unlock(&sched->ring_mu); return 0; }
+            if (r == ETIMEDOUT) { w_mutex_unlock(&sched->ring_mu); return 0; }
+            if (r != 0)        { w_mutex_unlock(&sched->ring_mu); return 0; }
         } else {
             pthread_cond_wait(&sched->any_available, &sched->ring_mu);
         }
@@ -407,14 +407,14 @@ size_t batch_queue_drain_next_ex(w_rr_queue_t *sched,
 
     // Queue handover: lock per-queue BEFORE releasing ring_mu (lock order respected)
     pthread_mutex_lock(&slot->q->mutex);
-    pthread_mutex_unlock(&sched->ring_mu);
+    w_mutex_unlock(&sched->ring_mu);
 
     // Snapshot-detach the whole queue in O(1)
     w_linked_queue_node_t *head = slot->q->first;
     slot->q->first = NULL;
     slot->q->last  = NULL;
     slot->q->elements = 0;
-    pthread_mutex_unlock(&slot->q->mutex);
+    w_mutex_unlock(&slot->q->mutex);
 
     // Process detached chain without any locks
     size_t drained = 0;
@@ -446,7 +446,7 @@ int batch_queue_empty(const w_rr_queue_t *sched) {
     if (!sched) return 1;
     pthread_mutex_lock((pthread_mutex_t *)&sched->ring_mu);
     int empty = (sched->cursor == NULL);
-    pthread_mutex_unlock((pthread_mutex_t *)&sched->ring_mu);
+    w_mutex_unlock((pthread_mutex_t *)&sched->ring_mu);
     return empty;
 }
 
@@ -466,14 +466,14 @@ size_t batch_queue_agent_size(w_rr_queue_t *sched, const char *agent_key) {
     pthread_mutex_lock(&sched->ring_mu);
     void *val = NULL;
     if (!hm_get(&sched->agent_index, agent_key, &val)) {
-        pthread_mutex_unlock(&sched->ring_mu);
+        w_mutex_unlock(&sched->ring_mu);
         return 0;
     }
     w_rr_agent_slot_t *slot = (w_rr_agent_slot_t*)val;
     pthread_mutex_lock(&slot->q->mutex);
     size_t n = slot->q->elements;
-    pthread_mutex_unlock(&slot->q->mutex);
-    pthread_mutex_unlock(&sched->ring_mu);
+    w_mutex_unlock(&slot->q->mutex);
+    w_mutex_unlock(&sched->ring_mu);
     return n;
 }
 
@@ -504,7 +504,7 @@ int batch_queue_drop_agent(w_rr_queue_t *sched, const char *agent_key) {
 
     void *val = NULL;
     if (!hm_get(&sched->agent_index, agent_key, &val)) {
-        pthread_mutex_unlock(&sched->ring_mu);
+        w_mutex_unlock(&sched->ring_mu);
         return 0;
     }
     w_rr_agent_slot_t *slot = (w_rr_agent_slot_t*)val;
@@ -513,7 +513,7 @@ int batch_queue_drop_agent(w_rr_queue_t *sched, const char *agent_key) {
         w_rr_agent_slot_t *prev = ring_find_prev(sched, slot);
         if (!prev) {
             // Should exist; for robustness, do not remove if not found
-            pthread_mutex_unlock(&sched->ring_mu);
+            w_mutex_unlock(&sched->ring_mu);
             return 0;
         }
         ring_remove_node(sched, slot, prev);
@@ -524,9 +524,9 @@ int batch_queue_drop_agent(w_rr_queue_t *sched, const char *agent_key) {
 
     // Lock the queue to safely free
     pthread_mutex_lock(&slot->q->mutex);
-    pthread_mutex_unlock(&slot->q->mutex);
+    w_mutex_unlock(&slot->q->mutex);
 
-    pthread_mutex_unlock(&sched->ring_mu);
+    w_mutex_unlock(&sched->ring_mu); 
 
     // Outside the monitor: free and adjust global counter
     free_slot(sched, slot, /*adjust_global=*/1);
