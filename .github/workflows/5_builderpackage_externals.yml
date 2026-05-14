@@ -245,8 +245,14 @@ jobs:
 
           # True when a packed <dep>.tar.gz actually carries compiled output
           # (a static or shared library) rather than just a source snapshot.
+          # `tar` is read fully into a variable first rather than piped into
+          # `grep -q`: under `set -o pipefail`, grep -q closing the pipe early
+          # makes tar exit on SIGPIPE and the whole pipeline reports failure,
+          # so the piped form returns false even when the artifact IS present.
           has_compiled_artifact() {
-            tar -tzf "$1" 2>/dev/null | grep -qE '\.(a|so|lib)([.0-9]+)?$'
+            local listing
+            listing="$(tar -tzf "$1" 2>/dev/null)" || return 1
+            grep -qE '\.(a|so|lib)([.0-9]+)?$' <<<"${listing}"
           }
 
           # Should an incoming <dep>.tar.gz replace what's already placed?
