@@ -161,10 +161,17 @@ add_dependencies(ext_zlib zlib_external)
 target_include_directories(ext_zlib INTERFACE ${EXTERNAL_DIR}/zlib)
 
 # ------------------------------------------------------------------------------
-# minizip (depends on zlib, server only)
+# minizip (depends on zlib)
 # ------------------------------------------------------------------------------
 
-if(NOT IS_AGENT AND NOT IS_WINDOWS)
+# The agent never links minizip — only the server does (engine,
+# content_manager). It is still built for the agent target because
+# libminizip.a lives inside the zlib tree (zlib/contrib/minizip/) and the
+# precompiled zlib dependency published on packages.wazuh.com already
+# includes it. Building it here too keeps the agent's external tree aligned
+# with that shared zlib tarball instead of diverging from it. Windows
+# genuinely never needs it.
+if(NOT IS_WINDOWS)
   if(EXISTS ${EXTERNAL_DIR}/zlib/contrib/minizip/libminizip.a)
     message(STATUS "Using precompiled minizip library")
     add_custom_target(minizip_external)
