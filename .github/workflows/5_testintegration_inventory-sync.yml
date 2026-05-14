@@ -20,8 +20,6 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: inventory-sync-integration-tests
     runs-on: ubuntu-24.04
-    env:
-      INSTALLATION_DIR: /var/wazuh-manager
 
     # Service containers to run alongside the job
     services:
@@ -77,9 +75,9 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_INSTALL_TYPE="manager"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo "USER_DIR=$INSTALLATION_DIR" >> ./etc/preloaded-vars.conf
+          echo 'USER_DIR="/var/wazuh-manager"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_AUTHD="n"' >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_AUTHD="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_AUTO_START="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
@@ -157,7 +155,7 @@ jobs:
       - name: Run inventory sync integration tests
         working-directory: src/wazuh_modules/inventory_sync/qa
         env:
-          TEST_MANAGER: ${{ github.event.inputs.test_manager || '127.0.0.1' }}
+          TEST_MANAGER: '127.0.0.1'
         run: |
           echo "[>] Running inventory sync integration tests..."
           source venv/bin/activate
