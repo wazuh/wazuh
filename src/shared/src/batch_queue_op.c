@@ -104,7 +104,7 @@ static inline void ring_remove_node(w_rr_queue_t *sched, w_rr_agent_slot_t *node
  */
 size_t batch_queue_ring_size(const w_rr_queue_t *sched) {
     if (!sched) return 0;
-    pthread_mutex_lock((pthread_mutex_t *)&sched->ring_mu);
+    w_mutex_lock((pthread_mutex_t *)&sched->ring_mu);
     size_t n = sched->ring_slots;
     w_mutex_unlock((pthread_mutex_t *)&sched->ring_mu);
     return n;
@@ -123,7 +123,7 @@ size_t batch_queue_ring_size(const w_rr_queue_t *sched) {
  */
 static size_t steal_chain(w_linked_queue_t *q, w_linked_queue_node_t **out_first) {
     if (!q || !out_first) return 0;
-    pthread_mutex_lock(&q->mutex);
+    w_mutex_lock(&q->mutex);
     w_linked_queue_node_t *first = q->first;
     size_t cnt = q->elements;
     q->first = q->last = NULL;
@@ -195,8 +195,8 @@ w_rr_queue_t *batch_queue_init(size_t max_items_global) {
     // Embedded hashmap: initialize with a bootstrap capacity
     if (hm_init(&q->agent_index, 64) != 0) { free(q); return NULL; }
 
-    pthread_mutex_init(&q->ring_mu, NULL);
-    pthread_cond_init(&q->any_available, NULL);
+    w_mutex_init(&q->ring_mu, NULL);
+    w_cond_init(&q->any_available, NULL);
 
     q->max_items_global = max_items_global;
     q->max_items_per_agent = 0;
@@ -225,8 +225,8 @@ void batch_queue_free(w_rr_queue_t *sched) {
     }
 
     hm_destroy(&sched->agent_index);
-    pthread_cond_destroy(&sched->any_available);
-    pthread_mutex_destroy(&sched->ring_mu);
+    w_cond_destroy(&sched->any_available);
+    w_mutex_destroy(&sched->ring_mu);
     os_free(sched);
 }
 
@@ -235,7 +235,7 @@ void batch_queue_free(w_rr_queue_t *sched) {
  */
 void batch_queue_set_dispose(w_rr_queue_t *sched, void (*dispose)(void *)) {
     if (!sched) return;
-    pthread_mutex_lock(&sched->ring_mu);
+    w_mutex_lock(&sched->ring_mu);
     sched->dispose = dispose;
     w_mutex_unlock(&sched->ring_mu);
 }
@@ -245,7 +245,7 @@ void batch_queue_set_dispose(w_rr_queue_t *sched, void (*dispose)(void *)) {
  */
 void batch_queue_set_agent_max(w_rr_queue_t *sched, size_t max_items_per_agent) {
     if (!sched) return;
-    pthread_mutex_lock(&sched->ring_mu);
+    w_mutex_lock(&sched->ring_mu);
     sched->max_items_per_agent = max_items_per_agent;
     w_mutex_unlock(&sched->ring_mu);
 }
@@ -279,7 +279,7 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
         return -ENOSPC;
     }
 
-    pthread_mutex_lock(&sched->ring_mu);
+    w_mutex_lock(&sched->ring_mu);
 
     // 1) Lookup/create slot in the HASHMAP (protected by ring_mu)
     void *val = NULL;
@@ -304,7 +304,7 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
     }
 
     // 2) Take the queue lock **before releasing ring_mu** (safe handover)
-    pthread_mutex_lock(&slot->q->mutex);
+    w_mutex_lock(&slot->q->mutex);
     // Read max_items_per_agent under ring_mu before releasing it, to avoid a data
     // race with batch_queue_set_agent_max(), which writes it under ring_mu.
     const size_t max_per_agent = sched->max_items_per_agent;
@@ -351,13 +351,13 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
 
     // 5) If queue transitioned empty->non-empty, (re)insert into the ring and signal availability
     if (need_ring_append) {
-        pthread_mutex_lock(&sched->ring_mu);
+        w_mutex_lock(&sched->ring_mu);
         void *val2 = NULL;
         if (hm_get(&sched->agent_index, agent_key, &val2) && (w_rr_agent_slot_t *)val2 == slot) {
             w_rr_agent_slot_t *current_slot = (w_rr_agent_slot_t *)val2;
             if (!current_slot->in_ring) {
                 ring_append(sched, current_slot);
-                pthread_cond_signal(&sched->any_available);
+                w_cond_signal(&sched->any_available);
             }
         }
         w_mutex_unlock(&sched->ring_mu);
@@ -381,7 +381,7 @@ size_t batch_queue_drain_next_ex(w_rr_queue_t *sched,
                                  const char **out_agent_key) {
     if (!sched || !consume) return 0;
 
-    pthread_mutex_lock(&sched->ring_mu);
+    w_mutex_lock(&sched->ring_mu);
 
     // Wait until there is at least one active slot in the ring
     while (!sched->cursor) {
@@ -390,7 +390,7 @@ size_t batch_queue_drain_next_ex(w_rr_queue_t *sched,
             if (r == ETIMEDOUT) { w_mutex_unlock(&sched->ring_mu); return 0; }
             if (r != 0)        { w_mutex_unlock(&sched->ring_mu); return 0; }
         } else {
-            pthread_cond_wait(&sched->any_available, &sched->ring_mu);
+            w_cond_wait(&sched->any_available, &sched->ring_mu);
         }
     }
 
@@ -406,7 +406,7 @@ size_t batch_queue_drain_next_ex(w_rr_queue_t *sched,
     if (out_agent_key) *out_agent_key = slot->key;
 
     // Queue handover: lock per-queue BEFORE releasing ring_mu (lock order respected)
-    pthread_mutex_lock(&slot->q->mutex);
+    w_mutex_lock(&slot->q->mutex);
     w_mutex_unlock(&sched->ring_mu);
 
     // Snapshot-detach the whole queue in O(1)
@@ -444,7 +444,7 @@ size_t batch_queue_drain_next_ex(w_rr_queue_t *sched,
  */
 int batch_queue_empty(const w_rr_queue_t *sched) {
     if (!sched) return 1;
-    pthread_mutex_lock((pthread_mutex_t *)&sched->ring_mu);
+    w_mutex_lock((pthread_mutex_t *)&sched->ring_mu);
     int empty = (sched->cursor == NULL);
     w_mutex_unlock((pthread_mutex_t *)&sched->ring_mu);
     return empty;
@@ -463,14 +463,14 @@ size_t batch_queue_size(const w_rr_queue_t *sched) {
  */
 size_t batch_queue_agent_size(w_rr_queue_t *sched, const char *agent_key) {
     if (!sched || !agent_key) return 0;
-    pthread_mutex_lock(&sched->ring_mu);
+    w_mutex_lock(&sched->ring_mu);
     void *val = NULL;
     if (!hm_get(&sched->agent_index, agent_key, &val)) {
         w_mutex_unlock(&sched->ring_mu);
         return 0;
     }
     w_rr_agent_slot_t *slot = (w_rr_agent_slot_t*)val;
-    pthread_mutex_lock(&slot->q->mutex);
+    w_mutex_lock(&slot->q->mutex);
     size_t n = slot->q->elements;
     w_mutex_unlock(&slot->q->mutex);
     w_mutex_unlock(&sched->ring_mu);
@@ -500,7 +500,7 @@ static w_rr_agent_slot_t *ring_find_prev(w_rr_queue_t *sched, w_rr_agent_slot_t 
 int batch_queue_drop_agent(w_rr_queue_t *sched, const char *agent_key) {
     if (!sched || !agent_key) return 0;
 
-    pthread_mutex_lock(&sched->ring_mu);
+    w_mutex_lock(&sched->ring_mu);
 
     void *val = NULL;
     if (!hm_get(&sched->agent_index, agent_key, &val)) {
@@ -523,7 +523,7 @@ int batch_queue_drop_agent(w_rr_queue_t *sched, const char *agent_key) {
     (void)hm_del(&sched->agent_index, agent_key);
 
     // Lock the queue to safely free
-    pthread_mutex_lock(&slot->q->mutex);
+    w_mutex_lock(&slot->q->mutex);
     w_mutex_unlock(&slot->q->mutex);
 
     w_mutex_unlock(&sched->ring_mu); 
