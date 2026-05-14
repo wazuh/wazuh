@@ -1,0 +1,1520 @@
+{
+  "took": 0,
+  "timed_out": false,
+  "_shards": {
+    "total": 1,
+    "successful": 1,
+    "skipped": 0,
+    "failed": 0
+  },
+  "hits": {
+    "total": {
+      "value": 207,
+      "relation": "eq"
+    },
+    "max_score": 1,
+    "hits": [
+      {
+        "_index": "wazuh-states-sca",
+        "_id": "wazuh_002_64a23848f2fa34420e605c082618663ab8bd4b0e",
+        "_score": 1,
+        "_source": {
+          "wazuh": {
+            "agent": {
+              "groups": [
+                "default"
+              ],
+              "host": {
+                "architecture": "x86_64",
+                "hostname": "wazuh-agent-5x-ubuntu",
+                "os": {
+                  "name": "Ubuntu",
+                  "platform": "ubuntu",
+                  "type": "linux",
+                  "version": "22.04.5 LTS (Jammy Jellyfish)"
+                }
+              },
+              "id": "002",
+              "name": "wazuh-agent-5x-ubuntu",
+              "version": "v5.0.0"
+            },
+            "cluster": {
+              "name": "wazuh"
+            }
+          },
+          "check": {
+            "compliance": {
+              "cmmc": [
+                "CM.L2-3.4.7",
+                "CM.L2-3.4.8",
+                "SC.L2-3.13.6"
+              ],
+              "fedramp": [
+                "CM-2",
+                "CM-3",
+                "CM-6",
+                "CM-7"
+              ],
+              "gdpr": [
+                "IV_32.1.a",
+                "IV_32.1.b",
+                "IV_32.1.c",
+                "IV_32.1.d",
+                "IV_32.2",
+                "IV_32.3",
+                "IV_32.4"
+              ],
+              "hipaa": [
+                "164.308(a)(1)"
+              ],
+              "iso_27001": [
+                "A.12.1.1",
+                "A.12.1.2",
+                "A.14.2.1"
+              ],
+              "nis2": [
+                "21.2.e",
+                "21.2.a"
+              ],
+              "nist_800_171": [
+                "3.4.7",
+                "3.4.8",
+                "3.13.6"
+              ],
+              "nist_800_53": [
+                "CM-2",
+                "CM-3",
+                "CM-6",
+                "CM-7"
+              ],
+              "pci_dss": [
+                "1.1",
+                "1.2",
+                "2.2",
+                "6.4"
+              ],
+              "tsc": [
+                "CC6.3",
+                "CC6.6",
+                "CC8.1",
+                "CC5.1",
+                "CC5.2",
+                "CC5.3"
+              ]
+            },
+            "condition": "all",
+            "description": """The /tmp directory is a world-writable directory used for temporary storage by all users and some applications. - IF - an entry for /tmp exists in /etc/fstab it will take precedence over entries in systemd default unit file. Note: In an environment where the main system is diskless and connected to iSCSI, entries in /etc/fstab may not take precedence. /tmp can be configured to use tmpfs. tmpfs puts everything into the kernel internal caches and grows and shrinks to accommodate the files it contains and is able to swap unneeded pages out to swap space. It has maximum size limits which can be adjusted on the fly via mount -o remount. Since tmpfs lives completely in the page cache and on swap, all tmpfs pages will be shown as "Shmem" in /proc/meminfo and "Shared" in free. Notice that these counters also include shared memory. The most reliable way to get the count is using df and du. tmpfs has three mount options for sizing: - size: The limit of allocated bytes for this tmpfs instance. The default is half of your physical RAM without swap. If you oversize your tmpfs instances the machine will deadlock since the OOM handler will not be able to free that memory. - nr_blocks: The same as size, but in blocks of PAGE_SIZE. - nr_inodes: The maximum number of inodes for this instance. The default is half of the number of your physical RAM pages, or (on a machine with highmem) the number of lowmem RAM pages, whichever is the lower. These parameters accept a suffix k, m or g and can be changed on remount. The size parameter also accepts a suffix % to limit this tmpfs instance to that percentage of your physical RAM. The default, when neither size nor nr_blocks is specified, is size=50%. Internal Only - General.""",
+            "id": "28500",
+            "mitre": {
+              "tactic": [
+                "TA0005"
+              ],
+              "technique": [
+                "T1036",
+                "T1564"
+              ]
+            },
+            "name": "Ensure /tmp is a separate partition.",
+            "rationale": "Making /tmp its own file system allows an administrator to set additional mount options such as the noexec option on the mount, making /tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hard link to a system setuid program and wait for it to be updated. Once the program was updated, the hard link would be broken, and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw. This can be accomplished by either mounting tmpfs to /tmp, or creating a separate partition for /tmp.",
+            "references": [
+              "[\"https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/\"",
+              "\"https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html\"",
+              "\"https://www.kernel.org/doc/Documentation/filesystems/tmpfs.txt\"]"
+            ],
+            "remediation": "First ensure that systemd is correctly configured to ensure that /tmp will be mounted at boot time. # systemctl unmask tmp.mount For specific configuration requirements of the /tmp mount for your environment, modify /etc/fstab. Example of using tmpfs with specific mount options: tmpfs /tmp 0 tmpfs defaults,rw,nosuid,nodev,noexec,relatime,size=2G 0 Note: the size=2G is an example of setting a specific size for tmpfs. Example of using a volume or disk with specific mount options. The source location of the volume or disk will vary depending on your environment: <device> /tmp <fstype> defaults,nodev,nosuid,noexec 0 0.",
+            "result": "Failed",
+            "rules": [
+              "[\"c:findmnt -kn /tmp -> r:\\\\s*/tmp\\\\s\"",
+              "\"c:systemctl is-enabled tmp.mount -> !r:masked|disabled\"]"
+            ]
+          },
+          "checksum": {
+            "hash": {
+              "sha1": "24814d633b87e0e928046a311458f941337e0b92"
+            }
+          },
+          "policy": {
+            "description": "This document provides prescriptive guidance for establishing a secure configuration posture for Ubuntu Linux 22.04 LTS based on CIS benchmark for Ubuntu Linux 22.04 LTS.",
+            "file": "cis_ubuntu22-04.yml",
+            "id": "cis_ubuntu22-04",
+            "name": "CIS Ubuntu Linux 22.04 LTS Benchmark v2.0.0.",
+            "references": [
+              """["https://www.cisecurity.org/cis-benchmarks/"]"""
+            ]
+          },
+          "state": {
+            "document_version": 1,
+            "modified_at": "2026-05-13T22:55:47.092Z"
+          }
+        }
+      },
+      {
+        "_index": "wazuh-states-sca",
+        "_id": "wazuh_002_2f31eccacb669c8ce518c2279e81dd6add9db60e",
+        "_score": 1,
+        "_source": {
+          "wazuh": {
+            "agent": {
+              "groups": [
+                "default"
+              ],
+              "host": {
+                "architecture": "x86_64",
+                "hostname": "wazuh-agent-5x-ubuntu",
+                "os": {
+                  "name": "Ubuntu",
+                  "platform": "ubuntu",
+                  "type": "linux",
+                  "version": "22.04.5 LTS (Jammy Jellyfish)"
+                }
+              },
+              "id": "002",
+              "name": "wazuh-agent-5x-ubuntu",
+              "version": "v5.0.0"
+            },
+            "cluster": {
+              "name": "wazuh"
+            }
+          },
+          "check": {
+            "compliance": {
+              "cmmc": [
+                "CM.L2-3.4.7",
+                "CM.L2-3.4.8",
+                "SC.L2-3.13.6"
+              ],
+              "fedramp": [
+                "CM-2",
+                "CM-3",
+                "CM-6",
+                "CM-7"
+              ],
+              "gdpr": [
+                "IV_32.1.a",
+                "IV_32.1.b",
+                "IV_32.1.c",
+                "IV_32.1.d",
+                "IV_32.2",
+                "IV_32.3",
+                "IV_32.4"
+              ],
+              "hipaa": [
+                "164.308(a)(1)"
+              ],
+              "iso_27001": [
+                "A.12.1.1",
+                "A.12.1.2",
+                "A.14.2.1"
+              ],
+              "nis2": [
+                "21.2.e",
+                "21.2.a"
+              ],
+              "nist_800_171": [
+                "3.4.7",
+                "3.4.8",
+                "3.13.6"
+              ],
+              "nist_800_53": [
+                "CM-2",
+                "CM-3",
+                "CM-6",
+                "CM-7"
+              ],
+              "pci_dss": [
+                "1.1",
+                "1.2",
+                "2.2",
+                "6.4"
+              ],
+              "tsc": [
+                "CC6.3",
+                "CC6.6",
+                "CC8.1",
+                "CC5.1",
+                "CC5.2",
+                "CC5.3"
+              ]
+            },
+            "condition": "all",
+            "description": "The nodev mount option specifies that the filesystem cannot contain special devices.",
+            "id": "28501",
+            "mitre": {
+              "tactic": [
+                "TA0005"
+              ],
+              "technique": [
+                "T1036",
+                "T1564"
+              ]
+            },
+            "name": "Ensure nodev option set on /tmp partition.",
+            "rationale": "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /tmp.",
+            "remediation": "- IF - a separate partition exists for /tmp. Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp with the configured options: # mount -o remount /tmp.",
+            "result": "Failed",
+            "rules": [
+              """["c:findmnt -kn /tmp -> r:nodev"]"""
+            ]
+          },
+          "checksum": {
+            "hash": {
+              "sha1": "03d1cfeab69dec1cc29dabdf9b81e29817fb5624"
+            }
+          },
+          "policy": {
+            "description": "This document provides prescriptive guidance for establishing a secure configuration posture for Ubuntu Linux 22.04 LTS based on CIS benchmark for Ubuntu Linux 22.04 LTS.",
+            "file": "cis_ubuntu22-04.yml",
+            "id": "cis_ubuntu22-04",
+            "name": "CIS Ubuntu Linux 22.04 LTS Benchmark v2.0.0.",
+            "references": [
+              """["https://www.cisecurity.org/cis-benchmarks/"]"""
+            ]
+          },
+          "state": {
+            "document_version": 1,
+            "modified_at": "2026-05-13T22:55:47.093Z"
+          }
+        }
+      },
+      {
+        "_index": "wazuh-states-sca",
+        "_id": "wazuh_002_7aaa0ffa6879835f607070baaf0aac9b2e9042bd",
+        "_score": 1,
+        "_source": {
+          "wazuh": {
+            "agent": {
+              "groups": [
+                "default"
+              ],
+              "host": {
+                "architecture": "x86_64",
+                "hostname": "wazuh-agent-5x-ubuntu",
+                "os": {
+                  "name": "Ubuntu",
+                  "platform": "ubuntu",
+                  "type": "linux",
+                  "version": "22.04.5 LTS (Jammy Jellyfish)"
+                }
+              },
+              "id": "002",
+              "name": "wazuh-agent-5x-ubuntu",
+              "version": "v5.0.0"
+            },
+            "cluster": {
+              "name": "wazuh"
+            }
+          },
+          "check": {
+            "compliance": {
+              "cmmc": [
+                "AC.L2-3.1.1",
+                "AC.L2-3.1.2",
+                "AC.L2-3.1.5",
+                "AC.L2-3.1.3",
+                "MP.L2-3.8.2"
+              ],
+              "fedramp": [
+                "AC-5",
+                "AC-6"
+              ],
+              "gdpr": [
+                "IV_32.1.a",
+                "IV_32.1.b",
+                "IV_32.1.c",
+                "IV_32.1.d",
+                "IV_32.2",
+                "IV_32.3",
+                "IV_32.4",
+                "IV_25.1",
+                "IV_25.2",
+                "IV_25.3",
+                "IV_30.1.a",
+                "IV_30.1.b",
+                "IV_30.1.c",
+                "IV_30.1.d",
+                "IV_30.1.e",
+                "IV_30.1.f",
+                "IV_30.1.g",
+                "IV_30.2.a",
+                "IV_30.2.b",
+                "IV_30.2.c",
+                "IV_30.2.d",
+                "IV_30.3",
+                "IV_30.4",
+                "IV_30.5"
+              ],
+              "hipaa": [
+                "164.312(a)(1)"
+              ],
+              "iso_27001": [
+                "A.8.2.3",
+                "A.8.3.1",
+                "A.8.3.2",
+                "A.10.1.1",
+                "A.13.2.1",
+                "A.18.1.4"
+              ],
+              "nis2": [
+                "21.2.g",
+                "21.2.j",
+                "21.2.i"
+              ],
+              "nist_800_171": [
+                "3.1.1",
+                "3.1.2",
+                "3.1.5",
+                "3.1.3",
+                "3.8.2"
+              ],
+              "nist_800_53": [
+                "AC-5",
+                "AC-6"
+              ],
+              "pci_dss": [
+                "7.1",
+                "1.3"
+              ],
+              "tsc": [
+                "CC5.2",
+                "CC6.1",
+                "C1.1",
+                "C1.2",
+                "CC6.2",
+                "CC6.3",
+                "CC6.4",
+                "CC6.5",
+                "CC6.6",
+                "CC6.7",
+                "CC6.8",
+                "P1.1",
+                "P2.1",
+                "P3.1",
+                "P4.1",
+                "P5.1",
+                "P6.1",
+                "P7.1",
+                "P8.1"
+              ]
+            },
+            "condition": "all",
+            "description": "The nosuid mount option specifies that the filesystem cannot contain setuid files.",
+            "id": "28521",
+            "mitre": {
+              "subtechnique": [
+                "T1048.003",
+                "T1552.001"
+              ],
+              "tactic": [
+                "TA0009",
+                "TA0010"
+              ],
+              "technique": [
+                "T1005",
+                "T1025",
+                "T1041",
+                "T1567",
+                "T1573"
+              ]
+            },
+            "name": "Ensure nosuid option set on /home partition.",
+            "rationale": "Since the /home filesystem is only intended for user file storage, set this option to ensure that users cannot create setuid files in /home.",
+            "remediation": "- IF - a separate partition exists for /home. Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /home partition. Example: <device> /home <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /home with the configured options: # mount -o remount /home.",
+            "result": "Failed",
+            "rules": [
+              """["c:findmnt -kn /home -> r:nosuid"]"""
+            ]
+          },
+          "checksum": {
+            "hash": {
+              "sha1": "a62049c22741a7829f11f3db39ae68068990ee01"
+            }
+          },
+          "policy": {
+            "description": "This document provides prescriptive guidance for establishing a secure configuration posture for Ubuntu Linux 22.04 LTS based on CIS benchmark for Ubuntu Linux 22.04 LTS.",
+            "file": "cis_ubuntu22-04.yml",
+            "id": "cis_ubuntu22-04",
+            "name": "CIS Ubuntu Linux 22.04 LTS Benchmark v2.0.0.",
+            "references": [
+              """["https://www.cisecurity.org/cis-benchmarks/"]"""
+            ]
+          },
+          "state": {
+            "document_version": 1,
+            "modified_at": "2026-05-13T22:55:47.095Z"
+          }
+        }
+      },
+      {
+        "_index": "wazuh-states-sca",
+        "_id": "wazuh_002_d9e10f4f7f049f348d09b1f5a3e8834d3cd6f9c1",
+        "_score": 1,
+        "_source": {
+          "wazuh": {
+            "agent": {
+              "groups": [
+                "default"
+              ],
+              "host": {
+                "architecture": "x86_64",
+                "hostname": "wazuh-agent-5x-ubuntu",
+                "os": {
+                  "name": "Ubuntu",
+                  "platform": "ubuntu",
+                  "type": "linux",
+                  "version": "22.04.5 LTS (Jammy Jellyfish)"
+                }
+              },
+              "id": "002",
+              "name": "wazuh-agent-5x-ubuntu",
+              "version": "v5.0.0"
+            },
+            "cluster": {
+              "name": "wazuh"
+            }
+          },
+          "check": {
+            "compliance": {
+              "cmmc": [
+                "AC.L2-3.1.17",
+                "AC.L2-3.1.13",
+                "IA.L2-3.5.10",
+                "SC.L2-3.13.11",
+                "SC.L2-3.13.8",
+                "SC.L2-3.13.15"
+              ],
+              "fedramp": [
+                "SC-8"
+              ],
+              "gdpr": [
+                "IV_32.1.a",
+                "IV_32.1.b",
+                "IV_32.1.c",
+                "IV_32.1.d",
+                "IV_32.2",
+                "IV_32.3",
+                "IV_32.4",
+                "IV_25.1",
+                "IV_25.2",
+                "IV_25.3",
+                "IV_30.1.a",
+                "IV_30.1.b",
+                "IV_30.1.c",
+                "IV_30.1.d",
+                "IV_30.1.e",
+                "IV_30.1.f",
+                "IV_30.1.g",
+                "IV_30.2.a",
+                "IV_30.2.b",
+                "IV_30.2.c",
+                "IV_30.2.d",
+                "IV_30.3",
+                "IV_30.4",
+                "IV_30.5"
+              ],
+              "hipaa": [
+                "164.312(e)(1)"
+              ],
+              "iso_27001": [
+                "A.8.2.3",
+                "A.8.3.1",
+                "A.8.3.2",
+                "A.10.1.1",
+                "A.13.2.1",
+                "A.18.1.4"
+              ],
+              "nis2": [
+                "21.2.g",
+                "21.2.j",
+                "21.2.i"
+              ],
+              "nist_800_171": [
+                "3.1.17",
+                "3.1.13",
+                "3.5.10",
+                "3.13.11",
+                "3.13.8",
+                "3.13.15"
+              ],
+              "nist_800_53": [
+                "SC-8"
+              ],
+              "pci_dss": [
+                "2.1",
+                "4.1",
+                "8.2",
+                "2.2",
+                "4.2",
+                "8.3"
+              ],
+              "tsc": [
+                "C1.1",
+                "C1.2",
+                "CC6.1",
+                "CC6.2",
+                "CC6.3",
+                "CC6.4",
+                "CC6.5",
+                "CC6.6",
+                "CC6.7",
+                "CC6.8",
+                "P1.1",
+                "P2.1",
+                "P3.1",
+                "P4.1",
+                "P5.1",
+                "P6.1",
+                "P7.1",
+                "P8.1"
+              ]
+            },
+            "condition": "none",
+            "description": """This variable limits the ciphers that SSH can use during communication. Notes: - Some organizations may have stricter requirements for approved ciphers. - Ensure that ciphers used are in compliance with site policy. - The only "strong" ciphers currently FIPS 140 compliant are: o aes256-gcm@openssh.com o aes128-gcm@openssh.com o aes256-ctr o aes192-ctr o aes128-ctr.""",
+            "id": "28644",
+            "mitre": {
+              "subtechnique": [
+                "T1048.003",
+                "T1552.001"
+              ],
+              "tactic": [
+                "TA0009",
+                "TA0010"
+              ],
+              "technique": [
+                "T1005",
+                "T1025",
+                "T1041",
+                "T1567",
+                "T1573"
+              ]
+            },
+            "name": "Ensure sshd Ciphers are configured.",
+            "rationale": """Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised. - The Triple DES ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain clear text data via a birthday attack against a long-duration encrypted session, aka a "Sweet32" attack. - Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plain text data from an arbitrary block of cipher text in an SSH session via unknown vectors. Internal Only - General.""",
+            "references": [
+              "[\"https://nvd.nist.gov/vuln/detail/CVE-2023-48795\"",
+              "\"https://nvd.nist.gov/vuln/detail/CVE-2019-1543\"",
+              "\"https://nvd.nist.gov/vuln/detail/CVE-2016-2183\"",
+              "\"https://nvd.nist.gov/vuln/detail/CVE-2008-5161\"",
+              "\"https://www.openssh.com/txt/cbc.adv\"]"
+            ],
+            "remediation": "Edit the /etc/ssh/sshd_config file and add/modify the Ciphers line to contain a comma separated list of the site unapproved (weak) Ciphers preceded with a - above any Include entries: Example: Ciphers -3des-cbc,aes128-cbc,aes192-cbc,aes256-cbc,chacha20- poly1305@openssh.com - IF - CVE-2023-48795 has been addressed, and it meets local site policy, chacha20-poly1305@openssh.com may be removed from the list of excluded ciphers. Note: First occurrence of an option takes precedence. If Include locations are enabled, used, and order of precedence is understood in your environment, the entry may be created in a file in Include location.",
+            "result": "Not applicable",
+            "rules": [
+              """["c:sshd -T -> r:^Ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator\\.liu\\.se"]"""
+            ]
+          },
+          "checksum": {
+            "hash": {
+              "sha1": "f2d7613e5d3838f7030f7063c9f9922f488a3cbf"
+            }
+          },
+          "policy": {
+            "description": "This document provides prescriptive guidance for establishing a secure configuration posture for Ubuntu Linux 22.04 LTS based on CIS benchmark for Ubuntu Linux 22.04 LTS.",
+            "file": "cis_ubuntu22-04.yml",
+            "id": "cis_ubuntu22-04",
+            "name": "CIS Ubuntu Linux 22.04 LTS Benchmark v2.0.0.",
+            "references": [
+              """["https://www.cisecurity.org/cis-benchmarks/"]"""
+            ]
+          },
+          "state": {
+            "document_version": 1,
+            "modified_at": "2026-05-13T22:55:47.106Z"
+          }
+        }
+      },
+      {
+        "_index": "wazuh-states-sca",
+        "_id": "wazuh_002_310ccaafcea2d4d35979084a1879835b50f4f799",
+        "_score": 1,
+        "_source": {
+          "wazuh": {
+            "agent": {
+              "groups": [
+                "default"
+              ],
+              "host": {
+                "architecture": "x86_64",
+                "hostname": "wazuh-agent-5x-ubuntu",
+                "os": {
+                  "name": "Ubuntu",
+                  "platform": "ubuntu",
+                  "type": "linux",
+                  "version": "22.04.5 LTS (Jammy Jellyfish)"
+                }
+              },
+              "id": "002",
+              "name": "wazuh-agent-5x-ubuntu",
+              "version": "v5.0.0"
+            },
+            "cluster": {
+              "name": "wazuh"
+            }
+          },
+          "check": {
+            "compliance": {
+              "cmmc": [
+                "CM.L2-3.4.1",
+                "CA.L2-3.12.4"
+              ],
+              "fedramp": [
+                "CM-8"
+              ],
+              "gdpr": [
+                "IV_30.1.a",
+                "IV_30.1.b",
+                "IV_30.1.c",
+                "IV_30.1.d",
+                "IV_30.1.e",
+                "IV_30.1.f",
+                "IV_30.1.g",
+                "IV_30.2.a",
+                "IV_30.2.b",
+                "IV_30.2.c",
+                "IV_30.2.d",
+                "IV_30.3",
+                "IV_30.4",
+                "IV_30.5",
+                "IV_32.1.a",
+                "IV_32.1.b",
+                "IV_32.1.c",
+                "IV_32.1.d",
+                "IV_32.2",
+                "IV_32.3",
+                "IV_32.4"
+              ],
+              "hipaa": [
+                "164.308(a)(4)",
+                "164.312(a)(1)"
+              ],
+              "iso_27001": [
+                "A.8.1.1",
+                "A.8.1.2"
+              ],
+              "nis2": [
+                "21.2.j",
+                "21.2.a"
+              ],
+              "nist_800_171": [
+                "3.4.1",
+                "3.12.4"
+              ],
+              "nist_800_53": [
+                "CM-8"
+              ],
+              "pci_dss": [
+                "2.4",
+                "9.1",
+                "9.2",
+                "9.3",
+                "11.1",
+                "9.5",
+                "11.2",
+                "12.5"
+              ],
+              "tsc": [
+                "CC6.1",
+                "CC3.2",
+                "CC5.1",
+                "CC5.2",
+                "CC5.3",
+                "CC6.2",
+                "CC6.3",
+                "CC6.4",
+                "CC6.5",
+                "CC6.6",
+                "CC6.7",
+                "CC6.8"
+              ]
+            },
+            "condition": "all",
+            "description": "Note: To clarify, the two settings described below are only meant for idle connections from a protocol perspective and are not meant to check if the user is active or not. An idle user does not mean an idle connection. SSH does not and never had, intentionally, the capability to drop idle users. In SSH versions before 8.2p1 there was a bug that caused these values to behave in such a manner that they were abused to disconnect idle users. This bug has been resolved in 8.2p1 and thus it can no longer be abused disconnect idle users. The two options ClientAliveInterval and ClientAliveCountMax control the timeout of SSH sessions. Taken directly from man 5 sshd_config: - ClientAliveInterval Sets a timeout interval in seconds after which if no data has been received from the client, sshd(8) will send a message through the encrypted channel to request a response from the client. The default is 0, indicating that these messages will not be sent to the client. - ClientAliveCountMax Sets the number of client alive messages which may be sent without sshd(8) receiving any messages back from the client. If this threshold is reached while client alive messages are being sent, sshd will disconnect the client, terminating the session. It is important to note that the use of client alive messages is very different from TCPKeepAlive. The client alive messages are sent through the encrypted channel and therefore will not be spoofable. The TCP keepalive option enabled by TCPKeepAlive is spoofable. The client alive mechanism is valuable when the client or server depend on knowing when a connection has become unresponsive. The default value is 3. If ClientAliveInterval is set to 15, and ClientAliveCountMax is left at the default, unresponsive SSH clients will be disconnected after approximately 45 seconds. Setting a zero ClientAliveCountMax disables connection termination. Internal Only - General.",
+            "id": "28653",
+            "mitre": {
+              "tactic": [
+                "TA0007"
+              ],
+              "technique": [
+                "T1595",
+                "T1046",
+                "T1087"
+              ]
+            },
+            "name": "Ensure sshd ClientAliveInterval and ClientAliveCountMax are configured.",
+            "rationale": "In order to prevent resource exhaustion, appropriate values should be set for both ClientAliveInterval and ClientAliveCountMax. Specifically, looking at the source code, ClientAliveCountMax must be greater than zero in order to utilize the ability of SSH to drop idle connections. If connections are allowed to stay open indefinitely, this can potentially be used as a DDOS attack or simple resource exhaustion could occur over unreliable networks. The example set here is a 45 second timeout. Consult your site policy for network timeouts and apply as appropriate.",
+            "remediation": "Edit the /etc/ssh/sshd_config file to set the ClientAliveInterval and ClientAliveCountMax parameters above any Include and Match entries according to site policy. Example: ClientAliveInterval 15 ClientAliveCountMax 3 Note: First occurrence of a option takes precedence, Match set statements withstanding. If Include locations are enabled, used, and order of precedence is understood in your environment, the entry may be created in a file in Include location. Internal Only - General.",
+            "result": "Not applicable",
+            "rules": [
+              "[\"c:sshd -T -> n:ClientAliveInterval\\\\s*\\\\t*(\\\\d+) compare > 0\"",
+              "\"c:sshd -T -> n:ClientAliveCountMax\\\\s*\\\\t*(\\\\d+) compare > 0\"]"
+            ]
+          },
+          "checksum": {
+            "hash": {
+              "sha1": "fcb0c3cd2059d27aee86c8b6e5ed85ea810feb45"
+            }
+          },
+          "policy": {
+            "description": "This document provides prescriptive guidance for establishing a secure configuration posture for Ubuntu Linux 22.04 LTS based on CIS benchmark for Ubuntu Linux 22.04 LTS.",
+            "file": "cis_ubuntu22-04.yml",
+            "id": "cis_ubuntu22-04",
+            "name": "CIS Ubuntu Linux 22.04 LTS Benchmark v2.0.0.",
+            "references": [
+              """["https://www.cisecurity.org/cis-benchmarks/"]"""
+            ]
+          },
+          "state": {
+            "document_version": 1,
+            "modified_at": "2026-05-13T22:55:47.107Z"
+          }
+        }
+      },
+      {
+        "_index": "wazuh-states-sca",
+        "_id": "wazuh_002_1b798a30e33f3a3b8c263f171e8ff41ad5880954",
+        "_score": 1,
+        "_source": {
+          "wazuh": {
+            "agent": {
+              "groups": [
+                "default"
+              ],
+              "host": {
+                "architecture": "x86_64",
+                "hostname": "wazuh-agent-5x-ubuntu",
+                "os": {
+                  "name": "Ubuntu",
+                  "platform": "ubuntu",
+                  "type": "linux",
+                  "version": "22.04.5 LTS (Jammy Jellyfish)"
+                }
+              },
+              "id": "002",
+              "name": "wazuh-agent-5x-ubuntu",
+              "version": "v5.0.0"
+            },
+            "cluster": {
+              "name": "wazuh"
+            }
+          },
+          "check": {
+            "compliance": {
+              "cmmc": [
+                "CM.L2-3.4.7",
+                "CM.L2-3.4.8",
+                "SC.L2-3.13.6"
+              ],
+              "fedramp": [
+                "CM-2",
+                "CM-3",
+                "CM-6",
+                "CM-7"
+              ],
+              "gdpr": [
+                "IV_32.1.a",
+                "IV_32.1.b",
+                "IV_32.1.c",
+                "IV_32.1.d",
+                "IV_32.2",
+                "IV_32.3",
+                "IV_32.4"
+              ],
+              "hipaa": [
+                "164.308(a)(1)"
+              ],
+              "iso_27001": [
+                "A.12.1.1",
+                "A.12.1.2",
+                "A.14.2.1"
+              ],
+              "nis2": [
+                "21.2.e",
+                "21.2.a"
+              ],
+              "nist_800_171": [
+                "3.4.7",
+                "3.4.8",
+                "3.13.6"
+              ],
+              "nist_800_53": [
+                "CM-2",
+                "CM-3",
+                "CM-6",
+                "CM-7"
+              ],
+              "pci_dss": [
+                "1.1",
+                "1.2",
+                "2.2",
+                "6.4"
+              ],
+              "tsc": [
+                "CC6.3",
+                "CC6.6",
+                "CC8.1",
+                "CC5.1",
+                "CC5.2",
+                "CC5.3"
+              ]
+            },
+            "condition": "all",
+            "description": "The DisableForwarding parameter disables all forwarding features, including X11, ssh-agent(1), TCP and StreamLocal. This option overrides all other forwarding-related options and may simplify restricted configurations. - X11Forwarding provides the ability to tunnel X11 traffic through the connection to enable remote graphic connections. - ssh-agent is a program to hold private keys used for public key authentication. Through use of environment variables the agent can be located and automatically used for authentication when logging in to other machines using ssh. - SSH port forwarding is a mechanism in SSH for tunneling application ports from the client to the server, or servers to clients. It can be used for adding encryption to legacy applications, going through firewalls, and some system administrators and IT professionals use it for opening backdoors into the internal network from their home machines.",
+            "id": "28717",
+            "mitre": {
+              "tactic": [
+                "TA0005"
+              ],
+              "technique": [
+                "T1036",
+                "T1564"
+              ]
+            },
+            "name": "Ensure sshd DisableForwarding is enabled.",
+            "rationale": "Disable X11 forwarding unless there is an operational requirement to use X11 applications directly. There is a small risk that the remote X11 servers of users who are logged in via SSH with X11 forwarding could be compromised by other users on the X11 server. Note that even if X11 forwarding is disabled, users can always install their own forwarders. anyone with root privilege on the the intermediate server can make free use of ssh-agent to authenticate them to other servers Leaving port forwarding enabled can expose the organization to security risks and backdoors. SSH connections are protected with strong encryption. This makes their contents invisible to most deployed network monitoring and traffic filtering solutions. This invisibility carries considerable risk potential if it is used for malicious purposes such as data exfiltration. Cybercriminals or malware could exploit SSH to hide their unauthorized communications, or to exfiltrate stolen data from the target network. Internal Only - General.",
+            "remediation": "Edit the /etc/ssh/sshd_config file to set the DisableForwarding parameter to yes above any Include entry as follows: DisableForwarding yes Note: First occurrence of a option takes precedence. If Include locations are enabled, used, and order of precedence is understood in your environment, the entry may be created in a file in Include location.",
+            "result": "Not applicable",
+            "rules": [
+              """["c:sshd -T -> r:^\\s*disableforwarding\\s*\\t*yes"]"""
+            ]
+          },
+          "checksum": {
+            "hash": {
+              "sha1": "1164156ed52d6776905bb2ae30eb33fada171a38"
+            }
+          },
+          "policy": {
+            "description": "This document provides prescriptive guidance for establishing a secure configuration posture for Ubuntu Linux 22.04 LTS based on CIS benchmark for Ubuntu Linux 22.04 LTS.",
+            "file": "cis_ubuntu22-04.yml",
+            "id": "cis_ubuntu22-04",
+            "name": "CIS Ubuntu Linux 22.04 LTS Benchmark v2.0.0.",
+            "references": [
+              """["https://www.cisecurity.org/cis-benchmarks/"]"""
+            ]
+          },
+          "state": {
+            "document_version": 1,
+            "modified_at": "2026-05-13T22:55:47.107Z"
+          }
+        }
+      },
+      {
+        "_index": "wazuh-states-sca",
+        "_id": "wazuh_002_962d2d2fa78616c7476c60e979c1e1675f24f6f4",
+        "_score": 1,
+        "_source": {
+          "wazuh": {
+            "agent": {
+              "groups": [
+                "default"
+              ],
+              "host": {
+                "architecture": "x86_64",
+                "hostname": "wazuh-agent-5x-ubuntu",
+                "os": {
+                  "name": "Ubuntu",
+                  "platform": "ubuntu",
+                  "type": "linux",
+                  "version": "22.04.5 LTS (Jammy Jellyfish)"
+                }
+              },
+              "id": "002",
+              "name": "wazuh-agent-5x-ubuntu",
+              "version": "v5.0.0"
+            },
+            "cluster": {
+              "name": "wazuh"
+            }
+          },
+          "check": {
+            "compliance": {
+              "cmmc": [
+                "IA.L2-3.5.7"
+              ],
+              "fedramp": [
+                "AC-2",
+                "IA-2",
+                "IA-5",
+                "AC-11",
+                "AC-7",
+                "AU-6"
+              ],
+              "gdpr": [
+                "IV_32.1.a",
+                "IV_32.1.b",
+                "IV_32.1.c",
+                "IV_32.1.d",
+                "IV_32.2",
+                "IV_32.3",
+                "IV_32.4"
+              ],
+              "hipaa": [
+                "164.308(a)(4)",
+                "164.312(a)(1)",
+                "164.312(d)",
+                "164.312(b)"
+              ],
+              "iso_27001": [
+                "A.9.2.1",
+                "A.9.2.2",
+                "A.9.2.5",
+                "A.9.2.6",
+                "A.9.2.4",
+                "A.9.4.2"
+              ],
+              "nis2": [
+                "21.2.i",
+                "21.2.k"
+              ],
+              "nist_800_171": [
+                "3.5.7"
+              ],
+              "nist_800_53": [
+                "AC-2",
+                "IA-2",
+                "IA-5",
+                "AC-11",
+                "AC-7",
+                "AU-6"
+              ],
+              "pci_dss": [
+                "2.2",
+                "8.3",
+                "8.1",
+                "8.2"
+              ],
+              "tsc": [
+                "CC6.1",
+                "CC6.2",
+                "CC6.3",
+                "CC6.4",
+                "CC6.5",
+                "CC6.6",
+                "CC6.7",
+                "CC6.8",
+                "CC7.1",
+                "CC7.2",
+                "CC7.3",
+                "CC7.4",
+                "CC7.5"
+              ]
+            },
+            "condition": "all",
+            "description": "The GSSAPIAuthentication parameter specifies whether user authentication based on GSSAPI is allowed.",
+            "id": "28718",
+            "mitre": {
+              "subtechnique": [
+                "T1556.001",
+                "T1550.001",
+                "T1550.002"
+              ],
+              "tactic": [
+                "TA0006",
+                "TA0003"
+              ],
+              "technique": [
+                "T1078",
+                "T1098",
+                "T1110",
+                "T1136",
+                "T1556"
+              ]
+            },
+            "name": "Ensure sshd GSSAPIAuthentication is disabled.",
+            "rationale": "Allowing GSSAPI authentication through SSH exposes the system's GSSAPI to remote hosts, and should be disabled to reduce the attack surface of the system.",
+            "remediation": "Edit the /etc/ssh/sshd_config file to set the GSSAPIAuthentication parameter to no above any Include and Match entries as follows: GSSAPIAuthentication no Note: First occurrence of an option takes precedence, Match set statements withstanding. If Include locations are enabled, used, and order of precedence is understood in your environment, the entry may be created in a file in Include location. Internal Only - General.",
+            "result": "Not applicable",
+            "rules": [
+              """["c:sshd -T -> r:\\s*gssapiauthentication\\s*\\t*no"]"""
+            ]
+          },
+          "checksum": {
+            "hash": {
+              "sha1": "3c638d74761b6183386e6dc1c8a19e3525901f43"
+            }
+          },
+          "policy": {
+            "description": "This document provides prescriptive guidance for establishing a secure configuration posture for Ubuntu Linux 22.04 LTS based on CIS benchmark for Ubuntu Linux 22.04 LTS.",
+            "file": "cis_ubuntu22-04.yml",
+            "id": "cis_ubuntu22-04",
+            "name": "CIS Ubuntu Linux 22.04 LTS Benchmark v2.0.0.",
+            "references": [
+              """["https://www.cisecurity.org/cis-benchmarks/"]"""
+            ]
+          },
+          "state": {
+            "document_version": 1,
+            "modified_at": "2026-05-13T22:55:47.107Z"
+          }
+        }
+      },
+      {
+        "_index": "wazuh-states-sca",
+        "_id": "wazuh_002_fd98710feea2826e6da17c82122cc35a6d1d527b",
+        "_score": 1,
+        "_source": {
+          "wazuh": {
+            "agent": {
+              "groups": [
+                "default"
+              ],
+              "host": {
+                "architecture": "x86_64",
+                "hostname": "wazuh-agent-5x-ubuntu",
+                "os": {
+                  "name": "Ubuntu",
+                  "platform": "ubuntu",
+                  "type": "linux",
+                  "version": "22.04.5 LTS (Jammy Jellyfish)"
+                }
+              },
+              "id": "002",
+              "name": "wazuh-agent-5x-ubuntu",
+              "version": "v5.0.0"
+            },
+            "cluster": {
+              "name": "wazuh"
+            }
+          },
+          "check": {
+            "compliance": {
+              "cmmc": [
+                "CM.L2-3.4.1",
+                "CA.L2-3.12.4"
+              ],
+              "fedramp": [
+                "CM-8"
+              ],
+              "gdpr": [
+                "IV_30.1.a",
+                "IV_30.1.b",
+                "IV_30.1.c",
+                "IV_30.1.d",
+                "IV_30.1.e",
+                "IV_30.1.f",
+                "IV_30.1.g",
+                "IV_30.2.a",
+                "IV_30.2.b",
+                "IV_30.2.c",
+                "IV_30.2.d",
+                "IV_30.3",
+                "IV_30.4",
+                "IV_30.5",
+                "IV_32.1.a",
+                "IV_32.1.b",
+                "IV_32.1.c",
+                "IV_32.1.d",
+                "IV_32.2",
+                "IV_32.3",
+                "IV_32.4"
+              ],
+              "hipaa": [
+                "164.308(a)(4)",
+                "164.312(a)(1)"
+              ],
+              "iso_27001": [
+                "A.8.1.1",
+                "A.8.1.2"
+              ],
+              "nis2": [
+                "21.2.j",
+                "21.2.a"
+              ],
+              "nist_800_171": [
+                "3.4.1",
+                "3.12.4"
+              ],
+              "nist_800_53": [
+                "CM-8"
+              ],
+              "pci_dss": [
+                "2.4",
+                "9.1",
+                "9.2",
+                "9.3",
+                "11.1",
+                "9.5",
+                "11.2",
+                "12.5"
+              ],
+              "tsc": [
+                "CC6.1",
+                "CC3.2",
+                "CC5.1",
+                "CC5.2",
+                "CC5.3",
+                "CC6.2",
+                "CC6.3",
+                "CC6.4",
+                "CC6.5",
+                "CC6.6",
+                "CC6.7",
+                "CC6.8"
+              ]
+            },
+            "condition": "all",
+            "description": "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts, or /etc/hosts.equiv, along with successful public key client host authentication.",
+            "id": "28639",
+            "mitre": {
+              "tactic": [
+                "TA0007"
+              ],
+              "technique": [
+                "T1595",
+                "T1046",
+                "T1087"
+              ]
+            },
+            "name": "Ensure sshd HostbasedAuthentication is disabled.",
+            "rationale": "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection.",
+            "remediation": "Edit the /etc/ssh/sshd_config file to set the HostbasedAuthentication parameter to no above any Include and Match entries as follows: HostbasedAuthentication no Note: First occurrence of an option takes precedence, Match set statements withstanding. If Include locations are enabled, used, and order of precedence is understood in your environment, the entry may be created in a file in Include location.",
+            "result": "Not applicable",
+            "rules": [
+              """["c:sshd -T -> r:\\s*HostbasedAuthentication\\s*\\t*no"]"""
+            ]
+          },
+          "checksum": {
+            "hash": {
+              "sha1": "28f3b24443c8b9328051f8e669187929f12ac006"
+            }
+          },
+          "policy": {
+            "description": "This document provides prescriptive guidance for establishing a secure configuration posture for Ubuntu Linux 22.04 LTS based on CIS benchmark for Ubuntu Linux 22.04 LTS.",
+            "file": "cis_ubuntu22-04.yml",
+            "id": "cis_ubuntu22-04",
+            "name": "CIS Ubuntu Linux 22.04 LTS Benchmark v2.0.0.",
+            "references": [
+              """["https://www.cisecurity.org/cis-benchmarks/"]"""
+            ]
+          },
+          "state": {
+            "document_version": 1,
+            "modified_at": "2026-05-13T22:55:47.107Z"
+          }
+        }
+      },
+      {
+        "_index": "wazuh-states-sca",
+        "_id": "wazuh_002_8c423c81c9596d27bc41bf9352a85bf0fe5cc492",
+        "_score": 1,
+        "_source": {
+          "wazuh": {
+            "agent": {
+              "groups": [
+                "default"
+              ],
+              "host": {
+                "architecture": "x86_64",
+                "hostname": "wazuh-agent-5x-ubuntu",
+                "os": {
+                  "name": "Ubuntu",
+                  "platform": "ubuntu",
+                  "type": "linux",
+                  "version": "22.04.5 LTS (Jammy Jellyfish)"
+                }
+              },
+              "id": "002",
+              "name": "wazuh-agent-5x-ubuntu",
+              "version": "v5.0.0"
+            },
+            "cluster": {
+              "name": "wazuh"
+            }
+          },
+          "check": {
+            "compliance": {
+              "cmmc": [
+                "IA.L2-3.5.7"
+              ],
+              "fedramp": [
+                "AC-2",
+                "IA-2",
+                "IA-5",
+                "AC-11",
+                "AC-7",
+                "AU-6"
+              ],
+              "gdpr": [
+                "IV_32.1.a",
+                "IV_32.1.b",
+                "IV_32.1.c",
+                "IV_32.1.d",
+                "IV_32.2",
+                "IV_32.3",
+                "IV_32.4"
+              ],
+              "hipaa": [
+                "164.308(a)(4)",
+                "164.312(a)(1)",
+                "164.312(d)",
+                "164.312(b)"
+              ],
+              "iso_27001": [
+                "A.9.2.1",
+                "A.9.2.2",
+                "A.9.2.5",
+                "A.9.2.6",
+                "A.9.2.4",
+                "A.9.4.2"
+              ],
+              "nis2": [
+                "21.2.i",
+                "21.2.k"
+              ],
+              "nist_800_171": [
+                "3.5.7"
+              ],
+              "nist_800_53": [
+                "AC-2",
+                "IA-2",
+                "IA-5",
+                "AC-11",
+                "AC-7",
+                "AU-6"
+              ],
+              "pci_dss": [
+                "2.2",
+                "8.3",
+                "8.1",
+                "8.2"
+              ],
+              "tsc": [
+                "CC6.1",
+                "CC6.2",
+                "CC6.3",
+                "CC6.4",
+                "CC6.5",
+                "CC6.6",
+                "CC6.7",
+                "CC6.8",
+                "CC7.1",
+                "CC7.2",
+                "CC7.3",
+                "CC7.4",
+                "CC7.5"
+              ]
+            },
+            "condition": "all",
+            "description": "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication.",
+            "id": "28642",
+            "mitre": {
+              "subtechnique": [
+                "T1556.001",
+                "T1550.001",
+                "T1550.002"
+              ],
+              "tactic": [
+                "TA0006",
+                "TA0003"
+              ],
+              "technique": [
+                "T1078",
+                "T1098",
+                "T1110",
+                "T1136",
+                "T1556"
+              ]
+            },
+            "name": "Ensure sshd IgnoreRhosts is enabled.",
+            "rationale": "Setting this parameter forces users to enter a password when authenticating with SSH.",
+            "remediation": "Edit the /etc/ssh/sshd_config file to set the IgnoreRhosts parameter to yes above any Include and Match entries as follows: IgnoreRhosts yes Note: First occurrence of a option takes precedence, Match set statements withstanding. If Include locations are enabled, used, and order of precedence is understood in your environment, the entry may be created in a file in Include location.",
+            "result": "Not applicable",
+            "rules": [
+              """["c:sshd -T -> r:\\s*ignorerhosts\\s*\\t*yes"]"""
+            ]
+          },
+          "checksum": {
+            "hash": {
+              "sha1": "c4644d9e74f692f15e72b8dc567abd673dfcafb2"
+            }
+          },
+          "policy": {
+            "description": "This document provides prescriptive guidance for establishing a secure configuration posture for Ubuntu Linux 22.04 LTS based on CIS benchmark for Ubuntu Linux 22.04 LTS.",
+            "file": "cis_ubuntu22-04.yml",
+            "id": "cis_ubuntu22-04",
+            "name": "CIS Ubuntu Linux 22.04 LTS Benchmark v2.0.0.",
+            "references": [
+              """["https://www.cisecurity.org/cis-benchmarks/"]"""
+            ]
+          },
+          "state": {
+            "document_version": 1,
+            "modified_at": "2026-05-13T22:55:47.107Z"
+          }
+        }
+      },
+      {
+        "_index": "wazuh-states-sca",
+        "_id": "wazuh_002_9ee6b3dbe32bbf94f5965353591c2ec2b76ed022",
+        "_score": 1,
+        "_source": {
+          "wazuh": {
+            "agent": {
+              "groups": [
+                "default"
+              ],
+              "host": {
+                "architecture": "x86_64",
+                "hostname": "wazuh-agent-5x-ubuntu",
+                "os": {
+                  "name": "Ubuntu",
+                  "platform": "ubuntu",
+                  "type": "linux",
+                  "version": "22.04.5 LTS (Jammy Jellyfish)"
+                }
+              },
+              "id": "002",
+              "name": "wazuh-agent-5x-ubuntu",
+              "version": "v5.0.0"
+            },
+            "cluster": {
+              "name": "wazuh"
+            }
+          },
+          "check": {
+            "compliance": {
+              "cmmc": [
+                "AC.L2-3.1.17",
+                "AC.L2-3.1.13",
+                "IA.L2-3.5.10",
+                "SC.L2-3.13.11",
+                "SC.L2-3.13.8",
+                "SC.L2-3.13.15"
+              ],
+              "fedramp": [
+                "SC-8"
+              ],
+              "gdpr": [
+                "IV_32.1.a",
+                "IV_32.1.b",
+                "IV_32.1.c",
+                "IV_32.1.d",
+                "IV_32.2",
+                "IV_32.3",
+                "IV_32.4",
+                "IV_25.1",
+                "IV_25.2",
+                "IV_25.3",
+                "IV_30.1.a",
+                "IV_30.1.b",
+                "IV_30.1.c",
+                "IV_30.1.d",
+                "IV_30.1.e",
+                "IV_30.1.f",
+                "IV_30.1.g",
+                "IV_30.2.a",
+                "IV_30.2.b",
+                "IV_30.2.c",
+                "IV_30.2.d",
+                "IV_30.3",
+                "IV_30.4",
+                "IV_30.5"
+              ],
+              "hipaa": [
+                "164.312(e)(1)"
+              ],
+              "iso_27001": [
+                "A.8.2.3",
+                "A.8.3.1",
+                "A.8.3.2",
+                "A.10.1.1",
+                "A.13.2.1",
+                "A.18.1.4"
+              ],
+              "nis2": [
+                "21.2.g",
+                "21.2.j",
+                "21.2.i"
+              ],
+              "nist_800_171": [
+                "3.1.17",
+                "3.1.13",
+                "3.5.10",
+                "3.13.11",
+                "3.13.8",
+                "3.13.15"
+              ],
+              "nist_800_53": [
+                "SC-8"
+              ],
+              "pci_dss": [
+                "2.1",
+                "4.1",
+                "8.2",
+                "2.2",
+                "4.2",
+                "8.3"
+              ],
+              "tsc": [
+                "C1.1",
+                "C1.2",
+                "CC6.1",
+                "CC6.2",
+                "CC6.3",
+                "CC6.4",
+                "CC6.5",
+                "CC6.6",
+                "CC6.7",
+                "CC6.8",
+                "P1.1",
+                "P2.1",
+                "P3.1",
+                "P4.1",
+                "P5.1",
+                "P6.1",
+                "P7.1",
+                "P8.1"
+              ]
+            },
+            "condition": "none",
+            "description": "Key exchange is any method in cryptography by which cryptographic keys are exchanged between two parties, allowing use of a cryptographic algorithm. If the sender and receiver wish to exchange encrypted messages, each must be equipped to encrypt messages to be sent and decrypt messages received Notes: - Kex algorithms have a higher preference the earlier they appear in the list - Some organizations may have stricter requirements for approved Key exchange algorithms - Ensure that Key exchange algorithms used are in compliance with site policy - The only Key Exchange Algorithms currently FIPS 140 approved are: o ecdh-sha2-nistp256 o ecdh-sha2-nistp384 o ecdh-sha2-nistp521 o diffie-hellman-group-exchange-sha256 o diffie-hellman-group16-sha512 o diffie-hellman-group18-sha512 o diffie-hellman-group14-sha256.",
+            "id": "28646",
+            "mitre": {
+              "subtechnique": [
+                "T1048.003",
+                "T1552.001"
+              ],
+              "tactic": [
+                "TA0009",
+                "TA0010"
+              ],
+              "technique": [
+                "T1005",
+                "T1025",
+                "T1041",
+                "T1567",
+                "T1573"
+              ]
+            },
+            "name": "Ensure sshd KexAlgorithms is configured.",
+            "rationale": "Key exchange methods that are considered weak should be removed. A key exchange method may be weak because too few bits are used, or the hashing algorithm is considered too weak. Using weak algorithms could expose connections to man-in-the-middle attacks Internal Only - General.",
+            "references": [
+              """["https://ubuntu.com/server/docs/openssh-crypto-configuration"]"""
+            ],
+            "remediation": "Edit the /etc/ssh/sshd_config file and add/modify the KexAlgorithms line to contain a comma separated list of the site unapproved (weak) KexAlgorithms preceded with a - above any Include entries: Example: KexAlgorithms -diffie-hellman-group1-sha1,diffie-hellman-group14-sha1,diffie- hellman-group-exchange-sha1 Note: First occurrence of an option takes precedence. If Include locations are enabled, used, and order of precedence is understood in your environment, the entry may be created in a file in Include location.",
+            "result": "Not applicable",
+            "rules": [
+              """["c:sshd -T -> r:^kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"]"""
+            ]
+          },
+          "checksum": {
+            "hash": {
+              "sha1": "b1e1d686af8548070ef6c9389d8065dc4b02ccca"
+            }
+          },
+          "policy": {
+            "description": "This document provides prescriptive guidance for establishing a secure configuration posture for Ubuntu Linux 22.04 LTS based on CIS benchmark for Ubuntu Linux 22.04 LTS.",
+            "file": "cis_ubuntu22-04.yml",
+            "id": "cis_ubuntu22-04",
+            "name": "CIS Ubuntu Linux 22.04 LTS Benchmark v2.0.0.",
+            "references": [
+              """["https://www.cisecurity.org/cis-benchmarks/"]"""
+            ]
+          },
+          "state": {
+            "document_version": 1,
+            "modified_at": "2026-05-13T22:55:47.107Z"
+          }
+        }
+      }
+    ]
+  }
+}

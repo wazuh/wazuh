@@ -1,0 +1,28 @@
+{
+  "message_type": "Start",
+  "direction": "agent -> manager",
+  "trigger": "Cada sync (ModuleFull al inicio, ModuleDelta cada scan_interval)",
+  "fields": {
+    "module": "sca",
+    "mode": "ModuleFull",
+    "size": 207,
+    "index": [
+      "wazuh-states-sca"
+    ],
+    "agentid": "002",
+    "agentname": "wazuh-agent-5x-ubuntu",
+    "agentversion": "v5.0.0",
+    "architecture": "x86_64",
+    "hostname": "wazuh-agent-5x-ubuntu",
+    "osname": "Ubuntu",
+    "osplatform": "ubuntu",
+    "ostype": "linux",
+    "osversion": "22.04.5 LTS (Jammy Jellyfish)",
+    "groups": [
+      "default"
+    ],
+    "cluster_name": "wazuh",
+    "global_version": 1
+  },
+  "size_bytes": "approx 300-400 bytes (FlatBuffer serializado)"
+}
