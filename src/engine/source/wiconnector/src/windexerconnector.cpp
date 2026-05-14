@@ -73,11 +73,11 @@ IndexResourceType fromIndexName(std::string_view indexName)
 {
     // Static regex patterns compiled once
     static const std::array<std::pair<std::regex, IndexResourceType>, 5> patterns = {
-        {{std::regex(R"(.*-kvdbs$)"), IndexResourceType::KVDB},
-         {std::regex(R"(.*-decoders$)"), IndexResourceType::DECODER},
-         {std::regex(R"(.*-filters$)"), IndexResourceType::FILTER},
-         {std::regex(R"(.*-integrations$)"), IndexResourceType::INTEGRATION_DECODER},
-         {std::regex(R"(.*-policies$)"), IndexResourceType::POLICY}}};
+        {{std::regex(R"(.*kvdbs.*)"), IndexResourceType::KVDB},
+         {std::regex(R"(.*decoders.*)"), IndexResourceType::DECODER},
+         {std::regex(R"(.*filters.*)"), IndexResourceType::FILTER},
+         {std::regex(R"(.*integrations.*)"), IndexResourceType::INTEGRATION_DECODER},
+         {std::regex(R"(.*policies.*)"), IndexResourceType::POLICY}}};
 
     for (const auto& [pattern, resourceType] : patterns)
     {
