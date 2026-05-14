@@ -18,6 +18,7 @@
 #include "../wrappers/posix/dirent_wrappers.h"
 #include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
+#include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/config/syscheck_config_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
@@ -3957,6 +3958,186 @@ static void test_dbsync_attributes_json(void **state) {
     free(json_attributes_str);
 }
 
+#ifndef TEST_WINAGENT
+/* ============================================================
+ * fim_file_scan symlink-detection warning tests (#36077)
+ * ============================================================ */
+
+static int setup_group_symlink_tests(void **state) {
+    syscheck.rt_delay = 1;
+    syscheck.max_depth = 256;
+    syscheck.file_max_size = 1024;
+    test_mode = 1;
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+    return 0;
+}
+
+static int teardown_group_symlink_tests(void **state) {
+    test_mode = 0;
+    return 0;
+}
+
+static int setup_sym_no_follow(void **state) {
+    syscheck.directories = OSList_Create();
+    if (!syscheck.directories) {
+        return -1;
+    }
+    OSList_SetFreeDataPointer(syscheck.directories, (void (*)(void *))free_directory);
+    directory_t *dir = fim_create_directory("/bin", CHECK_SIZE, NULL, 512, NULL, -1, 0);
+    OSList_InsertData(syscheck.directories, NULL, dir);
+    return 0;
+}
+
+static int setup_sym_with_follow(void **state) {
+    syscheck.directories = OSList_Create();
+    if (!syscheck.directories) {
+        return -1;
+    }
+    OSList_SetFreeDataPointer(syscheck.directories, (void (*)(void *))free_directory);
+
+    expect_string(__wrap_realpath, path, "/bin");
+    will_return(__wrap_realpath, strdup("/usr/bin"));
+
+    directory_t *dir = fim_create_directory("/bin", CHECK_SIZE | CHECK_FOLLOW, NULL, 512, NULL, -1, 0);
+    OSList_InsertData(syscheck.directories, NULL, dir);
+    return 0;
+}
+
+static int teardown_sym_dirs(void **state) {
+    if (syscheck.directories) {
+        OSList_Destroy(syscheck.directories);
+        syscheck.directories = NULL;
+    }
+    return 0;
+}
+
+static void test_fim_file_scan_symlink_warns_when_no_follow(void **state) {
+    TXN_HANDLE mock_handle = NULL;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_fim_db_transaction_start, &mock_handle);
+
+    expect_string(__wrap_IsLink, file, "/bin");
+    will_return(__wrap_IsLink, 0);
+    expect_string(__wrap_realpath, path, "/bin");
+    will_return(__wrap_realpath, strdup("/usr/bin"));
+    expect_string(__wrap__mwarn, formatted_msg,
+        "(6961): Configured path '/bin' is a symbolic link to '/usr/bin'. "
+        "Without 'follow_symbolic_link' enabled, only the symlink itself will be monitored, "
+        "not the directory contents. Consider monitoring '/usr/bin' directly or enabling "
+        "'follow_symbolic_link'.");
+
+    expect_string(__wrap_lstat, filename, "/bin");
+    will_return(__wrap_lstat, NULL);
+    will_return(__wrap_lstat, -1);
+    errno = ENOENT;
+
+    expect_string(__wrap_realtime_adddir, dir, "/bin");
+    will_return(__wrap_realtime_adddir, 0);
+
+    expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
+
+    fim_file_scan();
+    errno = 0;
+}
+
+static void test_fim_file_scan_no_warn_with_follow(void **state) {
+    TXN_HANDLE mock_handle = NULL;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_fim_db_transaction_start, &mock_handle);
+
+    // No lstat mock needed: fim_get_real_path returns "/usr/bin" (from symbolic_links),
+    // fim_configuration_directory("/usr/bin") finds no prefix match for "/bin" in
+    // syscheck.directories (w_compare_str("/bin/","/usr/bin/") = 0), so fim_checker
+    // returns immediately at the NULL configuration check.
+
+    expect_string(__wrap_realtime_adddir, dir, "/usr/bin");
+    will_return(__wrap_realtime_adddir, 0);
+
+    expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
+
+    fim_file_scan();
+}
+
+static void test_fim_file_scan_symlink_warns_broken_link(void **state) {
+    TXN_HANDLE mock_handle = NULL;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_fim_db_transaction_start, &mock_handle);
+
+    // realpath() fails (broken symlink — target does not exist).
+    // readlink() wrapper returns -1 (does not fill buffer), so display = "(unresolvable)".
+    expect_string(__wrap_IsLink, file, "/bin");
+    will_return(__wrap_IsLink, 0);
+    expect_string(__wrap_realpath, path, "/bin");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_readlink, -1);
+    expect_string(__wrap__mwarn, formatted_msg,
+        "(6961): Configured path '/bin' is a symbolic link to '(unresolvable)'. "
+        "Without 'follow_symbolic_link' enabled, only the symlink itself will be monitored, "
+        "not the directory contents. Consider monitoring '/bin' directly or enabling "
+        "'follow_symbolic_link'.");
+
+    expect_string(__wrap_lstat, filename, "/bin");
+    will_return(__wrap_lstat, NULL);
+    will_return(__wrap_lstat, -1);
+    errno = ENOENT;
+
+    expect_string(__wrap_realtime_adddir, dir, "/bin");
+    will_return(__wrap_realtime_adddir, 0);
+
+    expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
+
+    fim_file_scan();
+    errno = 0;
+}
+
+static void test_fim_file_scan_no_warn_not_symlink(void **state) {
+    TXN_HANDLE mock_handle = NULL;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_fim_db_transaction_start, &mock_handle);
+
+    expect_string(__wrap_IsLink, file, "/bin");
+    will_return(__wrap_IsLink, -1);
+
+    expect_string(__wrap_lstat, filename, "/bin");
+    will_return(__wrap_lstat, NULL);
+    will_return(__wrap_lstat, -1);
+    errno = ENOENT;
+
+    expect_string(__wrap_realtime_adddir, dir, "/bin");
+    will_return(__wrap_realtime_adddir, 0);
+
+    expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
+
+    fim_file_scan();
+    errno = 0;
+}
+#endif /* TEST_WINAGENT */
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* fim_attributes_json */
@@ -4131,6 +4312,22 @@ int main(void) {
     retval += cmocka_run_group_tests(fim_regex_tests, setup_fim_regex_group, teardown_group);
     retval += cmocka_run_group_tests(root_monitor_tests, setup_root_group, teardown_group);
     retval += cmocka_run_group_tests(wildcards_tests, setup_wildcards, teardown_wildcards);
+
+#ifndef TEST_WINAGENT
+    const struct CMUnitTest fim_file_scan_symlink_tests[] = {
+        cmocka_unit_test_setup_teardown(test_fim_file_scan_symlink_warns_when_no_follow,
+                                        setup_sym_no_follow, teardown_sym_dirs),
+        cmocka_unit_test_setup_teardown(test_fim_file_scan_symlink_warns_broken_link,
+                                        setup_sym_no_follow, teardown_sym_dirs),
+        cmocka_unit_test_setup_teardown(test_fim_file_scan_no_warn_with_follow,
+                                        setup_sym_with_follow, teardown_sym_dirs),
+        cmocka_unit_test_setup_teardown(test_fim_file_scan_no_warn_not_symlink,
+                                        setup_sym_no_follow, teardown_sym_dirs),
+    };
+    retval += cmocka_run_group_tests(fim_file_scan_symlink_tests,
+                                     setup_group_symlink_tests,
+                                     teardown_group_symlink_tests);
+#endif
 
     return retval;
 
