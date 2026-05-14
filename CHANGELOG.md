@@ -3,6 +3,40 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.10.4]
 
+### Manager
+
+#### Fixed
+
+- Fixed analysisd plugin decoder argument alignment. ([#35222](https://github.com/wazuh/wazuh/pull/35222))
+- Fixed path traversal in authd via agent group name validation. ([#35258](https://github.com/wazuh/wazuh/pull/35258))
+- Hardened cluster deserialization by restricting callable decoding to Wazuh modules and improving error handling. ([#35256](https://github.com/wazuh/wazuh/pull/35256))
+- Fixed DAPI callable resolution to restrict invocations to exposed resources only. ([#35256](https://github.com/wazuh/wazuh/pull/35256))
+- Fixed admin protection in update user endpoint. ([#35469](https://github.com/wazuh/wazuh/pull/35469))
+- Fixed protected settings checks when multiple `<ossec_config>` blocks are present. ([#34690](https://github.com/wazuh/wazuh/pull/34690))
+- Restricted cluster file transfer write paths. ([#34659](https://github.com/wazuh/wazuh/pull/34659))
+- Improved cluster file synchronization path handling by adding safe path joins. ([#35008](https://github.com/wazuh/wazuh/pull/35008))
+
+### Agent
+
+#### Added
+
+- Added detection of the `-a never,task` Audit rule in FIM whodata for Linux. ([#34661](https://github.com/wazuh/wazuh/pull/34661))
+
+#### Changed
+
+- Changed sync primitive disposal to stop and soften teardown failures. ([#34680](https://github.com/wazuh/wazuh/pull/34680))
+
+#### Fixed
+
+- Fixed Windows FIM Registry scan crash on non-null-terminated values. ([#34679](https://github.com/wazuh/wazuh/pull/34679))
+
+### Other
+
+#### Changed
+
+- Updated curl dependency to 8.12.1. ([#34687](https://github.com/wazuh/wazuh/pull/34687))
+- Upgraded Python embedded interpreter to 3.10.19. ([#32790](https://github.com/wazuh/wazuh/pull/32790))
+
 
 ## [v4.10.3]
 
