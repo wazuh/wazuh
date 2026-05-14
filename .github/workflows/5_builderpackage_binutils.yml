@@ -2,11 +2,12 @@ run-name: External deps - ${{ inputs.legs || 'all 5 legs' }} ${{ inputs.dependen
 name: 5.X - Package - Build external dependencies
 
 # Rebuilds Wazuh's external dependencies across one or more (system, architecture)
-# legs. Each runner uploads a per-leg .tar.gz already laid out in the S3
-# layout expected by `make deps` (libraries/<os>/<arch>/<dep>.tar.gz plus
-# libraries/sources/<dep>.tar.gz). Downloading every artifact from a run and
-# extracting each archive in turn into the same destination yields a complete
-# libraries/ tree ready for upload to packages.wazuh.com/deps/<version>/.
+# legs. Each runner uploads a per-leg .tar.gz laid out in the S3 layout
+# expected by `make deps` (libraries/<os>/<arch>/<dep>.tar.gz plus
+# libraries/sources/<dep>.tar.gz). The `consolidate` job then merges every
+# per-leg tarball into a single externals-all.tar.gz ready for upload to
+# packages.wazuh.com/deps/<version>/ — use that artifact, not a hand-merge
+# of the per-leg ones, since on Linux the agent and manager legs overlap.
 #
 # Covers all 5 supported legs:
 #   - 2 Linux Docker legs:  rpm-amd64, rpm-arm64 (rpm is the oldest common
@@ -21,12 +22,11 @@ name: 5.X - Package - Build external dependencies
 # once with the manager builder image. The agent image is the oldest common
 # denominator (centos:6 / wheezy era, glibc 2.12), so any binary produced
 # there runs everywhere we ship; the manager image (centos:7, glibc 2.17)
-# can build deps the agent image's older toolchain can't handle. For deps
-# in the agent+manager intersection (the full agent set: flatbuffers,
-# openssl, curl, ...) the agent-built `.tar.gz` lands in libraries/<os>/<arch>/;
-# the manager leg is told to skip those binaries (see packages/generate_external.sh,
-# DEDUPE_AGAINST_AGENT). For manager-exclusive deps (cpython, jemalloc,
-# simdjson, ...) the manager leg's binaries are what ship. Sources are
+# can build deps the agent image's older toolchain can't handle. Both legs
+# pack everything they built; the `consolidate` job decides which copy of
+# each dep ships, straight from the build output (see that job below):
+# a compiled binary beats a source-only snapshot, and where both legs
+# compiled a dep the agent copy wins on glibc compatibility. Sources are
 # identical across legs.
 
 on:
@@ -209,11 +209,15 @@ jobs:
     # Merge every per-leg tarball into a single libraries/ tree shaped
     # like the packages.wazuh.com/deps/<version>/ layout: sources/ holds
     # the union of upstream blobs (byte-identical across legs, so any
-    # leg's copy works), linux/<arch>/ holds the agent-set binaries
-    # (agent leg) plus manager-exclusive ones (manager leg), darwin/<arch>/
+    # leg's copy works), linux/<arch>/ holds the Linux binaries, darwin/<arch>/
     # holds the macOS leg binaries, and windows/ holds the MinGW leg
     # binaries. Output is a single externals-all.tar.gz the user can
     # extract straight into S3.
+    #
+    # On Linux the agent and manager legs both build the agent dep set, so
+    # their per-leg tarballs overlap. The merge picks a winner per dep from
+    # the build output itself — no dep lists — so changing a dependency
+    # never needs a workflow change.
     needs: build-externals
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -226,17 +230,72 @@ jobs:
 
       - name: Merge into single libraries/ tree
         run: |
-          mkdir -p consolidated
-          # Each per-leg artifact unzips into its own subdir with one
-          # externals-<leg>-<target>.tar.gz inside. Extract them all into
-          # the same consolidated/ root: manager-Linux legs already dropped
-          # the agent-set binaries (see packages/generate_external.sh
-          # DEDUPE_AGAINST_AGENT) so binary paths don't collide, and source
-          # tarballs are byte-equivalent across legs.
-          for tar in per-leg/*/externals-*.tar.gz; do
-            echo "extracting ${tar}"
-            tar -xzf "${tar}" -C consolidated/
+          set -euo pipefail
+          mkdir -p consolidated/libraries staging
+
+          # Unpack each per-leg artifact into its own staging dir so copies
+          # of the same dep can be compared across legs before one is chosen.
+          for art_dir in per-leg/*/; do
+            art_name="$(basename "${art_dir}")"   # e.g. externals-rpm-amd64-agent
+            leg_tar="$(echo "${art_dir}"externals-*.tar.gz)"
+            mkdir -p "staging/${art_name}"
+            echo "unpacking ${leg_tar}"
+            tar -xzf "${leg_tar}" -C "staging/${art_name}"
           done
+
+          # True when a packed <dep>.tar.gz actually carries compiled output
+          # (a static or shared library) rather than just a source snapshot.
+          has_compiled_artifact() {
+            tar -tzf "$1" 2>/dev/null | grep -qE '\.(a|so|lib)([.0-9]+)?$'
+          }
+
+          # Should an incoming <dep>.tar.gz replace what's already placed?
+          # Precedence, highest first:
+          #   1. a compiled copy beats a source-only copy — this is what
+          #      keeps a server-only dep the agent leg couldn't build
+          #      (rocksdb, lzma: gated by `if(NOT IS_AGENT ...)` in
+          #      src/external/CMakeLists.txt) coming from the manager leg.
+          #   2. between two compiled copies the agent leg wins — its
+          #      centos:6 / glibc-2.12 binaries link in every Wazuh builder
+          #      image; the manager's centos:7 / glibc-2.17 ones do not.
+          # Output-driven only: no dependency names appear here.
+          should_replace() {
+            local incoming="$1" existing="$2" incoming_is_agent="$3"
+            [ -f "${existing}" ] || return 0
+            has_compiled_artifact "${incoming}" || return 1
+            has_compiled_artifact "${existing}" || return 0
+            [ "${incoming_is_agent}" = "yes" ]
+          }
+
+          # Process manager legs first, then agent legs, so an agent copy is
+          # the last writer and can take the intersection per rule 2 above.
+          ordered_legs="$( (ls -d staging/*/ | grep -- '-manager/$' || true);
+                            (ls -d staging/*/ | grep -v -- '-manager/$' || true) )"
+
+          for leg_dir in ${ordered_legs}; do
+            case "${leg_dir}" in
+              *-agent/) is_agent=yes ;;
+              *)        is_agent=no  ;;
+            esac
+            [ -d "${leg_dir}libraries" ] || continue
+            while IFS= read -r src_file; do
+              rel="${src_file#${leg_dir}libraries/}"
+              dst="consolidated/libraries/${rel}"
+              mkdir -p "$(dirname "${dst}")"
+              case "${rel}" in
+                sources/*)
+                  # byte-identical across legs; first writer wins
+                  [ -f "${dst}" ] || cp "${src_file}" "${dst}"
+                  ;;
+                *)
+                  if should_replace "${src_file}" "${dst}" "${is_agent}"; then
+                    cp "${src_file}" "${dst}"
+                  fi
+                  ;;
+              esac
+            done < <(find "${leg_dir}libraries" -type f -name '*.tar.gz')
+          done
+
           echo "---"
           echo "consolidated libraries/ tree layout:"
           find consolidated/libraries -maxdepth 2 -type d | sort
