@@ -358,6 +358,13 @@ TEST(GeoValidatorTest, String_WKT_Valid)
     EXPECT_FALSE(base::isError(v(json::Json {"\"POINT(-74.00 40.71)\""})));
 }
 
+TEST(GeoValidatorTest, String_WKT_Invalid)
+{
+    auto v = getGeoValidator();
+    EXPECT_TRUE(base::isError(v(json::Json {"\"POINT (-74.00 40.71)garbageAtTheENd\""})));
+    EXPECT_TRUE(base::isError(v(json::Json {"\"POINT)(-74.00 40.71)\""})));
+}
+
 TEST(GeoValidatorTest, String_Geohash_Valid)
 {
     auto v = getGeoValidator();
@@ -419,6 +426,12 @@ TEST(GeoValidatorTest, Array_Of_GeoObjects_OneInvalid)
 }
 
 TEST(GeoValidatorTest, Array_Of_GeoStrings_Valid)
+{
+    auto v = getGeoValidator();
+    EXPECT_FALSE(base::isError(v(json::Json {R"([[-74.00,40.71],[-7.00,4.71]])"})));
+}
+
+TEST(GeoValidatorTest, Array_Of_GeoStrings_ValidArrays)
 {
     auto v = getGeoValidator();
     EXPECT_FALSE(base::isError(v(json::Json {R"(["40.71,-74.00","50.0,10.0"])"})));

@@ -330,13 +330,24 @@ inline bool isWKTPoint(const std::string& s)
     if (prefix != "POINT")
         return false;
 
-    std::istringstream ss(s.substr(open + 1, close - open - 1));
+    // Extract everything between parentheses
+    std::string content = s.substr(open + 1, close - open - 1);
+
+    // Check if there's anything after the closing parenthesis (garbage)
+    std::string afterClose = s.substr(close + 1);
+    while (!afterClose.empty() && afterClose.front() == ' ') afterClose.erase(0, 1);
+    if (!afterClose.empty())
+        return false;
+
+    std::istringstream ss(content);
     double lon = NAN, lat = NAN;
     if (!(ss >> lon >> lat))
         return false;
+
     std::string leftover;
     if (ss >> leftover)
         return false;
+
     return geoValidLon(lon) && geoValidLat(lat);
 }
 
@@ -360,11 +371,16 @@ inline bool isValidSingleGeoPoint(const json::Json& v)
 {
     if (v.isObject())
         return isGeoObject(v) || isGeoJsonPoint(v);
+
+    if (v.isArray())
+        return isGeoArray(v);
+
     std::string geoStringValue;
     if (v.getString(geoStringValue) == json::RetGet::Success)
     {
         return isGeoString(geoStringValue) || isWKTPoint(geoStringValue) || isGeohash(geoStringValue);
     }
+
     return false;
 }
 
