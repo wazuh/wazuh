@@ -53,8 +53,8 @@ help(){
     echo -e '\t- If -v option is not present, the script will update the existing version, revision, product version or date information'
     echo -e '\t with the values provided for -r, -p, and -d options.'
     echo 'Example:'
-    echo -e "\t $0 -v v3.0.0-alpha1 -r 3457 -p 3.0.0.1 -d 2024-06-10"
-    echo -e "\t $0 -d 2024-06-10"
+    echo -e "\t $0 -v v4.10.4 -r 41041 -p 4.10.4.1 -d 2026-05-21"
+    echo -e "\t $0 -d 2026-05-21"
     echo
     exit 1
 }
