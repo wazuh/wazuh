@@ -3,11 +3,13 @@ import ssl
 from asyncio import sleep
 from contextlib import asynccontextmanager
 from logging import getLogger
+from os.path import isabs, join
 from typing import AsyncIterator, List
 from urllib.parse import urlparse
 
 from opensearchpy import AsyncOpenSearch
 from opensearchpy.exceptions import ImproperlyConfigured, TransportError
+from wazuh.core import common
 from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.exception import WazuhIndexerError, IndexerUnavailableError
 from wazuh.core.indexer.credential_manager import KeystoreClient
@@ -18,6 +20,11 @@ MAX_RETRIES = 3
 BACKOFF_TIMEOUT = 60
 
 logger = getLogger("wazuh")
+
+
+def resolve_wazuh_path(path: str) -> str:
+    """Resolve Wazuh-relative paths from the manager installation directory."""
+    return path if isabs(path) else join(common.WAZUH_PATH, path)
 
 
 class Indexer:
@@ -406,6 +413,10 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
                 code=2200, extra_message=f"Missing or empty {cert_name} path"
             )
 
+    client_cert = resolve_wazuh_path(ssl_config["certificate"][0])
+    client_key = resolve_wazuh_path(ssl_config["key"][0])
+    ca_certs = resolve_wazuh_path(ssl_config["certificate_authorities"][0]["ca"][0])
+
     # Create indexer client
     try:
         client = await create_indexer(
@@ -415,9 +426,9 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
             password=indexer_pass,
             use_ssl=True,
             verify_certs=True,
-            client_cert_path=ssl_config["certificate"][0],
-            client_key_path=ssl_config["key"][0],
-            ca_certs_path=ssl_config["certificate_authorities"][0]["ca"][0],
+            client_cert_path=client_cert,
+            client_key_path=client_key,
+            ca_certs_path=ca_certs,
         )
     except IndexerUnavailableError:
         raise
