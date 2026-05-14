@@ -1,8 +1,9 @@
 # Wazuh external dependency source manifest.
 #
-# This file is sourced by packages/build_external.sh inside the package builder
-# containers. Each entry below registers one dependency and tells the script how
-# to fetch a fresh upstream tarball for it when the user provides a new version.
+# This file is sourced by packages/externals/build_external.sh inside the package
+# builder containers. Each entry below registers one dependency and tells the
+# script how to fetch a fresh upstream tarball for it when the user provides a
+# new version.
 #
 # Schema (positional args to _reg):
 #   name           Manifest key. Must match the input passed by the workflow

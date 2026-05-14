@@ -3,8 +3,8 @@
 # Wazuh external dependency builder (container-side).
 #
 # Runs inside one of the package builder Docker images (e.g.
-# packages/debs/amd64/manager:<tag>). Driven by packages/generate_external.sh
-# on the host.
+# packages/debs/amd64/manager:<tag>). Driven by
+# packages/externals/generate_external.sh on the host.
 #
 # Inputs (env vars set by the host script):
 #   BUILD_TARGET        agent | manager        (passed to `make TARGET=`)
@@ -19,7 +19,7 @@
 #                                 — the path the Linux/Windows builder
 #                                 containers see; macOS native runs override
 #                                 it to the actual checkout path).
-#   ${WAZUH_SRC}/packages/external_sources.sh   the manifest
+#   ${WAZUH_SRC}/packages/externals/external_sources.sh   the manifest
 #
 # Output:
 #   ${ARTIFACTS_DIR}/<dep>_src.zip
@@ -120,7 +120,7 @@ if [ -f /usr/include/expat.h ] && ! pkg-config --exists expat 2>/dev/null; then
 fi
 
 # shellcheck disable=SC1091
-source "${WAZUH_SRC}/packages/external_sources.sh"
+source "${WAZUH_SRC}/packages/externals/external_sources.sh"
 
 # Substitute {version}, {version_us}, and {version_concat} in a URL template.
 # {version_concat} maps a dotted version like "3.51.1" to sqlite's

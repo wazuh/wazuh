@@ -181,7 +181,7 @@ jobs:
           # have this fallback internally, but compute JOBS here so it shows
           # in the workflow log for diagnosis.
           jobs="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)"
-          bash generate_external.sh \
+          bash externals/generate_external.sh \
             --system "${{ matrix.system }}" \
             --architecture "${{ matrix.architecture }}" \
             --target "${{ matrix.target }}" \
@@ -405,7 +405,7 @@ jobs:
             -e WAZUH_VERBOSE="yes" \
             --entrypoint /bin/bash \
             "${CONTAINER_NAME}:${TAG}" \
-            /wazuh-local-src/packages/smoke_build.sh 2>&1 | tee "${log}"
+            /wazuh-local-src/packages/externals/smoke_build.sh 2>&1 | tee "${log}"
 
       - name: Analyze dependency usage
         if: always()

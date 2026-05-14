@@ -4,8 +4,8 @@
 #
 # Drives the per-leg external dependency rebuild. Picks the right Docker image
 # for the (system, architecture) combo, mounts the working tree, runs
-# packages/build_external.sh inside the container, and exposes the per-dep
-# zip artifacts on the host.
+# packages/externals/build_external.sh inside the container, and exposes the
+# per-dep zip artifacts on the host.
 #
 # Currently supports the 4 Linux Docker legs (deb/rpm x amd64/arm64).
 # macOS (native) and Windows (MinGW cross-compile) legs are added in
@@ -14,7 +14,8 @@
 set -e
 
 CURRENT_PATH="$(cd "$(dirname "$0")"; pwd -P)"
-WAZUH_PATH="$(cd "${CURRENT_PATH}/.."; pwd -P)"
+# This script lives in packages/externals/, so the repo root is two levels up.
+WAZUH_PATH="$(cd "${CURRENT_PATH}/../.."; pwd -P)"
 
 ARCHITECTURE=""
 SYSTEM=""
@@ -23,7 +24,7 @@ DOCKER_TAG="latest"
 DEPS_TO_UPDATE=""
 JOBS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)"
 VERBOSE=""
-OUTDIR="${CURRENT_PATH}/output_externals"
+OUTDIR="${WAZUH_PATH}/packages/output_externals"
 
 usage() {
     cat <<EOF
@@ -38,7 +39,7 @@ Usage: $0 [OPTIONS]
                                    sources; nothing is replaced.
       --jobs <n>                   [Optional] Parallel make jobs.
       --output <path>              [Optional] Host output dir (collected zips).
-                                   Default: \$CURRENT_PATH/output_externals.
+                                   Default: <repo>/packages/output_externals.
       --verbose                    [Optional] Print commands as they run.
   -h, --help                       Show this help.
 EOF
@@ -125,7 +126,7 @@ if [ "${SYSTEM}" = "macos" ] || [ "${SYSTEM}" = "windows" ]; then
         DEPS_TO_UPDATE="${DEPS_TO_UPDATE}" \
         JOBS="${JOBS}" \
         WAZUH_VERBOSE="${VERBOSE}" \
-        bash "${WAZUH_PATH}/packages/build_external.sh"
+        bash "${WAZUH_PATH}/packages/externals/build_external.sh"
 else
     CONTAINER_NAME="pkg_${SYSTEM}_${TARGET}_builder_${ARCHITECTURE}"
     echo "[generate_external] image=${CONTAINER_NAME}:${DOCKER_TAG}"
@@ -147,7 +148,7 @@ else
         -e WAZUH_VERBOSE="${VERBOSE}" \
         --entrypoint /bin/bash \
         "${CONTAINER_NAME}:${DOCKER_TAG}" \
-        /wazuh-local-src/packages/build_external.sh
+        /wazuh-local-src/packages/externals/build_external.sh
 fi
 
 echo "[generate_external] per-dep zips:"
