@@ -79,5 +79,34 @@ jobs:
       # Run analysisd integration tests.
       - name: Run analysisd integration tests
         run: |
+          MONITOR_LOG="/tmp/wazuh-db-monitor.log"
+          sudo bash -c '
+            SOCKET="/var/ossec/queue/db/wdb"
+            MONITOR_LOG="/tmp/wazuh-db-monitor.log"
+            while true; do
+              while test -S "$SOCKET"; do sleep 0.1; done
+              STOP=$(date +%s%3N)
+              echo "[$(date +%H:%M:%S)] wazuh-db se ha parado" >> "$MONITOR_LOG"
+              while ! test -S "$SOCKET"; do sleep 0.05; done
+              START=$(date +%s%3N)
+              echo "[$(date +%H:%M:%S)] wazuh-db listo en: $(( START - STOP )) ms" >> "$MONITOR_LOG"
+            done
+          ' &
+          MONITOR_PID=$!
           cd tests/integration
+          set +e
           sudo python -m pytest --tier 2 test_analysisd/
+          EXIT_CODE=$?
+          set -e
+          sudo kill $MONITOR_PID 2>/dev/null || true
+          echo "=== [post-tests] ls /tmp/:"
+          ls /tmp/
+          echo "=== [post-tests] cat $MONITOR_LOG:"
+          cat "$MONITOR_LOG" 2>&1 || echo "FICHERO NO ENCONTRADO"
+          exit $EXIT_CODE
+      - name: Upload logs artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: /tmp/wazuh-db-monitor.log
