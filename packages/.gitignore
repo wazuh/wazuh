@@ -1,0 +1,8 @@
+*.deb
+*.rpm
+*.zip
+*.pkg
+.sha512
+.cache
+output
+

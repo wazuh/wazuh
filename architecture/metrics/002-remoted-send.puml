@@ -1,0 +1,65 @@
+' Copyright (C) 2015, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml remoted-send
+
+    actor agent
+    box "Remoted Module - Send Messages"
+    participant remoted
+    database state
+    participant analysisd
+    participant API
+    end box
+    skinparam sequenceMessageAlign right
+
+    == ACK ==
+    agent -> remoted : Received Message from agent
+    remoted -> remoted : Enqueue msg
+    remoted -> remoted : Dequeue msg
+    alt Is control msg
+        remoted -> remoted: Save msg
+        remoted -> agent: Send ACK
+        remoted -> state: ack++
+    end
+
+    == Shared files (agents groups) ==
+    remoted -> remoted: Update shared files
+    alt Shared files changes
+        remoted -> remoted: Send file to agent
+        remoted -> agent: Send file name
+        remoted -> state: shared++
+        remoted -> agent: Send content file
+        remoted -> state: shared++
+        remoted -> agent: Send close file
+        remoted -> state: shared++
+    end
+
+    == Active Response ==
+    analysisd -> remoted : Enqueue msg in AR queue
+    rnote over remoted
+      ARQUEUE
+        queue/alerts/ar
+    endrnote
+    remoted -> agent: Send AR msg
+    remoted -> state: ar++
+
+    == SCA ==
+    analysisd -> remoted : Enqueue msg in SCA queue
+    rnote over remoted
+      CFGARQUEUE
+        queue/alerts/cfgarq
+    endrnote
+    remoted -> agent: Send SCA msg
+    remoted -> state: sca++
+
+    == Request (e.g. WPK upgrade) ==
+    API -> remoted: Request agent upgrade
+    remoted -> agent: Send WPK
+    remoted -> state: request++
+
+    == Send error ==
+    remoted ->x agent: Send msg fail
+    remoted -> state: discarded++
+
+@enduml

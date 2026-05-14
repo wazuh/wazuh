@@ -1,0 +1,4 @@
+
+  3.5- Active response allows you to execute a specific
+       command based on the events received.
+       By default, no active responses are defined.

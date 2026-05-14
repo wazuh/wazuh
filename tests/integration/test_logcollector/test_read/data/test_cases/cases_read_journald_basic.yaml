@@ -1,0 +1,143 @@
+# Basic configuration for journald without filters or merge
+- name: Test Journal reader default configuration
+  description: A basic configuration for journald, 1 block without filters, read all
+  configuration_parameters:
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+  metadata:
+    expected_logs:
+      - '\w+ \d+ \d+:\d+:\d+ \S+ \S+\[\d+]: This is a message from journald 1'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ \S+\[\d+]: This is a message from journald 2'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ \S+\[\d+]: This is a message from journald 3'
+    input_logs:
+      - message: This is a message from journald 1
+      - message: This is a message from journald 2
+      - message: This is a message from journald 3
+      
+
+- name:  Test Journal reader Filter by field
+  description: Test Journal reader, filter by field
+  configuration_parameters:
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+      - filter:
+           value: test-IT-tag-\d
+           attributes:
+             - field: SYSLOG_IDENTIFIER
+             - ignore_if_missing: 'no'
+  metadata:
+    expected_logs:
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-IT-tag-1\[\d+]: This is a message from journald 1'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-IT-tag-2\[\d+]: This is a message from journald 2'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-IT-tag-3\[\d+]: This is a message from journald 3'
+    unexpected_logs:
+      - '\w+ \d+ \d+:\d+:\d+ \S+ other-tag\[\d+]: .*'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ other-tag-2\[\d+]: .*'
+    input_logs:
+      - message: "This is a message from journald 1"
+        tag: "test-IT-tag-1"
+      - message: "This is a message from other proccess"
+        tag: "other-tag"
+      - message: "This is a message from journald 2"
+        tag: "test-IT-tag-2"
+      - message: "This is a message from other proccess 2"
+        tag: "other-tag-2"
+      - message: "This is a message from journald 3"
+        tag: "test-IT-tag-3"
+      
+
+- name: Test Journal reader, merge, with active filters in journal
+  description: Active filters on merge, 2 blocks, 1 with filter, 1 without filter - only filter from block with filter applies
+  configuration_parameters:
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+      - filter:
+           value: test-IT-tag-\d
+           attributes:
+             - field: SYSLOG_IDENTIFIER
+             - ignore_if_missing: 'no'
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+  metadata:
+    expected_logs:
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-IT-tag-1\[\d+]: This is a message from journald 1'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-IT-tag-2\[\d+]: This is a message from journald 2'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-IT-tag-3\[\d+]: This is a message from journald 3'
+    input_logs:
+      - message: "This is a message from journald 1"
+        tag: "test-IT-tag-1"
+      - message: "This is a message from other proccess"
+        tag: "other-tag"
+      - message: "This is a message from journald 2"
+        tag: "test-IT-tag-2"
+      - message: "This is a message from other proccess 2"
+        tag: "other-tag-2"
+      - message: "This is a message from journald 3"
+        tag: "test-IT-tag-3"
+
+
+- name: Test Journal reader, merge 2 blocks without filters
+  description: Both blocks without filters should disable filters and read everything
+  configuration_parameters:
+    # Block 1 - no filters
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+    # Block 2 - no filters
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+  metadata:
+    expected_logs:
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-IT-tag\[\d+]: Test message with tag'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ other-process\[\d+]: Message from other process'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ system-service\[\d+]: System service message'
+    input_logs:
+      - message: "Test message with tag"
+        tag: "test-IT-tag"
+      - message: "Message from other process"
+        tag: "other-process"
+      - message: "System service message"
+        tag: "system-service"
+
+- name: Test Journal reader, default plus group config
+  description: Default config (no filter) plus group config with filter - only filtered messages should be read
+  configuration_parameters:
+    # Block 1 - Default config, no filters
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+    # Block 2 - Group config with specific tag filter
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+      - filter:
+           value: 'app-\w+'
+           attributes:
+             - field: 'SYSLOG_IDENTIFIER'
+             - ignore_if_missing: 'no'
+  metadata:
+    expected_logs:
+      - '\w+ \d+ \d+:\d+:\d+ \S+ app-service\[\d+]: App service message'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ app-daemon\[\d+]: App daemon message'
+    input_logs:
+      - message: "App service message"
+        tag: "app-service"
+      - message: "System message"
+        tag: "systemd"
+      - message: "App daemon message"
+        tag: "app-daemon"
+      - message: "Kernel message"
+        tag: "kernel"

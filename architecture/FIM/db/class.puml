@@ -1,0 +1,251 @@
+@startuml DB class diagram
+
+package "fimCommonDefs" <<Folder>> #DDDDDD{
+    interface callbacks{
+        void((*fim_sync_callback_t)(const char *, const char*));
+        void((*logging_callback_t)(const modules_log_level_t, const char*));
+        void((*callback_t)(void *, void *));
+    }
+    enum FIMDBErrorCode {
+        FIMDB_OK = 0,
+        FIMDB_ERR = -1,
+        FIMDB_FULL = -2
+    }
+    interface callback_context_t <<(S,#FF7700) struct>>{
+        callback_t,
+        void*
+    }
+    enum OSType {
+        OTHERS,
+        WINDOWS
+    }
+}
+package "item" <<Folder>> {
+    abstract DBItem {
+        # string m_identifier
+        # bool m_scanned
+        # time_t m_lastEvent
+        # string m_checksum
+        # enum m_mode
+        # bool m_oldData
+
+        + DBItem()
+        + ~DBItem()
+        + {abstract} fim_entry toFimEntry()
+        + {abstract} json toJSON()
+        + bool state()
+    }
+
+    class FileItem {
+        - unsigned int m_size
+        - string m_perm
+        - string m_attributes
+        - string m_uid
+        - string m_username
+        - string m_gid
+        - string m_groupname
+        - time_t m_time
+        - unsigned long long int m_inode
+        - string m_md5
+        - string m_sha1
+        - string m_sha256
+        - unsigned long int m_dev
+        - int m_options
+        - unique_ptr<fim_entry, FimFileDataDeleter> m_fimEntry
+        - unique_ptr<json> m_statementConf
+        - void createFimEntry()
+        - void createJSON()
+
+        + FileItem(const fim_entry*, bool)
+        + FileItem(const json&)
+        + ~FileItem()
+        + fim_entry* toFIMEntry()
+        + const json* toJSON() const
+    }
+    class "RegistryValue" {
+        - int m_type
+        - int m_keyUid
+        - int m_size
+        - string m_path
+        - string m_md5
+        - string m_sha1
+        - string m_sha256
+        - unique_ptr<fim_entry, FimRegistryValueDeleter> m_fimEntry
+        - unique_ptr<json> m_statementConf
+        - string m_hashpath
+        - void createFimEntry()
+        - void createJSON()
+
+        + RegistryValue(fim_entry*, bool)
+        + RegistryValue(json&, bool)
+        + ~RegistryValue()
+        + fim_entry* toFIMEntry()
+        + const json* toJSON() const
+    }
+    class "RegistryKey" {
+        - string m_perm
+        - string m_uid
+        - string m_username
+        - string m_gid
+        - string m_groupname
+        - time_t m_time
+        - int m_arch
+        - unique_ptr<fim_entry, FimRegistryKeyDeleter> m_fimEntry
+        - unique_ptr<json> m_statementConf
+        - string m_hashpath
+        - void createFimEntry()
+        - void createJSON()
+
+        + RegistryKey(const fim_entry*, bool)
+        + RegistryKey(const json&, bool)
+        + ~RegistryKey()
+        + fim_entry* toFIMEntry()
+        + const json* toJSON() const
+    }
+    DBItem <|-- FileItem
+    DBItem <|-- RegistryValue
+    DBItem <|-- RegistryKey
+}
+class "FimDB"  <<(S,#FF7700) Singleton>> {
+    - int m_fileLimit
+    - int m_registryLimit
+    - int m_syncInterval
+    - bool m_stopping
+    - mutex m_fimSyncMutex
+    - condition_variable m_cv
+    - shared_ptr<DBSync> m_dbsyncHandler
+    - shared_ptr<RSync> m_rsyncHandler
+    - function<void(const string&)> m_syncFileMessageFunction
+    - function<void(const string&)> m_syncRegistryMessageFunction
+    - function<void(modules_log_level_t, const string&)> m_loggingFunction
+    - bool m_runIntegrity
+    - thread m_integrityThread
+    - void sync()
+
+    # FIMDB()
+    # ~FIMDB()
+    # FIMDB(const FIMDB&)
+    # void setFileLimit()
+    # void setRegistryLimit()
+    # void setValueLimit()
+
+    + void init(unsigned int,
+                function<void(const string&)>,
+                function<void(const string&)>,
+                function<void(modules_log_level_t, const string&)>,
+                shared_ptr<DBSync>,
+                shared_ptr<RemoteSync>,
+                unsigned int,
+                unsigned int,
+                bool)
+    + void registerRsync()
+    + void pushMessage(const string&)
+    + void runIntegrity()
+    + void stopSync()
+    + void stopIntegrity()
+    + void logFunction(const modules_log_level_t, const string&)
+    + DBSYNC_HANDLE DBSyncHandle()
+    + void loopRsync()
+    + void removeItem(json)
+    + void updateItem(json, callback)
+    + void executeQuery(json, callback)
+    + void teardown()
+    + FimDB instance()
+}
+package "db.hpp" <<Folder>> #DDDDDD{
+    class DB <<(S,#FF7700) Singleton>>{
+        - DB()
+        - ~DB()
+        - DB(const DB&)
+        - DB& operation=(const DB&)
+
+        + static DB& instance()
+        + void init(const int, const int, const uint32_t, const uint32_t, function<void(const string&)>, function<void(const string&)>, function<void(modules_log_level_t, const string&)>, int, int, bool)
+        + void runIntegrity()
+        + void pushMessage(const string&)
+        + DBSYNC_HANDLE DBSyncHandle()
+        + void removeFile(const string&)
+        + json createJsonEvent(json&, json&, ReturnTypeCallback, create_json_event_ctc*)
+        + void getFile(const string&, function<void(const json&)>)
+        + int countEntries(const string&, const COUNT_SELECT_TYPE)
+        + bool updateFile(const json &)
+        + void searchFile(const SearchData&, function<void(const string &)>)
+        + void teardown()
+    }
+    class no_entry_found {
+        - std::runtime_error m_error
+
+        + const char* what()
+        + explicit no_entry_found(const string&)
+    }
+    interface SearchData {
+        tuple<FILE_SEARCH_TYPE, string, string, string>
+    }
+    enum COUNT_SELECT_TYPE {
+        COUNT_ALL,
+        COUNT_INODE
+    }
+    enum FILE_SEARCH_TYPE {
+        SEARCH_TYPE_PATH,
+        SEARCH_TYPE_INODE
+    }
+    DB *-- SearchData
+    DB *-- COUNT_SELECT_TYPE
+    DB *-- FILE_SEARCH_TYPE
+}
+package "db.h" <<Folder>> #DDDDDD{
+    interface db {
+        FIMDBErrorCode fim_db_init(int, int, uint32_t, uint32_t, fim_sync_callback_t, logging_callback_t, int, int,bool)
+        FIMDBErrorCode fim_run_integrity()
+        FIMDBErrorCode fim_sync_push_msg(const char*)
+        TXN_HANDLE fim_db_transaction_start(const char*, result_callback_t, void*)
+        FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE, const fim_entry*)
+        FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE, result_callback_t, void*)
+        void fim_db_teardown()
+    }
+    interface file {
+        FIMDBErrorCode fim_db_file_pattern_search(const char*, callback_context_t )
+        FIMDBErrorCode fim_db_get_path(const char*, callback_context_t)
+        FIMDBErrorCode fim_db_remove_path(const char*)
+        int fim_db_get_count_file_inode()
+        int fim_db_get_count_file_entry()
+        FIMDBErrorCode fim_db_file_update(const fim_entry*, callback_context_t)
+        FIMDBErrorCode fim_db_file_inode_search(const unsigned long, const unsigned long, callback_context_t)
+    }
+    interface registry {
+        int fim_db_get_count_registry_key()
+        int fim_db_get_count_registry_data()
+    }
+}
+package "fimDBSpecialization" <<Folder>> #DDDDDD {
+    class "FIMDBCreator<OSType osType>" {
+        + static void setLimits(shared_ptr<DBSync>, const unsigned int&, const unsigned int&)
+        + static string CreateStatement()
+        + static void registerRSync(shared_ptr<RemoteSync>, const DBSYNC_HANDLE&, function<void(const string&)>, function<void(const string&)>, const bool)
+        + static void sync(shared_ptr<RemoteSync>, const DBSYNC_HANDLE&, function<void(const string&)>, function<void(const string&)>)
+        + static void encodeString(string&)
+    }
+    class "RegistryTypes<OSType osType>" {
+        + static const string typeText(const int32_t)
+    }
+}
+package "fimDBSpecializationWindows" <<Folder>> #DDDDDD {
+    class WindowsSpecialization {
+        + static const string registryTypeToText(const int)
+        + static void encodeString(const string)
+    }
+}
+
+circle FIM
+db.h => FIM
+fimCommonDefs => FIM
+no_entry_found => file
+db.h *-- db.hpp
+db.h *-- FimDB
+fimCommonDefs --o db.h
+fimCommonDefs --o item
+fimCommonDefs --o FimDB
+fimDBSpecialization => FimDB
+fimDBSpecialization => item
+fimDBSpecializationWindows => fimDBSpecialization
+@enduml

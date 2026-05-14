@@ -1,0 +1,3 @@
+
+ Hiba 0x5.
+ Hiba merült fel a kompilálás közben. Nem tudtam befejezni a telepítést.

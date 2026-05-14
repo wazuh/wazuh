@@ -1,0 +1,25 @@
+name: "Compile"
+description: "Executes a compilation."
+
+inputs:
+  path:
+    required: true
+    description: "Path to compile and test"
+    default: src/
+
+runs:
+  using: "composite"
+  steps:
+      - name: Compile
+        run: |
+          SRC_FOLDER=$(pwd)/src
+
+          VERSION="v$(grep '"version"' VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
+          echo $VERSION
+          REVISION=`grep '"stage"' VERSION.json | sed -E 's/.*"stage": *"([^"]+)".*/\1/'`
+          echo $REVISION
+
+          cd ${{ inputs.path }}
+          mkdir -p build && cd build
+          cmake -DSRC_FOLDER=${SRC_FOLDER} -DVERSION="$VERSION" -DREVISION="$REVISION" .. && make -j2
+        shell: bash

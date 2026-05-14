@@ -1,0 +1,10 @@
+- name: 'check_list_label'
+  description:
+  configuration_parameters:
+  metadata:
+    input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "{\"it_logtest\" : \"rules\", \"test\": \"list_test\", \"key_test\": \"test_ok\"}","log_format": "syslog","location": "master->/var/log/syslog"}}'
+    rule_dir: 'etc/rules/'
+    rule_file: 'custom_cdb_rules.xml'
+    rule_id: '770000'
+    cdb_dir: 'etc/lists/'
+    cdb_file: 'custom_cdb_list'

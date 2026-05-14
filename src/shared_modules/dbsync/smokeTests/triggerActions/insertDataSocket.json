@@ -1,0 +1,13 @@
+{
+    "action": "dbsync_insert_data",
+        "body": {
+            "table": "processes_sockets",
+            "data":[
+                {
+                    "pid":4,
+                    "socket_id":1
+                }         
+            ]
+        }
+    } 
+    

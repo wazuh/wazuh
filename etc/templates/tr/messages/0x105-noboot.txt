@@ -1,0 +1,3 @@
+
+ - Önyükleme sırasında Wazuh'i başlatmak için hiç birşey yapılmadı.
+   Bu satırı başlangıç betiğine ekleyin:

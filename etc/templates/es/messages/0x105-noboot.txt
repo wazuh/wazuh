@@ -1,0 +1,4 @@
+
+ - No se ha tomado acción para configurar la ejecución de Wazuh
+   durante el encendido de la máquina. Agrege la siguiente línea
+   a su archivo init:

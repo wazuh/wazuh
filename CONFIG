@@ -1,0 +1,22 @@
+WAZUH
+Copyright (C) 2015, Wazuh Inc.
+
+Based on OSSEC
+Copyright (C) 2014 Trend Micro Inc.
+
+
+= Information about Wazuh =
+
+Visit https://www.wazuh.com
+
+
+= Recommended Installation =
+
+See INSTALL
+
+
+== Configuring Wazuh ==
+
+Just follow the steps from the install.sh script.
+More information at
+https://documentation.wazuh.com

@@ -1,0 +1,6 @@
+ 
+ Error 0x1.
+ Questo script deve essere eseguito a partire dalla directory in cui
+ si trova.
+ Prima di eseguire questo script entra nella directory in cui si trova.
+ Per eseguire lo script scrivi "./install.sh"

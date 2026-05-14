@@ -1,0 +1,24 @@
+- sections:
+    - section: syscheck
+      elements:
+        - disabled:
+            value: "no"
+        - frequency:
+            value: FREQUENCY
+        - directories:
+            value: TEST_DIR
+            attributes:
+              - FIM_MODE
+        - file_limit: FILE_LIMIT
+    - section: sca
+      elements:
+        - enabled:
+            value: "no"
+    - section: rootcheck
+      elements:
+        - disabled:
+            value: "yes"
+    - section: active-response
+      elements:
+        - disabled:
+            value: "yes"

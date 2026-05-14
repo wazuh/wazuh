@@ -1,0 +1,179 @@
+{
+  "agent_info": {
+    "agent_id": "002",
+    "agent_ip": "any",
+    "agent_name": "DESKTOP-5RL9J34",
+    "agent_version": "v4.7.2"
+  },
+  "data_type": "event",
+  "data": {
+    "attributes": {
+      "attributes": "ARCHIVE",
+      "checksum": "70bc2a41d60195241878d1486dc398036b8aa99f",
+      "hash_md5": "5a6db2195431ffb61db157179ded3d98",
+      "hash_sha1": "4ff5e9be08943c9cbe69746b3e8b57922de6e862",
+      "hash_sha256": "44ffdc28f13e303fef8140e69abfc899827ec105814f2f91e9a3602a8ddef36b",
+      "inode": 0,
+      "mtime": 1737141991,
+      "perm": {
+        "S-1-5-32-544": {
+          "name": "Administrators",
+          "allowed": [
+            "delete",
+            "read_control",
+            "write_dac",
+            "write_owner",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        },
+        "S-1-5-18": {
+          "name": "SYSTEM",
+          "allowed": [
+            "delete",
+            "read_control",
+            "write_dac",
+            "write_owner",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        },
+        "S-1-5-32-545": {
+          "name": "Users",
+          "allowed": [
+            "read_control",
+            "synchronize",
+            "read_data",
+            "read_ea",
+            "execute",
+            "read_attributes"
+          ]
+        },
+        "S-1-5-11": {
+          "name": "Authenticated Users",
+          "allowed": [
+            "delete",
+            "read_control",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        }
+      },
+      "size": 21,
+      "type": "file",
+      "uid": "S-1-5-21-1245906424-2878732365-1129427271-1001",
+      "user_name": "dwordcito"
+    },
+    "changed_attributes": [
+      "size",
+      "mtime",
+      "md5",
+      "sha1",
+      "sha256"
+    ],
+    "mode": "realtime",
+    "old_attributes": {
+      "attributes": "ARCHIVE",
+      "checksum": "6054b19bc5bfc7bc073918d2a38f756a6bcb0851",
+      "hash_md5": "0de4c5b142f04451ba31622435dfe98c",
+      "hash_sha1": "8d14dc90f906c0f7079f935d75afdf88238ffb5c",
+      "hash_sha256": "f32a318f324bde02a171ff418f216afc53d5aa8d0aa060d30d3330d81aaa1e24",
+      "inode": 0,
+      "mtime": 1737141984,
+      "perm": {
+        "S-1-5-32-544": {
+          "name": "Administrators",
+          "allowed": [
+            "delete",
+            "read_control",
+            "write_dac",
+            "write_owner",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        },
+        "S-1-5-18": {
+          "name": "SYSTEM",
+          "allowed": [
+            "delete",
+            "read_control",
+            "write_dac",
+            "write_owner",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        },
+        "S-1-5-32-545": {
+          "name": "Users",
+          "allowed": [
+            "read_control",
+            "synchronize",
+            "read_data",
+            "read_ea",
+            "execute",
+            "read_attributes"
+          ]
+        },
+        "S-1-5-11": {
+          "name": "Authenticated Users",
+          "allowed": [
+            "delete",
+            "read_control",
+            "synchronize",
+            "read_data",
+            "write_data",
+            "append_data",
+            "read_ea",
+            "write_ea",
+            "execute",
+            "read_attributes",
+            "write_attributes"
+          ]
+        }
+      },
+      "size": 19,
+      "type": "file",
+      "uid": "S-1-5-21-1245906424-2878732365-1129427271-1001",
+      "user_name": "dwordcito"
+    },
+    "path": "c:\\temp\\aaa.txt",
+    "timestamp": 1737141991,
+    "type": "modified",
+    "version": "2.0"
+  }
+}

@@ -1,0 +1,4 @@
+
+ - Nenhuma ação foi tomada para que Wazuh inicie
+   durrante o 'boot'. Adicione a seguinte linha em seu
+   script de inicialização:

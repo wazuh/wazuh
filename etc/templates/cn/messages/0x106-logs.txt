@@ -1,0 +1,7 @@
+
+ -如果你希望监控其他文件, 只需要在配置文件ossec.conf中
+  添加新的一项.
+  任何关于配置的疑问您都可以在 https://documentation.wazuh.com/ 到答案
+
+
+  --- 按 ENTER 以继续 ---

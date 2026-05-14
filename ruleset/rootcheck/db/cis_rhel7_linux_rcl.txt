@@ -1,0 +1,820 @@
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+# OSSEC Linux Audit - (C) 2014
+#
+# Released under the same license as OSSEC.
+# More details at the LICENSE file included with OSSEC or online
+# at: https://www.gnu.org/licenses/gpl.html
+#
+# [Application name] [any or all] [reference]
+# type:<entry name>;
+#
+# Type can be:
+#             - f (for file or directory)
+#             - p (process running)
+#             - d (any file inside the directory)
+#
+# Additional values:
+# For the registry and for directories, use "->" to look for a specific entry and another
+# "->" to look for the value.
+# Also, use " -> r:^\. -> ..." to search all files in a directory
+# For files, use "->" to look for a specific value in the file.
+#
+# Values can be preceded by: =: (for equal) - default
+#                             r: (for ossec regexes)
+#                             >: (for strcmp greater)
+#                             <: (for strcmp  lower)
+# Multiple patterns can be specified by using " && " between them.
+# (All of them must match for it to return true).
+
+
+# CIS Checks for Red Hat / CentOS 7
+# Based on CIS Benchmark for Red Hat Enterprise Linux 7 v1.1.0
+
+# Vars
+$sshd_file=/etc/ssh/sshd_config;
+
+# RC scripts location
+$rc_dirs=/etc/rc.d/rc2.d,/etc/rc.d/rc3.d,/etc/rc.d/rc4.d,/etc/rc.d/rc5.d;
+
+
+[CIS - Testing against the CIS Red Hat Enterprise Linux 7 Benchmark v1.1.0] [any required] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/redhat-release -> r:^Red Hat Enterprise Linux \S+ release 7;
+f:/etc/redhat-release -> r:^CentOS && r:release 7;
+f:/etc/redhat-release -> r:^Cloud && r:release 7;
+f:/etc/redhat-release -> r:^Oracle && r:release 7;
+f:/etc/redhat-release -> r:^Better && r:release 7;
+f:/etc/redhat-release -> r:^OpenVZ && r:release 7;
+
+# 1.1.1 /tmp: partition
+[CIS - RHEL7 - Build considerations - Robust partition scheme - /tmp is not on its own partition] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/fstab -> !r:/tmp;
+
+# 1.1.2 /tmp: nodev
+[CIS - RHEL7 - 1.1.2 - Partition /tmp without 'nodev' set {CIS: 1.1.2 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/fstab -> !r:^# && r:/tmp && !r:nodev;
+
+# 1.1.3 /tmp: nosuid
+[CIS - RHEL7 - 1.1.3 - Partition /tmp without 'nosuid' set {CIS: 1.1.3 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/fstab -> !r:^# && r:/tmp && !r:nosuid;
+
+# 1.1.4 /tmp: noexec
+[CIS - RHEL7 - 1.1.4 - Partition /tmp without 'noexec' set {CIS: 1.1.4 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/fstab -> !r:^# && r:/tmp && !r:noexec;
+
+# 1.1.5 Build considerations - Partition scheme.
+[CIS - RHEL7 - Build considerations - Robust partition scheme - /var is not on its own partition {CIS: 1.1.5 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/fstab -> !r^# && !r:/var;
+
+# 1.1.6 bind mount /var/tmp to /tmp
+[CIS - RHEL7 - Build considerations - Robust partition scheme - /var/tmp is bound to /tmp {CIS: 1.1.6 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/fstab -> !r:^# && !r:/var/tmp;
+
+# 1.1.7 /var/log: partition
+[CIS - RHEL7 - Build considerations - Robust partition scheme - /var/log is not on its own partition {CIS: 1.1.7 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/fstab -> !r:^# && !r:/var/log;
+
+# 1.1.8 /var/log/audit: partition
+[CIS - RHEL7 - Build considerations - Robust partition scheme - /var/log/audit is not on its own partition {CIS: 1.1.8 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/fstab -> !r:^# && !r:/var/log/audit;
+
+# 1.1.9 /home: partition
+[CIS - RHEL7 - Build considerations - Robust partition scheme - /home is not on its own partition {CIS: 1.1.9 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/fstab -> !r:^# && !r:/home;
+
+# 1.1.10 /home: nodev
+[CIS - RHEL7 - 1.1.10 -  Partition /home without 'nodev' set {CIS: 1.1.10 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/fstab -> !r:^# && r:/home && !r:nodev;
+
+# 1.1.11 nodev on removable media partitions (not scored)
+[CIS - RHEL7 - 1.1.11 - Removable partition /media without 'nodev' set {CIS: 1.1.11 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/fstab -> !r:^# && r:/media && !r:nodev;
+
+# 1.1.12 noexec on removable media partitions (not scored)
+[CIS - RHEL7 - 1.1.12 - Removable partition /media without 'noexec' set {CIS: 1.1.12 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/fstab -> !r:^# && r:/media && !r:noexec;
+
+# 1.1.13 nosuid on removable media partitions (not scored)
+[CIS - RHEL7 - 1.1.13 - Removable partition /media without 'nosuid' set {CIS: 1.1.13 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/fstab -> !r:^# && r:/media && !r:nosuid;
+
+# 1.1.14 /dev/shm: nodev
+[CIS - RHEL7 - 1.1.14 - /dev/shm without 'nodev' set {CIS: 1.1.14 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/fstab -> !r:^# && r:/dev/shm && !r:nodev;
+
+# 1.1.15 /dev/shm: nosuid
+[CIS - RHEL7 - 1.1.15 - /dev/shm without 'nosuid' set {CIS: 1.1.15 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/fstab -> !r:^# && r:/dev/shm && !r:nosuid;
+
+# 1.1.16 /dev/shm: noexec
+[CIS - RHEL7 - 1.1.16 - /dev/shm without 'noexec' set {CIS: 1.1.16 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/fstab -> !r:^# && r:/dev/shm && !r:noexec;
+
+# 1.1.17 sticky bit on world writable directories (Scored)
+# TODO
+
+# 1.1.18 disable cramfs (not scored)
+
+# 1.1.19 disable freevxfs (not scored)
+
+# 1.1.20 disable jffs2 (not scored)
+
+# 1.1.21 disable hfs (not scored)
+
+# 1.1.22 disable hfsplus (not scored)
+
+# 1.1.23 disable squashfs (not scored)
+
+# 1.1.24 disable udf (not scored)
+
+
+##########################################
+# 1.2 Software Updates
+##########################################
+
+# 1.2.1 Configure rhn updates (not scored)
+
+# 1.2.2 verify  RPM gpg keys  (Scored)
+# TODO
+
+# 1.2.3 verify gpgcheck enabled (Scored)
+# TODO
+
+# 1.2.4 Disable rhnsd (not scored)
+
+# 1.2.5 Obtain Software Package Updates with yum (Not Scored)
+
+# 1.2.6 Obtain updates with yum (not scored)
+
+
+###############################################
+# 1.3 Advanced Intrusion Detection Environment
+###############################################
+#
+# Skipped, this control is obsoleted by OSSEC
+#
+
+###############################################
+# 1.4 Configure SELinux
+###############################################
+
+# 1.4.1 enable selinux in /etc/grub.conf
+[CIS - RHEL7 - 1.4.1 - SELinux Disabled in /etc/grub.conf {CIS: 1.4.1 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/grub.conf -> r:selinux=0;
+f:/etc/grub2.cfg -> r:selinux=0;
+
+# 1.4.2 Set selinux state
+[CIS - RHEL7 - 1.4.2 - SELinux not set to enforcing {CIS: 1.4.2 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/selinux/config -> !r:SELINUX=enforcing;
+
+# 1.4.3 Set seliux policy
+[CIS - RHEL7 - 1.4.3 - SELinux policy not set to targeted {CIS: 1.4.3 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/selinux/config -> !r:SELINUXTYPE=targeted;
+
+# 1.4.4 Remove SETroubleshoot
+[CIS - RHEL7 - 1.4.4 - SELinux setroubleshoot enabled {CIS: 1.4.4 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+d:$rc_dirs -> ^S\d\dsetroubleshoot$;
+f:/usr/share/dbus-1/services/sealert.service -> r:Exec=/usr/bin/sealert;
+
+# 1.4.5 Disable MCS Translation service mcstrans
+[CIS - RHEL7 - 1.4.5 - SELinux mctrans enabled {CIS: 1.4.5 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+d:$rc_dirs -> ^S\d\dmctrans$;
+f:/usr/lib/systemd/system/mcstransd.service -> r:ExecStart=/usr/sbin/mcstransd;
+
+# 1.4.6 Check for unconfined daemons
+# TODO
+
+
+###############################################
+# 1.5  Secure Boot Settings
+###############################################
+
+# 1.5.1 Set User/Group Owner on /etc/grub.conf
+# TODO (no mode tests)
+# stat -L -c "%u %g" /boot/grub2/grub.cfg | egrep "0 0"
+
+# 1.5.2 Set Permissions on /etc/grub.conf (Scored)
+# TODO (no mode tests)
+#  stat -L -c "%a" /boot/grub2/grub.cfg | egrep ".00"
+
+# 1.5.3 Set Boot Loader Password (Scored)
+[CIS - RHEL7 - 1.5.3 - GRUB Password not set {CIS: 1.5.3 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/boot/grub2/grub.cfg -> !r:^# && !r:password;
+
+
+
+###############################################
+# 1.6  Additional Process Hardening
+###############################################
+
+# 1.6.1 Restrict Core Dumps (Scored)
+[CIS - RHEL7 - 1.6.1 - Interactive Boot not disabled {CIS: 1.6.1 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/security/limits.conf -> !r:^# && !r:hard\.+core\.+0;
+
+# 1.6.1 Enable Randomized Virtual Memory Region Placement (Scored)
+# Note this is also labeled 1.6.1 in the CIS benchmark.
+[CIS - RHEL7 - 1.6.1 - Randomized Virtual Memory Region Placement not enabled  {CIS: 1.6.3 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/proc/sys/kernel/randomize_va_space -> !r:^2$;
+
+
+###############################################
+# 1.7  Use the Latest OS Release  (Not Scored)
+###############################################
+
+
+###############################################
+# 2 OS Services
+###############################################
+
+###############################################
+# 2.1 Remove Legacy Services
+###############################################
+
+# 2.1.1 Remove telnet-server (Scored)
+# TODO: detect it is installed at all
+[CIS - RHEL7 - 2.1.1 - Telnet enabled on xinetd {CIS: 2.1.1 RHEL7} {PCI_DSS: 2.2.3}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/xinetd.d/telnet -> !r:^# && r:disable && r:no;
+f:/usr/lib/systemd/system/telnet@.service -> r:ExecStart=-/usr/sbin/in.telnetd;
+
+
+# 2.1.2 Remove telnet Clients (Scored)
+# TODO
+
+# 2.1.3 Remove rsh-server (Scored)
+[CIS - RHEL7 - 2.1.3 - rsh/rlogin/rcp enabled on xinetd {CIS: 2.1.3 RHEL7} {PCI_DSS: 2.2.3}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/xinetd.d/rlogin -> !r:^# && r:disable && r:no;
+f:/etc/xinetd.d/rsh -> !r:^# && r:disable && r:no;
+f:/etc/xinetd.d/shell -> !r:^# && r:disable && r:no;
+# TODO (finish this)
+f:/usr/lib/systemd/system/rexec@.service -> r:ExecStart;
+f:/usr/lib/systemd/system/rlogin@.service -> r:ExecStart;
+f:/usr/lib/systemd/system/rsh@.service -> r:ExecStart;
+
+# 2.1.4 Remove rsh (Scored)
+# TODO
+
+# 2.1.5 Remove NIS Client (Scored)
+[CIS - RHEL7 - 2.1.5 - Disable standard boot services - NIS (client) Enabled {CIS: 2.1.5 RHEL7} {PCI_DSS: 2.2.3}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+d:$rc_dirs -> ^S\d\dypbind$;
+f:/usr/lib/systemd/system/ypbind.service -> r:Exec;
+
+# 2.1.6 Remove NIS Server (Scored)
+[CIS - RHEL7 - 2.1.6 - Disable standard boot services - NIS (server) Enabled {CIS: 2.1.6 RHEL7} {PCI_DSS: 2.2.3}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+d:$rc_dirs -> ^S\d\dypserv$;
+f:/usr/lib/systemd/system/ypserv.service -> r:Exec;
+
+# 2.1.7 Remove tftp (Scored)
+# TODO
+
+# 2.1.8 Remove tftp-server (Scored)
+[CIS - RHEL7 - 2.1.8 - tftpd enabled on xinetd {CIS: 2.1.8 RHEL7} {PCI_DSS: 2.2.3}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/xinetd.d/tftpd -> !r:^# && r:disable && r:no;
+f:/usr/lib/systemd/system/tftp.service -> r:Exec;
+
+# 2.1.9 Remove talk (Scored)
+# TODO
+
+# 2.1.10 Remove talk-server (Scored)
+[CIS - RHEL7 - 2.1.10 - talk enabled on xinetd {CIS: 2.1.10 RHEL7} {PCI_DSS: 2.2.3}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/xinetd.d/talk -> !r:^# && r:disable && r:no;
+f:/usr/lib/systemd/system/ntalk.service -> r:Exec;
+
+# 2.1.11 Remove xinetd (Scored)
+[CIS - RHEL7 - 2.1.11 -  xinetd detected {CIS: 2.1.11 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/usr/lib/systemd/system/xinetd.service -> r:Exec;
+
+# 2.1.12 Disable chargen-dgram (Scored)
+[CIS - RHEL7 - 2.1.12 -  chargen-dgram enabled on xinetd {CIS: 2.1.12 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/xinetd.d/chargen-dgram -> !r:^# && r:disable && r:no;
+
+# 2.1.13 Disable chargen-stream (Scored)
+[CIS - RHEL7 - 2.1.13 -  chargen-stream enabled on xinetd {CIS: 2.1.13 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/xinetd.d/chargen-stream -> !r:^# && r:disable && r:no;
+
+# 2.1.14 Disable daytime-dgram (Scored)
+[CIS - RHEL7 - 2.1.14 -  daytime-dgram enabled on xinetd {CIS: 2.1.14 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/xinetd.d/daytime-dgram -> !r:^# && r:disable && r:no;
+
+# 2.1.15 Disable daytime-stream (Scored)
+[CIS - RHEL7 - 2.1.15 -  daytime-stream enabled on xinetd {CIS: 2.1.15 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/xinetd.d/daytime-stream -> !r:^# && r:disable && r:no;
+
+
+# 2.1.16 Disable echo-dgram (Scored)
+[CIS - RHEL7 - 2.1.16 -  echo-dgram enabled on xinetd {CIS: 2.1.16 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/xinetd.d/echo-dgram -> !r:^# && r:disable && r:no;
+
+# 2.1.17 Disable echo-stream (Scored)
+[CIS - RHEL7 - 2.1.17 -  echo-stream enabled on xinetd {CIS: 2.1.17 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/xinetd.d/echo-stream -> !r:^# && r:disable && r:no;
+
+# 2.1.18 Disable tcpmux-server (Scored)
+[CIS - RHEL7 - 2.1.18 -  tcpmux-server enabled on xinetd {CIS: 2.1.18 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/xinetd.d/tcpmux-server -> !r:^# && r:disable && r:no;
+
+
+###############################################
+# 3 Special Purpose Services
+###############################################
+
+# 3.1 Set Daemon umask (Scored)
+[CIS - RHEL7 - 3.1 - Set daemon umask - Default umask is higher than 027 {CIS: 3.1 RHEL7} {PCI_DSS: 2.2.2}] [all] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/sysconfig/init -> !r:^# && r:^umask && <:umask 027;
+
+# 3.2 Remove X Windows (Scored)
+[CIS - RHEL7 - 3.2 - X11 not disabled {CIS: 3.2 RHEL7} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+p:gdm-x-session;
+
+# 3.3 Disable Avahi Server (Scored)
+[CIS - RHEL7 - 3.2 - Avahi daemon not disabled {CIS: 3.3 RHEL7} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+p:avahi-daemon;
+
+# 3.4 Disable Print Server - CUPS (Not Scored)
+
+# 3.5 Remove DHCP Server (Scored)
+[CIS - RHEL7 - 3.5 - DHCPnot disabled {CIS: 3.5 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/usr/lib/systemd/system/dhcpd.service -> r:Exec;
+
+# 3.6 Configure Network Time Protocol (NTP) (Scored)
+[CIS - RHEL7 - 3.6 - NTPD not Configured {CIS: 3.6 RHEL7} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/ntp.conf -> r:restrict default kod nomodify notrap nopeer noquery && r:^server;
+f:/etc/sysconfig/ntpd -> r:OPTIONS="-u ntp:ntp -p /var/run/ntpd.pid";
+
+# 3.7 Remove LDAP (Not Scored)
+
+# 3.8 Disable NFS and RPC (Not Scored)
+[CIS - RHEL7 - 3.8 - Disable standard boot services - NFS Enabled {CIS: 3.8 RHEL7} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+d:$rc_dirs -> ^S\d\dnfs$;
+d:$rc_dirs -> ^S\d\dnfslock$;
+
+# 3.9 Remove DNS Server (Not Scored)
+# TODO
+
+# 3.10 Remove FTP Server (Not Scored)
+[CIS - RHEL7 - 3.10 - VSFTP enabled on xinetd {CIS: 3.10 RHEL7} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/xinetd.d/vsftpd -> !r:^# && r:disable && r:no;
+
+# 3.11 Remove HTTP Server (Not Scored)
+[CIS - RHEL7 - 3.11 - Disable standard boot services - Apache web server Enabled {CIS: 3.11 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+d:$rc_dirs -> ^S\d\dhttpd$;
+
+# 3.12 Remove Dovecot (IMAP and POP3 services) (Not Scored)
+[CIS - RHEL7 - 3.12 - imap enabled on xinetd {CIS: 3.12 RHEL7} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/xinetd.d/cyrus-imapd -> !r:^# && r:disable && r:no;
+
+[CIS - RHEL7 - 3.12 - pop3 enabled on xinetd {CIS: 3.12 RHEL7} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/xinetd.d/dovecot -> !r:^# && r:disable && r:no;
+
+# 3.13 Remove Samba (Not Scored)
+[CIS - RHEL7 - 3.13 - Disable standard boot services - Samba Enabled {CIS: 3.13 RHEL7} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+d:$rc_dirs -> ^S\d\dsamba$;
+d:$rc_dirs -> ^S\d\dsmb$;
+
+# 3.14 Remove HTTP Proxy Server (Not Scored)
+[CIS - RHEL7 - 3.14 - Disable standard boot services - Squid Enabled {CIS: 3.14 RHEL7} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+d:$rc_dirs -> ^S\d\dsquid$;
+
+# 3.15 Remove SNMP Server (Not Scored)
+[CIS - RHEL7 - 3.15 - Disable standard boot services - SNMPD process Enabled {CIS: 3.15 RHEL7} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+d:$rc_dirs -> ^S\d\dsnmpd$;
+
+# 3.16 Configure Mail Transfer Agent for Local-Only Mode (Scored)
+# TODO
+
+
+###############################################
+# 4 Network Configuration and Firewalls
+###############################################
+
+###############################################
+# 4.1 Modify Network Parameters (Host Only)
+###############################################
+
+# 4.1.1 Disable IP Forwarding (Scored)
+[CIS - RHEL7 - 4.1.1 - Network parameters - IP Forwarding enabled {CIS: 4.1.1 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/proc/sys/net/ipv4/ip_forward -> 1;
+f:/proc/sys/net/ipv6/ip_forward -> 1;
+
+# 4.1.2 Disable Send Packet Redirects (Scored)
+[CIS - RHEL7 - 4.1.2 - Network parameters - IP send redirects enabled {CIS: 4.1.2 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/proc/sys/net/ipv4/conf/all/send_redirects -> 1;
+f:/proc/sys/net/ipv4/conf/default/send_redirects -> 1;
+
+
+###############################################
+# 4.2 Modify Network Parameters (Host and Router)
+###############################################
+
+# 4.2.1 Disable Source Routed Packet Acceptance (Scored)
+[CIS - RHEL7 - 4.2.1 - Network parameters - Source routing accepted {CIS: 4.2.1 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/proc/sys/net/ipv4/conf/all/accept_source_route -> 1;
+
+# 4.2.2 Disable ICMP Redirect Acceptance (Scored)
+[CIS - RHEL7 - 4.2.2 - Network parameters - ICMP redirects accepted {CIS: 1.1.1 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/proc/sys/net/ipv4/conf/all/accept_redirects -> 1;
+f:/proc/sys/net/ipv4/conf/default/accept_redirects -> 1;
+
+# 4.2.3 Disable Secure ICMP Redirect Acceptance (Scored)
+[CIS - RHEL7 - 4.2.3 - Network parameters - ICMP secure redirects accepted {CIS: 4.2.3 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/proc/sys/net/ipv4/conf/all/secure_redirects -> 1;
+f:/proc/sys/net/ipv4/conf/default/secure_redirects -> 1;
+
+# 4.2.4 Log Suspicious Packets (Scored)
+[CIS - RHEL7 - 4.2.4 - Network parameters - martians not logged {CIS: 4.2.4 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/proc/sys/net/ipv4/conf/all/log_martians -> 0;
+
+# 4.2.5 Enable Ignore Broadcast Requests (Scored)
+[CIS - RHEL7 - 4.2.5 - Network parameters - ICMP broadcasts accepted {CIS: 4.2.5 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/proc/sys/net/ipv4/icmp_echo_ignore_broadcasts -> 0;
+
+# 4.2.6 Enable Bad Error Message Protection (Scored)
+[CIS - RHEL7 - 4.2.6 - Network parameters - Bad error message protection not enabled {CIS: 4.2.6 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/proc/sys/net/ipv4/icmp_ignore_bogus_error_responses -> 0;
+
+# 4.2.7 Enable RFC-recommended Source Route Validation (Scored)
+[CIS - RHEL7 - 4.2.7 - Network parameters - RFC Source route validation not enabled  {CIS: 4.2.7 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/proc/sys/net/ipv4/conf/all/rp_filter -> 0;
+f:/proc/sys/net/ipv4/conf/default/rp_filter -> 0;
+
+# 4.2.8 Enable TCP SYN Cookies (Scored)
+[CIS - RHEL7 - 4.2.8 - Network parameters - SYN Cookies not enabled {CIS: 4.2.8 RHEL7} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/proc/sys/net/ipv4/tcp_syncookies -> 0;
+
+
+###############################################
+# 4.3 Wireless Networking
+###############################################
+
+# 4.3.1 Deactivate Wireless Interfaces (Not Scored)
+
+
+###############################################
+# 4.4 Disable ipv6
+###############################################
+
+###############################################
+# 4.4.1 Configure IPv6
+###############################################
+
+# 4.4.1.1 Disable IPv6 Router Advertisements (Not Scored)
+
+# 4.4.1.2 Disable IPv6 Redirect Acceptance (Not Scored)
+
+# 4.4.2 Disable IPv6 (Not Scored)
+
+
+###############################################
+# 4.5 Install TCP Wrappers
+###############################################
+
+# 4.5.1 Install TCP Wrappers (Not Scored)
+
+# 4.5.2 Create /etc/hosts.allow (Not Scored)
+
+# 4.5.3 Verify Permissions on /etc/hosts.allow (Scored)
+# TODO
+
+# 4.5.4 Create /etc/hosts.deny (Not Scored)
+
+# 4.5.5 Verify Permissions on /etc/hosts.deny (Scored)
+# TODO
+
+
+###############################################
+# 4.6 Uncommon Network Protocols
+###############################################
+
+# 4.6.1 Disable DCCP (Not Scored)
+
+# 4.6.2 Disable SCTP (Not Scored)
+
+# 4.6.3 Disable RDS (Not Scored)
+
+# 4.6.4 Disable TIPC (Not Scored)
+
+# 4.7 Enable IPtables (Scored)
+#[CIS - RHEL7 - 4.7 - Uncommon Network Protocols - Firewalld not enabled {CIS: 4.7 RHEL7}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+#f:/usr/lib/systemd/system/firewalld.service -> TODO;
+
+
+###############################################
+# 5 Logging and Auditing
+###############################################
+
+###############################################
+# 5.1 Configure Syslog
+###############################################
+
+# 5.1.1 Install the rsyslog package (Scored)
+# TODO
+
+# 5.1.2 Activate the rsyslog Service (Scored)
+# TODO
+
+# 5.1.3 Configure /etc/rsyslog.conf (Not Scored)
+
+# 5.1.4 Create and Set Permissions on rsyslog Log Files (Scored)
+
+# 5.1.5 Configure rsyslog to Send Logs to a Remote Log Host (Scored)
+
+# 5.1.6 Accept Remote rsyslog Messages Only on Designated Log Hosts (Not Scored)
+
+
+###############################################
+# 5.2 Configure System Accounting (auditd)
+###############################################
+
+###############################################
+# 5.2.1 Configure Data Retention
+###############################################
+
+# 5.2.1.1 Configure Audit Log Storage Size (Not Scored)
+
+# 5.2.1.2 Disable System on Audit Log Full (Not Scored)
+
+# 5.2.1.3 Keep All Auditing Information (Scored)
+
+# 5.2.2 Enable auditd Service (Scored)
+
+# 5.2.3 Enable Auditing for Processes That Start Prior to auditd (Scored)
+
+# 5.2.4 Record Events That Modify Date and Time Information (Scored)
+
+# 5.2.5 Record Events That Modify User/Group Information (Scored)
+
+# 5.2.6 Record Events That Modify the System’s Network Environment (Scored)
+
+# 5.2.7 Record Events That Modify the System’s Mandatory Access Controls (Scored)
+
+# 5.2.8 Collect Login and Logout Events (Scored)
+
+# 5.2.9 Collect Session Initiation Information (Scored)
+
+# 5.2.10 Collect Discretionary Access Control Permission Modification Events (Scored)
+
+# 5.2.11 Collect Unsuccessful Unauthorized Access Attempts to Files (Scored)
+
+# 5.2.12 Collect Use of Privileged Commands (Scored)
+
+# 5.2.13 Collect Successful File System Mounts (Scored)
+
+# 5.2.14 Collect File Deletion Events by User (Scored)
+
+# 5.2.15 Collect Changes to System Administration Scope (sudoers) (Scored)
+
+# 5.2.16 Collect System Administrator Actions (sudolog) (Scored)
+
+# 5.2.17 Collect Kernel Module Loading and Unloading (Scored)
+
+# 5.2.18 Make the Audit Configuration Immutable (Scored)
+
+# 5.3 Configure logrotate (Not Scored)
+
+
+###############################################
+# 6 System Access, Authentication and Authorization
+###############################################
+
+###############################################
+# 6.1 Configure cron and anacron
+###############################################
+
+# 6.1.1 Enable anacron Daemon (Scored)
+
+# 6.1.2 Enable cron Daemon (Scored)
+
+# 6.1.3 Set User/Group Owner and Permission on /etc/anacrontab (Scored)
+
+# 6.1.4 Set User/Group Owner and Permission on /etc/crontab (Scored)
+
+# 6.1.5 Set User/Group Owner and Permission on /etc/cron.hourly (Scored)
+
+# 6.1.6 Set User/Group Owner and Permission on /etc/cron.daily (Scored)
+
+# 6.1.7 Set User/Group Owner and Permission on /etc/cron.weekly (Scored)
+
+# 6.1.8 Set User/Group Owner and Permission on /etc/cron.monthly (Scored)
+
+# 6.1.9 Set User/Group Owner and Permission on /etc/cron.d (Scored)
+
+# 6.1.10 Restrict at Daemon (Scored)
+
+# 6.1.11 Restrict at/cron to Authorized Users (Scored)
+
+###############################################
+# 6.2 Configure SSH
+###############################################
+
+# 6.2.1 Set SSH Protocol to 2 (Scored)
+[CIS - RHEL7 - 6.2.1 - SSH Configuration - Protocol version 1 enabled {CIS: 6.2.1 RHEL7} {PCI_DSS: 4.1}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/ssh/sshd_config -> !r:^# && r:Protocol\.+1;
+
+# 6.2.2 Set LogLevel to INFO (Scored)
+[CIS - RHEL7 - 6.2.1 - SSH Configuration - Protocol version 1 enabled {CIS: 6.2.1 RHEL7} {PCI_DSS: 4.1}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/ssh/sshd_config -> !r:^# && !r:LogLevel\.+INFO;
+
+# 6.2.3 Set Permissions on /etc/ssh/sshd_config (Scored)
+# TODO
+
+# 6.2.4 Disable SSH X11 Forwarding (Scored)
+# TODO
+
+# 6.2.5 Set SSH MaxAuthTries to 4 or Less (Scored)
+[CIS - RHEL7 - 6.2.5 - SSH Configuration - Set SSH MaxAuthTries to 4 or Less  {CIS - RHEL7 - 6.2.5} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:$sshd_file -> !r:^\s*MaxAuthTries\s+4\s*$;
+
+# 6.2.6 Set SSH IgnoreRhosts to Yes (Scored)
+[CIS - RHEL7 - 6.2.6 - SSH Configuration - IgnoreRHosts disabled {CIS: 6.2.6 RHEL7} {PCI_DSS: 4.1}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/ssh/sshd_config -> !r:^# && r:IgnoreRhosts\.+no;
+
+# 6.2.7 Set SSH HostbasedAuthentication to No (Scored)
+[CIS - RHEL7 - 6.2.7 - SSH Configuration - Host based authentication enabled {CIS: 6.2.7 RHEL7} {PCI_DSS: 4.1}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/ssh/sshd_config -> !r:^# && r:HostbasedAuthentication\.+yes;
+
+# 6.2.8 Disable SSH Root Login (Scored)
+[CIS - RHEL7 - 6.2.8 - SSH Configuration - Root login allowed {CIS: 6.2.8 RHEL7} {PCI_DSS: 4.1}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:$sshd_file -> !r:^\s*PermitRootLogin\.+no;
+
+# 6.2.9 Set SSH PermitEmptyPasswords to No (Scored)
+[CIS - RHEL7 - 6.2.9 - SSH Configuration - Empty passwords permitted {CIS: 6.2.9 RHEL7} {PCI_DSS: 4.1}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:$sshd_file -> !r:^\s*PermitEmptyPasswords\.+no;
+
+# 6.2.10 Do Not Allow Users to Set Environment Options (Scored)
+
+# 6.2.11 Use Only Approved Ciphers in Counter Mode (Scored)
+
+# 6.2.12 Set Idle Timeout Interval for User Login (Not Scored)
+
+# 6.2.13 Limit Access via SSH (Scored)
+
+# 6.2.14 Set SSH Banner (Scored)
+
+
+###############################################
+# 6.3 Configure PAM
+###############################################
+
+# 6.3.1 Upgrade Password Hashing Algorithm to SHA-512 (Scored)
+# authconfig --test | grep hashing | grep sha512
+
+# 6.3.2 Set Password Creation Requirement Parameters Using pam_cracklib (Scored)
+
+# 6.3.3 Set Lockout for Failed Password Attempts (Not Scored)
+
+# 6.3.4 Limit Password Reuse (Scored)
+
+
+# 6.4 Restrict root Login to System Console (Not Scored)
+
+# 6.5 Restrict Access to the su Command (Scored)
+
+
+###############################################
+# 7 User Accounts and Environment
+###############################################
+
+###############################################
+# 7.1 Set Shadow Password Suite Parameters (/etc/login.defs)
+###############################################
+
+# 7.1.1 Set Password Expiration Days (Scored)
+
+# 7.1.2 Set Password Change Minimum Number of Days (Scored)
+
+# 7.1.3 Set Password Expiring Warning Days (Scored)
+
+# 7.2 Disable System Accounts (Scored)
+
+# 7.3 Set Default Group for root Account (Scored)
+
+# 7.4 Set Default umask for Users (Scored)
+
+# 7.5 Lock Inactive User Accounts (Scored)
+
+
+###############################################
+# 8 Warning Banners
+###############################################
+
+###############################################
+# 8.1 Warning Banners for Standard Login Services
+###############################################
+
+# 8.1 Set Warning Banner for Standard Login Services (Scored)
+
+# 8.2 Remove OS Information from Login Warning Banners (Scored)
+
+# 8.3 Set GNOME Warning Banner (Not Scored)
+
+
+###############################################
+# 9 System Maintenance
+###############################################
+
+###############################################
+# 9.1 Verify System File Permissions
+###############################################
+
+# 9.1.1 Verify System File Permissions (Not Scored)
+
+# 9.1.2 Verify Permissions on /etc/passwd (Scored)
+
+# 9.1.3 Verify Permissions on /etc/shadow (Scored)
+
+# 9.1.4 Verify Permissions on /etc/gshadow (Scored)
+
+# 9.1.5 Verify Permissions on /etc/group (Scored)
+
+# 9.1.6 Verify User/Group Ownership on /etc/passwd (Scored)
+
+# 9.1.7 Verify User/Group Ownership on /etc/shadow (Scored)
+
+# 9.1.8 Verify User/Group Ownership on /etc/gshadow (Scored)
+
+# 9.1.9 Verify User/Group Ownership on /etc/group (Scored)
+
+# 9.1.10 Find World Writable Files (Not Scored)
+
+# 9.1.11 Find Un-owned Files and Directories (Scored)
+
+# 9.1.12 Find Un-grouped Files and Directories (Scored)
+
+# 9.1.13 Find SUID System Executables (Not Scored)
+
+# 9.1.14 Find SGID System Executables (Not Scored)
+
+
+###############################################
+# 9.2 Review User and Group Settings
+###############################################
+
+# 9.2.1 Ensure Password Fields are Not Empty (Scored)
+
+# 9.2.2 Verify No Legacy "+" Entries Exist in /etc/passwd File (Scored)
+
+# 9.2.3 Verify No Legacy "+" Entries Exist in /etc/shadow File (Scored)
+
+# 9.2.4 Verify No Legacy "+" Entries Exist in /etc/group File (Scored)
+
+# 9.2.5 Verify No UID 0 Accounts Exist Other Than root (Scored)
+[CIS - RHEL7 - 9.2.5 - Non-root account with uid 0 {CIS: 9.2.5 RHEL7} {PCI_DSS: 10.2.5}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;
+
+# 9.2.6 Ensure root PATH Integrity (Scored)
+
+# 9.2.7 Check Permissions on User Home Directories (Scored)
+
+# 9.2.8 Check User Dot File Permissions (Scored)
+
+# 9.2.9 Check Permissions on User .netrc Files (Scored)
+
+# 9.2.10 Check for Presence of User .rhosts Files (Scored)
+
+# 9.2.11 Check Groups in /etc/passwd (Scored)
+
+# 9.2.12 Check That Users Are Assigned Valid Home Directories (Scored)
+
+# 9.2.13 Check User Home Directory Ownership (Scored)
+
+# 9.2.14 Check for Duplicate UIDs (Scored)
+
+# 9.2.15 Check for Duplicate GIDs (Scored)
+
+# 9.2.16 Check That Reserved UIDs Are Assigned to System Accounts  (Scored)
+
+# 9.2.17 Check for Duplicate User Names (Scored)
+
+# 9.2.18 Check for Duplicate Group Names (Scored)
+
+# 9.2.19 Check for Presence of User .netrc Files (Scored)
+
+# 9.2.20 Check for Presence of User .forward Files (Scored)
+
+
+# Other/Legacy Tests
+[CIS - RHEL7 - X.X.X - Account with empty password present {PCI_DSS: 10.2.5}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/shadow -> r:^\w+::;
+
+[CIS - RHEL7 - X.X.X - User-mounted removable partition allowed on the console] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+f:/etc/security/console.perms -> r:^<console>  \d+ <cdrom>;
+f:/etc/security/console.perms -> r:^<console>  \d+ <floppy>;
+
+[CIS - RHEL7 - X.X.X - Disable standard boot services - Kudzu hardware detection Enabled] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+d:$rc_dirs -> ^S\d\dkudzu$;
+
+[CIS - RHEL7 - X.X.X - Disable standard boot services - PostgreSQL server Enabled {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+d:$rc_dirs -> ^S\d\dpostgresql$;
+
+[CIS - RHEL7 - X.X.X - Disable standard boot services - MySQL server Enabled {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+d:$rc_dirs -> ^S\d\dmysqld$;
+
+[CIS - RHEL7 - X.X.X - Disable standard boot services - DNS server Enabled {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+d:$rc_dirs -> ^S\d\dnamed$;
+
+[CIS - RHEL7 - X.X.X - Disable standard boot services - NetFS Enabled {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Red_Hat_Enterprise_Linux_7_Benchmark_v1.1.0.pdf]
+d:$rc_dirs -> ^S\d\dnetfs$;

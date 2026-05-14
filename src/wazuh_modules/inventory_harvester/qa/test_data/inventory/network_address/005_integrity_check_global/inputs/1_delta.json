@@ -1,0 +1,20 @@
+{
+  "agent_info": {
+    "agent_id": "003",
+    "agent_ip": "10.0.0.1",
+    "agent_name": "b593602240f5",
+    "agent_version": "v4.11.1"
+  },
+  "data_type": "dbsync_network_address",
+  "data": {
+    "scan_time": "2025/03/21 02:13:27",
+    "iface": "eth0",
+    "proto": 0,
+    "address": "10.0.0.1",
+    "netmask": "1.1.1.1",
+    "broadcast": "0.0.0.0",
+    "checksum": "c13a7528210234983cf6fee4bfce2cf1cd99e34c",
+    "item_id": "b9ce16c7c8d82ab1d4df21518fd85fc8d0672396"
+  },
+  "operation": "INSERTED"
+}

@@ -1,0 +1,3 @@
+
+ Um Wazuh zu installieren muss auf Ihrem System ein C-Compiler
+ installiert sein.

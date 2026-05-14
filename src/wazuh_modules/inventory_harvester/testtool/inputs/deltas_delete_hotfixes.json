@@ -1,0 +1,15 @@
+{
+    "agent_info": {
+        "agent_id": "001",
+        "agent_ip": "any",
+        "agent_name": "DESKTOP-5RL9J34",
+        "agent_version": "v4.10.1"
+    },
+    "data_type": "dbsync_hotfixes",
+    "data": {
+        "checksum": "1691178971959743855",
+        "hotfix": "KB5034763",
+        "scan_time": "2023/08/04 19:56:11"
+    },
+    "operation": "DELETED"
+}

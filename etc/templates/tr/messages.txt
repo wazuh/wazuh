@@ -1,0 +1,127 @@
+# Configuration
+yes="e"
+no="h"
+yesmatch="e"
+nomatch="h"
+agent="aracı"
+local="yerel"
+server="sunucu"
+help="yardım"
+
+# Global
+moreinfo="Daha fazla bilgi: "
+starting="Wazuh başlatılıyor"
+systemis="Sistem"
+modifiedinit="Wazuh'i önyüklemede başlatmak için başlangıç betiği değiştirildi."
+noboot="Bilinmeyen sistem. Başlangıç betiği eklenmedi."
+
+# Part 1
+installscript="Kurulum Betiği"
+system="Sistem"
+user="Kullanıcı"
+host="Bilgisayar"
+hitanyorabort="Devam etmek için ENTER veya çıkmak için Ctrl-C ye basın"
+whattoinstall="Ne tür kurulum yapmak istiyorsunuz (sunucu,aracı,yerel veya yardım)?"
+serverchose="Sunucu kurulumu seçildi"
+clientchose="Aracı(istemci) kurulumu seçildi"
+localchose="Yerel kurulum seçildi"
+
+# Part 2
+settingupenv="Kurulum ortamı hazırlanıyor"
+wheretoinstall="Wazuh kurulacak yeri seçin"
+installat="Kurulum buraya yapılacak: "
+deletedir="Kurulum dizini zaten var. Silinsin mi?"
+
+# Part 3
+configuring="yapılandırılıyor:"
+mailnotify="E-posta ile bilgilendirilmek ister misiniz?"
+nomail="E-posta ile bilgilendirme etkisiz kılındı"
+whatsemail="E-posta adresiniz nedir?"
+yoursmtp="SMTP sunucunuz olarak bunu bulduk"
+usesmtp="Kullanmak ister misiniz?"
+usingsmtp="SMTP sunucu kullanılıyor: "
+whatsmtp="SMTP sunucunuzun IP adresi veya ismi nedir?"
+
+# Part 3.1/agent
+serverip="Wazuh sunucusunun IP adresi nedir?"
+serveraddr="Wazuh sunucusunun IP adresi veya ismi nedir?"
+addingip="Sunucu IP adresi ekleniyor"
+addingname="Sunucu ismi ekleniyor"
+
+
+# Part 3.2
+runsyscheck="Güvenilirlik/bütünlük kontrol programının çalıştırılmasını ister misiniz?"
+nosyscheck="syscheck çalıştırılmıyor (güvenilirlik/bütünlük kontrol programı)"
+yessyscheck="syscheck çalıştırılıyor (güvenilirlik/bütünlük kontrol programı)"
+
+# Part 3.3
+runrootcheck="rootkit tespit etme motorunun çalışmasını ister misiniz?"
+norootcheck="rootcheck çalıştırılmıyor (rootkit tespit etme)"
+yesrootcheck="rootcheck çalıştırılıyor (rootkit tespit etme)"
+
+# Part 3.4
+runopenscap="Güvenilirlik/bütünlük OpenSCAP çalıştırılmasını ister misiniz?"
+norunopenscap="OpenSCAP çalıştırılmıyor"
+yesrunopenscap="OpenSCAP çalıştırılıyor"
+
+# Part 3.5/server/local
+enable_ar="Etkin yanıt üretmenin (Active response) etkin kılınmasını ister misiniz?"
+noactive="Etkin yanıt üretme(Active response) etkisiz kılındı"
+nohosts="host-deny etkin kılınmadı"
+yeshosts="Uyarı seviyesi >= 6 için host-deny etkin kılındı (yerel)"
+firewallar="firewall-drop yanıtının etkin kılınmasını ister misiniz?"
+nofirewall="firewall-drop etkisiz kılındı."
+yesfirewall="Uyarı seviyesi >= 6 için firewall-drop etkin kılındı (yerel)"
+defaultwhitelist="Etkin yanıt üretme için öntanımlı beyaz liste:"
+addwhite="Beyaz listeye başka IP adreslerini de eklemek ister misiniz?"
+ipswhite="IPler (boşlukla ayrılmış): "
+
+# Part 3.5/server/local
+syslog="Uzak syslog'un (514 udp) etkin kılınmasını ister misiniz?"
+nosyslog="Uzak syslog etkisiz kılındı"
+yessyslog="Uzak syslog etkin kılındı"
+
+# Part 3.4/3.5
+readlogs="Bu dosyaları incelemek için yapılandırma oluşturuluyor:"
+
+# Part 3.7
+runauthd="Auth servisini çalıştırmak istiyor musunuz?"
+norunauthd="Auth hizmeti çalışmıyor"
+yesrunauthd="Auth servisi çalıştırıyor"
+
+# Part 4
+installing="Sistem kuruluyor"
+startwazuh="Kurulumdan sonra Wazuh'u başlatmak istiyor musunuz?"
+nowazuhstart="Wazuh kurulumun sonunda başlamaz."
+yeswazuhstart="Wazuh kurulumun sonunda başlayacak."
+runningmake="Makefile çalıştırılıyor"
+
+# Final
+configurationdone="Yapılandırma doğru olarak tamamlandı"
+tostart="Wazuh'i başlatmak için"
+tostop="Wazuh'i durdurmak için"
+configat="Yapılandırma buradan görülebilir veya değiştirilebilir:"
+addserveragent="Her bir aracıyı/istemciyi erişim için yetkilendirmeden önce eklemeniz gerekmektedir."
+presskey="Devam etmek için ENTER tuşuna basınız"
+
+# Update
+wanttoupdate="Bir Wazuh kurulumu mevcut. Güncellemek ister misiniz?"
+mustuninstall="Eski sürümler kaldırılmadan kurulum devam edemez. Çıkılıyor."
+unabletoupdate="Güncelleme gerçekleştirilemedi. Yeni kurulum yapılması gerekiyor."
+updatecompleted="Güncelleme tamamlandı."
+updatefailed="Güncelleme başarısız oldu."
+updaterules="Kuralları güncellemek ister misiniz?"
+updatingrules="Kurallar güncelleniyor."
+notupdatingrules="Kurallar güncellenmiyor."
+update_rev_newconf1="Ossec.conf dosyanızdaki yedekleme, $INSTALLDIR/etc/ossec.conf.orig dosyasında oluşturuldu."
+update_rev_newconf2="Lütfen ossec.conf yapılandırmasını $INSTALLDIR/etc/ossec.conf dosyasında doğrulayın."
+
+# Pf support
+pfenable="Etkin yanıtlarda PF güvenlik duvarını kullanmak istiyor musunuz?"
+nopf="PF yanıtları etkisiz kılındı."
+pftablename="Kullanılacak PF tablosunun adı?"
+pfmessage="Aşağıdaki satırları kurallarınızın başına ekleyin"
+
+# CA store
+addcastore="Daha fazla sertifika eklemek istiyor musunuz?"
+castore="X509 sertifika ya da sertifika klasörünün yolunu girin: "

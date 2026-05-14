@@ -1,0 +1,59 @@
+@startuml
+actor        Consumer           as consumer
+participant  SysInfo            as dataprovider
+collections  "Windows Registry" as registry
+
+activate consumer
+activate dataprovider
+activate registry
+
+consumer -> dataprovider                          : get packages
+dataprovider -> registry                          : Get user list
+registry --> dataprovider                         : User list
+loop For each user
+
+    == Initialization ==
+    dataprovider -> registry                      : Get store packages
+    note right
+        (HKEY_USERS\<userID>\SOFTWARE\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\Repository\Packages)
+    end note
+    registry --> dataprovider                     : Store packages
+
+    == Getting data ==
+
+    loop For each package
+
+        dataprovider -> registry                  : Get version, architecture, location, application name
+        note right
+            (HKEY_USERS\<userID>\SOFTWARE\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\Repository\Packages\<package-registry>\<sub-registry>\Capabilities)
+        end note
+        registry --> dataprovider                 : Version, architecture, location, application name
+
+        alt name start with "@{"
+            dataprovider -> registry              : Get name from cache registry
+            note right
+                (HKEY_USERS\<UserID>\SOFTWARE\\Classes\\Local Settings\\MrtCache)
+            end note
+            registry --> dataprovider             : Application name
+        end
+
+        dataprovider -> registry                  : Get vendor
+        note right
+            (HKEY_USERS\<userID>\SOFTWARE\Classes\<Registry>\Application)
+        end note
+        registry --> dataprovider                 : Application vendor
+
+        dataprovider -> registry                  : Get install time
+        note right
+            (HKEY_USERS\<userID>\SOFTWARE\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\Repository\Families)
+        end note
+        registry --> dataprovider                 : Install time
+
+        alt package is in DB store packages
+            dataprovider -->  consumer            : Delivers the package information
+        else
+            dataprovider -> dataprovider          : Discard package
+        end
+    end
+end
+@enduml

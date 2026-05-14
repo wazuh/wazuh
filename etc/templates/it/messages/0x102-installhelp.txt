@@ -1,0 +1,25 @@
+  - Hai tre tipi di installazione possibili: server, agent o local.
+
+    - Se scegli 'server', sarai in grado di analizzare tutti i logs,
+      creare e-mail di notifica e risopsta, e ricevere i logs da
+      server syslog remoti e dai sistemi che eseguono gli 'agents'
+      (da dove il traffico viene inviato crittografato al server).
+
+    - Se scegli 'agent' (client), sarai in grado di leggere i files
+      locali (di syslog, snort, apache, etc..) e inoltrarli (crittografati)
+      al server per l'analisi.
+
+    - Se scegli 'local', sarai in grado di fare tutto quello che fa il
+      server, eccetto la ricezione di messaggi da parte degli agents
+      o dei sistemi di syslog remoti.
+
+   - Scegli 'server' se desideri configurare un server di log/analisi
+
+   - Scegli 'agent' se hai già un'altra macchina che faccia da log server
+     e vuoi inoltrarle i log da analizzare (ideale per webservers,
+     database servers, etc)
+
+   - Scegli 'local' se hai un solo sistema da monitorare.
+
+   - Ulteriori informazioni su:
+     https://documentation.wazuh.com

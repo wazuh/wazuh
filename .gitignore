@@ -1,0 +1,174 @@
+*.so
+*.so.*
+*.o
+*.a
+*.dSYM
+.DS_Store
+*.pyc
+*.dll
+*.exe
+*.dylib
+
+# Auto generated build files
+src/LOCATION
+src/isbigendian.c
+src/analysisd/compiled_rules/compiled_rules.h
+etc/ossec.mc
+src/Config.OS
+src/selinux/*.mod
+src/selinux/*.pp
+framework/wazuh/core/wazuh.json
+src/**/build/*
+tools/**/build/*
+src/generated_headers/*.h
+src/generated_headers/*.hpp
+
+# Compiled programs
+src/agent-auth
+src/agent_control
+src/clear_stats
+src/isbigendian
+src/list_agents
+src/manage_agents
+src/ossec-agentd
+src/ossec-agentlessd
+src/ossec-analysisd
+src/ossec-authd
+src/ossec-csyslogd
+src/ossec-dbd
+src/ossec-execd
+src/ossec-logcollector
+src/ossec-maild
+src/ossec-makelists
+src/ossec-monitord
+src/ossec-regex
+src/wazuh-regex
+src/parallel-regex
+src/ossec-remoted
+src/ossec-reportd
+src/ossec-syscheckd
+src/ossec-integratord
+src/rootcheck_control
+src/syscheck_control
+src/syscheck_update
+src/verify-agent-conf
+src/wazuh-modulesd
+src/wazuh-auth
+src/wazuh-db
+src/wazuh-agentd
+src/wazuh-agentlessd
+src/wazuh-analysisd
+src/wazuh-authd
+src/wazuh-csyslogd
+src/wazuh-dbd
+src/wazuh-execd
+src/wazuh-logcollector
+src/wazuh-logtest-legacy
+src/wazuh-maild
+src/wazuh-monitord
+src/wazuh-remoted
+src/wazuh-reportd
+src/wazuh-syscheckd
+src/wazuh-integratord
+src/wazuh-keystore
+src/wazuh-keystore-testtool
+
+# Active responses
+src/firewall-drop
+src/default-firewall-drop
+src/pf
+src/npf
+src/ipfw
+src/firewalld-drop
+src/disable-account
+src/host-deny
+src/ip-customblock
+src/restart-wazuh
+src/route-null
+src/kaspersky
+src/wazuh-slack
+
+# Windows agent
+src/win32/*.exe
+src/win32/LICENSE.txt
+src/win32/default-local_internal_options.conf
+src/win32/default-ossec.conf
+src/win32/help_win.txt
+src/win32/internal_options.conf
+src/win32/restart-ossec.cmd
+src/win32/route-null.cmd
+src/win32/netsh-win-2016.cmd
+src/win32/route-null-2012.cmd
+src/win32/netsh.cmd
+src/win32/VERSION.json
+src/libwazuhshared.*
+src/libwazuhext.*
+
+# Eclipse files
+.cproject
+.project
+.settings/
+
+# Visual Studio Code files
+.vscode
+
+# temporary vim files
+*.swp
+*.swo
+
+# patch files
+*.rej
+*.orig
+
+# test and coverage files
+*.gcno
+*.gcda
+src/TEMP.db
+src/local.db*
+src/coverage-report/
+src/data_provider/coverage_report/
+src/shared_modules/dbsync/coverage_report/
+src/shared_modules/dbsync/smokeTests/output/
+src/shared_modules/dbsync/smokeTests/temp.db*
+src/shared_modules/rsync/coverage_report/
+src/shared_modules/utils/coverage_report/
+src/shared_modules/utils/tests/coverage_report
+src/wazuh_modules/syscollector/coverage_report/
+src/syscheckd/coverage_report
+src/syscheckd/src/db/smokeTests/output
+src/ossec.test
+src/tap_*
+etc/preloaded-vars.conf
+
+# unit tests
+src/unit_tests/build/*
+
+# api tests
+api/test/integration/_test_results
+
+# Old firewall-drop.sh (moved to default-firewall-drop.sh)
+src/active-response/firewall-drop.sh
+
+# Databases commits
+framework/wazuh/rbac/migrations/versions/*
+
+# Documentation files
+documentation/
+doxygen_config.cfg
+doxygen_errors.txt
+
+# Flatbuffers generated headers.
+src/shared_modules/utils/flatbuffers/include/
+src/wazuh_modules/syscollector/include/*_generated.h
+src/wazuh_modules/vulnerability_scanner/include/*_schema.h
+src/wazuh_modules/vulnerability_scanner/include/*_generated.h
+
+# Test files
+src/wazuh_modules/vulnerability_scanner/qa/test_data/*/input_*.bin
+cov-int
+wazuh.tgz
+src/*.log
+src/result-*.txt
+
+# Tool files
+tools/repository_bumper_*

@@ -1,0 +1,39 @@
+{
+    "agent_info": {
+        "agent_id": "001",
+        "agent_ip": "any",
+        "agent_name": "centos9",
+        "agent_version": "v4.14.0"
+    },
+    "data_type": "state",
+    "data": {
+        "attributes_type": "syscollector_browser_extensions",
+        "attributes": {
+            "scan_time": "2025/07/14 20:23:01",
+            "browser_name": "chrome",
+            "user_id": "S-1-5-21-1234567890-987654321-1122334455-1001",
+            "package_name": "UBlock Origin",
+            "package_id": "cjpalhdlnbpafiamejdnhcphjbkeiagm",
+            "package_version": "1.52.2",
+            "package_description": "Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.",
+            "package_vendor": "Raymond Hill",
+            "package_build_version": "1.52.2",
+            "package_path": "C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0",
+            "browser_profile_name": "Default",
+            "browser_profile_path": "C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default",
+            "package_reference": "https://clients2.google.com/service/update2/crx",
+            "package_permissions": "activeTab,storage,tabs,webNavigation",
+            "package_type": "extension",
+            "package_enabled": 1,
+            "package_visible": 1,
+            "package_autoupdate": 1,
+            "package_persistent": 1,
+            "package_from_webstore": 1,
+            "browser_profile_referenced": 1,
+            "package_installed": "1710489821000",
+            "file_hash_sha256": "a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234",
+            "checksum": "606abaac7962daf9842c84f4a15f609575d86bff",
+            "item_id": "571fdefef67b73320f74a5f2f5fb69bde4ad9680"
+        }
+    }
+}

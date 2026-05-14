@@ -1,0 +1,5 @@
+
+  3.6- Remote-Upgrades verwenden Pakete, die vom Systembetreuer unterzeichnet
+       wurden. Ein entsprechendes Zertifikat (oder Root-Zertifikat) im System
+       muss installiert sein, um die WPK-Pakete zu überprüfen. Standardmäßig ist
+       das Wurzelzertifikat von Wazuh installiert.

@@ -1,0 +1,5 @@
+
+ Fehler 0x1.
+ Dieses Script kann nur aus dem gleichen Verzeichniss ausgeführt
+ werden. Wechseln Sie in das Verzeichniss in dem das Script liegt
+ und führen Sie ./install.sh als root aus."

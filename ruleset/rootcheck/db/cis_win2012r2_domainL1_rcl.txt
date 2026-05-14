@@ -1,0 +1,1069 @@
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+# OSSEC Linux Audit - (C) 2018 OSSEC Project
+#
+# Released under the same license as OSSEC.
+# More details at the LICENSE file included with OSSEC or online
+# at: https://github.com/ossec/ossec-hids/blob/master/LICENSE
+#
+# [Application name] [any or all] [reference]
+# type:<entry name>;
+#
+# Type can be:
+#             - f (for file or directory)
+#             - r (registry entry)
+#             - p (process running)
+#
+# Additional values:
+# For the registry and for directories, use "->" to look for a specific entry and another
+# "->" to look for the value.
+# Also, use " -> r:^\. -> ..." to search all files in a directory
+# For files, use "->" to look for a specific value in the file.
+#
+# Values can be preceeded by: =: (for equal) - default
+#                             r: (for ossec regexes)
+#                             >: (for strcmp greater)
+#                             <: (for strcmp  lower)
+# Multiple patterns can be specified by using " && " between them.
+# (All of them must match for it to return true).
+
+# CIS Checks for Windows Server 2012 R2 Domain Controller L1
+# Based on Center for Internet Security Benchmark v2.2.1 for Microsoft Windows Server 2012 R2 (https://workbench.cisecurity.org/benchmarks/288)
+#
+#
+#
+#1.1.2 Ensure 'Maximum password age' is set to '60 or fewer days, but not 0'
+[CIS - Microsoft Windows Server 2012 R2 - Ensure 'Maximum password age' is set to '60 or fewer days, but not 0'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> 0;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> 3D;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> 3E;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> 3F;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:4\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:5\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:6\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:7\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:8\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:9\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:A\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:B\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:C\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:D\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:E\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:F\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:\w\w\w+;
+#
+#
+#2.3.1.2 Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.1.2: Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> NoConnectedUser -> 0;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> NoConnectedUser -> 1;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> !NoConnectedUser;
+#
+#
+#2.3.1.4 Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.1.4: Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LimitBlankPasswordUse -> 0;
+#
+#
+#2.3.2.1 Ensure 'Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.2.1: Ensure 'Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> SCENoApplyLegacyAuditPolicy -> !1;
+#
+#
+#2.3.2.2 Ensure 'Audit: Shut down system immediately if unable to log security audits' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.2.2: Ensure 'Audit: Shut down system immediately if unable to log security audits' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> CrashOnAuditFail -> 1;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> CrashOnAuditFail -> 2;
+#
+#
+#2.3.4.1 Ensure 'Devices: Allowed to format and eject removable media' is set to 'Administrators' 
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.4.1: Ensure 'Devices: Allowed to format and eject removable media' is set to 'Administrators'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> AllocateDASD -> 1;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> AllocateDASD -> 2;
+#
+#
+#2.3.4.2 Ensure 'Devices: Prevent users from installing printer drivers' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.4.2: Ensure 'Devices: Prevent users from installing printer drivers' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Print\Providers\LanMan Print Services\Servers -> AddPrinterDrivers -> !1;
+#
+#
+#2.3.5.1 Ensure 'Domain controller: Allow server operators to schedule tasks' is set to 'Disabled' (DC only)
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.5.1: Ensure 'Domain controller: Allow server operators to schedule tasks' is set to 'Disabled' (DC only)] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\SubmitControl -> !0;
+
+#
+#
+#2.3.5.2 Ensure 'Domain controller: LDAP server signing requirements' is set to 'Require signing'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.5.2: Ensure 'Domain controller: LDAP server signing requirements' is set to 'Require signing'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\NTDS\Parameters -> LDAPServerIntegrity -> !2;
+#
+#
+#2.3.5.3 Ensure 'Domain controller: Refuse machine account password changes' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.5.3: Ensure 'Domain controller: Refuse machine account password changes' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RefusePasswordChange -> 1;
+#
+#
+#2.3.6.1 Ensure 'Domain member: Digitally encrypt or sign secure channel data (always)' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.6.1: Ensure 'Domain member: Digitally encrypt or sign secure channel data (always)' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RequireSignOrSeal -> 0;
+#
+#
+#2.3.6.2 Ensure 'Domain member: Digitally encrypt secure channel data (when possible)' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.6.2: Ensure 'Domain member: Digitally encrypt secure channel data (when possible)' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SealSecureChannel -> 0;
+#
+#
+#2.3.6.3 Ensure 'Domain member: Digitally sign secure channel data (when possible)' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.6.3: Ensure 'Domain member: Digitally sign secure channel data (when possible)' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SignSecureChannel -> 0;
+#
+#
+#2.3.6.4 Ensure 'Domain member: Disable machine account password changes' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.6.4: Ensure 'Domain member: Disable machine account password changes' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> DisablePasswordChange -> 1;
+#
+#
+#2.3.6.6 Ensure 'Domain member: Require strong (Windows 2000 or later) session key' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.6.6: Ensure 'Domain member: Require strong session key' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RequireStrongKey -> 0;
+#
+#
+#2.3.7.1 Ensure 'Interactive logon: Do not display last user name' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.7.1: Ensure 'Interactive logon: Do not display last user name' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DontDisplayLastUserName -> 0;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> !DontDisplayLastUserName;
+#
+#
+#2.3.7.2 Ensure 'Interactive logon: Do not require CTRL+ALT+DEL' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.7.2: Ensure 'Interactive logon: Do not require CTRL+ALT+DEL' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DisableCAD -> 1;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> !DisableCAD;
+#
+#
+#2.3.7.3 Ensure 'Interactive logon: Machine inactivity limit' is set to '900 or fewer second(s), but not 0'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.7.3: Ensure 'Interactive logon: Machine inactivity limit' is set to '900 or fewer second(s), but not 0'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> 0;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> 385;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> 386;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> 387;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> 388;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> 389;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> r:38\D;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> r:39\w;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> r:3\D\w;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> r:4\w\w;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> r:5\w\w;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> r:6\w\w;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> r:7\w\w;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> r:8\w\w;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> r:9\w\w;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> r:\D\w\w;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> r:\w\w\w\w+;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> !InactivityTimeoutSecs;
+#
+#
+#2.3.7.7 Ensure 'Interactive logon: Prompt user to change password before expiration' is set to 'between 5 and 14 days'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.7.7: Ensure 'Interactive logon: Prompt user to change password before expiration' is set to 'between 5 and 14 days'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> 0;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> 1;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> 2;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> 3;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> 4;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> 0F;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:1\w;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:2\w;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:3\w;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:4\w;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:5\w;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:6\w;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:7\w;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:8\w;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:9\w;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:\D\w;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> r:\w\w\w+;
+#
+#
+#2.3.7.9 Ensure 'Interactive logon: Smart card removal behavior' is set to 'Lock Workstation' or higher
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.7.9: Ensure 'Interactive logon: Smart card removal behavior' is set to 'Lock Workstation' or higher] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> ScRemoveOption -> 0;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsNT\CurrentVersion\Winlogon -> !ScRemoveOption;
+#
+#
+#2.3.8.1 Ensure 'Microsoft network client: Digitally sign communications (always)' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.8.1: Ensure 'Microsoft network client: Digitally sign communications (always)' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> RequireSecuritySignature -> !1;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> !RequireSecuritySignature;
+#
+#
+#2.3.8.2 Ensure 'Microsoft network client: Digitally sign communications (if server agrees)' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.8.2: Ensure 'Microsoft network client: Digitally sign communications (if server agrees)' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> EnableSecuritySignature -> !1;
+#
+#
+#2.3.8.3 Ensure 'Microsoft network client: Send unencrypted password to third-party SMB servers' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.8.3: Ensure 'Microsoft network client: Send unencrypted password to third-party SMB servers' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> EnablePlainTextPassword -> !0;
+#
+#
+#2.3.9.1 Ensure 'Microsoft network server: Amount of idle time required before suspending session' is set to '15 or fewer minute(s), but not 0'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.9.1: Ensure 'Microsoft network server: Amount of idle time required before suspending session' is set to '15 or fewer minute(s), but not 0'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> AutoDisconnect -> 0;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> AutoDisconnect -> r:1\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> AutoDisconnect -> r:2\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> AutoDisconnect -> r:3\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> AutoDisconnect -> r:4\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> AutoDisconnect -> r:5\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> AutoDisconnect -> r:6\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> AutoDisconnect -> r:7\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> AutoDisconnect -> r:8\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> AutoDisconnect -> r:9\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> AutoDisconnect -> r:\D\w;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> AutoDisconnect -> r:\w\w\w+;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> !AutoDisconnect;
+#
+#
+#2.3.9.2 Ensure 'Microsoft network server: Digitally sign communications (always)' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.9.2: Ensure 'Microsoft network server: Digitally sign communications (always)' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RequireSecuritySignature -> !1;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> !RequireSecuritySignature;
+#
+#
+#2.3.9.3 Ensure 'Microsoft network server: Digitally sign communications (if client agrees)' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.9.3: Ensure 'Microsoft network server: Digitally sign communications (if client agrees)' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableSecuritySignature -> !1;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> !EnableSecuritySignature;
+#
+#
+#2.3.9.4 Ensure 'Microsoft network server: Disconnect clients when logon hours expire' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.9.4: Ensure 'Microsoft network server: Disconnect clients when logon hours expire' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableForcedLogOff -> !1;
+#
+#
+#2.3.10.5 Ensure 'Network access: Let Everyone permissions apply to anonymous users' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.10.5: Ensure 'Network access: Let Everyone permissions apply to anonymous users' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> EveryoneIncludesAnonymous -> 1;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> EveryoneIncludesAnonymous -> 2;
+#
+#
+#2.3.10.6 Configure 'Network access: Named Pipes that can be accessed anonymously'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.10.6: Configure 'Network access: Named Pipes that can be accessed anonymously'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes -> !r:lsarpc|netlogon|samr;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> !NullSessionPipes;
+#
+#
+#2.3.10.7 Configure 'Network access: Remotely accessible registry paths'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.10.7: Configure 'Network access: Remotely accessible registry paths'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedExactPaths -> Machine -> !r:System\\CurrentControlSet\\Control\\ProductOptions|System\\CurrentControlSet\\Control\\Server Applications|Software\\Microsoft\\Windows NT\\CurrentVersion;
+#
+#
+#2.3.10.8 Configure 'Network access: Remotely accessible registry paths and sub-paths'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.10.8: Configure 'Network access: Remotely accessible registry paths and sub-paths'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> !r:Software\\Microsoft\\Windows NT\\CurrentVersion\\Print|Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows|System\\CurrentControlSet\\Control\\Print\\Printers|System\\CurrentControlSet\\Services\\Eventlog|Software\\Microsoft\\OLAP Server|System\\CurrentControlSet\\Control\\ContentIndex|System\\CurrentControlSet\\Control\\Terminal Server|System\\CurrentControlSet\\Control\\Terminal Server\\UserConfig|System\\CurrentControlSet\\Control\\Terminal Server\\DefaultUserConfiguration|Software\\Microsoft\\Windows NT\\CurrentVersion\\Perflib|System\\CurrentControlSet\\Services\\SysmonLog|System\\CurrentControlSet\\Services\\CertSvc|System\\CurrentControlSet\\Services\\WINS;
+#
+#
+#2.3.10.9 Ensure 'Network access: Restrict anonymous access to Named Pipes and Shares' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.10.9: Ensure 'Network access: Restrict anonymous access to Named Pipes and Shares' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RestrictNullSessAccess -> !1;
+#
+#
+#2.3.10.10 Ensure 'Network access: Shares that can be accessed anonymously' is set to 'None'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.10.10: Ensure 'Network access: Shares that can be accessed anonymously' is set to 'None'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionShares -> r:\.+;
+#
+#
+#2.3.10.11 Ensure 'Network access: Sharing and security model for local accounts' is set to 'Classic - local users authenticate as themselves'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.10.11: Ensure 'Network access: Sharing and security model for local accounts' is set to 'Classic - local users authenticate as themselves'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> ForceGuest -> 1;
+#
+#
+#2.3.11.1 Ensure 'Network security: Allow Local System to use computer identity for NTLM' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.11.1: Ensure 'Network security: Allow Local System to use computer identity for NTLM' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> UseMachineId -> !1;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> !UseMachineId;
+#
+#
+#2.3.11.2 Ensure 'Network security: Allow LocalSystem NULL session fallback' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.11.2: Ensure 'Network security: Allow LocalSystem NULL session fallback' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> allownullsessionfallback -> 1;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> !allownullsessionfallback;
+#
+#
+#2.3.11.3 Ensure 'Network Security: Allow PKU2U authentication requests to this computer to use online identities' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.11.3: Ensure 'Network Security: Allow PKU2U authentication requests to this computer to use online identities' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\pku2u -> AllowOnlineID -> !0;
+#
+#
+#2.3.11.4 Ensure 'Network Security: Configure encryption types allowed for Kerberos' is set to 'RC4_HMAC_MD5, AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.11.4: Ensure 'Network Security: Configure encryption types allowed for Kerberos' is set to 'RC4_HMAC_MD5, AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System\Kerberos\Parameters -> SupportedEncryptionTypes -> !2147483644;
+#
+#
+#2.3.11.5 Ensure 'Network security: Do not store LAN Manager hash value on next password change' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.11.5: Ensure 'Network security: Do not store LAN Manager hash value on next password change' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> NoLMHash -> 0;
+#
+#
+#2.3.11.6 Ensure 'Network security: Force logoff when logon hours expire' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.11.6: Ensure 'Network security: Force logoff when logon hours expire' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> EnableForcedLogOff -> !1;
+#
+#
+#2.3.11.7 Ensure 'Network security: LAN Manager authentication level' is set to 'Send NTLMv2 response only. Refuse LM & NTLM'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.11.7: Ensure 'Network security: LAN Manager authentication level' is set to 'Send NTLMv2 response only. Refuse LM & NTLM'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LmCompatibilityLevel -> 0;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LmCompatibilityLevel -> 1;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LmCompatibilityLevel -> 2;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LmCompatibilityLevel -> 3;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LmCompatibilityLevel -> 4;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> !LmCompatibilityLevel;
+#
+#
+#2.3.11.8 Ensure 'Network security: LDAP client signing requirements' is set to 'Negotiate signing' or higher
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LDAP -> LDAPClientIntegrity -> !1;
+#
+#
+#2.3.11.9 Ensure 'Network security: Minimum session security for NTLM SSP based (including secure RPC) clients' is set to 'Require NTLMv2 session security, Require 128-bit encryption'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.11.9: Ensure 'Network security: Minimum session security for NTLM SSP based (including secure RPC) clients' is set to 'Require NTLMv2 session security, Require 128-bit encryption''] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> NTLMMinClientSec -> !537395200;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> !NTLMMinClientSec;
+#
+#
+#2.3.11.10 Ensure 'Network security: Minimum session security for NTLM SSP based (including secure RPC) servers' is set to 'Require NTLMv2 session security, Require 128-bit encryption'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.11.10: Ensure 'Network security: Minimum session security for NTLM SSP based (including secure RPC) servers' is set to 'Require NTLMv2 session security, Require 128-bit encryption'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> NTLMMinServerSec -> !537395200;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\MSV1_0 -> !NTLMMinServerSec;
+#
+#
+#2.3.13.1 Ensure 'Shutdown: Allow system to be shut down without having to log on' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.13.1: Ensure 'Shutdown: Allow system to be shut down without having to log on' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> ShutdownWithoutLogon -> 1;
+#
+#
+#2.3.15.1 Ensure 'System objects: Require case insensitivity for non-Windows subsystems' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.15.1: Ensure 'System objects: Require case insensitivity for non-Windows subsystems' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Kernel -> ObCaseInsensitive -> !1;
+#
+#
+#2.3.15.2 Ensure 'System objects: Strengthen default permissions of internal system objects (e.g. Symbolic Links)' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.15.2: Ensure 'System objects: Strengthen default permissions of internal system objects (e.g. Symbolic Links)' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager -> ProtectionMode -> !1;
+#
+#
+#2.3.17.1 Ensure 'User Account Control: Admin Approval Mode for the Built-in Administrator account' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.17.1: Ensure 'User Account Control: Admin Approval Mode for the Built-in Administrator account' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> FilterAdministratorToken -> 0;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> !FilterAdministratorToken;
+#
+#
+#2.3.17.2 Ensure 'User Account Control: Allow UIAccess applications to prompt for elevation without using the secure desktop' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.17.2: Ensure 'User Account Control: Allow UIAccess applications to prompt for elevation without using the secure desktop' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> EnableUIADesktopToggle -> 1;
+#
+#
+#2.3.17.3 Ensure 'User Account Control: Behavior of the elevation prompt for administrators in Admin Approval Mode' is set to 'Prompt for consent on the secure desktop'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.17.3: Ensure 'User Account Control: Behavior of the elevation prompt for administrators in Admin Approval Mode' is set to 'Prompt for consent on the secure desktop'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> ConsentPromptBehaviorAdmin -> 0;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> ConsentPromptBehaviorAdmin -> 1;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> !ConsentPromptBehaviorAdmin;
+#
+#
+#2.3.17.4 Ensure 'User Account Control: Behavior of the elevation prompt for standard users' is set to 'Automatically deny elevation requests'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.17.4: Ensure 'User Account Control: Behavior of the elevation prompt for standard users' is set to 'Automatically deny elevation requests'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> ConsentPromptBehaviorUser -> 1;
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> !ConsentPromptBehaviorUser;
+#
+#
+#2.3.17.5 Ensure 'User Account Control: Detect application installations and prompt for elevation' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.17.5: Ensure 'User Account Control: Detect application installations and prompt for elevation' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> EnableInstallerDetection -> 0;
+r:HKEY_LOCAL_MACHINE\MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> !EnableInstallerDetection;
+#
+#
+#2.3.17.6 Ensure 'User Account Control: Only elevate UIAccess applications that are installed in secure locations' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.17.6: Ensure 'User Account Control: Only elevate UIAccess applications that are installed in secure locations' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> EnableSecureUIAPaths -> 0;
+#
+#
+#2.3.17.7 Ensure 'User Account Control: Run all administrators in Admin Approval Mode' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.17.7: Ensure 'User Account Control: Run all administrators in Admin Approval Mode' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> EnableLUA -> 0;
+#
+#
+#2.3.17.8 Ensure 'User Account Control: Switch to the secure desktop when prompting for elevation' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.17.8: Ensure 'User Account Control: Switch to the secure desktop when prompting for elevation' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> PromptOnSecureDesktop -> 0;
+#
+#
+#2.3.17.9 Ensure 'User Account Control: Virtualize file and registry write failures to per-user locations' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.17.9: Ensure 'User Account Control: Virtualize file and registry write failures to per-user locations' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> EnableVirtualization -> 0;
+#
+#
+#9.1.1 Ensure 'Windows Firewall: Domain: Firewall state' is set to 'On'
+[CIS - Microsoft Windows Server 2012 R2 - 9.1.1: Ensure 'Windows Firewall: Domain: Firewall state' is set to 'On'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile -> EnableFirewall -> 0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\DomainProfile -> EnableFirewall -> 0;
+#
+#
+#9.1.2 Ensure 'Windows Firewall: Domain: Inbound connections' is set to 'Block (default)'
+[CIS - Microsoft Windows Server 2012 R2 - 9.1.2: Ensure 'Windows Firewall: Domain: Inbound connections' is set to 'Block'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile -> DefaultInboundAction -> 0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\DomainProfile -> DefaultInboundAction -> 0;
+#
+#
+#9.1.3 Ensure 'Windows Firewall: Domain: Outbound connections' is set to 'Allow (default)'
+[CIS - Microsoft Windows Server 2012 R2 - 9.1.3: Ensure 'Windows Firewall: Domain: Outbound connections' is set to 'Allow'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile -> DefaultOutboundAction -> 1;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\DomainProfile -> DefaultOutboundAction -> 1;
+#
+#
+#9.1.4 Ensure 'Windows Firewall: Domain: Settings: Display a notification' is set to 'No'
+[CIS - Microsoft Windows Server 2012 R2 - 9.1.4: Ensure 'Windows Firewall: Domain: Settings: Display a notification' is set to 'No'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile -> DisableNotifications -> 0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile -> !DisableNotifications;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\DomainProfile -> DisableNotifications -> 0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\DomainProfile -> !DisableNotifications;
+#
+#
+#9.1.5 Ensure 'Windows Firewall: Domain: Settings: Apply local firewall rules' is set to 'Yes (default)'
+[CIS - Microsoft Windows Server 2012 R2 - 9.1.5: Ensure 'Windows Firewall: Domain: Settings: Apply local firewall rules' is set to 'Yes'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile -> AllowLocalPolicyMerge -> 0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\DomainProfile -> AllowLocalPolicyMerge -> 0;
+#
+#
+#9.1.6 Ensure 'Windows Firewall: Domain: Settings: Apply local connection security rules' is set to 'Yes (default)'
+[CIS - Microsoft Windows Server 2012 R2 - 9.1.6: Ensure 'Windows Firewall: Domain: Settings: Apply local connection security rules' is set to 'Yes'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile -> AllowLocalIPsecPolicyMerge -> 0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\DomainProfile -> AllowLocalIPsecPolicyMerge -> 0;
+#
+#
+#9.1.7 Ensure 'Windows Firewall: Domain: Logging: Name' is set to '%SYSTEMROOT%\System32\logfiles\firewall\*.log'
+[CIS - Microsoft Windows Server 2012 R2 - 9.1.7: Ensure 'Windows Firewall: Domain: Logging: Name' is set to '%SYSTEMROOT%\System32\logfiles\firewall\*.log'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogFilePath -> r:\psystemroot\p\\system32\logfiles\firewall\\w+\plog;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\DomainProfile\Logging -> LogFilePath -> r:\psystemroot\p\\system32\logfiles\firewall\\w+\plog;
+#
+#
+#9.1.8 Ensure 'Windows Firewall: Domain: Logging: Size limit (KB)' is set to '16384 KB or greater'
+[CIS - Microsoft Windows Server 2012 R2 - 9.1.8: Ensure 'Windows Firewall: Domain: Logging: Size limit (KB)' is set to '16384 KB or greater'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogFileSize -> r:\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogFileSize -> r:\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogFileSize -> r:\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogFileSize -> r:1\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogFileSize -> r:2\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogFileSize -> r:3\w\w\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\DomainProfile\Logging -> LogFileSize -> r:\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\DomainProfile\Logging -> LogFileSize -> r:\w\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\DomainProfile\Logging -> LogFileSize -> r:\w\w\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\DomainProfile\Logging -> LogFileSize -> r:1\w\w\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\DomainProfile\Logging -> LogFileSize -> r:2\w\w\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\DomainProfile\Logging -> LogFileSize -> r:3\w\w\w;
+#
+#
+#9.1.9 Ensure 'Windows Firewall: Domain: Logging: Log dropped packets' is set to 'Yes'
+[CIS - Microsoft Windows Server 2012 R2 - 9.1.9: Ensure 'Windows Firewall: Domain: Logging: Log dropped packets' is set to 'Yes'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogDroppedPackets -> 0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\DomainProfile\Logging -> LogDroppedPackets -> 0;
+#
+#
+#9.1.10 Ensure 'Windows Firewall: Domain: Logging: Log successful connections' is set to 'Yes'
+[CIS - Microsoft Windows Server 2012 R2 - 9.1.10: Ensure 'Windows Firewall: Domain: Logging: Log successful connections' is set to 'Yes'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\DomainProfile\Logging -> LogSuccessfulConnections -> 0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\DomainProfile\Logging -> LogSuccessfulConnections -> 0;
+#
+#
+#9.2.1 Ensure 'Windows Firewall: Private: Firewall state' is set to 'On'
+[CIS - Microsoft Windows Server 2012 R2 - 9.2.1: Ensure 'Windows Firewall: Private: Firewall state' is set to 'On'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> EnableFirewall -> 0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile -> EnableFirewall -> 0;
+#
+#
+#9.2.2 Ensure 'Windows Firewall: Private: Inbound connections' is set to 'Block (default)'
+[CIS - Microsoft Windows Server 2012 R2 - 9.2.2: Ensure 'Windows Firewall: Private: Inbound connections' is set to 'Block'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> DefaultInboundAction -> 0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile -> DefaultInboundAction -> 0;
+#
+#
+#9.2.3 Ensure 'Windows Firewall: Private: Outbound connections' is set to 'Allow (default)'
+[CIS - Microsoft Windows Server 2012 R2 - 9.2.3: Ensure 'Windows Firewall: Private: Outbound connections' is set to 'Allow'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> DefaultOutboundAction -> 1;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile -> DefaultOutboundAction -> 1;
+#
+#
+#9.2.4 Ensure 'Windows Firewall: Private: Settings: Display a notification' is set to 'No'
+[CIS - Microsoft Windows Server 2012 R2 - 9.2.4: Ensure 'Windows Firewall: Private: Settings: Display a notification' is set to 'No'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> DisableNotifications -> 0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile -> DisableNotifications -> 0;
+#
+#
+#9.2.5 Ensure 'Windows Firewall: Private: Settings: Apply local firewall rules' is set to 'Yes (default)'
+[CIS - Microsoft Windows Server 2012 R2 - 9.2.5: Ensure 'Windows Firewall: Private: Settings: Apply local firewall rules' is set to 'Yes'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> AllowLocalPolicyMerge -> 0; 
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile -> AllowLocalPolicyMerge -> 0;
+#
+#
+#9.2.6 Ensure 'Windows Firewall: Private: Settings: Apply local connection security rules' is set to 'Yes (default)'
+[CIS - Microsoft Windows Server 2012 R2 - 9.2.6: Ensure 'Windows Firewall: Private: Settings: Apply local connection security rules' is set to 'Yes'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile -> AllowLocalIPsecPolicyMerge -> 0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile -> AllowLocalIPsecPolicyMerge -> 0;
+#
+#
+#9.2.7 Ensure 'Windows Firewall: Private: Logging: Name' is set to '%SYSTEMROOT%\System32\logfiles\firewall\*.log'
+[CIS - Microsoft Windows Server 2012 R2 - 9.2.7: Ensure 'Windows Firewall: Private: Logging: Name' is set to '%SYSTEMROOT%\System32\logfiles\firewall\*.log'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFilePath -> r:\psystemroot\p\\system32\logfiles\firewall\\w+\plog;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\Logging -> LogFilePath -> r:\psystemroot\p\\system32\logfiles\firewall\\w+\plog;
+#
+#
+#9.2.8 Ensure 'Windows Firewall: Private: Logging: Size limit (KB)' is set to '16384 KB or greater'
+[CIS - Microsoft Windows Server 2012 R2 - 9.2.8: Ensure 'Windows Firewall: Private: Logging: Size limit (KB)' is set to '16384 KB or greater'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFileSize -> r:\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFileSize -> r:\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFileSize -> r:\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFileSize -> r:1\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFileSize -> r:2\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFileSize -> r:3\w\w\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\Logging -> LogFileSize -> r:\w; 
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\Logging -> LogFileSize -> r:\w\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\Logging -> LogFileSize -> r:\w\w\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\Logging -> LogFileSize -> r:1\w\w\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\Logging -> LogFileSize -> r:2\w\w\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\Logging -> LogFileSize -> r:3\w\w\w;
+#
+#
+#9.2.9 Ensure 'Windows Firewall: Private: Logging: Log dropped packets' is set to 'Yes'
+[CIS - Microsoft Windows Server 2012 R2 - 9.2.9: Ensure 'Windows Firewall: Private: Logging: Log dropped packets' is set to 'Yes'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogDroppedPackets -> 0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\Logging -> LogDroppedPackets -> 0;
+#
+#
+#9.2.10 Ensure 'Windows Firewall: Domain: Logging: Log successful connections' is set to 'Yes'
+[CIS - Microsoft Windows Server 2012 R2 - 9.2.10: Ensure 'Windows Firewall: Domain: Logging: Log successful connections' is set to 'Yes'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogSuccessfulConnections -> 0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\Logging -> LogSuccessfulConnections -> 0;
+#
+#
+#9.3.1 Ensure 'Windows Firewall: Public: Firewall state' is set to 'On'
+[CIS - Microsoft Windows Server 2012 R2 - 9.3.1: Ensure 'Windows Firewall: Public: Firewall state' is set to 'On'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> EnableFirewall -> 0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\PublicProfile -> EnableFirewall -> 0;
+#
+#
+#9.3.2 Ensure 'Windows Firewall: Public: Inbound connections' is set to 'Block (default)'
+[CIS - Microsoft Windows Server 2012 R2 - 9.3.2: Ensure 'Windows Firewall: Public: Inbound connections' is set to 'Block'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> DefaultInboundAction -> 0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\PublicProfile -> DefaultInboundAction -> 0;
+#
+#
+#9.3.3 Ensure 'Windows Firewall: Public: Outbound connections' is set to 'Allow (default)'
+[CIS - Microsoft Windows Server 2012 R2 - 9.3.3: Ensure 'Windows Firewall: Public: Outbound connections' is set to 'Allow'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> DefaultOutboundAction -> 1;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\PublicProfile -> DefaultOutboundAction -> 1;
+#
+#
+#9.3.4 Ensure 'Windows Firewall: Public: Settings: Display a notification' is set to 'Yes'
+[CIS - Microsoft Windows Server 2012 R2 - 9.3.4: Ensure 'Windows Firewall: Public: Settings: Display a notification' is set to 'Yes'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> DisableNotifications -> 0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\PublicProfile -> DisableNotifications -> 0;
+#
+#
+#9.3.5 Ensure 'Windows Firewall: Public: Settings: Apply local firewall rules' is set to 'No'
+[CIS - Microsoft Windows Server 2012 R2 - 9.3.5: Ensure 'Windows Firewall: Public: Settings: Apply local firewall rules' is set to 'No'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> AllowLocalPolicyMerge -> 0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\PublicProfile -> AllowLocalPolicyMerge -> 0;
+#
+#
+#9.3.6 Ensure 'Windows Firewall: Public: Settings: Apply local connection security rules' is set to 'No'
+[CIS - Microsoft Windows Server 2012 R2 - 9.3.6: Ensure 'Windows Firewall: Public: Settings: Apply local connection security rules' is set to 'No'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile -> AllowLocalIPsecPolicyMerge -> 0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\PublicProfile -> AllowLocalIPsecPolicyMerge -> 0;
+#
+#
+#9.3.7 Ensure 'Windows Firewall: Private: Logging: Name' is set to '%SYSTEMROOT%\System32\logfiles\firewall\*.log'
+[CIS - Microsoft Windows Server 2012 R2 - 9.3.7: Ensure 'Windows Firewall: Private: Logging: Name' is set to '%SYSTEMROOT%\System32\logfiles\firewall\*.log'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFilePath -> r:\psystemroot\p\\system32\logfiles\firewall\\w+\plog;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\PublicProfile\Logging -> LogFilePath -> r:\psystemroot\p\\system32\logfiles\firewall\\w+\plog; 
+#
+#
+#9.3.8 Ensure 'Windows Firewall: Public: Logging: Size limit (KB)' is set to '16384 KB or greater'
+[CIS - Microsoft Windows Server 2012 R2 - 9.3.8: Ensure 'Windows Firewall: Public: Logging: Size limit (KB)' is set to '16384 KB or greater'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFileSize -> r:\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFileSize -> r:\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFileSize -> r:\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFileSize -> r:1\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFileSize -> r:2\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFileSize -> r:3\w\w\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\PublicProfile\Logging -> LogFileSize -> r:\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\PublicProfile\Logging -> LogFileSize -> r:\w\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\PublicProfile\Logging -> LogFileSize -> r:\w\w\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\PublicProfile\Logging -> LogFileSize -> r:1\w\w\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\PublicProfile\Logging -> LogFileSize -> r:2\w\w\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\PublicProfile\Logging -> LogFileSize -> r:3\w\w\w;
+#
+#
+#9.3.9 Ensure 'Windows Firewall: Public: Logging: Log dropped packets' is set to 'Yes'
+[CIS - Microsoft Windows Server 2012 R2 - 9.3.9: Ensure 'Windows Firewall: Public: Logging: Log dropped packets' is set to 'Yes'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogDroppedPackets -> 0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\PublicProfile\Logging -> LogDroppedPackets -> 0;
+#
+#
+#9.3.10 Ensure 'Windows Firewall: Public: Logging: Log successful connections' is set to 'Yes'
+[CIS - Microsoft Windows Server 2012 R2 - 9.3.10: Ensure 'Windows Firewall: Public: Logging: Log successful connections' is set to 'Yes'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogSuccessfulConnections -> 0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\services\SharedAccess\Parameters\FirewallPolicy\PublicProfile\Logging -> LogSuccessfulConnections -> 0;
+#
+#
+#18.1.1.1 Ensure 'Prevent enabling lock screen camera' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.1.1.1: Ensure 'Prevent enabling lock screen camera' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Personalization -> NoLockScreenCamera -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Personalization -> !NoLockScreenCamera;
+#
+#
+#18.1.1.2 Ensure 'Prevent enabling lock screen slide show' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.1.1.2: Ensure 'Prevent enabling lock screen slide show' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Personalization -> NoLockScreenSlideshow -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Personalization -> !NoLockScreenSlideshow;
+#
+#
+#18.3.1 Ensure 'MSS: (AutoAdminLogon) Enable Automatic Logon (not recommended)' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.3.1: Ensure 'MSS: (AutoAdminLogon) Enable Automatic Logon is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> AutoAdminLogon -> !0;
+#
+#
+#18.3.2 Ensure 'MSS: (DisableIPSourceRouting IPv6) IP source routing protection level (protects against packet spoofing)' is set to 'Enabled: Highest protection, source routing is completely disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.3.2: Ensure 'MSS: (DisableIPSourceRouting IPv6) IP source routing protection level (protects against packet spoofing)' is set to 'Enabled: Highest protection, source routing is completely disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters -> DisableIPSourceRouting -> !2;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters -> !DisableIPSourceRouting;
+#
+#
+#18.3.3 Ensure 'MSS: (DisableIPSourceRouting) IP source routing protection level (protects against packet spoofing)' is set to 'Enabled: Highest protection, source routing is completely disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.3.3: Ensure 'MSS: (DisableIPSourceRouting) IP source routing protection level (protects against packet spoofing)' is set to 'Enabled: Highest protection, source routing is completely disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> DisableIPSourceRouting -> !2;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> !DisableIPSourceRouting;
+#
+#
+#18.3.4 Ensure 'MSS: (EnableICMPRedirect) Allow ICMP redirects to override OSPF generated routes' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.3.4: Ensure 'MSS: (EnableICMPRedirect) Allow ICMP redirects to override OSPF generated routes' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> EnableICMPRedirect -> 1;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> !EnableICMPRedirect;
+#
+#
+#18.3.6 Ensure 'MSS: (NoNameReleaseOnDemand) Allow the computer to ignore NetBIOS name release requests except from WINS servers' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.3.6: Ensure 'MSS: (NoNameReleaseOnDemand) Allow the computer to ignore NetBIOS name release requests except from WINS servers' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NetBT\Parameters -> NoNameReleaseOnDemand -> !1;
+#
+#
+#18.3.8 Ensure 'MSS: (SafeDllSearchMode) Enable Safe DLL search mode (recommended)' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.3.8: Ensure 'MSS: (SafeDllSearchMode) Enable Safe DLL search mode (recommended)' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager -> SafeDllSearchMode -> 0;
+#
+#
+#18.3.9 Ensure 'MSS: (ScreenSaverGracePeriod) The time in seconds before the screen saver grace period expires (0 recommended)' is set to 'Enabled: 5 or fewer seconds'
+[CIS - Microsoft Windows Server 2012 R2 - 18.3.9: Ensure 'MSS: (ScreenSaverGracePeriod) The time in seconds before the screen saver grace period expires' is set to 'Enabled: 5 or fewer seconds'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> ScreenSaverGracePeriod -> 6;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> ScreenSaverGracePeriod -> 7;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> ScreenSaverGracePeriod -> 8;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> ScreenSaverGracePeriod -> 9;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> ScreenSaverGracePeriod -> r:\w\w+;
+#
+#
+#18.3.12 Ensure 'MSS: (WarningLevel) Percentage threshold for the security event log at which the system will generate a warning' is set to 'Enabled: 90% or less'
+[CIS - Microsoft Windows Server 2012 R2 - 18.3.12: Ensure 'MSS: (WarningLevel) Percentage threshold for the security event log at which the system will generate a warning' is set to 'Enabled: 90% or less] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security -> WarningLevel -> 5B;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security -> WarningLevel -> 5C;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security -> WarningLevel -> 5D;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security -> WarningLevel -> 5E;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security -> WarningLevel -> 5F;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security -> WarningLevel -> r:6\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security -> WarningLevel -> r:7\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security -> WarningLevel -> r:8\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security -> WarningLevel -> r:9\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security -> WarningLevel -> r:\D\w;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security -> WarningLevel -> r:\w\w\w+;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Security -> !WarningLevel;
+#
+#
+#18.4.11.2 Ensure 'Prohibit installation and configuration of Network Bridge on your DNS domain network' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.4.11.2: Ensure 'Prohibit installation and configuration of Network Bridge on your DNS domain network' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_AllowNetBridge_NLA -> 1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> !NC_AllowNetBridge_NLA;
+#
+#
+#18.4.11.3 Ensure 'Require domain users to elevate when setting a network's location' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.4.11.3: Ensure 'Require domain users to elevate when setting a network's location' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> NC_StdDomainUserSetLocation -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Network Connections -> !NC_StdDomainUserSetLocation;
+#
+#
+#18.4.21.1 Ensure 'Minimize the number of simultaneous connections to the Internet or a Windows Domain' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.4.21.1: Ensure 'Minimize the number of simultaneous connections to the Internet or a Windows Domain' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy -> fMinimizeConnections -> !1;
+#
+#
+#18.6.2 Ensure 'WDigest Authentication' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.6.2: Ensure 'WDigest Authentication' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest -> UseLogonCredential -> !0;
+#
+#
+#18.8.3.1 Ensure 'Include command line in process creation events' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.3.1: Ensure 'Include command line in process creation events' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\Audit -> ProcessCreationIncludeCmdLine_Enabled -> !0;
+#
+#
+#18.8.12.1 Ensure 'Boot-Start Driver Initialization Policy' is set to 'Enabled: Good, unknown and bad but critical'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.12.1: Ensure 'Boot-Start Driver Initialization Policy' is set to 'Enabled: Good, unknown and bad but critical'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Policies\EarlyLaunch -> DriverLoadPolicy -> !3;
+#
+#
+#18.8.19.2 Ensure 'Configure registry policy processing: Do not apply during periodic background processing' is set to 'Enabled: FALSE'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.19.2: Ensure 'Configure registry policy processing: Do not apply during periodic background processing' is set to 'Enabled: FALSE'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2} -> NoBackgroundPolicy -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2} -> !NoBackgroundPolicy;
+#
+#
+#18.8.19.3 Ensure 'Configure registry policy processing: Process even if the Group Policy objects have not changed' is set to 'Enabled: TRUE'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.19.3: Ensure 'Configure registry policy processing: Process even if the Group Policy objects have not changed' is set to 'Enabled: TRUE'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2} -> NoGPOListChanges -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Group Policy\{35378EAC-683F-11D2-A89A-00C04FBBCFA2} -> !NoGPOListChanges;
+#
+#
+#18.8.19.4 Ensure 'Turn off background refresh of Group Policy' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.19.4: Ensure 'Turn off background refresh of Group Policy' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableBkGndGroupPolicy -> !0;
+#
+#
+#18.8.25.1 Ensure 'Do not display network selection UI' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.25.1: Ensure 'Do not display network selection UI' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> DontDisplayNetworkSelectionUI -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> !DontDisplayNetworkSelectionUI;
+#
+#
+#18.8.25.2 Ensure 'Do not enumerate connected users on domain-joined computers' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.25.2: Ensure 'Do not enumerate connected users on domain-joined computers' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> DontEnumerateConnectedUsers -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> !DontEnumerateConnectedUsers;
+#
+#
+#18.8.25.3 Ensure 'Enumerate local users on domain-joined computers' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.25.3: Ensure 'Enumerate local users on domain-joined computers' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnumerateLocalUsers -> !0;
+#
+#
+#18.8.25.4 Ensure 'Turn off app notifications on the lock screen' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.25.4: Ensure 'Turn off app notifications on the lock screen' is set to 'Enabled] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> DisableLockScreenAppNotifications -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> !DisableLockScreenAppNotifications;
+#
+#
+#18.8.25.5 Ensure 'Turn on convenience PIN sign-in' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.25.5: Ensure 'Turn on convenience PIN sign-in' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> AllowDomainPINLogon -> !0;
+#
+#
+#18.8.31.1 Ensure 'Configure Offer Remote Assistance' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.31.1: Ensure 'Configure Offer Remote Assistance' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fAllowUnsolicited -> !0;
+#
+#
+#18.8.31.2 Ensure 'Configure Solicited Remote Assistance' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.31.2: Ensure 'Configure Solicited Remote Assistance' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fAllowToGetHelp -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !fAllowToGetHelp;
+#
+#
+#18.9.6.1 Ensure 'Allow Microsoft accounts to be optional' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.6.1: Ensure 'Allow Microsoft accounts to be optional' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> MSAOptional -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> !MSAOptional;
+#
+#
+#18.9.8.1 Ensure 'Disallow Autoplay for non-volume devices' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.8.1: Ensure 'Disallow Autoplay for non-volume devices' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoAutoplayfornonVolume -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> !NoAutoplayfornonVolume;
+#
+#
+#18.9.8.2 Ensure 'Set the default behavior for AutoRun' is set to 'Enabled: Do not execute any autorun commands'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.8.2: Ensure 'Set the default behavior for AutoRun' is set to 'Enabled: Do not execute any autorun commands'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoAutorun -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> !NoAutorun;
+#
+#
+#18.9.8.3 Ensure 'Turn off Autoplay' is set to 'Enabled: All drives'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.8.3: Ensure 'Turn off Autoplay' is set to 'Enabled: All drives'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer-> NoDriveTypeAutoRun -> !ff;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer-> !NoDriveTypeAutoRun;
+#
+#
+#18.9.15.1 Ensure 'Do not display the password reveal button' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.15.1: Ensure 'Do not display the password reveal button' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredUI -> DisablePasswordReveal -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CredUI -> !DisablePasswordReveal;
+#
+#
+#18.9.15.2 Ensure 'Enumerate administrator accounts on elevation' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.15.2: Ensure 'Enumerate administrator accounts on elevation' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\CredUI -> EnumerateAdministrators -> !0;
+#
+#
+#18.9.26.1.1 Ensure 'Application: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.26.1.1: Ensure 'Application: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> Retention -> !0;
+#
+#
+#18.9.26.1.2 Ensure 'Application: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.26.1.2: Ensure 'Application: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> MaxSize -> r:\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> MaxSize -> r:\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> MaxSize -> r:\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> MaxSize -> r:0\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> MaxSize -> r:1\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> MaxSize -> r:2\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> MaxSize -> r:3\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> MaxSize -> r:4\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> MaxSize -> r:5\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> MaxSize -> r:6\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> MaxSize -> r:7\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Application -> !MaxSize;
+#
+#
+#18.9.26.2.1 Ensure 'Security: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.26.2.1: Ensure 'Security: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> Retention -> !0;
+#
+#
+#18.9.26.2.2 Ensure 'Security: Specify the maximum log file size (KB)' is set to 'Enabled: 196,608 or greater'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.26.2.2: Ensure 'Security: Specify the maximum log file size (KB)' is set to 'Enabled: 196,608 or greater'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> MaxSize -> r:\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> MaxSize -> r:\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> MaxSize -> r:\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> MaxSize -> r:\w\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> MaxSize -> r:0\w\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> MaxSize -> r:1\w\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> MaxSize -> r:2\w\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Security -> !MaxSize;
+#
+#
+#18.9.26.3.1 Ensure 'Setup: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.26.3.1: Ensure 'Setup: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> Retention -> !0;
+#
+#
+#18.9.26.3.2 Ensure 'Setup: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.26.3.2: Ensure 'Setup: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> MaxSize -> r:\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> MaxSize -> r:\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> MaxSize -> r:\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> MaxSize -> r:0\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> MaxSize -> r:1\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> MaxSize -> r:2\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> MaxSize -> r:3\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> MaxSize -> r:4\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> MaxSize -> r:5\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> MaxSize -> r:6\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> MaxSize -> r:7\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\Setup -> !MaxSize;
+#
+#
+#18.9.26.4.1 Ensure 'System: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.26.4.1: Ensure 'System: Control Event Log behavior when the log file reaches its maximum size' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> Retention -> !0;
+#
+#
+#18.9.26.4.2 Ensure 'System: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.26.4.2: Ensure 'System: Specify the maximum log file size (KB)' is set to 'Enabled: 32,768 or greater'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize -> r:\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize -> r:\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize -> r:\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize -> r:0\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize -> r:1\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize -> r:2\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize -> r:3\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize -> r:4\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize -> r:5\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize -> r:6\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> MaxSize -> r:7\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\EventLog\System -> !MaxSize;
+#
+#
+#18.9.30.2 Ensure 'Configure Windows SmartScreen' is set to 'Enabled: Require approval from an administrator before running downloaded unknown software'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.30.2: Ensure 'Configure Windows SmartScreen' is set to 'Enabled: Require approval from an administrator before running downloaded unknown software'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> EnableSmartScreen -> !2;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> !EnableSmartScreen;
+#
+#
+#18.9.30.3 Ensure 'Turn off Data Execution Prevention for Explorer' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.30.3: Ensure 'Turn off Data Execution Prevention for Explorer' is set to 'Disabled] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoDataExecutionPrevention -> !0;
+#
+#
+#18.9.30.4 Ensure 'Turn off heap termination on corruption' is set to 'Disabled'[CIS - Microsoft Windows Server 2012 R2 - 18.9.30.4: Ensure 'Turn off heap termination on corruption' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoHeapTerminationOnCorruption -> !0;
+#
+#
+#18.9.30.5 Ensure 'Turn off shell protocol protected mode' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.30.5: Ensure 'Turn off shell protocol protected mode' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> PreXPSP2ShellProtocolBehavior -> !0;
+#
+#
+#18.9.47.1 Ensure 'Prevent the usage of OneDrive for file storage' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.47.1: Ensure 'Prevent the usage of OneDrive for file storage' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\OneDrive -> DisableFileSyncNGSC -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\OneDrive -> !DisableFileSyncNGSC;
+#
+#
+#18.9.47.2 Ensure 'Prevent the usage of OneDrive for file storage on Windows 8.1' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.47.2: Ensure 'Prevent the usage of OneDrive for file storage on Windows 8.1' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Skydrive -> DisableFileSync -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Skydrive -> !DisableFileSync;
+#
+#
+#18.9.52.2.2 Ensure 'Do not allow passwords to be saved' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.52.2.2: Ensure 'Do not allow passwords to be saved' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> DisablePasswordSaving -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !DisablePasswordSaving;
+#
+#
+#18.9.52.3.3.2 Ensure 'Do not allow drive redirection' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.52.3.3.2: Ensure 'Do not allow drive redirection' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableCdm -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !fDisableCdm;
+#
+#
+#18.9.52.3.9.1 Ensure 'Always prompt for password upon connection' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.52.3.9.1: Ensure 'Always prompt for password upon connection' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fPromptForPassword -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !fPromptForPassword;
+#
+#
+#18.9.52.3.9.2 Ensure 'Require secure RPC communication' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.52.3.9.2: Ensure 'Require secure RPC communication' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fEncryptRPCTraffic -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !fEncryptRPCTraffic;
+#
+#
+#18.9.52.3.9.3 Ensure 'Set client connection encryption level' is set to 'Enabled: High Level'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.52.3.9.3: Ensure 'Set client connection encryption level' is set to 'Enabled: High Level'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MinEncryptionLevel -> !3;
+#
+#
+#18.9.52.3.11.1 Ensure 'Do not delete temp folders upon exit' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.52.3.11.1: Ensure 'Do not delete temp folders upon exit' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> DeleteTempDirsOnExit -> !1;
+#
+#
+#18.9.52.3.11.2 Ensure 'Do not use temporary folders per session' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.52.3.11.2: Ensure 'Do not use temporary folders per session' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> PerSessionTempDir -> !1;
+#
+#
+#18.9.53.1 Ensure 'Prevent downloading of enclosures' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.53.1: Ensure 'Prevent downloading of enclosures' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Feeds -> DisableEnclosureDownload -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Internet Explorer\Feeds -> !DisableEnclosureDownload;
+#
+#
+#18.9.54.2 Ensure 'Allow indexing of encrypted files' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.54.2: Ensure 'Allow indexing of encrypted files' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> AllowIndexingEncryptedStoresOrItems -> !0;
+#
+#
+#18.9.61.1 Ensure 'Turn off Automatic Download and Install of updates' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.61.1: Ensure 'Turn off Automatic Download and Install of updates' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> AutoDownload -> !4;
+#
+#
+#18.9.61.2 Ensure 'Turn off the offer to update to the latest version of Windows' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.61.2: Ensure 'Turn off the offer to update to the latest version of Windows' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> DisableOSUpgrade -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> !DisableOSUpgrade;
+#
+#
+#18.9.70.2.1 Ensure 'Configure Default consent' is set to 'Enabled: Always ask before sending data'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.70.2.1: Ensure 'Configure Default consent' is set to 'Enabled: Always ask before sending data'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting\Consent -> DefaultConsent -> !1;
+#
+#
+#18.9.70.3 Ensure 'Automatically send memory dumps for OS-generated error reports' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.70.3: Ensure 'Automatically send memory dumps for OS-generated error reports' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting -> AutoApproveOSDumps -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting -> !AutoApproveOSDumps;
+#
+#
+#18.9.74.1 Ensure 'Allow user control over installs' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.74.1: Ensure 'Allow user control over installs' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> EnableUserControl -> !0;
+#
+#
+#18.9.74.2 Ensure 'Always install with elevated privileges' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.74.2: Ensure 'Always install with elevated privileges' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> AlwaysInstallElevated -> !0;
+#
+#
+#18.9.75.1 Ensure 'Sign-in last interactive user automatically after a system-initiated restart' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.75.1: Ensure 'Sign-in last interactive user automatically after a system-initiated restart' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableAutomaticRestartSignOn -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> !DisableAutomaticRestartSignOn;
+#
+#
+#18.9.84.1 Ensure 'Turn on PowerShell Script Block Logging' is set to 'Disabled'[CIS - Microsoft Windows Server 2012 R2 - 18.9.84.1: Ensure 'Turn on PowerShell Script Block Logging' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> EnableScriptBlockLogging -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging -> !EnableScriptBlockLogging;
+#
+#
+#18.9.84.2 Ensure 'Turn on PowerShell Transcription' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.84.2: Ensure 'Turn on PowerShell Transcription' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\PowerShell\Transcription -> EnableTranscripting -> !0;
+#
+#
+#18.9.86.1.1 Ensure 'Allow Basic authentication' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.86.1.1: Ensure 'Allow Basic authentication' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowBasic -> !0;
+#
+#
+#18.9.86.1.2 Ensure 'Allow unencrypted traffic' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.86.1.2: Ensure 'Allow unencrypted traffic' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowUnencryptedTraffic -> !0;
+#
+#
+#18.9.86.1.3 Ensure 'Disallow Digest authentication' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.86.1.3: Ensure 'Disallow Digest authentication' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> AllowDigest -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client -> !AllowDigest;
+#
+#
+#18.9.86.2.1 Ensure 'Allow Basic authentication' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.86.2.1: Ensure 'Allow Basic authentication' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowBasic -> !0;
+#
+#
+#18.9.86.2.3 Ensure 'Allow unencrypted traffic' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.86.2.3: Ensure 'Allow unencrypted traffic' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowUnencryptedTraffic -> !0;
+#
+#
+#18.9.86.2.4 Ensure 'Disallow WinRM from storing RunAs credentials' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.86.2.4: Ensure 'Disallow WinRM from storing RunAs credentials' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> DisableRunAs -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> !DisableRunAs;
+#
+#
+#18.9.90.2 Ensure 'Configure Automatic Updates' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.90.2: Ensure 'Configure Automatic Updates' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoUpdate -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> !NoAutoUpdate;
+#
+#
+#18.9.90.3 Ensure 'Configure Automatic Updates: Scheduled install day' is set to '0 - Every day'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.90.3: Ensure 'Configure Automatic Updates: Scheduled install day' is set to '0 - Every day'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> ScheduledInstallDay -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> !ScheduledInstallDay;
+#
+#
+#18.9.90.4 Ensure 'No auto-restart with logged on users for scheduled automatic updates installations' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.90.4: Ensure 'No auto-restart with logged on users for scheduled automatic updates installations' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU -> NoAutoRebootWithLoggedOnUsers -> !0;
+#

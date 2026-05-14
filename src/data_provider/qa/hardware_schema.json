@@ -1,0 +1,45 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "hw": {
+            "type": "object",
+            "properties": {
+                "board_serial": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "cpu_cores": {
+                    "type": "integer"
+                },
+                "cpu_mhz": {
+                    "type": "number"
+                },
+                "cpu_name": {
+                    "type": "string"
+                },
+                "ram_free": {
+                    "type": "integer"
+                },
+                "ram_total": {
+                    "type": "integer"
+                },
+                "ram_usage": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "board_serial",
+                "cpu_cores",
+                "cpu_mhz",
+                "cpu_name",
+                "ram_free",
+                "ram_total",
+                "ram_usage"
+            ]
+        }
+    },
+    "required": [
+        "hw"
+    ]
+}

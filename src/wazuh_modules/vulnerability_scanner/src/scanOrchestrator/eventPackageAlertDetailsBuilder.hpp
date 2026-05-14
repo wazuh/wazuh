@@ -1,0 +1,227 @@
+/*
+ * Wazuh Vulnerability scanner - Scan Orchestrator
+ * Copyright (C) 2015, Wazuh Inc.
+ * March 4, 2024.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#ifndef _EVENT_PACKAGE_ALERT_DETAILS_BUILDER_HPP
+#define _EVENT_PACKAGE_ALERT_DETAILS_BUILDER_HPP
+
+#include "chainOfResponsability.hpp"
+#include "databaseFeedManager.hpp"
+#include "descriptionsHelper.hpp"
+#include "fieldAlertHelper.hpp"
+#include "globalData.hpp"
+#include "numericHelper.h"
+#include "scanContext.hpp"
+
+/**
+ * @brief TEventPackageAlertDetailsBuilder class.
+ * This method is responsible for generating alerts based on the scan context.
+ * It will generate alerts for real time events, aka dbsync deltas.
+ * Its neccessary to have the context->m_elements populated with the cve and the operation.
+ * The operation can be "DELETED" or "INSERTED".
+ * Its also necessary to have the context->m_matchConditions populated with the cve and the condition.
+ * The condition can be "LessThanOrEqual", "LessThan", "DefaultStatus" or "Equal".
+ *
+ * @tparam TDatabaseFeedManager database feed manager type.
+ * @tparam TScanContext scan context type.
+ * @tparam TGlobalData global data type.
+ */
+template<typename TDatabaseFeedManager = DatabaseFeedManager,
+         typename TScanContext = ScanContext,
+         typename TGlobalData = GlobalData>
+class TEventPackageAlertDetailsBuilder final : public AbstractHandler<std::shared_ptr<TScanContext>>
+{
+private:
+    std::shared_ptr<TDatabaseFeedManager> m_databaseFeedManager;
+
+public:
+    // LCOV_EXCL_START
+    /**
+     * @brief EventPackageAlertDetailsBuilder constructor.
+     *
+     * @param databaseFeedManager Database feed manager.
+     */
+    explicit TEventPackageAlertDetailsBuilder(std::shared_ptr<TDatabaseFeedManager>& databaseFeedManager)
+        : m_databaseFeedManager(databaseFeedManager)
+    {
+    }
+
+    /**
+     * @brief Class destructor.
+     *
+     */
+    ~TEventPackageAlertDetailsBuilder() = default;
+    // LCOV_EXCL_STOP
+
+    /**
+     * @brief Handles request and passes control to the next step of the chain.
+     *
+     * @param context Scan context.
+     * @return std::shared_ptr<ScanContext> Abstract handler.
+     */
+    std::shared_ptr<TScanContext> handleRequest(std::shared_ptr<TScanContext> context) override
+    {
+        // We only generate alerts for real time events, aka dbsync deltas.
+        if (context->messageType() == MessageType::Delta)
+        {
+            const auto descriptionSources =
+                DescriptionsHelper::cvssAndDescriptionSources<TGlobalData>(context->m_vulnerabilitySource);
+
+            for (const auto& [cve, elementData] : context->m_elements)
+            {
+                try
+                {
+                    DescriptionsHelper::vulnerabilityDescription<TDatabaseFeedManager, TGlobalData>(
+                        cve,
+                        descriptionSources,
+                        m_databaseFeedManager,
+                        [&](const CveDescription& description)
+                        {
+                            const auto& operation = elementData.at("operation").template get_ref<const std::string&>();
+                            const auto elementOperation {operation.compare("DELETED") == 0 ? ElementOperation::Delete
+                                                         : operation.compare("INSERTED") == 0
+                                                             ? ElementOperation::Insert
+                                                             : ElementOperation::Unknown};
+
+                            const std::string cvssVersion {description.scoreVersion};
+                            const std::string scoreVersion {"cvss" + cvssVersion.substr(0, 1)};
+                            nlohmann::json resultData;
+
+                            if (elementOperation == ElementOperation::Insert)
+                            {
+                                if (!cvssVersion.empty())
+                                {
+                                    nlohmann::json cvssVector;
+                                    if (scoreVersion.compare("cvss2") == 0)
+                                    {
+                                        cvssVector["access_complexity"] = description.accessComplexity;
+                                        cvssVector["authentication"] = description.authentication;
+                                    }
+                                    else if (scoreVersion.compare("cvss3") == 0)
+                                    {
+                                        cvssVector["attack_vector"] = description.attackVector;
+                                        cvssVector["privileges_required"] = description.privilegesRequired;
+                                        cvssVector["scope"] = description.scope;
+                                        cvssVector["user_interaction"] = description.userInteraction;
+                                    }
+
+                                    cvssVector["availability"] = description.availabilityImpact;
+                                    cvssVector["confidentiality_impact"] = description.confidentialityImpact;
+                                    cvssVector["integrity_impact"] = description.integrityImpact;
+
+                                    resultData["vulnerability"]["cvss"][scoreVersion]["vector"] = std::move(cvssVector);
+                                }
+
+                                resultData["vulnerability"]["assigner"] = description.assignerShortName;
+                                resultData["vulnerability"]["cwe_reference"] = description.cweId;
+                                resultData["vulnerability"]["package"]["source"] = context->packageSource();
+                                resultData["vulnerability"]["rationale"] = description.description;
+
+                                const auto generateTitle = [&context, &cve]()
+                                {
+                                    // title = CVE-XXXX-XXXX affects <package name>
+                                    std::string title {cve};
+                                    title.append(" affects ");
+                                    title.append(context->packageName());
+                                    return title;
+                                };
+                                resultData["vulnerability"]["title"] = generateTitle();
+                                resultData["vulnerability"]["status"] = "Active";
+                            }
+                            else if (elementOperation == ElementOperation::Delete)
+                            {
+                                const auto generateTitle = [&context, &cve]()
+                                {
+                                    // title = CVE-XXXX-XXXX affecting <package name> was solved
+                                    std::string title {cve};
+                                    title.append(" affecting ");
+                                    title.append(context->packageName());
+                                    title.append(" was solved");
+                                    return title;
+                                };
+                                resultData["vulnerability"]["title"] = generateTitle();
+                                resultData["vulnerability"]["status"] = "Solved";
+                            }
+                            else
+                            {
+                                throw std::runtime_error("Unknown element operation");
+                            }
+
+                            resultData["vulnerability"]["cve"] = cve;
+                            resultData["vulnerability"]["scanner"]["reference"] = WAZUH_CTI_CVES_URL + cve;
+                            if (!cvssVersion.empty())
+                            {
+                                resultData["vulnerability"]["cvss"][scoreVersion]["base_score"] =
+                                    Utils::floatToDoubleRound(description.scoreBase, 2);
+                            }
+                            resultData["vulnerability"]["enumeration"] = "CVE";
+                            resultData["vulnerability"]["package"]["architecture"] = context->packageArchitecture();
+                            resultData["vulnerability"]["package"]["name"] = context->packageName();
+                            resultData["vulnerability"]["package"]["version"] = context->packageVersion();
+                            resultData["vulnerability"]["published"] = description.datePublished;
+                            resultData["vulnerability"]["reference"] = description.reference;
+                            resultData["vulnerability"]["severity"] = FieldAlertHelper::fillEmptyOrNegative(
+                                Utils::toSentenceCase(description.severity.data()));
+                            resultData["vulnerability"]["classification"] =
+                                FieldAlertHelper::fillEmptyOrNegative(description.classification);
+                            resultData["vulnerability"]["score"]["base"] = FieldAlertHelper::fillEmptyOrNegative(
+                                Utils::floatToDoubleRound(description.scoreBase, 2));
+                            resultData["vulnerability"]["score"]["version"] =
+                                FieldAlertHelper::fillEmptyOrNegative(description.scoreVersion);
+
+                            // The title is different depending on the type of the alert.
+                            resultData["vulnerability"]["type"] = "Packages";
+                            resultData["vulnerability"]["updated"] = description.dateUpdated;
+
+                            if (const auto it = context->m_matchConditions.find(cve);
+                                it != context->m_matchConditions.end())
+                            {
+                                if (it->second.condition == MatchRuleCondition::LessThanOrEqual)
+                                {
+                                    resultData["vulnerability"]["package"]["condition"] =
+                                        "Package less than or equal to " + it->second.version;
+                                }
+                                else if (it->second.condition == MatchRuleCondition::LessThan)
+                                {
+                                    resultData["vulnerability"]["package"]["condition"] =
+                                        "Package less than " + it->second.version;
+                                }
+                                else if (it->second.condition == MatchRuleCondition::DefaultStatus)
+                                {
+                                    resultData["vulnerability"]["package"]["condition"] = "Package default status";
+                                }
+                                else if (it->second.condition == MatchRuleCondition::Equal)
+                                {
+                                    resultData["vulnerability"]["package"]["condition"] =
+                                        "Package equal to " + it->second.version;
+                                }
+                                else
+                                {
+                                    logDebug2(WM_VULNSCAN_LOGTAG, "Unknown match condition");
+                                }
+                            }
+
+                            context->m_alerts[cve] = std::move(resultData);
+                        });
+                }
+                catch (const std::exception& e)
+                {
+                    logError(WM_VULNSCAN_LOGTAG, "Error building event details for CVE: %s", cve.data());
+                    logError(WM_VULNSCAN_LOGTAG, "Error message: %s", e.what());
+                }
+            }
+        }
+        return AbstractHandler<std::shared_ptr<TScanContext>>::handleRequest(std::move(context));
+    }
+};
+
+using EventPackageAlertDetailsBuilder = TEventPackageAlertDetailsBuilder<>;
+
+#endif // _EVENT_PACKAGE_ALERT_DETAILS_BUILDER_HPP

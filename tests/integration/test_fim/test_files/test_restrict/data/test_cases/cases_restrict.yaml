@@ -1,0 +1,159 @@
+- name: Restrict valid_empty
+  description: ''
+  configuration_parameters:
+    BASE_DIR: !!python/object/apply:os.path.join
+              args: [/testdir1]
+    TEST_DIRECTORIES: '/testdir1'
+    FIM_MODE:
+      realtime: 'yes'
+    RESTRICT: ""
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, testfile2.txt]
+    fim_mode: 'realtime'
+    restrict: ""
+    data: ['testfile2.txt', True]
+
+- name: Restrict valid regex
+  description: ''
+  configuration_parameters:
+    BASE_DIR: !!python/object/apply:os.path.join
+              args: [/testdir1]
+    TEST_DIRECTORIES: '/testdir1'
+    FIM_MODE:
+      realtime: 'yes'
+    RESTRICT: .restricted.txt$
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1,.restricted.txt]
+    fim_mode: 'realtime'
+    restrict: .restricted.txt$
+    data: ['.restricted.txt', True]
+
+- name: Restrict valid regex
+  description: ''
+  configuration_parameters:
+    BASE_DIR: !!python/object/apply:os.path.join
+              args: [/testdir1]
+    TEST_DIRECTORIES: '/testdir1'
+    FIM_MODE:
+      realtime: 'yes'
+    RESTRICT: .restricted.txt$
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, binary.restricted.txt]
+    fim_mode: 'realtime'
+    restrict: .restricted.txt$
+    data: ['binary.restricted.txt', True]
+
+- name: Restrict valid regex
+  description: ''
+  configuration_parameters:
+    BASE_DIR: !!python/object/apply:os.path.join
+              args: [/testdir1]
+    TEST_DIRECTORIES: '/testdir1'
+    FIM_MODE:
+      realtime: 'yes'
+    RESTRICT: ^restricted
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, testfile2.txt]
+    fim_mode: 'realtime'
+    restrict: ^restricted
+    data: ['testfile2.txt', False]
+
+- name: Restrict valid regex
+  description: ''
+  configuration_parameters:
+    BASE_DIR: !!python/object/apply:os.path.join
+              args: [/testdir1]
+    TEST_DIRECTORIES: '/testdir1'
+    FIM_MODE:
+      realtime: 'yes'
+    RESTRICT: filerestricted|other_restricted.txt$
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, testfile2.txt]
+    fim_mode: 'realtime'
+    restrict: filerestricted|other_restricted.txt$
+    data: ['testfile2.txt', False]
+
+- name: Restrict valid regex
+  description: ''
+  configuration_parameters:
+    BASE_DIR: !!python/object/apply:os.path.join
+              args: [/testdir1]
+    TEST_DIRECTORIES: '/testdir1'
+    FIM_MODE:
+      realtime: 'yes'
+    RESTRICT: filerestricted|other_restricted.txt$
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, myother_restricted.txt]
+    fim_mode: 'realtime'
+    restrict: filerestricted|other_restricted.txt$
+    data: ['myother_restricted.txt', True]
+
+- name: Restrict valid regex
+  description: ''
+  configuration_parameters:
+    BASE_DIR: !!python/object/apply:os.path.join
+              args: [/testdir1]
+    TEST_DIRECTORIES: '/testdir1'
+    FIM_MODE:
+      realtime: 'yes'
+    RESTRICT: filerestricted|other_restricted.txt$
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, myfilerestricted.txt]
+    fim_mode: 'realtime'
+    restrict: filerestricted|other_restricted.txt$
+    data: ['myfilerestricted.txt', True]
+
+- name: Restrict valid_regex_incomplete_unix
+  description: ''
+  configuration_parameters:
+    BASE_DIR: !!python/object/apply:os.path.join
+              args: [/testdir1]
+    TEST_DIRECTORIES: '/testdir1'
+    FIM_MODE:
+      realtime: 'yes'
+    RESTRICT: ^/testdir1/f|^/testdir1/subdir/f
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, fileinfolder.txt]
+    fim_mode: 'realtime'
+    restrict: ^/testdir1/f|^/testdir1/subdir/f
+    data: ['fileinfolder.txt', True]
+
+- name: Restrict valid_regex_incomplete_unix
+  description: ''
+  configuration_parameters:
+    BASE_DIR: !!python/object/apply:os.path.join
+              args: [/testdir1]
+    TEST_DIRECTORIES: '/testdir1'
+    FIM_MODE:
+      realtime: 'yes'
+    RESTRICT: ^/testdir1/f|^/testdir1/subdir/f
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, fileinfolder1.txt]
+    fim_mode: 'realtime'
+    restrict: ^/testdir1/f|^/testdir1/subdir/f
+    data: ['fileinfolder1.txt', True]
+
+- name: Restrict valid_regex_incomplete_unix
+  description: ''
+  configuration_parameters:
+    BASE_DIR: !!python/object/apply:os.path.join
+              args: [/testdir1]
+    TEST_DIRECTORIES: '/testdir1'
+    FIM_MODE:
+      realtime: 'yes'
+    RESTRICT: ^/testdir1/f|^/testdir1/subdir/f
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join [/testdir1]
+    file_to_monitor: !!python/object/apply:os.path.join [/testdir1, testing_regex.txt]
+    fim_mode: 'realtime'
+    restrict: ^/testdir1/f|^/testdir1/subdir/f
+    data: ['testing_regex.txt', False]

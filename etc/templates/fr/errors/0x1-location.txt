@@ -1,0 +1,5 @@
+ 
+ Error 0x1.
+ Ce script ne peut être exécuté que depuis le même répertoire.
+ Déplacez vous où est le script avant de l'exécuter.
+ Vous devez le lancer par ./install.sh ."

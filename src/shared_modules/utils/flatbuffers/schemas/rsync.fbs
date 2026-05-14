@@ -1,0 +1,378 @@
+namespace Synchronization;
+
+table AgentInfo {
+    agent_id:string;
+    agent_ip:string;
+    agent_name:string;
+    agent_version:string;
+}
+
+table syscollector_hotfixes {
+    checksum:string;
+    hotfix:string;
+    scan_time:string;
+}
+
+table syscollector_hwinfo {
+    board_serial:string;
+    checksum:string;
+    cpu_cores:long;
+    cpu_mhz:double;
+    cpu_name:string;
+    ram_free:long;
+    ram_total:long;
+    ram_usage:long;
+    scan_time:string;
+}
+
+table syscollector_network_address {
+    address:string;
+    broadcast:string;
+    checksum:string;
+    iface:string;
+    item_id:string;
+    netmask:string;
+    proto:long;
+    scan_time:string;
+}
+
+table syscollector_network_iface {
+    adapter:string;
+    checksum:string;
+    item_id:string;
+    mac:string;
+    mtu:long;
+    name:string;
+    rx_bytes:long;
+    rx_dropped:long;
+    rx_errors:long;
+    rx_packets:long;
+    scan_time:string;
+    state:string;
+    tx_bytes:long;
+    tx_dropped:long;
+    tx_errors:long;
+    tx_packets:long;
+    type:string;
+}
+
+table syscollector_network_protocol {
+    checksum:string;
+    dhcp:string;
+    gateway:string;
+    iface:string;
+    item_id:string;
+    metric:string;
+    scan_time:string;
+    type:string;
+}
+
+table syscollector_osinfo {
+    architecture:string;
+    checksum:string;
+    hostname:string;
+    os_build:string;
+    os_codename:string;
+    os_display_version:string;
+    os_major:string;
+    os_minor:string;
+    os_name:string;
+    os_patch:string;
+    os_platform:string;
+    os_release:string;
+    os_version:string;
+    release:string;
+    scan_time:string;
+    sysname:string;
+    version:string;
+}
+
+table syscollector_packages {
+    architecture:string;
+    checksum:string;
+    description:string;
+    format:string;
+    groups:string;
+    install_time:string;
+    item_id:string;
+    location:string;
+    multiarch:string;
+    name:string;
+    priority:string;
+    scan_time:string;
+    size:long;
+    source:string;
+    vendor:string;
+    version:string;
+}
+
+table syscollector_ports {
+    checksum:string;
+    inode:long;
+    item_id:string;
+    local_ip:string;
+    local_port:long;
+    pid:long;
+    process:string;
+    protocol:string;
+    remote_ip:string;
+    remote_port:long;
+    rx_queue:long;
+    scan_time:string;
+    state:string;
+    tx_queue:long;
+}
+
+table syscollector_processes {
+    argvs:string;
+    checksum:string;
+    cmd:string;
+    egroup:string;
+    euser:string;
+    fgroup:string;
+    name:string;
+    nice:long;
+    nlwp:long;
+    pgrp:long;
+    pid:string;
+    ppid:long;
+    priority:long;
+    processor:long;
+    resident:long;
+    rgroup:string;
+    ruser:string;
+    scan_time:string;
+    session:long;
+    sgroup:string;
+    share:long;
+    size:long;
+    start_time:long;
+    state:string;
+    stime:long;
+    suser:string;
+    tgid:long;
+    tty:long;
+    utime:long;
+    vm_size:long;
+}
+
+table syscollector_users {
+    scan_time:string;
+    user_name:string;
+    user_full_name:string;
+    user_home:string;
+    user_id:long = null;
+    user_uid_signed:long = null;
+    user_uuid:string;
+    user_groups:string;
+    user_group_id:long = null;
+    user_group_id_signed:long = null;
+    user_created:double = null;
+    user_roles:string;
+    user_shell:string;
+    user_type:string;
+    user_is_hidden:int = null;
+    user_is_remote:int = null;
+    user_last_login:long = null;
+    user_auth_failed_count:long = null;
+    user_auth_failed_timestamp:double = null;
+    user_password_expiration_date:int = null;
+    user_password_hash_algorithm:string;
+    user_password_inactive_days:int = null;
+    user_password_last_change:double = null;
+    user_password_max_days_between_changes:int = null;
+    user_password_min_days_between_changes:int = null;
+    user_password_status:string;
+    user_password_warning_days_before_expiration:int = null;
+    process_pid:long = null;
+    host_ip:string;
+    login_status:int = null;
+    login_tty:string;
+    login_type:string;
+    checksum:string;
+}
+
+table syscollector_groups {
+    scan_time:string;
+    group_id:long = null;
+    group_name:string;
+    group_description:string;
+    group_id_signed:long = null;
+    group_uuid:string;
+    group_is_hidden:int = null;
+    group_users:string;
+    checksum:string;
+}
+
+table syscollector_browser_extensions {
+    scan_time:string;
+    browser_name:string;
+    user_id:string;
+    package_name:string;
+    package_id:string;
+    package_version:string;
+    package_description:string;
+    package_vendor:string;
+    package_build_version:string;
+    package_path:string;
+    browser_profile_name:string;
+    browser_profile_path:string;
+    package_reference:string;
+    package_permissions:string;
+    package_type:string;
+    package_enabled:int = null;
+    package_visible:int = null;
+    package_autoupdate:int = null;
+    package_persistent:int = null;
+    package_from_webstore:int = null;
+    browser_profile_referenced:int = null;
+    package_installed:string;
+    file_hash_sha256:string;
+    checksum:string;
+    item_id:string;
+}
+
+table syscollector_services {
+    scan_time:string;
+    service_id:string;
+    service_name:string;
+    service_description:string;
+    service_type:string;
+    service_state:string;
+    service_sub_state:string;
+    service_enabled:string;
+    service_start_type:string;
+    service_restart:string;
+    service_frequency:long = null;
+    service_starts_on_mount:int = null;
+    service_starts_on_path_modified:string;
+    service_starts_on_not_empty_directory:string;
+    service_inetd_compatibility:int = null;
+    process_pid:long = null;
+    process_executable:string;
+    process_args:string;
+    process_user_name:string;
+    process_group_name:string;
+    process_working_directory:string;
+    process_root_directory:string;
+    file_path:string;
+    service_address:string;
+    log_file_path:string;
+    error_log_file_path:string;
+    service_exit_code:int = null;
+    service_win32_exit_code:int = null;
+    service_following:string;
+    service_object_path:string;
+    service_target_ephemeral_id:long = null;
+    service_target_type:string;
+    service_target_address:string;
+    checksum:string;
+    item_id:string;
+}
+
+table fim_file {
+    checksum:string;
+    gid:string;
+    group_name:string;
+    hash_md5:string;
+    hash_sha1:string;
+    hash_sha256:string;
+    inode:long;
+    mtime:long;
+    size:long;
+    type:string;
+    uid:string;
+    user_name:string;
+}
+
+table fim_registry_key {
+    checksum:string;
+    gid:string;
+    group_name:string;
+    mtime:long;
+    uid:string;
+    type:string;
+    user_name:string;
+}
+
+table fim_registry_value {
+    checksum:string;
+    hash_md5:string;
+    hash_sha1:string;
+    hash_sha256:string;
+    size:long;
+    type:string;
+    value_type:string;
+}
+
+union AttributesUnion {
+    syscollector_hotfixes,
+    syscollector_hwinfo,
+    syscollector_network_address,
+    syscollector_network_iface,
+    syscollector_network_protocol,
+    syscollector_osinfo,
+    syscollector_packages,
+    syscollector_ports,
+    syscollector_processes,
+    syscollector_users,
+    syscollector_groups,
+    syscollector_browser_extensions,
+    syscollector_services,
+    fim_file,
+    fim_registry_key,
+    fim_registry_value
+}
+
+table state {
+  attributes: AttributesUnion;
+  index: string;
+  path: string;
+  value_name: string;
+  arch: string;
+}
+
+table integrity_check_global {
+  attributes_type:string;
+  id: long;
+  begin: string;
+  end: string;
+  checksum: string;
+}
+
+table integrity_check_right {
+  attributes_type:string;
+  id: long;
+  begin: string;
+  end: string;
+  checksum: string;
+}
+
+table integrity_check_left {
+  attributes_type:string;
+  id: long;
+  begin: string;
+  end: string;
+  tail: string;
+  checksum: string;
+}
+
+table integrity_clear {
+  attributes_type:string;
+  id: long;
+}
+
+union DataUnion {
+    state,
+    integrity_check_global,
+    integrity_check_left,
+    integrity_check_right,
+    integrity_clear
+}
+
+table SyncMsg {
+    agent_info: AgentInfo;
+    data: DataUnion;
+}
+
+root_type SyncMsg;

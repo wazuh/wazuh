@@ -1,0 +1,454 @@
+# Security Configuration Assessment
+# CIS Microsoft SQL Server 2017
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+# Based on Center for Internet Security Benchmark for Microsoft SQL Server 2017 v1.1.0 - 06-30-2020
+
+policy:
+  id: "cis_sqlserver_2017"
+  file: "cis_sqlserver_2017.yml"
+  name: "CIS Microsoft SQL Server 2017 Benchmark v1.1.0"
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft SQL Server 2017."
+  references:
+    - https://www.cisecurity.org/cis-benchmarks/
+
+requirements:
+  title: "Check that the Windows platform has Microsoft SQL Server 2017"
+  description: "Requirements for running the CIS Microsoft SQL Server 2017 Benchmark"
+  condition: all
+  rules:
+    - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows'
+
+checks:
+  ######################################################
+  # 2 Surface Area Reduction
+  ######################################################
+  # 2.1 Ensure 'Ad Hoc Distributed Queries' Server Configuration Option is set to '0' (Scored)
+  - id: 12500
+    title: "Ensure 'Ad Hoc Distributed Queries' Server Configuration Option is set to '0'"
+    description: "Enabling Ad Hoc Distributed Queries allows users to query data and execute statements on external data sources. This functionality should be disabled."
+    rationale: "This feature can be used to remotely access and exploit vulnerabilities on remote SQL Server instances and to run unsafe Visual Basic for Application functions."
+    remediation: "Run the following T-SQL command: EXECUTE sp_configure 'show advanced options', 1; RECONFIGURE; EXECUTE sp_configure 'Ad Hoc Distributed Queries', 0; RECONFIGURE; GO EXECUTE sp_configure 'show advanced options', 0; RECONFIGURE;"
+    compliance:
+      - cis: ["2.1"]
+      - cis_csc: ["9.1"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.6", "CM.1"]
+    references:
+      - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/ad-hoc-distributed-queries-server-configuration-option"
+    condition: all
+    rules:
+      - "c:sqlcmd -Q \"SELECT name, CAST(value as int) as value_configured, CAST(value_in_use as int) as value_in_use FROM sys.configurations WHERE name = 'Ad Hoc Distributed Queries' ;\" -> r:Ad Hoc Distributed Queries\\s+0\\s+0"
+
+  # 2.2 Ensure 'CLR Enabled' Server Configuration Option is set to '0' (Scored)
+  - id: 12501
+    title: "Ensure 'CLR Enabled' Server Configuration Option is set to '0'"
+    description: "The clr enabled option specifies whether user assemblies can be run by SQL Server."
+    rationale: "Enabling use of CLR assemblies widens the attack surface of SQL Server and puts it at risk from both inadvertent and malicious assemblies."
+    remediation: "Run the following T-SQL command: EXECUTE sp_configure 'clr enabled', 0; RECONFIGURE;"
+    compliance:
+      - cis: ["2.2"]
+      - cis_csc: ["18.9"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.6", "CM.1"]
+    references:
+      - "https://docs.microsoft.com/en-us/sql/t-sql/statements/create-assembly-transact-sql"
+    condition: all
+    rules:
+      - "c:sqlcmd -Q \"SELECT name, CAST(value as int) as value_configured, CAST(value_in_use as int) as value_in_use FROM sys.configurations WHERE name = 'clr enabled';\" -> r:0\\s+0"
+
+  # 2.3 Ensure 'Cross DB Ownership Chaining' Server Configuration Option is set to '0'
+  - id: 12502
+    title: "Ensure 'Cross DB Ownership Chaining' Server Configuration Option is set to '0'"
+    description: "The cross db ownership chaining option controls cross-database ownership chaining across all databases at the instance (or server) level."
+    rationale: "When enabled, this option allows a member of the db_owner role in a database to gain access to objects owned by a login in any other database, causing an unnecessary information disclosure. When required, cross-database ownership chaining should only be enabled for the specific databases requiring it instead of at the instance level for all databases by using the ALTER DATABASE <database_name> SET DB_CHAINING ON command. This database option may not be changed on the master , model , or tempdb system databases."
+    remediation: "Run the following T-SQL command: EXECUTE sp_configure 'cross db ownership chaining', 0; RECONFIGURE; GO"
+    compliance:
+      - cis: ["2.3"]
+      - cis_csc: ["14.4"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.6", "CM.1"]
+      - tsc: ["CC5.2"]
+    references:
+      - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/cross-db-ownership-chaining-server-configuration-option"
+    condition: all
+    rules:
+      - "c:sqlcmd -Q \"SELECT name, CAST(value as int) as value_configured, CAST(value_in_use as int) as value_in_use FROM sys.configurations WHERE name = 'cross db ownership chaining';\" -> r:0\\s+0"
+
+  # 2.4 Ensure 'Database Mail XPs' Server Configuration Option is set to '0'
+  - id: 12503
+    title: "Ensure 'Database Mail XPs' Server Configuration Option is set to '0'"
+    description: "The Database Mail XPs option controls the ability to generate and transmit email messages from SQL Server."
+    rationale: "Disabling the Database Mail XPs option reduces the SQL Server surface, eliminates a DOS attack vector and channel to exfiltrate data from the database server to a remote host."
+    remediation: "Run the following T-SQL command: EXECUTE sp_configure 'show advanced options', 1; RECONFIGURE; EXECUTE sp_configure 'Database Mail XPs', 0; RECONFIGURE; GO EXECUTE sp_configure 'show advanced options', 0; RECONFIGURE;"
+    compliance:
+      - cis: ["2.4"]
+      - cis_csc: ["18"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.6", "CM.1"]
+      - tsc: ["CC5.2"]
+    references:
+      - "https://docs.microsoft.com/en-us/sql/relational-databases/database-mail/database-mail"
+    condition: all
+    rules:
+      - "c:sqlcmd -Q \"SELECT name, CAST(value as int) as value_configured, CAST(value_in_use as int) as value_in_use FROM sys.configurations WHERE name = 'Database Mail XPs';\" -> r:0\\s+0"
+
+  # 2.5 Ensure 'Ole Automation Procedures' Server Configuration Option is set to '0'
+  - id: 12504
+    title: "Ensure 'Ole Automation Procedures' Server Configuration Option is set to '0'"
+    description: "The Ole Automation Procedures option controls whether OLE Automation objects can be instantiated within Transact-SQL batches. These are extended stored procedures that allow SQL Server users to execute functions external to SQL Server."
+    rationale: "Enabling this option will increase the attack surface of SQL Server and allow users to execute functions in the security context of SQL Server."
+    remediation: "Run the following T-SQL command: EXECUTE sp_configure 'show advanced options', 1; RECONFIGURE; EXECUTE sp_configure 'Ole Automation Procedures', 0; RECONFIGURE; GO EXECUTE sp_configure 'show advanced options', 0; RECONFIGURE;"
+    compliance:
+      - cis: ["2.5"]
+      - cis_csc: ["18"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.6", "CM.1"]
+      - tsc: ["CC5.2"]
+    references:
+      - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/ole-automation-procedures-server-configuration-option"
+    condition: all
+    rules:
+      - "c:sqlcmd -Q \"SELECT name, CAST(value as int) as value_configured, CAST(value_in_use as int) as value_in_use FROM sys.configurations WHERE name = 'Ole Automation Procedures';\" -> r:0\\s+0"
+
+  # 2.6 Ensure 'Remote Access' Server Configuration Option is set to '0'
+  - id: 12505
+    title: "Ensure 'Remote Access' Server Configuration Option is set to '0'"
+    description: "The remote access option controls the execution of local stored procedures on remote servers or remote stored procedures on local server."
+    rationale: "Functionality can be abused to launch a Denial-of-Service (DoS) attack on remote servers by off-loading query processing to a target."
+    remediation: "Run the following T-SQL command: EXECUTE sp_configure 'show advanced options', 1; RECONFIGURE; EXECUTE sp_configure 'remote access', 0; RECONFIGURE; GO EXECUTE sp_configure 'show advanced options', 0; RECONFIGURE; Restart the Database Engine."
+    compliance:
+      - cis: ["2.6"]
+      - cis_csc: ["9.1"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.6", "CM.1"]
+      - tsc: ["CC5.2"]
+    references:
+      - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/configure-the-remote-access-server-configuration-option"
+    condition: all
+    rules:
+      - "c:sqlcmd -Q \"SELECT name, CAST(value as int) as value_configured, CAST(value_in_use as int) as value_in_use FROM sys.configurations WHERE name = 'remote access';\" -> r:0\\s+0"
+
+  # 2.7 Ensure 'Remote Admin Connections' Server Configuration Option is set to '0' (Scored)
+  - id: 12506
+    title: "Ensure 'Remote Admin Connections' Server Configuration Option is set to '0'"
+    description: "The remote admin connections option controls whether a client application on a remote computer can use the Dedicated Administrator Connection (DAC)."
+    rationale: 'The Dedicated Administrator Connection (DAC) lets an administrator access a running server to execute diagnostic functions or Transact-SQL statements, or to troubleshoot problems on the server, even when the server is locked or running in an abnormal state and not responding to a SQL Server Database Engine connection. In a cluster scenario, the administrator may not actually be logged on to the same node that is currently hosting the SQL Server instance and thus is considered "remote". Therefore, this setting should usually be enabled ( 1 ) for SQL Server failover clusters; otherwise it should be disabled ( 0 ) which is the default.'
+    remediation: "Run the following T-SQL command on non-clustered installations: EXECUTE sp_configure 'remote admin connections', 0; RECONFIGURE; GO"
+    compliance:
+      - cis: ["2.7"]
+      - cis_csc: ["9.1"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.6", "CM.1"]
+      - tsc: ["CC5.2"]
+    references:
+      - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/remote-admin-connections-server-configuration-option"
+    condition: all
+    rules:
+      - "c:sqlcmd -Q \"USE master; SELECT name, CAST(value as int) as value_configured, CAST(value_in_use as int) as value_in_use FROM sys.configurations WHERE name = 'remote admin connections' AND SERVERPROPERTY('IsClustered') = 0;\" -> r:0\\s*\\t*0|0 rows affected"
+
+  # 2.8 Ensure 'Scan For Startup Procs' Server Configuration Option is set to '0' (Scored)
+  - id: 12507
+    title: "Ensure 'Scan For Startup Procs' Server Configuration Option is set to '0'"
+    description: "The scan for startup procs option, if enabled, causes SQL Server to scan for and automatically run all stored procedures that are set to execute upon service startup."
+    rationale: "Enforcing this control reduces the threat of an entity leveraging these facilities for malicious purposes."
+    remediation: "Run the following T-SQL command: EXECUTE sp_configure 'show advanced options', 1; RECONFIGURE; EXECUTE sp_configure 'scan for startup procs', 0; RECONFIGURE; GO EXECUTE sp_configure 'show advanced options', 0; RECONFIGURE; Restart the Database Engine."
+    compliance:
+      - cis: ["2.8"]
+      - cis_csc: ["18"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.6", "CM.1"]
+      - tsc: ["CC5.2"]
+    references:
+      - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/configure-the-scan-for-startup-procs-server-configuration-option"
+    condition: all
+    rules:
+      - "c:sqlcmd -Q \"SELECT name, CAST(value as int) as value_configured, CAST(value_in_use as int) as value_in_use FROM sys.configurations WHERE name = 'scan for startup procs';\" -> r:0\\s+0"
+
+  # 2.9 Ensure 'Trustworthy' Database Property is set to 'Off' (Scored)
+  - id: 12508
+    title: "Ensure 'Trustworthy' Database Property is set to 'Off'"
+    description: "The TRUSTWORTHY database option allows database objects to access objects in other databases under certain circumstances."
+    rationale: "Provides protection from malicious CLR assemblies or extended procedures."
+    remediation: "Execute the following T-SQL statement against the databases (replace <database_name> below) returned by the Audit Procedure: ALTER DATABASE [<database_name>] SET TRUSTWORTHY OFF;"
+    compliance:
+      - cis: ["2.9"]
+      - cis_csc: ["14.4"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.6", "CM.1"]
+      - tsc: ["CC5.2"]
+    references:
+      - "https://docs.microsoft.com/en-us/sql/relational-databases/security/trustworthy-database-property"
+      - "https://support.microsoft.com/it-it/help/2183687/guidelines-for-using-the-trustworthy-database-setting-in-sql-server"
+    condition: all
+    rules:
+      - 'c:sqlcmd -Q "SELECT name FROM sys.databases WHERE is_trustworthy_on = 1 AND name != ''msdb'';" -> r:0 rows affected'
+
+  # 2.11 Ensure SQL Server is configured to use non-standard ports (Not Scored)
+  - id: 12509
+    title: "Ensure SQL Server is configured to use non-standard ports"
+    description: "If installed, a default SQL Server instance will be assigned a default port of TCP:1433 for TCP/IP communication. Administrators can also configure named instances to use TCP:1433 for communication TCP:1433 is a widely known SQL Server port and this port assignment should be changed. In a multi-instance scenario, each instance must be assigned its own dedicated TCP/IP port."
+    rationale: "Using a non-default port helps protect the database from attacks directed to the default port."
+    remediation: "1: In SQL Server Configuration Manager, in the console pane, expand SQL Server Network Configuration, expand Protocols for <InstanceName> , and then double-click the TCP/IP protocol. 2: In the TCP/IP Properties dialog box, on the IP Addresses tab, several IP addresses appear in the format IP1 , IP2 , up to IPAll . One of these is for the IP address of the loopback adapter, 127.0.0.1 . Additional IP addresses appear for each IP Address on the computer. 3: Under IPALL, change the TCP Port field from 1433 to a non-standard port or leave the TCP Port field empty and set the TCP Dynamic Ports value to 0 to enable dynamic port assignment and then click OK. 4: In the console pane, click SQL Server Services. 5: In the details pane, right-click SQL Server (<InstanceName>) and then click Restart, to stop and restart SQL Server."
+    compliance:
+      - cis: ["2.11"]
+      - cis_csc: ["9"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.6", "CM.1"]
+      - tsc: ["CC5.2"]
+    references:
+      - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/configure-a-server-to-listen-on-a-specific-tcp-port"
+    condition: none
+    rules:
+      - "c:sqlcmd -Q \"DECLARE @value nvarchar(256); EXECUTE master.dbo.xp_instance_regread N'HKEY_LOCAL_MACHINE', N'SOFTWARE\\Microsoft\\Microsoft SQL Server\\MSSQLServer\\SuperSocketNetLib\\Tcp\\IPAll', N'TcpPort', @value OUTPUT, N'no_output'; SELECT @value AS TCP_Port WHERE @value = '1433'; \" -> r:1433"
+
+  # 2.13 Ensure the 'sa' Login Account is set to 'Disabled' (Scored)
+  - id: 12510
+    title: "Ensure the 'sa' Login Account is set to 'Disabled'"
+    description: "The sa account is a widely known and often widely used SQL Server account with sysadmin privileges. This is the original login created during installation and always has the principal_id=1 and sid=0x01 ."
+    rationale: "Enforcing this control reduces the probability of an attacker executing brute force attacks against a well-known principal."
+    remediation: "Execute the following T-SQL query: USE [master] GO DECLARE @tsql nvarchar(max) SET @tsql = 'ALTER LOGIN ' + SUSER_NAME(0x01) + ' DISABLE' EXEC (@tsql) GO"
+    compliance:
+      - cis: ["2.13"]
+      - cis_csc: ["5.1"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.6", "CM.1"]
+      - tsc: ["CC5.2"]
+    references:
+      - "https://docs.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-server-principals-transact-sql"
+      - "https://docs.microsoft.com/en-us/sql/t-sql/statements/alter-login-transact-sql"
+      - "https://docs.microsoft.com/en-us/sql/relational-databases/security/choose-an-authentication-mode"
+    condition: all
+    rules:
+      - 'c:sqlcmd -Q "SELECT name, is_disabled FROM sys.server_principals WHERE sid = 0x01 AND is_disabled = 0;" -> r:0 rows affected'
+
+  # 2.14 Ensure the 'sa' Login Account has been renamed (Scored)
+  - id: 12511
+    title: "Ensure the 'sa' Login Account has been renamed"
+    description: "The sa account is a widely known and often widely used SQL Server login with sysadmin privileges. The sa login is the original login created during installation and always has principal_id=1 and sid=0x01 ."
+    rationale: "It is more difficult to launch password-guessing and brute-force attacks against the sa login if the name is not known."
+    remediation: "Replace the <different_user> value within the below syntax and execute to rename the sa login. ALTER LOGIN sa WITH NAME = <different_user>;"
+    compliance:
+      - cis: ["2.14"]
+      - cis_csc: ["5"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.6", "CM.1"]
+      - tsc: ["CC5.2"]
+    references:
+      - "https://docs.microsoft.com/en-us/sql/relational-databases/security/choose-an-authentication-mode"
+    condition: none
+    rules:
+      - 'c:sqlcmd -Q "SELECT name FROM sys.server_principals WHERE sid = 0x01;" -> r:sa'
+
+  # 2.15 Ensure 'xp_cmdshell' Server Configuration Option is set to '0'
+  - id: 12512
+    title: "Ensure 'xp_cmdshell' Server Configuration Option is set to '0'"
+    description: "The xp_cmdshell option controls whether the xp_cmdshell extended stored procedure can be used by an authenticated SQL Server user to execute operating-system command shell commands and return results as rows within the SQL client."
+    rationale: "The xp_cmdshell procedure is commonly used by attackers to read or write data to/from the underlying Operating System of a database server."
+    remediation: "Run the following T-SQL command: EXECUTE sp_configure 'show advanced options', 1; RECONFIGURE; EXECUTE sp_configure 'xp_cmdshell', 0; RECONFIGURE; GO EXECUTE sp_configure 'show advanced options', 0; RECONFIGURE;"
+    compliance:
+      - cis: ["2.15"]
+      - cis_csc: ["18"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.6", "CM.1"]
+      - tsc: ["CC5.2"]
+    references:
+      - "https://docs.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/xp-cmdshell-transact-sql"
+      - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/xp-cmdshell-server-configuration-option"
+    condition: all
+    rules:
+      - "c:sqlcmd -Q \"SELECT name, CAST(value as int) as value_configured, CAST(value_in_use as int) as value_in_use FROM sys.configurations WHERE name = 'xp_cmdshell';\" -> r:0\\s+0"
+
+  # 2.16 Ensure 'AUTO_CLOSE' is set to 'OFF' on contained databases
+  - id: 12513
+    title: "Ensure 'AUTO_CLOSE' is set to 'OFF' on contained databases"
+    description: "AUTO_CLOSE determines if a given database is closed or not after a connection terminates. If enabled, subsequent connections to the given database will require the database to be reopened and relevant procedure caches to be rebuilt."
+    rationale: "Because authentication of users for contained databases occurs within the database not at the server\\instance level, the database must be opened every time to authenticate a user. The frequent opening/closing of the database consumes additional server resources and may contribute to a denial of service."
+    remediation: "Execute the following T-SQL, replacing <database_name> with each database name found by the Audit Procedure: ALTER DATABASE <database_name> SET AUTO_CLOSE OFF;"
+    compliance:
+      - cis: ["2.16"]
+      - cis_csc: ["18"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.6", "CM.1"]
+      - tsc: ["CC5.2"]
+    references:
+      - "https://docs.microsoft.com/en-us/sql/relational-databases/databases/security-best-practices-with-contained-databases"
+    condition: all
+    rules:
+      - 'c:sqlcmd -Q "SELECT name, containment, containment_desc, is_auto_close_on FROM sys.databases WHERE containment <> 0 and is_auto_close_on = 1;" -> r:0 rows affected'
+
+  # 2.17 Ensure no login exists with the name 'sa' (Scored)
+  - id: 12514
+    title: "Ensure no login exists with the name 'sa'"
+    description: "The sa login (e.g. principal) is a widely known and often widely used SQL Server account. Therefore, there should not be a login called sa even when the original sa login ( principal_id = 1 ) has been renamed."
+    rationale: "Enforcing this control reduces the probability of an attacker executing brute force attacks against a well-known principal name."
+    remediation: "Execute the appropriate ALTER or DROP statement below based on the principal_id returned for the login named sa . Replace the <different_name> value within the below syntax and execute to rename the sa login. USE [master] GO -- If principal_id = 1 or the login owns database objects, rename the sa login ALTER LOGIN [sa] WITH NAME = <different_name>; GO -- If the login owns no database objects, then drop it -- Do NOT drop the login if it is principal_id = 1 DROP LOGIN sa"
+    compliance:
+      - cis: ["2.17"]
+      - cis_csc: ["5.1"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.6", "CM.1"]
+      - tsc: ["CC5.2"]
+    condition: all
+    rules:
+      - 'c:sqlcmd -Q "SELECT principal_id, name FROM sys.server_principals WHERE name = ''sa'';" -> r:0 rows affected'
+
+  ###########################################################
+  # 3 Authentication and Authorization
+  ###########################################################
+  # 3.1 Ensure 'Server Authentication' Property is set to 'Windows Authentication Mode' (Scored)
+  - id: 12515
+    title: "Ensure 'Server Authentication' Property is set to 'Windows Authentication Mode'"
+    description: "Uses Windows Authentication to validate attempted connections."
+    rationale: "Windows provides a more robust authentication mechanism than SQL Server authentication."
+    remediation: "Perform either the GUI or T-SQL method shown: GUI Method: 1. Open SQL Server Management Studio. 2. Open the Object Explorer tab and connect to the target database instance. 3. Right click the instance name and select Properties. 4. Select the Security page from the left menu. 5. Set the Server authentication setting to Windows Authentication Mode. or T-SQL Method: Run the following T-SQL in a Query Window: USE [master] GO EXEC xp_instance_regwrite N'HKEY_LOCAL_MACHINE', N'Software\\Microsoft\\MSSQLServer\\MSSQLServer', N'LoginMode', REG_DWORD, 1 GO Restart the SQL Server service for the change to take effect."
+    compliance:
+      - cis: ["3.1"]
+      - cis_csc: ["16.9"]
+      - pci_dss: ["8.2.1"]
+      - tsc: ["CC6.1"]
+    references:
+      - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/server-properties-security-page"
+    condition: all
+    rules:
+      - 'c:sqlcmd -Q "SELECT SERVERPROPERTY(''IsIntegratedSecurityOnly'') as [login_mode];" -> r:^1'
+
+  # 3.8 Ensure only the default permissions specified by Microsoft are granted to the public server role (Scored)
+  - id: 12516
+    title: "Ensure only the default permissions specified by Microsoft are granted to the public server role"
+    description: "public is a special fixed server role containing all logins. Unlike other fixed server roles, permissions can be changed for the public role. In keeping with the principle of least privileges, the public server role should not be used to grant permissions at the server scope as these would be inherited by all users."
+    rationale: "Every SQL Server login belongs to the public role and cannot be removed from this role. Therefore, any permissions granted to this role will be available to all logins unless they have been explicitly denied to specific logins or user-defined server roles."
+    remediation: "Add the extraneous permissions found in the Audit query results to the specific logins to user-defined server roles which require the access. Revoke the _<permission_name>_ from the public role as shown below USE [master] GO REVOKE <permission_name> FROM public; GO"
+    compliance:
+      - cis: ["3.8"]
+      - cis_csc: ["5.1"]
+      - pci_dss: ["7.1"]
+    references:
+      - "https://docs.microsoft.com/en-us/sql/relational-databases/security/authentication-access/server-level-roles"
+      - "https://docs.microsoft.com/en-us/sql/relational-databases/security/authentication-access/server-level-roles#permissions-of-fixed-server-roles"
+    condition: all
+    rules:
+      - 'c:sqlcmd -Q "SELECT * FROM master.sys.server_permissions WHERE (grantee_principal_id = SUSER_SID(N''public'') and state_desc LIKE ''GRANT%'') AND NOT (state_desc = ''GRANT'' and [permission_name] = ''VIEW ANY DATABASE'' and class_desc = ''SERVER'') AND NOT (state_desc = ''GRANT'' and [permission_name] = ''CONNECT'' and class_desc = ''ENDPOINT'' and major_id = 2) AND NOT (state_desc = ''GRANT'' and [permission_name] = ''CONNECT'' and class_desc = ''ENDPOINT'' and major_id = 3) AND NOT (state_desc = ''GRANT'' and [permission_name] = ''CONNECT'' and class_desc = ''ENDPOINT'' and major_id = 4) AND NOT (state_desc = ''GRANT'' and [permission_name] = ''CONNECT'' and class_desc = ''ENDPOINT'' and major_id = 5); " -> r:0 rows affected'
+
+  # 3.10 Ensure Windows local groups are not SQL Logins (Scored)
+  - id: 12517
+    title: "Ensure Windows local groups are not SQL Logins"
+    description: "Local Windows groups should not be used as logins for SQL Server instances."
+    rationale: "Allowing local Windows groups as SQL Logins provides a loophole whereby anyone with OS level administrator rights (and no SQL Server rights) could add users to the local Windows groups and thereby give themselves or others access to the SQL Server instance."
+    remediation: "1. For each LocalGroupName login, if needed create an equivalent AD group containing only the required user accounts. 2. Add the AD group or individual Windows accounts as a SQL Server login and grant it the permissions required. 3. Drop the LocalGroupName login using the syntax below after replacing <name> . USE [master] GO DROP LOGIN [<name>] GO"
+    compliance:
+      - cis: ["3.10"]
+      - cis_csc: ["14.4"]
+      - pci_dss: ["7.1"]
+    condition: all
+    rules:
+      - 'c:sqlcmd -Q "USE [master] SELECT pr.[name] AS LocalGroupName, pe.[permission_name], pe.[state_desc] FROM sys.server_principals pr JOIN sys.server_permissions pe ON pr.[principal_id] = pe.[grantee_principal_id] WHERE pr.[type_desc] = ''WINDOWS_GROUP'' AND pr.[name] like CAST(SERVERPROPERTY(''MachineName'') AS nvarchar) + ''%'';" -> r:0 rows affected'
+
+  ###########################################################
+  # 4 Password Policies
+  ###########################################################
+  # 4.2 Ensure 'CHECK_EXPIRATION' Option is set to 'ON' for All SQL Authenticated Logins Within the Sysadmin Role (Scored)
+  - id: 12518
+    title: "Ensure 'CHECK_EXPIRATION' Option is set to 'ON' for All SQL Authenticated Logins Within the Sysadmin Role"
+    description: "Applies the same password expiration policy used in Windows to passwords used inside SQL Server."
+    rationale: "Ensuring SQL logins comply with the secure password policy applied by the Windows Server Benchmark will ensure the passwords for SQL logins with sysadmin privileges are changed on a frequent basis to help prevent compromise via a brute force attack. CONTROL SERVER is an equivalent permission to sysadmin and logins with that permission should also be required to have expiring passwords."
+    remediation: "For each <login_name> found by the Audit Procedure, execute the following T-SQL statement: ALTER LOGIN <login_name> WITH CHECK_EXPIRATION = ON;"
+    compliance:
+      - cis: ["4.2"]
+      - cis_csc: ["16.2, 16.10"]
+      - pci_dss: ["8.2"]
+      - tsc: ["CC6.1"]
+    references:
+      - "https://docs.microsoft.com/en-us/sql/relational-databases/security/password-policy"
+    condition: all
+    rules:
+      - 'c:sqlcmd -Q "SELECT l.[name], ''sysadmin membership'' AS ''Access_Method'' FROM sys.sql_logins AS l WHERE IS_SRVROLEMEMBER(''sysadmin'',name) = 1 AND l.is_expiration_checked <> 1 UNION ALL SELECT l.[name], ''CONTROL SERVER'' AS ''Access_Method'' FROM sys.sql_logins AS l JOIN sys.server_permissions AS p ON l.principal_id = p.grantee_principal_id WHERE p.type = ''CL'' AND p.state IN (''G'', ''W'') AND l.is_expiration_checked <> 1;" -> r:0 rows affected'
+
+  # 4.3 Ensure 'CHECK_POLICY' Option is set to 'ON' for All SQL Authenticated Logins (Scored)
+  - id: 12519
+    title: "Ensure 'CHECK_POLICY' Option is set to 'ON' for All SQL Authenticated Logins"
+    description: "Applies the same password complexity policy used in Windows to passwords used insideSQL Server."
+    rationale: "Ensure SQL authenticated login passwords comply with the secure password policy applied by the Windows Server Benchmark so that they cannot be easily compromised via brute force attack."
+    remediation: "For each <login_name> found by the Audit Procedure, execute the following T-SQL statement: ALTER LOGIN <login_name> WITH CHECK_POLICY = ON; Note: In the case of AWS RDS do not perform this remediation for the Master account."
+    compliance:
+      - cis: ["4.3"]
+      - cis_csc: ["16, 4.4"]
+      - pci_dss: ["8.2"]
+      - tsc: ["CC6.1"]
+    references:
+      - "https://docs.microsoft.com/en-us/sql/relational-databases/security/password-policy"
+    condition: all
+    rules:
+      - 'c:sqlcmd -Q "SELECT name, is_disabled FROM sys.sql_logins WHERE is_policy_checked = 0;" -> r:0 rows affected'
+
+  ##########################################################
+  # 5 Auditing and Logging
+  ##########################################################
+  # 5.1 Ensure 'Maximum number of error log files' is set to greater than or equal to '12'
+  - id: 12520
+    title: "Ensure 'Maximum number of error log files' is set to greater than or equal to '12'"
+    description: "SQL Server error log files must be protected from loss. The log files must be backed up before they are overwritten. Retaining more error logs helps prevent loss from frequent recycling before backups can occur."
+    rationale: "The SQL Server error log contains important information about major server events and login attempt information as well."
+    remediation: "Adjust the number of logs to prevent data loss. The default value of 6 may be insufficient for a production environment. Perform either the GUI or T-SQL method shown: GUI Method 1. Open SQL Server Management Studio. 2. Open Object Explorer and connect to the target instance. 3. Navigate to the Management tab in Object Explorer and expand. Right click on the SQL Server Logs file and select Configure 4. Check the Limit the number of error log files before they are recycled 5. Set the Maximum number of error log files to greater than or equal to 12 T-SQL Method Run the following T-SQL to change the number of error log files, replace <NumberAbove12> with your desired number of error log files: EXEC master.sys.xp_instance_regwrite N'HKEY_LOCAL_MACHINE', N'Software\\Microsoft\\MSSQLServer\\MSSQLServer', N'NumErrorLogs', REG_DWORD, <NumberAbove12>;"
+    compliance:
+      - cis: ["5.1"]
+      - cis_csc: ["6.3"]
+      - pci_dss: ["10.7"]
+      - nist_800_53: ["CM.1", "AU.4"]
+      - tsc: ["CC5.2"]
+    references:
+      - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/scm-services-configure-sql-server-error-logs"
+    condition: all
+    rules:
+      - "c:sqlcmd -Q \"DECLARE @NumErrorLogs int; EXEC master.sys.xp_instance_regread N'HKEY_LOCAL_MACHINE', N'Software\\Microsoft\\MSSQLServer\\MSSQLServer', N'NumErrorLogs', @NumErrorLogs OUTPUT; SELECT ISNULL(@NumErrorLogs, -1) AS [NumberOfLogFiles];\" -> n:^\\s*(\\d+) compare >= 12"
+
+  # 5.2 Ensure 'Default Trace Enabled' Server Configuration Option is set to '1' (Scored)
+  - id: 12521
+    title: "Ensure 'Default Trace Enabled' Server Configuration Option is set to '1'"
+    description: "The default trace provides audit logging of database activity including account creations, privilege elevation and execution of DBCC commands."
+    rationale: "Default trace provides valuable audit information regarding security-related activities on the server."
+    remediation: "Run the following T-SQL command: EXECUTE sp_configure 'show advanced options', 1; RECONFIGURE; EXECUTE sp_configure 'default trace enabled', 1; RECONFIGURE; GO EXECUTE sp_configure 'show advanced options', 0; RECONFIGURE;"
+    compliance:
+      - cis: ["5.2"]
+      - cis_csc: ["6.2"]
+      - nist_800_53: ["SI.2", "SA.11", "SI.4"]
+      - gpg_13: ["4.3"]
+      - gdpr_IV: ["35.7.d"]
+      - hipaa: ["164.312.b"]
+      - tsc: ["A1.2", "CC6.8"]
+    references:
+      - "https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/default-trace-enabled-server-configuration-option"
+    condition: all
+    rules:
+      - "c:sqlcmd -Q \"SELECT name, CAST(value as int) as value_configured, CAST(value_in_use as int) as value_in_use FROM sys.configurations WHERE name = 'default trace enabled';\" -> r:1\\s+1"
+
+  ###########################################################
+  # 6 Application Development
+  ###########################################################
+  # 6.2 Ensure 'CLR Assembly Permission Set' is set to 'SAFE_ACCESS' for All CLR Assemblies (Scored)
+  - id: 12522
+    title: "Ensure 'CLR Assembly Permission Set' is set to 'SAFE_ACCESS' for All CLR Assemblies"
+    description: "Setting CLR Assembly Permission Sets to SAFE_ACCESS will prevent assemblies from accessing external system resources such as files, the network, environment variables, or the registry."
+    rationale: "Assemblies with EXTERNAL_ACCESS or UNSAFE permission sets can be used to access sensitive areas of the operating system, steal and/or transmit data and alter the state and other protection measures of the underlying Windows Operating System. Assemblies which are Microsoft-created ( is_user_defined = 0 ) are excluded from this check as they are required for overall system functionality."
+    remediation: "ALTER ASSEMBLY <assembly_name> WITH PERMISSION_SET = SAFE;"
+    compliance:
+      - cis: ["6.2"]
+      - cis_csc: ["18"]
+      - pci_dss: ["10.2.5"]
+      - hipaa: ["164.312.b"]
+      - nist_800_53: ["AU.14", "AC.7"]
+      - gpg_13: ["7.8"]
+      - gdpr_IV: ["35.7", "32.2"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+    references:
+      - "https://docs.microsoft.com/en-us/sql/relational-databases/clr-integration/security/clr-integration-code-access-security"
+      - "https://docs.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-assemblies-transact-sql"
+      - "https://docs.microsoft.com/en-us/sql/t-sql/statements/alter-assembly-transact-sql"
+    condition: none
+    rules:
+      - 'c:sqlcmd -Q "SELECT name, permission_set_desc FROM sys.assemblies WHERE is_user_defined = 1;" -> r:EXTERNAL_ACCESS|UNSAFE'

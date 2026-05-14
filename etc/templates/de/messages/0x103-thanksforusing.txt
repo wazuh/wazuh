@@ -1,0 +1,12 @@
+
+    Vielen Dank für Wazuh benutzen.
+    Bei Fragen, Anregungen oder wenn Sie einen Fehler gefunden
+    haben, können Sie mit uns kontaktieren.
+
+    Bitte, benutzen Sie unsere Mailingliste:
+            https://groups.google.com/forum/#!forum/wazuh
+
+    Weitere Informtionen finden Sie unter:
+          - http://www.wazuh.com
+
+    ---  Drücken Sie eine Taste um fortzufahren  ---

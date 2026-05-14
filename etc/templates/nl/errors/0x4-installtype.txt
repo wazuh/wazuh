@@ -1,0 +1,3 @@
+
+ Fout 0x4.
+ Onjuist installatie type. Het kan enkel agent, server of local zijn.

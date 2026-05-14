@@ -1,0 +1,35 @@
+- sections:
+    - section: syscheck
+      elements:
+      - disabled:
+          value: 'no'
+      - directories:
+          value: TEST_DIR_1
+          attributes:
+            - whodata: 'yes'
+      - directories:
+          value: TEST_DIR_2
+          attributes:
+            - realtime: 'yes'
+
+    - section: sca
+      elements:
+        - enabled:
+            value: 'no'
+
+    - section: rootcheck
+      elements:
+        - disabled:
+            value: 'yes'
+
+    - section: wodle
+      attributes:
+        - name: syscollector
+      elements:
+        - disabled:
+            value: 'yes'
+
+    - section: active-response
+      elements:
+        - disabled:
+            value: 'yes'

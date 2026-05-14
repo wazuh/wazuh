@@ -1,0 +1,4 @@
+
+  3.5- Respostas automáticas permitem você executar um comando
+       específico baseado nos eventos recebidos.
+       Por padrão, nenhuma resposta automática é definida.

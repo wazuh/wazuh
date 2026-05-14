@@ -1,0 +1,52 @@
+name: Coverity Upload
+description: "Uploads the Coverity build to the Coverity Scan service. Requires wazuh.tgz to exist in the working directory."
+inputs:
+  project:
+    description: "Project name (e.g., wazuh/wazuh or wazuh/ossec-wazuh)"
+    required: true
+  email:
+    description: "Email address associated with Coverity Scan"
+    required: true
+  token:
+    description: "Coverity Scan authentication token"
+    required: true
+  version:
+    description: "Build version"
+    required: true
+  description:
+    description: "Build description"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check wazuh.tgz exists
+      shell: bash
+      run: |
+        if [ ! -f wazuh.tgz ]; then
+          echo "Error: wazuh.tgz not found in the working directory."
+          exit 1
+        fi
+
+    - name: Upload build to Coverity Scan
+      shell: bash
+      run: |
+        PROJECT_ESCAPED="${{ inputs.project }}"
+        PROJECT_ESCAPED="${PROJECT_ESCAPED//\//%2F}"
+
+        response=$(curl -s -w "%{http_code}" \
+          --form token="${{ inputs.token }}" \
+          --form email="${{ inputs.email }}" \
+          --form file=@wazuh.tgz \
+          --form version="${{ inputs.version }}" \
+          --form description="${{ inputs.description }}" \
+          "https://scan.coverity.com/builds?project=${PROJECT_ESCAPED}")
+
+        body=${response::-3}
+        code=${response: -3}
+
+        echo $body
+
+        if [[ $code -ge 400 ]]; then
+          exit 1
+        fi

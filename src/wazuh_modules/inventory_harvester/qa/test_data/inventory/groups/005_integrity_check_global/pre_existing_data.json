@@ -1,0 +1,51 @@
+[
+    {
+        "index_name": "wazuh-states-inventory-groups-cluster01",
+        "ids": {
+            "001": "001_585",
+            "002": "002_580"
+        },
+        "data": [
+            {
+                "agent": {
+                    "id": "002",
+                    "name": "jammy",
+                    "version": "v4.10.1"
+                },
+                "group": {
+                    "description": "group description",
+                    "id": 580,
+                    "id_signed": -580,
+                    "is_hidden": true,
+                    "name": "docker",
+                    "uuid": "S-1-5-32-585"
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "001",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "group": {
+                    "description": "Les membres de ce groupe peuvent se connecter à cet ordinateur à l'aide de SSH.",
+                    "id": 585,
+                    "id_signed": -585,
+                    "is_hidden": false,
+                    "name": "Utilisateurs OpenSSH",
+                    "uuid": "S-1-5-32-585"
+                },
+                "wazuh": {
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            }
+        ]
+    }
+]

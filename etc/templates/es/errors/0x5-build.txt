@@ -1,0 +1,3 @@
+
+ Error 0x5.
+ Building error. No es posible finalizar la instalación.

@@ -1,0 +1,12 @@
+apache:/var/log/apache/error.log
+apache:/var/log/apache/error_log
+apache:/var/log/apache/access.log
+apache:/var/log/apache/access_log
+apache:/var/www/logs/access_log
+apache:/var/www/logs/error_log
+apache:/var/log/httpd/error_log
+apache:/var/log/httpd/access_log
+apache:/var/log/nginx/access.log
+apache:/var/log/nginx/error.log
+apache:/var/log/apache2/error.log
+apache:/var/log/apache2/access.log

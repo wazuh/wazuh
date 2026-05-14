@@ -1,0 +1,22 @@
+- name: cloudwatch_discard_regex_json
+  description: >
+    CloudWatch configuration for an event being discarded when the regex matches
+    the content in the specified field inside the incoming JSON log
+  configuration_parameters:
+    SERVICE_TYPE: cloudwatchlogs
+    LOG_GROUP_NAME: wazuh-cloudwatchlogs-integration-tests
+    REGIONS: us-east-1
+    DISCARD_FIELD: message
+    DISCARD_REGEX: .*event.*number.*0
+    ONLY_LOGS_AFTER: 2023-JUL-03
+  metadata:
+    resource_type: log_group
+    service_type: cloudwatchlogs
+    log_group_name: wazuh-cloudwatchlogs-integration-tests
+    log_stream_name: wazuh-cloudwatchlogs-integration-tests-stream
+    only_logs_after: 2023-JUL-03
+    discard_field: message
+    discard_regex: .*event.*number.*0
+    regions: us-east-1
+    skipped_logs: 1
+    expected_results: 3

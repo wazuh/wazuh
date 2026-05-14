@@ -1,0 +1,36 @@
+[
+    {
+        "index_name": "wazuh-states-inventory-hardware-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "002",
+                    "name": "WazuhAgent",
+                    "version": "v4.11.0"
+                },
+                "host": {
+                    "cpu": {
+                        "cores": 2,
+                        "name": "Intel(R) Core(TM) i9-10500H CPU @ 2.50GHz",
+                        "speed": 2497
+                    },
+                    "memory": {
+                        "free": 1048576,
+                        "total": 2097152,
+                        "used": 1048576,
+                        "usage": 0.5
+                    },
+                    "serial_number": "A320"
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            }
+        ]
+    }
+]

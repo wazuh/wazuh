@@ -1,0 +1,4 @@
+  <!-- Choose between "plain", "json", or "plain,json" for the format of internal logs -->
+  <logging>
+    <log_format>plain</log_format>
+  </logging>

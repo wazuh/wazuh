@@ -1,0 +1,11 @@
+- name: Test_Invalid_Resource
+  description: Check ms-graph integration when `resource` tag `name` is invalid
+  configuration_parameters:
+    ENABLED: 'yes'
+    ONLY_FUTURE: 'yes'
+    INTERVAL: '10s'
+    CURL_SIZE: '10M'
+    TENANT_ID: 'tenant_id'
+    RESOURCE_NAME: 'invalid'
+    RESOURCE_RELATIONSHIP1: 'invalid'
+    RESOURCE_RELATIONSHIP2: 'invalid'

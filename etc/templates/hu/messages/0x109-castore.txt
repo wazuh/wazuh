@@ -1,0 +1,5 @@
+
+  3.6- A távoli frissítések a rendszerfelügyelő által aláírt csomagokat
+       használják. A WPK csomagok ellenőrzéséhez a megfelelő tanúsítványt
+       (vagy root-tanúsítványt) kell telepíteni a rendszerbe. Alapértelmezés
+       szerint a Wazuh gyökér-tanúsítványa telepítve van.

@@ -1,0 +1,55 @@
+' Copyright (C) 2015, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml
+title wm_sca
+
+participant SCA_policies 
+participant config
+entity main_thread
+participant request_thread
+participant dump_thread
+control wazuh_manager
+
+main_thread -> config : Get config
+config --> main_thread : Config
+note right
+    - Enabled
+    - Scan on start
+    - skip_nfs
+    - Policies
+end note
+
+main_thread -> SCA_policies
+SCA_policies --> main_thread
+note right
+    Stores policies in hash tables
+end note
+
+loop Forever
+    request_thread -> request_thread
+    alt If missing data
+        request_thread -> main_thread: Request information
+    end
+end
+
+loop Forever
+    dump_thread -> wazuh_manager: Dumps information in DB
+end
+
+loop Forever
+    main_thread -> main_thread: Sleep
+        loop For each policy
+            main_thread -> main_thread: Read files
+            note right
+                 - YAML to JSON
+                 - Parsing policy
+                 - Error handling
+                 - Execute checks
+            end note
+        end
+    main_thread -> wazuh_manager: Send scanned policies for database purge
+end
+
+@enduml

@@ -1,0 +1,33 @@
+
+  - You have these installation options: server, agent, local, or hybrid.
+
+    - If you choose 'server', you will be able to analyze all
+      the logs, create e-mail notifications and responses,
+      and also receive logs from remote syslog machines and
+      from systems running the 'agents' (from where traffic
+      is sent encrypted to the server).
+
+    - If you choose 'agent'(client), you will be able to read
+      local files (from syslog, snort, apache, etc) and forward
+      them (encrypted) to the server for analysis.
+
+    - If you choose 'local', you will be able to do everything
+      the server does, except receiving remote messages from
+      the agents or external syslog devices.
+
+    - If you choose 'hybrid', you get the 'local' installation
+      plus the 'agent' installation.
+
+  - Choose 'server' if you are setting up a log/analysis server.
+
+  - Choose 'agent' if you have another machine to run as a log
+    server and want to forward the logs to the server for analysis.
+    (ideal for webservers, database servers ,etc)
+
+  - Choose 'local' if you only have one system to monitor.
+
+  - Choose 'hybrid' if you want this standalone system to analyze
+    local logs before forwarding alerts to another server.
+
+  - More information at:
+    https://documentation.wazuh.com

@@ -1,0 +1,5 @@
+
+  3.6- Remote upgrades gebruiken pakketten die door de systeembeheerder zijn
+       ondertekend. Het bijbehorende certificaat (of rootcertificaat) moet in
+       het systeem zijn geïnstalleerd om de WPK-pakketten te verifiëren.
+       Standaard is het root certificaat van Wazuh geïnstalleerd.

@@ -1,0 +1,13 @@
+{
+    "action": "dbsync_select_rows",
+    "body": {
+        "table":"processes",
+        "query":{
+            "column_list":["pid,name,threads"],
+            "row_filter":"WHERE pid>=5",
+            "distinct_opt":false,
+            "order_by_opt":"threads",
+            "count_opt":100
+        }
+    }
+}

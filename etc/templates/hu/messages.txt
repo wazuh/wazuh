@@ -1,0 +1,128 @@
+# Configuration
+yes="i"
+no="n"
+yesmatch="i"
+nomatch="n"
+agent="agent"
+local="lokális"
+server="szerver"
+help="segítség"
+
+# Global
+moreinfo="További információk: "
+starting="Wazuh Indítása"
+systemis="A rendszer"
+modifiedinit="Init script módosítva, hogy bootoláskor automatikusan indítsa az Wazuh-et."
+noboot="Ismeretlen rendszer. Nincs init script hozzáadva."
+
+# Part 1
+installscript="Telepítő Script"
+system="Rendszer"
+user="Felhasználó"
+host="Hoszt"
+hitanyorabort="Nyomjon ENTER-t a folytatáshoz vagy Ctrl-C-t a megszakításhoz."
+whattoinstall="Milyen típusú telepítést szeretne? (manager, agent, lokális vagy segítség)?"
+serverchose="Manager (szerver) telepítés kiválasztva"
+clientchose="Agent(kliens) telepítés kiválasztva"
+localchose="Lokális telepítés kiválasztva"
+
+# Part 2
+settingupenv="A telepítési környezet létrehozása"
+wheretoinstall="Válassza ki az Wazuh telepítési helyét"
+installat="A telepítés a következő helyre történik: "
+deletedir="A célkönyvtár már létezik. Törölhetem?"
+
+# Part 3
+configuring="A következő konfigurálása: "
+mailnotify="Szeretne e-mail értesítést?"
+nomail="E-mail értesítés kikapcsolva"
+whatsemail="Mi az ön e-mail címe?"
+yoursmtp="Az ön SMTP szerverének állapota: "
+usesmtp="Szeretné használni?"
+usingsmtp="SMTP szerver használata: "
+whatsmtp="Mi az ön SMTP szerverének ip címe/hoszt neve?"
+
+# Part 3.1/agent
+serverip="Mi az IP címe az Wazuh szervernek?"
+serveraddr="Mi az IP címe/hoszt neve az Wazuh szervernek?"
+addingip="Szerver IP hozzáadása"
+addingname="Szerver hoszt neve hozzáadása"
+
+
+# Part 3.2
+runsyscheck="Szeretné futtatni az integritás ellenőrző démont?"
+nosyscheck="Rendszerellenőrzés mellőzése (integritás ellenőrző démon)"
+yessyscheck="Rendszerellenőrzés futtatása (integritás ellenőrző démon)"
+
+# Part 3.3
+runrootcheck="Szeretné futtatni a rootkit detektáló motort?"
+norootcheck="Gyökérellenőrzés mellőzése (rootkit detektálás)"
+yesrootcheck="Gyökérellenőrzés futtatása (rootkit detektálás)"
+
+# Part 3.4
+runopenscap="Szeretné futtatni OpenSCAP?"
+norunopenscap="Rendszerellenőrzés mellőzése OpenSCAP"
+yesrunopenscap="Gyökérellenőrzés futtatása OpenSCAP"
+
+# Part 3.5/server/local
+enable_ar="Szeretné bekapcsolni az active response funkciót?"
+noactive="Active response kikapcsolva"
+nohosts="host-deny kikapcsolva"
+yeshosts="host-deny bekapcsolva (lokális) for levels >= 6"
+firewallar="Szeretné bekapcsolni a firewall-drop response funkciót?"
+nofirewall="firewall-drop kikapcsolva."
+yesfirewall="firewall-drop bekapcsolva (lokális) for levels >= 6"
+defaultwhitelist="Alapértelmezett fehér lista az active response számára:"
+addwhite="Szeretne további IP címeket hozzáadni a fehér listához?"
+ipswhite="IP-k (szóközzel elválasztva): "
+
+# Part 3.5/server/local
+syslog="Be szeretné kapcsolni a távoli rendszernaplózást (port 514 udp)?"
+nosyslog="Távoli rendszernaplózás kikapcsolva"
+yessyslog="Távoli rendszernaplózás bekapcsolva"
+
+# Part 3.4/3.5
+readlogs="A konfiguráció beállítása a következő naplók elemzéséhez:"
+
+# Part 3.7
+runauthd="Szeretné futtatni az Auth szolgáltatást?"
+norunauthd="Nem működik Auth szolgáltatás"
+yesrunauthd="Auth szolgáltatás futtatása"
+
+# Part 4
+installing="A rendszer telepítése"
+startwazuh="Szeretné elindítani a Wazuh-ot a telepítés után?"
+nowazuhstart="A Wazuh nem indul el a telepítés végén."
+yeswazuhstart="A Wazuh a telepítés végén kezdődik."
+runningmake="A Make fájl futtatása"
+
+# Final
+configurationdone="A konfiguráció sikeresen befejeződött"
+tostart="Az Wazuh indítása"
+tostop="Az Wazuh leállítása"
+configat="A konfigurációs fájl megtekinthető vagy módosítható itt: "
+addserveragent="A kliens és szerver összekapcsolásához, minden egyes klienst
+   hozzá kell adnia a szerverhez."
+presskey="A folytatáshoz nyomja meg az ENTER-t"
+
+# Update
+wanttoupdate="Az Wazuh már telepítve van. Szeretné frissíteni?"
+mustuninstall="A telepítés nem folytatható a régi verziók eltávolítása nélkül. Kilépés."
+unabletoupdate="A frissítés nem lehetséges. Egy teljesen új installáció szükséges."
+updatecompleted="A frissítés sikeresen befejeződött."
+updatefailed="A frissítés meghiúsult."
+updaterules="Szeretné frissíteni a szabályokat?"
+updatingrules="A szabályok frissítése."
+notupdatingrules="Nincs szabály frissítés."
+update_rev_newconf1="Biztonsági másolatot a meglévő ossec.conf hoztak létre a $INSTALLDIR/etc/ossec.conf.orig."
+update_rev_newconf2="Kérjük, ellenőrizze a ossec.conf konfiguráció $INSTALLDIR/etc/ossec.conf."
+
+# Pf support
+pfenable="Szeretné alkalmazni a PF tűzfalat az active response során?"
+nopf="PF response kikapcsolva."
+pftablename="Az alkalmazandó PF tábla neve?"
+pfmessage="Adja hozzá a következő sorokat a PF szabályainak kezdetéhez"
+
+# CA store
+addcastore="DSzeretne további tanúsítványokat adni?"
+castore="Adja meg az X509 tanúsítvány vagy a tanúsítványsomag elérési útját: "

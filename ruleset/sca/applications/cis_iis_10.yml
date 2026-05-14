@@ -1,0 +1,722 @@
+# Security Configuration Assessment
+# CIS Checks for Microsoft IIS 10
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+# Based on:
+# Center for Internet Security Benchmark v1.1.1 for Microsoft IIS 10 - 03-13-2019
+
+policy:
+  id: "cis_iis_10"
+  file: "cis_iis_10.yml"
+  name: "CIS Microsoft IIS 10 Benchmark v1.1.1"
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft IIS."
+  references:
+    - https://www.cisecurity.org/cis-benchmarks/
+
+requirements:
+  title: "Check that IIS 10 is installed in the system"
+  description: "Requirements for running the SCA scan against IIS 10"
+  condition: all
+  rules:
+    - 'c:reg query HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\InetStp -> r:IIS 10'
+
+checks:
+  # 1 Basic Configurations
+  - id: 22000
+    title: "Ensure web content is on non-system partition"
+    description: "Web resources published through IIS are mapped, via Virtual Directories, to physical locations on disk. It is recommended to map all Virtual Directories to a non-system disk volume."
+    rationale: "Isolating web content from system files may reduce the probability of: - Web sites/applications exhausting system disk space - File IO vulnerability in the web site/application from affecting the confidentiality and/or integrity of system files"
+    remediation: "1. Browse to web content in C:\\inetpub\\wwwroot\\ 2. Copy or cut content onto a dedicated and restricted web folder on a non-systemdrive such as D:\\webroot\\ 3. Change mappings for any applications or Virtual Directories to reflect the new location To change the mapping for the application named app1 which resides under the Default Web Site, open IIS Manager: 1. Expand the server node 2. Expand Sites 3. Expand Default Web Site 4. Click on app1 5. In the Actions pane, select Basic Settings 6. In the Physical path text box, put the new location of the application, D:\\wwwroot\\app1 in the example above"
+    compliance:
+      - cis: ["1.1"]
+      - cis_csc: ["14"]
+    condition: none
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd list vdir -> r:SystemDrive'
+
+  #1.2 - Has to be done manually as each site needs to be verified individually
+  #    title: "Ensure 'host headers' are on all sites"
+
+  - id: 22001
+    title: "Ensure 'directory browsing' is set to disabled"
+    description: "Directory browsing allows the contents of a directory to be displayed upon request from a web client. If directory browsing is enabled for a directory in Internet Information Services, users receive a page that lists the contents of the directory when the following two conditions are met: 1. No specific file is requested in the URL 2. The Default Documents feature is disabled in IIS, or if it is enabled, IIS is unable to locate a file in the directory that matches a name specified in the IIS default document list"
+    rationale: "Ensuring that directory browsing is disabled may reduce the probability of disclosing sensitive content that is inadvertently accessible via IIS."
+    remediation: "Enter the following command in AppCmd.exe to configure:%systemroot%\\system32\\inetsrv\\appcmd set config /section:directoryBrowse /enabled:false"
+    compliance:
+      - cis: ["1.3"]
+      - cis_csc: ["14"]
+    references:
+      - http://blogs.iis.net/thomad/archive/2008/02/10/moving-the-iis7-inetpub-directory-to-a-different-drive.aspx
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd list config /section:directoryBrowse -> r:directoryBrowse enabled="false"'
+
+  - id: 22002
+    title: "Ensure 'application pool identity' is configured for all application pools"
+    description: "Application Pool Identities are the actual users/authorities that will run the worker process - w3wp.exe. Assigning the correct user authority will help ensure that applications can function properly, while not giving overly permissive permissions on the system. These identities can further be used in ACLs to protect system content. It is recommended that each Application Pool run under a unique identity. IIS has additional built-in least privilege identities intended for use by Application Pools. It is recommended that the default Application Pool Identity be changed to a least privilege principle other than Network Service. Furthermore, it is recommended that all application pool identities be assigned a unique least privilege principal. To achieve isolation in IIS, application pools can be run as separate identities. IIS can be configured to automatically use the application pool identity if no anonymous user account is configured for a Web site. This can greatly reduce the number of accounts needed for Web sites and make management of the accounts easier. It is recommended the Application Pool Identity be set as the Anonymous User Identity. The name of the Application Pool account corresponds to the name of the Application Pool. Application Pool Identities were introduced in Windows Server 2008 SP2. It is recommended that Application Pools be set to run as ApplicationPoolIdentity unless there is an underlying reason that the application pool needs to run as a specified end user account. One example where this is needed is for web farms using Kerberos authentication"
+    rationale: "Setting Application Pools to use unique least privilege identities such as ApplicationPoolIdentity reduces the potential harm the identity could cause should the application ever become compromised. Additionally, it will simplify application pools configuration and account management."
+    remediation: "To change the ApplicationPool identity to the built-in ApplicationPoolIdentity using AppCmd.exe, run the following from a command prompt: Enter the following command in AppCmd.exe to configure %systemroot%\\system32\\inetsrv\\appcmd set config /section:applicationPools /[name='<apppool name>'].processModel.identityType:ApplicationPoolIdentity "
+    compliance:
+      - cis: ["1.4"]
+      - cis_csc: ["18"]
+    references:
+      - http://technet.microsoft.com/en-us/library/cc771170%28WS.10%29.aspx
+      - http://learn.iis.net/page.aspx/140/understanding-built-in-user-and-group-accounts-in-iis-7/
+      - http://learn.iis.net/page.aspx/624/application-pool-identities/
+      - http://blogs.iis.net/tomwoolums/archive/2008/12/17/iis-7-0-application-pools.aspx
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd list config /section:applicationPools -> r:processModel identityType="ApplicationPoolIdentity"'
+
+  - id: 22003
+    title: "Ensure 'unique application pools' is set for sites"
+    description: "IIS introduced a new security feature called Application Pool Identities that allows Application Pools to be run under unique accounts without the need to create and manage local or domain accounts. It is recommended that all Sites run under unique, dedicated Application Pools."
+    rationale: "By setting sites to run under unique Application Pools, resource-intensive applications can be assigned to their own application pools which could improve server and application performance.In addition, it can help maintain application availability: if an application in one pool fails, applications in other pools are not affected.Last, isolating applications helps mitigate the potential risk of one application being allowed access to the resources of another application. It is also recommended to stop any application pool that is not in use or was created by an installation such as .Net 4.0."
+    remediation: "The following appcmd.exe command will set the application pool for a given application: %systemroot%\\system32\\inetsrv\\appcmd set app '<website name>/' /applicationpool:<apppool name>"
+    compliance:
+      - cis: ["1.5"]
+      - cis_csc: ["14.6"]
+    references:
+      - http://technet.microsoft.com/en-us/library/cc753449%28WS.10%29.aspx
+      - http://blogs.iis.net/tomwoolums/archive/2008/12/17/iis-7-0-application-pools.aspx
+      - http://learn.iis.net/page.aspx/624/application-pool-identities/
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd list app -> r:applicationPool:DefaultAppPool'
+
+  - id: 22004
+    title: "Ensure 'application pool identity' is configured for anonymous user identity"
+    description: "To achieve isolation in IIS, application pools can be run as separate identities. IIS can be configured to automatically use the application pool identity if no anonymous user account is configured for a Web site. This can greatly reduce the number of accounts needed for Web sites and make management of the accounts easier. It is recommended the Application Pool Identity be set as the Anonymous User Identity."
+    rationale: "Configuring the anonymous user identity to use the application pool identity will help ensure site isolation - provided sites are set to use the application pool identity. Since a unique principal will run each application pool, it will ensure the identity is least privilege. Additionally, it will simplify Site management."
+    remediation: "To use AppCmd.exe to configure anonymousAuthenticationat the server level, the command would look like this: %systemroot%\\system32\\inetsrv\\appcmd set config -section:anonymousAuthentication /username:\"\" --password"
+    compliance:
+      - cis: ["1.6"]
+      - cis_csc: ["14.6"]
+    references:
+      - http://learn.iis.net/page.aspx/202/application-pool-identity-as-anonymous-user/
+      - http://learn.iis.net/page.aspx/624/application-pool-identities/
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd list app -> r:anonymousAuthentication enabled="true"'
+
+  - id: 22005
+    title: " Ensure WebDav feature is disabled"
+    description: "WebDAV is an extension to the HTTP protocol which allows clients to create, move, and delete files and resources on the web server. This functionality is available in IIS when the WebDAV feature is enabled."
+    rationale: "WebDAV is not widely used, and it has serious security concerns because it may allow clients to modify unauthorized files on the web server. Therefore, the WebDav feature should be disabled."
+    remediation: "To disable this feature using PowerShell, enter the following command: Remove-WindowsFeature Web-DAV-Publishing Verify that Success is True"
+    compliance:
+      - cis: ["1.7"]
+      - cis_csc: ["9.2"]
+    condition: all
+    rules:
+      - "c:powershell.exe import-module servermanager;Get-WindowsFeature Web-DAV-Publishing -> r:available"
+
+  # 2  Configure Authentication and Authorization
+  - id: 22006
+    title: "Ensure 'global authorization rule' is set to restrict access"
+    description: "IIS introduced URL Authorization, which allows the addition of Authorization rules to the actual URL, instead of the underlying file system resource, as a way to protect it. Authorization rules can be configured at the server, web site, folder (including Virtual Directories), or file level. The native URL Authorization module applies to all requests, whether they are .NET managed or other types of files (e.g. static files or ASP files). It is recommended that URL Authorization be configured to only grant access to the necessary security principals."
+    rationale: "Configuring a global Authorization rule that restricts access will ensure inheritance of the settings down through the hierarchy of web directories; if that content is copied elsewhere, the authorization rules flow with it. This will ensure access to current and future content is only granted to the appropriate principals, mitigating risk of accidental or unauthorized access."
+    remediation: "To configure URL Authorization at the server level using command line utilities:Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config -section:system.webServer/security/authorization /-\"[users='*',roles='',verbs='']\"; %systemroot%\\system32\\inetsrv\\appcmd set config -section:system.webServer/security/authorization /+\"[accessType='Allow',roles='Administrators']\""
+    compliance:
+      - cis: ["2.1"]
+      - cis_csc: ["18"]
+    references:
+      - http://www.iis.net/learn/manage/configuring-security/understanding-iis-url-authorization
+      - http://www.iis.net/learn/get-started/whats-new-in-iis-7/changes-in-security-between-iis-60-and-iis-7-and-above#Authorization
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd list config -section:system.webserver/security/authorization -> r:remove users="\*" roles="" verbs="" && accessType="Allow",roles="Administrators"'
+
+  - id: 22007
+    title: "Ensure access to sensitive site features is restricted to authenticated principals only"
+    description: "IIS supports both challenge-based and login redirection-based authentication methods. Challenge-based authentication methods, such as Integrated Windows Authentication, require a client to respond correctly to a server-initiated challenge. A login redirection based authentication method such as Forms Authentication relies on redirection to a login page to determine the identity of the principal. Challenge-based authentication and login redirection-based authentication methods cannot be used in conjunction with one another. Public servers/sites are typically configured to use Anonymous Authentication. This method typically works, provided the content or services is intended for use by the public. When sites, applications, or specific content containers are not intended for anonymous public use, an appropriate authentication mechanism should be utilized. Authentication will help confirm the identity of clients who request access to sites, application, and content. IIS provides the following authentication modules by default: Anonymous Authentication - allows anonymous users to access sites, applications, and/or content Integrated Windows Authentication - authenticates users using the NTLM or Kerberos protocols; Kerberos v5 requires a connection to Active Directory ASP.NET Impersonation - allows ASP.NET applications to run under a security context different from the default security context for an application Forms Authentication - enables a user to login to the configured space with a valid user name and password which is then validated against a database or other credentials store Basic authentication - requires a valid user name and password to access content Client Certificate Mapping Authentication - allows automatic authentication of users who log on with client certificates that have been configured; requires SSL Digest Authentication - uses Windows domain controller to authenticate users who request accessNote that none of the challenge-based authentication modules can be used at the same time Forms Authentication is enabled for certain applications/content. Forms Authentication does not rely on IIS authentication, so anonymous access for the ASP.NET application can be configured if Forms Authentication will be used. It is recommended that sites containing sensitive information, confidential data, or non public web services be configured with a credentials-based authentication mechanism"
+    rationale: "Configuring authentication will help mitigate the risk of unauthorized users accessing data and/or services, and in some cases reduce the potential harm that can be done to a system."
+    remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config - section:system.web/authentication /mode:<Windows|Passport|Forms>"
+    compliance:
+      - cis: ["2.2"]
+      - cis_csc: ["14.6"]
+    references:
+      - http://learn.iis.net/page.aspx/377/using-aspnet-forms-authentication/rev/1
+      - http://learn.iis.net/page.aspx/244/how-to-take-advantage-of-the-iis7-integrated-pipeline/
+      - http://technet.microsoft.com/en-us/library/cc733010%28WS.10%29.aspx
+      - http://msdn.microsoft.com/en-us/library/aa480476.aspx
+      - https://technet.microsoft.com/en-us/library/hh831496(v=ws.11).aspx
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd list config -section:system.web/authentication -> r:cookieless="UseCookies" requireSSL="true"'
+
+  - id: 22008
+    title: "Ensure 'forms authentication' require SSL"
+    description: "Forms-based authentication can pass credentials across the network in clear text. It is therefore imperative that the traffic between client and server be encrypted using SSL, especially in cases where the site is publicly accessible. It is recommended that communications with any portion of a site using Forms Authentication be encrypted using SSL."
+    rationale: "Requiring SSL for Forms Authentication will protect the confidentiality of credentials during the login process, helping mitigate the risk of stolen user information."
+    remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config - section:system.web/authentication /mode:Forms"
+    compliance:
+      - cis: ["2.3"]
+      - cis_csc: ["14.4"]
+    references:
+      - http://technet.microsoft.com/en-us/library/cc771077(WS.10).aspx
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd list config -section:system.web/authentication -> r:requireSSL="true"'
+
+  - id: 22009
+    title: "Ensure 'forms authentication' is set to use cookies"
+    description: "Forms Authentication can be configured to maintain the site visitor's session identifier in either a URI or cookie. It is recommended that Forms Authentication be set to use cookies."
+    rationale: "Using cookies to manage session state may help mitigate the risk of session hi-jacking attempts by preventing ASP.NET from having to move session information to the URL. Moving session information identifiers into the URL may cause session IDs to show up in proxy logs, browsing history, and be accessible to client scripting via document.location."
+    remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config - section:system.web/authentication /forms.cookieless:\"UseCookies\""
+    compliance:
+      - cis: ["2.4"]
+      - cis_csc: ["18"]
+    references:
+      - http://technet.microsoft.com/en-us/library/cc732830%28WS.10%29.aspx
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd list config -section:system.web/authentication -> r:cookieless="UseCookies"'
+
+  #2.5 - Has to be done manually as each app name needs to be provided individually
+  #    title: "Ensure 'cookie protection mode' is configured for forms authentication"
+
+  #2.6 - Has to be done manually as each app name needs to be provided individually
+  #    title: "Ensure transport layer security for 'basic authentication' is #configured"
+
+  #2.7 - Has to be done manually as each app name needs to be provided individually
+  #    title: "Ensure 'passwordFormat' is not set to clear"
+
+  #2.8 - Has to be done manually as each app name needs to be provided individually
+  #    title: "Ensure 'credentials' are not stored in configuration files"
+
+  #3 ASP.NET Configuration Recommendations
+
+  #3.1 - Has to be done manually as .NET versions used by each App may vary
+  #    title: "Ensure 'deployment method retail' is set"
+
+  #3.2 - Has to be done manually as each website name must be provided
+  #    title: "Ensure 'debug' is turned off"
+
+  #3.3 - Has to be done manually as each website name must be provided
+  #    title: "Ensure custom error messages are not off"
+
+  #3.4 - Has to be done manually as each website name must be provided
+  #    title: "Ensure IIS HTTP detailed errors are hidden from displaying remotely"
+
+  #3.5 - Has to be done manually as each website name must be provided
+  #    title: "Ensure ASP.NET stack tracing is not enabled"
+
+  #3.6 - Has to be done manually as each website name must be provided
+  #    title: " Ensure 'httpcookie' mode is configured for session state"
+
+  #3.7 - Has to be done manually as each website name must be provided
+  #    title: "Ensure 'cookies' are set with HttpOnly attribute"
+
+  - id: 22010
+    title: "Ensure 'MachineKey validation method - .Net 3.5' is configured"
+    description: "The machineKey element of the ASP.NET web.config specifies the algorithm and keys that ASP.NET will use for encryption. The Machine Key feature can be managed to specify hashing and encryption settings for application services such as view state, Forms authentication, membership and roles, and anonymous identification."
+    rationale: "Setting the validation property to AES will provide confidentiality and integrity protection to the viewstate. AES is the strongest encryption algorithm supported by the validation property. Setting the validation property to SHA1 will provide integrity protection to the viewstate. SHA1 is the strongest hashing algorithm supported by the validation property."
+    remediation: "To set the Machine Key encryption at the global level using an appcmd.exe command: %systemroot%\\system32\\inetsrv\\appcmd set config /commit:WEBROOT /section:machineKey /validation:SHA1"
+    compliance:
+      - cis: ["3.8"]
+      - cis_csc: ["14.4"]
+    references:
+      - http://technet.microsoft.com/en-us/library/cc772271%28WS.10%29.aspx
+      - http://technet.microsoft.com/en-us/library/cc772287%28WS.10%29.aspx
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd list config /commit:WEBROOT /section:machineKey -> r:validation="SHA1"|validation="AES"'
+
+  - id: 22011
+    title: "Ensure 'MachineKey validation method - .Net 4.5' is configured"
+    description: "The machineKey element of the ASP.NET web.config specifies the algorithm and keys that ASP.NET will use for encryption. The Machine Key feature can be managed to specify hashing and encryption settings for application services such as view state, Forms authentication, membership and roles, and anonymous identification."
+    rationale: "SHA-2 is the strongest hashing algorithm supported by the validation property so it should be used as the validation method for the MachineKey in .Net 4.5."
+    remediation: "To set the Machine Key encryption at the global level using an appcmd.exe command: %systemroot%\\system32\\inetsrv\\appcmd set config /commit:WEBROOT /section:machineKey /validation:HMACSHA256"
+    compliance:
+      - cis: ["3.9"]
+      - cis_csc: ["14.4"]
+    references:
+      - http://www.iis.net/learn/get-started/whats-new-in-iis-8/iis-80-aspnet-configuration-management
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd list config /commit:WEBROOT /section:machineKey -> r:validation="HMACSHA256"'
+
+  - id: 22012
+    title: " Ensure global .NET trust level is configured"
+    description: "This only applies to .Net 2.0. Future versions have stopped supporting this feature. An application's trust level determines the permissions that are granted by the ASP.NET code access security (CAS) policy. CAS defines two trust categories: full trust and partial trust. An application that has full trust permissions may access all resource types on a server and perform privileged operations, while applications that run with partial trust have varying levels of operating permissions and access to resources. It is recommended that the global .NET Trust Level be set to Medium or lower."
+    rationale: "The CAS determines the permissions that are granted to the application on the server. Setting a minimal level of trust that is compatible with the applications will limit the potential harm that a compromised application could cause to a system."
+    remediation: "To set the .Net Trust Level to Medium at the server level using an appcmd.exe command: %systemroot%\\system32\\inetsrv\\appcmd set config /commit:WEBROOT /section:trust /level:Medium"
+    compliance:
+      - cis: ["3.10"]
+      - cis_csc: ["14.6"]
+    references:
+      - http://technet.microsoft.com/en-us/library/cc772237(WS.10).aspx
+      - http://msdn.microsoft.com/en-us/library/ms691448%28VS.90%29.aspx
+      - Professional IIS 7 by Ken Schaefer, Jeff Cochran, Scott Forsyth, Rob Baugh, Mike Everest, Dennis Glendenning
+      - http://support.microsoft.com/kb/2698981
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd list config /commit:WEBROOT /section:trust -> r:level="Low"|level="Medium"'
+
+  - id: 22013
+    title: "Ensure X-Powered-By Header is removed"
+    description: "The x-powered-by headers may specify the underlying technology used by an application. Attackers are able to conduct reconnaissance on a website using these response headers. This header could be used to target attacks for specific known vulnerabilities associated with the underlying technology. Removing this header will prevent targeting of your application for specific exploits by non-determined attackers."
+    rationale: "While this is not the only way to fingerprint a site through the response headers, it makes it harder and prevents some potential attackers."
+    remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd.exe set config -section:system.webServer/httpProtocol /-\"customHeaders.[name='X-Powered-By']\" /commit:apphost"
+    compliance:
+      - cis: ["3.11"]
+      - cis_csc: ["5.1"]
+    references:
+      - https://blogs.msdn.microsoft.com/jpsanders/2015/10/07/remove-server-and-x-powered-by-headers-from-your-azure-mobile-apps/
+    condition: none
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd list config -section:system.webServer/httpProtocol -> r:name="X-Powered-By"'
+
+  - id: 22014
+    title: "Ensure Server Header is removed"
+    description: "The server header may specify the underlying technology used by an application. Attackers are able to conduct reconnaissance on a website using these response headers. This header could be used to target attacks for specific known vulnerabilities associated with the underlying technology. Removing this header will prevent targeting of your application for specific exploits by non-determined attackers."
+    rationale: "While this is not the only way to fingerprint a site through the response headers, it makes it harder and prevents some potential attackers. The server header removal directive is a new feature in IIS 10 that can assist in mitigating this risk."
+    remediation: "Enter the following command to use AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd.exe set config -section:system.webServer/security/requestFiltering /removeServerHeader:\"True\" /commit:apphost"
+    compliance:
+      - cis: ["3.12"]
+      - cis_csc: ["5.1"]
+    references:
+      - https://blogs.msdn.microsoft.com/jpsanders/2015/10/07/remove-server-and-x-powered-by-headers-from-your-azure-mobile-apps/
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd list config -section:system.webServer/security/requestFiltering -> r:removeServerHeader="true"'
+
+  #4 Request Filtering and Other Restriction Modules
+  - id: 22015
+    title: "Ensure 'maxAllowedContentLength' is configured"
+    description: "The maxAllowedContentLength Request Filter is the maximum size of the http request, measured in bytes, which can be sent from a client to the server. Configuring this value enables the total request size to be restricted to a configured value. It is recommended that the overall size of requests be restricted to a maximum value appropriate for the server, site, or application."
+    rationale: "Setting an appropriate value that has been tested for the maxAllowedContentLength filter will lower the impact an abnormally large request would otherwise have on IIS and/or web applications. This helps to ensure availability of web content and services, and may also help mitigate the risk of buffer overflow type attacks in unmanaged components."
+    remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config /section:requestfiltering /requestLimits.maxAllowedContentLength:30000000"
+    compliance:
+      - cis: ["4.1"]
+      - cis_csc: ["18"]
+    references:
+      - http://www.iis.net/ConfigReference/system.webServer/security/requestFiltering/requestLimits
+      - http://learn.iis.net/page.aspx/143/use-request-filtering/
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd list config /section:requestfiltering -> n:maxAllowedContentLength="(\d)" compare <= 30000000'
+
+  - id: 22016
+    title: "Ensure 'maxURL request filter' is configured"
+    description: "The maxURL attribute of the <requestLimits> property is the maximum length (in Bytes) in which a requested URL can be (excluding query string) in order for IIS to accept. Configuring this Request Filter enables administrators to restrict the length of the requests that the server will accept. It is recommended that a limit be put on the length of URL."
+    rationale: "With a properly configured Request Filter limiting the amount of data accepted in the URL, chances of undesired application behaviors affecting the availability of content and services are reduced."
+    remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config /section:requestfiltering /requestLimits.maxURL:4096"
+    compliance:
+      - cis: ["4.2"]
+      - cis_csc: ["18"]
+    references:
+      - http://www.iis.net/ConfigReference/system.webServer/security/requestFiltering/requestLimits
+      - http://learn.iis.net/page.aspx/143/use-request-filtering/
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd list config /section:requestfiltering -> n:maxUrl="(\d)" compare <= 4096'
+
+  - id: 22017
+    title: "Ensure 'MaxQueryString request filter' is configured"
+    description: "The MaxQueryString Request Filter describes the upper limit on the length of the query string that the configured IIS server will allow for websites or applications. It is recommended that values always be established to limit the amount of data will can be accepted in the query string."
+    rationale: "With a properly configured Request Filter limiting the amount of data accepted in the query string, chances of undesired application behaviors such as app pool failures are reduced."
+    remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config /section:requestfiltering /requestLimits.maxQueryString:2048"
+    compliance:
+      - cis: ["4.3"]
+      - cis_csc: ["18"]
+    references:
+      - http://www.iis.net/ConfigReference/system.webServer/security/requestFiltering/requestLimits
+      - http://learn.iis.net/page.aspx/143/use-request-filtering/
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd list config /section:requestfiltering -> n:maxQueryString="(\d)" compare <= 2048'
+
+  - id: 22018
+    title: "maxQueryString"
+    description: "This feature is used to allow or reject all requests to IIS that contain non-ASCII characters. When using this feature, Request Filtering will deny the request if high-bit characters are present in the URL. The UrlScan equivalent is AllowHighBitCharacters. It is recommended that requests containing non-ASCII characters be rejected, where possible."
+    rationale: "This feature can help defend against canonicalization attacks, reducing the potential attack surface of servers, sites, and/or applications."
+    remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config /section:requestfiltering /allowHighBitCharacters:false"
+    compliance:
+      - cis: ["4.4"]
+      - cis_csc: ["18"]
+    references:
+      - http://learn.iis.net/page.aspx/143/use-request-filtering/
+      - http://learn.iis.net/page.aspx/936/urlscan-1-reference/
+      - Professional IIS 7 by Ken Schaefer, Jeff Cochran, Scott Forsyth, Rob Baugh, Mike Everest, Dennis Glendenning
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd list config /section:requestfiltering -> r:allowHighBitCharacters="false"'
+
+  - id: 22019
+    title: "Ensure Double-Encoded requests will be rejected"
+    description: "This Request Filter feature prevents attacks that rely on double-encoded requests and applies if an attacker submits a double-encoded request to IIS. When the double-encoded requests filter is enabled, IIS will go through a two iteration process of normalizing the request. If the first normalization differs from the second, the request is rejected and the error code is logged as a 404.11. The double-encoded requests filter was the VerifyNormalization option in UrlScan. It is recommended that double-encoded requests be rejected."
+    rationale: "This feature will help prevent attacks that rely on URLs that have been crafted to contain double-encoded request(s)."
+    remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config /section:requestfiltering /allowDoubleEscaping:false"
+    compliance:
+      - cis: ["4.5"]
+      - cis_csc: ["18"]
+    references:
+      - http://www.iis.net/ConfigReference/system.webServer/security/requestFiltering/requestLimits
+      - http://learn.iis.net/page.aspx/143/use-request-filtering/
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd list config /section:requestfiltering -> r:allowDoubleEscaping="false"'
+
+  - id: 22020
+    title: "Ensure 'HTTP Trace Method' is disabled"
+    description: "The HTTP TRACE method returns the contents of client HTTP requests in the entity-body of the TRACE response. Attackers could leverage this behavior to access sensitive information, such as authentication data or cookies, contained in the HTTP headers of the request. One such way to mitigate this is by using the <verbs>element of the <requestFiltering>collection. The <verbs> element replaces the [AllowVerbs] and [DenyVerbs] features in UrlScan. It is recommended the HTTP TRACE method be denied."
+    rationale: "Attackers may abuse HTTP TRACE functionality to gain access to information in HTTP headers such as cookies and authentication data. This risk can be mitigated by not allowing the TRACE verb."
+    remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config /section:requestfiltering /+verbs.[verb='TRACE',allowed='false']"
+    compliance:
+      - cis: ["4.6"]
+      - cis_csc: ["18"]
+    references:
+      - http://www.kb.cert.org/vuls/id/867593
+      - http://www.iis.net/ConfigReference/system.webServer/security/requestFiltering/verbs
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd listconfig /section:requestfiltering -> r:verb="TRACE" allowed="false"'
+
+  - id: 22021
+    title: "Ensure Unlisted File Extensions are not allowed"
+    description: "The FileExtensions Request Filter allows administrators to define specific extensions their web server(s) will allow and disallow. The property allowUnlisted will cover all other file extensions not explicitly allowed or denied. Often times, extensions such as .config, .bat, .exe, to name a few, should never be served. The AllowExtensions and DenyExtensionsoptions are the UrlScan equivalents. It is recommended that all extensions be unallowed at the most global level possible, with only those necessary being allowed."
+    rationale: "Disallowing all but the necessary file extensions can greatly reduce the attack surface of applications and servers."
+    remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config /section:requestfiltering /fileExtensions.allowunlisted:false"
+    compliance:
+      - cis: ["4.7"]
+      - cis_csc: ["18"]
+    references:
+      - http://www.iis.net/ConfigReference/system.webServer/security/requestFiltering/requestLimits
+      - http://www.iis.net/learn/manage/configuring-security/configure-request-filtering-in-iis
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd listconfig /section:requestfiltering -> r:fileExtensions\.+allowUnlisted="false"'
+
+  - id: 22022
+    title: "Ensure Handler is not granted Write and Script/Execute"
+    description: "Handler mappings can be configured to give permissions to Read, Write, Script, or Execute depending on what the use is for - reading static content, uploading files, executing scripts, etc. It is recommended to grant a handler either Execute/Scriptor Write permissions, but not both."
+    rationale: "By allowing both Execute/Scriptand Write permissions, a handler can run malicious code on the target server. Ensuring these two permissions are never together will help lower the risk of malicious code being executed on the server."
+    remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config /section:handlers /accessPolicy:Read,Script"
+    compliance:
+      - cis: ["4.8"]
+      - cis_csc: ["18"]
+    references:
+      - http://technet.microsoft.com/en-us/library/dd391910%28WS.10%29.aspx
+      - http://blogs.iis.net/thomad/archive/2006/11/05/quo-vadis-accessflags.aspx
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd list config /section:handlers -> r:accessPolicy="Read, Script"'
+
+  - id: 22023
+    title: "Ensure 'notListedIsapisAllowed' is set to false"
+    description: "The notListedIsapisAllowedattribute is a server-level setting that is located in the ApplicationHost.configfile in the <isapiCgiRestriction>element of the <system.webServer>section under <security>. This element ensures that malicious users cannot copy unauthorized ISAPI binaries to the Web server and then run them. It is recommended that notListedIsapisAllowedbe set to false."
+    rationale: "Restricting this attribute to falsewill help prevent potentially malicious ISAPI extensions from being run."
+    remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd.exe set config -section:system.webServer/security/isapiCgiRestriction /notListedIsapisAllowed:false"
+    compliance:
+      - cis: ["4.9"]
+      - cis_csc: ["18"]
+    references:
+      - http://technet.microsoft.com/en-us/library/dd378846%28WS.10%29.aspx
+      - http://www.iis.net/ConfigReference/system.webServer/security/isapiCgiRestriction
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd.exe list config -section:system.webServer/security/isapiCgiRestriction -> r:notListedIsapisAllowed="false"'
+
+  - id: 22024
+    title: "Ensure 'notListedCgisAllowed' is set to false"
+    description: "The notListedCgisAllowed attribute is a server-level setting that is located in the ApplicationHost.configfile in the <isapiCgiRestriction>element of the <system.webServer>section under <security>. This element ensures that malicious users cannot copy unauthorized CGI binaries to the Web server and then run them. It is recommended that notListedCgisAllowedbe set to false."
+    rationale: "Restricting this attribute to falsewill help prevent unlisted CGI extensions, including potentially malicious CGI scripts from being run."
+    remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd.exe set config -section:system.webServer/security/isapiCgiRestriction /notListedCgisAllowed:false"
+    compliance:
+      - cis: ["4.10"]
+      - cis_csc: ["18"]
+    references:
+      - http://technet.microsoft.com/en-us/library/dd391919%28WS.10%29.aspx
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd.exe list config -section:system.webServer/security/isapiCgiRestriction -> r:notListedCgisAllowed="false"'
+
+  - id: 22025
+    title: "Ensure 'Dynamic IP Address Restrictions' is enabled"
+    description: "IIS Dynamic IP Address Restrictions capability can be used to thwart DDos attacks. This is complimentary to the IP Addresses and Domain names Restrictions lists that can be manually maintained within IIS. In contrast, Dynamic IP address filtering allows administrators to configure the server to block access for IPs that exceed the specified request threshold. The default action Deny action for restrictions is to return a Forbidden response to the client."
+    rationale: "Dynamic IP address filtering allows administrators to configure the server to block access for IPs that exceed the specified number of requests or requests frequency. Ensure that you receive the Forbidden page once the block has been enforced."
+    remediation: 'Enter the following commands in powershell.exe to configure: Set-WebConfigurationProperty -pspath ''MACHINE/WEBROOT/APPHOST'' -filter "system.webServer/security/dynamicIpSecurity/denyByConcurrentRequests" -name"enabled" -value "True"Set-WebConfigurationProperty -pspath ''MACHINE/WEBROOT/APPHOST'' -filter "system.webServer/security/dynamicIpSecurity/denyByConcurrentRequests" -name "maxConcurrentRequests" -value <number of requests>'
+    compliance:
+      - cis: ["4.11"]
+      - cis_csc: ["9.5"]
+    references:
+      - http://www.iis.net/learn/get-started/whats-new-in-iis-8/iis-80-dynamic-ip-address-restrictions
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd.exe list config -section:system.webServer/security/dynamicIpSecurity -> r:denyByConcurrentRequests enabled="true" && r:denyByRequestRate enabled="true"'
+
+  #5 IIS Logging Recommendations
+  - id: 22026
+    title: "Ensure Default IIS web log location is moved"
+    description: "IIS will log relatively detailed information on every request. These logs are usually the first item looked at in a security response, and can be the most valuable. Malicious users are aware of this, and will often try to remove evidence of their activities. It is therefore recommended that the default location for IIS log files be changed to a restricted, non system drive"
+    rationale: "Moving IIS logging to a restricted, non-system drive will help mitigate the risk of logs being maliciously altered, removed, or lost in the event of system drive failure(s)."
+    remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd set config -section:sites -siteDefaults.logfile.directory:<new log location> "
+    compliance:
+      - cis: ["5.1"]
+      - cis_csc: ["6.4"]
+    references:
+      - https://technet.microsoft.com/en-us/library/cc770709(v=ws.10).aspx?
+    condition: none
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd.exe list config -section:system.applicationHost/sites -> r:directory="%SystemDrive%\inetpub\logs\LogFiles"'
+
+  #5.2 - Has to be done manually, requires user interaction
+  #    title: "Ensure Advanced IIS logging is enabled"
+
+  #5.3 - Has to be done manually, requires user interaction
+  #    title: "Ensure 'ETW Logging' is enabled"
+
+  #6 FTP Requests
+  - id: 22027
+    title: "Ensure FTP requests are encrypted"
+    description: "The new FTP Publishing Service for IIS supports adding an SSL certificate to an FTP site. Using an SSL certificate with an FTP site is also known as FTP-S or FTP over Secure Socket Layers (SSL). FTP-S is an RFC standard (RFC 4217) where an SSL certificate is added to an FTP site and thereby making it possible to perform secure file transfers."
+    rationale: "By using SSL, the FTP transmission is encrypted and secured from point to point and all FTP traffic as well as credentials are thereby guarded against interception."
+    remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd.exe set config -section:system.applicationHost/sites /siteDefaults.ftpServer.security.ssl.controlChannelPolicy:\"SslRequire\" /siteDefaults.ftpServer.security.ssl.dataChannelPolicy:\"SslRequire\" /commit:apphost"
+    compliance:
+      - cis: ["6.1"]
+      - cis_csc: ["14.4"]
+    references:
+      - http://www.windowsnetworking.com/articles_tutorials/IIS-FTP-Publishing-Service-Part3.html
+      - http://learn.iis.net/page.aspx/304/using-ftp-over-ssl/#03
+      - https://tools.ietf.org/html/rfc4217
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd.exe list config -section:system.applicationHost/sites -> r:controlChannelPolicy="SslRequire"&&dataChannelPolicy="SslRequire"'
+
+  - id: 22028
+    title: "Ensure FTP Logon attempt restrictions is enabled"
+    description: "IIS introduced a built-in network security feature to automatically block brute force FTP attacks. This can be used to mitigate a malicious client from attempting a brute-force attack on a discovered account, such as the local administrator account."
+    rationale: "Successful brute force FTP attacks can allow an otherwise unauthorized user to make changes to data that should not be made. This could allow the unauthorized user to modify website code by uploading malicious software or even changing functionality for items such as online payments."
+    remediation: "Enter the following command in AppCmd.exe to configure: %systemroot%\\system32\\inetsrv\\appcmd.exe set config -section:system.ftpServer/security/authentication /denyByFailure.enabled:\"True\" /commit:apphost"
+    compliance:
+      - cis: ["6.2"]
+      - cis_csc: ["9.1"]
+    references:
+      - http://www.iis.net/learn/get-started/whats-new-in-iis-8/iis-80-ftp-logon-attempt-restrictions
+    condition: all
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd.exe list config -section:system.ftpServer/security/authentication -> r:denyByFailure enabled="true"'
+
+  #7 Transport Encryption
+  - id: 22029
+    title: "Ensure HSTS Header is set"
+    description: 'HTTP Strict Transport Security (HSTS) allows a site to inform the user agent to communicate with the site only over HTTPS. This header takes two parameters: max-age, "specifies the number of seconds, after the reception of the STS header field, during whichthe user agent regards the host (from whom the message was received) as a Known HSTSHost [speaks only HTTPS]"; and includeSubDomains. includeSubDomains is an optionaldirective that defines how this policy is applied to subdomains. If includeSubDomains isincluded in the header, it provides the following definition: this HSTS Policy also applies toany hosts whose domain names are subdomains of the Known HSTS Host''s domain name.'
+    rationale: "HTTP Strict Transport Security (HSTS) is a simple and widely supported standard to protect visitors by ensuring that their browsers always connect to a website over HTTPS. HSTS exists to remove the need for the common, insecure practice of redirecting users from http:// to https:// URLs. HSTS relies on the User Agent/Browser to enforce the required behavior. All major browsers support it. If the browser doesn't support HSTS, it will be ignored.When a browser knows that a domain has enabled HSTS, it does two things:1. Always uses an https:// connection, even when clicking on an http:// link or after typing a domain into the location bar without specifying a protocol.2. Removes the ability for users to click through warnings about invalid certificates.A domain instructs browsers that it has enabled HSTS by returning an HTTP header over an HTTPS connection."
+    remediation: "To set the HTTP Header at the server level using an AppCmd.exe command, run the following command from an elevated command prompt: %systemroot%\\system32\\inetsrv\\appcmd.exe set config -section:system.webServer/httpProtocol /+\"customHeaders.[name='Strict-Transport-Security',value='max-age=480; preload']\""
+    compliance:
+      - cis: ["7.1"]
+      - cis_csc: ["18"]
+    condition: all
+    references:
+      - http://tools.ietf.org/html/rfc6797#section-5.1
+      - https://https.cio.gov/hsts/
+      - https://www.iis.net/configreference/system.webserver/httpprotocol/customheaders#006
+    rules:
+      - 'c:%systemroot%\system32\inetsrv\appcmd.exe list config -section:system.webServer/httpProtocol -> r:name="Strict-Transport-Security" && n:max-age=(\d) compare > 0'
+
+  - id: 22030
+    title: "Ensure SSLv2 is Disabled"
+    description: "This protocol is not considered cryptographically secure."
+    rationale: "Disabling weak protocols will help ensure the confidentiality and integrity of in-transit data."
+    remediation: "Set the following key is set to 0: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\SSL 2.0\\Server:Enabled HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\SSL 2.0\\Client:Enabled. Set the following key is set to 1: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\SSL 2.0\\Server:DisabledByDefault HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\SSL 2.0\\Client:DisabledByDefault"
+    compliance:
+      - cis: ["7.2"]
+      - cis_csc: ["14.4"]
+    references:
+      - http://technet.microsoft.com/en-us/library/dn786419.aspx
+      - http://technet.microsoft.com/en-us/library/dn786433.aspx
+      - http://msdn.microsoft.com/en-us/library/aa374757%28v=vs.85%29.aspx
+      - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\SSL 2.0\Server -> Enabled -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\SSL 2.0\Client -> Enabled -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\SSL 2.0\Server -> DisabledByDefault -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\SSL 2.0\Client -> DisabledByDefault -> 1'
+
+  - id: 22031
+    title: "Ensure SSLv3 is Disabled"
+    description: "This protocol is not considered cryptographically secure. Disabling it is recommended."
+    rationale: "Disabling weak protocols will help ensure the confidentiality and integrity of in-transit data."
+    remediation: "Set the following keys to 0: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\SSL 3.0\\Server:Enabled HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\SSL 3.0\\Client:Enabled. Set the following keys to 1: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\SSL 3.0\\Server:DisabledByDefault HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\SSL 3.0\\Client:DisabledByDefault"
+    compliance:
+      - cis: ["7.3"]
+      - cis_csc: ["14.4"]
+    references:
+      - https://www.openssl.org/~bodo/ssl-poodle.pdf
+      - http://technet.microsoft.com/en-us/library/dn786419.aspx
+      - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
+      - http://technet.microsoft.com/en-us/library/dn786433.aspx
+      - http://msdn.microsoft.com/en-us/library/aa374757%28v=vs.85%29.aspx
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\SSL 3.0\Server -> Enabled -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\SSL 3.0\Client -> Enabled -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\SSL 3.0\Server -> DisabledByDefault -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\SSL 3.0\Client -> DisabledByDefault -> 1'
+
+  - id: 22032
+    title: "Ensure TLS 1.0 is Disabled"
+    description: 'The PCI Data Security Standard 3.1 recommends disabling "early TLS" along with SSL: SSL and early TLS are not considered strong cryptography and cannot be used as a security control after June 30, 2016.'
+    rationale: "Disabling weak protocols will help ensure the confidentiality and integrity of in-transit data."
+    remediation: "Set the following key to 0: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.0\\Server:Enabled HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.0\\Client:Enabled. Set the following key is set to 1: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.0\\Server:DisabledByDefault HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.0\\Client:DisabledByDefault"
+    compliance:
+      - cis: ["7.4"]
+      - cis_csc: ["14.4"]
+    references:
+      - http://msdn.microsoft.com/en-us/library/aa374757%28v=vs.85%29.aspx
+      - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
+      - http://technet.microsoft.com/en-us/library/dn786419.aspx
+      - http://technet.microsoft.com/en-us/library/dn786433.aspx
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.0\Server -> Enabled -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.0\Client -> Enabled -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.0\Server -> DisabledByDefault -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.0\Client -> DisabledByDefault -> 1'
+
+  - id: 22033
+    title: "Ensure TLS 1.1 is Disabled"
+    description: "TLS 1.1 is required for backward compatibility. Ensure you fully test your application to ensure that backwards compatibility is not needed. If it is, build in exceptions as necessary for backwards compatibility"
+    rationale: "Disabling weak protocols will help ensure the confidentiality and integrity of in-transit data"
+    remediation: "Set the following key to 0: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.1\\Server:Enabled HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.1\\Client:Enabled. Set the following key is set to 1: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.1\\Server:DisabledByDefault HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.1\\Client:DisabledByDefault"
+    compliance:
+      - cis: ["7.5"]
+      - cis_csc: ["14.4"]
+    references:
+      - http://technet.microsoft.com/en-us/library/dn786433.aspx
+      - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
+      - http://technet.microsoft.com/en-us/library/dn786419.aspx
+      - http://msdn.microsoft.com/en-us/library/aa374757%28v=vs.85%29.aspx
+      - https://community.qualys.com/thread/16565-is-there-a-reason-for-still-having-tlsv11-enabled
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.1\Server -> Enabled -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.1\Client -> Enabled -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.1\Server -> DisabledByDefault -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.1\Client -> DisabledByDefault -> 1'
+
+  - id: 22034
+    title: "Ensure TLS 1.2 is Enabled"
+    description: "TLS 1.2 is the most recent and mature protocol for protecting the confidentiality and integrity of HTTP traffic."
+    rationale: "Enabling this protocol will help ensure the confidentiality and integrity of data in transit."
+    remediation: "Set the following key to 1: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.2\\Server:Enabled. Set the following key to 0: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.2\\Server:DisabledByDefault"
+    compliance:
+      - cis: ["7.6"]
+      - cis_csc: ["14.4"]
+    references:
+      - http://msdn.microsoft.com/en-us/library/aa374757%28v=vs.85%29.aspx
+      - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
+      - http://technet.microsoft.com/en-us/library/dn786419.aspx
+      - http://technet.microsoft.com/en-us/library/dn786433.aspx
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.2\Server -> Enabled -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.2\Server -> DisabledByDefault -> 0'
+
+  - id: 22035
+    title: "Ensure NULL Cipher Suites is Disabled"
+    description: "The NULL cipher does not provide data confidentiality or integrity. It is recommended that the NULL cipher be disabled."
+    rationale: "By disabling the NULL cipher, there is a better chance of maintaining data confidentiality and integrity."
+    remediation: "Set the following key to 0: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Ciphers\\NULL:Enabled"
+    compliance:
+      - cis: ["7.7"]
+      - cis_csc: ["14.4"]
+    references:
+      - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
+      - http://technet.microsoft.com/en-us/library/dn786419.aspx
+      - http://technet.microsoft.com/en-us/library/dn786433.aspx
+      - http://msdn.microsoft.com/en-us/library/aa374757%28v=vs.85%29.aspx
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Ciphers\NULL -> Enabled -> 0'
+
+  - id: 22036
+    title: "Ensure DES Cipher Suites is Disabled"
+    description: "DES is a weak symmetric-key cipher. It is recommended that it be disabled."
+    rationale: "By disabling DES, there is a better chance of maintaining data confidentiality and integrity."
+    remediation: "Set the following key to 0: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Ciphers\\DES 56/56:Enabled"
+    compliance:
+      - cis: ["7.8"]
+      - cis_csc: ["14.4"]
+    references:
+      - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
+      - http://technet.microsoft.com/en-us/library/dn786419.aspx
+      - http://technet.microsoft.com/en-us/library/dn786433.aspx
+      - http://msdn.microsoft.com/en-us/library/aa374757%28v=vs.85%29.aspx
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Ciphers\DES 56/56 -> Enabled -> 0'
+
+  - id: 22037
+    title: "Ensure RC4 Cipher Suites is Disabled"
+    description: "RC4 is a stream cipher that has known practical attacks. It is recommended that RC4 be disabled. The only RC4 cipher enabled by default on Server 2012 and 2012 R2 is RC4 128/128."
+    rationale: "The use of RC4 may increase an adversaries ability to read sensitive information sent over SSL/TLS."
+    remediation: "Set the following keys to 0 to disable RC4 40/128, RC4 56/128, RC4 64/128, RC4 128/128 ciphers: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Ciphers\\RC4 40/128:Enabled, HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Ciphers\\RC4 56/128:Enabled, HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Ciphers\\RC4 64/128:Enabled,HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Ciphers\\RC4 128/128:Enabled."
+    compliance:
+      - cis: ["7.9"]
+      - cis_csc: ["14.4"]
+    references:
+      - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
+      - http://technet.microsoft.com/en-us/library/dn786419.aspx
+      - http://technet.microsoft.com/en-us/library/dn786433.aspx
+      - http://msdn.microsoft.com/en-us/library/aa374757%28v=vs.85%29.aspx
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Ciphers\RC4 40/128 -> Enabled -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Ciphers\RC4 56/128 -> Enabled -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Ciphers\RC4 64/128 -> Enabled -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Ciphers\RC4 128/128 -> Enabled -> 0'
+
+  - id: 22038
+    title: "Ensure AES 128/128 Cipher Suite is Disabled"
+    description: "Enabling AES 128/128 may be required for client compatibility. Enable or disable this cipher suite accordingly."
+    rationale: "This item is Scored for the following reasons and should be disabled: Enabling AES 256/256 is recommended. This cipher does not suffer from known practical attacks."
+    remediation: "Set the following key to 0: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Ciphers\\AES 128/128:Enabled"
+    compliance:
+      - cis: ["7.10"]
+      - cis_csc: ["14.4"]
+    references:
+      - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
+      - http://technet.microsoft.com/en-us/library/dn786419.aspx
+      - http://technet.microsoft.com/en-us/library/dn786433.aspx
+      - http://msdn.microsoft.com/en-us/library/aa374757%28v=vs.85%29.aspx
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Ciphers\AES 128/128 -> Enabled -> 0'
+
+  - id: 22039
+    title: "Ensure AES 256/256 Cipher Suite is Enabled"
+    description: "AES 256/256 is the most recent and mature cipher suite for protecting the confidentiality and integrity of HTTP traffic. Enabling AES 256/256 is recommended. This is enabled by default on Server 2012 and 2012 R2."
+    rationale: "Enabling this cipher will help ensure the confidentiality and integrity of data in transit."
+    remediation: "Set the following key to 1: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Ciphers\\AES 128/128:Enabled"
+    compliance:
+      - cis: ["7.11"]
+      - cis_csc: ["14.4"]
+    references:
+      - https://www.owasp.org/index.php/Testing_for_SSL-TLS_%28OWASP-CM-001%29
+      - http://technet.microsoft.com/en-us/library/dn786419.aspx
+      - http://technet.microsoft.com/en-us/library/dn786433.aspx
+      - http://msdn.microsoft.com/en-us/library/aa374757%28v=vs.85%29.aspx
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Ciphers\AES 256/256 -> Enabled -> 1'
+
+  - id: 22040
+    title: "Ensure TLS Cipher Suite ordering is Configured"
+    description: "Cipher suites are a named combination of authentication, encryption, message authentication code, and key exchange algorithms used for the security settings of a network connection using TLS protocol. Clients send a cipher list and a list of ciphers that it supports in order of preference to a server. The server then replies with the cipher suite that it selects from the client cipher suite list"
+    rationale: "Cipher suites should be ordered from strongest to weakest in order to ensure that the more secure configuration is used for encryption between the server and client."
+    remediation: "Set HKLM\\SOFTWARE\\Policies\\Microsoft\\Cryptography\\Configuration\\SSL\\00010002:Functions to TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256."
+    compliance:
+      - cis: ["7.12"]
+      - cis_csc: ["14.4"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Cryptography\Configuration\SSL\00010002 -> Functions -> TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256.'

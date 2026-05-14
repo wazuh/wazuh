@@ -1,0 +1,13 @@
+     - Active response bekapcsolva.
+
+   - Alapértelmezés szerint engedélyezheti a host-deny és a
+     firewall-drop responses funkciókat.
+     Az első hozzá fog adni egy hosztot az /etc/hosts.deny
+     fájlhoz, és a második pedig blokkolni fogja a hosztot
+     (linux esetében) az iptables vagy (Solaris, FreeBSD
+     vagy NetBSD esetében) az ipfilter tűzfalakban.
+   - Ezek a funkciók az SSHD brute force scan-ek,
+     a portscan-ek és néhány egyéb támadási forma
+     megakadályozására használhatók.
+     Példának okáért ezeket a blokkolási mechanizmusokat,
+     akár a snort riasztásokra is alapozhatja.

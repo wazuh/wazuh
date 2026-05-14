@@ -1,0 +1,5 @@
+ 
+ Błąd 0x1.
+ Skrypt może być tylko uruchamiany ze swojego katalogu.
+ Przejdź do katalogu w którym jest skrypt.
+ Następnie uruchom poprzez: ./install.sh ."

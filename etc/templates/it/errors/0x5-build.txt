@@ -1,0 +1,3 @@
+
+ Error 0x5.
+ Errore di compilazione. Impossibile terminare l'installazione.

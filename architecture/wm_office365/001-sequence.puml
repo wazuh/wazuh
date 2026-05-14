@@ -1,0 +1,33 @@
+' Copyright (C) 2015, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml wm_office365
+box "Office365 Module" #LightBlue
+participant main
+participant wmodules
+participant config
+participant thread
+participant wm_office365
+end box
+
+activate main #Red
+main -> wmodules : Setup modules
+wmodules -> config : Read configuration
+config -> config : Store Office365 configuration
+wmodules <-- config
+main <-- wmodules
+
+main -> thread ++ #Red : Launch Office365 thread
+main <-- thread
+thread -> wm_office365 : Office365 module initialization
+
+database office365_API
+wm_office365 -> wm_office365 : Execute first scan
+rnote over wm_office365, office365_API: **Scan Block**
+loop
+    wm_office365 -> wm_office365 : Sleep
+    wm_office365 -> wm_office365 : Execute scan
+    rnote over wm_office365, office365_API: **Scan Block**
+end
+@enduml wm_office365

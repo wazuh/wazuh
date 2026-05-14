@@ -1,0 +1,45 @@
+{
+  "extensions": {
+    "settings": {
+      "ahfgeienlihckogmohjhadlkjgocpleb": {
+        "first_install_time": "13338929357297670",
+        "from_webstore": false,
+        "path": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/116.0.5845.179/Resources/web_store",
+        "state": 1
+      },
+      "fignfifoniblkonapihmkfakmlgkbkcf": {
+        "first_install_time": "13398360139756861",
+        "from_webstore": false,
+        "path": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/138.0.7204.169/Resources/network_speech_synthesis/mv3"
+      },
+      "ghbmnnjooekpmoecnnnilnnbdlolhkhi": {
+        "first_install_time": "13338929358441853",
+        "from_webstore": true,
+        "path": "ext1/1.2.3"
+      },
+      "mhjfbmdgcfjbbpaeojofohoefgiehjai": {
+        "first_install_time": "13338929357298123",
+        "from_webstore": false,
+        "path": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/116.0.5845.179/Resources/pdf",
+        "state": 1
+      },
+      "neajdppkdcdipfabeoofebfddakdcjhd": {
+        "first_install_time": "13338929357299806",
+        "from_webstore": false,
+        "path": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/116.0.5845.179/Resources/network_speech_synthesis",
+        "state": 1
+      },
+      "nkeimhogjdpnpccoofpliimaahmaaome": {
+        "first_install_time": "13338929357299509",
+        "from_webstore": false,
+        "path": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/138.0.7204.169/Resources/hangout_services",
+        "state": 1
+      },
+      "nmmhkkegccagdldgiimedpiccmgmieda": {
+        "first_install_time": "13338929358019937",
+        "from_webstore": true,
+        "path": "ext2/1.2.3"
+      }
+    }
+  }
+}

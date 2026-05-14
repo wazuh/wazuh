@@ -1,0 +1,566 @@
+[
+  {
+    "id": "1",
+    "name": "Initial",
+    "rules": [
+      {
+        "FIND$": {
+          "name": "Bill"
+        }
+      }
+    ]
+  },
+  {
+    "id": "2",
+    "name": "First",
+    "rules": [
+      {
+        "FIND": {
+          "r'^auth[a-zA-Z]+$'": [
+            "administrator"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "3",
+    "name": "Second",
+    "rules": [{
+      "OR": [
+        {
+          "FIND$": {
+            "office": "r'^[0-9]+$'"
+          }
+        },
+        {
+          "AND": [
+            {
+              "MATCH": {
+                "authLevel": ["administrator"],
+                "department": ["Technical"]
+              }
+            }
+          ]
+        }
+      ]
+    }]
+  },
+  {
+    "id": "4",
+    "name": "Third",
+    "rules": [{
+      "AND": [
+        {
+          "MATCH": {
+            "office": "20"
+          }
+        },
+        {
+          "AND": [
+            {
+              "MATCH": {
+                "bindings": {
+                  "authLevel": ["administrator"]
+                }
+              },
+              "FIND$": {
+                "department": ["Technical"]
+              }
+            }
+          ]
+        },
+        {
+          "AND": [
+            {
+              "MATCH": {
+                "bindings": {
+                  "authLevel": ["basic"]
+                }
+              }
+            },
+            {
+              "OR": [
+                {
+                  "FIND": {
+                    "authLevel": ["administrator"]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }]
+  },
+  {
+    "id": "5",
+    "name": "Fourth",
+    "rules": [{
+      "AND": [
+        {
+          "MATCH": {
+            "office": "r'^[0-9]+$'"
+          }
+        },
+        {
+          "FIND": {
+            "r'^auth[a-zA-Z]+$'": ["r'^admin[a-z0-9]+$'"],
+            "area": [
+              "agents"
+            ]
+          }
+        },
+        {
+          "OR": [
+            {
+              "MATCH$": {
+                "name": "Bill",
+                "office": "20"
+              }
+            },
+            {
+              "OR": {
+                "FIND": {
+                  "department": ["Commercial"]
+                },
+                "OR": [
+                  {
+                    "MATCH": {
+                      "authLevel": ["administrator"],
+                      "department": ["Technical"]
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }]
+  },
+  {
+    "id": "6",
+    "name": "Fifth",
+    "rules": [{
+      "OR": [
+        {
+          "AND": [
+            {
+              "MATCH": {
+                "office": "r'^[0-9]*'$"
+              }
+            }
+          ]
+        },
+        {
+          "AND": [
+            {
+              "NOT": {
+                "MATCH$": {
+                  "authLevel": ["administrator1"]
+                }
+              }
+            },
+            {
+              "NOT": {
+                "FIND": {
+                  "department": ["Technical1"],
+                  "authLevel": ["basic1"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "AND": [
+            {
+              "authLevel": ["basic1"],
+              "office": "211"
+            },
+            {
+              "department": ["Commercial1"],
+              "OR": [
+                {
+                  "authLevel": ["administrator1"],
+                  "department": ["Technical1"]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }]
+  },
+  {
+    "id": "7",
+    "name": "Sixth",
+    "rules": [{
+      "AND": [
+        {
+          "AND": [
+            {
+              "MATCH$": {
+                "office": "r'^[0-9]*'$",
+                "disabled": false,
+                "department": ["Technical"]
+              }
+            }
+          ]
+        },
+        {
+          "AND": [
+            {
+              "MATCH$": {
+                "bindings": {
+                  "r'^auth[a-zA-Z]+$'": ["r'^[a-z]+$'"],
+                  "r'^area$'": ["r'^[a-z]*$'"]
+                }
+              }
+            },
+            {
+              "FIND": {
+                "department": ["Technical"],
+                "office": "20"
+              }
+            }
+          ]
+        },
+        {
+          "AND": [
+            {
+              "MATCH$": {
+                "test": {
+                  "new": {
+                    "test2": ["r'^[a-z]*$'"]
+                    }
+                }
+              }
+            },
+            {
+              "MATCH$": {
+                "test": {
+                  "new": {
+                    "test3": {
+                      "test4": ["r'^[a-z]*$'"]
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }]
+  },
+  {
+    "id": "8",
+    "name": "Seventh",
+    "rules": [{
+      "AND": [
+        {
+          "AND": [
+            {
+              "MATCH$": {
+                "office": "r'^[0-9]*'$",
+                "disabled": false
+              }
+            }
+          ]
+        },
+        {
+          "AND": [
+            {
+              "MATCH": {
+                "bindings": {
+                  "r'^auth[a-zA-Z]+$'": ["r'^[a-z]+$'"],
+                  "r'^area$'": ["r'^[a-z]*$'"]
+                }
+              }
+            },
+            {
+              "FIND": {
+                "department": ["Technical"],
+                "office": "20"
+              }
+            }
+          ]
+        },
+        {
+          "AND": [
+            {
+              "MATCH": {
+                "test": {
+                  "new": {
+                    "test2": ["r'^[a-z]*$'"]
+                    }
+                }
+              }
+            },
+            {
+              "MATCH": {
+                "test": {
+                  "new": {
+                    "test3": {
+                      "test4": ["r'^[a-z]*$'"]
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }]
+  },
+  {
+    "id": "9",
+    "name": "Eighth",
+    "rules": [
+      {
+        "AND": [
+          {
+            "FIND":
+              {
+                "last": "not too deep"
+              }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "10",
+    "name": "Nineth",
+    "rules": [{
+      "AND": [
+        {
+          "FIND$":
+            {
+              "last": "not too deep"
+            }
+        }
+      ]
+    }]
+  },
+  {
+    "id": "11",
+    "name": "Tenth",
+    "rules": [{
+      "AND": [
+        {
+          "MATCH":
+            {
+              "deep": {
+                "deeep": [
+                  {
+                    "moredeep": [
+                      {
+                        "toodeep": [
+                          {
+                            "insanedeep": [
+                              {
+                                "nocomments": {
+                                  "last": "not too deep"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+        }
+      ]
+    }]
+  },
+  {
+    "id": "12",
+    "name": "Eleventh",
+    "rules": [{
+      "AND": [
+        {
+          "MATCH":
+            {
+              "deep": {
+                "deeep": [
+                  {
+                    "moredeep": [
+                      {
+                        "toodeep": [
+                          {
+                            "insanedeep": [
+                              {
+                                "nocomments": {
+                                  "last": "too deep"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+        }
+      ]
+    }]
+  },
+  {
+    "id": "13",
+    "name": "Twelfth",
+    "rules": [{
+      "AND": [
+        {
+          "FIND":
+            {
+              "deep": {
+                "deeep": {
+                  "moredeep": [
+                    {
+                      "toodeep": [
+                        {
+                          "insanedeep": [
+                            {
+                              "nocomments": {
+                                "last": "too deep"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+        }
+      ]
+    }]
+  },
+  {
+    "id": "14",
+    "name": "Thirteenth",
+    "rules": [{
+      "AND": [
+        {
+          "MATCH":
+            {
+              "deep": {
+                "deeep": [
+                  {
+                    "moredeep": [
+                      {
+                        "toodeep": [
+                          {
+                            "insanedeep": [
+                              {
+                                "nocomments": {
+                                  "last": "not too deep"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+        },
+        {
+          "MATCH": {
+            "user": "r'^[a-z]{2}ep"
+          }
+        },
+        {
+          "NOT": {
+            "user": "peed"
+          }
+        }
+      ]
+    }]
+  },
+  {
+    "id": "15",
+    "name": "Fourteenth",
+    "rules": [
+      {
+        "AND": [
+          {
+            "FIND$":
+              {
+                "deep": {
+                  "deeep": [
+                    {
+                      "moredeep": [
+                        {
+                          "toodeep": [
+                            {
+                              "nocomments": {
+                                "last": "not too deep"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+          },
+          {
+            "MATCH": {
+              "user": "r'^[a-z]{2}ep"
+            }
+          },
+          {
+            "NOT": {
+              "user": "peed"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "16",
+    "name": "Fifteenth",
+    "rules": [
+      {
+        "FIND$": {
+          "name": "r'^\\[[a-z]*'"
+        }
+      }
+    ]
+  },
+  {
+    "id": "17",
+    "name": "Sixteenth",
+    "rules": [
+      {
+        "FIND$": {
+          "test": "Old"
+        }
+      },
+      {
+        "FIND": {
+          "r'^auth[a-zA-Z]+$'": [
+            "testing"
+          ]
+        }
+      },
+      {
+        "FIND": {
+          "authLevel": ["basic1"]
+        }
+      }
+    ]
+  }
+]

@@ -1,0 +1,8 @@
+<!-- Test: decoder with no existing parent -->
+<decoder name="name-0">
+  <program_name>^test</program_name>
+</decoder>
+
+<decoder name="name-1">
+  <parent>test-parent</parent>
+</decoder>

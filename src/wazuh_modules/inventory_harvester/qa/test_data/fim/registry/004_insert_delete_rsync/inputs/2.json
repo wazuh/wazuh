@@ -1,0 +1,9 @@
+{
+  "agent_info": {
+    "agent_id": "002"
+  },
+  "action": "deleteRegistryKey",
+  "data": {
+    "full_path": "e910515a78e3dea8441c6a9013379bc61d8651ad"
+  }
+}

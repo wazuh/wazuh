@@ -1,0 +1,2 @@
+pytest==8.3.4
+jsonschema==4.23.0

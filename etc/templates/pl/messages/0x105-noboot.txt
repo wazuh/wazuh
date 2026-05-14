@@ -1,0 +1,4 @@
+
+ - Nie została podjęta żadna akcja aby skonfigurować Wazuh
+   do startowania podczas bootowania.
+   Dodaj następującą linię do skryptu init:

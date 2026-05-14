@@ -1,0 +1,8 @@
+
+ - Si desea monitorizar algún otro registro, solamente
+   tendrá que editar el archivo ossec.conf y agregar una
+   nueva entrada de tipo localfile.
+   Cualquier otra pregunta de configuración podrá ser
+   respondida en https://documentation.wazuh.com/.
+
+   --- Presione ENTER para continuar ---

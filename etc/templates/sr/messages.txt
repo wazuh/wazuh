@@ -1,0 +1,128 @@
+# Configuration
+yes="d"
+no="n"
+yesmatch="d"
+nomatch="n"
+agent="agent"
+local="lokalna"
+server="server"
+help="pomoć"
+
+# Global
+moreinfo="Vise informacija na: "
+starting="Zapocinje Wazuh"
+systemis="Sistem je"
+modifiedinit="Init skript je modifikovan da započne Wazuh za vreme startovanja ."
+noboot="Nepoznat sistem. Init skript nije dodat."
+
+# Part 1
+installscript="Instalacioni Skript"
+system="Sistem"
+user="Korisnik"
+host="Host"
+hitanyorabort="Pritisni ENTER da nastavis ili Ctrl-C da poništiš."
+whattoinstall="Koju vrstu instalacije želiš (manager, agent, lokalnu ili pomoć)?"
+serverchose="Izabrana instalacija manager (server)"
+clientchose="Izabrana instalacija agent (klijent)"
+localchose="Izabrana lokalna instalacija"
+
+# Part 2
+settingupenv="Postavljanje instalacionog okruženja"
+wheretoinstall="Izaberi gde želiš da instaliraš Wazuh"
+installat="Instalacija će biti izvršena na "
+deletedir="Instalacioni direktorij već postoji. Da li da ga obrišem?"
+
+# Part 3
+configuring="Trenutno vrši konfiguraciju"
+mailnotify="Da li želiš email notifikaciju?"
+nomail="Email notifikacija onesposobljena"
+whatsemail="Koja je tvoja email adresa?"
+yoursmtp="Našli smo da je tvoj SMTP server"
+usesmtp="Da li želiš da ga koristiš?"
+usingsmtp="Koristi SMTP server: "
+whatsmtp="Koji je tvoj SMTP server IP/host?"
+
+# Part 3.1/agent
+serverip="Koja je IP adresa Wazuh servera?"
+serveraddr="Koja je IP adresa/host Wazuh servera?"
+addingip="Dodaje serverov IP"
+addingname="Dodaje serverov hostname"
+
+
+# Part 3.2
+runsyscheck="Da li želiš da pustiš daemon provere integriteta?"
+nosyscheck="Ne obavlja syscheck (daemon provere integriteta)"
+yessyscheck="Obavlja syscheck (daemon provere integriteta)"
+
+# Part 3.3
+runrootcheck="Da li želiš da pustiš engine za otkrivanje rootkit-a?"
+norootcheck="Ne obavlja rootcheck (otkrivanje rootkit-a )"
+yesrootcheck="Obavlja rootcheck (otkrivanje rootkit-a)"
+
+# Part 3.4
+runopenscap="Da li želiš da pustiš OpenSCAP?"
+norunopenscap="Ne obavlja OpenSCAP"
+yesrunopenscap="Obavlja OpenSCAP"
+
+# Part 3.5/server/local
+enable_ar="Da li želiš da osposobiš aktivnu reakciju?"
+noactive="Aktivna reakcija onesposobljena"
+nohosts="host-deny onesposobljen"
+yeshosts="host-deny osposobljen (lokalni) za nivoe >= 6"
+firewallar="Da li želiš da osposobiš firewall-drop reakciju?"
+nofirewall="firewall-drop onesposobljen."
+yesfirewall="firewall-drop osposobljen (lokalni) za nivoe >= 6"
+defaultwhitelist="Default bele liste za aktivnu reakciju:"
+addwhite="Da li želiš da dodaš još IP-jeva beloj listi?"
+ipswhite="IP-jevi (odvojen prostor): "
+
+# Part 3.5/server/local
+syslog="Da li želiš da osposobiš udaljeni syslog (port 514 udp)?"
+nosyslog="Udaljeni syslog onesposobljen"
+yessyslog="Udaljeni syslog osposobljen"
+
+# Part 3.4/3.5
+readlogs="Postavlja konfiguraciju da analizira sledeće logove:"
+
+# Part 3.7
+runauthd="Da li želite da pokrenete Auth uslugu?"
+norunauthd="Ne radi Auth servis"
+yesrunauthd="Pokretanje Auth usluge"
+
+# Part 4
+installing="Instalira sistem"
+startwazuh="Želite li pokrenuti Wazuh nakon instalacije?"
+nowazuhstart="Wazuh neće početi na kraju instalacije."
+yeswazuhstart="Wazuh će započeti na kraju instalacije."
+runningmake="Vrši Makefile"
+
+# Final
+configurationdone="Konfiguracija je dobro završena"
+tostart="Da se započne Wazuh"
+tostop="Da se zaustavi Wazuh"
+configat="Konfiguracija se može videti ili modifikovati na"
+addserveragent="Da bi se agent povezao sa serverom, treba da dodaš svakog od tvojih agenata
+serveru."
+presskey="Pritisni ENTER da nastaviš"
+
+# Update
+wanttoupdate="Već imaš instaliran Wazuh. Da li želiš da ga ažuriraš?"
+mustuninstall="Instalacija se ne može nastaviti bez deinstalacije starih verzija. Izlaz."
+unabletoupdate="U nemogućnosti da izvrši ažuriranje. Potrebna je potpuna nova instalacija."
+updatecompleted="Ažuriranje završeno."
+updatefailed="Ažuriranje nije uspelo."
+updaterules="Da li želiš da ažuriraš pravila?"
+updatingrules="Pravila ažuriranja."
+notupdatingrules="Ne ažurira pravila."
+update_rev_newconf1="Backup iz svog ossec.conf je stvoren na $INSTALLDIR/etc/ossec.conf.orig."
+update_rev_newconf2="Molimo potvrdite svoju konfiguraciju ossec.conf na $INSTALLDIR/etc/ossec.conf."
+
+# Pf support
+pfenable="Da li želiš da koristiš PF firewall u aktivnoj reakciji?"
+nopf="PF reakcija onesposobljena."
+pftablename="Ime PF table za korišćenje?"
+pfmessage="Dodaj sledeće redove početku tvojih PF pravila"
+
+# CA store
+addcastore="Želite li dodati još certifikata?"
+castore="Unesite put do certifikata X509 ili mape certifikata: "

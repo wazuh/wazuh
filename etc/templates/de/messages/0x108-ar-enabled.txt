@@ -1,0 +1,11 @@
+   - Active response eingeschaltet."
+
+   - Standardmäßig kann 'host-deny' und 'firewall-drop'
+     aktiviert werden. 'host-deny' fügt eine IP in die
+     Datei /etc/hosts.deny ein. 'firewall-response' fügt
+     eine IP per iptables (Linux) oder ipfilter (Solaris,
+     FreeBSD usw) in die Firewall Regeln ein.
+
+   - Beide können benutzt werden um SSH Brute-Force scans,
+     Portscans oder andere Attacken zu verhindern. Es kann
+     auch durch einen Snort-Event geblockt werden.

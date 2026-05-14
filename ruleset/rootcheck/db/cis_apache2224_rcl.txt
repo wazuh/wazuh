@@ -1,0 +1,512 @@
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+# OSSEC Linux Audit - (C) 2017
+#
+# Released under the same license as OSSEC.
+# More details at the LICENSE file included with OSSEC or online
+# at: https://github.com/ossec/ossec-hids/blob/master/LICENSE
+#
+# [Application name] [any or all] [reference]
+# type:<entry name>;
+#
+# Type can be:
+#             - f (for file or directory)
+#             - p (process running)
+#             - d (any file inside the directory)
+#
+# Additional values:
+# For the registry , use "->" to look for a specific entry and another
+# "->" to look for the value.
+# For files, use "->" to look for a specific value in the file.
+#
+# Values can be preceeded by: =: (for equal) - default
+#                             r: (for ossec regexes)
+#                             >: (for strcmp greater)
+#                             <: (for strcmp  lower)
+# Multiple patterns can be specified by using " && " between them.
+# (All of them must match for it to return true).
+
+# CIS Checks for Apache Https Server 
+# Based on Center for Internet Security Benchmark for Apache HttpSserver 2.4 v1.3.1 and Apache HttpsServer 2.2 v3.4.1 (https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308)
+#
+#
+$main-conf=/etc/apache2/apache2.conf,/etc/httpd/conf/httpd.conf;
+$conf-dirs=/etc/apache2/conf-enabled,/etc/apache2/mods-enabled,/etc/apache2/sites-enabled,/etc/httpd/conf.d,/etc/httpd/modsecurity.d;
+$ssl-confs=/etc/apache2/mods-enabled/ssl.conf,/etc/httpd/conf.d/ssl.conf;
+$mods-en=/etc/apache2/mods-enabled;
+$request-confs=/etc/httpd/conf/httpd.conf,/etc/apache2/mods-enabled/reqtimeout.conf;
+$traceen=/etc/apache2/apache2.conf,/etc/httpd/conf/httpd.conf,/etc/apache2/conf-enabled/security.conf;
+#
+#
+#2.3 Disable WebDAV Modules
+[CIS - Apache Configuration - 2.3: WebDAV Modules are enabled] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+d:$conf-dirs -> conf -> !r:^# && r:loadmodule\sdav;
+d:$conf-dirs -> load -> !r:^# && r:loadmodule\sdav;
+f:/etc/httpd/conf.d -> !r:^# && r:loadmodule\sdav;
+d:$mods-en -> dav.load;
+#
+#
+#2.4 Disable Status Module
+[CIS - Apache Configuration - 2.4: Status Module is enabled] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+d:$conf-dirs -> conf -> !r:^# && r:loadmodule\sstatus;
+d:$conf-dirs -> load -> !r:^# && r:loadmodule\sstatus;
+f:/etc/httpd/conf.d -> !r:^# && r:loadmodule\sstatus;
+d:$mods-en -> status.load;
+#
+#
+#2.5 Disable Autoindex Module
+[CIS - Apache Configuration - 2.5: Autoindex Module is enabled] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+d:$conf-dirs -> conf -> !r:^# && r:loadmodule\sautoindex;
+d:$conf-dirs -> load -> !r:^# && r:loadmodule\sautoindex;
+f:/etc/httpd/conf.d -> !r:^# && r:loadmodule\sautoindex;
+d:$mods-en -> autoindex.load;
+#
+#
+#2.6 Disable Proxy Modules
+[CIS - Apache Configuration - 2.6: Proxy Modules are enabled] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+d:$conf-dirs -> conf -> !r:^# && r:loadmodule\sproxy;
+d:$conf-dirs -> load -> !r:^# && r:loadmodule\sproxy;
+f:/etc/httpd/conf.d -> !r:^# && r:loadmodule\sproxy;
+d:$mods-en -> proxy.load;
+#
+#
+#2.7 Disable User Directories Modules
+[CIS - Apache Configuration - 2.7: User Directories Modules are enabled] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+d:$conf-dirs -> conf -> !r:^# && r:loadmodule\suserdir;
+d:$conf-dirs -> load -> !r:^# && r:loadmodule\suserdir;
+f:/etc/httpd/conf.d -> !r:^# && r:loadmodule\suserdir;
+d:$mods-en -> userdir.load;
+#
+#
+#2.8 Disable Info Module
+[CIS - Apache Configuration - 2.8: Info Module is enabled] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+d:$conf-dirs -> conf -> !r:^# && r:loadmodule\sinfo;
+d:$conf-dirs -> load -> !r:^# && r:loadmodule\sinfo;
+d:$conf-dirs -> conf -> !r:^# && r:loadmodule\sinfo;
+d:$mods-en -> info.load;
+#
+#
+#3.2 Give the Apache User Account an Invalid Shell 
+[CIS - Apache Configuration - 3.2: Apache User Account has got a valid shell] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:/etc/passwd -> r:/var/www && !r:\.*/bin/false$|/sbin/nologin$;
+#
+#
+#3.3 Lock the Apache User Account
+[CIS - Apache Configuration - 3.3: Lock the Apache User Account] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:/etc/shadow -> r:^daemon|^wwwrun|^www-data|^apache && !r:\p!\.*$; 
+#
+#
+#4.4 Restrict Override for All Directories
+[CIS - Apache Configuration - 4.4: Restrict Override for All Directories] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+d:$conf-dirs -> conf -> !r:^# && !r:\w+ && r:allowoverride && !r:none$;
+d:$conf-dirs -> conf -> !r:^# && !r:\w+ && r:allowoverridelist;
+f:$main-conf -> !r:^# && !r:\w+ && r:allowoverride && !r:none$;
+f:$main-conf -> !r:^# && !r:\w+ && r:allowoverridelist;
+#
+#
+#5.3 Minimize Options for Other Directories
+[CIS - Apache Configuration - 5.3: Minimize Options for other directories] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+d:$conf-dirs -> conf -> !r:^# && r:options\sincludes;
+f:$main-conf -> !r:^# && r:options\sincludes;
+#
+#
+#5.4.1 Remove default index.html sites
+[CIS - Apache Configuration - 5.4.1: Remove default index.html sites] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+d:/var/www -> index.html;
+d:/var/www/html -> index.html;
+#
+#
+#5.4.2 Remove the Apache user manual
+[CIS - Apache Configuration - 5.4.2: Remove the Apache user manual] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+d:/etc/httpd/conf.d -> manual.conf; 
+d:/etc/apache2/conf-enabled -> apache2-doc.conf;
+#
+#
+#5.4.5 Verify that no Handler is enabled 
+[CIS - Apache Configuration - 5.4.5: A Handler is configured] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+d:$conf-dirs -> conf -> !r:^# && r:/wsethandler;
+f:$main-conf -> !r:^# && r:/wsethandler;
+#
+#
+#5.5 Remove default CGI content printenv 
+[CIS - Apache Configuration - 5.5: Remove default CGI content printenv] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+d:/var/www/cgi-bin -> printenv;
+d:/usr/lib/cgi-bin -> printenv;
+#
+#
+#5.6 Remove default CGI content test-cgi 
+[CIS - Apache Configuration - 5.6: Remove default CGI content test-cgi] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+d:/var/www/cgi-bin -> test-cgi;
+d:/usr/lib/cgi-bin -> test-cgi;
+#
+#
+#5.7 Limit HTTP Request Method
+[CIS - Apache Configuration - 5.7: Disable HTTP Request Method] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:$main-conf -> !r:<limitexcept\sget\spost\soptions>;
+#
+#
+#5.8 Disable HTTP Trace Method
+[CIS - Apache Configuration - 5.8: Disable HTTP Trace Method] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:$traceen -> !r:^# && r:traceenable\s+on\s*$;
+#
+#
+#5.9 Restrict HTTP Protocol Versions
+[CIS - Apache Configuration - 5.9: Restrict HTTP Protocol Versions] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:/etc/httpd/conf/httpd.conf -> !r:loadmodule\srewrite;
+d:$mods-en -> !f:rewrite.load;
+f:$main-conf -> !r:rewriteengine\son;
+f:$main-conf -> !r:rewritecond && !r:%{THE_REQUEST} && !r:!HTTP/1\\.1\$; 
+f:$main-conf -> !r:rewriterule && !r:.* - [F];
+#
+#
+#5.12 Deny IP Address Based Requests
+[CIS - Apache Configuration - 5.12: Deny IP Address Based Requests] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:/etc/httpd/conf/httpd.conf -> !r:loadmodule\srewrite;
+d:$mods-en -> !f:rewrite.load;
+f:$main-conf -> !r:rewriteengine\son;
+f:$main-conf -> !r:rewritecond && !r:%{HTTP_HOST} && !r:www\\.\w+\\.\w+ [NC]$;
+f:$main-conf -> !r:rewritecond && !r:%{REQUEST_URI} && !r:/error [NC]$; 
+f:$main-conf -> !r:rewriterule && !r:.\(.*\) - [L,F]$;
+#
+#
+#5.13 Restrict Listen Directive 
+[CIS - Apache Configuration - 5.13: Restrict Listen Directive] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+d:$conf-dirs -> conf -> !r:^# && r:listen\s80$;
+d:$conf-dirs -> conf -> !r:^# && r:listen\s0.0.0.0\p80;
+d:$conf-dirs -> conf -> !r:^# && r:listen\s[\p\pffff\p0.0.0.0]\p80;
+f:$main-conf -> !r:^# && r:listen\s80$;
+f:$main-conf -> !r:^# && r:listen\s0.0.0.0\p\d*;
+f:$main-conf -> !r:^# && r:listen\s[\p\pffff\p0.0.0.0]\p\d*; 
+f:/etc/apache2/sites-enabled/000-default.conf -> !r:^# && r:listen\s80$;
+f:/etc/apache2/sites-enabled/000-default.conf -> !r:^# && r:listen\s0.0.0.0\p\d*;
+f:/etc/apache2/sites-enabled/000-default.conf -> !r:^# && r:listen\s[\p\pffff\p0.0.0.0]\p\d*;
+f:/etc/apache2/ports.conf -> !r:^# && r:listen\s80$;
+f:/etc/apache2/ports.conf -> !r:^# && r:listen\s0.0.0.0\p\d*;
+f:/etc/apache2/ports.conf -> !r:^# && r:listen\s[\p\pffff\p0.0.0.0]\p\d*;
+#
+#
+#5.14 Restrict Browser Frame Options 
+[CIS - Apache Configuration - 5.14: Restrict Browser Frame Options] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:$main-conf -> !r:header\salways\sappend\sx-frame-options && !r:sameorigin|deny; 
+#
+#
+#6.1 Configure the Error Log to notice at least
+[CIS - Apache Configuration - 6.1: Configure the Error Log to notice at least] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:$main-conf -> !r:^# && r:loglevel\snotice\score\p && r:warn|emerg|alert|crit|error|notice;
+f:$main-conf -> !r:loglevel\snotice\score\p && !r:info|debug;
+#
+#
+#6.2 Configure a Syslog facility for Error Log 
+[CIS - Apache Configuration - 6.2: Configure a Syslog facility for Error Log] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:$main-conf -> !r:errorlog\s+\p*syslog\p\.*\p*;
+#
+#
+#7.6 Disable SSL Insecure Renegotiation 
+[CIS - Apache Configuration - 7.6: Disable SSL Insecure Renegotiation] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:$ssl-confs -> !r:^\t*\s*# && r:sslinsecurerenegotiation\s+on\s*;
+f:$ssl-confs -> !r:^\t*\s*# && r:sslinsecurerenegotiation\s*$;
+#
+#
+#7.7 Ensure SSL Compression is not enabled 
+[CIS - Apache Configuration - 7.7: Ensure SSL Compression is not enabled] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:$ssl-confs -> !r:^\t*\s*# && r:sslcompression\s+on\s*;
+f:$ssl-confs -> !r:^\t*\s*# && r:sslcompression\s*$;
+#
+#
+#7.8 Disable SSL TLS v1.0 Protocol
+[CIS - Apache Configuration - 7.8: Disable insecure TLS Protocol] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:$ssl-confs -> !r:^\t*\s*sslprotocol;
+f:$ssl-confs -> !r:^\t*\s*# && r:sslprotocol\s+all;
+f:$ssl-confs -> !r:^\t*\s*# && r:sslprotocol\s+\.*tlsv1\P\s*;
+f:$ssl-confs -> !r:^\t*\s*# && r:sslprotocol\s+\.*sslv2\P\s*;
+f:$ssl-confs -> !r:^\t*\s*# && r:sslprotocol\s+\.*sslv3\P\s*;
+#
+#
+#7.9 Enable OCSP Stapling
+[CIS - Apache Configuration - 7.9: Enable OCSP Stapling] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:/etc/httpd/conf/httpd.conf -> !r:^loadmodule\s+ssl;
+d:$mods-en -> !f:ssl.load;
+f:$ssl-confs -> !r:\t*\s*# && r:sslusestapling\s+off;
+f:$ssl-confs -> !r:\t*\s*sslusestapling\s+on;
+f:$ssl-confs -> !r:\t*\s*sslstaplingcache\s+\.+;
+#
+#
+#7.10 Enable HTTP Strict Transport Security 
+[CIS - Apache Configuration - 7.10: Enable HTTP Strict Transport Security] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:/etc/apache2/apache2.conf -> !r:Header\salways\sset\sStrict-Transport-Security\s"max-age=\d\d\d\d*";
+f:/etc/apache2/apache2.conf -> !r:^# && r:Header\salways\sset\sStrict-Transport-Security\s"max-age=1\d\d";
+f:/etc/apache2/apache2.conf -> !r:^# && r:Header\salways\sset\sStrict-Transport-Security\s"max-age=2\d\d";
+f:/etc/apache2/apache2.conf -> !r:^# && r:Header\salways\sset\sStrict-Transport-Security\s"max-age=3\d\d";
+f:/etc/apache2/apache2.conf -> !r:^# && r:Header\salways\sset\sStrict-Transport-Security\s"max-age=4\d\d";
+f:/etc/apache2/apache2.conf -> !r:^# && r:Header\salways\sset\sStrict-Transport-Security\s"max-age=5\d\d";
+#
+#
+#8.1 Set ServerToken to Prod or ProductOnly 
+[CIS - Apache Configuration - 8.1: Set ServerToken to Prod or ProductOnly] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+d:$conf-dirs -> conf -> !r:^# && r:servertokens\s+major;
+d:$conf-dirs -> conf -> !r:^# && r:servertokens\s+minor;
+d:$conf-dirs -> conf -> !r:^# && r:servertokens\s+min;
+d:$conf-dirs -> conf -> !r:^# && r:servertokens\s+minimal;
+d:$conf-dirs -> conf -> !r:^# && r:servertokens\s+os;
+d:$conf-dirs -> conf -> !r:^# && r:servertokens\s+full;
+#
+#
+#8.2: Set ServerSignature to Off
+[CIS - Apache Configuration - 8.2: Set ServerSignature to Off] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+d:$conf-dirs -> conf -> !r:^# && r:serversignature\s+email;
+d:$conf-dirs -> conf -> !r:^# && r:serversignature\s+on;
+#
+#
+#8.3: Prevent Information Leakage via Default Apache Content 
+[CIS - Apache Configuration - 8.3: Prevent Information Leakage via Default Apache Content] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+d:$conf-dirs -> conf -> !r:^\t*\s*# && r:include\s*\w*httpd-autoindex.conf;
+d:$conf-dirs -> conf -> !r:^\t*\s*# && r:alias\s*/icons/\s*\.*;
+#
+#
+#9.1:Set TimeOut to 10 or less 
+[CIS - Apache Configuration - 9.1: Set TimeOut to 10 or less] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:$main-conf -> !r:^# && r:timeout\s+9\d;
+f:$main-conf -> !r:^# && r:timeout\s+8\d;
+f:$main-conf -> !r:^# && r:timeout\s+7\d;
+f:$main-conf -> !r:^# && r:timeout\s+6\d;
+f:$main-conf -> !r:^# && r:timeout\s+5\d;
+f:$main-conf -> !r:^# && r:timeout\s+4\d;
+f:$main-conf -> !r:^# && r:timeout\s+3\d;
+f:$main-conf -> !r:^# && r:timeout\s+2\d;
+f:$main-conf -> !r:^# && r:timeout\s+11;
+f:$main-conf -> !r:^# && r:timeout\s+12;
+f:$main-conf -> !r:^# && r:timeout\s+13;
+f:$main-conf -> !r:^# && r:timeout\s+14;
+f:$main-conf -> !r:^# && r:timeout\s+15;
+f:$main-conf -> !r:^# && r:timeout\s+16;
+f:$main-conf -> !r:^# && r:timeout\s+17;
+f:$main-conf -> !r:^# && r:timeout\s+18;
+f:$main-conf -> !r:^# && r:timeout\s+19;
+f:$main-conf -> !r:^timeout\s+\d\d*;
+f:$main-conf -> !r:^# && r:timeout\s+\d\d\d+;
+#
+#
+#9.2:Set the KeepAlive directive to On 
+[CIS - Apache Configuration - 9.2: Set the KeepAlive directive to On] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:$main-conf -> !r:^# && r:keepalive\s+off;
+f:$main-conf -> !r:keepalive\s+on;
+#
+#
+#9.3:Set MaxKeepAliveRequests to 100 or greater
+[CIS - Apache Configuration - 9.3: Set MaxKeepAliveRequest to 100 or greater] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:$main-conf -> !r:^maxkeepaliverequests\s+\d\d\d+;
+#
+#
+#9.4: Set KeepAliveTimeout Low to Mitigate Denial of Service
+[CIS - Apache Configuration - 9.4: Set KeepAliveTimeout Low] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:$main-conf -> !r:keepalivetimeout\s+\d\d*;
+f:$main-conf -> !r:^# && r:keepalivetimeout\s+16;
+f:$main-conf -> !r:^# && r:keepalivetimeout\s+17;
+f:$main-conf -> !r:^# && r:keepalivetimeout\s+18;
+f:$main-conf -> !r:^# && r:keepalivetimeout\s+19;
+f:$main-conf -> !r:^# && r:keepalivetimeout\s+2\d;
+f:$main-conf -> !r:^# && r:keepalivetimeout\s+3\d;
+f:$main-conf -> !r:^# && r:keepalivetimeout\s+4\d;
+f:$main-conf -> !r:^# && r:keepalivetimeout\s+5\d;
+f:$main-conf -> !r:^# && r:keepalivetimeout\s+6\d;
+f:$main-conf -> !r:^# && r:keepalivetimeout\s+7\d;
+f:$main-conf -> !r:^# && r:keepalivetimeout\s+8\d;
+f:$main-conf -> !r:^# && r:keepalivetimeout\s+9\d;
+f:$main-conf -> !r:^# && r:keepalivetimeout\s+\d\d\d+;
+#
+#
+#9.5 Set Timeout Limits for Request Headers
+[CIS - Apache Configuration - 9.5: Set Timeout Limits for Request Headers] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:/etc/httpd/conf/httpd.conf -> !r:^loadmodule\s+reqtimeout;
+d:$mods-en -> !f:reqtimeout.load;
+f:$request-confs -> !r:^\t*\s*requestreadtimeout\.+header\p\d\d*\D\d\d*;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D41;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D42;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D43;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D44;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D45;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D46;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D47;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D48;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D49;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D5\d;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D6\d;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D7\d;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D8\d;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D9\d;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D\d\d\d+;
+#
+#
+#9.6 Set Timeout Limits for Request Body 
+[CIS - Apache Configuration - 9.6: Set Timeout Limits for Request Body] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:/etc/httpd/conf/httpd.conf -> !r:^loadmodule\s+reqtimeout;
+d:$mods-en -> !f:reqtimeout.load;
+f:$request-confs -> !r:\t*\s*requestreadtimeout\.+body\p\d\d*;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p21;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p22;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p23;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p24;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p25;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p26;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p27;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p28;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p29;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p3\d;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p4\d;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p5\d;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p6\d;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p7\d;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p8\d;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p9\d;
+f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p\d\d\d+;
+#
+#
+#10.1 Set the LimitRequestLine directive to 512 or less
+[CIS - Apache Configuration - 10.1: Set LimitRequestLine to 512 or less] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:$main-conf -> !r:^limitrequestline\s+\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestline\s+5\13;
+f:$main-conf -> !r:^# && r:limitrequestline\s+5\14;
+f:$main-conf -> !r:^# && r:limitrequestline\s+5\15;
+f:$main-conf -> !r:^# && r:limitrequestline\s+5\16;
+f:$main-conf -> !r:^# && r:limitrequestline\s+5\17;
+f:$main-conf -> !r:^# && r:limitrequestline\s+5\18;
+f:$main-conf -> !r:^# && r:limitrequestline\s+5\19;
+f:$main-conf -> !r:^# && r:limitrequestline\s+5\2\d;
+f:$main-conf -> !r:^# && r:limitrequestline\s+5\3\d;
+f:$main-conf -> !r:^# && r:limitrequestline\s+5\4\d;
+f:$main-conf -> !r:^# && r:limitrequestline\s+5\5\d;
+f:$main-conf -> !r:^# && r:limitrequestline\s+5\6\d;
+f:$main-conf -> !r:^# && r:limitrequestline\s+5\7\d;
+f:$main-conf -> !r:^# && r:limitrequestline\s+5\8\d;
+f:$main-conf -> !r:^# && r:limitrequestline\s+5\9\d;
+f:$main-conf -> !r:^# && r:limitrequestline\s+6\d\d;
+f:$main-conf -> !r:^# && r:limitrequestline\s+7\d\d;
+f:$main-conf -> !r:^# && r:limitrequestline\s+8\d\d;
+f:$main-conf -> !r:^# && r:limitrequestline\s+9\d\d;
+f:$main-conf -> !r:^# && r:limitrequestline\s+\d\d\d\d+;
+#
+#
+#10.2 Set the LimitRequestFields directive to 100 or less
+[CIS - Apache Configuration - 10.2: Set LimitRequestFields to 100 or less] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:$main-conf -> !r:^limitrequestfields\s\d\d*;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+1\d1;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+1\d2;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+1\d3;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+1\d4;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+1\d5;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+1\d6;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+1\d7;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+1\d8;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+1\d9;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+11\d;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+12\d;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+13\d;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+14\d;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+15\d;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+16\d;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+17\d;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+18\d;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+19\d;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+2\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+3\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+4\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+5\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+6\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+7\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+8\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+9\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfields\s+\d\d\d\d+;
+#
+#
+#10.3 Set the LimitRequestFieldsize directive to 1024 or less
+[CIS - Apache Configuration - 10.3: Set LimitRequestFieldsize to 1024 or less] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:$main-conf -> !r:^limitrequestfieldsize\s+\d\d*;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d25;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d26;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d27;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d28;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d29;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d3\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d4\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d5\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d6\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d7\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d8\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+1\d9\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+11\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+12\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+13\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+14\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+15\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+16\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+17\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+18\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+19\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+2\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+3\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+4\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+5\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+6\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+7\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+8\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+9\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+\d\d\d\d\d+;
+#
+#
+#10.4 Set the LimitRequestBody directive to 102400 or less
+[CIS - Apache Configuration - 10.4: Set LimitRequestBody to 102400 or less] [any] [https://workbench.cisecurity.org/benchmarks/307, https://workbench.cisecurity.org/benchmarks/308]
+f:$main-conf -> !r:^limitrequestbody\s+\d\d*;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+0\s*$;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d24\d1;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d24\d2;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d24\d3;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d24\d4;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d24\d5;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d24\d6;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d24\d7;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d24\d8;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d24\d9;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d241\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d242\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d243\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d244\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d245\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d246\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d247\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d248\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d249\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d25\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d26\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d27\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d28\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d29\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d3\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d4\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d5\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d6\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d7\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d8\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+1\d9\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+11\d\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+12\d\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+13\d\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+14\d\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+15\d\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+16\d\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+17\d\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+18\d\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+19\d\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+2\d\d\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+3\d\d\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+4\d\d\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+5\d\d\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+6\d\d\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+7\d\d\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+8\d\d\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+9\d\d\d\d\d;
+f:$main-conf -> !r:^# && r:limitrequestbody\s+\d\d\d\d\d\d\d+;

@@ -1,0 +1,3 @@
+
+ Nalaziš se pred početkom instalacionog proces Wazuh.
+ Moraš imati c kompajler već instaliran u svoj sistem.

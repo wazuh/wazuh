@@ -1,0 +1,89 @@
+- name: Basic configuration command
+  description: Basic configuration command
+  configuration_parameters:
+    LOG_FORMAT: 'command'
+    COMMAND: 'echo Testing'
+  metadata:
+    log_format: 'command'
+    command: 'echo Testing'
+
+- name: Basic configuration command
+  description: Basic configuration command
+  configuration_parameters:
+    LOG_FORMAT: 'command'
+    COMMAND: 'df -P'
+  metadata:
+    log_format: 'command'
+    command: 'df -P'
+
+- name: Basic configuration command
+  description: Basic configuration command
+  configuration_parameters:
+    LOG_FORMAT: 'command'
+    COMMAND: 'find / -type f -perm 4000'
+  metadata:
+    log_format: 'command'
+    command: 'find / -type f -perm 4000'
+
+- name: Basic configuration command
+  description: Basic configuration command
+  configuration_parameters:
+    LOG_FORMAT: 'command'
+    COMMAND: 'ls /tmp/*'
+  metadata:
+    log_format: 'command'
+    command: 'ls /tmp/*'
+
+- name: Basic configuration command
+  description: Basic configuration command
+  configuration_parameters:
+    LOG_FORMAT: 'command'
+    COMMAND: '/tmp/script/my_script -a 1 -v 2 -b 3 -g 444 -k Testing'
+  metadata:
+    log_format: 'command'
+    command: '/tmp/script/my_script -a 1 -v 2 -b 3 -g 444 -k Testing'
+
+- name: Basic configuration full_command
+  description: Basic configuration full_command
+  configuration_parameters:
+    LOG_FORMAT: 'full_command'
+    COMMAND: 'echo Testing'
+  metadata:
+    log_format: 'full_command'
+    command: 'echo Testing'
+
+- name: Basic configuration full_command
+  description: Basic configuration full_command
+  configuration_parameters:
+    LOG_FORMAT: 'full_command'
+    COMMAND: 'df -P'
+  metadata:
+    log_format: 'full_command'
+    command: 'df -P'
+
+- name: Basic configuration full_command
+  description: Basic configuration full_command
+  configuration_parameters:
+    LOG_FORMAT: 'full_command'
+    COMMAND: 'find / -type f -perm 4000'
+  metadata:
+    log_format: 'full_command'
+    command: 'find / -type f -perm 4000'
+
+- name: Basic configuration full_command
+  description: Basic configuration full_command
+  configuration_parameters:
+    LOG_FORMAT: 'full_command'
+    COMMAND: 'ls /tmp/*'
+  metadata:
+    log_format: 'full_command'
+    command: 'ls /tmp/*'
+
+- name: Basic configuration full_command
+  description: Basic configuration full_command
+  configuration_parameters:
+    LOG_FORMAT: 'full_command'
+    COMMAND: '/tmp/script/my_script -a 1 -v 2 -b 3 -g 444 -k Testing'
+  metadata:
+    log_format: 'full_command'
+    command: '/tmp/script/my_script -a 1 -v 2 -b 3 -g 444 -k Testing'

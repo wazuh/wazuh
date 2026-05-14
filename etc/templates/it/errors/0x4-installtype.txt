@@ -1,0 +1,3 @@
+
+ Error 0x4.
+ Tipo di installazione errata. Può essere solamente Server, Agent o Local.

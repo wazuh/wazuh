@@ -1,0 +1,5 @@
+ 
+ Error 0x1.
+ El programa puede ser solo ejecutado desde su mismo directorio.
+ Cambie al directorio donde se encuentra el programa antes de ejecutarlo.
+ Debe de ejecutarlo como ./install.sh ."

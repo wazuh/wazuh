@@ -1,0 +1,347 @@
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+# OSSEC Linux Audit - (C) 2018 OSSEC Project
+#
+# Released under the same license as OSSEC.
+# More details at the LICENSE file included with OSSEC or online
+# at: https://github.com/ossec/ossec-hids/blob/master/LICENSE
+#
+# [Application name] [any or all] [reference]
+# type:<entry name>;
+#
+# Type can be:
+#             - f (for file or directory)
+#             - r (registry entry)
+#             - p (process running)
+#
+# Additional values:
+# For the registry and for directories, use "->" to look for a specific entry and another
+# "->" to look for the value.
+# Also, use " -> r:^\. -> ..." to search all files in a directory
+# For files, use "->" to look for a specific value in the file.
+#
+# Values can be preceeded by: =: (for equal) - default
+#                             r: (for ossec regexes)
+#                             >: (for strcmp greater)
+#                             <: (for strcmp  lower)
+# Multiple patterns can be specified by using " && " between them.
+# (All of them must match for it to return true).
+
+# CIS Checks for Windows Server 2012 R2 Domain Controller L2
+# Based on Center for Internet Security Benchmark v2.2.1 for Microsoft Windows Server 2012 R2 (https://workbench.cisecurity.org/benchmarks/288)
+#
+#
+#2.3.10.4 Ensure 'Network access: Do not allow storage of passwords and credentials for network authentication' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 2.3.10.4: Ensure 'Network access: Do not allow storage of passwords and credentials for network authentication' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> DisableDomainCreds -> !1;
+r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> !DisableDomainCreds;
+#
+#
+#18.3.5 Ensure 'MSS: (KeepAliveTime) How often keep-alive packets are sent in milliseconds' is set to 'Enabled: 300,000 or 5 minutes'
+[CIS - Microsoft Windows Server 2012 R2 - 18.3.5: Ensure 'MSS: (KeepAliveTime) How often keep-alive packets are sent in milliseconds' is set to 'Enabled: 300,000 or 5 minutes'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> KeepAliveTime -> !493e0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> !KeepAliveTime;
+#
+#
+#18.3.7 Ensure 'MSS: (PerformRouterDiscovery) Allow IRDP to detect and configure Default Gateway addresses (could lead to DoS)' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.3.7: Ensure 'MSS: (PerformRouterDiscovery) Allow IRDP to detect and configure Default Gateway addresses (could lead to DoS)' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> PerformRouterDiscovery  -> !0;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> !PerformRouterDiscovery;
+#
+#
+#18.3.10 Ensure 'MSS: (TcpMaxDataRetransmissions IPv6) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'
+[CIS - Microsoft Windows Server 2012 R2 - 18.3.10: Ensure 'MSS: (TcpMaxDataRetransmissions IPv6) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> TcpMaxDataRetransmissions -> !3;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> !TcpMaxDataRetransmissions;
+#
+#
+#18.3.11 Ensure 'MSS: (TcpMaxDataRetransmissions) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'
+[CIS - Microsoft Windows Server 2012 R2 - 18.3.11: Ensure 'MSS: (TcpMaxDataRetransmissions) How many times unacknowledged data is retransmitted' is set to 'Enabled: 3'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> TcpMaxDataRetransmissions -> !3;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters -> !TcpMaxDataRetransmissions;
+#
+#
+#18.4.9.1 Ensure 'Turn on Mapper I/O (LLTDIO) driver' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.4.9.1: Ensure 'Turn on Mapper I/O (LLTDIO) driver' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowLLTDIOOnDomain -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowLLTDIOOnPublicNet -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> EnableLLTDIO -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> ProhibitLLTDIOOnPrivateNet -> !0;
+#
+#
+#18.4.9.2 Ensure 'Turn on Responder (RSPNDR) driver' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.4.9.2: Ensure 'Turn on Responder (RSPNDR) driver' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowRspndrOnDomain -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> AllowRspndrOnPublicNet -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> EnableRspndr -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LLTD -> ProhibitRspndrOnPrivateNet -> !0;
+#
+#
+#18.4.10.2 Ensure 'Turn off Microsoft Peer-to-Peer Networking Services' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.4.10.2: Ensure 'Turn off Microsoft Peer-to-Peer Networking Services' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Peernet -> Disabled -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Peernet -> !Disabled;
+#
+#
+#18.4.19.2.1 Disable IPv6 (Ensure TCPIP6 Parameter 'DisabledComponents' is set to '0xff (255)')
+[CIS - Microsoft Windows Server 2012 R2 - 18.4.19.2.1: Disable IPv6 (Ensure TCPIP6 Parameter 'DisabledComponents' is set to '0xff (255)')] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> DisabledComponents -> !ff;
+r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters -> !DisabledComponents;
+#
+#
+#18.4.20.1 Ensure 'Configuration of wireless settings using Windows Connect Now' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.4.20.1: Ensure 'Configuration of wireless settings using Windows Connect Now' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> EnableRegistrars -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> !EnableRegistrars;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableUPnPRegistrar -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> !DisableUPnPRegistrar;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableInBand802DOT11Registrar -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> !DisableInBand802DOT11Registrar;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableFlashConfigRegistrar -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> !DisableFlashConfigRegistrar;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> DisableWPDRegistrar -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars -> !DisableWPDRegistrar;
+#
+#
+#18.4.20.2 Ensure 'Prohibit access of the Windows Connect Now wizards' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.4.20.2: Ensure 'Prohibit access of the Windows Connect Now wizards' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\UI -> DisableWcnUi -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WCN\UI -> !DisableWcnUi;
+#
+#
+#18.8.20.1.1 Ensure 'Turn off access to the Store' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.20.1.1: Ensure 'Turn off access to the Store' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoUseStoreOpenWith -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> !NoUseStoreOpenWith;
+#
+#
+#18.8.20.1.2 Ensure 'Turn off downloading of print drivers over HTTP' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.20.1.2: Ensure 'Turn off downloading of print drivers over HTTP' is set to 'Enabled] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers -> DisableWebPnPDownload -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers -> !DisableWebPnPDownload;
+#
+#
+#18.8.20.1.3 Ensure 'Turn off handwriting personalization data sharing' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.20.1.3: Ensure 'Turn off handwriting personalization data sharing' is set to 'Enabled] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\TabletPC -> PreventHandwritingDataSharing -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\TabletPC -> !PreventHandwritingDataSharing;
+#
+#
+#18.8.20.1.4 Ensure 'Turn off handwriting recognition error reporting' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.20.1.4: Ensure 'Turn off handwriting recognition error reporting' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HandwritingErrorReports -> PreventHandwritingErrorReports -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\HandwritingErrorReports -> !PreventHandwritingErrorReports;
+#
+#
+#18.8.20.1.5 Ensure 'Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.20.1.5: Ensure 'Turn off Internet Connection Wizard if URL connection is referring to Microsoft.com' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Internet Connection Wizard -> ExitOnMSICW -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Internet Connection Wizard -> !ExitOnMSICW;
+#
+#
+#18.8.20.1.6 Ensure 'Turn off Internet download for Web publishing and online ordering wizards' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.20.1.6: Ensure 'Turn off Internet download for Web publishing and online ordering wizards' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoWebServices -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> !NoWebServices;
+#
+#
+#18.8.20.1.7 Ensure 'Turn off printing over HTTP' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.20.1.7: Ensure 'Turn off printing over HTTP' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers -> DisableHTTPPrinting -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Printers -> !DisableHTTPPrinting;
+#
+#
+#18.8.20.1.8 Ensure 'Turn off Registration if URL connection is referring to Microsoft.com' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.20.1.8: Ensure 'Turn off Registration if URL connection is referring to Microsoft.com' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\Policies\Microsoft\Windows\Registration Wizard Control -> NoRegistration -> !1;
+r:HKEY_LOCAL_MACHINE\Policies\Microsoft\Windows\Registration Wizard Control -> !NoRegistration;
+#
+#
+#18.8.20.1.9 Ensure 'Turn off Search Companion content file updates' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.20.1.9: Ensure 'Turn off Search Companion content file updates' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SearchCompanion -> DisableContentFileUpdates -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SearchCompanion -> !DisableContentFileUpdates;
+#
+#
+#18.8.20.1.10 Ensure 'Turn off the "Order Prints" picture task' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.20.1.10: Ensure 'Turn off the "Order Prints" picture task' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoOnlinePrintsWizard -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> !NoOnlinePrintsWizard;
+#
+#
+#18.8.20.1.11 Ensure 'Turn off the "Publish to Web" task for files and folders' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.20.1.11: Ensure 'Turn off the "Publish to Web" task for files and folders' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoPublishingWizard -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> !NoPublishingWizard;
+#
+#
+#18.8.20.1.12 Ensure 'Turn off the Windows Messenger Customer Experience Improvement Program' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.20.1.12: Ensure 'Turn off the Windows Messenger Customer Experience Improvement Program' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Messenger\Client -> CEIP -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Messenger\Client -> !CEIP;
+#
+#
+#18.8.20.1.13 Ensure 'Turn off Windows Customer Experience Improvement Program' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.20.1.13: Ensure 'Turn off Windows Customer Experience Improvement Program' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SQMClient\Windows -> CEIPEnable -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\SQMClient\Windows -> !CEIPEnable;
+#
+#
+#18.8.20.1.14 Ensure 'Turn off Windows Error Reporting' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.20.1.14: Ensure 'Turn off Windows Error Reporting' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting -> Disabled -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting -> !Disabled;
+#
+#
+#18.8.24.1 Ensure 'Disallow copying of user input methods to the system account for sign-in' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.24.1: Ensure 'Disallow copying of user input methods to the system account for sign-in' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Control Panel\International -> BlockUserInputMethodsForSignIn -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Control Panel\International -> !BlockUserInputMethodsForSignIn;
+#
+#
+#18.8.29.5.1 Ensure 'Require a password when a computer wakes (on battery)' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.29.5.1: Ensure 'Require a password when a computer wakes (on battery)' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51 -> DCSettingIndex -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51 -> !DCSettingIndex;
+#
+#
+#18.8.29.5.2 Ensure 'Require a password when a computer wakes (plugged in)' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.29.5.2: Ensure 'Require a password when a computer wakes (plugged in)' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51 -> ACSettingIndex -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Power\PowerSettings\0e796bdb-100d-47d6-a2d5-f7d2daa51f51 -> !ACSettingIndex;
+#
+#
+#18.8.39.5.1 Ensure 'Microsoft Support Diagnostic Tool: Turn on MSDT interactive communication with support provider' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.39.5.1: Ensure 'Microsoft Support Diagnostic Tool: Turn on MSDT interactive communication with support provider' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\ScriptedDiagnosticsProvider\Policy -> DisableQueryRemoteServer -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\ScriptedDiagnosticsProvider\Policy -> !DisableQueryRemoteServer;
+#
+#
+#18.8.39.11.1 Ensure 'Enable/Disable PerfTrack' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.39.11.1: Ensure 'Enable/Disable PerfTrack' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WDI\{9c5a40da-b965-4fc3-8781-88dd50a6299d} -> ScenarioExecutionEnabled -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WDI\{9c5a40da-b965-4fc3-8781-88dd50a6299d} -> !ScenarioExecutionEnabled;
+#
+#
+#18.8.41.1 Ensure 'Turn off the advertising ID' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.41.1: Ensure 'Turn off the advertising ID' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo -> DisabledByGroupPolicy -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo -> !DisabledByGroupPolicy;
+#
+#
+#18.8.44.1.1 Ensure 'Enable Windows NTP Client' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.8.44.1.1: Ensure 'Enable Windows NTP Client' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpClient -> Enabled -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpClient -> !Enabled;
+#
+#
+#18.9.37.1 Ensure 'Turn off location' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.37.1: Ensure 'Turn off location' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors -> DisableLocation -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors -> !DisableLocation;
+#
+#
+#18.9.52.3.2.1 Ensure 'Restrict Remote Desktop Services users to a single Remote Desktop Services session' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.52.3.2.1: Ensure 'Restrict Remote Desktop Services users to a single Remote Desktop Services session' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fSingleSessionPerUser -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !fSingleSessionPerUser;
+#
+#
+#18.9.52.3.3.1 Ensure 'Do not allow COM port redirection' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.52.3.3.1: Ensure 'Restrict Remote Desktop Services users to a single Remote Desktop Services session' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableCcm -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !fDisableCcm;
+#
+#
+#18.9.52.3.3.3 Ensure 'Do not allow LPT port redirection' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.52.3.3.3: Ensure 'Do not allow LPT port redirection' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisableLPT -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !fDisableLPT;
+#
+#
+#18.9.52.3.3.4 Ensure 'Do not allow supported Plug and Play device redirection' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.52.3.3.4: Ensure 'Do not allow supported Plug and Play device redirection' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> fDisablePNPRedir -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !fDisablePNPRedir;
+#
+#
+#18.9.52.3.10.1 Ensure 'Set time limit for active but idle Remote Desktop Services sessions' is set to 'Enabled: 15 minutes or less'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.52.3.10.1: Ensure 'Set time limit for active but idle Remote Desktop Services sessions' is set to 'Enabled: 15 minutes or less'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbba1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbba2;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbba3;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbba4;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbba5;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbba6;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbba7;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbba8;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbba9;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbba\D;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbbb\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbbc\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbbd\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbbe\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbbf\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbc\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbd\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbe\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dbf\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dc\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:dd\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:de\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:df\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:e\w\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:f\w\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxIdleTime -> r:\w\w\w\w\w\w;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !MaxIdleTime;
+#
+#
+#18.9.52.3.10.2 Ensure 'Set time limit for disconnected sessions' is set to 'Enabled: 1 minute'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.52.3.10.2: Ensure 'Set time limit for disconnected sessions' is set to 'Enabled: 1 minute'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> MaxDisconnectionTime -> !EA60;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services -> !MaxDisconnectionTime;
+#
+#
+#18.9.54.3 Ensure 'Set what information is shared in Search' is set to 'Enabled: Anonymous info'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.54.3: Ensure 'Set what information is shared in Search' is set to 'Enabled: Anonymous info'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> ConnectedSearchPrivacy -> !3;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search -> !ConnectedSearchPrivacy;
+#
+#
+#18.9.59.1 Ensure 'Turn off KMS Client Online AVS Validation' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.59.1: Ensure 'Turn off KMS Client Online AVS Validation' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform -> NoGenTicket -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform -> !NoGenTicket;
+#
+#
+#18.9.61.3 Ensure 'Turn off the Store application' is set to 'Enabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.61.3: Ensure 'Turn off the Store application' is set to 'Enabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> RemoveWindowsStore -> !1;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsStore -> !RemoveWindowsStore;
+#
+#
+#18.9.69.3.1 Ensure 'Join Microsoft MAPS' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.69.3.1: Ensure 'Join Microsoft MAPS' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet -> SpynetReporting -> !0;
+#
+#
+#18.9.74.3 Ensure 'Prevent Internet Explorer security prompt for Windows Installer scripts' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.74.3: Ensure 'Join Microsoft MAPS' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Installer -> SafeForScripting -> !0;
+#
+#
+#18.9.86.2.2 Ensure 'Allow remote server management through WinRM' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.86.2.2: Ensure 'Allow remote server management through WinRM' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service -> AllowAutoConfig -> !0;
+#
+#
+#18.9.87.1 Ensure 'Allow Remote Shell Access' is set to 'Disabled'
+[CIS - Microsoft Windows Server 2012 R2 - 18.9.87.1: Ensure 'Allow Remote Shell Access' is set to 'Disabled'] [any] [https://workbench.cisecurity.org/benchmarks/288]
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service\WinRS -> AllowRemoteShellAccess -> !0;
+r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service\WinRS -> !AllowRemoteShellAccess;
+#

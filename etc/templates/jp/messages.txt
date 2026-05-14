@@ -1,0 +1,134 @@
+# Configuration
+yes="y"
+no="n"
+yesmatch="y"
+nomatch="n"
+agent="agent"
+local="local"
+server="server"
+help="help"
+
+
+# Global
+moreinfo="詳細な情報は以下にあります: "
+starting="Wazuh を起動します"
+systemis="システムは"
+modifiedinit="Init script modified to start Wazuh during boot."
+modifiedinit="初期スクリプトはブート中に Wazuh を起動するよう修正しました．"
+noboot="不明なシステムです．初期スクリプトは追加されません．"
+
+# Part 1
+installscript="インストールスクリプト"
+system="システム"
+user="ユーザ"
+host="ホスト"
+hitanyorabort="続けるには ENTER を押してください．また，Ctrl-C で中止します．"
+whattoinstall="どの種類のインストールを選択しますか (manager，agent，local または help)?"
+serverchose="Manager (server) インストールを選択しました"
+clientchose="Agent (client) インストールを選択しました"
+localchose="Local インストールを選択しました"
+
+# Part 2
+settingupenv="インストール環境を設定しています"
+wheretoinstall="Choose where to install Wazuh"
+wheretoinstall="Wazuh のインストール先を選択してください"
+installat="インストール先を以下に作成します "
+deletedir="インストール先のディレクトリが既に存在します．削除してよろしいですか?"
+
+# Part 3
+configuring="設定"
+mailnotify="メール通知を希望しますか?"
+nomail="メール通知を無効にしました"
+whatsemail="メールアドレスは何ですか?"
+yoursmtp="あなたの SMTP サーバを発見しました"
+usesmtp="このサーバを使用しますか?"
+usingsmtp="この SMTP サーバを使用します: "
+whatsmtp="使用する SMTP サーバの ip/host は何ですか?"
+
+# Part 3.1/agent
+serverip="Wazuh サーバの IP アドレスは何ですか?"
+serveraddr="Wazuh サーバの IP/hostname アドレスは何ですか?"
+addingip="サーバの IP を加えています"
+addingname="サーバの hostname を加えています"
+
+
+# Part 3.2
+runsyscheck="整合性検査を行うデーモンを実行させますか?"
+nosyscheck="syscheck (整合性検査デーモン) は実行させません"
+yessyscheck="syscheck (整合性検査デーモン) を実行させます"
+
+# Part 3.3
+runrootcheck="rootkit 検知エンジンを実行させますか?"
+norootcheck="rootcheck (rootkit 検知) は実行させません"
+yesrootcheck="rootcheck (rootkit 検知) を実行させます"
+
+# Part 3.4
+runopenscap="OpenSCAP 検知エンジンを実行させますか??"
+norunopenscap="OpenSCAP は実行させません"
+yesrunopenscap="OpenSCAP を実行させます"
+
+# Part 3.5/server/local
+enable_ar="アクティブレスポンスを有効にしますか?"
+noactive="アクティブレスポンスを無効にしました"
+nohosts="host-deny を無効にしました"
+yeshosts="host-deny enabled (local) for levels >= 6"
+yeshosts="local での levels >= に対する host-deny を有効にしました"
+firewallar="firewall-drop レスポンスを有効にしますか?"
+nofirewall="firewall-drop を無効にしました．"
+yesfirewall="local での levels >= 6 に対する firewall-drop を有効にしました"
+defaultwhitelist="アクティブレスポンスでの初期ホワイトリスト:"
+addwhite="ホワイトリストへ IP を追加しますか?"
+ipswhite="IP を入力してください (スペース区切り): "
+
+# Part 3.5/server/local
+syslog="Do you want to enable remote syslog (port 514 udp)?"
+syslog="リモート syslog (port 514 udp) を有効にしますか?"
+nosyslog="リモート syslog を無効にしました"
+yessyslog="リモート syslog を有効にしました"
+
+# Part 3.4/3.5
+readlogs="以下のログを解析するための設定を準備しています:"
+
+# Part 3.7
+runauthd="認証サービスを実行しますか？"
+norunauthd="認証サービスを実行していない"
+yesrunauthd="実行中の認証サービス"
+
+# Part 4
+installing="システムをインストールします"
+startwazuh="インストール後にWazuhを開始しますか？"
+nowazuhstart="Wazuhはインストールの最後に開始されません。"
+yeswazuhstart="Wazuhはインストールの最後に始まります。"
+runningmake="Makefile を実行します"
+
+
+# Final
+configurationdone="設定が完全に終了しました"
+tostart="Wazuh を開始させます"
+tostop="Wazuh を停止させます"
+configat="以下のファイルで設定についての確認と変更ができます"
+addserveragent="エージェントを追加する前にアクセスするための認証が必要になります．"
+presskey="続けるには ENTER を押してください"
+
+# Update
+wanttoupdate="既に Wazuh がインストールされています．アップデートしますか?"
+mustuninstall="古いバージョンをアンインストールしないと、インストールを続行できません。 終了します。"
+unabletoupdate="アップデート作業を行えません．新しくインストールする必要があります．"
+updatecompleted="アップデートは完了しました．"
+updatefailed="アップデートは失敗しました．"
+updaterules="ルールをアップデートしますか?"
+updatingrules="ルールをアップデートしています"
+notupdatingrules="ルールはアップデートしません．"
+update_rev_newconf1="ossec.confからのバックアップは$INSTALLDIR/etc/ossec.conf.origで作成されています。"
+update_rev_newconf2="ossec.confの設定を$INSTALLDIR/etc/ossec.confで確認してください。"
+
+
+# Pf support
+pfenable="アクティブレスポンスを PF ファイヤーウォールで使用しますか？"
+nopf="PF レスポンスを無効にしました．"
+pftablename="使用する PF テーブル名は？"
+pfmessage="以下にあなたのルールを最初から追加してください．"
+
+# CA store
+addcastore="証明書を追加しますか？"
+castore="X509証明書または証明書フォルダへのパスを入力します。"

@@ -1,0 +1,18 @@
+- name: inspector_discard_regex
+  description: >
+    Inspector configuration for an event being discarded when the regex matches
+    the content in the specified field inside the incoming JSON log
+  configuration_parameters:
+    SERVICE_TYPE: inspector
+    REGIONS: us-east-1
+    DISCARD_FIELD: assetAttributes.tags.key
+    DISCARD_REGEX: .*inspector-integration-test.*
+    ONLY_LOGS_AFTER: 2023-JAN-12
+  metadata:
+    resource_type: finding
+    service_type: inspector
+    only_logs_after: 2023-JAN-12
+    discard_field: assetAttributes.tags.key
+    discard_regex: .*inspector-integration-test.*
+    regions: us-east-1
+    skipped_logs: 11

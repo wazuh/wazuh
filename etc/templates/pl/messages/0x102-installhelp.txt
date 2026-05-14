@@ -1,0 +1,28 @@
+
+  - Masz do wyboru trzy metody instalacji: serwer, agent oraz lokalna.
+
+    - Jeśli wybierzesz 'serwer', bęziesz miał możliwość analizy
+      wszystkich logów, tworzenia powiadomienia e-mail, aktywnej
+      ochrony oraz także otrzymywania logów ze zdalnych maszyn z
+      syslog-iem i systemów działajcych jako 'agent' (skąd ruch
+      jest szyfrowany do serwera)
+
+    - Jeśli wybierzesz 'agent'(klient), będziesz miał możliwość
+      czytania lokalnych plików (z syslog, apache, snort itp)
+      oraz przekazywania ich (zaszyfrowanych) do serwera w celu
+      analizy.
+
+    - Jeśli wybierzesz 'lokalna', będziesz wstanie wykonywać
+      wszystkie operacje serwera za wyjątkiem odbierania zdalnych
+      wiadomości od klientów oraz zewnętrzych syslog-ów.
+
+  - Wybierz 'serwer' jeśli chcesz ustawić serwer analizy logów.
+
+  - Wybierz 'agent' jeśli masz inną maszynę działającą jako serwer i
+    chcesz przekazywać do niego logi w celu analizy.
+    (idealny dla serwerów http, bazodanowych, itp)
+
+  - Wybierz 'lokalna' jeśli masz tylko jeden system do monitorowania.
+
+  - Więcej informacji na:
+    https://documentation.wazuh.com

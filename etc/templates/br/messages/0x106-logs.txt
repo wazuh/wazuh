@@ -1,0 +1,6 @@
+ - Se quiser monitorar qualquer outro arquivo, modifique
+   o ossec.conf e adicione uma nova entrada para o arquivo.
+   Qualquer dúvida sobre a configuração, visite https://documentation.wazuh.com/.
+
+
+   --- Pressione ENTER para continuar ---

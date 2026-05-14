@@ -1,0 +1,47 @@
+' Copyright (C) 2015, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+@startuml wm_github
+
+    box "Scan Block \n wm_github_execute_scan() Sequence Diagram" #LightBlue
+    participant wm_github
+    participant wmodules
+    participant url
+    end box
+
+    loop For every organization
+        wm_github -> wmodules : Read bookmark with timestap
+        wm_github <-- wmodules
+
+        alt No previous timestamp
+            wm_github -> wmodules : Save bookmark with timestamp
+            wm_github <-- wmodules
+            rnote over wm_github: **continue**
+        end
+
+        loop #LightGrey While scan is not finished
+
+            wm_github -> url : Send get request
+            database github_server
+            url -> github_server : HTTP Request
+            url <-- github_server
+            wm_github <-- url
+            loop For every event
+                wm_github -> wmodules : Send Event
+                wm_github <-- wmodules
+            end
+
+            wm_github -> wmodules : Read next page from header
+            wm_github <-- wmodules
+        end
+        alt #LightGrey Scan Fail
+            alt Scan Fails == 3
+                wm_github -> wmodules : Send fail message
+                wm_github <-- wmodules
+            end
+        else Scan Success
+            wm_github -> wmodules : Save bookmark with timestap
+            wm_github <-- wmodules
+        end
+    end
+@enduml

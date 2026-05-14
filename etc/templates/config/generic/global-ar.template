@@ -1,0 +1,5 @@
+  <!-- Active response -->
+  <global>
+    <white_list>127.0.0.1</white_list>
+    <white_list>^localhost.localdomain$</white_list>
+  </global>

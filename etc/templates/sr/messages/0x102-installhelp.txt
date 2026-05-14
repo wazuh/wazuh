@@ -1,0 +1,26 @@
+  - Imaš tri instalacione opcije: server, agent ili lokalnu.
+
+    - Ako izabereš 'server', moćićeš da analiziraš sve
+      logove, napraviš e-mail notifikacije i reakcije,
+      kao i da primiš logove sa udaljenih syslog mašina i
+      sistema kojima su pušteni 'agenti' (iz kojih se saobraćaj
+      šalje kriptovan u server).
+
+   - Ako izabereš 'agent' (klijent), moćićeš da čitaš
+     lokalne fajlove (iz syslog, snort. apache itd) i da ih proslediš
+     (kriptovane) serveru na analizu.
+
+   - Ako izabereš 'lokalnu', moćićeš da radiš sve što radi server,
+     osim da primaš udaljene poruke od agenata ili spoljašnjih
+     syslog mašina.
+
+  - Izaberi 'server' ako postavljaš log/analysis server.
+
+  - Izaberi 'agent' ako imaš drugu mašinu koju možeš da koristiš kao
+    log server i hoćeš da prosleđuješ logove serveru na analizu.
+    (idealno za webservere, servere baze podataka, itd)
+
+  - Izaberi 'lokalnu' ako pratiš samo jedan sistem.
+
+  - Više obaveštenja na:
+    https://documentation.wazuh.com

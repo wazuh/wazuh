@@ -1,0 +1,17 @@
+---
+- actions:
+  - agent:read
+  resources:
+  - agent:id:*
+  effect: deny
+
+- actions:
+  - agent:read
+  resources:
+  - agent:id:001
+  - agent:id:003
+  - agent:id:005
+  - agent:id:007
+  - agent:id:009
+  - agent:id:011
+  effect: allow

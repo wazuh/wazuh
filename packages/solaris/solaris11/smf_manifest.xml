@@ -1,0 +1,23 @@
+<?xml version="1.0" ?>
+<!DOCTYPE service_bundle
+  SYSTEM '/usr/share/lib/xml/dtd/service_bundle.dtd.1'>
+<service_bundle type="manifest" name="site/wazuh-install">
+    <service version="1" type="service" name="site/wazuh-install">
+        <dependency restart_on="none" type="service"
+            name="multi_user_dependency" grouping="require_all">
+            <service_fmri value="svc:/milestone/multi-user"/>
+        </dependency>
+        <dependent restart_on="none"
+            name="wazuh-install_multi-user-server" grouping="optional_all">
+            <service_fmri value="svc:/milestone/multi-user-server" />
+        </dependent>
+        <exec_method timeout_seconds="60" type="method" name="refresh"
+                     exec="var/ossec/installation_scripts/postinstall.sh"/>
+        <exec_method timeout_seconds="60" type="method" name="start"
+                     exec="var/ossec/installation_scripts/postinstall.sh"/>
+        <property_group type="framework" name="startd">
+                     <propval type="astring" name="duration" value="transient"/>
+        </property_group>
+        <instance enabled="true" name="default"> </instance>
+    </service>
+</service_bundle>

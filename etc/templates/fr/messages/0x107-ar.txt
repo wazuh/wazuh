@@ -1,0 +1,4 @@
+
+  3.5- La réponse active vous permet d'éxécuter des commandes
+       spécifiques en fonction d'évènement.
+       Par défaut, aucune réponse active n'est définie.

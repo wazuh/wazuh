@@ -1,0 +1,10 @@
+     - Aktivirana aktivna reakcija.
+
+   - Po default-u možemo osposobiti host-deny i
+     firewall-drop reakcije. Prvi će dodati host-a
+     na  /etc/hosts.deny a drugi će blokirati host-a
+     na iptabeli (ako je u pitanju Linux) ili na
+     ipfilteru (Solaris, FreeBSD ili NetBSD).
+   - Oni se mogu koristiti da zaustave SSHD brute force skenove,
+     portskenove i neke druge vrste napada. Takođe ih možeš
+     dodati za blokiranje u slučaju snort dojava, na primer.

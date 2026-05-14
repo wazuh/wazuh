@@ -1,0 +1,5 @@
+ 
+ Error 0x1.
+ This script can only be executed from the same directory.
+ Change directory to where this script is before running it.
+ You must run it as ./install.sh ."

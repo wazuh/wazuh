@@ -1,0 +1,127 @@
+# Configuration
+yes="y"
+no="n"
+yesmatch="y"
+nomatch="n"
+agent="agent"
+local="local"
+server="server"
+help="help"
+
+# Global
+moreinfo="详细信息请参考: "
+starting="正在启动 Wazuh "
+systemis="系统类型是 "
+modifiedinit="修改启动脚本使 Wazuh 在系统启动时自动运行 "
+noboot="未知系统,启动脚本未能添加."
+
+# Part 1
+installscript="安装脚本"
+system="系统类型"
+user="用户"
+host="主机"
+hitanyorabort="按 ENTER 继续或 Ctrl-C 退出."
+whattoinstall="您希望哪一种安装 (manager, agent, local or help)?"
+serverchose="选择了 Manager (server) 类型的安装"
+clientchose="选择了 Agent (client) 类型的安装"
+localchose="选择了 Local 类型的安装"
+
+# Part 2
+settingupenv="正在初始化安装环境"
+wheretoinstall="请选择 Wazuh 的安装路径"
+installat="Wazuh 将安装在 "
+deletedir="安装路径已存在. 要删除它吗?"
+
+# Part 3
+configuring="正在配置"
+mailnotify="您希望收到e-mail告警吗?"
+nomail="Email告警没有启用 "
+whatsemail="请输入您的 e-mail 地址?"
+yoursmtp="我们找到您的 SMTP 服务器为"
+usesmtp="您希望使用它吗?"
+usingsmtp="使用 SMTP 服务器: "
+whatsmtp="请输入您的 SMTP 服务器IP或主机名 ?"
+
+# Part 3.1/agent
+serverip="请输入 Wazuh 服务器的IP地址"
+serveraddr="请输入 Wazuh 服务器的IP地址或主机名"
+addingip="添加服务器IP "
+addingname="添加服务器主机名 "
+
+
+# Part 3.2
+runsyscheck="您希望运行系统完整性检测模块吗?"
+nosyscheck="系统完整性检测模块将不被部署"
+yessyscheck="系统完整性检测模块将被部署"
+
+# Part 3.3
+runrootcheck="您希望运行 rootkit检测吗?"
+norootcheck="rootkit检测将不被部署"
+yesrootcheck="rootkit检测将被部署"
+
+# Part 3.4
+runopenscap="Do you want to run OpenSCAP?"
+norunopenscap="Not running OpenSCAP"
+yesrunopenscap="Running OpenSCAP"
+
+# Part 3.5/server/local
+enable_ar="您希望开启联动(active response)功能吗?"
+noactive="联动功能(Active response)被关闭"
+nohosts="主机联动(host-deny) 被关闭"
+yeshosts="主机联动(host-deny) 当事件级别 >= 6 时被启动"
+firewallar="您希望开启防火墙联动(firewall-drop)功能吗?"
+nofirewall="防火墙联动(firewall-drop)被关闭."
+yesfirewall="防火墙联动(firewall-drop)当事件级别 >= 6 时被启动"
+defaultwhitelist="联动功能默认的白名单是:"
+addwhite="您希望添加更多的IP到白名单吗?"
+ipswhite="请输入IP (用空格进行分隔): "
+
+# Part 3.5/server/local
+syslog="您希望接收远程机器syslog吗 (port 514 udp)?"
+nosyslog="远程机器syslog将不被接收"
+yessyslog="远程机器syslog将被接收"
+
+# Part 3.4/3.5
+readlogs="设置配置文件以分析一下日志:"
+
+# Part 3.7
+runauthd="你要运行Auth守护进程吗？"
+norunauthd="不运行Auth守护进程"
+yesrunauthd="运行Auth守护进程"
+
+# Part 4
+installing="正在安装系统"
+startwazuh="你想在安装后启动Wazuh吗？"
+nowazuhstart="Wazuh不会在安装结束时开始。"
+yeswazuhstart="Wazuh将在安装结束时开始。"
+runningmake="正在运行Makefile"
+
+# Final
+configurationdone="已正确完成系统配置"
+tostart="要启动 Wazuh"
+tostop="要停止 Wazuh"
+configat="要查看或修改系统配置,请编辑 "
+addserveragent="为使代理能够联接服务器端, 您需要将每个代理添加到服务器."
+presskey="请按ENTER继续"
+
+# Update
+wanttoupdate="您已经安装过 Wazuh ,要升级它吗?"
+mustuninstall="如果不卸载旧版本，安装将无法继续。 正在退出。"
+unabletoupdate="不能对原版本进行升级. 必须进行全新安装."
+updatecompleted="升级完成."
+updatefailed="升级失败."
+updaterules="您希望升级规则(rules文件)吗?"
+updatingrules="升级规则(rules文件)."
+notupdatingrules="不升级规则(rules文件)."
+update_rev_newconf1="从ossec.conf备份已在$INSTALLDIR/etc/ossec.conf.orig中创建。"
+update_rev_newconf2="P请验证您的ossec.conf配置在$INSTALLDIR/etc/ossec.conf。"
+
+# Pf support
+pfenable="你希望在联动功能中使用 PF 防火墙吗?"
+nopf="PF 防火墙联动被禁止."
+pftablename="请输入希望使用的 PF 表?"
+pfmessage="请将以下几行添加到 PF 规则的前面"
+
+# CA store
+addcastore="您要添加更多證書嗎"
+castore="輸入X509證書或證書文件夾的路徑："

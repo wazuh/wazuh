@@ -1,0 +1,4 @@
+Greška 0x1.
+Ovaj skript može biti izveden jedino iz istog direktorijuma.
+Prebaci direktorij tamo gde je ovaj skript pre nego što ga pustiš.
+Moraš ga pustiti kao ./install.sh ."

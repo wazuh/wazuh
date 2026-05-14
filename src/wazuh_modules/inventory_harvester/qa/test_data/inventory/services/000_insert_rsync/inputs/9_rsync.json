@@ -1,0 +1,49 @@
+{
+    "agent_info": {
+        "agent_id": "009",
+        "agent_ip": "any",
+        "agent_name": "centos9",
+        "agent_version": "v4.10.1"
+    },
+    "data_type": "state",
+    "data": {
+        "attributes_type": "syscollector_services",
+        "attributes": {
+            "scan_time": "2025/03/28 17:14:48",
+            "service_id": " ",
+            "service_name": " ",
+            "service_description": " ",
+            "service_type": " ",
+            "service_state": " ",
+            "service_sub_state": " ",
+            "service_enabled": " ",
+            "service_start_type": " ",
+            "service_restart": " ",
+            "service_frequency": null,
+            "service_starts_on_mount": null,
+            "service_starts_on_path_modified": " ",
+            "service_starts_on_not_empty_directory": " ",
+            "service_inetd_compatibility": null,
+            "process_pid": null,
+            "process_executable": " ",
+            "process_args": " ",
+            "user_name": " ",
+            "process_group_name": " ",
+            "process_working_directory": " ",
+            "process_root_directory": " ",
+            "file_path": " ",
+            "service_address": " ",
+            "log_file_path": " ",
+            "error_log_file_path": " ",
+            "service_exit_code": null,
+            "service_win32_exit_code": null,
+            "service_following": " ",
+            "service_object_path": " ",
+            "service_target_ephemeral_id": null,
+            "service_target_type": " ",
+            "service_target_address": " ",
+            "checksum": " ",
+            "item_id": "cced25cebdc8af9754617e3f42b16720fd7697f6"
+        }
+    }
+}

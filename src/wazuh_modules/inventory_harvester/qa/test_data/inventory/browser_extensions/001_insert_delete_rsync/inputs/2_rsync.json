@@ -1,0 +1,12 @@
+{
+    "agent_info": {
+        "agent_id": "001",
+        "agent_ip": "any",
+        "agent_name": "centos9",
+        "agent_version": "v4.14.0"
+    },
+    "action": "deleteBrowserExtension",
+    "data": {
+        "item_id": "571fdefef67b73320f74a5f2f5fb69bde4ad9680"
+    }
+}

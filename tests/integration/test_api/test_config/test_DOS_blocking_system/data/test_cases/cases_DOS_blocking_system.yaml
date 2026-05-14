@@ -1,0 +1,6 @@
+- name: DOS_BLOCKING_SYSTEM
+  description: Check if the DOS blocking system works by making multiple requests from the same IP.
+  configuration_parameters:
+    MAX_REQUEST_PER_MINUTE: 50
+  metadata:
+    expected_http_code: 429

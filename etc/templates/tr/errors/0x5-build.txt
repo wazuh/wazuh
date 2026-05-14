@@ -1,0 +1,3 @@
+
+ Error 0x5.
+ Oluşturma hatası. Kurulum tamamlanamadı.

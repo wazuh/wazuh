@@ -1,0 +1,143 @@
+- name: process_priority_0_scheduled
+  description: Check if configured process priorty is correct
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    FIM_MODE:
+      realtime: 'no'
+      whodata: 'no'
+    MAX_EPS: 10
+    PROCESS_PRIORITY: 0
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    priority: 0
+    fim_mode: 'scheduled'
+
+- name: process_priority_0_realtime
+  description: Check if configured process priorty is correct
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    FIM_MODE:
+      realtime: 'yes'
+      whodata: 'no'
+    MAX_EPS: 10
+    PROCESS_PRIORITY: 0
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    priority: 0
+    fim_mode: 'realtime'
+
+- name: process_priority_0_whodata
+  description: Check if configured process priorty is correct
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    FIM_MODE:
+      realtime: 'no'
+      whodata: 'yes'
+    MAX_EPS: 10
+    PROCESS_PRIORITY: 0
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    priority: 0
+    fim_mode: 'whodata'
+
+- name: process_priority_4_scheduled
+  description: Check if configured process priorty is correct
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    FIM_MODE:
+      realtime: 'no'
+      whodata: 'no'
+    MAX_EPS: 10
+    PROCESS_PRIORITY: 4
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    priority: 4
+    fim_mode: 'scheduled'
+
+- name: process_priority_4_realtime
+  description: Check if configured process priorty is correct
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    FIM_MODE:
+      realtime: 'yes'
+      whodata: 'no'
+    MAX_EPS: 10
+    PROCESS_PRIORITY: 4
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    priority: 4
+    fim_mode: 'realtime'
+
+- name: process_priority_4_whodata
+  description: Check if configured process priorty is correct
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    FIM_MODE:
+      realtime: 'no'
+      whodata: 'yes'
+    MAX_EPS: 10
+    PROCESS_PRIORITY: 4
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    priority: 4
+    fim_mode: 'whodata'
+
+- name: process_priority_-5_scheduled
+  description: Check if configured process priorty is correct
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    FIM_MODE:
+      realtime: 'no'
+      whodata: 'no'
+    MAX_EPS: 10
+    PROCESS_PRIORITY: -5
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    priority: -5
+    fim_mode: 'scheduled'
+
+- name: process_priority_-5_realtime
+  description: Check if configured process priorty is correct
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    FIM_MODE:
+      realtime: 'yes'
+      whodata: 'no'
+    MAX_EPS: 10
+    PROCESS_PRIORITY: -5
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    priority: -5
+    fim_mode: 'realtime'
+
+- name: process_priority_-5_whodata
+  description: Check if configured process priorty is correct
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    FIM_MODE:
+      realtime: 'no'
+      whodata: 'yes'
+    MAX_EPS: 10
+    PROCESS_PRIORITY: -5
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], testdir1]
+    priority: -5
+    fim_mode: 'whodata'

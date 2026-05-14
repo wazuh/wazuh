@@ -1,0 +1,53 @@
+{
+    "id": "000_pkghash_CVE-2022-1234",
+    "operation": "INSERT",
+    "data":{
+      "agent": {
+        "build": {
+          "original": "sample_build_1"
+        },
+        "id": "000",
+        "name": "agent_name_1",
+        "type": "agent_type_1",
+        "version": "1.0.0"
+      },
+      "message": "Sample message",
+      "package": {
+        "architecture": "x64",
+        "build_version": "1.0.0",
+        "checksum": "checksum_value",
+        "description": "Sample package description",
+        "install_scope": "global",
+        "installed": "2023-09-17T12:00:00Z",
+        "license": "MIT",
+        "name": "sample_package",
+        "path": "/path/to/package",
+        "reference": "sample_reference",
+        "size": 12345,
+        "type": "sample_package_type",
+        "version": "1.0.0"
+      },
+      "tags": ["sample", "tag1"],
+      "vulnerability": {
+        "detected_at": "2023-09-18T12:00:00Z",
+        "published_at": "2023-01-18T12:00:00Z",
+        "category": "sample_category",
+        "classification": "sample_classification",
+        "description": "Sample vulnerability description",
+        "enumeration": "sample_enumeration",
+        "id": "vuln_id_1",
+        "reference": "sample_reference",
+        "report_id": "report_id_1",
+        "scanner": {
+          "vendor": "sample_vendor"
+        },
+        "score": {
+          "base": 5.0,
+          "environmental": 5.5,
+          "temporal": 4.5,
+          "version": "1.0.0"
+        },
+        "severity": "medium"
+      }
+    }
+}

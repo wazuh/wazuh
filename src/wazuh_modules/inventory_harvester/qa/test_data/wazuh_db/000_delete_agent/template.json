@@ -1,0 +1,23 @@
+{
+    "index_patterns": [
+        "wazuh-states-fim-files-*",
+        "wazuh-states-fim-registries-*",
+        "wazuh-states-inventory-packages-*",
+        "wazuh-states-inventory-system-*",
+        "wazuh-states-inventory-processes-*",
+        "wazuh-states-inventory-hotfixes-*"
+    ],
+    "priority": 0,
+    "template": {
+        "settings": {
+            "number_of_shards": 1,
+            "number_of_replicas": 0
+        },
+        "mappings": {
+            "dynamic": true,
+            "_source": {
+                "enabled": true
+            }
+        }
+    }
+}

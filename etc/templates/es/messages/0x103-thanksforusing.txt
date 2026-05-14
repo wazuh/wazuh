@@ -1,0 +1,13 @@
+
+   Gracias por utilizar Wazuh.
+   Si necesita ayuda o encuentra algún problema, no dude
+   en ponerse en contacto con nosotros.
+
+   Utilice nuestra lista de distribución pública:
+          https://groups.google.com/forum/#!forum/wazuh
+
+   Puede encontrar más información en:
+          - http://www.wazuh.com
+
+           ---  Presione ENTER para finalizar. ---
+     (Tal vez encuentre más información a continuación).

@@ -1,0 +1,3 @@
+
+ U staat op het punt om het installatie proces te starten van Wazuh.
+ U heeft een C compiler nodig voorgeinstalleerd op uw systeem.

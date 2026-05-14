@@ -1,0 +1,14 @@
+{
+  "agent_info": {
+    "agent_id": "003"
+  },
+  "action": "deletePort",
+  "data": {
+    "protocol": "tcp6",
+    "local_ip": "::",
+    "local_port": 49664,
+    "remote_ip": "::",
+    "inode": 0,
+    "item_id": "780444cdd6b94639213b829135e8ab7bcf999161"
+  }
+}

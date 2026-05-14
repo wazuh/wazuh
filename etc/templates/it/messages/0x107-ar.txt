@@ -1,0 +1,4 @@
+
+  3.5- La risposta attiva consente di eseguire uno specifico comando in
+       conseguenza di un evento.
+       Per impostazione predefinita, vengono definite non risposte attive.

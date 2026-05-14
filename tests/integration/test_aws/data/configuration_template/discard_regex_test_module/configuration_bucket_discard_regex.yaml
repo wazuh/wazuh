@@ -1,0 +1,21 @@
+- sections:
+    - section: wodle
+      attributes:
+        - name: aws-s3
+      elements:
+        - disabled:
+            value: 'no'
+        - bucket:
+            attributes:
+              - type: BUCKET_TYPE
+            elements:
+              - name:
+                  value: BUCKET_NAME
+              - only_logs_after:
+                  value: 2022-NOV-20
+              - path:
+                  value: PATH
+              - discard_regex:
+                  attributes:
+                    - field: DISCARD_FIELD
+                  value: DISCARD_REGEX

@@ -1,0 +1,29 @@
+{
+  "agent_info": {
+    "agent_id": "001",
+    "agent_ip": "any",
+    "agent_name": "c0ce505227a4",
+    "agent_version": "v4.11.0"
+  },
+  "data_type": "dbsync_network_iface",
+  "data": {
+    "adapter": null,
+    "checksum": "69273da00e3e830b94ece41550f0332118b6380c",
+    "item_id": "d4aa8b01955e438235d586585492f3f5edceec1b",
+    "mac": "14:15:6e:37:f2:7e",
+    "mtu": 1500,
+    "name": "eth0",
+    "rx_bytes": 449599,
+    "rx_dropped": 0,
+    "rx_errors": 0,
+    "rx_packets": 661,
+    "scan_time": "2025/03/27 01:07:41",
+    "state": "up",
+    "tx_bytes": 52525,
+    "tx_dropped": 0,
+    "tx_errors": 0,
+    "tx_packets": 432,
+    "type": "ethernet"
+  },
+  "operation": "DELETED"
+}

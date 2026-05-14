@@ -1,0 +1,127 @@
+# Configuration
+yes="j"
+no="n"
+yesmatch="j"
+nomatch="n"
+agent="agent"
+local="local"
+server="server"
+help="help"
+
+# Global
+moreinfo="Meer informatie op: "
+starting="Bezig met starten van Wazuh"
+systemis="Systeem is"
+modifiedinit="Init script aangepast om Wazuh te laden tijdens opstarten."
+noboot="Onbekend systeem. Geen init script toegevoegd."
+
+# Part 1
+installscript="Installatie Script"
+system="Systeem"
+user="Gebruiker"
+host="Host"
+hitanyorabort="Druk op ENTER om door te gaan of Ctrl-C om af te breken."
+whattoinstall="Wat voor soort installatie wilt u doen (manager, agent, local of help)?"
+serverchose="Gekozen voor manager (server) installatie"
+clientchose="Gekozen voor agent(client) installatie"
+localchose="Gekozen voor lokale installatie"
+
+# Part 2
+settingupenv="Opzetten van installatie omgeving"
+wheretoinstall="Waar wilt u Wazuh installaren"
+installat="Installatie word geplaatst in "
+deletedir="De installatie map bestaat reeds. Zal ik deze verwijderen?"
+
+# Part 3
+configuring="Configureren van"
+mailnotify="Wilt u email notificatie inschakelen?"
+nomail="Email notificatie uitgeschakeld"
+whatsemail="Wat is uw emailadres?"
+yoursmtp="We hebben uw SMTP server gevonden als: "
+usesmtp="Wilt u deze gebruiken ?"
+usingsmtp="Gebruik maken van SMTP server: "
+whatsmtp="Wat is uw SMTP server ip/host?"
+
+# Part 3.1/agent
+serverip="Wat is het IP adres van uw Wazuh host?"
+serveraddr="Wat is het IP adres/host van uw Wazuh host?"
+addingip="Toevoegen van server IP"
+addingname="Toevoegen van server host"
+
+
+# Part 3.2
+runsyscheck="Wilt u de integriteits controle proces?"
+nosyscheck="Geen syscheck (integriteits controle proces)"
+yessyscheck="Starten van syscheck (integriteits controle proces)"
+
+# Part 3.3
+runrootcheck="Wilt u de rootkit detectie engine?"
+norootcheck="Geen rootcheck (rootkit detectie)"
+yesrootcheck="Starten van rootcheck (rootkit detectie)"
+
+# Part 3.4
+runopenscap="Wilt u OpenSCAP?"
+norunopenscap="Geen running OpenSCAP"
+yesrunopenscap="Starten OpenSCAP"
+
+# Part 3.5/server/local
+enable_ar="Wilt u actief handelen?"
+noactive="Actief handelen uitgeschakeld"
+nohosts="host-deny uitgeschakeld"
+yeshosts="host-deny ingeschakeld (lokaal) voor niveaus >= 6"
+firewallar="Wilt u de firewall-drop handeling inschakelen?"
+nofirewall="firewall-drop uitgeschakeld."
+yesfirewall="firewall-drop ingeschakeld (lokaal) voor niveaus >= 6"
+defaultwhitelist="Standaard witte lijst voor actief handelen:"
+addwhite="Wilt u meer IPs toevoegen aan de witte lijst?"
+ipswhite="IPs (spatie gescheiden): "
+
+# Part 3.5/server/local
+syslog="Wilt u externe systeem logging (syslog) inschakelen (poort 514 udp)?"
+nosyslog="Externe systeem logging uitgeschakeld"
+yessyslog="Externe systeem logging ingeschakeld"
+
+# Part 3.4/3.5
+readlogs="Systeem instellen om de volgende logbestanden te controleren:"
+
+# Part 3.7
+runauthd="Wilt u de Auth-service uitvoeren?"
+norunauthd="Niet uitgevoerd Auth service"
+yesrunauthd="Starten Auth service"
+
+# Part 4
+installing="Bezig met installeren van het systeem"
+startwazuh="Wilt u na de installatie Wazuh starten?"
+nowazuhstart="Wazuh start niet aan het einde van de installatie."
+yeswazuhstart="Wazuh start aan het einde van de installatie."
+runningmake="Uitvoeren van Makefile"
+
+# Final
+configurationdone="Configuratie is succesvol afgesloten"
+tostart="Om Wazuh te starten"
+tostop="Om Wazuh te stoppen"
+configat="De configuratie kan worden bekeken en gewijzigd in"
+addserveragent="Om verbinding te maken tussen agent en server, moet je alle agenten aan de server toevoegen."
+presskey="Druk op ENTER om door te gaan"
+
+# Update
+wanttoupdate="U heeft Wazuh reeds geinstalleerd. Wilt u actualiseren?"
+mustuninstall="De installatie kan niet doorgaan zonder oude versies te verwijderen. Afsluiten."
+unabletoupdate="Kan geen actualisatie uitvoeren. Een volledig nieuwe installatie is vereist."
+updatecompleted="Actualisatie succesvol uitgevoerd."
+updatefailed="Actualisatie is gefaald."
+updaterules="Wilt u de regels actualiseren?"
+updatingrules="Actualiseren van regels."
+notupdatingrules="Regels worden niet geactualiseerd."
+update_rev_newconf1="Back-up van uw ossec.conf is gemaakt op $INSTALLDIR/etc/ossec.conf.orig."
+update_rev_newconf2="Controleer uw ossec.conf configuratie op $INSTALLDIR/etc/ossec.conf."
+
+# Pf support
+pfenable="Wilt u de PF firewall gebruiken bij actief handelen?"
+nopf="PF respons is uitgeschakeld."
+pftablename="Naam van de PF tabel om te gebruiken?"
+pfmessage="Voeg de volgende regels toe aan het begin van uw PF regels"
+
+# CA store
+addcastore="Wilt u meer certificaten toevoegen?"
+castore="Voer het pad in op een X509-certificaat of een certificaatmap: "

@@ -1,0 +1,59 @@
+' Copyright (C) 2015, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml syscollector-manager-side
+
+actor syscollector_agent as sysco
+
+
+box Analysisd #LightBlue
+participant analysisd
+participant dbsync_decoder
+participant syscollector_decoder
+participant json_plugin_decoder
+end box
+
+box WDB #LightGrey
+participant wdb
+database DB
+end box
+
+== Initialization ==
+
+group new syscollector: agent-manager sync
+sysco -> analysisd : message arrived
+analysisd --> dbsync_decoder : parse
+dbsync_decoder -> wdb : check db data
+wdb -> DB
+DB --> wdb
+wdb --> dbsync_decoder
+dbsync_decoder --> analysisd : dispatch message
+analysisd --> sysco : integrity message
+...
+sysco -> analysisd : message arrived
+end group
+
+
+== Decoding & DB Sync==
+
+analysisd --> syscollector_decoder : decode
+group old syscollector model
+syscollector_decoder -> syscollector_decoder : decode_info
+note left: decoding of networks, \n hardware, os, processes, ports \n and packages informaton
+syscollector_decoder -> wdb : sync info with db
+syscollector_decoder -> json_plugin_decoder : populate event info (fillData)
+end
+
+group new syscollector model
+syscollector_decoder -> syscollector_decoder : decode_dbsync_deltas
+syscollector_decoder -> wdb : sync info with db
+syscollector_decoder -> json_plugin_decoder : populate event info (fillData)
+end
+
+/ note over json_plugin_decoder: Used for alerts generation
+
+wdb -> wdb : parse_data
+wdb -> DB : save info
+
+@enduml

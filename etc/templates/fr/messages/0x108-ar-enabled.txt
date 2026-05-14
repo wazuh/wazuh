@@ -1,0 +1,11 @@
+     - Réponse active activée.
+
+   - Par défaut, nous pouvons activer le contrôle d'hôte
+     et le pare-feu (firewall-drop). Le premier ajoute
+     un hôte dans /etc/hosts.deny et le second bloquera
+     l'hôte dans iptables (sous linux) ou dans ipfilter
+     (sous Solaris, FreeBSD ou NetSBD).
+   - Ils peuvent aussi être utilisés pour arrêter les scans
+     en force brute de SSHD, les scans de ports ou d'autres
+     formes d'attaques. Vous pouvez aussi les bloquer par
+     rapport à des évènements snort, par exemple.

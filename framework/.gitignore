@@ -1,0 +1,19 @@
+
+# Python
+*.pyc
+*.egg-info
+*.egg
+
+# Framework
+docs/build/
+dist/
+build/
+
+# Objects
+libsqlite3.so*
+wazuh-clusterd-internal
+
+# Projects
+.idea
+
+wazuh/wazuh.json

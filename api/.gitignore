@@ -1,0 +1,14 @@
+# Python
+*.pyc
+*.egg-info
+*.egg
+
+# Tests
+.env/configurations/tmp/*
+
+# Framework
+dist/
+build/
+
+# Projects
+.idea

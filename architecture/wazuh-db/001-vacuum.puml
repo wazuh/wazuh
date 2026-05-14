@@ -1,0 +1,32 @@
+' Copyright (C) 2015, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml
+start
+:Analyze DB file;
+if (free_pages_% ≥ FREE_PAGES_%) then (Yes)
+  if (fragmentation > MAX_FRAGMENTATION) then (Yes)
+    :Run VACUUM;
+    stop
+  else (No)
+    if (fragmentation > THRESHOLD) then (Yes)
+      if (BD previously defragmented) then (Yes)
+        if (fragmentation > previous_frag + DELTA) then (Yes)
+          :Run VACUUM;
+          stop
+        else (No)
+          stop
+        endif
+      else (No)
+        :Run VACUUM;
+        stop
+      endif
+    else (No)
+      stop
+    endif
+  endif
+else (No)
+  stop
+endif
+@enduml

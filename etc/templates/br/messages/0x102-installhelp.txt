@@ -1,0 +1,24 @@
+
+  - Você tem três opções de instalação: servidor, cliente ou local.
+
+    - Se você escolher 'servidor', você poderá analizar todos os logs,
+      criar notificações de e-mail e respostas, e também receber
+      logs de máquinas remotas e de sistemas com 'clientes' rodando
+      (de onde o tráfego é enviado criptografado para o servidor).
+
+    - Se você escolher 'cliente'(agente), você poderá ler arquivos
+      locais (do syslog, snort, apache, etc) e encaminhá-los
+      (criptografados) ao servidor para análise.
+
+    - Se você escolher 'local', você poderá fazer tudo o que o
+      o servidor faz, exceto receber mensagens dos clientes.
+
+  - Utilize 'servidor' se você estiver configurando um servidor de análise de logs.
+
+  - Utilize 'cliente' se você tiver outra máquina rodando como servidor de logs
+    e quiser encaminhar os logs ao servidor para análise.
+    (ideal para webservers, servidores de banco de dados, etc)
+
+  - Utilize 'local' se você apenas tem um sistema para monitorar.
+
+  - Maiores informações: https://documentation.wazuh.com

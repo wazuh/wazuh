@@ -1,0 +1,25 @@
+---
+test_name: GET /
+
+stages:
+
+    # GET /
+  - name: Get default API information
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          api_version: !anystr
+          hostname: !anystr
+          license_name: !anystr
+          license_url: !anystr
+          revision: !anystr
+          timestamp: !anystr
+          title: !anystr

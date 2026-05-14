@@ -1,0 +1,27 @@
+{
+    "agent_info": {
+      "agent_id": "002",
+      "agent_ip": "any",
+      "agent_name": "DESKTOP-5RL9J34",
+      "agent_version": "v4.7.2"
+    },
+    "data_type": "state",
+    "data": {
+      "attributes_type": "fim_registry_value",
+      "arch": "[x64]",
+      "attributes": {
+        "checksum": "d1542968564bd0d6dc31213b30c9267386db48aa",
+        "hash_md5": "9a89fc93d303e2f39156a2e1299bd786",
+        "hash_sha1": "bb04a7058e58e73a523e1e5e424fbc333e9360b5",
+        "hash_sha256": "3d6a7de134a0a63608b75f75af17a488cd0d42c4a33afd90d997991ab4ca28c9",
+        "size": 8,
+        "type": "registry_value",
+        "value_type": "REG_SZ"
+      },
+      "index": "fb8b5ec9c25590ae4632445d6dcbe1a443d1b4c3",
+      "path": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Active Setup\\Installed Components\\FFFocta",
+      "timestamp": 1737939057,
+      "value_name": "GGGOCTA",
+      "version": 3
+    }
+  }

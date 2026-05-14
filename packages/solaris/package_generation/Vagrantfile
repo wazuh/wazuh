@@ -1,0 +1,149 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+require 'getoptlong'
+
+os = {
+    'solaris11' => {'box' => 'wazuh/solaris11', 'ip' => '192.168.56.44', 'folder' => 'solaris11'},
+    'solaris10' => {'box' => 'wazuh/solaris10', 'ip' => '192.168.56.45', 'folder' => 'solaris10'},
+    'solaris11_cmake' => {'box' => 'wazuh/solaris11_cmake', 'ip' => '192.168.56.46', 'folder' => 'solaris11'},
+    'solaris10_cmake' => {'box' => 'wazuh/solaris10_cmake', 'ip' => '192.168.56.47', 'folder' => 'solaris10'},
+    'solaris11_gcc9' => {'box' => 'wazuh/solaris11_gcc9', 'ip' => '192.168.56.48', 'folder' => 'solaris11'},
+    'solaris10_gcc9' => {'box' => 'wazuh/solaris10_gcc9', 'ip' => '192.168.56.49', 'folder' => 'solaris10'},
+}
+
+###################################################
+#                   PARAMETERS                    #
+###################################################
+opts = GetoptLong.new(
+  # Native vagrant options
+  [ '--force', '-f', GetoptLong::NO_ARGUMENT ],
+  [ '--provision', '-p', GetoptLong::NO_ARGUMENT ],
+  [ '--provision-with', GetoptLong::NO_ARGUMENT ],
+  [ '--provider', GetoptLong::OPTIONAL_ARGUMENT ],
+  [ '--help', '-h', GetoptLong::NO_ARGUMENT ],
+  [ '--check', GetoptLong::NO_ARGUMENT ],
+  [ '--logout', GetoptLong::NO_ARGUMENT ],
+  [ '--token', GetoptLong::NO_ARGUMENT ],
+  [ '--disable-http', GetoptLong::NO_ARGUMENT ],
+  [ '--http', GetoptLong::NO_ARGUMENT ],
+  [ '--https', GetoptLong::NO_ARGUMENT ],
+  [ '--ssh-no-password', GetoptLong::NO_ARGUMENT ],
+  [ '--ssh', GetoptLong::NO_ARGUMENT ],
+  [ '--ssh-port', GetoptLong::NO_ARGUMENT ],
+  [ '--ssh-once', GetoptLong::NO_ARGUMENT ],
+  [ '--host', GetoptLong::NO_ARGUMENT ],
+  [ '--entry-point', GetoptLong::NO_ARGUMENT ],
+  [ '--plugin-source', GetoptLong::NO_ARGUMENT ],
+  [ '--plugin-version', GetoptLong::NO_ARGUMENT ],
+  [ '--debug', GetoptLong::NO_ARGUMENT ],
+  [ '--prune', GetoptLong::NO_ARGUMENT ],
+  # Custom options
+  [ '--branch-tag', '-b', GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--ram', GetoptLong::OPTIONAL_ARGUMENT ],
+  [ '--cpus', GetoptLong::OPTIONAL_ARGUMENT ],
+  [ '--checksum', GetoptLong::OPTIONAL_ARGUMENT ],
+)
+
+###################################################
+#                  DEFAULT VALUES                 #
+###################################################
+
+branch_tag="main"
+ram="1024"
+cpus="1"
+checksum="no"
+checksum_path=""
+
+opts.each do |opt, arg|
+    case opt
+    when '--help'
+        puts <<-EOF
+
+        -- CUSTOM USE OF VAGRANT FOR THIS MACHINE --
+
+        vagrant [OPTION] ... up X
+        To bring up a Solaris machine, X must be solaris10 or solaris11 or both.
+
+        vagrant [OPTION] ... ssh/provision/delete
+
+        Example:
+        vagrant --branch-tag=v3.7.2 --ram=1024 --cpus=4 up solaris10 solaris11
+
+        -h, --help:
+        Show help
+
+        --branch-tag x, -b x:
+        Generate package for branch/tag x
+
+        --ram x
+        Select the amount of ram asigned to the new machine.
+
+        --cpus x
+        Select the number of CPUs asigned to the new machine.
+
+        --checksum
+        Generate checksum for the packages in the folder.
+
+        -- DEFAULT USE OF VAGRANT (FOR ALL MACHINES) --
+
+        EOF
+    when '--branch-tag'
+        if arg == ''
+            puts "Missing branch-tag argument (try --help)"
+            exit 0
+        else
+            branch_tag=arg
+        end
+    when '--ram'
+        if arg == ''
+            puts "Missing ram argument (try --help)"
+            exit 0
+        else
+            ram=arg
+        end
+    when '--cpus'
+        if arg == ''
+            puts "Missing cpus argument (try --help)"
+            exit 0
+        else
+            cpus=arg
+        end
+    when '--checksum'
+        checksum="yes"
+    end
+end
+
+
+Vagrant.configure("2") do |config|
+
+    os.each do |key, value|
+        config.vm.define "#{key}" do |node|
+          node.vm.box = "#{value['box']}"
+          if key == "solaris11"
+            node.vm.box_url = 'https://ci.wazuh.com/vms/vagrant/solaris/11/i386/solaris11.3.box'
+          elsif key == "solaris10"
+            node.vm.box_url = 'https://ci.wazuh.com/vms/vagrant/solaris/10/i386/solaris10.box'
+          elsif key == "solaris11_cmake"
+            node.vm.box_url = 'https://ci.wazuh.com/vms/vagrant/solaris/11/i386/solaris11.3_cmake.box'
+          elsif key == "solaris10_cmake"
+            node.vm.box_url = 'https://ci.wazuh.com/vms/vagrant/solaris/10/i386/solaris10_cmake.box'
+          elsif key == "solaris11_gcc9"
+            node.vm.box_url = 'https://ci.wazuh.com/vms/vagrant/solaris/11/i386/solaris11.3_cmake.box'
+          elsif key == "solaris10_gcc9"
+            node.vm.box_url = 'https://ci.wazuh.com/vms/vagrant/solaris/10/i386/solaris10_cmake.box'
+          end
+
+          node.vm.network :private_network, ip: "#{value['ip']}"
+
+          node.vm.provider "virtualbox" do |vb|
+            vb.name = "#{key}"
+            vb.memory = ram
+            vb.cpus = cpus
+          end
+
+          config.vm.synced_folder "src/", "/tmp/shared"
+          node.vm.provision "shell", path: "src/generate_packages.sh", env: {"BRANCH_TAG" => "#{branch_tag}", "SOLARIS_VERSION" => "#{value['folder']}","CHECKSUM" => "#{checksum}"}
+        end
+    end
+end

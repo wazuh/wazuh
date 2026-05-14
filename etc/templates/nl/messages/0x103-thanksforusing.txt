@@ -1,0 +1,13 @@
+
+    Bedankt voor het gebruik Wazuh.
+    Gelieve twijfel niet om ons te contacteren als u hulp
+    nodig hebt of zoek een bug.
+
+    Gebruik onze openbare Mailing List:
+             https://groups.google.com/forum/#!forum/wazuh
+
+    Meer informatie is te vinden op:
+               - http://www.wazuh.com
+
+         --- Druk op ENTER om te voltooien. ---
+    --- (Misschien meer informatie hieronder). ---

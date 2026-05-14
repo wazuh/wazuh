@@ -1,0 +1,5 @@
+
+  3.6- Remote upgrades use packages signed by the system maintainer. The
+       corresponding certificate (or root certificate) must be installed
+       in the system in order to verify the WPK packages. By default,
+       the root certificate by Wazuh is installed.

@@ -1,0 +1,203 @@
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+# OSSEC Linux Audit - (C) 2008 Daniel B. Cid - dcid@ossec.net
+#
+# Released under the same license as OSSEC.
+# More details at the LICENSE file included with OSSEC or online
+# at: https://www.gnu.org/licenses/gpl.html
+#
+# [Application name] [any or all] [reference]
+# type:<entry name>;
+#
+# Type can be:
+#             - f (for file or directory)
+#             - p (process running)
+#             - d (any file inside the directory)
+#
+# Additional values:
+# For the registry and for directories, use "->" to look for a specific entry and another
+# "->" to look for the value.
+# Also, use " -> r:^\. -> ..." to search all files in a directory
+# For files, use "->" to look for a specific value in the file.
+#
+# Values can be preceded by: =: (for equal) - default
+#                             r: (for ossec regexes)
+#                             >: (for strcmp greater)
+#                             <: (for strcmp  lower)
+# Multiple patterns can be specified by using " && " between them.
+# (All of them must match for it to return true).
+
+# CIS Checks for Debian/Ubuntu
+# Based on Center for Internet Security Benchmark for Debian Linux v1.0
+
+# Main one. Only valid for Debian/Ubuntu.
+[CIS - Testing against the CIS Debian Linux Benchmark v1.0] [all required] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/debian_version;
+f:/proc/sys/kernel/ostype -> Linux;
+
+
+# Section 1.4 - Partition scheme.
+[CIS - Debian Linux - 1.4 - Robust partition scheme - /tmp is not on its own partition {CIS: 1.4 Debian Linux}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/fstab -> !r:/tmp;
+
+[CIS - Debian Linux - 1.4 - Robust partition scheme - /opt is not on its own partition {CIS: 1.4 Debian Linux}] [all] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/opt;
+f:/etc/fstab -> !r:/opt;
+
+[CIS - Debian Linux - 1.4 - Robust partition scheme - /var is not on its own partition {CIS: 1.4 Debian Linux}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/fstab -> !r:/var;
+
+
+# Section 2.3 - SSH configuration
+[CIS - Debian Linux - 2.3 - SSH Configuration - Protocol version 1 enabled {CIS: 2.3 Debian Linux} {PCI_DSS: 4.1}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/ssh/sshd_config -> !r:^# && r:Protocol\.+1;
+
+[CIS - Debian Linux - 2.3 - SSH Configuration - IgnoreRHosts disabled {CIS: 2.3 Debian Linux} {PCI_DSS: 4.1}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/ssh/sshd_config -> !r:^# && r:IgnoreRhosts\.+no;
+
+[CIS - Debian Linux - 2.3 - SSH Configuration - Empty passwords permitted {CIS: 2.3 Debian Linux} {PCI_DSS: 4.1}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/ssh/sshd_config -> !r:^# && r:^PermitEmptyPasswords\.+yes;
+
+[CIS - Debian Linux - 2.3 - SSH Configuration - Host based authentication enabled {CIS: 2.3 Debian Linux} {PCI_DSS: 4.1}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/ssh/sshd_config -> !r:^# && r:HostbasedAuthentication\.+yes;
+
+[CIS - Debian Linux - 2.3 - SSH Configuration - Root login allowed {CIS: 2.3 Debian Linux} {PCI_DSS: 4.1}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\.+yes;
+
+
+# Section 2.4 Enable system accounting
+#[CIS - Debian Linux - 2.4 - System Accounting - Sysstat not installed {CIS: 2.4 Debian Linux}] [all] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+#f:!/etc/default/sysstat;
+#f:!/var/log/sysstat;
+
+#[CIS - Debian Linux - 2.4 - System Accounting - Sysstat not enabled {CIS: 2.4 Debian Linux}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+#f:!/etc/default/sysstat;
+#f:/etc/default/sysstat -> !r:^# && r:ENABLED="false";
+
+
+# Section 2.5 Install and run Bastille
+#[CIS - Debian Linux - 2.5 - System harderning - Bastille is not installed {CIS: 2.5 Debian Linux}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+#f:!/etc/Bastille;
+
+
+# Section 2.6 Ensure sources.list Sanity
+[CIS - Debian Linux - 2.6 - Sources list sanity - Security updates not enabled {CIS: 2.6 Debian Linux} {PCI_DSS: 6.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:!/etc/apt/sources.list;
+f:!/etc/apt/sources.list -> !r:^# && r:http://security.debian|http://security.ubuntu;
+
+
+# Section 3 - Minimize inetd services
+[CIS - Debian Linux - 3.3 - Telnet enabled on inetd {CIS: 3.3 Debian Linux} {PCI_DSS: 2.2.3}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/inetd.conf -> !r:^# && r:telnet;
+
+[CIS - Debian Linux - 3.4 - FTP enabled on inetd {CIS: 3.4 Debian Linux} {PCI_DSS: 2.2.3}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/inetd.conf -> !r:^# && r:/ftp;
+
+[CIS - Debian Linux - 3.5 - rsh/rlogin/rcp enabled on inetd {CIS: 3.5 Debian Linux} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/inetd.conf -> !r:^# && r:shell|login;
+
+[CIS - Debian Linux - 3.6 - tftpd enabled on inetd {CIS: 3.6 Debian Linux} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/inetd.conf -> !r:^# && r:tftp;
+
+[CIS - Debian Linux - 3.7 - imap enabled on inetd {CIS: 3.7 Debian Linux} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/inetd.conf -> !r:^# && r:imap;
+
+[CIS - Debian Linux - 3.8 - pop3 enabled on inetd {CIS: 3.8 Debian Linux} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/inetd.conf -> !r:^# && r:pop;
+
+[CIS - Debian Linux - 3.9 - Ident enabled on inetd {CIS: 3.9 Debian Linux} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/inetd.conf -> !r:^# && r:ident;
+
+
+# Section 4 - Minimize boot services
+[CIS - Debian Linux - 4.1 - Disable inetd - Inetd enabled but no services running {CIS: 4.1 Debian Linux} {PCI_DSS: 2.2.2}] [all] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+p:inetd;
+f:!/etc/inetd.conf -> !r:^# && r:wait;
+
+[CIS - Debian Linux - 4.3 - GUI login enabled {CIS: 4.3 Debian Linux} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/inittab -> !r:^# && r:id:5;
+
+[CIS - Debian Linux - 4.6 - Disable standard boot services - Samba Enabled {CIS: 4.6 Debian Linux} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/init.d/samba;
+
+[CIS - Debian Linux - 4.7 - Disable standard boot services - NFS Enabled {CIS: 4.7 Debian Linux} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/init.d/nfs-common;
+f:/etc/init.d/nfs-user-server;
+f:/etc/init.d/nfs-kernel-server;
+
+[CIS - Debian Linux - 4.9 - Disable standard boot services - NIS Enabled {CIS: 4.9 Debian Linux} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/init.d/nis;
+
+[CIS - Debian Linux - 4.13 - Disable standard boot services - Web server Enabled {CIS: 4.13 Debian Linux} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/init.d/apache;
+f:/etc/init.d/apache2;
+
+[CIS - Debian Linux - 4.15 - Disable standard boot services - DNS server Enabled {CIS: 4.15 Debian Linux} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/init.d/bind;
+
+[CIS - Debian Linux - 4.16 - Disable standard boot services - MySQL server Enabled {CIS: 4.16 Debian Linux} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/init.d/mysql;
+
+[CIS - Debian Linux - 4.16 - Disable standard boot services - PostgreSQL server Enabled {CIS: 4.16 Debian Linux} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/init.d/postgresql;
+
+[CIS - Debian Linux - 4.17 - Disable standard boot services - Webmin Enabled {CIS: 4.17 Debian Linux} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/init.d/webmin;
+
+[CIS - Debian Linux - 4.18 - Disable standard boot services - Squid Enabled {CIS: 4.18 Debian Linux} {PCI_DSS: 2.2.2}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/init.d/squid;
+
+
+# Section 5 - Kernel tuning
+[CIS - Debian Linux - 5.1 - Network parameters - Source routing accepted {CIS: 5.1 Debian Linux}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/proc/sys/net/ipv4/conf/all/accept_source_route -> 1;
+
+[CIS - Debian Linux - 5.1 - Network parameters - ICMP broadcasts accepted {CIS: 5.1 Debian Linux}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/proc/sys/net/ipv4/icmp_echo_ignore_broadcasts -> 0;
+
+[CIS - Debian Linux - 5.2 - Network parameters - IP Forwarding enabled {CIS: 5.2 Debian Linux}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/proc/sys/net/ipv4/ip_forward -> 1;
+f:/proc/sys/net/ipv6/ip_forward -> 1;
+
+
+# Section 7 - Permissions
+[CIS - Debian Linux - 7.1 - Partition /var without 'nodev' set {CIS: 7.1 Debian Linux} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/fstab -> !r:^# && r:ext2|ext3 && r:/var && !r:nodev;
+
+[CIS - Debian Linux - 7.1 - Partition /tmp without 'nodev' set {CIS: 7.1 Debian Linux} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/fstab -> !r:^# && r:ext2|ext3 && r:/tmp && !r:nodev;
+
+[CIS - Debian Linux - 7.1 - Partition /opt without 'nodev' set {CIS: 7.1 Debian Linux} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/fstab -> !r:^# && r:ext2|ext3 && r:/opt && !r:nodev;
+
+[CIS - Debian Linux - 7.1 - Partition /home without 'nodev' set {CIS: 7.1 Debian Linux} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/fstab -> !r:^# && r:ext2|ext3 && r:/home && !r:nodev ;
+
+[CIS - Debian Linux - 7.2 - Removable partition /media without 'nodev' set {CIS: 7.2 Debian Linux} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/fstab -> !r:^# && r:/media && !r:nodev;
+
+[CIS - Debian Linux - 7.2 - Removable partition /media without 'nosuid' set {CIS: 7.2 Debian Linux} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/fstab -> !r:^# && r:/media && !r:nosuid;
+
+[CIS - Debian Linux - 7.3 - User-mounted removable partition /media {CIS: 7.3 Debian Linux} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/fstab -> !r:^# && r:/media && r:user;
+
+
+# Section 8 - Access and authentication
+[CIS - Debian Linux - 8.8 - LILO Password not set {CIS: 8.8 Debian Linux} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/lilo.conf -> !r:^# && !r:restricted;
+f:/etc/lilo.conf -> !r:^# && !r:password=;
+
+[CIS - Debian Linux - 8.8 - GRUB Password not set {CIS: 8.8 Debian Linux} {PCI_DSS: 2.2.4}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/boot/grub/menu.lst -> !r:^# && !r:password;
+
+[CIS - Debian Linux - 9.2 - Account with empty password present {CIS: 9.2 Debian Linux} {PCI_DSS: 10.2.5}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/shadow -> r:^\w+::;
+
+[CIS - Debian Linux - 13.11 - Non-root account with uid 0 {CIS: 13.11 Debian Linux} {PCI_DSS: 10.2.5}] [any] [https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf]
+f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;

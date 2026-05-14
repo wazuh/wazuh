@@ -1,0 +1,13 @@
+
+    Hvala što koristite Wazuh.
+    Molimo vas da ne sumnjam da nam se obratite ako trebate
+    bilo kakvu pomoć ili pronaći bilo koji bug.
+
+    Koristite naš javni Mailing lista na:
+              https://groups.google.com/forum/#!forum/wazuh
+
+    Više informacija može se pronaći na:
+               - http://www.wazuh.com
+
+         --- Pritisnite ENTER za kraj. ---
+    --- (Možda i više informacija u nastavku). ---

@@ -1,0 +1,4 @@
+ 
+ Fout 0x2.
+ Je moet administratie rechten bekeomen om dit script
+ uit te voeren.

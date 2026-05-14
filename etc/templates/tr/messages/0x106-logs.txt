@@ -1,0 +1,7 @@
+ - Eğer başka bir dosyayı daha gözlemek isterseniz
+   ossec.conf dosyasına yeni bir localfile girdisi ekleyin.
+   Yapılandırma hakkındaki herhangi bir sorunuzu cevaplamak için
+   https://documentation.wazuh.com/ dresini ziyaret edebilirsiniz.
+
+
+   --- Devam etmek için ENTER tuşuna basın ---

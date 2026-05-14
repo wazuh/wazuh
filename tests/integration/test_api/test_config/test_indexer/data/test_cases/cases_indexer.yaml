@@ -1,0 +1,125 @@
+- name: UPLOAD_ONE_BLOCK_CONFIG_NOT_ALLOWED
+  description: Upload one block configuration with a forbidden section
+  configuration_parameters:
+    ALLOWED: no
+  metadata:
+    expected_code: 200
+    expected_error_code: 1
+    expected_indexer_enabled: yes
+    request_body: >
+      <ossec_config>
+        <remote>
+          <connection>secure</connection>
+          <port>1514</port>
+        </remote>
+        <indexer>
+          <enabled>yes</enabled>
+        </indexer>
+      </ossec_config>
+
+- name: UPLOAD_ONE_BLOCK_CONFIG_ALLOWED
+  description: Upload one block configuration without a forbidden section
+  configuration_parameters:
+    ALLOWED: yes
+  metadata:
+    expected_code: 200
+    expected_error_code: 0
+    expected_indexer_enabled: yes
+    request_body: >
+      <ossec_config>
+        <remote>
+          <connection>secure</connection>
+          <port>1514</port>
+        </remote>
+        <indexer>
+          <enabled>yes</enabled>
+        </indexer>
+      </ossec_config>
+
+- name: UPLOAD_TWO_BLOCKS_CONFIG_FIRST_BLOCK_NOT_ALLOWED
+  description: Upload two blocks configuration with a forbidden section in the first block
+  configuration_parameters:
+    ALLOWED: no
+  metadata:
+    expected_code: 200
+    expected_error_code: 1
+    expected_indexer_enabled: yes
+    request_body: >
+      <ossec_config>
+        <indexer>
+          <enabled>no</enabled>
+        </indexer>
+      </ossec_config>
+
+      <ossec_config>
+        <remote>
+          <connection>secure</connection>
+          <port>1514</port>
+        </remote>
+      </ossec_config>
+
+- name: UPLOAD_TWO_BLOCKS_CONFIG_FIRST_BLOCK_ALLOWED
+  description: Upload two blocks configuration without a forbidden section in the first block
+  configuration_parameters:
+    ALLOWED: yes
+  metadata:
+    expected_code: 200
+    expected_error_code: 0
+    expected_indexer_enabled: no
+    request_body: >
+      <ossec_config>
+        <indexer>
+          <enabled>no</enabled>
+        </indexer>
+      </ossec_config>
+
+      <ossec_config>
+        <remote>
+          <connection>secure</connection>
+          <port>1514</port>
+        </remote>
+      </ossec_config>
+
+- name: UPLOAD_TWO_BLOCKS_CONFIG_SECOND_NOT_ALLOWED
+  description: Upload two blocks configuration with a forbidden section in the second block
+  configuration_parameters:
+    ALLOWED: no
+  metadata:
+    expected_code: 200
+    expected_error_code: 1
+    expected_indexer_enabled: yes
+    request_body: >
+      <ossec_config>
+        <remote>
+          <connection>secure</connection>
+          <port>1514</port>
+        </remote>
+      </ossec_config>
+
+      <ossec_config>
+        <indexer>
+          <enabled>yes</enabled>
+        </indexer>
+      </ossec_config>
+
+- name: UPLOAD_TWO_BLOCKS_CONFIG_SECOND_BLOCK_ALLOWED
+  description: Upload two blocks configuration without a forbidden section in the second block
+  configuration_parameters:
+    ALLOWED: yes
+  metadata:
+    expected_code: 200
+    expected_error_code: 0
+    expected_indexer_enabled: yes
+    request_body: >
+      <ossec_config>
+        <remote>
+          <connection>secure</connection>
+          <port>1514</port>
+        </remote>
+      </ossec_config>
+
+      <ossec_config>
+        <indexer>
+          <enabled>yes</enabled>
+        </indexer>
+      </ossec_config>

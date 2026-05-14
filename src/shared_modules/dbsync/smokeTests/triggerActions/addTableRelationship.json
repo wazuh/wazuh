@@ -1,0 +1,16 @@
+{
+    "action": "dbsync_add_table_relationship",
+    "body": {  
+        "base_table":"processes",
+        "relationed_tables":
+        [
+            {
+                "table": "processes_sockets",
+                "field_match": 
+                {
+                    "pid": "pid"
+                }
+            }
+        ]
+    }
+}

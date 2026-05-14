@@ -1,0 +1,10 @@
+<!-- Test: invalid weekday -->
+<group name="testing">
+
+    <rule id="100001" level="3">
+    <program_name>example</program_name>
+    <weekday>osvaldo</weekday>
+    <description>example_description</description>
+    </rule>
+
+</group>

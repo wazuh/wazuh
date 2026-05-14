@@ -1,0 +1,13 @@
+{
+  "agent_info": {
+    "agent_id": "003"
+  },
+  "data_type": "integrity_check_global",
+  "data": {
+    "attributes_type": "syscollector_network_address",
+    "begin": "1",
+    "checksum": "c13a7528210234983cf6fee4bfce2cf1cd99e34c",
+    "end": "92",
+    "id": 1740672009
+  }
+}

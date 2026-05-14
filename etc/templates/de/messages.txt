@@ -1,0 +1,129 @@
+# Configuration
+yes="j"
+no="n"
+yesmatch="j"
+nomatch="n"
+agent="agent"
+local="lokal"
+server="server"
+help="hilfe"
+
+
+# Global
+moreinfo="Weitere Informationen unter: "
+starting="Starte Wazuh"
+systemis="Erkanntes System "
+modifiedinit="Init script wurde verändert um Wazuh beim boot zu starten."
+noboot="Unbekanntes system. Es wurde kein Init-Script kopiert."
+
+# Part 1
+installscript="Installations Script"
+system="System"
+user="User"
+host="Host"
+hitanyorabort="Drücken Sie eine Taste zum fortfahren oder Ctrl-C zum abbrechen"
+whattoinstall="Welche Art der Installation möchten Sie starten (manager, agent, lokal oder hilfe)?"
+serverchose="Manager (server) installation ausgewählt"
+clientchose="Agent (client) installation ausgewählt"
+localchose="Lokale installation ausgewählt"
+
+# Part 2
+settingupenv="Die Installation wird vorbereitet"
+wheretoinstall="Bitte wöhlen Sie wo Wazuh installiert werden soll"
+installat="Die Installation wird kopiert nach "
+deletedir="Das Installationsverzeichniss existiert bereits. Soll es gelöscht werden? "
+
+# Part 3
+configuring="Konfiguration "
+mailnotify="Möchten Sie Benachrichtigungen per E-Mail? "
+nomail="E-Mail Benachrichtigung wird übersprungen "
+whatsemail="Wie lautet die E-Mail Adresse? "
+yoursmtp="Es wurde dieser SMTP Server gefunden"
+usesmtp="Soll er benutzt werden?"
+usingsmtp="Benutze SMTP Server: "
+whatsmtp="Wie lautet die Adresse des SMTP Servers? (IP/Host) "
+
+# Part 3.1/agent
+serverip="Wie lautet die IP Adresse des Wazuh Servers?"
+serveraddr="Wie lautet die IP Adresse/Host des Wazuh Servers?"
+addingip="Server IP hinzugefügt"
+addingname="Server Host hinzugefügt"
+
+
+# Part 3.2
+runsyscheck="Möchten Sie den syscheck (integrity check daemon) benutzen?"
+nosyscheck="Syscheck (integrity check daemon) wird nicht benutzt"
+yessyscheck="Syscheck (integrity check daemon) wird gestartet"
+
+# Part 3.3
+runrootcheck="Möchten Sie die rootkit detection engine benutzen?"
+norootcheck="Rootcheck (rootkit detection) wird nicht benutzt"
+yesrootcheck="Rootcheck (rootkit detection) wird gestartet"
+
+#Part 3.4
+runopenscap="Möchten Sie OpenSCAP benutzen?"
+norunopenscap="OpenSCAP wird nicht benutzt"
+yesrunopenscap="OpenSCAP wird gestartet"
+
+# Part 3.5/server/local
+enable_ar="Möchten Sie active response benutzen?"
+noactive="Active response wird nicht benutzt"
+nohosts="host-deny ausgeschaltet"
+yeshosts="host-deny (local) für level >= 6 eingeschaltet "
+firewallar="Möchten Sie firewall-drop benutzen?"
+nofirewall="firewall-drop ausgeschaltet"
+yesfirewall="firewall-drop (local) für level >= 6 eingeschaltet"
+defaultwhitelist="Standard Ausnahmeliste (White-list) für active response:"
+addwhite="Möchten Sie weitere IPs zur White-list hinzufügen?"
+ipswhite="IPs (Durch Leerzeichen getrennt): "
+
+
+# Part 3.5/server/local
+syslog="Möchten Sie Nachrichten von einem remote syslog (514 udp) empfangen?"
+nosyslog="Remote syslog empfang ausgeschaltet"
+yessyslog="Remote syslog empfang eingeschaltet"
+
+# Part 3.4/3.5
+readlogs="Die folgenden Log-Files werden analysiert:"
+
+# Part 3.7
+runauthd="Möchten Sie den Auth-Dienst ausführen?"
+norunauthd="Auth-Dienst wird nicht ausgeführt."
+yesrunauthd="Auth-Dienst ausführen"
+
+# Part 4
+installing="Installiere das System"
+startwazuh="Möchten Sie Wazuh nach der Installation starten?"
+nowazuhstart="Wazuh startet nicht am Ende der Installation."
+yeswazuhstart="Wazuh wird am Ende der Installation starten."
+runningmake="make wird ausgeführt"
+
+# Final
+configurationdone="Konfguration erfolgreich durchgeführt "
+tostart="Um Wazuh zu starten"
+tostop="Um Wazuh zu stoppen"
+configat="Die Konfiguration kann angesehen oder verändert werden unter: "
+addserveragent="Agenten müssen hinzugefügt werden bevor sie zugreifen können. "
+presskey="Drücken Sie eine Taste"
+
+# Update
+wanttoupdate="Wazuh ist bereits installiert. Möchten Sie es updaten?"
+mustuninstall="Die Installation kann nicht fortgesetzt werden, ohne alte Versionen zu deinstallieren. Verlassen."
+unabletoupdate="Update nicht möglich. Es muss eine Neuinstallation durchgeführt werden."
+updatecompleted="Update durchgeführt."
+updatefailed="Update fehlgeschlagen."
+updaterules="Möchten Sie die Regeln updaten?"
+updatingrules="Regeln werden upgedated."
+notupdatingrules="Regeln werden nicht verändert."
+update_rev_newconf1="Die Sicherung von deiner ossec.conf wurde bei $INSTALLDIR/etc/ossec.conf.orig erstellt."
+update_rev_newconf2="Bitte überprüfen Sie Ihre ossec.conf Konfiguration bei $INSTALLDIR/etc/ossec.conf."
+
+# Pf support
+pfenable="Möchten Sie die PF Firewall für active response benutzen?"
+nopf="active response für PF Firewall ausgeschaltet."
+pftablename="Name der PF Tabelle die benutzt werden soll?"
+pfmessage="Fügen Sie die folgende Zeile am Anfang Ihrer Regeln ein "
+
+# CA store
+addcastore="Möchten Sie weitere Zertifikate hinzufügen?"
+castore="Geben Sie den Pfad zu einem X509-Zertifikat oder einem Zertifikatsordner ein: "

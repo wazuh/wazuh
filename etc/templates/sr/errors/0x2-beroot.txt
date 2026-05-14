@@ -1,0 +1,2 @@
+Greška 0x2.
+Moraš biti root da bi koristio ovaj skript.

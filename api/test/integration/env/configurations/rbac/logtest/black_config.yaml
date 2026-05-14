@@ -1,0 +1,6 @@
+---
+- actions:
+  - logtest:run
+  resources:
+  - "*:*:*"
+  effect: deny

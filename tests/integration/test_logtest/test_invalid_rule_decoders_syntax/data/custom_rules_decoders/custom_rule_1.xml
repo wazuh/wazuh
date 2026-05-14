@@ -1,0 +1,10 @@
+<!-- Test: No closing XML tag -->
+<!--2020/09/21 14:23:36 ossec-testrule: ERROR: (1226): Error reading XML file 'etc/rules/local_rules.xml': XMLERR: End of file and some elements were not closed. (line 11). -->
+<group name="testing">
+
+  <rule id="100001" level="0">
+    <program_name>example</program_name>
+    <description>example_description</description>
+  </rule>
+
+</group

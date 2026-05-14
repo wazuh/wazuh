@@ -1,0 +1,36 @@
+[
+    {
+        "index_name": "wazuh-states-inventory-hardware-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "001",
+                    "name": "WazuhAgent",
+                    "version": "v4.11.1"
+                },
+                "host": {
+                    "cpu": {
+                        "cores": 8,
+                        "name": "Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz",
+                        "speed": 3800
+                    },
+                    "memory": {
+                        "free": 1048576,
+                        "total": 2097152,
+                        "used": 1048576,
+                        "usage": 0.5
+                    },
+                    "serial_number": "ABC123XYZ789"
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            }
+        ]
+    }
+]

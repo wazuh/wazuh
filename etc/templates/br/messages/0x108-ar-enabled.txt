@@ -1,0 +1,11 @@
+   - Sistema de respostas automáticas habilitado.
+
+   - Por padrão, nós podemos habilitar o 'host-deny' e
+     o 'firewall-drop'. O primeiro adicionará um host
+     ao /etc/hosts.deny e o segundo bloqueará o host
+     no 'iptables' (se linux) ou no ipfilter (se Solaris,
+     FreeBSD ou NetBSD).
+   - Eles podem ser usados para parar 'SSHD brute force
+     scans', portscans e outras formas de ataque.
+     Você pode também realizar  bloqueios baseados nos
+     alertas do snort, por exemplo.

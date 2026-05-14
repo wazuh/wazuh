@@ -1,0 +1,3 @@
+
+ Rozpoczynasz proces instalacji programu Wazuh.
+ Aby kontynuować musisz mieć zainstalowany kompilator C.

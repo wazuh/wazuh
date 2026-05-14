@@ -1,0 +1,32 @@
+{
+  "agent_info": {
+    "agent_id": "001",
+    "agent_ip": "any",
+    "agent_name": "c0ce505227a4",
+    "agent_version": "v4.11.0"
+  },
+  "data_type": "state",
+  "data": {
+    "attributes_type": "syscollector_packages",
+    "attributes": {
+      "architecture": "amd64",
+      "checksum": "ecee56514fffbd854df2392be1c5b29a4401c744",
+      "description": "command line tool for transferring data with URL syntax",
+      "format": "deb",
+      "groups": "web",
+      "install_time": " ",
+      "item_id": "7c6a8a5156cf128b6b678b363d102c6947a7101e",
+      "location": " ",
+      "multiarch": "foreign",
+      "name": "curl",
+      "priority": "optional",
+      "scan_time": "2025/02/26 23:45:10",
+      "size": 533504,
+      "source": " ",
+      "vendor": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
+      "version": "8.5.0-2ubuntu10.6"
+    },
+    "index": "7c6a8a5156cf128b6b678b363d102c6947a7101e",
+    "timestamp": ""
+  }
+}

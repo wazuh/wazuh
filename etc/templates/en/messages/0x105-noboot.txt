@@ -1,0 +1,3 @@
+
+ - No action was made to configure Wazuh to start during
+   the boot. Add the following line to your init script:

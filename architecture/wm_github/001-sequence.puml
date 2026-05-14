@@ -1,0 +1,34 @@
+' Copyright (C) 2015, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+@startuml wm_github
+    
+    box "Github Module" #LightBlue
+    participant main
+    participant wmodules
+    participant config
+    participant thread
+    participant wm_github
+    end box
+
+    activate main #Red
+    main -> wmodules : Setup module
+    wmodules -> config : Read configuration
+    config -> config : Store Github configuration
+    wmodules <-- config
+    main <-- wmodules
+
+    main -> thread ++ #Red : Launch Github thread
+    main <-- thread
+    thread -> wm_github : Github module initialization
+
+    database github_server
+    wm_github -> wm_github : Execute first scan
+    rnote over wm_github, github_server: **Scan Block**
+    
+    loop
+        wm_github -> wm_github : Sleep
+        wm_github -> wm_github : Execute scan
+        rnote over wm_github, github_server: **Scan Block**
+    end
+@enduml

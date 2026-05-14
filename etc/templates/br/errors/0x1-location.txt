@@ -1,0 +1,5 @@
+ 
+ Erro 0x1.
+ Este script só pode ser executado a partir do mesmo diretório.
+ Altere o diretório para onde está este script antes de rodá-lo.
+ Você deve rodá-lo como "./install.sh"

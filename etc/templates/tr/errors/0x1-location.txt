@@ -1,0 +1,5 @@
+ 
+ Error 0x1.
+ Bu betik sadece aynı dizin içinden çalıştırılabilir.
+ Bu betiğin daha önce çalıştığı dizine geçin.
+ Betiği ./install.sh şeklinde çalıştırmalısınız.

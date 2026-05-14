@@ -1,0 +1,13 @@
+
+    Dziękujemy za korzystanie z Wazuh.
+    Proszę nie wątpić o kontakt z nami, jeśli potrzebujesz pomocy
+    lub znaleźć żadnego błędu.
+
+    Skorzystaj z naszej listy mailingowej publicznego pod adresem:
+               https://groups.google.com/forum/#!forum/wazuh
+
+    Więcej informacji można znaleźć na stronie:
+               - http://www.wazuh.com
+
+         --- Naciśnij klawisz ENTER, aby zakończyć. ---
+           --- (Może więcej informacji poniżej). ---

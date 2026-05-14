@@ -1,0 +1,127 @@
+# Configuration
+yes="y"
+no="n"
+yesmatch="y"
+nomatch="n"
+agent="agent"
+local="local"
+server="server"
+help="help"
+
+# Global
+moreinfo="Περισσότερες πληροφορίες στο: "
+starting="Εκκινώντας το Wazuh"
+systemis="Το σύστημα είναι"
+modifiedinit="To init script τροποποιήθηκε προκειμένου να ξεκινάει Wazuh κατά την εκκίνηση του συστήματος."
+noboot="Άγνωστο σύστημα. Το init script δεν προστέθηκε."
+
+# Part 1
+installscript="πρόγραμμα εγκατάστασης"
+system="Σύστημα"
+user="Χρήστης"
+host="Υπολογιστής"
+hitanyorabort="Πατήστε ENTER για να συνεχίσετε ή Ctrl-C για ακύρωση."
+whattoinstall="Τι τύπου εγκατάσταση επιθυμείτε (manager, agent, local ή help);"
+serverchose="Επιλέχθηκε η εγκατάσταση διακομιστή (manager)"
+clientchose="Επιλέχθηκε η εγκατάσταση πελάτη (agent)"
+localchose="Επιλέχθηκε η τοπική (local) εγκατάσταση"
+
+# Part 2
+settingupenv="Ρυθμίζεται το περιβάλλον εγκατάστασης"
+wheretoinstall="Επιλέξτε την τοποθεσία εγκατάστασης του Wazuh"
+installat="Η εγκατάσταση θα γίνει στο "
+deletedir="Ο κατάλογος εγκατάστασης υπάρχει ήδη. Θέλετε να διαγραφεί;"
+
+# Part 3
+configuring="Ρυθμίζοντας το"
+mailnotify="Θέλετε να ειδοποιήστε μέσω e-mail;"
+nomail="Οι ειδοποιήσεις με e-mail απενεργοποιήθηκαν"
+whatsemail="Ποιά είναι η διεύθυνση του ηλεκτρονικού σας ταχυδρομείου;"
+yoursmtp="Βρήκαμε ότι ο διακομιστής της εξερχόμενης αλληλογραφίας σας είναι ο "
+usesmtp="Θέλετε να τον χρησιμοποιήσετε;"
+usingsmtp="Διακομιστής εξερχόμενης αλληλογραφίας: "
+whatsmtp="Ποιά είναι η διεύθυνση του διακομιστή της εξερχόμενης αλληλογραφίας σας ip/host?"
+
+# Part 3.1/agent
+serverip="Ποιά είναι η διεύθυνση IP του διακομιστή Wazuh;"
+serveraddr="Ποιά είναι η διεύθυνση IP/Host του διακομιστή Wazuh;"
+addingip="Προστέθηκε η διεύθυνση διακομιστή"
+addingname="Προστέθηκε η διεύθυνση διακομιστή"
+
+
+# Part 3.2
+runsyscheck="Θέλετε να εκτελέσετε τον δαίμονα ελέγχου ακεραιότητας (integrity check daemon);"
+nosyscheck="Ο δαίμονας ελέγχου ακεραιότητας (integrity check daemon) δεν εκτελέστηκε"
+yessyscheck="Ο δαίμονας ελέγχου ακεραιότητας (integrity check daemon) ξεκίνησε"
+
+# Part 3.3
+runrootcheck="Θέλετε να εκτελέσετε την μηχανή ανίχνευσης rootkit;"
+norootcheck="Η μηχανή ανίχνευσης rootkit δεν εκτελέστηκε"
+yesrootcheck="Η μηχανή ανίχνευσης rootkit ξεκίνησε"
+
+# Part 3.4
+runopenscap="Do you want to run OpenSCAP?"
+norunopenscap="Not running OpenSCAP"
+yesrunopenscap="Running OpenSCAP"
+
+# Part 3.5/server/local
+enable_ar="Θέλετε να ενεργοποιήσετε την ενεργή αντίδραση (active response);"
+noactive="Η ενεργή αντίδραση (active response) απενεργοποιήθηκε"
+nohosts="Το host-deny απενεργοποιήθηκε"
+yeshosts="Το host-deny ενεργοποιήθηκε (local) για επίπεδα >= 6"
+firewallar="Θέλετε να ενεργοποιήσετε την αντίδραση firewall-drop;"
+nofirewall="Η αντίδραση firewall-drop απενεργοποιήθηκε."
+yesfirewall="Η αντίδραση firewall-drop ενεργοποιήθηκε (local) για επίπεδα >= 6"
+defaultwhitelist="Προεπιλεγμένη white list για την ενεργή αντίδραση (active response):"
+addwhite="Θέλετε να προσθέσετε περισσότερες IPs στην white list;"
+ipswhite="Διευθύνσεις IPs (χωρισμένες με κενό): "
+
+# Part 3.5/server/local
+syslog="Θέλετε να ενεργοποιήσετε την καταγραφή συμβάντων σε απομακρυσμένο syslog διακομιστή (port 514 udp);"
+nosyslog="Η απομακρυσμένη καταγραφή συμβάντων απενεργοποιήθηκε"
+yessyslog="Η απομακρυσμένη καταγραφή συμβάντων ενεργοποιήθηκε"
+
+# Part 3.4/3.5
+readlogs="Ρυθμίζοντας το αρχείο ρυθμίσεων για να αναλυθούν τα παρακάτω αρχεία καταγραφής (logs):"
+
+# Part 3.7
+runauthd="Θέλετε να εκτελέσετε την υπηρεσία Auth;"
+norunauthd="Δεν εκτελείται υπηρεσία Auth"
+yesrunauthd="τρέχουσα υπηρεσία Auth"
+
+# Part 4
+installing="Το σύστημα εγκαθίσταται"
+startwazuh="Θέλετε να ξεκινήσετε το Wazuh μετά την εγκατάσταση;"
+nowazuhstart="Το Wazuh δεν θα ξεκινήσει στο τέλος της εγκατάστασης."
+yeswazuhstart="Το Wazuh θα ξεκινήσει στο τέλος της εγκατάστασης."
+runningmake="Το Makefile εκτελείται"
+
+# Final
+configurationdone="Οι ρυθμίσεις πραγματοποιήθηκαν με επιτυχία"
+tostart="Για να ξεκινήσετε το Wazuh"
+tostop="Για να σταματήσετε το Wazuh"
+configat="Το αρχείο ρυθμίσεων μπορεί να αναγνωστεί ή να τροποποιηθεί στην τοποθεσία"
+addserveragent="Προκειμένου να διασυνδέσετε τον agent με τον server, πρέπει να προσθέσετε κάθε agent στο server."
+presskey="Πατήστε ENTER για να συνεχίσετε"
+
+# Update
+wanttoupdate="Βρέθηκε εγκατεστημένο Wazuh. Θέλετε να το ενημερώσετε;"
+mustuninstall="Η εγκατάσταση δεν μπορεί να προχωρήσει χωρίς απεγκατάσταση παλαιών εκδόσεων. Έξοδος."
+unabletoupdate="Η ενημέρωση απέτυχε. Απαιτείται νέα πλήρης εγκατάσταση."
+updatecompleted="Η ενημέρωση ολοκληρώθηκε."
+updatefailed="Η ενημέρωσε απέτυχε."
+updaterules="Θέλετε να ενημερώσετε τους κανόνες (rules);"
+updatingrules="Οι κανόνες (rules) ενημερώνονται."
+notupdatingrules="Οι κανόνες (rules) δεν ενημερώνονται."
+update_rev_newconf1="Δημιουργία αντιγράφων ασφαλείας από ossec.conf σας έχει δημιουργηθεί σε $INSTALLDIR/etc/ossec.conf.orig."
+update_rev_newconf2="Παρακαλούμε επιβεβαιώστε τη διαμόρφωση ossec.conf σας στο $INSTALLDIR/etc/ossec.conf."
+
+# Pf support
+pfenable="Θέλετε να χρησιμοποιήσετε το PF firewall για ενεργή αντίδραση (active response);"
+nopf="Η αντίδραση (response) με το PF απενεργοποιήθηκε."
+pftablename="Πιό είναι το όνομα του πίνακα (table) PF που θέλετε να χρησιμοποιήσετε;"
+pfmessage="Προσθέστε τις παρακάτω γραμμές στην αρχή των PF κανόνων σας"
+
+# CA store
+addcastore="Θέλετε να προσθέσετε περισσότερα πιστοποιητικά;"
+castore="Εισαγάγετε τη διαδρομή σε ένα πιστοποιητικό X509 ή σε ένα φάκελο πιστοποιητικού: "

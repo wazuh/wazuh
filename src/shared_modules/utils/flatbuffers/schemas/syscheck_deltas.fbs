@@ -1,0 +1,47 @@
+namespace SyscheckDeltas;
+
+table AgentInfo {
+    agent_id: string;
+    agent_ip: string;
+    agent_name: string;
+    agent_version: string;
+}
+
+table Attributes {
+    type: string;
+    attributes: string;
+    uid: string;
+    user_name: string;
+    gid: string;
+    group_name: string;
+    inode: long;
+    mtime: long;
+    checksum: string;
+    size: long;
+    value_type: string;
+    value_name: string;
+    hash_md5: string;
+    hash_sha1: string;
+    hash_sha256: string;
+}
+
+table Data {
+    attributes: Attributes;
+    old_attributes: Attributes;
+    changed_attributes: [string];
+    path: string;
+    index: string;
+    mode: string;
+    type: string;
+    arch: string;
+    timestamp: long;
+    value_name: string;
+}
+
+table Delta {
+    agent_info: AgentInfo;
+    data_type: string;
+    data: Data;
+}
+
+root_type Delta;

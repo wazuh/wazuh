@@ -1,0 +1,75 @@
+#  SSH Rootcheck
+#
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+
+
+$sshd_file=/etc/ssh/sshd_config;
+
+
+# Listen PORT != 22
+# The option Port specifies on which port number ssh daemon listens for incoming connections.
+# Changing the default port you may reduce the number of successful attacks from zombie bots, an attacker or bot doing port-scanning can quickly identify your SSH port.
+[SSH Hardening - 1: Port 22 {PCI_DSS: 2.2.4}] [any] [1]
+f:$sshd_file -> !r:^# && r:Port\.+22;
+
+
+# Protocol 2
+# The Protocol parameter dictates which version of the SSH communication and encryption protocols are in use.
+# Version 1 of the SSH protocol has weaknesses.
+[SSH Hardening - 2: Protocol 1 {PCI_DSS: 2.2.4}] [any] [2]
+f:$sshd_file -> !r:^# && r:Protocol\.+1;
+
+
+# PermitRootLogin no
+# The option PermitRootLogin specifies whether root can log in using ssh.
+# If you want log in as root, you should use the option "Match" and restrict it to a few IP addresses.
+[SSH Hardening - 3: Root can log in] [any] [3]
+f:$sshd_file -> !r:^\s*PermitRootLogin\.+no;
+
+
+# PubkeyAuthentication yes
+# Access only by public key
+# Generally people will use weak passwords and have poor password practices. Keys are considered stronger than password.
+[SSH Hardening - 4: No Public Key authentication {PCI_DSS: 2.2.4}] [any] [4]
+f:$sshd_file -> !r:^\s*PubkeyAuthentication\.+yes;
+
+
+# PasswordAuthentication no
+# The option PasswordAuthentication specifies whether we should use password-based authentication.
+# Use public key authentication instead of passwords
+[SSH Hardening - 5: Password Authentication {PCI_DSS: 2.2.4}] [any] [5]
+f:$sshd_file -> !r:^\s*PasswordAuthentication\.+no;
+
+
+# PermitEmptyPasswords no
+# The option PermitEmptyPasswords specifies whether the server allows logging in to accounts with a null password
+# Accounts with null passwords are a bad practice.
+[SSH Hardening - 6: Empty passwords allowed {PCI_DSS: 2.2.4}] [any] [6]
+f:$sshd_file -> !r:^\s*PermitEmptyPasswords\.+no;
+
+
+# IgnoreRhosts yes
+# The option IgnoreRhosts specifies whether rhosts or shosts files should not be used in authentication.
+# For security reasons it is recommended to no use rhosts or shosts files for authentication.
+[SSH Hardening - 7: Rhost or shost used for authentication {PCI_DSS: 2.2.4}] [any] [7]
+f:$sshd_file -> !r:^\s*IgnoreRhosts\.+yes;
+
+
+# LoginGraceTime 30
+# The option LoginGraceTime specifies how long in seconds after a connection request the server will wait before disconnecting if the user has not successfully logged in.
+# 30 seconds is the recommended time for avoiding open connections without authenticate
+[SSH Hardening - 8: Wrong Grace Time {PCI_DSS: 2.2.4}] [any] [8]
+f:$sshd_file -> !r:^\s*LoginGraceTime\s+30\s*$;
+
+
+# MaxAuthTries 4
+# The MaxAuthTries parameter specifices the maximum number of authentication attempts permitted per connection. Once the number of failures reaches half this value, additional failures are logged.
+# This should be set to 4.
+[SSH Hardening - 9: Wrong Maximum number of authentication attempts {PCI_DSS: 2.2.4}] [any] [9]
+f:$sshd_file -> !r:^\s*MaxAuthTries\s+4\s*$;

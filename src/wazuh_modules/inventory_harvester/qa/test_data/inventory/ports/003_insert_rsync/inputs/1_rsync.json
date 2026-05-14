@@ -1,0 +1,30 @@
+{
+  "agent_info": {
+    "agent_id": "003",
+    "agent_ip": "any",
+    "agent_name": "DESKTOP-EQ4F57D",
+    "agent_version": "v4.9.2"
+  },
+  "data_type": "state",
+  "data": {
+    "attributes_type": "syscollector_ports",
+    "attributes": {
+      "checksum": "75f88e8e82fa32c2ccdbcfc1e7cf1eef65f993e3",
+      "inode": 0,
+      "item_id": "05c7554b34cad1d125e0bb9649aafe0b603cfb96",
+      "local_ip": "169.254.113.32",
+      "local_port": 137,
+      "pid": 4,
+      "process": "System",
+      "protocol": "udp",
+      "remote_ip": null,
+      "remote_port": 0,
+      "rx_queue": 0,
+      "scan_time": "2025/03/21 02:53:09",
+      "state": " ",
+      "tx_queue": 0
+    },
+    "index": "05c7554b34cad1d125e0bb9649aafe0b603cfb96",
+    "timestamp": ""
+  }
+}

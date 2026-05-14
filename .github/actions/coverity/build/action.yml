@@ -1,0 +1,19 @@
+name: Coverity Build
+description: "Runs cov-build for the specified project and build command"
+inputs:
+  command:
+    description: "Build command (e.g., make)"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run Coverity build in container
+      shell: bash
+      run: |
+        docker run --rm \
+          -v "${{ github.workspace }}:/src" \
+          -w /src \
+          -u $(id -u):$(id -g) \
+          ghcr.io/wazuh/coverity-scan:latest \
+          ${{ inputs.command }}

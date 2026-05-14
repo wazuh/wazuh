@@ -1,0 +1,5 @@
+ 
+ Hiba 0x1.
+ Ez a script csak a saját könyvtárából futtatható.
+ Kérem lépjen be a kérdéses script könyvtárába mielőtt futtatná.
+ Úgy kell futtatnia, mint ./install.sh ."

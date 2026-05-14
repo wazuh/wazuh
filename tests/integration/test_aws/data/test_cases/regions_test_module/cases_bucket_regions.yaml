@@ -1,0 +1,254 @@
+- name: cloudtrail_region_with_data
+  description: CloudTrail regions configurations
+  configuration_parameters:
+    BUCKET_TYPE: cloudtrail
+    BUCKET_NAME: wazuh-cloudtrail-integration-tests
+    REGIONS: us-east-1
+  metadata:
+    resource_type: bucket
+    bucket_type: cloudtrail
+    bucket_name: wazuh-cloudtrail-integration-tests
+    only_logs_after: 2022-NOV-20
+    regions: us-east-1
+    expected_results: 3
+
+- name: cloudtrail_regions_with_data
+  description: CloudTrail regions configurations
+  configuration_parameters:
+    BUCKET_TYPE: cloudtrail
+    BUCKET_NAME: wazuh-cloudtrail-integration-tests
+    REGIONS: us-east-1,us-east-2
+  metadata:
+    resource_type: bucket
+    bucket_type: cloudtrail
+    bucket_name: wazuh-cloudtrail-integration-tests
+    only_logs_after: 2022-NOV-20
+    regions: us-east-1,us-east-2
+    expected_results: 5
+
+- name: cloudtrail_inexistent_region
+  description: CloudTrail regions configurations
+  configuration_parameters:
+    BUCKET_TYPE: cloudtrail
+    BUCKET_NAME: wazuh-cloudtrail-integration-tests
+    REGIONS: us-fake-1
+  metadata:
+    resource_type: bucket
+    bucket_type: cloudtrail
+    bucket_name: wazuh-cloudtrail-integration-tests
+    only_logs_after: 2022-NOV-20
+    regions: us-fake-1
+    expected_results: 0
+
+- name: vpc_region_with_data
+  description: VPC regions configurations
+  configuration_parameters:
+    BUCKET_TYPE: vpcflow
+    BUCKET_NAME: wazuh-vpcflow-integration-tests
+    REGIONS: us-east-1
+  metadata:
+    resource_type: bucket
+    bucket_type: vpcflow
+    bucket_name: wazuh-vpcflow-integration-tests
+    vpc_name: wazuh-vpc-integration-tests
+    only_logs_after: 2022-NOV-20
+    regions: us-east-1
+    expected_results: 1
+
+- name: config_region_with_data
+  description: Config regions configurations
+  configuration_parameters:
+    BUCKET_TYPE: config
+    BUCKET_NAME: wazuh-config-integration-tests
+    REGIONS: us-east-1
+  metadata:
+    resource_type: bucket
+    bucket_type: config
+    bucket_name: wazuh-config-integration-tests
+    only_logs_after: 2022-NOV-20
+    regions: us-east-1
+    expected_results: 3
+
+- name: alb_region_with_data
+  description: ALB regions configurations
+  configuration_parameters:
+    BUCKET_TYPE: alb
+    BUCKET_NAME: wazuh-alb-integration-tests
+    REGIONS: us-east-1
+  metadata:
+    resource_type: bucket
+    bucket_type: alb
+    bucket_name: wazuh-alb-integration-tests
+    only_logs_after: 2022-NOV-20
+    regions: us-east-1
+    expected_results: 3
+
+- name: vpc_regions_with_data
+  description: VPC regions configurations
+  configuration_parameters:
+    BUCKET_TYPE: vpcflow
+    BUCKET_NAME: wazuh-vpcflow-integration-tests
+    REGIONS: us-east-1,us-east-2
+  metadata:
+    resource_type: bucket
+    bucket_type: vpcflow
+    bucket_name: wazuh-vpcflow-integration-tests
+    vpc_name: wazuh-vpc-integration-tests
+    only_logs_after: 2022-NOV-20
+    regions: us-east-1,us-east-2
+    expected_results: 1
+
+- name: config_regions_with_data
+  description: Config regions configurations
+  configuration_parameters:
+    BUCKET_TYPE: config
+    BUCKET_NAME: wazuh-config-integration-tests
+    REGIONS: us-east-1,us-east-2
+  metadata:
+    resource_type: bucket
+    bucket_type: config
+    bucket_name: wazuh-config-integration-tests
+    only_logs_after: 2022-NOV-20
+    regions: us-east-1,us-east-2
+    expected_results: 5
+
+- name: alb_regions_with_data
+  description: ALB regions configurations
+  configuration_parameters:
+    BUCKET_TYPE: alb
+    BUCKET_NAME: wazuh-alb-integration-tests
+    REGIONS: us-east-1,us-east-2
+  metadata:
+    resource_type: bucket
+    bucket_type: alb
+    bucket_name: wazuh-alb-integration-tests
+    only_logs_after: 2022-NOV-20
+    regions: us-east-1,us-east-2
+    expected_results: 5
+
+- name: vpc_inexistent_region
+  description: VPC regions configurations
+  configuration_parameters:
+    BUCKET_TYPE: vpcflow
+    BUCKET_NAME: wazuh-vpcflow-integration-tests
+    REGIONS: us-fake-1
+  metadata:
+    resource_type: bucket
+    bucket_type: vpcflow
+    bucket_name: wazuh-vpcflow-integration-tests
+    vpc_name: wazuh-vpc-integration-tests
+    only_logs_after: 2022-NOV-20
+    regions: us-fake-1
+    expected_results: 0
+
+- name: config_inexistent_region
+  description: Config regions configurations
+  configuration_parameters:
+    BUCKET_TYPE: config
+    BUCKET_NAME: wazuh-config-integration-tests
+    REGIONS: us-fake-1
+  metadata:
+    resource_type: bucket
+    bucket_type: config
+    bucket_name: wazuh-config-integration-tests
+    only_logs_after: 2022-NOV-20
+    regions: us-fake-1
+    expected_results: 0
+
+- name: alb_inexistent_region
+  description: ALB regions configurations
+  configuration_parameters:
+    BUCKET_TYPE: alb
+    BUCKET_NAME: wazuh-alb-integration-tests
+    REGIONS: us-fake-1
+  metadata:
+    resource_type: bucket
+    bucket_type: alb
+    bucket_name: wazuh-alb-integration-tests
+    only_logs_after: 2022-NOV-20
+    regions: us-fake-1
+    expected_results: 0
+
+- name: clb_region_with_data
+  description: CLB regions configurations
+  configuration_parameters:
+    BUCKET_TYPE: clb
+    BUCKET_NAME: wazuh-clb-integration-tests
+    REGIONS: us-east-1
+  metadata:
+    resource_type: bucket
+    bucket_type: clb
+    bucket_name: wazuh-clb-integration-tests
+    only_logs_after: 2022-NOV-20
+    regions: us-east-1
+    expected_results: 3
+
+- name: clb_regions_with_data
+  description: CLB regions configurations
+  configuration_parameters:
+    BUCKET_TYPE: clb
+    BUCKET_NAME: wazuh-clb-integration-tests
+    REGIONS: us-east-1,us-east-2
+  metadata:
+    resource_type: bucket
+    bucket_type: clb
+    bucket_name: wazuh-clb-integration-tests
+    only_logs_after: 2022-NOV-20
+    regions: us-east-1,us-east-2
+    expected_results: 5
+
+- name: clb_inexistent_region
+  description: CLB regions configurations
+  configuration_parameters:
+    BUCKET_TYPE: clb
+    BUCKET_NAME: wazuh-clb-integration-tests
+    REGIONS: us-fake-1
+  metadata:
+    resource_type: bucket
+    bucket_type: clb
+    bucket_name: wazuh-clb-integration-tests
+    only_logs_after: 2022-NOV-20
+    regions: us-fake-1
+    expected_results: 0
+
+- name: nlb_region_with_data
+  description: NLB regions configurations
+  configuration_parameters:
+    BUCKET_TYPE: nlb
+    BUCKET_NAME: wazuh-nlb-integration-tests
+    REGIONS: us-east-1
+  metadata:
+    resource_type: bucket
+    bucket_type: nlb
+    bucket_name: wazuh-nlb-integration-tests
+    only_logs_after: 2022-NOV-20
+    regions: us-east-1
+    expected_results: 3
+
+- name: nlb_regions_with_data
+  description: NLB regions configurations
+  configuration_parameters:
+    BUCKET_TYPE: nlb
+    BUCKET_NAME: wazuh-nlb-integration-tests
+    REGIONS: us-east-1,us-east-2
+  metadata:
+    resource_type: bucket
+    bucket_type: nlb
+    bucket_name: wazuh-nlb-integration-tests
+    only_logs_after: 2022-NOV-20
+    regions: us-east-1,us-east-2
+    expected_results: 5
+
+- name: nlb_inexistent_region
+  description: NLB regions configurations
+  configuration_parameters:
+    BUCKET_TYPE: nlb
+    BUCKET_NAME: wazuh-nlb-integration-tests
+    REGIONS: us-fake-1
+  metadata:
+    resource_type: bucket
+    bucket_type: nlb
+    bucket_name: wazuh-nlb-integration-tests
+    only_logs_after: 2022-NOV-20
+    regions: us-fake-1
+    expected_results: 0

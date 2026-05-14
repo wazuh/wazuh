@@ -1,0 +1,3 @@
+
+ Error 0x4.
+ Mauvais type d'installation. Cela ne peut être que agent, serveur ou local.

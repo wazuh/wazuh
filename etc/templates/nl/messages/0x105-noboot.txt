@@ -1,0 +1,3 @@
+
+ - Er is geen actie ondernomen om een opstart script te maken voor
+   Wazuh. U dient de volgede regel toe te voegen aan uw initscript:

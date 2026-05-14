@@ -1,0 +1,4 @@
+ 
+ Error 0x3.
+ You need a compiler (like gcc or cc) to continue with the
+ with the installation.

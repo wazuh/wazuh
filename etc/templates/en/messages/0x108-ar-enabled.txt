@@ -1,0 +1,10 @@
+     - Active response enabled.
+
+   - By default, we can enable the host-deny and the
+     firewall-drop responses. The first one will add
+     a host to the /etc/hosts.deny and the second one
+     will block the host on iptables (if linux) or on
+     ipfilter (if Solaris, FreeBSD or NetBSD).
+   - They can be used to stop SSHD brute force scans,
+     portscans and some other forms of attacks. You can
+     also add them to block on snort events, for example.

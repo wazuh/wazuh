@@ -1,0 +1,36 @@
+host: [0.0.0.0]
+port: 55000
+
+# Advanced configuration
+
+https:
+ enabled: yes
+ key: "server.key"
+ cert: "server.crt"
+ use_ca: False
+ ca: "ca.crt"
+
+# Logging configuration
+# Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
+logs:
+ level: "info"
+ format: "plain"
+
+# Cross-origin resource sharing: https://github.com/aio-libs/aiohttp-cors#usage
+cors:
+ enabled: no
+ source_route: "*"
+ expose_headers: "*"
+ allow_headers: "*"
+ allow_credentials: no
+
+# Access parameters
+access:
+  max_login_attempts: 10000
+  max_request_per_minute: 10000
+
+# Drop privileges (Run as wazuh user)
+drop_privileges: yes
+
+# Enable features under development
+experimental_features: yes

@@ -1,0 +1,5 @@
+ 
+ Fout 0x1.
+ Dit script kan enkel uit dezelfde map worden uitgevoerd.
+ Wijzig de map naar de scriptmap alvorens u de installatie uitvoert.
+ U dient het script zo aan te roepen ./install.sh ."

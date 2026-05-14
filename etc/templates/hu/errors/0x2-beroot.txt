@@ -1,0 +1,3 @@
+ 
+ Hiba 0x2.
+ Ezen script használatához root jogosultsággal kell remdelkeznie.

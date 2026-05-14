@@ -1,0 +1,37 @@
+' Copyright (C) 2015, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml wm_azure
+    actor user
+    entity config
+    control wmodules
+    control azure_logs
+    control azure_logs.py
+    database Microsoft_Azure
+    user -> config : Azure configuration
+    note right
+        Microsof Azure info needs to be
+        added under the azure-logs wodle
+    end note
+    wmodules -> config
+    config --> wmodules
+    wmodules -> azure_logs
+    note right
+        wmodules will create the specific commands
+        for the following MS Azure types:
+        - Log Analytics
+        - Graph
+        - Storage
+    end note
+    azure_logs -> azure_logs.py
+    azure_logs.py -> Microsoft_Azure
+    note right
+        the python script will execute an http
+        request with the specific configured
+        command
+    end note
+    Microsoft_Azure --> azure_logs.py
+    azure_logs.py --> user
+
+@enduml

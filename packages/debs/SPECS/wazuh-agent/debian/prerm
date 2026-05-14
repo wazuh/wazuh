@@ -1,0 +1,147 @@
+#!/bin/sh
+# prerm script for wazuh-manager
+
+set -e
+
+DIR="/var/ossec"
+WAZUH_TMP_DIR="${DIR}/packages_files/agent_config_files"
+
+# environment configuration
+if [ ! -d ${WAZUH_TMP_DIR} ]; then
+    mkdir -p ${WAZUH_TMP_DIR}
+else
+    rm -rf ${WAZUH_TMP_DIR}
+    mkdir -p ${WAZUH_TMP_DIR}
+fi
+
+# Function to extract package_uninstallation value from XML
+get_package_uninstallation_value() {
+  local file_path="$1"
+  local value=$(sed -n '/<anti_tampering>/,/<\/anti_tampering>/p' "$file_path" | grep -oP '(?<=<package_uninstallation>).*?(?=</package_uninstallation>)' | tr -d '\n')
+  echo "$value"
+}
+
+# Function to check anti-tampering configuration
+check_anti_tampering() {
+  local config_file
+  local uninstall_validation_needed=""
+
+  if [ -f "${DIR}/etc/shared/agent.conf" ]; then
+    config_file="${DIR}/etc/shared/agent.conf"
+    uninstall_validation_needed=$(get_package_uninstallation_value "$config_file")
+  fi
+
+  if [ -z "$uninstall_validation_needed" ] && [ -f "${DIR}/etc/ossec.conf" ]; then
+    config_file="${DIR}/etc/ossec.conf"
+    uninstall_validation_needed=$(get_package_uninstallation_value "$config_file")
+  fi
+
+  if [ "$uninstall_validation_needed" = "yes" ]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# Function to validate uninstallation
+validate_uninstall() {
+  local validation_command
+
+  # Check if the configuration file exists
+  if [ -f "${DIR}/etc/uninstall_validation.env" ]; then
+    . "${DIR}/etc/uninstall_validation.env"
+  else
+    echo "INFO: Uninstall configuration file not found, using environment variables."
+  fi
+
+  # Check if the VALIDATION_HOST variables are set
+  if [ -z "$VALIDATION_HOST" ]; then
+    echo "ERROR: Validation host not provided. Uninstallation cannot be continued."
+    exit 1
+  fi
+
+  # Validate uninstallation
+  if [ -n "$VALIDATION_TOKEN" ] && [ -n "$VALIDATION_LOGIN" ]; then
+    validation_command="${DIR}/bin/wazuh-agentd --uninstall-auth-token=${VALIDATION_TOKEN} --uninstall-auth-login=${VALIDATION_LOGIN} --uninstall-auth-host=${VALIDATION_HOST} --uninstall-ssl-verify=${VALIDATION_SSL_VERIFY}"
+  elif [ -n "$VALIDATION_TOKEN" ]; then
+    validation_command="${DIR}/bin/wazuh-agentd --uninstall-auth-token=${VALIDATION_TOKEN} --uninstall-auth-host=${VALIDATION_HOST} --uninstall-ssl-verify=${VALIDATION_SSL_VERIFY}"
+  elif [ -n "$VALIDATION_LOGIN" ]; then
+    validation_command="${DIR}/bin/wazuh-agentd --uninstall-auth-login=${VALIDATION_LOGIN} --uninstall-auth-host=${VALIDATION_HOST} --uninstall-ssl-verify=${VALIDATION_SSL_VERIFY}"
+  else
+    echo "ERROR: Validation login or token not provided. Uninstallation cannot be continued."
+    exit 1
+  fi
+
+  if $validation_command; then
+    echo "INFO: Uninstallation authorized, continuing..."
+  else
+    echo "ERROR: Uninstallation not authorized, aborting..."
+    exit 1
+  fi
+}
+
+case "$1" in
+    upgrade|deconfigure)
+
+      # Stop the services before uninstalling the package
+      if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-agent > /dev/null 2>&1; then
+          systemctl stop wazuh-agent > /dev/null 2>&1
+          touch ${WAZUH_TMP_DIR}/wazuh.restart
+      elif command -v service > /dev/null 2>&1 && service wazuh-agent status 2>/dev/null | grep "running" > /dev/null 2>&1; then
+          service wazuh-agent stop > /dev/null 2>&1
+          touch ${WAZUH_TMP_DIR}/wazuh.restart
+      elif ${DIR}/bin/ossec-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
+          touch ${WAZUH_TMP_DIR}/wazuh.restart
+      fi
+      ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
+
+    ;;
+
+    remove)
+
+      # Check if anti-tampering is enabled
+      if check_anti_tampering; then
+        validate_uninstall
+      fi
+
+      # Stop the services before uninstalling the package
+      # Check for systemd
+      if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-agent > /dev/null 2>&1; then
+          systemctl stop wazuh-agent > /dev/null 2>&1
+      # Check for SysV
+      elif command -v service > /dev/null 2>&1 && service wazuh-agent status 2>/dev/null | grep "running" > /dev/null 2>&1; then
+          service wazuh-agent stop > /dev/null 2>&1
+      fi
+      ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
+
+      # Save the conffiles
+      mkdir -p ${DIR}/tmp/conffiles
+      # Save the client.keys
+      if [ -f ${DIR}/etc/client.keys ]; then
+        cp -p ${DIR}/etc/client.keys ${DIR}/tmp/conffiles
+      fi
+      # Save the local_internal_options.conf
+      if [ -f ${DIR}/etc/local_internal_options.conf ]; then
+        cp -p ${DIR}/etc/local_internal_options.conf ${DIR}/tmp/conffiles
+      fi
+      # Save the ossec.conf
+      if [ -f ${DIR}/etc/ossec.conf ]; then
+        cp -p ${DIR}/etc/ossec.conf ${DIR}/tmp/conffiles
+      fi
+
+    ;;
+
+    failed-upgrade)
+      if [ -f ${DIR}/bin/wazuh-control ]; then
+        ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
+      fi
+    ;;
+
+    *)
+      echo "prerm called with unknown argument \`$1'" >&2
+      exit 1
+    ;;
+
+esac
+
+exit 0

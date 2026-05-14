@@ -1,0 +1,8 @@
+     - Risposta attiva abilitata.
+
+   - Per default, si possono abilitare le risposte di
+     tipo host-deny e firewall-drop. La prima aggiunge
+     un host a /etc/host.deny e la seconda blocca l'host
+     con iptables (Linux) o con ipfilter (Solaris, FreeBSD o NetBSD).
+   - Possono essere utilizzate per interrompere attacchi brute-force
+     a SSHD, portscans e diverse altre forme di attacchi.

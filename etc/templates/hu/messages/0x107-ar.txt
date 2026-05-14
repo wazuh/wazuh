@@ -1,0 +1,4 @@
+
+  3.5- Az active response funkció lehetővé teszi
+       specifikus parancsok végrehajtását a beérkezett események alapján.
+       Alapértelmezésben nincs aktív válaszok meghatározása.

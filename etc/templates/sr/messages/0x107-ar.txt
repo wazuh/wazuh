@@ -1,0 +1,3 @@
+  3.5- Aktivna reakcija ti omogućava da izvedeš specifičnu
+       komandu na bazi primljenih događaja.
+       Po defaultu, su definirani nema aktivnih odgovora.

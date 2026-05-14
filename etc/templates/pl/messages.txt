@@ -1,0 +1,127 @@
+# Konfiguracja
+yes="y"
+no="n"
+yesmatch="y"
+nomatch="n"
+agent="agent"
+local="lokalnie"
+server="serwer"
+help="pomoc"
+
+# Ogólne
+moreinfo="Więcej informacji na: "
+starting="Rozpoczynam Wazuh"
+systemis="System "
+modifiedinit="Init skrypt zmodyfikowany do uruchomiania Wazuh podczas bootowania."
+noboot="Nieznany system. Skrypt init nie został dodany."
+
+# Część 1
+installscript="Skrypt instalacyjny"
+system="System"
+user="Użytkownik"
+host="Host"
+hitanyorabort="Wciśnij ENTER aby kontynuować lub Ctrl-C aby przerwać."
+whattoinstall="Wybierz rodzaj instalacji (manager, agent, lokalnie or pomoc)?"
+serverchose="Wybrana instalacja: manager (serwer)"
+clientchose="Wybrana instalacja: agent (klient)"
+localchose="Wybrana instalacja: lokalnie"
+
+# Część 2
+settingupenv="Ustawianie środowiska instalacyjnego"
+wheretoinstall="Wybierz katalog w którym zainstalować Wazuh"
+installat="Wazuh zostanie zainstalowane w :"
+deletedir="Wybrany katalog istnieje, skasować go?"
+
+# Część 3
+configuring="Konfiguracja "
+mailnotify="Czy chcesz powiadomienie na e-mail?"
+nomail="Powiadomienie e-mail wyłączone"
+whatsemail="Podaj e-mail adres?"
+yoursmtp="Znaleziony SMTP serwer: "
+usesmtp="Czy chcesz go użyć?"
+usingsmtp="Używam SMTP serwer: "
+whatsmtp="Podaj SMTP serwer (ip/host)?"
+
+# Część 3.1/agent
+serverip="Podaj adres IP serwera Wazuh."
+serveraddr="Podaj adres IP (hostname) serwera Wazuh."
+addingip="Dodaje IP serwera"
+addingname="Dodaje hostname serwera"
+
+
+# Część 3.2
+runsyscheck="Czy chcesz aby demon sprawdzania integralności systemu (syscheck) był uruchomiony?"
+nosyscheck="Nie uruchomiony syscheck (demon sprawdzania integralności systemu)"
+yessyscheck="Uruchomiony syscheck (demon sprawdzania integralności systemu)"
+
+# Część 3.3
+runrootcheck="Czy chcesz aby system detekcji rootkit'ów (rootcheck) był uruchomiony?"
+norootcheck="Nie uruchomiony rootcheck (system detekcji rootkit'ów)"
+yesrootcheck="Uruchomiony rootcheck (system detekcji rootkit'ów)"
+
+# Part 3.4
+runopenscap="Czy chcesz OpenSCAP był uruchomiony?"
+norunopenscap="Nie uruchomiony OpenSCAP"
+yesrunopenscap="Uruchomiony OpenSCAP"
+
+# Część 3.5/server/local
+enable_ar="Czy chcesz uaktywnić aktywną ochrone?"
+noactive="Aktywna ochrona wyłączona"
+nohosts="host-deny wyłączone"
+yeshosts="host-deny włączone (local) dla poziomów >= 6"
+firewallar="Czy chcesz uaktywnić ochrone firewall-drop?"
+nofirewall="firewall-drop wyłączone."
+yesfirewall="firewall-drop włączone (local) dla poziomów >= 6"
+defaultwhitelist="Domyślna biała lista dla aktywnej ochrony:"
+addwhite="Czy chcesz dodać więcej adresów IP do białej listy?"
+ipswhite="Adresy IP (część oddzielona): "
+
+# Część 3.5/server/local
+syslog="Czy chcesz uaktywnić zdalnego syslog'a (port 514 udp)?"
+nosyslog="Zdalny syslog wyłączony"
+yessyslog="Zdalny syslog włączony"
+
+# Część 3.4/3.5
+readlogs="Ustawianie konfiguracji do analizy następujących logów:"
+
+# Part 3.7
+runauthd="Czy chcesz uruchomić usługę Auth?"
+norunauthd="Nie działa usługa Auth"
+yesrunauthd="Uruchamianie usługi Auth"
+
+# Część 4
+installing="Instaluje system"
+startwazuh="Chcete spustit aplikaci Wazuh po instalaci?"
+nowazuhstart="Wazuh nezačne na konci instalace."
+yeswazuhstart="Wazuh začne na konci instalace."
+runningmake="Uruchomiono Makefile"
+
+# Finał
+configurationdone="Konfiguracja zakończona pomyślnie"
+tostart="Aby wystartować Wazuh"
+tostop="Aby zatrzymać Wazuh"
+configat="Konfiguracja może być wyświetlona lub zmodyfikowana w"
+addserveragent="Powinieneś dodać agent(a/ów) przed ich autoryzacją dostępu."
+presskey="Wciśnij ENTER aby kontynuować"
+
+# Update
+wanttoupdate="Masz już zainstalowany Wazuh. Czy chcesz dokonać aktualizacji?"
+mustuninstall="Instalacja nie może być kontynuowana bez odinstalowania starych wersji. Wychodzę."
+unabletoupdate="Nie można dokonać aktualizacji. Pełna nowa instalacja jest konieczna."
+updatecompleted="Aktualizacja ukończona."
+updatefailed="Aktualizacja ukończona niepowodzeniem."
+updaterules="Czy chcesz zaktualizować reguły?"
+updatingrules="Aktualizacja reguł."
+notupdatingrules="Bez aktualizacji reguł."
+update_rev_newconf1="Kopia zapasowa z ossec.conf został stworzony w $INSTALLDIR/etc/ossec.conf.orig."
+update_rev_newconf2="Proszę sprawdzić konfigurację ossec.conf na $INSTALLDIR/etc/ossec.conf."
+
+# Wsparcie dla Pf
+pfenable="Chcesz uywa firewall'a PF jako aktywnej ochrony?"
+nopf="ochrona PF wyczona."
+pftablename="Podaj nazwe tabeli PF?"
+pfmessage="Dodaj nastpujce linie na pocztku Twoich regu"
+
+# CA store
+addcastore="Czy chcesz dodać więcej certyfikatów?"
+castore="Wprowadź ścieżkę do certyfikatu X509 lub folderu certyfikatów: "

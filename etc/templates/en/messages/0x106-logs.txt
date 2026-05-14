@@ -1,0 +1,7 @@
+ - If you want to monitor any other file, just change
+   the ossec.conf and add a new localfile entry.
+   Any questions about the configuration can be answered
+   by visiting us online at https://documentation.wazuh.com/.
+
+
+   --- Press ENTER to continue ---

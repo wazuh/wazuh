@@ -1,0 +1,12 @@
+     - Actief handelen is ingeschakeld.
+
+   - Als standaard, kunnen we de host-deny en
+     firewall-drop handelingen inschakelen. De
+     eerste voegt een host toe aan /etc/hosts.deny
+     en de tweede zal de host blokkeren op iptables
+     (bij linux) of ipfilter (bij Solaris, FreeBSD
+     of NetBSD).
+   - Ze kunnen gebruikt worden om SSHD brute force scans,
+     portscans of andere vormen van aanvallen te stoppen.
+     U kunt deze ook gebruiken om blokkeren op basis van
+     bijvoorbeeld snort events.

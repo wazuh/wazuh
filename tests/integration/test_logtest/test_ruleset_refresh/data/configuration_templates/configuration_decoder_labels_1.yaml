@@ -1,0 +1,9 @@
+- sections:
+  - section: 'ruleset'
+    elements:
+    - decoder_dir:
+        value: 'ruleset/decoders'
+    - rule_dir:
+        value: 'ruleset/rules'
+    - decoder_dir:
+        value: 'etc/decoders'

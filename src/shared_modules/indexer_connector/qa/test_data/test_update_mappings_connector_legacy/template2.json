@@ -1,0 +1,6 @@
+{
+    "index_patterns": [
+        "wazuh-states-vulnerabilities*"
+    ],
+    "template": {}
+}

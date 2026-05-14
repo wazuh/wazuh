@@ -1,0 +1,983 @@
+# Security Configuration Assessment
+# CIS Checks for Oracle Solaris 11.4
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+# Based on:
+# Center for Internet Security Benchmark for Oracle Solaris 11.4 Benchmark v1.0.0 - 01-02-2020
+
+policy:
+  id: "cis_solaris11.4"
+  file: "cis_solaris11.4.yml"
+  name: "CIS Benchmark for Oracle Solaris 11.4 v1.0.0"
+  description: "This document, CIS Oracle Solaris 11.4 Benchmark v1.0.0, provides prescriptive guidance for establishing a secure configuration posture for Oracle Solaris 11.4 on both x86 and SPARC platforms. This guide was tested against  Solaris 11.4 release, updated to the Software Repository Update 5 (SRU5). As of the publication of this document, Solaris 11.4 SRU5 is the latest available support update for the Solaris 11 OS. The recommendations included in this document may need to beadjusted for future Solaris 11 updates."
+  references:
+    - https://www.cisecurity.org/cis-benchmarks/
+
+requirements:
+  title: "Check Solaris version."
+  description: "Requirements for running the CIS benchmark against Solaris 11"
+  condition: all
+  rules:
+    - 'f:/etc/release -> r:^\s*Oracle\s+Solaris\s+11.4\s+'
+
+checks:
+  # 2 Disable Unnecessary Services
+  - id: 23500
+    title: "Configure TCP Wrappers."
+    description: "TCP Wrappers is a host-based access control system that allows administrators to control who has access to various network services based on the IP address of the remote end of the connection. TCP Wrappers also provide logging information via syslog about both successful and unsuccessful connections."
+    rationale: "TCP Wrappers provides granular control over what services can be accessed over the network. Its logs show attempted access to services from non-authorized systems,which can help identify unauthorized access attempts."
+    remediation: 'To disable this service, run the following commands: # inetadm -M tcp_wrappers=TRUE && echo "ALL: <net>/<mask>, <net/<mask>, …" > /etc/hosts.allow\ && echo "ALL: ALL" >/etc/hosts.deny'
+    compliance:
+      - cis: ["2.1"]
+    condition: all
+    rules:
+      - "c:inetadm -p -> r:^tcp_wrappers=TRUE"
+      - "f:/etc/hosts.deny"
+      - "f:/etc/hosts.allow"
+
+  - id: 23501
+    title: "Disable Local-only Graphical Login Environment."
+    description: "The graphical login service provides the capability of logging into the system using an X- windows type interface from the console. If graphical login access for the console is required, leave the service in local-only mode."
+    rationale: "This service should be disabled if it is not required."
+    remediation: "To disable this service, run the following command: # svcadm disablesvc:/application/graphical-login/gdm:default"
+    compliance:
+      - cis: ["2.2"]
+    condition: all
+    rules:
+      - 'c:svcs -xv svc:/application/graphical-login/gdm:default -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
+
+  - id: 23502
+    title: "Configure sendmail Service for Local-Only Mode."
+    description: "In Solaris 11, the sendmail service is set to local only mode by default. This means that users on remote systems cannot connect to the sendmail service, eliminating the possibility of a remote exploit attack against some future sendmail vulnerability. Leaving sendmail in local-only mode permits mail to be sent out from the local system. If the localsystem will not be processing or sending any mail, this service can be disabled. However, if sendmail is disabled completely,emailmessages sent to the root account (such as cron job output or audit service warnings) will fail to be delivered. Analternative approach is to disable the sendmail service and create a cron job to process all mail that is queued on the localsystem, sending it to a relay host defined in the sendmail.cf file. It is recommended that sendmail be left in local-only modeunless there is a specific requirement to completely disable it."
+    rationale: "The software for all Mail Transfer Agents is complex and most have a long history of security issues. While itis important to ensure that the system can process local mail messages, it is not necessary to have the MTA's daemon listeningon a port unless the server is intended to be a mail server that receives and processes mail from other systems."
+    remediation: "Run the following to set sendmail to listen only local interfaces: # svccfg -v -s svc:/network/smtp:sendmail setprop config/local_only=false    # svcadm refresh sendmail    # svcadm restart sendmail"
+    compliance:
+      - cis: ["2.3"]
+    condition: none
+    rules:
+      - 'c:netstat -an -> r:.25\s*\t*|:25\s*\t* && !r:127.0.0.1|::1'
+
+  - id: 23503
+    title: "Disable RPC Encryption Key."
+    description: 'The keyserv service is only required for sites that are using the Secure RPC mechanism. The most common use for Secure RPC on Solaris machines is "secure NFS", which uses the Secure RPC mechanism to provide higher levels of securitythan the standard NFS protocols. ("Secure NFS" is unrelated to Kerberos authentication as a mechanism for providing higherlevels of NFS security. "Kerberized" NFS does not require the keyserv service to be running.)'
+    rationale: "This service should be disabled if it is not required."
+    remediation: "To disable this service, run the following command: # svcadm disable svc:/network/rpc/keyserv"
+    compliance:
+      - cis: ["2.4"]
+    condition: all
+    rules:
+      - 'c:svcs -xv svc:/network/rpc/keyserv -> r:State:\sdisabled|State:\s-$|match\sany\sinstances'
+
+  - id: 23504
+    title: "Disable Generic Security Services (GSS)."
+    description: "The GSS API is a security abstraction layer that is designed to make it easier for developers to integrate with different authentication schemes. It is most commonly used in applications for sites that use Kerberos for network authentication, though it can also allow applications to interoperate with other authentication schemes."
+    rationale: "GSS does not expose anything external to the system as it is configured to use TLI (protocol = ticotsord) by default. This service should be disabled if it is not required."
+    remediation: "To disable this service, run the following command: # svcadm disable svc:/network/rpc/gss"
+    compliance:
+      - cis: ["2.5"]
+    condition: all
+    rules:
+      - "c:svcs -Ho state svc:/network/rpc/gss -> r:disabled|uninitialized|error"
+
+  - id: 23505
+    title: "Disable Apache Service."
+    description: "The Apache service provides an instance of the Apache web server."
+    rationale: "This service should be disabled if it is not required."
+    remediation: "To disable this service, run the following command: # svcadm disable svc:/network/http:apache24"
+    compliance:
+      - cis: ["2.6"]
+    condition: all
+    rules:
+      - "c:svcs -Ho state svc:/network/http:apache24 -> r:disabled|error"
+
+  - id: 23506
+    title: "Disable Kerberos TGT Expiration Warning."
+    description: "The Kerberos TGT warning service is used to warn users when their Kerberos tickets are about expire or to renew those tickets before they expire. This service is not used if Kerberos has not been configured. This service is configured to be local only by default."
+    rationale: "This service should be disabled if it is not required."
+    remediation: "To disable this service, run the following command: # svcadm disable svc:/network/security/ktkt_warn"
+    compliance:
+      - cis: ["2.7"]
+    condition: all
+    rules:
+      - "c:svcs -Ho state svc:/network/security/ktkt_warn -> r:disabled|uninitialized|error"
+
+  - id: 23507
+    title: "Disable NIS Client Services."
+    description: "If the local site is not using the NIS naming service to distribute system and user configuration information, this service may be disabled. This service is disabled by default unless the NIS service has been installed and configured on the system."
+    rationale: "As RPC-based services such as NIS may use non-secure authentication and share sensitive network object information with systems and applications using RPC-based service, NIS client daemons should be disabled. Users are encouraged to use LDAP as a name service in place of NIS."
+    remediation: "To disable this service, run the following commands: # svcadm disable svc:/network/nis/client. If LDAP is not in use also disable nis/domain: # svcadm disable svc:/network/nis/domain"
+    compliance:
+      - cis: ["2.8"]
+    condition: all
+    rules:
+      - "c:svcs -Ho state svc:/network/nis/client -> r:disabled|error"
+
+  - id: 23508
+    title: "Disable NIS Client Services (Domain - Scored)."
+    description: "If the local site is not using the NIS naming service to distribute system and user configuration information, this service may be disabled. This service is disabled by default unless the NIS service has been installed and configured on the system."
+    rationale: "As RPC-based services such as NIS may use non-secure authentication and share sensitive network object information with systems and applications using RPC-based service, NIS client daemons should be disabled. Users are encouraged to use LDAP as a name service in place of NIS."
+    remediation: "To disable this service, run the following commands: # svcadm disable svc:/network/nis/client. If LDAP is not in use also disable nis/domain: # svcadm disable svc:/network/nis/domain"
+    compliance:
+      - cis: ["2.8-2.9"]
+    condition: all
+    rules:
+      - "c:svcs -Ho state svc:/network/nis/domain -> r:disabled|error"
+
+  - id: 23509
+    title: "Disable NIS Server Services."
+    description: "The NIS server software is not installed by default and is only required on systems that are acting as an NIS server for the local site. Typically there are only a small number of NIS servers on any given network. These services are disabled by default unless the system has been previously configured to act as a NIS server."
+    rationale: "As RPC-based services such as NIS may use non-secure authentication and share sensitive network object information with systems and applications using RPC-based services, this service should be disabled. Users are encouraged to use LDAP as a name service in place of NIS."
+    remediation: "To disable this service, run the following commands: # svcadm disable svc:/network/nis/server. If LDAP is not in use also disable nis/domain: # svcadm disable svc:/network/nis/domain"
+    compliance:
+      - cis: ["2.9"]
+    condition: all
+    rules:
+      - "c:svcs -Ho state svc:/network/nis/server -> r:disabled|error"
+
+  - id: 23510
+    title: "Disable Removable Volume Manager (rmvolmgr - Scored)."
+    description: "The HAL-aware removable volume manager in the Solaris 11 OS automatically mounts external devices for users whenever the device is attached to the system. These devices include CD-R, CD-RW, floppies, DVD, USB and 1394 mass storage devices. See the rmvolmgr(1M) manual page for more details."
+    rationale: "Allowing users to mount and access data from removable media devices makes it easier for malicious programs and data to be imported onto the network. It also introduces the risk that sensitive data may be transferred off the system without a log record. By adding rmvolmgr to the .xinitrc file, user-isolated instances of rmvolmgr can be run via a session startup script. In such cases, the rmvolmgr instance will not allow management of volumes that belong to other than the owner of the startup script. When a user logs onto the workstation console (/dev/console), any instance of user-initiated rmvolmgr will only own locally connected devices, such as CD-ROMs or flash memory hardware, locally connected to USB or FireWire ports."
+    remediation: "To disable this service, run the following commands: # svcadm disable svc:/system/filesystem/rmvolmgr # svcadm disable svc:/network/rpc/smserver"
+    compliance:
+      - cis: ["2.10"]
+    condition: all
+    rules:
+      - "c:svcs -Ho state svc:/system/filesystem/rmvolmgr -> r:disabled|error"
+
+  - id: 23511
+    title: "Disable Removable Volume Manager."
+    description: "The HAL-aware removable volume manager in the Solaris 11 OS automatically mounts external devices for users whenever the device is attached to the system. These devices include CD-R, CD-RW, floppies, DVD, USB and 1394 mass storage devices. See the rmvolmgr(1M) manual page for more details."
+    rationale: "Allowing users to mount and access data from removable media devices makes it easier for malicious programs and data to be imported onto the network. It also introduces the risk that sensitive data may be transferred off the system without a log record. By adding rmvolmgr to the .xinitrc file, user-isolated instances of rmvolmgr can be run via a session startup script. In such cases, the rmvolmgr instance will not allow management of volumes that belong to other than the owner of the startup script. When a user logs onto the workstation console (/dev/console), any instance of user-initiated rmvolmgr will only own locally connected devices, such as CD-ROMs or flash memory hardware, locally connected to USB or FireWire ports."
+    remediation: "To disable this service, run the following commands: # svcadm disable svc:/system/filesystem/rmvolmgr # svcadm disable svc:/network/rpc/smserver"
+    compliance:
+      - cis: ["2.10"]
+    condition: all
+    rules:
+      - "c:svcs -Ho state svc:/network/rpc/smserver -> r:disabled|error"
+
+  - id: 23512
+    title: "Disable automount Service."
+    description: "The automount daemon is normally used to automatically mount NFS file systems from remote file servers when needed. However, the automount daemon can also be configured to mount local (loopback) file systems as well, which may include local user home directories, depending on the system configuration."
+    rationale: "This service should be disabled if it is not required."
+    remediation: "To disable this service, run the following command: # svcadm disable svc:/system/filesystem/autofs"
+    compliance:
+      - cis: ["2.11"]
+    condition: all
+    rules:
+      - "c:svcs -Ho state svc:/system/filesystem/autofs -> r:disabled|error"
+
+  - id: 23513
+    title: "Disable Telnet Service."
+    description: "The telnet daemon, which accepts connections from users from other systems via the telnet protocol and can be used for remote shell access."
+    rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow a user with access to sniff network traffic the ability to steal credentials. The ssh protocol provides an encrypted session and stronger security."
+    remediation: "Disable telnet server if enabled: # svcadm disable svc:/network/telnet"
+    compliance:
+      - cis: ["2.12"]
+    condition: all
+    rules:
+      - "c:svcs -Ho state svc:/network/telnet -> r:disabled|error"
+
+  # 3 Kernel Tuning
+  - id: 23514
+    title: "Disable Response to Broadcast ICMPv4 Echo Request."
+    description: "This setting controls whether Solaris responds to broadcast ICMPv4 echo requests."
+    rationale: "Reduce attack surface by restricting this vector used for host discovery and to prevent denial of service attacks."
+    remediation: "To enforce this setting, use the command: # ipadm set-prop -p _respond_to_echo_broadcast=0 ip"
+    compliance:
+      - cis: ["3.1"]
+    condition: all
+    rules:
+      - "c:ipadm show-prop -p _respond_to_echo_broadcast -co current ip -> r:0"
+      - "c:ipadm show-prop -p _respond_to_echo_broadcast -co persistent ip -> r:0"
+
+  - id: 23515
+    title: "Disable Response to ICMP Broadcast Netmask Requests."
+    description: "This setting controls whether Solaris will respond to ICMP broadcast netmask requests."
+    rationale: "Reduce attack surface by restricting this vector used for host and network discovery and to prevent denial of service attacks."
+    remediation: "To enforce this setting, use the command: # ipadm set-prop -p _respond_to_address_mask_broadcast=0 ip"
+    compliance:
+      - cis: ["3.2"]
+    condition: all
+    rules:
+      - "c:ipadm show-prop -p _respond_to_address_mask_broadcast -co current ip -> r:0"
+      - "c:ipadm show-prop -p _respond_to_address_mask_broadcast -co persistent ip -> r:0"
+
+  - id: 23516
+    title: "Enable Strong TCP Sequence Number Generation."
+    description: "The variable TCP_STRONG_ISS defines the mechanism used for TCP initial sequence number generation. If an attacker can predict the next sequence number, it is possible to inject fraudulent packets into the data stream to hijack the session."
+    rationale: "The RFC 1948 method is widely accepted as the strongest mechanism for TCP packet generation. This makes remote session hijacking attacks more difficult, as well as any other network-based attack that relies on predicting TCP sequence number information. It is theoretically possible that there may be a small performance hit in connection setup time when this setting is used, but there are no publicly available benchmarks that establish this."
+    remediation: "To set the TCP_STRONG_ISS parameter on a running system, use the command: # ipadm set-prop -p _strong_iss=2 tcp"
+    compliance:
+      - cis: ["3.3"]
+    condition: all
+    rules:
+      - "c:grep ^TCP_STRONG_ISS= /etc/default/inetinit -> r:2"
+
+  - id: 23517
+    title: "Disable Response to ICMP Broadcast Timestamp Requests."
+    description: "This setting controls whether Solaris will respond to ICMP broadcast timestamp requests."
+    rationale: "Reduce attack surface by restricting this vector used for host discovery and to prevent denial of service attacks."
+    remediation: "To enforce this setting, use the command: # ipadm set-prop -p _respond_to_timestamp_broadcast=0 ip"
+    compliance:
+      - cis: ["3.4"]
+    condition: all
+    rules:
+      - "c:ipadm show-prop -p _respond_to_timestamp_broadcast -co current ip -> r:0"
+      - "c:ipadm show-prop -p _respond_to_timestamp_broadcast -co persistent ip -> r:0"
+
+  - id: 23518
+    title: "Disable Source Packet Forwarding."
+    description: "This setting controls whether the IPv4 or IPv6 configuration will forward packets with IPv4 routing options or IPv6 routing headers."
+    rationale: "Keep this parameter disabled to prevent denial of service attacks through spoofed packets."
+    remediation: "To enforce this setting for IPv4 packets, use the command: # ipadm set-prop -p _forward_src_routed=0 ipv4. To enforce this setting for IPv6 packets, use the command: # ipadm set-prop -p _forward_src_routed=0 ipv6"
+    compliance:
+      - cis: ["3.5"]
+    condition: all
+    rules:
+      - "c:ipadm show-prop -p _forward_src_routed -co current ipv4 -> r:0"
+      - "c:ipadm show-prop -p _forward_src_routed -co persistent ipv4 -> r:0"
+      - "c:ipadm show-prop -p _forward_src_routed -co current ipv6 -> r:0"
+      - "c:ipadm show-prop -p _forward_src_routed -co persistent ipv6 -> r:0"
+
+  - id: 23519
+    title: "Disable Directed Broadcast Packet Forwarding."
+    description: "This setting controls whether Solaris forwards broadcast packets for a specific network if it is directly connected to the machine."
+    rationale: "Keep this parameter disabled to prevent denial of service attacks."
+    remediation: "To enforce this setting, use the command: # ipadm set-prop -p _forward_directed_broadcasts=0 ip"
+    compliance:
+      - cis: ["3.6"]
+    condition: all
+    rules:
+      - "c:ipadm show-prop -p _forward_directed_broadcasts -co current ip -> r:0"
+      - "c:ipadm show-prop -p _forward_directed_broadcasts -co persistent ip -> r:0"
+
+  - id: 23520
+    title: "Enable Stack Protection."
+    description: "Buffer overflow exploits have been the basis for many highly publicized compromises and defacements of large numbers of Internet connected systems. Many of the automated tools in use by system attackers exploit well-known buffer overflow problems in vendor-supplied and third party software."
+    rationale: "Enabling stack protection prevents certain classes of buffer overflow attacks and is a significant security enhancement. However, this does not protect against buffer overflow attacks that do not execute code on the stack (such as return-to-libc exploits). While most of the Solaris OS is already configured to employ a non-executable stack, this setting is still recommended to provide a more comprehensive solution for both Solaris and other software that may be installed."
+    remediation: "To enable stack protection and block stack-smashing attacks, run the following: # sxadm delcust nxheap # sxadm delcust nxstack"
+    compliance:
+      - cis: ["3.7"]
+    condition: all
+    rules:
+      - "c:sxadm status -po extension,status,configuration nxheap -> r:nxheap:enabled.tagged-files:default.default"
+      - "c:sxadm status -po extension,status,configuration nxstack -> r:nxstack:enabled.all:default.default"
+
+  - id: 23521
+    title: "Restrict Core Dumps to Protected Directory."
+    description: "The action described in this section creates a protected directory to store core dumps and also causes the system to create a log entry whenever a regular process dumps core."
+    rationale: "Core dumps, particularly those from set-UID and set-GID processes, may contain sensitive data."
+    remediation: "To implement the recommendation, run the commands: # chmod 700 /var/share/cores # coreadm -g /var/share/cores/core_%n_%f_%u_%g_%t_%p \ -e log -e global -e global-setid \ -d process -d proc-setid If the local site chooses, dumping of core files can be completely disabled with the following command: # coreadm -d global -d global-setid -d process -d proc-setid"
+    compliance:
+      - cis: ["3.8"]
+    condition: all
+    rules:
+      - "c:coreadm -> r:global core file content: default"
+      - "c:coreadm -> r:init core file pattern: core"
+      - "c:coreadm -> r:init core file content: default"
+      - "c:coreadm -> r:global core dumps: disabled"
+      - "c:coreadm -> r:kernel zone core dumps: disabled"
+      - "c:coreadm -> r:per-process core dumps: enabled"
+      - "c:coreadm -> r:global setid core dumps: disabled"
+      - "c:coreadm -> r:per-process setid core dumps: disabled"
+      - "c:coreadm -> r:global core dump logging: disabled"
+      - "c:coreadm -> r:diagnostic core dumps: enabled"
+      - "c:coreadm -> r:retention policy: summary"
+      - "c:coreadm -> r:core diagnostic alert: enabled"
+      - 'c:stat -c%u-%g-%a /var/share/cores -> r:^\d-\d-700'
+
+  - id: 23522
+    title: "Disable Response to ICMP Timestamp Requests."
+    description: "This setting controls whether Solaris will respond to ICMP timestamp requests."
+    rationale: "Reduce attack surface by restricting this vector used for host discovery."
+    remediation: "To enforce this setting, use the command: # ipadm set-prop -p _respond_to_timestamp=0 ip"
+    compliance:
+      - cis: ["3.9"]
+    condition: all
+    rules:
+      - "c:ipadm show-prop -p _respond_to_timestamp -co current ip -> r:0"
+      - "c:ipadm show-prop -p _respond_to_timestamp -co persistent ip -> r:0"
+
+  - id: 23523
+    title: "Disable Response to Multicast Echo Request."
+    description: "These settings control whether Solaris responds to multicast IPv4 and IPv6 echo requests."
+    rationale: "Reduce attack surface by restricting this vector used for host discovery and to prevent denial of service attacks."
+    remediation: "To enforce this setting for IPv4 packets, use the command: # ipadm set-prop -p _respond_to_echo_multicast=0 ipv4. To enforce this setting for IPv6 packets, use the command: # ipadm set-prop -p _respond_to_echo_multicast=0 ipv6"
+    compliance:
+      - cis: ["3.10"]
+    condition: all
+    rules:
+      - "c:ipadm show-prop -p _respond_to_echo_multicast -co current ipv4 -> r:0"
+      - "c:ipadm show-prop -p _respond_to_echo_multicast -co persistent ipv4 -> r:0"
+      - "c:ipadm show-prop -p _respond_to_echo_multicast -co current ipv6 -> r:0"
+      - "c:ipadm show-prop -p _respond_to_echo_multicast -co persistent ipv6 -> r:0"
+
+  - id: 23524
+    title: "Ignore ICMP Redirect Messages."
+    description: "These settings control whether Solaris will ignore ICMP redirect messages."
+    rationale: "IP redirects should not be necessary in a well-designed and maintained network. Set to a value of 1 if there is a high risk for a DoS attack. Otherwise, the default value of 0 is sufficient."
+    remediation: "To enforce this setting for IPv4 packets, use the command: # ipadm set-prop -p _ignore_redirect=1 ipv4. To enforce this setting for IPv6 packets, use the command: # ipadm set-prop -p _ignore_redirect=1 ipv6"
+    compliance:
+      - cis: ["3.11"]
+    condition: all
+    rules:
+      - "c:ipadm show-prop -p _ignore_redirect -co current ipv4 -> r:1"
+      - "c:ipadm show-prop -p _ignore_redirect -co persistent ipv4 -> r:1"
+      - "c:ipadm show-prop -p _ignore_redirect -co current ipv6 -> r:1"
+      - "c:ipadm show-prop -p _ignore_redirect -co persistent ipv6 -> r:1"
+
+  - id: 23525
+    title: "Set Strict Multihoming."
+    description: "These settings control whether a packet arriving on a non-forwarding interface can be accepted for an IP address that is not explicitly configured on that interface."
+    rationale: "Enable this setting for systems that have interfaces that cross strict networking domains (for example, a firewall or a VPN node)."
+    remediation: "To enforce this setting for IPv4 packets, use the command: # ipadm set-prop -p _strict_dst_multihoming=1 ipv4. To enforce this setting for IPv6 packets, use the command: # ipadm set-prop -p _strict_dst_multihoming=1 ipv6"
+    compliance:
+      - cis: ["3.12"]
+    condition: all
+    rules:
+      - "c:ipadm show-prop -p _strict_dst_multihoming -co current ipv4 -> r:1"
+      - "c:ipadm show-prop -p _strict_dst_multihoming -co persistent ipv4 -> r:1"
+      - "c:ipadm show-prop -p _strict_dst_multihoming -co current ipv6 -> r:1"
+      - "c:ipadm show-prop -p _strict_dst_multihoming -co persistent ipv6 -> r:1"
+
+  - id: 23526
+    title: "Disable ICMP Redirect Messages."
+    description: "These setting controls whether Solaris sends ICMPv4 and ICMPv6 redirect messages."
+    rationale: "A malicious user can exploit the ability of the system to send ICMP redirects by continually sending packets to the system, forcing the system to respond with ICMP redirect messages, resulting in an adverse impact on the CPU performance of the system."
+    remediation: "To enforce this setting for IPv4 packets, use the command: # ipadm set-prop -p send_redirects=off ipv4. To enforce this setting for IPv6 packets, use the command: # ipadm set-prop -p send_redirects=off ipv6"
+    compliance:
+      - cis: ["3.13"]
+    condition: all
+    rules:
+      - "c:ipadm show-prop -p send_redirects -co current ipv4 -> r:off"
+      - "c:ipadm show-prop -p send_redirects -co persistent ipv4 -> r:off"
+      - "c:ipadm show-prop -p send_redirects -co current ipv6 -> r:off"
+      - "c:ipadm show-prop -p send_redirects -co persistent ipv6 -> r:off"
+
+  - id: 23527
+    title: "Disable TCP Reverse IP Source Routing."
+    description: "This setting controls whether TCP reverses the IP source routing option for incoming connections."
+    rationale: "If IP source routing is needed for diagnostic purposes, enable it. Otherwise disable it."
+    remediation: "To enforce this setting, use the command: # ipadm set-prop -p _rev_src_routes=0 tcp"
+    compliance:
+      - cis: ["3.14"]
+    condition: all
+    rules:
+      - "c:ipadm show-prop -p _rev_src_routes -co current tcp -> r:0"
+      - "c:ipadm show-prop -p _rev_src_routes -co persistent tcp -> r:0"
+
+  - id: 23528
+    title: "Set Maximum Number of Half-open TCP Connections."
+    description: "This setting controls how many half-open connections can exist for a TCP port."
+    rationale: "It is necessary to control the number of completed connections to the system to provide some protection against Denial of Service attacks. Note that the value of 4096 is a minimum to establish a good security posture for this setting. In environments where connections numbers are high, such as a busy webserver, this value may need to be increased."
+    remediation: "To enforce this setting, use the command: # ipadm set-prop -p _conn_req_max_q0=4096 tcp"
+    compliance:
+      - cis: ["3.15"]
+    condition: all
+    rules:
+      - "c:ipadm show-prop -p _conn_req_max_q0 -co current tcp -> r:4096"
+      - "c:ipadm show-prop -p _conn_req_max_q0 -co persistent tcp -> r:4096"
+
+  - id: 23529
+    title: "Set Maximum Number of Incoming Connections."
+    description: "This setting controls the maximum number of incoming connections that can be accepted on a TCP port."
+    rationale: "Note that the value of 1024 is a minimum to establish a good security posture for this setting. In environments where connections numbers are high, such as a busy webserver, this value may need to be increased."
+    remediation: "To enforce this setting, use the command: # ipadm set-prop -p _conn_req_max_q=1024 tcp"
+    compliance:
+      - cis: ["3.16"]
+    condition: all
+    rules:
+      - "c:ipadm show-prop -p _conn_req_max_q -co current tcp -> r:1024"
+      - "c:ipadm show-prop -p _conn_req_max_q -co persistent tcp -> r:1024"
+
+  - id: 23530
+    title: "Disable Network Routing."
+    description: "The network routing daemon, in.routed, manages network routing tables. If enabled, it periodically supplies copies of the system's routing tables to any directly connected hosts and networks and picks up routes supplied to it from other networks and hosts."
+    rationale: "Routing Internet Protocol (RIP) is a legacy protocol with a number of security weaknesses including a lack of authentication, zoning, pruning, etc."
+    remediation: "To enforce this setting and disable IPv4 routing, use the command: # routeadm -d ipv4-forwarding -d ipv4-routing. To enforce this setting and disable IPv6 routing, use the command: # routeadm -d ipv6-forwarding -d ipv6-routing"
+    compliance:
+      - cis: ["3.17"]
+    condition: all
+    rules:
+      - 'c:routeadm -p -> r:ipv4-routing persistent=disabled \S+ current=disabled'
+      - 'c:routeadm -p -> r:ipv6-routing persistent=disabled \S+ current=disabled'
+      - 'c:routeadm -p -> r:ipv4-forwarding persistent=disabled \S+ current=disabled'
+      - 'c:routeadm -p -> r:ipv6-forwarding persistent=disabled \S+ current=disabled'
+
+  # 4 Auditing and Logging
+  - id: 23531
+    title: "Create CIS Audit Class."
+    description: "To group a set of related audit events, the Solaris Audit service provides the ability for sites to define their own audit classes that contain just those events that the site wants to audit."
+    rationale: "To simplify administration, a CIS specific audit class should be created."
+    remediation: "To create the CIS audit class, edit the /etc/security/audit_class file and add the following entry before the last line of the file: 0x0100000000000000:cis:CIS Solaris Benchmark"
+    compliance:
+      - cis: ["4.1"]
+    condition: all
+    rules:
+      - "c:grep :CIS /etc/security/audit_class -> r:0x0100000000000000:cis:CIS Solaris Benchmark"
+
+  - id: 23532
+    title: "Enable Auditing of Incoming Network Connections."
+    description: "The Solaris Audit service can be configured to record incoming network connections to any listening service running on the system."
+    rationale: "This recommendation will provide an audit trail that contains information related to incoming network connections. While this functionality can be enabled using service-specific mechanisms, using the Solaris Audit service provides a more centralized and complete window into incoming network activity."
+    remediation: "To enforce this setting, use the commands to modify the /etc/security/audit_event file and add the cis audit class to the following audit events: # cp /etc/security/audit_event /etc/security/audit_event.orig # awk 'BEGIN{FS=:; OFS=:} {if ($2 ~ /AUE_ACCEPT|AUE_CONNECT|AUE_SOCKACCEPT|AUE_SOCKCONNECT|AUE_inetd_connect/) $4=$4,cis;} {print} ' etc/security/audit_event > /etc/security/audit_event.out # cp /etc/security/audit_event.out /etc/security/audit_event"
+    compliance:
+      - cis: ["4.2"]
+    condition: all
+    rules:
+      - 'c:grep AUE_ACCEPT /etc/security/audit_event -> r:^\d+:AUE_ACCEPT:'
+      - 'c:grep AUE_CONNECT /etc/security/audit_event -> r:^\d+:AUE_CONNECT:'
+      - 'c:grep AUE_SOCKACCEPT /etc/security/audit_event -> r:^\d+:AUE_SOCKACCEPT:'
+      - 'c:grep AUE_SOCKCONNECT /etc/security/audit_event -> r:^\d+:AUE_SOCKCONNECT:'
+      - 'c:grep AUE_inetd_connect /etc/security/audit_event -> r:^\d+:AUE_inetd_connect:'
+
+  - id: 23533
+    title: "Enable Auditing of File Metadata Modification Events."
+    description: "The Solaris Audit service can be configured to record file metadata modification events for every process running on the system. This will allow the auditing service to determine when file ownership, permissions and related information is changed."
+    rationale: "This recommendation will provide an audit trail that contains information related to changes of file metadata. The Solaris Audit service is used to provide a more centralized and complete window into activities such as these."
+    remediation: "To enforce this setting, use the commands to modify the /etc/security/audit_event file and add the cis audit class to the following audit events: # awk 'BEGIN{FS=:; OFS=:} {if ($2 ~ /AUE_CHMOD|AUE_CHOWN|AUE_FCHOWN|AUE_FCHMOD|AUE_LCHOWN|AUE_ACLSET|AUE_FACLSET/) $4=$4,cis;} {print} ' /etc/security/audit_event > /etc/security/audit_event.CIS # cp /etc/security/audit_event.CIS /etc/security/audit_event"
+    compliance:
+      - cis: ["4.3"]
+    condition: all
+    rules:
+      - 'c:grep AUE_CHMOD /etc/security/audit_event -> r:^\d+:AUE_CHMOD:'
+      - 'c:grep AUE_CHOWN /etc/security/audit_event -> r:^\d+:AUE_CHOWN:'
+      - 'c:grep AUE_FCHOWN /etc/security/audit_event -> r:^\d+:AUE_FCHOWN:'
+      - 'c:grep AUE_FCHMOD /etc/security/audit_event -> r:^\d+:AUE_FCHMOD:'
+      - 'c:grep AUE_LCHOWN /etc/security/audit_event -> r:^\d+:AUE_LCHOWN:'
+      - 'c:grep AUE_ACLSET /etc/security/audit_event -> r:^\d+:AUE_ACLSET:'
+      - 'c:grep AUE_FACLSET /etc/security/audit_event -> r:^\d+:AUE_FACLSET:'
+
+  - id: 23534
+    title: "Enable Auditing of Process and Privilege Events."
+    description: "The Solaris Audit service can be configured to record the use of privileges by processes running on the system. This will capture events such as the setting of UID and GID values, setting of privileges, as well as the use of functionality such as chroot(2)."
+    rationale: "This recommendation will provide an audit trail that contains information related to the use of privileges by processes running on the system. The Solaris Audit service is used to provide a more centralized and complete window into activities such as these."
+    remediation: "To enforce this setting, use the commands to modify the /etc/security/audit_event file and add the cis audit class to the following audit events: # awk 'BEGIN{FS=:; OFS=:} {if ($2 ~ /AUE_CHROOT|AUE_SETREUID|AUE_SETREGID|AUE_FCHROOT|AUE_PFEXEC|AUE_SETUID|AUE_NICE|AUE_SETGID|AUE_PRIOCNTLSYS|AUE_SETEGID|AUE_SETEUID|AUE_SETPPRIV|AUE_SETSID|AUE_SETPGID/)$4=$4,cis;} {print} ' /etc/security/audit_event > /etc/security/audit_event.CIS # cp /etc/security/audit_event.CIS /etc/security/audit_event"
+    compliance:
+      - cis: ["4.4"]
+    condition: all
+    rules:
+      - 'c:grep AUE_CHROOT /etc/security/audit_event -> r:^\d+:AUE_CHROOT:'
+      - 'c:grep AUE_SETREUID /etc/security/audit_event -> r:^\d+:AUE_SETREUID:'
+      - 'c:grep AUE_SETREGID /etc/security/audit_event -> r:^\d+:AUE_SETREGID:'
+      - 'c:grep AUE_FCHROOT /etc/security/audit_event -> r:^\d+:AUE_FCHROOT:'
+      - 'c:grep AUE_PFEXEC /etc/security/audit_event -> r:^\d+:AUE_PFEXEC:'
+      - 'c:grep AUE_SETUID /etc/security/audit_event -> r:^\d+:AUE_SETUID:'
+      - 'c:grep AUE_NICE /etc/security/audit_event -> r:^\d+:AUE_NICE:'
+      - 'c:grep AUE_SETGID /etc/security/audit_event -> r:^\d+:AUE_SETGID:'
+      - 'c:grep AUE_PRIOCNTLSYS /etc/security/audit_event -> r:^\d+:AUE_PRIOCNTLSYS:'
+      - 'c:grep AUE_SETEGID /etc/security/audit_event -> r:^\d+:AUE_SETEGID:'
+      - 'c:grep AUE_SETEUID /etc/security/audit_event -> r:^\d+:AUE_SETEUID:'
+      - 'c:grep AUE_SETPPRIV /etc/security/audit_event -> r:^\d+:AUE_SETPPRIV:'
+      - 'c:grep AUE_SETSID /etc/security/audit_event -> r:^\d+:AUE_SETSID:'
+      - 'c:grep AUE_SETPGID /etc/security/audit_event -> r:^\d+:AUE_SETPGID:'
+
+  - id: 23535
+    title: "Configure Solaris Auditing."
+    description: "Solaris auditing service keeps a record of how a system is being used. Solaris auditing can be configured to record different classes of events based upon site policy. This recommendation will set and verify a consensus-developed auditing policy. That said, all organizations are encouraged to tailor this policy based upon their specific needs. For more information on the Solaris auditing service including how to filter and view events, see the Oracle Solaris product documentation. The cis class is a custom class that CIS recommends creating that includes specifically those events that are of interest (defined in the sections above). In addition to those events, this recommendation also includes auditing of login and logout (lo) events, administrative (ad) events, file transfer (ft) events, and command execution (ex) events. This recommendation also configures the Solaris auditing service to capture and report command line arguments (for command execution events) and the zone name in which a command was executed (for global and non-global zones). Further, this recommendation sets a disk utilization threshold of 1%. If this threshold is crossed (for the volume that includes /var/shares/audit), then a warning e-mail will be sent to advise the system administrators that audit events may be lost if the disk becomes full. Finally, this recommendation will also ensure that new audit trails are created at the start of each new day (to help keep the size of the files small to facilitate analysis)."
+    rationale: "The consensus settings described in this section are an effort to log interesting system events without consuming excessive amounts of resources logging significant but usually uninteresting system calls."
+    remediation: "To enforce this setting, use the commands: # auditconfig -conf # auditconfig -setflags lo,ad,ft,ex,cis #auditconfig -setnaflags lo # auditconfig -setpolicy cnt,argv,zonename # auditconfig -setplugin audit_binfile active p_minfree=1 # audit -s # usermod -K audit_flags=lo,ad,ft,ex,cis:no root # EDITOR=ed crontab -e root 0 0 * * * /usr/sbin/audit -n # chown root:root /var/shares/audit # chmod 750 /var/shares/audit"
+    compliance:
+      - cis: ["4.5"]
+    condition: all
+    rules:
+      - "c:auditconfig -getcond -> r:audit condition = auditing"
+      - "c:auditconfig -getpolicy -> r:configured audit policies = argv,cnt,zonename"
+      - "c:auditconfig -getpolicy -> r:active audit policies = argv,cnt,zonename"
+      - "c:auditconfig -getflags -> r:configured user default audit flags = ad,ft,lo,ex,cis"
+      - "c:auditconfig -getflags -> r:active user default audit flags = ad,ft,lo,ex,cis"
+      - "c:auditconfig -getnaflags -> r:configured non-attributable audit flags = lo"
+      - "c:auditconfig -getnaflags -> r:active non-attributable audit flags = lo"
+      - 'c:auditconfig -getplugin audit_binfile -> r:Plugin: audit_binfile \(active\)'
+      - "c:auditconfig -getplugin audit_binfile -> r:Attributes: p_age=0h;p_dir=/var/audit;p_flags=all;p_fsize=0;p_minfree=1"
+      - "c:userattr audit_flags root -> r:lo,ad,ft,ex,cis:no"
+      - "c:ls -l /var/share/audit/*.not_terminated.* -> r:.not_terminated."
+
+  # 5 File/Directory Permissions/Access
+  - id: 23536
+    title: "Set Sticky Bit on World Writable Directories."
+    description: "When the so-called sticky bit (set with chmod +t) is set on a directory, then only the owner of a file may remove that file from the directory (as opposed to the usual behavior where anybody with write access to that directory may remove the file)."
+    rationale: "Files in directories that have had the 'sticky bit' set, can only be deleted by users that have both write permissions for the directory in which the file resides, as well as ownership of the file or directory, or has sufficient privilege. As this prevents users from overwriting each other's files, whether it be accidental or malicious, it is generally appropriate for most world-writable directories (e.g., /tmp). However, consult appropriate vendor documentation before blindly applying the sticky bit to any world writable directories found, in order to avoid breaking any application dependencies on a given directory."
+    remediation: "To set the sticky bit on a directory, run the following command: # chmod +t [directory name]"
+    compliance:
+      - cis: ["5.1"]
+    condition: all
+    rules:
+      - 'c:find / \( -fstype nfs -o -fstype cachefs -o -fstype autofs -o -fstype ctfs -o -fstype mntfs -o -fstype objfs -o -fstype proc \) -prune -o -type d \( -perm -0002 -a ! -perm -1000 \) -ls -> r:^$'
+
+  # 6 System Access, Authentication, and Authorization
+  - id: 23537
+    title: "Disable login: Services on Serial Ports."
+    description: "The svccfg command provides service administration for the lower level of the Service Access Facility hierarchy and can be used to disable the ability to login on a particular port."
+    rationale: "Login services should not be enabled on any serial ports that are not strictly required to support the mission of the system. This action can be safely performed even when console access is provided using a serial port."
+    remediation: "Perform the following to implement the recommended state: # svcadm disable svc:/system/console-login:terma #svcadm disable svc:/system/console-login:termb"
+    compliance:
+      - cis: ["6.1"]
+    condition: all
+    rules:
+      - "c:svcs -Ho state svc:/system/console-login:terma -> r:disabled"
+      - "c:svcs -Ho state svc:/system/console-login:termb -> r:disabled"
+
+  - id: 23539
+    title: "Restrict at/cron to Authorized Users."
+    description: "The cron.allow and at.allow files contain a list of users who are allowed to run the crontab and at commands to submit jobs to be run at scheduled intervals."
+    rationale: "On many systems, only the system administrator needs the ability to schedule jobs. Even though a given user is not listed in cron.allow, cron jobs can still be run as that user. The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs. Much more effective access controls for the cron system can be obtained by using Role-Based Access Controls (RBAC)."
+    remediation: "Perform the following to implement the recommended state: # mv /etc/cron.d/cron.deny /etc/cron.d/cron.deny.cis # mv /etc/cron.d/at.deny /etc/cron.d/at.deny.cis # echo root > /etc/cron.d/cron.allow # cp /dev/null /etc/cron.d/at.allow # chown root:root /etc/cron.d/cron.allow /etc/cron.d/at.allow # chmod 400 /etc/cron.d/cron.allow /etc/cron.d/at.allow"
+    compliance:
+      - cis: ["6.3"]
+    condition: all
+    rules:
+      - "not f:/etc/cron.d/cron.deny"
+      - "not f:/etc/cron.d/at.deny"
+      - "c:cat /etc/cron.d/cron.allow -> r:root"
+      - "c:wc -l /etc/cron.d/at.allow -> r:0"
+
+  - id: 23540
+    title: "Set Default Screen Lock for GNOME Users."
+    description: "The timeout parameter dictates the invocation of a password-protected screen saver after a specified time of keyboard and mouse inactivity, specific to the xscreensaver application used in the GNOME windowing environment."
+    rationale: "As a screensaver timeout provides protection for a desktop that has not been locked by the user upon his/her departure, to help prevent session hijacking, this value should be set as appropriate to the needs of the user."
+    remediation: "Perform the following to implement the recommended state: # cd /usr/share/X11/app-defaults # cp XScreenSaver XScreenSaver.orig # vi XScreenSaver: timeout: 0:10:00, lockTimeout: 0:00:00, lock: True # mv xScreenSaver.CIS xScreenSaver"
+    compliance:
+      - cis: ["6.4"]
+    condition: all
+    rules:
+      - "c:grep *timeout: /usr/share/X11/app-defaults/XScreenSaver -> r:0:10:00"
+      - "c:grep *lockTimeout: /usr/share/X11/app-defaults/XScreenSaver -> r:0:00:00"
+      - "c:grep *lock: /usr/share/X11/app-defaults/XScreenSaver -> r:True"
+
+  - id: 23541
+    title: "Remove Autologin Capabilities from the GNOME desktop."
+    description: "The GNOME Display Manager is used for login session management. See the manual page gdm(1) for more information. By default, GNOME automatic login is defined in /etc/pam.d/gdm-autologin to allow users to access the system without a password."
+    rationale: "As automatic logins are a known security risk for other than kiosk types of systems, GNOME automatic login should be disabled in /etc/pam.d/gdm-autologin."
+    remediation: "Comment out or remove all lines from /etc/pam.d/gdm-autologin"
+    compliance:
+      - cis: ["6.5"]
+    condition: all
+    rules:
+      - "c:grep -vc ^# /etc/pam.d/gdm-autologin -> r:0"
+
+  - id: 23542
+    title: "Set Delay between Failed Login Attempts to 4."
+    description: "The SLEEPTIME variable in the /etc/default/login file controls the number of seconds to wait before printing the login incorrect message when a bad password is provided. The default value for SLEEPTIME is 4 seconds."
+    rationale: "As an immediate return of an error message, coupled with the capability to try again may facilitate automatic and rapid-fire brute-force password attacks by a malicious user, this delay time should be set as appropriate to the needs of the user."
+    remediation: "Perform the following to implement the recommended state: # cd /etc/default # cp login login.orig # nano login SLEEPTIME=4"
+    compliance:
+      - cis: ["6.6"]
+    condition: all
+    rules:
+      - "c:grep SLEEPTIME= /etc/default/login -> r:SLEEPTIME=4|#SLEEPTIME=4"
+
+  - id: 23543
+    title: "Disable Rhost-based Authentication for SSH."
+    description: "The IgnoreRhosts parameter specifies that existing .rhosts and .shosts files, which may apply to application rather than user logins, will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
+    rationale: "Setting this parameter forces users to enter a password when authenticating with SSH."
+    remediation: "Perform the following to implement the recommended state: # nano /etc/ssh/sshd_config - IgnoreRhosts yes"
+    compliance:
+      - cis: ["6.7"]
+    condition: all
+    rules:
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:IgnoreRhosts\s+yes'
+
+  - id: 23545
+    title: "Disable root login for SSH."
+    description: "The PermitRootLogin value (in /etc/ssh/sshd_config) allows for direct root login by a remote user/application to resources on the local host."
+    rationale: "By default, it is not possible for the root account to log directly into the system console because the account is configured as a role. This setting therefore does not significantly alter the security posture of the system unless the root account is changed from this default and configured to be a normal user."
+    remediation: "Perform the following to implement the recommended state: # nano /etc/ssh/sshd_config - PermitRootLogin no"
+    compliance:
+      - cis: ["6.9"]
+    condition: all
+    rules:
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\s+no'
+
+  - id: 23546
+    title: "Disable Host-based Authentication for Login-based Services."
+    description: "The .rhosts files are used for automatic login to remote hosts and contain username and hostname combinations. The .rhosts files are unencrypted (usually group- or world-readable) and present a serious risk in that a malicious user could use the information within to gain access to a remote host with the privileges of the original application or user."
+    rationale: "The use of .rhosts authentication is an old and insecure protocol and can be replaced with public-key authentication using Secure Shell. As automatic authentication settings in the .rhosts files can provide a malicious user with sensitive system credentials, the use of .rhosts files should be disabled. It should be noted that by default the Solaris services that use this file, including rsh and rlogin, are disabled by default."
+    remediation: "Edit /etc/pam.conf and any /etc/pam.d/* results from audit procedure and comment out or remove any pam_rhosts_auth lines: #rlogin auth sufficient pam_rhosts_auth.so.1 #rsh auth sufficient pam_rhosts_auth.so.1"
+    compliance:
+      - cis: ["6.10"]
+    condition: all
+    rules:
+      - 'c:grep pam_rhosts_auth /etc/pam.conf -> !r:\.+'
+      - "c:grep pam_rhosts_auth /etc/pam.d/rlogin -> r:^#"
+      - "c:grep pam_rhosts_auth.so.1 /etc/pam.d/rsh -> r:^#"
+
+  - id: 23547
+    title: "Blocking Authentication Using Empty/Null Passwords for SSH."
+    description: "The PermitEmptyPasswords value allows for direct login through SSH without a password by a remote user/application to resources on the local host in the same way a standard remote login would."
+    rationale: "Permitting login without a password is inherently risky."
+    remediation: "Perform the following to implement the recommended state: Edit /etc/ssh/sshd_config - PermitEmptyPasswords no # svcadm restart svc:/network/ssh"
+    compliance:
+      - cis: ["6.11"]
+    condition: all
+    rules:
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:PermitEmptyPasswords\s+no'
+
+  - id: 23548
+    title: "Limit Consecutive Login Attempts for SSH."
+    description: "The 'MaxAuthTries' parameter in the /etc/ssh/sshd_config file specifies the maximum number of authentication attempts permitted per connection. By restricting the number of failed authentication attempts before the server terminates the connection, malicious users are blocked from gaining access to the host by using repetitive brute-force login exploits."
+    rationale: "By setting the authentication login limit to a low value this will disconnect the attacker and force a reconnect, which severely limits the speed of such brute force attacks."
+    remediation: "Edit /etc/ssh/sshd_config - MaxAuthTries 6 # svcadm restart svc:/network/ssh"
+    compliance:
+      - cis: ["6.12"]
+    condition: all
+    rules:
+      - 'f:/etc/ssh/sshd_config -> !r:^# && n:^MaxAuthTries\s*\t*(\d+) compare <= 6'
+
+  - id: 23549
+    title: "Disable X11 Forwarding for SSH."
+    description: "The X11 Forwarding parameter defined within the /etc/ssh/sshd_config file specifies whether or not X11 Forwarding via SSH is enabled on the server: The Secure Shell service provides an encrypted 'tunnel' for the data traffic passing through it. While commonly used to substitute for clear-text, CLI-based remote connections such as telnet, Secure Shell can be used to forward an 'X Window' session through the encrypted tunnel, allowing the remote user to have a GUI interface."
+    rationale: "As enabling X11Forwarding on the host can permit a malicious user to secretly open another X11 connection to another remote client during the session and perform unobtrusive activities such as keystroke monitoring, if the X11 services are not required for the system's intended function, it should be disabled or restricted as appropriate to the user's needs."
+    remediation: "Perform the following to implement the recommended state: Edit /etc/ssh/sshd_config - X11Forwarding no # svcadm restart svc:/network/ssh"
+    compliance:
+      - cis: ["6.13"]
+    condition: all
+    rules:
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:X11Forwarding\s+no'
+
+  - id: 23550
+    title: 'Disable ."nobody" Access for RPC Encryption Key Storage Service'
+    description: "This action listed prevents keyserv from using default keys for the nobody user, effectively stopping the nobody user from accessing information via Secure RPC."
+    rationale: "If login by the user nobody is allowed for secure RPC, there is an increased risk of system compromise. If keyserv holds a private key for the nobody user, it will be used by key_encryptsession to compute a magic phrase which can be easily recovered by a malicious user."
+    remediation: "Perform the following to implement the recommended state: Edit /etc/default/keyserv - ENABLE NOBODY KEYS=NO or comment the line"
+    compliance:
+      - cis: ["6.14"]
+    condition: all
+    rules:
+      - "c:grep ENABLE_NOBODY_KEYS= /etc/default/keyserv -> r:=NO|^#|error"
+
+  - id: 23551
+    title: "Secure the GRUB Menu (Intel)."
+    description: "GRUB is a boot loader for x64 based systems that permits loading an OS image from any location. Oracle x64 systems support the use of a GRUB Menu password for the console."
+    rationale: "The flexibility that GRUB provides creates a security risk if its configuration is modified by an unauthorized user. The failsafe menu entry needs to be secured in the same environments that require securing the systems firmware to avoid unauthorized removable media boots. Setting the GRUB Menu password helps prevent attackers with physical access to the system console from booting off some external device (such as a CD-ROM or floppy) and subverting the security of the system. The actions described in this section will ensure you cannot get to failsafe or any of the GRUB command line options without first entering the password."
+    remediation: "Run the following command to generate your password hash: # /usr/lib/grub2/bios/bin/grub-mkpasswd-pbkdf2 Enter password: Reenter password: PBKDF2 hash of your password is <em><password_hash></em> Create the file /usr/lib/grub2/bios/etc/grub.d/01\_password: #!/bin/sh /usr/bin/cat > /rpool/boot/grub/password.cfg<<EOF # # GRUB password # set superusers=\"root\" password_pbkdf2 root <em><password_hash></em> EOF /usr/bin/chmod 600 /rpool/boot/grub/password.cfg /usr/bin/echo 'source  /@/boot/grub/password.cfg' Run the following to finalize the password configuration and set menu timeout: # /usr/bin/chmod 700 /usr/lib/grub2/bios/etc/grub.d/01_password # /usr/sbin/bootadm set-menu timeout=30 Changes will take effect on the next reboot."
+    compliance:
+      - cis: ["6.15"]
+    condition: all
+    rules:
+      - "c:psrinfo -pv -> r:GenuineIntel"
+      - "c:grep password.cfg /rpool/boot/grub/grub.cfg -> r:source /@/boot/grub/password.cfg"
+
+  - id: 23552
+    title: "Restrict root Login to System Console."
+    description: "Privileged access to the system via root must be accountable to a particular user."
+    rationale: "Use an authorized mechanism such as RBAC and the su command to provide administrative access to unprivileged accounts. These mechanisms provide an audit trail in the event of problems."
+    remediation: "Edit /etc/default/login - CONSOLE=/dev/console"
+    compliance:
+      - cis: ["6.16"]
+    condition: all
+    rules:
+      - "c:grep CONSOLE=/dev/console /etc/default/login -> r:^CONSOLE=/dev/console"
+
+  - id: 23553
+    title: "Set Retry Limit for Account Lockout."
+    description: "The RETRIES parameter is the number of failed login attempts a user is allowed before being disconnected from the system and forced to reconnect. When LOCK_AFTER_RETRIES is set in /etc/security/policy.conf, then the user's account is locked after this many failed retries (the account can only be unlocked by the administrator using the command: passwd -u <username>. The account lockout threshold (RETRIES parameter) restricts the number of failed login attempts allowed before requiring the offending account be locked. The lockout requirement will help block malicious users from gaining access to the host via automated, repetitive brute-force login exploits--trying different passwords until one fits a user name."
+    rationale: "Setting the failed login limit to an appropriate value locks the user account, which will severely limit the speed of such attacks, making it much more likely that the attacker's pattern will be noticed and the offending source address and/or port blocked, so this should be set according to the needs of the user."
+    remediation: "Perform the following to implement the recommended state: edit /etc/default/login - RETRIES=3, edit /etc/security/policy.conf - LOCK_AFTER_RETRIES=YES. Be careful when enabling these settings as they can create a denial-of-service situation for legitimate users and applications. Account lockout can be disabled for specific users via the usermod command. For example, the following command disables account lock specifically for the oracle account: # usermod -K lock_after_retries=no oracle Note: The root role is configured in this manner by default to prevent accidental lock out."
+    compliance:
+      - cis: ["6.17"]
+    condition: all
+    rules:
+      - "c:grep RETRIES= /etc/default/login -> r:=3"
+      - "c:grep LOCK_AFTER_RETRIES= /etc/security/policy.conf -> r:=YES"
+
+  # 7 User Accounts and Environment
+  - id: 23554
+    title: "Set Password Expiration Parameters on Active Accounts."
+    description: "The characteristics of an operating system that make 'user identification' via password a secure and workable solution is the combination of settings chosen. By requiring that a series of password-choices be security-centric, it reduces the risk of a malicious user breaking the password through dictionary/brute force attacks or fortuitous guessing based upon 'social engineering.' A basic password security strategy is requiring a new password to be chosen every 45-90 days, so that repeated attempts to gain entry by brute-force tactics will fail when a new password is chosen, which requires starting over again to break the new password"
+    rationale: "The commands for this item set all active accounts (except the root account) to force password changes every 91 days (13 weeks), and then prevent password changes for seven days (one week), thereafter. Users will begin receiving warnings 7 days (1 week) before their password expires. Sites also have the option of expiring idle accounts after a certain number of days (see the on-line manual page for the usermod command, particularly the -f option)."
+    remediation: "Perform the following to implement the recommended state: Edit /etc/default/passwd - MAXWEEKS=13 MINWEEKS=1 WARNWEEKS=1"
+    compliance:
+      - cis: ["7.1"]
+    condition: all
+    rules:
+      - 'f:/etc/default/passwd -> !r:^# && r:MAXWEEKS && n:=\s*\t*(\d+) compare <= 13'
+      - 'f:/etc/default/passwd -> !r:^# && r:MINWEEKS && n:=\s*\t*(\d+) compare == 1'
+      - 'f:/etc/default/passwd -> !r:^# && r:WARNWEEKS && n:=\s*\t*(\d+) compare == 4'
+
+  - id: 23555
+    title: "Set Strong Password Creation Policies."
+    description: "The variables in the /etc/default/passwd file indicate various strategies for creating differences required between an old and a new password. As requiring users to select a specific numbers of differences between the characters in the existing password and the new one can strengthen the password by increasing the symbol-set space, to further increase the difficulty of breaking any password by brute-force attacks, these values should be set as appropriate to the needs of the user."
+    rationale: "Administrators may wish to add site-specific dictionaries to the DICTIONLIST parameter."
+    remediation: "Edit /etc/default/passwd with these values: PASSLENGTH=14 NAMECHECK=YES HISTORY=10 MINDIFF=3 MINUPPER=1 MINLOWER=1 MINSPECIAL=1 MINDIGIT=1 MAXREPEATS=1 WHITESPACE=YES DICTIONDBDIR=/var/passwd DICTIONLIST=/usr/share/lib/dict/words"
+    compliance:
+      - cis: ["7.2"]
+    condition: all
+    rules:
+      - 'f:/etc/default/passwd -> !r:^# && r:PASSLENGTH && n:=\s*\t*(\d) compare == 14'
+      - 'f:/etc/default/passwd -> !r:^# && r:NAMECHECK && r:=\s*\t*yes'
+      - 'f:/etc/default/passwd -> !r:^# && r:HISTORY && n:=\s*\t*(\d+) compare == 10'
+      - 'f:/etc/default/passwd -> !r:^# && r:MINDIFF && n:=\s*\t*(\d+) compare == 3'
+      - 'f:/etc/default/passwd -> !r:^# && r:MINUPPER && n:=\s*\t*(\d+) compare == 1'
+      - 'f:/etc/default/passwd -> !r:^# && r:MINLOWER && n:=\s*\t*(\d+) compare == 1'
+      - 'f:/etc/default/passwd -> !r:^# && r:MINSPECIAL && n:=\s*\t*(\d+) compare == 1'
+      - 'f:/etc/default/passwd -> !r:^# && r:MINDIGIT && n:=\s*\t*(\d+) compare == 1'
+      - 'f:/etc/default/passwd -> !r:^# && r:MAXREPEATS && n:=\s*\t*(\d+) compare == 1'
+      - 'f:/etc/default/passwd -> !r:^# && r:WHITESPACE && r:=\s*\t*yes'
+      - 'f:/etc/default/passwd -> !r:^# && r:DICTIONDBDIR && r:=\s*\t*/var/passwd'
+      - 'f:/etc/default/passwd -> !r:^# && r:DICTIONLIST && r:=\s*\t*/usr/share/lib/dict/words'
+
+  - id: 23556
+    title: "Set Default umask for users."
+    description: "The default umask(1) determines the permissions of files created by users. The user creating the file has the discretion of making their files and directories readable by others via the chmod(1) command. Users who wish to allow their files and directories to be readable by others by default may choose a different default umaskby inserting the umaskcommand into the standard shell configuration files (.profile, .cshrc, etc.) in their home directories."
+    rationale: "Setting a very secure default value for umask ensures that users make a conscious choice about their file permissions. A default umask setting of 077 causes files and directories created by users to not be readable by any other user on the system. A umask of 027 would allow files and directories readable by users in the same Unix group, while a umask of 022 would make files readable by every user on the system."
+    remediation: "Edit /etc/default/login - UMASK=027"
+    compliance:
+      - cis: ["7.3"]
+    condition: all
+    rules:
+      - "c:grep ^UMASK= /etc/default/login -> r:027"
+
+  - id: 23557
+    title: "Default File Creation Mask for FTP Users."
+    description: "If FTP is permitted, set a strong, default file creation mask to apply to files created by the FTP server."
+    rationale: "Many users assume that the FTP server will use their system file creation mask; generally it does not. This setting ensures that files transmitted over FTP use a strong file creation mask."
+    remediation: "Edit /etc/proftpd.conf - Umask 027"
+    compliance:
+      - cis: ["7.4"]
+    condition: all
+    rules:
+      - "c:grep ^Umask /etc/proftpd.conf -> r:027"
+
+  - id: 23558
+    title: "Set mesg n as Default for All Users."
+    description: "The mesg n command blocks attempts to use the write or talk commands to contact users at their terminals, but has the side effect of slightly strengthening permissions on the users tty device."
+    rationale: "Since write and talk are no longer widely used at most sites, the incremental security increase is worth the loss of functionality."
+    remediation: "Refer to documentation to execute a script to set mesg n"
+    compliance:
+      - cis: ["7.5"]
+    condition: all
+    rules:
+      - "c:grep ^mesg /etc/.login -> r:mesg n"
+      - "c:grep ^mesg /etc/profile -> r:mesg n"
+
+  # 8 Warning Banners
+  - id: 23560
+    title: "Create Warnings for Standard Login Services."
+    description: "The contents of the /etc/issue file are displayed prior to the login prompt on the systems console and serial devices and also prior to logins via telnet and Secure Shell. The contents of the /etc/motd file are generally displayed after all successful logins, regardless from where the user is logging in."
+    rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. As implementing a logon banner to deter inappropriate use and can provide a foundation for legal action against abuse, this warning content should be set as appropriate. Consult with your organizations legal counsel for the appropriate wording as the examples below are for demonstration purposes only."
+    remediation: "Perform the following to implement the recommended state: # echo Authorized users only. All activity may be monitored and reported. > /etc/motd # echo Authorized users only. All activity may be monitored and reported. > /etc/issue # chown root:root /etc/issue # chmod 644 /etc/issue"
+    compliance:
+      - cis: ["8.1"]
+    condition: all
+    rules:
+      - "c:cat /etc/motd -> r:Authorized users only. All activity may be monitored and reported"
+      - 'c:ls -l /etc/motd -> r:^-rw-r--r--\s+1\s+root\s+sys'
+      - "c:cat /etc/issue -> r:Authorized users only. All activity may be monitored and reported"
+      - 'c:ls -l /etc/issue -> r:^-rw-r--r--\s+1\s+root\s+root'
+
+  - id: 23561
+    title: "Enable a Warning Banner for the FTP service."
+    description: "The action for this item sets a warning message for FTP users before they log in."
+    rationale: "If FTP is permitted for use in your environment, it is important to ensure that Warning Banners inform users who are attempting to access the system of their legal status regarding using the system. The text below is a generic sample only, so consult with your organization's legal counsel for the appropriate wording."
+    remediation: "Perform the following to implement the recommended state: # echo DisplayConnect /etc/issue >> /etc/proftpd.conf # svcadm restart ftp"
+    compliance:
+      - cis: ["8.2"]
+    condition: all
+    rules:
+      - 'c:grep DisplayConnect /etc/proftpd.conf -> r:^DisplayConnect\.+/etc/issue'
+
+  - id: 23562
+    title: "Enable a Warning Banner for the SSH Service."
+    description: "The contents of the Banner string in the /etc/ssh/sshd_config file are sent to the remote user before authentication is allowed, requiring that the user read the legal caution."
+    rationale: "Performing these steps will ensure the appropriate legal caution is displayed to any user accessing the system via SSH."
+    remediation: "Edit /etc/ssh/sshd_config - Banner /etc/issue"
+    compliance:
+      - cis: ["8.3"]
+    condition: all
+    rules:
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:Banner\s*/etc/issue'
+
+  - id: 23563
+    title: "Enable a Warning Banner for the GNOME Service."
+    description: "The GNOME Display Manager is used for login session management. See the manual page gdm(1) for more information on configuration of the settings, which can be user or group specific."
+    rationale: "The remediation action for this item sets a pre-login warning message for GDM users. Additional methods can be employed to display a similar message to a user post-authentication. For more information, see the Oracle Solaris 11 Security Guidelines document."
+    remediation: "Perform the following to implement the recommended state: Edit the /etc/gdm/Init/Default file to add the following content before the last line of the file. /usr/bin/zenity --text-info --width=800 --height=300 --title=Security Message --filename=/etc/issue"
+    compliance:
+      - cis: ["8.4"]
+    condition: all
+    rules:
+      - 'c:grep Security /etc/gdm/Init/Default -> r:--title="Security Message" --filename=/etc/issue'
+
+  - id: 23564
+    title: "Check that the Banner Setting for telnet is Null."
+    description: "The BANNER variable in the file /etc/default/telnetd can be used to display text before the telnet login prompt. Traditionally, it has been used to display the OS level of the target system."
+    rationale: "The warning banner provides information that can be used in reconnaissance for an attack. By default, this file is distributed with the BANNER variable set to null. It is not necessary to create a separate warning banner for telnet if a warning is set in the /etc/issue file. As telnet is an insecure protocol, it should be disabled and all remote administrative/user connections take place by Secure Shell."
+    remediation: "Perform the following to implement the recommended state: edit /etc/default/telnetd - BANNER="
+    compliance:
+      - cis: ["8.5"]
+    condition: all
+    rules:
+      - "c:grep ^BANNER /etc/default/telnetd -> r:^BANNER=$"
+
+  # 9 System Maintenance
+  - id: 23565
+    title: "Check for Remote Consoles."
+    description: "The consadm command can be used to select or display alternate console devices."
+    rationale: "Since the system console has special properties to handle emergency situations, it is important to ensure that the console is in a physically secure location and that unauthorized consoles have not been defined. The consadm -p command displays any alternate consoles that have been defined as auxiliary across reboots. If no remote consoles have been defined, there will be no output from this command."
+    remediation: "Perform the following to implement the recommended state: # /usr/sbin/consadm [-d device...]"
+    compliance:
+      - cis: ["9.1"]
+    condition: all
+    rules:
+      - "c:/usr/sbin/consadm -p -> r:^$"
+
+  - id: 23568
+    title: "Verify System Account Default Passwords."
+    description: "There are a number of accounts provided with the Solaris OS that are used to manage applications and are not intended to provide an interactive shell. These accounts are delivered either in a locked or non-login state. Oracle does not support nor recommend changing the passwords associated with these accounts."
+    rationale: "System accounts, such as bin, lpd, and sys have special purposes and privileges. By default, these accounts are configured as either locked or non-login. This status should be verified to ensure that these accounts have not accidentally or intentionally been enabled."
+    remediation: "To lock a single account, use the command: # passwd -d [username] # passwd -l <em>[username] To configure a single account to be non-login, use the command: # passwd -d [username] # passwd -N <em>[username]"
+    compliance:
+      - cis: ["9.4"]
+    condition: all
+    rules:
+      - "f:/etc/shadow -> r:^daemon: && !r::NL:|:NP:"
+      - "f:/etc/shadow -> r:^lp: && !r::NL:|:NP:"
+      - "f:/etc/shadow -> r:^adm: && !r::NL:|:NP:"
+      - "f:/etc/shadow -> r:^bin: && !r::NL:|:NP:"
+      - 'f:/etc/shadow -> r:^gdm: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^noaccess: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^nobody: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^nobody4: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^openldap: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^unknown: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^webservd: && !r::\p*LK\p*:'
+      - "f:/etc/shadow -> r:^mysql: && !r::NL:|:NP:"
+      - "f:/etc/shadow -> r:^postgres: && !r::NL:|:NP:"
+      - "f:/etc/shadow -> r:^smmsp: && !r::NL:|:NP:"
+      - "f:/etc/shadow -> r:^sys: && !r::NL:|:NP:"
+      - 'f:/etc/shadow -> r:^aiuser: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^dhcpserv: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^dladm: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^ftp: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^netadm: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^netcfg: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^pkg5srv: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^svctag: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^xvm: && !r::\p*LK\p*:'
+      - "f:/etc/shadow -> r:^upnp: && !r::NL:|:NP:"
+      - "f:/etc/shadow -> r:^zfssnap: && !r::NL:|:NP:"
+
+  - id: 23569
+    title: "Verify System File Permissions."
+    description: "The pkg verify and command checks the accuracy of installed directory structures and files."
+    rationale: "It is important to ensure that system files and directories are maintained with the permissions they were intended to have from the OS vendor (Oracle)."
+    remediation: "Correct or justify any items discovered in the Audit step. Perform the following to set correct any identified package errors: # pkg fix. Exercise caution in running this command as it may reverse modifications implemented previously including some of those recommended by this document. Rather than use this command broadly, it is recommended that it be used more tactically to correct specific package problems when possible."
+    compliance:
+      - cis: ["9.5"]
+    condition: all
+    rules:
+      - "c:pkg verify -> !r:ERROR"
+
+  - id: 23570
+    title: "Ensure Password Fields are Not Empty."
+    description: "An account with an empty password field means that anybody may log in as that user without providing a password at all (assuming that the value PASSREQ=NO is set in /etc/default/login)."
+    rationale: "All accounts must have passwords, be configured as Non-login, or be locked."
+    remediation: "Use the passwd -l command to lock accounts that are not permitted to execute commands . Use the passwd -N command to set accounts to be non-login."
+    compliance:
+      - cis: ["9.6"]
+    condition: all
+    rules:
+      - "c:logins -p -> r:^$"
+
+  - id: 23571
+    title: "Verify No UID 0 Accounts Exist Other than root."
+    description: "Any account with UID 0 has superuser rights on the system."
+    rationale: "This access must be limited to only the default root role and be made accessible from the system console only. Administrative access granted to an unprivileged account should use an approved mechanism such as RBAC."
+    remediation: "Disable or delete any other 0 UID entries that are displayed; there should be only one root account. Finer granularity access control for administrative access can be obtained by using the Solaris Role-Based Access Control (RBAC) mechanism. RBAC configurations should be monitored via user_attr(4) to make sure that privileges are managed appropriately."
+    compliance:
+      - cis: ["9.7"]
+    condition: all
+    rules:
+      - 'f:/etc/passwd -> !r:^# && !r:^\s*\t*root: && r:^\w+:\w+:0:'
+
+  - id: 23572
+    title: "Ensure root PATH Integrity."
+    description: "The root user can execute any command on the system and could be tricked into executing programs if the PATH is not set correctly."
+    rationale: "Including the current working directory (.) or any other writable directory in root's executable path makes it likely that an attacker can gain superuser access by forcing an administrator operating as root to execute a malcode, such as a Trojan horse program."
+    remediation: "Correct or justify any items discovered in the Audit step."
+    compliance:
+      - cis: ["9.8"]
+    condition: all
+    rules:
+      - "f:/etc/profile -> r::."
+      - "f:/root/.profile -> r::."
+      - "f:/root/.bashrc -> r::."
+      - "f:/etc/profile -> r:::"
+      - "f:/root/.profile -> r:::"
+      - "f:/root/.bashrc -> r:::"
+      - "f:/etc/profile -> r::$"
+      - "f:/root/.profile -> r::$"
+      - "f:/root/.bashrc -> r::$"
+
+  - id: 23578
+    title: "Check That Users Are Assigned Home Directories."
+    description: "passwd defines a home directory that each user is placed in upon login. If there is no defined home directory, a user will be placed in / and will not be able to write any files or have local environment variables set."
+    rationale: "All users must be assigned a home directory in passwd."
+    remediation: "Correct or justify any items discovered in the Audit step. Determine if there exists any users who are in passwd but do not have a home directory, and work with those users to determine the best course of action in accordance with site policy."
+    compliance:
+      - cis: ["9.14"]
+    condition: all
+    rules:
+      - 'f:/etc/passwd -> r:\w+:\.*:\d*:\d*:\.*::\.*'
+
+  - id: 23580
+    title: "Check for Duplicate UIDs."
+    description: "Although the useradd program will not let you create a duplicate User ID (UID), it is possible for an administrator to manually modify passwd and change the UID field."
+    rationale: "Users must be assigned unique UIDs for accountability and to ensure appropriate access protections."
+    remediation: "Correct or justify any items discovered in the Audit step. Determine if there exists any users who share a common UID, and work with those users to determine the best course of action in accordance with site policy."
+    compliance:
+      - cis: ["9.16"]
+    condition: all
+    rules:
+      - "c:logins -d -> r:^$"
+
+  - id: 23585
+    title: "Find World Writable Files."
+    description: "Unix-based systems support variable settings to control access to files. World-writable files are the least secure. See the chmod man page for more information."
+    rationale: "Data in world-writable files can be read, modified, and potentially compromised by any user on the system. World-writable files may also indicate an incorrectly written script or program that could potentially be the cause of a larger compromise to the system integrity."
+    remediation: "Correct or justify any items discovered in the Audit step. Determine the existence of any write access given for the other category (chmod o-w filename), and work with the owner to determine the best course of action in accordance with site policy."
+    compliance:
+      - cis: ["9.21"]
+    condition: all
+    rules:
+      - 'c:find / \( -fstype nfs -o -fstype cachefs -o -fstype autofs -o -fstype ctfs -o -fstype mntfs -o -fstype objfs -o -fstype proc \) -prune -o -type f -perm -0002 -print -> r:^$'
+
+  - id: 23586
+    title: "Find SUID/SGID System Executables."
+    description: "The owner of a file can set the file permissions to run with the owner or group permissions, even if the user running the program is not the owner or a member of the group. The most common reason for a SUID/SGID program is to enable users to perform functions (such as changing their password), which requires root privileges."
+    rationale: "There are valid reasons for SUID/SGID programs, but it is important to identify and review such programs to ensure they are legitimate."
+    remediation: "Correct or justify any items discovered in the Audit step. Determine the existence of any set-UID programs that do not belong on the system, and work with the owner (or system administrator) to determine the best course of action in accordance with site policy. Digital signatures on the Solaris Set-UID binaries can be verified with the elfsign utility, such as this example: # elfsign verify -e /usr/bin/su elfsign: verification of /usr/bin/su passed."
+    compliance:
+      - cis: ["9.22"]
+    condition: all
+    rules:
+      - "c:elfsign verify -e /usr/bin/su -> r:passed."
+
+  - id: 23587
+    title: "Find Un-owned Files and Directories."
+    description: "Sometimes when administrators delete users from the password file they neglect to remove all files owned by those users from the system."
+    rationale: "A new user who is assigned the deleted user's user ID or group ID may then end up owning these files, and thus have more access on the system than was intended."
+    remediation: "Correct or justify any items discovered in the Audit step. Determine the existence of any files that are not attributed to current users or groups on the system, and determine the best course of action in accordance with site policy. Note that the Solaris OS is shipped with all files appropriately owned."
+    compliance:
+      - cis: ["9.23"]
+    condition: all
+    rules:
+      - 'c:find / \( -fstype nfs -o -fstype cachefs -o -fstype autofs -o -fstype ctfs -o -fstype mntfs -o -fstype objfs -o -fstype proc \) -prune -o \( -nouser -o -nogroup \) -ls -> r:^$'
+
+  - id: 23588
+    title: "Find Files and Directories with Extended Attributes."
+    description: "Extended attributes are implemented as files in a shadow file system that is not generally visible via normal administration commands without special arguments."
+    rationale: "Attackers or malicious users could hide information, exploits, etc. in extended attribute areas. Since extended attributes are rarely used, it is important to find files with extended attributes set."
+    remediation: "Correct or justify any items discovered in the Audit step. Determine the existence of any files having extended file attributes, and determine the best course of action in accordance with site policy. Note that the Solaris OS does not ship with files that have extended attributes."
+    compliance:
+      - cis: ["9.24"]
+    condition: all
+    rules:
+      - 'c:find / \( -fstype nfs -o -fstype cachefs -o -fstype autofs -o -fstype ctfs\ -o -fstype mntfs -o -fstype objfs -o -fstype proc \) -prune -o -xattr -ls -> r:^$'

@@ -1,0 +1,335 @@
+/*
+ * Wazuh Vulnerability scanner - Scan Orchestrator
+ * Copyright (C) 2015, Wazuh Inc.
+ * March 11, 2024.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#ifndef _EVENT_DETAILS_BUILDER_HPP
+#define _EVENT_DETAILS_BUILDER_HPP
+
+#include "chainOfResponsability.hpp"
+#include "databaseFeedManager.hpp"
+#include "descriptionsHelper.hpp"
+#include "fieldAlertHelper.hpp"
+#include "inventorySync.hpp"
+#include "loggerHelper.h"
+#include "numericHelper.h"
+#include "scanContext.hpp"
+#include "timeHelper.h"
+
+constexpr auto WAZUH_SCHEMA_VERSION = "1.0.0";
+
+/**
+ * @brief TEventDetailsBuilder class.
+ * This class is responsible for building the event details for the vulnerability event.
+ * It receives the scan context and the database feed manager and returns the scan context with the event details.
+ * Its neccessary to have the context->m_elements populated with the cve and the operation.
+ * The operation can be "DELETED" or "INSERTED".
+ * Its also necessary to have the context->m_matchConditions populated with the cve and the condition.
+ * The condition can be "LessThanOrEqual", "LessThan", "DefaultStatus" or "Equal".
+ *
+ * @tparam TDatabaseFeedManager database feed manager type.
+ * @tparam TScanContext scan context type.
+ * @tparam TGlobalData global data type.
+ */
+template<typename TDatabaseFeedManager = DatabaseFeedManager,
+         typename TScanContext = ScanContext,
+         typename TGlobalData = GlobalData>
+class TEventDetailsBuilder final : public AbstractHandler<std::shared_ptr<TScanContext>>
+{
+private:
+    std::shared_ptr<TDatabaseFeedManager> m_databaseFeedManager;
+
+    /**
+     * @brief Populate a JSON field with a value if the value is non-empty (for strings) or always (for other types).
+     *
+     * This function takes a JSON object, a JSON pointer specifying the field to populate, and a value to populate the
+     * field with. If the value is a string or a string view and is not empty, it will populate the field in the JSON
+     * object. For other types, the field will be populated regardless of the value.
+     *
+     * @tparam T       The type of the value to populate the field with.
+     * @param data     The JSON object to populate.
+     * @param key      The JSON pointer specifying the field to populate.
+     * @param value    The value to populate the field with.
+     */
+    template<typename T>
+    void populateField(nlohmann::json& data, const nlohmann::json::json_pointer& key, T&& value)
+    {
+        if constexpr (std::is_same_v<std::remove_cv_t<std::remove_reference_t<T>>, std::string_view> ||
+                      std::is_same_v<T, std::string>)
+        {
+            const auto valueTrimmed = Utils::trim(value.data());
+
+            if (!valueTrimmed.empty())
+            {
+                data[key] = value;
+            }
+        }
+        else
+        {
+            data[key] = value;
+        }
+    }
+
+public:
+    // LCOV_EXCL_START
+    /**
+     * @brief EventDetailsBuilder constructor.
+     *
+     * @param databaseFeedManager Database feed manager.
+     */
+    explicit TEventDetailsBuilder(std::shared_ptr<TDatabaseFeedManager>& databaseFeedManager)
+        : m_databaseFeedManager(databaseFeedManager)
+    {
+    }
+
+    /**
+     * @brief Class destructor.
+     *
+     */
+    ~TEventDetailsBuilder() = default;
+    // LCOV_EXCL_STOP
+
+    /**
+     * @brief Handles request and passes control to the next step of the chain.
+     *
+     * @param context Scan context.
+     * @return std::shared_ptr<ScanContext> Abstract handler.
+     */
+    std::shared_ptr<TScanContext> handleRequest(std::shared_ptr<TScanContext> context) override
+    {
+        logDebug2(
+            WM_VULNSCAN_LOGTAG, "Building event details for component type: %d", context->affectedComponentType());
+
+        // Operating system fullName (OS name + OS version).
+        const auto generateOsFullName = [&context]()
+        {
+            std::string osFullName;
+            osFullName.append(context->osName().data());
+            osFullName.append(" ");
+            osFullName.append(context->osPlatform().compare("darwin") == 0 ? context->osCodeName().data()
+                                                                           : context->osVersion().data());
+            return osFullName;
+        };
+        const auto osFullName = generateOsFullName();
+
+        // Operating system version.
+        const auto generateOsVersion = [&context]()
+        {
+            std::string osVersion;
+            osVersion.append(context->osMajorVersion().data());
+            if (!context->osMinorVersion().empty())
+            {
+                osVersion.append(".");
+                osVersion.append(context->osMinorVersion());
+            }
+            if (!context->osPatch().empty())
+            {
+                osVersion.append(".");
+                osVersion.append(context->osPatch());
+            }
+            if (!context->osBuild().empty())
+            {
+                osVersion.append(".");
+                osVersion.append(context->osBuild());
+            }
+            return osVersion;
+        };
+
+        const auto osVersion = generateOsVersion();
+
+        // Operating system type.
+        const std::string osType =
+            Utils::toLowerCase(context->osPlatform().compare("darwin") == 0 ? "macos" : context->osPlatform().data());
+
+        nlohmann::json packageData;
+
+        switch (context->affectedComponentType())
+        {
+            case AffectedComponentType::Package:
+                populateField(packageData, "/architecture"_json_pointer, context->packageArchitecture());
+                populateField(packageData, "/description"_json_pointer, context->packageDescription());
+
+                if (!context->packageInstallTime().empty())
+                {
+                    const auto installTime {Utils::rawTimestampToISO8601(context->packageInstallTime())};
+                    if (!installTime.empty())
+                    {
+                        packageData["installed"] = installTime;
+                    }
+                }
+                populateField(packageData, "/name"_json_pointer, context->packageName());
+                populateField(packageData, "/path"_json_pointer, context->packageLocation());
+                populateField(packageData, "/size"_json_pointer, context->packageSize());
+                populateField(packageData, "/type"_json_pointer, context->packageFormat());
+                populateField(packageData, "/version"_json_pointer, context->packageVersion());
+                break;
+
+            case AffectedComponentType::Os:
+                populateField(packageData, "/architecture"_json_pointer, context->osArchitecture());
+                populateField(packageData, "/name"_json_pointer, osFullName);
+                populateField(packageData, "/type"_json_pointer, osType);
+                populateField(packageData, "/version"_json_pointer, osVersion);
+                break;
+
+            default: break;
+        }
+
+        nlohmann::json agentData;
+        if (context->agentId().compare("000") == 0 && context->clusterStatus())
+        {
+            populateField(agentData, "/ephemeral_id"_json_pointer, context->clusterNodeName());
+        }
+        populateField(agentData, "/id"_json_pointer, context->agentId());
+        populateField(agentData, "/name"_json_pointer, context->agentName());
+        populateField(agentData, "/type"_json_pointer, "Wazuh");
+        populateField(agentData, "/version"_json_pointer, context->agentVersion());
+
+        nlohmann::json osData;
+        populateField(osData, "/full"_json_pointer, osFullName);
+        populateField(osData, "/kernel"_json_pointer, context->osKernelRelease());
+        populateField(osData, "/name"_json_pointer, context->osName());
+        populateField(osData, "/platform"_json_pointer, Utils::toLowerCase(context->osPlatform().data()));
+        populateField(osData, "/type"_json_pointer, osType);
+        populateField(osData, "/version"_json_pointer, osVersion);
+
+        const auto descriptionSources =
+            DescriptionsHelper::cvssAndDescriptionSources<TGlobalData>(context->m_vulnerabilitySource);
+
+        for (auto& [cve, elementData] : context->m_elements)
+        {
+            // It isn't required to build event details for DELETED elements.
+            if (elementData.contains("operation") && "DELETED" == elementData.at("operation"))
+            {
+                continue;
+            }
+
+            try
+            {
+                DescriptionsHelper::vulnerabilityDescription<TDatabaseFeedManager, TGlobalData>(
+                    cve,
+                    descriptionSources,
+                    m_databaseFeedManager,
+                    [&](const CveDescription& description)
+                    {
+                        // We append the offset to the CVE ID from the description to version the detection.
+                        InventorySync::updateElementID(elementData, description.offset);
+
+                        auto ecsData = nlohmann::json::object();
+
+                        // ECS agent fields.
+                        ecsData["agent"] = agentData;
+
+                        // ECS package fields.
+                        switch (context->affectedComponentType())
+                        {
+                            case AffectedComponentType::Package:
+                                ecsData["package"] = packageData;
+                                ecsData["vulnerability"]["category"] = "Packages";
+                                break;
+
+                            case AffectedComponentType::Os:
+                                ecsData["package"] = packageData;
+                                ecsData["vulnerability"]["category"] = "OS";
+                                break;
+
+                            default:
+                                // No fields required.
+                                break;
+                        }
+
+                        // ECS os fields.
+                        ecsData["host"]["os"] = osData;
+
+                        // Lambda function to avoid complexity cognitive.
+                        const auto isUnderEvaluation = [&description]()
+                        {
+                            return Utils::floatToDoubleRound(description.scoreBase, 2) == 0 ||
+                                   description.scoreVersion.empty() || description.severity.empty();
+                        };
+
+                        // ECS vulnerability fields.
+                        ecsData["vulnerability"]["classification"] =
+                            FieldAlertHelper::fillEmptyOrNegative(description.classification);
+                        ecsData["vulnerability"]["description"] = description.description;
+                        ecsData["vulnerability"]["detected_at"] = Utils::getCurrentISO8601();
+                        ecsData["vulnerability"]["enumeration"] = "CVE";
+                        ecsData["vulnerability"]["id"] = cve;
+                        ecsData["vulnerability"]["published_at"] = description.datePublished;
+                        ecsData["vulnerability"]["reference"] = description.reference;
+                        ecsData["vulnerability"]["scanner"]["vendor"] = "Wazuh";
+                        ecsData["vulnerability"]["score"]["base"] =
+                            FieldAlertHelper::fillEmptyOrNegative(Utils::floatToDoubleRound(description.scoreBase, 2));
+                        ecsData["vulnerability"]["score"]["version"] =
+                            FieldAlertHelper::fillEmptyOrNegative(description.scoreVersion);
+                        ecsData["vulnerability"]["severity"] =
+                            FieldAlertHelper::fillEmptyOrNegative(Utils::toSentenceCase(description.severity.data()));
+
+                        auto& detectionSource =
+                            DEFAULT_ADP == std::get<VulnerabilitySource::ADP_BASE>(context->m_vulnerabilitySource) &&
+                                    context->m_cnaDetectionSource.find(cve) != context->m_cnaDetectionSource.end()
+                                ? context->m_cnaDetectionSource.at(cve)
+                                : std::get<VulnerabilitySource::ADP_BASE>(context->m_vulnerabilitySource);
+
+                        ecsData["vulnerability"]["scanner"]["source"] =
+                            TGlobalData::instance().vendorMaps().at("adp_descriptions").at(detectionSource).at("adp");
+                        ecsData["vulnerability"]["scanner"]["reference"] = WAZUH_CTI_CVES_URL + cve;
+
+                        ecsData["vulnerability"]["under_evaluation"] = isUnderEvaluation();
+
+                        if (const auto it = context->m_matchConditions.find(cve);
+                            it != context->m_matchConditions.end())
+                        {
+                            if (it->second.condition == MatchRuleCondition::LessThanOrEqual)
+                            {
+                                ecsData["vulnerability"]["scanner"]["condition"] =
+                                    "Package less than or equal to " + it->second.version;
+                            }
+                            else if (it->second.condition == MatchRuleCondition::LessThan)
+                            {
+                                ecsData["vulnerability"]["scanner"]["condition"] =
+                                    "Package less than " + it->second.version;
+                            }
+                            else if (it->second.condition == MatchRuleCondition::DefaultStatus)
+                            {
+                                ecsData["vulnerability"]["scanner"]["condition"] = "Package default status";
+                            }
+                            else if (it->second.condition == MatchRuleCondition::Equal)
+                            {
+                                ecsData["vulnerability"]["scanner"]["condition"] =
+                                    "Package equal to " + it->second.version;
+                            }
+                            else
+                            {
+                                ecsData["vulnerability"]["scanner"]["condition"] = "Unknown";
+                                logDebug2(WM_VULNSCAN_LOGTAG, "Unknown match condition");
+                            }
+                        }
+
+                        // ECS wazuh fields.
+                        auto vulnerabilityDetection = PolicyManager::instance().getVulnerabilityDetection();
+                        ecsData["wazuh"]["cluster"]["name"] = context->clusterName();
+                        ecsData["wazuh"]["schema"]["version"] = WAZUH_SCHEMA_VERSION;
+
+                        elementData["data"] = std::move(ecsData);
+                    });
+            }
+            catch (const std::exception& e)
+            {
+                logError(WM_VULNSCAN_LOGTAG, "Error building event details for CVE: %s", cve.data());
+                logError(WM_VULNSCAN_LOGTAG, "Error message: %s", e.what());
+            }
+        }
+
+        return AbstractHandler<std::shared_ptr<TScanContext>>::handleRequest(std::move(context));
+    }
+};
+
+using EventDetailsBuilder = TEventDetailsBuilder<>;
+
+#endif // _EVENT_DETAILS_BUILDER_HPP

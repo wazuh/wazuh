@@ -1,0 +1,127 @@
+# Configuration
+yes="o"
+no="n"
+yesmatch="o"
+nomatch="n"
+agent="agent"
+local="local"
+server="serveur"
+help="aide"
+
+# Global
+moreinfo="Plus d'information sur: "
+modifiedinit="Script d'initialisation modifié pour démarrer Wazuh pendant le boot."
+systemis="Le Système est"
+modifiedinit="Script d'initialisation modifié pour démarrer OSSEC Wazuh pendant le boot."
+noboot="Système inconnu. Aucun script d'initialisation ajouté."
+
+# Part 1
+installscript="Script d'installation"
+system="Système"
+user="Utilisateur"
+host="Hôte"
+hitanyorabort="Appuyez sur Entrée pour continuer ou Ctrl-C pour annuler."
+whattoinstall="Quel type d'installation voulez-vous (manager, agent, local ou aide) ?"
+serverchose="Installation du manager (serveur) choisie"
+clientchose="Installation de l'agent (client) choisie"
+localchose="Installation en local choisie"
+
+# Part 2
+settingupenv="Définition de l'environnement d'installation"
+wheretoinstall="Choisissez votre répertoire d'installation de Wazuh"
+installat="L'installation sera faite sur "
+deletedir="Le répertoire d'installation existe déjà. Doit-on le supprimer ?"
+
+# Part 3
+configuring="Configuration de"
+mailnotify="Voulez-vous une alerte par email ?"
+nomail="Alerte par email désactivée"
+whatsemail="Quel est votre adresse email ?"
+yoursmtp="Nous trouvons votre serveur SMTP sur"
+usesmtp="Voulez-vous l'utiliser ?"
+usingsmtp="Serveur SMTP utilisé : "
+whatsmtp="Quel est l'adresse IP ou le nom d'hôte de votre serveur SMTP ?"
+
+# Part 3.1/agent
+serverip="Quelle est l'adresse IP de votre serveur Wazuh ?"
+serveraddr="Quelle est l'adresse IP ou le nom d'hôte de votre serveur Wazuh ?"
+addingip="Ajout de l'IP du Serveur"
+addingname="Ajout de le nom d'hôte du Serveur"
+
+
+# Part 3.2
+runsyscheck="Voulez-vous démarrer le démon de vérification d'intégrité ?"
+nosyscheck="Syscheck non lancé (démon de vérification d'intégrité)"
+yessyscheck="Lancement de syscheck (démon de vérification d'intégrité)"
+
+# Part 3.3
+runrootcheck="Voulez-vous démarrer le moteur de détection de rootkit ?"
+norootcheck="Rootcheck non lancé (détection de rootkit)"
+yesrootcheck="Lancement de rootcheck (détection de rootkit)"
+
+# Part 3.4
+runopenscap="Voulez-vous démarrer OpenSCAP?"
+norunopenscap="OpenSCAP non lancé"
+yesrunopenscap="Lancement de OpenSCAP"
+
+# Part 3.5/server/local
+enable_ar="voulez-vous démarrer la réponse active ?"
+noactive="Réponse active désactivée"
+nohosts="contrôle d'hôte (host-deny) désactivé"
+yeshosts="contrôle d'hôte (host-deny) activé (local) pour les levels >= 6"
+firewallar="Voulez-vous activer la réponse pare-feu (firewall-drop) ?"
+nofirewall="pare-feu (firewall-drop) désactivé."
+yesfirewall="pare-feu (firewall-drop) activé (local) pour les levels >= 6"
+defaultwhitelist="liste blanche (white list) par défaut pour la réponse active :"
+addwhite="Voulez-vous d'autres adresses IP dans votre liste (white list) ?"
+ipswhite="IPs (séparées par des espaces) : "
+
+# Part 3.5/server/local
+syslog="Voulez-vous activer fonctionnalité syslog (port udp 514) ?"
+nosyslog="Fonctionnalité syslog désactivé"
+yessyslog="Fonctionnalité syslog activé"
+
+# Part 3.4/3.5
+readlogs="Mise en place de la configuration pour analyser les logs suivants :"
+
+# Part 3.7
+runauthd="Voulez-vous exécuter le service Auth?"
+norunauthd="Ne pas exécuter le service Auth"
+yesrunauthd="Exécution du service Auth"
+
+# Part 4
+installing="Installation du système"
+startwazuh="Voulez-vous démarrer Wazuh après l'installation?"
+nowazuhstart="Wazuh ne démarrera pas à la fin de l'installation."
+yeswazuhstart="Wazuh démarrera pas à la fin de l'installation."
+runningmake="Exécution du Makefile"
+
+# Final
+configurationdone="Configuration correctement terminée"
+tostart="Pour démarrer Wazuh"
+tostop="Pour arrêter Wazuh"
+configat="La configuration peut être visualisée ou modifiée dans"
+addserveragent="Vous devez ajouter le(s) agent(s) avant qu'ils aient un accés autorisé."
+presskey="Appuyez sur Entrée pour continuer"
+
+# Update
+wanttoupdate="Vous avez déjà installé Wazuh. Voulez-vous le mettre à jour ?"
+mustuninstall="L'installation ne peut pas continuer sans désinstaller les anciennes versions. Sortie."
+unabletoupdate="Impossible de mettre à jour. Une nouvelle installation est nécessaire."
+updatecompleted="Mise à jour complète."
+updatefailed="Echec de la mise à jour."
+updaterules="Voulez-vous mettre à jour les règles ?"
+updatingrules="Mise à jour des règles."
+notupdatingrules="Règles non mises à jour."
+update_rev_newconf1="La sauvegarde de votre fichier ossec.conf a été créée dans $INSTALLDIR/etc/ossec.conf.orig."
+update_rev_newconf2="Vérifiez la configuration ossec.conf dans $INSTALLDIR/etc/ossec.conf."
+
+# Pf support
+pfenable="Voulez-vous utiliser le firewall PF dans la réponse active ?"
+nopf="Réponse par PF désactivée."
+pftablename="Nom de la table PF à utiliser ?"
+pfmessage="Ajouter les lignes suivantes au début de vos règles"
+
+# CA store
+addcastore="Voulez-vous ajouter d'autres certificats?"
+castore="Entrez le chemin d'accès vers un certificat X509 ou un dossier de certificat: "

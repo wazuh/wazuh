@@ -1,0 +1,32 @@
+{
+  "agent_info": {
+    "agent_id": "001",
+    "agent_ip": "any",
+    "agent_name": "c0ce505227a4",
+    "agent_version": "v4.11.0"
+  },
+  "data_type": "state",
+  "data": {
+    "attributes_type": "syscollector_packages",
+    "attributes": {
+      "architecture": "amd64",
+      "checksum": "e83f54db323664037db32ab837e9859c1111ead6",
+      "description": "Pluggable Authentication Modules library",
+      "format": "deb",
+      "groups": "libs",
+      "install_time": " ",
+      "item_id": "f825a912fb60c89e421a526ba6bcef010cee7315",
+      "location": " ",
+      "multiarch": "same",
+      "name": "libpam0g",
+      "priority": "optional",
+      "scan_time": "2025/02/26 23:45:14",
+      "size": 214016,
+      "source": "pam",
+      "vendor": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
+      "version": "1.5.3-5ubuntu5.1"
+    },
+    "index": "f825a912fb60c89e421a526ba6bcef010cee7315",
+    "timestamp": ""
+  }
+}

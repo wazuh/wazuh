@@ -1,0 +1,22 @@
+WAZUH
+Copyright (C) 2015, Wazuh Inc.
+
+Based on OSSEC
+Copyright (C) 2014 Trend Micro Inc.
+
+
+** Reporting bugs **
+
+Bugs should be sent to the Wazuh mailling list
+(https://groups.google.com/forum/#!forum/wazuh). Please, make sure to include
+the following information:
+
+-Output of "WAZUH_HOME/bin/wazuh-control info"
+-Content of WAZUH_HOME/etc/ossec.conf
+-Content of WAZUH_HOME/logs/ossec.log
+-Operating system name/version (uname -a if Unix)
+-Any other relevant information.
+
+
+If you prefer to contact us privately or want to report a
+security issue, send an e-mail to Wazuh (support@wazuh.com).

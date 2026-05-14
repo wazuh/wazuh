@@ -1,0 +1,9 @@
+{
+  "agent_info": {
+    "agent_id": "001"
+  },
+  "action": "deleteProcess",
+  "data": {
+    "pid": "5892"
+  }
+}

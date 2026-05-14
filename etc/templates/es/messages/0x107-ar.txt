@@ -1,0 +1,4 @@
+
+  3.5- Respuesta activa le permitirá ejecutar un comando
+       específico en base a los eventos recibidos.
+       Por defecto no hay definida ninguna respuesta activa.

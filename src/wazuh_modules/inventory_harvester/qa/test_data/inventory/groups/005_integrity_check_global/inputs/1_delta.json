@@ -1,0 +1,21 @@
+{
+    "agent_info": {
+        "agent_id": "001",
+        "agent_ip": "any",
+        "agent_name": "centos9",
+        "agent_version": "v4.10.1"
+    },
+    "data_type": "dbsync_groups",
+    "data": {
+        "checksum": "d5f83681b670e52728a3aca36715237452e94d10",
+        "group_description": "group description",
+        "group_id": 580,
+        "group_id_signed": -580,
+        "group_is_hidden": 1,
+        "group_name": "docker",
+        "group_users": "user1:user2",
+        "group_uuid": "S-1-5-32-585",
+        "scan_time": "2025/06/11 14:59:57"
+    },
+    "operation": "INSERTED"
+}

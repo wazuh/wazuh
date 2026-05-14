@@ -1,0 +1,60 @@
+---
+- actions:
+  - rootcheck:read
+  resources:
+  - agent:id:*
+  effect: deny
+
+- actions:
+  - rootcheck:read
+  resources:
+  - agent:id:002
+  - agent:id:004
+  - agent:id:006
+  - agent:id:007
+  - agent:id:008
+  - agent:id:009
+  - agent:id:010
+  - agent:id:011
+  - agent:id:012
+  effect: allow
+
+- actions:
+  - rootcheck:run
+  resources:
+  - agent:id:*
+  effect: deny
+
+- actions:
+  - rootcheck:run
+  resources:
+  - agent:id:002
+  - agent:id:004
+  - agent:id:006
+  - agent:id:007
+  - agent:id:008
+  - agent:id:009
+  - agent:id:010
+  - agent:id:011
+  - agent:id:012
+  effect: allow
+
+- actions:
+  - rootcheck:clear
+  resources:
+  - agent:id:*
+  effect: deny
+
+- actions:
+  - rootcheck:clear
+  resources:
+  - agent:id:002
+  - agent:id:004
+  - agent:id:006
+  - agent:id:007
+  - agent:id:008
+  - agent:id:009
+  - agent:id:010
+  - agent:id:011
+  - agent:id:012
+  effect: allow

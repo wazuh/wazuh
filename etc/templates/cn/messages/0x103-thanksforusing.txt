@@ -1,0 +1,12 @@
+
+    感謝您使用Wazuh。
+     請不要懷疑，如果您需要任何幫助或找到，與我們聯繫
+     任何錯誤。
+
+     使用我們的公共郵件列表：
+          https://groups.google.com/forum/#!forum/wazuh
+
+     更多信息，請訪問：
+           - http://www.wazuh.com
+
+     ---按ENTER鍵完成（也許更多信息如下）。 --- ---

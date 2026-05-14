@@ -1,0 +1,931 @@
+# Security Configuration Assessment
+# CIS Checks for SUSE SLES 11
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+# Based on:
+# CIS Benchmark for SUSE Linux Enterprise Server 11 v2.1.0 - 08-13-2020
+
+policy:
+  id: "cis_sles11_linux"
+  file: "cis_sles11_linux.yml"
+  name: "CIS SUSE Linux Enterprise 11 Benchmark v2.1.0"
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for SUSE Linux Enterprise 11 systems running on x86 and x64 platforms. This document was tested against SUSE Linux Enterprise Server 11 SP4."
+  references:
+    - https://www.cisecurity.org/cis-benchmarks/
+
+requirements:
+  title: "Check Suse 11 version"
+  description: "Requirements for running the SCA scan against SUSE Linux Enterprise Server 11"
+  condition: any
+  rules:
+    - "f:/etc/os-release -> r:SUSE Linux Enterprise Server 11"
+    - "f:/etc/SuSE-release -> r:SUSE Linux Enterprise Server 11"
+
+variables:
+  $sshd_file: /etc/ssh/sshd_config
+
+checks:
+  # Section 1.1 - Filesystem Configuration
+  - id: 7000
+    title: "Ensure separate partition exists for /tmp"
+    description: "The /tmp directory is a world-writable directory used for temporary storage by all users and some applications."
+    rationale: "Since the /tmp directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. In addition, making /tmp its own file system allows an administrator to set the noexec option on the mount, making /tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hardlink to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
+    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /tmp.  For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+    compliance:
+      - cis: ["1.1.2"]
+    references:
+      - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
+    condition: all
+    rules:
+      - 'c:mount -> r:\s/tmp\s'
+
+  - id: 7001
+    title: "Ensure nodev option set on /tmp partition"
+    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
+    rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /tmp."
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information.  Run the following command to remount /tmp : # mount -o remount,nodev /tmp"
+    compliance:
+      - cis: ["1.1.3"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+    condition: all
+    rules:
+      - 'c:mount -> r:\s/tmp\s && r:nodev'
+
+  - id: 7002
+    title: "Ensure nosuid option set on /tmp partition"
+    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
+    rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /tmp."
+    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information.  Run the following command to remount /tmp : # mount -o remount,nosuid /tmp"
+    compliance:
+      - cis: ["1.1.4"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+    condition: all
+    rules:
+      - 'c:mount -> r:\s/tmp\s && r:nosuid'
+
+  # 1.1.5 /tmp: noexec
+  - id: 7003
+    title: "Ensure noexec option set on /tmp partition"
+    description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
+    rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /tmp."
+    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information.  Run the following command to remount /tmp : # mount -o remount,noexec /tmp"
+    compliance:
+      - cis: ["1.1.5"]
+      - cis_csc: ["2"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+    condition: all
+    rules:
+      - 'c:mount -> r:\s/tmp\s && r:noexec'
+
+  # 1.1.6 Build considerations - Partition scheme.
+  - id: 7004
+    title: "Ensure separate partition exists for /var"
+    description: "The /var directory is used by daemons and other system services to temporarily store dynamic data. Some directories created by these processes may be world-writable."
+    rationale: "Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion if it is not bound to a separate partition."
+    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var.  For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+    compliance:
+      - cis: ["1.1.6"]
+    references:
+      - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
+    condition: all
+    rules:
+      - 'c:mount -> r:\s/var\s'
+
+  - id: 7005
+    title: "Ensure separate partition exists for /var/log"
+    description: "The /var/log directory is used by system services to store log data."
+    rationale: "There are two important reasons to ensure that system logs are stored on a separate partition: protection against resource exhaustion (since logs can grow quite large) and protection of audit data."
+    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log.  For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+    compliance:
+      - cis: ["1.1.11"]
+      - cis_csc: ["6.3"]
+    references:
+      - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
+    condition: all
+    rules:
+      - 'c:mount -> r:\s/var/log\s'
+
+  # 1.1.12 /var/log/audit: partition
+  - id: 7006
+    title: "Ensure separate partition exists for /var/log/audit"
+    description: "The auditing daemon, auditd , stores log data in the /var/log/audit directory."
+    rationale: "There are two important reasons to ensure that data gathered by auditd is stored on a separate partition: protection against resource exhaustion (since the audit.log file can grow quite large) and protection of audit data. The audit daemon calculates how much free space is left and performs actions based on the results. If other processes (such as syslog ) consume space in the same partition as auditd, it may not perform as desired."
+    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit.  For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+    compliance:
+      - cis: ["1.1.12"]
+      - cis_csc: ["6.3"]
+    references:
+      - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
+    condition: all
+    rules:
+      - 'c:mount -> r:\s/var/log/audit\s'
+
+  # 1.1.13 /home: partition
+  - id: 7007
+    title: "Ensure separate partition exists for /home"
+    description: "The /home directory is used to support disk storage needs of local users."
+    rationale: "If the system is intended to support local users, create a separate partition for the /home directory to protect against resource exhaustion and restrict the type of files that can be stored under /home."
+    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /home.  For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+    compliance:
+      - cis: ["1.1.13"]
+    references:
+      - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
+    condition: all
+    rules:
+      - 'c:mount -> r:\s/home\s'
+
+  - id: 7008
+    title: "Ensure nodev option set on /home partition"
+    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
+    rationale: "Since the user partitions are not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices."
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /home partition. See the fstab(5) manual page for more information.  # mount -o remount,nodev /home. Notes: The actions in this recommendation refer to the /home partition, which is the default user partition that is defined. If you have created other user partitions, it is recommended that the Remediation and Audit steps be applied to these partitions as well."
+    compliance:
+      - cis: ["1.1.14"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+    condition: all
+    rules:
+      - 'c:mount -> r:\s/home\s && r:nodev'
+
+  # 1.1.15 /dev/shm: nodev
+  - id: 7009
+    title: "Ensure nodev option set on /dev/shm partition"
+    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
+    rationale: "Since the /dev/shm filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create special devices in /dev/shm partitions."
+    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information.  Run the following command to remount /dev/shm : # mount -o remount,nodev /dev/shm"
+    compliance:
+      - cis: ["1.1.15"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+    condition: all
+    rules:
+      - 'c:mount -> r:\s/dev/shm\s && r:nodev'
+
+  # 1.1.16 /dev/shm: nosuid
+  - id: 7010
+    title: "Ensure nosuid option set on /dev/shm partition"
+    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
+    rationale: "Setting this option on a file system prevents users from introducing privileged programs onto the system and allowing non-root users to execute them."
+    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information.  Run the following command to remount /dev/shm : # mount -o remount,nosuid /dev/shm"
+    compliance:
+      - cis: ["1.1.16"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+    condition: all
+    rules:
+      - 'c:mount -> r:\s/dev/shm\s && r:nosuid'
+
+  # 1.1.17 /dev/shm: noexec
+  - id: 7011
+    title: "Ensure noexec option set on /dev/shm partition"
+    description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
+    rationale: "Setting this option on a file system prevents users from executing programs from shared memory. This deters users from introducing potentially malicious software on the system."
+    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information.  Run the following command to remount /dev/shm : # mount -o remount,noexec /dev/shm"
+    compliance:
+      - cis: ["1.1.17"]
+      - cis_csc: ["2"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+    condition: all
+    rules:
+      - 'c:mount -> r:\s/dev/shm\s && r:noexec'
+
+  ###############################################
+  # 1.4  Secure Boot Settings
+  ###############################################
+  # 1.4.2 Set Boot Loader Password (Scored)
+  - id: 7012
+    title: "Ensure bootloader password is set"
+    description: "Setting the boot loader password will require that anyone rebooting the system must enter a password before being able to set command line boot parameters."
+    rationale: "Requiring a boot password upon execution of the boot loader will prevent an unauthorized user from entering boot parameters or changing the boot partition. This prevents users from weakening security (e.g. turning off SELinux at boot time)."
+    remediation: "Create an encrypted password with grub-md5-crypt : # grub-md5-crypt. The result is an <encrypted-password>. Copy and paste the <encrypted-password> into the global section of /boot/grub/menu.lst: password --md5 <encrypted-password>    Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings."
+    compliance:
+      - cis: ["1.4.2"]
+      - cis_csc: ["5.1"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+    condition: all
+    rules:
+      - "f:/boot/grub/menu.lst -> r:^password --md5"
+
+  ###############################################
+  # 1.5  Additional Process Hardening
+  ###############################################
+  # 1.5.1 Restrict Core Dumps (Scored)
+  - id: 7013
+    title: "Ensure core dumps are restricted"
+    description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file. The system provides the ability to set a soft limit for core dumps, but this can be overridden by the user."
+    rationale: "Setting a hard limit on core dumps prevents users from overriding the soft variable. If core dumps are required, consider setting limits for user groups (see limits.conf(5) ). In addition, setting the fs.suid_dumpable variable to 0 will prevent setuid programs from dumping core."
+    remediation: "Add the following line to the /etc/security/limits.conf file: * hard core 0. Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: fs.suid_dumpable = 0. Run the following command to set the active kernel parameter: # sysctl -w fs.suid_dumpable=0."
+    compliance:
+      - cis: ["1.5.1"]
+      - cis_csc: ["13"]
+    condition: all
+    rules:
+      - 'c:grep -Rh ^*[[:space:]]*hard[[:space:]][[:space:]]*core[[:space:]][[:space:]]* /etc/security/limits.conf /etc/security/limits.d -> r:\s*\t*0$'
+      - 'c:sysctl fs.suid_dumpable -> r:^fs.suid_dumpable\s*=\s*0\s*$'
+      - 'c:grep -Rh fs\.suid_dumpable /etc/sysctl.conf /etc/sysctl.d -> r:^\s*fs.suid_dumpable\s*=\s*0\s*$'
+
+  # 1.5.3 Enable Randomized Virtual Memory Region Placement (Scored)
+  - id: 7014
+    title: "Ensure address space layout randomization (ASLR) is enabled"
+    description: "Address space layout randomization (ASLR) is an exploit mitigation technique which randomly arranges the address space of key data areas of a process."
+    rationale: "Randomly placing virtual memory regions will make it difficult to write memory page exploits as the memory placement will be consistently shifting."
+    remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: kernel.randomize_va_space = 2. Run the following command to set the active kernel parameter: # sysctl -w kernel.randomize_va_space=2"
+    compliance:
+      - cis: ["1.5.3"]
+      - cis_csc: ["8.4"]
+    condition: all
+    rules:
+      - 'c:grep -Rh ^kernel\.randomize_va_space /etc/sysctl.conf /etc/sysctl.d -> r:^\s*kernel.randomize_va_space\s*=\s*2$'
+      - 'c:sysctl kernel.randomize_va_space -> r:^\s*kernel.randomize_va_space\s*=\s*2'
+
+  ###############################################
+  # 2 OS Services
+  ###############################################
+  ###############################################
+  # 2.1 Remove Legacy Services
+  ###############################################
+  # Section 2.1 - inetd Services
+  - id: 7015
+    title: "Ensure chargen services are not enabled"
+    description: "chargen is a network service that responds with 0 to 512 ASCII characters for each connection it receives. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
+    rationale: "Disabling this service will reduce the remote attack surface of the system."
+    remediation: "Run the following commands to disable chargen and chargen-udp : # chkconfig chargen off # chkconfig chargen-udp off"
+    compliance:
+      - cis: ["2.1.1"]
+      - cis_csc: ["9.1"]
+    condition: none
+    rules:
+      - "c:chkconfig --list -> r:chargen:|chargen-udp: && r::on"
+
+  - id: 7016
+    title: "Ensure daytime services are not enabled"
+    description: "daytime is a network service that responds with the server's current date and time. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
+    rationale: "Disabling this service will reduce the remote attack surface of the system."
+    remediation: "Run the following commands to disable daytime - and daytime-udp: # chkconfig daytime-off # chkconfig daytime-udp off"
+    compliance:
+      - cis: ["2.1.2"]
+      - cis_csc: ["9.1"]
+    condition: none
+    rules:
+      - "c:chkconfig --list -> r:daytime:|daytime-udp: && r::on"
+
+  - id: 7017
+    title: "Ensure discard services are not enabled"
+    description: "discard is a network service that simply discards all data it receives. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
+    rationale: "Disabling this service will reduce the remote attack surface of the system."
+    remediation: "Run the following commands to disable discard and discard-udp: # chkconfig discard off # chkconfig discard-udp off"
+    compliance:
+      - cis: ["2.1.3"]
+      - cis_csc: ["9.1"]
+    condition: none
+    rules:
+      - "c:chkconfig --list -> r:discard:|discard-udp: && r::on"
+
+  - id: 7018
+    title: "Ensure echo services are not enabled"
+    description: "echo is a network service that responds to clients with the data sent to it by the client. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
+    rationale: "Disabling this service will reduce the remote attack surface of the system."
+    remediation: "Run the following commands to disable echo and echo-udp: # chkconfig echo off # chkconfig echo-udp off"
+    compliance:
+      - cis: ["2.1.4"]
+      - cis_csc: ["9.1"]
+    condition: none
+    rules:
+      - "c:chkconfig --list -> r:echo:|echo-udp: && r::on"
+
+  - id: 7019
+    title: "Ensure time services are not enabled"
+    description: "timeis a network service that responds with the server's current date and time as a 32 bit integer. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
+    rationale: "Disabling this service will reduce the remote attack surface of the system."
+    remediation: "Run the following commands to disable time and time-udp: # chkconfig time off # chkconfig time-udp off"
+    compliance:
+      - cis: ["2.1.5"]
+      - cis_csc: ["9.1"]
+    condition: none
+    rules:
+      - "c:chkconfig --list -> r:time:|time-udp: && r::on"
+
+  - id: 7020
+    title: "Ensure rsh server is not enabled"
+    description: "The Berkeley rsh-server ( rsh , rlogin , rexec ) package contains legacy services that exchange credentials in clear-text."
+    rationale: "These legacy services contain numerous security exposures and have been replaced with the more secure SSH package."
+    remediation: "Run the following commands to disable rsh , rlogin , and rexec : # chkconfig rexec off # chkconfig rlogin off # chkconfig rsh off"
+    compliance:
+      - cis: ["2.1.6"]
+      - cis_csc: ["3.4", "9.1"]
+      - pci_dss: ["2.2.3"]
+      - nist_800_53: ["CM.1"]
+    condition: none
+    rules:
+      - "c:chkconfig --list -> r:rexec:|rlogin:|rsh: && r::on"
+
+  - id: 7021
+    title: "Ensure talk server is not enabled"
+    description: "The talk software makes it possible for users to send and receive messages across systems through a terminal session. The talk client (allows initiate of talk sessions) is installed by default."
+    rationale: "The software presents a security risk as it uses unencrypted protocols for communication."
+    remediation: "Run the following command to disable talk: # chkconfig talk off"
+    compliance:
+      - cis: ["2.1.7"]
+      - cis_csc: ["9.1"]
+      - pci_dss: ["2.2.3"]
+      - nist_800_53: ["CM.1"]
+    condition: none
+    rules:
+      - "c:chkconfig --list -> r:talk: && r::on"
+
+  - id: 7022
+    title: "Ensure telnet server is not enabled"
+    description: "The telnet-server package contains the telnet daemon, which accepts connections from users from other systems via the telnet protocol."
+    rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow a user with access to sniff network traffic the ability to steal credentials. The ssh package provides an encrypted session and stronger security."
+    remediation: "Run the following command to disable telnet: # chkconfig telnet off"
+    compliance:
+      - cis: ["2.1.8"]
+      - cis_csc: ["3.4", "9.1"]
+      - pci_dss: ["2.2.3"]
+      - nist_800_53: ["CM.1"]
+    condition: none
+    rules:
+      - "c:chkconfig --list -> r:telnet: && r::on"
+
+  - id: 7023
+    title: "Ensure tftp server is not enabled"
+    description: "Trivial File Transfer Protocol (TFTP) is a simple file transfer protocol, typically used to automatically transfer configuration or boot machines from a boot server. The package atftp is used to define and support a TFTP server."
+    rationale: "TFTP does not support authentication nor does it ensure the confidentiality or integrity of data. It is recommended that TFTP be removed, unless there is a specific need for TFTP. In that case, extreme caution must be used when configuring the services."
+    remediation: "Run the following command to disable tftp: # chkconfig tftp off"
+    compliance:
+      - cis: ["2.1.9"]
+      - cis_csc: ["9.1"]
+      - pci_dss: ["2.2.3"]
+      - nist_800_53: ["CM.1"]
+    condition: none
+    rules:
+      - "c:chkconfig --list -> r:tftp: && r::on"
+
+  - id: 7024
+    title: "Ensure rsync service is not enabled"
+    description: "The rsyncd service can be used to synchronize files between systems over network links."
+    rationale: "The rsyncd service presents a security risk as it uses unencrypted protocols for communication."
+    remediation: "Run the following command to disable rsyncd : # chkconfig rsyncd off"
+    compliance:
+      - cis: ["2.1.10", "2.2.17"]
+      - pci_dss: ["2.2.2"]
+      - nist_800_53: ["CM.1"]
+    condition: none
+    rules:
+      - "c:chkconfig --list -> r:rsync: && r::on"
+
+  ###############################################
+  # 2 Special Purpose Services
+  ###############################################
+  - id: 7025
+    title: "Ensure ntp is configured"
+    description: "ntp is a daemon which implements the Network Time Protocol (NTP). It is designed to synchronize system clocks across a variety of systems and use a source that is highly accurate. More information on NTP can be found at https://tools.ietf.org/html/rfc958. ntp can be configured to be a client and/or a server.  This recommendation only applies if ntp is in use on the system."
+    rationale: "If ntp is in use on the system proper configuration is vital to ensuring time synchronization is working properly."
+    remediation: "Add or edit restrict lines in /etc/ntp.conf to match the following: restrict -4 default kod limited nomodify notrap nopeer noquery restrict -6 default kod limited nomodify notrap nopeer noquery    Add or edit server or pool lines to /etc/ntp.conf as appropriate: server <remote-server>    Add or edit the NTPD_OPTIONS in /etc/sysconfig/ntp to include '-u ntp:ntp': NTPD_OPTIONS='-u ntp:ntp'"
+    compliance:
+      - cis: ["2.2.1.2"]
+      - cis_csc: ["6.1"]
+      - pci_dss: ["2.2.2"]
+      - nist_800_53: ["CM.1"]
+    condition: any
+    rules:
+      - "f:/etc/ntp.conf -> r:restrict -4 default && r:kod && r:limited && r:nomodify && r:notrap && r:nopeer && r:noquery"
+      - "f:/etc/ntp.conf -> r:restrict -6 default && r:kod && r:limited && r:nomodify && r:notrap && r:nopeer && r:noquery"
+      - "f:/etc/ntp.conf -> r:^server|^pool"
+      - "f:/etc/sysconfig/ntp -> r:NTPD_OPTIONS= && r:-u && r:ntp:ntp"
+
+  # 2.2.2 Remove X Windows (Scored)
+  - id: 7026
+    title: "Ensure X Window System is not installed"
+    description: "The X Window System provides a Graphical User Interface (GUI) where users can have multiple windows in which to run programs and various add on. The X Windows system is typically used on workstations where users login, but not on servers where users typically do not login."
+    rationale: "Unless your organization specifically requires graphical login access via X Windows, remove it to reduce the potential attack surface."
+    remediation: "Run the following command to remove the X Windows System packages: # zypper remove xorg-x11*"
+    compliance:
+      - cis: ["2.2.2"]
+      - cis_csc: ["2"]
+      - pci_dss: ["2.2.2"]
+      - nist_800_53: ["CM.1"]
+    condition: none
+    rules:
+      - "c:rpm -qa xorg-x11* -> r:^xorg-x11"
+
+  # 2.2.3 Disable Avahi Server (Scored)
+  - id: 7027
+    title: "Ensure Avahi Server is not enabled"
+    description: "Avahi is a free zeroconf implementation, including a system for multicast DNS/DNS-SD service discovery. Avahi allows programs to publish and discover services and hosts running on a local network with no specific configuration. For example, a user can plug a computer into a network and Avahi automatically finds printers to print to, files to look at and people to talk to, as well as network services running on the machine."
+    rationale: "Automatic discovery of network services is not normally required for system functionality.  It is recommended to disable the service to reduce the potential attack surface."
+    remediation: "Run the following command to disable avahi-daemon : # chkconfig avahi-daemon off"
+    compliance:
+      - cis: ["2.2.3"]
+      - cis_csc: ["9.1"]
+      - pci_dss: ["2.2.2"]
+      - nist_800_53: ["CM.1"]
+    condition: none
+    rules:
+      - "c:chkconfig --list -> r:avahi-daemon && r::on"
+
+  - id: 7028
+    title: "Ensure DHCP Server is not enabled"
+    description: "The Dynamic Host Configuration Protocol (DHCP) is a service that allows machines to be dynamically assigned IP addresses."
+    rationale: "Unless a system is specifically set up to act as a DHCP server, it is recommended that this service be disabled to reduce the potential attack surface."
+    remediation: "Run the following command to disable dhcpd : # chkconfig dhcpd off"
+    compliance:
+      - cis: ["2.2.5"]
+      - cis_csc: ["9.1"]
+    condition: none
+    rules:
+      - "c:chkconfig --list -> r:dhcpd && r::on"
+
+  # 2.2.7 Disable NFS and RPC (Not Scored)
+  - id: 7029
+    title: "Ensure NFS and RPC are not enabled"
+    description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX environment. It provides the ability for systems to mount file systems of other servers through the network."
+    rationale: "If the system does not export NFS shares or act as an NFS client, it is recommended that these services be disabled to reduce remote attack surface."
+    remediation: "Run the following commands to disable nfs and rpcbind : # chkconfig nfs off # chkconfig rpcbind off"
+    compliance:
+      - cis: ["2.2.7"]
+      - cis_csc: ["9.1"]
+      - pci_dss: ["2.2.2"]
+      - nist_800_53: ["CM.1"]
+    condition: none
+    rules:
+      - "c:chkconfig --list -> r:nfs|rpcbind && r::on"
+
+  - id: 7030
+    title: "Ensure DNS Server is not enabled"
+    description: "The Domain Name System (DNS) is a hierarchical naming system that maps names to IP addresses for computers, services and other resources connected to a network."
+    rationale: "Unless a system is specifically designated to act as a DNS server, it is recommended that the service be disabled to reduce the potential attack surface."
+    remediation: "Run the following command to disable named : # chkconfig named off"
+    compliance:
+      - cis: ["2.2.8"]
+      - cis_csc: ["9.1"]
+      - pci_dss: ["2.2.2"]
+      - nist_800_53: ["CM.1"]
+    condition: none
+    rules:
+      - "c:chkconfig --list -> r:named && r::on"
+
+  - id: 7031
+    title: "Ensure FTP Server is not enabled"
+    description: "The File Transfer Protocol (FTP) provides networked computers with the ability to transfer files."
+    rationale: "FTP does not protect the confidentiality of data or authentication credentials. It is recommended sftp be used if file transfer is required. Unless there is a need to run the system as a FTP server (for example, to allow anonymous downloads), it is recommended that the service be disabled to reduce the potential attack surface."
+    remediation: "Run the following command to disable vsftpd : # chkconfig vsftpd off  Notes: Additional FTP servers also exist and should be audited."
+    compliance:
+      - cis: ["2.2.9"]
+      - cis_csc: ["9.1"]
+      - pci_dss: ["2.2.2"]
+      - nist_800_53: ["CM.1"]
+    condition: none
+    rules:
+      - "c:chkconfig --list -> r:vsftpd && r::on"
+
+  # 2.2.10 Remove HTTP Server (Not Scored)
+  - id: 7032
+    title: "Ensure HTTP server is not enabled"
+    description: "HTTP or web servers provide the ability to host web site content."
+    rationale: "Unless there is a need to run the system as a web server, it is recommended that the service be disabled to reduce the potential attack surface.  Notes: Several httpd servers exist and can use other service names. apache, apache2, lighttpd, and nginx are example services that provide an HTTP server. These and other services should also be audited."
+    remediation: "Run the following command to disable apache2 : # chkconfig apache2 off"
+    compliance:
+      - cis: ["2.2.10"]
+      - cis_csc: ["9.1"]
+    condition: none
+    rules:
+      - "c:chkconfig --list -> r:apache2 && r::on"
+
+  - id: 7033
+    title: "Ensure IMAP and POP3 server is not enabled"
+    description: "cyrus is an open source IMAP and POP3 server for Linux based systems."
+    rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended that the service be disabled to reduce the potential attack surface."
+    remediation: "Run the following command to disable cyrus : # chkconfig cyrus off   Notes: Several IMAP/POP3 servers exist and can use other service names. dovecot is an example service that provides an IMAP/POP3 server. These and other services should also be audited."
+    compliance:
+      - cis: ["2.2.11"]
+      - cis_csc: ["9.1"]
+      - pci_dss: ["2.2.2"]
+      - nist_800_53: ["CM.1"]
+    condition: none
+    rules:
+      - "c:chkconfig --list -> r:cyrus && r::on"
+
+  # 2.2.12 Remove Samba (Not Scored)
+  - id: 7034
+    title: "Ensure Samba is not enabled"
+    description: "The Samba daemon allows system administrators to configure their Linux systems to share file systems and directories with Windows desktops. Samba will advertise the file systems and directories via the Small Message Block (SMB) protocol. Windows desktop users will be able to mount these directories and file systems as letter drives on their systems."
+    rationale: "If there is no need to mount directories and file systems to Windows systems, then this service can be disabled to reduce the potential attack surface."
+    remediation: "Run the following command to disable smb : # chkconfig smb off"
+    compliance:
+      - cis: ["2.2.12"]
+      - cis_csc: ["9.1"]
+      - pci_dss: ["2.2.2"]
+      - nist_800_53: ["CM.1"]
+    condition: none
+    rules:
+      - "c:chkconfig --list -> r:smb && r::on"
+
+  - id: 7035
+    title: "Ensure HTTP Proxy Server is not enabled"
+    description: "Squid is a standard proxy server used in many environments."
+    rationale: "If there is no need for a proxy server, it is recommended that the squid proxy be disabled to reduce the potential attack surface."
+    remediation: "Run the following command to disable squid : # chkconfig squid off"
+    compliance:
+      - cis: ["2.2.13"]
+      - cis_csc: ["9.1"]
+      - pci_dss: ["2.2.2"]
+      - nist_800_53: ["CM.1"]
+    condition: none
+    rules:
+      - "c:chkconfig --list -> r:squid && r::on"
+
+  - id: 7036
+    title: "Ensure SNMP Server is not enabled"
+    description: "The Simple Network Management Protocol (SNMP) server is used to listen for SNMP commands from an SNMP management system, execute the commands or collect the information and then send results back to the requesting system."
+    rationale: "The SNMP server can communicate using SNMP v1, which transmits data in the clear and does not require authentication to execute commands. Unless absolutely necessary, it is recommended that the SNMP service not be used. If SNMP is required the server should be configured to disallow SNMP v1."
+    remediation: "Run the following command to disable snmpd: # chkconfig snmpd off    Notes: Additional methods of disabling a service exist. Consult your distribution documentation for appropriate methods."
+    compliance:
+      - cis: ["2.2.14"]
+      - cis_csc: ["9.1"]
+      - pci_dss: ["2.2.2"]
+      - nist_800_53: ["CM.1"]
+    condition: none
+    rules:
+      - "c:chkconfig --list -> r:snmpd && r::on"
+
+  - id: 7037
+    title: "Ensure NIS Server is not enabled"
+    description: "The Network Information Service (NIS) (formally known as Yellow Pages) is a client-server directory service protocol for distributing system configuration files. The NIS server is a collection of programs that allow for the distribution of configuration files."
+    rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be disabled and other, more secure services be used."
+    remediation: "Run the following command to disable ypserv : # chkconfig ypserv off"
+    compliance:
+      - cis: ["2.2.16"]
+      - cis_csc: ["9.1"]
+      - pci_dss: ["2.2.3"]
+      - nist_800_53: ["CM.1"]
+    condition: none
+    rules:
+      - "c:chkconfig --list -> r:ypserv && r::on"
+
+  # Section 2.3 - Service Clients
+  - id: 7038
+    title: "Ensure NIS Client is not installed"
+    description: "The Network Information Service (NIS), formerly known as Yellow Pages, is a client-server directory service protocol used to distribute system configuration files. The NIS client ( ypbind ) was used to bind a machine to an NIS server and receive the distributed configuration files."
+    rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed."
+    remediation: "Run the following command to uninstall ypbind : # zypper remove ypbind"
+    compliance:
+      - cis: ["2.3.1"]
+      - cis_csc: ["2"]
+      - pci_dss: ["2.2.3"]
+      - nist_800_53: ["CM.1"]
+    condition: none
+    rules:
+      - "c:rpm -qa ypbind -> r:ypbind"
+
+  ###############################################
+  # 3 Network Configuration and Firewalls
+  ###############################################
+  ###############################################
+  # 3.1 Modify Network Parameters (Host Only)
+  ###############################################
+  # 3.1.1 Disable IP Forwarding (Scored)
+  - id: 7039
+    title: "Ensure IPv4 forwarding is disabled"
+    description: "The net.ipv4.ip_forward flag is used to tell the system whether it can forward packets or not."
+    rationale: "Setting the flag to 0 ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
+    remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.ip_forward = 0.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.ip_forward=0 # sysctl -w net.ipv4.route.flush=1"
+    compliance:
+      - cis: ["3.1.1"]
+      - cis_csc: ["3", "11"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+    condition: all
+    rules:
+      - 'c:/sbin/sysctl net.ipv4.ip_forward -> r:=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.ip_forward /etc/sysctl.conf /etc/sysctl.d/ -> r:=\s*0$'
+
+  # 3.1.2 Disable Send Packet Redirects (Scored)
+  - id: 7040
+    title: "Ensure packet redirect sending is disabled"
+    description: "ICMP Redirects are used to send routing information to other hosts. As a host itself does not act as a router (in a host only configuration), there is no need to send redirects."
+    rationale: "An attacker could use a compromised host to send invalid ICMP redirects to other router devices in an attempt to corrupt routing and have users access a system set up by the attacker as opposed to a valid system."
+    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.send_redirects = 0    net.ipv4.conf.default.send_redirects = 0. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.send_redirects=0 # sysctl -w net.ipv4.conf.default.send_redirects=0 # sysctl -w net.ipv4.route.flush=1"
+    compliance:
+      - cis: ["3.1.2"]
+      - cis_csc: ["3", "11"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+    condition: all
+    rules:
+      - 'c:/sbin/sysctl net.ipv4.conf.all.send_redirects -> r:=\s*0$'
+      - 'c:/sbin/sysctl net.ipv4.conf.default.send_redirects -> r:=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:=\s*0$'
+
+  ###############################################
+  # 3.2 Modify Network Parameters (Host and Router)
+  ###############################################
+  # 3.2.1 Disable Source Routed Packet Acceptance (Scored)
+  - id: 7041
+    title: "Ensure source routed packets are not accepted"
+    description: "In networking, source routing allows a sender to partially or fully specify the route packets take through a network. In contrast, non-source routed packets travel a path determined by routers in the network. In some cases, systems may not be routable or reachable from some locations (e.g. private addresses vs. Internet routable), and so source routed packets would need to be used."
+    rationale: "Setting net.ipv4.conf.all.accept_source_route and net.ipv4.conf.default.accept_source_route to 0 disables the system from accepting source routed packets. Assume this system was capable of routing packets to Internet routable addresses on one interface and private addresses on another interface. Assume that the private addresses were not routable to the Internet routable addresses and vice versa. Under normal routing circumstances, an attacker from the Internet routable addresses could not use the system as a way to reach the private address systems. If, however, source routed packets were allowed, they could be used to gain access to the private address systems as the route could be specified, rather than rely on routing protocols that did not allow this routing."
+    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.accept_source_route = 0    net.ipv4.conf.default.accept_source_route = 0.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.accept_source_route=0 # sysctl -w net.ipv4.conf.default.accept_source_route=0 # sysctl -w net.ipv4.route.flush=1"
+    compliance:
+      - cis: ["3.2.1"]
+      - cis_csc: ["3", "11"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+    condition: all
+    rules:
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_source_route /etc/sysctl.conf /etc/sysctl.d/ -> r:=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d/ -> r:=\s*0$'
+      - 'c:/sbin/sysctl net.ipv4.conf.all.accept_source_route -> r:=\s*0$'
+      - 'c:/sbin/sysctl net.ipv4.conf.default.accept_source_route -> r:=\s*0$'
+
+  # 3.2.2 Disable ICMP Redirect Acceptance (Scored)
+  - id: 7042
+    title: "Ensure ICMP redirects are not accepted"
+    description: "ICMP redirect messages are packets that convey routing information and tell your host (acting as a router) to send packets via an alternate path. It is a way of allowing an outside routing device to update your system routing tables. By setting net.ipv4.conf.all.accept_redirects to 0, the system will not accept any ICMP redirect messages, and therefore, won't allow outsiders to update the system's routing tables."
+    rationale: "Attackers could use bogus ICMP redirect messages to maliciously alter the system routing tables and get them to send packets to incorrect networks and allow your system packets to be captured."
+    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.accept_redirects = 0    net.ipv4.conf.default.accept_redirects = 0.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.accept_redirects=0 # sysctl -w net.ipv4.conf.default.accept_redirects=0 # sysctl -w net.ipv4.route.flush=1."
+    compliance:
+      - cis: ["3.2.2"]
+      - cis_csc: ["3", "11"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+    condition: all
+    rules:
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_redirects /etc/sysctl.conf /etc/sysctl.d/ -> r:=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_redirects /etc/sysctl.conf /etc/sysctl.d/ -> r:=\s*0$'
+      - 'c:/sbin/sysctl net.ipv4.conf.all.accept_redirects -> r:=\s*0$'
+      - 'c:/sbin/sysctl net.ipv4.conf.default.accept_redirects -> r:=\s*0$'
+
+  # 3.2.3 Disable Secure ICMP Redirect Acceptance (Scored)
+  - id: 7043
+    title: "Ensure secure ICMP redirects are not accepted"
+    description: "Secure ICMP redirects are the same as ICMP redirects, except they come from gateways listed on the default gateway list. It is assumed that these gateways are known to your system, and that they are likely to be secure."
+    rationale: "It is still possible for even known gateways to be compromised. Setting net.ipv4.conf.all.secure_redirects to 0 protects the system from routing table updates by possibly compromised known gateways."
+    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.secure_redirects = 0    net.ipv4.conf.default.secure_redirects = 0.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.secure_redirects=0 # sysctl -w net.ipv4.conf.default.secure_redirects=0 # sysctl -w net.ipv4.route.flush=1."
+    compliance:
+      - cis: ["3.2.3"]
+      - cis_csc: ["3", "11"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+    condition: all
+    rules:
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.secure_redirects /etc/sysctl.conf /etc/sysctl.d/ -> r:=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.secure_redirects /etc/sysctl.conf /etc/sysctl.d/ -> r:=\s*0$'
+      - 'c:/sbin/sysctl net.ipv4.conf.all.secure_redirects -> r:=\s*0$'
+      - 'c:/sbin/sysctl net.ipv4.conf.default.secure_redirects -> r:=\s*0$'
+
+  - id: 7044
+    title: "Ensure suspicious packets are logged"
+    description: "When enabled, this feature logs packets with un-routable source addresses to the kernel log."
+    rationale: "Enabling this feature and logging these packets allows an administrator to investigate the possibility that an attacker is sending spoofed packets to their system."
+    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.log_martians = 1    net.ipv4.conf.default.log_martians = 1.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.log_martians=1 # sysctl -w net.ipv4.conf.default.log_martians=1 # sysctl -w net.ipv4.route.flush=1."
+    compliance:
+      - cis: ["3.2.4"]
+      - cis_csc: ["6"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+    condition: all
+    rules:
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.log_martians /etc/sysctl.conf /etc/sysctl.d/ -> r:=\s*1$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.log_martians /etc/sysctl.conf /etc/sysctl.d/ -> r:=\s*1$'
+      - 'c:/sbin/sysctl net.ipv4.conf.all.log_martians -> r:=\s*1$'
+      - 'c:/sbin/sysctl net.ipv4.conf.default.log_martians -> r:=\s*1$'
+
+  # 3.2.5 Enable Ignore Broadcast Requests (Scored)
+  - id: 7045
+    title: "Ensure broadcast ICMP requests are ignored"
+    description: "Setting net.ipv4.icmp_echo_ignore_broadcasts to 1 will cause the system to ignore all ICMP echo and timestamp requests to broadcast and multicast addresses."
+    rationale: "Accepting ICMP echo and timestamp requests with broadcast or multicast destinations for your network could be used to trick your host into starting (or participating) in a Smurf attack. A Smurf attack relies on an attacker sending large amounts of ICMP broadcast messages with a spoofed source address. All hosts receiving this message and responding would send echo-reply messages back to the spoofed address, which is probably not routable. If many hosts respond to the packets, the amount of traffic on the network could be significantly multiplied."
+    remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.icmp_echo_ignore_broadcasts = 1    Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1 # sysctl -w net.ipv4.route.flush=1."
+    compliance:
+      - cis: ["3.2.5"]
+      - cis_csc: ["3", "11"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+    condition: all
+    rules:
+      - 'c:grep -Rh net\.ipv4\.icmp_echo_ignore_broadcasts /etc/sysctl.conf /etc/sysctl.d/ -> r:=\s*1$'
+      - 'c:/sbin/sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:=\s*1$'
+
+  # 3.2.6 Enable Bad Error Message Protection (Scored)
+  - id: 7046
+    title: "Ensure bogus ICMP responses are ignored"
+    description: "Setting icmp_ignore_bogus_error_responses to 1 prevents the kernel from logging bogus responses (RFC-1122 non-compliant) from broadcast reframes, keeping file systems from filling up with useless log messages."
+    rationale: "Some routers (and some attackers) will send responses that violate RFC-1122 and attempt to fill up a log file system with many useless error messages."
+    remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.icmp_ignore_bogus_error_responses = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1 # sysctl -w net.ipv4.route.flush=1."
+    compliance:
+      - cis: ["3.2.6"]
+      - cis_csc: ["3", "11"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+    condition: all
+    rules:
+      - 'c:grep -Rh net\.ipv4\.icmp_ignore_bogus_error_responses /etc/sysctl.conf /etc/sysctl.d/ -> r:=\s*1$'
+      - 'c:/sbin/sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:=\s*1$'
+
+  # 3.2.7 Ensure Reverse Path Filtering is enabled (Scored)
+  - id: 7047
+    title: "Ensure Reverse Path Filtering is enabled"
+    description: "Setting net.ipv4.conf.all.rp_filter and net.ipv4.conf.default.rp_filter to 1 forces the Linux kernel to utilize reverse path filtering on a received packet to determine if the packet was valid. Essentially, with reverse path filtering, if the return packet does not go out the same interface that the corresponding source packet came from, the packet is dropped (and logged if log_martians is set)."
+    rationale: "Setting these flags is a good way to deter attackers from sending your system bogus packets that cannot be responded to. One instance where this feature breaks down is if asymmetrical routing is employed. This would occur when using dynamic routing protocols (bgp, ospf, etc) on your system. If you are using asymmetrical routing on your system, you will not be able to enable this feature without breaking the routing."
+    remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.rp_filter = 1    net.ipv4.conf.default.rp_filter = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.rp_filter=1 # sysctl -w net.ipv4.conf.default.rp_filter=1 # sysctl -w net.ipv4.route.flush=1"
+    compliance:
+      - cis: ["3.2.7"]
+      - cis_csc: ["3", "11"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+    condition: all
+    rules:
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.rp_filter /etc/sysctl.conf /etc/sysctl.d/ -> r:=\s*1$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.rp_filter /etc/sysctl.conf /etc/sysctl.d/ -> r:=\s*1$'
+      - 'c:/sbin/sysctl net.ipv4.conf.all.rp_filter -> r:=\s*1$'
+      - 'c:/sbin/sysctl net.ipv4.conf.default.rp_filter -> r:=\s*1$'
+
+  # 3.2.8 Enable TCP SYN Cookies (Scored)
+  - id: 7048
+    title: "Ensure TCP SYN Cookies is enabled"
+    description: "When tcp_syncookies is set, the kernel will handle TCP SYN packets normally until the half-open connection queue is full, at which time, the SYN cookie functionality kicks in. SYN cookies work by not using the SYN queue at all. Instead, the kernel simply replies to the SYN with a SYN|ACK, but will include a specially crafted TCP sequence number that encodes the source and destination IP address and port number and the time the packet was sent. A legitimate connection would send the ACK packet of the three way handshake with the specially crafted sequence number. This allows the system to verify that it has received a valid response to a SYN cookie and allow the connection, even though there is no corresponding SYN in the queue."
+    rationale: "Attackers use SYN flood attacks to perform a denial of service attacked on a system by sending many SYN packets without completing the three way handshake. This will quickly use up slots in the kernel's half-open connection queue and prevent legitimate connections from succeeding. SYN cookies allow the system to keep accepting valid connections, even if under a denial of service attack."
+    remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.tcp_syncookies = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.tcp_syncookies=1 # sysctl -w net.ipv4.route.flush=1"
+    compliance:
+      - cis: ["3.2.8"]
+      - cis_csc: ["3", "11"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+    condition: all
+    rules:
+      - 'c:grep -Rh net\.ipv4\.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d/ -> r:=\s*1$'
+      - 'c:/sbin/sysctl net.ipv4.tcp_syncookies -> r:=\s*1$'
+
+  ###############################################
+  # 5 System Access, Authentication and Authorization
+  ###############################################
+  ###############################################
+  # 5.2 Configure SSH
+  ###############################################
+  # 5.2.2 Set SSH Protocol to 2 (Scored)
+  - id: 7049
+    title: "Ensure SSH Protocol is set to 2"
+    description: "SSH supports two different and incompatible protocols: SSH1 and SSH2. SSH1 was the original protocol and was subject to security issues. SSH2 is more advanced and secure."
+    rationale: "SSH v1 suffers from insecurities that do not affect SSH v2."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: Protocol 2"
+    compliance:
+      - cis: ["5.2.2"]
+      - cis_csc: ["3.4"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+    condition: all
+    rules:
+      - 'f:$sshd_file -> !r:^# && r:^\s*\t*Protocol\s*\t*2'
+
+  # 5.2.3 Set LogLevel to INFO (Scored)
+  - id: 7050
+    title: "Ensure SSH LogLevel is set to INFO"
+    description: "The INFO parameter specifies that login and logout activity will be logged."
+    rationale: "SSH provides several logging levels with varying amounts of verbosity. DEBUG is specifically not recommended other than strictly for debugging SSH communications since it provides so much data that it is difficult to identify important security information. INFO level is the basic level that only records login activity of SSH users. In many situations, such as Incident Response, it is important to determine when a particular user was active on a system. The logout record can eliminate those users who disconnected, which helps narrow the field."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LogLevel INFO"
+    compliance:
+      - cis: ["5.2.3"]
+      - cis_csc: ["16"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+    condition: all
+    rules:
+      - 'f:$sshd_file -> !r:^# && r:LogLevel\.+INFO'
+
+  # 5.2.5 Set SSH MaxAuthTries to 4 or Less (Scored)
+  - id: 7051
+    title: "Ensure SSH MaxAuthTries is set to 4 or less"
+    description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
+    rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: MaxAuthTries 4"
+    compliance:
+      - cis: ["5.2.5"]
+      - cis_csc: ["16"]
+      - pci_dss: ["2.2.4"]
+      - nist_800_53: ["CM.1"]
+    condition: all
+    rules:
+      - 'f:$sshd_file -> n:^MaxAuthTries\s+(\d+) compare <= 4'
+
+  # 5.2.6 Set SSH IgnoreRhosts to Yes (Scored)
+  - id: 7052
+    title: "Ensure SSH IgnoreRhosts is enabled"
+    description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
+    rationale: "Setting this parameter forces users to enter a password when authenticating with ssh."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes"
+    compliance:
+      - cis: ["5.2.6"]
+      - cis_csc: ["9"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+    condition: all
+    rules:
+      - 'f:$sshd_file -> !r:^# && r:IgnoreRhosts\.+yes'
+
+  # 5.2.7 Set SSH HostbasedAuthentication to No (Scored)
+  - id: 7053
+    title: "Ensure SSH HostbasedAuthentication is disabled"
+    description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts , or /etc/hosts.equiv , along with successful public key client host authentication. This option only applies to SSH Protocol Version 2."
+    rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: HostbasedAuthentication no"
+    compliance:
+      - cis: ["5.2.7"]
+      - cis_csc: ["9"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+    condition: all
+    rules:
+      - 'f:$sshd_file -> r:^\s*\t*HostbasedAuthentication\.+no'
+
+  # 5.2.8 Disable SSH Root Login (Scored)
+  - id: 7054
+    title: "Ensure SSH root login is disabled"
+    description: "The PermitRootLogin parameter specifies if the root user can log in using ssh(1). The default is no."
+    rationale: "The PermitRootLogin parameter specifies if the root user can log in using ssh(1). The default is no.  Rationale: Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root via sudo or su. This in turn limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident"
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitRootLogin no"
+    compliance:
+      - cis: ["5.2.8"]
+      - cis_csc: ["5.8"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+    condition: all
+    rules:
+      - 'f:$sshd_file -> r:^\s*\t*PermitRootLogin\.+no'
+
+  # 5.2.9 Set SSH PermitEmptyPasswords to No (Scored)
+  - id: 7055
+    title: "Ensure SSH PermitEmptyPasswords is disabled"
+    description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
+    rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system"
+    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: PermitEmptyPasswords no"
+    compliance:
+      - cis: ["5.2.9"]
+      - cis_csc: ["16"]
+      - pci_dss: ["4.1"]
+      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
+      - nist_800_53: ["SC.8"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+    condition: all
+    rules:
+      - 'f:$sshd_file -> r:^\s*\t*PermitEmptyPasswords\.+no'
+
+  ###############################################
+  # 6 System Maintenance
+  ###############################################
+  ###############################################
+  # 6.2 Review User and Group Settings
+  ###############################################
+  # 6.2.5 Verify No UID 0 Accounts Exist Other Than root (Scored)
+  - id: 7056
+    title: "Ensure root is the only UID 0 account"
+    description: "Any account with UID 0 has superuser privileges on the system."
+    rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in Item 5.6 Ensure access to the su command is restricted."
+    remediation: "Remove any users other than root with UID 0 or assign them a new UID if appropriate."
+    compliance:
+      - cis: ["6.2.5"]
+      - cis_csc: ["5.1"]
+      - pci_dss: ["10.2.5"]
+      - hipaa: ["164.312.b"]
+      - nist_800_53: ["AU.14", "AC.7"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+    condition: none
+    rules:
+      - 'f:/etc/passwd -> !r:^# && !r:^\s*\t*root: && r:^\w+:\w+:0:'
+
+  - id: 7057
+    title: "Ensure password fields are not empty"
+    description: "An account with an empty password field means that anybody may log in as that user without providing a password."
+    rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
+    remediation: "If any accounts in the /etc/shadow file do not have a password, run the following command to lock the account until it can be determined why it does not have a password: # passwd -l <username>.  Also, check to see if the account is logged in and investigate what it is being used for to determine if it needs to be forced off."
+    compliance:
+      - cis: ["6.2.1"]
+      - cis_csc: ["16"]
+      - pci_dss: ["10.2.5"]
+      - hipaa: ["164.312.b"]
+      - nist_800_53: ["AU.14", "AC.7"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
+    condition: none
+    rules:
+      - 'f:/etc/shadow -> r:^\w+::'

@@ -1,0 +1,130 @@
+# Configuration
+yes="y"
+no="n"
+yesmatch="y"
+nomatch="n"
+agent="agent"
+local="local"
+server="server"
+help="help"
+
+# Global
+moreinfo="More information at: "
+starting="Starting Wazuh"
+systemis="System is"
+modifiedinit="Init script modified to start Wazuh during boot."
+noboot="Unknown system. No init script added."
+
+# Part 1
+installscript="Installation Script"
+system="System"
+user="User"
+host="Host"
+hitanyorabort="Press ENTER to continue or Ctrl-C to abort."
+whattoinstall="What kind of installation do you want (manager, agent, local, hybrid or help)?"
+serverchose="Manager (server) installation chosen"
+clientchose="Agent (client) installation chosen"
+localchose="Local installation chosen"
+
+# Part 2
+settingupenv="Setting up the installation environment"
+wheretoinstall="Choose where to install Wazuh"
+installat="Installation will be made at "
+deletedir="The installation directory already exists. Should I delete it?"
+
+# Part 3
+configuring="Configuring"
+mailnotify="Do you want e-mail notification?"
+nomail="Email notification disabled"
+whatsemail="What's your e-mail address?"
+yoursmtp="We found your SMTP server as"
+usesmtp="Do you want to use it?"
+usingsmtp="Using SMTP server: "
+whatsmtp="What's your SMTP server ip/host?"
+
+# Part 3.1/agent
+serveraddr="What's the IP Address or hostname of the Wazuh server?"
+addingip="Adding Server IP"
+addingname="Adding Hostname"
+configprofile="Enter the agent's config profile name (default: blank)"
+addingcfg="Setting agent's config profile name"
+
+
+# Part 3.2
+runsyscheck="Do you want to run the integrity check daemon?"
+nosyscheck="Not running syscheck (integrity check daemon)"
+yessyscheck="Running syscheck (integrity check daemon)"
+
+# Part 3.3
+runrootcheck="Do you want to run the rootkit detection engine?"
+norootcheck="Not running rootcheck (rootkit detection)"
+yesrootcheck="Running rootcheck (rootkit detection)"
+
+# Part 3.4
+runopenscap="Do you want to run policy monitoring checks? (OpenSCAP)"
+norunopenscap="Not running OpenSCAP (policy monitoring checks)"
+yesrunopenscap="Running OpenSCAP (policy monitoring checks)"
+
+# Part 3.5/server/local
+enable_ar="Do you want to enable active response?"
+noactive="Active response disabled"
+yesactive="Active response enabled"
+
+nohosts="host-deny disabled"
+yeshosts="host-deny enabled (local) for levels >= 6"
+firewallar="Do you want to enable the firewall-drop response?"
+nofirewall="firewall-drop disabled."
+yesfirewall="firewall-drop enabled (local) for levels >= 6"
+defaultwhitelist="Default white list for the active response:"
+addwhite="Do you want to add more IPs to the white list?"
+ipswhite="IPs (space separated): "
+
+# Part 3.5/server/local
+syslog="Do you want to enable remote syslog (port 514 udp)?"
+nosyslog="Remote syslog disabled"
+yessyslog="Remote syslog enabled"
+
+# Part 3.4/3.5
+readlogs="Setting the configuration to analyze the following logs:"
+
+# Part 3.7
+runauthd="Do you want to run the Auth daemon?"
+norunauthd="Not running Auth daemon"
+yesrunauthd="Running Auth daemon"
+
+# Part 4
+installing="Installing the system"
+startwazuh="Do you want to start Wazuh after the installation?"
+nowazuhstart="Wazuh will not start at the end of installation."
+yeswazuhstart="Wazuh will start at the end of installation."
+runningmake="Running the Makefile"
+
+# Final
+configurationdone="Configuration finished properly"
+tostart="To start Wazuh"
+tostop="To stop Wazuh"
+configat="The configuration can be viewed or modified at"
+addserveragent="In order to connect agent and server, you need to add each agent to the server."
+presskey="Press ENTER to continue"
+
+# Update
+wanttoupdate="You already have Wazuh installed. Do you want to update it?"
+mustuninstall="The installation can't proceed without uninstalling old versions. Exiting."
+unabletoupdate="Unable to perform update. A full new install will be required."
+updatecompleted="Update completed."
+updatefailed="Update failed."
+updaterules="Do you want to update the rules?"
+updatingrules="Updating rules."
+notupdatingrules="Not updating rules."
+update_rev_newconf1="Backup from your ossec.conf has been created at $INSTALLDIR/etc/ossec.conf.orig"
+update_rev_newconf2="Please verify your ossec.conf configuration at $INSTALLDIR/etc/ossec.conf"
+
+# Pf support
+pfenable="Do you want to use the PF firewall in the active response?"
+nopf="PF response disabled."
+pftablename="Name of the PF table to use?"
+pfmessage="Add the following lines to the beginning of your PF rules"
+
+# CA store
+addcastore="Do you want to add more certificates?"
+castore="Enter the path to a X509 certificate or a certificate folder: "

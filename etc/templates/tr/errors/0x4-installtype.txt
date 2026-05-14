@@ -1,0 +1,3 @@
+
+ Error 0x4.
+ Yanlış kurulum türü. Sadece aracı, sunucu veya yerel olabilir.

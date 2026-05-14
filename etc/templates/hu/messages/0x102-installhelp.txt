@@ -1,0 +1,29 @@
+
+  - Három féle telepítési lehetősége van: szerver, agent(kliens) vagy helyi.
+
+    - Ha a 'szerver' opciót választja, akkor képes lesz kielemezni
+      minden naplót, létrehozni e-mail értesítéseket és válaszokat,
+      és ugyancsak lehetősége nyílik távoli syslog gépektől és
+      az 'agent'(kliens)-t futtató rendszerektől naplókat fogadni
+      (ahol a forgalom titkosított kapcsolaton keresztül zajlik a szerver felé).
+
+    - Ha az 'agent'(kliens) opciót választja, lehetősége lesz olvasni a
+      helyi fájlokat (a syslog-ból, snort-ból, apache-ból, stb.) és
+      továbbküldeni őket (titkosítva) a szerverre elemzés céljából.
+
+    - Ha a 'local'(helyi) opciót választja, akkor képes lesz mindazt megtenni,
+      amire a szerver képes, kivéve a távoli üzenetek(naplók) fogadását
+      a kliensektől vagy külső syslog eszközöktől.
+
+  - Válassza a 'szerver' telepítést, ha egy
+    naplózó/elemző szervert szeretne létrehozni.
+
+  - Válassza az 'agent' telepítést, ha van egy gépe, amit naplózó
+    szervernek használ és erre a szerverre szeretné továbbítani
+    a naplókat további elemzés céljából
+    (ideális megoldás webszervereknek, adatbázis szervereknek , stb).
+
+  - Válassza a 'lokális' telepítést, ha csak egy rendszere van,
+    amit monitoroznia kell.
+
+  - További információk: https://documentation.wazuh.com

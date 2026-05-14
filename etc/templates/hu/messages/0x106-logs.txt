@@ -1,0 +1,7 @@
+ - Ha egyéb fájlokat is szeretne monitorozni,
+   csak változtassa meg az ossec.conf-ot
+   és adjon hozzá egy új helyi fájl bejegyzést.
+   A konfigurálással kapcsolatos egyéb kérdéseire választ kaphat,
+   ha felkeresi weboldalunkat: https://documentation.wazuh.com/.
+
+   --- A folytatáshoz nyomja meg az ENTER billentyűt ---

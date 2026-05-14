@@ -1,0 +1,33 @@
+{
+  "agent_info": {
+    "agent_id": "002",
+    "agent_ip": "any",
+    "agent_name": "c0ce505227a4",
+    "agent_version": "v4.12.0"
+  },
+  "data_type": "state",
+  "data": {
+    "attributes_type": "syscollector_packages",
+    "attributes": {
+      "checksum": "ecee56514fffbd854df2392be1c5b29a4401c744",
+      "groups": " ",
+      "item_id": "7c6a8a5156cf128b6b678b363d102c6947a7101e",
+      "multiarch": "foreign",
+      "scan_time": "2025/02/26 23:45:10",
+      "source": " ",
+      "priority": " ",
+      "description": " ",
+      "install_time": "2025-06-03T00:13:19+00:00",
+      "section": " ",
+      "name": "µTorrent",
+      "version": "3.6.0.47178",
+      "location": "C:\\Users\\vagrant\\AppData\\Roaming\\uTorrent",
+      "vendor": "BitTorrent Limited",
+      "format": "win",
+      "architecture": " ",
+      "size": 0
+    },
+    "index": "7c6a8a5156cf128b6b678b363d102c6947a7101e",
+    "timestamp": ""
+  }
+}

@@ -1,0 +1,4 @@
+ 
+ Fout 0x3.
+ U heeft een compiler (zoals gcc of cc) nodig om door
+ te kunnen gaan met de installatie.

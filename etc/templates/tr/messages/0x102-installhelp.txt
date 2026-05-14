@@ -1,0 +1,28 @@
+
+  - Üç adet kurulum seçeneği bulunmaktadır: sunucu, aracı veya yerel.
+
+    - Eğer sunucu seçerseniz, bütün günlük kayıtlarını inceleyebilir
+      e-posta ile bilgilendirilebilir, yanıt üretebilirsiniz.
+      Ayrıca uzak syslog bilgisayarlarından ve 'aracı' olarak
+      çalışan sistemlerden günlük kayıtlarını alabilirsiniz
+      (aradaki trafik şifrelenecektir).
+
+    - Eğer 'aracı' (istemci) seçerseniz, syslog, snort, apache vb.
+      tarafından üretilen yerel dosyaları okuyabilir ve incelenmek üzere
+      şifreli bir şekilde sunucuya gönderebilirsiniz.
+
+    - Eğer 'yerel' seçerseniz, aracılardan veya harici syslog
+      aygıtlarından gelen mesajları almak dışında sunucunun
+      yapabildiği herşeyi yapabilirsiniz.
+
+  - Eğer günlük kaydı inceleme sunucusu oluşturuyorsanız 'sunucu' kullanın.
+
+  - Eğer başka bir günlük kaydı sunucunuz varsa ve incelenmesi için
+    günlük kayıtlarınızı bu sunucuya yönlendirmek istiyorsanız
+    'aracı' kullanın. (web sunucular, veritabanı sunucular vb. için
+    idealdir)
+
+  - Eğer inceleme yapacağınız tek sisteminiz varsa 'yerel' kullanın.
+
+  - Daha fazla bilgi:
+    https://documentation.wazuh.com

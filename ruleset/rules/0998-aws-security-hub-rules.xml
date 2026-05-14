@@ -1,0 +1,491 @@
+<!--
+  -  AWS Security Hub default ruleset
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2024, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+  ID: 99800 - 99860
+-->
+
+<group name="aws_security_hub,">
+
+  <rule id="99800" level="0">
+    <if_sid>80200</if_sid>
+    <field name="aws.source">securityhub|aws.securityhub</field>
+    <description>AWS Security Hub rules group.</description>
+  </rule>
+
+  <!--
+  Base rules for security hub controls - 99801 - 99832
+-->
+
+  <rule id="99801" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^Account.\d+</field>
+    <description>AWS Security Hub - AWS Account controls group.</description>
+  </rule>
+
+  <rule id="99802" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^ACM.\d+</field>
+    <description>AWS Security Hub - AWS certificate manager controls group.</description>
+  </rule>
+
+  <rule id="99803" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^APIGateway.\d+</field>
+    <description>AWS Security Hub - AWS API gateway controls group.</description>
+  </rule>
+
+  <rule id="99804" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^AppSync.\d+</field>
+    <description>AWS Security Hub - AWS AppSync controls group.</description>
+  </rule>
+
+  <rule id="99805" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^AutoScaling.\d+</field>
+    <description>AWS Security Hub - AWS AutoScaling controls group.</description>
+  </rule>
+
+  <rule id="99806" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^CloudFront.\d+</field>
+    <description>AWS Security Hub - CloudFront controls group.</description>
+  </rule>
+
+  <rule id="99807" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^CloudTrail.\d+</field>
+    <description>AWS Security Hub - CloudTrail controls group.</description>
+  </rule>
+
+  <rule id="99808" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^CloudWatch.\d+</field>
+    <description>AWS Security Hub - CloudWatch controls group.</description>
+  </rule>
+
+  <rule id="99809" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^CodeBuild.\d+</field>
+    <description>AWS Security Hub - CodeBuild controls group.</description>
+  </rule>
+
+  <rule id="99810" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^DMS.\d+</field>
+    <description>AWS Security Hub - AWS Database Migration Service controls group.</description>
+  </rule>
+
+  <rule id="99811" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^DocumentDB.\d+</field>
+    <description>AWS Security Hub - Amazon DocumentDB controls group.</description>
+  </rule>
+
+  <rule id="99812" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^EC2.\d+</field>
+    <description>AWS Security Hub - Amazon Elastic Compute Cloud controls group.</description>
+  </rule>
+
+  <rule id="99813" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^ECR.\d+</field>
+    <description>AWS Security Hub - Amazon Elastic Container Registry controls group.</description>
+  </rule>  
+
+  <rule id="99814" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^ECS.\d+</field>
+    <description>AWS Security Hub - Amazon ECS controls group.</description>
+  </rule>
+
+  <rule id="99815" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^EKS.\d+</field>
+    <description>AWS Security Hub - Amazon Elastic Kubernetes Service controls group.</description>
+  </rule>
+
+  <rule id="99816" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^ElastiCache.\d+</field>
+    <description>AWS Security Hub - Amazon ElastiCache controls group.</description>
+  </rule>
+
+  <rule id="99817" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^ElasticBeanstalk.\d+</field>
+    <description>AWS Security Hub - AWS Elastic Beanstalk controls group.</description>
+  </rule>
+
+  <rule id="99818" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^EMR.\d+</field>
+    <description>AWS Security Hub - Amazon EMR controls group.</description>
+  </rule>
+
+  <rule id="99819" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^ES.\d+</field>
+    <description>AWS Security Hub - Elasticsearch controls group.</description>
+  </rule>
+
+  <rule id="99820" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^GuardDuty.\d+</field>
+    <description>AWS Security Hub - Amazon GuardDuty controls group.</description>
+  </rule>
+
+  <rule id="99821" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^IAM.\d+</field>
+    <description>AWS Security Hub - AWS Identity and Access Management controls group.</description>
+  </rule>
+
+  <rule id="99822" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^KMS.\d+</field>
+    <description>AWS Security Hub - AWS Key Management System controls group.</description>
+  </rule>
+
+  <rule id="99823" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^Lambda.\d+</field>
+    <description>AWS Security Hub - AWS Lambda controls group.</description>
+  </rule>
+
+  <rule id="99824" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^Macie.\d+</field>
+    <description>AWS Security Hub - Amazon Macie controls group.</description>
+  </rule>
+
+  <rule id="99825" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^Neptune.\d+</field>
+    <description>AWS Security Hub - Amazon Neptune controls group.</description>
+  </rule>
+
+  <rule id="99826" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^Opensearch.\d+</field>
+    <description>AWS Security Hub - Amazon OpenSearch Service controls group.</description>
+  </rule>
+
+  <rule id="99827" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^RDS.\d+</field>
+    <description>AWS Security Hub - Amazon Relational Database Service controls group.</description>
+  </rule>
+
+  <rule id="99828" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^Redshift.\d+</field>
+    <description>AWS Security Hub - Amazon Redshift controls group.</description>
+  </rule>
+
+  <rule id="99829" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^S3.\d+</field>
+    <description>AWS Security Hub - Amazon Simple Storage Service controls group.</description>
+  </rule>
+
+  <rule id="99830" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^SageMaker.\d+</field>
+    <description>AWS Security Hub - Amazon SageMaker controls group.</description>
+  </rule>
+
+  <rule id="99831" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^SSM.\d+</field>
+    <description>AWS Security Hub - AWS Systems Manager controls group.</description>
+  </rule>
+
+  <rule id="99832" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^WAF.\d+</field>
+    <description>AWS Security Hub - AWS WAF controls group.</description>
+  </rule>
+
+<!-- 
+  Base rules for AWS service integrations with Security Hub - 99833 - 99835
+-->
+
+  <rule id="99833" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.ProductName">GuardDuty</field>
+    <description>AWS Security Hub - Amazon GuardDuty findings.</description>
+  </rule>
+
+  <rule id="99834" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.ProductName">Inspector</field>
+    <description>AWS Security Hub - Amazon Inspector findings.</description>
+  </rule>
+
+  <rule id="99835" level="0">
+    <if_sid>99800</if_sid>
+    <field name="aws.finding.ProductName">Health</field>
+    <description>AWS Security Hub - Amazon Inspector findings.</description>
+  </rule>
+
+<!--
+  Rules for Critical security hub controls - 99836 - 99858
+-->
+
+  <rule id="99836" level="12">
+    <if_sid>99807</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^CloudTrail.6$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - The S3 bucket used to store CloudTrail logs is publicly accessible.</description>
+    <group>cis_aws_foundations_benchmark_2.3,cis_aws_foundations_benchmark_3.3,</group>
+    <mitre>
+      <id>T1213</id>
+      <id>T1119</id>
+      <id>T1530</id>
+    </mitre>
+  </rule>
+
+  <rule id="99837" level="12">
+    <if_sid>99809</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^CodeBuild.1$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - CodeBuild Bitbucket source repository URL contains sensitive credentials.</description>
+    <group>pci_dss_8.2.1,nist_800_53_SA.3,</group>
+    <mitre>
+      <id>T1213.003</id>
+    </mitre>
+  </rule>
+
+  <rule id="99838" level="12">
+    <if_sid>99809</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^CodeBuild.2$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - CodeBuild project environment variable contain clear text credentials.</description>
+    <group>pci_dss_8.2.1,nist_800_53_IA.5,nist_800_53_SA.3,</group>
+    <mitre>
+      <id>T1552</id>
+    </mitre>
+  </rule>
+
+  <rule id="99839" level="12">
+    <if_sid>99810</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^DMS.1$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - Database Migration Service replication instance is public.</description>
+    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.2,pci_dss_1.3.4,pci_dss_1.3.6,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
+  </rule>
+
+  <rule id="99840" level="12">
+    <if_sid>99811</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^DocumentDB.3$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - Amazon DocumentDB manual cluster snapshot is public.</description>
+    <group>nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
+  </rule>
+
+  <rule id="99841" level="12">
+    <if_sid>99812</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^EC2.1$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - EBS snapshot is publicly restorable.</description>
+    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.4,pci_dss_7.2.1,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
+  </rule>
+
+  <rule id="99842" level="12">
+    <if_sid>99812</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^EC2.19$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - Security groups allow unrestricted access to ports with high risk.</description>
+    <group>nist_800_53_AC.4,nist_800_53_CA.9,nist_800_53_CM.2,nist_800_53_CM.7,nist_800_53_SC.7,</group>
+  </rule>
+
+  <rule id="99843" level="12">
+    <if_sid>99818</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^EMR.2$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - Amazon EMR block public access setting not enabled.</description>
+    <group>nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
+  </rule>
+
+  <rule id="99844" level="12">
+    <if_sid>99819</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^ES.2$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - Elasticsearch domain is publicly accessible.</description>
+    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.2,pci_dss_1.3.4,pci_dss_1.3.6,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
+    <mitre>
+      <id>T1530</id>
+    </mitre>
+  </rule>
+
+  <rule id="99845" level="12">
+    <if_sid>99821</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^IAM.4$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - IAM root user access key exists.</description>
+    <group>pci_dss_2.1,pci_dss_2.2,pci_dss_7.2.1,cis_aws_foundations_benchmark_1.12,cis_aws_foundations_benchmark_1.4,nist_800_53_AC.2,nist_800_53_AC.3,nist_800_53_AC.6,</group>
+  </rule>
+
+  <rule id="99846" level="12">
+    <if_sid>99821</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^IAM.6$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - Hardware MFA not enabled for the root user.</description>
+    <group>pci_dss_8.3.1,cis_aws_foundations_benchmark_1.14,cis_aws_foundations_benchmark_1.6,nist_800_53_AC.2,nist_800_53_AC.3,nist_800_53_IA.2,</group>
+    <mitre>
+      <id>T1556.006</id>
+    </mitre>
+  </rule>
+
+  <rule id="99847" level="12">
+    <if_sid>99821</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^IAM.9$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - MFA not enabled for the root user.</description>
+    <group>pci_dss_8.3.1,cis_aws_foundations_benchmark_1.13,cis_aws_foundations_benchmark_1.5,nist_800_53_AC.2,nist_800_53_AC.3,nist_800_53_IA.2,</group>
+    <mitre>
+      <id>T1556.006</id>
+    </mitre>
+  </rule>
+
+  <rule id="99848" level="12">
+    <if_sid>99822</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^KMS.3$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - AWS KMS keys scheduled for deletion.</description>
+    <group>nist_800_53_SC.12,</group>
+    <mitre>
+      <id>T1485</id>
+    </mitre>
+  </rule>
+
+  <rule id="99849" level="12">
+    <if_sid>99823</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^Lambda.1$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - Lambda function policies allow public access.</description>
+    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.2,pci_dss_1.3.4,pci_dss_7.2.1,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
+  </rule>
+
+  <rule id="99850" level="12">
+    <if_sid>99825</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^Neptune.3$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - Neptune DB cluster snapshot is public.</description>
+    <group>nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
+  </rule>
+
+  <rule id="99851" level="12">
+    <if_sid>99826</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^Opensearch.2$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - OpenSearch domain is publicly accessible.</description>
+    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.2,pci_dss_1.3.4,pci_dss_1.3.6,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
+  </rule>
+
+  <rule id="99852" level="12">
+    <if_sid>99827</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^RDS.1$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - RDS snapshot is public.</description>
+    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.4,pci_dss_1.3.6,pci_dss_7.2.1,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
+  </rule>
+
+  <rule id="99853" level="12">
+    <if_sid>99827</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^RDS.2$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - Amazon RDS instance is publicly accessible.</description>
+    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.4,pci_dss_1.3.6,pci_dss_7.2.1,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
+  </rule>
+
+  <rule id="99854" level="12">
+    <if_sid>99828</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^Redshift.1$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub -  Amazon Redshift cluster is publicly accessible.</description>
+    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.2,pci_dss_1.3.4,pci_dss_1.3.6,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
+  </rule>
+
+  <rule id="99855" level="12">
+    <if_sid>99829</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^S3.2$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - Amazon S3 general purpose bucket permits public read access.</description>
+    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.2,pci_dss_1.3.6,pci_dss_7.2.1,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
+  </rule>
+
+  <rule id="99856" level="12">
+    <if_sid>99829</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^S3.3$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - Amazon S3 general purpose bucket permits public write access.</description>
+    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.2,pci_dss_1.3.4,pci_dss_1.3.6,pci_dss_7.2.1,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
+  </rule>
+
+  <rule id="99857" level="12">
+    <if_sid>99829</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^S3.19$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - Amazon S3 access point block public access settings are not enabled.</description>
+    <group>nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
+  </rule>
+
+  <rule id="99858" level="12">
+    <if_sid>99831</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^SSM.4$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - AWS Systems Manager document is public.</description>
+    <group>nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
+  </rule>
+
+  <!--
+  Other security hub controls rules - 99859 - 99860
+-->
+
+  <rule id="99859" level="12">
+    <if_sid>99812</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^EC2.9$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - Amazon EC2 Instance uses a public IPv4 address.</description>
+    <group>nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
+  </rule>
+
+  <rule id="99860" level="12">
+    <if_sid>99829</if_sid>
+    <field name="aws.finding.Compliance.SecurityControlId">^S3.8$</field>
+    <field name="aws.finding.Compliance.Status">FAILED</field>
+    <field name="aws.finding.RecordState">ACTIVE</field>
+    <description>AWS Security Hub - Amazon S3 general purpose bucket allows public access at the bucket level.</description>
+    <group>cis_aws_foundations_benchmark_2.1.5,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
+  </rule>
+,</group>
+

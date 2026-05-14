@@ -1,0 +1,44 @@
+{
+    "extensions": {
+        "settings": {
+            "ahfgeienlihckogmohjhadlkjgocpleb": {
+                "first_install_time": "13394392372574621",
+                "from_webstore": false,
+                "path": "/opt/google/chrome/resources/web_store"
+            },
+            "fignfifoniblkonapihmkfakmlgkbkcf": {
+                "first_install_time": "13395499565256347",
+                "from_webstore": false,
+                "path": "/opt/google/chrome/resources/network_speech_synthesis/mv3"
+            },
+            "ghbmnnjooekpmoecnnnilnnbdlolhkhi": {
+                "first_install_time": "13394392373134705",
+                "from_webstore": true,
+                "path": "ghbmnnjooekpmoecnnnilnnbdlolhkhi/1.94.1_0"
+            },
+            "mhjfbmdgcfjbbpaeojofohoefgiehjai": {
+                "first_install_time": "13394392372574836",
+                "from_webstore": false,
+                "path": "/opt/google/chrome/resources/pdf"
+            },
+            "neajdppkdcdipfabeoofebfddakdcjhd": {
+                "first_install_time": "13394392372575135",
+                "from_webstore": false,
+                "path": "/opt/google/chrome/resources/network_speech_synthesis/mv3"
+            },
+            "nkeimhogjdpnpccoofpliimaahmaaome": {
+                "first_install_time": "13394392372574972",
+                "from_webstore": false,
+                "path": "/opt/google/chrome/resources/hangout_services"
+            },
+            "nmmhkkegccagdldgiimedpiccmgmieda": {
+                "first_install_time": "13394392373345452",
+                "from_webstore": true,
+                "path": "ext2/1.2.3"
+            }
+        }
+    },
+    "profile": {
+        "name": "Your Chrome"
+    }
+}

@@ -1,0 +1,89 @@
+WAZUH
+Copyright (C) 2015, Wazuh Inc.
+
+Based on OSSEC
+Copyright (C) 2014 Trend Micro Inc.
+
+
+= Information about OSSEC =
+
+Visit https://www.wazuh.com
+
+
+= Recommended Installation =
+
+OSSEC installation is very simple. It can be done in the
+fast way (using the script install.sh with the default values)
+or in the customized way (by hand or by changing the default values
+in the install.sh script). I REALLY recommend EVERYONE to use the
+FAST WAY! Only developers or experienced people should use the
+other methods.
+
+Fast way steps:
+
+1- Run the script ./install.sh. It will guide you through the
+   installation process.
+
+2- The script will create everything in /var/ossec and try to
+   create the initialization script in your system (/etc/rc.local
+   or /etc/rc.d/init.d/ossec). If the init script is not created,
+   make sure to follow the instructions from the install.sh to make
+   OSSEC HIDS start during the boot. To start it by hand, just run
+   /var/ossec/bin/wazuh-control start
+
+3- If you are running it on multiple clients, make sure to install
+   the server first. Use the manage_agents tool
+   to create the right encryption keys.
+
+4- Enjoy.
+
+
+= Installation and Running (99.99% should read ABOVE) =
+
+
+By Hand Installation steps:
+
+1- Create the necessary directories (by default /var/ossec).
+2- Move the necessary files to the ossec directory.
+3- Compile everything.
+4- Move the binaries to the default directory.
+5- Create the necessary users.
+6- Set the right permissions to the files.
+
+
+These 5 steps are done in the Makefile (see make server).
+
+The Makefile read the options from the LOCATION file. Change
+whatever you need from there.
+
+To compile everything by yourself the following dependencies need to be installed:
+
+- CentOS 6/7
+   $> yum update
+   $> yum install make gcc gcc-c++ policycoreutils-python automake autoconf libtool centos-release-scl devtoolset-7
+   $> scl enable devtoolset-7 bash
+
+- CentOS 8
+   $> yum install make gcc gcc-c++ python3 python3-policycoreutils automake autoconf libtool
+   $> rpm -i http://mirror.centos.org/centos/8/PowerTools/x86_64/os/Packages/libstdc++-static-8.3.1-5.1.el8.x86_64.rpm
+
+- Debian/Ubuntu
+   $> apt-get install python gcc g++ make libc6-dev curl policycoreutils automake autoconf libtool
+
+The following step is common to all OSes:
+- CMake 3.18 installation
+   $> curl -OL http://packages.wazuh.com/utils/cmake/cmake-3.18.3.tar.gz && tar -zxf cmake-3.18.3.tar.gz
+   $> cd cmake-3.18.3 && ./bootstrap --no-system-curl
+   $> make -j$(nproc) && make install
+   $> cd .. && rm -rf cmake-*
+
+Note: `gcc/g++ 5.5` and `CMake 3.12.4` are the minimun required versions to be installed.
+
+Under wazuh/src folder:
+1- make deps
+2- make TARGET=<agent|server> (Optional: DEBUG=1 TEST=1)
+
+*Before running make server, make sure to have the necessary users created.*
+*The Makefile will not do that.*
+
+#EOF

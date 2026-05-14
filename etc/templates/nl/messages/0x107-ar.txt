@@ -1,0 +1,5 @@
+
+  3.5- Actief handelen stelt u in staat om een specifiek
+       commando uit te voeren op basis van de ontvangen
+       events.
+       Standaard worden geen actieve reacties gedefinieerd.

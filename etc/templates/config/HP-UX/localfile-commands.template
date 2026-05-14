@@ -1,0 +1,6 @@
+  <localfile>
+    <log_format>full_command</log_format>
+    <command>netstat -n | awk '/^[a-z][a-z]/ {print}' | awk '{print $1, $4, $5}'</command>
+    <alias>netstat listening ports</alias>
+    <frequency>360</frequency>
+  </localfile>

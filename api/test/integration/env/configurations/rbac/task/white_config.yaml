@@ -1,0 +1,8 @@
+---
+- actions:
+  - agent:upgrade
+  - task:status
+  resources:
+  - "agent:id:005"
+  - "*:*:*"
+  effect: allow

@@ -1,0 +1,1012 @@
+[
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:*": "allow",
+        "agent:id:002": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": []
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
+    "allowed_resources": [[]],
+    "result": "allow"
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:*": "allow",
+        "agent:id:002": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": ["001"],
+      "call_func": true
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
+    "allowed_resources": [["001"]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:*": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": null
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
+    "allowed_resources": [["000", "001", "002", "003", "004", "005"]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:*": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": null,
+      "call_func": false
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
+    "allowed_resources": [["000", "001", "002", "003", "004", "005"]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:*": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": null
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
+    "allowed_resources": [[]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:*": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": ["001"]
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
+    "allowed_resources": [["001"]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:*": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": ["001"]
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
+    "allowed_resources": [["001"]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:*": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": ["001"]
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
+    "allowed_resources": [[]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:001": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": ["001"]
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
+    "allowed_resources": [["001"]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:001": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": ["001"]
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
+    "allowed_resources": [[]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:001": "allow",
+        "agent:id:002": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": ["001", "002", "003", "004"]
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
+    "allowed_resources": [["001", "002"]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:*": "allow",
+        "agent:id:002": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": null
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
+    "allowed_resources": [["000", "001", "003", "004", "005"]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:*": "allow",
+        "agent:group:group2": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": null
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group2": ["001", "002", "003"]},
+    "allowed_resources": [["000", "004", "005"]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:group:group1": "allow",
+        "agent:id:*": "deny",
+        "agent:group:group2": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": null
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group2": ["001", "002", "003"], "agent:group:group1": ["001", "004", "005"]},
+    "allowed_resources": [["001", "002", "003"]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:*": "deny",
+        "agent:group:group1": "allow",
+        "agent:group:group2": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": null,
+      "call_func": true
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group2": ["001", "002", "003"], "agent:group:group1": ["001", "004", "005"]},
+    "allowed_resources": [["001", "002", "003", "004", "005"]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:*": "deny",
+        "agent:group:*": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": null
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:*": ["001", "002", "003", "004", "005"]},
+    "allowed_resources": [["001", "002", "003", "004", "005"]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:002": "allow",
+        "agent:id:001": "allow",
+        "agent:group:group1": "deny",
+        "agent:group:005": "allow",
+        "agent:id:000": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": null
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group1": ["001", "004", "005"]},
+    "allowed_resources": [["000", "002", "005"]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:002": "allow",
+        "agent:id:001": "allow",
+        "agent:group:group1": "deny",
+        "agent:group:005": "allow",
+        "agent:id:000": "allow",
+        "agent:group:group2": "allow",
+        "agent:group:group3": "deny",
+        "agent:id:099": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": null
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005", "006", "007", "008"],
+      "agent:group:group1": ["001", "004", "005"], "agent:group:group2": ["001", "002", "003", "007"],
+      "agent:group:group3": ["008"]},
+    "allowed_resources": [["000", "001", "002", "003", "005", "007", "099"]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:002": "allow",
+        "agent:id:001": "allow",
+        "agent:group:group1": "deny",
+        "agent:group:005": "allow",
+        "agent:id:000": "allow",
+        "agent:group:group2": "allow",
+        "agent:group:group3": "deny",
+        "agent:id:099": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": ["099", "008", "001", "000"]
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005", "006", "007", "008"],
+      "agent:group:group1": ["001", "004", "005"], "agent:group:group2": ["001", "002", "003", "007"],
+      "agent:group:group3": ["008"]},
+    "allowed_resources": [["000", "001", "099"]]
+  },
+  {
+    "rbac": {
+      "security:read": {
+        "role:id:2": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["security:read"],
+        "resources": ["role:id:{role_ids}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "role_ids": ["2", "3"]
+    },
+    "fake_system_resources": {"role:id:*": ["1", "2", "3", "4"]},
+    "allowed_resources": [["2"]]
+  },
+  {
+    "rbac": {
+      "security:read": {
+        "role:id:*": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["security:read"],
+        "resources": ["role:id:{role_ids}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "role_ids": null
+    },
+    "fake_system_resources": {"role:id:*": ["1", "2", "3", "4"]},
+    "allowed_resources": [["1", "2", "3", "4"]]
+  },
+  {
+    "rbac": {
+      "security:read": {
+        "role:id:*": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["security:read"],
+        "resources": ["role:id:{role_ids}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "role_ids": null
+    },
+    "fake_system_resources": {"role:id:*": ["1", "2", "3", "4"]},
+    "allowed_resources": [[]]
+  },
+  {
+    "rbac": {
+      "security:read": {
+        "role:id:*": "deny",
+        "role:id:2": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["security:read"],
+        "resources": ["role:id:{role_ids}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "role_ids": ["2"]
+    },
+    "fake_system_resources": {"role:id:*": ["1", "2", "3", "4"]},
+    "allowed_resources": [["2"]]
+  },
+  {
+    "rbac": {
+      "security:read": {
+        "role:id:3": "allow",
+        "role:id:1": "deny",
+        "role:id:2": "allow",
+        "role:id:*": "deny",
+        "policy:id:99": "allow",
+        "policy:id:1": "deny",
+        "policy:id:2": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["security:read"],
+        "resources": ["policy:id:{policy_ids}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "policy_ids": ["99", "1", "2"]
+    },
+    "fake_system_resources": {"policy:id:*": ["1", "2", "3", "4", "9"]},
+    "allowed_resources": [["99", "2"]]
+  },
+  {
+    "rbac": {
+      "security:update": {
+        "role:id:2": "allow",
+        "policy:id:*": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["security:update"],
+        "resources": ["role:id:{role_id}", "policy:id:{policy_ids}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "role_id": ["2"],
+      "policy_ids": ["3", "4", "9"]
+    },
+    "fake_system_resources": {"role:id:*": ["1", "2", "3", "4"], "policy:id:*": ["1", "2", "3", "4", "5", "8"]},
+    "allowed_resources": [["2"], ["3", "4", "9"]]
+  },
+  {
+    "rbac": {
+      "security:update": {
+        "role:id:*": "deny",
+        "policy:id:*": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["security:update"],
+        "resources": ["role:id:{role_id}", "policy:id:{policy_ids}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "role_id": ["2"],
+      "policy_ids": ["3", "4", "9"]
+    },
+    "fake_system_resources": {"role:id:*": ["1", "2", "3", "4"], "policy:id:*": ["1", "2", "3", "4", "5", "8"]},
+    "allowed_resources": [[], []]
+  },
+  {
+    "rbac": {
+      "security:update": {
+        "role:id:3": "allow",
+        "role:id:8": "deny",
+        "role:id:99": "allow",
+        "policy:id:99": "deny",
+        "policy:id:85": "allow",
+        "policy:id:*": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["security:update"],
+        "resources": ["role:id:{role_id}", "policy:id:{policy_ids}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "role_id": ["3"],
+      "policy_ids": ["85", "9"]
+    },
+    "fake_system_resources": {"role:id:*": ["1", "2", "3", "4"], "policy:id:*": ["1", "2", "3", "4", "5", "8"]},
+    "allowed_resources": [[], []]
+  },
+  {
+    "rbac": {
+      "security:read": {
+        "user:id:*": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["security:read"],
+        "resources": ["user:id:{user_id}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "user_id": null
+    },
+    "fake_system_resources": {"user:id:*": ["wazuh"]},
+    "allowed_resources": [["wazuh"]]
+  },
+  {
+    "rbac": {
+      "security:read": {
+        "user:id:wazuh": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["security:read"],
+        "resources": ["user:id:{user_id}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "user_id": ["wazuh", "wazuh-wui"]
+    },
+    "fake_system_resources": {"user:id:*": ["wazuh"]},
+    "allowed_resources": [["wazuh"]]
+  },
+  {
+    "rbac": {
+      "security:read": {
+        "user:id:*": "deny",
+        "user:id:wazuh-wui": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["security:read"],
+        "resources": ["user:id:{user_id}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "user_id": ["wazuh", "wazuh-wui"]
+    },
+    "fake_system_resources": {"user:id:*": ["wazuh"]},
+    "allowed_resources": [["wazuh-wui"]]
+  },
+  {
+    "rbac": {
+      "security:delete": {
+        "user:id:*": "deny",
+        "user:id:wazuh-wui": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["security:delete"],
+        "resources": ["user:id:{user_id}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "user_id": ["wazuh", "wazuh-wui"]
+    },
+    "fake_system_resources": {"user:id:*": ["wazuh"]},
+    "allowed_resources": [["wazuh-wui"]]
+  },
+  {
+    "rbac": {
+      "security:delete": {
+        "user:id:wazuh": "deny",
+        "user:id:wazuh-wui": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["security:delete"],
+        "resources": ["user:id:{user_id}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "user_id": ["wazuh", "wazuh-wui"]
+    },
+    "fake_system_resources": {"user:id:*": ["wazuh"]},
+    "allowed_resources": [["wazuh-wui"]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:*": "deny",
+        "agent:group:group1": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": null
+    },
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group1": []},
+    "allowed_resources": [[]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:id:*": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": null
+    },
+    "fake_system_resources": {"agent:id:*": []},
+    "allowed_resources": [[]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {
+        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:worker2&file:path:etc/ossec.conf": "allow",
+        "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
+        "node:id:*&file:path:etc/ossec.conf": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:master-node&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": ["etc/rules/local_rules.xml"]
+    },
+    "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
+    "allowed_resources": [["etc/rules/local_rules.xml"]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {
+        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:worker2&file:path:etc/ossec.conf": "allow",
+        "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
+        "node:id:*&file:path:etc/ossec.conf": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:master_node&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": ["etc/ossec.conf"]
+    },
+    "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
+    "allowed_resources": [[]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {
+        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:worker2&file:path:etc/ossec.conf": "allow",
+        "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
+        "node:id:*&file:path:etc/ossec.conf": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:worker2&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": ["etc/ossec.conf"]
+    },
+    "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
+    "allowed_resources": [[]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {}
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:master_node&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": ["etc/ossec.conf"]
+    },
+    "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
+    "allowed_resources": [[]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {
+        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
+        "node:id:*&file:path:etc/ossec.conf": "deny",
+        "node:id:worker2&file:path:etc/ossec.conf": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:worker2&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": ["etc/ossec.conf"]
+    },
+    "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
+    "allowed_resources": [["etc/ossec.conf"]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {
+        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
+        "node:id:*&file:path:etc/ossec.conf": "deny",
+        "node:id:worker2&file:path:etc/ossec.conf": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:worker1&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": ["etc/ossec.conf"]
+    },
+    "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
+    "allowed_resources": [[]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {
+        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
+        "node:id:*&file:path:etc/ossec.conf": "allow",
+        "node:id:worker2&file:path:etc/ossec.conf": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:worker1&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": ["etc/ossec.conf"]
+    },
+    "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
+    "allowed_resources": [["etc/ossec.conf"]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {
+        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
+        "node:id:*&file:path:*": "allow",
+        "node:id:worker2&file:path:etc/ossec.conf": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:worker1&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": ["etc/ossec.conf"]
+    },
+    "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"],
+      "file:path:*": ["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
+    "allowed_resources": [["etc/ossec.conf"]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {
+        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
+        "node:id:*&file:path:*": "allow",
+        "node:id:worker2&file:path:etc/ossec.conf": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:worker1&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": null
+    },
+    "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"],
+      "file:path:*": ["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
+    "allowed_resources": [["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {
+        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
+        "node:id:master-node&file:path:*": "allow",
+        "node:id:worker2&file:path:etc/ossec.conf": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:worker1&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": null
+    },
+    "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"],
+      "file:path:*": ["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
+    "allowed_resources": [["etc/rules/local_rules.xml"]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {
+        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:*&file:path:etc/rules/local_rules.xml": "allow",
+        "node:id:master-node&file:path:*": "allow",
+        "node:id:worker2&file:path:etc/ossec.conf": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:master-node&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": null
+    },
+    "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"],
+      "file:path:*": ["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
+    "allowed_resources": [["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {}
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:master-node&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": null
+    },
+    "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"],
+      "file:path:*": ["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
+    "allowed_resources": [[]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {
+        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:master-node&file:path:etc/ossec.conf": "deny",
+        "node:id:master-node&file:path:etc/rules/local_rules.xml": "allow",
+        "node:id:worker2&file:path:etc/ossec.conf": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:master-node&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": ["etc/ossec.conf"]
+    },
+    "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
+    "allowed_resources": [[]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {
+        "node:id:worker1&file:path:etc/ossec.conf": "deny",
+        "node:id:master-node&file:path:etc/ossec.conf": "deny",
+        "node:id:master-node&file:path:etc/rules/local_rules.xml": "deny",
+        "node:id:worker2&file:path:etc/ossec.conf": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:worker2&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": ["etc/ossec.conf"]
+    },
+    "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
+    "allowed_resources": [["etc/ossec.conf"]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {
+        "node:id:master-node&file:path:etc/ossec.conf": "deny",
+        "node:id:master-node&file:path:etc/rules/local_rules.xml": "deny",
+        "node:id:worker1&file:path:etc/ossec.conf": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:worker2&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": ["etc/ossec.conf"]
+    },
+    "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
+    "allowed_resources": [[]]
+  },
+  {
+    "rbac": {},
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:master-node&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": ["etc/ossec.conf"]
+    },
+    "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"]},
+    "allowed_resources": [[]]
+  },
+  {
+    "rbac": {
+      "cluster:read_file": {
+        "node:id:*&file:path:*": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["cluster:read_file"],
+        "resources": ["node:id:master-node&file:path:{path}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "path": ["etc/rules/local_rules.xml"]
+    },
+    "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"], "file:path:*": ["etc/ossec.conf"]},
+    "allowed_resources": [["etc/rules/local_rules.xml"]]
+  }
+]

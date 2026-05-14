@@ -1,0 +1,8 @@
+ - Si vous voulez surveiller d'autres fichiers, changez
+   le fichier ossec.conf en ajoutant une nouvelle valeur
+   de nom de fichier local.
+   Pour toutes vos questions sur la configuration,
+   consultez notre site web https://documentation.wazuh.com/.
+
+
+   --- Appuyez sur Entrée pour continuer ---

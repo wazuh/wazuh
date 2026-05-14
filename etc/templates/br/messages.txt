@@ -1,0 +1,129 @@
+# Configuração
+yes="s"
+no="n"
+yesmatch="s"
+nomatch="n"
+server="servidor"
+agent="cliente"
+local="local"
+help="ajuda"
+
+
+# Global
+moreinfo="Maiores informações em: "
+starting="Iniciando Wazuh"
+systemis="O Sistema é"
+modifiedinit="O script de inicialização foi modificado para executar Wazuh durante o boot."
+noboot="Sistema desconhecido. Nenhum script de incialização foi adicionado."
+
+# Parte 1
+installscript="Script de instalação"
+system="Sistema"
+user="Usuário"
+host="Host"
+hitanyorabort="Aperte ENTER para continuar ou Ctrl+C para abortar."
+whattoinstall="Que tipo de instalação você deseja (manager, cliente, local ou ajuda)?"
+serverchose="Escolhida instalação manager"
+clientchose="Escolhida instalação cliente"
+localchose="Escolhida instalação local"
+
+# Parte 2
+settingupenv="Configurando o ambiente de instalação"
+wheretoinstall="Escolha onde instalar Wazuh"
+installat="A instalação será feita no diretório"
+deletedir="O diretório de instalação já existe. Deseja removê-lo?"
+
+# Parte 3
+configuring="Configurando o"
+mailnotify="Deseja receber notificações por e-mail?"
+nomail="Notificação por e-mail desabilitada"
+whatsemail="Qual é o seu endereço de e-mail?"
+yoursmtp="Seu servidor SMTP foi encontrado como"
+usesmtp="Deseja usá-lo?"
+usingsmtp="Usando servidor SMTP: "
+whatsmtp="Qual é o ip/host de seu servidor SMTP?"
+
+# Parte 3.1/agente
+serverip="Qual é o endereço de IP do servidor Wazuh?"
+serveraddr="Qual é o endereço de IP/hostname do servidor Wazuh?"
+addingip="Adicionando IP do servidor"
+addingname="Adicionando hostname do servidor"
+
+
+# Parte 3.2
+runsyscheck="Deseja habilitar o sistema de verificação de integridade?"
+nosyscheck="Syscheck (Sistema de verificação de integridade) desabilitado"
+yessyscheck="Syscheck (Sistema de verificação de integridade) habilitado"
+
+# Parte 3.3
+runrootcheck="Deseja habilitar o sistema de detecção de rootkis?"
+norootcheck="Rootcheck (Sistema de detecção de rootkits) desabilitado"
+yesrootcheck="Rootcheck (Sistema de detecção de rootkits) habilitado"
+
+# Part 3.4
+runopenscap="Deseja habilitar OpenSCAP?"
+norunopenscap="OpenSCAP desabilitado"
+yesrunopenscap="OpenSCAP desabilitado"
+
+# Parte 3.5/servidor/local
+enable_ar="Deseja habilitar o sistema de respostas automáticas?"
+noactive="Sistema de respostas automáticas desabilitado"
+nohosts="host-deny desabilitado"
+yeshosts="host-deny habilitado (local) para niveis >= 6"
+firewallar="Deseja habilitar o firewall-drop?"
+nofirewall="firewall-drop desabilitado."
+yesfirewall="firewall-drop habilitado (local) para níveis >= 6"
+defaultwhitelist="Lista de endereços que não serão bloqueados pela resposta automática:"
+addwhite="Deseja adicionar mais algum endereço a essa lista?"
+ipswhite="Endereços de IP (separados por espaço): "
+
+
+# Parte 3.5/servidor/local
+syslog="Deseja habilitar o syslog remoto (514 udp)?"
+nosyslog="Syslog desabilitado"
+yessyslog="Syslog habilitado"
+
+# Parte 3.4/3.5
+readlogs="Ajustando a configuração para analisar os seguintes logs:"
+
+# Part 3.7
+runauthd="Deseja habilitar Authd?"
+norunauthd="Auth desabilitado"
+yesrunauthd="Auth habilitado"
+
+# Parte 4
+installing="Instalando o sistema"
+startwazuh="Deseja iniciar o Wazuh após a instalação?"
+nowazuhstart="Wazuh não iniciará no final da instalação."
+yeswazuhstart="Wazuh começará no final da instalação."
+runningmake="Executando o Makefile"
+
+# Final
+configurationdone="Configuração finalizada corretamente"
+tostart="Para iniciar Wazuh"
+tostop="Para parar Wazuh"
+configat="A configuração pode ser vista ou modificada em"
+addserveragent="Você precisa adicionar cada um dos clientes antes que estejam autorizados a acessar o servidor."
+presskey="Pressione ENTER para continuar."
+
+# Update
+wanttoupdate="Wazuh ja esta instalado. Deseja atualiza-lo?"
+mustuninstall="A instalação não pode prosseguir sem desinstalar as versões antigas. Saindo."
+unabletoupdate="Error na atualizacao. Sera necessario reinstala-lo."
+updatecompleted="Atualizacao completada."
+updatefailed="Erro na atualizacao."
+updaterules="Voce deseja atualizar as regras?"
+updatingrules="Atualizando as regras."
+notupdatingrules="Nao atualizando as regras."
+update_rev_newconf1="O backup do seu ossec.conf foi criado no $INSTALLDIR/etc/ossec.conf.orig."
+update_rev_newconf2="Verifique a configuração ossec.conf em $INSTALLDIR/etc/ossec.conf."
+
+# Pf support
+pfenable="Deseja utilizar o firewall PF nas respostas automaticas?"
+nopf="Respostas automaticas com o PF desabilitadas."
+pftablename="Qual o nome da tabela no PF que deseja utilizar?"
+pfmessage="Adicione as seguintes linhas na configuracao do seu firewall"
+
+# CA store
+addcastore="Deseja adicionar mais certificados?"
+castore="Digite o caminho para um certificado X509 ou uma pasta de certificado: "

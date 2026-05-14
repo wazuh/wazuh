@@ -1,0 +1,6 @@
+<!-- Test: invalid regex offset-->
+<decoder name="sudo-fields">
+  <parent>sudo</parent>
+  <regex offset="after_regex">(\S+)</regex>
+  <order>boom</order>
+</decoder>

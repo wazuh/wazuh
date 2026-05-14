@@ -1,0 +1,7 @@
+ - Wenn Sie weitere Files überwachen möchten, fügen Sie
+   einen weiteren 'localfile' Eintrag in der Datei
+   ossec.conf hinzu. Alle Konfigurationsoptionen werden
+   unter https://documentation.wazuh.com/ beschrieben.
+
+
+   --- Drücken Sie eine Taste um fortzufahren ---

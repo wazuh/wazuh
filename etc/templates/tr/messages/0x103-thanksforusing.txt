@@ -1,0 +1,13 @@
+
+    Wazuh'u kullandığınız için teşekkür ederiz.
+    Herhangi bir yardıma ihtiyacınız veya hata bulursanız lütfen
+    bizimle iletişime geçmekten şüphe etme.
+
+    Genel Mail Listemizi şu adresten kullanın:
+              https://groups.google.com/forum/#!forum/wazuh
+
+    Daha fazla bilgi şu adresten bulunabilir:
+               - http://www.wazuh.com
+
+         --- Bitirmek için ENTER'a basın. ---
+      --- (Belki daha fazla bilgi aşağıda). ---

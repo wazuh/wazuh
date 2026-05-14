@@ -1,0 +1,198 @@
+- name: cloudtrail_with_only_logs_after
+  description: CloudTrail only logs after configurations
+  configuration_parameters:
+    BUCKET_TYPE: cloudtrail
+    BUCKET_NAME: wazuh-cloudtrail-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: cloudtrail
+    bucket_name: wazuh-cloudtrail-integration-tests
+    only_logs_after: 2022-NOV-20
+    expected_results: 5
+
+- name: vpc_with_only_logs_after
+  description: VPC only logs after configurations
+  configuration_parameters:
+    BUCKET_TYPE: vpcflow
+    BUCKET_NAME: wazuh-vpcflow-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    vpc_name: wazuh-vpc-integration-tests
+    bucket_type: vpcflow
+    bucket_name: wazuh-vpcflow-integration-tests
+    only_logs_after: 2022-NOV-20
+    expected_results: 3
+
+- name: config_with_only_logs_after
+  description: Config only logs after configurations
+  configuration_parameters:
+    BUCKET_TYPE: config
+    BUCKET_NAME: wazuh-config-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: config
+    bucket_name: wazuh-config-integration-tests
+    only_logs_after: 2022-NOV-20
+    expected_results: 5
+
+- name: alb_with_only_logs_after
+  description: ALB only logs after configurations
+  configuration_parameters:
+    BUCKET_TYPE: alb
+    BUCKET_NAME: wazuh-alb-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: alb
+    bucket_name: wazuh-alb-integration-tests
+    only_logs_after: 2022-NOV-20
+    expected_results: 5
+
+- name: clb_with_only_logs_after
+  description: CLB only logs after configurations
+  configuration_parameters:
+    BUCKET_TYPE: clb
+    BUCKET_NAME: wazuh-clb-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: clb
+    bucket_name: wazuh-clb-integration-tests
+    only_logs_after: 2022-NOV-20
+    expected_results: 5
+
+- name: nlb_with_only_logs_after
+  description: NLB only logs after configurations
+  configuration_parameters:
+    BUCKET_TYPE: nlb
+    BUCKET_NAME: wazuh-nlb-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: nlb
+    bucket_name: wazuh-nlb-integration-tests
+    only_logs_after: 2022-NOV-20
+    expected_results: 5
+
+- name: kms_with_only_logs_after
+  description: KMS only logs after configurations
+  configuration_parameters:
+    BUCKET_TYPE: custom
+    BUCKET_NAME: wazuh-kms-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: custom
+    bucket_name: wazuh-kms-integration-tests
+    only_logs_after: 2022-NOV-20
+    expected_results: 3
+
+- name: macie_with_only_logs_after
+  description: Macie only logs after configurations
+  configuration_parameters:
+    BUCKET_TYPE: custom
+    BUCKET_NAME: wazuh-macie-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: custom
+    bucket_name: wazuh-macie-integration-tests
+    only_logs_after: 2022-NOV-20
+    expected_results: 3
+
+- name: trusted_avisor_with_only_logs_after
+  description: Trusted Advisor only logs after configurations
+  configuration_parameters:
+    BUCKET_TYPE: custom
+    BUCKET_NAME: wazuh-trusted-advisor-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: custom
+    bucket_name: wazuh-trusted-advisor-integration-tests
+    only_logs_after: 2022-NOV-20
+    expected_results: 3
+
+- name: guardduty_with_only_logs_after
+  description: GuardDuty only logs after configurations
+  configuration_parameters:
+    BUCKET_TYPE: guardduty
+    BUCKET_NAME: wazuh-guardduty-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: guardduty
+    bucket_name: wazuh-guardduty-integration-tests
+    only_logs_after: 2022-NOV-20
+    expected_results: 3
+
+- name: native_guardduty_with_only_logs_after
+  description: Native GuardDuty only logs after configurations
+  configuration_parameters:
+    BUCKET_TYPE: guardduty
+    BUCKET_NAME: wazuh-native-guardduty-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: guardduty
+    bucket_name: wazuh-native-guardduty-integration-tests
+    only_logs_after: 2022-NOV-20
+    expected_results: 3
+
+- name: waf_with_only_logs_after
+  description: WAF only logs after configurations
+  configuration_parameters:
+    BUCKET_TYPE: waf
+    BUCKET_NAME: wazuh-waf-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: waf
+    bucket_name: wazuh-waf-integration-tests
+    only_logs_after: 2022-NOV-20
+    expected_results: 3
+
+- name: server_access_with_only_logs_after
+  description: Server Access only logs after configurations
+  configuration_parameters:
+    BUCKET_TYPE: server_access
+    BUCKET_NAME: wazuh-server-access-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: server_access
+    bucket_name: wazuh-server-access-integration-tests
+    only_logs_after: 2022-NOV-20
+    expected_results: 3
+    table_name: s3_server_access
+
+- name: cisco_umbrella_with_only_logs_after
+  description: Umbrella only logs after configurations
+  configuration_parameters:
+    BUCKET_TYPE: cisco_umbrella
+    BUCKET_NAME: wazuh-umbrella-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
+    PATH: dnslogs
+  metadata:
+    resource_type: bucket
+    bucket_type: cisco_umbrella
+    bucket_name: wazuh-umbrella-integration-tests
+    only_logs_after: 2022-NOV-20
+    expected_results: 3
+    path: dnslogs
