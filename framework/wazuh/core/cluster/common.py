@@ -1359,11 +1359,7 @@ class WazuhCommon:
             raise exception.WazuhClusterError(3027, extra_message=task_id)
 
         if task_id not in self.sync_tasks:
-            if os.path.exists(safe_path):
-                try:
-                    os.remove(safe_path)
-                except Exception as e:
-                    self.get_logger(logger_tag).error(f"Attempt to delete file {safe_path} failed: {e}")
+            self.get_logger(logger_tag).error(f"Task {task_id} not found in sync_tasks")
             raise exception.WazuhClusterError(3027, extra_message=task_id)
 
         # Set full path to file for task 'task_id' and notify it is ready to be read, so the lock is released.
