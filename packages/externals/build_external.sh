@@ -539,22 +539,15 @@ stage_precompiled() {
     fi
 }
 
-if { [ "${SYSTEM}" = "deb" ] || [ "${SYSTEM}" = "rpm" ]; }; then
-    # Stage on every Linux leg regardless of BUILD_TARGET, so the per-leg
-    # tarball is binary-complete for these deps. Otherwise a consumer that
-    # extracts manager-leg output (or merges several legs into one S3 tree)
-    # gets a source-only libbpf-bootstrap.tar.gz and a later agent build
-    # blows up in tools/cmake/FindBpfObject.cmake with
-    # `BPFOBJECT_CLANG_EXE-NOTFOUND` because the builder image has no
-    # BPF-capable clang. Same idea for libffi on agent legs.
-    # The CMakeLists.txt if(EXISTS ...) short-circuits decide whether the
-    # current leg actually consumes the staged binary, so staging unused
-    # binaries is harmless.
-
-    # TEMP testing if we can build this ourselves on this workflow
-    # stage_precompiled libbpf-bootstrap libbpf-bootstrap/build/modern.bpf.o
-    # stage_precompiled libffi libffi/server/.libs/libffi.a
-fi
+# NOTE: precompiled staging of libbpf-bootstrap and libffi is temporarily
+# disabled — we are testing whether this workflow can build them from
+# source instead of reusing the precompiled tarballs from
+# packages.wazuh.com. When staged, src/external/CMakeLists.txt's
+# if(EXISTS ...) short-circuits skip the from-source ExternalProject_Add;
+# with staging off, `make build-external` will exercise the real build:
+#   - libbpf-bootstrap: needs a BPF-capable clang in the builder image
+#   - libffi: ExternalProject_Add from-source path under the Make generator
+# The stage_precompiled() helper above is kept for easy re-enablement.
 
 log "building externals via 'make build-external TARGET=${MAKE_TARGET}'"
 # `build-external` (defined at src/Makefile:372) configures cmake then builds
