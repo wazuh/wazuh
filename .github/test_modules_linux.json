@@ -18,6 +18,168 @@
       ]
     },
     {
+      "name": "aws",
+      "pytest_target": "test_aws/",
+      "tiers": ["0 1"],
+      "timeout_minutes": 120,
+      "setup_aws_credentials": true,
+      "paths": [
+        ".github/workflows/5_testintegration_linux-integration-tests.yml",
+        ".github/test_modules_linux.json",
+        "src/config/src/wmodules-aws.c",
+        "src/wazuh_modules/src/wm_aws.c",
+        "src/wazuh_modules/src/wm_aws.h",
+        "wodles/aws/wazuh_integration.py",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_aws/**"
+      ]
+    },
+    {
+      "name": "aws_parser",
+      "pytest_target": "test_aws/test_parser.py",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/aws_s3.py",
+        "wodles/aws/aws_tools.py"
+      ]
+    },
+    {
+      "name": "aws_bucket_base",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k \"cloudtrail or guardduty or config or alb or clb or nlb or server_access or cisco or vpc or waf or kms or macie or trusted_advisor\"",
+      "tiers": ["0 1"],
+      "timeout_minutes": 120,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/buckets_s3/aws_bucket.py"
+      ]
+    },
+    {
+      "name": "aws_cloudtrail",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k cloudtrail",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/buckets_s3/cloudtrail.py"
+      ]
+    },
+    {
+      "name": "aws_config",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k config",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/buckets_s3/config.py"
+      ]
+    },
+    {
+      "name": "aws_guardduty",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k guardduty",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/buckets_s3/guardduty.py"
+      ]
+    },
+    {
+      "name": "aws_loadbalancers",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k \"alb or clb or nlb\"",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/buckets_s3/load_balancers.py"
+      ]
+    },
+    {
+      "name": "aws_server_access",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k server_access",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/buckets_s3/server_access.py"
+      ]
+    },
+    {
+      "name": "aws_umbrella",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k cisco",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/buckets_s3/umbrella.py"
+      ]
+    },
+    {
+      "name": "aws_vpcflow",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k vpc",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/buckets_s3/vpcflow.py"
+      ]
+    },
+    {
+      "name": "aws_waf",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k waf",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/buckets_s3/waf.py"
+      ]
+    },
+    {
+      "name": "aws_cloudwatch",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k cloudwatch",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/services/cloudwatchlogs.py",
+        "wodles/aws/services/aws_service.py"
+      ]
+    },
+    {
+      "name": "aws_inspector",
+      "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k inspector",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/services/inspector.py",
+        "wodles/aws/services/aws_service.py"
+      ]
+    },
+    {
+      "name": "aws_custom_bucket",
+      "pytest_target": "test_aws/test_custom_bucket.py",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "setup_aws_credentials": true,
+      "paths": [
+        "wodles/aws/subscribers/**"
+      ]
+    },
+    {
       "name": "enrollment",
       "pytest_target": "test_enrollment/",
       "tiers": ["0 1"],

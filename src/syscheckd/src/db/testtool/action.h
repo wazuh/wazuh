@@ -34,15 +34,16 @@ struct RemoveFileAction final : public IAction
     void execute(std::unique_ptr<TestContext>& ctx, const nlohmann::json& value) override
     {
         auto retVal = false;
+
         try
         {
             DB::instance().removeFile(value.at("file_path").get_ref<const std::string&>());
             retVal = true;
         }
-        catch (const std::exception &e)
+        catch (const std::exception& e)
         {
             std::cout << "Error removing file: "
-                << value.at("file_path").get_ref<const std::string&>() << std::endl;
+                      << value.at("file_path").get_ref<const std::string&>() << std::endl;
         }
 
         std::stringstream oFileName;
@@ -50,10 +51,11 @@ struct RemoveFileAction final : public IAction
         const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
 
         std::ofstream outputFile{ outputFileName };
-        const nlohmann::json jsonResult = {
-                { "result", retVal },
-                { "action", "RemoveFile" }
-            };
+        const nlohmann::json jsonResult =
+        {
+            { "result", retVal },
+            { "action", "RemoveFile" }
+        };
         outputFile << jsonResult.dump() << std::endl;
     }
 };
@@ -64,29 +66,33 @@ struct GetFileAction final : public IAction
     {
         auto retVal = false;
         nlohmann::json jsonReturn;
+
         try
         {
             DB::instance().getFile(value.at("file_path").get_ref<const std::string&>(),
-                [&jsonReturn](const nlohmann::json& file) {
-                    jsonReturn = file;
-                });
+                                   [&jsonReturn](const nlohmann::json & file)
+            {
+                jsonReturn = file;
+            });
             retVal = true;
         }
-        catch (const std::exception &e)
+        catch (const std::exception& e)
         {
             std::cout << "Error getting file: "
-                << value.at("file_path").get_ref<const std::string&>() << std::endl;
+                      << value.at("file_path").get_ref<const std::string&>() << std::endl;
         }
+
         std::stringstream oFileName;
         oFileName << "action_" << ctx->currentId << ".json";
         const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
 
         std::ofstream outputFile{ outputFileName };
-        const nlohmann::json jsonResult = {
-                { "result", retVal },
-                { "value", jsonReturn },
-                { "action", "GetFile" }
-            };
+        const nlohmann::json jsonResult =
+        {
+            { "result", retVal },
+            { "value", jsonReturn },
+            { "action", "GetFile" }
+        };
         outputFile << jsonResult.dump() << std::endl;
     }
 };
@@ -97,6 +103,7 @@ struct CountEntriesAction final : public IAction
     {
         auto retVal = false;
         int count = 0;
+
         try
         {
             const auto filterType
@@ -107,21 +114,23 @@ struct CountEntriesAction final : public IAction
             count = DB::instance().countEntries(value.at("table").get_ref<const std::string&>(), filterType);
             retVal = true;
         }
-        catch (const std::exception &e)
+        catch (const std::exception& e)
         {
             std::cout << "Error counting entries: "
-                << value.at("filter_type").get<int32_t>() << ", " << e.what() << std::endl;
+                      << value.at("filter_type").get<int32_t>() << ", " << e.what() << std::endl;
         }
+
         std::stringstream oFileName;
         oFileName << "action_" << ctx->currentId << ".json";
         const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
 
         std::ofstream outputFile{ outputFileName };
-        const nlohmann::json jsonResult = {
-                {"result", retVal },
-                {"value", count},
-                {"action", "CountEntries"}
-            };
+        const nlohmann::json jsonResult =
+        {
+            {"result", retVal },
+            {"value", count},
+            {"action", "CountEntries"}
+        };
         outputFile << jsonResult.dump() << std::endl;
     }
 };
@@ -132,29 +141,33 @@ struct UpdateFileAction final : public IAction
     {
         auto retVal { false };
         nlohmann::json jsonEvent;
+
         try
         {
             DB::instance().updateFile(value,
-            [&jsonEvent](int, const nlohmann::json data) {
+                                      [&jsonEvent](int, const nlohmann::json data)
+            {
                 jsonEvent.push_back(data);
             });
             retVal = true;
         }
-        catch (const std::exception &e)
+        catch (const std::exception& e)
         {
             std::cout << "Error updating file: "
-                << value.at("data").get_ref<const std::string&>() << std::endl;
+                      << value.at("data").get_ref<const std::string&>() << std::endl;
         }
+
         std::stringstream oFileName;
         oFileName << "action_" << ctx->currentId << ".json";
         const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
 
         std::ofstream outputFile{ outputFileName };
-        const nlohmann::json jsonResult = {
-                {"result", retVal },
-                {"jsonEvent", jsonEvent },
-                {"action", "UpdateFile" }
-            };
+        const nlohmann::json jsonResult =
+        {
+            {"result", retVal },
+            {"jsonEvent", jsonEvent },
+            {"action", "UpdateFile" }
+        };
         outputFile << jsonResult.dump() << std::endl;
     }
 };
@@ -165,6 +178,7 @@ struct SearchFileAction final : public IAction
     {
         auto retVal = false;
         nlohmann::json jsonReturn;
+
         try
         {
             const auto searchType
@@ -173,29 +187,32 @@ struct SearchFileAction final : public IAction
             };
             DB::instance().searchFile(
                 std::make_tuple(searchType,
-                    value.at("search_value_path").get_ref<const std::string&>(),
-                    value.at("search_value_inode").get_ref<const std::string&>(),
-                    value.at("search_value_dev").get_ref<const std::string&>()),
-                [&jsonReturn](const nlohmann::json& data) {
-                    jsonReturn.push_back(data);
-                });
+                                value.at("search_value_path").get_ref<const std::string&>(),
+                                value.at("search_value_inode").get_ref<const std::string&>(),
+                                value.at("search_value_dev").get_ref<const std::string&>()),
+                [&jsonReturn](const nlohmann::json & data)
+            {
+                jsonReturn.push_back(data);
+            });
             retVal = true;
         }
-        catch (const std::exception &e)
+        catch (const std::exception& e)
         {
             std::cout << "Error searching files: "
-                << value["file"].get_ref<const std::string&>() << std::endl;
+                      << value["file"].get_ref<const std::string&>() << std::endl;
         }
+
         std::stringstream oFileName;
         oFileName << "action_" << ctx->currentId << ".json";
         const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
 
         std::ofstream outputFile{ outputFileName };
-        const nlohmann::json jsonResult = {
-                {"result", retVal },
-                {"value", jsonReturn },
-                {"action", "SearchFile" }
-            };
+        const nlohmann::json jsonResult =
+        {
+            {"result", retVal },
+            {"value", jsonReturn },
+            {"action", "SearchFile" }
+        };
         outputFile << jsonResult.dump() << std::endl;
     }
 };
@@ -205,6 +222,7 @@ struct StartTransactionAction final : public IAction
     void execute(std::unique_ptr<TestContext>& ctx, const nlohmann::json& value) override
     {
         auto retVal = false;
+
         try
         {
             ctx->handle = DB::instance().DBSyncHandle();
@@ -226,11 +244,12 @@ struct StartTransactionAction final : public IAction
                     jsonResult = nlohmann::json::parse(inputFile);
                 }
 
-                jsonResult["data"].push_back( {
-                        { "Operation type", RETURN_TYPE_OPERATION.at(type) },
-                        { "value", json },
-                        { "action", "SyncTxnRows" }
-                    } );
+                jsonResult["data"].push_back(
+                {
+                    { "Operation type", RETURN_TYPE_OPERATION.at(type) },
+                    { "value", json },
+                    { "action", "SyncTxnRows" }
+                } );
 
                 std::ofstream outputFile{ outputFileName };
                 outputFile << jsonResult.dump(4) << std::endl;
@@ -244,19 +263,21 @@ struct StartTransactionAction final : public IAction
 
             retVal = true;
         }
-        catch (const std::exception &e)
+        catch (const std::exception& e)
         {
             std::cout << "Error starting transaction: " << e.what() << std::endl;
         }
+
         std::stringstream oFileName;
         oFileName << "action_" << ctx->currentId << ".json";
         const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
 
         std::ofstream outputFile{ outputFileName };
-        const nlohmann::json jsonResult = {
-                {"result", retVal },
-                {"action", "StartTransaction" }
-            };
+        const nlohmann::json jsonResult =
+        {
+            {"result", retVal },
+            {"action", "StartTransaction" }
+        };
         outputFile << jsonResult.dump() << std::endl;
     }
 };
@@ -282,10 +303,11 @@ struct SyncTxnRowsAction final : public IAction
         const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
 
         std::ofstream outputFile{ outputFileName };
-        const nlohmann::json jsonResult = {
-                {"result", retVal },
-                {"action", "SyncTxnRows" }
-            };
+        const nlohmann::json jsonResult =
+        {
+            {"result", retVal },
+            {"action", "SyncTxnRows" }
+        };
 
         outputFile << jsonResult.dump() << std::endl;
     }
@@ -310,11 +332,12 @@ struct GetDeletedRowsAction final : public IAction
                     jsonResult = nlohmann::json::parse(inputFile);
                 }
 
-                jsonResult["data"].push_back( {
+                jsonResult["data"].push_back(
+                {
                     {"Operation type", RETURN_TYPE_OPERATION.at(type) },
                     {"value", json },
                     {"action", "GetDeletedRows" }
-                    } );
+                } );
 
                 std::ofstream outputFile{ txnOutputFileName };
                 outputFile << jsonResult.dump() << std::endl;
@@ -322,6 +345,7 @@ struct GetDeletedRowsAction final : public IAction
         };
 
         auto retVal { false };
+
         try
         {
             ctx->txn->getDeletedRows(callbackDelete);
@@ -336,10 +360,11 @@ struct GetDeletedRowsAction final : public IAction
         oFileName << "action_" << ctx->currentId << ".json";
         const auto& outputFileName{ ctx->outputPath + "/" + oFileName.str() };
         std::ofstream outputFile{ outputFileName };
-        const nlohmann::json& jsonResult {
-                {"result", retVal },
-                {"action", "GetDeletedRows" }
-            };
+        const nlohmann::json& jsonResult
+        {
+            {"result", retVal },
+            {"action", "GetDeletedRows" }
+        };
         outputFile << jsonResult.dump() << std::endl;
     }
 };

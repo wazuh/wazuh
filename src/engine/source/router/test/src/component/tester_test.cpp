@@ -387,7 +387,16 @@ TEST_F(OrchestratorTesterTest, IngestTest)
 
     auto result = base::getResponse(optResult);
 
-    EXPECT_STREQ(result.event()->str().c_str(), R"({"message":"test"})");
+    // The TesterWorker stamps @timestamp and wazuh/event/id before processing
+    auto& ev = result.event();
+    EXPECT_TRUE(ev->isString("/message"));
+    std::string msg;
+    EXPECT_EQ(ev->getString(msg, "/message"), json::RetGet::Success);
+    EXPECT_STREQ(msg.c_str(), "test");
+    EXPECT_TRUE(ev->exists("/@timestamp"));
+    EXPECT_TRUE(ev->isString("/@timestamp"));
+    EXPECT_TRUE(ev->exists("/wazuh/event/id"));
+    EXPECT_TRUE(ev->isString("/wazuh/event/id"));
 
     m_orchestrator->stop();
 }

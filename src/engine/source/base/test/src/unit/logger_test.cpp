@@ -541,7 +541,8 @@ TEST_F(DailyRotatingFileSinkTest, SingleRotationWhenTimeAndSizeCoincide)
     auto sink = std::make_shared<logging::daily_rotating_file_sink>(logging::daily_rotating_file_sink::Config {
         .filePath = m_logFile,
         .maxFileSize = 5 * 1024,     // 5KB
-        .rotationIntervalSeconds = 1 // Deterministic test-only time rotation
+        .rotationIntervalSeconds = 1, // Deterministic test-only time rotation
+        .compressionEnabled = false
     });
 
     auto logger = std::make_shared<spdlog::logger>("test", sink);

@@ -3,6 +3,7 @@
 
 #include <atomic>
 #include <mutex>
+#include <optional>
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>
@@ -48,10 +49,10 @@ private:
     /**
      * @brief Get remote per-type hashes from special IOC hashes document.
      *
-     * @return Map(type -> hash)
+     * @return Optional Map(type -> hash). Returns std::nullopt if the IOC consumer is not idle.
      * @throws std::runtime_error on errors.
      */
-    std::unordered_map<std::string, std::string> getRemoteHashesFromRemote();
+    std::optional<std::unordered_map<std::string, std::string>> getRemoteHashesFromRemote();
 
     /**
      * @brief Download IOCs from indexer and populate a KVDB database
@@ -61,9 +62,10 @@ private:
      *
      * @param iocType IOC type to filter (e.g., connection, url_domain, url_full, hash_md5, hash_sha1, hash_sha256)
      * @param dbName Database name in kvdbioc to populate
+     * @return true if the download succeeded, false if the IOC consumer is not idle (data is being updated)
      * @throws std::runtime_error on errors.
      */
-    void downloadAndPopulateDB(std::string_view iocType, const std::string& dbName);
+    bool downloadAndPopulateDB(std::string_view iocType, const std::string& dbName);
 
     /**
      * @brief Synchronize a single IOC type

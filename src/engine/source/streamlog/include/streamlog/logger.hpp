@@ -28,8 +28,9 @@
  *
  * ## Concepts
  *
- * - **Channel Registration**
- *   Clients call `registerLog(name, config)` to declare a log stream,
+ * - **Channel Auto-Registration**
+ *   Clients call `ensureAndGetWriter(name, config, ext)` to obtain a writer.
+ *   If the channel doesn't exist yet, it is created on demand with an isolated basePath.
  *
  * - **RotationConfig**
  *   Defines `basePath`, `pattern`, optional `maxSize`, `bufferSize`, optional compression settings,
@@ -109,8 +110,8 @@
  *  to the current log file.
  *
  * - **Runtime API**
- *   - `updateConfig(name, newConfig)` modifies rotation parameters on the fly.
- *   - `rotateNow(name)` forces immediate rotation.
+ *   - `destroyChannel(name)` destroys a channel (only when no active writers).
+ *   - `requestShutdown()` cancels in-flight compressions and releases all channels.
  *
  * - **Error Handling**
  *   - On I/O failure, writes are discarded and an emergency error log is emitted.
@@ -140,9 +141,9 @@ class ChannelHandler; // Forward declaration of ChannelHandler
  *
  * ### Thread Safety
  * All public methods are protected by a `shared_mutex`:
- * - Read operations (`hasChannel`, `getConfig`, `getActiveWritersCount`)
+ * - Read operations (`hasChannel`, `getActiveWritersCount`)
  *   take a shared (read) lock.
- * - Write operations (`registerLog`, `updateConfig`, `destroyChannel`, `requestShutdown`)
+ * - Write operations (`destroyChannel`, `requestShutdown`, `ensureAndGetWriter`)
  *   take a unique (write) lock.
  *
  * @see RotationConfig
@@ -169,22 +170,6 @@ public:
         , m_store(store) {};
 
     /**
-     * @brief Register a new named log channel.
-     *
-     * Creates a `ChannelHandler`, validates and normalises `cfg`, opens the initial output
-     * file, and creates the hard-link shortcut `<basePath>/<name>.<ext>`. The worker
-     * thread is **not** started until the first `ensureAndGetWriter()` call.
-     *
-     * @param name Unique channel name (alphanumeric, dashes, underscores; max 255 chars).
-     * @param cfg  Rotation and compression configuration.
-     * @param ext  File extension for the "latest" hard-link (e.g. `"json"`, `"log"`).
-     *
-     * @throws std::runtime_error If `name` is already registered, `cfg` is invalid,
-     *         the base path does not exist, or the initial file cannot be opened.
-     */
-    void registerLog(const std::string& name, const RotationConfig& cfg, std::string_view ext);
-
-    /**
      * @brief Checks if a log channel with the specified name exists.
      *
      * @param name The name of the log channel to check.
@@ -196,33 +181,9 @@ public:
         return m_channels.find(name) != m_channels.end();
     }
 
-    /**
-     * @brief Replace the configuration of an existing log channel.
-     *
-     * The channel is destroyed and re-created with the new configuration. This is only
-     * allowed when there are **no active writers**; otherwise an exception is thrown.
-     *
-     * @param name Existing channel name.
-     * @param cfg  New rotation and compression configuration.
-     * @param ext  File extension for the "latest" hard-link.
-     *
-     * @throws std::runtime_error If the channel does not exist, has active writers, or
-     *         the new configuration is invalid.
-     */
-    void updateConfig(const std::string& name, const RotationConfig& cfg, std::string_view ext);
-
     /// @copydoc ILogManager::ensureAndGetWriter
     [[nodiscard]] std::shared_ptr<WriterEvent>
     ensureAndGetWriter(const std::string& name, const RotationConfig& cfg, std::string_view ext) override;
-
-    /**
-     * @brief Gets the current configuration of a log channel.
-     *
-     * @param name The name of the log channel.
-     * @return The current rotation configuration of the log channel.
-     * @throws std::runtime_error if the log channel does not exist.
-     */
-    const RotationConfig& getConfig(const std::string& name) const;
 
     /**
      * @brief Get the Active Writers Count for a specific channel.

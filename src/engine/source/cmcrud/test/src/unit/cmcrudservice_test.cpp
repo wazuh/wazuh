@@ -28,6 +28,82 @@ using cm::store::MockICMStoreNSReader;
 using cm::store::NamespaceId;
 using cm::store::ResourceType;
 
+// Common base: store + validator + service
+class CrudServiceBase : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        store = std::make_shared<NiceMock<MockICMstore>>();
+        validator = std::make_shared<NiceMock<MockValidator>>();
+        service = std::make_unique<CrudService>(store, validator);
+    }
+
+    void TearDown() override {}
+
+    std::shared_ptr<NiceMock<MockICMstore>> store;
+    std::shared_ptr<NiceMock<MockValidator>> validator;
+    std::unique_ptr<CrudService> service;
+};
+
+// Constructor tests
+class CrudServiceCtorTest : public ::testing::Test
+{
+protected:
+    void SetUp() override {}
+    void TearDown() override {}
+};
+
+// Namespace management tests
+class CrudServiceNamespaceTest : public CrudServiceBase
+{
+};
+
+// Policy tests
+class CrudServicePolicyTest : public CrudServiceBase
+{
+};
+
+// List-resources tests
+class CrudServiceListResourcesTest : public CrudServiceBase
+{
+};
+
+// Get-resource-by-UUID tests
+class CrudServiceGetResourceTest : public CrudServiceBase
+{
+};
+
+// Upsert Integration tests
+class CrudServiceUpsertIntegrationTest : public CrudServiceBase
+{
+};
+
+// Upsert KVDB tests
+class CrudServiceUpsertKVDBTest : public CrudServiceBase
+{
+};
+
+// Upsert Decoder / Asset tests
+class CrudServiceUpsertDecoderTest : public CrudServiceBase
+{
+};
+
+// Delete-resource tests
+class CrudServiceDeleteResourceTest : public CrudServiceBase
+{
+};
+
+// Validate-resource tests
+class CrudServiceValidateResourceTest : public CrudServiceBase
+{
+};
+
+// Import-namespace tests
+class CrudServiceImportNamespaceTest : public CrudServiceBase
+{
+};
+
 // ---------------------------------------------------------------------
 // JSON fixtures for realistic resources
 // ---------------------------------------------------------------------
@@ -147,7 +223,7 @@ std::string getStringOrEmpty(const json::Json& json, std::string_view path)
 // Constructor tests
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, Construction_NullStoreThrows)
+TEST_F(CrudServiceCtorTest, Construction_NullStoreThrows)
 {
     std::shared_ptr<cm::store::ICMStore> nullStore;
     auto validator = std::make_shared<NiceMock<MockValidator>>();
@@ -155,7 +231,7 @@ TEST(CrudService_Unit, Construction_NullStoreThrows)
     EXPECT_THROW(CrudService service(nullStore, validator), std::invalid_argument);
 }
 
-TEST(CrudService_Unit, Construction_NullValidatorThrows)
+TEST_F(CrudServiceCtorTest, Construction_NullValidatorThrows)
 {
     auto store = std::make_shared<NiceMock<MockICMstore>>();
     std::shared_ptr<builder::IValidator> nullValidator;
@@ -167,19 +243,15 @@ TEST(CrudService_Unit, Construction_NullValidatorThrows)
 // listNamespaces
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, ListNamespaces_ForwardsToStore)
+TEST_F(CrudServiceNamespaceTest, ListNamespaces_ForwardsToStore)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     std::vector<NamespaceId> expected;
     expected.emplace_back("ns1");
     expected.emplace_back("ns2");
 
     EXPECT_CALL(*store, getNamespaces()).Times(1).WillOnce(Return(expected));
 
-    auto result = service.listNamespaces();
+    auto result = service->listNamespaces();
     ASSERT_EQ(result.size(), 2u);
     EXPECT_EQ(result[0].toStr(), "ns1");
     EXPECT_EQ(result[1].toStr(), "ns2");
@@ -189,33 +261,25 @@ TEST(CrudService_Unit, ListNamespaces_ForwardsToStore)
 // createNamespace
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, CreateNamespace_Success)
+TEST_F(CrudServiceNamespaceTest, CreateNamespace_Success)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
 
     EXPECT_CALL(*store, createNamespace(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1);
 
-    EXPECT_NO_THROW(service.createNamespace(nsId));
+    EXPECT_NO_THROW(service->createNamespace(nsId));
 }
 
-TEST(CrudService_Unit, CreateNamespace_StoreFailureIsWrapped)
+TEST_F(CrudServiceNamespaceTest, CreateNamespace_StoreFailureIsWrapped)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
 
     EXPECT_CALL(*store, createNamespace(_)).Times(1).WillOnce(Throw(std::runtime_error {"low-level error"}));
 
     try
     {
-        service.createNamespace(nsId);
+        service->createNamespace(nsId);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -229,33 +293,25 @@ TEST(CrudService_Unit, CreateNamespace_StoreFailureIsWrapped)
 // deleteNamespace
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, DeleteNamespace_Success)
+TEST_F(CrudServiceNamespaceTest, DeleteNamespace_Success)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
 
     EXPECT_CALL(*store, deleteNamespace(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1);
 
-    EXPECT_NO_THROW(service.deleteNamespace(nsId));
+    EXPECT_NO_THROW(service->deleteNamespace(nsId));
 }
 
-TEST(CrudService_Unit, DeleteNamespace_StoreFailureIsWrapped)
+TEST_F(CrudServiceNamespaceTest, DeleteNamespace_StoreFailureIsWrapped)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
 
     EXPECT_CALL(*store, deleteNamespace(_)).Times(1).WillOnce(Throw(std::runtime_error {"low-level error"}));
 
     try
     {
-        service.deleteNamespace(nsId);
+        service->deleteNamespace(nsId);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -269,12 +325,8 @@ TEST(CrudService_Unit, DeleteNamespace_StoreFailureIsWrapped)
 // upsertPolicy
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, UpsertPolicy_Success)
+TEST_F(CrudServicePolicyTest, UpsertPolicy_Success)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -287,15 +339,11 @@ TEST(CrudService_Unit, UpsertPolicy_Success)
     EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
     EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
 
-    EXPECT_NO_THROW(service.upsertPolicy(nsId, makeJsonPayload(kPolicyJson)));
+    EXPECT_NO_THROW(service->upsertPolicy(nsId, makeJsonPayload(kPolicyJson)));
 }
 
-TEST(CrudService_Unit, UpsertPolicy_AcceptsJsonPayload)
+TEST_F(CrudServicePolicyTest, UpsertPolicy_AcceptsJsonPayload)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -308,15 +356,11 @@ TEST(CrudService_Unit, UpsertPolicy_AcceptsJsonPayload)
     EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
     EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
 
-    EXPECT_NO_THROW(service.upsertPolicy(nsId, makeJsonPayload(kPolicyJson)));
+    EXPECT_NO_THROW(service->upsertPolicy(nsId, makeJsonPayload(kPolicyJson)));
 }
 
-TEST(CrudService_Unit, UpsertPolicy_ValidationFailureIsWrapped)
+TEST_F(CrudServicePolicyTest, UpsertPolicy_ValidationFailureIsWrapped)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -331,7 +375,7 @@ TEST(CrudService_Unit, UpsertPolicy_ValidationFailureIsWrapped)
 
     try
     {
-        service.upsertPolicy(nsId, makeJsonPayload(kPolicyJson));
+        service->upsertPolicy(nsId, makeJsonPayload(kPolicyJson));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -341,12 +385,8 @@ TEST(CrudService_Unit, UpsertPolicy_ValidationFailureIsWrapped)
     }
 }
 
-TEST(CrudService_Unit, UpsertPolicy_TopLevelArrayIsRejected)
+TEST_F(CrudServicePolicyTest, UpsertPolicy_TopLevelArrayIsRejected)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -359,7 +399,7 @@ TEST(CrudService_Unit, UpsertPolicy_TopLevelArrayIsRejected)
 
     try
     {
-        service.upsertPolicy(nsId, makeJsonPayload(kArrayJSON));
+        service->upsertPolicy(nsId, makeJsonPayload(kArrayJSON));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -368,12 +408,8 @@ TEST(CrudService_Unit, UpsertPolicy_TopLevelArrayIsRejected)
     }
 }
 
-TEST(CrudService_Unit, UpsertPolicy_InvalidOriginSpaceIsRejected)
+TEST_F(CrudServicePolicyTest, UpsertPolicy_InvalidOriginSpaceIsRejected)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -405,7 +441,7 @@ TEST(CrudService_Unit, UpsertPolicy_InvalidOriginSpaceIsRejected)
 
     try
     {
-        service.upsertPolicy(nsId, makeJsonPayload(kPolicyWithInvalidOriginSpace));
+        service->upsertPolicy(nsId, makeJsonPayload(kPolicyWithInvalidOriginSpace));
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -419,12 +455,8 @@ TEST(CrudService_Unit, UpsertPolicy_InvalidOriginSpaceIsRejected)
 // deletePolicy
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, DeletePolicy_Success)
+TEST_F(CrudServicePolicyTest, DeletePolicy_Success)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -434,19 +466,15 @@ TEST(CrudService_Unit, DeletePolicy_Success)
 
     EXPECT_CALL(*nsPtr, deletePolicy()).Times(1);
 
-    EXPECT_NO_THROW(service.deletePolicy(nsId));
+    EXPECT_NO_THROW(service->deletePolicy(nsId));
 }
 
 // ---------------------------------------------------------------------
 // listResources
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, ListResources_Success)
+TEST_F(CrudServiceListResourcesTest, ListResources_Success)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsReader = std::make_shared<NiceMock<MockICMStoreNSReader>>();
 
@@ -460,7 +488,7 @@ TEST(CrudService_Unit, ListResources_Success)
 
     EXPECT_CALL(*nsReader, getCollection(ResourceType::DECODER)).Times(1).WillOnce(Return(collection));
 
-    auto result = service.listResources(nsId, ResourceType::DECODER);
+    auto result = service->listResources(nsId, ResourceType::DECODER);
     ASSERT_EQ(result.size(), 2u);
 
     EXPECT_EQ(result[0].uuid, "uuid-1");
@@ -469,31 +497,23 @@ TEST(CrudService_Unit, ListResources_Success)
     EXPECT_EQ(result[1].name, "decoder/other/0");
 }
 
-TEST(CrudService_Unit, ListResources_MissingNamespaceThrows)
+TEST_F(CrudServiceListResourcesTest, ListResources_MissingNamespaceThrows)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
 
     EXPECT_CALL(*store, getNSReader(Truly([&nsId](const NamespaceId& id) { return id.toStr() == nsId.toStr(); })))
         .Times(1)
         .WillOnce(Return(std::shared_ptr<cm::store::ICMStoreNSReader> {}));
 
-    EXPECT_THROW(service.listResources(nsId, ResourceType::DECODER), std::runtime_error);
+    EXPECT_THROW(service->listResources(nsId, ResourceType::DECODER), std::runtime_error);
 }
 
 // ---------------------------------------------------------------------
 // getResourceByUUID - Integration
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, GetResourceByUUID_Integration)
+TEST_F(CrudServiceGetResourceTest, GetResourceByUUID_Integration)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     const std::string uuid {"5c1df6b6-1458-4b2e-9001-96f67a8b12c8"};
 
@@ -522,18 +542,14 @@ TEST(CrudService_Unit, GetResourceByUUID_Integration)
 
     EXPECT_CALL(*nsReader, getIntegrationByUUID(uuid)).Times(1).WillOnce(Return(integ));
 
-    const auto result = service.getResourceByUUID(nsId, uuid);
+    const auto result = service->getResourceByUUID(nsId, uuid);
 
     EXPECT_EQ(getStringOrEmpty(result, "/id"), "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
     EXPECT_EQ(getStringOrEmpty(result, "/metadata/title"), "windows");
 }
 
-TEST(CrudService_Unit, GetResourceByUUID_Integration_ReturnsJsonObject)
+TEST_F(CrudServiceGetResourceTest, GetResourceByUUID_Integration_ReturnsJsonObject)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     const std::string uuid {"5c1df6b6-1458-4b2e-9001-96f67a8b12c8"};
 
@@ -562,7 +578,7 @@ TEST(CrudService_Unit, GetResourceByUUID_Integration_ReturnsJsonObject)
 
     EXPECT_CALL(*nsReader, getIntegrationByUUID(uuid)).Times(1).WillOnce(Return(integ));
 
-    const auto result = service.getResourceByUUID(nsId, uuid);
+    const auto result = service->getResourceByUUID(nsId, uuid);
 
     EXPECT_TRUE(result.isObject());
     EXPECT_EQ(getStringOrEmpty(result, "/id"), "5c1df6b6-1458-4b2e-9001-96f67a8b12c8");
@@ -573,12 +589,8 @@ TEST(CrudService_Unit, GetResourceByUUID_Integration_ReturnsJsonObject)
 // getResourceByUUID - KVDB
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, GetResourceByUUID_KVDB)
+TEST_F(CrudServiceGetResourceTest, GetResourceByUUID_KVDB)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     const std::string uuid {"82e215c4-988a-4f64-8d15-b98b2fc03a4f"};
 
@@ -609,7 +621,7 @@ TEST(CrudService_Unit, GetResourceByUUID_KVDB)
 
     EXPECT_CALL(*nsReader, getKVDBByUUID(uuid)).Times(1).WillOnce(Return(kvdb));
 
-    const auto result = service.getResourceByUUID(nsId, uuid);
+    const auto result = service->getResourceByUUID(nsId, uuid);
 
     EXPECT_EQ(getStringOrEmpty(result, "/id"), "82e215c4-988a-4f64-8d15-b98b2fc03a4f");
     EXPECT_EQ(getStringOrEmpty(result, "/metadata/title"), "windows_kerberos_status_code_to_code_name");
@@ -619,12 +631,8 @@ TEST(CrudService_Unit, GetResourceByUUID_KVDB)
 // getResourceByUUID - Asset (decoder)
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, GetResourceByUUID_Decoder)
+TEST_F(CrudServiceGetResourceTest, GetResourceByUUID_Decoder)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     const std::string uuid {"3f086ce2-32a4-42b0-be7e-40dcfb9c6160"};
 
@@ -647,7 +655,7 @@ TEST(CrudService_Unit, GetResourceByUUID_Decoder)
 
     EXPECT_CALL(*nsReader, getAssetByUUID(uuid)).Times(1).WillOnce(Return(assetJson));
 
-    const auto result = service.getResourceByUUID(nsId, uuid);
+    const auto result = service->getResourceByUUID(nsId, uuid);
 
     EXPECT_EQ(getStringOrEmpty(result, "/name"), "decoder/syslog/0");
     EXPECT_EQ(getStringOrEmpty(result, "/id"), "3f086ce2-32a4-42b0-be7e-40dcfb9c6160");
@@ -657,12 +665,8 @@ TEST(CrudService_Unit, GetResourceByUUID_Decoder)
 // upsertResource - Integration (create vs update)
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, UpsertIntegration_CreateWhenUUIDDoesNotExist)
+TEST_F(CrudServiceUpsertIntegrationTest, UpsertIntegration_CreateWhenUUIDDoesNotExist)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -678,15 +682,11 @@ TEST(CrudService_Unit, UpsertIntegration_CreateWhenUUIDDoesNotExist)
     EXPECT_CALL(*nsPtr, createResource("windows", ResourceType::INTEGRATION, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson)));
+    EXPECT_NO_THROW(service->upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson)));
 }
 
-TEST(CrudService_Unit, UpsertIntegration_UpdateWhenUUIDExists)
+TEST_F(CrudServiceUpsertIntegrationTest, UpsertIntegration_UpdateWhenUUIDExists)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -702,15 +702,11 @@ TEST(CrudService_Unit, UpsertIntegration_UpdateWhenUUIDExists)
     EXPECT_CALL(*nsPtr, updateResourceByUUID("5c1df6b6-1458-4b2e-9001-96f67a8b12c8", _)).Times(1);
     EXPECT_CALL(*nsPtr, createResource("windows", ResourceType::INTEGRATION, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson)));
+    EXPECT_NO_THROW(service->upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson)));
 }
 
-TEST(CrudService_Unit, UpsertIntegration_AcceptsJsonPayloadAndPassesJsonToStore)
+TEST_F(CrudServiceUpsertIntegrationTest, UpsertIntegration_AcceptsJsonPayloadAndPassesJsonToStore)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -736,19 +732,15 @@ TEST(CrudService_Unit, UpsertIntegration_AcceptsJsonPayloadAndPassesJsonToStore)
         .Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson)));
+    EXPECT_NO_THROW(service->upsertResource(nsId, ResourceType::INTEGRATION, makeJsonPayload(kIntegrationJson)));
 }
 
 // ---------------------------------------------------------------------
 // upsertResource - KVDB (create vs update)
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, UpsertKVDB_CreateWhenUUIDDoesNotExist)
+TEST_F(CrudServiceUpsertKVDBTest, UpsertKVDB_CreateWhenUUIDDoesNotExist)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -761,15 +753,11 @@ TEST(CrudService_Unit, UpsertKVDB_CreateWhenUUIDDoesNotExist)
     EXPECT_CALL(*nsPtr, createResource("windows_kerberos_status_code_to_code_name", ResourceType::KVDB, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByUUID(_, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kKVDBJson)));
+    EXPECT_NO_THROW(service->upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kKVDBJson)));
 }
 
-TEST(CrudService_Unit, UpsertKVDB_UpdateWhenUUIDExists)
+TEST_F(CrudServiceUpsertKVDBTest, UpsertKVDB_UpdateWhenUUIDExists)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -782,19 +770,15 @@ TEST(CrudService_Unit, UpsertKVDB_UpdateWhenUUIDExists)
     EXPECT_CALL(*nsPtr, updateResourceByUUID("82e215c4-988a-4f64-8d15-b98b2fc03a4f", _)).Times(1);
     EXPECT_CALL(*nsPtr, createResource("windows_kerberos_status_code_to_code_name", ResourceType::KVDB, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kKVDBJson)));
+    EXPECT_NO_THROW(service->upsertResource(nsId, ResourceType::KVDB, makeJsonPayload(kKVDBJson)));
 }
 
 // ---------------------------------------------------------------------
 // upsertResource - Asset (decoder) create vs update by name
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, UpsertDecoder_CreateWhenNameDoesNotExist)
+TEST_F(CrudServiceUpsertDecoderTest, UpsertDecoder_CreateWhenNameDoesNotExist)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -809,15 +793,11 @@ TEST(CrudService_Unit, UpsertDecoder_CreateWhenNameDoesNotExist)
     EXPECT_CALL(*nsPtr, createResource("decoder/syslog/0", ResourceType::DECODER, _)).Times(1);
     EXPECT_CALL(*nsPtr, updateResourceByName("decoder/syslog/0", ResourceType::DECODER, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::DECODER, makeJsonPayload(kDecoderJson)));
+    EXPECT_NO_THROW(service->upsertResource(nsId, ResourceType::DECODER, makeJsonPayload(kDecoderJson)));
 }
 
-TEST(CrudService_Unit, UpsertDecoder_UpdateWhenNameExists)
+TEST_F(CrudServiceUpsertDecoderTest, UpsertDecoder_UpdateWhenNameExists)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
 
@@ -832,19 +812,15 @@ TEST(CrudService_Unit, UpsertDecoder_UpdateWhenNameExists)
     EXPECT_CALL(*nsPtr, updateResourceByName("decoder/syslog/0", ResourceType::DECODER, _)).Times(1);
     EXPECT_CALL(*nsPtr, createResource("decoder/syslog/0", ResourceType::DECODER, _)).Times(0);
 
-    EXPECT_NO_THROW(service.upsertResource(nsId, ResourceType::DECODER, makeJsonPayload(kDecoderJson)));
+    EXPECT_NO_THROW(service->upsertResource(nsId, ResourceType::DECODER, makeJsonPayload(kDecoderJson)));
 }
 
 // ---------------------------------------------------------------------
 // deleteResourceByUUID
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, DeleteResourceByUUID_Success)
+TEST_F(CrudServiceDeleteResourceTest, DeleteResourceByUUID_Success)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"dev"};
     const std::string uuid {"some-uuid"};
 
@@ -856,19 +832,15 @@ TEST(CrudService_Unit, DeleteResourceByUUID_Success)
 
     EXPECT_CALL(*nsPtr, deleteResourceByUUID(uuid)).Times(1);
 
-    EXPECT_NO_THROW(service.deleteResourceByUUID(nsId, uuid));
+    EXPECT_NO_THROW(service->deleteResourceByUUID(nsId, uuid));
 }
 
 // ---------------------------------------------------------------------
 // validateResource
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, ValidateResource_Decoder_CallsValidateAssetShallow)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_Decoder_CallsValidateAssetShallow)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     static constexpr const char* kDecoderJsonStr = R"(
     {
       "name": "decoder/syslog/0",
@@ -881,15 +853,11 @@ TEST(CrudService_Unit, ValidateResource_Decoder_CallsValidateAssetShallow)
     payload = cm::store::detail::adaptDecoder(payload);
     EXPECT_CALL(*validator, validateAssetShallow(_)).Times(1).WillOnce(Return(base::noError()));
 
-    EXPECT_NO_THROW(service.validateResource(ResourceType::DECODER, payload));
+    EXPECT_NO_THROW(service->validateResource(ResourceType::DECODER, payload));
 }
 
-TEST(CrudService_Unit, ValidateResource_Decoder_ValidationFailureThrows)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_Decoder_ValidationFailureThrows)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     static constexpr const char* kDecoderJsonStr = R"(
     {
       "name": "decoder/syslog/0",
@@ -904,7 +872,7 @@ TEST(CrudService_Unit, ValidateResource_Decoder_ValidationFailureThrows)
 
     try
     {
-        service.validateResource(ResourceType::DECODER, payload);
+        service->validateResource(ResourceType::DECODER, payload);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -913,12 +881,8 @@ TEST(CrudService_Unit, ValidateResource_Decoder_ValidationFailureThrows)
     }
 }
 
-TEST(CrudService_Unit, ValidateResource_Integration_SuccessDoesNotTouchValidator)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_Integration_SuccessDoesNotTouchValidator)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     static constexpr const char* kIntegrationJsonStr = R"(
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
@@ -941,15 +905,11 @@ TEST(CrudService_Unit, ValidateResource_Integration_SuccessDoesNotTouchValidator
     EXPECT_CALL(*validator, softIntegrationValidate(_, _)).Times(0);
     EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(0);
 
-    EXPECT_NO_THROW(service.validateResource(ResourceType::INTEGRATION, payload));
+    EXPECT_NO_THROW(service->validateResource(ResourceType::INTEGRATION, payload));
 }
 
-TEST(CrudService_Unit, ValidateResource_KVDB_SuccessDoesNotTouchValidator)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_KVDB_SuccessDoesNotTouchValidator)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     static constexpr const char* kKvdbJsonStr = R"(
     {
       "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
@@ -967,19 +927,15 @@ TEST(CrudService_Unit, ValidateResource_KVDB_SuccessDoesNotTouchValidator)
 
     EXPECT_CALL(*validator, validateAssetShallow(_)).Times(0);
 
-    EXPECT_NO_THROW(service.validateResource(ResourceType::KVDB, payload));
+    EXPECT_NO_THROW(service->validateResource(ResourceType::KVDB, payload));
 }
 
 // ---------------------------------------------------------------------
 // validateResource - KVDB validation failures
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, ValidateResource_KVDB_MissingId_Throws)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_KVDB_MissingId_Throws)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     static constexpr const char* kKvdbMissingIdStr = R"(
     {
       "metadata": {
@@ -993,7 +949,7 @@ TEST(CrudService_Unit, ValidateResource_KVDB_MissingId_Throws)
 
     try
     {
-        service.validateResource(ResourceType::KVDB, payload);
+        service->validateResource(ResourceType::KVDB, payload);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -1003,12 +959,8 @@ TEST(CrudService_Unit, ValidateResource_KVDB_MissingId_Throws)
     }
 }
 
-TEST(CrudService_Unit, ValidateResource_KVDB_ContentNotObject_Throws)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_KVDB_ContentNotObject_Throws)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     static constexpr const char* kKvdbBadContentStr = R"(
     {
       "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
@@ -1023,7 +975,7 @@ TEST(CrudService_Unit, ValidateResource_KVDB_ContentNotObject_Throws)
 
     try
     {
-        service.validateResource(ResourceType::KVDB, payload);
+        service->validateResource(ResourceType::KVDB, payload);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -1033,12 +985,8 @@ TEST(CrudService_Unit, ValidateResource_KVDB_ContentNotObject_Throws)
     }
 }
 
-TEST(CrudService_Unit, ValidateResource_KVDB_MissingEnabled_Throws)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_KVDB_MissingEnabled_Throws)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     static constexpr const char* kKvdbMissingEnabledStr = R"(
     {
       "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
@@ -1052,7 +1000,7 @@ TEST(CrudService_Unit, ValidateResource_KVDB_MissingEnabled_Throws)
 
     try
     {
-        service.validateResource(ResourceType::KVDB, payload);
+        service->validateResource(ResourceType::KVDB, payload);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -1066,12 +1014,8 @@ TEST(CrudService_Unit, ValidateResource_KVDB_MissingEnabled_Throws)
 // validateResource - Integration validation failures
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, ValidateResource_Integration_InvalidDecoderUUID_Throws)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_Integration_InvalidDecoderUUID_Throws)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     static constexpr const char* kIntegrationBadDecoderUUIDStr = R"(
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
@@ -1089,7 +1033,7 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidDecoderUUID_Throws)
 
     try
     {
-        service.validateResource(ResourceType::INTEGRATION, payload);
+        service->validateResource(ResourceType::INTEGRATION, payload);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -1099,12 +1043,8 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidDecoderUUID_Throws)
     }
 }
 
-TEST(CrudService_Unit, ValidateResource_Integration_InvalidKVDBUUID_Throws)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_Integration_InvalidKVDBUUID_Throws)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     static constexpr const char* kIntegrationBadKVDBUUIDStr = R"(
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
@@ -1124,7 +1064,7 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidKVDBUUID_Throws)
 
     try
     {
-        service.validateResource(ResourceType::INTEGRATION, payload);
+        service->validateResource(ResourceType::INTEGRATION, payload);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -1134,12 +1074,8 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidKVDBUUID_Throws)
     }
 }
 
-TEST(CrudService_Unit, ValidateResource_Integration_InvalidCategory_Throws)
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_Integration_InvalidCategory_Throws)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     static constexpr const char* kIntegrationBadCategoryStr = R"(
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
@@ -1159,7 +1095,7 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidCategory_Throws)
 
     try
     {
-        service.validateResource(ResourceType::INTEGRATION, payload);
+        service->validateResource(ResourceType::INTEGRATION, payload);
         FAIL() << "Expected std::runtime_error";
     }
     catch (const std::runtime_error& e)
@@ -1173,12 +1109,8 @@ TEST(CrudService_Unit, ValidateResource_Integration_InvalidCategory_Throws)
 // importNamespace (component-based)
 // ---------------------------------------------------------------------
 
-TEST(CrudService_Unit, ImportNamespace_Success_WithFilters)
+TEST_F(CrudServiceImportNamespaceTest, ImportNamespace_Success_WithFilters)
 {
-    auto store = std::make_shared<NiceMock<MockICMstore>>();
-    auto validator = std::make_shared<NiceMock<MockValidator>>();
-    CrudService service {store, validator};
-
     const NamespaceId nsId {"imported"};
     auto nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
     auto nsReader = std::static_pointer_cast<cm::store::ICMStoreNSReader>(nsPtr);
@@ -1203,7 +1135,1100 @@ TEST(CrudService_Unit, ImportNamespace_Success_WithFilters)
     EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
 
     EXPECT_NO_THROW(
-        service.importNamespace(nsId, kvdbs, decoders, filters, integrations, makeJsonPayload(kPolicyJson), true));
+        service->importNamespace(nsId, kvdbs, decoders, filters, integrations, makeJsonPayload(kPolicyJson), true));
+}
+
+// =========================================================================
+// importNamespace – vector (component) overload – extended coverage
+// =========================================================================
+
+class CrudServiceImportNsFromVectorTest : public CrudServiceBase
+{
+protected:
+    const NamespaceId nsId {"imported"};
+    std::shared_ptr<NiceMock<MockICMstoreNS>> nsPtr;
+
+    void SetUp() override
+    {
+        CrudServiceBase::SetUp();
+
+        nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
+
+        ON_CALL(*store, existsNamespace(_)).WillByDefault(Return(false));
+        ON_CALL(*store, createNamespace(_)).WillByDefault(Return(nsPtr));
+        ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(testing::ReturnRef(nsId));
+    }
+};
+
+// Helpers inside the fixture scope
+
+// A decoder whose name first-part is intentionally wrong
+static constexpr const char* kDecoderJsonWrongPrefix = R"({
+  "name": "filter/syslog/0",
+  "id": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
+  "enabled": true,
+  "metadata": {"module": "syslog", "title": "Syslog Decoder"}
+})";
+
+// A filter whose name first-part is intentionally wrong
+static constexpr const char* kFilterJsonWrongPrefix = R"({
+  "name": "decoder/pre-filter/0",
+  "id": "f1111111-1111-4111-a111-111111111111",
+  "enabled": true,
+  "type": "pre-filter",
+  "metadata": {"title": "Test Pre-Filter"}
+})";
+
+// Reject when namespace already exists
+
+TEST_F(CrudServiceImportNsFromVectorTest, AlreadyExists_Throws)
+{
+    EXPECT_CALL(*store, existsNamespace(_)).WillOnce(Return(true));
+    EXPECT_CALL(*store, createNamespace(_)).Times(0);
+
+    try
+    {
+        service->importNamespace(nsId, {}, {}, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("already exists"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("imported"));
+    }
+}
+
+// Import KVDB resources
+
+TEST_F(CrudServiceImportNsFromVectorTest, ImportsKVDB)
+{
+    std::vector<json::Json> kvdbs = {makeJsonPayload(kKVDBJson)};
+
+    EXPECT_CALL(*nsPtr, createResource("windows_kerberos_status_code_to_code_name", ResourceType::KVDB, _)).Times(1);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(
+        service->importNamespace(nsId, kvdbs, {}, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/true));
+}
+
+// Import decoder resources
+
+TEST_F(CrudServiceImportNsFromVectorTest, ImportsDecoder)
+{
+    std::vector<json::Json> decoders = {makeJsonPayload(kDecoderJson)};
+
+    EXPECT_CALL(*nsPtr, createResource("decoder/syslog/0", ResourceType::DECODER, _)).Times(1);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(
+        service->importNamespace(nsId, {}, decoders, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/true));
+}
+
+// Import filter resources
+
+TEST_F(CrudServiceImportNsFromVectorTest, ImportsFilter)
+{
+    std::vector<json::Json> filters = {makeJsonPayload(kFilterJson)};
+
+    EXPECT_CALL(*nsPtr, createResource("filter/pre-filter/0", ResourceType::FILTER, _)).Times(1);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(
+        service->importNamespace(nsId, {}, {}, filters, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/true));
+}
+
+// Import integration resources
+
+TEST_F(CrudServiceImportNsFromVectorTest, ImportsIntegration)
+{
+    std::vector<json::Json> integrations = {makeJsonPayload(kIntegrationJson)};
+
+    EXPECT_CALL(*nsPtr, createResource("windows", ResourceType::INTEGRATION, _)).Times(1);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(service->importNamespace(
+        nsId, {}, {}, {}, integrations, makeJsonPayload(kPolicyJson), /*softValidation=*/true));
+}
+
+// Policy is upserted after all resources
+
+TEST_F(CrudServiceImportNsFromVectorTest, PolicyUpsertedAfterResources)
+{
+    std::vector<json::Json> kvdbs = {makeJsonPayload(kKVDBJson)};
+    std::vector<json::Json> decoders = {makeJsonPayload(kDecoderJson)};
+
+    ::testing::InSequence seq;
+    EXPECT_CALL(*nsPtr, createResource("windows_kerberos_status_code_to_code_name", ResourceType::KVDB, _)).Times(1);
+    EXPECT_CALL(*nsPtr, createResource("decoder/syslog/0", ResourceType::DECODER, _)).Times(1);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(
+        service->importNamespace(nsId, kvdbs, decoders, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/true));
+}
+
+// softValidation=false → decoder is validated
+
+TEST_F(CrudServiceImportNsFromVectorTest, SoftValidationFalse_ValidatesDecoder)
+{
+    std::vector<json::Json> decoders = {makeJsonPayload(kDecoderJson)};
+
+    EXPECT_CALL(*validator, validateAsset(_, _)).Times(1).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(
+        service->importNamespace(nsId, {}, decoders, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/false));
+}
+
+// softValidation=false → filter is validated
+
+TEST_F(CrudServiceImportNsFromVectorTest, SoftValidationFalse_ValidatesFilter)
+{
+    std::vector<json::Json> filters = {makeJsonPayload(kFilterJson)};
+
+    EXPECT_CALL(*validator, validateAsset(_, _)).Times(1).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(
+        service->importNamespace(nsId, {}, {}, filters, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/false));
+}
+
+// softValidation=false → integration is validated
+
+TEST_F(CrudServiceImportNsFromVectorTest, SoftValidationFalse_ValidatesIntegration)
+{
+    std::vector<json::Json> integrations = {makeJsonPayload(kIntegrationJson)};
+
+    EXPECT_CALL(*validator, softIntegrationValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(service->importNamespace(
+        nsId, {}, {}, {}, integrations, makeJsonPayload(kPolicyJson), /*softValidation=*/false));
+}
+
+// softValidation=false → policy is validated
+
+TEST_F(CrudServiceImportNsFromVectorTest, SoftValidationFalse_ValidatesPolicy)
+{
+    EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(
+        service->importNamespace(nsId, {}, {}, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/false));
+}
+
+// softValidation=true → no validator calls at all
+
+TEST_F(CrudServiceImportNsFromVectorTest, SoftValidationTrue_SkipsAllValidation)
+{
+    std::vector<json::Json> decoders = {makeJsonPayload(kDecoderJson)};
+    std::vector<json::Json> filters = {makeJsonPayload(kFilterJson)};
+    std::vector<json::Json> integrations = {makeJsonPayload(kIntegrationJson)};
+
+    EXPECT_CALL(*validator, validateAsset(_, _)).Times(0);
+    EXPECT_CALL(*validator, softIntegrationValidate(_, _)).Times(0);
+    EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(0);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(service->importNamespace(
+        nsId, {}, decoders, filters, integrations, makeJsonPayload(kPolicyJson), /*softValidation=*/true));
+}
+
+// Decoder name prefix mismatch → throws
+
+TEST_F(CrudServiceImportNsFromVectorTest, DecoderNamePrefixMismatch_Throws)
+{
+    std::vector<json::Json> decoders = {makeJsonPayload(kDecoderJsonWrongPrefix)};
+
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+
+    try
+    {
+        service->importNamespace(nsId, {}, decoders, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("must start with prefix"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("decoder"));
+    }
+}
+
+// Filter name prefix mismatch → throws
+
+TEST_F(CrudServiceImportNsFromVectorTest, FilterNamePrefixMismatch_Throws)
+{
+    std::vector<json::Json> filters = {makeJsonPayload(kFilterJsonWrongPrefix)};
+
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+
+    try
+    {
+        service->importNamespace(nsId, {}, {}, filters, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("must start with prefix"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("filter"));
+    }
+}
+
+// =========================================================================
+// importNamespace – JSON document overload
+// =========================================================================
+
+// JSON document constants
+
+// Minimal valid import document: empty resources, minimal valid policy.
+static constexpr const char* kMinimalImportDoc = R"({
+  "policy": {
+    "enabled": true,
+    "root_decoder": "decoder/wazuh-core-message/0",
+    "integrations": [],
+    "filters": [],
+    "enrichments": [],
+    "index_unclassified_events": false,
+    "index_discarded_events": false
+  },
+  "resources": {}
+})";
+
+// Import document containing a single KVDB resource.
+static constexpr const char* kImportDocWithKVDB = R"({
+  "policy": {
+    "enabled": true,
+    "root_decoder": "decoder/wazuh-core-message/0",
+    "integrations": [],
+    "filters": [],
+    "enrichments": [],
+    "index_unclassified_events": false,
+    "index_discarded_events": false
+  },
+  "resources": {
+    "kvdbs": [
+      {
+        "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
+        "metadata": {"title": "test_kvdb"},
+        "content": {"0x0": "KDC_ERR_NONE"},
+        "enabled": true
+      }
+    ]
+  }
+})";
+
+// Import document containing a single decoder resource.
+static constexpr const char* kImportDocWithDecoder = R"({
+  "policy": {
+    "enabled": true,
+    "root_decoder": "decoder/wazuh-core-message/0",
+    "integrations": [],
+    "filters": [],
+    "enrichments": [],
+    "index_unclassified_events": false,
+    "index_discarded_events": false
+  },
+  "resources": {
+    "decoders": [
+      {
+        "name": "decoder/syslog/0",
+        "id": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
+        "enabled": true,
+        "metadata": {"module": "syslog", "title": "Syslog Decoder"}
+      }
+    ]
+  }
+})";
+
+// Import document containing a single filter resource.
+static constexpr const char* kImportDocWithFilter = R"({
+  "policy": {
+    "enabled": true,
+    "root_decoder": "decoder/wazuh-core-message/0",
+    "integrations": [],
+    "filters": [],
+    "enrichments": [],
+    "index_unclassified_events": false,
+    "index_discarded_events": false
+  },
+  "resources": {
+    "filters": [
+      {
+        "name": "filter/pre-filter/0",
+        "id": "f1111111-1111-4111-a111-111111111111",
+        "enabled": true,
+        "type": "pre-filter",
+        "metadata": {"title": "Test Pre-Filter"}
+      }
+    ]
+  }
+})";
+
+// Import document containing a single output resource.
+static constexpr const char* kImportDocWithOutput = R"({
+  "policy": {
+    "enabled": true,
+    "root_decoder": "decoder/wazuh-core-message/0",
+    "integrations": [],
+    "filters": [],
+    "enrichments": [],
+    "index_unclassified_events": false,
+    "index_discarded_events": false
+  },
+  "resources": {
+    "outputs": [
+      {
+        "name": "output/indexer/0",
+        "id": "b1111111-1111-4111-a111-111111111111",
+        "enabled": true,
+        "metadata": {"title": "Indexer Output"}
+      }
+    ]
+  }
+})";
+
+// Import document containing a single integration resource.
+static constexpr const char* kImportDocWithIntegration = R"({
+  "policy": {
+    "enabled": true,
+    "root_decoder": "decoder/wazuh-core-message/0",
+    "integrations": [],
+    "filters": [],
+    "enrichments": [],
+    "index_unclassified_events": false,
+    "index_discarded_events": false
+  },
+  "resources": {
+    "integrations": [
+      {
+        "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
+        "metadata": {"title": "windows"},
+        "enabled": true,
+        "category": "security",
+        "default_parent": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
+        "decoders": [],
+        "kvdbs": []
+      }
+    ]
+  }
+})";
+
+// Fixture
+
+class CrudServiceImportNsFromDocTest : public CrudServiceBase
+{
+protected:
+    const NamespaceId nsId {"imported"};
+    std::shared_ptr<NiceMock<MockICMstoreNS>> nsPtr;
+    std::shared_ptr<cm::store::ICMStoreNSReader> nsReader;
+
+    void SetUp() override
+    {
+        CrudServiceBase::SetUp();
+
+        nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
+        nsReader = std::static_pointer_cast<cm::store::ICMStoreNSReader>(nsPtr);
+
+        ON_CALL(*store, existsNamespace(_)).WillByDefault(Return(false));
+        ON_CALL(*store, createNamespace(_)).WillByDefault(Return(nsPtr));
+        ON_CALL(*store, getNS(_)).WillByDefault(Return(nsPtr));
+        ON_CALL(*store, getNSReader(_)).WillByDefault(Return(nsReader));
+        ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(testing::ReturnRef(nsId));
+        // getPolicy() is called once at the end of the JSON overload to build the return value.
+        ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+    }
+
+    static cm::store::dataType::Policy makeReturnPolicy()
+    {
+        return cm::store::dataType::Policy::fromJson(json::Json {kMinimalImportDoc}.getJson("/policy").value());
+    }
+};
+
+// Happy path – empty resources
+
+TEST_F(CrudServiceImportNsFromDocTest, Success_EmptyResources)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*store, existsNamespace(_)).Times(1).WillOnce(Return(false));
+    EXPECT_CALL(*store, createNamespace(_)).Times(1).WillOnce(Return(nsPtr));
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kMinimalImportDoc, "", /*force=*/true));
+}
+
+// Destination namespace already exists → throws
+
+TEST_F(CrudServiceImportNsFromDocTest, NamespaceAlreadyExists_Throws)
+{
+    EXPECT_CALL(*store, existsNamespace(_)).Times(1).WillOnce(Return(true));
+    EXPECT_CALL(*store, createNamespace(_)).Times(0);
+
+    try
+    {
+        service->importNamespace(nsId, kMinimalImportDoc, "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("already exists"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("imported"));
+    }
+}
+
+// Invalid JSON document → throws
+
+TEST_F(CrudServiceImportNsFromDocTest, InvalidJson_Throws)
+{
+    EXPECT_CALL(*store, createNamespace(_)).Times(0);
+
+    try
+    {
+        service->importNamespace(nsId, "{ this is not json }", "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Invalid JSON"));
+    }
+}
+
+// Missing /policy key → throws
+
+TEST_F(CrudServiceImportNsFromDocTest, MissingPolicyKey_Throws)
+{
+    EXPECT_CALL(*store, createNamespace(_)).Times(0);
+
+    constexpr const char* kDoc = R"({"resources": {}})";
+
+    try
+    {
+        service->importNamespace(nsId, kDoc, "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("policy"));
+    }
+}
+
+// Missing /resources key → throws
+
+TEST_F(CrudServiceImportNsFromDocTest, MissingResourcesKey_Throws)
+{
+    EXPECT_CALL(*store, createNamespace(_)).Times(0);
+
+    constexpr const char* kDoc = R"({"policy": {"enabled": true}})";
+
+    try
+    {
+        service->importNamespace(nsId, kDoc, "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("resources"));
+    }
+}
+
+// /policy is not an object → throws
+
+TEST_F(CrudServiceImportNsFromDocTest, PolicyNotObject_Throws)
+{
+    EXPECT_CALL(*store, createNamespace(_)).Times(0);
+
+    constexpr const char* kDoc = R"({"policy": "not-an-object", "resources": {}})";
+
+    try
+    {
+        service->importNamespace(nsId, kDoc, "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("policy"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("object"));
+    }
+}
+
+// /resources is not an object → throws
+
+TEST_F(CrudServiceImportNsFromDocTest, ResourcesNotObject_Throws)
+{
+    EXPECT_CALL(*store, createNamespace(_)).Times(0);
+
+    constexpr const char* kDoc = R"({"policy": {"enabled": true}, "resources": [1,2,3]})";
+
+    try
+    {
+        service->importNamespace(nsId, kDoc, "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("resources"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("object"));
+    }
+}
+
+// Root object has extra keys → throws
+
+TEST_F(CrudServiceImportNsFromDocTest, ExtraRootKeys_Throws)
+{
+    EXPECT_CALL(*store, createNamespace(_)).Times(0);
+
+    constexpr const char* kDoc = R"({"policy": {}, "resources": {}, "extra": "key"})";
+
+    try
+    {
+        service->importNamespace(nsId, kDoc, "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("2 keys"));
+    }
+}
+
+// Namespace created before resources are imported
+
+TEST_F(CrudServiceImportNsFromDocTest, CreatesNamespaceBeforeImport)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    {
+        ::testing::InSequence seq;
+        EXPECT_CALL(*store, existsNamespace(_)).WillOnce(Return(false));
+        EXPECT_CALL(*store, createNamespace(_)).WillOnce(Return(nsPtr));
+        EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+        EXPECT_NO_THROW(service->importNamespace(nsId, kMinimalImportDoc, "", /*force=*/true));
+    }
+
+    ::testing::Mock::VerifyAndClearExpectations(nsPtr.get());
+}
+
+// Import KVDB resource
+
+TEST_F(CrudServiceImportNsFromDocTest, ImportsKVDB)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*nsPtr, createResource("test_kvdb", ResourceType::KVDB, _)).Times(1);
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kImportDocWithKVDB, "", /*force=*/true));
+}
+
+// Import decoder resource
+
+TEST_F(CrudServiceImportNsFromDocTest, ImportsDecoder)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*nsPtr, createResource("decoder/syslog/0", ResourceType::DECODER, _)).Times(1);
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kImportDocWithDecoder, "", /*force=*/true));
+}
+
+// Import filter resource
+
+TEST_F(CrudServiceImportNsFromDocTest, ImportsFilter)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*nsPtr, createResource("filter/pre-filter/0", ResourceType::FILTER, _)).Times(1);
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kImportDocWithFilter, "", /*force=*/true));
+}
+
+// Import output resource
+
+TEST_F(CrudServiceImportNsFromDocTest, ImportsOutput)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*nsPtr, createResource("output/indexer/0", ResourceType::OUTPUT, _)).Times(1);
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kImportDocWithOutput, "", /*force=*/true));
+}
+
+// Import integration resource
+
+TEST_F(CrudServiceImportNsFromDocTest, ImportsIntegration)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*nsPtr, createResource("windows", ResourceType::INTEGRATION, _)).Times(1);
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kImportDocWithIntegration, "", /*force=*/true));
+}
+
+// Policy is upserted after resources
+
+TEST_F(CrudServiceImportNsFromDocTest, PolicyImportedAfterResources)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    ::testing::InSequence seq;
+    EXPECT_CALL(*nsPtr, createResource("test_kvdb", ResourceType::KVDB, _)).Times(1);
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1);
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kImportDocWithKVDB, "", /*force=*/true));
+}
+
+// originSpace argument is applied to the policy
+
+TEST_F(CrudServiceImportNsFromDocTest, SetsOriginSpace_WhenProvided)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*nsPtr,
+                upsertPolicy(Truly(
+                    [](const cm::store::dataType::Policy& p)
+                    {
+                        std::string out;
+                        return p.toJson().getString(out, "/origin_space") == json::RetGet::Success;
+                    })))
+        .Times(1);
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kMinimalImportDoc, "my_space", /*force=*/true));
+}
+
+// Empty originSpace leaves policy origin untouched
+
+TEST_F(CrudServiceImportNsFromDocTest, EmptyOriginSpace_DoesNotOverride)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    // Just verify it does not throw
+    EXPECT_NO_THROW(service->importNamespace(nsId, kMinimalImportDoc, "", /*force=*/true));
+}
+
+// Absent resource arrays are silently skipped
+
+TEST_F(CrudServiceImportNsFromDocTest, SkipsAbsentResourceArrays)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kMinimalImportDoc, "", /*force=*/true));
+}
+
+// force=true → validator is never called
+
+TEST_F(CrudServiceImportNsFromDocTest, ForceTrue_SkipsValidation)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*validator, validateAsset(_, _)).Times(0);
+    EXPECT_CALL(*validator, softIntegrationValidate(_, _)).Times(0);
+    EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(0);
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kImportDocWithDecoder, "", /*force=*/true));
+}
+
+// force=false → asset validator is called for decoders
+
+TEST_F(CrudServiceImportNsFromDocTest, ForceFalse_ValidatesDecoder)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*validator, validateAsset(_, _)).Times(1).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kImportDocWithDecoder, "", /*force=*/false));
+}
+
+// force=false → integration validator is called
+
+TEST_F(CrudServiceImportNsFromDocTest, ForceFalse_ValidatesIntegration)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*validator, softIntegrationValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
+    EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kImportDocWithIntegration, "", /*force=*/false));
+}
+
+// force=false → policy validator is called
+
+TEST_F(CrudServiceImportNsFromDocTest, ForceFalse_ValidatesPolicy)
+{
+    ON_CALL(*nsPtr, getPolicy()).WillByDefault(Return(makeReturnPolicy()));
+
+    EXPECT_CALL(*validator, softPolicyValidate(_, _)).Times(1).WillOnce(Return(base::noError()));
+
+    EXPECT_NO_THROW(service->importNamespace(nsId, kMinimalImportDoc, "", /*force=*/false));
+}
+
+// force=false + validation failure → throws, no createResource
+
+TEST_F(CrudServiceImportNsFromDocTest, ForceFalse_ValidationFailure_Throws)
+{
+    EXPECT_CALL(*validator, validateAsset(_, _)).Times(1).WillOnce(Return(base::Error {"schema violation"}));
+
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+
+    try
+    {
+        service->importNamespace(nsId, kImportDocWithDecoder, "", /*force=*/false);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Failed to import namespace"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("schema violation"));
+    }
+}
+
+// Rollback: deleteNamespace called when import fails post-create
+
+TEST_F(CrudServiceImportNsFromDocTest, RollbackOnFailureAfterNamespaceCreate)
+{
+    // Make upsertPolicy throw to trigger the rollback path.
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1).WillOnce(Throw(std::runtime_error {"policy store failure"}));
+
+    EXPECT_CALL(*store, createNamespace(_)).Times(1).WillOnce(Return(nsPtr));
+
+    EXPECT_CALL(*store, deleteNamespace(_)).Times(1);
+
+    try
+    {
+        service->importNamespace(nsId, kMinimalImportDoc, "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Failed to import namespace"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("policy store failure"));
+    }
+}
+
+// Rollback delete also fails: original error is still surfaced
+
+TEST_F(CrudServiceImportNsFromDocTest, RollbackDeleteFails_OriginalErrorSurfaced)
+{
+    EXPECT_CALL(*nsPtr, upsertPolicy(_)).Times(1).WillOnce(Throw(std::runtime_error {"original error"}));
+    EXPECT_CALL(*store, createNamespace(_)).Times(1).WillOnce(Return(nsPtr));
+
+    // Rollback delete also throws — the original error must still propagate.
+    EXPECT_CALL(*store, deleteNamespace(_)).Times(1).WillOnce(Throw(std::runtime_error {"delete also failed"}));
+
+    try
+    {
+        service->importNamespace(nsId, kMinimalImportDoc, "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Failed to import namespace"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("original error"));
+    }
+}
+
+// =========================================================================
+//   Error wrapping for read / delete operations
+// =========================================================================
+
+class CrudServiceErrorWrappingTest : public CrudServiceBase
+{
+protected:
+    const NamespaceId nsId {"dev"};
+    std::shared_ptr<NiceMock<MockICMstoreNS>> nsPtr;
+    std::shared_ptr<cm::store::ICMStoreNSReader> nsReader;
+
+    void SetUp() override
+    {
+        CrudServiceBase::SetUp();
+        nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
+        nsReader = std::static_pointer_cast<cm::store::ICMStoreNSReader>(nsPtr);
+        ON_CALL(*store, getNS(_)).WillByDefault(Return(nsPtr));
+        ON_CALL(*store, getNSReader(_)).WillByDefault(Return(nsReader));
+        ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(testing::ReturnRef(nsId));
+    }
+};
+
+// deletePolicy wraps store errors
+
+TEST_F(CrudServiceErrorWrappingTest, DeletePolicy_StoreErrorIsWrapped)
+{
+    EXPECT_CALL(*nsPtr, deletePolicy()).WillOnce(Throw(std::runtime_error {"low-level error"}));
+
+    try
+    {
+        service->deletePolicy(nsId);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Failed to delete policy"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("low-level error"));
+    }
+}
+
+// getResourceByUUID wraps store errors
+
+TEST_F(CrudServiceErrorWrappingTest, GetResourceByUUID_StoreErrorIsWrapped)
+{
+    const std::string uuid {"3f086ce2-32a4-42b0-be7e-40dcfb9c6160"};
+
+    EXPECT_CALL(*nsPtr, resolveNameFromUUID(uuid)).WillOnce(Throw(std::runtime_error {"resolve failure"}));
+
+    try
+    {
+        service->getResourceByUUID(nsId, uuid);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Failed to get resource with UUID"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("resolve failure"));
+    }
+}
+
+// deleteResourceByUUID wraps store errors
+
+TEST_F(CrudServiceErrorWrappingTest, DeleteResourceByUUID_StoreErrorIsWrapped)
+{
+    const std::string uuid {"some-uuid"};
+
+    EXPECT_CALL(*nsPtr, deleteResourceByUUID(uuid)).WillOnce(Throw(std::runtime_error {"delete failure"}));
+
+    try
+    {
+        service->deleteResourceByUUID(nsId, uuid);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Failed to delete resource with UUID"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("delete failure"));
+    }
+}
+
+// getResourceByUUID rejects unsupported ResourceType from resolver
+
+TEST_F(CrudServiceErrorWrappingTest, GetResourceByUUID_UnsupportedType_Throws)
+{
+    const std::string uuid {"3f086ce2-32a4-42b0-be7e-40dcfb9c6160"};
+
+    EXPECT_CALL(*nsPtr, resolveNameFromUUID(uuid))
+        .WillOnce(Return(std::make_tuple(std::string {"some/name/0"}, ResourceType::UNDEFINED)));
+
+    try
+    {
+        service->getResourceByUUID(nsId, uuid);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Unsupported resource type"));
+    }
+}
+
+// getResourceByUUID returns Integration JSON
+
+TEST_F(CrudServiceErrorWrappingTest, GetResourceByUUID_ReturnsIntegrationJson)
+{
+    const std::string uuid {"5c1df6b6-1458-4b2e-9001-96f67a8b12c8"};
+
+    ON_CALL(*nsPtr, resolveNameFromUUID(uuid))
+        .WillByDefault(Return(std::make_tuple(std::string {"windows"}, ResourceType::INTEGRATION)));
+
+    json::Json integJson {kIntegrationJson};
+    auto integ = cm::store::dataType::Integration::fromJson(integJson, true);
+    EXPECT_CALL(*nsPtr, getIntegrationByUUID(uuid)).WillOnce(Return(integ));
+
+    const auto result = service->getResourceByUUID(nsId, uuid);
+
+    EXPECT_TRUE(result.isObject());
+    EXPECT_EQ(getStringOrEmpty(result, "/id"), uuid);
+}
+
+// getResourceByUUID returns KVDB JSON
+
+TEST_F(CrudServiceErrorWrappingTest, GetResourceByUUID_ReturnsKVDBJson)
+{
+    const std::string uuid {"82e215c4-988a-4f64-8d15-b98b2fc03a4f"};
+
+    ON_CALL(*nsPtr, resolveNameFromUUID(uuid))
+        .WillByDefault(Return(std::make_tuple(std::string {"test_kvdb"}, ResourceType::KVDB)));
+
+    json::Json kvdbJson {kKVDBJson};
+    auto kvdb = cm::store::dataType::KVDB::fromJson(kvdbJson, true);
+    EXPECT_CALL(*nsPtr, getKVDBByUUID(uuid)).WillOnce(Return(kvdb));
+
+    const auto result = service->getResourceByUUID(nsId, uuid);
+
+    EXPECT_TRUE(result.isObject());
+    EXPECT_EQ(getStringOrEmpty(result, "/id"), uuid);
+}
+
+// getResourceByUUID returns asset JSON (decoder / filter / output)
+
+TEST_F(CrudServiceErrorWrappingTest, GetResourceByUUID_ReturnsAssetJson_Decoder)
+{
+    const std::string uuid {"3f086ce2-32a4-42b0-be7e-40dcfb9c6160"};
+
+    ON_CALL(*nsPtr, resolveNameFromUUID(uuid))
+        .WillByDefault(Return(std::make_tuple(std::string {"decoder/syslog/0"}, ResourceType::DECODER)));
+
+    json::Json assetJson {kDecoderJson};
+    EXPECT_CALL(*nsPtr, getAssetByUUID(uuid)).WillOnce(Return(assetJson));
+
+    const auto result = service->getResourceByUUID(nsId, uuid);
+
+    EXPECT_TRUE(result.isObject());
+    EXPECT_EQ(getStringOrEmpty(result, "/name"), "decoder/syslog/0");
+}
+
+// =========================================================================
+//   Small helper failure paths (surfaced through public API)
+// =========================================================================
+
+class CrudServiceHelperFailureTest : public CrudServiceBase
+{
+protected:
+    const NamespaceId nsId {"dev"};
+    std::shared_ptr<NiceMock<MockICMstoreNS>> nsPtr;
+
+    void SetUp() override
+    {
+        CrudServiceBase::SetUp();
+        nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();
+        ON_CALL(*store, getNS(_)).WillByDefault(Return(nsPtr));
+        ON_CALL(*nsPtr, getNamespaceId()).WillByDefault(testing::ReturnRef(nsId));
+        ON_CALL(*validator, softIntegrationValidate(_, _)).WillByDefault(Return(base::noError()));
+        ON_CALL(*validator, validateAsset(_, _)).WillByDefault(Return(base::noError()));
+    }
+};
+
+//  upsertResource rejects an asset JSON without /name
+
+TEST_F(CrudServiceHelperFailureTest, UpsertDecoder_MissingName_Throws)
+{
+    constexpr const char* kNoName = R"({
+      "id": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
+      "enabled": true,
+      "metadata": {"module": "syslog"}
+    })";
+
+    try
+    {
+        service->upsertResource(nsId, ResourceType::DECODER, makeJsonPayload(kNoName));
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("name"));
+    }
+}
+
+//  upsertResource rejects an asset JSON with an empty /name
+
+TEST_F(CrudServiceHelperFailureTest, UpsertDecoder_EmptyName_Throws)
+{
+    constexpr const char* kEmptyName = R"({
+      "name": "",
+      "id": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
+      "enabled": true,
+      "metadata": {"module": "syslog"}
+    })";
+
+    try
+    {
+        service->upsertResource(nsId, ResourceType::DECODER, makeJsonPayload(kEmptyName));
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("name"));
+    }
+}
+
+//  importNamespace (vector) rejects a resource with no /id
+
+TEST_F(CrudServiceHelperFailureTest, ImportVector_KVDB_MissingId_Throws)
+{
+    constexpr const char* kKVDBNoId = R"({
+      "metadata": {"title": "test_kvdb"},
+      "content": {"0x0": "value"},
+      "enabled": true
+    })";
+
+    std::vector<json::Json> kvdbs = {makeJsonPayload(kKVDBNoId)};
+
+    ON_CALL(*store, existsNamespace(_)).WillByDefault(Return(false));
+    ON_CALL(*store, createNamespace(_)).WillByDefault(Return(nsPtr));
+
+    try
+    {
+        service->importNamespace(nsId, kvdbs, {}, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("id"));
+    }
+}
+
+//  importNamespace (vector) rejects a resource with an empty /id
+
+TEST_F(CrudServiceHelperFailureTest, ImportVector_KVDB_EmptyId_Throws)
+{
+    constexpr const char* kKVDBEmptyId = R"({
+      "id": "",
+      "metadata": {"title": "test_kvdb"},
+      "content": {"0x0": "value"},
+      "enabled": true
+    })";
+
+    std::vector<json::Json> kvdbs = {makeJsonPayload(kKVDBEmptyId)};
+
+    ON_CALL(*store, existsNamespace(_)).WillByDefault(Return(false));
+    ON_CALL(*store, createNamespace(_)).WillByDefault(Return(nsPtr));
+
+    try
+    {
+        service->importNamespace(nsId, kvdbs, {}, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("id"));
+    }
+}
+
+//  importNamespace (vector) rejects a resource with an invalid UUID
+
+TEST_F(CrudServiceHelperFailureTest, ImportVector_KVDB_InvalidUUID_Throws)
+{
+    constexpr const char* kKVDBBadUUID = R"({
+      "id": "not-a-uuid",
+      "metadata": {"title": "test_kvdb"},
+      "content": {"0x0": "value"},
+      "enabled": true
+    })";
+
+    std::vector<json::Json> kvdbs = {makeJsonPayload(kKVDBBadUUID)};
+
+    ON_CALL(*store, existsNamespace(_)).WillByDefault(Return(false));
+    ON_CALL(*store, createNamespace(_)).WillByDefault(Return(nsPtr));
+
+    try
+    {
+        service->importNamespace(nsId, kvdbs, {}, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("UUID"));
+    }
 }
 
 } // namespace cm::crud::test

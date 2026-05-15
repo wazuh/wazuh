@@ -18,6 +18,7 @@
 
 static void *wm_control_main();
 static void wm_control_destroy();
+static void wm_control_stop();
 cJSON *wm_control_dump();
 static void *process_control();
 
@@ -27,7 +28,7 @@ const wm_context WM_CONTROL_CONTEXT = {
     .destroy = (void(*)(void *))wm_control_destroy,
     .dump = (cJSON * (*)(const void *))wm_control_dump,
     .sync = NULL,
-    .stop = NULL,
+    .stop = (void(*)(void *))wm_control_stop,
     .query = NULL,
 };
 
@@ -42,6 +43,10 @@ static void *wm_control_main() {
 }
 
 static void wm_control_destroy() {
+}
+
+static void wm_control_stop() {
+    wm_shutdown_requested = 1;
 }
 
 wmodule *wm_control_read() {
@@ -201,20 +206,16 @@ static void *process_control() {
         return NULL;
     }
 
-    while (1) {
+    while (!wm_shutdown_requested) {
 
-        FD_ZERO(&fdset);
-        FD_SET(sock, &fdset);
-
-        switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
+        switch (wm_select_interruptible(sock, &fdset)) {
         case -1:
-            if (errno != EINTR) {
-                mterror_exit(WM_CONTROL_LOGTAG, "At process_control(): select(): %s", strerror(errno));
-            }
-            continue;
-
+            mterror_exit(WM_CONTROL_LOGTAG, "At process_control(): select(): %s", strerror(errno));
+            break;
         case 0:
             continue;
+        default:
+            break;
         }
 
         if (peer = accept(sock, NULL, NULL), peer < 0) {
@@ -279,6 +280,10 @@ static void *process_control() {
         buffer = NULL;
     }
 
+    /* Intentional cleanup code: the while(1) loop above currently exits only via
+     * merror_exit(). This block ensures proper resource release if a graceful
+     * exit path is added in the future. */
+    // coverity[unreachable]
     close(sock);
     return NULL;
 }

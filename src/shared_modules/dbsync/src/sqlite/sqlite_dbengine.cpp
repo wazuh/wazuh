@@ -2236,22 +2236,24 @@ void SQLiteDBEngine::updateTableRowCounter(const std::string& table, const long 
 
 void SQLiteDBEngine::closeAndDeleteDatabase(const std::string& path)
 {
-    std::lock_guard<std::mutex> lock(m_stmtMutex);
-
-    // Clear the statement cache
-    m_statementsCache.clear();
-
-    // Commit and release the transaction
-    if (m_transaction)
     {
-        m_transaction->commit();
-        m_transaction.reset();
-    }
+        std::lock_guard<std::mutex> lock(m_stmtMutex);
 
-    // Close the SQLite connection
-    if (m_sqliteConnection)
-    {
-        m_sqliteConnection.reset();
+        // Clear the statement cache
+        m_statementsCache.clear();
+
+        // Commit and release the transaction
+        if (m_transaction)
+        {
+            m_transaction->commit();
+            m_transaction.reset();
+        }
+
+        // Close the SQLite connection
+        if (m_sqliteConnection)
+        {
+            m_sqliteConnection.reset();
+        }
     }
 
     // Delete the database file

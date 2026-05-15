@@ -173,7 +173,7 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
     }
 
     // Initial delay before first run to allow other modules to start
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    m_cv.wait_for(lock, std::chrono::seconds(5), [this] { return m_stopped; });
 
     // Run at least once
     do
@@ -665,7 +665,7 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
                     if (!looksLikeHash)
                     {
                         // Single-group format: the first line is the actual group name
-                        groups.push_back(firstLineValue);
+                        groups.push_back(std::move(firstLineValue));
                         return false; // Stop reading, we have the single group
                     }
 
@@ -704,7 +704,7 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
 
                 if (!groupName.empty())
                 {
-                    groups.push_back(groupName);
+                    groups.push_back(std::move(groupName));
                 }
             }
         }
@@ -724,7 +724,7 @@ bool AgentInfoImpl::updateChanges(const std::string& table, const nlohmann::json
 {
     bool hasChanges = false;
 
-    const auto callback = [this, table, &hasChanges](ReturnTypeCallback result, const nlohmann::json & data)
+    const auto callback = [this, &table, &hasChanges](ReturnTypeCallback result, const nlohmann::json & data)
     {
         if (result == INSERTED || result == MODIFIED || result == DELETED)
         {
@@ -775,7 +775,7 @@ void AgentInfoImpl::processEvent(ReturnTypeCallback result, const nlohmann::json
 {
     try
     {
-        nlohmann::json eventData = result == MODIFIED && data.contains("new") ? data["new"] : data;
+        const auto& eventData = result == MODIFIED && data.contains("new") ? data["new"] : data;
         nlohmann::json ecsFormattedData = ecsData(eventData, table);
 
         // Remove checksum from ECS data before sending stateless event
@@ -1890,9 +1890,14 @@ bool AgentInfoImpl::shouldPerformIntegrityCheck(const std::string& table, int in
     if (lastCheck == 0)
     {
         // Release lock before calling updateLastIntegrityTime to avoid deadlock
+        // (updateLastIntegrityTime internally acquires m_syncFlagsMutex).
         lock.unlock();
         updateLastIntegrityTime(table);
         m_logFunction(LOG_DEBUG, "Initialized integrity check timestamp for " + table);
+        /* unique_lock owns_ is false after explicit unlock() above; destructor will not call
+         * unlock() again. Coverity's built-in model does not track the owns_ flag correctly
+         * when updateLastIntegrityTime re-acquires the same mutex. */
+        // coverity[double_unlock]
         return false;
     }
 

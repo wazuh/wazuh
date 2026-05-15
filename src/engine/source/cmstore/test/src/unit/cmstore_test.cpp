@@ -12,6 +12,7 @@
 #include <cmstore/cmstore.hpp>
 #include <cmstore/types.hpp>
 
+#include "fileutils.hpp"
 #include "storens.hpp"
 
 namespace
@@ -225,6 +226,48 @@ json::Json makeKVDBJson(std::string_view name, std::string_view uuid, bool enabl
     return kvdb;
 }
 
+std::string validUUID()
+{
+    return base::utils::generators::generateUUIDv4();
+}
+
+json::Json makeValidIntegrationJson(bool includeId = true)
+{
+    json::Json j;
+    if (includeId)
+    {
+        j.setString(validUUID(), "/id");
+    }
+    j.setString("my_integration", "/metadata/title");
+    j.setBool(true, "/enabled");
+    j.setString("security", "/category");
+    j.setArray("/decoders");
+    j.setArray("/kvdbs");
+    return j;
+}
+
+json::Json makeValidPolicyJson()
+{
+    json::Json j;
+    j.setString("Test Policy", "/metadata/title");
+    j.setBool(true, "/enabled");
+    j.setString(validUUID(), "/root_decoder");
+    j.setArray("/integrations");
+    j.setArray("/filters");
+    j.setArray("/enrichments");
+    j.setBool(false, "/index_unclassified_events");
+    j.setBool(false, "/index_discarded_events");
+    return j;
+}
+
+json::Json makeMinimalResourceJson()
+{
+    json::Json j;
+    j.setObject();
+    j.setString(base::utils::generators::generateUUIDv4(), "/id");
+    return j;
+}
+
 } // namespace
 
 // ======================================================================
@@ -256,6 +299,202 @@ TEST(NamespaceIdTest, EqualityAndInequality)
 
     EXPECT_EQ(a, b);
     EXPECT_NE(a, c);
+}
+
+TEST(IntegrationTest, ConstructorValidData)
+{
+    EXPECT_NO_THROW(cm::store::dataType::Integration(validUUID(), "name", true, "security", std::nullopt, {}, {}));
+}
+
+TEST(IntegrationTest, ConstructorEmptyUUIDRequiredThrows)
+{
+    EXPECT_THROW(cm::store::dataType::Integration("", "name", true, "security", std::nullopt, {}, {}, true),
+                 std::runtime_error);
+}
+
+TEST(IntegrationTest, ConstructorEmptyUUIDNotRequired)
+{
+    EXPECT_NO_THROW(cm::store::dataType::Integration("", "name", true, "security", std::nullopt, {}, {}, false));
+}
+
+TEST(IntegrationTest, ConstructorInvalidUUIDThrows)
+{
+    EXPECT_THROW(cm::store::dataType::Integration("not-a-uuid", "name", true, "security", std::nullopt, {}, {}),
+                 std::runtime_error);
+}
+
+TEST(IntegrationTest, ConstructorEmptyNameThrows)
+{
+    EXPECT_THROW(cm::store::dataType::Integration(validUUID(), "", true, "security", std::nullopt, {}, {}),
+                 std::runtime_error);
+}
+
+TEST(IntegrationTest, ConstructorEmptyCategoryThrows)
+{
+    EXPECT_THROW(cm::store::dataType::Integration(validUUID(), "name", true, "", std::nullopt, {}, {}),
+                 std::runtime_error);
+}
+
+TEST(IntegrationTest, ConstructorInvalidCategoryThrows)
+{
+    EXPECT_THROW(
+        cm::store::dataType::Integration(validUUID(), "name", true, "invalid_category", std::nullopt, {}, {}),
+        std::runtime_error);
+}
+
+TEST(IntegrationTest, ConstructorInvalidDefaultParentThrows)
+{
+    EXPECT_THROW(cm::store::dataType::Integration(
+                     validUUID(), "name", true, "security", std::string("not-a-uuid"), {}, {}),
+                 std::runtime_error);
+}
+
+TEST(IntegrationTest, ConstructorDuplicateDecoderUUIDsThrows)
+{
+    const std::string uuid = validUUID();
+    EXPECT_THROW(
+        cm::store::dataType::Integration(validUUID(), "name", true, "security", std::nullopt, {}, {uuid, uuid}),
+        std::runtime_error);
+}
+
+TEST(IntegrationTest, ConstructorDuplicateKVDBUUIDsThrows)
+{
+    const std::string uuid = validUUID();
+    EXPECT_THROW(
+        cm::store::dataType::Integration(validUUID(), "name", true, "security", std::nullopt, {uuid, uuid}, {}),
+        std::runtime_error);
+}
+
+TEST(IntegrationTest, FromJsonWithDecodersAndKVDBs)
+{
+    auto j = makeValidIntegrationJson();
+    j.appendString(validUUID(), "/decoders");
+    j.appendString(validUUID(), "/kvdbs");
+
+    auto integration = cm::store::dataType::Integration::fromJson(j, true);
+    EXPECT_EQ(integration.getDecodersByUUID().size(), 1U);
+    EXPECT_EQ(integration.getKVDBsByUUID().size(), 1U);
+}
+
+TEST(IntegrationTest, FromJsonWithDefaultParent)
+{
+    auto j = makeValidIntegrationJson();
+    const std::string parent = validUUID();
+    j.setString(parent, "/default_parent");
+
+    auto integration = cm::store::dataType::Integration::fromJson(j, true);
+    ASSERT_TRUE(integration.hasDefaultParent());
+    EXPECT_EQ(*integration.getDefaultParent(), parent);
+}
+
+TEST(IntegrationTest, FromJsonMissingIdRequiredThrows)
+{
+    auto j = makeValidIntegrationJson(false);
+    EXPECT_THROW(cm::store::dataType::Integration::fromJson(j, true), std::runtime_error);
+}
+
+TEST(IntegrationTest, FromJsonInvalidIdRequiredThrows)
+{
+    auto j = makeValidIntegrationJson(false);
+    j.setString("not-a-valid-uuid", "/id");
+    EXPECT_THROW(cm::store::dataType::Integration::fromJson(j, true), std::runtime_error);
+}
+
+TEST(IntegrationTest, FromJsonMissingIdNotRequired)
+{
+    auto j = makeValidIntegrationJson(false);
+    EXPECT_NO_THROW(cm::store::dataType::Integration::fromJson(j, false));
+}
+
+TEST(IntegrationTest, FromJsonMissingNameThrows)
+{
+    auto j = makeValidIntegrationJson();
+    j.erase("/metadata/title");
+    EXPECT_THROW(cm::store::dataType::Integration::fromJson(j, true), std::runtime_error);
+}
+
+TEST(IntegrationTest, FromJsonInvalidNameTypeThrows)
+{
+    auto j = makeValidIntegrationJson();
+    j.setBool(true, "/metadata/title");
+    EXPECT_THROW(cm::store::dataType::Integration::fromJson(j, true), std::runtime_error);
+}
+
+TEST(IntegrationTest, FromJsonMissingEnabledThrows)
+{
+    auto j = makeValidIntegrationJson();
+    j.erase("/enabled");
+    EXPECT_THROW(cm::store::dataType::Integration::fromJson(j, true), std::runtime_error);
+}
+
+TEST(IntegrationTest, FromJsonInvalidEnabledTypeThrows)
+{
+    auto j = makeValidIntegrationJson();
+    j.setString("true", "/enabled");
+    EXPECT_THROW(cm::store::dataType::Integration::fromJson(j, true), std::runtime_error);
+}
+
+TEST(IntegrationTest, FromJsonMissingCategoryThrows)
+{
+    auto j = makeValidIntegrationJson();
+    j.erase("/category");
+    EXPECT_THROW(cm::store::dataType::Integration::fromJson(j, true), std::runtime_error);
+}
+
+TEST(IntegrationTest, FromJsonInvalidCategoryTypeThrows)
+{
+    auto j = makeValidIntegrationJson();
+    j.setBool(true, "/category");
+    EXPECT_THROW(cm::store::dataType::Integration::fromJson(j, true), std::runtime_error);
+}
+
+TEST(IntegrationTest, FromJsonDecoderEntryNotStringThrows)
+{
+    auto j = makeValidIntegrationJson();
+    j.appendJson(json::Json("42"), "/decoders");
+    EXPECT_THROW(cm::store::dataType::Integration::fromJson(j, true), std::runtime_error);
+}
+
+TEST(IntegrationTest, FromJsonKVDBEntryNotStringThrows)
+{
+    auto j = makeValidIntegrationJson();
+    j.appendJson(json::Json("42"), "/kvdbs");
+    EXPECT_THROW(cm::store::dataType::Integration::fromJson(j, true), std::runtime_error);
+}
+
+TEST(IntegrationTest, FromJsonEmptyDefaultParentThrows)
+{
+    auto j = makeValidIntegrationJson();
+    j.setString("", "/default_parent");
+    EXPECT_THROW(cm::store::dataType::Integration::fromJson(j, true), std::runtime_error);
+}
+
+TEST(IntegrationTest, FromJsonInvalidDefaultParentThrows)
+{
+    auto j = makeValidIntegrationJson();
+    j.setString("not-a-valid-uuid", "/default_parent");
+    EXPECT_THROW(cm::store::dataType::Integration::fromJson(j, true), std::runtime_error);
+}
+
+TEST(IntegrationTest, ToJsonWithDecodersKVDBsAndDefaultParent)
+{
+    const std::string decoderUUID = validUUID();
+    const std::string kvdbUUID = validUUID();
+    const std::string parentUUID = validUUID();
+
+    cm::store::dataType::Integration integration(
+        validUUID(), "name", true, "security", parentUUID, {kvdbUUID}, {decoderUUID});
+    json::Json serialized = integration.toJson();
+
+    std::string val;
+    EXPECT_EQ(serialized.getString(val, "/default_parent"), json::RetGet::Success);
+    EXPECT_EQ(val, parentUUID);
+
+    EXPECT_EQ(serialized.getString(val, "/decoders/0"), json::RetGet::Success);
+    EXPECT_EQ(val, decoderUUID);
+
+    EXPECT_EQ(serialized.getString(val, "/kvdbs/0"), json::RetGet::Success);
+    EXPECT_EQ(val, kvdbUUID);
 }
 
 TEST(NamespaceIdTest, ToStrReturnsOriginal)
@@ -858,62 +1097,6 @@ TEST_F(CMStoreTest, ForbiddenNamespacesOnDiskAreSkipped)
 
 // ======================== Data type tests ========================
 
-TEST(IntegrationTest, FromJsonValid)
-{
-    json::Json j;
-    j.setString("f47ac10b-58cc-4372-a567-0e02b2c3d479", "/id");
-    j.setString("my_integration", "/metadata/title");
-    j.setBool(true, "/enabled");
-    j.setString("security", "/category");
-    j.setArray("/decoders");
-    j.setArray("/kvdbs");
-
-    EXPECT_NO_THROW(cm::store::dataType::Integration::fromJson(j, true));
-}
-
-TEST(IntegrationTest, FromJsonMissingNameThrows)
-{
-    json::Json j;
-    j.setString("f47ac10b-58cc-4372-a567-0e02b2c3d479", "/id");
-    j.setBool(true, "/enabled");
-    j.setString("security", "/category");
-    j.setArray("/decoders");
-    j.setArray("/kvdbs");
-
-    EXPECT_THROW(cm::store::dataType::Integration::fromJson(j, true), std::runtime_error);
-}
-
-TEST(IntegrationTest, FromJsonInvalidCategoryThrows)
-{
-    json::Json j;
-    j.setString("f47ac10b-58cc-4372-a567-0e02b2c3d479", "/id");
-    j.setString("my_integration", "/metadata/title");
-    j.setBool(true, "/enabled");
-    j.setString("invalid_category", "/category");
-    j.setArray("/decoders");
-    j.setArray("/kvdbs");
-
-    EXPECT_THROW(cm::store::dataType::Integration::fromJson(j, true), std::runtime_error);
-}
-
-TEST(IntegrationTest, ToJsonRoundTrip)
-{
-    json::Json j;
-    j.setString("f47ac10b-58cc-4372-a567-0e02b2c3d479", "/id");
-    j.setString("round_trip", "/metadata/title");
-    j.setBool(false, "/enabled");
-    j.setString("other", "/category");
-    j.setArray("/decoders");
-    j.setArray("/kvdbs");
-
-    auto integration = cm::store::dataType::Integration::fromJson(j, true);
-    auto serialized = integration.toJson();
-
-    std::string name;
-    EXPECT_EQ(serialized.getString(name, "/metadata/title"), json::RetGet::Success);
-    EXPECT_EQ(name, "round_trip");
-}
-
 TEST(KVDBTest, FromJsonValid)
 {
     json::Json j;
@@ -937,76 +1120,1011 @@ TEST(KVDBTest, FromJsonMissingContentThrows)
     EXPECT_THROW(cm::store::dataType::KVDB::fromJson(j, true), std::runtime_error);
 }
 
-TEST(KVDBTest, ToJsonRoundTrip)
+TEST(KVDBTest, ConstructorValidData)
+{
+    json::Json content;
+    content.setString("v", "/k");
+    EXPECT_NO_THROW(cm::store::dataType::KVDB(validUUID(), "name", std::move(content), true));
+}
+
+TEST(KVDBTest, ConstructorEmptyUUIDRequiredThrows)
+{
+    json::Json content;
+    content.setString("v", "/k");
+    EXPECT_THROW(cm::store::dataType::KVDB("", "name", std::move(content), true, true), std::runtime_error);
+}
+
+TEST(KVDBTest, ConstructorEmptyUUIDNotRequired)
+{
+    json::Json content;
+    content.setString("v", "/k");
+    EXPECT_NO_THROW(cm::store::dataType::KVDB("", "name", std::move(content), true, false));
+}
+
+TEST(KVDBTest, ConstructorInvalidUUIDThrows)
+{
+    json::Json content;
+    content.setString("v", "/k");
+    EXPECT_THROW(cm::store::dataType::KVDB("not-a-uuid", "name", std::move(content), true, true),
+                 std::runtime_error);
+}
+
+TEST(KVDBTest, ConstructorEmptyNameThrows)
+{
+    json::Json content;
+    content.setString("v", "/k");
+    EXPECT_THROW(cm::store::dataType::KVDB(validUUID(), "", std::move(content), true), std::runtime_error);
+}
+
+TEST(KVDBTest, ConstructorContentNotObjectThrows)
+{
+    json::Json notObject("42");
+    EXPECT_THROW(cm::store::dataType::KVDB(validUUID(), "name", std::move(notObject), true), std::runtime_error);
+}
+
+TEST(KVDBTest, FromJsonMissingIdRequiredThrows)
 {
     json::Json j;
-    j.setString("b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e", "/id");
-    j.setString("kvdb_rt", "/metadata/title");
+    j.setString("test_kvdb", "/metadata/title");
     j.setBool(true, "/enabled");
     json::Json content;
     content.setString("v", "/k");
     j.set("/content", content);
 
-    auto kvdb = cm::store::dataType::KVDB::fromJson(j, true);
-    auto serialized = kvdb.toJson();
-
-    std::string name;
-    EXPECT_EQ(serialized.getString(name, "/metadata/title"), json::RetGet::Success);
-    EXPECT_EQ(name, "kvdb_rt");
+    EXPECT_THROW(cm::store::dataType::KVDB::fromJson(j, true), std::runtime_error);
 }
 
-TEST(PolicyTest, FromJsonValid)
+TEST(KVDBTest, FromJsonInvalidIdRequiredThrows)
 {
     json::Json j;
-    j.setString("Test Policy", "/metadata/title");
+    j.setString("not-a-uuid", "/id");
+    j.setString("test_kvdb", "/metadata/title");
     j.setBool(true, "/enabled");
-    j.setString("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d", "/root_decoder");
-    j.setArray("/integrations");
-    j.setArray("/filters");
-    j.setArray("/enrichments");
-    j.setString("myspace", "/origin_space");
-    j.setBool(false, "/index_unclassified_events");
-    j.setBool(false, "/index_discarded_events");
+    json::Json content;
+    content.setString("v", "/k");
+    j.set("/content", content);
+
+    EXPECT_THROW(cm::store::dataType::KVDB::fromJson(j, true), std::runtime_error);
+}
+
+TEST(KVDBTest, FromJsonMissingTitleThrows)
+{
+    json::Json j;
+    j.setString(validUUID(), "/id");
+    j.setBool(true, "/enabled");
+    json::Json content;
+    content.setString("v", "/k");
+    j.set("/content", content);
+
+    EXPECT_THROW(cm::store::dataType::KVDB::fromJson(j, true), std::runtime_error);
+}
+
+TEST(KVDBTest, FromJsonInvalidTitleTypeThrows)
+{
+    json::Json j;
+    j.setString(validUUID(), "/id");
+    j.setBool(true, "/metadata/title");
+    j.setBool(true, "/enabled");
+    json::Json content;
+    content.setString("v", "/k");
+    j.set("/content", content);
+
+    EXPECT_THROW(cm::store::dataType::KVDB::fromJson(j, true), std::runtime_error);
+}
+
+TEST(KVDBTest, FromJsonContentNotObjectThrows)
+{
+    json::Json j;
+    j.setString(validUUID(), "/id");
+    j.setString("test_kvdb", "/metadata/title");
+    j.setBool(true, "/enabled");
+    j.setString("not-an-object", "/content");
+
+    EXPECT_THROW(cm::store::dataType::KVDB::fromJson(j, true), std::runtime_error);
+}
+
+TEST(KVDBTest, FromJsonMissingEnabledThrows)
+{
+    json::Json j;
+    j.setString(validUUID(), "/id");
+    j.setString("test_kvdb", "/metadata/title");
+    json::Json content;
+    content.setString("v", "/k");
+    j.set("/content", content);
+
+    EXPECT_THROW(cm::store::dataType::KVDB::fromJson(j, true), std::runtime_error);
+}
+
+TEST(KVDBTest, FromJsonEnabledNotBoolThrows)
+{
+    json::Json j;
+    j.setString(validUUID(), "/id");
+    j.setString("test_kvdb", "/metadata/title");
+    j.setString("yes", "/enabled");
+    json::Json content;
+    content.setString("v", "/k");
+    j.set("/content", content);
+
+    EXPECT_THROW(cm::store::dataType::KVDB::fromJson(j, true), std::runtime_error);
+}
+
+TEST(KVDBTest, ToJsonPreservesAllFields)
+{
+    const std::string uuid = validUUID();
+    json::Json content;
+    content.setString("V1", "/k1");
+    content.setString("V2", "/k2");
+
+    cm::store::dataType::KVDB kvdb(uuid, "kvdb_full", std::move(content), false);
+    auto serialized = kvdb.toJson();
+
+    std::string idOut;
+    EXPECT_EQ(serialized.getString(idOut, "/id"), json::RetGet::Success);
+    EXPECT_EQ(idOut, uuid);
+
+    std::string titleOut;
+    EXPECT_EQ(serialized.getString(titleOut, "/metadata/title"), json::RetGet::Success);
+    EXPECT_EQ(titleOut, "kvdb_full");
+
+    EXPECT_EQ(serialized.getBool("/enabled"), std::optional<bool>(false));
+
+    std::string v1, v2;
+    EXPECT_EQ(serialized.getString(v1, "/content/k1"), json::RetGet::Success);
+    EXPECT_EQ(v1, "V1");
+    EXPECT_EQ(serialized.getString(v2, "/content/k2"), json::RetGet::Success);
+    EXPECT_EQ(v2, "V2");
+}
+
+TEST(PolicyTest, ConstructorValidData)
+{
+    EXPECT_NO_THROW(cm::store::dataType::Policy("title",
+                                                true,
+                                                validUUID(),
+                                                {validUUID(), validUUID()},
+                                                {validUUID()},
+                                                {"file"},
+                                                {validUUID()},
+                                                "my_space",
+                                                "hash123",
+                                                true,
+                                                false,
+                                                true));
+}
+
+TEST(PolicyTest, ConstructorInvalidOriginSpaceThrows)
+{
+    EXPECT_THROW(cm::store::dataType::Policy("title",
+                                             true,
+                                             validUUID(),
+                                             {},
+                                             {},
+                                             {},
+                                             {},
+                                             "invalid space!",
+                                             "",
+                                             false,
+                                             false,
+                                             true),
+                 std::runtime_error);
+}
+
+TEST(PolicyTest, ConstructorDuplicateIntegrationsThrows)
+{
+    const std::string uuid = validUUID();
+    EXPECT_THROW(cm::store::dataType::Policy("title",
+                                             true,
+                                             validUUID(),
+                                             {uuid, uuid},
+                                             {},
+                                             {},
+                                             {},
+                                             "UNDEFINED",
+                                             "",
+                                             false,
+                                             false,
+                                             true),
+                 std::runtime_error);
+}
+
+TEST(PolicyTest, ConstructorDuplicateFiltersThrows)
+{
+    const std::string uuid = validUUID();
+    EXPECT_THROW(cm::store::dataType::Policy("title",
+                                             true,
+                                             validUUID(),
+                                             {},
+                                             {uuid, uuid},
+                                             {},
+                                             {},
+                                             "UNDEFINED",
+                                             "",
+                                             false,
+                                             false,
+                                             true),
+                 std::runtime_error);
+}
+
+TEST(PolicyTest, ConstructorDuplicateOutputsThrows)
+{
+    const std::string uuid = validUUID();
+    EXPECT_THROW(cm::store::dataType::Policy("title",
+                                             true,
+                                             validUUID(),
+                                             {},
+                                             {},
+                                             {},
+                                             {uuid, uuid},
+                                             "UNDEFINED",
+                                             "",
+                                             false,
+                                             false,
+                                             true),
+                 std::runtime_error);
+}
+
+TEST(PolicyTest, FromJsonWithAllCollections)
+{
+    auto j = makeValidPolicyJson();
+    j.appendString(validUUID(), "/integrations");
+    j.appendString(validUUID(), "/integrations");
+    j.appendString(validUUID(), "/filters");
+    j.appendString("file", "/enrichments");
+    j.appendString("ip", "/enrichments");
+    j.setArray("/outputs");
+    j.appendString(validUUID(), "/outputs");
+    j.setString("space1", "/origin_space");
+    j.setString("hashvalue", "/hash");
     j.setBool(true, "/cleanup_decoder_variables");
 
-    EXPECT_NO_THROW(cm::store::dataType::Policy::fromJson(j));
+    auto policy = cm::store::dataType::Policy::fromJson(j);
+    EXPECT_EQ(policy.getIntegrationsUUIDs().size(), 2);
+    EXPECT_EQ(policy.getFiltersUUIDs().size(), 1);
+    EXPECT_EQ(policy.getEnrichments().size(), 2);
+    EXPECT_EQ(policy.getOutputsUUIDs().size(), 1);
+    EXPECT_EQ(policy.getOriginSpace(), "space1");
+    EXPECT_EQ(policy.getHash(), "hashvalue");
+}
+
+TEST(PolicyTest, FromJsonMissingOriginSpaceUsesDefault)
+{
+    auto j = makeValidPolicyJson();
+    auto policy = cm::store::dataType::Policy::fromJson(j);
+    EXPECT_EQ(policy.getOriginSpace(), "UNDEFINED");
+}
+
+TEST(PolicyTest, FromJsonMissingHashEmpty)
+{
+    auto j = makeValidPolicyJson();
+    auto policy = cm::store::dataType::Policy::fromJson(j);
+    EXPECT_TRUE(policy.getHash().empty());
+}
+
+TEST(PolicyTest, FromJsonMissingCleanupUsesDefault)
+{
+    auto j = makeValidPolicyJson();
+    auto policy = cm::store::dataType::Policy::fromJson(j);
+    EXPECT_TRUE(policy.shouldCleanupDecoderVariables());
+}
+
+TEST(PolicyTest, FromJsonNonObjectThrows)
+{
+    json::Json j("[]");
+    EXPECT_THROW(cm::store::dataType::Policy::fromJson(j), std::runtime_error);
+}
+
+TEST(PolicyTest, FromJsonMissingRootDecoderThrows)
+{
+    auto j = makeValidPolicyJson();
+    j.erase("/root_decoder");
+    EXPECT_THROW(cm::store::dataType::Policy::fromJson(j), std::runtime_error);
+}
+
+TEST(PolicyTest, FromJsonMissingIntegrationsThrows)
+{
+    auto j = makeValidPolicyJson();
+    j.erase("/integrations");
+    EXPECT_THROW(cm::store::dataType::Policy::fromJson(j), std::runtime_error);
+}
+
+TEST(PolicyTest, FromJsonIntegrationEntryNotStringThrows)
+{
+    auto j = makeValidPolicyJson();
+    json::Json number("42");
+    j.appendJson(number, "/integrations");
+    EXPECT_THROW(cm::store::dataType::Policy::fromJson(j), std::runtime_error);
+}
+
+TEST(PolicyTest, FromJsonMissingFiltersThrows)
+{
+    auto j = makeValidPolicyJson();
+    j.erase("/filters");
+    EXPECT_THROW(cm::store::dataType::Policy::fromJson(j), std::runtime_error);
+}
+
+TEST(PolicyTest, FromJsonFilterEntryNotStringThrows)
+{
+    auto j = makeValidPolicyJson();
+    json::Json number("7");
+    j.appendJson(number, "/filters");
+    EXPECT_THROW(cm::store::dataType::Policy::fromJson(j), std::runtime_error);
+}
+
+TEST(PolicyTest, FromJsonMissingEnrichmentsThrows)
+{
+    auto j = makeValidPolicyJson();
+    j.erase("/enrichments");
+    EXPECT_THROW(cm::store::dataType::Policy::fromJson(j), std::runtime_error);
+}
+
+TEST(PolicyTest, FromJsonEnrichmentEntryNotStringThrows)
+{
+    auto j = makeValidPolicyJson();
+    json::Json number("123");
+    j.appendJson(number, "/enrichments");
+    EXPECT_THROW(cm::store::dataType::Policy::fromJson(j), std::runtime_error);
+}
+
+TEST(PolicyTest, FromJsonOutputEntryNotStringThrows)
+{
+    auto j = makeValidPolicyJson();
+    j.setArray("/outputs");
+    json::Json number("99");
+    j.appendJson(number, "/outputs");
+    EXPECT_THROW(cm::store::dataType::Policy::fromJson(j), std::runtime_error);
 }
 
 TEST(PolicyTest, FromJsonMissingEnabledThrows)
 {
-    json::Json j;
-    j.setString("Policy", "/metadata/title");
-    j.setString("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d", "/root_decoder");
-    j.setArray("/integrations");
-    j.setArray("/filters");
-    j.setArray("/enrichments");
-    j.setBool(false, "/index_unclassified_events");
-    j.setBool(false, "/index_discarded_events");
-
+    auto j = makeValidPolicyJson();
+    j.erase("/enabled");
     EXPECT_THROW(cm::store::dataType::Policy::fromJson(j), std::runtime_error);
 }
 
-TEST(PolicyTest, ToJsonRoundTrip)
+TEST(PolicyTest, FromJsonIndexUnclassifiedMissingThrows)
 {
-    json::Json j;
-    j.setString("Round Trip", "/metadata/title");
-    j.setBool(true, "/enabled");
-    j.setString("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d", "/root_decoder");
-    j.setArray("/integrations");
-    j.setArray("/filters");
-    j.setArray("/enrichments");
-    j.setString("space1", "/origin_space");
-    j.setBool(true, "/index_unclassified_events");
-    j.setBool(false, "/index_discarded_events");
-    j.setBool(true, "/cleanup_decoder_variables");
+    auto j = makeValidPolicyJson();
+    j.erase("/index_unclassified_events");
+    EXPECT_THROW(cm::store::dataType::Policy::fromJson(j), std::runtime_error);
+}
 
-    auto policy = cm::store::dataType::Policy::fromJson(j);
-    auto serialized = policy.toJson();
+TEST(PolicyTest, FromJsonIndexUnclassifiedNotBooleanThrows)
+{
+    auto j = makeValidPolicyJson();
+    j.setString("false", "/index_unclassified_events");
+    EXPECT_THROW(cm::store::dataType::Policy::fromJson(j), std::runtime_error);
+}
+
+TEST(PolicyTest, FromJsonIndexDiscardedMissingThrows)
+{
+    auto j = makeValidPolicyJson();
+    j.erase("/index_discarded_events");
+    EXPECT_THROW(cm::store::dataType::Policy::fromJson(j), std::runtime_error);
+}
+
+TEST(PolicyTest, FromJsonIndexDiscardedNotBooleanThrows)
+{
+    auto j = makeValidPolicyJson();
+    j.setString("false", "/index_discarded_events");
+    EXPECT_THROW(cm::store::dataType::Policy::fromJson(j), std::runtime_error);
+}
+
+TEST(PolicyTest, ToJsonNonEmptyCollections)
+{
+    const std::string root = validUUID();
+    const std::string intA = validUUID();
+    const std::string intB = validUUID();
+    const std::string filterA = validUUID();
+    const std::string outputA = validUUID();
+
+    cm::store::dataType::Policy policy("Title",
+                                       true,
+                                       root,
+                                       {intA, intB},
+                                       {filterA},
+                                       {"file", "ip"},
+                                       {outputA},
+                                       "my_space",
+                                       "hash123",
+                                       true,
+                                       true,
+                                       false);
+
+    auto j = policy.toJson();
 
     std::string title;
-    EXPECT_EQ(serialized.getString(title, "/metadata/title"), json::RetGet::Success);
-    EXPECT_EQ(title, "Round Trip");
-    EXPECT_TRUE(policy.shouldIndexUnclassifiedEvents());
-    EXPECT_FALSE(policy.shouldIndexDiscardedEvents());
-    EXPECT_TRUE(policy.shouldCleanupDecoderVariables());
+    EXPECT_EQ(j.getString(title, "/metadata/title"), json::RetGet::Success);
+    EXPECT_EQ(title, "Title");
+    EXPECT_EQ(j.getBool("/enabled"), std::optional<bool>(true));
+    EXPECT_EQ(j.getBool("/index_unclassified_events"), std::optional<bool>(true));
+    EXPECT_EQ(j.getBool("/index_discarded_events"), std::optional<bool>(true));
+    EXPECT_EQ(j.getBool("/cleanup_decoder_variables"), std::optional<bool>(false));
+
+    std::string rootOut;
+    EXPECT_EQ(j.getString(rootOut, "/root_decoder"), json::RetGet::Success);
+    EXPECT_EQ(rootOut, root);
+
+    std::string originSpace;
+    EXPECT_EQ(j.getString(originSpace, "/origin_space"), json::RetGet::Success);
+    EXPECT_EQ(originSpace, "my_space");
+
+    std::string hash;
+    EXPECT_EQ(j.getString(hash, "/hash"), json::RetGet::Success);
+    EXPECT_EQ(hash, "hash123");
+
+    EXPECT_TRUE(j.isArray("/integrations"));
+    EXPECT_EQ(j.size("/integrations"), 2);
+    EXPECT_TRUE(j.isArray("/filters"));
+    EXPECT_EQ(j.size("/filters"), 1);
+    EXPECT_TRUE(j.isArray("/enrichments"));
+    EXPECT_EQ(j.size("/enrichments"), 2);
+    EXPECT_TRUE(j.isArray("/outputs"));
+    EXPECT_EQ(j.size("/outputs"), 1);
+}
+
+TEST(FileUtilsTest, IsValidFileNameAcceptsValid)
+{
+    EXPECT_TRUE(fileutils::isValidFileName("decoder_syslog_0.json"));
+    EXPECT_TRUE(fileutils::isValidFileName("a"));
+    EXPECT_TRUE(fileutils::isValidFileName("file-name.with.dots.txt"));
+}
+
+TEST(FileUtilsTest, IsValidFileNameRejectsEmpty)
+{
+    EXPECT_FALSE(fileutils::isValidFileName(""));
+}
+
+TEST(FileUtilsTest, IsValidFileNameRejectsInvalidChars)
+{
+    EXPECT_FALSE(fileutils::isValidFileName("bad:name"));
+    EXPECT_FALSE(fileutils::isValidFileName("bad*name"));
+    EXPECT_FALSE(fileutils::isValidFileName("bad?name"));
+    EXPECT_FALSE(fileutils::isValidFileName("bad\"name"));
+    EXPECT_FALSE(fileutils::isValidFileName("bad<name"));
+    EXPECT_FALSE(fileutils::isValidFileName("bad>name"));
+    EXPECT_FALSE(fileutils::isValidFileName("bad|name"));
+}
+
+TEST(FileUtilsTest, IsValidFileNameRejectsDots)
+{
+    EXPECT_FALSE(fileutils::isValidFileName("."));
+    EXPECT_FALSE(fileutils::isValidFileName(".."));
+}
+
+TEST(FileUtilsTest, IsValidFileNameRejectsPathSeparators)
+{
+    EXPECT_FALSE(fileutils::isValidFileName("dir/file"));
+    EXPECT_FALSE(fileutils::isValidFileName("dir\\file"));
+    EXPECT_FALSE(fileutils::isValidFileName("/abs"));
+}
+
+TEST(FileUtilsTest, IsValidFileNameRejectsControlChars)
+{
+    EXPECT_FALSE(fileutils::isValidFileName(std::string("bad\x01name")));
+    EXPECT_FALSE(fileutils::isValidFileName(std::string("bad\nname")));
+    EXPECT_FALSE(fileutils::isValidFileName(std::string("bad\x7fname")));
+}
+
+TEST(FileUtilsTest, IsValidFileNameRejectsTooLong)
+{
+    EXPECT_TRUE(fileutils::isValidFileName(std::string(255, 'a')));
+    EXPECT_FALSE(fileutils::isValidFileName(std::string(256, 'a')));
+}
+
+TEST(FileUtilsTest, ReadJsonFileValid)
+{
+    TempDir dir;
+    const auto path = dir.path() / "data.json";
+    writeFile(path, R"({"key":"value","num":42})");
+
+    auto j = fileutils::readJsonFile(path);
+    std::string value;
+    EXPECT_EQ(j.getString(value, "/key"), json::RetGet::Success);
+    EXPECT_EQ(value, "value");
+}
+
+TEST(FileUtilsTest, ReadJsonFileMissingThrows)
+{
+    TempDir dir;
+    const auto path = dir.path() / "missing.json";
+    EXPECT_THROW(fileutils::readJsonFile(path), std::runtime_error);
+}
+
+TEST(FileUtilsTest, ReadJsonFileInvalidThrows)
+{
+    TempDir dir;
+    const auto path = dir.path() / "invalid.json";
+    writeFile(path, "{not valid json");
+    EXPECT_THROW(fileutils::readJsonFile(path), std::runtime_error);
+}
+
+TEST(FileUtilsTest, UpsertFileExistingDir)
+{
+    TempDir dir;
+    const auto path = dir.path() / "file.txt";
+    auto err = fileutils::upsertFile(path, "hello");
+    EXPECT_FALSE(err.has_value());
+    EXPECT_TRUE(std::filesystem::exists(path));
+    EXPECT_EQ(fileutils::readFileAsString(path), "hello");
+}
+
+TEST(FileUtilsTest, UpsertFileCreatesParentDirs)
+{
+    TempDir dir;
+    const auto path = dir.path() / "nested" / "deep" / "file.txt";
+    auto err = fileutils::upsertFile(path, "content");
+    EXPECT_FALSE(err.has_value());
+    EXPECT_TRUE(std::filesystem::exists(path));
+    EXPECT_EQ(fileutils::readFileAsString(path), "content");
+}
+
+TEST(FileUtilsTest, DeleteFileExisting)
+{
+    TempDir dir;
+    const auto path = dir.path() / "file.txt";
+    writeFile(path, "x");
+    ASSERT_TRUE(std::filesystem::exists(path));
+
+    auto err = fileutils::deleteFile(path);
+    EXPECT_FALSE(err.has_value());
+    EXPECT_FALSE(std::filesystem::exists(path));
+}
+
+TEST(FileUtilsTest, DeleteFileNonEmptyDirectoryReturnsError)
+{
+    TempDir dir;
+    const auto subdir = dir.path() / "subdir";
+    std::filesystem::create_directories(subdir);
+    writeFile(subdir / "file.txt", "x");
+
+    auto err = fileutils::deleteFile(subdir);
+    EXPECT_TRUE(err.has_value());
+}
+
+TEST(FileUtilsTest, SetFilePermissionsOnMissingPathReturnsError)
+{
+    TempDir dir;
+    auto err = fileutils::setFilePermissions(dir.path() / "missing.txt");
+    EXPECT_TRUE(err.has_value());
+}
+
+TEST(FileUtilsTest, SetDirectoryPermissionsOnMissingPathReturnsError)
+{
+    TempDir dir;
+    auto err = fileutils::setDirectoryPermissions(dir.path() / "missing_dir");
+    EXPECT_TRUE(err.has_value());
+}
+
+TEST(FileUtilsTest, UpsertFileFailsWhenTargetIsExistingDirectory)
+{
+    TempDir dir;
+    const auto target = dir.path() / "blocked.txt";
+    std::filesystem::create_directories(target);
+
+    auto err = fileutils::upsertFile(target, "data");
+    ASSERT_TRUE(err.has_value());
+    EXPECT_NE(err->find("Failed to open file for writing"), std::string::npos);
+}
+
+TEST(FileUtilsTest, UpsertFileFailsWhenParentPathIsRegularFile)
+{
+    TempDir dir;
+    const auto blocker = dir.path() / "blocker";
+    writeFile(blocker, "x");
+
+    const auto target = blocker / "sub" / "child.txt";
+    auto err = fileutils::upsertFile(target, "data");
+    ASSERT_TRUE(err.has_value());
+    EXPECT_NE(err->find("Failed to create parent directories"), std::string::npos);
+}
+
+TEST(FileUtilsTest, ReadYMLFileAsJsonMissingThrows)
+{
+    TempDir dir;
+    EXPECT_THROW(fileutils::readYMLFileAsJson(dir.path() / "missing.yml"), std::runtime_error);
+}
+
+TEST(FileUtilsTest, ReadYMLFileAsJsonInvalidYAMLThrows)
+{
+    TempDir dir;
+    const auto path = dir.path() / "bad.yml";
+    writeFile(path, "key: value\n  bad: : indent\n: : :");
+    EXPECT_THROW(fileutils::readYMLFileAsJson(path), std::runtime_error);
+}
+
+TEST(FileUtilsTest, ReadFileAsStringMissingThrows)
+{
+    TempDir dir;
+    EXPECT_THROW(fileutils::readFileAsString(dir.path() / "missing.txt"), std::runtime_error);
+}
+
+TEST_F(CMStoreNSTest, RebuildCacheLoadsOutputsDirectory)
+{
+    std::filesystem::remove(storagePath() / "cache_ns.json");
+    std::filesystem::create_directories(storagePath() / "outputs");
+    writeFile(storagePath() / "outputs" / "output_x_0.json", makeMinimalResourceJson().str());
+
+    auto store = makeStore();
+    EXPECT_EQ(store->getCollection(cm::store::ResourceType::OUTPUT).size(), 1u);
+}
+
+TEST_F(CMStoreNSTest, RebuildCacheLoadsFiltersDirectory)
+{
+    std::filesystem::remove(storagePath() / "cache_ns.json");
+    std::filesystem::create_directories(storagePath() / "filters");
+    writeFile(storagePath() / "filters" / "filter_x_0.json", makeMinimalResourceJson().str());
+
+    auto store = makeStore();
+    EXPECT_EQ(store->getCollection(cm::store::ResourceType::FILTER).size(), 1u);
+}
+
+TEST_F(CMStoreNSTest, RebuildCacheLoadsIntegrationsDirectory)
+{
+    std::filesystem::remove(storagePath() / "cache_ns.json");
+    std::filesystem::create_directories(storagePath() / "integrations");
+    writeFile(storagePath() / "integrations" / "my_integration.json", makeMinimalResourceJson().str());
+
+    auto store = makeStore();
+    EXPECT_EQ(store->getCollection(cm::store::ResourceType::INTEGRATION).size(), 1u);
+}
+
+TEST_F(CMStoreNSTest, RebuildCacheLoadsKVDBsDirectory)
+{
+    std::filesystem::remove(storagePath() / "cache_ns.json");
+    std::filesystem::create_directories(storagePath() / "kvdbs");
+    writeFile(storagePath() / "kvdbs" / "my_kvdb.json", makeMinimalResourceJson().str());
+
+    auto store = makeStore();
+    EXPECT_EQ(store->getCollection(cm::store::ResourceType::KVDB).size(), 1u);
+}
+
+TEST_F(CMStoreNSTest, RebuildCacheSkipsNonRegularFileInsideResourceDir)
+{
+    std::filesystem::remove(storagePath() / "cache_ns.json");
+    std::filesystem::create_directories(storagePath() / "decoders" / "subdir");
+    writeFile(storagePath() / "decoders" / "decoder_ok_0.json", makeMinimalResourceJson().str());
+
+    auto store = makeStore();
+    EXPECT_EQ(store->getCollection(cm::store::ResourceType::DECODER).size(), 1u);
+}
+
+TEST_F(CMStoreNSTest, RebuildCacheSkipsFileWithInvalidExtension)
+{
+    std::filesystem::remove(storagePath() / "cache_ns.json");
+    std::filesystem::create_directories(storagePath() / "decoders");
+    writeFile(storagePath() / "decoders" / "foo.txt", makeMinimalResourceJson().str());
+    writeFile(storagePath() / "decoders" / "decoder_ok_0.json", makeMinimalResourceJson().str());
+
+    auto store = makeStore();
+    EXPECT_EQ(store->getCollection(cm::store::ResourceType::DECODER).size(), 1u);
+}
+
+TEST_F(CMStoreNSTest, RebuildCacheSkipsFileWithInvalidJSON)
+{
+    std::filesystem::remove(storagePath() / "cache_ns.json");
+    std::filesystem::create_directories(storagePath() / "decoders");
+    writeFile(storagePath() / "decoders" / "decoder_bad_0.json", "{not json");
+    writeFile(storagePath() / "decoders" / "decoder_ok_0.json", makeMinimalResourceJson().str());
+
+    auto store = makeStore();
+    EXPECT_EQ(store->getCollection(cm::store::ResourceType::DECODER).size(), 1u);
+}
+
+TEST_F(CMStoreNSTest, RebuildCacheSkipsFileWithExistingInvalidUUID)
+{
+    std::filesystem::remove(storagePath() / "cache_ns.json");
+    std::filesystem::create_directories(storagePath() / "decoders");
+    writeFile(storagePath() / "decoders" / "decoder_bad_0.json", R"({"id":"not-a-uuid"})");
+    writeFile(storagePath() / "decoders" / "decoder_ok_0.json", makeMinimalResourceJson().str());
+
+    auto store = makeStore();
+    EXPECT_EQ(store->getCollection(cm::store::ResourceType::DECODER).size(), 1u);
+}
+
+TEST_F(CMStoreNSTest, CreateResourceWithNonObjectContentThrows)
+{
+    auto store = makeStore();
+    json::Json arrayJson("[]");
+    EXPECT_THROW(store->createResource("decoder/x/0", cm::store::ResourceType::DECODER, arrayJson),
+                 std::runtime_error);
+}
+
+TEST_F(CMStoreNSTest, CreateResourceWithInvalidNameThrows)
+{
+    auto store = makeStore();
+    auto j = makeDecoderJson("decoder/with*star/0");
+    EXPECT_THROW(store->createResource("decoder/with*star/0", cm::store::ResourceType::DECODER, j),
+                 std::runtime_error);
+}
+
+TEST_F(CMStoreNSTest, CreateResourceWithUndefinedTypeThrows)
+{
+    auto store = makeStore();
+    json::Json j;
+    j.setObject();
+    EXPECT_THROW(store->createResource("validname", cm::store::ResourceType::UNDEFINED, j), std::runtime_error);
+}
+
+TEST_F(CMStoreNSTest, AssetExistsByNameThrowsWhenTypeUndefined)
+{
+    auto store = makeStore();
+    EXPECT_THROW(store->assetExistsByName(base::Name("kvdb/x/0")), std::runtime_error);
+}
+
+TEST_F(CMStoreNSTest, AssetExistsByUUIDReturnsTrueForKVDB)
+{
+    auto store = makeStore();
+    auto uuid = store->createResource("my_kvdb", cm::store::ResourceType::KVDB, makeKVDBJson("my_kvdb", validUUID()));
+    EXPECT_TRUE(store->assetExistsByUUID(uuid));
+}
+
+TEST_F(CMStoreNSTest, CreateResourceFailsWhenFilePathBlockedByDirectory)
+{
+    auto store = makeStore();
+    const auto path = storagePath() / "decoders" / "decoder_blocked_0.json";
+    std::filesystem::create_directories(path);
+
+    EXPECT_THROW(store->createResource(
+                     "decoder/blocked/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/blocked/0")),
+                 std::runtime_error);
+}
+
+TEST_F(CMStoreNSTest, UpdateResourceByNameFailsWhenWriteFails)
+{
+    auto store = makeStore();
+    const auto uuid = store->createResource(
+        "decoder/upd/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/upd/0"));
+
+    const auto path = storagePath() / "decoders" / "decoder_upd_0.json";
+    std::filesystem::remove(path);
+    std::filesystem::create_directories(path);
+
+    auto j = makeDecoderJson("decoder/upd/0", uuid);
+    EXPECT_THROW(store->updateResourceByName("decoder/upd/0", cm::store::ResourceType::DECODER, j),
+                 std::runtime_error);
+}
+
+TEST_F(CMStoreNSTest, UpdateResourceByUUIDFailsWhenWriteFails)
+{
+    auto store = makeStore();
+    const auto uuid = store->createResource(
+        "decoder/upd2/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/upd2/0"));
+
+    const auto path = storagePath() / "decoders" / "decoder_upd2_0.json";
+    std::filesystem::remove(path);
+    std::filesystem::create_directories(path);
+
+    auto j = makeDecoderJson("decoder/upd2/0", uuid);
+    EXPECT_THROW(store->updateResourceByUUID(uuid, j), std::runtime_error);
+}
+
+TEST_F(CMStoreNSTest, DeleteResourceByNameFailsWhenPathIsNonEmptyDir)
+{
+    auto store = makeStore();
+    store->createResource("decoder/del/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/del/0"));
+
+    const auto path = storagePath() / "decoders" / "decoder_del_0.json";
+    std::filesystem::remove(path);
+    std::filesystem::create_directories(path / "blocker");
+
+    EXPECT_THROW(store->deleteResourceByName("decoder/del/0", cm::store::ResourceType::DECODER),
+                 std::runtime_error);
+}
+
+TEST_F(CMStoreNSTest, DeleteResourceByUUIDFailsWhenPathIsNonEmptyDir)
+{
+    auto store = makeStore();
+    auto uuid =
+        store->createResource("decoder/del2/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/del2/0"));
+
+    const auto path = storagePath() / "decoders" / "decoder_del2_0.json";
+    std::filesystem::remove(path);
+    std::filesystem::create_directories(path / "blocker");
+
+    EXPECT_THROW(store->deleteResourceByUUID(uuid), std::runtime_error);
+}
+
+TEST_F(CMStoreNSTest, UpdateResourceByNameMissingIdThrows)
+{
+    auto store = makeStore();
+    store->createResource("decoder/upd3/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/upd3/0"));
+
+    auto j = makeDecoderJson("decoder/upd3/0");
+    EXPECT_THROW(store->updateResourceByName("decoder/upd3/0", cm::store::ResourceType::DECODER, j),
+                 std::runtime_error);
+}
+
+TEST_F(CMStoreNSTest, UpdateResourceByUUIDMissingIdThrows)
+{
+    auto store = makeStore();
+    auto uuid =
+        store->createResource("decoder/upd4/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/upd4/0"));
+
+    auto j = makeDecoderJson("decoder/upd4/0");
+    EXPECT_THROW(store->updateResourceByUUID(uuid, j), std::runtime_error);
+}
+
+TEST_F(CMStoreNSTest, UpsertPolicyFailsWhenFilePathBlockedByDirectory)
+{
+    auto store = makeStore();
+    std::filesystem::create_directories(storagePath() / "policy.json");
+
+    EXPECT_THROW(
+        store->upsertPolicy(
+            cm::store::dataType::Policy {"title", true, validUUID(), {}, {}, {}, {}, "UNDEFINED", "", false, false, true}),
+        std::runtime_error);
+}
+
+TEST_F(CMStoreNSTest, DeletePolicyFailsWhenPathIsNonEmptyDir)
+{
+    auto store = makeStore();
+    std::filesystem::create_directories(storagePath() / "policy.json" / "blocker");
+
+    EXPECT_THROW(store->deletePolicy(), std::runtime_error);
+}
+
+TEST_F(CMStoreNSTest, GetIntegrationByUUIDThrowsWhenTypeIsDecoder)
+{
+    auto store = makeStore();
+    auto uuid =
+        store->createResource("decoder/wrong/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/wrong/0"));
+
+    EXPECT_THROW(store->getIntegrationByUUID(uuid), std::runtime_error);
+}
+
+TEST_F(CMStoreNSTest, GetKVDBByUUIDThrowsWhenTypeIsDecoder)
+{
+    auto store = makeStore();
+    auto uuid = store->createResource(
+        "decoder/wrong2/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/wrong2/0"));
+
+    EXPECT_THROW(store->getKVDBByUUID(uuid), std::runtime_error);
+}
+
+TEST_F(CMStoreNSTest, GetOutputsSkipsSubdirectory)
+{
+    std::filesystem::create_directories(outputsPath() / "default" / "subdir");
+    auto store = makeStore();
+    auto outputs = store->getOutputsForSpace("");
+    EXPECT_EQ(outputs.size(), 0u);
+}
+
+TEST_F(CMStoreNSTest, GetOutputsSkipsNonYamlFile)
+{
+    writeFile(outputsPath() / "default" / "ignore.txt", "data");
+    auto store = makeStore();
+    auto outputs = store->getOutputsForSpace("");
+    EXPECT_EQ(outputs.size(), 0u);
+}
+
+TEST_F(CMStoreNSTest, GetOutputsThrowsOnInvalidYAML)
+{
+    writeFile(outputsPath() / "default" / "bad.yml", "key: value\n  bad: : indent\n: : :");
+    auto store = makeStore();
+    EXPECT_THROW(store->getOutputsForSpace(""), std::runtime_error);
+}
+
+TEST_F(CMStoreNSTest, ConstructionMissingStoragePathThrows)
+{
+    const auto missingPath = storagePath() / "missing_storage";
+    EXPECT_THROW(cm::store::CMStoreNS(cm::store::NamespaceId("test"), missingPath, outputsPath()), std::runtime_error);
+}
+
+TEST_F(CMStoreNSTest, ConstructionStoragePathIsFileThrows)
+{
+    const auto filePath = storagePath() / "not_a_dir";
+    writeFile(filePath, "x");
+    EXPECT_THROW(cm::store::CMStoreNS(cm::store::NamespaceId("test"), filePath, outputsPath()), std::runtime_error);
+}
+
+TEST_F(CMStoreNSTest, ConstructionWrapsInitializationFailure)
+{
+    std::filesystem::remove(storagePath() / "cache_ns.json");
+    std::filesystem::create_directories(storagePath() / "cache_ns.json");
+
+    EXPECT_THROW(cm::store::CMStoreNS(cm::store::NamespaceId("test"), storagePath(), outputsPath()),
+                 std::runtime_error);
+}
+
+TEST_F(CMStoreNSTest, TemplateGetResourceByNameWorksForSupportedTypes)
+{
+    auto store = makeStore();
+
+    store->createResource("decoder/template/0",
+                          cm::store::ResourceType::DECODER,
+                          makeDecoderJson("decoder/template/0"));
+    store->createResource("templ_integration",
+                          cm::store::ResourceType::INTEGRATION,
+                          makeIntegrationJson("templ_integration", validUUID()));
+    store->createResource("templ_kvdb", cm::store::ResourceType::KVDB, makeKVDBJson("templ_kvdb", validUUID()));
+
+    const auto& reader = static_cast<const cm::store::ICMStoreNSReader&>(*store);
+
+    auto asset = reader.getResourceByName<json::Json>("decoder/template/0");
+    auto integration = reader.getResourceByName<cm::store::dataType::Integration>("templ_integration");
+    auto kvdb = reader.getResourceByName<cm::store::dataType::KVDB>("templ_kvdb");
+
+    std::string nameStr;
+    EXPECT_EQ(asset.getString(nameStr, "/name"), json::RetGet::Success);
+    EXPECT_EQ(nameStr, "decoder/template/0");
+    EXPECT_EQ(integration.getName(), "templ_integration");
+    EXPECT_EQ(kvdb.getName(), "templ_kvdb");
+}
+
+TEST_F(CMStoreNSTest, TemplateGetResourceByUUIDWorksForSupportedTypes)
+{
+    auto store = makeStore();
+
+    const auto assetUUID = store->createResource("decoder/templateuuid/0",
+                                                 cm::store::ResourceType::DECODER,
+                                                 makeDecoderJson("decoder/templateuuid/0"));
+    const auto integrationUUID = store->createResource("templ_uuid_integration",
+                                                       cm::store::ResourceType::INTEGRATION,
+                                                       makeIntegrationJson("templ_uuid_integration", validUUID()));
+    const auto kvdbUUID =
+        store->createResource("templ_uuid_kvdb", cm::store::ResourceType::KVDB, makeKVDBJson("templ_uuid_kvdb", validUUID()));
+
+    const auto& reader = static_cast<const cm::store::ICMStoreNSReader&>(*store);
+
+    auto asset = reader.getResourceByUUID<json::Json>(assetUUID);
+    auto integration = reader.getResourceByUUID<cm::store::dataType::Integration>(integrationUUID);
+    auto kvdb = reader.getResourceByUUID<cm::store::dataType::KVDB>(kvdbUUID);
+
+    std::string nameStr;
+    EXPECT_EQ(asset.getString(nameStr, "/name"), json::RetGet::Success);
+    EXPECT_EQ(nameStr, "decoder/templateuuid/0");
+    EXPECT_EQ(integration.getName(), "templ_uuid_integration");
+    EXPECT_EQ(kvdb.getName(), "templ_uuid_kvdb");
+}
+
+TEST_F(CMStoreTest, ConstructionOnMissingOutputsPathThrows)
+{
+    EXPECT_THROW(cm::store::CMStore(m_baseDir->path().string(), "/nonexistent/outputs"), std::runtime_error);
+}
+
+TEST_F(CMStoreTest, ConstructionOnOutputsPathThatIsFileThrows)
+{
+    const auto outputsFile = m_baseDir->path() / "outputs-file";
+    writeFile(outputsFile, "x");
+    EXPECT_THROW(cm::store::CMStore(m_baseDir->path().string(), outputsFile.string()), std::runtime_error);
+}
+
+TEST_F(CMStoreTest, ConstructionOnRelativeOutputsPathThrows)
+{
+    EXPECT_THROW(cm::store::CMStore(m_baseDir->path().string(), "relative/outputs"), std::runtime_error);
+}
+
+TEST_F(CMStoreTest, LoadNamespacesIgnoresRegularFilesOnDisk)
+{
+    writeFile(m_baseDir->path() / "not_a_namespace.txt", "x");
+
+    auto store = makeStore();
+    EXPECT_TRUE(store->getNamespaces().empty());
+}
+
+TEST_F(CMStoreTest, CreateNamespaceWhenDirectoryAlreadyExistsOnDiskThrows)
+{
+    auto store = makeStore();
+    std::filesystem::create_directories(m_baseDir->path() / "existing");
+    EXPECT_THROW(store->createNamespace(cm::store::NamespaceId("existing")), std::runtime_error);
+}
+
+TEST_F(CMStoreTest, RenameNamespaceMissingOnDiskThrows)
+{
+    auto store = makeStore();
+    store->createNamespace(cm::store::NamespaceId("ghost"));
+
+    std::filesystem::remove_all(m_baseDir->path() / "ghost");
+
+    EXPECT_THROW(store->renameNamespace(cm::store::NamespaceId("ghost"), cm::store::NamespaceId("renamed")),
+                 std::runtime_error);
+}
+
+TEST_F(CMStoreTest, RenameNamespaceDestinationAlreadyExistsOnDiskThrows)
+{
+    auto store = makeStore();
+    store->createNamespace(cm::store::NamespaceId("from_ns"));
+    std::filesystem::create_directories(m_baseDir->path() / "to_ns");
+
+    EXPECT_THROW(store->renameNamespace(cm::store::NamespaceId("from_ns"), cm::store::NamespaceId("to_ns")),
+                 std::runtime_error);
 }

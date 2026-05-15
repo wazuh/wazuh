@@ -49,15 +49,15 @@ static void parse_synchronization_section(wm_sys_t * syscollector, XML_NODE node
         } else if (strcmp(node[i]->element, XML_DB_SYNC_INTERVAL) == 0) {
             long t = w_parse_time(node[i]->content);
 
-            if (t <= 0) {
+            if (t <= 0 || (unsigned long)t > UINT32_MAX) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
-                syscollector->sync.sync_interval = t;
+                syscollector->sync.sync_interval = (uint32_t) t;
             }
         } else if (strcmp(node[i]->element, XML_DB_SYNC_END_DELAY) == 0) {
             long sync_end_delay = w_parse_time(node[i]->content);
 
-            if (sync_end_delay < 0) {
+            if (sync_end_delay < 0 || (unsigned long)sync_end_delay > UINT32_MAX) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
                 syscollector->sync.sync_end_delay = (uint32_t) sync_end_delay;
@@ -65,7 +65,7 @@ static void parse_synchronization_section(wm_sys_t * syscollector, XML_NODE node
         } else if (strcmp(node[i]->element, XML_DB_SYNC_RESPONSE_TIMEOUT) == 0) {
             long response_timeout = w_parse_time(node[i]->content);
 
-            if (response_timeout < 0) {
+            if (response_timeout < 0 || (unsigned long)response_timeout > UINT32_MAX) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
                 syscollector->sync.sync_response_timeout = (uint32_t) response_timeout;
@@ -82,7 +82,7 @@ static void parse_synchronization_section(wm_sys_t * syscollector, XML_NODE node
         } else if (strcmp(node[i]->element, XML_INTEGRITY_INTERVAL) == 0) {
             long integrity_interval = w_parse_time(node[i]->content);
 
-            if (integrity_interval < 0) {
+            if (integrity_interval < 0 || (unsigned long)integrity_interval > UINT32_MAX) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
                 syscollector->sync.integrity_interval = (uint32_t) integrity_interval;

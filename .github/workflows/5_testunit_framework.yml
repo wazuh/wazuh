@@ -51,7 +51,7 @@ jobs:
 
       - name: Run Framework tests
         run: |
-          set -o pipefail 
+          set -o pipefail
           python -m pytest framework -vv --ignore=tests --cov=framework | tee ${TEST_REPORT_PATH}
 
       - name: Generate test report

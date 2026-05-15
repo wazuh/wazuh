@@ -181,11 +181,11 @@ INSTANTIATE_TEST_SUITE_P(
             {
                 auto dumper = std::make_shared<testing::StrictMock<dumper::mocks::MockDumper>>();
 
-                const std::string expectedArchived = std::string("H ") + HDR1 + "\n" + "E " + EV1;
+                const std::string expectedDumped = std::string("H ") + HDR1 + "\n" + "E " + EV1;
 
                 EXPECT_CALL(*dumper, dump(testing::A<std::string_view>()))
-                    .WillOnce(testing::Invoke([expectedArchived](std::string_view v)
-                                              { EXPECT_EQ(v, std::string_view {expectedArchived}); }));
+                    .WillOnce(testing::Invoke([expectedDumped](std::string_view v)
+                                              { EXPECT_EQ(v, std::string_view {expectedDumped}); }));
 
                 // inner handler stores only weak_ptr, so keep dump alive by capturing it
                 auto inner = pushEvent(orchestrator, dumper);

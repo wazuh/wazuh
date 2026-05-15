@@ -14,7 +14,7 @@ from wazuh.core import common
 from wazuh.core.agent import WazuhDBQueryAgents
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.indexer.indexer import get_indexer_client
-from wazuh.stats import get_daemons_stats
+from wazuh.stats import get_daemons_stats, get_engine_metrics
 
 # Mapping from OpenSearch field types to JSON Schema type definitions.
 _OPENSEARCH_TO_JSONSCHEMA_TYPE: dict[str, dict] = {
@@ -63,7 +63,7 @@ def _build_jsonschema_properties(properties: dict) -> dict:
             base_type = _OPENSEARCH_TO_JSONSCHEMA_TYPE.get(os_type)
             if base_type:
                 json_schema_props[field] = {
-                    "anyOf": [base_type, {"type": "array", "items": base_type}]
+                    "anyOf": [base_type, {"type": "array", "items": base_type}, {"type": "null"}]
                 }
             else:
                 json_schema_props[field] = {}
@@ -168,7 +168,7 @@ class MetricsSnapshotTasks:
 
         agents_data = await loop.run_in_executor(None, self._get_agents_sync)
         node_name = self.server.configuration.get("node_name", "unknown")
-        cluster_name = self.server.configuration.get("cluster_name", "unknown")
+        cluster_name = self.server.configuration.get("name", None)
 
         normalized = []
         for agent in agents_data:
@@ -196,7 +196,7 @@ class MetricsSnapshotTasks:
             ``wazuh.cluster.name``.
         """
         local_node_name = self.server.configuration.get("node_name", "unknown")
-        cluster_name = self.server.configuration.get("cluster_name", "unknown")
+        cluster_name = self.server.configuration.get("name", None)
 
         all_node_names = [local_node_name]
         for worker_name in self.server.clients:
@@ -232,6 +232,48 @@ class MetricsSnapshotTasks:
                 )
 
         return comms_data
+
+    async def _collect_normalization_all_nodes(self, timestamp: str) -> list:
+        """Collect Engine metrics from all cluster nodes via DAPI fan-out."""
+        local_node_name = self.server.configuration.get("node_name", "unknown")
+        cluster_name = self.server.configuration.get("name", None)
+
+        all_node_names = [local_node_name] + list(self.server.clients)
+
+        docs = []
+        loop = asyncio.get_running_loop()
+        for node_name in all_node_names:
+            try:
+                if node_name == local_node_name:
+                    result = await loop.run_in_executor(None, get_engine_metrics)
+                else:
+                    result = await DistributedAPI(
+                        f=get_engine_metrics,
+                        f_kwargs={"node_list": [node_name]},
+                        logger=self.logger,
+                        request_type="distributed_master",
+                        is_async=False,
+                        wait_for_complete=True,
+                    ).distribute_function()
+
+                for item in getattr(result, "affected_items", []):
+                    node_ts = item.get("timestamp", timestamp)
+                    for metric_entry in item.get("global", []):
+                        docs.append(self._normalize_normalization_doc(
+                            metric_entry, None, node_ts, cluster_name, node_name
+                        ))
+                    for space in item.get("spaces", []):
+                        space_name = space.get("name", None)
+                        for metric_entry in space.get("metrics", []):
+                            docs.append(self._normalize_normalization_doc(
+                                metric_entry, space_name, node_ts, cluster_name, node_name
+                            ))
+            except Exception:
+                self.logger.exception(
+                    "Failed to collect Engine metrics from node '%s'", node_name
+                )
+
+        return docs
 
     @staticmethod
     def _drop_none(doc: dict) -> dict:
@@ -453,6 +495,42 @@ class MetricsSnapshotTasks:
             }
         )
 
+    @staticmethod
+    def _normalize_normalization_doc(
+        metric_entry: dict,
+        space_name: str,
+        timestamp: str,
+        cluster_name: str,
+        node_name: str,
+    ) -> dict:
+        """Transform a single Engine metric entry into an indexable document.
+
+        One call = one document. Called once per entry in global[] and once
+        per entry in each space's metrics[].
+        """
+        return {
+            "@timestamp": timestamp,
+            "event": {
+                "module": "wazuh-manager-analysisd",
+                "kind": "metrics",
+            },
+            "metric": {
+                "name": metric_entry["name"],
+                "type": metric_entry["type"],
+                "enabled": metric_entry["enabled"],
+                "value": metric_entry["value"],
+            },
+            "wazuh": {
+                "cluster": {
+                    "name": cluster_name,
+                    "node": node_name,
+                },
+                "space": {
+                    "name": space_name,
+                },
+            },
+        }
+
     def _load_schema(self, schema_filename: str) -> dict | None:
         """Load and cache an OpenSearch index template schema.
 
@@ -546,13 +624,15 @@ class MetricsSnapshotTasks:
     async def _collect_and_index(self):
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        agent_docs, comms_docs = await asyncio.gather(
+        agent_docs, comms_docs, normalization_docs = await asyncio.gather(
             self._collect_agents(timestamp),
             self._collect_comms_all_nodes(timestamp),
+            self._collect_normalization_all_nodes(timestamp),
         )
 
         agents_schema = self._load_schema("metrics-agents.json")
         comms_schema = self._load_schema("metrics-comms.json")
+        normalization_schema = self._load_schema("metrics-normalization.json")
 
         if agents_schema:
             agent_docs = self._validate_documents(
@@ -562,6 +642,10 @@ class MetricsSnapshotTasks:
             comms_docs = self._validate_documents(
                 comms_docs, comms_schema, "wazuh-metrics-comms"
             )
+        if normalization_schema:
+            normalization_docs = self._validate_documents(
+                normalization_docs, normalization_schema, "wazuh-metrics-normalization"
+            )
 
         async with get_indexer_client() as indexer:
             await asyncio.gather(
@@ -570,5 +654,8 @@ class MetricsSnapshotTasks:
                 ),
                 indexer.metrics.bulk_index(
                     "wazuh-metrics-comms", comms_docs, self.bulk_size
+                ),
+                indexer.metrics.bulk_index(
+                    "wazuh-metrics-normalization", normalization_docs, self.bulk_size
                 ),
             )

@@ -194,13 +194,6 @@ case "$1" in
     # strict "etc/ MUST NOT be overwritten" contract from the upgrade rules.
     restore_upgrade_preserve
 
-    # Check if SELinux is installed and enabled
-    if command -v getenforce > /dev/null 2>&1 && command -v semodule > /dev/null 2>&1; then
-        if [ $(getenforce) !=  "Disabled" ]; then
-            semodule -i ${DIR}/var/selinux/wazuh.pp
-            semodule -e wazuh
-        fi
-    fi
 
     # Restoring file permissions
     ${SCRIPTS_DIR}/restore-permissions.sh > /dev/null 2>&1 || true

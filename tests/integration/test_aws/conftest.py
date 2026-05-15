@@ -43,19 +43,6 @@ def mark_cases_as_skipped(metadata):
         pytest.skip(reason='ALB, CLB and NLB integrations are removing older logs from other region')
 
 
-@pytest.fixture
-def restart_wazuh_function_without_exception(daemon=None):
-    """Restart all Wazuh daemons."""
-    try:
-        control_service("start", daemon=daemon)
-    except ValueError:
-        pass
-
-    yield
-
-    control_service('stop', daemon=daemon)
-
-
 """Boto3 client fixtures"""
 # Use the environment variable or default to 'dev'
 aws_profile = os.environ.get("AWS_PROFILE", "default")

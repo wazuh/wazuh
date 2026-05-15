@@ -8,7 +8,7 @@ Homepage: https://www.wazuh.com
 
 Package: wazuh-agent
 Architecture: any
-Depends: ${shlibs:Depends}, libc6 (>= 2.7), lsb-release, debconf, adduser, procps
+Depends: ${shlibs:Depends}, libc6 (>= 2.7), procps
 Conflicts: ossec-hids-agent, ossec-hids, wazuh-api
 Breaks: ossec-hids-agent, ossec-hids
 Description: Wazuh agent

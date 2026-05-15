@@ -55,7 +55,6 @@ EXTERNAL_AUDIT=external/audit-userspace/
 EXTERNAL_LIBFFI=external/libffi/
 EXTERNAL_LIBPLIST=external/libplist/
 EXTERNAL_CPYTHON=external/cpython/
-EXTERNAL_MSGPACK=external/msgpack/
 EXTERNAL_BZIP2=external/bzip2/
 EXTERNAL_GOOGLE_TEST=external/googletest/
 EXTERNAL_GOOGLE_BENCHMARK=external/benchmark/
@@ -77,7 +76,6 @@ EXTERNAL_LIBPCRE2=external/libpcre2/
 EXTERNAL_SIMDJSON=external/simdjson/
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
-EXTERNAL_PACMAN=external/pacman/
 EXTERNAL_LIBARCHIVE=external/libarchive/
 EXTERNAL_JEMALLOC=external/jemalloc/
 EXTERNAL_RPM=external/rpm/
@@ -92,9 +90,6 @@ else
 WAZUH_USER?=wazuh
 WAZUH_GROUP?=wazuh
 endif
-SELINUX_MODULE=selinux/wazuh.mod
-SELINUX_ENFORCEMENT=selinux/wazuh.te
-SELINUX_POLICY=selinux/wazuh.pp
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
 USE_AUDIT=no
@@ -155,6 +150,10 @@ USE_SELINUX=no
 endif
 else
 USE_SELINUX=no
+endif
+
+ifeq (${TARGET},manager)
+override USE_SELINUX := no
 endif
 
 ifneq (${TARGET},winagent)
@@ -335,8 +334,10 @@ agent: ${CPPLIBDEPS}
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 
 ifneq (,$(filter ${USE_SELINUX},YES yes y Y 1))
-server manager agent: selinux
-endif
+SELINUX_MODULE=selinux/wazuh.mod
+SELINUX_ENFORCEMENT=selinux/wazuh.te
+SELINUX_POLICY=selinux/wazuh.pp
+agent: selinux
 
 selinux: $(SELINUX_POLICY)
 
@@ -345,6 +346,7 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
+endif
 
 ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
@@ -449,7 +451,7 @@ PRECOMPILED_RES := $(PRECOMPILED_OS)$(PRECOMPILED_ARCH)
 endif
 
 # Agent dependencies
-EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive popt lua rpm rocksdb lzma cpp-httplib benchmark libbpf-bootstrap dbus flatbuffers
+EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace bzip2 nlohmann googletest libpcre2 libplist libarchive popt lua rpm rocksdb lzma cpp-httplib benchmark libbpf-bootstrap dbus flatbuffers
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
@@ -459,10 +461,10 @@ endif
 
 # Remove libbpf-bootstrap and dbus if the target is winagent OR non-Linux OS
 ifeq (${TARGET}, winagent)
-	EXTERNAL_RES := $(filter-out libbpf-bootstrap dbus, $(EXTERNAL_RES))
+	EXTERNAL_RES := $(filter-out libbpf-bootstrap dbus rpm, $(EXTERNAL_RES))
 else
 ifneq (${uname_S}, Linux)
-	EXTERNAL_RES := $(filter-out libbpf-bootstrap dbus, $(EXTERNAL_RES))
+	EXTERNAL_RES := $(filter-out libbpf-bootstrap dbus rpm, $(EXTERNAL_RES))
 endif
 endif
 
@@ -801,11 +803,9 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_POPT)build
 	rm -rf $(EXTERNAL_RPM)builddir
 # Manually-compiled dependencies - remove object files and build artifacts
-	rm -f $(EXTERNAL_PACMAN)lib/libalpm/*.a $(EXTERNAL_PACMAN)lib/libalpm/*.o
 	rm -f $(EXTERNAL_JSON)*.o $(EXTERNAL_JSON)*.a
 	rm -f $(EXTERNAL_SQLITE)*.o $(EXTERNAL_SQLITE)*.a
 	rm -f $(EXTERNAL_PROCPS)*.o $(EXTERNAL_PROCPS)*.a
-	rm -f $(EXTERNAL_MSGPACK)src/*.o $(EXTERNAL_MSGPACK)*.a
 # Clean CMake ExternalProject stamp files
 	rm -rf build/external/*-prefix
 endif
@@ -829,8 +829,8 @@ clean-internals:
 	rm -f wazuh_modules/vulnerability_scanner/include/*_generated.h
 	rm -f wazuh_modules/vulnerability_scanner/include/*_schema.h
 # Selinux
-	rm -f ${SELINUX_MODULE}
-	rm -f ${SELINUX_POLICY}
+	rm -f selinux/wazuh.mod
+	rm -f selinux/wazuh.pp
 
 clean-framework:
 	${MAKE} -C ../framework clean

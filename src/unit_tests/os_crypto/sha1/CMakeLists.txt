@@ -8,9 +8,18 @@
 cmake_minimum_required(VERSION 3.10)
 
 list(APPEND os_crypto_sha1_tests_names "test_sha1_op")
-list(APPEND os_crypto_sha1_tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
-                                        -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf \
-                                        -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,wfopen -Wl,--wrap,popen")
+# On winagent OS_SHA1_File_Nbytes uses w_fopen_r (3-arg variant) instead of
+# wfopen; the test selects the wrapper via #ifdef TEST_WINAGENT so the wrap
+# flag must be present at link time on that target. Build the flag string in
+# pieces and string-concatenate so an empty extra block doesn't leave trailing
+# whitespace (CMP0004 hard error).
+set(_sha1_base_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
+-Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf \
+-Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,wfopen -Wl,--wrap,popen")
+if(${TARGET} STREQUAL "winagent")
+    set(_sha1_base_flags "${_sha1_base_flags} -Wl,--wrap=w_fopen_r")
+endif()
+list(APPEND os_crypto_sha1_tests_flags "${_sha1_base_flags}")
 
 # Compiling tests
 list(LENGTH os_crypto_sha1_tests_names count)

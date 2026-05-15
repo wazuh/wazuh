@@ -148,4 +148,10 @@ if(WIN32)
            COMMAND registry_rule_evaluator_unit_test)
 
   set_tests_properties(RegistryRuleEvaluatorTest PROPERTIES LABELS "sca")
+
+  add_executable(sca_win_helpers_unit_test sca_win_helpers_test.cpp)
+  target_link_libraries(sca_win_helpers_unit_test PRIVATE SCAImpl)
+  add_test(NAME SCAWinHelpersTest COMMAND sca_win_helpers_unit_test)
+
+  set_tests_properties(SCAWinHelpersTest PROPERTIES LABELS "sca")
 endif()

@@ -17,9 +17,11 @@ namespace schemf
  */
 class Schema final : public IValidator
 {
+public:
+    class Validator;
+
 private:
     std::map<std::string, Field> m_fields; ///< First level fields of the schema.
-    class Validator;
     std::experimental::propagate_const<std::unique_ptr<Validator>> m_validator;
 
     /**

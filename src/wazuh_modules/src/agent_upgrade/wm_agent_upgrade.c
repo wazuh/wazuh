@@ -23,6 +23,7 @@
 #include "wm_agent_upgrade_agent.h"
 #else
 #include "wm_agent_upgrade_manager.h"
+#include "manager/wm_agent_upgrade_upgrades.h"
 #endif
 
 /**
@@ -35,6 +36,7 @@ STATIC void* wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config);
 #endif
 STATIC void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config);
 STATIC cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config);
+STATIC void wm_agent_upgrade_stop(wm_agent_upgrade* upgrade_config);
 
 /* Context definition */
 const wm_context WM_AGENT_UPGRADE_CONTEXT = {
@@ -43,7 +45,7 @@ const wm_context WM_AGENT_UPGRADE_CONTEXT = {
     .destroy = (void(*)(void *))wm_agent_upgrade_destroy,
     .dump = (cJSON * (*)(const void *))wm_agent_upgrade_dump,
     .sync = NULL,
-    .stop = NULL,
+    .stop = (void(*)(void *))wm_agent_upgrade_stop,
     .query = NULL,
 };
 
@@ -63,6 +65,13 @@ STATIC void *wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
     return 0;
 #else
     return NULL;
+#endif
+}
+
+STATIC void wm_agent_upgrade_stop(wm_agent_upgrade* upgrade_config) {
+    (void)upgrade_config;
+#ifndef CLIENT
+    wm_agent_upgrade_stop_dispatch();
 #endif
 }
 

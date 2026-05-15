@@ -327,6 +327,10 @@ void * agcom_main(__attribute__((unused)) void * arg) {
         os_free(buffer);
     }
 
+    /* Intentional cleanup code: the while(1) loop above currently exits only via
+     * merror_exit(). This block ensures proper resource release if a graceful
+     * exit path is added in the future. */
+    // coverity[unreachable]
     close(sock);
     return NULL;
 }

@@ -136,7 +136,7 @@ Example:
             },
             "index": ".wazuh-threatintel-vulnerabilities",
             "consumerStatusIndex": ".wazuh-cti-consumers",
-            "consumerStatusId": "t1-vulnerabilities-5_public-vulnerabilities-5",
+            "consumerStatusId": "cti:catalog:consumer:vulnerabilities",
             "pageSize": 250,
             "numSlices": 2
         }

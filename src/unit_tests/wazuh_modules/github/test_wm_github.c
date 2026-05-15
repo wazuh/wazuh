@@ -111,8 +111,8 @@ void test_github_main_enable(void **state) {
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:github");
     expect_string(__wrap__mtinfo, formatted_msg, "Module GitHub started.");
 
-    expect_value(__wrap_sleep, __seconds, 2);
-    will_return(__wrap_sleep, 0);
+    expect_value_count(__wrap_sleep, __seconds, 1, 2);
+    will_return_count(__wrap_sleep, 0, 2);
 
     wm_github_main(data->github_config);
 }

@@ -9,7 +9,6 @@ This module will contain all cases for the remove from bucket test suite
 import pytest
 
 # qa-integration-framework imports
-from wazuh_testing import session_parameters
 from wazuh_testing.modules.aws.utils import log_stream_exists, file_exists
 from wazuh_testing.modules.aws.patterns import REMOVE_S3_FILE
 
@@ -18,7 +17,9 @@ from . import event_monitor
 from .configurator import configurator
 from .utils import ERROR_MESSAGE, TIMEOUT, local_internal_options
 
-pytestmark = [pytest.mark.server]
+pytestmark = [pytest.mark.agent, pytest.mark.linux]
+
+daemons_handler_configuration = {'all_daemons': True}
 
 # Set test configurator for the module
 configurator.module = 'remove_from_bucket_test_module'
@@ -34,9 +35,8 @@ configurator.configure_test(configuration_file='configuration_remove_from_bucket
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_remove_from_bucket(
-        test_configuration, metadata, mark_cases_as_skipped, create_test_bucket, manage_bucket_files, s3_client,
-        load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
-        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
+        test_configuration, metadata, mark_cases_as_skipped, create_test_bucket, manage_bucket_files, s3_client, set_wazuh_configuration, clean_s3_cloudtrail_db,
+        configure_local_internal_options_function, truncate_monitored_files, daemons_handler, file_monitoring
 ):
     """
     description: The uploaded file was removed after the execution.
@@ -73,9 +73,6 @@ def test_remove_from_bucket(
         - s3_client:
             type: fixture
             brief: S3 client to access AWS.
-        - load_wazuh_basic_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -117,7 +114,7 @@ def test_remove_from_bucket(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_start
     )
 
@@ -125,14 +122,14 @@ def test_remove_from_bucket(
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     log_monitor.start(
-        timeout=TIMEOUT[20],
+        timeout=TIMEOUT[60],
         callback=event_monitor.make_aws_callback(pattern=fr"{REMOVE_S3_FILE}")
     )
 
@@ -142,7 +139,7 @@ def test_remove_from_bucket(
 
     # Detect any ERROR message
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_all_aws_err
     )
 
@@ -161,8 +158,8 @@ configurator.configure_test(configuration_file='configuration_remove_log_stream.
                          ids=configurator.cases_ids)
 def test_remove_log_stream(
         test_configuration, metadata, create_test_log_group, create_test_log_stream, manage_log_group_events,
-        logs_clients, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
-        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
+        logs_clients, set_wazuh_configuration, clean_aws_services_db,
+        configure_local_internal_options_function, truncate_monitored_files, daemons_handler, file_monitoring
 ):
     """
     description: The created log stream was removed after the execution.
@@ -199,9 +196,6 @@ def test_remove_log_stream(
         - logs_clients:
             type: fixture
             brief: CloudWatch Logs client to check the log stream existence.
-        - load_wazuh_basic_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -241,7 +235,7 @@ def test_remove_log_stream(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_start
     )
 
@@ -249,7 +243,7 @@ def test_remove_log_stream(
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
@@ -261,7 +255,7 @@ def test_remove_log_stream(
 
     # Detect any ERROR message
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_all_aws_err
     )
 

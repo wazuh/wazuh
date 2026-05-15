@@ -386,7 +386,7 @@ jobs:
 
   detect-changes:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: wz-linux-amd64
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     name: Detect changed Linux test modules
     permissions:
@@ -421,6 +421,7 @@ jobs:
                   "pytest_extra_args": "",
                   "pytest_tier_args": "",
                   "pre_install": "",
+                  "setup_aws_credentials": False,
                   "timeout_minutes": 1
               }]
           }
@@ -455,6 +456,7 @@ jobs:
                               "pytest_extra_args": mod.get("pytest_extra_args", ""),
                               "pytest_tier_args": tier_args,
                               "pre_install": mod.get("pre_install", ""),
+                              "setup_aws_credentials": mod.get("setup_aws_credentials", False),
                               "timeout_minutes": mod.get("timeout_minutes", 120)
                           })
                       break
@@ -484,6 +486,7 @@ jobs:
       pytest_extra_args: ${{ matrix.pytest_extra_args }}
       pytest_tier_args: ${{ matrix.pytest_tier_args }}
       pre_install: ${{ matrix.pre_install }}
+      setup_aws_credentials: ${{ matrix.setup_aws_credentials || false }}
       timeout_minutes: ${{ matrix.timeout_minutes }}
     secrets: inherit
 

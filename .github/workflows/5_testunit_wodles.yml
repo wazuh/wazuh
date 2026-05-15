@@ -7,6 +7,8 @@ on:
       - ".github/workflows/5_testunit_wodles.yml"
       - "wodles/**"
       - "src/Makefile"
+      - "framework/requirements-wodles.txt"
+      - "framework/requirements-wodles-dev.txt"
   workflow_dispatch:
     inputs:
       generate_report:

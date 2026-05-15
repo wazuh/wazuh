@@ -46,12 +46,14 @@ add_library(cmstore::mocks ALIAS cmstore_mocks)
 add_executable(cmstore_utest
     ${UNIT_SRC_DIR}/cmstore_test.cpp
     ${UNIT_SRC_DIR}/cachens_test.cpp
+    ${UNIT_SRC_DIR}/detail_test.cpp
 )
 target_link_libraries(cmstore_utest
     PRIVATE
     GTest::gtest_main
     GTest::gmock
     cmstore::cmstore
+    yml
 )
 target_include_directories(cmstore_utest PRIVATE ${SRC_DIR})
 gtest_discover_tests(cmstore_utest)

@@ -105,7 +105,7 @@ void AgentSyncProtocol::persistDifferenceInMemory(const std::string& id,
         persistedData.operation = operation;
         persistedData.version = version;
 
-        m_inMemoryData.push_back(persistedData);
+        m_inMemoryData.push_back(std::move(persistedData));
     }
     // LCOV_EXCL_START
     catch (const std::exception& e)
@@ -412,6 +412,7 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
 
     // Create PersistedData vector for DataClean messages
     std::vector<PersistedData> dataToSync;
+
     dataToSync.reserve(indices.size());
 
     for (size_t i = 0; i < indices.size(); ++i)
@@ -420,7 +421,7 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
         item.seq = i;
         item.index = indices[i];
         // id, data, and operation are not used for DataClean messages
-        dataToSync.push_back(item);
+        dataToSync.push_back(std::move(item));
     }
 
     bool success = false;
@@ -1015,7 +1016,10 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
 
                 // Manager auto-enqueues when all gaps are filled and sends EndAck{Ok}
                 // without needing us to resend End. Wait again in the next iteration.
+                /* unique_lock tracks ownership via owns_ flag; destructor will not call
+                 * unlock() again after the explicit lock.unlock() above. */
                 resendEnd = false;
+                // coverity[double_unlock]
                 continue;
             }
 

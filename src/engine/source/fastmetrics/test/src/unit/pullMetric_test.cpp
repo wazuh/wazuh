@@ -1,7 +1,10 @@
 #include <gtest/gtest.h>
 
 #include <atomic>
+#include <chrono>
+#include <limits>
 #include <memory>
+#include <stdexcept>
 #include <vector>
 
 #include <fastmetrics/manager.hpp>
@@ -10,11 +13,18 @@
 
 using namespace fastmetrics;
 
+// ============================================================
+// Helper types for PullMetric tests
+// ============================================================
 class PullMetricTest : public ::testing::Test
 {
 protected:
     Manager manager;
 };
+
+// ============================================================
+// PullMetric Tests
+// ============================================================
 
 TEST_F(PullMetricTest, BasicPullMetric)
 {
@@ -66,8 +76,7 @@ TEST_F(PullMetricTest, PullMetricDerivedValue)
     std::atomic<uint64_t> queueA {10};
     std::atomic<uint64_t> queueB {20};
 
-    manager.registerPullMetric("total.queue.size",
-                                         [&queueA, &queueB]() { return queueA.load() + queueB.load(); });
+    manager.registerPullMetric("total.queue.size", [&queueA, &queueB]() { return queueA.load() + queueB.load(); });
 
     auto metric = manager.get("total.queue.size");
     ASSERT_NE(metric, nullptr);
@@ -177,4 +186,200 @@ TEST_F(PullMetricTest, RealWorldQueueExample)
 
     // Metric automatically reflects current size (no manual update needed!)
     EXPECT_EQ(metric->value(), 3.0);
+}
+
+// ============================================================
+// Helper types for Manager::writeAllMetrics() tests
+// ============================================================
+
+class CapturingWriter : public streamlog::WriterEvent
+{
+public:
+    std::vector<std::string> lines;
+
+    bool operator()(std::string&& message) override
+    {
+        lines.push_back(std::move(message));
+        return true;
+    }
+};
+
+class ThrowingWriter : public streamlog::WriterEvent
+{
+public:
+    bool operator()(std::string&& /*message*/) override { throw std::runtime_error("Writer failure"); }
+};
+
+// ============================================================
+// writeAllMetrics()
+// ============================================================
+
+class ManagerWriteAllMetricsTest : public ::testing::Test
+{
+protected:
+    Manager manager;
+
+    void TearDown() override { manager.clear(); }
+
+    // Extract a numeric field from a JSON line (returns NaN if not found)
+    static double extractDouble(const std::string& json, const std::string& field)
+    {
+        std::string key = "\"" + field + "\":";
+        auto pos = json.find(key);
+        if (pos == std::string::npos)
+            return std::numeric_limits<double>::quiet_NaN();
+        pos += key.size();
+        auto end = json.find_first_of(",}", pos);
+        return std::stod(json.substr(pos, end - pos));
+    }
+
+    // Extract a string field from a JSON line (returns empty string if not found)
+    static std::string extractString(const std::string& json, const std::string& field)
+    {
+        std::string key = "\"" + field + "\":\"";
+        auto pos = json.find(key);
+        if (pos == std::string::npos)
+            return "";
+        pos += key.size();
+        auto end = json.find('"', pos);
+        return json.substr(pos, end - pos);
+    }
+
+    // Find the line whose "name" field matches the given metric name
+    static const std::string* findLine(const std::vector<std::string>& lines, const std::string& name)
+    {
+        for (const auto& line : lines)
+        {
+            if (extractString(line, "name") == name)
+                return &line;
+        }
+        return nullptr;
+    }
+};
+
+TEST_F(ManagerWriteAllMetricsTest, NoRegisteredMetrics)
+{
+    auto writer = std::make_shared<CapturingWriter>();
+    manager.writeAllMetrics(writer);
+    EXPECT_TRUE(writer->lines.empty());
+}
+
+TEST_F(ManagerWriteAllMetricsTest, SingleRegisteredMetric)
+{
+    auto counter = manager.getOrCreateCounter("single.counter");
+    counter->add(42);
+
+    auto writer = std::make_shared<CapturingWriter>();
+    manager.writeAllMetrics(writer);
+
+    ASSERT_EQ(writer->lines.size(), 1u);
+    const auto& line = writer->lines[0];
+    EXPECT_EQ(extractString(line, "name"), "single.counter");
+    EXPECT_DOUBLE_EQ(extractDouble(line, "value"), 42.0);
+    EXPECT_GT(extractDouble(line, "timestamp"), 0.0);
+}
+
+TEST_F(ManagerWriteAllMetricsTest, MultipleRegisteredMetrics)
+{
+    manager.getOrCreateCounter("multi.counter")->add(10);
+    manager.getOrCreateGaugeInt("multi.gauge")->set(20);
+
+    std::atomic<uint64_t> pullVal {30};
+    manager.registerPullMetric("multi.pull", [&pullVal]() { return pullVal.load(); });
+
+    auto writer = std::make_shared<CapturingWriter>();
+    manager.writeAllMetrics(writer);
+
+    ASSERT_EQ(writer->lines.size(), 3u);
+
+    const auto* counterLine = findLine(writer->lines, "multi.counter");
+    const auto* gaugeLine = findLine(writer->lines, "multi.gauge");
+    const auto* pullLine = findLine(writer->lines, "multi.pull");
+
+    ASSERT_NE(counterLine, nullptr);
+    ASSERT_NE(gaugeLine, nullptr);
+    ASSERT_NE(pullLine, nullptr);
+
+    EXPECT_DOUBLE_EQ(extractDouble(*counterLine, "value"), 10.0);
+    EXPECT_DOUBLE_EQ(extractDouble(*gaugeLine, "value"), 20.0);
+    EXPECT_DOUBLE_EQ(extractDouble(*pullLine, "value"), 30.0);
+
+    for (const auto& line : writer->lines) EXPECT_GT(extractDouble(line, "timestamp"), 0.0);
+}
+
+TEST_F(ManagerWriteAllMetricsTest, DisabledMetrics)
+{
+    auto counter = manager.getOrCreateCounter("disabled.counter");
+    counter->add(100);
+    counter->disable();
+
+    auto writer = std::make_shared<CapturingWriter>();
+    manager.writeAllMetrics(writer);
+
+    ASSERT_FALSE(counter->isEnabled());
+    ASSERT_EQ(counter->value(), 0.0);
+    ASSERT_EQ(writer->lines.size(), 1u);
+    const auto& line = writer->lines[0];
+    EXPECT_EQ(extractString(line, "name"), "disabled.counter");
+    EXPECT_DOUBLE_EQ(extractDouble(line, "value"), 0.0);
+}
+
+TEST_F(ManagerWriteAllMetricsTest, TimestampField)
+{
+    manager.getOrCreateCounter("ts.counter");
+
+    auto before =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
+            .count();
+
+    auto writer = std::make_shared<CapturingWriter>();
+    manager.writeAllMetrics(writer);
+
+    auto after =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
+            .count();
+
+    ASSERT_EQ(writer->lines.size(), 1u);
+    long long ts = static_cast<long long>(extractDouble(writer->lines[0], "timestamp"));
+    EXPECT_GE(ts, before);
+    EXPECT_LE(ts, after);
+}
+
+TEST_F(ManagerWriteAllMetricsTest, ExceptionInWriter)
+{
+    manager.getOrCreateCounter("exc.counter");
+
+    auto throwingWriter = std::make_shared<ThrowingWriter>();
+    EXPECT_NO_THROW(manager.writeAllMetrics(throwingWriter));
+}
+
+TEST_F(ManagerWriteAllMetricsTest, OutputContentValidation)
+{
+    manager.getOrCreateCounter("validated.counter")->add(7);
+
+    std::atomic<uint64_t> pullVal {55};
+    manager.registerPullMetric("validated.pull", [&pullVal]() { return pullVal.load(); });
+
+    auto writer = std::make_shared<CapturingWriter>();
+    manager.writeAllMetrics(writer);
+
+    ASSERT_EQ(writer->lines.size(), 2u);
+
+    for (const auto& line : writer->lines)
+    {
+        EXPECT_EQ(line.front(), '{');
+        EXPECT_EQ(line.back(), '}');
+        EXPECT_NE(line.find("\"timestamp\":"), std::string::npos);
+        EXPECT_NE(line.find("\"name\":"), std::string::npos);
+        EXPECT_NE(line.find("\"value\":"), std::string::npos);
+    }
+
+    const auto* counterLine = findLine(writer->lines, "validated.counter");
+    const auto* pullLine = findLine(writer->lines, "validated.pull");
+
+    ASSERT_NE(counterLine, nullptr);
+    ASSERT_NE(pullLine, nullptr);
+
+    EXPECT_DOUBLE_EQ(extractDouble(*counterLine, "value"), 7.0);
+    EXPECT_DOUBLE_EQ(extractDouble(*pullLine, "value"), 55.0);
 }

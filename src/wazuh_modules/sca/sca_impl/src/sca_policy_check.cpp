@@ -114,7 +114,7 @@ RuleResult FileRuleEvaluator::Evaluate()
 
 RuleResult FileRuleEvaluator::CheckFileForContents()
 {
-    const auto pattern = *m_ctx.pattern; // NOLINT(bugprone-unchecked-optional-access)
+    const auto& pattern = *m_ctx.pattern; // NOLINT(bugprone-unchecked-optional-access)
 
     LoggingHelper::getInstance().log(LOG_DEBUG, "Processing file rule. Checking contents of file: '" + m_ctx.rule + "' against pattern:  " + pattern);
 
@@ -190,7 +190,7 @@ CommandRuleEvaluator::CommandRuleEvaluator(PolicyEvaluationContext ctx,
     else
     {
         // LCOV_EXCL_START
-        m_commandExecFunc = [timeout = ctx.commandsTimeout](const std::string & command) -> std::optional<ExecResult>
+        m_commandExecFunc = [timeout = m_ctx.commandsTimeout](const std::string & command) -> std::optional<ExecResult>
         {
             auto wmExecCallback = SecurityConfigurationAssessment::GetGlobalWmExecFunction();
 
@@ -334,7 +334,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
         return RuleResult::Invalid;
     }
 
-    const auto rootPath = *resolved;
+    const auto& rootPath = *resolved;
 
     if (!TryFunc([&] { return m_fileSystemWrapper->is_directory(rootPath); }).value_or(false))
     {
@@ -343,14 +343,14 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
         return RuleResult::Invalid;
     }
 
-    const auto pattern = *m_ctx.pattern; // NOLINT(bugprone-unchecked-optional-access)
+    const auto& pattern = *m_ctx.pattern; // NOLINT(bugprone-unchecked-optional-access)
 
     std::stack<std::filesystem::path> dirs;
     dirs.emplace(rootPath);
 
     while (!dirs.empty())
     {
-        const auto currentDir = dirs.top();
+        auto currentDir = std::move(dirs.top());
         dirs.pop();
 
         const auto filesOpt = TryFunc([&] { return m_fileSystemWrapper->list_directory(currentDir); });
@@ -629,7 +629,11 @@ RuleEvaluatorFactory::CreateEvaluator(const std::string& input,
         sysInfo = std::make_unique<SysInfo>();
     }
 
+#ifdef _WIN32
+    auto ruleInput = Utils::trim(sca::win::ExpandEnvironmentVariables(input), " \t");
+#else
     auto ruleInput = Utils::trim(input, " \t");
+#endif
     auto isNegated = false;
 
     if (ruleInput.size() >= 4 && ruleInput.compare(0, 4, "not ") == 0)
@@ -652,28 +656,28 @@ RuleEvaluatorFactory::CreateEvaluator(const std::string& input,
         return nullptr;
     }
 
-    const auto [ruleType, cleanedRule] = ruleTypeAndValue.value();
+    auto [ruleType, cleanedRule] = ruleTypeAndValue.value();
 
-    const PolicyEvaluationContext ctx {cleanedRule, pattern, isNegated, commandsTimeout, commandsEnabled, regexEngine};
+    PolicyEvaluationContext ctx {std::move(cleanedRule), pattern, isNegated, commandsTimeout, commandsEnabled, regexEngine};
 
     switch (ruleType)
     {
         case sca::WM_SCA_TYPE_FILE:
-            return std::make_unique<FileRuleEvaluator>(ctx, std::move(fileSystemWrapper), std::move(fileUtils));
+            return std::make_unique<FileRuleEvaluator>(std::move(ctx), std::move(fileSystemWrapper), std::move(fileUtils));
 #ifdef _WIN32
 
         case sca::WM_SCA_TYPE_REGISTRY:
-            return std::make_unique<RegistryRuleEvaluator>(ctx);
+            return std::make_unique<RegistryRuleEvaluator>(std::move(ctx));
 #endif
 
         case sca::WM_SCA_TYPE_PROCESS:
-            return std::make_unique<ProcessRuleEvaluator>(ctx, std::move(fileSystemWrapper), std::move(sysInfo));
+            return std::make_unique<ProcessRuleEvaluator>(std::move(ctx), std::move(fileSystemWrapper), std::move(sysInfo));
 
         case sca::WM_SCA_TYPE_DIR:
-            return std::make_unique<DirRuleEvaluator>(ctx, std::move(fileSystemWrapper), std::move(fileUtils));
+            return std::make_unique<DirRuleEvaluator>(std::move(ctx), std::move(fileSystemWrapper), std::move(fileUtils));
 
         case sca::WM_SCA_TYPE_COMMAND:
-            return std::make_unique<CommandRuleEvaluator>(ctx, std::move(fileSystemWrapper));
+            return std::make_unique<CommandRuleEvaluator>(std::move(ctx), std::move(fileSystemWrapper));
 
         default:
             return nullptr;

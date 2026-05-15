@@ -31,6 +31,7 @@ extern void mock_assert(const int result, const char* const expression,
 STATIC int wm_task_manager_init(wm_task_manager *task_config) __attribute__((nonnull));
 STATIC void* wm_task_manager_main(wm_task_manager* task_config);    // Module main function. It won't return
 STATIC void wm_task_manager_destroy(wm_task_manager* task_config);
+STATIC void wm_task_manager_stop(wm_task_manager* task_config);
 STATIC cJSON* wm_task_manager_dump(const wm_task_manager* task_config);
 
 /* Context definition */
@@ -40,7 +41,7 @@ const wm_context WM_TASK_MANAGER_CONTEXT = {
     .destroy = (void (*)(void *))wm_task_manager_destroy,
     .dump = (cJSON * (*)(const void *))wm_task_manager_dump,
     .sync = NULL,
-    .stop = NULL,
+    .stop = (void (*)(void *))wm_task_manager_stop,
     .query = NULL,
 };
 
@@ -139,18 +140,13 @@ STATIC void* wm_task_manager_main(wm_task_manager* task_config) {
 
     mtinfo(WM_TASK_MANAGER_LOGTAG, MOD_TASK_START);
 
-    while (1) {
-        // Wait for socket
-        FD_ZERO(&fdset);
-        FD_SET(sock, &fdset);
+    while (!wm_shutdown_requested) {
 
-        switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
+        switch (wm_select_interruptible(sock, &fdset)) {
         case -1:
-            if (errno != EINTR) {
-                mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SELECT_ERROR, strerror(errno));
-                pthread_exit(NULL);
-            }
-            continue;
+            mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_SELECT_ERROR, strerror(errno));
+            pthread_exit(NULL);
+            break;
         case 0:
             continue;
         default:
@@ -198,6 +194,10 @@ STATIC void* wm_task_manager_main(wm_task_manager* task_config) {
 
     close(sock);
     return NULL;
+}
+
+STATIC void wm_task_manager_stop(__attribute__((unused)) wm_task_manager* task_config) {
+    wm_shutdown_requested = 1;
 }
 
 STATIC void wm_task_manager_destroy(wm_task_manager* task_config) {

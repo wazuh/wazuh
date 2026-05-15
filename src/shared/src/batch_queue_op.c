@@ -305,6 +305,9 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
 
     // 2) Take the queue lock **before releasing ring_mu** (safe handover)
     pthread_mutex_lock(&slot->q->mutex);
+    // Read max_items_per_agent under ring_mu before releasing it, to avoid a data
+    // race with batch_queue_set_agent_max(), which writes it under ring_mu.
+    const size_t max_per_agent = sched->max_items_per_agent;
 
     // 3) Release ring_mu to reduce global contention
     pthread_mutex_unlock(&sched->ring_mu);
@@ -313,7 +316,7 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
     int reject = 0;
     int need_ring_append = (slot->q->elements == 0);
 
-    if (sched->max_items_per_agent && slot->q->elements >= sched->max_items_per_agent) {
+    if (max_per_agent && slot->q->elements >= max_per_agent) {
         reject = 1;
     } else {
         w_linked_queue_node_t *n;
@@ -349,9 +352,13 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
     // 5) If queue transitioned empty->non-empty, (re)insert into the ring and signal availability
     if (need_ring_append) {
         pthread_mutex_lock(&sched->ring_mu);
-        if (!slot->in_ring) {
-            ring_append(sched, slot);
-            pthread_cond_signal(&sched->any_available);
+        void *val2 = NULL;
+        if (hm_get(&sched->agent_index, agent_key, &val2) && (w_rr_agent_slot_t *)val2 == slot) {
+            w_rr_agent_slot_t *current_slot = (w_rr_agent_slot_t *)val2;
+            if (!current_slot->in_ring) {
+                ring_append(sched, current_slot);
+                pthread_cond_signal(&sched->any_available);
+            }
         }
         pthread_mutex_unlock(&sched->ring_mu);
     }

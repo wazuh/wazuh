@@ -170,6 +170,41 @@ Processed event:
     },
     "space": {
       "name": "standard"
+    },
+    "threat": {
+      "enrichments": [
+        {
+          "indicator": {
+            "confidence": 100,
+            "feed": {
+              "name": "dyingbreeds_"
+            },
+            "first_seen": "2026-01-13T00:35:01.000Z",
+            "id": "1718594",
+            "last_seen": "2026-01-13T00:35:01.000Z",
+            "name": "8.8.8.8:8010",
+            "provider": "threat-fox",
+            "software": {
+              "alias": [
+                "Unknown malware"
+              ],
+              "name": "unknown",
+              "type": "botnet_cc"
+            },
+            "tags": [
+              "AS55990",
+              "Botnet",
+              "byob",
+              "C2",
+              "censys"
+            ],
+            "type": "connection"
+          },
+          "matched": {
+            "field": "source.ip, source.port"
+          }
+        }
+      ]
     }
   },
   "event": {
@@ -249,41 +284,6 @@ Processed event:
     ],
     "hosts": [
       "amazonlinux-2-repos-us-east-1.s3.dualstack.us-east-1.amazonaws.com."
-    ]
-  },
-  "threat": {
-    "enrichments": [
-      {
-        "indicator": {
-          "confidence": 100,
-          "feed": {
-            "name": "dyingbreeds_"
-          },
-          "first_seen": "2026-01-13T00:35:01.000Z",
-          "id": "1718594",
-          "last_seen": "2026-01-13T00:35:01.000Z",
-          "name": "8.8.8.8:8010",
-          "provider": "threat-fox",
-          "software": {
-            "alias": [
-              "Unknown malware"
-            ],
-            "name": "unknown",
-            "type": "botnet_cc"
-          },
-          "tags": [
-            "AS55990",
-            "Botnet",
-            "byob",
-            "C2",
-            "censys"
-          ],
-          "type": "connection"
-        },
-        "matched": {
-          "field": "source.ip, source.port"
-        }
-      }
     ]
   }
 }
@@ -690,18 +690,20 @@ Conceptually:
 
 ```json
 {
-  "threat": {
-    "indicator": {
-      "type": "ipv4-addr",
-      "ip": "203.0.113.10"
-    },
-    "enrichments": [
-      {
-        "matched": {
-          "field": "destination.ip"
+  "wazuh": {
+    "threat": {
+      "indicator": {
+        "type": "ipv4-addr",
+        "ip": "203.0.113.10"
+      },
+      "enrichments": [
+        {
+          "matched": {
+            "field": "destination.ip"
+          }
         }
-      }
-    ]
+      ]
+    }
   }
 }
 ```
@@ -839,11 +841,6 @@ flowchart TD
     classDef AssetNotExecutedClass fill:#9e9e9e,stroke-width:2px,fill-opacity:0.5
     linkStyle 2,3 stroke:#D50000,fill:none
 ```
-
-> [!WARNING]
-> The output files in `default/` are **replaced on every installation or update** of `wazuh-manager`.
-> Modifications to those files will be overwritten. To preserve custom outputs across updates, place
-> them in a space-specific folder (`standard/` or `custom/`) instead of `default/`.
 
 #### Unclassified events
 

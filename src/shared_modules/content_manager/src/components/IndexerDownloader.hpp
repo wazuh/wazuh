@@ -52,7 +52,7 @@
  * {
  *   "index":               ".wazuh-threatintel-vulnerabilities", // Indexer CVE index name
  *   "consumerStatusIndex": ".wazuh-cti-consumers",    // Consumer status index (optional)
- *   "consumerStatusId":    "t1-vulnerabilities-5_public-vulnerabilities-5", // Consumer status document id (optional)
+ *   "consumerStatusId":    "cti:catalog:consumer:vulnerabilities", // Consumer status document id (optional)
  *   "pageSize":            250,                       // Documents per page (optional, default 250)
  *   "numSlices":           2,                         // Parallel PIT slices (optional, default 2)
  *   <standard IndexerConnector SSL/auth config>
@@ -196,7 +196,7 @@ private:
             return true;
         }
 
-        IndexerConnectorSync syncConnector(m_config.at("indexer"));
+        IndexerConnectorSync syncConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
 
         while (true)
         {
@@ -443,7 +443,7 @@ private:
 
         const auto& sourceFilter = getSourceFilter();
 
-        IndexerConnectorSync syncConnector(m_config.at("indexer"));
+        IndexerConnectorSync syncConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
 
         auto pit = syncConnector.createPointInTime({indexName}, PIT_KEEP_ALIVE);
         auto pitGuard = std::unique_ptr<PointInTime, std::function<void(PointInTime*)>>(
@@ -532,7 +532,7 @@ private:
 
         const auto& sourceFilter = getSourceFilter();
 
-        IndexerConnectorSync syncConnector(m_config.at("indexer"));
+        IndexerConnectorSync syncConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
 
         auto pit = syncConnector.createPointInTime({indexName}, PIT_KEEP_ALIVE);
         auto pitGuard = std::unique_ptr<PointInTime, std::function<void(PointInTime*)>>(
@@ -566,7 +566,7 @@ private:
             try
             {
                 // Each slice gets its own connector to avoid sharing HTTP state across threads.
-                IndexerConnectorSync sliceConnector(m_config.at("indexer"));
+                IndexerConnectorSync sliceConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
 
                 const nlohmann::json sliceParam = {{"id", sliceId}, {"max", numSlices}};
                 std::optional<nlohmann::json> searchAfter = std::nullopt;

@@ -42,6 +42,7 @@ constexpr int DEFAULT_TIME {60 * 10}; // 10 minutes
 constexpr auto INVENTORY_SYNC_PATH {"queue/inventory_sync"};
 constexpr auto INVENTORY_SYNC_TOPIC {"inventory-states"};
 constexpr auto INVENTORY_SYNC_SUBSCRIBER_ID {"inventory-sync-module"};
+constexpr auto WM_INVENTORY_SYNC_LOGTAG {"wazuh-manager-modulesd:inventory-sync"};
 constexpr auto WAZUH_STATES_INDEX_PATTERN {"wazuh-states-*"};
 constexpr auto SOCKET_KEYSTORE_PATH {"queue/sockets/keystore"};
 
@@ -568,7 +569,8 @@ public:
         m_responseDispatcher = std::make_unique<TResponseDispatcher>();
 
         logDebug2(LOGGER_DEFAULT_TAG, "Configuration: %s", configuration.dump().c_str());
-        m_indexerConnector = std::make_unique<TIndexerConnector>(configuration.at("indexer"), logFunction);
+        m_indexerConnector = std::make_unique<TIndexerConnector>(
+            configuration.at("indexer"), LoggingContext {WM_INVENTORY_SYNC_LOGTAG, logFunction});
 
         if (!configuration.contains("clusterName"))
         {
@@ -1126,30 +1128,66 @@ public:
                                     }
                                     else
                                     {
-                                        try
+                                        // Prevent duplicate VDFirst scans for the same agent from racing.
+                                        // This guards against agent retransmissions, stale sessions, or timing
+                                        // issues that could trigger multiple concurrent VDFirst scans and cause
+                                        // vulnerability cleanup races.
+                                        bool shouldRunScan = true;
+                                        if (res.context->option == Wazuh::SyncSchema::Option_VDFirst)
                                         {
-                                            VulnerabilityScannerFacade::instance().runScanner(*m_dataStore,
-                                                                                              *res.context);
-                                            if (res.context->option == Wazuh::SyncSchema::Option_VDFirst)
+                                            std::unique_lock vdFirstLock(m_activeVDFirstScansMutex);
+                                            auto [it, inserted] = m_activeVDFirstScans.insert(res.context->agentId);
+                                            if (!inserted)
                                             {
-                                                VulnerabilityScannerFacade::instance().registerFeedUpdateCoveredAgent(
-                                                    res.context->agentId);
+                                                logWarn(
+                                                    LOGGER_DEFAULT_TAG,
+                                                    "InventorySyncFacade: Duplicate VDFirst scan detected for agent "
+                                                    "%s - another VDFirst scan is already in progress. Skipping "
+                                                    "this scan to prevent race condition and duplicate vulnerability "
+                                                    "cleanup.",
+                                                    res.context->agentId.c_str());
+                                                shouldRunScan = false;
                                             }
                                         }
-                                        catch (const std::exception& e)
+
+                                        if (shouldRunScan)
                                         {
-                                            logError(LOGGER_DEFAULT_TAG,
-                                                     "InventorySyncFacade: Vulnerability scanner exception for "
-                                                     "agent %s: %s",
-                                                     res.context->agentId.c_str(),
-                                                     e.what());
-                                            m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
-                                                                             res.context->agentId,
-                                                                             res.context->sessionId,
-                                                                             res.context->moduleName);
-                                            m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
-                                            eraseSession(res.context->sessionId);
-                                            m_sessionCompletedCV.notify_all();
+                                            try
+                                            {
+                                                VulnerabilityScannerFacade::instance().runScanner(*m_dataStore,
+                                                                                                  *res.context);
+                                                if (res.context->option == Wazuh::SyncSchema::Option_VDFirst)
+                                                {
+                                                    VulnerabilityScannerFacade::instance()
+                                                        .registerFeedUpdateCoveredAgent(res.context->agentId);
+
+                                                    // Unregister VDFirst scan after successful completion
+                                                    std::unique_lock vdFirstLock(m_activeVDFirstScansMutex);
+                                                    m_activeVDFirstScans.erase(res.context->agentId);
+                                                }
+                                            }
+                                            catch (const std::exception& e)
+                                            {
+                                                // Cleanup VDFirst tracking on error
+                                                if (res.context->option == Wazuh::SyncSchema::Option_VDFirst)
+                                                {
+                                                    std::unique_lock vdFirstLock(m_activeVDFirstScansMutex);
+                                                    m_activeVDFirstScans.erase(res.context->agentId);
+                                                }
+
+                                                logError(LOGGER_DEFAULT_TAG,
+                                                         "InventorySyncFacade: Vulnerability scanner exception for "
+                                                         "agent %s: %s",
+                                                         res.context->agentId.c_str(),
+                                                         e.what());
+                                                m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
+                                                                                 res.context->agentId,
+                                                                                 res.context->sessionId,
+                                                                                 res.context->moduleName);
+                                                m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
+                                                eraseSession(res.context->sessionId);
+                                                m_sessionCompletedCV.notify_all();
+                                            }
                                         }
                                     }
                                 }
@@ -1752,6 +1790,12 @@ public:
             m_sessionTimeoutThread.join();
         }
 
+        // Clear VDFirst scan tracking
+        {
+            std::unique_lock lock(m_activeVDFirstScansMutex);
+            m_activeVDFirstScans.clear();
+        }
+
         m_inventorySubscription.reset();
         m_workersQueue.reset();
         m_indexerQueue.reset();
@@ -1889,6 +1933,10 @@ private:
     mutable std::shared_mutex m_blockedAgentsMutex;  ///< Mutex for blocked agents set
     std::atomic<bool> m_allAgentsLocked {false};     ///< Global lock for all agents
     std::unique_ptr<SocketServer<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>> m_keystoreSocketServer;
+
+    // VDFirst scan deduplication mechanism
+    std::unordered_set<std::string> m_activeVDFirstScans; ///< Set of agents with active VDFirst scans
+    std::mutex m_activeVDFirstScansMutex;                 ///< Mutex for VDFirst scan tracking
 };
 
 using InventorySyncFacade = InventorySyncFacadeImpl<AgentSession,

@@ -18,6 +18,17 @@
 
 #ifdef WIN32
 #include <windows.h>
+
+static void wm_command_reduce_win_backslashes(char *str) {
+    char *r = str, *w = str;
+    while (*r) {
+        if (r[0] == '\\' && r[1] == '\\') {
+            r++;
+        }
+        *w++ = *r++;
+    }
+    *w = '\0';
+}
 #endif
 
 static char *wm_command_build_event_payload(const char *event_start,
@@ -56,8 +67,11 @@ static char *wm_command_build_event_payload(const char *event_start,
         return NULL;
     }
 
-    cJSON_AddStringToObject(json_event, "event.module", "wazuh-wodle-cmd");
-    cJSON_AddStringToObject(json_event, "event.start", event_start ? event_start : "");
+    cJSON *event_obj = cJSON_AddObjectToObject(json_event, "event");
+    if (event_obj) {
+        cJSON_AddStringToObject(event_obj, "module", "wazuh-wodle-cmd");
+        cJSON_AddStringToObject(event_obj, "start", event_start ? event_start : "");
+    }
     if (tag) {
         cJSON *tags_array = cJSON_AddArrayToObject(json_event, "tags");
         if (tags_array) {
@@ -135,7 +149,9 @@ void * wm_command_main(wm_command_t * command) {
     char *command_cpy;
     char *binary;
     char *full_path = NULL;
+#ifndef WIN32
     char **argv;
+#endif
     char * timestamp = NULL;
     bool verify_command = command->md5_hash || command->sha1_hash || command->sha256_hash;
 
@@ -150,38 +166,147 @@ void * wm_command_main(wm_command_t * command) {
     }
 
     if (verify_command) {
+#ifdef WIN32
+        SafeWow64DisableWow64FsRedirection(NULL);
+#endif
         command_cpy = strdup(command->command);
 
+#ifdef WIN32
+        // On Windows, reduce \\\\ to \\ before extracting the binary token.
+        // This normalizes both conventions (single and double backslash) so
+        // that get_binary_path receives a valid Windows path and error
+        // messages show the path as the user intended.
+        wm_command_reduce_win_backslashes(command_cpy);
+
+        // Extract binary token without w_strtok (which treats \\ as escape
+        // and would strip the remaining single backslashes).
+        {
+            const char *s = command_cpy;
+            while (*s == ' ') s++;
+
+            char *bin_start = (char *)s;
+            if (*s == '"') {
+                s++;
+                bin_start = (char *)s;
+                while (*s && *s != '"') s++;
+                if (*s == '"') {
+                    *(char *)s = '\0';
+                }
+            } else {
+                while (*s && *s != ' ') s++;
+                if (*s == ' ') {
+                    *(char *)s = '\0';
+                }
+            }
+            os_strdup(bin_start, binary);
+        }
+#else
         argv = w_strtok(command_cpy);
     #ifndef __clang_analyzer__
         if (!argv) {
             merror("Could not split command: %s", command_cpy);
+            os_free(command_cpy);
             pthread_exit(NULL);
         }
     #endif
         binary = argv[0];
+#endif
 
         if (get_binary_path(binary, &full_path) == OS_INVALID) {
             mterror(WM_COMMAND_LOGTAG, "Cannot check binary: '%s'. Cannot stat binary file.", binary);
+#ifdef WIN32
+            os_free(binary);
+#else
+            free_strarray(argv);
+#endif
+            os_free(command_cpy);
+        #ifndef __clang_analyzer__
+            os_free(full_path);
+        #endif
             pthread_exit(NULL);
         }
 
-        // Modify command with full path.
+        // Find end of first token in original command string using the same
+        // quoting rules, then replace only the binary portion with the
+        // resolved full_path, preserving arguments verbatim.
         if (!command->full_command) {
-            os_malloc(strlen(full_path) + strlen(command->command) - strlen(binary) + 1, command->full_command);
+            const char *p = command->command;
+            bool binary_was_quoted = false;
+
+            while (*p == ' ') {
+                p++;
+            }
+
+            if (*p == '"') {
+                binary_was_quoted = true;
+            }
+
+            bool in_quotes = false;
+            while (*p) {
+#ifndef WIN32
+                if (*p == '\\' && p[1] != '\0') {
+                    p += 2;
+                } else
+#endif
+                if (*p == '"') {
+                    in_quotes = !in_quotes;
+                    p++;
+                } else if (*p == ' ' && !in_quotes) {
+                    break;
+                } else {
+                    p++;
+                }
+            }
+
+            bool need_quotes = !binary_was_quoted && strchr(full_path, ' ') != NULL;
+            const char *qc = (binary_was_quoted || need_quotes) ? "\"" : "";
+
+            if (*p == ' ') {
+                size_t len = strlen(full_path) + strlen(p) + strlen(qc) * 2 + 1;
+                os_malloc(len, command->full_command);
+                snprintf(command->full_command, len, "%s%s%s%s", qc, full_path, qc, p);
+            } else {
+                size_t len = strlen(full_path) + strlen(qc) * 2 + 1;
+                os_malloc(len, command->full_command);
+                snprintf(command->full_command, len, "%s%s%s", qc, full_path, qc);
+            }
         }
-        snprintf(command->full_command, strlen(full_path) + strlen(command->command) - strlen(binary) + 1, "%s %s", full_path, command->command + strlen(binary) + 1);
+#ifdef WIN32
+        os_free(binary);
+#else
         free_strarray(argv);
+#endif
 
         if (validate_command_checksums(command, full_path) != 0) {
+            os_free(command_cpy);
             os_free(full_path);
             pthread_exit(NULL);
         }
 
-        free(command_cpy);
+        os_free(command_cpy);
 
     } else {
         command->full_command = strdup(command->command);
+#ifdef WIN32
+        {
+            char *p = command->full_command;
+            while (*p == ' ') p++;
+            bool in_q = (*p == '"');
+            if (in_q) p++;
+            char *start = p;
+            while (*p) {
+                if (in_q && *p == '"') { p++; break; }
+                if (!in_q && *p == ' ') break;
+                p++;
+            }
+            char saved = *p;
+            *p = '\0';
+            wm_command_reduce_win_backslashes(start);
+            size_t new_len = strlen(start);
+            *p = saved;
+            memmove(start + new_len, p, strlen(p) + 1);
+        }
+#endif
     }
 
     mtinfo(WM_COMMAND_LOGTAG, "Module command:%s started", command->tag);
@@ -227,8 +352,10 @@ void * wm_command_main(wm_command_t * command) {
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_COMMAND_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);
-            w_sleep_until(next_scan_time);
+            wm_sleep_until_interruptible(next_scan_time);
+            if (wm_shutdown_requested) break;
         }
+        if (wm_shutdown_requested) break;
 
         if (full_path != NULL && verify_command && !command->skip_verification) {
             mtinfo(WM_COMMAND_LOGTAG, "Verifying command checksum '%s'.", command->tag);
@@ -455,7 +582,7 @@ void * wm_command_main(wm_command_t * command) {
         }
 
         mtdebug1(WM_COMMAND_LOGTAG, "Command '%s' finished.", command->tag);
-    } while (FOREVER());
+    } while (FOREVER() && !wm_shutdown_requested);
 
     os_free(full_path);
     free(extag);

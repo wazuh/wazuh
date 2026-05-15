@@ -37,7 +37,7 @@ void DB::init(const int storage,
                                                  FIMDBCreator<OS_TYPE>::CreateStatement(),
                                                  DbManagement::PERSISTENT)};
 
-    FIMDB::instance().init(std::move(callbackLogWrapper), dbsyncHandler, fileLimit, valueLimit);
+    FIMDB::instance().init(std::move(callbackLogWrapper), std::move(dbsyncHandler), fileLimit, valueLimit);
 }
 
 DBSYNC_HANDLE DB::DBSyncHandle()
@@ -230,7 +230,7 @@ int DB::countSyncedDocs(const std::string& tableName)
     return syncedRows;
 }
 
-std::vector<nlohmann::json> DB::getDocumentsToPromote(std::string tableName, int numberOfDocumentsToPromote)
+std::vector<nlohmann::json> DB::getDocumentsToPromote(const std::string& tableName, int numberOfDocumentsToPromote)
 {
     std::vector<nlohmann::json> documents;
 
@@ -273,7 +273,7 @@ std::vector<nlohmann::json> DB::getDocumentsToPromote(std::string tableName, int
     return documents;
 }
 
-std::vector<nlohmann::json> DB::getDocumentsToDemote(std::string tableName, int numberOfDocumentsToDemote)
+std::vector<nlohmann::json> DB::getDocumentsToDemote(const std::string& tableName, int numberOfDocumentsToDemote)
 {
     std::vector<nlohmann::json> documents;
 

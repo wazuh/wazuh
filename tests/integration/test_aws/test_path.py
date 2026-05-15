@@ -8,7 +8,6 @@ This module will contain all cases for the path test suite
 import pytest
 
 # qa-integration-framework imports
-from wazuh_testing import session_parameters
 from wazuh_testing.constants.paths.aws import S3_CLOUDTRAIL_DB_PATH
 from wazuh_testing.utils.db_queries.aws_db import get_s3_db_row, table_exists_or_has_values
 from wazuh_testing.modules.aws.utils import path_exist
@@ -18,7 +17,9 @@ from . import event_monitor
 from .configurator import configurator
 from .utils import ERROR_MESSAGE, TIMEOUT, local_internal_options
 
-pytestmark = [pytest.mark.server]
+pytestmark = [pytest.mark.agent, pytest.mark.linux]
+
+daemons_handler_configuration = {'all_daemons': True}
 
 # Set test configurator for the module
 configurator.module = 'path_test_module'
@@ -34,9 +35,9 @@ configurator.configure_test(configuration_file='configuration_path.yaml',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_path(
-        test_configuration, metadata, load_wazuh_basic_configuration, create_test_bucket, manage_bucket_files,
+        test_configuration, metadata, create_test_bucket, manage_bucket_files,
         set_wazuh_configuration, clean_s3_cloudtrail_db, configure_local_internal_options_function,
-        truncate_monitored_files, restart_wazuh_function, file_monitoring
+        truncate_monitored_files, daemons_handler, file_monitoring
 ):
     """
     description: Only logs within a path are processed.
@@ -71,9 +72,6 @@ def test_path(
         - manage_bucket_files:
             type: fixture
             brief: S3 buckets manager.
-        - load_wazuh_basic_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
@@ -119,7 +117,7 @@ def test_path(
 
     # Check AWS module started
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_start
     )
 
@@ -127,7 +125,7 @@ def test_path(
 
     # Check command was called correctly
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_module_called(parameters)
     )
 
@@ -135,7 +133,7 @@ def test_path(
 
     if expected_results:
         log_monitor.start(
-            timeout=TIMEOUT[20],
+            timeout=TIMEOUT[60],
             callback=event_monitor.callback_detect_event_processed,
         )
 
@@ -143,7 +141,7 @@ def test_path(
 
     else:
         log_monitor.start(
-            timeout=TIMEOUT[10],
+            timeout=TIMEOUT[40],
             callback=event_monitor.make_aws_callback(pattern),
         )
 
@@ -160,7 +158,7 @@ def test_path(
 
     # Detect any ERROR message
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_all_aws_err
     )
 

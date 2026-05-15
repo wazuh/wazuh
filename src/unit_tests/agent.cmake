@@ -43,3 +43,4 @@ if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
 endif()
 
 add_subdirectory(wazuh_modules)
+add_subdirectory(os_crypto)

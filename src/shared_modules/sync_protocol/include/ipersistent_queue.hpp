@@ -52,7 +52,7 @@ enum class Option : int
 struct PersistedData
 {
     /// @brief Sequence number of the message (scoped per module).
-    uint64_t seq;
+    uint64_t seq{};
 
     /// @brief Unique identifier of the message.
     std::string id;
@@ -64,10 +64,10 @@ struct PersistedData
     std::string data;
 
     /// @brief Type of operation (CREATE, MODIFY, DELETE).
-    Operation operation;
+    Operation operation{Operation::NO_OP};
 
     /// @brief Version of the data.
-    uint64_t version;
+    uint64_t version{};
 
     /// @brief Flag indicating if this is DataContext (true) or DataValue (false).
     bool is_data_context = false;

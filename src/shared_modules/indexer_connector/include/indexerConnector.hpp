@@ -17,13 +17,24 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <string>
 #include <string_view>
+#include <utility>
 
 #if __GNUC__ >= 4
 #define EXPORTED __attribute__((visibility("default")))
 #else
 #define EXPORTED
 #endif
+
+/**
+ * @brief Logging context: pairs the caller module name with the log callback.
+ *
+ * The caller name is used to build the log tag as "<callerName> (indexer-connector)".
+ */
+using LoggingContext =
+    std::pair<std::string,
+              std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>>;
 
 /**
  * @brief PointInTime class - Holds wazuh-indexer Point In Time data.
@@ -87,7 +98,6 @@ public:
  *
  */
 
-constexpr auto IC_NAME {"IndexerConnector"};
 class EXPORTED IndexerConnectorSync final
 {
 private:
@@ -99,12 +109,12 @@ public:
      * @brief Class constructor that initializes the publisher.
      *
      * @param config Indexer configuration, including database_path and servers.
-     * @param logFunction Callback function to be called when trying to log a message.
+     * @param logging Logging context pairing the caller module name and the log callback.
+     *                The caller name is used to build the log tag as
+     *                "<callerName> (indexer-connector)" (e.g. "vulnerability-scanner (indexer-connector)").
+     *                If the caller name is empty, the tag falls back to "indexer-connector".
      */
-    explicit IndexerConnectorSync(
-        const nlohmann::json& config,
-        const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
-            logFunction = {});
+    explicit IndexerConnectorSync(const nlohmann::json& config, LoggingContext logging = {});
 
     ~IndexerConnectorSync();
 
@@ -316,15 +326,16 @@ public:
      * @param queueId Identifier for this connector instance. Combined with basePath to form
      *                the RocksDB queue directory: basePath / queueId.
      *                Must be unique per instance to guarantee queue isolation.
-     * @param logFunction Callback function to be called when trying to log a message.
+     * @param logging Logging context pairing the caller module name and the log callback.
+     *                The caller name is used to build the log tag as
+     *                "<callerName> (indexer-connector)" (e.g. "wazuh-manager-analysisd (indexer-connector)").
+     *                If the caller name is empty, the tag falls back to "indexer-connector".
      * @param basePath Base directory for the RocksDB queue. Defaults to "queue/indexer/".
      */
-    explicit IndexerConnectorAsync(
-        const nlohmann::json& config,
-        std::string queueId,
-        const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
-            logFunction = {},
-        std::string basePath = "queue/indexer/");
+    explicit IndexerConnectorAsync(const nlohmann::json& config,
+                                   std::string queueId,
+                                   LoggingContext logging = {},
+                                   std::string basePath = "queue/indexer/");
 
     ~IndexerConnectorAsync();
 
