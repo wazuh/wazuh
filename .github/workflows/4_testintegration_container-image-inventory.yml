@@ -1,0 +1,78 @@
+name: 4.X - Container Image Inventory PoC - Integration tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      enable_remote_tests:
+        description: "Run remote registry smoke tests (requires network)"
+        type: boolean
+        default: false
+      remote_image_ref:
+        description: "Override digest-pinned remote image ref (optional)"
+        type: string
+        default: ""
+
+jobs:
+  container-image-inventory-integration:
+    name: Build PoC and run integration tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: "true"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: "false"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install system build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            python3 \
+            python3-pytest \
+            libarchive-dev \
+            libsqlite3-dev \
+            libcurl4-openssl-dev \
+            libssl-dev \
+            zlib1g-dev
+
+      - name: Build wazuh external dependencies (libarchive, sqlite, curl, openssl)
+        run: |
+          cd src
+          make deps TARGET=manager -j2
+          make build-external TARGET=manager TEST=1 -j2
+
+      - name: Build container-image-inventory-poc
+        run: |
+          cd src/wazuh_modules/container_image_inventory
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j2
+
+      - name: Verify binary
+        run: |
+          src/wazuh_modules/container_image_inventory/build/container-image-inventory-poc --help
+
+      - name: Run integration tests (local fixtures, no Docker)
+        run: |
+          python3 -m pytest -vv \
+            src/wazuh_modules/container_image_inventory/tests/ \
+            --tb=short
+
+      - name: Run remote smoke tests
+        if: ${{ inputs.enable_remote_tests }}
+        env:
+          CII_ENABLE_REMOTE_TESTS: "1"
+          CII_REMOTE_IMAGE_REF: ${{ inputs.remote_image_ref }}
+        run: |
+          python3 -m pytest -vv \
+            src/wazuh_modules/container_image_inventory/tests/ \
+            -k "TestRemote" \
+            --tb=short

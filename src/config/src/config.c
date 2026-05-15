@@ -44,6 +44,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *agent_upgrade = "agent-upgrade";                /* Agent Upgrade Module */
     const char *task_manager = "task-manager";                  /* Task Manager Module */
     const char *wazuh_db = "wdb";                               /* Wazuh-DB Daemon */
+    const char *oscontainer_images = "container_images";        /* Container Image Inventory Module */
 #ifndef WIN32
     const char *anti_tampering = "anti_tampering";              /* Agent anti tampering Config */
     const char *osauthd = "auth";                               /* Authd Config */
@@ -220,6 +221,14 @@ static int read_main_elements(const OS_XML *xml, int modules,
 #endif
         else if (strcmp(node[i]->element, osactiveresponse) == 0) {
             /* Active response config is only for agents, parsed by execd */
+        } else if (strcmp(node[i]->element, oscontainer_images) == 0) {
+#ifdef CLIENT
+            if ((modules & CWMODULE) && (Read_ContainerImages(xml, node[i], d1) < 0)) {
+                goto fail;
+            }
+#else
+            mwarn("The '%s' module only works for the agent.", node[i]->element);
+#endif
         } else {
             merror(XML_INVELEM, node[i]->element);
             goto fail;

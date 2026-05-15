@@ -287,6 +287,53 @@ int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1)
     return 0;
 }
 
+#ifdef CLIENT
+int Read_ContainerImages(const OS_XML *xml, xml_node *node, void *d1)
+{
+    wmodule **wmodules = (wmodule **)d1;
+    wmodule *cur_wmodule;
+    wmodule *cur_wmodule_exists;
+    xml_node **children = NULL;
+
+    // Allocate or reuse the wmodule entry for container_images
+    if ((cur_wmodule = *wmodules)) {
+        cur_wmodule_exists = *wmodules;
+        int found = 0;
+        while (cur_wmodule_exists) {
+            if (cur_wmodule_exists->tag &&
+                strcmp(cur_wmodule_exists->tag, node->element) == 0) {
+                cur_wmodule = cur_wmodule_exists;
+                found = 1;
+                break;
+            }
+            cur_wmodule_exists = cur_wmodule_exists->next;
+        }
+        if (!found) {
+            while (cur_wmodule->next) cur_wmodule = cur_wmodule->next;
+            os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+            cur_wmodule = cur_wmodule->next;
+        }
+    } else {
+        os_calloc(1, sizeof(wmodule), cur_wmodule);
+        *wmodules = cur_wmodule;
+    }
+
+    if (children = OS_GetElementsbyNode(xml, node), !children) {
+        mdebug1("Empty configuration for module '%s'", node->element);
+    }
+
+    if (!strcmp(node->element, WM_CONTAINER_IMAGES_CONTEXT.name)) {
+        if (wm_container_images_read(xml, children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+    }
+
+    OS_ClearNode(children);
+    return 0;
+}
+#endif
+
 int Read_GCP_pubsub(const OS_XML *xml, xml_node *node, void *d1) {
     wmodule **wmodules = (wmodule**)d1;
     wmodule *cur_wmodule;
