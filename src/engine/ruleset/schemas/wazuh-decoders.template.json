@@ -41,15 +41,13 @@
         "author": { "type": "string" },
         "date": {
           "type": "string",
-          "format": "date-time",
-          "description": "Creation date in ISO 8601 date-time format",
-          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+          "description": "Creation date in ISO 8601 date or date-time format",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$"
         },
         "modified": {
           "type": "string",
-          "format": "date-time",
-          "description": "Last modification date in ISO 8601 date-time format",
-          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+          "description": "Last modification date in ISO 8601 date or date-time format",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}Z)?$"
         },
         "description": { "type": "string" },
         "references": { "type": "array", "items": { "type": "string" } },
