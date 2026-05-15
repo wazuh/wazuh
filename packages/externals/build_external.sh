@@ -539,15 +539,22 @@ stage_precompiled() {
     fi
 }
 
-# NOTE: precompiled staging of libbpf-bootstrap and libffi is temporarily
-# disabled — we are testing whether this workflow can build them from
-# source instead of reusing the precompiled tarballs from
-# packages.wazuh.com. When staged, src/external/CMakeLists.txt's
-# if(EXISTS ...) short-circuits skip the from-source ExternalProject_Add;
-# with staging off, `make build-external` will exercise the real build:
-#   - libbpf-bootstrap: needs a BPF-capable clang in the builder image
-#   - libffi: ExternalProject_Add from-source path under the Make generator
-# The stage_precompiled() helper above is kept for easy re-enablement.
+if { [ "${SYSTEM}" = "deb" ] || [ "${SYSTEM}" = "rpm" ]; }; then
+    # libffi now builds from source on the manager legs (see
+    # src/external/CMakeLists.txt), so it no longer needs staging.
+    #
+    # libbpf-bootstrap still cannot be built here: its source needs kernel
+    # UAPI headers >= 4.13 (linux/bpf_perf_event.h) and a BPF-capable
+    # clang, neither of which the legacy agent builder image provides — a
+    # from-source attempt fails with "linux/bpf_perf_event.h: No such file
+    # or directory". Wazuh builds it in a dedicated centos:7 +
+    # clang-15-from-source image (issue 28626); here we reuse that
+    # precompiled tarball. Staged on every Linux leg regardless of
+    # BUILD_TARGET so the per-leg output is binary-complete; the
+    # CMakeLists.txt if(EXISTS ...) short-circuit decides whether the
+    # current leg actually consumes it, so staging it unused is harmless.
+    stage_precompiled libbpf-bootstrap libbpf-bootstrap/build/modern.bpf.o
+fi
 
 log "building externals via 'make build-external TARGET=${MAKE_TARGET}'"
 # `build-external` (defined at src/Makefile:372) configures cmake then builds
