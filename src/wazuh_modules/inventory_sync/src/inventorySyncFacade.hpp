@@ -1597,28 +1597,34 @@ public:
                         vdFirst = m_activeVDFirstScans.size();
                     }
 
-                    const std::size_t bulkBytes =
-                        m_indexerConnector ? m_indexerConnector->getBulkDataSize() : 0;
-                    const std::size_t notifyN =
-                        m_indexerConnector ? m_indexerConnector->getPendingNotifyCount() : 0;
-                    const std::size_t delByQN =
-                        m_indexerConnector ? m_indexerConnector->getDeleteByQueryCount() : 0;
+                    // Los 3 getters del IndexerConnector usan try_lock. Si el mutex
+                    // estaba hold (p. ej. waitForFeedReady() de un VDFirst/VDSync),
+                    // retornan SIZE_MAX y aquí se imprimen como "?" para no callar
+                    // al sampler durante esperas largas.
+                    const auto fmtCnt = [](std::size_t v)
+                    { return (v == SIZE_MAX) ? std::string("?") : std::to_string(v); };
+                    const std::string bulkBytesStr =
+                        m_indexerConnector ? fmtCnt(m_indexerConnector->getBulkDataSize()) : "0";
+                    const std::string notifyStr =
+                        m_indexerConnector ? fmtCnt(m_indexerConnector->getPendingNotifyCount()) : "0";
+                    const std::string delByQStr =
+                        m_indexerConnector ? fmtCnt(m_indexerConnector->getDeleteByQueryCount()) : "0";
 
                     const auto rocksBytes = recursiveDirSize(INVENTORY_SYNC_PATH);
 
                     logInfo(LOGGER_DEFAULT_TAG,
                             "InventorySync queue stats: workers_q=%zu indexer_q=%zu "
                             "sessions=%zu blocked_agents=%zu active_vdfirst=%zu "
-                            "indexer_bulk_bytes=%zu indexer_notify=%zu indexer_delbyq=%zu "
+                            "indexer_bulk_bytes=%s indexer_notify=%s indexer_delbyq=%s "
                             "rocksdb_dir_bytes=%llu",
                             workersQ,
                             indexerQ,
                             sessions,
                             blocked,
                             vdFirst,
-                            bulkBytes,
-                            notifyN,
-                            delByQN,
+                            bulkBytesStr.c_str(),
+                            notifyStr.c_str(),
+                            delByQStr.c_str(),
                             static_cast<unsigned long long>(rocksBytes));
 
                     lock.lock();

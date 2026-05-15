@@ -300,7 +300,8 @@ def generate_charts(
             for fname in sorted(os.listdir(path)):
                 if not fname.endswith(".csv"):
                     continue
-                if fname in ("bench.csv", "disk_usage.csv"):
+                if fname in ("bench.csv", "disk_usage.csv",
+                            "invsync_queue_stats.csv", "invsync_session_stats.csv"):
                     continue
                 fpath = os.path.join(path, fname)
                 proc_name = fname.removesuffix(".csv")
@@ -456,7 +457,119 @@ def generate_charts(
                 )
                 _plot_combined(monitors[label], benches[label], label, out)
 
+    # -- InventorySync log charts (temporary) --------------------------------
+    _generate_invsync_charts(result_dirs, out_dir, fmt)
+
     print(f"\nDone. {len(os.listdir(out_dir))} chart(s) generated.\n")
+
+
+# ---------------------------------------------------------------------------
+# InventorySync log charts (temporary — will be removed in the future)
+# ---------------------------------------------------------------------------
+INVSYNC_QUEUE_METRICS = [
+    ("workers_q",         "Workers Queue Depth",     "Count"),
+    ("indexer_q",         "Indexer Queue Depth",      "Count"),
+    ("sessions",          "Active Sessions",          "Count"),
+    ("blocked_agents",    "Blocked Agents",           "Count"),
+    ("active_vdfirst",    "Active VD-First",          "Count"),
+    ("indexer_bulk_bytes", "Indexer Bulk Bytes",       "Bytes"),
+    ("indexer_notify",    "Indexer Notify Count",      "Count"),
+    ("indexer_delbyq",    "Indexer Delete-by-Query",   "Count"),
+    ("rocksdb_dir_bytes", "RocksDB Directory Size",    "Bytes"),
+]
+
+INVSYNC_SESSION_TIMING = [
+    ("timing_ms_start_to_processing", "Start → Processing", "ms"),
+    ("timing_ms_start_to_end",        "Start → End",        "ms"),
+]
+
+
+def _generate_invsync_charts(
+    result_dirs: list[tuple[str, str]],
+    out_dir: str,
+    fmt: str,
+) -> None:
+    """Generate charts from invsync_queue_stats.csv and invsync_session_stats.csv.
+
+    This function is temporary and will be removed in the future.
+    """
+    queue_dfs: dict[str, pd.DataFrame] = {}
+    session_dfs: dict[str, pd.DataFrame] = {}
+
+    for path, label in result_dirs:
+        qpath = os.path.join(path, "invsync_queue_stats.csv")
+        spath = os.path.join(path, "invsync_session_stats.csv")
+        if os.path.isfile(qpath):
+            df = pd.read_csv(qpath)
+            if len(df) > 0:
+                # Add a sequential elapsed index (rows are ~0.5s apart)
+                df["elapsed_s"] = [i * 0.5 for i in range(len(df))]
+                # Coerce numeric columns
+                for c in df.columns:
+                    if c not in ("timestamp",):
+                        df[c] = pd.to_numeric(df[c], errors="coerce")
+                queue_dfs[label] = df
+        if os.path.isfile(spath):
+            df = pd.read_csv(spath)
+            if len(df) > 0:
+                for c in df.columns:
+                    if c not in ("timestamp", "agent", "module", "sessionId", "reason"):
+                        df[c] = pd.to_numeric(df[c], errors="coerce")
+                session_dfs[label] = df
+
+    if not queue_dfs and not session_dfs:
+        return
+
+    # -- Queue stats time-series ---------------------------------------------
+    for col, title_suffix, ylabel in INVSYNC_QUEUE_METRICS:
+        if not any(col in df.columns for df in queue_dfs.values()):
+            continue
+        out = os.path.join(out_dir, f"invsync_queue_{col}.{fmt}")
+        plot_timeseries(
+            queue_dfs, col,
+            f"InventorySync — {title_suffix}",
+            ylabel, out,
+        )
+
+    # -- Session stats: timing bar charts per module -------------------------
+    for label, df in session_dfs.items():
+        if "module" not in df.columns:
+            continue
+        for col, title_suffix, ylabel in INVSYNC_SESSION_TIMING:
+            if col not in df.columns:
+                continue
+            # Group by module, compute mean
+            grouped = df.groupby("module")[col].mean()
+            if grouped.empty:
+                continue
+            modules = list(grouped.index)
+            values = [round(v, 1) for v in grouped.values]
+            colors = [run_color(i) for i in range(len(modules))]
+            suffix = f" ({label})" if len(session_dfs) > 1 else ""
+            out = os.path.join(out_dir,
+                               f"invsync_session_{col}_{label.replace(' ', '_')}.{fmt}")
+            plot_bar(
+                modules, values, colors,
+                f"InventorySync Session — Avg {title_suffix}{suffix}",
+                ylabel, out,
+            )
+
+        # Sessions completed per module
+        if "reason" in df.columns:
+            completed = df[df["reason"] == "completed"]
+            if not completed.empty and "module" in completed.columns:
+                counts = completed.groupby("module").size()
+                modules = list(counts.index)
+                values = list(counts.values)
+                colors = [run_color(i) for i in range(len(modules))]
+                suffix = f" ({label})" if len(session_dfs) > 1 else ""
+                out = os.path.join(out_dir,
+                                   f"invsync_session_completed_{label.replace(' ', '_')}.{fmt}")
+                plot_bar(
+                    modules, values, colors,
+                    f"InventorySync — Sessions Completed by Module{suffix}",
+                    "Count", out,
+                )
 
 
 def _plot_combined(

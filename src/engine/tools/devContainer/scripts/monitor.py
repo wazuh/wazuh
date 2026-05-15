@@ -506,7 +506,133 @@ def main() -> None:
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_dir = os.path.join(".", f"result_{ts}")
 
+    monitor_start_time = datetime.now()
     monitor_multi(processes, output_dir, args.interval, disk_paths)
+
+    # Post-processing: extract InventorySync stats from wazuh-manager.log
+    extract_invsync_logs(output_dir, start_time=monitor_start_time)
+
+
+# ---------------------------------------------------------------------------
+# InventorySync log extraction (temporary — will be removed in the future)
+# ---------------------------------------------------------------------------
+WAZUH_LOG_PATH = "/var/wazuh-manager/logs/wazuh-manager.log"
+
+_RE_QUEUE_STATS = re.compile(
+    r"^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) .+InventorySync queue stats: (.+)$"
+)
+_RE_SESSION_STATS = re.compile(
+    r"^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) .+InventorySync session stats: (.+)$"
+)
+
+
+def _parse_flat_kv(text: str) -> dict[str, str]:
+    """Parse 'key=value key2=value2 key3={a=1 b=2}' into a flat dict.
+
+    Nested braces like  raw_bytes={total=587568 avg=693 max=744 min_nonzero=672}
+    are flattened as   raw_bytes_total=587568  raw_bytes_avg=693  ...
+    """
+    result: dict[str, str] = {}
+    i = 0
+    while i < len(text):
+        # skip whitespace
+        while i < len(text) and text[i] == " ":
+            i += 1
+        if i >= len(text):
+            break
+        # read key
+        eq = text.index("=", i)
+        key = text[i:eq]
+        i = eq + 1
+        if i < len(text) and text[i] == "{":
+            # nested block
+            close = text.index("}", i)
+            inner = text[i + 1:close]
+            for sub_kv in inner.split():
+                sk, sv = sub_kv.split("=", 1)
+                result[f"{key}_{sk}"] = sv
+            i = close + 1
+        else:
+            # simple value — runs until next space or end
+            end = text.find(" ", i)
+            if end == -1:
+                end = len(text)
+            result[key] = text[i:end]
+            i = end
+    return result
+
+
+_LOG_TS_FMT = "%Y/%m/%d %H:%M:%S"
+
+
+def extract_invsync_logs(output_dir: str,
+                         log_path: str = WAZUH_LOG_PATH,
+                         start_time: datetime | None = None) -> None:
+    """Parse wazuh-manager.log and write queue/session stats CSVs.
+
+    Only log lines with a timestamp >= *start_time* are included so that
+    data from previous runs is not mixed in.
+
+    This function is temporary and will be removed in the future.
+    """
+    if not os.path.isfile(log_path):
+        logger.info("Log file %s not found — skipping InventorySync extraction.", log_path)
+        return
+
+    queue_rows: list[dict[str, str]] = []
+    session_rows: list[dict[str, str]] = []
+
+    logger.info("Extracting InventorySync stats from %s (since %s) ...",
+                log_path,
+                start_time.strftime(_LOG_TS_FMT) if start_time else "beginning")
+    with open(log_path, "r", errors="replace") as fh:
+        for line in fh:
+            m = _RE_QUEUE_STATS.match(line)
+            if m:
+                ts_str = m.group(1)
+                if start_time and datetime.strptime(ts_str, _LOG_TS_FMT) < start_time:
+                    continue
+                row = {"timestamp": ts_str}
+                row.update(_parse_flat_kv(m.group(2)))
+                queue_rows.append(row)
+                continue
+            m = _RE_SESSION_STATS.match(line)
+            if m:
+                ts_str = m.group(1)
+                if start_time and datetime.strptime(ts_str, _LOG_TS_FMT) < start_time:
+                    continue
+                row = {"timestamp": ts_str}
+                row.update(_parse_flat_kv(m.group(2)))
+                session_rows.append(row)
+
+    if queue_rows:
+        path = os.path.join(output_dir, "invsync_queue_stats.csv")
+        _write_csv(path, queue_rows)
+        logger.info("Wrote %d queue-stats rows -> %s", len(queue_rows), path)
+    else:
+        logger.info("No InventorySync queue stats found in log.")
+
+    if session_rows:
+        path = os.path.join(output_dir, "invsync_session_stats.csv")
+        _write_csv(path, session_rows)
+        logger.info("Wrote %d session-stats rows -> %s", len(session_rows), path)
+    else:
+        logger.info("No InventorySync session stats found in log.")
+
+
+def _write_csv(path: str, rows: list[dict[str, str]]) -> None:
+    """Write a list of dicts to CSV, deriving the header from all keys."""
+    all_keys: list[str] = []
+    seen: set[str] = set()
+    for row in rows:
+        for k in row:
+            if k not in seen:
+                all_keys.append(k)
+                seen.add(k)
+    with open(path, "w", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=all_keys)
+        writer.writeheader()
+        writer.writerows(rows)
 
 
 if __name__ == "__main__":

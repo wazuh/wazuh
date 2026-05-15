@@ -1389,21 +1389,37 @@ public:
     }
 
     // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
+    // Los getters usan try_to_lock: si el mutex está hold (p. ej. scopeLock() durante
+    // un waitForFeedReady() del VD scanner que dura minutos), devuelven SIZE_MAX como
+    // sentinela "locked" en lugar de bloquear al sampler. Esto evita que el log de
+    // colas se calle durante esperas largas.
     size_t getBulkDataSize() const
     {
-        std::lock_guard lock(m_mutex);
+        std::unique_lock<std::mutex> lock(m_mutex, std::try_to_lock);
+        if (!lock.owns_lock())
+        {
+            return SIZE_MAX;
+        }
         return m_bulkData.size();
     }
 
     size_t getPendingNotifyCount() const
     {
-        std::lock_guard lock(m_mutex);
+        std::unique_lock<std::mutex> lock(m_mutex, std::try_to_lock);
+        if (!lock.owns_lock())
+        {
+            return SIZE_MAX;
+        }
         return m_notify.size();
     }
 
     size_t getDeleteByQueryCount() const
     {
-        std::lock_guard lock(m_mutex);
+        std::unique_lock<std::mutex> lock(m_mutex, std::try_to_lock);
+        if (!lock.owns_lock())
+        {
+            return SIZE_MAX;
+        }
         return m_deleteByQuery.size();
     }
     // === END TEMP ===
