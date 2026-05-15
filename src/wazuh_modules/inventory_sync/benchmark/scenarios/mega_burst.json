@@ -2,7 +2,7 @@
   "name": "mega_burst",
   "description": "Saturates the m_workersQueue producer (unlimited). 1000 concurrent agents with small data_size generate enqueue rate > combined worker capacity (std::thread::hardware_concurrency()). The goal is to expose whether the unbounded queue causes RSS to grow without limit.",
   "load": {
-    "agents":       1000,
+    "agents":       2000,
     "data_size":    100,
     "duration_sec": 180,
     "rate":         0,

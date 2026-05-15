@@ -16,7 +16,9 @@
     "rss_growth_mb_max": 800
   },
   "notes": [
-    "Expect: end_ack_error > 0 while the indexer is down.",
+    "external_actions are fired automatically by run_benchmark.sh (logged to results_*/external_actions.log).",
+    "NOTE: at_sec=30 may fire during the sender's ~70s setup phase (agent registration + key_wait=35s). If so, all sessions hit the handleStart Offline guard rail BEFORE entering m_workersQueue and m_indexerQueue is never exercised. Use indexer_down_midflight.json (at_sec=120) for a mid-flight test against an established session pool.",
+    "Expect: end_ack_error > 0 while the indexer is down (only if sessions are mid-flight when it stops).",
     "If RSS grows unbounded during the indexer-down window, there is a leak in m_indexerQueue."
   ]
 }

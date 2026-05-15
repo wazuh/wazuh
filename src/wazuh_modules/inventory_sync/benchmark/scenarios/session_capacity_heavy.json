@@ -1,0 +1,27 @@
+{
+  "name": "session_capacity_heavy",
+  "description": "999 agents (just under m_maxSessions=1000) running long heavy sessions: 2000 DataValues × ~8 KB each, total ~16 MB per session. The hypothesis is that at session capacity + heavy per-session load, the workers can't drain m_workersQueue/m_indexerQueue fast enough and RAM grows. Compare against sustained_high_rate (300 agents × 200 DataValues, ~120 KB per session): this scenario pushes ~135x more data per session AND saturates m_agentSessions. Note: functionally equivalent to 333 real Wazuh agents running 3 modules each in parallel — the manager only sees the global session count and per-session work, not who owns the session.",
+  "load": {
+    "agents":       999,
+    "data_size":    2000,
+    "duration_sec": 600,
+    "rate":         0,
+    "session_delay": 0,
+    "payload_kind": "fim_file",
+    "payload_size_bytes": 8192
+  },
+  "expectations": {
+    "rss_growth_mb_max": 1500,
+    "session_success_rate_min": 70.0
+  },
+  "notes": [
+    "Hypothesis: with m_agentSessions at capacity (~999/1000) AND each session writing 2000×8KB=16MB to RocksDB + pushing 2000 Response{} into m_indexerQueue, the workers may not keep up. If RAM grows monotonically during the run, the queues are retaining work. If RAM oscillates in a sawtooth like sustained_high_rate did, the system handles it.",
+    "Why 999 agents (not 1000+): we want to stress at capacity, not trigger the session_limit_reached guard rail. mega_burst@2000 already tested the guard rail path.",
+    "Why data_size=2000: ~10x what sustained_high_rate used. Each session takes longer to complete, so sessions stay in m_agentSessions longer, keeping the count near capacity for a sustained period.",
+    "Why payload_size=8192: well under OS_MAXSTR=65536. The pad goes into file.path (PAD_FIELD_BY_KIND['fim_file']). Each DataValue's JSON is ~8 KB; the FB wrapper adds ~200 bytes per message.",
+    "Expected proxies (monitor_rss_mb.png is the answer):",
+    "  - If sawtooth in 200-400 MB band → workers drain at capacity, no real queue risk.",
+    "  - If monotonic ramp >500 MB → unbounded growth confirmed at capacity + heavy work.",
+    "  - Tail latency p99 will be high regardless of outcome (manager is at capacity)."
+  ]
+}

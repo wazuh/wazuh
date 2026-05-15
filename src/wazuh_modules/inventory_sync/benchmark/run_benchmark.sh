@@ -233,6 +233,17 @@ if [[ -n "$SCENARIO" ]]; then
     SC_NOEND=$("$PYTHON" -c "import json,sys; d=json.load(open('$SCENARIO')); v=d.get('load',{}).get('no_end'); print('true' if v is True else ('false' if v is False else ''))")
     SC_DBATCH=$("$PYTHON" -c "import json,sys; d=json.load(open('$SCENARIO')); v=d.get('load',{}).get('use_databatch'); print('true' if v is True else ('false' if v is False else ''))")
     SC_BSIZE=$("$PYTHON" -c "import json,sys; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('batch_size',''))")
+    # external_actions are emitted one per line as "at_sec\tcmd" so the bash
+    # side can read them with IFS-tab splitting. Embedded tabs and newlines in
+    # cmd are sanitized so the protocol stays line-oriented.
+    SC_EXTACTS=$("$PYTHON" -c "
+import json
+d = json.load(open('$SCENARIO'))
+for a in d.get('external_actions', []) or []:
+    at = a.get('at_sec', 0)
+    cmd = (a.get('cmd', '') or '').replace('\t', ' ').replace('\n', ' ')
+    print(f'{at}\t{cmd}')
+")
     [[ -n "$SC_AGENTS" ]] && AGENTS="$SC_AGENTS"
     [[ -n "$SC_DSIZE" ]]  && DATA_SIZE="$SC_DSIZE"
     [[ -n "$SC_DUR" ]]    && DURATION="$SC_DUR"
@@ -399,7 +410,51 @@ SENDER_ARGS=(
 [[ "$NO_END"        == "true" ]]   && SENDER_ARGS+=(--no-end)
 [[ "$USE_DATABATCH" == "true" ]]   && SENDER_ARGS+=(--use-databatch --batch-size "$BATCH_SIZE")
 
+# 2b. Schedule scenario `external_actions` as background timer subshells.
+# Each fires at `at_sec` seconds from this point (i.e., approximately when the
+# sender starts; the sender's own ~70s setup happens AFTER these timers begin,
+# so scenarios should set at_sec accounting for that overhead — see
+# scenarios/indexer_down_midflight.json for the convention).
+# eval is used because cmd is an operator-authored shell command stored in
+# the scenario JSON; same trust model as the scenario file itself.
+EXT_ACTION_PIDS=()
+EXT_ACTION_LOG="$RESULTS_DIR/external_actions.log"
+if [[ -n "$SC_EXTACTS" ]]; then
+    : > "$EXT_ACTION_LOG"
+    echo "Scheduling external_actions (relative to bench start):"
+    while IFS=$'\t' read -r ext_at ext_cmd; do
+        [[ -z "$ext_at" || -z "$ext_cmd" ]] && continue
+        echo "  T+${ext_at}s: $ext_cmd"
+        (
+            sleep "$ext_at"
+            ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+            echo "[$ts T+${ext_at}s] running: $ext_cmd" | tee -a "$EXT_ACTION_LOG"
+            cd "$SCRIPT_DIR" || exit 1
+            eval "$ext_cmd" >> "$EXT_ACTION_LOG" 2>&1
+            rc=$?
+            ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+            echo "[$ts T+${ext_at}s] exit=$rc" | tee -a "$EXT_ACTION_LOG"
+        ) &
+        EXT_ACTION_PIDS+=($!)
+    done <<< "$SC_EXTACTS"
+    echo
+fi
+
 "$PYTHON" "$SCRIPT_DIR/benchmark_sender.py" "${SENDER_ARGS[@]}" || true
+
+# 2c. Reap any external_action timers that haven't fired yet (e.g. their
+# at_sec was longer than the sender's actual runtime).
+if [[ ${#EXT_ACTION_PIDS[@]} -gt 0 ]]; then
+    for pid in "${EXT_ACTION_PIDS[@]}"; do
+        if kill -0 "$pid" 2>/dev/null; then
+            kill "$pid" 2>/dev/null || true
+            wait "$pid" 2>/dev/null || true
+            echo "  (external_action pid=$pid cancelled — sender ended first)"
+        else
+            wait "$pid" 2>/dev/null || true
+        fi
+    done
+fi
 
 # 3. Stop monitor + log parser
 echo ""

@@ -17,7 +17,7 @@
     "rss_growth_mb_max": 1500
   },
   "notes": [
-    "external_actions are executed manually — the runner does not orchestrate them (same pattern as indexer_down.json).",
+    "external_actions are fired automatically by run_benchmark.sh and logged to results_*/external_actions.log. NOTE: at_sec=10 stops the indexer DURING the sender's ~70s setup phase, so all sessions hit the handleStart Offline guard rail (StartAck Status::Offline) before reaching the queue. Use indexer_down_midflight.json to test the queue-under-pressure scenario with the indexer down mid-session.",
     "Dual hypothesis: with the indexer stopped, m_indexerQueue retains Response{} and m_workersQueue accumulates raw bytes while workers wait to push to the sink.",
     "Expect: end_ack_error > 0 during the downtime window, RSS climbing in a ramp.",
     "If RSS doesn't drop after restarting the indexer, the queue doesn't drain after the sink returns → real leak, not just transient backpressure.",
