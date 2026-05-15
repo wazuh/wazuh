@@ -75,7 +75,7 @@ public:
                 DBStatement stmt(
                     db, // LCOV_EXCL_LINE
                     "UPDATE agent SET ip = ?, merged_sum = ?, name = ?, node_name = ?, "
-                    "os_arch = ?, os_major = ?, os_minor = ?, os_name = ?, "
+                    "os_arch = ?, os_major = ?, os_minor = ?, os_name = ?, os_type = ?, "
                     "os_platform = ?, os_version = ?, version = ?, last_keepalive = ?, "
                     "connection_status = ?, disconnection_time = ?, group_config_status = ?, status_code= ?, "
                     "sync_status = 'synced' WHERE id = ?;");
@@ -92,15 +92,16 @@ public:
                     stmt.bind(6, value<std::string_view>(agent, "os_major"));
                     stmt.bind(7, value<std::string_view>(agent, "os_minor"));
                     stmt.bind(8, value<std::string_view>(agent, "os_name"));
-                    stmt.bind(9, value<std::string_view>(agent, "os_platform"));
-                    stmt.bind(10, value<std::string_view>(agent, "os_version"));
-                    stmt.bind(11, value<std::string_view>(agent, "version"));
-                    stmt.bind(12, value<int64_t>(agent, "last_keepalive"));
-                    stmt.bind(13, value<std::string_view>(agent, "connection_status"));
-                    stmt.bind(14, value<int64_t>(agent, "disconnection_time"));
-                    stmt.bind(15, value<std::string_view>(agent, "group_config_status"));
-                    stmt.bind(16, value<int64_t>(agent, "status_code"));
-                    stmt.bind(17, idAgent);
+                    stmt.bind(9, value<std::string_view>(agent, "os_type"));
+                    stmt.bind(10, value<std::string_view>(agent, "os_platform"));
+                    stmt.bind(11, value<std::string_view>(agent, "os_version"));
+                    stmt.bind(12, value<std::string_view>(agent, "version"));
+                    stmt.bind(13, value<int64_t>(agent, "last_keepalive"));
+                    stmt.bind(14, value<std::string_view>(agent, "connection_status"));
+                    stmt.bind(15, value<int64_t>(agent, "disconnection_time"));
+                    stmt.bind(16, value<std::string_view>(agent, "group_config_status"));
+                    stmt.bind(17, value<int64_t>(agent, "status_code"));
+                    stmt.bind(18, idAgent);
                     stmt.step();
                     stmt.reset();
                 }

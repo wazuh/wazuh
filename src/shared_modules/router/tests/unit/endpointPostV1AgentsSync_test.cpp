@@ -83,7 +83,7 @@ TEST_F(EndpointPostV1AgentsSyncTest, SyncReqTwoAgents)
 {
     auto stmt = mockStmt(qdump);
 
-    EXPECT_CALL(*stmt, bindStringView).Times(13 * 2); // 13 string fields * 2 agents
+    EXPECT_CALL(*stmt, bindStringView).Times(14 * 2); // 14 string fields * 2 agents
     EXPECT_CALL(*stmt, bindInt64).Times(4 * 2); // last_keepalive + disconnection_time + status_code + id, per agent
     EXPECT_CALL(*stmt, step()).Times(2);        // 2 updates
     EXPECT_CALL(*stmt, reset()).Times(2);       // 2 updates
@@ -109,11 +109,12 @@ TEST_F(EndpointPostV1AgentsSyncTest, SyncReqTwoAgents)
     TEndpointPostV1AgentsSync<MockSQLiteConnection, TrampolineSQLiteStatement>::call(db, req, res);
 
     ASSERT_EQ(qdump->size(), 1);
-    EXPECT_EQ((*qdump)[0],
-              "UPDATE agent SET ip = ?, merged_sum = ?, name = ?, node_name = ?, os_arch = ?, os_major = ?, "
-              "os_minor = ?, os_name = ?, os_platform = ?, os_version = ?, version = ?, last_keepalive = ?, "
-              "connection_status = ?, disconnection_time = ?, group_config_status = ?, status_code= ?, "
-              "sync_status = 'synced' WHERE id = ?;");
+    EXPECT_EQ(
+        (*qdump)[0],
+        "UPDATE agent SET ip = ?, merged_sum = ?, name = ?, node_name = ?, os_arch = ?, os_major = ?, "
+        "os_minor = ?, os_name = ?, os_type = ?, os_platform = ?, os_version = ?, version = ?, last_keepalive = ?, "
+        "connection_status = ?, disconnection_time = ?, group_config_status = ?, status_code= ?, "
+        "sync_status = 'synced' WHERE id = ?;");
 }
 
 TEST_F(EndpointPostV1AgentsSyncTest, KeepAliveThreeAgents)
