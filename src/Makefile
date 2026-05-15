@@ -157,7 +157,7 @@ endif
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		PRECOMPILED_OS:=linux
-		CC=gcc
+		CC?=gcc
 else
 ifeq (${uname_S},Darwin)
 	PRECOMPILED_OS:=darwin
