@@ -425,22 +425,23 @@ if(NOT IS_AGENT)
     message(STATUS "Using precompiled libffi library: ${LIBFFI_LIBRARY}")
     add_custom_target(libffi_external)
   else()
-    # Modern libffi (3.4+) with BUILD_IN_SOURCE TRUE places the static
-    # archive at libffi/.libs/libffi.a directly — no host-triple subdir.
-    # The precompiled tarball Wazuh ships does use a host-triple subdir
-    # (matched by the LIBFFI_PRECOMPILED glob above), but a fresh source
-    # build does not, so we don't need config.guess here.
+    # libffi's top-level configure is a wrapper that re-execs the real
+    # configure inside a build subdirectory and leaves the static archive
+    # at libffi/<builddir>/.libs/libffi.a — never at libffi/.libs/libffi.a.
+    # The subdir name is non-deterministic (it defaults to a value derived
+    # from the build environment), so we pin it with --enable-builddir and
+    # point BUILD_BYPRODUCTS / LIBFFI_LIBRARY at that fixed location.
     ExternalProject_Add(
       libffi_external
       SOURCE_DIR ${EXTERNAL_DIR}/libffi
       CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CFLAGS=-fPIC
-                        ${EXTERNAL_DIR}/libffi/configure
+                        ${EXTERNAL_DIR}/libffi/configure --enable-builddir=build
       BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
       BUILD_IN_SOURCE TRUE
       INSTALL_COMMAND ""
-      BUILD_BYPRODUCTS ${EXTERNAL_DIR}/libffi/.libs/libffi.a)
+      BUILD_BYPRODUCTS ${EXTERNAL_DIR}/libffi/build/.libs/libffi.a)
 
-    set(LIBFFI_LIBRARY ${EXTERNAL_DIR}/libffi/.libs/libffi.a)
+    set(LIBFFI_LIBRARY ${EXTERNAL_DIR}/libffi/build/.libs/libffi.a)
   endif()
 
   add_library(ext_libffi STATIC IMPORTED GLOBAL)
