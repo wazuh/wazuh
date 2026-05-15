@@ -723,6 +723,16 @@ InstallCommon()
         fi
     fi
 
+    # K8s container monitoring (Linux-only). Same pattern as libagent_info / libsca.
+    if [ -f build/lib/libcontainer_connector.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libcontainer_connector.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libcontainer_connector.so
+        fi
+    fi
+
 
     if [ -f build/lib/libstdc++.so.6 ]
     then

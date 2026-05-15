@@ -51,6 +51,19 @@ int ebpf_whodata_healthcheck();
  */
 int ebpf_whodata();
 
+/**
+ * @brief Enable the Kubernetes container support path in the user-space eBPF
+ * pipeline.
+ *
+ * After this call every event whose cgroup_id resolves via the
+ * container-connector IPC is matched against syscheck.k8s_directories and, on
+ * match, dispatched with a synthetic k8s://<ns>/<pod>/<container>/<internal>
+ * identity. Unresolved cgroups fall through to the existing host pipeline.
+ *
+ * Idempotent. Must be called after fimebpf_initialize().
+ */
+void fimebpf_enable_k8s_container_support(void);
+
 int init_bpfobj();
 
 int healthcheck_event(void* ctx, void* data, size_t data_sz);

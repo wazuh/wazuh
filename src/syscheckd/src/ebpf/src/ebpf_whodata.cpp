@@ -27,6 +27,13 @@
 #include "ebpf_whodata.hpp"
 #include "bpf_helpers.h"
 
+#include "container_connector_client.hpp"
+#include <json.hpp>
+
+extern "C" {
+#include "syscheck.h"
+}
+
 // Define global function pointers (declared extern in bpf_helpers.h)
 void (*bpf_object__destroy_skeleton)(struct bpf_object_skeleton* obj) = nullptr;
 int (*bpf_object__open_skeleton)(struct bpf_object_skeleton* obj, const struct bpf_object_open_opts* opts) = nullptr;
@@ -99,6 +106,100 @@ static char* ulong_to_str(unsigned long long num)
     return strdup(s.c_str());
 }
 
+/* T-K5b: Try to resolve the event against a Kubernetes container via IPC and,
+ * on a match against syscheck.k8s_directories, enqueue an event tagged with K8s
+ * metadata and a synthetic k8s:// identity. Returns true when the event was
+ * fully handled here (matched or known-but-unmonitored container); the caller
+ * must NOT fall through to the host pipeline in that case.
+ *
+ * Returns false when the event should fall through (cgroup unknown, K8s feature
+ * disabled, no cgroup_id, lookup failed). The host pipeline runs as before. */
+static bool try_handle_as_k8s_event(const file_event* e)
+{
+    auto& fp  = fimebpf::instance();
+    auto  log = fp.m_loggingFunction;
+
+    if (!fp.m_k8s_enabled || e->cgroup_id == 0) {
+        return false;
+    }
+
+    /* The client is cheap to construct (no socket yet); we keep one per thread
+     * to amortize across the many events that share the consumer thread. */
+    thread_local std::unique_ptr<wazuh::container_connector::ContainerConnectorClient> client;
+    if (!client) {
+        client = std::make_unique<wazuh::container_connector::ContainerConnectorClient>();
+    }
+
+    const auto result = client->LookupByCgroupId(e->cgroup_id);
+    if (!result.found) {
+        return false;  /* Unknown cgroup → host pipeline. */
+    }
+
+    nlohmann::json meta = nlohmann::json::parse(result.meta_json, /*cb*/ nullptr, /*throw*/ false);
+    if (meta.is_discarded() || !meta.is_object()) {
+        if (log) log(LOG_WARNING, "K8s IPC returned malformed meta_json; falling back to host pipeline.");
+        return false;
+    }
+
+    const auto& pod = meta.value("pod", nlohmann::json::object());
+
+    const std::string container_id   = meta.value("container_id", "");
+    const std::string container_name = meta.value("name", "");
+    const std::string image          = meta.value("image", "");
+    const std::string pod_uid        = pod.value("uid",       "");
+    const std::string pod_name       = pod.value("name",      "");
+    const std::string namespace_     = pod.value("namespace", "");
+
+    /* The kernel's bpf_d_path runs in the calling task's mount namespace, so for
+     * a process inside the container we already see the container-internal
+     * path (e.g. "/etc/nginx/nginx.conf"). Match against k8s_directories. */
+    const std::string internal_path = e->filename;
+    k8s_monitored_path_t* k8s_match = fim_match_k8s_path(&syscheck, internal_path.c_str());
+    if (k8s_match == NULL) {
+        /* Known container but path outside any configured <directories type="kubernetes">.
+         * Consume the event so the host pipeline does not also try to handle it. */
+        return true;
+    }
+    if ((k8s_match->options & WHODATA_ACTIVE) == 0) {
+        return true;
+    }
+
+    /* k8s://<ns>/<pod>/<container>/<internal> — internal_path already begins
+     * with '/' so we do not add a separator. */
+    std::string synthetic = "k8s://" + namespace_ + "/" + pod_name + "/" + container_name + internal_path;
+
+    auto event = std::make_unique<dynamic_file_event>(dynamic_file_event{
+        .filename       = synthetic,
+        .cwd            = std::string(e->cwd),
+        .parent_cwd     = std::string(e->parent_cwd),
+        .comm           = std::string(e->comm),
+        .parent_comm    = std::string(e->parent_comm),
+        .pid            = e->pid,
+        .ppid           = e->ppid,
+        .uid            = e->uid,
+        .gid            = e->gid,
+        .inode          = e->inode,
+        .dev            = e->dev,
+        .cgroup_id      = e->cgroup_id,
+        .mnt_ns_inum    = e->mnt_ns_inum,
+        .pid_ns_inum    = e->pid_ns_inum,
+        .container_id   = container_id,
+        .pod_uid        = pod_uid,
+        .pod_name       = pod_name,
+        .namespace_     = namespace_,
+        .container_name = container_name,
+        .image          = image,
+    });
+
+    if (!kernelEventQueue.push(std::move(event))) {
+        if (!ebpf_kernel_queue_full_reported && log) {
+            log(LOG_WARNING, FIM_FULL_EBPF_KERNEL_QUEUE);
+            ebpf_kernel_queue_full_reported = 1;
+        }
+    }
+    return true;
+}
+
 /* Callback for normal whodata events */
 int handle_event(void* ctx, void* data, size_t data_sz)
 {
@@ -114,23 +215,41 @@ int handle_event(void* ctx, void* data, size_t data_sz)
         return 0;
     }
 
+    /* Try the K8s container path first. If the cgroup is tracked the event is
+     * either dispatched as a K8s event or silently consumed (path outside any
+     * configured <directories type="kubernetes">). Host fall-through happens
+     * only when the cgroup is unknown to the connector. */
+    if (try_handle_as_k8s_event(e)) {
+        return 0;
+    }
+
     directory_t* config = confFn(e->filename, false);
 
     if (config && (config->options & WHODATA_ACTIVE))
     {
         auto event = std::make_unique<dynamic_file_event>(dynamic_file_event
         {
-            .filename    = std::string(e->filename),
-            .cwd         = std::string(e->cwd),
-            .parent_cwd  = std::string(e->parent_cwd),
-            .comm        = std::string(e->comm),
-            .parent_comm = std::string(e->parent_comm),
-            .pid         = e->pid,
-            .ppid        = e->ppid,
-            .uid         = e->uid,
-            .gid         = e->gid,
-            .inode       = e->inode,
-            .dev         = e->dev
+            .filename       = std::string(e->filename),
+            .cwd            = std::string(e->cwd),
+            .parent_cwd     = std::string(e->parent_cwd),
+            .comm           = std::string(e->comm),
+            .parent_comm    = std::string(e->parent_comm),
+            .pid            = e->pid,
+            .ppid           = e->ppid,
+            .uid            = e->uid,
+            .gid            = e->gid,
+            .inode          = e->inode,
+            .dev            = e->dev,
+            .cgroup_id      = e->cgroup_id,
+            .mnt_ns_inum    = e->mnt_ns_inum,
+            .pid_ns_inum    = e->pid_ns_inum,
+            /* Host events: K8s context stays empty. */
+            .container_id   = {},
+            .pod_uid        = {},
+            .pod_name       = {},
+            .namespace_     = {},
+            .container_name = {},
+            .image          = {},
         });
 
         if (!kernelEventQueue.push(std::move(event)))
@@ -666,6 +785,19 @@ void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& loc
             w_evt->parent_cwd   = strdup(event->parent_cwd.c_str());
             w_evt->parent_name  = strdup(event->parent_comm.c_str());
 
+            /* Propagate K8s container metadata when present. Empty container_id
+             * means the event is a regular host event. */
+            if (!event->container_id.empty()) {
+                w_evt->container_id   = strdup(event->container_id.c_str());
+                w_evt->pod_uid        = strdup(event->pod_uid.c_str());
+                w_evt->pod_name       = strdup(event->pod_name.c_str());
+                w_evt->k8s_namespace  = strdup(event->namespace_.c_str());
+                w_evt->container_name = strdup(event->container_name.c_str());
+                w_evt->image          = strdup(event->image.c_str());
+                /* host_path stays NULL — T-K5b.4 may populate it when CRI mount
+                 * spec resolution is wired in. */
+            }
+
             fimebpf::instance().m_fim_whodata_event(w_evt);
             fimebpf::instance().m_free_whodata_event(w_evt);
         }
@@ -688,6 +820,17 @@ void fimebpf_initialize(directory_t* (*fim_conf)(const char*, bool),
 {
     fimebpf::instance().initialize(fim_conf, getUser, getGroup, fimWhodataEvent, freeWhodataEvent,
                                    loggingFn, abspathFn, fimShutdownProcessOn, syscheckQueueSize);
+}
+
+void fimebpf_enable_k8s_container_support(void)
+{
+    fimebpf::instance().m_k8s_enabled = true;
+    if (fimebpf::instance().m_loggingFunction) {
+        fimebpf::instance().m_loggingFunction(
+            LOG_INFO,
+            "Kubernetes container support enabled in eBPF whodata pipeline; "
+            "lookups will go to /var/ossec/queue/sockets/container_connector.");
+    }
 }
 
 int ebpf_whodata_healthcheck()

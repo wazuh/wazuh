@@ -225,6 +225,21 @@ typedef struct _directory_s {
     bool symlink_warned;        // True after the one-time symlink warning has been issued
 } directory_t;
 
+#ifndef WIN32
+/* A path declared with <directories type="kubernetes">, interpreted as a
+ * container-internal path (NOT a host path). The same CHECK_* / WHODATA_ACTIVE
+ * options apply, but is_wildcard / symbolic_links / Windows fields are not
+ * relevant here — paths inside containers don't expand wildcards on the host. */
+typedef struct _k8s_monitored_path_s {
+    char    *internal_path;
+    int      options;
+    int      diff_size_limit;
+    OSMatch *filerestrict;
+    int      recursion_level;
+    char    *tag;
+} k8s_monitored_path_t;
+#endif
+
 typedef struct whodata_evt {
     char *user_id;
     char *user_name;
@@ -244,6 +259,15 @@ typedef struct whodata_evt {
     int ppid;  // Linux
     char *cwd; // Linux
     unsigned int process_id;
+    /* K8s container context — set by the eBPF user-space pipeline when an event
+     * is matched against syscheck.k8s_directories. NULL on host events. */
+    char *container_id;
+    char *pod_uid;
+    char *pod_name;
+    char *k8s_namespace;
+    char *container_name;
+    char *image;
+    char *host_path;        /* Best-effort host overlay path; may be NULL. */
 #else
     unsigned __int64 process_id;
     unsigned int mask;
@@ -447,6 +471,14 @@ typedef struct _config {
     pthread_rwlock_t directories_lock;
     pthread_mutex_t fim_scan_mutex;
     pthread_mutex_t fim_realtime_mutex;
+
+#ifndef WIN32
+    /* Kubernetes-monitored directories, parsed from <directories type="kubernetes">.
+     * The `path` of each entry is a container-internal path; matching against eBPF
+     * events is done in T-K5b after resolving the event's container metadata via
+     * the container-connector IPC. */
+    OSList *k8s_directories;
+#endif
 #ifdef WIN32
     pthread_mutex_t fim_registry_scan_mutex;           /* Used to prevent registry scans during the synchronization process */
 #else
@@ -605,6 +637,31 @@ void Free_Syscheck(syscheck_config *config);
  * @param dir The directory to be free'd
  */
 void free_directory(directory_t *dir);
+
+#ifndef WIN32
+#ifdef __cplusplus
+extern "C" {
+#endif
+/**
+ * @brief Free a k8s_monitored_path_t and its owned members.
+ */
+void free_k8s_monitored_path(k8s_monitored_path_t *p);
+
+/**
+ * @brief Find the K8s-monitored declaration that matches a container-internal path.
+ *
+ * Longest-prefix match against syscheck->k8s_directories. Path separator boundary
+ * is enforced (so "/etc/nginx" does NOT match "/etc/nginxd").
+ *
+ * @param cfg Pointer to the syscheck_config to search.
+ * @param internal_path Container-internal path (must start with '/').
+ * @return Pointer to the matching entry, or NULL if no entry matches.
+ */
+k8s_monitored_path_t *fim_match_k8s_path(const syscheck_config *cfg, const char *internal_path);
+#ifdef __cplusplus
+}
+#endif
+#endif
 
 /**
  * @brief Logs the real time engine status
