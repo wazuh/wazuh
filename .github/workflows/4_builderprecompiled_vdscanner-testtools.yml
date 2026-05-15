@@ -1,16 +1,6 @@
 name: 4.X - VD Scanner tools Delivery
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "src/wazuh_modules/vulnerability_scanner/testtool/**"
-      - "src/wazuh_modules/vulnerability_scanner/src/**"
-      - "src/wazuh_modules/vulnerability_scanner/include/**"
-      - ".github/workflows/4_builderprecompiled_vdscanner-testtools.yml"
-      - "src/wazuh_modules/vulnerability_scanner/schemas/**"
-
   workflow_dispatch:
 
 concurrency:
