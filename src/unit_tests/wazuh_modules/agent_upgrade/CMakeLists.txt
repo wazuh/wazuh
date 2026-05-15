@@ -77,7 +77,7 @@ if(${TARGET} STREQUAL "manager")
 else()
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_agent")
-    list(APPEND upgrade_flags "-Wl,--wrap,wm_sendmsg -Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose -Wl,--wrap,StartMQ -Wl,--wrap,sleep -Wl,--wrap,close -Wl,--wrap,wfopen \
+    list(APPEND upgrade_flags "-Wl,--wrap,wm_sendmsg -Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose -Wl,--wrap,StartMQ -Wl,--wrap,StartMQPredicated -Wl,--wrap,sleep -Wl,--wrap,close -Wl,--wrap,wfopen \
                                -Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,wm_agent_upgrade_process_command \
                                -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,getpid -Wl,--wrap,CreateThread -Wl,--wrap,unlink -Wl,--wrap,fgetpos -Wl,--wrap=fgetc \
                                -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS}")
