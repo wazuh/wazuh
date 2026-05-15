@@ -474,7 +474,7 @@ if(${TARGET} STREQUAL "winagent")
 else()
     target_link_libraries(test_fim_scan "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches \
                                           -Wl,--wrap,get_user -Wl,--wrap,realpath -Wl,--wrap,IsLink \
-                                          -Wl,--wrap,readlink -Wl,--wrap,add_whodata_directory \
+                                          -Wl,--wrap,add_whodata_directory \
                                           -Wl,--wrap,atexit -Wl,--wrap,remove_audit_rule_syscheck")
 endif()
 

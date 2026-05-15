@@ -1804,6 +1804,8 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     // First scan
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
+        expect_string(__wrap_IsLink, file, dir_it->path);
+        will_return(__wrap_IsLink, -1);
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -1831,6 +1833,8 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     will_return(__wrap_fim_db_transaction_start, &mock_handle);
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
+        expect_string(__wrap_IsLink, file, dir_it->path);
+        will_return(__wrap_IsLink, -1);
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -1892,6 +1896,8 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     // First scan
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
+        expect_string(__wrap_IsLink, file, dir_it->path);
+        will_return(__wrap_IsLink, -1);
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -1956,6 +1962,8 @@ static void test_fim_scan_realtime_enabled(void **state) {
     // First scan
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
+        expect_string(__wrap_IsLink, file, dir_it->path);
+        will_return(__wrap_IsLink, -1);
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -2029,6 +2037,8 @@ static void test_fim_scan_no_limit(void **state) {
     // First scan
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
+        expect_string(__wrap_IsLink, file, dir_it->path);
+        will_return(__wrap_IsLink, -1);
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -3968,8 +3978,6 @@ static int setup_group_symlink_tests(void **state) {
     syscheck.max_depth = 256;
     syscheck.file_max_size = 1024;
     test_mode = 1;
-    expect_any_always(__wrap__mdebug1, formatted_msg);
-    expect_any_always(__wrap__mdebug2, formatted_msg);
     return 0;
 }
 
@@ -3979,6 +3987,11 @@ static int teardown_group_symlink_tests(void **state) {
 }
 
 static int setup_sym_no_follow(void **state) {
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
     syscheck.directories = OSList_Create();
     if (!syscheck.directories) {
         return -1;
@@ -3990,6 +4003,11 @@ static int setup_sym_no_follow(void **state) {
 }
 
 static int setup_sym_with_follow(void **state) {
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
     syscheck.directories = OSList_Create();
     if (!syscheck.directories) {
         return -1;
@@ -4006,6 +4024,11 @@ static int setup_sym_with_follow(void **state) {
 
 static int teardown_sym_dirs(void **state) {
     if (syscheck.directories) {
+        ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+        ignore_function_calls(__wrap_pthread_rwlock_unlock);
+        ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+        ignore_function_calls(__wrap_pthread_mutex_lock);
+        ignore_function_calls(__wrap_pthread_mutex_unlock);
         OSList_Destroy(syscheck.directories);
         syscheck.directories = NULL;
     }
@@ -4015,11 +4038,11 @@ static int teardown_sym_dirs(void **state) {
 static void test_fim_file_scan_symlink_warns_when_no_follow(void **state) {
     TXN_HANDLE mock_handle = NULL;
 
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_fim_db_transaction_start, &mock_handle);
 
@@ -4042,6 +4065,7 @@ static void test_fim_file_scan_symlink_warns_when_no_follow(void **state) {
     will_return(__wrap_realtime_adddir, 0);
 
     expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
 
     fim_file_scan();
     errno = 0;
@@ -4050,60 +4074,27 @@ static void test_fim_file_scan_symlink_warns_when_no_follow(void **state) {
 static void test_fim_file_scan_no_warn_with_follow(void **state) {
     TXN_HANDLE mock_handle = NULL;
 
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_fim_db_transaction_start, &mock_handle);
 
-    // No lstat mock needed: fim_get_real_path returns "/usr/bin" (from symbolic_links),
-    // fim_configuration_directory("/usr/bin") finds no prefix match for "/bin" in
-    // syscheck.directories (w_compare_str("/bin/","/usr/bin/") = 0), so fim_checker
-    // returns immediately at the NULL configuration check.
+    // fim_get_real_path returns "/usr/bin" (from dir->symbolic_links set by CHECK_FOLLOW).
+    // fim_configuration_directory("/usr/bin") calls fim_get_real_path on each entry and
+    // matches "/usr/bin" → configuration found → fim_checker proceeds to lstat.
+    expect_string(__wrap_lstat, filename, "/usr/bin");
+    will_return(__wrap_lstat, NULL);
+    will_return(__wrap_lstat, -1);
+    errno = ENOENT;
 
     expect_string(__wrap_realtime_adddir, dir, "/usr/bin");
     will_return(__wrap_realtime_adddir, 0);
 
     expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
-
-    fim_file_scan();
-}
-
-static void test_fim_file_scan_symlink_warns_broken_link(void **state) {
-    TXN_HANDLE mock_handle = NULL;
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    will_return(__wrap_fim_db_transaction_start, &mock_handle);
-
-    // realpath() fails (broken symlink — target does not exist).
-    // readlink() wrapper returns -1 (does not fill buffer), so display = "(unresolvable)".
-    expect_string(__wrap_IsLink, file, "/bin");
-    will_return(__wrap_IsLink, 0);
-    expect_string(__wrap_realpath, path, "/bin");
-    will_return(__wrap_realpath, NULL);
-    will_return(__wrap_readlink, -1);
-    expect_string(__wrap__mwarn, formatted_msg,
-        "(6961): Configured path '/bin' is a symbolic link to '(unresolvable)'. "
-        "Without 'follow_symbolic_link' enabled, only the symlink itself will be monitored, "
-        "not the directory contents. Consider monitoring '/bin' directly or enabling "
-        "'follow_symbolic_link'.");
-
-    expect_string(__wrap_lstat, filename, "/bin");
-    will_return(__wrap_lstat, NULL);
-    will_return(__wrap_lstat, -1);
-    errno = ENOENT;
-
-    expect_string(__wrap_realtime_adddir, dir, "/bin");
-    will_return(__wrap_realtime_adddir, 0);
-
-    expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
 
     fim_file_scan();
     errno = 0;
@@ -4112,11 +4103,11 @@ static void test_fim_file_scan_symlink_warns_broken_link(void **state) {
 static void test_fim_file_scan_no_warn_not_symlink(void **state) {
     TXN_HANDLE mock_handle = NULL;
 
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_fim_db_transaction_start, &mock_handle);
 
@@ -4132,6 +4123,7 @@ static void test_fim_file_scan_no_warn_not_symlink(void **state) {
     will_return(__wrap_realtime_adddir, 0);
 
     expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
 
     fim_file_scan();
     errno = 0;
@@ -4316,8 +4308,6 @@ int main(void) {
 #ifndef TEST_WINAGENT
     const struct CMUnitTest fim_file_scan_symlink_tests[] = {
         cmocka_unit_test_setup_teardown(test_fim_file_scan_symlink_warns_when_no_follow,
-                                        setup_sym_no_follow, teardown_sym_dirs),
-        cmocka_unit_test_setup_teardown(test_fim_file_scan_symlink_warns_broken_link,
                                         setup_sym_no_follow, teardown_sym_dirs),
         cmocka_unit_test_setup_teardown(test_fim_file_scan_no_warn_with_follow,
                                         setup_sym_with_follow, teardown_sym_dirs),

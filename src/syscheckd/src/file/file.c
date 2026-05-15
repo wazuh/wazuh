@@ -1301,11 +1301,6 @@ void fim_file_scan() {
             if (link_target) {
                 mwarn(FIM_WARN_SYMLINK_NOFOLLOW, path, link_target, link_target);
                 os_free(link_target);
-            } else {
-                char raw_target[PATH_MAX] = {0};
-                ssize_t len = readlink(path, raw_target, sizeof(raw_target) - 1);
-                const char *display = (len > 0) ? raw_target : "(unresolvable)";
-                mwarn(FIM_WARN_SYMLINK_NOFOLLOW, path, display, path);
             }
         }
 #endif
