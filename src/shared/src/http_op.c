@@ -282,6 +282,7 @@ int uhttp_client_add_header(uhttp_client_t* c, const char* header_line)
     CURLcode rc = curl_easy_setopt(c->easy, CURLOPT_HTTPHEADER, c->headers);
     if (rc != CURLE_OK)
     {
+        mdebug1("Failed to set CURLOPT_HTTPHEADER: %d", rc);
         return -1;
     }
 
@@ -361,19 +362,27 @@ int uhttp_post(uhttp_client_t* c, const void* data, size_t len, uhttp_result_t* 
 
 #if CURL_AT_LEAST_VERSION(7, 58, 0)
     if ((rc_opt = curl_easy_setopt(c->easy, CURLOPT_POSTFIELDS, data)) != CURLE_OK)
-        return -rc_opt;
+    {
+        mdebug1("Failed to set CURLOPT_POSTFIELDS: %d", rc_opt);
+        return -1;
+    }
     if ((rc_opt = curl_easy_setopt(c->easy, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)len)) != CURLE_OK)
     {
         curl_easy_setopt(c->easy, CURLOPT_POSTFIELDS, NULL);
-        return -rc_opt;
+        mdebug1("Failed to set CURLOPT_POSTFIELDSIZE_LARGE: %d", rc_opt);
+        return -1;
     }
 #else
     if ((rc_opt = curl_easy_setopt(c->easy, CURLOPT_POSTFIELDS, data)) != CURLE_OK)
-        return -rc_opt;
+    {
+        mdebug1("Failed to set CURLOPT_POSTFIELDS: %d", rc_opt);
+        return -1;
+    }
     if ((rc_opt = curl_easy_setopt(c->easy, CURLOPT_POSTFIELDSIZE, (long)len)) != CURLE_OK)
     {
         curl_easy_setopt(c->easy, CURLOPT_POSTFIELDS, NULL);
-        return -rc_opt;
+        mdebug1("Failed to set CURLOPT_POSTFIELDSIZE: %d", rc_opt);
+        return -1;
     }
 #endif
 

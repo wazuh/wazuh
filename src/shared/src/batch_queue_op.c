@@ -528,8 +528,7 @@ int batch_queue_drop_agent(w_rr_queue_t *sched, const char *agent_key) {
 
     w_mutex_unlock(&sched->ring_mu); 
 
-    // Keep the ring monitor held until reclamation completes so no producer
-    // can reacquire ring_mu and touch a stale slot after it has been freed.>
+    // Outside the ring monitor: release resources and update global counters
     free_slot(sched, slot, /*adjust_global=*/1);
     return 1;
 }
