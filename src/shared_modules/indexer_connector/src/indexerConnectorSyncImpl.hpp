@@ -281,7 +281,11 @@ class IndexerConnectorSyncImpl final
     std::vector<std::function<void()>> m_notify;
     std::chrono::steady_clock::time_point m_lastBulkTime;
     std::condition_variable m_cv;
-    std::mutex m_mutex;
+    // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
+    // 'mutable' permite a los getters const (getBulkDataSize / getPendingNotifyCount /
+    // getDeleteByQueryCount) tomar el lock para leer sin romper el contrato const.
+    mutable std::mutex m_mutex;
+    // === END TEMP ===
     std::thread m_bulkThread;
     std::atomic<bool> m_stopping {false};
     std::vector<size_t> m_boundaries;
@@ -1383,6 +1387,26 @@ public:
     {
         m_notify.push_back(std::move(callback));
     }
+
+    // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
+    size_t getBulkDataSize() const
+    {
+        std::lock_guard lock(m_mutex);
+        return m_bulkData.size();
+    }
+
+    size_t getPendingNotifyCount() const
+    {
+        std::lock_guard lock(m_mutex);
+        return m_notify.size();
+    }
+
+    size_t getDeleteByQueryCount() const
+    {
+        std::lock_guard lock(m_mutex);
+        return m_deleteByQuery.size();
+    }
+    // === END TEMP ===
 
     void refresh(std::string_view indexPattern)
     {

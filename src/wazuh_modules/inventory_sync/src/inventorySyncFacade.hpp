@@ -41,6 +41,9 @@
 
 constexpr int SINGLE_THREAD_COUNT = 1;
 constexpr int DEFAULT_TIME {60 * 10}; // 10 minutes
+// === BEGIN TEMP: inventory-sync queue stats instrumentation ===
+constexpr int QUEUE_STATS_INTERVAL_MS {500}; // Sampler period for queue-size logging
+// === END TEMP ===
 constexpr auto INVENTORY_SYNC_PATH {"queue/inventory_sync"};
 constexpr auto INVENTORY_SYNC_TOPIC {"inventory-states"};
 constexpr auto INVENTORY_SYNC_SUBSCRIBER_ID {"inventory-sync-module"};
@@ -1001,6 +1004,9 @@ public:
                                             "full resync required",
                                             res.context->agentId.c_str(),
                                             MAX_RETRIES);
+                                    // === BEGIN TEMP: inventory-sync session stats instrumentation ===
+                                    markSession(res.context->sessionId, "modulecheck-mismatch");
+                                    // === END TEMP ===
                                     m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_ChecksumMismatch,
                                                                      res.context->agentId,
                                                                      res.context->sessionId,
@@ -1014,6 +1020,9 @@ public:
                                      "ModuleCheck failed for agent %s: %s",
                                      res.context->agentId.c_str(),
                                      e.what());
+                            // === BEGIN TEMP: inventory-sync session stats instrumentation ===
+                            markSession(res.context->sessionId, "modulecheck-error");
+                            // === END TEMP ===
                             m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
                                                              res.context->agentId,
                                                              res.context->sessionId,
@@ -1340,6 +1349,9 @@ public:
                                                          "agent %s: %s",
                                                          res.context->agentId.c_str(),
                                                          e.what());
+                                                // === BEGIN TEMP: inventory-sync session stats instrumentation ===
+                                                markSession(res.context->sessionId, "error-vd-scanner");
+                                                // === END TEMP ===
                                                 m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
                                                                                  res.context->agentId,
                                                                                  res.context->sessionId,
@@ -1435,6 +1447,10 @@ public:
                         unlockAgent(res.context->agentId);
                     }
 
+                    // === BEGIN TEMP: inventory-sync session stats instrumentation ===
+                    markSession(res.context->sessionId, "error-inventory-exception");
+                    // === END TEMP ===
+
                     // Send ACK to agent.
                     m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
                                                      res.context->agentId,
@@ -1463,6 +1479,10 @@ public:
                         res.context->ownsAgentLock = false;
                         unlockAgent(res.context->agentId);
                     }
+
+                    // === BEGIN TEMP: inventory-sync session stats instrumentation ===
+                    markSession(res.context->sessionId, "error-std-exception");
+                    // === END TEMP ===
 
                     // Send ACK to agent.
                     m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
@@ -1525,6 +1545,7 @@ public:
 
                             // Delete data from database.
                             m_dataStore->deleteByPrefix(std::to_string(it->first));
+                            it->second.markTerminating("timeout");
                             it = eraseSessionLocked(it);
                         }
                         else
@@ -1539,7 +1560,73 @@ public:
         // Init the socket server to attend keystore requests
         initializeKeystoreSocket();
 
-        logDebug1(LOGGER_DEFAULT_TAG, "InventorySyncFacade started.");
+                // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
+        m_queueStatsThread = std::thread(
+            [this]()
+            {
+                std::unique_lock<std::mutex> lock(m_queueStatsMutex);
+                while (!m_stopping.load())
+                {
+                    m_queueStatsCv.wait_for(lock,
+                                            std::chrono::milliseconds(QUEUE_STATS_INTERVAL_MS),
+                                            [this]() { return m_stopping.load(); });
+                    if (m_stopping.load())
+                    {
+                        break;
+                    }
+                    lock.unlock();
+
+                    const std::size_t workersQ = m_workersQueue ? m_workersQueue->size() : 0;
+                    const std::size_t indexerQ = m_indexerQueue ? m_indexerQueue->size() : 0;
+
+                    std::size_t sessions = 0;
+                    {
+                        std::shared_lock<std::shared_mutex> l(m_agentSessionsMutex);
+                        sessions = m_agentSessions.size();
+                    }
+
+                    std::size_t blocked = 0;
+                    {
+                        std::shared_lock<std::shared_mutex> l(m_blockedAgentsMutex);
+                        blocked = m_blockedAgents.size();
+                    }
+
+                    std::size_t vdFirst = 0;
+                    {
+                        std::lock_guard<std::mutex> l(m_activeVDFirstScansMutex);
+                        vdFirst = m_activeVDFirstScans.size();
+                    }
+
+                    const std::size_t bulkBytes =
+                        m_indexerConnector ? m_indexerConnector->getBulkDataSize() : 0;
+                    const std::size_t notifyN =
+                        m_indexerConnector ? m_indexerConnector->getPendingNotifyCount() : 0;
+                    const std::size_t delByQN =
+                        m_indexerConnector ? m_indexerConnector->getDeleteByQueryCount() : 0;
+
+                    const auto rocksBytes = recursiveDirSize(INVENTORY_SYNC_PATH);
+
+                    logInfo(LOGGER_DEFAULT_TAG,
+                            "InventorySync queue stats: workers_q=%zu indexer_q=%zu "
+                            "sessions=%zu blocked_agents=%zu active_vdfirst=%zu "
+                            "indexer_bulk_bytes=%zu indexer_notify=%zu indexer_delbyq=%zu "
+                            "rocksdb_dir_bytes=%llu",
+                            workersQ,
+                            indexerQ,
+                            sessions,
+                            blocked,
+                            vdFirst,
+                            bulkBytes,
+                            notifyN,
+                            delByQN,
+                            static_cast<unsigned long long>(rocksBytes));
+
+                    lock.lock();
+                }
+            });
+        // === END TEMP ===
+
+        logInfo(LOGGER_DEFAULT_TAG, "InventorySyncFacade started.");
     }
 
     /**
@@ -1854,6 +1941,18 @@ public:
         return 1;
     }
 
+    // === BEGIN TEMP: inventory-sync session stats instrumentation ===
+    void markSession(uint64_t sessionId, std::string_view reason)
+    {
+        std::shared_lock lock(m_agentSessionsMutex);
+        auto it = m_agentSessions.find(sessionId);
+        if (it != m_agentSessions.end())
+        {
+            it->second.markTerminating(reason);
+        }
+    }
+    // === END TEMP ===
+
     /**
      * @brief Clean up zombie sessions for an agent
      * @param agentId Agent ID to clean up sessions for
@@ -1898,6 +1997,10 @@ public:
 
                 // Delete data from database
                 m_dataStore->deleteByPrefix(std::to_string(sessionId));
+
+                // === BEGIN TEMP: inventory-sync session stats instrumentation ===
+                it->second.markTerminating("zombie");
+                // === END TEMP ===
 
                 // Remove session (restores DataValue quota)
                 eraseSessionLocked(it);
@@ -1996,6 +2099,19 @@ public:
             m_sessionTimeoutThread.join();
         }
 
+        // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
+        // m_stopping ya está en true; despertar el sampler y unirlo antes de los reset()
+        // porque su lambda lee m_workersQueue / m_indexerQueue / m_indexerConnector.
+        {
+            std::lock_guard<std::mutex> l(m_queueStatsMutex);
+            m_queueStatsCv.notify_all();
+        }
+        if (m_queueStatsThread.joinable())
+        {
+            m_queueStatsThread.join();
+        }
+        // === END TEMP ===
+
         // Clear VDFirst scan tracking
         {
             std::unique_lock lock(m_activeVDFirstScansMutex);
@@ -2012,6 +2128,39 @@ public:
 
 private:
     InventorySyncFacadeImpl() = default;
+
+    // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
+    static std::uintmax_t recursiveDirSize(const std::filesystem::path& root)
+    {
+        std::error_code ec;
+        if (!std::filesystem::exists(root, ec))
+        {
+            return 0;
+        }
+        std::uintmax_t total = 0;
+        for (auto it = std::filesystem::recursive_directory_iterator(
+                 root, std::filesystem::directory_options::skip_permission_denied, ec);
+             it != std::filesystem::recursive_directory_iterator();
+             it.increment(ec))
+        {
+            if (ec)
+            {
+                ec.clear();
+                continue;
+            }
+            std::error_code ec2;
+            if (it->is_regular_file(ec2) && !ec2)
+            {
+                const auto sz = it->file_size(ec2);
+                if (!ec2)
+                {
+                    total += sz;
+                }
+            }
+        }
+        return total;
+    }
+    // === END TEMP ===
 
     void deleteAgent(const std::string& agentId)
     {
@@ -2111,6 +2260,10 @@ private:
                 // Delete data from database
                 m_dataStore->deleteByPrefix(std::to_string(staleSessionId));
 
+                // === BEGIN TEMP: inventory-sync session stats instrumentation ===
+                it->second.markTerminating("stale");
+                // === END TEMP ===
+
                 // Remove session from map (restores DataValue quota)
                 eraseSessionLocked(it);
                 m_sessionCompletedCV.notify_all();
@@ -2138,6 +2291,12 @@ private:
     std::unique_ptr<TRouterSubscriber> m_inventorySubscription;
     std::map<uint64_t, TAgentSession, std::less<>> m_agentSessions;
     std::thread m_sessionTimeoutThread;
+
+    // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
+    std::thread m_queueStatsThread;
+    std::mutex m_queueStatsMutex;
+    std::condition_variable m_queueStatsCv;
+    // === END TEMP ===
 
     // Agent locking mechanism for metadata/groups updates
     std::unordered_set<std::string> m_blockedAgents; ///< Set of locked agent IDs

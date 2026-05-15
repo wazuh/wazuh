@@ -306,6 +306,23 @@ public:
      * @return true if have a server available, false otherwise.
      */
     bool isAvailable() const;
+
+    // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
+    /**
+     * @brief Bytes currently buffered in the bulk write payload (m_bulkData.size()).
+     */
+    size_t getBulkDataSize() const;
+
+    /**
+     * @brief Pending registerNotify() callbacks waiting for the next bulk flush.
+     */
+    size_t getPendingNotifyCount() const;
+
+    /**
+     * @brief Pending deleteByQuery operations queued for the next bulk flush.
+     */
+    size_t getDeleteByQueryCount() const;
+    // === END TEMP ===
 };
 
 /**

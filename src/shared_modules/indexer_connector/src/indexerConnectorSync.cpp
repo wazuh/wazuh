@@ -116,6 +116,23 @@ public:
     {
         return m_impl.isAvailable();
     }
+
+    // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
+    size_t getBulkDataSize() const
+    {
+        return m_impl.getBulkDataSize();
+    }
+
+    size_t getPendingNotifyCount() const
+    {
+        return m_impl.getPendingNotifyCount();
+    }
+
+    size_t getDeleteByQueryCount() const
+    {
+        return m_impl.getDeleteByQueryCount();
+    }
+    // === END TEMP ===
 };
 
 IndexerConnectorSync::IndexerConnectorSync(const nlohmann::json& config, LoggingContext logging)
@@ -218,5 +235,22 @@ bool IndexerConnectorSync::isAvailable() const
 {
     return m_impl->isAvailable();
 }
+
+// === BEGIN TEMP: inventory-sync queue stats instrumentation ===
+size_t IndexerConnectorSync::getBulkDataSize() const
+{
+    return m_impl->getBulkDataSize();
+}
+
+size_t IndexerConnectorSync::getPendingNotifyCount() const
+{
+    return m_impl->getPendingNotifyCount();
+}
+
+size_t IndexerConnectorSync::getDeleteByQueryCount() const
+{
+    return m_impl->getDeleteByQueryCount();
+}
+// === END TEMP ===
 
 // LCOV_EXCL_STOP

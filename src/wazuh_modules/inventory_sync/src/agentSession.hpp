@@ -18,11 +18,16 @@
 #include "responseDispatcher.hpp"
 #include "rocksDBWrapper.hpp"
 #include "threadDispatcher.h"
+#include <algorithm>
 #include <cctype>
+#include <chrono>
+#include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <ranges>
 #include <string>
+#include <string_view>
 #include <utility>
 
 enum class ResponseStatus : std::uint8_t
@@ -94,6 +99,25 @@ class AgentSessionImpl final
     std::mutex m_mutex;                 ///< Mutex to guard shared state
     bool m_endEnqueued = false;         ///< Whether the END message has been enqueued
     uint64_t m_declaredSize {0};        ///< DataValue count declared in the Start message (for quota accounting)
+
+    // === BEGIN TEMP: inventory-sync session stats instrumentation ===
+    struct SyncStats
+    {
+        std::chrono::steady_clock::time_point startTime {};
+        std::optional<std::chrono::steady_clock::time_point> processingTime;
+        std::uint64_t declaredSize {0};
+        std::uint64_t receivedCount {0};
+        std::uint64_t retransmissionRequests {0};
+        std::uint64_t totalRawBytes {0};
+        std::uint64_t totalInnerBytes {0};
+        std::uint64_t maxRawBytes {0};
+        std::uint64_t maxInnerBytes {0};
+        std::uint64_t minRawBytesNonzero {UINT64_MAX};
+        std::uint64_t minInnerBytesNonzero {UINT64_MAX};
+        std::string terminationReason {"implicit"};
+    };
+    SyncStats m_stats;
+    // === END TEMP ===
 
 public:
     explicit AgentSessionImpl(const uint64_t sessionId,
@@ -225,6 +249,11 @@ public:
 
         responseDispatcher.sendStartAck(
             Wazuh::SyncSchema::Status_Ok, m_context->agentId, m_context->sessionId, m_context->moduleName);
+
+        // === BEGIN TEMP: inventory-sync session stats instrumentation ===
+        m_stats.startTime = std::chrono::steady_clock::now();
+        m_stats.declaredSize = data->size();
+        // === END TEMP ===
     }
 
     /// Deleted copy constructor and assignment operator (C.12 compliant).
@@ -235,7 +264,70 @@ public:
     AgentSessionImpl(AgentSessionImpl&&) = delete;
     AgentSessionImpl& operator=(AgentSessionImpl&&) = delete;
 
-    ~AgentSessionImpl() = default;
+    // === BEGIN TEMP: inventory-sync session stats instrumentation ===
+    ~AgentSessionImpl()
+    {
+        if (!m_context)
+        {
+            return;
+        }
+
+        const auto now = std::chrono::steady_clock::now();
+        const auto msSince = [this](std::chrono::steady_clock::time_point tp)
+        { return std::chrono::duration_cast<std::chrono::milliseconds>(tp - m_stats.startTime).count(); };
+
+        const std::uint64_t avgRaw =
+            m_stats.receivedCount ? (m_stats.totalRawBytes / m_stats.receivedCount) : 0;
+        const std::uint64_t avgInner =
+            m_stats.receivedCount ? (m_stats.totalInnerBytes / m_stats.receivedCount) : 0;
+        const std::uint64_t minRaw =
+            (m_stats.minRawBytesNonzero == UINT64_MAX) ? 0 : m_stats.minRawBytesNonzero;
+        const std::uint64_t minInner =
+            (m_stats.minInnerBytesNonzero == UINT64_MAX) ? 0 : m_stats.minInnerBytesNonzero;
+        const long long startToProcessingMs =
+            m_stats.processingTime ? static_cast<long long>(msSince(*m_stats.processingTime)) : -1;
+        const long long startToEndMs = static_cast<long long>(msSince(now));
+
+        const char* reason = m_stats.terminationReason.c_str();
+        std::string inferredReason;
+        if (m_stats.terminationReason == "implicit")
+        {
+            inferredReason = m_stats.processingTime.has_value() ? "completed" : "abandoned";
+            reason = inferredReason.c_str();
+        }
+
+        logInfo(LOGGER_DEFAULT_TAG,
+                "InventorySync session stats: agent=%s(%s) module=%s sessionId=%llu "
+                "reason=%s declared_size=%llu received=%llu retransmissions=%llu "
+                "raw_bytes={total=%llu avg=%llu max=%llu min_nonzero=%llu} "
+                "inner_bytes={total=%llu avg=%llu max=%llu min_nonzero=%llu} "
+                "timing_ms={start_to_processing=%lld start_to_end=%lld}",
+                m_context->agentName.c_str(),
+                m_context->agentId.c_str(),
+                m_context->moduleName.c_str(),
+                static_cast<unsigned long long>(m_context->sessionId),
+                reason,
+                static_cast<unsigned long long>(m_stats.declaredSize),
+                static_cast<unsigned long long>(m_stats.receivedCount),
+                static_cast<unsigned long long>(m_stats.retransmissionRequests),
+                static_cast<unsigned long long>(m_stats.totalRawBytes),
+                static_cast<unsigned long long>(avgRaw),
+                static_cast<unsigned long long>(m_stats.maxRawBytes),
+                static_cast<unsigned long long>(minRaw),
+                static_cast<unsigned long long>(m_stats.totalInnerBytes),
+                static_cast<unsigned long long>(avgInner),
+                static_cast<unsigned long long>(m_stats.maxInnerBytes),
+                static_cast<unsigned long long>(minInner),
+                startToProcessingMs,
+                startToEndMs);
+    }
+
+    void markTerminating(std::string_view reason)
+    {
+        std::lock_guard lock(m_mutex);
+        m_stats.terminationReason.assign(reason);
+    }
+    // === END TEMP ===
 
     /**
      * @brief Handles an incoming data chunk.
@@ -283,6 +375,27 @@ public:
         // The validation of the sequence number against declared size is performed above, so if we reach this line
         // the observation should not throw, though if it does the data chunk is already stored.
         m_gapSet->observe(data->seq());
+
+        // === BEGIN TEMP: inventory-sync session stats instrumentation ===
+        {
+            const std::uint64_t rawSize = static_cast<std::uint64_t>(dataSize);
+            const std::uint64_t innerSize =
+                data->data() ? static_cast<std::uint64_t>(data->data()->size()) : 0ULL;
+            ++m_stats.receivedCount;
+            m_stats.totalRawBytes += rawSize;
+            m_stats.totalInnerBytes += innerSize;
+            m_stats.maxRawBytes = std::max(m_stats.maxRawBytes, rawSize);
+            m_stats.maxInnerBytes = std::max(m_stats.maxInnerBytes, innerSize);
+            if (rawSize > 0)
+            {
+                m_stats.minRawBytesNonzero = std::min(m_stats.minRawBytesNonzero, rawSize);
+            }
+            if (innerSize > 0)
+            {
+                m_stats.minInnerBytesNonzero = std::min(m_stats.minInnerBytesNonzero, innerSize);
+            }
+        }
+        // === END TEMP ===
 
         logDebug2(LOGGER_DEFAULT_TAG,
                   "Data received: %s %llu %llu %s",
@@ -527,11 +640,20 @@ public:
             logDebug2(LOGGER_DEFAULT_TAG, "All sequences received for session %llu", m_context->sessionId);
             m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
             m_endEnqueued = true;
+            // === BEGIN TEMP: inventory-sync session stats instrumentation ===
+            if (!m_stats.processingTime.has_value())
+            {
+                m_stats.processingTime = std::chrono::steady_clock::now();
+            }
+            // === END TEMP ===
             responseDispatcher.sendEndAck(
                 Wazuh::SyncSchema::Status_Processing, m_context->agentId, m_context->sessionId, m_context->moduleName);
         }
         else
         {
+            // === BEGIN TEMP: inventory-sync session stats instrumentation ===
+            ++m_stats.retransmissionRequests;
+            // === END TEMP ===
             responseDispatcher.sendEndMissingSeq(
                 m_context->agentId, m_context->sessionId, m_context->moduleName, m_gapSet->ranges());
         }
