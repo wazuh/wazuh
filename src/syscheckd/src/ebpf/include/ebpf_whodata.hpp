@@ -74,6 +74,11 @@ class fimebpf
         abspath_t m_abspath = nullptr;
         unsigned int m_queue_size;
         fimShutdownProcessOn_t m_fim_shutdown_process_on;
+        /* T-K5b: enables the Kubernetes container path. When true, every event
+         * whose cgroup_id is non-zero is resolved against the
+         * container-connector IPC; matches against syscheck.k8s_directories
+         * are dispatched with a k8s:// synthetic identity. */
+        bool m_k8s_enabled = false;
 };
 
 int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load);

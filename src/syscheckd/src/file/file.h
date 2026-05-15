@@ -16,6 +16,19 @@
 #define check_removed_file(x) ({ strstr(x, ":\\$recycle.bin") ? 1 : 0; })
 #endif
 
+#ifndef WIN32
+/**
+ * @brief Emit a stateless FIM alert for a K8s container file event.
+ *
+ * Builds the alert JSON with the synthetic k8s:// path, eBPF audit context
+ * and a kubernetes block (namespace, pod, container, image) and sends it
+ * through the manager queue. Does NOT touch the FIM DB and does NOT emit a
+ * stateful event — by explicit requirement of the K8s module spec, container
+ * FIM state is not synchronized with the Wazuh manager.
+ */
+void fim_handle_k8s_event(whodata_evt *w_evt);
+#endif
+
 typedef struct callback_ctx
 {
     event_data_t* event;

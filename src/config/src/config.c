@@ -41,6 +41,9 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osindexer = "indexer";                          /* Indexer Config */
     const char *osgcp_pub = "gcp-pubsub";                       /* Google Cloud PubSub - Wazuh Module */
     const char *osgcp_bucket = "gcp-bucket";                    /* Google Cloud Bucket - Wazuh Module */
+#ifndef WIN32
+    const char *oscontainer_connector = "container_connector";  /* K8s container monitoring connector */
+#endif
     const char *agent_upgrade = "agent-upgrade";                /* Agent Upgrade Module */
     const char *task_manager = "task-manager";                  /* Task Manager Module */
     const char *wazuh_db = "wdb";                               /* Wazuh-DB Daemon */
@@ -171,6 +174,14 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
 #ifndef WIN32
+        } else if (strcmp(node[i]->element, oscontainer_connector) == 0) {
+#ifdef CLIENT
+            if ((modules & CWMODULE) && (Read_ContainerConnector(xml, node[i], d1) < 0)) {
+                goto fail;
+            }
+#else
+            mwarn("The '%s' module only works for the agent.", node[i]->element);
+#endif
         }  else if (strcmp(node[i]->element, osauthd) == 0) {
             if ((modules & CAUTHD) && (Read_Authd(xml, chld_node, d1, d2) < 0)) {
                 goto fail;

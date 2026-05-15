@@ -327,7 +327,7 @@ STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
 void send_syscheck_msg(const cJSON *_msg) {
     char *msg = cJSON_PrintUnformatted(_msg);
 
-    mdebug2(FIM_SEND, msg);
+    minfo(FIM_SEND, msg);
     fim_send_msg(SYSCHECK_MQ, SYSCHECK, msg);
 
     os_free(msg);

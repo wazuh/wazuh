@@ -33,6 +33,9 @@ struct file_event
     __u32 gid;
     uint64_t inode;
     uint64_t dev;
+    uint64_t cgroup_id;     /* mirrors BPF: bpf_get_current_cgroup_id() */
+    uint32_t mnt_ns_inum;   /* mirrors BPF: task->nsproxy->mnt_ns->ns.inum */
+    uint32_t pid_ns_inum;   /* mirrors BPF: task->nsproxy->pid_ns_for_children->ns.inum */
     char comm[TASK_COMM_LEN];
     char filename[PATH_MAX];
     char cwd[PATH_MAX];
@@ -53,6 +56,18 @@ struct dynamic_file_event
     uint32_t gid;
     uint64_t inode;
     uint64_t dev;
+    /* Kernel-side identifiers used to resolve container metadata in user space. */
+    uint64_t cgroup_id;
+    uint32_t mnt_ns_inum;
+    uint32_t pid_ns_inum;
+    /* Resolved K8s container metadata; empty container_id means "host event" or
+     * "unresolved" (no matching cgroup in the container-connector cache). */
+    std::string container_id;
+    std::string pod_uid;
+    std::string pod_name;
+    std::string namespace_;
+    std::string container_name;
+    std::string image;
 };
 
 struct ring_buffer
