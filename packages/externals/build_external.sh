@@ -448,17 +448,20 @@ apply_updates
 log "stripping case-collision files that shadow C++ standard headers"
 rm -f "${SRC_DIR}/external/sqlite/VERSION" "${SRC_DIR}/external/sqlite/version" 2>/dev/null || true
 
-# cpython is a precompiled pass-through, not a from-source rebuild. The
-# `make deps` step above already pulled the per-arch precompiled blob from
-# packages.wazuh.com/deps/<ver>/libraries/sources/cpython_<arch>.tar.gz —
-# but the Makefile recipe (src/Makefile:541-547) consumes the tarball
-# during extraction (curl, gunzip, tar -xf, rm cpython.tar), so by the
-# time we get here only the extracted directory remains. Re-fetch the
-# upstream tarball directly so we ship a byte-for-byte copy, matching the
-# S3 layout downstream `make deps` consumes. DEPS_VERSION is read from
-# src/Makefile to stay in sync with whatever the workflow built against.
-# Only manager legs trigger this; the agent EXTERNAL_RES has no
-# $(CPYTHON) entry.
+# cpython is NOT built by this workflow. It has its own dedicated
+# pipeline — .github/workflows/5_builderpackage_embedded-python.yml, which
+# runs framework/cpython/compile.sh in the manager builder image and
+# publishes cpython_<arch>.tar.gz.
+#
+# This block only re-ships that already-built blob so the consolidated
+# externals tarball is complete for downstream `make deps`. The source
+# version is PINNED to a known-good deps release rather than read from
+# DEPS_VERSION in src/Makefile: on a branch that has bumped DEPS_VERSION
+# to the version being produced, reading it back is circular — the blob
+# does not exist yet. Bump CPYTHON_PASSTHROUGH_VERSION when the embedded
+# Python pipeline publishes a new cpython.
+# Only manager legs trigger this; the agent EXTERNAL_RES has no $(CPYTHON).
+CPYTHON_PASSTHROUGH_VERSION="99-29585"
 if [ "${BUILD_TARGET}" = "manager" ]; then
     case "${ARCHITECTURE_TARGET}" in
         amd64) cpython_arch="x86_64" ;;
@@ -466,8 +469,7 @@ if [ "${BUILD_TARGET}" = "manager" ]; then
         *)     cpython_arch="" ;;
     esac
     if [ -n "${cpython_arch}" ]; then
-        deps_version="$(awk -F'[[:space:]=]+' '/^DEPS_VERSION/{print $2; exit}' "${SRC_DIR}/Makefile")"
-        cpython_url="https://packages.wazuh.com/deps/${deps_version}/libraries/sources/cpython_${cpython_arch}.tar.gz"
+        cpython_url="https://packages.wazuh.com/deps/${CPYTHON_PASSTHROUGH_VERSION}/libraries/sources/cpython_${cpython_arch}.tar.gz"
         cpython_out="${ARTIFACTS_DIR}/cpython_${cpython_arch}.passthrough.tar.gz"
         log "fetching cpython pass-through from ${cpython_url}"
         if curl -fsSL "${cpython_url}" -o "${cpython_out}"; then
@@ -548,8 +550,10 @@ if { [ "${SYSTEM}" = "deb" ] || [ "${SYSTEM}" = "rpm" ]; }; then
     # The CMakeLists.txt if(EXISTS ...) short-circuits decide whether the
     # current leg actually consumes the staged binary, so staging unused
     # binaries is harmless.
-    stage_precompiled libbpf-bootstrap libbpf-bootstrap/build/modern.bpf.o
-    stage_precompiled libffi libffi/server/.libs/libffi.a
+
+    # TEMP testing if we can build this ourselves on this workflow
+    # stage_precompiled libbpf-bootstrap libbpf-bootstrap/build/modern.bpf.o
+    # stage_precompiled libffi libffi/server/.libs/libffi.a
 fi
 
 log "building externals via 'make build-external TARGET=${MAKE_TARGET}'"
