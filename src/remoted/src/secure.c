@@ -772,6 +772,28 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         return;
     }
 
+    if (msg_length > OS_MAXSTR)
+    {
+        mwarn("Message length (%zu) exceeds maximum allowed size (%d) from agent '%s'",
+              msg_length,
+              OS_MAXSTR,
+              keys.keyentries[agentid]->id);
+        key_unlock();
+
+        if (message->sock >= 0)
+        {
+            _close_sock(&keys, message->sock);
+        }
+
+        if (sock_idle >= 0)
+        {
+            _close_sock(&keys, sock_idle);
+        }
+
+        rem_inc_recv_unknown();
+        return;
+    }
+
     /* Recieved valid message timestamp updated. */
     keys.keyentries[agentid]->rcvd = current_ts;
 

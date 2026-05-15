@@ -1493,9 +1493,11 @@ def test_wazuh_common_end_receiving_file_ok(logger_mock, wazuh_common_mock):
         with patch('asyncio.create_task'):
             file_task = cluster_common.ReceiveFileTask(wazuh_common_mock, logger_mock, b"task")
 
-    wazuh_common.sync_tasks = {'task_ID': file_task}
-    assert wazuh_common.end_receiving_file("task_ID filepath") == (b'ok', b'File correctly received')
-    assert isinstance(wazuh_common.sync_tasks["task_ID"], cluster_common.ReceiveFileTask)
+    with patch('wazuh.core.cluster.common.WazuhCommon.get_logger'):
+        wazuh_common.sync_tasks = {'task_ID': file_task}
+        # Use a path within queue/cluster to pass validation
+        assert wazuh_common.end_receiving_file("task_ID queue/cluster/filepath") == (b'ok', b'File correctly received')
+        assert isinstance(wazuh_common.sync_tasks["task_ID"], cluster_common.ReceiveFileTask)
 
 
 @patch('os.remove')
@@ -1503,14 +1505,14 @@ def test_wazuh_common_end_receiving_file_ok(logger_mock, wazuh_common_mock):
 def test_wazuh_common_end_receiving_file_ko(path_exists_mock, os_remove_mock):
     """Test the 'end_receiving_file' correct functioning in a failure scenario."""
 
-    with pytest.raises(exception.WazuhClusterError, match=r'.* 3027 .*'):
-        wazuh_common.end_receiving_file("not_task_ID filepath")
-
     with patch('wazuh.core.cluster.common.WazuhCommon.get_logger'):
         with pytest.raises(exception.WazuhClusterError, match=r'.* 3027 .*'):
+            wazuh_common.end_receiving_file("not_task_ID queue/cluster/filepath")
+
+        with pytest.raises(exception.WazuhClusterError, match=r'.* 3027 .*'):
             os_remove_mock.side_effect = Exception
-            wazuh_common.end_receiving_file("not_task_ID filepath")
-    assert os_remove_mock.call_count == 2
+            wazuh_common.end_receiving_file("not_task_ID queue/cluster/filepath")
+        assert os_remove_mock.call_count == 2
 
 
 @patch('json.loads')
@@ -1535,6 +1537,48 @@ def test_wazuh_common_error_receiving_file_ko():
             with patch('os.remove', side_effect=Exception):
                 with patch('wazuh.core.cluster.common.WazuhCommon.get_logger'):
                     assert wazuh_common.error_receiving_file("task_ID error_details") == (b'ok', b'Error received')
+
+
+def test_wazuh_common_end_receiving_file_invalid_absolute_path():
+    """Test that end_receiving_file rejects absolute paths."""
+
+    with patch('wazuh.core.cluster.common.WazuhCommon.get_logger'):
+        with pytest.raises(exception.WazuhClusterError, match=r'.* 3027 .*'):
+            wazuh_common.end_receiving_file("not_task_ID /etc/passwd")
+
+
+def test_wazuh_common_end_receiving_file_invalid_relative_path():
+    """Test that end_receiving_file rejects paths outside allowed prefix."""
+
+    with patch('wazuh.core.cluster.common.WazuhCommon.get_logger'):
+        with pytest.raises(exception.WazuhClusterError, match=r'.* 3027 .*'):
+            wazuh_common.end_receiving_file("not_task_ID ../../../../etc/passwd")
+
+
+def test_wazuh_common_end_receiving_file_invalid_nested_path():
+    """Test that end_receiving_file validates nested path components."""
+
+    with patch('wazuh.core.cluster.common.WazuhCommon.get_logger'):
+        with pytest.raises(exception.WazuhClusterError, match=r'.* 3027 .*'):
+            wazuh_common.end_receiving_file("not_task_ID ../../../tmp/evil.sh")
+
+
+@patch('os.path.exists', return_value=False)
+def test_wazuh_common_end_receiving_file_path_validation_with_valid_task(path_exists_mock):
+    """Test that path validation is applied regardless of task_id validity."""
+
+    from unittest.mock import MagicMock
+
+    with patch('wazuh.core.cluster.common.ReceiveFileTask.set_up_coro'):
+        with patch('asyncio.create_task'):
+            with patch('wazuh.core.cluster.common.WazuhCommon.get_logger'):
+                file_task = cluster_common.ReceiveFileTask(wazuh_common, MagicMock(), b"task")
+
+    wazuh_common.sync_tasks = {'valid_task_id': file_task}
+
+    with patch('wazuh.core.cluster.common.WazuhCommon.get_logger'):
+        with pytest.raises(exception.WazuhClusterError, match=r'.* 3027 .*'):
+            wazuh_common.end_receiving_file("valid_task_id /etc/passwd")
 
 
 def test_wazuh_common_get_node():

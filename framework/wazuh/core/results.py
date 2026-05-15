@@ -604,10 +604,22 @@ class AffectedItemsWazuhResult(AbstractWazuhResult):
         AbstractWazuhResult
             Instance of AbstractWazuhResult.
         """
+        ALLOWED_TYPES = {'int', 'float', 'str', 'bool'}
+        sort_casting = obj.get('sort_casting', ['int'])
+        if not isinstance(sort_casting, list):
+            raise wexception.WazuhInternalError(1000, extra_message="sort_casting must be a list")
+
+        for type_name in sort_casting:
+            if not isinstance(type_name, str):
+                raise wexception.WazuhInternalError(1000, extra_message=f"sort_casting type must be a string, got {type(type_name).__name__}")
+            if type_name not in ALLOWED_TYPES:
+                raise wexception.WazuhInternalError(1000, extra_message=f"Invalid sort_casting type '{type_name}'. "
+                                                                         f"Allowed types: {', '.join(sorted(ALLOWED_TYPES))}")
+
         result = cls()
         result.affected_items = obj['affected_items']
         result.sort_fields = obj['sort_fields']
-        result.sort_casting = obj['sort_casting']
+        result.sort_casting = sort_casting
         result.sort_ascending = obj['sort_ascending']
         result.total_affected_items = obj['total_affected_items']
         result.dikt = obj['dikt']
@@ -827,13 +839,26 @@ def merge(*iterables, criteria: Union[tuple, list] = None, ascending: Union[tupl
     Iterable
         A new sorted iterable.
     """
+    ALLOWED_CASTERS = {
+        'int': int,
+        'float': float,
+        'str': str,
+        'bool': bool
+    }
+
     result = list()
     final_len = sum([len(iterable) for iterable in iterables])
     if criteria is None:
         getters = [lambda x: x]  # Init dummy itemgetter
     else:
         getters = [nested_itemgetter(criterion) for criterion in criteria]
-    casters = [getattr(builtins, type_) for type_ in types]
+
+    casters = []
+    for type_ in types:
+        if type_ not in ALLOWED_CASTERS:
+            raise wexception.WazuhInternalError(1000, extra_message=f"Invalid sort_casting type '{type_}'. "
+                                                                     f"Allowed types: {', '.join(ALLOWED_CASTERS.keys())}")
+        casters.append(ALLOWED_CASTERS[type_])
     while len(result) < final_len:
         selected = None
         for i, iterable in enumerate(iterables):
