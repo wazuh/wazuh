@@ -70,6 +70,41 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.6]
 
+### Manager
+
+#### Removed
+
+- Removed unused SSL/TLS transport option from cluster. ([#35648](https://github.com/wazuh/wazuh/pull/35648))
+
+#### Fixed
+
+- Improved message decompression handling in remoted. ([#35773](https://github.com/wazuh/wazuh/pull/35773))
+- Improved agent name validation to reject names starting with dot. ([#4503](https://github.com/wazuh/internal-devel-requests/issues/4503))
+- Fixed segfault in vulnerability scanner module shutdown when disabled. ([#36011](https://github.com/wazuh/wazuh/pull/36011))
+- Fixed string buffer handling in version comparison function. ([#36059](https://github.com/wazuh/wazuh/pull/36059))
+- Improved cluster file synchronization security. ([#36060](https://github.com/wazuh/wazuh/pull/36060))
+- Fixed missing `agent.host.ip` in inventory documents when agent IP is empty. ([#35475](https://github.com/wazuh/wazuh/pull/35475))
+
+### Agent
+
+#### Fixed
+
+- Fixed agent registration not running on reinstall after `apt-get remove`. ([#35727](https://github.com/wazuh/wazuh/pull/35727))
+
+### RESTful API
+
+#### Fixed
+
+- Escaped control characters in API usernames in access logs. ([#35866](https://github.com/wazuh/wazuh/pull/35866))
+- Added input validation in cluster result handling and authentication. ([#35757](https://github.com/wazuh/wazuh/pull/35757))
+
+### Other
+
+#### Changed
+
+- Updated `cryptography`, `urllib3` and `python-multipart` Python dependencies. ([#35982](https://github.com/wazuh/wazuh/pull/35982))
+
+
 ## [v4.14.5]
 
 ### Manager
