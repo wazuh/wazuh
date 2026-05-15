@@ -179,11 +179,21 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
         }
     }
 
+    // TEMP — stress harness for #36061 verification. Ensure dataToSync is never
+    // empty so synchronizeModule continues into sendStartAndWaitAck and ultimately
+    // into sendEndAndWaitAck, where the 30s stress sleep lives. Without this, FIM
+    // events go through the events channel and the sync queue stays empty, so the
+    // pre-End sleep is never reached. REMOVE BEFORE COMMITTING.
     if (dataToSync.empty())
     {
-        const std::string modeStr = (mode == Mode::FULL) ? "FULL" : "DELTA";
-        m_logger(LOG_DEBUG, "No items to synchronize in " + modeStr + " mode");
-        return true;
+        m_logger(LOG_WARNING, "STRESS-36061: dataToSync empty, injecting stub item to reach sendEndAndWaitAck");
+        PersistedData stub{};
+        stub.id              = "stress-36061";
+        stub.index           = "stress-36061";
+        stub.data            = "{}";
+        stub.operation       = Operation::NO_OP;
+        stub.is_data_context = false;
+        dataToSync.push_back(std::move(stub));
     }
 
     for (size_t i = 0; i < dataToSync.size(); ++i)
@@ -929,9 +939,14 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
             m_syncState.phase = SyncPhase::WaitingEndAck;
         }
 
-        // Configurable delay to wait for last messages to arrive before sending End
-        std::this_thread::sleep_for(m_syncEndDelay);
-        m_logger(LOG_DEBUG, "Delayed " + std::to_string(m_syncEndDelay.count()) + " seconds before sending End message.");
+        // TEMP — stress harness for #36061 verification. Replaces the configurable
+        // sync_end_delay with a hard-coded 30s non-interruptible sleep so the
+        // launchctl bootout (which arrives ~10s after agent start) lands while
+        // this thread is blocked here. This is the exact code path the line-941
+        // fix targets. REMOVE BEFORE COMMITTING.
+        m_logger(LOG_WARNING, "STRESS-36061: sendEndAndWaitAck pre-End sleep, sleeping 30s");
+        std::this_thread::sleep_for(std::chrono::seconds(30));
+        m_logger(LOG_WARNING, "STRESS-36061: sendEndAndWaitAck wake after 30s sleep");
 
         unsigned int attempt = 0;
         bool resendEnd = true;
