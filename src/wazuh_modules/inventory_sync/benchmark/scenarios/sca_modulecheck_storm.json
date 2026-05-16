@@ -1,0 +1,47 @@
+{
+  "name": "sca_modulecheck_storm",
+  "description": "SCA integrity check storm — simulates many agents sending ChecksumModule with a wrong hash simultaneously.",
+  "load": {
+    "agents":       50,
+    "data_size":    0,
+    "duration_sec": 300,
+    "rate":         0,
+    "session_delay": 0,
+    "payload_kind": "sca_check",
+    "session_type": "modulecheck",
+    "modulecheck_checksum": "0000000000000000000000000000000000000000"
+  },
+  "expectations": {
+    "rss_growth_mb_max": 50,
+    "status_offline_max": 0
+  },
+  "notes": [
+    "CRITICAL SCENARIO: This is hotspot of IndexerQueue, single thread) under SCA-specific load.",
+    "",
+    "Chain of events:",
+    "  1. 50 agents send Start(mode=ModuleCheck, size=0) simultaneously.",
+    "  2. Each sends ChecksumModule with an all-zeros SHA1 — always a mismatch.",
+    "  3. Manager's IndexerQueue single worker processes each session:",
+    "     calculateChecksumOfChecksums() queries indexer (paginated, 1000 docs/query).",
+    "     On mismatch: retries 5 times x 10s = up to 50s per agent BLOCKING the worker.",
+    "  4. While worker is blocked: other completed sessions pile up in IndexerQueue (UNLIMITED).",
+    "  5. Agents timeout waiting for EndAck -> sessions_failed rises.",
+    "",
+    "Memory accumulation estimate (50 agents):",
+    "  - IndexerQueue: up to 50 Response{Context} objects waiting (~50 x 2KB = 100KB).",
+    "  - RocksDB: minimal (ModuleCheck sends no DataValues, size=0).",
+    "  - Primary risk: latency cascade and IndexerQueue backlog.",
+    "",
+    "SCA-specific dimension: this runs every integrity_interval (default 1h) for EVERY agent.",
+    "In a 500-agent deployment: 500 ModuleChecks/hour hitting the single worker.",
+    "",
+    "Expected proxies:",
+    "  - end_ack latency p99 >> 50s (blocked by retry loop).",
+    "  - sessions_failed high (timeout waiting for EndAck).",
+    "  - workers_q and indexer_q in manager logs: indexer_q should show backlog.",
+    "  - RSS growth minimal (the risk is latency, not RAM in this scenario).",
+    "",
+    "Compare with sca_modulecheck_full_recovery: same start, but when mismatch arrives",
+    "the agent immediately launches a ModuleFull — combining this storm with load."
+  ]
+}

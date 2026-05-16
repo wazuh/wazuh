@@ -1,0 +1,52 @@
+{
+  "name": "sca_modulecheck_full_recovery",
+  "description": "SCA integrity check storm with automatic full recovery — after receiving ChecksumMismatch, each agent immediately launches a ModuleFull session (207 DataValues). Models the real recovery cycle: mismatch detected -> agent re-syncs everything. Combines M2 (IndexerQueue blocking) + M1 (WorkersQueue burst) + M3 (RocksDB growth).",
+  "load": {
+    "agents":       30,
+    "data_size":    207,
+    "duration_sec": 300,
+    "rate":         0,
+    "session_delay": 0,
+    "payload_kind": "sca_check",
+    "session_type": "modulecheck",
+    "modulecheck_checksum": "0000000000000000000000000000000000000000",
+    "auto_resync": true
+  },
+  "expectations": {
+    "rss_growth_mb_max": 800,
+    "status_offline_max": 0
+  },
+  "notes": [
+    "CRITICAL SCENARIO: The most dangerous SCA recovery cycle.",
+    "Combines all three top hotspots: M2 (IndexerQueue) + M1 (WorkersQueue) + M3 (RocksDB).",
+    "",
+    "Chain of events per agent:",
+    "  1. Agent sends Start(mode=ModuleCheck) + ChecksumModule(wrong hash) + End.",
+    "  2. Manager blocks up to 50s in IndexerQueue calculating checksum.",
+    "  3. Manager responds EndAck(ChecksumMismatch).",
+    "  4. Agent immediately launches ModuleFull: Start(mode=0) + 207 DataValues + End.",
+    "  5. 207 DataValues enter WorkersQueue (M1) -> workers write to RocksDB (M3).",
+    "  6. Completed session enters IndexerQueue (M2) -> worker reads RocksDB + bulkIndex.",
+    "",
+    "Memory accumulation (30 agents):",
+    "  - WorkersQueue: 30 x 207 x ~5KB = ~31MB peak if enqueue > dequeue rate.",
+    "  - RocksDB: 30 x 207 x 5KB = ~30MB in queue/inventory_sync/.",
+    "  - IndexerQueue: 30 Response{Context} objects with full session metadata.",
+    "",
+    "SCA-specific dimension: this is what happens in production after an indexer maintenance",
+    "window. All agents detect mismatch on the first ModuleCheck after recovery and",
+    "simultaneously trigger ModuleFull — double-queue saturation + disk spike.",
+    "",
+    "data_size=207 matches the real CIS Ubuntu 22.04 policy (207 checks, ~5KB each).",
+    "Real check payload captured from Ubuntu 5x agent (see sample_payloads/sca_check_template.json).",
+    "",
+    "Expected proxies:",
+    "  - RSS: ramp during ModuleCheck phase (IndexerQueue backlog), then spike during ModuleFull.",
+    "  - rocksdb_dir_bytes: grows to 30 x 207 x 5KB = ~30MB during ModuleFull phase.",
+    "  - indexer_q: should show backlog in manager logs after mismatch confirmed.",
+    "  - end_ack_error: counts ChecksumMismatch responses (counted as error in sender).",
+    "",
+    "Compare with sca_modulecheck_storm: same ModuleCheck phase, but adds the ModuleFull",
+    "recovery flood that is the actual OOM trigger in production."
+  ]
+}

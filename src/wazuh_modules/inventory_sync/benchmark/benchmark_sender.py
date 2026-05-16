@@ -110,7 +110,7 @@ PAYLOAD_KINDS: dict[str, dict[str, str]] = {
     "system":    {"file": "syscollector_system.json",  "module": "syscollector", "index": "wazuh-states-inventory-system"},
     "hotfix":    {"file": "syscollector_hotfix.json",  "module": "syscollector", "index": "wazuh-states-inventory-hotfixes"},
     "fim_file":  {"file": "fim_file.json",             "module": "fim",          "index": "wazuh-states-fim-files"},
-    "sca_check": {"file": "sca_check.json",            "module": "sca",          "index": "wazuh-states-sca"},
+    "sca_check": {"file": "sca_check.json",              "module": "sca",          "index": "wazuh-states-sca"},
 }
 
 # Pad target for --payload-size: dotted path to an existing free-text string
@@ -487,6 +487,28 @@ class BenchmarkAgent:
             return None
         return self.fb_manager.create_message("end", {"session": session_id})
 
+    def create_checksum_module_message(
+        self, session_id: int, index: str, checksum: str,
+    ) -> bytes | None:
+        if not self.fb_manager:
+            return None
+        return self.fb_manager.create_message("checksum_module", {
+            "session": session_id,
+            "index": index,
+            "checksum": checksum,
+        })
+
+    def create_data_clean_message(
+        self, session_id: int, seq: int, index: str,
+    ) -> bytes | None:
+        if not self.fb_manager:
+            return None
+        return self.fb_manager.create_message("dataclean", {
+            "session": session_id,
+            "seq": seq,
+            "index": index,
+        })
+
     def create_data_batch_message(
         self,
         session_id: int,
@@ -570,6 +592,10 @@ def agent_worker(
     no_end = cfg.get("no_end", False)
     use_databatch = cfg.get("use_databatch", False)
     batch_size = cfg.get("batch_size", 64)
+    session_type = cfg.get("session_type", "delta")
+    sync_mode = cfg.get("sync_mode", 1)
+    mc_checksum = cfg.get("modulecheck_checksum", "0" * 40)
+    auto_resync = cfg.get("auto_resync", False)
 
     # Connect (agent is already registered and keys are loaded)
     if not agent.connect():
@@ -595,13 +621,24 @@ def agent_worker(
     while _running and time.monotonic() < deadline:
         session_count += 1
         try:
-            _run_single_session(
-                agent, module, data_size, index, payload_template, counters,
-                drop_every=drop_every,
-                no_end=no_end,
-                use_databatch=use_databatch,
-                batch_size=batch_size,
-            )
+            if session_type == "modulecheck":
+                _run_modulecheck_session(
+                    agent, module, index, mc_checksum, counters,
+                    auto_resync=auto_resync,
+                    data_size=data_size,
+                    payload_template=payload_template,
+                )
+            elif session_type == "dataclean":
+                _run_dataclean_session(agent, module, index, counters)
+            else:
+                _run_single_session(
+                    agent, module, data_size, index, payload_template, counters,
+                    drop_every=drop_every,
+                    no_end=no_end,
+                    use_databatch=use_databatch,
+                    batch_size=batch_size,
+                    sync_mode=sync_mode,
+                )
         except Exception as e:
             logger.debug("Agent %s session %d failed: %s", agent.id, session_count, e)
             counters.add_sessions_failed()
@@ -630,6 +667,7 @@ def _run_single_session(
     no_end: bool = False,
     use_databatch: bool = False,
     batch_size: int = 64,
+    sync_mode: int = 1,
 ):
     """Execute one complete sync session: Start → Data×N → End → ACK.
 
@@ -646,7 +684,7 @@ def _run_single_session(
 
     # 1. Send Start
     fb_start = agent.create_start_message(
-        module=module, mode=1, size=data_size, option=0,
+        module=module, mode=sync_mode, size=data_size, option=0,
         indices=[index],
     )
     if fb_start is None:
@@ -808,6 +846,241 @@ def _run_single_session(
                     )
 
     raise RuntimeError("EndAck timeout")
+
+
+# ---------------------------------------------------------------------------
+# ModuleCheck session
+# ---------------------------------------------------------------------------
+def _run_modulecheck_session(
+    agent: BenchmarkAgent,
+    module: str,
+    index: str,
+    checksum: str,
+    counters: AtomicCounters,
+    auto_resync: bool = False,
+    data_size: int = 100,
+    payload_template: dict | None = None,
+):
+    """Execute a ModuleCheck session: Start(mode=2) → ChecksumModule → End → EndAck.
+
+    If EndAck = ChecksumMismatch and auto_resync=True, immediately runs a
+    ModuleFull session to simulate the full recovery cycle.
+    """
+    global _running
+
+    fb_start = agent.create_start_message(
+        module=module, mode=2, size=0, option=0, indices=[index],
+    )
+    if fb_start is None:
+        raise RuntimeError("Failed to create Start message for ModuleCheck")
+
+    t_start_sent = time.monotonic()
+    agent._send_binary(f"{module}_sync", fb_start)
+    counters.add_messages_sent()
+    counters.add_sessions_started()
+
+    # Wait for StartAck
+    resp = None
+    start_recv = time.monotonic()
+    while time.monotonic() - start_recv < 15.0:
+        if not _running:
+            raise RuntimeError("Shutdown during ModuleCheck StartAck wait")
+        resp = agent.receive_response(timeout=1.0)
+        if resp is not None:
+            break
+    if resp is None:
+        raise RuntimeError("No StartAck received (ModuleCheck)")
+
+    counters.record_latency("start", (time.monotonic() - t_start_sent) * 1000.0)
+
+    session_id = None
+    if resp.get("type") == "flatbuffer":
+        data = resp.get("data", {})
+        if isinstance(data, dict) and data.get("type") == "start_ack":
+            session_id = data.get("session_id") or data.get("session")
+            status = data.get("status", -1)
+            if status == STATUS_OFFLINE:
+                counters.add("start_ack_offline")
+                raise RuntimeError("StartAck offline (ModuleCheck)")
+            elif status not in (STATUS_OK, STATUS_PROCESSING):
+                counters.add("start_ack_error")
+                raise RuntimeError(f"StartAck error status={status} (ModuleCheck)")
+            counters.add("start_ack_ok")
+
+    if session_id is None:
+        raise RuntimeError(f"Could not extract session_id (ModuleCheck): {resp}")
+
+    # Send ChecksumModule then End
+    fb_checksum = agent.create_checksum_module_message(session_id, index, checksum)
+    if fb_checksum is None:
+        raise RuntimeError("Failed to create ChecksumModule message")
+    agent._send_binary(f"{module}_sync", fb_checksum)
+    counters.add_messages_sent()
+
+    fb_end = agent.create_end_message(session_id)
+    if fb_end is None:
+        raise RuntimeError("Failed to create End message (ModuleCheck)")
+    t_end_sent = time.monotonic()
+    agent._send_binary(f"{module}_sync", fb_end)
+    counters.add_messages_sent()
+
+    # Wait for EndAck — ModuleCheck can block up to 5 retries × 10s = 50s
+    max_wait = 70.0
+    start_wait = time.monotonic()
+    while time.monotonic() - start_wait < max_wait:
+        if not _running:
+            raise RuntimeError("Shutdown during ModuleCheck EndAck wait")
+        remaining = max_wait - (time.monotonic() - start_wait)
+        resp = agent.receive_response(timeout=min(remaining, 2.0))
+        if resp is None:
+            if time.monotonic() - start_wait >= max_wait:
+                raise RuntimeError("EndAck timeout (ModuleCheck)")
+            continue
+        if resp.get("type") == "flatbuffer":
+            data = resp.get("data", {})
+            if not isinstance(data, dict) or data.get("type") != "end_ack":
+                continue
+            status = data.get("status", -1)
+            if status == STATUS_PROCESSING:
+                counters.add("end_ack_processing")
+                continue
+            t_end_ack = time.monotonic()
+            counters.record_latency("end",     (t_end_ack - t_end_sent)   * 1000.0)
+            counters.record_latency("session", (t_end_ack - t_start_sent) * 1000.0)
+            if status == STATUS_OK:
+                counters.add("end_ack_ok")
+                counters.add_sessions_completed()
+                return
+            elif status == STATUS_CHECKSUM_MISMATCH:
+                counters.add("end_ack_error")
+                counters.add_sessions_completed()
+                if auto_resync and payload_template is not None:
+                    logger.debug(
+                        "Agent %s: ChecksumMismatch → starting ModuleFull recovery",
+                        agent.id,
+                    )
+                    _run_single_session(
+                        agent, module, data_size, index, payload_template,
+                        counters, sync_mode=0,
+                    )
+                return
+            elif status == STATUS_OFFLINE:
+                counters.add("end_ack_offline")
+                raise RuntimeError("EndAck offline (ModuleCheck)")
+            else:
+                counters.add("end_ack_error")
+                raise RuntimeError(f"EndAck error status={status} (ModuleCheck)")
+
+    raise RuntimeError("EndAck timeout (ModuleCheck)")
+
+
+# ---------------------------------------------------------------------------
+# DataClean session
+# ---------------------------------------------------------------------------
+def _run_dataclean_session(
+    agent: BenchmarkAgent,
+    module: str,
+    index: str,
+    counters: AtomicCounters,
+):
+    """Execute a DataClean session: Start → DataClean → End → EndAck.
+
+    Simulates an agent removing all SCA policies. The manager calls
+    deleteByQuery(index, agentId) for each agent that sends this.
+    """
+    global _running
+
+    fb_start = agent.create_start_message(
+        module=module, mode=1, size=1, option=0, indices=[index],
+    )
+    if fb_start is None:
+        raise RuntimeError("Failed to create Start message for DataClean")
+
+    t_start_sent = time.monotonic()
+    agent._send_binary(f"{module}_sync", fb_start)
+    counters.add_messages_sent()
+    counters.add_sessions_started()
+
+    # Wait for StartAck
+    resp = None
+    start_recv = time.monotonic()
+    while time.monotonic() - start_recv < 15.0:
+        if not _running:
+            raise RuntimeError("Shutdown during DataClean StartAck wait")
+        resp = agent.receive_response(timeout=1.0)
+        if resp is not None:
+            break
+    if resp is None:
+        raise RuntimeError("No StartAck received (DataClean)")
+
+    counters.record_latency("start", (time.monotonic() - t_start_sent) * 1000.0)
+
+    session_id = None
+    if resp.get("type") == "flatbuffer":
+        data = resp.get("data", {})
+        if isinstance(data, dict) and data.get("type") == "start_ack":
+            session_id = data.get("session_id") or data.get("session")
+            status = data.get("status", -1)
+            if status == STATUS_OFFLINE:
+                counters.add("start_ack_offline")
+                raise RuntimeError("StartAck offline (DataClean)")
+            elif status not in (STATUS_OK, STATUS_PROCESSING):
+                counters.add("start_ack_error")
+                raise RuntimeError(f"StartAck error status={status} (DataClean)")
+            counters.add("start_ack_ok")
+
+    if session_id is None:
+        raise RuntimeError(f"Could not extract session_id (DataClean): {resp}")
+
+    # Send DataClean then End
+    fb_dataclean = agent.create_data_clean_message(session_id, seq=0, index=index)
+    if fb_dataclean is None:
+        raise RuntimeError("Failed to create DataClean message")
+    agent._send_binary(f"{module}_sync", fb_dataclean)
+    counters.add_messages_sent()
+
+    fb_end = agent.create_end_message(session_id)
+    if fb_end is None:
+        raise RuntimeError("Failed to create End message (DataClean)")
+    t_end_sent = time.monotonic()
+    agent._send_binary(f"{module}_sync", fb_end)
+    counters.add_messages_sent()
+
+    # Wait for EndAck
+    max_wait = 60.0
+    start_wait = time.monotonic()
+    while time.monotonic() - start_wait < max_wait:
+        if not _running:
+            raise RuntimeError("Shutdown during DataClean EndAck wait")
+        remaining = max_wait - (time.monotonic() - start_wait)
+        resp = agent.receive_response(timeout=min(remaining, 2.0))
+        if resp is None:
+            if time.monotonic() - start_wait >= max_wait:
+                raise RuntimeError("EndAck timeout (DataClean)")
+            continue
+        if resp.get("type") == "flatbuffer":
+            data = resp.get("data", {})
+            if not isinstance(data, dict) or data.get("type") != "end_ack":
+                continue
+            status = data.get("status", -1)
+            if status == STATUS_PROCESSING:
+                counters.add("end_ack_processing")
+                continue
+            t_end_ack = time.monotonic()
+            counters.record_latency("end",     (t_end_ack - t_end_sent)   * 1000.0)
+            counters.record_latency("session", (t_end_ack - t_start_sent) * 1000.0)
+            if status == STATUS_OK:
+                counters.add("end_ack_ok")
+                counters.add_sessions_completed()
+                return
+            elif status == STATUS_OFFLINE:
+                counters.add("end_ack_offline")
+                raise RuntimeError("EndAck offline (DataClean)")
+            else:
+                counters.add("end_ack_error")
+                raise RuntimeError(f"EndAck error status={status} (DataClean)")
+
+    raise RuntimeError("EndAck timeout (DataClean)")
 
 
 # ---------------------------------------------------------------------------
@@ -1033,6 +1306,22 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--batch-size", type=int, default=64,
                    help="DataValues per DataBatch when --use-databatch is set "
                         "(default: 64).")
+    p.add_argument("--session-type",
+                   choices=["delta", "modulecheck", "dataclean"],
+                   default="delta",
+                   help="Session flow: delta=Start→DataValues→End (default), "
+                        "modulecheck=Start→ChecksumModule→End, "
+                        "dataclean=Start→DataClean→End.")
+    p.add_argument("--sync-mode", type=int, default=1,
+                   help="Start message mode: 0=ModuleFull, 1=ModuleDelta (default). "
+                        "Ignored when --session-type=modulecheck (always uses mode=2).")
+    p.add_argument("--modulecheck-checksum", type=str,
+                   default="0" * 40,
+                   help="SHA1 checksum sent in ChecksumModule. Default: all zeros, "
+                        "which always produces a mismatch on the manager side.")
+    p.add_argument("--auto-resync", action="store_true",
+                   help="After a ChecksumMismatch EndAck, automatically run a "
+                        "ModuleFull session. Used by sca_modulecheck_full_recovery.")
     p.add_argument("--debug", action="store_true", help="Debug logging")
     return p.parse_args()
 
@@ -1140,6 +1429,10 @@ def main() -> None:
         "no_end":        args.no_end,
         "use_databatch": args.use_databatch,
         "batch_size":    args.batch_size,
+        "session_type":          args.session_type,
+        "sync_mode":             args.sync_mode,
+        "modulecheck_checksum":  args.modulecheck_checksum,
+        "auto_resync":           args.auto_resync,
     }
 
     print()

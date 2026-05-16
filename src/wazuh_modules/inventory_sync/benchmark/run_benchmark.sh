@@ -78,6 +78,10 @@ COMPARE_DIRS=()
 CHART_FORMAT="png"
 SCENARIO=""
 MANAGER_LOG="/var/wazuh-manager/logs/wazuh-manager.log"
+SESSION_TYPE="delta"
+SYNC_MODE=1
+MODULECHECK_CHECKSUM=""
+AUTO_RESYNC=false
 
 usage() {
     cat <<EOF
@@ -244,6 +248,10 @@ for a in d.get('external_actions', []) or []:
     cmd = (a.get('cmd', '') or '').replace('\t', ' ').replace('\n', ' ')
     print(f'{at}\t{cmd}')
 ")
+    SC_STYPE=$("$PYTHON"   -c "import json; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('session_type',''))")
+    SC_SYNCMODE=$("$PYTHON" -c "import json; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('sync_mode',''))")
+    SC_MCSUM=$("$PYTHON"   -c "import json; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('modulecheck_checksum',''))")
+    SC_AUTORESYNC=$("$PYTHON" -c "import json; d=json.load(open('$SCENARIO')); v=d.get('load',{}).get('auto_resync'); print('true' if v is True else ('false' if v is False else ''))")
     [[ -n "$SC_AGENTS" ]] && AGENTS="$SC_AGENTS"
     [[ -n "$SC_DSIZE" ]]  && DATA_SIZE="$SC_DSIZE"
     [[ -n "$SC_DUR" ]]    && DURATION="$SC_DUR"
@@ -251,9 +259,13 @@ for a in d.get('external_actions', []) or []:
     [[ -n "$SC_PSIZE" ]]  && PAYLOAD_SIZE="$SC_PSIZE"
     [[ -n "$SC_PFIELD" ]] && PAD_FIELD="$SC_PFIELD"
     [[ -n "$SC_DROP" ]]   && DROP_EVERY="$SC_DROP"
-    [[ "$SC_NOEND" == "true" ]]   && NO_END=true
-    [[ "$SC_DBATCH" == "true" ]]  && USE_DATABATCH=true
-    [[ -n "$SC_BSIZE" ]]  && BATCH_SIZE="$SC_BSIZE"
+    [[ "$SC_NOEND" == "true" ]]        && NO_END=true
+    [[ "$SC_DBATCH" == "true" ]]       && USE_DATABATCH=true
+    [[ -n "$SC_BSIZE" ]]               && BATCH_SIZE="$SC_BSIZE"
+    [[ -n "$SC_STYPE" ]]               && SESSION_TYPE="$SC_STYPE"
+    [[ -n "$SC_SYNCMODE" ]]            && SYNC_MODE="$SC_SYNCMODE"
+    [[ -n "$SC_MCSUM" ]]               && MODULECHECK_CHECKSUM="$SC_MCSUM"
+    [[ "$SC_AUTORESYNC" == "true" ]]   && AUTO_RESYNC=true
     # CLI wins over the scenario file. If the user did not pass --payload-kind
     # explicitly we adopt whatever the scenario declares.
     if [[ -n "$SC_KIND" && "$PAYLOAD_KIND_FROM_CLI" == false ]]; then
@@ -409,6 +421,10 @@ SENDER_ARGS=(
 [[ "$DROP_EVERY"   != "0" ]]       && SENDER_ARGS+=(--drop-every   "$DROP_EVERY")
 [[ "$NO_END"        == "true" ]]   && SENDER_ARGS+=(--no-end)
 [[ "$USE_DATABATCH" == "true" ]]   && SENDER_ARGS+=(--use-databatch --batch-size "$BATCH_SIZE")
+[[ "$SESSION_TYPE" != "delta" ]]   && SENDER_ARGS+=(--session-type "$SESSION_TYPE")
+[[ "$SYNC_MODE"    != "1" ]]       && SENDER_ARGS+=(--sync-mode    "$SYNC_MODE")
+[[ -n "$MODULECHECK_CHECKSUM" ]]   && SENDER_ARGS+=(--modulecheck-checksum "$MODULECHECK_CHECKSUM")
+[[ "$AUTO_RESYNC"  == "true" ]]    && SENDER_ARGS+=(--auto-resync)
 
 # 2b. Schedule scenario `external_actions` as background timer subshells.
 # Each fires at `at_sec` seconds from this point (i.e., approximately when the

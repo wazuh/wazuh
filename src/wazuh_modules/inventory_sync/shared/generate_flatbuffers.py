@@ -20,7 +20,7 @@ def find_flatc_executable():
     ]
 
     # Also look in the wazuh source tree (built from external deps)
-    script_dir = Path(__file__).parent
+    script_dir = Path(__file__).resolve().parent
     src_root = script_dir.parent.parent.parent  # .../src
     common_paths.insert(0, str(src_root / "external" / "flatbuffers" / "build" / "flatc"))
 
@@ -43,7 +43,7 @@ def main():
     print("🔧 Generating FlatBuffers classes for inventory sync...")
     
     # Get current directory and schema path
-    current_dir = Path(__file__).parent
+    current_dir = Path(__file__).resolve().parent
     schema_file = current_dir.parent.parent.parent / "shared_modules" / "utils" / "flatbuffers" / "schemas" / "inventorySync.fbs"
     generated_dir = current_dir / "generated"
     
