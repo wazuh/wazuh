@@ -8,6 +8,7 @@
 - [Build from Sources](dev/build-sources.md)
 - [Run from Sources](dev/run-sources.md)
 - [Package generation](dev/package-generation.md)
+- [Build external dependencies](dev/build-external-dependencies.md)
 - [Test execution](dev/test-execution.md)
 
 # Reference Manual
