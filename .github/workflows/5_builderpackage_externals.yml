@@ -1,15 +1,17 @@
-run-name: External deps - ${{ inputs.legs || 'all 5 legs' }} ${{ inputs.dependencies && format('- {0}', inputs.dependencies) || '- (no version overrides)' }}
+run-name: External deps - ${{ inputs.dependencies && format('{0}', inputs.dependencies) || '(no version overrides)' }}
 name: 5.X - Package - Build external dependencies
 
-# Rebuilds Wazuh's external dependencies across one or more (system, architecture)
-# legs. Each runner uploads a per-leg .tar.gz laid out in the S3 layout
-# expected by `make deps` (libraries/<os>/<arch>/<dep>.tar.gz plus
+# Rebuilds Wazuh's external dependencies across every (system, architecture)
+# leg we ship. Each runner uploads a per-leg .tar.gz laid out in the S3
+# layout expected by `make deps` (libraries/<os>/<arch>/<dep>.tar.gz plus
 # libraries/sources/<dep>.tar.gz). The `consolidate` job then merges every
 # per-leg tarball into a single externals-all.tar.gz ready for upload to
 # packages.wazuh.com/deps/<version>/ — use that artifact, not a hand-merge
 # of the per-leg ones, since on Linux the agent and manager legs overlap.
 #
-# Covers all 5 supported legs:
+# A deps release is whole-or-nothing: every consumer platform needs its
+# leg in the published tarball, so the matrix is fixed and runs all 5
+# supported legs every time:
 #   - 2 Linux Docker legs:  rpm-amd64, rpm-arm64 (rpm is the oldest common
 #                           denominator — its glibc is forward-compatible
 #                           with deb, so we don't build deb separately)
@@ -17,6 +19,8 @@ name: 5.X - Package - Build external dependencies
 #   - 1 Windows leg:        windows-i686 (MinGW cross-compile on a Linux
 #                                         runner, no Docker)
 # macOS and Windows are agent-only (no manager binaries exist for them).
+# To re-run a single broken leg, use Actions' "Re-run failed jobs" rather
+# than reintroducing a per-leg dispatch input.
 #
 # Each Linux leg always runs twice — once with the agent builder image and
 # once with the manager builder image. The agent image is the oldest common
@@ -41,17 +45,6 @@ on:
         type: string
         required: false
         default: ""
-      legs:
-        description: |
-          Comma-separated list of <system>-<architecture> legs to run.
-          Valid values: rpm-amd64, rpm-arm64, macos-intel64, macos-arm64,
-          windows-i686.
-          Empty = every supported leg. Each Linux leg fans out to both
-          agent and manager builder images automatically. macOS and
-          Windows are agent-only.
-        type: string
-        required: false
-        default: ""
       docker_image_tag:
         description: |
           GHCR builder image tag. "auto" derives it from VERSION.json,
@@ -61,74 +54,24 @@ on:
         required: false
 
 jobs:
-  prepare-matrix:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.build.outputs.matrix }}
-    steps:
-      - name: Build matrix from inputs
-        id: build
-        run: |
-          legs_input="${{ inputs.legs }}"
-
-          # Always fan out to both agent and manager targets. Linux legs
-          # run twice (agent image, then manager image); macOS/Windows only
-          # have agent builder images so the manager pass is skipped for
-          # those systems inside the loop.
-          json='{"include":['
-          first=true
-          for tgt in agent manager; do
-            if [ -z "${legs_input}" ]; then
-              if [ "${tgt}" = "manager" ]; then
-                tgt_legs="rpm-amd64,rpm-arm64"
-              else
-                tgt_legs="rpm-amd64,rpm-arm64,macos-intel64,macos-arm64,windows-i686"
-              fi
-            else
-              tgt_legs="${legs_input}"
-            fi
-
-            for leg in $(echo "${tgt_legs}" | tr ',' ' '); do
-              leg="$(echo "${leg}" | xargs)"  # trim whitespace
-              system="${leg%-*}"
-              architecture="${leg##*-}"
-              case "${system}" in
-                rpm|macos|windows) ;;
-                *) echo "::error::unsupported system '${system}' in leg '${leg}' (valid: rpm, macos, windows)"; exit 1 ;;
-              esac
-
-              # macOS/Windows have no manager builder image. An explicit
-              # legs list might include them — silently drop those combos
-              # from the manager pass rather than failing the run.
-              if [ "${tgt}" = "manager" ] && { [ "${system}" = "macos" ] || [ "${system}" = "windows" ]; }; then
-                continue
-              fi
-
-              case "${system}-${architecture}" in
-                rpm-amd64)           runner="wz-linux-amd64" ;;
-                rpm-arm64)           runner="wz-linux-arm64" ;;
-                macos-intel64)       runner="macos-14-large" ;;
-                macos-arm64)         runner="macos-14" ;;
-                windows-i686)        runner="wz-linux-amd64" ;;  # MinGW cross-compile on Linux
-                *) echo "::error::unsupported leg '${leg}'"; exit 1 ;;
-              esac
-              ${first} || json="${json},"
-              first=false
-              json="${json}{\"system\":\"${system}\",\"architecture\":\"${architecture}\",\"runner\":\"${runner}\",\"leg\":\"${leg}\",\"target\":\"${tgt}\"}"
-            done
-          done
-          json="${json}]}"
-          echo "matrix=${json}" >> "${GITHUB_OUTPUT}"
-          echo "Matrix: ${json}"
-
   build-externals:
-    needs: prepare-matrix
     permissions:
       contents: read
       packages: write
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.prepare-matrix.outputs.matrix) }}
+      matrix:
+        # Linux legs run twice (agent image + manager image); macOS and
+        # Windows have no manager builder image so they run agent-only.
+        # windows-i686 is MinGW cross-compile on the Linux amd64 runner.
+        include:
+          - { system: rpm,     architecture: amd64,   runner: wz-linux-amd64, leg: rpm-amd64,     target: agent }
+          - { system: rpm,     architecture: arm64,   runner: wz-linux-arm64, leg: rpm-arm64,     target: agent }
+          - { system: macos,   architecture: intel64, runner: macos-14-large, leg: macos-intel64, target: agent }
+          - { system: macos,   architecture: arm64,   runner: macos-14,       leg: macos-arm64,   target: agent }
+          - { system: windows, architecture: i686,    runner: wz-linux-amd64, leg: windows-i686,  target: agent }
+          - { system: rpm,     architecture: amd64,   runner: wz-linux-amd64, leg: rpm-amd64,     target: manager }
+          - { system: rpm,     architecture: arm64,   runner: wz-linux-arm64, leg: rpm-arm64,     target: manager }
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     name: Build externals (${{ matrix.leg }}-${{ matrix.target }})
