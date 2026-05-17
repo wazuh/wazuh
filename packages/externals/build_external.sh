@@ -58,6 +58,21 @@ mkdir -p "${ARTIFACTS_DIR}" "${DOWNLOAD_DIR}"
 log() { echo "[external] $*"; }
 err() { echo "[external][ERROR] $*" >&2; }
 
+# Source-of-truth for any blob we re-ship rather than build here (currently
+# cpython and libbpf-bootstrap — see the cpython pass-through block and
+# stage_precompiled below). Reading from src/Makefile keeps the URLs in
+# lockstep with what `make deps` would download for the same source tree,
+# which means DEPS_VERSION must point at an *existing* publish at the time
+# this workflow runs. Never bump DEPS_VERSION in the same branch that
+# dispatches this workflow — do the bump in a follow-up PR after the new
+# tarball is uploaded. See docs/dev/build-external-dependencies.md.
+DEPS_VERSION="$(sed -n 's/^DEPS_VERSION[[:space:]]*=[[:space:]]*\([^[:space:]]*\).*/\1/p' "${SRC_DIR}/Makefile" | head -n1)"
+if [ -z "${DEPS_VERSION}" ]; then
+    err "could not extract DEPS_VERSION from ${SRC_DIR}/Makefile"
+    exit 1
+fi
+log "DEPS_VERSION (from src/Makefile): ${DEPS_VERSION}"
+
 # Runtime tooling not always present in the package builder images:
 #   - zip/unzip: write per-dep snapshot zips and extract .zip upstream tarballs.
 #   - clang: required by libbpf-bootstrap's FindBpfObject.cmake to compile
@@ -455,13 +470,12 @@ rm -f "${SRC_DIR}/external/sqlite/VERSION" "${SRC_DIR}/external/sqlite/version" 
 #
 # This block only re-ships that already-built blob so the consolidated
 # externals tarball is complete for downstream `make deps`. The source
-# version is PINNED to a known-good deps release rather than read from
-# DEPS_VERSION in src/Makefile: on a branch that has bumped DEPS_VERSION
-# to the version being produced, reading it back is circular — the blob
-# does not exist yet. Bump CPYTHON_PASSTHROUGH_VERSION when the embedded
-# Python pipeline publishes a new cpython.
+# version comes from DEPS_VERSION (extracted from src/Makefile above), so
+# the cpython we re-ship is the same one `make deps` would download. See
+# the DEPS_VERSION note near the top of this script — running this workflow
+# on a branch that has bumped DEPS_VERSION to a not-yet-published version
+# will 404 here.
 # Only manager legs trigger this; the agent EXTERNAL_RES has no $(CPYTHON).
-CPYTHON_PASSTHROUGH_VERSION="99-29585"
 if [ "${BUILD_TARGET}" = "manager" ]; then
     case "${ARCHITECTURE_TARGET}" in
         amd64) cpython_arch="x86_64" ;;
@@ -469,7 +483,7 @@ if [ "${BUILD_TARGET}" = "manager" ]; then
         *)     cpython_arch="" ;;
     esac
     if [ -n "${cpython_arch}" ]; then
-        cpython_url="https://packages.wazuh.com/deps/${CPYTHON_PASSTHROUGH_VERSION}/libraries/sources/cpython_${cpython_arch}.tar.gz"
+        cpython_url="https://packages.wazuh.com/deps/${DEPS_VERSION}/libraries/sources/cpython_${cpython_arch}.tar.gz"
         cpython_out="${ARTIFACTS_DIR}/cpython_${cpython_arch}.passthrough.tar.gz"
         log "fetching cpython pass-through from ${cpython_url}"
         if curl -fsSL "${cpython_url}" -o "${cpython_out}"; then
@@ -524,7 +538,7 @@ stage_precompiled() {
         arm64)  arch_path="aarch64" ;;
         *)      log "stage_precompiled: unsupported arch ${ARCHITECTURE_TARGET}; skipping ${name}"; return 0 ;;
     esac
-    local url="https://packages.wazuh.com/deps/99-29585/libraries/linux/${arch_path}/${name}.tar.gz"
+    local url="https://packages.wazuh.com/deps/${DEPS_VERSION}/libraries/linux/${arch_path}/${name}.tar.gz"
     local tar="${DOWNLOAD_DIR}/${name}-precompiled.tar.gz"
     log "staging precompiled ${name} from ${url}"
     if ! curl -fsSL "${url}" -o "${tar}"; then

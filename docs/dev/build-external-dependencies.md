@@ -9,7 +9,7 @@ Supporting scripts under `packages/externals/`:
 | File | Purpose |
 |------|---------|
 | `external_sources.sh` | Manifest: upstream URL template + archive format + target dir for each dep. |
-| `build_external.sh` | Container-side build script. Seeds `src/external/` via `make deps EXTERNAL_SRC_ONLY=yes`, applies overrides from `--dependencies`, runs the per-leg build, and re-ships a prebuilt `libbpf-bootstrap` (the legacy builder images can't compile it — see [Caveats](#libbpf-bootstrap-is-re-shipped-not-rebuilt)). |
+| `build_external.sh` | Container-side build script. Seeds `src/external/` via `make deps EXTERNAL_SRC_ONLY=yes`, applies overrides from `--dependencies`, runs the per-leg build, and re-ships prebuilt blobs for the two deps that aren't compiled here — see [Caveats](#libbpf-bootstrap-and-cpython-are-re-shipped-not-rebuilt). |
 | `generate_external.sh` | Wrapper that runs `build_external.sh` and packs the result into `externals-<leg>.tar.gz` with the S3 layout `make deps` expects. |
 | `smoke_build.sh` | Sanity check: builds the agent/manager from source against the freshly built consolidated tree to confirm the precompiled tarballs are actually consumable. |
 
@@ -99,33 +99,32 @@ Smoke build logs (`smoke-build-<target>-<arch>`) are also retained 14 days and a
 2. Dispatch the workflow with `dependencies="…"` (or empty for a clean rebuild). **Do not bump `DEPS_VERSION` in this branch.** See the caveat below.
 3. Wait for `build-externals`, `consolidate`, and all 4 `smoke-build` jobs to go green.
 4. Download `externals-all.tar.gz`. Pick a new `DEPS_VERSION` (the team's convention is `99-<gh-run-id>` or a hand-picked monotonic number). Upload the tarball contents into `s3://…/deps/<new-DEPS_VERSION>/libraries/…`.
-5. Open a second PR that bumps `DEPS_VERSION` in `src/Makefile` (and `CPYTHON_PASSTHROUGH_VERSION` in `build_external.sh` if that bump included a new cpython — see below).
+5. Open a second PR that bumps `DEPS_VERSION` in `src/Makefile` to the new value. That single change is enough — `build_external.sh` reads `DEPS_VERSION` straight out of the Makefile for both the `make deps` seed and the cpython / libbpf re-ship URLs.
 
 ## Caveats
 
 ### Do not bump `DEPS_VERSION` in the same branch that runs the workflow
 
-`build_external.sh` calls `make deps EXTERNAL_SRC_ONLY=yes` as its first step to seed `src/external/<dep>/`. That call reads `RESOURCES_URL = packages.wazuh.com/deps/$(DEPS_VERSION)/` from `src/Makefile` and downloads every source tarball from there.
+`DEPS_VERSION` (defined in `src/Makefile`) is the single source of truth for every blob this workflow downloads:
 
-If your branch has bumped `DEPS_VERSION` to the version you're trying to *produce*, the seed download 404s and the run fails before it builds anything. Always run with the currently published `DEPS_VERSION`; bump in a follow-up PR after the new tarball is uploaded.
+- `make deps EXTERNAL_SRC_ONLY=yes` (the source seed for `src/external/`) reads `RESOURCES_URL = packages.wazuh.com/deps/$(DEPS_VERSION)/`.
+- The cpython pass-through block pulls `…/deps/${DEPS_VERSION}/libraries/sources/cpython_<arch>.tar.gz`.
+- `stage_precompiled` pulls `…/deps/${DEPS_VERSION}/libraries/linux/<arch>/libbpf-bootstrap.tar.gz`.
 
-### `CPYTHON_PASSTHROUGH_VERSION` is hand-maintained
+If your branch has bumped `DEPS_VERSION` to the version you're trying to *produce*, all three fetches 404 and the run fails. Always dispatch the workflow with `DEPS_VERSION` pointing at the *currently published* deps release; bump it in a follow-up PR after you've uploaded the new tarball.
 
-cpython has its own build pipeline (`5_builderpackage_embedded-python.yml`); this workflow doesn't compile it. Instead, `build_external.sh` fetches a known-good cpython blob from a pinned version (`CPYTHON_PASSTHROUGH_VERSION`, currently `99-29585`) and re-ships it inside the consolidated tarball.
+### `libbpf-bootstrap` and `cpython` are re-shipped, not rebuilt
 
-When the embedded-python pipeline publishes a new cpython, bump `CPYTHON_PASSTHROUGH_VERSION` in `packages/externals/build_external.sh` in the same PR that bumps `DEPS_VERSION` in `src/Makefile`.
+Two deps are not actually compiled by this workflow — `build_external.sh` downloads prebuilt blobs from `packages.wazuh.com/deps/${DEPS_VERSION}/…` and packs them into the per-leg tarballs:
 
-### `libbpf-bootstrap` is re-shipped, not rebuilt
+- **`libbpf-bootstrap`** needs clang ≥ 7 with the BPF backend and Linux UAPI headers ≥ 4.13 (`linux/bpf_perf_event.h`), and the legacy agent builder image (CentOS 6 / Debian wheezy era, glibc 2.12) has neither — a from-source attempt fails with `linux/bpf_perf_event.h: No such file or directory`. Wazuh builds it in a separate centos:7 + clang-15-from-source image (issue #28626). Linux legs only; macOS and Windows agents don't include it.
+- **`cpython`** has its own dedicated pipeline (`5_builderpackage_embedded-python.yml`, runs `framework/cpython/compile.sh`). Manager legs only; the agent `EXTERNAL_RES` has no `$(CPYTHON)`.
 
-`libbpf-bootstrap` is the one dep this workflow does not actually compile. It needs clang ≥ 7 with the BPF backend and Linux UAPI headers ≥ 4.13 (`linux/bpf_perf_event.h`), and the legacy agent builder image (CentOS 6 / Debian wheezy era, glibc 2.12) has neither — a from-source attempt fails with `linux/bpf_perf_event.h: No such file or directory`. Wazuh builds it in a separate centos:7 + clang-15-from-source image (issue #28626) and uploads the result to `packages.wazuh.com`.
+So bumping either of these is out of scope here. The flow is:
 
-`build_external.sh`'s `stage_precompiled` pulls that prebuilt tarball from a pinned known-good deps release (currently `99-29585`), extracts it into `src/external/libbpf-bootstrap/`, and lets the `if(EXISTS …/build/modern.bpf.o)` short-circuit in `src/external/CMakeLists.txt` skip the from-source `ExternalProject_Add`.
-
-Implications:
-
-- **Bumping `libbpf-bootstrap` is out of scope here.** Use the dedicated pipeline, upload the new tarball, then bump the pinned version inside `stage_precompiled` (search for `99-29585` in `build_external.sh`).
-- The pinned `99-29585` should be kept in lockstep with `CPYTHON_PASSTHROUGH_VERSION`. Both are independent of `src/Makefile`'s `DEPS_VERSION`.
-- This applies to Linux legs only. macOS and Windows agents don't include `libbpf-bootstrap`.
+1. Run the dedicated pipeline (embedded-python for cpython; the centos:7+clang-15 image for libbpf-bootstrap — that build is currently out-of-repo).
+2. Upload the new blob into `packages.wazuh.com/deps/<new-DEPS_VERSION>/libraries/…` alongside the rest of the externals tree this workflow produces.
+3. Bump `DEPS_VERSION` in `src/Makefile`. Because `build_external.sh` reads `DEPS_VERSION` straight from the Makefile, this single bump is what makes the next run pick up the new cpython / libbpf blob.
 
 ### macOS and Windows are agent-only
 
