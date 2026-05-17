@@ -161,10 +161,17 @@ add_dependencies(ext_zlib zlib_external)
 target_include_directories(ext_zlib INTERFACE ${EXTERNAL_DIR}/zlib)
 
 # ------------------------------------------------------------------------------
-# minizip (depends on zlib, server only)
+# minizip (depends on zlib)
 # ------------------------------------------------------------------------------
 
-if(NOT IS_AGENT AND NOT IS_WINDOWS)
+# The agent never links minizip — only the server does (engine,
+# content_manager). It is still built for the agent target because
+# libminizip.a lives inside the zlib tree (zlib/contrib/minizip/) and the
+# precompiled zlib dependency published on packages.wazuh.com already
+# includes it. Building it here too keeps the agent's external tree aligned
+# with that shared zlib tarball instead of diverging from it. Windows
+# genuinely never needs it.
+if(NOT IS_WINDOWS)
   if(EXISTS ${EXTERNAL_DIR}/zlib/contrib/minizip/libminizip.a)
     message(STATUS "Using precompiled minizip library")
     add_custom_target(minizip_external)
@@ -266,15 +273,19 @@ elseif(IS_LINUX)
   else()
     set(CURL_BUILD_FLAG "")
   endif()
+  # curl ≥ 8.20 needs zlib ≥ 1.2.5.2 (z_const, inflateReset2). centos:6 ships
+  # zlib 1.2.3, so point configure at the externally-built zlib regardless of
+  # leg.
   set(CURL_CONFIGURE_CMD
       ${CMAKE_COMMAND}
       -E
       env
-      "CPPFLAGS=-fPIC -I${EXTERNAL_DIR}/openssl/include"
-      "LDFLAGS=-L${EXTERNAL_DIR}/openssl"
+      "CPPFLAGS=-fPIC -I${EXTERNAL_DIR}/openssl/include -I${EXTERNAL_DIR}/zlib"
+      "LDFLAGS=-L${EXTERNAL_DIR}/openssl -L${EXTERNAL_DIR}/zlib"
       "LIBS=-ldl -lpthread"
       ${EXTERNAL_DIR}/curl/configure
       --with-openssl=${EXTERNAL_DIR}/openssl
+      --with-zlib
       --disable-ldap
       --without-libidn2
       --without-libpsl
@@ -312,7 +323,7 @@ else()
     BUILD_COMMAND ${CMAKE_MAKE_PROGRAM} -C lib
     BUILD_IN_SOURCE TRUE
     INSTALL_COMMAND ""
-    DEPENDS openssl_external
+    DEPENDS openssl_external zlib_external
     BUILD_BYPRODUCTS ${EXTERNAL_DIR}/curl/lib/.libs/libcurl.a)
 endif()
 
@@ -414,23 +425,23 @@ if(NOT IS_AGENT)
     message(STATUS "Using precompiled libffi library: ${LIBFFI_LIBRARY}")
     add_custom_target(libffi_external)
   else()
-    # Detect host architecture triplet for BUILD_BYPRODUCTS
-    execute_process(
-      COMMAND ${EXTERNAL_DIR}/libffi/config.guess
-      OUTPUT_VARIABLE LIBFFI_HOST
-      OUTPUT_STRIP_TRAILING_WHITESPACE)
-
+    # libffi's top-level configure is a wrapper that re-execs the real
+    # configure inside a build subdirectory and leaves the static archive
+    # at libffi/<builddir>/.libs/libffi.a — never at libffi/.libs/libffi.a.
+    # The subdir name is non-deterministic (it defaults to a value derived
+    # from the build environment), so we pin it with --enable-builddir and
+    # point BUILD_BYPRODUCTS / LIBFFI_LIBRARY at that fixed location.
     ExternalProject_Add(
       libffi_external
       SOURCE_DIR ${EXTERNAL_DIR}/libffi
       CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CFLAGS=-fPIC
-                        ${EXTERNAL_DIR}/libffi/configure
+                        ${EXTERNAL_DIR}/libffi/configure --enable-builddir=build
       BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
       BUILD_IN_SOURCE TRUE
       INSTALL_COMMAND ""
-      BUILD_BYPRODUCTS ${EXTERNAL_DIR}/libffi/${LIBFFI_HOST}/.libs/libffi.a)
+      BUILD_BYPRODUCTS ${EXTERNAL_DIR}/libffi/build/.libs/libffi.a)
 
-    set(LIBFFI_LIBRARY ${EXTERNAL_DIR}/libffi/${LIBFFI_HOST}/.libs/libffi.a)
+    set(LIBFFI_LIBRARY ${EXTERNAL_DIR}/libffi/build/.libs/libffi.a)
   endif()
 
   add_library(ext_libffi STATIC IMPORTED GLOBAL)
@@ -799,12 +810,18 @@ if(EXISTS ${EXTERNAL_DIR}/flatbuffers/build/libflatbuffers.a
   message(STATUS "Using precompiled FlatBuffers library")
   add_custom_target(flatbuffers_external)
 else()
+  if(IS_LINUX)
+    set(FLATBUFFERS_EXE_LINKER_FLAGS "-static-libstdc++ -static-libgcc")
+  else()
+    set(FLATBUFFERS_EXE_LINKER_FLAGS "")
+  endif()
   ExternalProject_Add(
     flatbuffers_external
     SOURCE_DIR ${EXTERNAL_DIR}/flatbuffers
     BINARY_DIR ${EXTERNAL_DIR}/flatbuffers/build
     CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DFLATBUFFERS_BUILD_TESTS=0
                -DFLATBUFFERS_INSTALL=0 -DCMAKE_POSITION_INDEPENDENT_CODE=1
+               "-DCMAKE_EXE_LINKER_FLAGS=${FLATBUFFERS_EXE_LINKER_FLAGS}"
     INSTALL_COMMAND ""
     BUILD_BYPRODUCTS ${EXTERNAL_DIR}/flatbuffers/build/libflatbuffers.a
                      ${EXTERNAL_DIR}/flatbuffers/build/flatc)
@@ -1237,6 +1254,7 @@ if(IS_LINUX)
     file(GLOB PROCPS_SOURCES ${EXTERNAL_DIR}/procps/*.c)
     add_library(ext_procps STATIC ${PROCPS_SOURCES})
     target_include_directories(ext_procps PUBLIC ${EXTERNAL_DIR}/procps)
+    target_compile_definitions(ext_procps PRIVATE _GNU_SOURCE)
     set_target_properties(ext_procps PROPERTIES POSITION_INDEPENDENT_CODE ON
                                                 C_STANDARD 99)
   endif()
@@ -1426,7 +1444,9 @@ elseif(IS_WINDOWS)
             wsock32
             ws2_32
             crypt32
-            bcrypt)
+            bcrypt
+            secur32
+            iphlpapi)
 
   # Output .def for delay-import lib creation
   set_target_properties(
