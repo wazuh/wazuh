@@ -87,7 +87,7 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
                 *end = '\0';
             }
 
-            mterror(WM_DOCKER_LOGTAG, "%s", buffer);
+            mtinfo(WM_DOCKER_LOGTAG, "%s", buffer);
         }
 
         // At this point, DockerListener terminated
@@ -117,6 +117,7 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
 
     return NULL;
 }
+
 
 
 // Get read data

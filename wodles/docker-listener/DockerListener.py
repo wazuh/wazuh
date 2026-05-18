@@ -27,10 +27,10 @@ except:
 
 class DockerListener:
     wait_time = 5
-    field_debug_name = "Wodle event"
 
     def __init__(self):
         """"
+        
         DockerListener constructor
 
         """
@@ -47,7 +47,7 @@ class DockerListener:
         self.thread2 = None
 
     def start(self):
-        self.send_msg(json.dumps({self.field_debug_name: "Started"}))
+        sys.stderr.write("Wodle started.\n")
         self.thread1 = threading.Thread(target=self.listen)
         self.thread2 = threading.Thread(target=self.listen)
         self.connect(first_time=True)
@@ -68,14 +68,12 @@ class DockerListener:
                     self.thread1.start()
             else:
                 self.thread1.start()
-            print("Docker service was started.")
-            self.send_msg(json.dumps({self.field_debug_name: "Connected to Docker service"}))
+            sys.stderr.write("Docker service was started.\n")
         else:
             if first_time:
-                print("Docker service is not running.")
-                self.send_msg(json.dumps({self.field_debug_name: "Docker service is not running"}))
+                sys.stderr.write("Docker service is not running.\n")
             while not self.check_docker_service():
-                print("Reconnecting...")
+                sys.stderr.write("Reconnecting...\n")
                 time.sleep(self.wait_time)
             self.connect()
 
@@ -102,8 +100,7 @@ class DockerListener:
                 self.process(event)
         except Exception as e:
             raise e
-        print("Docker service was stopped.")
-        self.send_msg(json.dumps({self.field_debug_name: "Disconnected from the Docker service"}))
+        sys.stderr.write("Docker service was stopped.\n")
         self.connect()
 
     def process(self, event):
@@ -131,7 +128,6 @@ class DockerListener:
         """
         try:
             json_msg = json.dumps(self.format_msg(msg))
-            print(json_msg)
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             s.connect(self.wazuh_queue)
 
