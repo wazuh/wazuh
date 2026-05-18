@@ -1,0 +1,41 @@
+name: 5.X - API endpoints - Integration tests
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/5_testintegration_api-endpoints.yml"
+      - "api/test/**"
+      - "api/setup.py"
+      - "api/Makefile"
+      - "framework/wazuh/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  api_endpoints_integration_tests:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    name: Run integration tests for API endpoints
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version-file: "framework/.python-version"
+
+      - name: Install dependencies
+        run: |
+          pip install -r framework/requirements-dev.txt
+          sudo apt-get install docker-compose-v2 -y
+
+      - name: Run smoke test
+        run: |
+          echo "Running API endpoints integration test..."
+          cd api/test/integration
+          pytest -vvv "test_security_POST_endpoints.tavern.yaml"
