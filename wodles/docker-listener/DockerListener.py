@@ -25,6 +25,10 @@ except:
     exit(1)
 
 
+def log(msg):
+    sys.stderr.write(msg)
+
+
 class DockerListener:
     wait_time = 5
 
@@ -47,7 +51,7 @@ class DockerListener:
         self.thread2 = None
 
     def start(self):
-        sys.stderr.write("Wodle started.\n")
+        log("Wodle started.\n")
         self.thread1 = threading.Thread(target=self.listen)
         self.thread2 = threading.Thread(target=self.listen)
         self.connect(first_time=True)
@@ -68,12 +72,12 @@ class DockerListener:
                     self.thread1.start()
             else:
                 self.thread1.start()
-            sys.stderr.write("Docker service was started.\n")
+            log("Docker service was started.\n")
         else:
             if first_time:
-                sys.stderr.write("Docker service is not running.\n")
+                log("Docker service is not running.\n")
             while not self.check_docker_service():
-                sys.stderr.write("Reconnecting...\n")
+                log("Reconnecting...\n")
                 time.sleep(self.wait_time)
             self.connect()
 
@@ -100,7 +104,7 @@ class DockerListener:
                 self.process(event)
         except Exception as e:
             raise e
-        sys.stderr.write("Docker service was stopped.\n")
+        log("Docker service was stopped.\n")
         self.connect()
 
     def process(self, event):
