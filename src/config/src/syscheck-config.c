@@ -45,6 +45,17 @@ directory_t *fim_create_directory(const char *path,
     }
 #endif
     if (filerestrict) {
+        /* OSMatch only supports ^, $ and | as special characters.
+        * Patterns containing \, ( or ) are treated as literals
+        * and may cause silent event drops.
+        */
+        if (strpbrk(filerestrict, "()\\")) {
+            mwarn("FIM restrict pattern '%s' contains characters that are not "
+                  "supported by OSMatch ('\\', '(', ')'). These will be treated "
+                  "as literals and may cause silent event drops. "
+                  "Use OSMatch syntax instead, e.g.: .exe$|.dll$|.com$",
+                  filerestrict);
+        }
         os_calloc(1, sizeof(OSMatch), new_entry->filerestrict);
         if (!OSMatch_Compile(filerestrict, new_entry->filerestrict, 0)) {
             merror(REGEX_COMPILE, filerestrict, new_entry->filerestrict->error);
