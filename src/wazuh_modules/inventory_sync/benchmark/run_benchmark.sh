@@ -285,19 +285,21 @@ mkdir -p "$RESULTS_DIR"
 BENCH_CSV="$RESULTS_DIR/bench.csv"
 SENDER_JSON="$RESULTS_DIR/sender_summary.json"
 MONITOR_CSV="$RESULTS_DIR/monitor.csv"
+MONITOR_DIR="$RESULTS_DIR/monitor"
 MONITOR_PID_FILE="$RESULTS_DIR/monitor.pid"
 LOGS_CSV="$RESULTS_DIR/logs.csv"
 LOG_PARSER_PID_FILE="$RESULTS_DIR/log_parser.pid"
 SUMMARY_JSON="$RESULTS_DIR/summary.json"
 
 # Wipe stale outputs from previous runs that reused this label.
-# monitor.py and log_parser.py open their CSVs in append mode (useful when
-# run standalone); without this rm the charts would show a diagonal joining
-# the last point of the previous run to t=1 of the new one. The sender's
-# bench.csv already truncates on open, but we wipe it too for consistency.
+# The engine monitor (per-process CSVs + disk_usage.csv) and log_parser.py
+# both open their CSVs in append mode (useful when run standalone); without
+# this wipe the charts would show a diagonal joining the last point of the
+# previous run to t=1 of the new one. The sender's bench.csv already
+# truncates on open, but we wipe it too for consistency.
 rm -f "$BENCH_CSV" "$SENDER_JSON" "$MONITOR_CSV" "$LOGS_CSV" "$SUMMARY_JSON" \
       "$MONITOR_PID_FILE" "$LOG_PARSER_PID_FILE"
-rm -rf "$RESULTS_DIR/charts"
+rm -rf "$RESULTS_DIR/charts" "$MONITOR_DIR"
 
 echo ""
 echo "======================================================="
@@ -353,27 +355,36 @@ echo "Cleaning up old benchmark agents..."
 "$SCRIPT_DIR/cleanup_agents.sh" 2>/dev/null || echo "  (cleanup skipped — API not available)"
 echo ""
 
-# 1. Start resource monitor
-echo "Starting resource monitor (process: $PROCESS_NAME)..."
+# 1. Start resource monitor (shared engine/tools monitor.py).
+# That monitor writes one CSV per Wazuh manager process plus a separate
+# disk_usage.csv into --output-dir. We point --output-dir at
+# results_<label>/monitor/ (wiped above to avoid cross-run contamination)
+# and after the sender finishes we merge wazuh-manager-modulesd.csv +
+# disk_usage.csv into the legacy monitor.csv that result_summary.py and
+# graphics_generator.py expect.
+MONITOR_PY="$SCRIPT_DIR/../../../engine/tools/devContainer/scripts/monitor.py"
+mkdir -p "$MONITOR_DIR"
+echo "Starting resource monitor (engine/tools/devContainer/scripts/monitor.py)..."
 MONITOR_ARGS=(
-    -n "$PROCESS_NAME"
-    -o "$MONITOR_CSV"
+    --exe "/var/wazuh-manager/bin/$PROCESS_NAME"
+    --output-dir "$MONITOR_DIR"
     -s 1.0
     --pidfile "$MONITOR_PID_FILE"
+    --timeout 30
 )
 for p in "${DISK_PATHS[@]}"; do
     [[ -n "$p" ]] && MONITOR_ARGS+=(--disk-path "$p")
 done
-"$PYTHON" "$SCRIPT_DIR/monitor.py" "${MONITOR_ARGS[@]}" &
+"$PYTHON" "$MONITOR_PY" "${MONITOR_ARGS[@]}" &
 MONITOR_BG_PID=$!
-sleep 2
+sleep 3
 
 if ! kill -0 "$MONITOR_BG_PID" 2>/dev/null; then
     echo "Error: Monitor process failed to start"
     echo "  Make sure '$PROCESS_NAME' is running"
     exit 1
 fi
-echo "  Monitor PID: $MONITOR_BG_PID"
+echo "  Monitor PID: $MONITOR_BG_PID  (output: $MONITOR_DIR/)"
 
 # 1b. Start manager log parser if the log file exists
 LOG_PARSER_BG_PID=""
@@ -480,6 +491,67 @@ if kill -0 "$MONITOR_BG_PID" 2>/dev/null; then
     wait "$MONITOR_BG_PID" 2>/dev/null || true
 fi
 echo "  Monitor stopped"
+
+# 3b. Build legacy monitor.csv from the engine monitor's multi-file output.
+# result_summary.py and graphics_generator.py still read a single CSV with
+# process columns + dir_*_mb columns merged. Join on UTC timestamp (1s
+# resolution, naturally aligned between threads) and carry-forward the
+# last known disk values when a per-second sample is missing — using 0.0
+# as default would corrupt min/max/growth math downstream.
+"$PYTHON" - "$MONITOR_DIR" "$MONITOR_CSV" "$PROCESS_NAME" <<'PYMERGE' || true
+import csv
+import sys
+from pathlib import Path
+
+monitor_dir = Path(sys.argv[1])
+out_csv = Path(sys.argv[2])
+process_name = sys.argv[3]
+
+proc_csv = monitor_dir / f"{process_name}.csv"
+disk_csv = monitor_dir / "disk_usage.csv"
+
+if not proc_csv.is_file():
+    print(f"warning: {proc_csv} not found, skipping monitor.csv merge",
+          file=sys.stderr)
+    sys.exit(0)
+
+disk_by_ts: dict[str, dict] = {}
+disk_cols: list[str] = []
+if disk_csv.is_file():
+    with open(disk_csv) as f:
+        reader = csv.DictReader(f)
+        disk_cols = [c for c in (reader.fieldnames or [])
+                     if c.startswith("dir_") and c.endswith("_mb")]
+        for row in reader:
+            ts = row.get("timestamp")
+            if ts:
+                disk_by_ts[ts] = row
+
+last_seen = {c: "0.0" for c in disk_cols}
+unmatched = 0
+total = 0
+with open(proc_csv) as fin, open(out_csv, "w", newline="") as fout:
+    reader = csv.DictReader(fin)
+    fieldnames = list(reader.fieldnames or []) + disk_cols
+    writer = csv.DictWriter(fout, fieldnames=fieldnames)
+    writer.writeheader()
+    for row in reader:
+        total += 1
+        d = disk_by_ts.get(row.get("timestamp", ""))
+        if d is None:
+            unmatched += 1
+            for c in disk_cols:
+                row[c] = last_seen[c]
+        else:
+            for c in disk_cols:
+                last_seen[c] = d.get(c, last_seen[c])
+                row[c] = last_seen[c]
+        writer.writerow(row)
+
+print(f"merged: {proc_csv.name} + "
+      f"{disk_csv.name if disk_csv.is_file() else '(no disk)'} "
+      f"-> {out_csv}  ({total} rows, {unmatched} carry-forward)")
+PYMERGE
 
 if [[ -n "$LOG_PARSER_BG_PID" ]] && kill -0 "$LOG_PARSER_BG_PID" 2>/dev/null; then
     echo "Stopping log parser..."

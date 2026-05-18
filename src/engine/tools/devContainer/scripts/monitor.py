@@ -120,27 +120,58 @@ def find_process(pid: int | None, name: str | None) -> psutil.Process:
 def find_process_by_exe(exe_path: str) -> psutil.Process | None:
     """Find a process whose executable or any cmdline argument matches *exe_path*.
 
-    This handles both native binaries (exe == path) and Python scripts
-    where the script path appears as cmdline[1] (e.g. python3 /path/to/script.py).
+    Matches both native binaries (exe == path) and Python scripts where the
+    script path appears as cmdline[1] (e.g. python3 /path/to/script.py).
 
-    When multiple processes match (parent + child workers), the one with the
-    lowest PID is returned — that is typically the parent/master process.
+    Selection when multiple processes match:
+      - Native binaries match via `exe`. Only fall back to `cmdline` when no
+        exe matches. This prevents transient helpers (bash subshells, pgrep,
+        ps) that happen to have the binary path in their cmdline from
+        outvoting the real binary process.
+      - Most recently started first. This handles the zombie-after-restart
+        case: stale orphans from a previous service restart keep their old
+        create_time(), while the active master spawned by the new restart
+        has a fresh create_time().
+      - Lowest PID within the same generation (parent over its workers).
     """
-    candidates: list[psutil.Process] = []
+    exe_matches: list[psutil.Process] = []
+    cmdline_matches: list[psutil.Process] = []
     for proc in psutil.process_iter(["pid", "exe", "cmdline"]):
         try:
             if proc.info["exe"] == exe_path:
-                candidates.append(proc)
+                exe_matches.append(proc)
                 continue
             cmdline = proc.info.get("cmdline") or []
             if exe_path in cmdline:
-                candidates.append(proc)
+                cmdline_matches.append(proc)
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
+
+    candidates = exe_matches if exe_matches else cmdline_matches
     if not candidates:
         return None
-    # Lowest PID is usually the parent/master process.
-    return min(candidates, key=lambda p: p.pid)
+
+    candidates.sort(key=lambda p: (-p.create_time(), p.pid))
+    chosen = candidates[0]
+
+    # Warn loudly if there are leftover processes from a previous generation —
+    # they typically hold file locks on shared queues (e.g. RocksDB) and
+    # silently break the active master.
+    stale = [p for p in candidates[1:]
+             if (chosen.create_time() - p.create_time()) > 60]
+    if stale:
+        others = ", ".join(f"PID {p.pid} (started {time.ctime(p.create_time())})"
+                           for p in stale)
+        logger.warning(
+            "Multiple %s instances detected. Attaching to PID %d (newest, "
+            "started %s). Stale instances: %s. Consider "
+            "'pkill -9 -f %s && service wazuh-manager restart' before re-running.",
+            os.path.basename(exe_path), chosen.pid,
+            time.ctime(chosen.create_time()), others,
+            os.path.basename(exe_path),
+        )
+
+    return chosen
 
 
 def wait_for_processes(exe_paths: list[str], timeout: float = 30.0) -> dict[str, psutil.Process]:
