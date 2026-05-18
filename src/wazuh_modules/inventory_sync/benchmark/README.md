@@ -160,6 +160,66 @@ Without instrumentation, the indirect clues are:
 | `start_ack_offline > 0` + log `Session limit reached` | `m_maxSessions` saturated |
 | `end_ack_error > 0` with `indexer_error` in logs | Indexer down or slow |
 
+## Scenario JSON structure
+
+Each `scenarios/*.json` file has up to three top-level blocks. `run_benchmark.sh`
+parses them with `json.load`, maps each field to a sender CLI flag, and the
+CLI always wins over the scenario.
+
+### `load` — what the sender does
+
+The full set of fields read from `load.*` (see `run_benchmark.sh:228-254` and
+`benchmark_sender.py:590-598`):
+
+| Field                  | Sender flag             | Type        | Meaning |
+|---|---|---|---|
+| `agents`               | `-a`                    | int         | Concurrent simulated agents. Each does real `auth:1515` registration and `remoted:1514` AES+zlib connection. |
+| `data_size`            | `-d`                    | int         | DataValues per session. `0` for `dataclean` / `modulecheck` flows that send no DataValues. |
+| `duration_sec`         | `-t`                    | int         | Total benchmark duration. If shorter than what's needed to drain all sessions, `--drain-timeout` (60s default) decides how many close cleanly. |
+| `rate`                 | `-r`                    | float       | Sessions/sec **per agent**. `0` = unlimited (continuous burst). `0.5` = one session every 2s (soak). Internally `session_delay = 1/rate`. |
+| `session_delay`        | `--session-delay`       | float       | Explicit pause between sessions per agent. If both `rate` and `session_delay` are set, `rate` wins. |
+| `payload_kind`         | `--payload-kind`        | str (enum)  | `package` / `system` / `hotfix` / `fim_file` / `sca_check`. Selects sample file + module + index. |
+| `payload_size_bytes`   | `--payload-size`        | int         | If `>0`, inflate each DataValue to ≥N bytes by extending an existing text field. Hard ceiling ≈50 KB (`OS_MAXSTR=65536` in remoted). |
+| `pad_field`            | `--pad-field`           | str (dotted)| Override the field to inflate. Default per-kind from `PAD_FIELD_BY_KIND`. Must exist in the mapping. |
+| `drop_every`           | `--drop-every`          | int         | Skip DataValues where `(seq+1) % N == 0`. Forces ReqRet on `End`. |
+| `no_end`               | `--no-end`              | bool        | Don't send End. Session stays open until module `session_timeout` (20 min). |
+| `use_databatch`        | `--use-databatch`       | bool        | Send DataValues as `Message{DataBatch{DataValue[]}}`. Exercises the per-element re-serialization path. |
+| `batch_size`           | `--batch-size`          | int         | DataValues per DataBatch when `use_databatch=true` (default 64). |
+| `session_type`         | `--session-type`        | enum        | `delta` (default: Start→DataValues→End), `modulecheck` (Start→ChecksumModule→End), `dataclean` (Start→DataClean→End). |
+| `sync_mode`            | `--sync-mode`           | int         | `Start.mode`: `0=ModuleFull`, `1=ModuleDelta` (default). Ignored for `modulecheck` (forced to `2`). |
+| `modulecheck_checksum` | `--modulecheck-checksum`| str (sha1)  | SHA-1 sent in `ChecksumModule`. Default `"0"*40` always mismatches. |
+| `auto_resync`          | `--auto-resync`         | bool        | After `EndAck=ChecksumMismatch`, immediately run a `ModuleFull`. Reproduces the real recovery cycle. |
+
+### `external_actions` — scripted side-effects (optional)
+
+List of shell commands fired in the background by `run_benchmark.sh` at
+`at_sec` seconds after the bench start. Logged to `results_*/external_actions.log`
+with timestamp and exit code.
+
+```json
+"external_actions": [
+  {"at_sec": 120, "cmd": "./indexer_control.sh stop"},
+  {"at_sec": 360, "cmd": "./indexer_control.sh start && ./indexer_control.sh wait-healthy"}
+]
+```
+
+> Timing caveat: the sender spends ~70s on setup (agent registration + `key_wait=35s`).
+> If `at_sec` falls inside that window, the action fires before any session is in
+> steady state. The `*_midflight` scenarios calibrate `at_sec` to fire after setup.
+
+### `expectations` — PASS/FAIL checks
+
+Evaluated by `result_summary.py` and written into `summary.json`:
+
+| Expectation                | Meaning |
+|---|---|
+| `rss_growth_mb_max`        | Max allowed `RSS_final - RSS_initial`. Proxy for queue/cache leak. |
+| `drops_max`                | Max allowed `messages_dropped`. |
+| `status_offline_max`       | Max allowed StartAck Offline (proxy for `m_maxSessions` saturated). |
+| `reqret_max`               | Max allowed ReqRet count. |
+| `session_success_rate_min` | Min `sessions_completed / sessions_started × 100`. |
+| `disk_growth_mb_max`       | Per-directory map `{inventory_sync, engine_output, vd}`. RocksDB + downstream queues. |
+
 ## Available scenarios
 
 Each JSON in `scenarios/` defines `load` (parameters) and `expectations`
@@ -364,13 +424,61 @@ python3 benchmark_sender.py \
     -a 10 -d 50 -t 30
 ```
 
-For arbitrary-sized payloads:
+### Sample payload files in detail
+
+What lives under `sample_payloads/`:
+
+| File                          | Type      | Notes |
+|---|---|---|
+| `syscollector_package.json`   | payload   | Software package. Fields: `package.{architecture, category, description, installed, multiarch, name, path, priority, size, source, type, vendor, version}`. Pad target = `package.description`. |
+| `syscollector_system.json`    | payload   | Host info. Fields: `host.{architecture, hostname, os.*}` (`os.build`, `os.codename`, `os.distribution.release`, `os.full`, `os.kernel.{name,release,version}`, `os.major/minor/patch`, `os.platform`, `os.type`, `os.version`). Pad target = `host.os.full`. |
+| `syscollector_hotfix.json`    | payload   | Minimal: only `package.hotfix.name` (`KB#######`). No long text field — padding inflates the KB name itself. |
+| `fim_file.json`               | payload   | FIM entry: `file.{attributes, device, gid, group, inode, mtime, owner, path, permissions, size, uid}` plus `file.hash.{md5, sha1, sha256}`. Pad target = `file.path`. |
+| `sca_check.json`              | payload   | A **real** check captured from an Ubuntu 22.04 agent running the CIS benchmark. ~5 KB. Carries `check.*` (`id`, `name`, `description`, `rationale`, `remediation`, `condition`, `rules`, `result`, `references`, `mitre.{tactic,technique}` and the full `compliance.*` map: `cmmc`, `fedramp`, `gdpr`, `hipaa`, `iso_27001`, `nis2`, `nist_800_171`, `nist_800_53`, `pci_dss`, `tsc`) plus `policy.*` (`id`, `name`, `file`, `description`, `references`). Pad target = `check.description`. |
+| `sca_messages_all.json`       | reference | **Not a payload.** Protocol cheat-sheet documenting every `MessageType` in the inventory-sync flow (`Start/StartAck`, `End/EndAck`, `DataBatch`, `DataClean`, `DataContext`, `ChecksumModule`, `ReqRet`): direction, FlatBuffer fields, size, and notes (e.g. `Offline = maxSessions saturated`, `DataContext` is VD-only). |
+| `sca_real_metadata.json`      | reference | **Not a payload.** Ground-truth metadata of the real CIS capture (agent id, OS, policy id, `total_checks=207`, `passed/failed/score`, global `checksumModule.sha1`). Confirms that `data_size=207` in SCA scenarios matches the real policy. |
+
+All payload files share two mandatory blocks:
+- `checksum.hash.sha1` — document SHA-1.
+- `state.document_version` (int) + `state.modified_at` (ISO-8601) — required by every mapping.
+
+The `wazuh.agent.*` / `wazuh.cluster.*` fields are injected by the manager when
+building the bulk; the agent payload must **not** include them.
+
+### `generate_payloads.py` — synthetic payloads at a target byte size
+
+CLI:
+
+```bash
+python3 generate_payloads.py --kind fim_file  --size 8192  -o big_fim.json
+python3 generate_payloads.py --kind sca_check --size 16384 --count 100 -o ./payloads_dir/
+```
+
+Library:
+
+```python
+from generate_payloads import build_payload
+payload = build_payload(target_bytes=65536, kind="package")
+```
+
+`build_payload()` starts from a kind-specific template (only fields present in
+the real mapping), measures `len(json.dumps(...))`, and if smaller than
+`target_bytes` rewrites the pad field with `_random_string(pad_needed)`. A
+tail-trim loop then removes characters one by one if JSON escaping pushed past
+the target.
+
+Hard ceiling **≈50 KB**: remoted's uncompress buffer is `OS_MAXSTR=65536`
+(`shared/include/defs.h:51`). Larger plaintext triggers
+`(2202) Error uncompressing string` and the connection is closed
+**before the message reaches `m_workersQueue`**. To stress queue weight beyond
+that, scale `agents` / `data_size` rather than per-message size.
+
+`--kind` accepts the same five values as `--payload-kind`. Wiring a generated
+payload to the sender requires passing `--payload`, `--module` and `--index`
+explicitly (the kind metadata is not propagated through the file):
 
 ```bash
 python3 generate_payloads.py --kind fim_file --size 8192 -o big_fim.json
 python3 benchmark_sender.py --payload big_fim.json --module fim \
     --index wazuh-states-fim-files -a 10 -t 60
 ```
-
-`generate_payloads.py --kind` acepta los mismos 5 valores que
-`--payload-kind` y respeta los mappings reales.

@@ -302,7 +302,8 @@ def render_human(summary: dict[str, Any]) -> str:
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Merge benchmark results into summary.json")
     p.add_argument("--bench",       required=True, help="Path to bench.csv")
-    p.add_argument("--monitor",     required=True, help="Path to monitor.csv")
+    p.add_argument("--monitor",     required=True, help="Path to process monitor CSV (e.g. monitor/wazuh-manager-modulesd.csv)")
+    p.add_argument("--disk-csv",    default=None,  help="Path to disk_usage.csv (optional, for disk growth checks)")
     p.add_argument("--logs",        default=None,  help="Path to logs.csv (optional)")
     p.add_argument("--scenario",    default=None,  help="Scenario JSON with expectations (optional)")
     p.add_argument("--sender-json", default=None,  help="benchmark_sender.py summary JSON (with latency)")
@@ -317,6 +318,7 @@ def main() -> int:
 
     bench_rows   = read_csv(args.bench)
     monitor_rows = read_csv(args.monitor)
+    disk_rows    = read_csv(args.disk_csv) if args.disk_csv else []
     logs_rows    = read_csv(args.logs) if args.logs else []
 
     sender_summary: dict[str, Any] = {}
@@ -336,7 +338,7 @@ def main() -> int:
 
     bench   = aggregate_bench(bench_rows)
     monitor = aggregate_monitor(monitor_rows)
-    disks   = aggregate_disk(monitor_rows)
+    disks   = aggregate_disk(disk_rows if disk_rows else monitor_rows)
     logs    = aggregate_logs(logs_rows)
 
     # Prefer sender's stored latency (kept across the whole run); fall back to empty

@@ -269,6 +269,23 @@ BENCH_METRICS = [
     ("messages_dropped",    "Messages Dropped / s",     "Count"),
 ]
 
+INVSYNC_QUEUE_METRICS = [
+    ("workers_q",          "Workers Queue Depth",      "Count"),
+    ("indexer_q",          "Indexer Queue Depth",       "Count"),
+    ("sessions",           "Active Sessions",           "Count"),
+    ("blocked_agents",     "Blocked Agents",            "Count"),
+    ("active_vdfirst",     "Active VD-First",           "Count"),
+    ("indexer_bulk_bytes", "Indexer Bulk Bytes",         "Bytes"),
+    ("indexer_notify",     "Indexer Notify Count",       "Count"),
+    ("indexer_delbyq",     "Indexer Delete-by-Query",    "Count"),
+    ("rocksdb_dir_bytes",  "RocksDB Directory Size",     "Bytes"),
+]
+
+INVSYNC_SESSION_TIMING = [
+    ("timing_ms_start_to_processing", "Start → Processing", "ms"),
+    ("timing_ms_start_to_end",        "Start → End",        "ms"),
+]
+
 
 # ---------------------------------------------------------------------------
 # Main chart generation
@@ -280,51 +297,89 @@ def generate_charts(
 ) -> None:
     os.makedirs(out_dir, exist_ok=True)
 
-    monitors: dict[str, pd.DataFrame] = {}
+    # Per-run data: processes (all CSVs from monitor/), disk, bench, logs.
+    # For single-run mode (most common), processes dict is keyed by process
+    # name; for multi-run comparison it's keyed by "label/process_name".
+    processes: dict[str, pd.DataFrame] = {}
+    disk_dfs: dict[str, pd.DataFrame] = {}
     benches: dict[str, pd.DataFrame] = {}
     logs: dict[str, pd.DataFrame] = {}
+    # Keep modulesd specifically for the RSS vs queues overlay.
+    modulesd_dfs: dict[str, pd.DataFrame] = {}
 
     for path, label in result_dirs:
         bench_path = os.path.join(path, "bench.csv")
-        monitor_path = os.path.join(path, "monitor.csv")
+        monitor_dir = os.path.join(path, "monitor")
+        disk_path = os.path.join(monitor_dir, "disk_usage.csv")
         logs_path = os.path.join(path, "logs.csv")
+        legacy_monitor_path = os.path.join(path, "monitor.csv")
+
         if os.path.isfile(bench_path):
             benches[label] = load_bench(bench_path)
-        if os.path.isfile(monitor_path):
-            monitors[label] = load_monitor(monitor_path)
+        if os.path.isfile(disk_path):
+            disk_dfs[label] = _keep_last_run(pd.read_csv(disk_path))
         if os.path.isfile(logs_path):
-            # logs.csv may have rows where the gauge columns are empty
-            # (no queue-stats line was emitted yet); pandas reads them as NaN.
             try:
                 logs[label] = pd.read_csv(logs_path)
             except Exception as exc:
                 print(f"  warning: could not load {logs_path}: {exc}")
 
-    if not monitors and not benches:
+        # Load all per-process CSVs from monitor/ subdirectory.
+        if os.path.isdir(monitor_dir):
+            for fname in sorted(os.listdir(monitor_dir)):
+                if not fname.endswith(".csv"):
+                    continue
+                if fname in ("disk_usage.csv",
+                             "invsync_queue_stats.csv", "invsync_session_stats.csv"):
+                    continue
+                fpath = os.path.join(monitor_dir, fname)
+                proc_name = fname.removesuffix(".csv")
+                key = f"{label}/{proc_name}" if len(result_dirs) > 1 else proc_name
+                df = load_monitor(fpath)
+                if len(df) > 0:
+                    processes[key] = df
+                if "modulesd" in proc_name:
+                    modulesd_dfs[label] = df
+        elif os.path.isfile(legacy_monitor_path):
+            # Fallback for old results with a single monitor.csv
+            df = load_monitor(legacy_monitor_path)
+            if len(df) > 0:
+                key = f"{label}/modulesd" if len(result_dirs) > 1 else "modulesd"
+                processes[key] = df
+                modulesd_dfs[label] = df
+
+    if not processes and not benches:
         print("No data files found — nothing to generate.")
         return
 
     print(f"\nGenerating charts in {out_dir}/\n")
 
-    # -- Monitor time-series: one chart per metric, overlaying all runs ------
-    if monitors:
+    # -- Per-process time-series: one chart per metric, all processes overlaid -
+    if processes:
         for col, title_suffix, ylabel in MONITOR_METRICS:
             out = os.path.join(out_dir, f"monitor_{col}.{fmt}")
             plot_timeseries(
-                monitors, col,
-                f"Inventory Sync — {title_suffix}",
+                processes, col,
+                f"All Processes — {title_suffix}",
                 ylabel, out,
             )
 
-        # Disk-usage time series: dynamic columns named dir_<basename>_mb.
+        # Combined CPU and RSS charts with per-process lines + total sum.
+        _plot_with_total(processes, "cpu_pct", "CPU Usage (per process + total)",
+                         "CPU %", os.path.join(out_dir, f"monitor_cpu_total.{fmt}"))
+        _plot_with_total(processes, "rss_mb", "RSS Memory (per process + total)",
+                         "MB", os.path.join(out_dir, f"monitor_rss_total.{fmt}"))
+
+    # -- Disk-usage time series: from disk_usage.csv (separate file) ---------
+    if disk_dfs:
         disk_cols: set[str] = set()
-        for df in monitors.values():
+        for df in disk_dfs.values():
             disk_cols.update(c for c in df.columns if c.startswith("dir_") and c.endswith("_mb"))
         for col in sorted(disk_cols):
             pretty = col.removeprefix("dir_").removesuffix("_mb").replace("_", "-")
             out = os.path.join(out_dir, f"monitor_{col}.{fmt}")
             plot_timeseries(
-                monitors, col,
+                disk_dfs, col,
                 f"Disk Usage — {pretty}",
                 "MB", out,
             )
@@ -350,101 +405,14 @@ def generate_charts(
             smooth_b_window=5,
         )
 
-    # -- Summary bar charts --------------------------------------------------
-    if monitors:
-        labels = list(monitors.keys())
-        colors = [run_color(i) for i in range(len(labels))]
-
-        # Peak RSS
-        peak_rss = [df["rss_mb"].max() for df in monitors.values()]
-        plot_bar(labels, peak_rss, colors,
-                 "Peak RSS Memory", "MB",
-                 os.path.join(out_dir, f"summary_peak_rss.{fmt}"))
-
-        # Avg CPU
-        avg_cpu = [round(df["cpu_pct"].mean(), 1) for df in monitors.values()]
-        plot_bar(labels, avg_cpu, colors,
-                 "Average CPU Usage", "CPU %",
-                 os.path.join(out_dir, f"summary_avg_cpu.{fmt}"))
-
-        # RSS growth (last - first)
-        rss_growth = [
-            round(df["rss_mb"].iloc[-1] - df["rss_mb"].iloc[0], 2)
-            for df in monitors.values()
-        ]
-        plot_bar(labels, rss_growth, colors,
-                 "RSS Memory Growth (end − start)", "MB",
-                 os.path.join(out_dir, f"summary_rss_growth.{fmt}"))
-
-        # Per-directory peak and growth summary bars (only for paths actually
-        # tracked in this run set).
-        tracked_disk_cols: set[str] = set()
-        for df in monitors.values():
-            tracked_disk_cols.update(c for c in df.columns
-                                     if c.startswith("dir_") and c.endswith("_mb"))
-        for col in sorted(tracked_disk_cols):
-            pretty = col.removeprefix("dir_").removesuffix("_mb").replace("_", "-")
-            peak = [round(df[col].max(), 2) if col in df.columns else 0.0
-                    for df in monitors.values()]
-            plot_bar(labels, peak, colors,
-                     f"Peak Disk Usage — {pretty}", "MB",
-                     os.path.join(out_dir, f"summary_peak_{col}.{fmt}"))
-
-            growth = []
-            for df in monitors.values():
-                if col in df.columns and len(df) > 0:
-                    growth.append(round(df[col].iloc[-1] - df[col].iloc[0], 2))
-                else:
-                    growth.append(0.0)
-            plot_bar(labels, growth, colors,
-                     f"Disk Growth — {pretty} (end − start)", "MB",
-                     os.path.join(out_dir, f"summary_growth_{col}.{fmt}"))
-
-    if benches:
-        labels = list(benches.keys())
-        colors = [run_color(i) for i in range(len(labels))]
-
-        # Total sessions completed
-        total_completed = [
-            int(df["sessions_completed"].sum()) for df in benches.values()
-        ]
-        plot_bar(labels, total_completed, colors,
-                 "Total Sessions Completed", "Sessions",
-                 os.path.join(out_dir, f"summary_sessions_completed.{fmt}"))
-
-        # Total messages sent
-        total_sent = [int(df["messages_sent"].sum()) for df in benches.values()]
-        plot_bar(labels, total_sent, colors,
-                 "Total Messages Sent", "Messages",
-                 os.path.join(out_dir, f"summary_messages_sent.{fmt}"))
-
-        # Total dropped
-        total_dropped = [
-            int(df["messages_dropped"].sum()) for df in benches.values()
-        ]
-        if any(d > 0 for d in total_dropped):
-            plot_bar(labels, total_dropped, colors,
-                     "Total Messages Dropped", "Messages",
-                     os.path.join(out_dir, f"summary_messages_dropped.{fmt}"))
-
-    # -- Combined overlay: RSS + sessions on dual y-axis ---------------------
-    if monitors and benches:
-        for label in monitors:
-            if label in benches:
-                out = os.path.join(
-                    out_dir,
-                    f"combined_rss_sessions_{label.replace(' ', '_')}.{fmt}",
-                )
-                _plot_combined(monitors[label], benches[label], label, out)
-
     # -- Combined overlay: RSS + manager-side queue depth --------------------
     # Reads the queue stats parsed by log_parser.py from logs.csv (workers_q,
     # indexer_q, sessions, rocksdb_dir_bytes) and overlays them with RSS to
     # show the direct cause-effect: queue grows → RSS grows. Skips silently
     # if logs.csv has no queue-stats columns (older runs, or the manager
     # binary in use doesn't emit them).
-    if monitors and logs:
-        for label in monitors:
+    if modulesd_dfs and logs:
+        for label in modulesd_dfs:
             if label in logs:
                 df = logs[label]
                 if "workers_q" in df.columns and df["workers_q"].notna().any():
@@ -452,66 +420,141 @@ def generate_charts(
                         out_dir,
                         f"combined_rss_queues_{label.replace(' ', '_')}.{fmt}",
                     )
-                    _plot_rss_vs_queues(monitors[label], df, label, out)
+                    _plot_rss_vs_queues(modulesd_dfs[label], df, label, out)
+
+    # -- InventorySync log charts (from monitor's extract_invsync_logs) ------
+    _generate_invsync_charts(result_dirs, out_dir, fmt)
 
     print(f"\nDone. {len(os.listdir(out_dir))} chart(s) generated.\n")
 
 
-def _plot_combined(
-    monitor_df: pd.DataFrame,
-    bench_df: pd.DataFrame,
-    title: str,
-    out_path: str,
-):
-    """RSS memory and sessions completed/s in two stacked subplots sharing
-    the X axis.
+# ---------------------------------------------------------------------------
+# InventorySync log charts (from monitor's extract_invsync_logs output)
+# ---------------------------------------------------------------------------
+def _generate_invsync_charts(
+    result_dirs: list[tuple[str, str]],
+    out_dir: str,
+    fmt: str,
+) -> None:
+    """Generate charts from invsync_queue_stats.csv and invsync_session_stats.csv.
 
-    Was previously a dual-Y overlay, but with per-second metrics that oscillate
-    between 0 and ~30 the line was extremely noisy and overlapped with the
-    RSS fill. Two panels + a rolling mean on sessions/s makes both signals
-    readable independently.
+    These CSVs are produced by monitor.py's extract_invsync_logs() and live
+    inside the monitor/ subdirectory of each result set.
     """
-    fig, (ax1, ax2) = plt.subplots(
-        2, 1,
-        figsize=(14, 8),
-        sharex=True,
-        gridspec_kw={"height_ratios": [1, 1]},
-    )
+    queue_dfs: dict[str, pd.DataFrame] = {}
+    session_dfs: dict[str, pd.DataFrame] = {}
 
-    # Panel 1 — RSS
-    ax1.plot(monitor_df["elapsed_s"], monitor_df["rss_mb"],
-             color=COLORS[3], linewidth=1.5, alpha=0.9, label="RSS (MB)")
-    ax1.fill_between(monitor_df["elapsed_s"], monitor_df["rss_mb"],
-                     alpha=0.15, color=COLORS[3])
-    ax1.set_ylabel("RSS (MB)")
-    ax1.set_title(f"Memory & Throughput — {title}",
-                  fontsize=14, fontweight="bold")
-    ax1.legend(loc="upper left", fontsize=9)
-    ax1.grid(True, alpha=0.3)
-    rss_max = monitor_df["rss_mb"].max()
-    rss_min = monitor_df["rss_mb"].min()
-    pad = max((rss_max - rss_min) * 0.1, 0.5)
-    ax1.set_ylim(max(0, rss_min - pad), rss_max + pad)
+    for path, label in result_dirs:
+        monitor_sub = os.path.join(path, "monitor")
+        qpath = os.path.join(monitor_sub, "invsync_queue_stats.csv")
+        spath = os.path.join(monitor_sub, "invsync_session_stats.csv")
+        if os.path.isfile(qpath):
+            df = pd.read_csv(qpath)
+            if len(df) > 0:
+                df["elapsed_s"] = [i * 0.5 for i in range(len(df))]
+                for c in df.columns:
+                    if c not in ("timestamp",):
+                        df[c] = pd.to_numeric(df[c], errors="coerce")
+                queue_dfs[label] = df
+        if os.path.isfile(spath):
+            df = pd.read_csv(spath)
+            if len(df) > 0:
+                for c in df.columns:
+                    if c not in ("timestamp", "agent", "module", "sessionId", "reason"):
+                        df[c] = pd.to_numeric(df[c], errors="coerce")
+                session_dfs[label] = df
 
-    # Panel 2 — Sessions completed per second, with 5s rolling mean overlay.
-    raw  = bench_df["sessions_completed"]
-    smooth_window = 5
-    avg  = _rolling(raw, smooth_window)
+    if not queue_dfs and not session_dfs:
+        return
 
-    ax2.plot(bench_df["elapsed_s"], raw,
-             color=COLORS[2], linewidth=0.8, alpha=0.30,
-             label="Sessions completed / s (raw)")
-    ax2.plot(bench_df["elapsed_s"], avg,
-             color=COLORS[2], linewidth=1.8, alpha=1.0,
-             label=f"Sessions completed / s (rolling avg, w={smooth_window})")
-    ax2.fill_between(bench_df["elapsed_s"], avg,
-                     alpha=0.15, color=COLORS[2])
-    ax2.set_xlabel("Elapsed time (s)")
-    ax2.set_ylabel("Sessions completed / s")
-    ax2.legend(loc="upper right", fontsize=9)
-    ax2.grid(True, alpha=0.3)
-    ax2.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+    # -- Queue stats time-series ---------------------------------------------
+    for col, title_suffix, ylabel in INVSYNC_QUEUE_METRICS:
+        if not any(col in df.columns for df in queue_dfs.values()):
+            continue
+        out = os.path.join(out_dir, f"invsync_queue_{col}.{fmt}")
+        plot_timeseries(
+            queue_dfs, col,
+            f"InventorySync — {title_suffix}",
+            ylabel, out,
+        )
 
+    # -- Session stats: timing bar charts per module -------------------------
+    for label, df in session_dfs.items():
+        if "module" not in df.columns:
+            continue
+        for col, title_suffix, ylabel in INVSYNC_SESSION_TIMING:
+            if col not in df.columns:
+                continue
+            grouped = df.groupby("module")[col].mean()
+            if grouped.empty:
+                continue
+            modules = list(grouped.index)
+            values = [round(v, 1) for v in grouped.values]
+            colors = [run_color(i) for i in range(len(modules))]
+            suffix = f" ({label})" if len(session_dfs) > 1 else ""
+            out = os.path.join(out_dir,
+                               f"invsync_session_{col}_{label.replace(' ', '_')}.{fmt}")
+            plot_bar(
+                modules, values, colors,
+                f"InventorySync Session — Avg {title_suffix}{suffix}",
+                ylabel, out,
+            )
+
+        # Sessions completed per module
+        if "reason" in df.columns:
+            completed = df[df["reason"] == "completed"]
+            if not completed.empty and "module" in completed.columns:
+                counts = completed.groupby("module").size()
+                modules = list(counts.index)
+                values = list(counts.values)
+                colors = [run_color(i) for i in range(len(modules))]
+                suffix = f" ({label})" if len(session_dfs) > 1 else ""
+                out = os.path.join(out_dir,
+                                   f"invsync_session_completed_{label.replace(' ', '_')}.{fmt}")
+                plot_bar(
+                    modules, values, colors,
+                    f"InventorySync — Sessions Completed by Module{suffix}",
+                    "Count", out,
+                )
+
+
+def _plot_with_total(
+    datasets: dict[str, pd.DataFrame],
+    y_col: str,
+    title: str,
+    ylabel: str,
+    out_path: str,
+    figsize=(14, 6),
+):
+    """Plot each process as a line plus a bold 'Total' line summing all."""
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # Build a total series by aligning on elapsed_s (integer seconds).
+    # Each process df has elapsed_s as float; we round to nearest int to align.
+    totals: dict[float, float] = {}
+    for idx, (label, df) in enumerate(datasets.items()):
+        if y_col not in df.columns:
+            continue
+        ax.plot(
+            df["elapsed_s"], df[y_col],
+            label=label, color=run_color(idx),
+            linewidth=1.2, alpha=0.7,
+        )
+        for t, v in zip(df["elapsed_s"], df[y_col]):
+            t_r = round(float(t), 0)
+            totals[t_r] = totals.get(t_r, 0.0) + float(v)
+
+    if totals:
+        ts = sorted(totals.keys())
+        vs = [totals[t] for t in ts]
+        ax.plot(ts, vs, label="Total", color="#333333",
+                linewidth=2.5, alpha=0.95, linestyle="--")
+
+    ax.set_title(title, fontsize=14, fontweight="bold")
+    ax.set_xlabel("Elapsed time (s)")
+    ax.set_ylabel(ylabel)
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1), fontsize=9)
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
     fig.tight_layout()
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
