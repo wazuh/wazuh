@@ -1,0 +1,28 @@
+{
+  "name": "sca_heavy_payload",
+  "description": "SCA heavy payload burst — simulates agents with large SCA policies.",
+  "load": {
+    "agents":       100,
+    "data_size":    400,
+    "duration_sec": 120,
+    "rate":         0,
+    "session_delay": 0,
+    "payload_kind": "sca_check",
+    "payload_size_bytes": 16384,
+    "pad_field": "check.description"
+  },
+  "expectations": {
+    "session_success_rate_min": 75.0
+  },
+  "notes": [
+    "Represents: 100 agents x 400 large CIS checks (5+ compliance mappings, long remediation text).",
+    "A typical SCA check JSON can be 1-5 KB; this inflates to 16 KB to simulate",
+    "  compliance-heavy policies (PCI+HIPAA+NIST+CIS+GDPR all in one check).",
+    "Total in-flight if WorkersQueue saturates: 100 x 400 x 16 KB = 640 MB RAM peak.",
+    "This is the SCA equivalent of heavy_payload_burst.json but uses sca_check payloads.",
+    "Manager-side: M1 (WorkersQueue) is the primary bottleneck — each vector<char> is 16 KB.",
+    "Agent-side parallel: S1 (m_inMemoryData accumulates 400 x 16 KB = 6.4 MB per agent, but",
+    "  the REAL risk is 5 policies x 600 checks x 16 KB = 48 MB — unmeasurable from outside).",
+    "Compare with sca_burst: same session count, bigger payloads → isolates payload size impact."
+  ]
+}
