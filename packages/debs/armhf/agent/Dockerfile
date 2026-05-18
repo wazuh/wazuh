@@ -11,11 +11,11 @@ RUN echo "deb http://archive.debian.org/debian stretch contrib main non-free" > 
     perl libc-bin libc6 libc6-dev \
     build-essential cdbs devscripts equivs automake autoconf libtool \
     libaudit-dev selinux-basics util-linux libdb5.1 \
-    libssl1.1 libssl-dev gawk libsigsegv2 procps libc6-armel-cross g++
+    libssl1.1 libssl-dev gawk libsigsegv2 procps libc6-armel-cross g++ \
+    libgmp-dev libmpfr-dev libmpc-dev libisl-dev
 
 RUN curl -OL http://packages.wazuh.com/utils/gcc/gcc-9.4.0.tar.gz && \
     tar xzf gcc-9.4.0.tar.gz  && cd gcc-9.4.0/ && \
-    linux32 ./contrib/download_prerequisites && \
     linux32 ./configure --prefix=/usr/local/gcc-9.4.0 --with-arch=armv7-a \
         --with-fpu=vfpv3-d16 --with-float=hard --enable-languages=c,c++ \
        --disable-multilib --disable-libsanitizer && \
