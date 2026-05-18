@@ -26,15 +26,14 @@ except:
 
 
 def log(msg):
-    sys.stderr.write(msg)
+    sys.stderr.write("INFO " + msg)
 
 
 class DockerListener:
     wait_time = 5
 
     def __init__(self):
-        """"
-        
+        """
         DockerListener constructor
 
         """
