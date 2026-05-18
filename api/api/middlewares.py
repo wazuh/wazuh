@@ -97,6 +97,16 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
         except (KeyError, IndexError, binascii.Error, jwt.exceptions.PyJWTError, OAuthProblem):
             user = UNKNOWN_USER_STRING
 
+    # Sanitize username to escape control characters
+    if user and user != UNKNOWN_USER_STRING:
+        # Check if username contains control characters and log a warning
+        if any(c in user for c in ['\n', '\r', '\t']):
+            logger.warning(
+                f'Username contains control characters. User: {user!r}, IP: {host}, '
+                f'Path: {path}.'
+            )
+        user = user.replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
+
     # Create hash if run_as login
     if not hash_auth_context and path == RUN_AS_LOGIN_ENDPOINT:
         hash_auth_context = hashlib.blake2b(json.dumps(body).encode(),

@@ -36,7 +36,7 @@ env:
 
 jobs:
   setup-matrix:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
@@ -47,7 +47,7 @@ jobs:
           ENTRIES='[]'
 
           DEB=$(jq -cn '{
-            runner: "ubuntu-latest", platform: "linux-deb",
+            runner: "ubuntu-24.04", platform: "linux-deb",
             "display-name": "Linux DEB (amd64)",
             "artifact-pattern": "wazuh-agent*amd64*.deb",
             "artifact-regexp": "wazuh-agent.*amd64.*\\.deb",
@@ -55,7 +55,7 @@ jobs:
             "packages-path": "/tmp/packages"
           }')
           RPM=$(jq -cn '{
-            runner: "ubuntu-latest", platform: "linux-rpm",
+            runner: "ubuntu-24.04", platform: "linux-rpm",
             "display-name": "Linux RPM (x86_64)",
             "artifact-pattern": "*x86_64*.rpm",
             "artifact-regexp": "wazuh-agent.*x86_64.*\\.rpm",
@@ -63,7 +63,7 @@ jobs:
             "packages-path": "/tmp/packages"
           }')
           WIN=$(jq -cn '{
-            runner: "windows-2022", platform: "windows",
+            runner: "windows-2025", platform: "windows",
             "display-name": "Windows",
             "artifact-pattern": "wazuh-agent*windows*.msi",
             "artifact-regexp": "wazuh-agent.*windows.*\\.msi",
@@ -71,7 +71,7 @@ jobs:
             "packages-path": "C:\\packages"
           }')
           MAC=$(jq -cn '{
-            runner: "macos-14", platform: "macos",
+            runner: "macos-15", platform: "macos",
             "display-name": "macOS (arm64)",
             "artifact-pattern": "wazuh-agent*arm64*.pkg",
             "artifact-regexp": "wazuh-agent.*arm64.*\\.pkg",

@@ -9,7 +9,7 @@ concurrency:
 jobs:
   pick-branches:
     name: Get branches to analyze
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
@@ -35,7 +35,7 @@ jobs:
   checking-py-vulns:
     needs: pick-branches
     name: Checking Python vulnerabilies
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix: ${{ fromJSON(needs.pick-branches.outputs.matrix) }}
     permissions:

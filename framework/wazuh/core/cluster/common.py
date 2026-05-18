@@ -1352,18 +1352,23 @@ class WazuhCommon:
             Response message.
         """
         task_id, filename = task_and_file_names.split(' ', 1)
+
+        safe_path = os.path.realpath(os.path.join(common.WAZUH_PATH, filename.lstrip("/")))
+
+        if not any(os.path.commonpath([safe_path, root]) == root for root in _ALLOWED_PREFIXES):
+            self.get_logger(logger_tag).error(f"Write path not allowed")
+            raise exception.WazuhClusterError(3027, extra_message=task_id)
+
         if task_id not in self.sync_tasks:
-            # Remove filename if task_id does not exist, before raising exception.
-            if os.path.exists(os.path.join(common.WAZUH_PATH, filename)):
+            if os.path.exists(safe_path):
                 try:
-                    os.remove(os.path.join(common.WAZUH_PATH, filename))
+                    os.remove(safe_path)
                 except Exception as e:
-                    self.get_logger(logger_tag).error(
-                        f"Attempt to delete file {os.path.join(common.WAZUH_PATH, filename)} failed: {e}")
+                    self.get_logger(logger_tag).error(f"Attempt to delete file {safe_path} failed: {e}")
             raise exception.WazuhClusterError(3027, extra_message=task_id)
 
         # Set full path to file for task 'task_id' and notify it is ready to be read, so the lock is released.
-        self.sync_tasks[task_id].filename = os.path.join(common.WAZUH_PATH, filename)
+        self.sync_tasks[task_id].filename = safe_path
         self.sync_tasks[task_id].received_information.set()
         return b'ok', b'File correctly received'
 

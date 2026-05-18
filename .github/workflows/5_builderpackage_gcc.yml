@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   build-package:
-    runs-on: ${{ matrix.arch == 'amd64' && 'ubuntu-latest' || 'ubuntu-24.04-arm' }}
+    runs-on: ${{ matrix.arch == 'amd64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
     name: Build ${{ matrix.system }} (${{ matrix.arch }})
     strategy:
       fail-fast: false

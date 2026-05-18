@@ -48,7 +48,7 @@ jobs:
       contents: read
       packages: write
       actions: write
-    runs-on: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64' || 'ubuntu-22.04' }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64' || 'ubuntu-24.04' }}
     timeout-minutes: 180
     name: Upload pkg_${{ matrix.system }}_manager_builder_${{ matrix.arch }}
     strategy:

@@ -1,7 +1,5 @@
 # Copyright (C) 2015, Wazuh Inc.
 #
-# Copyright (C) 2015, Wazuh Inc.
-#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -159,7 +157,7 @@ endif
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		PRECOMPILED_OS:=linux
-		CC=gcc
+		CC?=gcc
 else
 ifeq (${uname_S},Darwin)
 	PRECOMPILED_OS:=darwin
