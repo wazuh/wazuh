@@ -13,11 +13,6 @@ RUN echo "deb http://archive.debian.org/debian stretch contrib main non-free" > 
     libaudit-dev selinux-basics util-linux libdb5.1 \
     libssl1.1 libssl-dev gawk libsigsegv2 procps libc6-armel-cross g++
 
-# Add Debian's source repository and, Install NodeJS 12
-RUN apt-get build-dep python3.5 -y --allow-change-held-packages
-RUN curl -sL https://deb.nodesource.com/setup_12.x | bash - && \
-    apt-get install -y --allow-change-held-packages nodejs
-
 RUN curl -OL http://packages.wazuh.com/utils/gcc/gcc-9.4.0.tar.gz && \
     tar xzf gcc-9.4.0.tar.gz  && cd gcc-9.4.0/ && \
     linux32 ./contrib/download_prerequisites && \
