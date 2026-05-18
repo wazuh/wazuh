@@ -36,6 +36,7 @@ typedef struct pending_data_t {
     char *message;
     char *group;
     os_md5 merged_sum;
+    os_md5 last_reported_merged_sum;
     int changed;
 } pending_data_t;
 
