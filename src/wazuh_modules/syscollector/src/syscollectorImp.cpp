@@ -4393,7 +4393,20 @@ bool Syscollector::updateMetadataValue(const std::string& key, int64_t value)
 int64_t Syscollector::getLastSyncTime(const std::string& tableName)
 {
     int64_t lastSyncTime = 0;
-    getMetadataValue(tableName, lastSyncTime);
+
+    if (!getMetadataValue(tableName, lastSyncTime))
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Failed to retrieve last sync time for table: " + tableName);
+        }
+
+        // Reset to 0: the callback in getMetadataValue may have written a partial value
+        // from a previous row before the exception was thrown mid-stream.
+        // The caller relies on 0 as the "never synced" sentinel.
+        lastSyncTime = 0;
+    }
+
     return lastSyncTime;
 }
 

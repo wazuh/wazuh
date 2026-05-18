@@ -319,7 +319,9 @@ STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
         }
 
         // Try to send it again
-        SendMSGPredicated(syscheck.queue, msg, location, mq, fim_shutdown_process_on);
+        if (SendMSGPredicated(syscheck.queue, msg, location, mq, fim_shutdown_process_on) < 0) {
+            merror("Failed to send message after reopening queue");
+        }
     }
 }
 
