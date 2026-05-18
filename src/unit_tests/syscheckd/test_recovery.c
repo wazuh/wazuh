@@ -20,6 +20,7 @@
 #include "../wrappers/common.h"
 #include "../../syscheckd/src/recovery/recovery.h"
 #include "../../syscheckd/src/db/include/db.h"
+#include "../../syscheckd/src/file/file.h"
 #include "../../shared_modules/sync_protocol/include/agent_sync_protocol_c_interface.h"
 #include "syscheck-config.h"
 #include "../wrappers/wazuh/shared_modules/agent_sync_protocol_wrappers.h"
@@ -31,6 +32,7 @@ int64_t __wrap_fim_db_get_last_sync_time(const char* table_name);
 void __wrap_fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp);
 char* __wrap_fim_db_calculate_table_checksum(const char* table_name);
 cJSON* __wrap_build_stateful_event_file(const char* path, const char* sha1_hash, const uint64_t document_version, const cJSON *dbsync_event, const fim_file_data *file_data);
+directory_t* __wrap_fim_configuration_directory(const char* key, bool notify_not_found, const OSList* directories_list);
 
 #ifdef WIN32
 cJSON* __wrap_build_stateful_event_registry_key(const char* path, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, fim_registry_key *data);
@@ -40,10 +42,20 @@ cJSON* __wrap_build_stateful_event_registry_value(const char* path, const char* 
 // Mock directories list for tests
 static OSList mock_directories = {0};
 
+// Stand-in directory_t pointer for tests that only need a non-NULL "config exists" signal
+static directory_t mock_directory_config = {0};
+
 // Mock implementations
 int64_t __wrap_fim_db_get_last_sync_time(const char* table_name) {
     check_expected(table_name);
     return mock_type(int64_t);
+}
+
+directory_t* __wrap_fim_configuration_directory(const char* key,
+                                                __attribute__((unused)) bool notify_not_found,
+                                                __attribute__((unused)) const OSList* directories_list) {
+    check_expected_ptr(key);
+    return mock_ptr_type(directory_t*);
 }
 
 void __wrap_fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp) {
@@ -165,6 +177,10 @@ static void test_fim_recovery_persist_table_and_resync_success(void **state) {
     // Expect asp_clear_in_memory_data call
     expect_value(__wrap_asp_clear_in_memory_data, handle, handle);
 
+    // Orphan guard: path must still resolve to a config
+    expect_string(__wrap_fim_configuration_directory, key, "/tmp/test.txt");
+    will_return(__wrap_fim_configuration_directory, &mock_directory_config);
+
     // Expect build_stateful_event_file to be called for our test item
     expect_string(__wrap_build_stateful_event_file, path, "/tmp/test.txt");
     // Return a mock stateful event
@@ -221,6 +237,10 @@ static void test_fim_recovery_persist_table_and_resync_failure(void **state) {
 
     // Expect asp_clear_in_memory_data call
     expect_value(__wrap_asp_clear_in_memory_data, handle, handle);
+
+    // Orphan guard: path must still resolve to a config
+    expect_string(__wrap_fim_configuration_directory, key, "/tmp/test2.txt");
+    will_return(__wrap_fim_configuration_directory, &mock_directory_config);
 
     // Expect build_stateful_event_file to be called for our test item
     expect_string(__wrap_build_stateful_event_file, path, "/tmp/test2.txt");
@@ -358,6 +378,72 @@ static void test_fim_recovery_check_if_full_sync_required_null_checksum(void **s
     assert_false(result);
 }
 
+// Test (#36134): Persist and resync skips rows whose path is no longer in the configuration.
+// Two items are returned by the DB; the first is "orphaned" (config lookup returns NULL) and
+// must be skipped silently; the second still has a config and must follow the normal path.
+static void test_fim_recovery_persist_table_and_resync_skips_orphan_paths(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle* handle = (AgentSyncProtocolHandle*)0x1234;
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__mdebug2, formatted_msg);
+
+    cJSON* test_items = cJSON_CreateArray();
+
+    cJSON* orphan_item = cJSON_CreateObject();
+    cJSON_AddStringToObject(orphan_item, "path", "/home/vagrant/orphan.txt");
+    cJSON_AddStringToObject(orphan_item, "checksum", "orphan-sha");
+    cJSON_AddNumberToObject(orphan_item, "version", 1);
+    cJSON_AddNumberToObject(orphan_item, "inode", 11111);
+    cJSON_AddItemToArray(test_items, orphan_item);
+
+    cJSON* live_item = cJSON_CreateObject();
+    cJSON_AddStringToObject(live_item, "path", "/etc/passwd");
+    cJSON_AddStringToObject(live_item, "checksum", "live-sha");
+    cJSON_AddNumberToObject(live_item, "version", 1);
+    cJSON_AddNumberToObject(live_item, "inode", 22222);
+    cJSON_AddItemToArray(test_items, live_item);
+
+    expect_string(__wrap_fim_db_increase_each_entry_version, table_name, FIMDB_FILE_TABLE_NAME);
+    will_return(__wrap_fim_db_increase_each_entry_version, 0);
+
+    expect_string(__wrap_fim_db_get_every_element, table_name, FIMDB_FILE_TABLE_NAME);
+    expect_string(__wrap_fim_db_get_every_element, row_filter, "WHERE sync=1");
+    will_return(__wrap_fim_db_get_every_element, test_items);
+
+    expect_value(__wrap_asp_clear_in_memory_data, handle, handle);
+
+    // Orphaned path: config lookup returns NULL -> row is skipped entirely.
+    expect_string(__wrap_fim_configuration_directory, key, "/home/vagrant/orphan.txt");
+    will_return(__wrap_fim_configuration_directory, NULL);
+    // No build_stateful_event_file / asp_persist_diff_in_memory expectations for the orphan row.
+
+    // Live path: config lookup returns non-NULL -> normal pipeline.
+    expect_string(__wrap_fim_configuration_directory, key, "/etc/passwd");
+    will_return(__wrap_fim_configuration_directory, &mock_directory_config);
+
+    expect_string(__wrap_build_stateful_event_file, path, "/etc/passwd");
+    cJSON* mock_event = cJSON_CreateObject();
+    cJSON_AddStringToObject(mock_event, "type", "file");
+    will_return(__wrap_build_stateful_event_file, mock_event);
+
+    will_return(__wrap_schema_validator_is_initialized, false);
+
+    expect_value(__wrap_asp_persist_diff_in_memory, handle, handle);
+    expect_any(__wrap_asp_persist_diff_in_memory, id);
+    expect_value(__wrap_asp_persist_diff_in_memory, operation, OPERATION_CREATE);
+    expect_string(__wrap_asp_persist_diff_in_memory, index, FIM_FILES_SYNC_INDEX);
+    expect_any(__wrap_asp_persist_diff_in_memory, data);
+
+    expect_value(__wrap_asp_sync_module, handle, handle);
+    expect_value(__wrap_asp_sync_module, mode, MODE_FULL);
+    will_return(__wrap_asp_sync_module, true);
+
+    fim_recovery_persist_table_and_resync(FIMDB_FILE_TABLE_NAME, handle, &mock_directories);
+
+    // test_items is freed by the function.
+}
+
 // Test: buildFileStatefulEvent with valid data
 static void test_buildFileStatefulEvent_success(void **state) {
     (void) state;
@@ -441,6 +527,7 @@ int main(void) {
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_failure),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_version_increase_failure),
         cmocka_unit_test(test_fim_recovery_persist_table_and_resync_null_items),
+        cmocka_unit_test(test_fim_recovery_persist_table_and_resync_skips_orphan_paths),
         cmocka_unit_test(test_fim_recovery_check_if_full_sync_required_mismatch),
         cmocka_unit_test(test_fim_recovery_check_if_full_sync_required_match),
         cmocka_unit_test(test_fim_recovery_check_if_full_sync_required_null_checksum),
