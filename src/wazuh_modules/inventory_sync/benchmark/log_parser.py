@@ -105,7 +105,30 @@ PATTERNS: dict[str, re.Pattern] = {
                                         re.IGNORECASE),
 }
 
-CSV_HEADER = ["timestamp", "elapsed_s"] + list(PATTERNS.keys())
+# Gauge metrics emitted by the manager as instantaneous values, not events.
+# Source: "logger-helper: INFO: InventorySync queue stats: ..." lines
+# (added in the dbsync-stats commit). We capture the latest value seen in
+# each flush window and carry it forward when no new sample arrives, so the
+# time series has no spurious zeros where the manager just didn't emit.
+GAUGE_PATTERN = re.compile(
+    r"InventorySync queue stats:\s+"
+    r"workers_q=(?P<workers_q>\d+)\s+"
+    r"indexer_q=(?P<indexer_q>\d+)\s+"
+    r"sessions=(?P<sessions>\d+)\s+"
+    r"blocked_agents=(?P<blocked_agents>\d+)\s+"
+    r"active_vdfirst=(?P<active_vdfirst>\d+)\s+"
+    r"indexer_bulk_bytes=(?P<indexer_bulk_bytes>\d+)\s+"
+    r"indexer_notify=(?P<indexer_notify>\d+)\s+"
+    r"indexer_delbyq=(?P<indexer_delbyq>\d+)\s+"
+    r"rocksdb_dir_bytes=(?P<rocksdb_dir_bytes>\d+)"
+)
+
+GAUGE_NAMES: tuple[str, ...] = (
+    "workers_q", "indexer_q", "sessions", "blocked_agents", "active_vdfirst",
+    "indexer_bulk_bytes", "indexer_notify", "indexer_delbyq", "rocksdb_dir_bytes",
+)
+
+CSV_HEADER = ["timestamp", "elapsed_s"] + list(PATTERNS.keys()) + list(GAUGE_NAMES)
 
 
 # ---------------------------------------------------------------------------
@@ -150,6 +173,10 @@ def parse_loop(log_path: str, csv_path: str, interval: float, from_start: bool) 
     start_time = time.monotonic()
     bucket = {k: 0 for k in PATTERNS}
     cumulative = {k: 0 for k in PATTERNS}
+    # Gauges carry the last seen value across flushes. Initialized empty so
+    # that early rows (before any stats line is emitted) write empty cells
+    # rather than misleading zeros — downstream charts will skip those.
+    gauges: dict[str, int] = {}
 
     with open(csv_path, "a", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=CSV_HEADER)
@@ -168,12 +195,18 @@ def parse_loop(log_path: str, csv_path: str, interval: float, from_start: bool) 
                 if regex.search(line):
                     bucket[key] += 1
 
+            gauge_match = GAUGE_PATTERN.search(line)
+            if gauge_match:
+                for name in GAUGE_NAMES:
+                    gauges[name] = int(gauge_match.group(name))
+
             now = time.monotonic()
             if now - last_flush >= interval:
                 row = {
                     "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                     "elapsed_s": round(now - start_time, 1),
                     **bucket,
+                    **{name: gauges.get(name, "") for name in GAUGE_NAMES},
                 }
                 writer.writerow(row)
                 fh.flush()
@@ -181,22 +214,29 @@ def parse_loop(log_path: str, csv_path: str, interval: float, from_start: bool) 
                     cumulative[k] += v
                     bucket[k] = 0
                 last_flush = now
-                if any(row[k] for k in PATTERNS):
-                    logger.info("counters: %s", {k: row[k] for k in PATTERNS if row[k]})
+                if any(row[k] for k in PATTERNS) or gauges:
+                    log_extra = {k: row[k] for k in PATTERNS if row[k]}
+                    if gauges:
+                        log_extra.update({n: gauges[n] for n in
+                                          ("workers_q", "indexer_q", "sessions")
+                                          if n in gauges})
+                    logger.info("counters/gauges: %s", log_extra)
 
-    # Final flush of the open bucket
-    if any(bucket.values()):
+    # Final flush of the open bucket (counters + last-seen gauges)
+    if any(bucket.values()) or gauges:
         row = {
             "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "elapsed_s": round(time.monotonic() - start_time, 1),
             **bucket,
+            **{name: gauges.get(name, "") for name in GAUGE_NAMES},
         }
         with open(csv_path, "a", newline="") as fh:
             csv.DictWriter(fh, fieldnames=CSV_HEADER).writerow(row)
         for k, v in bucket.items():
             cumulative[k] += v
 
-    logger.info("Done. Cumulative: %s", cumulative)
+    logger.info("Done. Cumulative counters: %s. Last gauges: %s",
+                cumulative, gauges)
 
 
 # ---------------------------------------------------------------------------

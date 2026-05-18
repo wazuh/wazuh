@@ -282,14 +282,23 @@ def generate_charts(
 
     monitors: dict[str, pd.DataFrame] = {}
     benches: dict[str, pd.DataFrame] = {}
+    logs: dict[str, pd.DataFrame] = {}
 
     for path, label in result_dirs:
         bench_path = os.path.join(path, "bench.csv")
         monitor_path = os.path.join(path, "monitor.csv")
+        logs_path = os.path.join(path, "logs.csv")
         if os.path.isfile(bench_path):
             benches[label] = load_bench(bench_path)
         if os.path.isfile(monitor_path):
             monitors[label] = load_monitor(monitor_path)
+        if os.path.isfile(logs_path):
+            # logs.csv may have rows where the gauge columns are empty
+            # (no queue-stats line was emitted yet); pandas reads them as NaN.
+            try:
+                logs[label] = pd.read_csv(logs_path)
+            except Exception as exc:
+                print(f"  warning: could not load {logs_path}: {exc}")
 
     if not monitors and not benches:
         print("No data files found — nothing to generate.")
@@ -428,6 +437,23 @@ def generate_charts(
                 )
                 _plot_combined(monitors[label], benches[label], label, out)
 
+    # -- Combined overlay: RSS + manager-side queue depth --------------------
+    # Reads the queue stats parsed by log_parser.py from logs.csv (workers_q,
+    # indexer_q, sessions, rocksdb_dir_bytes) and overlays them with RSS to
+    # show the direct cause-effect: queue grows → RSS grows. Skips silently
+    # if logs.csv has no queue-stats columns (older runs, or the manager
+    # binary in use doesn't emit them).
+    if monitors and logs:
+        for label in monitors:
+            if label in logs:
+                df = logs[label]
+                if "workers_q" in df.columns and df["workers_q"].notna().any():
+                    out = os.path.join(
+                        out_dir,
+                        f"combined_rss_queues_{label.replace(' ', '_')}.{fmt}",
+                    )
+                    _plot_rss_vs_queues(monitors[label], df, label, out)
+
     print(f"\nDone. {len(os.listdir(out_dir))} chart(s) generated.\n")
 
 
@@ -485,6 +511,82 @@ def _plot_combined(
     ax2.legend(loc="upper right", fontsize=9)
     ax2.grid(True, alpha=0.3)
     ax2.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  -> {out_path}")
+
+
+def _plot_rss_vs_queues(
+    monitor_df: pd.DataFrame,
+    logs_df: pd.DataFrame,
+    title: str,
+    out_path: str,
+):
+    """Two stacked panels sharing X (elapsed_s):
+      - Top:    RSS (MB) from the engine monitor.
+      - Bottom: workers_q + indexer_q + sessions from logs.csv (queue stats
+                emitted by the manager).
+
+    This is the chart that visualises the hotspot mechanism directly: when
+    workers_q climbs and sessions stay near the cap, you can read the RSS
+    rise off the top panel for the same x position.
+    """
+    fig, (ax1, ax2) = plt.subplots(
+        2, 1,
+        figsize=(14, 8),
+        sharex=True,
+        gridspec_kw={"height_ratios": [1, 1]},
+    )
+
+    # Panel 1 — RSS
+    ax1.plot(monitor_df["elapsed_s"], monitor_df["rss_mb"],
+             color=COLORS[3], linewidth=1.5, alpha=0.9, label="RSS (MB)")
+    ax1.fill_between(monitor_df["elapsed_s"], monitor_df["rss_mb"],
+                     alpha=0.15, color=COLORS[3])
+    ax1.set_ylabel("RSS (MB)")
+    ax1.set_title(f"Memory vs Manager Queue Depth — {title}",
+                  fontsize=14, fontweight="bold")
+    ax1.legend(loc="upper left", fontsize=9)
+    ax1.grid(True, alpha=0.3)
+    rss_max = monitor_df["rss_mb"].max()
+    rss_min = monitor_df["rss_mb"].min()
+    pad = max((rss_max - rss_min) * 0.1, 0.5)
+    ax1.set_ylim(max(0, rss_min - pad), rss_max + pad)
+
+    # Panel 2 — workers_q (left axis) + sessions (right axis).
+    # workers_q is what we're hunting; sessions is the cap reading. Sharing
+    # one panel with a twin-Y keeps the time-correlation obvious.
+    x = logs_df["elapsed_s"]
+    workers = pd.to_numeric(logs_df["workers_q"], errors="coerce")
+    indexer = pd.to_numeric(logs_df.get("indexer_q", pd.Series()), errors="coerce")
+    sessions = pd.to_numeric(logs_df.get("sessions",  pd.Series()), errors="coerce")
+
+    ax2.plot(x, workers, color=COLORS[2], linewidth=1.8,
+             label="workers_q (m_workersQueue depth)")
+    ax2.fill_between(x, workers, alpha=0.15, color=COLORS[2])
+    if indexer.notna().any() and indexer.max() > 0:
+        ax2.plot(x, indexer, color=COLORS[0], linewidth=1.2, alpha=0.8,
+                 label="indexer_q (m_indexerQueue depth)")
+    ax2.set_xlabel("Elapsed time (s)")
+    ax2.set_ylabel("Queue depth (messages)")
+    ax2.grid(True, alpha=0.3)
+    ax2.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+
+    if sessions.notna().any():
+        ax2b = ax2.twinx()
+        ax2b.plot(x, sessions, color=COLORS[1], linewidth=1.2,
+                  linestyle="--", alpha=0.8, label="sessions (active)")
+        ax2b.set_ylabel("Active sessions", color=COLORS[1])
+        ax2b.tick_params(axis="y", labelcolor=COLORS[1])
+        # Merge legends from both axes into a single box.
+        lines1, labels1 = ax2.get_legend_handles_labels()
+        lines2, labels2 = ax2b.get_legend_handles_labels()
+        ax2.legend(lines1 + lines2, labels1 + labels2,
+                   loc="upper left", fontsize=9)
+    else:
+        ax2.legend(loc="upper left", fontsize=9)
 
     fig.tight_layout()
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
