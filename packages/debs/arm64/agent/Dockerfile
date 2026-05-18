@@ -11,7 +11,7 @@ RUN echo "deb http://archive.debian.org/debian stretch contrib main non-free" > 
     perl-base perl wget libc-bin libc6 libc6-dev \
     build-essential cdbs devscripts equivs automake \
     autoconf libtool libaudit-dev selinux-basics \
-    libdb5.3 libdb5.3 libssl1.0.2 gawk libsigsegv2 \
+    libdb5.3 libssl1.0.2 gawk libsigsegv2 \
     libgmp-dev libmpfr-dev libmpc-dev libisl-dev
 
 RUN curl -OL http://packages.wazuh.com/utils/gcc/gcc-9.4.0.tar.gz && \
