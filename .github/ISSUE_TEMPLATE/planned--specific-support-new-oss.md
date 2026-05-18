@@ -75,6 +75,7 @@ assignees: ''
 - [ ] Adapt Puppet.
 - [ ] Adapt Ansible.
 - [ ] Update AMI, OVA, or Docker images if needed.
+- [ ] Update the compatibility matrix in the installation assistant if needed.
 -->
 
 <!-- Uncomment for DASHBOARD issue
