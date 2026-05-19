@@ -1,5 +1,5 @@
 run-name: Package - Upload Docker package building images
-name: Package - Upload Docker package building images
+name: 4.X - Package - Upload Docker package building images
 
 on:
   push:
