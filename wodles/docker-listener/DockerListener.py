@@ -26,8 +26,10 @@ except:
 
 
 def log(msg):
+    if not msg.endswith("\n"):
+        msg += "\n"
     sys.stderr.write("INFO " + msg)
-
+    sys.stderr.flush()
 
 class DockerListener:
     wait_time = 5
@@ -107,7 +109,7 @@ class DockerListener:
         self.connect()
 
     def process(self, event):
-        """"
+        """
         Processes a main Docker event
 
         :param event: Docker event.

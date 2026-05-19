@@ -89,6 +89,8 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
 
             if (strncmp(buffer, "INFO ", 5) == 0) {
                 mtinfo(WM_DOCKER_LOGTAG, "%s", buffer + 5);
+            } else if (strncmp(buffer, "WARN ", 5) == 0) {
+                mtwarn(WM_DOCKER_LOGTAG, "%s", buffer + 5);
             } else {
                 mterror(WM_DOCKER_LOGTAG, "%s", buffer);
             }
