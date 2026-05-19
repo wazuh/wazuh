@@ -59,15 +59,16 @@ MODULE=""
 INDEX=""
 PAYLOAD_KIND="package"
 PAYLOAD_KIND_FROM_CLI=false
-SESSION_DELAY=0
 DRAIN_TIMEOUT=60
 CLEANUP_AFTER=false
 PAYLOAD_SIZE=0
 PAD_FIELD=""
 DROP_EVERY=0
+MAX_EPS=0
+SESSIONS_PER_AGENT=0
 NO_END=false
 USE_DATABATCH=false
-BATCH_SIZE=64
+BATCH_MAX_BYTES=$((60 * 1024))
 # Directories whose disk usage we want to track during the run.
 # The Inventory Sync module persists pending DataValues in queue/inventory_sync,
 # and queue/engine-output, queue/vd are related manager queues.
@@ -105,7 +106,6 @@ Benchmark mode:
                           the consistent module and target index.
       --module NAME       Module name (default: derived from --payload-kind)
       --index NAME        Index name  (default: derived from --payload-kind)
-      --session-delay N   Delay between sessions per agent (default: $SESSION_DELAY)
       --drain-timeout N   Seconds to keep draining in-flight sessions after the
                           duration deadline (default: $DRAIN_TIMEOUT)
       --disk-path PATH    Recursive directory size to track every second.
@@ -131,7 +131,10 @@ Benchmark mode:
                           reclaims via session_timeout. Used by no_end.
       --use-databatch     Send DataValues as MessageType_DataBatch instead of
                           one DataValue per message. Used by databatch.
-      --batch-size N      DataValues per batch when --use-databatch (default: $BATCH_SIZE).
+      --batch-max-bytes N Estimated bytes cap per DataBatch when
+                          --use-databatch is set. Mirrors the real agent's
+                          MAX_BATCH_PAYLOAD constant (default: $BATCH_MAX_BYTES bytes
+                          = 60 KB).
       --end-delay N       Seconds to sleep between the last DataValue and the
                           End message (default: $END_DELAY). Mirrors the agent
                           sync_end_delay (default 1s). Set to 0 to expose the
@@ -139,6 +142,9 @@ Benchmark mode:
       --no-retransmit     Disable ReqRet handling. Default is retransmit on
                           (matching the real agent); with this flag the first
                           ReqRet aborts the session.
+      --max-eps N         Per-agent wire-send rate cap in events/second.
+                          Mirrors real syscollector <max_eps> (default 75 on
+                          real agents). 0 = no throttle (default: $MAX_EPS).
 
 Comparison mode:
       --compare DIR...    Compare results from multiple directories
@@ -161,7 +167,6 @@ while [[ $# -gt 0 ]]; do
         --payload-kind)   PAYLOAD_KIND="$2"; PAYLOAD_KIND_FROM_CLI=true; shift 2 ;;
         --module)         MODULE="$2"; shift 2 ;;
         --index)          INDEX="$2"; shift 2 ;;
-        --session-delay)  SESSION_DELAY="$2"; shift 2 ;;
         --drain-timeout)  DRAIN_TIMEOUT="$2"; shift 2 ;;
         --disk-path)
             # First explicit --disk-path resets the defaults.
@@ -178,9 +183,11 @@ while [[ $# -gt 0 ]]; do
         --payload-size)   PAYLOAD_SIZE="$2"; shift 2 ;;
         --pad-field)      PAD_FIELD="$2"; shift 2 ;;
         --drop-every)     DROP_EVERY="$2"; shift 2 ;;
+        --max-eps)        MAX_EPS="$2"; shift 2 ;;
+        --sessions-per-agent) SESSIONS_PER_AGENT="$2"; shift 2 ;;
         --no-end)         NO_END=true; shift ;;
         --use-databatch)  USE_DATABATCH=true; shift ;;
-        --batch-size)     BATCH_SIZE="$2"; shift 2 ;;
+        --batch-max-bytes) BATCH_MAX_BYTES="$2"; shift 2 ;;
         --end-delay)      END_DELAY="$2"; shift 2 ;;
         --no-retransmit)  RETRANSMIT=false; shift ;;
         --format)         CHART_FORMAT="$2"; shift 2 ;;
@@ -242,15 +249,15 @@ if [[ -n "$SCENARIO" ]]; then
     SC_AGENTS=$("$PYTHON" -c "import json,sys; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('agents',''))")
     SC_DSIZE=$("$PYTHON" -c "import json,sys; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('data_size',''))")
     SC_DUR=$("$PYTHON"   -c "import json,sys; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('duration_sec',''))")
-    SC_DELAY=$("$PYTHON" -c "import json,sys; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('session_delay',''))")
     SC_KIND=$("$PYTHON"  -c "import json,sys; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('payload_kind',''))")
     SC_NAME=$("$PYTHON"  -c "import json,sys; d=json.load(open('$SCENARIO')); print(d.get('name',''))")
     SC_PSIZE=$("$PYTHON" -c "import json,sys; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('payload_size_bytes',''))")
     SC_PFIELD=$("$PYTHON" -c "import json,sys; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('pad_field',''))")
     SC_DROP=$("$PYTHON"  -c "import json,sys; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('drop_every',''))")
+    SC_MAXEPS=$("$PYTHON" -c "import json,sys; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('max_eps',''))")
     SC_NOEND=$("$PYTHON" -c "import json,sys; d=json.load(open('$SCENARIO')); v=d.get('load',{}).get('no_end'); print('true' if v is True else ('false' if v is False else ''))")
     SC_DBATCH=$("$PYTHON" -c "import json,sys; d=json.load(open('$SCENARIO')); v=d.get('load',{}).get('use_databatch'); print('true' if v is True else ('false' if v is False else ''))")
-    SC_BSIZE=$("$PYTHON" -c "import json,sys; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('batch_size',''))")
+    SC_BSIZE=$("$PYTHON" -c "import json,sys; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('batch_max_bytes',''))")
     # external_actions are emitted one per line as "at_sec\tcmd" so the bash
     # side can read them with IFS-tab splitting. Embedded tabs and newlines in
     # cmd are sanitized so the protocol stays line-oriented.
@@ -268,16 +275,17 @@ for a in d.get('external_actions', []) or []:
     SC_AUTORESYNC=$("$PYTHON" -c "import json; d=json.load(open('$SCENARIO')); v=d.get('load',{}).get('auto_resync'); print('true' if v is True else ('false' if v is False else ''))")
     SC_ENDDELAY=$("$PYTHON" -c "import json; d=json.load(open('$SCENARIO')); v=d.get('load',{}).get('end_delay'); print('' if v is None else v)")
     SC_RETX=$("$PYTHON"    -c "import json; d=json.load(open('$SCENARIO')); v=d.get('load',{}).get('retransmit'); print('true' if v is True else ('false' if v is False else ''))")
+    SC_SPA=$("$PYTHON" -c "import json; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('sessions_per_agent',''))")
     [[ -n "$SC_AGENTS" ]] && AGENTS="$SC_AGENTS"
     [[ -n "$SC_DSIZE" ]]  && DATA_SIZE="$SC_DSIZE"
     [[ -n "$SC_DUR" ]]    && DURATION="$SC_DUR"
-    [[ -n "$SC_DELAY" ]]  && SESSION_DELAY="$SC_DELAY"
     [[ -n "$SC_PSIZE" ]]  && PAYLOAD_SIZE="$SC_PSIZE"
     [[ -n "$SC_PFIELD" ]] && PAD_FIELD="$SC_PFIELD"
     [[ -n "$SC_DROP" ]]   && DROP_EVERY="$SC_DROP"
+    [[ -n "$SC_MAXEPS" ]] && MAX_EPS="$SC_MAXEPS"
     [[ "$SC_NOEND" == "true" ]]        && NO_END=true
     [[ "$SC_DBATCH" == "true" ]]       && USE_DATABATCH=true
-    [[ -n "$SC_BSIZE" ]]               && BATCH_SIZE="$SC_BSIZE"
+    [[ -n "$SC_BSIZE" ]]               && BATCH_MAX_BYTES="$SC_BSIZE"
     [[ -n "$SC_STYPE" ]]               && SESSION_TYPE="$SC_STYPE"
     [[ -n "$SC_SYNCMODE" ]]            && SYNC_MODE="$SC_SYNCMODE"
     [[ -n "$SC_MCSUM" ]]               && MODULECHECK_CHECKSUM="$SC_MCSUM"
@@ -285,6 +293,7 @@ for a in d.get('external_actions', []) or []:
     [[ -n "$SC_ENDDELAY" ]]            && END_DELAY="$SC_ENDDELAY"
     [[ "$SC_RETX" == "false" ]]        && RETRANSMIT=false
     [[ "$SC_RETX" == "true"  ]]        && RETRANSMIT=true
+    [[ -n "$SC_SPA" ]]                 && SESSIONS_PER_AGENT="$SC_SPA"
     # CLI wins over the scenario file. If the user did not pass --payload-kind
     # explicitly we adopt whatever the scenario declares.
     if [[ -n "$SC_KIND" && "$PAYLOAD_KIND_FROM_CLI" == false ]]; then
@@ -350,15 +359,15 @@ cat > "$RESULTS_DIR/params.json" <<PARAMS
     "module": "${MODULE:-(from kind)}",
     "index": "${INDEX:-(from kind)}",
     "process": "$PROCESS_NAME",
-    "session_delay": $SESSION_DELAY,
     "payload_size": $PAYLOAD_SIZE,
     "pad_field": "$PAD_FIELD",
     "drop_every": $DROP_EVERY,
     "no_end": $NO_END,
     "use_databatch": $USE_DATABATCH,
-    "batch_size": $BATCH_SIZE,
+    "batch_max_bytes": $BATCH_MAX_BYTES,
     "end_delay": $END_DELAY,
     "retransmit": $RETRANSMIT,
+    "max_eps": $MAX_EPS,
     "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 PARAMS
@@ -438,7 +447,6 @@ SENDER_ARGS=(
     --port "$PORT"
     --reg-port "$REG_PORT"
     --payload-kind "$PAYLOAD_KIND"
-    --session-delay "$SESSION_DELAY"
     --drain-timeout "$DRAIN_TIMEOUT"
     --summary-json "$SENDER_JSON"
     -o "$BENCH_CSV"
@@ -448,8 +456,10 @@ SENDER_ARGS=(
 [[ "$PAYLOAD_SIZE" != "0" ]]       && SENDER_ARGS+=(--payload-size "$PAYLOAD_SIZE")
 [[ -n "$PAD_FIELD" ]]              && SENDER_ARGS+=(--pad-field    "$PAD_FIELD")
 [[ "$DROP_EVERY"   != "0" ]]       && SENDER_ARGS+=(--drop-every   "$DROP_EVERY")
+[[ "$MAX_EPS"      != "0" ]]       && SENDER_ARGS+=(--max-eps      "$MAX_EPS")
+[[ "$SESSIONS_PER_AGENT" != "0" ]] && SENDER_ARGS+=(--sessions-per-agent "$SESSIONS_PER_AGENT")
 [[ "$NO_END"        == "true" ]]   && SENDER_ARGS+=(--no-end)
-[[ "$USE_DATABATCH" == "true" ]]   && SENDER_ARGS+=(--use-databatch --batch-size "$BATCH_SIZE")
+[[ "$USE_DATABATCH" == "true" ]]   && SENDER_ARGS+=(--use-databatch --batch-max-bytes "$BATCH_MAX_BYTES")
 [[ "$SESSION_TYPE" != "delta" ]]   && SENDER_ARGS+=(--session-type "$SESSION_TYPE")
 [[ "$SYNC_MODE"    != "1" ]]       && SENDER_ARGS+=(--sync-mode    "$SYNC_MODE")
 [[ -n "$MODULECHECK_CHECKSUM" ]]   && SENDER_ARGS+=(--modulecheck-checksum "$MODULECHECK_CHECKSUM")

@@ -15,9 +15,10 @@ Usage:
         --manager 127.0.0.1 \\
         -o bench.csv
 
-    # Unlimited rate, 200 agents, 500 data items, 120s
+    # Throttled to the Wazuh default of 75 wire-events/second per agent,
+    # one first-sync per agent (matches real-agent semantics), 200 agents.
     python3 benchmark_sender.py \\
-        -a 200 -d 500 -t 120 -r 0 \\
+        -a 200 -d 500 -t 120 --max-eps 75 --sessions-per-agent 1 \\
         --manager 127.0.0.1 \\
         -o bench.csv
 
@@ -593,17 +594,18 @@ def agent_worker(
     module = cfg["module"]
     data_size = cfg["data_size"]
     index = cfg["index"]
-    session_delay = cfg["session_delay"]
     drop_every = cfg.get("drop_every", 0)
     no_end = cfg.get("no_end", False)
     use_databatch = cfg.get("use_databatch", False)
-    batch_size = cfg.get("batch_size", 64)
+    batch_max_bytes = cfg.get("batch_max_bytes", 60 * 1024)
     session_type = cfg.get("session_type", "delta")
     sync_mode = cfg.get("sync_mode", 1)
     mc_checksum = cfg.get("modulecheck_checksum", "0" * 40)
     auto_resync = cfg.get("auto_resync", False)
     end_delay = cfg.get("end_delay", 1.0)
     retransmit = cfg.get("retransmit", True)
+    max_eps = cfg.get("max_eps", 0)
+    sessions_per_agent = cfg.get("sessions_per_agent", 0)  # 0 = unlimited (legacy default)
 
     # Connect (agent is already registered and keys are loaded)
     if not agent.connect():
@@ -614,6 +616,32 @@ def agent_worker(
         except threading.BrokenBarrierError:
             pass
         return
+
+    # Per-agent EPS rate limiter. Mirrors the agent-side throttle that real
+    # Wazuh agents apply via the syscollector synchronization <max_eps> config
+    # (default 75 events/sec per agent). With max_eps=0 there is no throttle
+    # and the sender bursts at full TCP speed.
+    #
+    # Algorithm: target inter-message spacing of 1/max_eps seconds. Track the
+    # count of messages sent since the agent's start; message N must not be
+    # released before t0 + N/max_eps. If a previous send ran fast we just
+    # advance the counter; if we're ahead of schedule we sleep the diff.
+    # This converges exactly to max_eps EPS in steady state (no burst penalty
+    # like the naive window-and-sleep approach).
+    if max_eps > 0:
+        original_send = agent._send_binary
+        eps_state = {"t0": time.monotonic(), "sent": 0}
+
+        def throttled_send(identifier: str, binary_data: bytes,
+                           _orig=original_send, _state=eps_state, _cap=max_eps):
+            _state["sent"] += 1
+            target_t = _state["t0"] + _state["sent"] / _cap
+            now = time.monotonic()
+            if now < target_t:
+                time.sleep(target_t - now)
+            return _orig(identifier, binary_data)
+
+        agent._send_binary = throttled_send
 
     logger.info("Agent %s (%s) ready", agent.id, agent.name)
 
@@ -654,7 +682,7 @@ def agent_worker(
                     drop_every=drop_every,
                     no_end=no_end,
                     use_databatch=use_databatch,
-                    batch_size=batch_size,
+                    batch_max_bytes=batch_max_bytes,
                     sync_mode=sync_mode,
                     end_delay=end_delay,
                     retransmit=retransmit,
@@ -669,8 +697,15 @@ def agent_worker(
                 logger.error("Agent %s reconnect failed, exiting", agent.id)
                 break
 
-        if session_delay > 0:
-            time.sleep(session_delay)
+        # Single-shot / N-shot mode: exit after sessions_per_agent sessions.
+        # Matches the real-agent behaviour where syscollector emits exactly
+        # one first-sync per <interval> instead of looping continuously.
+        if sessions_per_agent > 0 and session_count >= sessions_per_agent:
+            logger.info(
+                "Agent %s completed %d session(s) — exiting (sessions_per_agent=%d).",
+                agent.id, session_count, sessions_per_agent,
+            )
+            break
 
     agent.disconnect()
     logger.info("Agent %s finished (%d sessions)", agent.id, session_count)
@@ -686,7 +721,7 @@ def _run_single_session(
     drop_every: int = 0,
     no_end: bool = False,
     use_databatch: bool = False,
-    batch_size: int = 64,
+    batch_max_bytes: int = 60 * 1024,
     sync_mode: int = 1,
     end_delay: float = 1.0,
     retransmit: bool = True,
@@ -694,14 +729,18 @@ def _run_single_session(
     """Execute one complete sync session: Start → Data×N → [sleep] → End → ACK.
 
     Flags:
-      drop_every     If >0, skip DataValues where (seq+1) % drop_every == 0.
-                     Forces ReqRet/missing_ranges on the manager.
-      no_end         Skip the End message and EndAck wait. The manager-side
-                     session_timeout reclaims the session. Used by no_end.json
-                     to validate the timeout/cleanup path.
-      use_databatch  Send DataValues as MessageType_DataBatch grouped in
-                     `batch_size` chunks instead of one per message.
-      batch_size     DataValues per DataBatch (only with use_databatch=True).
+      drop_every       If >0, skip DataValues where (seq+1) % drop_every == 0.
+                       Forces ReqRet/missing_ranges on the manager.
+      no_end           Skip the End message and EndAck wait. The manager-side
+                       session_timeout reclaims the session. Used by no_end.json
+                       to validate the timeout/cleanup path.
+      use_databatch    Send DataValues as MessageType_DataBatch packed by the
+                       agent's MAX_BATCH_PAYLOAD policy (cap by bytes, not by
+                       count) instead of one DataValue per message.
+      batch_max_bytes  Cap per DataBatch in estimated bytes (default 60 KB —
+                       same constant as the real agent's
+                       shared_modules/sync_protocol/.../MAX_BATCH_PAYLOAD).
+                       Only used with use_databatch=True.
       end_delay      Seconds to sleep between the last DataValue and the End
                      message.
       retransmit     If True (default), on ReqRet the sender retransmits the
@@ -772,26 +811,53 @@ def _run_single_session(
         return drop_every > 0 and (seq + 1) % drop_every == 0
 
     if use_databatch:
+        # Mirror the real agent's batching policy: pack DataValues into a
+        # DataBatch until the *estimated bytes* on the wire approach the cap.
+        # Constants match shared_modules/sync_protocol/.../agent_sync_protocol.cpp:
+        #   FLATBUFFERS_OVERHEAD_PER_ITEM = 80
+        #   BATCH_MESSAGE_OVERHEAD        = 128
+        # so the bench builds DataBatches with the same shape (same items per
+        # batch) as the real agent for any given payload size.
+        FB_OVERHEAD_PER_ITEM = 80
+        BATCH_MESSAGE_OVERHEAD = 128
+
+        # Pre-compute the JSON bytes of the payload once; it is the same value
+        # for every DataValue in this session (template is read-only).
+        try:
+            payload_bytes_len = len(json.dumps(payload_template).encode("utf-8"))
+        except Exception:
+            payload_bytes_len = 600  # conservative fallback
+
+        index_len = len(index)
         pending: list[tuple[int, str, Any, int]] = []
-        for seq in range(data_size):
-            if not _running:
-                break
-            if _should_drop(seq):
-                continue
-            pending.append((seq, f"{agent.id}-{session_id}-{seq}", payload_template, 0))
-            if len(pending) >= batch_size:
-                fb_batch = agent.create_data_batch_message(session_id, pending, index)
-                if fb_batch is None:
-                    raise RuntimeError("Failed to create DataBatch message")
-                agent._send_binary(f"{module}_sync", fb_batch)
-                counters.add_messages_sent()
-                pending.clear()
-        if pending and _running:
+        batch_est = BATCH_MESSAGE_OVERHEAD
+
+        def _flush_batch() -> None:
+            nonlocal batch_est
+            if not pending:
+                return
             fb_batch = agent.create_data_batch_message(session_id, pending, index)
             if fb_batch is None:
                 raise RuntimeError("Failed to create DataBatch message")
             agent._send_binary(f"{module}_sync", fb_batch)
             counters.add_messages_sent()
+            pending.clear()
+            batch_est = BATCH_MESSAGE_OVERHEAD
+
+        for seq in range(data_size):
+            if not _running:
+                break
+            if _should_drop(seq):
+                continue
+            doc_id = f"{agent.id}-{session_id}-{seq}"
+            # FB-overhead + doc_id chars + index chars + payload bytes.
+            item_size = FB_OVERHEAD_PER_ITEM + len(doc_id) + index_len + payload_bytes_len
+            if pending and batch_est + item_size > batch_max_bytes:
+                _flush_batch()
+            pending.append((seq, doc_id, payload_template, 0))
+            batch_est += item_size
+        if _running:
+            _flush_batch()
     else:
         for seq in range(data_size):
             if not _running:
@@ -1308,8 +1374,6 @@ def parse_args() -> argparse.Namespace:
                    help="DataValue messages per session (default: 100)")
     p.add_argument("-t", "--duration", type=int, default=60,
                    help="Test duration in seconds (default: 60)")
-    p.add_argument("-r", "--rate", type=float, default=0,
-                   help="Target sessions/s per agent, 0=unlimited (default: 0)")
     p.add_argument("--manager", type=str, default="127.0.0.1",
                    help="Manager address (default: 127.0.0.1)")
     p.add_argument("--port", type=int, default=1514,
@@ -1335,8 +1399,6 @@ def parse_args() -> argparse.Namespace:
                         "module/index defaults so they match the index mapping.")
     p.add_argument("--payload", type=str, default=None,
                    help="Custom JSON payload file. Overrides --payload-kind.")
-    p.add_argument("--session-delay", type=float, default=0.0,
-                   help="Delay between sessions per agent (s, default: 0)")
     p.add_argument("--drain-timeout", type=float, default=60.0,
                    help="After the duration deadline, keep waiting up to N "
                         "seconds for in-flight sessions to close before forcing "
@@ -1368,9 +1430,23 @@ def parse_args() -> argparse.Namespace:
                    help="Send DataValues batched as MessageType_DataBatch "
                         "instead of one DataValue per message. Used by "
                         "databatch.json to exercise the re-serialization path.")
-    p.add_argument("--batch-size", type=int, default=64,
-                   help="DataValues per DataBatch when --use-databatch is set "
-                        "(default: 64).")
+    p.add_argument("--batch-max-bytes", type=int, default=60 * 1024,
+                   help="Cap per DataBatch in estimated bytes when "
+                        "--use-databatch is set. Mirrors the real agent's "
+                        "MAX_BATCH_PAYLOAD constant in shared_modules/"
+                        "sync_protocol/.../agent_sync_protocol.cpp "
+                        "(default: 61440 = 60 KB).")
+    p.add_argument("--max-eps", type=int, default=0,
+                   help="Per-agent rate limit in events/second on wire sends. "
+                        "Mirrors the real syscollector <max_eps> agent-side "
+                        "throttle (default 75 EPS per real agent). 0 = no "
+                        "throttle, sender bursts at full TCP speed (default: 0).")
+    p.add_argument("--sessions-per-agent", type=int, default=0,
+                   help="Hard cap on the number of sync sessions each "
+                        "simulated agent runs before exiting. 0 = unlimited "
+                        "(legacy: keep looping until --duration). Use 1 to "
+                        "match the real-agent behaviour where syscollector "
+                        "emits exactly one first-sync per <interval>.")
     p.add_argument("--session-type",
                    choices=["delta", "modulecheck", "dataclean"],
                    default="delta",
@@ -1494,17 +1570,18 @@ def main() -> None:
         "module": module,
         "index":  index,
         "data_size": args.data_size,
-        "session_delay": 1.0 / args.rate if args.rate > 0 else args.session_delay,
         "drop_every":    args.drop_every,
         "no_end":        args.no_end,
         "use_databatch": args.use_databatch,
-        "batch_size":    args.batch_size,
+        "batch_max_bytes": args.batch_max_bytes,
         "session_type":          args.session_type,
         "sync_mode":             args.sync_mode,
         "modulecheck_checksum":  args.modulecheck_checksum,
         "auto_resync":           args.auto_resync,
         "end_delay":             args.end_delay,
         "retransmit":            not args.no_retransmit,
+        "max_eps":               args.max_eps,
+        "sessions_per_agent":    args.sessions_per_agent,
     }
 
     print()
@@ -1525,9 +1602,11 @@ def main() -> None:
     if args.no_end:
         print(f"  No-End mode:       enabled (session_timeout reclaims sessions)")
     if args.use_databatch:
-        print(f"  DataBatch mode:    enabled  batch_size={args.batch_size}")
+        print(f"  DataBatch mode:    enabled  batch_max_bytes={args.batch_max_bytes}")
     print(f"  End delay:         {args.end_delay:.2f}s (sleep before End)")
     print(f"  Retransmit:        {'disabled' if args.no_retransmit else 'enabled'}")
+    if args.max_eps > 0:
+        print(f"  Max EPS per agent: {args.max_eps} msg/s (real-syscollector match)")
     print()
 
     counters = AtomicCounters()
@@ -1596,21 +1675,20 @@ def main() -> None:
         "agents_registered": len(agents),
         "data_size":         args.data_size,
         "duration_sec":      args.duration,
-        "rate":              args.rate,
         "payload_kind":      args.payload_kind,
         "payload_override":  args.payload,
         "module":            module,
         "index":             index,
-        "session_delay":     cfg["session_delay"],
         "payload_size":      args.payload_size,
         "payload_size_applied": payload_pad_applied,
         "pad_field":         pad_field_used,
         "drop_every":        args.drop_every,
         "no_end":            args.no_end,
         "use_databatch":     args.use_databatch,
-        "batch_size":        args.batch_size if args.use_databatch else 0,
+        "batch_max_bytes":   args.batch_max_bytes if args.use_databatch else 0,
         "end_delay":         args.end_delay,
         "retransmit":        not args.no_retransmit,
+        "max_eps":           args.max_eps,
         "started_at":        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
