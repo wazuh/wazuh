@@ -33,12 +33,12 @@ def test_DockerListener__init__ko(mock_stderr):
 
 @patch('DockerListener.threading.Thread')
 @patch('DockerListener.DockerListener.connect')
-@patch('DockerListener.DockerListener.send_msg')
-def test_DockerListener_start(mock_send, mock_connect, mock_thread):
+@patch('DockerListener.log')
+def test_DockerListener_start(mock_log, mock_connect, mock_thread):
     """Test if start creates the expected Threads and calls to the connect function."""
     dl = docker_listener.DockerListener()
     dl.start()
-    mock_send.assert_called_once()
+    mock_log.assert_called_once()
     mock_connect.assert_called_with(first_time=True)
     mock_thread.assert_has_calls([call(target=dl.listen), call(target=dl.listen)])
     assert dl.thread1
@@ -48,9 +48,9 @@ def test_DockerListener_start(mock_send, mock_connect, mock_thread):
 @pytest.mark.parametrize('first_time', [True, False])
 @pytest.mark.parametrize('alive', [True, False])
 @patch('DockerListener.threading.Thread')
-@patch('DockerListener.DockerListener.send_msg')
+@patch('DockerListener.log')
 @patch('DockerListener.DockerListener.check_docker_service', return_value=True)
-def test_DockerListener_connect(mock_service, mock_send, mock_thread, first_time, alive):
+def test_DockerListener_connect(mock_service, mock_log, mock_thread, first_time, alive):
     """Test DockerListener successfully connects to the Docker service by starting the expected thread."""
     dl = docker_listener.DockerListener()
     m = MagicMock()
@@ -70,15 +70,15 @@ def test_DockerListener_connect(mock_service, mock_send, mock_thread, first_time
         mock_thread.assert_called_with(target=dl.listen)
         dl.thread1.start.assert_called_once()
 
-    mock_send.assert_called_once()
+    mock_log.assert_called_once()
 
 
 @pytest.mark.parametrize('first_time', [True, False])
 @patch('DockerListener.threading.Thread')
 @patch('DockerListener.time.sleep')
 @patch('DockerListener.DockerListener.check_docker_service')
-@patch('DockerListener.DockerListener.send_msg')
-def test_DockerListener_connect_ko(mock_send, mock_service, mock_time, mock_thread, first_time):
+@patch('DockerListener.log')
+def test_DockerListener_connect_ko(mock_log, mock_service, mock_time, mock_thread, first_time):
     """Test connect function will attempt to reconnect to the docker service until accomplished."""
     docker_service_values = [False, False, True, True]
     mock_service.side_effect = docker_service_values
@@ -90,7 +90,7 @@ def test_DockerListener_connect_ko(mock_send, mock_service, mock_time, mock_thre
     dl.connect(first_time=first_time)
 
     assert mock_service.call_count == len(docker_service_values)
-    assert mock_send.call_count == 2 if first_time else 1
+    assert mock_log.call_count == (3 if first_time else 2)
     mock_time.assert_called_with(dl.wait_time)
     mock_thread.assert_called_with(target=dl.listen)
     dl.thread1.start.assert_called_once()
@@ -114,9 +114,9 @@ def test_DockerListener_check_docker_service_ko():
 
 
 @patch('DockerListener.DockerListener.connect')
-@patch('DockerListener.DockerListener.send_msg')
+@patch('DockerListener.log')
 @patch('DockerListener.DockerListener.process')
-def test_DockerListener_listen(mock_process, mock_send, mock_connect):
+def test_DockerListener_listen(mock_process, mock_log, mock_connect):
     """Test listen function process every event received from the client."""
     event_list = [1, 2, 3]
     dl = docker_listener.DockerListener()
@@ -124,7 +124,7 @@ def test_DockerListener_listen(mock_process, mock_send, mock_connect):
     dl.client.events.return_value = event_list
     dl.listen()
     mock_process.assert_has_calls([call(x) for x in event_list])
-    mock_send.assert_called_once()
+    mock_log.assert_called_once()
     mock_connect.assert_called_once()
 
 
