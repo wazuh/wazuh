@@ -38,11 +38,17 @@ err() { echo "[smoke][ERROR] $*" >&2; }
 
 # src/Makefile builds the manager under TARGET=server (the `server` target is
 # the one that pulls in build_python and the manager-only externals). The
-# agent target passes through unchanged.
+# agent and winagent targets pass through unchanged — winagent is the windows
+# cross-compile, and we run this smoke build inside compile_windows_agent so
+# the host-side tools shipped in libraries/windows/<dep>.tar.gz (notably
+# flatbuffers' `flatc`, which `make TARGET=winagent` invokes during schema
+# codegen) get exercised against the same glibc/libstdc++ the downstream
+# windows agent build sees.
 case "${BUILD_TARGET}" in
-    agent)   MAKE_TARGET="agent" ;;
-    manager) MAKE_TARGET="server" ;;
-    *)       err "BUILD_TARGET must be 'agent' or 'manager' (got '${BUILD_TARGET}')"; exit 2 ;;
+    agent)    MAKE_TARGET="agent" ;;
+    manager)  MAKE_TARGET="server" ;;
+    winagent) MAKE_TARGET="winagent" ;;
+    *)        err "BUILD_TARGET must be 'agent', 'manager' or 'winagent' (got '${BUILD_TARGET}')"; exit 2 ;;
 esac
 
 if [ ! -d "${DEPS_DIR}/libraries" ]; then

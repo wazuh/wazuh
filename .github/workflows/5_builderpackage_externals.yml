@@ -289,11 +289,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # `image` is the builder image to consume the consolidated deps inside.
+        # For agent/manager that's the same rpm builder build-externals used;
+        # for winagent it's compile_windows_agent (ubuntu:22.04) so the windows
+        # binaries shipped in libraries/windows/ are exercised against the same
+        # glibc baseline the downstream windows agent build sees. Without this,
+        # a host-side tool packed in the windows externals (e.g. flatbuffers'
+        # `flatc`) that was built on a newer glibc than the consumer slips
+        # through the smoke check.
         include:
-          - { architecture: amd64, runner: wz-linux-amd64, target: agent }
-          - { architecture: amd64, runner: wz-linux-amd64, target: manager }
-          - { architecture: arm64, runner: wz-linux-arm64, target: agent }
-          - { architecture: arm64, runner: wz-linux-arm64, target: manager }
+          - { architecture: amd64, runner: wz-linux-amd64, target: agent,    image: pkg_rpm_agent_builder_amd64 }
+          - { architecture: amd64, runner: wz-linux-amd64, target: manager,  image: pkg_rpm_manager_builder_amd64 }
+          - { architecture: arm64, runner: wz-linux-arm64, target: agent,    image: pkg_rpm_agent_builder_arm64 }
+          - { architecture: arm64, runner: wz-linux-arm64, target: manager,  image: pkg_rpm_manager_builder_arm64 }
+          - { architecture: i686,  runner: wz-linux-amd64, target: winagent, image: compile_windows_agent }
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     name: Smoke build (${{ matrix.target }}-${{ matrix.architecture }})
@@ -311,7 +320,7 @@ jobs:
           else
             echo "TAG=${{ inputs.docker_image_tag }}" >> "${GITHUB_ENV}"
           fi
-          echo "CONTAINER_NAME=pkg_rpm_${{ matrix.target }}_builder_${{ matrix.architecture }}" >> "${GITHUB_ENV}"
+          echo "CONTAINER_NAME=${{ matrix.image }}" >> "${GITHUB_ENV}"
 
       - name: Pull builder image from GHCR
         timeout-minutes: 20
