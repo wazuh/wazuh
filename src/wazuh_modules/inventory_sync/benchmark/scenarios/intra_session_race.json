@@ -7,7 +7,9 @@
     "duration_sec":  60,
     "rate":          0,
     "session_delay": 0,
-    "payload_kind":  "fim_file"
+    "payload_kind":  "fim_file",
+    "end_delay":     0,
+    "retransmit":    false
   },
   "expectations": {
     "rss_growth_mb_max":  100,

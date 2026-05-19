@@ -85,6 +85,8 @@ SESSION_TYPE="delta"
 SYNC_MODE=1
 MODULECHECK_CHECKSUM=""
 AUTO_RESYNC=false
+END_DELAY=1.0
+RETRANSMIT=true
 
 usage() {
     cat <<EOF
@@ -130,6 +132,13 @@ Benchmark mode:
       --use-databatch     Send DataValues as MessageType_DataBatch instead of
                           one DataValue per message. Used by databatch.
       --batch-size N      DataValues per batch when --use-databatch (default: $BATCH_SIZE).
+      --end-delay N       Seconds to sleep between the last DataValue and the
+                          End message (default: $END_DELAY). Mirrors the agent
+                          sync_end_delay (default 1s). Set to 0 to expose the
+                          intra-session race intentionally.
+      --no-retransmit     Disable ReqRet handling. Default is retransmit on
+                          (matching the real agent); with this flag the first
+                          ReqRet aborts the session.
 
 Comparison mode:
       --compare DIR...    Compare results from multiple directories
@@ -172,6 +181,8 @@ while [[ $# -gt 0 ]]; do
         --no-end)         NO_END=true; shift ;;
         --use-databatch)  USE_DATABATCH=true; shift ;;
         --batch-size)     BATCH_SIZE="$2"; shift 2 ;;
+        --end-delay)      END_DELAY="$2"; shift 2 ;;
+        --no-retransmit)  RETRANSMIT=false; shift ;;
         --format)         CHART_FORMAT="$2"; shift 2 ;;
         --compare)
             COMPARE_MODE=true
@@ -255,6 +266,8 @@ for a in d.get('external_actions', []) or []:
     SC_SYNCMODE=$("$PYTHON" -c "import json; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('sync_mode',''))")
     SC_MCSUM=$("$PYTHON"   -c "import json; d=json.load(open('$SCENARIO')); print(d.get('load',{}).get('modulecheck_checksum',''))")
     SC_AUTORESYNC=$("$PYTHON" -c "import json; d=json.load(open('$SCENARIO')); v=d.get('load',{}).get('auto_resync'); print('true' if v is True else ('false' if v is False else ''))")
+    SC_ENDDELAY=$("$PYTHON" -c "import json; d=json.load(open('$SCENARIO')); v=d.get('load',{}).get('end_delay'); print('' if v is None else v)")
+    SC_RETX=$("$PYTHON"    -c "import json; d=json.load(open('$SCENARIO')); v=d.get('load',{}).get('retransmit'); print('true' if v is True else ('false' if v is False else ''))")
     [[ -n "$SC_AGENTS" ]] && AGENTS="$SC_AGENTS"
     [[ -n "$SC_DSIZE" ]]  && DATA_SIZE="$SC_DSIZE"
     [[ -n "$SC_DUR" ]]    && DURATION="$SC_DUR"
@@ -269,6 +282,9 @@ for a in d.get('external_actions', []) or []:
     [[ -n "$SC_SYNCMODE" ]]            && SYNC_MODE="$SC_SYNCMODE"
     [[ -n "$SC_MCSUM" ]]               && MODULECHECK_CHECKSUM="$SC_MCSUM"
     [[ "$SC_AUTORESYNC" == "true" ]]   && AUTO_RESYNC=true
+    [[ -n "$SC_ENDDELAY" ]]            && END_DELAY="$SC_ENDDELAY"
+    [[ "$SC_RETX" == "false" ]]        && RETRANSMIT=false
+    [[ "$SC_RETX" == "true"  ]]        && RETRANSMIT=true
     # CLI wins over the scenario file. If the user did not pass --payload-kind
     # explicitly we adopt whatever the scenario declares.
     if [[ -n "$SC_KIND" && "$PAYLOAD_KIND_FROM_CLI" == false ]]; then
@@ -341,6 +357,8 @@ cat > "$RESULTS_DIR/params.json" <<PARAMS
     "no_end": $NO_END,
     "use_databatch": $USE_DATABATCH,
     "batch_size": $BATCH_SIZE,
+    "end_delay": $END_DELAY,
+    "retransmit": $RETRANSMIT,
     "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 PARAMS
@@ -436,6 +454,8 @@ SENDER_ARGS=(
 [[ "$SYNC_MODE"    != "1" ]]       && SENDER_ARGS+=(--sync-mode    "$SYNC_MODE")
 [[ -n "$MODULECHECK_CHECKSUM" ]]   && SENDER_ARGS+=(--modulecheck-checksum "$MODULECHECK_CHECKSUM")
 [[ "$AUTO_RESYNC"  == "true" ]]    && SENDER_ARGS+=(--auto-resync)
+SENDER_ARGS+=(--end-delay "$END_DELAY")
+[[ "$RETRANSMIT"   == "false" ]]   && SENDER_ARGS+=(--no-retransmit)
 
 # 2b. Schedule scenario `external_actions` as background timer subshells.
 # Each fires at `at_sec` seconds from this point (i.e., approximately when the

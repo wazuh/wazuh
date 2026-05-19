@@ -106,11 +106,14 @@ STATUS_PROCESSING = 4
 # (src/external/indexer-plugins/*.json).
 # ---------------------------------------------------------------------------
 PAYLOAD_KINDS: dict[str, dict[str, str]] = {
-    "package":   {"file": "syscollector_package.json", "module": "syscollector", "index": "wazuh-states-inventory-packages"},
-    "system":    {"file": "syscollector_system.json",  "module": "syscollector", "index": "wazuh-states-inventory-system"},
-    "hotfix":    {"file": "syscollector_hotfix.json",  "module": "syscollector", "index": "wazuh-states-inventory-hotfixes"},
-    "fim_file":  {"file": "fim_file.json",             "module": "fim",          "index": "wazuh-states-fim-files"},
-    "sca_check": {"file": "sca_check.json",              "module": "sca",          "index": "wazuh-states-sca"},
+    "package":           {"file": "syscollector_package.json", "module": "syscollector", "index": "wazuh-states-inventory-packages"},
+    "system":            {"file": "syscollector_system.json",  "module": "syscollector", "index": "wazuh-states-inventory-system"},
+    "hotfix":            {"file": "syscollector_hotfix.json",  "module": "syscollector", "index": "wazuh-states-inventory-hotfixes"},
+    "fim_file":          {"file": "fim_file.json",             "module": "fim",          "index": "wazuh-states-fim-files"},
+    "fim_file_windows":  {"file": "fim_file_windows.json",     "module": "fim",          "index": "wazuh-states-fim-files"},
+    "fim_registry_key":  {"file": "fim_registry_key.json",     "module": "fim",          "index": "wazuh-states-fim-registry-keys"},
+    "fim_registry_value":{"file": "fim_registry_value.json",   "module": "fim",          "index": "wazuh-states-fim-registry-values"},
+    "sca_check":         {"file": "sca_check.json",            "module": "sca",          "index": "wazuh-states-sca"},
 }
 
 # Pad target for --payload-size: dotted path to an existing free-text string
@@ -119,11 +122,14 @@ PAYLOAD_KINDS: dict[str, dict[str, str]] = {
 # (status 400) 'mapping set to strict, dynamic introduction of [_pad] within
 # [_doc] is not allowed' — so we extend an existing field instead.
 PAD_FIELD_BY_KIND: dict[str, str] = {
-    "package":   "package.description",
-    "system":    "host.os.full",
-    "hotfix":    "package.hotfix.name",
-    "fim_file":  "file.path",
-    "sca_check": "check.description",
+    "package":           "package.description",
+    "system":            "host.os.full",
+    "hotfix":            "package.hotfix.name",
+    "fim_file":          "file.path",
+    "fim_file_windows":  "file.path",
+    "fim_registry_key":  "registry.path",
+    "fim_registry_value":"registry.path",
+    "sca_check":         "check.description",
 }
 
 
@@ -596,6 +602,8 @@ def agent_worker(
     sync_mode = cfg.get("sync_mode", 1)
     mc_checksum = cfg.get("modulecheck_checksum", "0" * 40)
     auto_resync = cfg.get("auto_resync", False)
+    end_delay = cfg.get("end_delay", 1.0)
+    retransmit = cfg.get("retransmit", True)
 
     # Connect (agent is already registered and keys are loaded)
     if not agent.connect():
@@ -620,6 +628,16 @@ def agent_worker(
     session_count = 0
     while _running and time.monotonic() < deadline:
         session_count += 1
+
+        # Reconnect before each session to avoid stale connections.
+        # Remoted may close idle TCP sockets; a fresh connection ensures
+        # Start messages are not silently dropped.
+        if session_count > 1:
+            agent.disconnect()
+            if not agent.connect():
+                logger.error("Agent %s pre-session reconnect failed, exiting", agent.id)
+                break
+
         try:
             if session_type == "modulecheck":
                 _run_modulecheck_session(
@@ -638,6 +656,8 @@ def agent_worker(
                     use_databatch=use_databatch,
                     batch_size=batch_size,
                     sync_mode=sync_mode,
+                    end_delay=end_delay,
+                    retransmit=retransmit,
                 )
         except Exception as e:
             logger.debug("Agent %s session %d failed: %s", agent.id, session_count, e)
@@ -668,8 +688,10 @@ def _run_single_session(
     use_databatch: bool = False,
     batch_size: int = 64,
     sync_mode: int = 1,
+    end_delay: float = 1.0,
+    retransmit: bool = True,
 ):
-    """Execute one complete sync session: Start → Data×N → End → ACK.
+    """Execute one complete sync session: Start → Data×N → [sleep] → End → ACK.
 
     Flags:
       drop_every     If >0, skip DataValues where (seq+1) % drop_every == 0.
@@ -680,6 +702,12 @@ def _run_single_session(
       use_databatch  Send DataValues as MessageType_DataBatch grouped in
                      `batch_size` chunks instead of one per message.
       batch_size     DataValues per DataBatch (only with use_databatch=True).
+      end_delay      Seconds to sleep between the last DataValue and the End
+                     message.
+      retransmit     If True (default), on ReqRet the sender retransmits the
+                     missing sequences and waits for EndAck — matching the
+                     real agent (shared_modules/sync_protocol). If False,
+                     the first ReqRet aborts the session.
     """
 
     # 1. Send Start
@@ -791,6 +819,17 @@ def _run_single_session(
         counters.add_sessions_completed()
         return
 
+    # Mirror the real agent: sleep `sync_end_delay` seconds before sending End
+    # so the server's WorkersQueue can drain in-flight DataValues into the
+    # GapSet. Without this, handleEnd may see false gaps and emit ReqRet
+    # even though TCP delivered everything in order.
+    if end_delay > 0 and _running:
+        sleep_remaining = end_delay
+        while sleep_remaining > 0 and _running:
+            slice_s = min(sleep_remaining, 0.5)
+            time.sleep(slice_s)
+            sleep_remaining -= slice_s
+
     # 4. Send End
     fb_end = agent.create_end_message(session_id)
     if fb_end is None:
@@ -799,9 +838,14 @@ def _run_single_session(
     agent._send_binary(f"{module}_sync", fb_end)
     counters.add_messages_sent()
 
-    # 5. Wait for EndAck (may receive Processing first, then final)
+    # 5. Wait for EndAck (may receive Processing first, then final).
+    #    The server's WorkersQueue is multi-threaded so End may be processed
+    #    before all DataValues.  When that happens the server replies with a
+    #    ReqRet listing missing sequences.  We retransmit those and resend End.
+    MAX_RETRANSMIT = 5
     max_wait = 120.0
     start_wait = time.monotonic()
+    retransmit_count = 0
     while time.monotonic() - start_wait < max_wait:
         if not _running:
             # Ctrl+C: don't keep blocking on socket reads for many seconds.
@@ -840,10 +884,31 @@ def _run_single_session(
                     counters.add("reqret")
                     ranges = data.get("ranges", []) or []
                     counters.add("missing_ranges_total", len(ranges))
-                    counters.add_messages_dropped()
-                    raise RuntimeError(
-                        f"ReqRet received - {len(ranges)} missing range(s)"
-                    )
+                    if not retransmit:
+                        counters.add_messages_dropped()
+                        raise RuntimeError(
+                            "ReqRet received and retransmit is disabled"
+                        )
+                    retransmit_count += 1
+                    if retransmit_count > MAX_RETRANSMIT:
+                        counters.add_messages_dropped()
+                        raise RuntimeError(
+                            f"ReqRet: exceeded {MAX_RETRANSMIT} retransmissions"
+                        )
+                    # Retransmit the missing sequences only.
+                    for r in ranges:
+                        for seq in range(r["start"], r["end"] + 1):
+                            doc_id = f"{agent.id}-{session_id}-{seq}"
+                            fb_retx = agent.create_data_value_message(
+                                session_id=session_id,
+                                seq=seq,
+                                index=index,
+                                doc_id=doc_id,
+                                payload=payload_template,
+                            )
+                            if fb_retx:
+                                agent._send_binary(f"{module}_sync", fb_retx)
+                                counters.add_messages_sent()
 
     raise RuntimeError("EndAck timeout")
 
@@ -1322,6 +1387,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--auto-resync", action="store_true",
                    help="After a ChecksumMismatch EndAck, automatically run a "
                         "ModuleFull session. Used by sca_modulecheck_full_recovery.")
+    p.add_argument("--end-delay", type=float, default=1.0,
+                   help="Seconds to sleep between the last DataValue and the "
+                        "End message (default: 1.0)")
+    p.add_argument("--no-retransmit", action="store_true",
+                   help="Disable ReqRet handling. Default is to retransmit")
     p.add_argument("--debug", action="store_true", help="Debug logging")
     return p.parse_args()
 
@@ -1433,6 +1503,8 @@ def main() -> None:
         "sync_mode":             args.sync_mode,
         "modulecheck_checksum":  args.modulecheck_checksum,
         "auto_resync":           args.auto_resync,
+        "end_delay":             args.end_delay,
+        "retransmit":            not args.no_retransmit,
     }
 
     print()
@@ -1454,6 +1526,8 @@ def main() -> None:
         print(f"  No-End mode:       enabled (session_timeout reclaims sessions)")
     if args.use_databatch:
         print(f"  DataBatch mode:    enabled  batch_size={args.batch_size}")
+    print(f"  End delay:         {args.end_delay:.2f}s (sleep before End)")
+    print(f"  Retransmit:        {'disabled' if args.no_retransmit else 'enabled'}")
     print()
 
     counters = AtomicCounters()
@@ -1535,6 +1609,8 @@ def main() -> None:
         "no_end":            args.no_end,
         "use_databatch":     args.use_databatch,
         "batch_size":        args.batch_size if args.use_databatch else 0,
+        "end_delay":         args.end_delay,
+        "retransmit":        not args.no_retransmit,
         "started_at":        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
