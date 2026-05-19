@@ -136,20 +136,20 @@ Here you can find all the automation tools maintained by the Wazuh team.
 | [cJSON](https://github.com/DaveGamble/cJSON)                            | 1.7.18  | Dave Gamble                   | MIT License                                   |
 | [cpp-httplib](https://github.com/yhirose/cpp-httplib)                   | 0.25.0  | yhirose                       | MIT License                                   |
 | [cPython](https://github.com/python/cpython)                            | 3.12.13 | Guido van Rossum              | Python Software Foundation License version 2  |
-| [cURL](https://github.com/curl/curl)                                    | 8.12.1  | Daniel Stenberg               | MIT License                                   |
+| [cURL](https://github.com/curl/curl)                                    | 8.20.0  | Daniel Stenberg               | MIT License                                   |
 | [dbus](https://gitlab.freedesktop.org/dbus/dbus)                        | 1.14.10 | freedesktop.org               | GNU Public License version 2                  |
 | [Flatbuffers](https://github.com/google/flatbuffers/)                   | 23.5.26 | Google Inc.                   | Apache 2.0 License                            |
 | [Google Benchmark](https://github.com/google/benchmark)                 | 1.6.1   | Google Inc.                   | Apache 2.0 License                            |  |
 | [GoogleTest](https://github.com/google/googletest)                      | 1.11.0  | Google Inc.                   | 3-Clause "New" BSD License                    |
 | [jemalloc](https://github.com/jemalloc/jemalloc)                        | 5.2.1   | Jason Evans                   | 2-Clause "Simplified" BSD License             |
-| [libarchive](https://github.com/libarchive/libarchive)                  | 3.8.1   | Tim Kientzle                  | 3-Clause "New" BSD License                    |
+| [libarchive](https://github.com/libarchive/libarchive)                  | 3.8.7   | Tim Kientzle                  | 3-Clause "New" BSD License                    |
 | [libbpf](https://github.com/libbpf/libbpf)                              | 1.5.0   | libbpf                        | GNU Lesser General Public License version 2.1 |
 | [libdb](https://github.com/yasuhirokimura/db18)                         | 18.1.40 | Oracle Corporation            | Affero GPL v3                                 |
 | [libffi](https://github.com/libffi/libffi)                              | 3.2.1   | Anthony Green                 | MIT License                                   |
 | [libpcre2](https://github.com/PCRE2Project/pcre2)                       | 10.42.0 | Philip Hazel                  | BSD License                                   |
 | [libplist](https://github.com/libimobiledevice/libplist)                | 2.2.0   | Aaron Burghardt et al.        | GNU Lesser General Public License version 2.1 |
 | [libYAML](https://github.com/yaml/libyaml)                              | 0.1.7   | Kirill Simonov                | MIT License                                   |
-| [liblzma](https://github.com/tukaani-project/xz)                        | 5.4.2   | Lasse Collin, Jia Tan et al.  | GNU Public License version 3                  |
+| [liblzma](https://github.com/tukaani-project/xz)                        | 5.8.3   | Lasse Collin, Jia Tan et al.  | GNU Public License version 3                  |
 | [Linux Audit userspace](https://github.com/linux-audit/audit-userspace) | 2.8.4   | Rik Faith                     | GNU Lesser General Public License             |
 | [Lua](https://github.com/lua/lua)                                       | 5.4.8   | PUC-Rio                       | MIT License                                   |
 | [nlohmann](https://github.com/nlohmann/json)                            | 3.11.2  | Niels Lohmann                 | MIT License                                   |
@@ -159,7 +159,7 @@ Here you can find all the automation tools maintained by the Wazuh team.
 | [RocksDB](https://github.com/facebook/rocksdb/)                         | 8.3.2   | Facebook Inc.                 | Apache 2.0 License                            |
 | [rpm](https://github.com/rpm-software-management/rpm)                   | 4.20.1  | Marc Ewing & Erik Troan       | GNU Public License version 2                  |
 | [simdjson](https://github.com/simdjson/simdjson)                        | 3.13.0  | Daniel Lemire                 | Apache License 2.0                            |
-| [sqlite](https://github.com/sqlite/sqlite)                              | 3.50.4  | D. Richard Hipp               | Public Domain (no restrictions)               |
+| [sqlite](https://github.com/sqlite/sqlite)                              | 3.53.1  | D. Richard Hipp               | Public Domain (no restrictions)               |
 | [zlib](https://github.com/madler/zlib)                                  | 1.3.1   | Jean-loup Gailly & Mark Adler | zlib/libpng License                           |
 
 * [PyPi packages](framework/requirements.txt)
