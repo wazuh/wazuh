@@ -516,6 +516,7 @@ class WazuhException(Exception):
         3047: "Invalid HAProxy Dataplane API specification configured",
         3048: "Could not detect a valid HAProxy process linked to the Dataplane API",
         3049: "Unexpected response from HAProxy Dataplane API",
+        3052: "Invalid cluster file parameter",
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
