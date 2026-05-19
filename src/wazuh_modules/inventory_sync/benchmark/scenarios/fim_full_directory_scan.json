@@ -1,0 +1,23 @@
+{
+  "name": "fim_full_directory_scan",
+  "description": "ModuleFull (mode=0) — simulates first FIM scan of a monitored directory with many files. Manager executes deleteByQuery + bulk index for all received documents.",
+  "load": {
+    "agents":        5,
+    "data_size":     500,
+    "duration_sec":  120,
+    "rate":          0,
+    "session_delay": 5,
+    "payload_kind":  "fim_file",
+    "sync_mode":     0
+  },
+  "expectations": {
+    "rss_growth_mb_max":        200,
+    "drops_max":                0,
+    "session_success_rate_min": 90.0
+  },
+  "notes": [
+    "sync_mode=0 triggers deleteByQuery on ALL Start indices before bulk indexing.",
+    "High data_size simulates a directory tree with many files (e.g. /etc/ or c:\\windows\\system32).",
+    "Expect higher latency on first EndAck due to deleteByQuery cost."
+  ]
+}

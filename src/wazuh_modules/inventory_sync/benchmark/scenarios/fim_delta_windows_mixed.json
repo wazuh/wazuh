@@ -1,0 +1,23 @@
+{
+  "name": "fim_delta_windows_mixed",
+  "description": "ModuleDelta (mode=1) — Windows agent incremental sync with file changes. Simulates typical delta after initial scan on a Windows host.",
+  "load": {
+    "agents":        5,
+    "data_size":     15,
+    "duration_sec":  120,
+    "rate":          0,
+    "session_delay": 2,
+    "payload_kind":  "fim_file_windows",
+    "sync_mode":     1
+  },
+  "expectations": {
+    "rss_growth_mb_max":        50,
+    "drops_max":                0,
+    "session_success_rate_min": 99.0
+  },
+  "notes": [
+    "Uses Windows file payload (ARCHIVE attributes, SID permissions, Windows paths).",
+    "Low data_size: typical delta has few changed files between scan intervals.",
+    "Tests that Windows-specific payload fields (array permissions, SID uid/gid) index correctly."
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "fim_delta_directory_changes",
+  "description": "ModuleDelta (mode=1) — simulates incremental FIM changes after initial scan. Small data_size represents a few modified/created/deleted files per cycle.",
+  "load": {
+    "agents":        5,
+    "data_size":     10,
+    "duration_sec":  120,
+    "rate":          0,
+    "session_delay": 20,
+    "payload_kind":  "fim_file",
+    "sync_mode":     1
+  },
+  "expectations": {
+    "rss_growth_mb_max":        50,
+    "drops_max":                5,
+    "session_success_rate_min": 90.0
+  },
+  "notes": [
+    "sync_mode=1: no deleteByQuery, only upsert/delete operations applied incrementally.",
+    "Low data_size simulates typical real-world delta: a few files changed between scans.",
+    "Frequent short sessions to stress session cycling."
+  ]
+}
