@@ -427,8 +427,7 @@ def test_dropping_events_when_queue_is_full(test_configuration, test_metadata, l
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test4_configuration, test4_metadata), ids=test4_cases_ids)
 @pytest.mark.parametrize('configure_local_internal_options', [t4_local_internal_options], indirect=True)
 def test_event_processing_in_order_single_thread(test_configuration, test_metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
-                                                 configure_local_internal_options, truncate_monitored_files,
-                                                 truncate_archives_log, daemons_handler):
+                                                 configure_local_internal_options, truncate_monitored_files, daemons_handler):
     """
     description: Check that events are processed in order according to the position within the queue, and
         that events that are being received during the blocking phase are being added to the end of the queue when
@@ -536,8 +535,7 @@ def test_event_processing_in_order_single_thread(test_configuration, test_metada
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test5_configuration, test5_metadata), ids=test5_cases_ids)
 def test_event_processing_in_order_multi_thread(test_configuration, test_metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
-                                                configure_local_internal_options, truncate_monitored_files,
-                                                truncate_archives_log, daemons_handler):
+                                                configure_local_internal_options, truncate_monitored_files, daemons_handler):
     """
     description: Check that events are processed in order according to the position within the queue, and
         that events that are being received during the blocking phase are being added to the end of the queue when

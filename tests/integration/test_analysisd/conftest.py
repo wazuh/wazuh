@@ -11,7 +11,7 @@ from collections import defaultdict
 import pytest
 
 from wazuh_testing.constants.paths.configurations import CUSTOM_RULES_PATH, CUSTOM_RULES_FILE, WAZUH_CONF_PATH
-from wazuh_testing.constants.paths.logs import ALERTS_JSON_PATH, ARCHIVES_LOG_PATH, WAZUH_LOG_PATH
+from wazuh_testing.constants.paths.logs import ALERTS_JSON_PATH, WAZUH_LOG_PATH
 from wazuh_testing.constants.users import WAZUH_UNIX_GROUP, WAZUH_UNIX_USER
 from wazuh_testing.modules.analysisd import patterns
 from wazuh_testing.tools.monitors import file_monitor
@@ -28,7 +28,7 @@ def prepare_custom_rules_file(request, test_metadata):
     target_rule = os.path.join(CUSTOM_RULES_PATH, test_metadata['rules_file'])
     backup_rule = target_rule + '.cpy'
 
-    # back up the original target if it already exists (e.g. local_rules.xml)
+    # back up the original target if it already exists
     target_existed = os.path.isfile(target_rule)
     if target_existed:
         shutil.copy(target_rule, backup_rule)
@@ -39,7 +39,7 @@ def prepare_custom_rules_file(request, test_metadata):
 
     yield
 
-    # restore the original rule if it existed, otherwise drop the test copy
+    # restore the original rule if it existed
     if target_existed:
         shutil.move(backup_rule, target_rule)
         shutil.chown(target_rule, WAZUH_UNIX_USER, WAZUH_UNIX_GROUP)
@@ -62,23 +62,6 @@ def configure_local_rules(request, test_configuration):
 
     # restore previous configuration
     shutil.move(CUSTOM_RULES_FILE + '.cpy', CUSTOM_RULES_FILE)
-
-
-@pytest.fixture()
-def truncate_archives_log():
-    """Truncate /var/ossec/logs/archives/archives.log before and after the test.
-
-    The general `truncate_monitored_files` fixture does not cover this file, but
-    tests that assert on event ordering inside archives.log need a clean slate
-    between executions to avoid IDs from prior runs breaking the assertion.
-    """
-    if os.path.isfile(ARCHIVES_LOG_PATH):
-        file.truncate_file(ARCHIVES_LOG_PATH)
-
-    yield
-
-    if os.path.isfile(ARCHIVES_LOG_PATH):
-        file.truncate_file(ARCHIVES_LOG_PATH)
 
 
 @pytest.fixture()
