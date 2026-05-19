@@ -7,6 +7,15 @@ on:
         description: 'Base branch'
         required: true
         default: 'main'
+  pull_request:
+    paths:
+        - ".github/workflows/integration-tests-remoted-tier-2.yml"
+        - "src/config/remote-config.c"
+        - "src/config/remote-config.h"
+        - "src/remoted/**"
+        - "src/Makefile"
+        - "tests/integration/conftest.py"
+        - "tests/integration/test_remoted/**"
 
 jobs:
   build:
@@ -76,5 +85,3 @@ jobs:
         run: |
           cd tests/integration
           sudo python -m pytest --tier 2 test_remoted/
-
-# noop

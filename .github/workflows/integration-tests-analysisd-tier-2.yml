@@ -7,6 +7,17 @@ on:
         description: 'Base branch'
         required: true
         default: 'main'
+  pull_request:
+    paths:
+        - ".github/workflows/integration-tests-analysisd-tier-2.yml"
+        - "src/analysisd/**"
+        - "src/config/alerts-config.c"
+        - "src/config/global-config.c"
+        - "src/config/global-config.h"
+        - "src/config/rules-config.c"
+        - "src/Makefile"
+        - "tests/integration/conftest.py"
+        - "tests/integration/test_analysisd/**"
 
 jobs:
   build:
@@ -76,5 +87,3 @@ jobs:
         run: |
           cd tests/integration
           sudo python -m pytest --tier 2 test_analysisd/
-
-# noop
