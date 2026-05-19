@@ -125,7 +125,6 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
 }
 
 
-
 // Get read data
 
 cJSON *wm_docker_dump(const wm_docker_t *docker_conf) {
