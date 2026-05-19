@@ -32,7 +32,7 @@ int64_t __wrap_fim_db_get_last_sync_time(const char* table_name);
 void __wrap_fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp);
 char* __wrap_fim_db_calculate_table_checksum(const char* table_name);
 cJSON* __wrap_build_stateful_event_file(const char* path, const char* sha1_hash, const uint64_t document_version, const cJSON *dbsync_event, const fim_file_data *file_data);
-directory_t* __wrap_fim_configuration_directory(const char* key, bool notify_not_found, const OSList* directories_list);
+// __wrap_fim_configuration_directory is provided by create_db_wrappers.c (shared wrapper).
 
 #ifdef WIN32
 cJSON* __wrap_build_stateful_event_registry_key(const char* path, const char* sha1_hash, const uint64_t document_version, int arch, const cJSON *dbsync_event, fim_registry_key *data);
@@ -49,13 +49,6 @@ static directory_t mock_directory_config = {0};
 int64_t __wrap_fim_db_get_last_sync_time(const char* table_name) {
     check_expected(table_name);
     return mock_type(int64_t);
-}
-
-directory_t* __wrap_fim_configuration_directory(const char* key,
-                                                __attribute__((unused)) bool notify_not_found,
-                                                __attribute__((unused)) const OSList* directories_list) {
-    check_expected_ptr(key);
-    return mock_ptr_type(directory_t*);
 }
 
 void __wrap_fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp) {
@@ -178,7 +171,7 @@ static void test_fim_recovery_persist_table_and_resync_success(void **state) {
     expect_value(__wrap_asp_clear_in_memory_data, handle, handle);
 
     // Orphan guard: path must still resolve to a config
-    expect_string(__wrap_fim_configuration_directory, key, "/tmp/test.txt");
+    expect_string(__wrap_fim_configuration_directory, path, "/tmp/test.txt");
     will_return(__wrap_fim_configuration_directory, &mock_directory_config);
 
     // Expect build_stateful_event_file to be called for our test item
@@ -239,7 +232,7 @@ static void test_fim_recovery_persist_table_and_resync_failure(void **state) {
     expect_value(__wrap_asp_clear_in_memory_data, handle, handle);
 
     // Orphan guard: path must still resolve to a config
-    expect_string(__wrap_fim_configuration_directory, key, "/tmp/test2.txt");
+    expect_string(__wrap_fim_configuration_directory, path, "/tmp/test2.txt");
     will_return(__wrap_fim_configuration_directory, &mock_directory_config);
 
     // Expect build_stateful_event_file to be called for our test item
@@ -414,12 +407,12 @@ static void test_fim_recovery_persist_table_and_resync_skips_orphan_paths(void *
     expect_value(__wrap_asp_clear_in_memory_data, handle, handle);
 
     // Orphaned path: config lookup returns NULL -> row is skipped entirely.
-    expect_string(__wrap_fim_configuration_directory, key, "/home/vagrant/orphan.txt");
+    expect_string(__wrap_fim_configuration_directory, path, "/home/vagrant/orphan.txt");
     will_return(__wrap_fim_configuration_directory, NULL);
     // No build_stateful_event_file / asp_persist_diff_in_memory expectations for the orphan row.
 
     // Live path: config lookup returns non-NULL -> normal pipeline.
-    expect_string(__wrap_fim_configuration_directory, key, "/etc/passwd");
+    expect_string(__wrap_fim_configuration_directory, path, "/etc/passwd");
     will_return(__wrap_fim_configuration_directory, &mock_directory_config);
 
     expect_string(__wrap_build_stateful_event_file, path, "/etc/passwd");

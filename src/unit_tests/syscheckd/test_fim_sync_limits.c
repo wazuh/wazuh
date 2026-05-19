@@ -27,18 +27,9 @@ extern void process_pending_sync_updates(char* table_name, OSList *pending_items
 extern cJSON* extract_primary_keys(const char* table_name, const cJSON* full_doc);
 extern int drop_orphaned_promoted_documents(const char* table_name, cJSON* docs);
 
-// Wrapped fim_configuration_directory (real one is in syscheckd/src/file/file.c)
-directory_t* __wrap_fim_configuration_directory(const char* key, bool notify_not_found, const OSList* directories_list);
-
 // Stand-in directory_t pointer for "config exists" signal in tests
+// (real __wrap_fim_configuration_directory lives in create_db_wrappers.c)
 static directory_t mock_drop_directory_config = {0};
-
-directory_t* __wrap_fim_configuration_directory(const char* key,
-                                                __attribute__((unused)) bool notify_not_found,
-                                                __attribute__((unused)) const OSList* directories_list) {
-    check_expected_ptr(key);
-    return mock_ptr_type(directory_t*);
-}
 
 // Local wrapper declarations (defined per-test-file like test_recovery.c)
 cJSON* __wrap_build_stateful_event_file(const char* path, const char* sha1_hash,
@@ -558,9 +549,9 @@ static void test_drop_orphaned_promoted_documents_no_orphans(void **state) {
     cJSON_AddItemToArray(docs, create_file_doc("/etc/passwd", "abc123", 1));
     cJSON_AddItemToArray(docs, create_file_doc("/etc/hosts", "def456", 1));
 
-    expect_string(__wrap_fim_configuration_directory, key, "/etc/hosts");
+    expect_string(__wrap_fim_configuration_directory, path, "/etc/hosts");
     will_return(__wrap_fim_configuration_directory, &mock_drop_directory_config);
-    expect_string(__wrap_fim_configuration_directory, key, "/etc/passwd");
+    expect_string(__wrap_fim_configuration_directory, path, "/etc/passwd");
     will_return(__wrap_fim_configuration_directory, &mock_drop_directory_config);
 
     int dropped = drop_orphaned_promoted_documents(FIMDB_FILE_TABLE_NAME, docs);
@@ -580,10 +571,10 @@ static void test_drop_orphaned_promoted_documents_some_orphans(void **state) {
     cJSON_AddItemToArray(docs, create_file_doc("/home/vagrant/orphan.txt", "ghi789", 2));
 
     // Helper walks the array from the tail down; tail item is "/home/vagrant/orphan.txt".
-    expect_string(__wrap_fim_configuration_directory, key, "/home/vagrant/orphan.txt");
+    expect_string(__wrap_fim_configuration_directory, path, "/home/vagrant/orphan.txt");
     will_return(__wrap_fim_configuration_directory, NULL);
 
-    expect_string(__wrap_fim_configuration_directory, key, "/etc/passwd");
+    expect_string(__wrap_fim_configuration_directory, path, "/etc/passwd");
     will_return(__wrap_fim_configuration_directory, &mock_drop_directory_config);
 
     expect_string(__wrap__mdebug2, formatted_msg,
@@ -607,9 +598,9 @@ static void test_drop_orphaned_promoted_documents_all_orphans(void **state) {
     cJSON_AddItemToArray(docs, create_file_doc("/home/vagrant/a.txt", "a", 1));
     cJSON_AddItemToArray(docs, create_file_doc("/home/vagrant/b.txt", "b", 1));
 
-    expect_string(__wrap_fim_configuration_directory, key, "/home/vagrant/b.txt");
+    expect_string(__wrap_fim_configuration_directory, path, "/home/vagrant/b.txt");
     will_return(__wrap_fim_configuration_directory, NULL);
-    expect_string(__wrap_fim_configuration_directory, key, "/home/vagrant/a.txt");
+    expect_string(__wrap_fim_configuration_directory, path, "/home/vagrant/a.txt");
     will_return(__wrap_fim_configuration_directory, NULL);
 
     expect_string(__wrap__mdebug2, formatted_msg,
