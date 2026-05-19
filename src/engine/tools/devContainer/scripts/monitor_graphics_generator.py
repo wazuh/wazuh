@@ -283,30 +283,70 @@ def generate_charts(
     monitors: dict[str, pd.DataFrame] = {}
     benches: dict[str, pd.DataFrame] = {}
     disk_dfs: dict[str, pd.DataFrame] = {}
+    logs: dict[str, pd.DataFrame] = {}
+    modulesd_dfs: dict[str, pd.DataFrame] = {}
 
     for path, label in result_dirs:
         bench_path = os.path.join(path, "bench.csv")
+        monitor_dir = os.path.join(path, "monitor")
         monitor_path = os.path.join(path, "monitor.csv")
-        disk_path = os.path.join(path, "disk_usage.csv")
+
+        # Disk usage: prefer monitor/ subdir, fall back to root
+        disk_path = os.path.join(monitor_dir, "disk_usage.csv")
+        if not os.path.isfile(disk_path):
+            disk_path = os.path.join(path, "disk_usage.csv")
+
+        # logs.csv: prefer monitor/ subdir, fall back to root
+        logs_path = os.path.join(monitor_dir, "logs.csv")
+        if not os.path.isfile(logs_path):
+            logs_path = os.path.join(path, "logs.csv")
+
         if os.path.isfile(bench_path):
             benches[label] = load_bench(bench_path)
         if os.path.isfile(disk_path):
-            disk_dfs[label] = load_monitor(disk_path)
-        if os.path.isfile(monitor_path):
+            disk_dfs[label] = _keep_last_run(pd.read_csv(disk_path))
+        if os.path.isfile(logs_path):
+            try:
+                logs[label] = pd.read_csv(logs_path)
+            except Exception as exc:
+                print(f"  warning: could not load {logs_path}: {exc}")
+
+        # Per-process CSVs: prefer monitor/ subdir, then root-level monitor.csv,
+        # then auto-discover per-process CSVs in root.
+        if os.path.isdir(monitor_dir):
+            for fname in sorted(os.listdir(monitor_dir)):
+                if not fname.endswith(".csv"):
+                    continue
+                if fname in ("disk_usage.csv", "logs.csv",
+                             "invsync_queue_stats.csv", "invsync_session_stats.csv"):
+                    continue
+                fpath = os.path.join(monitor_dir, fname)
+                proc_name = fname.removesuffix(".csv")
+                key = f"{label}/{proc_name}" if len(result_dirs) > 1 else proc_name
+                df = load_monitor(fpath)
+                if len(df) > 0:
+                    monitors[key] = df
+                if "modulesd" in proc_name:
+                    modulesd_dfs[label] = df
+        elif os.path.isfile(monitor_path):
             monitors[label] = load_monitor(monitor_path)
+            modulesd_dfs[label] = monitors[label]
         else:
-            # Auto-discover per-process CSVs produced by the multi-process
-            # monitor (e.g. wazuh-manager-analysisd.csv).
+            # Auto-discover per-process CSVs in root directory.
             for fname in sorted(os.listdir(path)):
                 if not fname.endswith(".csv"):
                     continue
-                if fname in ("bench.csv", "disk_usage.csv",
-                            "invsync_queue_stats.csv", "invsync_session_stats.csv"):
+                if fname in ("bench.csv", "disk_usage.csv", "logs.csv",
+                             "invsync_queue_stats.csv", "invsync_session_stats.csv"):
                     continue
                 fpath = os.path.join(path, fname)
                 proc_name = fname.removesuffix(".csv")
                 key = f"{label}/{proc_name}" if len(result_dirs) > 1 else proc_name
-                monitors[key] = load_monitor(fpath)
+                df = load_monitor(fpath)
+                if len(df) > 0:
+                    monitors[key] = df
+                if "modulesd" in proc_name:
+                    modulesd_dfs[label] = df
 
     if not monitors and not benches and not disk_dfs:
         print("No data files found — nothing to generate.")
@@ -332,6 +372,12 @@ def generate_charts(
                 f"Wazuh Manager — {title_suffix}",
                 ylabel, out,
             )
+
+        # Combined CPU and RSS charts with per-process lines + total sum.
+        _plot_with_total(monitors, "cpu_pct", "CPU Usage (per process + total)",
+                         "CPU %", os.path.join(out_dir, f"monitor_cpu_total.{fmt}"))
+        _plot_with_total(monitors, "rss_mb", "RSS Memory (per process + total)",
+                         "MB", os.path.join(out_dir, f"monitor_rss_total.{fmt}"))
 
     # -- Disk-usage time series (from disk_usage.csv) ------------------------
     if disk_dfs:
@@ -457,14 +503,28 @@ def generate_charts(
                 )
                 _plot_combined(monitors[label], benches[label], label, out)
 
-    # -- InventorySync log charts (temporary) --------------------------------
+    # -- Combined overlay: RSS + manager-side queue depth --------------------
+    # Reads queue stats from logs.csv (workers_q, indexer_q, sessions) and
+    # overlays them with RSS to show cause-effect: queue grows → RSS grows.
+    if modulesd_dfs and logs:
+        for label in modulesd_dfs:
+            if label in logs:
+                df = logs[label]
+                if "workers_q" in df.columns and df["workers_q"].notna().any():
+                    out = os.path.join(
+                        out_dir,
+                        f"combined_rss_queues_{label.replace(' ', '_')}.{fmt}",
+                    )
+                    _plot_rss_vs_queues(modulesd_dfs[label], df, label, out)
+
+    # -- InventorySync log charts --------------------------------------------
     _generate_invsync_charts(result_dirs, out_dir, fmt)
 
     print(f"\nDone. {len(os.listdir(out_dir))} chart(s) generated.\n")
 
 
 # ---------------------------------------------------------------------------
-# InventorySync log charts (temporary — will be removed in the future)
+# InventorySync log charts
 # ---------------------------------------------------------------------------
 INVSYNC_QUEUE_METRICS = [
     ("workers_q",         "Workers Queue Depth",     "Count"),
@@ -489,16 +549,19 @@ def _generate_invsync_charts(
     out_dir: str,
     fmt: str,
 ) -> None:
-    """Generate charts from invsync_queue_stats.csv and invsync_session_stats.csv.
-
-    This function is temporary and will be removed in the future.
-    """
+    """Generate charts from invsync_queue_stats.csv and invsync_session_stats.csv."""
     queue_dfs: dict[str, pd.DataFrame] = {}
     session_dfs: dict[str, pd.DataFrame] = {}
 
     for path, label in result_dirs:
-        qpath = os.path.join(path, "invsync_queue_stats.csv")
-        spath = os.path.join(path, "invsync_session_stats.csv")
+        monitor_dir = os.path.join(path, "monitor")
+        # Prefer monitor/ subdir, fall back to root
+        qpath = os.path.join(monitor_dir, "invsync_queue_stats.csv")
+        if not os.path.isfile(qpath):
+            qpath = os.path.join(path, "invsync_queue_stats.csv")
+        spath = os.path.join(monitor_dir, "invsync_session_stats.csv")
+        if not os.path.isfile(spath):
+            spath = os.path.join(path, "invsync_session_stats.csv")
         if os.path.isfile(qpath):
             df = pd.read_csv(qpath)
             if len(df) > 0:
@@ -570,6 +633,124 @@ def _generate_invsync_charts(
                     f"InventorySync — Sessions Completed by Module{suffix}",
                     "Count", out,
                 )
+
+
+def _plot_with_total(
+    datasets: dict[str, pd.DataFrame],
+    y_col: str,
+    title: str,
+    ylabel: str,
+    out_path: str,
+    figsize=(14, 6),
+):
+    """Plot each process as a line plus a bold 'Total' line summing all."""
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # Build a total series by aligning on elapsed_s (integer seconds).
+    # Each process df has elapsed_s as float; we truncate to int to align.
+    # NOTE: do NOT use round() here — Python's banker's rounding causes .5
+    # values like 599.5 and 600.5 to both map to 600, doubling contributions.
+    totals: dict[int, float] = {}
+    for idx, (label, df) in enumerate(datasets.items()):
+        if y_col not in df.columns:
+            continue
+        ax.plot(
+            df["elapsed_s"], df[y_col],
+            label=label, color=run_color(idx),
+            linewidth=1.2, alpha=0.7,
+        )
+        for t, v in zip(df["elapsed_s"], df[y_col]):
+            t_r = int(float(t))
+            totals[t_r] = totals.get(t_r, 0.0) + float(v)
+
+    if totals:
+        ts = sorted(totals.keys())
+        vs = [totals[t] for t in ts]
+        ax.plot(ts, vs, label="Total", color="#333333",
+                linewidth=2.5, alpha=0.95, linestyle="--")
+
+    ax.set_title(title, fontsize=14, fontweight="bold")
+    ax.set_xlabel("Elapsed time (s)")
+    ax.set_ylabel(ylabel)
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1), fontsize=9)
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  -> {out_path}")
+
+
+def _plot_rss_vs_queues(
+    monitor_df: pd.DataFrame,
+    logs_df: pd.DataFrame,
+    title: str,
+    out_path: str,
+):
+    """Two stacked panels sharing X (elapsed_s):
+      - Top:    RSS (MB) from the engine monitor.
+      - Bottom: workers_q + indexer_q + sessions from logs.csv (queue stats
+                emitted by the manager).
+
+    This is the chart that visualises the hotspot mechanism directly: when
+    workers_q climbs and sessions stay near the cap, you can read the RSS
+    rise off the top panel for the same x position.
+    """
+    fig, (ax1, ax2) = plt.subplots(
+        2, 1,
+        figsize=(14, 8),
+        sharex=True,
+        gridspec_kw={"height_ratios": [1, 1]},
+    )
+
+    # Panel 1 — RSS
+    ax1.plot(monitor_df["elapsed_s"], monitor_df["rss_mb"],
+             color=COLORS[3], linewidth=1.5, alpha=0.9, label="RSS (MB)")
+    ax1.fill_between(monitor_df["elapsed_s"], monitor_df["rss_mb"],
+                     alpha=0.15, color=COLORS[3])
+    ax1.set_ylabel("RSS (MB)")
+    ax1.set_title(f"Memory vs Manager Queue Depth — {title}",
+                  fontsize=14, fontweight="bold")
+    ax1.legend(loc="upper left", fontsize=9)
+    ax1.grid(True, alpha=0.3)
+    rss_max = monitor_df["rss_mb"].max()
+    rss_min = monitor_df["rss_mb"].min()
+    pad = max((rss_max - rss_min) * 0.1, 0.5)
+    ax1.set_ylim(max(0, rss_min - pad), rss_max + pad)
+
+    # Panel 2 — workers_q (left axis) + sessions (right axis).
+    x = logs_df["elapsed_s"]
+    workers = pd.to_numeric(logs_df["workers_q"], errors="coerce")
+    indexer = pd.to_numeric(logs_df.get("indexer_q", pd.Series()), errors="coerce")
+    sessions = pd.to_numeric(logs_df.get("sessions", pd.Series()), errors="coerce")
+
+    ax2.plot(x, workers, color=COLORS[2], linewidth=1.8,
+             label="workers_q (m_workersQueue depth)")
+    ax2.fill_between(x, workers, alpha=0.15, color=COLORS[2])
+    if indexer.notna().any() and indexer.max() > 0:
+        ax2.plot(x, indexer, color=COLORS[0], linewidth=1.2, alpha=0.8,
+                 label="indexer_q (m_indexerQueue depth)")
+    ax2.set_xlabel("Elapsed time (s)")
+    ax2.set_ylabel("Queue depth (messages)")
+    ax2.grid(True, alpha=0.3)
+    ax2.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+
+    if sessions.notna().any():
+        ax2b = ax2.twinx()
+        ax2b.plot(x, sessions, color=COLORS[1], linewidth=1.2,
+                  linestyle="--", alpha=0.8, label="sessions (active)")
+        ax2b.set_ylabel("Active sessions", color=COLORS[1])
+        ax2b.tick_params(axis="y", labelcolor=COLORS[1])
+        lines1, labels1 = ax2.get_legend_handles_labels()
+        lines2, labels2 = ax2b.get_legend_handles_labels()
+        ax2.legend(lines1 + lines2, labels1 + labels2,
+                   loc="upper left", fontsize=9)
+    else:
+        ax2.legend(loc="upper left", fontsize=9)
+
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  -> {out_path}")
 
 
 def _plot_combined(

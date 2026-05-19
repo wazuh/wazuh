@@ -51,7 +51,6 @@ AGENTS=10
 DATA_SIZE=100
 DURATION=60
 LABEL=""
-PROCESS_NAME="wazuh-manager-modulesd"
 MANAGER="127.0.0.1"
 PORT=1514
 REG_PORT=1515
@@ -100,7 +99,6 @@ Benchmark mode:
   -l, --label LABEL       Run label for results directory (default: timestamp)
   -m, --manager HOST      Manager address (default: $MANAGER)
   -p, --port PORT         Manager port (default: $PORT)
-      --process NAME      Process to monitor (default: $PROCESS_NAME)
       --payload-kind K    Payload shape: package|system|hotfix|fim_file|sca_check
                           (default: $PAYLOAD_KIND). Automatically selects
                           the consistent module and target index.
@@ -163,7 +161,6 @@ while [[ $# -gt 0 ]]; do
         -l|--label)       LABEL="$2"; shift 2 ;;
         -m|--manager)     MANAGER="$2"; shift 2 ;;
         -p|--port)        PORT="$2"; shift 2 ;;
-        --process)        PROCESS_NAME="$2"; shift 2 ;;
         --payload-kind)   PAYLOAD_KIND="$2"; PAYLOAD_KIND_FROM_CLI=true; shift 2 ;;
         --module)         MODULE="$2"; shift 2 ;;
         --index)          INDEX="$2"; shift 2 ;;
@@ -225,7 +222,7 @@ if $COMPARE_MODE; then
     echo "  Output:      $CHART_DIR/"
     echo ""
 
-    "$PYTHON" "$SCRIPT_DIR/graphics_generator.py" \
+    "$PYTHON" "$GRAPHICS_PY" \
         $RESULT_ARGS \
         -o "$CHART_DIR" \
         --format "$CHART_FORMAT"
@@ -314,21 +311,18 @@ BENCH_CSV="$RESULTS_DIR/bench.csv"
 SENDER_JSON="$RESULTS_DIR/sender_summary.json"
 MONITOR_DIR="$RESULTS_DIR/monitor"
 MONITOR_PID_FILE="$RESULTS_DIR/monitor.pid"
-LOGS_CSV="$RESULTS_DIR/logs.csv"
-LOG_PARSER_PID_FILE="$RESULTS_DIR/log_parser.pid"
 SUMMARY_JSON="$RESULTS_DIR/summary.json"
 # Per-process CSV used by result_summary.py (the IS daemon is modulesd)
-MONITOR_MODULESD_CSV="$MONITOR_DIR/$PROCESS_NAME.csv"
+MONITOR_MODULESD_CSV="$MONITOR_DIR/wazuh-manager-modulesd.csv"
 DISK_CSV="$MONITOR_DIR/disk_usage.csv"
 
 # Wipe stale outputs from previous runs that reused this label.
-# The engine monitor (per-process CSVs + disk_usage.csv) and log_parser.py
-# both open their CSVs in append mode (useful when run standalone); without
-# this wipe the charts would show a diagonal joining the last point of the
-# previous run to t=1 of the new one. The sender's bench.csv already
-# truncates on open, but we wipe it too for consistency.
-rm -f "$BENCH_CSV" "$SENDER_JSON" "$LOGS_CSV" "$SUMMARY_JSON" \
-      "$MONITOR_PID_FILE" "$LOG_PARSER_PID_FILE"
+# The engine monitor (per-process CSVs + disk_usage.csv) writes in append
+# mode (useful when run standalone); without this wipe the charts would show
+# a diagonal joining the last point of the previous run to t=1 of the new
+# one. The sender's bench.csv already truncates on open, but we wipe it too
+# for consistency.
+rm -f "$BENCH_CSV" "$SENDER_JSON" "$SUMMARY_JSON" "$MONITOR_PID_FILE"
 rm -rf "$RESULTS_DIR/charts" "$MONITOR_DIR"
 
 echo ""
@@ -343,7 +337,6 @@ echo "  DataValues/session:$DATA_SIZE"
 echo "  Duration:          ${DURATION}s"
 echo "  Manager:           $MANAGER:$PORT"
 echo "  Module:            $MODULE"
-echo "  Process:           $PROCESS_NAME"
 echo ""
 
 # Save benchmark parameters for reproducibility
@@ -358,7 +351,7 @@ cat > "$RESULTS_DIR/params.json" <<PARAMS
     "payload_kind": "$PAYLOAD_KIND",
     "module": "${MODULE:-(from kind)}",
     "index": "${INDEX:-(from kind)}",
-    "process": "$PROCESS_NAME",
+    "process": "wazuh-manager-modulesd",
     "payload_size": $PAYLOAD_SIZE,
     "pad_field": "$PAD_FIELD",
     "drop_every": $DROP_EVERY,
@@ -391,9 +384,10 @@ echo ""
 # That monitor writes one CSV per Wazuh manager process plus a separate
 # disk_usage.csv into --output-dir. We use the monitor's built-in defaults
 # (all Wazuh manager daemons + standard disk paths) so all processes are
-# tracked. result_summary.py and graphics_generator.py read directly from
-# the per-process CSV (modulesd) and disk_usage.csv inside monitor/.
+# tracked. monitor_graphics_generator.py reads directly from the per-process
+# CSV (modulesd) and disk_usage.csv inside monitor/.
 MONITOR_PY="$SCRIPT_DIR/../../../engine/tools/devContainer/scripts/monitor.py"
+GRAPHICS_PY="$SCRIPT_DIR/../../../engine/tools/devContainer/scripts/monitor_graphics_generator.py"
 mkdir -p "$MONITOR_DIR"
 echo "Starting resource monitor (engine/tools/devContainer/scripts/monitor.py)..."
 MONITOR_ARGS=(
@@ -408,31 +402,10 @@ sleep 3
 
 if ! kill -0 "$MONITOR_BG_PID" 2>/dev/null; then
     echo "Error: Monitor process failed to start"
-    echo "  Make sure '$PROCESS_NAME' is running"
+    echo "  Make sure the wazuh-manager daemons are running"
     exit 1
 fi
 echo "  Monitor PID: $MONITOR_BG_PID  (output: $MONITOR_DIR/)"
-
-# 1b. Start manager log parser if the log file exists
-LOG_PARSER_BG_PID=""
-if [[ -r "$MANAGER_LOG" ]]; then
-    echo "Starting manager log parser (log: $MANAGER_LOG)..."
-    "$PYTHON" "$SCRIPT_DIR/log_parser.py" \
-        --log "$MANAGER_LOG" \
-        -o "$LOGS_CSV" \
-        -s 1.0 \
-        --pidfile "$LOG_PARSER_PID_FILE" &
-    LOG_PARSER_BG_PID=$!
-    sleep 1
-    if kill -0 "$LOG_PARSER_BG_PID" 2>/dev/null; then
-        echo "  Log parser PID: $LOG_PARSER_BG_PID"
-    else
-        echo "  (log parser failed to start; skipping)"
-        LOG_PARSER_BG_PID=""
-    fi
-else
-    echo "Manager log not readable at $MANAGER_LOG — skipping log parser"
-fi
 
 # 2. Run benchmark sender
 echo ""
@@ -513,7 +486,7 @@ if [[ ${#EXT_ACTION_PIDS[@]} -gt 0 ]]; then
     done
 fi
 
-# 3. Stop monitor + log parser
+# 3. Stop monitor
 echo ""
 echo "Stopping resource monitor..."
 if kill -0 "$MONITOR_BG_PID" 2>/dev/null; then
@@ -522,19 +495,12 @@ if kill -0 "$MONITOR_BG_PID" 2>/dev/null; then
 fi
 echo "  Monitor stopped"
 
-if [[ -n "$LOG_PARSER_BG_PID" ]] && kill -0 "$LOG_PARSER_BG_PID" 2>/dev/null; then
-    echo "Stopping log parser..."
-    kill -TERM "$LOG_PARSER_BG_PID" 2>/dev/null || true
-    wait "$LOG_PARSER_BG_PID" 2>/dev/null || true
-    echo "  Log parser stopped"
-fi
-
 # 4. Merge CSVs into summary.json (PASS/FAIL if scenario provided expectations)
 echo ""
 echo "Generating summary.json..."
 SUMMARY_EXTRA=()
 [[ -f "$SENDER_JSON" ]] && SUMMARY_EXTRA+=(--sender-json "$SENDER_JSON")
-[[ -f "$LOGS_CSV"    ]] && SUMMARY_EXTRA+=(--logs        "$LOGS_CSV")
+[[ -f "$MONITOR_DIR/logs.csv" ]] && SUMMARY_EXTRA+=(--logs "$MONITOR_DIR/logs.csv")
 [[ -n "$SCENARIO"    ]] && SUMMARY_EXTRA+=(--scenario    "$SCENARIO")
 [[ -f "$RESULTS_DIR/params.json" ]] && SUMMARY_EXTRA+=(--params "$RESULTS_DIR/params.json")
 
@@ -551,7 +517,7 @@ echo ""
 echo "Generating charts..."
 CHART_DIR="$RESULTS_DIR/charts"
 
-"$PYTHON" "$SCRIPT_DIR/graphics_generator.py" \
+"$PYTHON" "$GRAPHICS_PY" \
     -r "$RESULTS_DIR::$LABEL" \
     -o "$CHART_DIR" \
     --format "$CHART_FORMAT" || echo "  Warning: chart generation failed (matplotlib needed)"
@@ -582,7 +548,7 @@ echo ""
 echo "  Results:   $RESULTS_DIR/"
 echo "  Bench CSV: $BENCH_CSV"
 echo "  Monitor:   $MONITOR_DIR/"
-[[ -f "$LOGS_CSV"    ]] && echo "  Logs:      $LOGS_CSV"
+[[ -f "$MONITOR_DIR/logs.csv" ]] && echo "  Logs:      $MONITOR_DIR/logs.csv"
 [[ -f "$SUMMARY_JSON" ]] && echo "  Summary:   $SUMMARY_JSON"
 echo "  Charts:    $CHART_DIR/"
 echo ""

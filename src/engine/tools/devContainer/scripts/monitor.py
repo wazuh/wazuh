@@ -32,7 +32,7 @@ import signal
 import sys
 import time
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import psutil
 
@@ -545,7 +545,7 @@ def main() -> None:
 
 
 # ---------------------------------------------------------------------------
-# InventorySync log extraction (temporary — will be removed in the future)
+# InventorySync log extraction & event counting
 # ---------------------------------------------------------------------------
 WAZUH_LOG_PATH = "/var/wazuh-manager/logs/wazuh-manager.log"
 
@@ -555,6 +555,48 @@ _RE_QUEUE_STATS = re.compile(
 _RE_SESSION_STATS = re.compile(
     r"^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) .+InventorySync session stats: (.+)$"
 )
+
+# Event counter patterns — matches error/warning events in the manager log.
+# Each match increments a per-second counter in logs.csv.
+_EVENT_PATTERNS: dict[str, re.Pattern] = {
+    "session_limit_reached": re.compile(r"Session limit reached \(\d+/\d+ active sessions\)"),
+    "zombie_cleaned":        re.compile(r"Cleaning up zombie session \d+ for agent"),
+    "session_timeout":       re.compile(r"Session \d+ has timed out"),
+    "vdsync_timeout":        re.compile(r"Feed update scan timeout waiting for VDSync"),
+    "parse_error":           re.compile(r"Failed to parse JSON message"),
+    "module_check_failed":   re.compile(r"ModuleCheck failed"),
+    "inventory_sync_error":  re.compile(r"InventorySyncFacade::start: (?!Session not found)"),
+    "indexer_error":         re.compile(r"(indexer.*error|Indexer.*error|indexer.*offline|indexer.*not available)",
+                                        re.IGNORECASE),
+}
+
+# Gauge metrics captured from "InventorySync queue stats:" lines.
+_GAUGE_PATTERN = re.compile(
+    r"InventorySync queue stats:\s+"
+    r"workers_q=(?P<workers_q>\d+)\s+"
+    r"indexer_q=(?P<indexer_q>\d+)\s+"
+    r"sessions=(?P<sessions>\d+)\s+"
+    r"blocked_agents=(?P<blocked_agents>\d+)\s+"
+    r"active_vdfirst=(?P<active_vdfirst>\d+)\s+"
+    r"indexer_bulk_bytes=(?P<indexer_bulk_bytes>\d+)\s+"
+    r"indexer_notify=(?P<indexer_notify>\d+)\s+"
+    r"indexer_delbyq=(?P<indexer_delbyq>\d+)\s+"
+    r"rocksdb_dir_bytes=(?P<rocksdb_dir_bytes>\d+)"
+)
+
+_GAUGE_NAMES: tuple[str, ...] = (
+    "workers_q", "indexer_q", "sessions", "blocked_agents", "active_vdfirst",
+    "indexer_bulk_bytes", "indexer_notify", "indexer_delbyq", "rocksdb_dir_bytes",
+)
+
+_LOGS_CSV_HEADER = (
+    ["timestamp", "elapsed_s"]
+    + list(_EVENT_PATTERNS.keys())
+    + list(_GAUGE_NAMES)
+)
+
+_RE_LOG_TIMESTAMP = re.compile(r"^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})")
+_LOG_TS_FMT = "%Y/%m/%d %H:%M:%S"
 
 
 def _parse_flat_kv(text: str) -> dict[str, str]:
@@ -593,49 +635,126 @@ def _parse_flat_kv(text: str) -> dict[str, str]:
     return result
 
 
-_LOG_TS_FMT = "%Y/%m/%d %H:%M:%S"
-
-
 def extract_invsync_logs(output_dir: str,
                          log_path: str = WAZUH_LOG_PATH,
                          start_time: datetime | None = None) -> None:
-    """Parse wazuh-manager.log and write queue/session stats CSVs.
+    """Parse wazuh-manager.log and produce three CSV outputs:
+
+    1. ``logs.csv`` — per-second event counters + gauge values (replaces
+       the former standalone log_parser.py).
+    2. ``invsync_queue_stats.csv`` — one row per raw queue-stats log line.
+    3. ``invsync_session_stats.csv`` — one row per session-stats log line.
 
     Only log lines with a timestamp >= *start_time* are included so that
     data from previous runs is not mixed in.
-
-    This function is temporary and will be removed in the future.
     """
     if not os.path.isfile(log_path):
-        logger.info("Log file %s not found — skipping InventorySync extraction.", log_path)
+        logger.info("Log file %s not found — skipping log extraction.", log_path)
         return
 
     queue_rows: list[dict[str, str]] = []
     session_rows: list[dict[str, str]] = []
 
-    logger.info("Extracting InventorySync stats from %s (since %s) ...",
+    # For logs.csv: bucket events and gauges into 1-second intervals.
+    # Key = integer elapsed second, value = {counter_name: count, ...}
+    buckets: dict[int, dict[str, int]] = {}
+    # Gauge values carry forward — last seen value persists until updated.
+    gauges: dict[str, int] = {}
+    # Track per-bucket gauge snapshots separately so carry-forward works.
+    bucket_gauges: dict[int, dict[str, int]] = {}
+
+    logger.info("Extracting InventorySync logs from %s (since %s) ...",
                 log_path,
                 start_time.strftime(_LOG_TS_FMT) if start_time else "beginning")
+
     with open(log_path, "r", errors="replace") as fh:
         for line in fh:
+            # Extract timestamp from log line
+            ts_match = _RE_LOG_TIMESTAMP.match(line)
+            if not ts_match:
+                continue
+            ts_str = ts_match.group(1)
+            try:
+                line_dt = datetime.strptime(ts_str, _LOG_TS_FMT)
+            except ValueError:
+                continue
+            if start_time and line_dt < start_time:
+                continue
+
+            # Compute elapsed second for this line
+            elapsed_s = int((line_dt - start_time).total_seconds()) if start_time else 0
+
+            # --- Queue stats (raw CSV + gauge extraction) ---
             m = _RE_QUEUE_STATS.match(line)
             if m:
-                ts_str = m.group(1)
-                if start_time and datetime.strptime(ts_str, _LOG_TS_FMT) < start_time:
-                    continue
                 row = {"timestamp": ts_str}
                 row.update(_parse_flat_kv(m.group(2)))
                 queue_rows.append(row)
+                # Update gauges from this line
+                gauge_match = _GAUGE_PATTERN.search(line)
+                if gauge_match:
+                    for name in _GAUGE_NAMES:
+                        gauges[name] = int(gauge_match.group(name))
+                    bucket_gauges[elapsed_s] = dict(gauges)
                 continue
+
+            # --- Session stats (raw CSV) ---
             m = _RE_SESSION_STATS.match(line)
             if m:
-                ts_str = m.group(1)
-                if start_time and datetime.strptime(ts_str, _LOG_TS_FMT) < start_time:
-                    continue
                 row = {"timestamp": ts_str}
                 row.update(_parse_flat_kv(m.group(2)))
                 session_rows.append(row)
+                continue
 
+            # --- Event patterns (counters for logs.csv) ---
+            for key, regex in _EVENT_PATTERNS.items():
+                if regex.search(line):
+                    if elapsed_s not in buckets:
+                        buckets[elapsed_s] = {k: 0 for k in _EVENT_PATTERNS}
+                    buckets[elapsed_s][key] += 1
+
+            # Also check for gauge in non-queue-stats lines (shouldn't happen
+            # but be safe)
+            gauge_match = _GAUGE_PATTERN.search(line)
+            if gauge_match:
+                for name in _GAUGE_NAMES:
+                    gauges[name] = int(gauge_match.group(name))
+                bucket_gauges[elapsed_s] = dict(gauges)
+
+    # --- Write logs.csv (per-second counters + carry-forward gauges) ---
+    if buckets or bucket_gauges:
+        max_sec = max(
+            max(buckets.keys()) if buckets else 0,
+            max(bucket_gauges.keys()) if bucket_gauges else 0,
+        )
+        logs_rows: list[dict] = []
+        carried_gauges: dict[str, int] = {}
+        for sec in range(0, max_sec + 1):
+            # Update carried gauges if this second has a snapshot
+            if sec in bucket_gauges:
+                carried_gauges.update(bucket_gauges[sec])
+            counters = buckets.get(sec, {k: 0 for k in _EVENT_PATTERNS})
+            row: dict[str, object] = {
+                "timestamp": (start_time + timedelta(seconds=sec)).strftime(
+                    "%Y-%m-%dT%H:%M:%SZ") if start_time else "",
+                "elapsed_s": sec,
+            }
+            for k in _EVENT_PATTERNS:
+                row[k] = counters.get(k, 0)
+            for name in _GAUGE_NAMES:
+                row[name] = carried_gauges.get(name, "")
+            logs_rows.append(row)
+
+        logs_path = os.path.join(output_dir, "logs.csv")
+        with open(logs_path, "w", newline="") as fh:
+            writer = csv.DictWriter(fh, fieldnames=_LOGS_CSV_HEADER)
+            writer.writeheader()
+            writer.writerows(logs_rows)
+        logger.info("Wrote %d rows -> %s", len(logs_rows), logs_path)
+    else:
+        logger.info("No event/gauge data found — logs.csv not written.")
+
+    # --- Write invsync_queue_stats.csv ---
     if queue_rows:
         path = os.path.join(output_dir, "invsync_queue_stats.csv")
         _write_csv(path, queue_rows)
@@ -643,6 +762,7 @@ def extract_invsync_logs(output_dir: str,
     else:
         logger.info("No InventorySync queue stats found in log.")
 
+    # --- Write invsync_session_stats.csv ---
     if session_rows:
         path = os.path.join(output_dir, "invsync_session_stats.csv")
         _write_csv(path, session_rows)
