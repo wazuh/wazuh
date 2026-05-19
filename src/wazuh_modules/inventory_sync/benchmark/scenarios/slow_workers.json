@@ -1,12 +1,10 @@
 {
   "name": "slow_workers",
-  "description": "Validates the m_workersQueue growth mechanism with a throttled consumer. Requires the SLOW_WORKERS_TEST patch in inventorySyncFacade.hpp (forces 1 worker thread + 50 ms delay per message, max ~20 msg/s consumer rate vs ~thousands of msg/s producer). With this throttle, even modest load should make RSS climb monotonically — confirming that the unlimited queue is the root cause and that hardware_concurrency() workers were the only reason previous burst tests did not OOM as fast as session_capacity_heavy did.",
+  "description": "Validates the m_workersQueue growth mechanism with a throttled consumer. Requires the SLOW_WORKERS_TEST patch in inventorySyncFacade.hpp (forces 1 worker thread + 50 ms delay per message, max ~20 msg/s consumer rate vs ~thousands of msg/s producer). With this throttle, even modest load should make RSS climb monotonically \u2014 confirming that the unlimited queue is the root cause and that hardware_concurrency() workers were the only reason previous burst tests did not OOM as fast as session_capacity_heavy did.",
   "load": {
-    "agents":       100,
-    "data_size":    50,
+    "agents": 100,
+    "data_size": 50,
     "duration_sec": 180,
-    "rate":         0,
-    "session_delay": 0,
     "payload_kind": "fim_file"
   },
   "expectations": {
@@ -15,8 +13,8 @@
   },
   "notes": [
     "PRECONDITION: the manager must be running a build with the SLOW_WORKERS_TEST changes in inventorySyncFacade.hpp:591-625 (1 worker + 50 ms sleep_for in the worker callback). Without those changes, this scenario will pass uneventfully because the unthrottled workers drain at thousands of msg/s.",
-    "Math of the throttle: 1 worker × (1000 ms / 50 ms) = 20 msg/s max consumer rate. With 100 agents at full burst, producer ~3000-5000 msg/s. Accumulation ~3-5 KB/s × 600 bytes per msg... wait — let me redo: producer-rejection equilibrium kicks in once sessions stack up. Effective producer rate drops as start_ack waits stretch out. Net result: visible RSS climb in the first 60-120 s, then plateau as the agent-side start_ack timeouts kick in.",
-    "Expectations are intentionally low — this test EXPECTS to fail rss_growth_mb_max with the patch applied (that is the point). Mark as PASS in the report by interpretation, not by the check.",
+    "Math of the throttle: 1 worker \u00d7 (1000 ms / 50 ms) = 20 msg/s max consumer rate. With 100 agents at full burst, producer ~3000-5000 msg/s. Accumulation ~3-5 KB/s \u00d7 600 bytes per msg... wait \u2014 let me redo: producer-rejection equilibrium kicks in once sessions stack up. Effective producer rate drops as start_ack waits stretch out. Net result: visible RSS climb in the first 60-120 s, then plateau as the agent-side start_ack timeouts kick in.",
+    "Expectations are intentionally low \u2014 this test EXPECTS to fail rss_growth_mb_max with the patch applied (that is the point). Mark as PASS in the report by interpretation, not by the check.",
     "Compare with session_capacity_heavy: this scenario reaches the same OOM-precursor behavior with 100 agents instead of 999, proving the bottleneck is the consumer side and that capping the queue would fix it.",
     "REVERT-CHECK: after running, revert the SLOW_WORKERS_TEST block in inventorySyncFacade.hpp and re-run this same scenario. The second run should pass with rss_growth_mb_max well under 100. That confirms the patch was the only cause of the growth."
   ]

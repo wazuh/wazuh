@@ -1,12 +1,10 @@
 {
   "name": "heavy_payload_burst",
-  "description": "Few messages but heavy. Each m_workersQueue element is a std::vector<char> ~32 KB (capped by the agent→manager wire-protocol limit, see notes); a moderate backlog still weighs hundreds of MB. Validates that OOM risk doesn't require 'many' messages — heavy ones are enough.",
+  "description": "Few messages but heavy. Each m_workersQueue element is a std::vector<char> ~32 KB (capped by the agent\u2192manager wire-protocol limit, see notes); a moderate backlog still weighs hundreds of MB. Validates that OOM risk doesn't require 'many' messages \u2014 heavy ones are enough.",
   "load": {
-    "agents":       150,
-    "data_size":    300,
+    "agents": 150,
+    "data_size": 300,
     "duration_sec": 120,
-    "rate":         0,
-    "session_delay": 0,
     "payload_kind": "fim_file",
     "payload_size_bytes": 32768
   },
@@ -16,8 +14,8 @@
   "notes": [
     "Payload is inflated to 32 KB via load.payload_size_bytes (the value of file.path is extended; wazuh-states-fim-files has dynamic:strict so a new top-level field would be rejected with HTTP 400).",
     "Hard ceiling on payload_size_bytes: remoted's frame buffer is OS_MAXSTR=65536 bytes (shared/include/defs.h:51). Going above ~50 KB triggers WARNING (2202) 'Error uncompressing string' + 'Decrypt the message fail' and the manager closes the agent connection BEFORE the message reaches m_workersQueue. The first heavy_payload_burst attempt at 1 MB hit exactly this: 100 sessions, 100 failed, RSS flat at 27.9 MB (see results_heavy_payload_burst).",
-    "Hypothesis at the new size: 150 agents × 300 DataValue = 45000 messages × 32 KB = ~1.4 GB if the queue retains all in-flight elements. Lower bound for OOM observation, still well above the baseline RSS.",
-    "Proxy: monitor_rss_mb.png + monitor_vms_mb.png — RSS peaks correlated with Start bursts, not with duration.",
+    "Hypothesis at the new size: 150 agents \u00d7 300 DataValue = 45000 messages \u00d7 32 KB = ~1.4 GB if the queue retains all in-flight elements. Lower bound for OOM observation, still well above the baseline RSS.",
+    "Proxy: monitor_rss_mb.png + monitor_vms_mb.png \u2014 RSS peaks correlated with Start bursts, not with duration.",
     "Expect end_ack_error if the indexer HTTP response returns 413 (inherited from the large_payload scenario)."
   ]
 }

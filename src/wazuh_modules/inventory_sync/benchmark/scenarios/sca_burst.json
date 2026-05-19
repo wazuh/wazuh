@@ -1,12 +1,10 @@
 {
   "name": "sca_burst",
-  "description": "SCA burst — simulates N agents performing ModuleFull (first sync or recovery) simultaneously.",
+  "description": "SCA burst \u2014 simulates N agents performing ModuleFull (first sync or recovery) simultaneously.",
   "load": {
-    "agents":       200,
-    "data_size":    600,
+    "agents": 200,
+    "data_size": 600,
     "duration_sec": 120,
-    "rate":         0,
-    "session_delay": 0,
     "payload_kind": "sca_check"
   },
   "expectations": {
@@ -14,11 +12,11 @@
   },
   "notes": [
     "Represents: 200 agents performing SCA FULL sync simultaneously (e.g., after manager restart).",
-    "Each agent sends 600 checks ≈ a single CIS benchmark policy (300-600 checks/policy).",
+    "Each agent sends 600 checks \u2248 a single CIS benchmark policy (300-600 checks/policy).",
     "Total DataValue messages: 200 x 600 = 120,000 enqueued in WorkersQueue.",
     "Manager hotspots exercised:",
     "  - WorkersQueue: 120k x ~4 KB = ~480 MB if workers can't keep up.",
-    "  - RocksDB: 120k keys x 4 KB ≈ 480 MB on disk if sessions complete slowly.",
+    "  - RocksDB: 120k keys x 4 KB \u2248 480 MB on disk if sessions complete slowly.",
     "  - m_agentSessions: 200 concurrent sessions (below maxSessions=1000 default).",
     "Proxies: RSS ramp during send window, disk growth in queue/inventory_sync.",
     "Compare with sca_baseline: if RSS grows 5-10x baseline, WorkersQueue is the bottleneck."

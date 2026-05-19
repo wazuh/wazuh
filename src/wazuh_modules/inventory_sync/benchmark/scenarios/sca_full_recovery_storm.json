@@ -2,11 +2,9 @@
   "name": "sca_full_recovery_storm",
   "description": "Simulates the worst-case SCA recovery scenario: all agents simultaneously perform ModuleFull with maximum check count.",
   "load": {
-    "agents":       500,
-    "data_size":    600,
+    "agents": 500,
+    "data_size": 600,
     "duration_sec": 300,
-    "rate":         0,
-    "session_delay": 0,
     "payload_kind": "sca_check"
   },
   "expectations": {
@@ -15,10 +13,10 @@
   "notes": [
     "WORST CASE: 500 agents x 600 checks = 300,000 DataValues competing for WorkersQueue.",
     "",
-    "Production trigger: Manager restart after maintenance → all agents detect",
-    "  indexer data is stale (checksum mismatch) → all trigger performRecovery()",
-    "  → synchronizeDatabaseSnapshot() loads ALL checks into m_inMemoryData",
-    "  → sends ModuleFull session to manager.",
+    "Production trigger: Manager restart after maintenance \u2192 all agents detect",
+    "  indexer data is stale (checksum mismatch) \u2192 all trigger performRecovery()",
+    "  \u2192 synchronizeDatabaseSnapshot() loads ALL checks into m_inMemoryData",
+    "  \u2192 sends ModuleFull session to manager.",
     "",
     "Agent-side: Each agent has ~9-50 MB in m_inMemoryData.",
     "  Not directly measurable from this benchmark, but the manager effect is:",

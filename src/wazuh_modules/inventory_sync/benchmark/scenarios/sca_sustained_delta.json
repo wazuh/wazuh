@@ -1,17 +1,15 @@
 {
   "name": "sca_sustained_delta",
-  "description": "SCA sustained delta load — moderate fleet continuously syncing deltas over 30 minutes.",
+  "description": "SCA sustained delta load \u2014 moderate fleet continuously syncing deltas over 30 minutes.",
   "load": {
-    "agents":       50,
-    "data_size":    200,
+    "agents": 50,
+    "data_size": 200,
     "duration_sec": 1800,
-    "rate":         0,
-    "session_delay": 5,
     "payload_kind": "sca_check"
   },
   "expectations": {
-    "rss_growth_mb_max":        120,
-    "drops_max":                0,
+    "rss_growth_mb_max": 120,
+    "drops_max": 0,
     "session_success_rate_min": 98.0
   },
   "notes": [
@@ -22,10 +20,10 @@
     "  RocksDB iterators, FlatBufferBuilder allocations not freed after session close).",
     "",
     "Expected behavior: RSS should stabilize within 5 min (sawtooth pattern).",
-    "If RSS grows monotonically > 120 MB over baseline after 30 min → leak.",
+    "If RSS grows monotonically > 120 MB over baseline after 30 min \u2192 leak.",
     "",
-    "Agent-side equivalent: m_syncedIds grows to 200 entries (§3.3) but stable.",
-    "Manager-side: sessions create/destroy at steady rate → memory should be flat.",
+    "Agent-side equivalent: m_syncedIds grows to 200 entries (\u00a73.3) but stable.",
+    "Manager-side: sessions create/destroy at steady rate \u2192 memory should be flat.",
     "",
     "session_delay=5 ensures each agent completes one session before starting the",
     "  next, mimicking the real SCA sync pattern (no concurrent sessions per agent)."

@@ -1,28 +1,34 @@
 {
   "name": "sca_indexer_down",
-  "description": "SCA with indexer down — the most critical SCA manager scenario. Combines SCA FULL sync burst with an unavailable indexer.",
+  "description": "SCA with indexer down \u2014 the most critical SCA manager scenario. Combines SCA FULL sync burst with an unavailable indexer.",
   "load": {
-    "agents":       300,
-    "data_size":    500,
+    "agents": 300,
+    "data_size": 500,
     "duration_sec": 300,
-    "rate":         0,
-    "session_delay": 0,
     "payload_kind": "sca_check"
   },
   "external_actions": [
-    {"at_sec": 10,  "cmd": "./indexer_control.sh stop",  "note": "Kill indexer after 10s warmup"},
-    {"at_sec": 300, "cmd": "./indexer_control.sh start && ./indexer_control.sh wait-healthy", "note": "Restore indexer after test duration"}
+    {
+      "at_sec": 10,
+      "cmd": "./indexer_control.sh stop",
+      "note": "Kill indexer after 10s warmup"
+    },
+    {
+      "at_sec": 300,
+      "cmd": "./indexer_control.sh start && ./indexer_control.sh wait-healthy",
+      "note": "Restore indexer after test duration"
+    }
   ],
   "expectations": {
     "rss_growth_mb_max": 2000
   },
   "notes": [
-    "CRITICAL SCENARIO: This is the SCA dual-queue saturation case (§8.4 MS2).",
+    "CRITICAL SCENARIO: This is the SCA dual-queue saturation case (\u00a78.4 MS2).",
     "",
     "Chain of events when indexer goes down:",
     "  1. WorkersQueue keeps receiving DataValues from 300 agents (UNLIMITED).",
     "  2. Workers process messages: write to RocksDB, push to IndexerQueue.",
-    "  3. IndexerQueue's single worker tries bulkIndex → indexer unreachable.",
+    "  3. IndexerQueue's single worker tries bulkIndex \u2192 indexer unreachable.",
     "  4. IndexerQueue returns Status_Offline on StartAck for NEW sessions.",
     "  5. But EXISTING sessions' data already written to RocksDB stays there.",
     "  6. Meanwhile: ModuleCheck sessions enter retry loop (5x10s = 50s blocking).",
@@ -33,16 +39,16 @@
     "  - IndexerQueue: 300 Response{Context} objects waiting to send to indexer.",
     "",
     "SCA-specific dimension: After indexer comes back, the manager must process",
-    "  the ChecksumModule verification — calling calculateChecksumOfChecksums()",
+    "  the ChecksumModule verification \u2014 calling calculateChecksumOfChecksums()",
     "  which does paginated queries to the indexer. If the indexer just recovered",
     "  and those docs haven't been indexed yet, checksum mismatches trigger the",
-    "  agent to do performRecovery() → FULL sync again → amplification loop.",
+    "  agent to do performRecovery() \u2192 FULL sync again \u2192 amplification loop.",
     "",
     "This is the most dangerous SCA production scenario: indexer maintenance",
     "  window + agent fleet restart = double-queue saturation + disk exhaustion.",
     "",
     "Compare with sca_burst: same message pattern but with the indexer sink blocked.",
     "Proxy: RSS should show a sustained positive slope (not sawtooth) during downtime.",
-    "If RSS doesn't drop after indexer restart → queues don't drain → leak confirmed."
+    "If RSS doesn't drop after indexer restart \u2192 queues don't drain \u2192 leak confirmed."
   ]
 }

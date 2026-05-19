@@ -1,12 +1,10 @@
 {
   "name": "sca_dataclean_storm",
-  "description": "SCA DataClean storm — simulates a mass policy removal event where many agents simultaneously disable SCA.",
+  "description": "SCA DataClean storm \u2014 simulates a mass policy removal event where many agents simultaneously disable SCA.",
   "load": {
-    "agents":       100,
-    "data_size":    0,
+    "agents": 100,
+    "data_size": 0,
     "duration_sec": 120,
-    "rate":         0,
-    "session_delay": 0,
     "payload_kind": "sca_check",
     "session_type": "dataclean"
   },
@@ -23,7 +21,7 @@
     "  2. Agent sends DataClean(seq=0, index=wazuh-states-sca).",
     "  3. Agent sends End.",
     "  4. Manager's IndexerQueue worker calls deleteByQuery(wazuh-states-sca, agentId).",
-    "     Each deleteByQuery is an HTTP call to the indexer — blocking the single worker.",
+    "     Each deleteByQuery is an HTTP call to the indexer \u2014 blocking the single worker.",
     "  5. With 100 agents: 100 sequential deleteByQuery calls on the single worker.",
     "",
     "Real-world trigger:",

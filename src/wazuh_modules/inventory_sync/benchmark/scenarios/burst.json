@@ -1,12 +1,10 @@
 {
   "name": "burst",
-  "description": "Burst with no pause and many agents — observe RSS growth and rejections.",
+  "description": "Burst with no pause and many agents \u2014 observe RSS growth and rejections.",
   "load": {
-    "agents":       200,
-    "data_size":    500,
+    "agents": 200,
+    "data_size": 500,
     "duration_sec": 120,
-    "rate":         0,
-    "session_delay": 0,
     "payload_kind": "fim_file"
   },
   "expectations": {

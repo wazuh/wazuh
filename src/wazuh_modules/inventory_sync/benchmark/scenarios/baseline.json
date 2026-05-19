@@ -1,19 +1,17 @@
 {
   "name": "baseline",
-  "description": "Normal load — verifies no drops or warnings. Low data_size (50) to get more cycles per window so the last batch can close within drain_timeout.",
+  "description": "Normal load \u2014 verifies no drops or warnings. Low data_size (50) to get more cycles per window so the last batch can close within drain_timeout.",
   "load": {
-    "agents":       10,
-    "data_size":    50,
+    "agents": 10,
+    "data_size": 50,
     "duration_sec": 60,
-    "rate":         0,
-    "session_delay": 0,
     "payload_kind": "fim_file"
   },
   "expectations": {
-    "rss_growth_mb_max":        100,
-    "drops_max":                0,
-    "status_offline_max":       0,
-    "reqret_max":               0,
+    "rss_growth_mb_max": 100,
+    "drops_max": 0,
+    "status_offline_max": 0,
+    "reqret_max": 0,
     "session_success_rate_min": 99.0
   }
 }

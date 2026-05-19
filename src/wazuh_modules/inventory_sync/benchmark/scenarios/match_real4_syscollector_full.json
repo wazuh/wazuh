@@ -1,0 +1,24 @@
+{
+  "name": "match_real4_syscollector_full",
+  "description": "Recovery-storm counterpart of match_real4_syscollector. Same 4 agents, same 2000 syscollector DataValues per session, same payload — the ONLY difference is sync_mode=0 (ModuleFull) so the manager runs deleteByQuery on every inventory index before bulk-indexing the new docs. This is the load profile of the 24h recovery cycle (or of a fresh agent enroll whose checksum drifts), and is what the bench should use when comparing against a manager that is rebuilding state from scratch. Use the delta scenario for steady-state operation and this one for stress.",
+  "load": {
+    "agents": 4,
+    "data_size": 2000,
+    "duration_sec": 60,
+    "payload_kind": "package",
+    "max_eps": 75,
+    "sessions_per_agent": 1,
+    "use_databatch": true,
+    "batch_max_bytes": 61440,
+    "sync_mode": 0
+  },
+  "expectations": {
+    "session_success_rate_min": 90.0
+  },
+  "notes": [
+    "Why sync_mode=0 (ModuleFull): the agent's normal sync loop ALWAYS sends Mode_ModuleDelta. Mode_ModuleFull is only triggered by runRecoveryProcess() which is gated by m_integrityIntervalValue (default 24h). So the FULL path is rare in production but is the most stressful load on the manager: for each index in the Start the manager runs deleteByQuery(index, agentId) and only then bulk-indexes the new docs. The delta path skips the delete step entirely.",
+    "What you should see vs the delta scenario: same number of sessions and same bulk volume, BUT indexer_delbyq counter increments per index per session (4 agents x ~9 inventory indices = ~36 delete_by_query ops on top of the bulk). Expect higher CPU / RSS on the indexer side and a small spike on the manager side from the additional bookkeeping.",
+    "When to run this: any time you want to measure the worst-case manager load — fresh agent enrolls, post-incident manager restart with many agents reconnecting, scheduled 24h recovery storm.",
+    "When to run the delta sibling instead: steady-state ops, comparing against a real lab where agents have already completed their first-sync. The delta scenario reflects the day-to-day; this one reflects the rare-but-painful case."
+  ]
+}

@@ -2,13 +2,11 @@
   "name": "databatch",
   "description": "Exercises the MessageType_DataBatch path (per-element re-serialization in production).",
   "load": {
-    "agents":       50,
-    "data_size":    500,
+    "agents": 50,
+    "data_size": 500,
     "duration_sec": 120,
-    "rate":         0,
-    "session_delay": 0,
     "use_databatch": true,
-    "batch_size":   64
+    "batch_max_bytes": 61440
   },
   "expectations": {
     "session_success_rate_min": 90.0

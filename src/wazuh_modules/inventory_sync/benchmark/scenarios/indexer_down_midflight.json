@@ -1,17 +1,21 @@
 {
   "name": "indexer_down_midflight",
-  "description": "Indexer is taken down AFTER sessions have reached steady state, not before. Differs from indexer_down_burst (which stops the indexer at t=10s, before the sender finishes registration+key_wait and starts sending Starts — all sessions hit the handleStart guard rail and return StartAck Offline, so m_indexerQueue is never exercised). Here the indexer stays up during the ~70s sender setup + 50s of steady-state load, then is stopped at t=120s while hundreds of sessions are mid-flight, pushing DataValues into m_workersQueue → workers → m_indexerQueue. Goal: validate whether m_indexerQueue (UNLIMITED_QUEUE_SIZE) accumulates Response{} entries unbounded while the sink is unreachable.",
+  "description": "Indexer is taken down AFTER sessions have reached steady state, not before. Differs from indexer_down_burst (which stops the indexer at t=10s, before the sender finishes registration+key_wait and starts sending Starts \u2014 all sessions hit the handleStart guard rail and return StartAck Offline, so m_indexerQueue is never exercised). Here the indexer stays up during the ~70s sender setup + 50s of steady-state load, then is stopped at t=120s while hundreds of sessions are mid-flight, pushing DataValues into m_workersQueue \u2192 workers \u2192 m_indexerQueue. Goal: validate whether m_indexerQueue (UNLIMITED_QUEUE_SIZE) accumulates Response{} entries unbounded while the sink is unreachable.",
   "load": {
-    "agents":       200,
-    "data_size":    300,
+    "agents": 200,
+    "data_size": 300,
     "duration_sec": 600,
-    "rate":         0,
-    "session_delay": 0,
     "payload_kind": "fim_file"
   },
   "external_actions": [
-    {"at_sec": 120, "cmd": "./indexer_control.sh stop"},
-    {"at_sec": 360, "cmd": "./indexer_control.sh start && ./indexer_control.sh wait-healthy"}
+    {
+      "at_sec": 120,
+      "cmd": "./indexer_control.sh stop"
+    },
+    {
+      "at_sec": 360,
+      "cmd": "./indexer_control.sh start && ./indexer_control.sh wait-healthy"
+    }
   ],
   "expectations": {
     "rss_growth_mb_max": 2000
@@ -26,7 +30,7 @@
     "Expected proxies:",
     "  - During t=0-120 (indexer up): success_rate near 100%, RSS plateau ~250 MB (steady state ceiling).",
     "  - During t=120-360 (indexer down): if m_indexerQueue is the bottleneck, RSS grows in ramp; end_ack_error > 0 or end_ack_processing piles up; sessions_failed grows. If RocksDB drains fast, disk inventory_sync grows.",
-    "  - During t=360-600 (indexer recovery): if the queue drained while indexer was up, RSS returns to baseline. If RSS stays elevated → real retention/leak after sink recovery.",
+    "  - During t=360-600 (indexer recovery): if the queue drained while indexer was up, RSS returns to baseline. If RSS stays elevated \u2192 real retention/leak after sink recovery.",
     "Distinguishing signals:",
     "  - RSS slope during indexer-down window IS the answer. Flat = queue is bounded somewhere. Linear ramp = unbounded growth confirmed.",
     "  - sessions_failed during this window tells us if there's also a guard kicking in for in-flight sessions (e.g. EndAck rejected).",

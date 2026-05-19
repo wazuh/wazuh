@@ -1,14 +1,12 @@
 {
   "name": "sca_no_end_orphan",
-  "description": "SCA orphan sessions — agents send Start + DataValues but never send End (simulating agent crash during FULL sync).",
+  "description": "SCA orphan sessions \u2014 agents send Start + DataValues but never send End (simulating agent crash during FULL sync).",
   "load": {
-    "agents":       100,
-    "data_size":    500,
+    "agents": 100,
+    "data_size": 500,
     "duration_sec": 1500,
-    "rate":         0,
-    "session_delay": 0,
     "payload_kind": "sca_check",
-    "no_end":       true
+    "no_end": true
   },
   "expectations": {
     "rss_growth_mb_max": 300
@@ -22,11 +20,11 @@
     "Without End message:",
     "  - m_agentSessions retains 100 sessions in RAM (GapSet + Context per session).",
     "  - RocksDB keys remain: {sessionId}_{0..499} for each agent.",
-    "  - No EndAck is ever sent → agent-side PersistentQueue grows.",
+    "  - No EndAck is ever sent \u2192 agent-side PersistentQueue grows.",
     "",
     "After timeout (20 min): inventory_sync should log 'Session N has timed out',",
     "  delete the RocksDB prefix, and remove from m_agentSessions.",
-    "  → RSS should drop and disk should shrink.",
+    "  \u2192 RSS should drop and disk should shrink.",
     "",
     "Production scenario: Network partition during SCA scan window.",
     "  Agent starts sending checks, network drops, agent restarts.",

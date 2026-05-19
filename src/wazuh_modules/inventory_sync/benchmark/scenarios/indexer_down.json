@@ -2,15 +2,19 @@
   "name": "indexer_down",
   "description": "Stops the indexer at 30s and observes the effect on m_indexerQueue (proxy: RSS and end_ack_error).",
   "load": {
-    "agents":       50,
-    "data_size":    200,
-    "duration_sec": 120,
-    "rate":         0,
-    "session_delay": 0
+    "agents": 50,
+    "data_size": 200,
+    "duration_sec": 120
   },
   "external_actions": [
-    {"at_sec": 30,  "cmd": "./indexer_control.sh stop"},
-    {"at_sec": 120, "cmd": "./indexer_control.sh start && ./indexer_control.sh wait-healthy"}
+    {
+      "at_sec": 30,
+      "cmd": "./indexer_control.sh stop"
+    },
+    {
+      "at_sec": 120,
+      "cmd": "./indexer_control.sh start && ./indexer_control.sh wait-healthy"
+    }
   ],
   "expectations": {
     "rss_growth_mb_max": 800
