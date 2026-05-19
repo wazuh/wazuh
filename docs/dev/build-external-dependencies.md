@@ -55,7 +55,7 @@ The matrix is fixed at 7 entries:
 | `rpm-arm64` | agent | `wz-linux-arm64` | CentOS 6 agent builder image. |
 | `macos-intel64` | agent | `macos-14-large` | Native macOS build. Agent-only. |
 | `macos-arm64` | agent | `macos-14` | Native macOS build. Agent-only. |
-| `windows-i686` | agent | `wz-linux-amd64` | MinGW cross-compile on Linux. Agent-only. |
+| `windows-i686` | agent | `wz-linux-amd64` | MinGW cross-compile inside the `compile_windows_agent` image (ubuntu:22.04, same one the official windows agent build uses). Agent-only. |
 | `rpm-amd64` | manager | `wz-linux-amd64` | CentOS 7 manager builder image (glibc 2.17). |
 | `rpm-arm64` | manager | `wz-linux-arm64` | CentOS 7 manager builder image. |
 

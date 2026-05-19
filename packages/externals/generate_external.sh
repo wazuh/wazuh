@@ -7,9 +7,10 @@
 # packages/externals/build_external.sh inside the container, and exposes the
 # per-dep zip artifacts on the host.
 #
-# Currently supports the 4 Linux Docker legs (deb/rpm x amd64/arm64).
-# macOS (native) and Windows (MinGW cross-compile) legs are added in
-# follow-up commits.
+# Linux deb/rpm legs run inside the pkg_<sys>_<target>_builder_<arch> image.
+# The Windows MinGW cross-compile leg runs inside compile_windows_agent
+# (ubuntu:22.04 with the mingw toolchain pre-baked — same image the official
+# Windows agent build uses). macOS legs run natively on the macOS runner.
 
 set -e
 
@@ -110,12 +111,20 @@ echo "[generate_external] target=${TARGET} system=${SYSTEM} arch=${ARCHITECTURE}
 echo "[generate_external] deps='${DEPS_TO_UPDATE}'"
 echo "[generate_external] output=${OUTDIR}"
 
-# Linux deb/rpm uses the existing builder Docker images. macOS runs natively
-# on the macOS runner; Windows runs natively on a Linux runner with MinGW
-# installed (the cross-compile target is i686-w64-mingw32, build artifacts
-# are .a/.lib files for Windows). Neither macOS nor Windows uses a Wazuh
-# package builder image.
-if [ "${SYSTEM}" = "macos" ] || [ "${SYSTEM}" = "windows" ]; then
+# macOS runs natively on the macOS runner (no Docker available, host toolchain
+# is what we ship against). Every other leg runs inside a pinned Wazuh builder
+# image so the host glibc the build was produced against is the image's, not
+# the runner's:
+#   - deb/rpm   -> pkg_<sys>_<target>_builder_<arch>      (centos:6/7 era)
+#   - windows   -> compile_windows_agent                   (ubuntu:22.04, the
+#                                                          same image used by
+#                                                          5_builderpackage_agent-windows.yml's
+#                                                          downstream consumers)
+# Without the compile_windows_agent pin, the windows leg picked up whatever
+# glibc the wz-linux-amd64 runner happened to ship; downstream agent builds
+# that re-consumed the packed windows externals on the 22.04 image then
+# missed the newer symbols.
+if [ "${SYSTEM}" = "macos" ]; then
     echo "[generate_external] mode=native (no docker)"
     env \
         WAZUH_SRC="${WAZUH_PATH}" \
@@ -128,15 +137,20 @@ if [ "${SYSTEM}" = "macos" ] || [ "${SYSTEM}" = "windows" ]; then
         WAZUH_VERBOSE="${VERBOSE}" \
         bash "${WAZUH_PATH}/packages/externals/build_external.sh"
 else
-    CONTAINER_NAME="pkg_${SYSTEM}_${TARGET}_builder_${ARCHITECTURE}"
+    if [ "${SYSTEM}" = "windows" ]; then
+        CONTAINER_NAME="compile_windows_agent"
+    else
+        CONTAINER_NAME="pkg_${SYSTEM}_${TARGET}_builder_${ARCHITECTURE}"
+    fi
     echo "[generate_external] image=${CONTAINER_NAME}:${DOCKER_TAG}"
 
-    # Run build_external.sh inside the existing builder image.
+    # Run build_external.sh inside the builder image.
     # - /wazuh-local-src    working tree (read-write so we can replace src/external/)
     # - /var/local/wazuh    artifact output (build_external.sh writes
     #                       external_artifacts/ subdir here, we pull from there)
-    # We override the image entrypoint because the default entrypoint
-    # (docker_builder.sh) drives a full package build.
+    # We override the image entrypoint because each image's default entrypoint
+    # drives a full package build (docker_builder.sh on the rpm/deb images,
+    # entrypoint.sh on compile_windows_agent).
     docker run --rm -t \
         -v "${WAZUH_PATH}:/wazuh-local-src:Z" \
         -v "${OUTDIR}:/var/local/wazuh:Z" \
