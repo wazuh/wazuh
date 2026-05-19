@@ -530,8 +530,10 @@ def _plot_with_total(
     fig, ax = plt.subplots(figsize=figsize)
 
     # Build a total series by aligning on elapsed_s (integer seconds).
-    # Each process df has elapsed_s as float; we round to nearest int to align.
-    totals: dict[float, float] = {}
+    # Each process df has elapsed_s as float; we truncate to int to align.
+    # NOTE: do NOT use round() here — Python's banker's rounding causes .5
+    # values like 599.5 and 600.5 to both map to 600, doubling contributions.
+    totals: dict[int, float] = {}
     for idx, (label, df) in enumerate(datasets.items()):
         if y_col not in df.columns:
             continue
@@ -541,7 +543,7 @@ def _plot_with_total(
             linewidth=1.2, alpha=0.7,
         )
         for t, v in zip(df["elapsed_s"], df[y_col]):
-            t_r = round(float(t), 0)
+            t_r = int(float(t))
             totals[t_r] = totals.get(t_r, 0.0) + float(v)
 
     if totals:

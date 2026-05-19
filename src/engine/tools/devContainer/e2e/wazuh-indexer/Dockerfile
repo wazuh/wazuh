@@ -21,6 +21,10 @@ RUN cat <<'EOF' >> /etc/wazuh-indexer/jvm.options
 -Dpermission.java.io.FilePermission=/sys/fs/cgroup/-,read
 EOF
 
+# Change jvm options to use more memory for testing from the default 1g to 4g for Xms and 4g for Xmx
+RUN sed -i 's/-Xms1g/-Xms2g/g' /etc/wazuh-indexer/jvm.options
+RUN sed -i 's/-Xmx1g/-Xmx2g/g' /etc/wazuh-indexer/jvm.options
+
 # Create certs directory (will be populated by volume mount at runtime)
 RUN mkdir -p /etc/wazuh-indexer/certs/
 
