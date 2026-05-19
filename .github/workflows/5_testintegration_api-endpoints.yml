@@ -2,11 +2,22 @@ name: 5.X - API endpoints - Integration tests
 
 on:
   workflow_dispatch:
+    inputs:
+      pytest_extra_args:
+        description: 'Extra arguments to pass to pytest'
+        required: false
+        default: ''
+      tests_list:
+        description: 'List of tests to run, separated by commas. If empty, all tests will be run. If `auto`, the tests will be selected based on the changed files.'
+        required: true
+        default: 'auto'
+
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testintegration_api-endpoints.yml"
       - "api/test/**"
+      - "api/api/**"
       - "api/setup.py"
       - "api/Makefile"
       - "framework/wazuh/**"
@@ -16,9 +27,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  api_endpoints_integration_tests:
+  api_endpoints_integration_tests_setup:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
+    outputs:
+      custom_matrix: ${{ steps.test_files.outputs.files }}
+    name: Generate execution matrix for API endpoints integration tests
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate integration test api endpoint JSON file
+        id: test_files
+        run: |
+          cd api/test/integration/mapping
+          python3 _test_mapping.py
+
+          files=$(jq -c '{"files": ([.[].files[].tests[]] | unique | sort)}' integration_test_api_endpoints.json)
+          echo "files=$files" >> $GITHUB_OUTPUT
+
+  api_endpoints_integration_tests_execution:
+    needs: api_endpoints_integration_tests_setup
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        test_file: ${{ fromJson(needs.api_endpoints_integration_tests_setup.outputs.custom_matrix).files }}
     name: Run integration tests for API endpoints
 
     steps:
@@ -38,4 +74,4 @@ jobs:
         run: |
           echo "Running API endpoints integration test..."
           cd api/test/integration
-          pytest -vvv "test_security_POST_endpoints.tavern.yaml"
+          pytest -vvv ${{ github.event.inputs.pytest_extra_args }} "${{ matrix.test_file }}"
