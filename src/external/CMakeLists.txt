@@ -251,11 +251,18 @@ add_dependencies(ext_libyaml libyaml_external)
 # ------------------------------------------------------------------------------
 
 if(IS_WINDOWS)
+  # _WIN32_WINNT=0x0600 (Vista) is the rest of the project's target — see
+  # src/syscheckd/CMakeLists.txt, src/wazuh_modules/CMakeLists.txt, etc.
+  # Curl ≥ 8.x's configure refuses to build for anything older. MinGW 12+
+  # already defaults to 0x0A00 (Win10) and would pass the configure check
+  # implicitly, but the compile_windows_agent image (ubuntu:22.04) ships
+  # MinGW 10, which still defaults to 0x0501 (XP). Set it explicitly so the
+  # build is portable across MinGW versions.
   set(CURL_CONFIGURE_CMD
       ${CMAKE_COMMAND}
       -E
       env
-      CFLAGS=-fPIC
+      "CFLAGS=-fPIC -D_WIN32_WINNT=0x0600"
       CC=${MINGW_CC}
       ${EXTERNAL_DIR}/curl/configure
       --host=${MINGW_HOST}

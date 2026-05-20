@@ -16,8 +16,11 @@ name: 5.X - Package - Build external dependencies
 #                           denominator — its glibc is forward-compatible
 #                           with deb, so we don't build deb separately)
 #   - 2 macOS native legs:  macos-intel64, macos-arm64
-#   - 1 Windows leg:        windows-i686 (MinGW cross-compile on a Linux
-#                                         runner, no Docker)
+#   - 1 Windows leg:        windows-i686 (MinGW cross-compile inside the
+#                                         compile_windows_agent image —
+#                                         ubuntu:22.04 with mingw pre-baked,
+#                                         the same image used by the official
+#                                         windows agent build)
 # macOS and Windows are agent-only (no manager binaries exist for them).
 # To re-run a single broken leg, use Actions' "Re-run failed jobs" rather
 # than reintroducing a per-leg dispatch input.
@@ -63,7 +66,8 @@ jobs:
       matrix:
         # Linux legs run twice (agent image + manager image); macOS and
         # Windows have no manager builder image so they run agent-only.
-        # windows-i686 is MinGW cross-compile on the Linux amd64 runner.
+        # windows-i686 is MinGW cross-compile inside the compile_windows_agent
+        # container on the Linux amd64 runner — see "Resolve image tag" below.
         include:
           - { system: rpm,     architecture: amd64,   runner: wz-linux-amd64, leg: rpm-amd64,     target: agent }
           - { system: rpm,     architecture: arm64,   runner: wz-linux-arm64, leg: rpm-arm64,     target: agent }
@@ -80,7 +84,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Resolve image tag
-        if: matrix.system == 'rpm'
+        if: matrix.system == 'rpm' || matrix.system == 'windows'
         run: |
           VERSION="$(grep '"version"' "${GITHUB_WORKSPACE}/VERSION.json" | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
           if [ "${{ inputs.docker_image_tag }}" = "auto" ]; then
@@ -90,10 +94,19 @@ jobs:
           else
             echo "TAG=${{ inputs.docker_image_tag }}" >> "${GITHUB_ENV}"
           fi
-          echo "CONTAINER_NAME=pkg_${{ matrix.system }}_${{ matrix.target }}_builder_${{ matrix.architecture }}" >> "${GITHUB_ENV}"
+          # rpm legs use one builder image per (system, target, arch). The
+          # windows leg uses compile_windows_agent — the same ubuntu:22.04 +
+          # MinGW image 5_builderpackage_agent-windows.yml builds the agent
+          # in, so the host glibc the externals link against matches what
+          # downstream windows agent consumers see.
+          if [ "${{ matrix.system }}" = "windows" ]; then
+            echo "CONTAINER_NAME=compile_windows_agent" >> "${GITHUB_ENV}"
+          else
+            echo "CONTAINER_NAME=pkg_${{ matrix.system }}_${{ matrix.target }}_builder_${{ matrix.architecture }}" >> "${GITHUB_ENV}"
+          fi
 
       - name: Pull builder image from GHCR
-        if: matrix.system == 'rpm'
+        if: matrix.system == 'rpm' || matrix.system == 'windows'
         timeout-minutes: 20
         run: |
           bash "${GITHUB_WORKSPACE}/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh" \
@@ -105,16 +118,6 @@ jobs:
         # --owner/--group/--no-same-owner, which we use to keep the packed
         # tarballs reproducible across runners.
         run: brew install bash automake gnu-tar
-
-      - name: Install MinGW cross-compiler (windows leg)
-        if: matrix.system == 'windows'
-        run: |
-          # Mirrors what 5_builderpackage_agent-windows.yml does: cross-compile
-          # the Windows agent on a Linux runner using MinGW. The Wazuh CMake
-          # external recipes detect IS_WINDOWS via CMAKE_SYSTEM_NAME (set by
-          # TARGET=winagent) and switch to the i686-w64-mingw32-* toolchain.
-          sudo apt-get update
-          sudo apt-get install -y gcc-mingw-w64 g++-mingw-w64 make
 
       - name: Build externals
         timeout-minutes: 60
@@ -286,11 +289,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # `image` is the builder image to consume the consolidated deps inside.
+        # For agent/manager that's the same rpm builder build-externals used;
+        # for winagent it's compile_windows_agent (ubuntu:22.04) so the windows
+        # binaries shipped in libraries/windows/ are exercised against the same
+        # glibc baseline the downstream windows agent build sees. Without this,
+        # a host-side tool packed in the windows externals (e.g. flatbuffers'
+        # `flatc`) that was built on a newer glibc than the consumer slips
+        # through the smoke check.
         include:
-          - { architecture: amd64, runner: wz-linux-amd64, target: agent }
-          - { architecture: amd64, runner: wz-linux-amd64, target: manager }
-          - { architecture: arm64, runner: wz-linux-arm64, target: agent }
-          - { architecture: arm64, runner: wz-linux-arm64, target: manager }
+          - { architecture: amd64, runner: wz-linux-amd64, target: agent,    image: pkg_rpm_agent_builder_amd64 }
+          - { architecture: amd64, runner: wz-linux-amd64, target: manager,  image: pkg_rpm_manager_builder_amd64 }
+          - { architecture: arm64, runner: wz-linux-arm64, target: agent,    image: pkg_rpm_agent_builder_arm64 }
+          - { architecture: arm64, runner: wz-linux-arm64, target: manager,  image: pkg_rpm_manager_builder_arm64 }
+          - { architecture: i686,  runner: wz-linux-amd64, target: winagent, image: compile_windows_agent }
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     name: Smoke build (${{ matrix.target }}-${{ matrix.architecture }})
@@ -308,7 +320,7 @@ jobs:
           else
             echo "TAG=${{ inputs.docker_image_tag }}" >> "${GITHUB_ENV}"
           fi
-          echo "CONTAINER_NAME=pkg_rpm_${{ matrix.target }}_builder_${{ matrix.architecture }}" >> "${GITHUB_ENV}"
+          echo "CONTAINER_NAME=${{ matrix.image }}" >> "${GITHUB_ENV}"
 
       - name: Pull builder image from GHCR
         timeout-minutes: 20
