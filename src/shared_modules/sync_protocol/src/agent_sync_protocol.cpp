@@ -924,13 +924,18 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
         const size_t buffer_size = builder.GetSize();
         std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
 
+        // Wait for in-flight messages to settle before sending End.
+        // Interruptible: stop() notifies the cv so the wait wakes on shutdown.
         {
-            std::lock_guard<std::mutex> lock(m_syncState.mtx);
+            std::unique_lock<std::mutex> lock(m_syncState.mtx);
             m_syncState.phase = SyncPhase::WaitingEndAck;
-        }
 
-        // Configurable delay to wait for last messages to arrive before sending End
-        std::this_thread::sleep_for(m_syncEndDelay);
+            if (m_syncState.cv.wait_for(lock, m_syncEndDelay, [&] { return shouldStop(); }))
+            {
+                m_logger(LOG_DEBUG, "Stop requested during sync_end_delay; aborting End send.");
+                return false;
+            }
+        }
         m_logger(LOG_DEBUG, "Delayed " + std::to_string(m_syncEndDelay.count()) + " seconds before sending End message.");
 
         unsigned int attempt = 0;
