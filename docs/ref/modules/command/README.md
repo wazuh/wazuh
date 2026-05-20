@@ -4,7 +4,7 @@
 
 The Wazuh command module executes configured operating system commands at scheduled intervals and can forward their output for analysis. It runs inside `wazuh-modulesd` as the `<wodle name="command">` module.
 
-Use this module for periodic command-based telemetry when a native collector is not available. The module executes the configured command locally on the agent or manager where the configuration is applied.
+Use this module for periodic command-based telemetry when a native collector is not available. The module executes the configured command locally on the agent where the configuration is applied.
 
 ## How it works
 

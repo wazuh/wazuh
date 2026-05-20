@@ -53,16 +53,6 @@
 
 # Uploadable Wazuh configuration sections
 # upload_configuration:
-#   remote_commands:
-#     localfile:
-#       allow: no
-#       exceptions: []
-#     wodle_command:
-#       allow: no
-#       exceptions: []
-#   limits:
-#     eps:
-#       allow: no
 #   agents:
 #     allow_higher_versions:
 #       allow: no

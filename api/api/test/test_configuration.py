@@ -41,21 +41,6 @@ custom_api_configuration = {
         "max_request_per_minute": 300
     },
     "upload_configuration": {
-        "remote_commands": {
-            "localfile": {
-                "allow": False,
-                "exceptions": []
-            },
-            "wodle_command": {
-                "allow": False,
-                "exceptions": []
-            }
-        },
-        "limits": {
-            "eps": {
-                "allow": False
-            }
-        },
         "agents": {
             "allow_higher_versions": {
                 "allow": False

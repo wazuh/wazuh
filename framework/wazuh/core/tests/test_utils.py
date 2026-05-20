@@ -589,73 +589,6 @@ def test_plain_dict_to_nested_dict():
     assert result == mock_nested_dict
 
 
-@pytest.mark.parametrize('new_conf, original_conf, allow_config, should_raise', [
-    # Test case where localfile with command log_format is added (should raise when not allowed)
-    ("<wazuh_config><localfile><log_format>command</log_format><command>rm -rf /</command></localfile></wazuh_config>",
-     "<wazuh_config><localfile><log_format>syslog</log_format><location>/var/log/test.log</location></localfile></wazuh_config>",
-     {'localfile': {'allow': False, 'exceptions': []},
-      'wodle_command': {'allow': True, 'exceptions': []}},
-     True),
-
-    # Test case where same command exists in both (should not raise)
-    ("<wazuh_config><localfile><log_format>command</log_format><command>echo test</command></localfile></wazuh_config>",
-     "<wazuh_config><localfile><log_format>command</log_format><command>echo test</command></localfile></wazuh_config>",
-     {'localfile': {'allow': False, 'exceptions': ['echo test']},
-      'wodle_command': {'allow': True, 'exceptions': []}},
-     False),
-
-    # Test case where wodle command is added (should raise when not allowed)
-    ('<wazuh_config><wodle name="command"><command>ls -la</command></wodle></wazuh_config>',
-     '<wazuh_config><wodle name="command"><tag>value</tag></wodle></wazuh_config>',
-     {'localfile': {'allow': True, 'exceptions': []},
-      'wodle_command': {'allow': False, 'exceptions': []}},
-     True),
-
-    # Test case where wodle command is in exceptions (should not raise)
-    ('<wazuh_config><wodle name="command"><command>test</command></wodle></wazuh_config>',
-     '<wazuh_config><wodle name="command"><command>test</command></wodle></wazuh_config>',
-     {'localfile': {'allow': True, 'exceptions': []},
-      'wodle_command': {'allow': False, 'exceptions': ['test']}},
-     False),
-
-    # Test case with no remote commands (should not raise)
-    ("<wazuh_config><other><value>test</value></other></wazuh_config>",
-     "<wazuh_config><other><value>test</value></other></wazuh_config>",
-     {'localfile': {'allow': False, 'exceptions': []},
-      'wodle_command': {'allow': False, 'exceptions': []}},
-     False),
-
-    # Test case where localfile with full_command log_format is added (should raise when not allowed)
-    ("<wazuh_config><localfile><log_format>full_command</log_format><command>cat /etc/passwd</command></localfile></wazuh_config>",
-     "<wazuh_config><localfile><log_format>syslog</log_format><location>/var/log/test.log</location></localfile></wazuh_config>",
-     {'localfile': {'allow': False, 'exceptions': []},
-      'wodle_command': {'allow': True, 'exceptions': []}},
-     True),
-
-    # Test case where localfile without command log_format (should not raise)
-    ("<wazuh_config><localfile><log_format>syslog</log_format><location>/var/log/test.log</location></localfile></wazuh_config>",
-     "<wazuh_config><localfile><log_format>apache</log_format><location>/var/log/apache.log</location></localfile></wazuh_config>",
-     {'localfile': {'allow': False, 'exceptions': []},
-      'wodle_command': {'allow': False, 'exceptions': []}},
-     False),
-])
-def test_check_remote_commands(new_conf, original_conf, allow_config, should_raise):
-    """Tests check_remote_commands with different remote command inputs."""
-    api_conf = utils.configuration.api_conf
-    api_conf['upload_configuration']['remote_commands'].update(allow_config)
-
-    # Convert string to XML Element for both new and original configurations
-    xml_new_conf = utils.load_wazuh_xml(None, new_conf)
-    xml_original_conf = utils.load_wazuh_xml(None, original_conf)
-
-    with patch('wazuh.core.utils.configuration.api_conf', new=api_conf):
-        if should_raise:
-            with pytest.raises(exception.WazuhError, match=r'.* 1124 .*'):
-                utils.check_remote_commands(xml_new_conf, xml_original_conf)
-        else:
-            utils.check_remote_commands(xml_new_conf, xml_original_conf)
-
-
 @patch('wazuh.core.utils.compile', return_value='Something')
 def test_basic_load_wazuh_xml(mock_compile):
     """Test basic load_wazuh_xml functionality."""
@@ -1703,13 +1636,10 @@ def test_select_array(select, required_fields, expected_result):
         assert e.code == 1724
 
 
-@patch('wazuh.core.utils.check_wazuh_limits_unchanged')
-@patch('wazuh.core.utils.check_remote_commands')
 @patch('wazuh.core.utils.check_agents_allow_higher_versions')
 @patch('wazuh.core.utils.check_indexer')
 @patch('wazuh.core.manager.common.WAZUH_PATH', new=test_files_path)
-def test_validate_wazuh_xml(mock_check_indexer,
-                            mock_agents_versions, mock_remote_commands, mock_unchanged_limits):
+def test_validate_wazuh_xml(mock_check_indexer, mock_agents_versions):
     """Test validate_wazuh_xml method works and methods inside are called with expected parameters"""
 
     with open(os.path.join(test_files_path, 'test_config.xml')) as f:
@@ -1719,10 +1649,8 @@ def test_validate_wazuh_xml(mock_check_indexer,
 
     with patch('builtins.open', m):
         utils.validate_wazuh_xml(xml_file)
-    mock_remote_commands.assert_called_once()
     mock_agents_versions.assert_called_once()
     mock_check_indexer.assert_called_once()
-    mock_unchanged_limits.assert_called_once()
 
 
 @pytest.mark.parametrize('effect, expected_exception', [
