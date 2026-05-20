@@ -69,26 +69,26 @@ default_api_configuration = {
     "upload_configuration": {
         "remote_commands": {
             "localfile": {
-                "allow": True,
+                "allow": False,
                 "exceptions": []
             },
             "wodle_command": {
-                "allow": True,
+                "allow": False,
                 "exceptions": []
             }
         },
         "limits": {
             "eps": {
-                "allow": True
+                "allow": False
             }
         },
         "agents": {
             "allow_higher_versions": {
-                "allow": True
+                "allow": False
             }
         },
         "indexer": {
-            "allow": True
+            "allow": False
         }
     }
 }
