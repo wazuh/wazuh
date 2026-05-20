@@ -448,3 +448,93 @@ TEST_F(DBTestFixture, TestFimDBFileInodeSearchWithBigInode)
         ASSERT_EQ(result, FIMDB_OK);
     });
 }
+
+const auto insertSpecialCharsPayload = R"({
+        "table": "file_entry",
+        "data":[{"attributes":"10", "checksum":"abc123", "dev":1234, "gid":"0", "group_name":"root",
+        "hash_md5":"deadbeefdeadbeefdeadbeefdeadbeef", "hash_sha1":"abc", "hash_sha256":"abc",
+        "inode":77777, "last_event":1596489275, "mode":0, "mtime":1578075431, "options":131583,
+        "path":"/tmp/evil\"UNION SELECT 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17--",
+        "perm":"-rw-rw-r--", "scanned":1, "size":100, "uid":"0", "user_name":"root"}]
+    })"_json;
+
+TEST_F(DBTestFixture, TestFimDBGetPathWithSpecialCharsInPath)
+{
+    const auto fileFIMTest {std::make_unique<FileItem>(insertSpecialCharsPayload["data"].front())};
+
+    EXPECT_NO_THROW(
+    {
+        auto result = fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        callback_context_t callback_data;
+        callback_data.callback = callBackTestFIMEntry;
+        callback_data.context = fileFIMTest->toFimEntry();
+
+        result = fim_db_get_path(
+                     "/tmp/evil\"UNION SELECT 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17--",
+                     callback_data, false);
+        ASSERT_EQ(result, FIMDB_OK);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBGetPathWithSpecialCharsReturnsNoExtraRows)
+{
+    const auto fileFIMTest {std::make_unique<FileItem>(insertStatement1["data"].front())};
+
+    EXPECT_NO_THROW(
+    {
+        auto result = fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        callback_context_t callback_data;
+        callback_data.callback = callBackTestFIMEntry;
+        callback_data.context = nullptr;
+
+        result = fim_db_get_path(
+                     "\" UNION SELECT path,mode,last_event,scanned,options,checksum,dev,inode,size,perm,attributes,uid,gid,user_name,group_name,hash_md5,hash_sha1,hash_sha256,mtime FROM file_entry--",
+                     callback_data, false);
+        ASSERT_EQ(result, FIMDB_ERR);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBPatternSearchWithSpecialCharsInPath)
+{
+    const auto fileFIMTest {std::make_unique<FileItem>(insertStatement1["data"].front())};
+
+    EXPECT_NO_THROW(
+    {
+        auto result = fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        callback_context_t callback_data;
+        callback_data.callback = callbackTestSearch;
+        callback_data.context = nullptr;
+
+        result = fim_db_file_pattern_search(
+                     "\" UNION SELECT path FROM file_entry--",
+                     callback_data);
+        ASSERT_EQ(result, FIMDB_OK);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBDeletePathWithSpecialCharsInPath)
+{
+    const auto fileFIMTest {std::make_unique<FileItem>(insertSpecialCharsPayload["data"].front())};
+
+    EXPECT_NO_THROW(
+    {
+        auto result = fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        auto count = fim_db_get_count_file_entry();
+        ASSERT_EQ(count, 1);
+
+        result = fim_db_file_delete(
+                     "/tmp/evil\"UNION SELECT 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17--");
+        ASSERT_EQ(result, FIMDB_OK);
+
+        count = fim_db_get_count_file_entry();
+        ASSERT_EQ(count, 0);
+    });
+}

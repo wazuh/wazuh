@@ -436,6 +436,29 @@ void SQLiteDBEngine::selectData(const std::string& table,
     {
         const auto& stmt { m_sqliteFactory->createStatement(m_sqliteConnection, buildSelectQuery(table, query)) };
 
+        const auto itParams { query.find("row_filter_params") };
+
+        if (itParams != query.end() && itParams->is_array())
+        {
+            int32_t paramIndex { 1 };
+
+            for (const auto& param : *itParams)
+            {
+                const auto& type { param.at("type").get_ref<const std::string&>() };
+
+                if ("text" == type)
+                {
+                    stmt->bind(paramIndex, param.at("value").get<std::string>());
+                }
+                else if ("int" == type)
+                {
+                    stmt->bind(paramIndex, param.at("value").get<int64_t>());
+                }
+
+                ++paramIndex;
+            }
+        }
+
         while (SQLITE_ROW == stmt->step())
         {
             nlohmann::json object;
