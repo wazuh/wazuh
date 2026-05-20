@@ -486,7 +486,7 @@ void LogCollectorStart()
 #endif
     set_can_read(1);
     atomic_int_set(&_startup_completed, 1);
-    mdebug1("Startup completed. Runtime-discovered files will be read from beginning.");
+    minfo("Startup completed. Runtime-discovered files will be read from beginning.");
     /* Daemon loop */
     while (1) {
 

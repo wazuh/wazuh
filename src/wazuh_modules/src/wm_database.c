@@ -96,7 +96,7 @@ const wm_context WM_DATABASE_CONTEXT = {
 void* wm_database_main(wm_database *data) {
     module = data;
 
-    mtinfo(WM_DATABASE_LOGTAG, "Module started.");
+    mtinfo(WM_DATABASE_LOGTAG, STARTUP_MSG, (int)getpid());
 
     // Check if it is a worker node
     is_worker = w_is_worker();

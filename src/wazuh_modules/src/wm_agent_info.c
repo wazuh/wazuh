@@ -580,7 +580,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
 #endif
     g_shutting_down = 0;
 
-    mdebug1("Starting agent-info module.");
+    mdebug1("Module enabled.");
 
     if (!agent_info)
     {
@@ -700,8 +700,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     // This call will populate the agent metadata and send it to the queue
     if (agent_info_start_ptr)
     {
-        mdebug1("Starting agent-info module...");
-
+        minfo(STARTUP_MSG, (int)getpid());
         agent_info_start_ptr(agent_info);
     }
     else

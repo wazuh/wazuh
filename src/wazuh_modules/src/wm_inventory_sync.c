@@ -53,7 +53,7 @@
 
  void* wm_inventory_sync_main(__attribute__((unused))wm_inventory_sync_t* data)
  {
-     mtinfo(WM_INVENTORY_SYNC_LOGTAG, "Starting inventory_sync module.");
+     mtinfo(WM_INVENTORY_SYNC_LOGTAG, STARTUP_MSG, (int)getpid());
      if (inventory_sync_module = so_get_module_handle("inventory_sync"), inventory_sync_module)
      {
         inventory_sync_start_ptr = so_get_function_sym(inventory_sync_module, "inventory_sync_start");
@@ -115,7 +115,7 @@
 
  void wm_inventory_sync_stop(__attribute__((unused)) wm_inventory_sync_t* data)
  {
-     mtinfo(WM_INVENTORY_SYNC_LOGTAG, "Stopping inventory_sync module.");
+     mtinfo(WM_INVENTORY_SYNC_LOGTAG, "Module finished.");
      if (inventory_sync_stop_ptr)
      {
          inventory_sync_stop_ptr();

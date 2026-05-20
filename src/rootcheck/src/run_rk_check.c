@@ -167,7 +167,7 @@ void run_rk_check()
     /* Send scan ending message */
     notify_rk(ALERT_POLICY_VIOLATION, "Ending rootcheck scan.");
     if (rootcheck.notify == QUEUE) {
-        mtinfo(ARGV0, "Ending rootcheck scan.");
+        mtinfo(ARGV0, "Rootcheck scan ended.");
     }
 
     mtdebug1(ARGV0, "Leaving run_rk_check");

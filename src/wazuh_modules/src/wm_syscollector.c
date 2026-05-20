@@ -584,9 +584,11 @@ void* wm_sys_main(wm_sys_t* sys)
     if (!sys->flags.enabled)
     {
         wm_handle_sys_disabled_and_notify_data_clean(sys);
-        mtinfo(WM_SYS_LOGTAG, "Module disabled. Exiting...");
+        mtinfo(WM_SYS_LOGTAG, "Module disabled. Exiting.");
         pthread_exit(NULL);
     }
+
+    mtdebug1(WM_SYS_LOGTAG, "Module enabled.");
 
 #ifndef WIN32
     // Connect to socket
@@ -634,7 +636,7 @@ void* wm_sys_main(wm_sys_t* sys)
 
     if (syscollector_init_ptr && syscollector_start_ptr)
     {
-        mtdebug1(WM_SYS_LOGTAG, "Starting Syscollector.");
+        mtdebug1(WM_SYS_LOGTAG, "Starting module.");
         w_mutex_lock(&sys_stop_mutex);
         need_shutdown_wait = true;
         w_mutex_unlock(&sys_stop_mutex);
@@ -721,6 +723,7 @@ void* wm_sys_main(wm_sys_t* sys)
             mtdebug1(WM_SYS_LOGTAG, "Inventory synchronization is disabled or function not available");
         }
 
+        mtinfo(WM_SYS_LOGTAG, STARTUP_MSG, (int)getpid());
         syscollector_start_ptr();
     }
     else

@@ -628,7 +628,7 @@ void test_wm_task_manager_main_ok(void **state)
     will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:task-manager");
-    expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
+    expect_any(__wrap__mtinfo, formatted_msg);
 
     will_return(__wrap_select, 1);
 
@@ -704,7 +704,7 @@ void test_wm_task_manager_main_recv_max_err(void **state)
     will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:task-manager");
-    expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
+    expect_any(__wrap__mtinfo, formatted_msg);
 
     will_return(__wrap_select, 1);
 
@@ -754,7 +754,7 @@ void test_wm_task_manager_main_recv_empty_err(void **state)
     will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:task-manager");
-    expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
+    expect_any(__wrap__mtinfo, formatted_msg);
 
     will_return(__wrap_select, 1);
 
@@ -804,7 +804,7 @@ void test_wm_task_manager_main_recv_err(void **state)
     will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:task-manager");
-    expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
+    expect_any(__wrap__mtinfo, formatted_msg);
 
     will_return(__wrap_select, 1);
 
@@ -854,7 +854,7 @@ void test_wm_task_manager_main_sockterr_err(void **state)
     will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:task-manager");
-    expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
+    expect_any(__wrap__mtinfo, formatted_msg);
 
     will_return(__wrap_select, 1);
 
@@ -904,7 +904,7 @@ void test_wm_task_manager_main_accept_err(void **state)
     will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:task-manager");
-    expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
+    expect_any(__wrap__mtinfo, formatted_msg);
 
     will_return(__wrap_select, 1);
 
@@ -961,7 +961,7 @@ void test_wm_task_manager_main_select_empty_err(void **state)
     will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:task-manager");
-    expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
+    expect_any(__wrap__mtinfo, formatted_msg);
 
     will_return(__wrap_select, 0);
 
@@ -1013,7 +1013,7 @@ void test_wm_task_manager_main_select_err(void **state)
     will_return(__wrap_OS_BindUnixDomainWithPerms, sock);
 
     expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:task-manager");
-    expect_string(__wrap__mtinfo, formatted_msg, "(8200): Module Task Manager started.");
+    expect_any(__wrap__mtinfo, formatted_msg);
 
     will_return(__wrap_select, -1);
 
