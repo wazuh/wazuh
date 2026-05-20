@@ -19,6 +19,7 @@ from wazuh_testing.constants.paths.logs import (
     ACTIVE_RESPONSE_LOG_PATH,
     WAZUH_LOG_PATH,
     ALERTS_JSON_PATH,
+    ARCHIVES_LOG_PATH,
     WAZUH_API_LOG_FILE_PATH,
     WAZUH_API_JSON_LOG_FILE_PATH,
 )
@@ -289,6 +290,7 @@ def truncate_monitored_files_implementation() -> None:
         log_files = [
             WAZUH_LOG_PATH,
             ALERTS_JSON_PATH,
+            ARCHIVES_LOG_PATH,
             WAZUH_API_LOG_FILE_PATH,
             WAZUH_API_JSON_LOG_FILE_PATH,
             WAZUH_CLIENT_KEYS_PATH,

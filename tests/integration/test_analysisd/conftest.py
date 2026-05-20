@@ -26,6 +26,12 @@ def prepare_custom_rules_file(request, test_metadata):
     data_dir = getattr(request.module, 'RULES_SAMPLE_PATH')
     source_rule = os.path.join(data_dir, test_metadata['rules_file'])
     target_rule = os.path.join(CUSTOM_RULES_PATH, test_metadata['rules_file'])
+    backup_rule = target_rule + '.cpy'
+
+    # back up the original target if it already exists
+    target_existed = os.path.isfile(target_rule)
+    if target_existed:
+        shutil.copy(target_rule, backup_rule)
 
     # copy custom rule with specific privileges
     shutil.copy(source_rule, target_rule)
@@ -33,8 +39,12 @@ def prepare_custom_rules_file(request, test_metadata):
 
     yield
 
-    # remove custom rule
-    os.remove(target_rule)
+    # restore the original rule if it existed
+    if target_existed:
+        shutil.move(backup_rule, target_rule)
+        shutil.chown(target_rule, WAZUH_UNIX_USER, WAZUH_UNIX_GROUP)
+    else:
+        os.remove(target_rule)
 
 
 @pytest.fixture()
