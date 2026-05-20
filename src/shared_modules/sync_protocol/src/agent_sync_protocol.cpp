@@ -934,19 +934,35 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
         const size_t buffer_size = builder.GetSize();
         std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
 
+        // Configurable delay to wait for last messages to arrive before sending End.
+        // Interruptible by stop() — the cv is notified from AgentSyncProtocol::stop(),
+        // so a shutdown request unblocks the wait immediately instead of holding
+        // modulesd in sleep_for past the supervisor's exit timeout (see #36061).
+        //
+        // TEMP — stress harness for #36061 verification (combined with the fix):
+        //   * Hard-codes the wait to 30 s instead of m_syncEndDelay so the
+        //     launchctl bootout (arriving ~10 s after agent start) lands while
+        //     this thread is parked here. Without the fix below, this would be
+        //     a non-interruptible sleep_for and modulesd would miss launchd's
+        //     20 s ExitTimeOut. With the fix (cv.wait_for + shouldStop pred)
+        //     the wait wakes immediately on stop() and the function unwinds.
+        //   * REMOVE the STRESS-36061 log lines and the hard-coded 30 s before
+        //     committing — keep only the cv.wait_for(m_syncEndDelay, …) form.
         {
-            std::lock_guard<std::mutex> lock(m_syncState.mtx);
+            std::unique_lock<std::mutex> lock(m_syncState.mtx);
             m_syncState.phase = SyncPhase::WaitingEndAck;
-        }
 
-        // TEMP — stress harness for #36061 verification. Replaces the configurable
-        // sync_end_delay with a hard-coded 30s non-interruptible sleep so the
-        // launchctl bootout (which arrives ~10s after agent start) lands while
-        // this thread is blocked here. This is the exact code path the line-941
-        // fix targets. REMOVE BEFORE COMMITTING.
-        m_logger(LOG_WARNING, "STRESS-36061: sendEndAndWaitAck pre-End sleep, sleeping 30s");
-        std::this_thread::sleep_for(std::chrono::seconds(30));
-        m_logger(LOG_WARNING, "STRESS-36061: sendEndAndWaitAck wake after 30s sleep");
+            m_logger(LOG_WARNING, "STRESS-36061: sendEndAndWaitAck pre-End wait, up to 30s (interruptible by stop())");
+
+            if (m_syncState.cv.wait_for(lock, std::chrono::seconds(30), [&] { return shouldStop(); }))
+            {
+                m_logger(LOG_WARNING, "STRESS-36061: pre-End wait interrupted by stop(); aborting End send.");
+                return false;
+            }
+
+            m_logger(LOG_WARNING, "STRESS-36061: pre-End wait completed normally (no stop request within 30s).");
+        }
+        m_logger(LOG_DEBUG, "Delayed up to 30 seconds (stress) before sending End message.");
 
         unsigned int attempt = 0;
         bool resendEnd = true;
