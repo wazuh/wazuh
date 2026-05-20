@@ -81,6 +81,7 @@ COMPARE_DIRS=()
 CHART_FORMAT="png"
 SCENARIO=""
 MANAGER_LOG="/var/wazuh-manager/logs/wazuh-manager.log"
+GRAPHICS_PY="$SCRIPT_DIR/../../../engine/tools/devContainer/scripts/monitor_graphics_generator.py"
 SESSION_TYPE="delta"
 SYNC_MODE=1
 MODULECHECK_CHECKSUM=""
@@ -265,7 +266,6 @@ fi
 REMOTE_MONITOR_DIR="/tmp/wazuh_bench_monitor"
 SSH_SOCKET="/tmp/wazuh_bench_ssh_$$"
 MONITOR_PY="$SCRIPT_DIR/../../../engine/tools/devContainer/scripts/monitor.py"
-GRAPHICS_PY="$SCRIPT_DIR/../../../engine/tools/devContainer/scripts/monitor_graphics_generator.py"
 
 # Build SSH options array
 _build_ssh_opts() {

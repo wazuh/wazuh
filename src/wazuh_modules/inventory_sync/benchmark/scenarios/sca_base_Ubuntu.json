@@ -1,0 +1,23 @@
+{
+  "name": "sca_base_Ubuntu",
+  "description": "SCA baseline — 1 Ubuntu 22.04 agent sends 207 CIS checks in ModuleFull mode (first enrollment). Verifies session completes without drops, retransmissions, or RSS spikes on the manager.",
+  "load": {
+    "agents":       1,
+    "data_size":    207,
+    "duration_sec": 60,
+    "rate":         0,
+    "session_delay": 0,
+    "payload_kind": "sca_check",
+    "sync_mode":    0
+  },
+  "expectations": {
+    "rss_growth_mb_max": 30,
+    "status_offline_max": 0,
+    "session_success_rate_min": 100.0
+  },
+  "notes": [
+    "Payload: sample_payloads/sca_check.json — real CIS Ubuntu 22.04 LTS check (~5.9 KB).",
+    "sync_mode=0 (ModuleFull): the manager calls deleteByQuery before inserting, like on first enrollment.",
+    "Use as 1-agent reference before running multi-agent stress scenarios."
+  ]
+}
