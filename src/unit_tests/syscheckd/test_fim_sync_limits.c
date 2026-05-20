@@ -25,6 +25,11 @@ extern void persist_sync_documents(char* table_name, cJSON* docs, Operation_t op
 extern void add_pending_sync_item(OSList *pending_items, const cJSON *json, int sync_value);
 extern void process_pending_sync_updates(char* table_name, OSList *pending_items);
 extern cJSON* extract_primary_keys(const char* table_name, const cJSON* full_doc);
+extern int drop_orphaned_promoted_documents(const char* table_name, cJSON* docs);
+
+// Stand-in directory_t pointer for "config exists" signal in tests
+// (real __wrap_fim_configuration_directory lives in create_db_wrappers.c)
+static directory_t mock_drop_directory_config = {0};
 
 // Local wrapper declarations (defined per-test-file like test_recovery.c)
 cJSON* __wrap_build_stateful_event_file(const char* path, const char* sha1_hash,
@@ -534,6 +539,116 @@ static void test_process_pending_sync_updates_files(void **state) {
     OSList_Destroy(pending);
 }
 
+/* Tests (#36134) for drop_orphaned_promoted_documents() */
+
+// All paths still resolve to a configuration → array is unchanged.
+static void test_drop_orphaned_promoted_documents_no_orphans(void **state) {
+    (void) state;
+
+    cJSON* docs = cJSON_CreateArray();
+    cJSON_AddItemToArray(docs, create_file_doc("/etc/passwd", "abc123", 1));
+    cJSON_AddItemToArray(docs, create_file_doc("/etc/hosts", "def456", 1));
+
+    expect_string(__wrap_fim_configuration_directory, path, "/etc/hosts");
+    will_return(__wrap_fim_configuration_directory, &mock_drop_directory_config);
+    expect_string(__wrap_fim_configuration_directory, path, "/etc/passwd");
+    will_return(__wrap_fim_configuration_directory, &mock_drop_directory_config);
+
+    int dropped = drop_orphaned_promoted_documents(FIMDB_FILE_TABLE_NAME, docs);
+
+    assert_int_equal(dropped, 0);
+    assert_int_equal(cJSON_GetArraySize(docs), 2);
+
+    cJSON_Delete(docs);
+}
+
+// One path no longer in config → only that row is dropped, the other stays.
+static void test_drop_orphaned_promoted_documents_some_orphans(void **state) {
+    (void) state;
+
+    cJSON* docs = cJSON_CreateArray();
+    cJSON_AddItemToArray(docs, create_file_doc("/etc/passwd", "abc123", 1));
+    cJSON_AddItemToArray(docs, create_file_doc("/home/vagrant/orphan.txt", "ghi789", 2));
+
+    // Helper walks the array from the tail down; tail item is "/home/vagrant/orphan.txt".
+    expect_string(__wrap_fim_configuration_directory, path, "/home/vagrant/orphan.txt");
+    will_return(__wrap_fim_configuration_directory, NULL);
+
+    expect_string(__wrap_fim_configuration_directory, path, "/etc/passwd");
+    will_return(__wrap_fim_configuration_directory, &mock_drop_directory_config);
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "Skipping promotion of orphaned path (no active configuration): /home/vagrant/orphan.txt");
+
+    int dropped = drop_orphaned_promoted_documents(FIMDB_FILE_TABLE_NAME, docs);
+
+    assert_int_equal(dropped, 1);
+    assert_int_equal(cJSON_GetArraySize(docs), 1);
+    assert_string_equal(cJSON_GetStringValue(cJSON_GetObjectItem(cJSON_GetArrayItem(docs, 0), "path")),
+                        "/etc/passwd");
+
+    cJSON_Delete(docs);
+}
+
+// All paths gone from config → all rows dropped, array becomes empty.
+static void test_drop_orphaned_promoted_documents_all_orphans(void **state) {
+    (void) state;
+
+    cJSON* docs = cJSON_CreateArray();
+    cJSON_AddItemToArray(docs, create_file_doc("/home/vagrant/a.txt", "a", 1));
+    cJSON_AddItemToArray(docs, create_file_doc("/home/vagrant/b.txt", "b", 1));
+
+    expect_string(__wrap_fim_configuration_directory, path, "/home/vagrant/b.txt");
+    will_return(__wrap_fim_configuration_directory, NULL);
+    expect_string(__wrap_fim_configuration_directory, path, "/home/vagrant/a.txt");
+    will_return(__wrap_fim_configuration_directory, NULL);
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "Skipping promotion of orphaned path (no active configuration): /home/vagrant/b.txt");
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "Skipping promotion of orphaned path (no active configuration): /home/vagrant/a.txt");
+
+    int dropped = drop_orphaned_promoted_documents(FIMDB_FILE_TABLE_NAME, docs);
+
+    assert_int_equal(dropped, 2);
+    assert_int_equal(cJSON_GetArraySize(docs), 0);
+
+    cJSON_Delete(docs);
+}
+
+// Registry tables go through a different config model and must be left untouched.
+static void test_drop_orphaned_promoted_documents_registry_noop(void **state) {
+    (void) state;
+
+    cJSON* docs = cJSON_CreateArray();
+    cJSON* doc = cJSON_CreateObject();
+    cJSON_AddStringToObject(doc, "path", "HKEY_LOCAL_MACHINE\\Software\\Test");
+    cJSON_AddItemToArray(docs, doc);
+
+    // No fim_configuration_directory expectation: the helper must short-circuit before calling it.
+    int dropped = drop_orphaned_promoted_documents(FIMDB_REGISTRY_KEY_TABLENAME, docs);
+
+    assert_int_equal(dropped, 0);
+    assert_int_equal(cJSON_GetArraySize(docs), 1);
+
+    cJSON_Delete(docs);
+}
+
+// NULL/empty/non-array inputs must be tolerated without crashing.
+static void test_drop_orphaned_promoted_documents_null_and_invalid_inputs(void **state) {
+    (void) state;
+
+    assert_int_equal(drop_orphaned_promoted_documents(FIMDB_FILE_TABLE_NAME, NULL), 0);
+
+    cJSON* not_array = cJSON_CreateObject();
+    assert_int_equal(drop_orphaned_promoted_documents(FIMDB_FILE_TABLE_NAME, not_array), 0);
+    cJSON_Delete(not_array);
+
+    cJSON* empty = cJSON_CreateArray();
+    assert_int_equal(drop_orphaned_promoted_documents(FIMDB_FILE_TABLE_NAME, empty), 0);
+    cJSON_Delete(empty);
+}
+
 /* Main test runner */
 
 int main(void) {
@@ -558,6 +673,12 @@ int main(void) {
         // Helper function tests
         cmocka_unit_test(test_add_pending_sync_item_success),
         cmocka_unit_test(test_process_pending_sync_updates_files),
+        // drop_orphaned_promoted_documents tests (#36134)
+        cmocka_unit_test(test_drop_orphaned_promoted_documents_no_orphans),
+        cmocka_unit_test(test_drop_orphaned_promoted_documents_some_orphans),
+        cmocka_unit_test(test_drop_orphaned_promoted_documents_all_orphans),
+        cmocka_unit_test(test_drop_orphaned_promoted_documents_registry_noop),
+        cmocka_unit_test(test_drop_orphaned_promoted_documents_null_and_invalid_inputs),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

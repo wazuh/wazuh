@@ -148,6 +148,44 @@ void process_pending_sync_updates(char* table_name, OSList *pending_items) {
 }
 
 /**
+ * @brief Drop documents whose path is no longer covered by the current FIM configuration.
+ *
+ * Run before promoting file_entry rows at startup: if a directory was removed from the
+ * configuration since the last run (e.g. an agent group with a realtime FIM rule was
+ * unassigned), the persisted rows for files under that path can no longer build a
+ * stateful event — build_stateful_event_file would fail and log a spurious ERROR.
+ * The scheduled scan that follows fim_initialize emits the real DELETE for these
+ * rows via handle_orphaned_delete, so dropping them here is safe.
+ *
+ * Only applies to file_entry; registry tables use a different config model.
+ *
+ * @param table_name Name of the table the documents belong to.
+ * @param docs cJSON array of documents about to be promoted. Modified in place.
+ * @return Number of documents dropped.
+ */
+int drop_orphaned_promoted_documents(const char* table_name, cJSON* docs) {
+    if (!docs || !cJSON_IsArray(docs) || strcmp(table_name, FIMDB_FILE_TABLE_NAME) != 0) {
+        return 0;
+    }
+
+    int dropped = 0;
+    for (int i = cJSON_GetArraySize(docs) - 1; i >= 0; i--) {
+        const cJSON* item = cJSON_GetArrayItem(docs, i);
+        const cJSON* path_json = cJSON_GetObjectItem(item, "path");
+        const char* path = cJSON_GetStringValue(path_json);
+        if (path == NULL) {
+            continue;
+        }
+        if (fim_configuration_directory(path, false, syscheck.directories) == NULL) {
+            mdebug2("Skipping promotion of orphaned path (no active configuration): %s", path);
+            cJSON_DeleteItemFromArray(docs, i);
+            dropped++;
+        }
+    }
+    return dropped;
+}
+
+/**
  * @brief Extract primary keys from full document for sync flag update
  *
  * @param table_name Name of the table
@@ -501,6 +539,11 @@ void fim_initialize() {
                 cJSON* docs_to_promote = fim_db_get_documents_to_promote(table_name, document_count);
 
                 if (docs_to_promote) { // Limit has increased
+                    // Drop rows whose path is no longer covered by the current FIM
+                    // configuration (e.g. a group with a realtime rule was removed).
+                    // The scheduled scan that follows handles them via the orphan-delete path.
+                    drop_orphaned_promoted_documents(table_name, docs_to_promote);
+
                     // Send promoted documents to persistent queue as CREATE events
                     mdebug1("Document limit increased from  %d to %d for index %s. Currently synced documents: %d", *synced_docs_ptr, limit, table_name, *synced_docs_ptr + cJSON_GetArraySize(docs_to_promote));
                     persist_sync_documents(table_name, docs_to_promote, OPERATION_CREATE);

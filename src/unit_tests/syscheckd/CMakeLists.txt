@@ -492,6 +492,7 @@ set(FIM_SYNC_LIMITS_BASE_FLAGS "-Wl,--wrap,validate_and_persist_fim_event \
                                 -Wl,--wrap,fim_db_get_documents_to_demote \
                                 -Wl,--wrap,fim_db_count_synced_docs \
                                 -Wl,--wrap,fim_db_set_sync_flag \
+                                -Wl,--wrap,fim_configuration_directory \
                                 -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
 target_link_libraries(test_fim_sync_limits SYSCHECK_O ${TEST_DEPS})
@@ -518,6 +519,7 @@ set(RECOVERY_BASE_FLAGS "-Wl,--wrap,fim_db_get_last_sync_time -Wl,--wrap,fim_db_
                          -Wl,--wrap,merror -Wl,--wrap,minfo -Wl,--wrap,mdebug1 \
                          -Wl,--wrap,build_stateful_event_file -Wl,--wrap,build_stateful_event_registry_key \
                          -Wl,--wrap,build_stateful_event_registry_value \
+                         -Wl,--wrap,fim_configuration_directory \
                          -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_validate \
                          -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
