@@ -7,19 +7,16 @@ on:
         description: 'Extra arguments to pass to pytest'
         required: false
         default: ''
-      tests_list:
-        description: 'List of tests to run, separated by commas. If empty, all tests will be run. If `auto`, the tests will be selected based on the changed files.'
-        required: true
-        default: 'auto'
+      test_list:
+        description: 'List of tests to run, separated by commas (without test_ prefix and .tavern.yaml suffix). If empty or not set, all tests will be run.'
+        required: false
+        default: ''
 
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testintegration_api-endpoints.yml"
       - "api/test/**"
-      - "api/api/**"
-      - "api/setup.py"
-      - "api/Makefile"
       - "framework/wazuh/**"
 
 concurrency:
@@ -41,11 +38,91 @@ jobs:
       - name: Generate integration test api endpoint JSON file
         id: test_files
         run: |
+          TEST_LIST="${{ github.event.inputs.test_list || '' }}"
           cd api/test/integration/mapping
           python3 _test_mapping.py
 
-          files=$(jq -c '{"files": ([.[].files[].tests[]] | unique | sort)}' integration_test_api_endpoints.json)
-          echo "files=$files" >> $GITHUB_OUTPUT
+          # Valid test files
+          files=$(jq -c '([.[].files[].tests[]] | unique | sort)' ./integration_test_api_endpoints.json)
+
+          # Validate the input tests in workflow_dispatch
+          function validate_tests_files_input() {
+            local files=$1
+            local str=$2
+
+            IFS=',' read -r -a tests <<<${str}
+            prefix="test_"
+            sufix=".tavern.yaml"
+
+            valid_tests=""
+            for test in ${tests[@]}; do
+              input_filename="${prefix}${test}${sufix}"
+              matched=false
+              for file in $(echo "$files" | jq -r '.[]'); do
+                if [[ "${input_filename,,}" == "${file,,}" ]]; then
+                matched=true
+                valid_tests+="\"${input_filename}\","
+                break
+                fi
+              done
+
+              if [[ "$matched" == false ]]; then
+                echo "$input_filename is not valid"
+                exit 1
+              fi
+            done
+
+            echo "[${valid_tests::-1}]"
+          }
+
+          function parse_integration_test_json_file() {
+            local json_file="integration_test_api_endpoints.json"
+            local basename=$1
+            local parent_dir=$2
+            local matched_files=$(jq -r --arg basename "$basename" --arg parent_dir "$parent_dir" '[.[]|select(.path == $parent_dir).files[]|select(.name == $basename).tests[]] | join(",")' integration_test_api_endpoints.json)
+            if [[ ! -z "$matched_files" ]]; then
+              echo "$matched_files"
+            fi
+          }
+
+          # Get the list of tests to run based on the modified files in the pull request
+          function get_tests_files() {
+            local base_ref="${{ github.base_ref }}"
+            git fetch --depth=1 origin "${base_ref}"
+            local modified_files=$(git diff --name-only FETCH_HEAD..HEAD)
+            total_files=""
+            while read -r file; do
+              parent_dir="${file%/*}"
+              file_name="${file##*/}"
+              result="$(parse_integration_test_json_file "$file_name" "$parent_dir")"
+              if [[ ! -z "$result" ]]; then
+                total_files+="$result,"
+              fi
+            done <<< "$modified_files"
+            if [[ -z "$total_files" ]]; then
+              echo "[]"
+            else
+              echo "${total_files::-1}" | tr ',' '\n' | jq -R . | jq -sc '[.[]]|unique'
+            fi
+          }
+
+          if [[ ${{ github.event_name }} == 'pull_request' ]]; then
+            files=$(get_tests_files)
+            echo "Selected tests: $files"
+            echo "files=$files" >> $GITHUB_OUTPUT
+          else
+            if [[ -z ${TEST_LIST} ]]; then
+              echo "No tests specified, running all tests"
+              echo "Selected tests: $files"
+              echo "files=$files" >> $GITHUB_OUTPUT
+              exit 0
+            else
+              selected_files=$(validate_tests_files_input "$files" "${TEST_LIST}")
+              echo "Selected tests: $selected_files"
+              echo "files=$selected_files" >> $GITHUB_OUTPUT
+            fi
+          fi
+        shell: bash
 
   api_endpoints_integration_tests_execution:
     needs: api_endpoints_integration_tests_setup
@@ -54,7 +131,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        test_file: ${{ fromJson(needs.api_endpoints_integration_tests_setup.outputs.custom_matrix).files }}
+        test_file: ${{ fromJson(needs.api_endpoints_integration_tests_setup.outputs.custom_matrix) }}
     name: Run integration tests for API endpoints
 
     steps:

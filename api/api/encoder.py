@@ -11,6 +11,7 @@ from api.models.base_model_ import Model
 from wazuh.core.results import AbstractWazuhResult
 
 
+
 class WazuhAPIJSONEncoder(JSONEncoder):
     """"
     Define the custom Wazuh API JSON encoder class.
