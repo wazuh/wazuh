@@ -448,21 +448,29 @@ ifeq (,$(filter ${EXTERNAL_SRC_ONLY},YES yes y Y 1))
 PRECOMPILED_RES := $(PRECOMPILED_OS)$(PRECOMPILED_ARCH)
 endif
 
-# Agent dependencies
-EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace bzip2 nlohmann googletest libpcre2 libplist libarchive popt lua rpm rocksdb lzma cpp-httplib benchmark libbpf-bootstrap dbus flatbuffers
-ifneq (${TARGET},agent)
-ifneq (${TARGET},winagent)
-	# Manager extra dependency
-	EXTERNAL_RES += $(CPYTHON) jemalloc flatbuffers simdjson spdlog yaml-cpp pugixml libmaxminddb date fmt abseil-cpp re2 protobuf rapidjson taskflow RxCpp concurrentqueue fast_float geo_db tzdata
+# Universal dependencies (all platforms, all targets)
+EXTERNAL_RES := cJSON openssl zlib sqlite libyaml curl libpcre2 nlohmann flatbuffers
+
+ifeq (${TARGET},agent)
+# Linux agent-specific dependencies
+ifeq (${uname_S}, Linux)
+	EXTERNAL_RES += audit-userspace procps libdb popt lua rpm dbus libarchive libbpf-bootstrap bzip2
+endif
+# macOS agent-specific dependencies
+ifeq (${uname_S}, Darwin)
+	EXTERNAL_RES += libplist bzip2
 endif
 endif
 
-# Remove libbpf-bootstrap and dbus if the target is winagent OR non-Linux OS
-ifeq (${TARGET}, winagent)
-	EXTERNAL_RES := $(filter-out libbpf-bootstrap dbus rpm, $(EXTERNAL_RES))
-else
-ifneq (${uname_S}, Linux)
-	EXTERNAL_RES := $(filter-out libbpf-bootstrap dbus rpm, $(EXTERNAL_RES))
+# Test dependencies
+ifneq (,$(filter ${TEST},YES yes y Y 1))
+	EXTERNAL_RES += googletest benchmark
+endif
+
+# Manager-only dependencies
+ifneq (${TARGET},agent)
+ifneq (${TARGET},winagent)
+	EXTERNAL_RES += $(CPYTHON) libffi jemalloc rocksdb simdjson abseil-cpp spdlog yaml-cpp pugixml libmaxminddb protobuf date fmt lzma re2 rapidjson taskflow RxCpp concurrentqueue fast_float geo_db tzdata cpp-httplib
 endif
 endif
 
