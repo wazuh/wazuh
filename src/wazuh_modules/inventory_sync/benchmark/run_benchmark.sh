@@ -87,6 +87,12 @@ MODULECHECK_CHECKSUM=""
 AUTO_RESYNC=false
 END_DELAY=1.0
 RETRANSMIT=true
+# Remote mode (SSH) settings — activated when MANAGER != 127.0.0.1
+SSH_KEY=""
+SSH_PORT=22
+SSH_PASSWORD=false
+INDEXER_PORT=9200
+GRACE_TIME=20
 
 usage() {
     cat <<EOF
@@ -144,6 +150,17 @@ Benchmark mode:
                           Mirrors real syscollector <max_eps> (default 75 on
                           real agents). 0 = no throttle (default: $MAX_EPS).
 
+Remote manager (SSH) — activated when --manager is not 127.0.0.1:
+      --ssh-key PATH      SSH identity file (default: ssh-agent / system default)
+      --ssh-port N        SSH port on the remote manager (default: $SSH_PORT)
+      --ssh-password      Prompt for SSH password (requires sshpass installed
+                          locally). Mutually exclusive with --ssh-key.
+      --indexer-port N    Local wazuh-indexer port to reverse-tunnel so the
+                          remote manager can reach it (default: $INDEXER_PORT)
+      --grace N           Seconds to wait before sending and after sender
+                          finishes, so the manager detects the indexer and
+                          queues drain (default: $GRACE_TIME)
+
 Comparison mode:
       --compare DIR...    Compare results from multiple directories
       --format FMT        Chart format: png, svg, pdf (default: $CHART_FORMAT)
@@ -187,6 +204,11 @@ while [[ $# -gt 0 ]]; do
         --batch-max-bytes) BATCH_MAX_BYTES="$2"; shift 2 ;;
         --end-delay)      END_DELAY="$2"; shift 2 ;;
         --no-retransmit)  RETRANSMIT=false; shift ;;
+        --ssh-key)        SSH_KEY="$2"; shift 2 ;;
+        --ssh-port)       SSH_PORT="$2"; shift 2 ;;
+        --ssh-password)   SSH_PASSWORD=true; shift ;;
+        --indexer-port)   INDEXER_PORT="$2"; shift 2 ;;
+        --grace)          GRACE_TIME="$2"; shift 2 ;;
         --format)         CHART_FORMAT="$2"; shift 2 ;;
         --compare)
             COMPARE_MODE=true
@@ -230,6 +252,158 @@ if $COMPARE_MODE; then
     echo ""
     echo "Charts saved to $CHART_DIR/"
     exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# Remote mode detection & SSH setup
+# ---------------------------------------------------------------------------
+REMOTE_MODE=false
+if [[ "$MANAGER" != "127.0.0.1" && "$MANAGER" != "localhost" ]]; then
+    REMOTE_MODE=true
+fi
+
+REMOTE_MONITOR_DIR="/tmp/wazuh_bench_monitor"
+SSH_SOCKET="/tmp/wazuh_bench_ssh_$$"
+MONITOR_PY="$SCRIPT_DIR/../../../engine/tools/devContainer/scripts/monitor.py"
+GRAPHICS_PY="$SCRIPT_DIR/../../../engine/tools/devContainer/scripts/monitor_graphics_generator.py"
+
+# Build SSH options array
+_build_ssh_opts() {
+    SSH_OPTS=(-o StrictHostKeyChecking=accept-new -o "Port=$SSH_PORT")
+    if ! $SSH_PASSWORD; then
+        SSH_OPTS+=(-o BatchMode=yes)
+    fi
+    [[ -n "$SSH_KEY" ]] && SSH_OPTS+=(-i "$SSH_KEY")
+    # When using password auth, prefix ssh/scp with sshpass -e
+    SSH_PREFIX=()
+    if $SSH_PASSWORD; then
+        SSH_PREFIX=(sshpass -e)
+    fi
+}
+
+# Cleanup function for SSH tunnel — registered via trap
+_cleanup_ssh_tunnel() {
+    if [[ -S "$SSH_SOCKET" ]]; then
+        ssh -S "$SSH_SOCKET" -O exit "root@$MANAGER" 2>/dev/null || true
+    fi
+}
+
+if $REMOTE_MODE; then
+    # Validate password mode prerequisites
+    if $SSH_PASSWORD; then
+        if [[ -n "$SSH_KEY" ]]; then
+            echo "Error: --ssh-password and --ssh-key are mutually exclusive"
+            exit 1
+        fi
+        if ! command -v sshpass >/dev/null 2>&1; then
+            echo "Error: --ssh-password requires 'sshpass' installed locally"
+            echo "  Install: apt install sshpass"
+            exit 1
+        fi
+        # Prompt for password (hidden input)
+        read -r -s -p "SSH password for root@$MANAGER: " _SSH_PASS
+        echo ""
+        export SSHPASS="$_SSH_PASS"
+        unset _SSH_PASS
+    fi
+
+    _build_ssh_opts
+
+    echo ""
+    echo "======================================================="
+    echo "  Remote Manager Mode"
+    echo "======================================================="
+    echo ""
+    echo "  Manager host:   root@$MANAGER"
+    echo "  SSH port:       $SSH_PORT"
+    echo "  Auth method:    $($SSH_PASSWORD && echo 'password' || echo 'key/agent')"
+    echo "  Indexer port:   $INDEXER_PORT (reverse-tunnel to remote)"
+    echo ""
+
+    # --- Pre-flight: SSH connectivity ---
+    echo "Checking SSH connectivity..."
+    if ! "${SSH_PREFIX[@]}" ssh "${SSH_OPTS[@]}" "root@$MANAGER" "echo ok" >/dev/null 2>&1; then
+        echo "Error: Cannot connect via SSH to root@$MANAGER:$SSH_PORT"
+        echo "  Make sure:"
+        echo "    - SSH is enabled on the remote host"
+        echo "    - root login is permitted (PermitRootLogin yes)"
+        echo "    - Your key is authorized (or use --ssh-key / --ssh-password)"
+        exit 1
+    fi
+    echo "  SSH connection: OK"
+
+    # --- Pre-flight: python3 ---
+    echo "Checking python3 on remote..."
+    REMOTE_PY_VERSION=$("${SSH_PREFIX[@]}" ssh "${SSH_OPTS[@]}" "root@$MANAGER" "python3 --version 2>&1" || true)
+    if [[ -z "$REMOTE_PY_VERSION" || "$REMOTE_PY_VERSION" != python* && "$REMOTE_PY_VERSION" != Python* ]]; then
+        echo "Error: python3 not found on remote host $MANAGER"
+        echo "  Install: apt install python3 python3-pip"
+        exit 1
+    fi
+    echo "  python3: $REMOTE_PY_VERSION"
+
+    # --- Pre-flight: psutil ---
+    echo "Checking psutil on remote..."
+    if ! "${SSH_PREFIX[@]}" ssh "${SSH_OPTS[@]}" "root@$MANAGER" "python3 -c 'import psutil'" 2>/dev/null; then
+        echo "Error: psutil not available on remote host $MANAGER"
+        echo "  Install: pip3 install psutil"
+        exit 1
+    fi
+    echo "  psutil: OK"
+
+    # --- Pre-flight: Manager running ---
+    echo "Checking wazuh-manager status on remote..."
+    REMOTE_STATUS=$("${SSH_PREFIX[@]}" ssh "${SSH_OPTS[@]}" "root@$MANAGER" \
+        "/var/wazuh-manager/bin/wazuh-manager-control status" 2>&1) || true
+    if [[ -z "$REMOTE_STATUS" ]] || echo "$REMOTE_STATUS" | grep -q "not running"; then
+        echo "Error: wazuh-manager is not fully running on $MANAGER"
+        echo "$REMOTE_STATUS"
+        exit 1
+    fi
+    echo "$REMOTE_STATUS" | sed 's/^/    /'
+
+    # --- Copy monitor.py to remote ---
+    echo ""
+    echo "Deploying monitor.py to remote ($REMOTE_MONITOR_DIR/)..."
+    "${SSH_PREFIX[@]}" ssh "${SSH_OPTS[@]}" "root@$MANAGER" "mkdir -p $REMOTE_MONITOR_DIR"
+    "${SSH_PREFIX[@]}" scp "${SSH_OPTS[@]}" "$MONITOR_PY" "root@$MANAGER:$REMOTE_MONITOR_DIR/monitor.py" >/dev/null
+    echo "  Deployed."
+
+    # --- Open persistent SSH tunnel ---
+    echo ""
+    echo "Opening SSH tunnels..."
+    echo "  -L $PORT:localhost:$PORT (agent → manager)"
+    echo "  -L $REG_PORT:localhost:$REG_PORT (registration)"
+    echo "  -L 55000:localhost:55000 (Wazuh API)"
+    echo "  -R $INDEXER_PORT:localhost:$INDEXER_PORT (indexer → remote)"
+    "${SSH_PREFIX[@]}" ssh -f -N -M -S "$SSH_SOCKET" "${SSH_OPTS[@]}" \
+        -L "$PORT:localhost:$PORT" \
+        -L "$REG_PORT:localhost:$REG_PORT" \
+        -L "55000:localhost:55000" \
+        -R "$INDEXER_PORT:localhost:$INDEXER_PORT" \
+        "root@$MANAGER"
+
+    # Verify tunnel is alive
+    if ! ssh -S "$SSH_SOCKET" -O check "root@$MANAGER" 2>/dev/null; then
+        echo "Error: SSH tunnel failed to establish"
+        exit 1
+    fi
+    echo "  Tunnels: OK"
+
+    # Register cleanup trap (tunnel teardown on exit/error)
+    trap '_cleanup_ssh_tunnel' EXIT
+
+    # Capture time offset between local and remote
+    LOCAL_EPOCH=$(date +%s)
+    REMOTE_EPOCH=$(ssh -S "$SSH_SOCKET" "root@$MANAGER" "date +%s")
+    TIME_OFFSET=$((REMOTE_EPOCH - LOCAL_EPOCH))
+    if [[ ${TIME_OFFSET#-} -gt 2 ]]; then
+        echo ""
+        _abs_off=${TIME_OFFSET#-}
+        _dir="ahead"; (( TIME_OFFSET < 0 )) && _dir="behind"
+        echo "  WARNING: Clock offset between local and remote: ${_abs_off}s ${_dir}"
+    fi
+    echo ""
 fi
 
 # ---------------------------------------------------------------------------
@@ -386,37 +560,70 @@ echo ""
 # (all Wazuh manager daemons + standard disk paths) so all processes are
 # tracked. monitor_graphics_generator.py reads directly from the per-process
 # CSV (modulesd) and disk_usage.csv inside monitor/.
-MONITOR_PY="$SCRIPT_DIR/../../../engine/tools/devContainer/scripts/monitor.py"
-GRAPHICS_PY="$SCRIPT_DIR/../../../engine/tools/devContainer/scripts/monitor_graphics_generator.py"
 mkdir -p "$MONITOR_DIR"
-echo "Starting resource monitor (engine/tools/devContainer/scripts/monitor.py)..."
-MONITOR_ARGS=(
-    --output-dir "$MONITOR_DIR"
-    -s 1.0
-    --pidfile "$MONITOR_PID_FILE"
-    --timeout 30
-)
-"$PYTHON" "$MONITOR_PY" "${MONITOR_ARGS[@]}" &
-MONITOR_BG_PID=$!
-sleep 3
 
-if ! kill -0 "$MONITOR_BG_PID" 2>/dev/null; then
-    echo "Error: Monitor process failed to start"
-    echo "  Make sure the wazuh-manager daemons are running"
-    exit 1
+if $REMOTE_MODE; then
+    # --- Remote: start monitor.py on the remote manager via SSH ---
+    echo "Starting resource monitor on remote ($MANAGER)..."
+    REMOTE_OUTPUT_DIR="$REMOTE_MONITOR_DIR/output"
+    ssh -S "$SSH_SOCKET" "root@$MANAGER" \
+        "mkdir -p $REMOTE_OUTPUT_DIR && python3 $REMOTE_MONITOR_DIR/monitor.py \
+            --output-dir $REMOTE_OUTPUT_DIR \
+            -s 1.0 \
+            --pidfile $REMOTE_MONITOR_DIR/monitor.pid \
+            --timeout 30" &
+    MONITOR_BG_PID=$!
+    sleep 3
+    if ! kill -0 "$MONITOR_BG_PID" 2>/dev/null; then
+        echo "Error: Remote monitor process failed to start"
+        exit 1
+    fi
+    echo "  Remote monitor PID (local SSH): $MONITOR_BG_PID"
+    echo "  Remote output: $REMOTE_OUTPUT_DIR/"
+else
+    # --- Local: start monitor.py directly ---
+    echo "Starting resource monitor (engine/tools/devContainer/scripts/monitor.py)..."
+    MONITOR_ARGS=(
+        --output-dir "$MONITOR_DIR"
+        -s 1.0
+        --pidfile "$MONITOR_PID_FILE"
+        --timeout 30
+    )
+    "$PYTHON" "$MONITOR_PY" "${MONITOR_ARGS[@]}" &
+    MONITOR_BG_PID=$!
+    sleep 3
+    if ! kill -0 "$MONITOR_BG_PID" 2>/dev/null; then
+        echo "Error: Monitor process failed to start"
+        echo "  Make sure the wazuh-manager daemons are running"
+        exit 1
+    fi
+    echo "  Monitor PID: $MONITOR_BG_PID  (output: $MONITOR_DIR/)"
 fi
-echo "  Monitor PID: $MONITOR_BG_PID  (output: $MONITOR_DIR/)"
+
+# Grace period: let the manager detect the indexer (reverse tunnel) and stabilize.
+if $REMOTE_MODE && [[ "$GRACE_TIME" -gt 0 ]]; then
+    echo ""
+    echo "Waiting ${GRACE_TIME}s grace period (manager stabilization + indexer detection)..."
+    sleep "$GRACE_TIME"
+    echo "  Grace period complete. Starting sender."
+fi
 
 # 2. Run benchmark sender
 echo ""
 echo "Starting benchmark sender..."
 echo ""
 
+# In remote mode, the sender connects to 127.0.0.1 via the SSH tunnel.
+SENDER_MANAGER="$MANAGER"
+if $REMOTE_MODE; then
+    SENDER_MANAGER="127.0.0.1"
+fi
+
 SENDER_ARGS=(
     -a "$AGENTS"
     -d "$DATA_SIZE"
     -t "$DURATION"
-    --manager "$MANAGER"
+    --manager "$SENDER_MANAGER"
     --port "$PORT"
     --reg-port "$REG_PORT"
     --payload-kind "$PAYLOAD_KIND"
@@ -449,7 +656,7 @@ SENDER_ARGS+=(--end-delay "$END_DELAY")
 # the scenario JSON; same trust model as the scenario file itself.
 EXT_ACTION_PIDS=()
 EXT_ACTION_LOG="$RESULTS_DIR/external_actions.log"
-if [[ -n "$SC_EXTACTS" ]]; then
+if [[ -n "${SC_EXTACTS:-}" ]]; then
     : > "$EXT_ACTION_LOG"
     echo "Scheduling external_actions (relative to bench start):"
     while IFS=$'\t' read -r ext_at ext_cmd; do
@@ -486,14 +693,51 @@ if [[ ${#EXT_ACTION_PIDS[@]} -gt 0 ]]; then
     done
 fi
 
-# 3. Stop monitor
+# Post-sender grace: let queues drain and indexer process remaining documents.
+if $REMOTE_MODE && [[ "$GRACE_TIME" -gt 0 ]]; then
+    echo ""
+    echo "Waiting ${GRACE_TIME}s post-sender grace (queue drain)..."
+    sleep "$GRACE_TIME"
+    echo "  Post-sender grace complete."
+fi
+
+# 3. Stop monitor & retrieve data
 echo ""
 echo "Stopping resource monitor..."
-if kill -0 "$MONITOR_BG_PID" 2>/dev/null; then
-    kill -TERM "$MONITOR_BG_PID" 2>/dev/null || true
+if $REMOTE_MODE; then
+    # Send SIGTERM to the remote monitor via its pidfile
+    REMOTE_PID=$(ssh -S "$SSH_SOCKET" "root@$MANAGER" "cat $REMOTE_MONITOR_DIR/monitor.pid 2>/dev/null" || true)
+    if [[ -n "$REMOTE_PID" ]]; then
+        ssh -S "$SSH_SOCKET" "root@$MANAGER" "kill -TERM $REMOTE_PID" 2>/dev/null || true
+        # Wait for graceful shutdown (log extraction etc.)
+        for i in $(seq 1 15); do
+            if ! ssh -S "$SSH_SOCKET" "root@$MANAGER" "kill -0 $REMOTE_PID" 2>/dev/null; then
+                break
+            fi
+            sleep 1
+        done
+    fi
+    # Also kill local SSH background process
+    kill "$MONITOR_BG_PID" 2>/dev/null || true
     wait "$MONITOR_BG_PID" 2>/dev/null || true
+    echo "  Remote monitor stopped"
+
+    # Retrieve results via SCP (use control socket to avoid re-auth)
+    echo "Retrieving monitor data from remote..."
+    scp -o "ControlPath=$SSH_SOCKET" -o "Port=$SSH_PORT" -r "root@$MANAGER:$REMOTE_OUTPUT_DIR/" "$MONITOR_DIR/" >/dev/null 2>&1
+    # Flatten: scp creates output/ subdir — move files up if needed
+    if [[ -d "$MONITOR_DIR/output" ]]; then
+        mv "$MONITOR_DIR/output/"* "$MONITOR_DIR/" 2>/dev/null || true
+        rmdir "$MONITOR_DIR/output" 2>/dev/null || true
+    fi
+    echo "  Retrieved monitor data to $MONITOR_DIR/"
+else
+    if kill -0 "$MONITOR_BG_PID" 2>/dev/null; then
+        kill -TERM "$MONITOR_BG_PID" 2>/dev/null || true
+        wait "$MONITOR_BG_PID" 2>/dev/null || true
+    fi
+    echo "  Monitor stopped"
 fi
-echo "  Monitor stopped"
 
 # 4. Merge CSVs into summary.json (PASS/FAIL if scenario provided expectations)
 echo ""
