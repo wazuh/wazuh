@@ -788,6 +788,75 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendEndFails)
     syncThread.join();
 }
 
+TEST_F(AgentSyncProtocolTest, SendEndAbortedOnStopDuringSyncEndDelay)
+{
+    // syncEndDelay is intentionally large: without the cv.wait_for fix the
+    // sendEndAndWaitAck path would block here for the full duration, so a
+    // stop() call would never finish the sync inside this test's deadline.
+    constexpr unsigned int largeSyncEndDelay = 30;
+
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger,
+                                                   std::chrono::seconds(largeSyncEndDelay),
+                                                   std::chrono::seconds(max_timeout),
+                                                   retries, maxEps, mockQueue);
+
+    std::vector<PersistedData> testData =
+    {
+        {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+    };
+
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    .WillOnce(Return(testData));
+
+    EXPECT_CALL(*mockQueue, resetSyncingItems())
+    .Times(1);
+
+    auto syncFuture = std::async(std::launch::async, [&]()
+    {
+        return protocol->synchronizeModule(Mode::DELTA);
+    });
+
+    // Let the worker reach sendStartAndWaitAck and wait for StartAck.
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // Deliver StartAck so the worker continues into sendData and then into
+    // sendEndAndWaitAck's sync_end_delay wait.
+    flatbuffers::FlatBufferBuilder builder;
+    Wazuh::SyncSchema::StartAckBuilder startAckBuilder(builder);
+    startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    startAckBuilder.add_session(session);
+    auto startAckOffset = startAckBuilder.Finish();
+    auto message = Wazuh::SyncSchema::CreateMessage(
+                       builder, Wazuh::SyncSchema::MessageType::StartAck, startAckOffset.Union());
+    builder.Finish(message);
+    protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
+
+    // Give the worker time to park inside cv.wait_for(m_syncEndDelay, ...).
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // stop() should wake the wait_for immediately via cv.notify_all().
+    protocol->stop();
+
+    // Without the fix this future would not be ready until largeSyncEndDelay
+    // seconds had elapsed. Give a generous bound to avoid CI flakiness.
+    constexpr auto testTimeout = std::chrono::seconds(5);
+
+    if (syncFuture.wait_for(testTimeout) == std::future_status::timeout)
+    {
+        FAIL() << "Sync thread did not respond to stop() during sync_end_delay; "
+               << "cv.wait_for may not be interruptible";
+    }
+
+    EXPECT_FALSE(syncFuture.get());
+}
+
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndFailDueToManager)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
