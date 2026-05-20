@@ -112,7 +112,8 @@ int64_t DB::getLastSyncTime(const std::string& tableName)
     auto selectQuery = SelectQuery::builder()
                        .table("table_metadata")
                        .columnList({"last_sync_time"})
-                       .rowFilter("WHERE table_name = '" + tableName + "'")
+                       .rowFilter("WHERE table_name=?")
+                       .rowFilterBindText(tableName)
                        .build();
 
     FIMDB::instance().executeQuery(selectQuery.query(), callback);
