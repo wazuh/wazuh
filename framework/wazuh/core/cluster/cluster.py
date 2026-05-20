@@ -737,7 +737,18 @@ def unmerge_info(merge_type, path_file, filename):
         Content of the splitted file.
     st_mtime : str
         Modification time of the splitted file.
+
+    Raises
+    ------
+    WazuhClusterError
+        If parameters contain invalid characters.
     """
+    if '/' in merge_type or '\\' in merge_type or merge_type.startswith('.'):
+        raise WazuhException(3052, extra_message=f"Invalid merge_type: {merge_type}")
+
+    if '/' in filename or '\\' in filename or filename.startswith('.'):
+        raise WazuhException(3052, extra_message=f"Invalid merge filename: {filename}")
+
     src_path = path.abspath(path.join(path_file, filename))
     dst_path = path.join("queue", merge_type)
 
@@ -756,6 +767,13 @@ def unmerge_info(merge_type, path_file, filename):
                 break
 
             # read data
+            name = path.basename(name)
+            if not name or name.startswith('.') or '/' in name or '\\' in name:
+                logger.warning(f"Invalid filename in merged header: {name}. Skipping.")
+                src_f.read(st_size)
+                bytes_read += st_size
+                continue
+
             data = src_f.read(st_size)
             bytes_read += st_size
 

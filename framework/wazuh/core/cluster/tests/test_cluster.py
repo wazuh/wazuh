@@ -576,16 +576,65 @@ def test_unmerge_info():
         with patch('wazuh.core.cluster.cluster.stat') as stat_mock:
             # Make sure that the function is running correctly
             stat_mock.return_value.st_size = len(agent_info) - 5
-            assert list(cluster.unmerge_info("destination/directory/", "path/file/", "filename")) == [
-                ('queue/destination/directory/005', b"b'default,windows-serve", '2019-03-29 14:57:29.610934')]
+            assert list(cluster.unmerge_info("destination", "path/file/", "filename")) == [
+                ('queue/destination/005', b"b'default,windows-serve", '2019-03-29 14:57:29.610934')]
 
             # Make sure that the Exception is being properly called
             stat_mock.return_value.st_size = len(agent_info)
             with patch.object(wazuh.core.cluster.cluster.logger, "warning") as mock_logger:
-                list(cluster.unmerge_info("destination/directory/", "path/file/", "filename"))
+                list(cluster.unmerge_info("destination", "path/file/", "filename"))
                 mock_logger.assert_called_once_with("Malformed file (not enough values to unpack "
                                                     "(expected 3, got 1)). Parsed line: rs'. "
                                                     "Some files won't be synced")
+
+
+@pytest.mark.parametrize('merge_type, filename, expected_exception', [
+    ("../etc", "payload.merged", True),
+    ("..\\etc", "payload.merged", True),
+    (".hidden", "payload.merged", True),
+    ("valid/path", "payload.merged", True),
+    ("valid", "../../../etc/ossec.conf", True),
+    ("valid", "..\\..\\..\\etc\\ossec.conf", True),
+    ("valid", ".hidden", True),
+    ("valid", "file/with/slash", True),
+])
+def test_unmerge_info_path_validation(merge_type, filename, expected_exception):
+    """Test that unmerge_info validates merge_type and filename parameters."""
+    agent_info = b"23 005 2019-03-29 14:57:29.610934\ndefault"
+
+    with patch('builtins.open', mock_open(read_data=agent_info)):
+        with patch('wazuh.core.cluster.cluster.stat') as stat_mock:
+            stat_mock.return_value.st_size = len(agent_info)
+
+            if expected_exception:
+                with pytest.raises(WazuhException, match='3052'):
+                    list(cluster.unmerge_info(merge_type, "path/file/", filename))
+
+
+@pytest.mark.parametrize('header_name, should_skip', [
+    ("../../../etc/ossec.conf", False),
+    ("..\\..\\..\\etc\\ossec.conf", True),
+    (".hidden", True),
+    ("valid_file.txt", False),
+])
+def test_unmerge_info_header_name_sanitization(header_name, should_skip):
+    """Test that unmerge_info sanitizes file names from merged headers."""
+    agent_info = f"12 {header_name} 2019-03-29 14:57:29.610934\ntest_content".encode()
+
+    with patch('builtins.open', mock_open(read_data=agent_info)):
+        with patch('wazuh.core.cluster.cluster.stat') as stat_mock:
+            stat_mock.return_value.st_size = len(agent_info)
+
+            with patch.object(wazuh.core.cluster.cluster.logger, "warning") as mock_logger:
+                result = list(cluster.unmerge_info("valid", "path/file/", "filename"))
+
+                if should_skip:
+                    assert len(result) == 0
+                    mock_logger.assert_called()
+                else:
+                    assert len(result) == 1
+                    expected_basename = os.path.basename(header_name)
+                    assert result[0][0] == f"queue/valid/{expected_basename}"
 
 
 @pytest.mark.asyncio
