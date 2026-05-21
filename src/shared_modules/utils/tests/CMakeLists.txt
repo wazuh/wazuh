@@ -66,7 +66,6 @@ file(
   "rocksDBSafeQueuePrefix_test.cpp"
   "rocksDBWrapper_test.cpp"
   "threadEventDispatcher_test.cpp"
-  "xzHelper_test.cpp"
   "jsonArrayParser_test.cpp"
   "zlibHelper_test.cpp"
   "rsaHelper_test.cpp"
@@ -131,7 +130,6 @@ else()
     link_directories(${SRC_FOLDER}/build/lib)
     link_directories(${SRC_FOLDER}/external/rocksdb/build/)
     link_directories(${SRC_FOLDER}/external/openssl/)
-    link_directories(${SRC_FOLDER}/external/lzma/build/)
     link_directories(${SRC_FOLDER}/external/zlib/)
     link_directories(${SRC_FOLDER}/external/zlib/contrib/minizip/)
     link_directories(${SRC_FOLDER}/shared_modules/file_helper/build/lib/)
@@ -147,7 +145,6 @@ else()
     include_directories(${SRC_FOLDER}/external/googletest/googletest/include)
     include_directories(${SRC_FOLDER}/external/googletest/googlemock/include)
     include_directories(${SRC_FOLDER}/external/openssl/include)
-    include_directories(${SRC_FOLDER}/external/lzma/src/liblzma/api)
     include_directories(${SRC_FOLDER}/external/zlib)
     include_directories(${SRC_FOLDER}/external/zlib/contrib/)
 
@@ -170,7 +167,6 @@ else()
       dl
       pthread
       rt
-      lzma
       z
       minizip)
   endif(APPLE)

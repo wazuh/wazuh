@@ -478,7 +478,7 @@ endif
 # It is filtered out of the winagent leg, which never builds bzip2.
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
-	EXTERNAL_RES += $(CPYTHON) libffi jemalloc rocksdb simdjson abseil-cpp spdlog yaml-cpp pugixml libmaxminddb protobuf date fmt lzma re2 rapidjson taskflow RxCpp concurrentqueue fast_float geo_db tzdata cpp-httplib bzip2
+	EXTERNAL_RES += $(CPYTHON) libffi jemalloc rocksdb simdjson abseil-cpp spdlog yaml-cpp pugixml libmaxminddb protobuf date fmt re2 rapidjson taskflow RxCpp concurrentqueue fast_float geo_db tzdata cpp-httplib bzip2
 endif
 endif
 

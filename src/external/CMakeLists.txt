@@ -1004,34 +1004,6 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
 endif()
 
 # ------------------------------------------------------------------------------
-# lzma (server only)
-# ------------------------------------------------------------------------------
-
-if(NOT IS_AGENT AND NOT IS_WINDOWS)
-  if(EXISTS ${EXTERNAL_DIR}/lzma/build/liblzma.a)
-    message(STATUS "Using precompiled lzma library")
-    add_custom_target(lzma_external)
-  else()
-    ExternalProject_Add(
-      lzma_external
-      SOURCE_DIR ${EXTERNAL_DIR}/lzma
-      BINARY_DIR ${EXTERNAL_DIR}/lzma/build
-      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=0
-                 -DCMAKE_POSITION_INDEPENDENT_CODE=1
-      INSTALL_COMMAND ""
-      BUILD_BYPRODUCTS ${EXTERNAL_DIR}/lzma/build/liblzma.a)
-  endif()
-
-  add_library(ext_lzma STATIC IMPORTED GLOBAL)
-  set_target_properties(
-    ext_lzma PROPERTIES IMPORTED_LOCATION ${EXTERNAL_DIR}/lzma/build/liblzma.a)
-  add_dependencies(ext_lzma lzma_external)
-  target_include_directories(ext_lzma
-                             INTERFACE ${EXTERNAL_DIR}/lzma/src/liblzma/api)
-  add_library(lzma ALIAS ext_lzma)
-endif()
-
-# ------------------------------------------------------------------------------
 # popt (Linux agent only)
 # ------------------------------------------------------------------------------
 
@@ -1386,7 +1358,7 @@ endif()
 
 # Server-only additions to whole-archive
 if(NOT IS_AGENT AND NOT IS_WINDOWS)
-  list(APPEND WAZUHEXT_WHOLE_LIBS ext_lzma ext_minizip)
+  list(APPEND WAZUHEXT_WHOLE_LIBS ext_minizip)
 endif()
 
 # --- Platform-specific linking ---

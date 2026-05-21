@@ -101,7 +101,6 @@ _reg popt               "https://github.com/rpm-software-management/popt/archive
 _reg lua                "https://www.lua.org/ftp/lua-{version}.tar.gz"                                                            tar.gz  1  lua                false  "https://github.com/lua/lua"
 _reg rpm                "https://github.com/rpm-software-management/rpm/archive/refs/tags/rpm-{version}-release.tar.gz"           tar.gz  1  rpm                false  "https://github.com/rpm-software-management/rpm"
 _reg rocksdb            "https://github.com/facebook/rocksdb/archive/refs/tags/v{version}.tar.gz"                                 tar.gz  1  rocksdb            false  "https://github.com/facebook/rocksdb"
-_reg lzma               "https://github.com/tukaani-project/xz/releases/download/v{version}/xz-{version}.tar.gz"                  tar.gz  1  lzma               false  "https://github.com/tukaani-project/xz"
 _reg cpp-httplib        "https://github.com/yhirose/cpp-httplib/archive/refs/tags/v{version}.tar.gz"                              tar.gz  1  cpp-httplib        false  "https://github.com/yhirose/cpp-httplib"
 _reg benchmark          "https://github.com/google/benchmark/archive/refs/tags/v{version}.tar.gz"                                 tar.gz  1  benchmark          false  "https://github.com/google/benchmark"
 _reg libbpf-bootstrap   "https://github.com/libbpf/libbpf-bootstrap/archive/refs/tags/v{version}.tar.gz"                          tar.gz  1  libbpf-bootstrap   true   "https://github.com/libbpf/libbpf-bootstrap"
