@@ -1,16 +1,16 @@
 {
-  "name": "Syscollector first full + delta",
+  "name": "Syscollector, both sesions with/without VD, single agent, single pass",
   "description": "asdasd",
   "agent_configs": [
     {
-      "payload_dump": "sample_payloads/syscollector/session-delta-sin-vd.json",
+      "payload_dump": "sample_payloads/dump-syscollector/session_syscollector_sync_debian10.json",
       "session_type": "delta",
       "max_eps": 75,
       "use_databatch": true,
       "retransmit": true
     },
     {
-      "payload_dump": "sample_payloads/syscollector/session-full-con-vd.json",
+      "payload_dump": "sample_payloads/dump-syscollector/session_vd_first_debian10.json",
       "session_type": "delta",
       "max_eps": 75,
       "use_databatch": true,
@@ -19,8 +19,9 @@
   ],
   "behavior": {
     "total_agents": 1,
-    "parallel_agents": 0,
+    "parallel_agents": 1,
     "repeat_until": 0,
-    "drain_timeout": 30
+    "drain_timeout": 30,
+    "post_run_grace": 30
   }
 }

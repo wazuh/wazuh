@@ -1471,7 +1471,7 @@ def agent_loop(
     behavior: dict,
     counters: AtomicCounters,
     deadline: float,
-    barrier: threading.Barrier,
+    barrier: threading.Barrier | None,
     parallel_sem: threading.Semaphore | None,
 ):
     """Drive one agent through the scenario (single TCP socket, N runners per iteration).
@@ -1488,21 +1488,26 @@ def agent_loop(
     try:
         if not agent.connect():
             counters.add_sessions_failed(len(configs))
-            try:
-                barrier.wait(timeout=5)
-            except threading.BrokenBarrierError:
-                pass
+            # Only signal the barrier if we are in barrier mode. With a
+            # sliding-window semaphore the barrier is `None` because not
+            # every agent reaches the convergence point at the same time.
+            if barrier is not None:
+                try:
+                    barrier.wait(timeout=5)
+                except threading.BrokenBarrierError:
+                    pass
             return
 
         agent.start_reader()
 
-        try:
-            barrier.wait(timeout=60)
-        except threading.BrokenBarrierError:
-            logger.error("Agent %s: barrier broken", agent.id)
-            agent.stop_reader()
-            agent.disconnect()
-            return
+        if barrier is not None:
+            try:
+                barrier.wait(timeout=60)
+            except threading.BrokenBarrierError:
+                logger.error("Agent %s: barrier broken", agent.id)
+                agent.stop_reader()
+                agent.disconnect()
+                return
 
         repeat_until = int(behavior.get("repeat_until", 0) or 0)
         iteration = 0
@@ -1969,14 +1974,19 @@ def main() -> None:
 
     deadline = _global_deadline_for(behavior)
 
-    # Use a barrier so the stats collector sees a clean t0. The barrier is
-    # sized for all registered agents + the main thread (this function).
-    barrier = threading.Barrier(len(agents) + 1, timeout=180)
-
-    # Sliding-window concurrency cap (parallel_agents == 0 means no cap).
+    # Concurrency model: either "all-at-once" (parallel_agents == 0) or
+    # sliding-window (parallel_agents > 0). The barrier only makes sense
+    # in the first case — sliding-window means agents trickle in as the
+    # semaphore allows, so there is no single instant where every agent
+    # is connected and ready. Mixing the two deadlocks: agents blocked on
+    # the semaphore never reach the barrier, the barrier times out after
+    # 60 s, and every agent_loop crashes with BrokenBarrierError.
     parallel_sem: threading.Semaphore | None = None
+    barrier: threading.Barrier | None = None
     if parallel_agents > 0:
         parallel_sem = threading.Semaphore(parallel_agents)
+    else:
+        barrier = threading.Barrier(len(agents) + 1, timeout=180)
 
     threads: list[threading.Thread] = []
     for agent in agents:
@@ -1990,14 +2000,22 @@ def main() -> None:
         t.start()
         threads.append(t)
 
-    try:
-        barrier.wait(timeout=180)
-    except threading.BrokenBarrierError:
-        logger.error("Not all agents reached the barrier in time")
-        _running = False
-        return
-
-    logger.info("All agents ready — starting benchmark")
+    if barrier is not None:
+        try:
+            barrier.wait(timeout=180)
+        except threading.BrokenBarrierError:
+            logger.error("Not all agents reached the barrier in time")
+            _running = False
+            return
+        logger.info("All agents ready — starting benchmark")
+    else:
+        # Sliding-window mode: agents trickle in as the semaphore allows.
+        # There is no single "everyone ready" instant — start sampling
+        # immediately so the CSV captures the ramp-up faithfully.
+        logger.info(
+            "Sliding-window mode (parallel_agents=%d) — sampling starts now.",
+            parallel_agents,
+        )
 
     # Per-scenario override of the grace window after agents finish; the
     # CLI default applies when the scenario doesn't set it.

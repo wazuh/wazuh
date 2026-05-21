@@ -96,6 +96,20 @@ def load_monitor(path: str) -> pd.DataFrame:
     return _keep_last_run(df)
 
 
+def load_remoted_stats(path: str) -> pd.DataFrame:
+    df = pd.read_csv(path)
+    if "elapsed_s" not in df.columns:
+        df["elapsed_s"] = range(len(df))
+    df = _keep_last_run(df)
+    for col in df.columns:
+        if col in (
+            "timestamp", "query_error", "message", "data_name", "raw_response_json",
+        ):
+            continue
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df
+
+
 def parse_result_arg(arg: str) -> tuple[str, str]:
     """Parse 'path::label' into (path, label)."""
     if "::" in arg:
@@ -114,6 +128,7 @@ def plot_timeseries(
     ylabel: str,
     out_path: str,
     figsize=(14, 6),
+    y_min: float | None = None,
 ):
     fig, ax = plt.subplots(figsize=figsize)
     for idx, (label, df) in enumerate(datasets.items()):
@@ -127,6 +142,8 @@ def plot_timeseries(
     ax.set_title(title, fontsize=14, fontweight="bold")
     ax.set_xlabel("Elapsed time (s)")
     ax.set_ylabel(ylabel)
+    if y_min is not None:
+        ax.set_ylim(bottom=y_min)
     ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1))
     ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
     fig.tight_layout()
@@ -269,6 +286,26 @@ BENCH_METRICS = [
     ("messages_dropped",    "Messages Dropped / s",     "Count"),
 ]
 
+REMOTED_METRICS = [
+    ("queues_received_usage", "Remoted Queue Usage", "Usage"),
+    (
+        "messages_received_breakdown_discarded",
+        "Remoted Messages Received Discarded",
+        "Count",
+    ),
+    (
+        "messages_received_breakdown_event",
+        "Remoted Messages Received Event",
+        "Count",
+    ),
+    (
+        "messages_sent_breakdown_discarded",
+        "Remoted Messages Sent Discarded",
+        "Count",
+    ),
+    ("tcp_sessions", "Remoted TCP Sessions", "Count"),
+]
+
 
 # ---------------------------------------------------------------------------
 # Main chart generation
@@ -283,6 +320,7 @@ def generate_charts(
     monitors: dict[str, pd.DataFrame] = {}
     benches: dict[str, pd.DataFrame] = {}
     disk_dfs: dict[str, pd.DataFrame] = {}
+    remoted_dfs: dict[str, pd.DataFrame] = {}
     logs: dict[str, pd.DataFrame] = {}
     modulesd_dfs: dict[str, pd.DataFrame] = {}
 
@@ -301,6 +339,11 @@ def generate_charts(
         if not os.path.isfile(logs_path):
             logs_path = os.path.join(path, "logs.csv")
 
+        # Remoted API stats: prefer monitor/ subdir, fall back to root
+        remoted_stats_path = os.path.join(monitor_dir, "stats-api-remoted.csv")
+        if not os.path.isfile(remoted_stats_path):
+            remoted_stats_path = os.path.join(path, "stats-api-remoted.csv")
+
         if os.path.isfile(bench_path):
             benches[label] = load_bench(bench_path)
         if os.path.isfile(disk_path):
@@ -310,6 +353,11 @@ def generate_charts(
                 logs[label] = pd.read_csv(logs_path)
             except Exception as exc:
                 print(f"  warning: could not load {logs_path}: {exc}")
+        if os.path.isfile(remoted_stats_path):
+            try:
+                remoted_dfs[label] = load_remoted_stats(remoted_stats_path)
+            except Exception as exc:
+                print(f"  warning: could not load {remoted_stats_path}: {exc}")
 
         # Per-process CSVs: prefer monitor/ subdir, then root-level monitor.csv,
         # then auto-discover per-process CSVs in root.
@@ -318,7 +366,8 @@ def generate_charts(
                 if not fname.endswith(".csv"):
                     continue
                 if fname in ("disk_usage.csv", "logs.csv",
-                             "invsync_queue_stats.csv", "invsync_session_stats.csv"):
+                             "invsync_queue_stats.csv", "invsync_session_stats.csv",
+                             "stats-api-remoted.csv"):
                     continue
                 fpath = os.path.join(monitor_dir, fname)
                 proc_name = fname.removesuffix(".csv")
@@ -337,7 +386,8 @@ def generate_charts(
                 if not fname.endswith(".csv"):
                     continue
                 if fname in ("bench.csv", "disk_usage.csv", "logs.csv",
-                             "invsync_queue_stats.csv", "invsync_session_stats.csv"):
+                             "invsync_queue_stats.csv", "invsync_session_stats.csv",
+                             "stats-api-remoted.csv"):
                     continue
                 fpath = os.path.join(path, fname)
                 proc_name = fname.removesuffix(".csv")
@@ -348,7 +398,7 @@ def generate_charts(
                 if "modulesd" in proc_name:
                     modulesd_dfs[label] = df
 
-    if not monitors and not benches and not disk_dfs:
+    if not monitors and not benches and not disk_dfs and not remoted_dfs:
         print("No data files found — nothing to generate.")
         return
 
@@ -356,8 +406,9 @@ def generate_charts(
     monitors = {k: v for k, v in monitors.items() if len(v) > 0}
     benches = {k: v for k, v in benches.items() if len(v) > 0}
     disk_dfs = {k: v for k, v in disk_dfs.items() if len(v) > 0}
+    remoted_dfs = {k: v for k, v in remoted_dfs.items() if len(v) > 0}
 
-    if not monitors and not benches and not disk_dfs:
+    if not monitors and not benches and not disk_dfs and not remoted_dfs:
         print("All CSV files are empty — nothing to generate.")
         return
 
@@ -391,6 +442,7 @@ def generate_charts(
                 disk_dfs, col,
                 f"Disk Usage — {pretty}",
                 "MB", out,
+                y_min=0,
             )
 
     # -- Bench time-series ---------------------------------------------------
@@ -413,6 +465,20 @@ def generate_charts(
             os.path.join(out_dir, f"bench_sent_vs_completed.{fmt}"),
             smooth_b_window=5,
         )
+
+    # -- Remoted API time-series --------------------------------------------
+    if remoted_dfs:
+        for col, title_suffix, ylabel in REMOTED_METRICS:
+            if not any(col in df.columns for df in remoted_dfs.values()):
+                continue
+            out = os.path.join(out_dir, f"remoted_{col}.{fmt}")
+            plot_timeseries(
+                remoted_dfs,
+                col,
+                f"Wazuh Remoted API — {title_suffix}",
+                ylabel,
+                out,
+            )
 
     # -- Summary bar charts --------------------------------------------------
     if monitors:
@@ -440,31 +506,18 @@ def generate_charts(
                  "RSS Memory Growth (end − start)", "MB",
                  os.path.join(out_dir, f"summary_rss_growth.{fmt}"))
 
-        # Per-directory peak and growth summary bars from disk_usage.csv.
+        # Per-directory disk growth summary — all directories in one grouped bar chart.
         if disk_dfs:
             tracked_disk_cols: set[str] = set()
             for df in disk_dfs.values():
                 tracked_disk_cols.update(c for c in df.columns
                                          if c.startswith("dir_") and c.endswith("_mb"))
-            disk_labels = list(disk_dfs.keys())
-            disk_colors = [run_color(i) for i in range(len(disk_labels))]
-            for col in sorted(tracked_disk_cols):
-                pretty = col.removeprefix("dir_").removesuffix("_mb").replace("_", "-")
-                peak = [round(df[col].max(), 2) if col in df.columns else 0.0
-                        for df in disk_dfs.values()]
-                plot_bar(disk_labels, peak, disk_colors,
-                         f"Peak Disk Usage — {pretty}", "MB",
-                         os.path.join(out_dir, f"summary_peak_{col}.{fmt}"))
-
-                growth = []
-                for df in disk_dfs.values():
-                    if col in df.columns and len(df) > 0:
-                        growth.append(round(df[col].iloc[-1] - df[col].iloc[0], 2))
-                    else:
-                        growth.append(0.0)
-                plot_bar(disk_labels, growth, disk_colors,
-                         f"Disk Growth — {pretty} (end − start)", "MB",
-                         os.path.join(out_dir, f"summary_growth_{col}.{fmt}"))
+            sorted_disk_cols = sorted(tracked_disk_cols)
+            if sorted_disk_cols:
+                _plot_grouped_disk_growth(
+                    disk_dfs, sorted_disk_cols,
+                    os.path.join(out_dir, f"summary_disk_growth.{fmt}"),
+                )
 
     if benches:
         labels = list(benches.keys())
@@ -518,7 +571,7 @@ def generate_charts(
                     _plot_rss_vs_queues(modulesd_dfs[label], df, label, out)
 
     # -- InventorySync log charts --------------------------------------------
-    _generate_invsync_charts(result_dirs, out_dir, fmt)
+    _generate_invsync_charts(result_dirs, out_dir, fmt, modulesd_dfs)
 
     print(f"\nDone. {len(os.listdir(out_dir))} chart(s) generated.\n")
 
@@ -548,6 +601,7 @@ def _generate_invsync_charts(
     result_dirs: list[tuple[str, str]],
     out_dir: str,
     fmt: str,
+    modulesd_dfs: dict[str, pd.DataFrame] | None = None,
 ) -> None:
     """Generate charts from invsync_queue_stats.csv and invsync_session_stats.csv."""
     queue_dfs: dict[str, pd.DataFrame] = {}
@@ -652,6 +706,17 @@ def _generate_invsync_charts(
                     f"InventorySync — Sessions Completed by Module{suffix}",
                     "Count", out,
                 )
+
+    # -- Combined: sessions + modulesd RSS + rocksdb dir size ----------------
+    if modulesd_dfs and queue_dfs:
+        for label in queue_dfs:
+            if label in (modulesd_dfs or {}):
+                out = os.path.join(
+                    out_dir,
+                    f"invsync_combined_sessions_rss_rocksdb_{label.replace(' ', '_')}.{fmt}",
+                )
+                _plot_sessions_rss_rocksdb(
+                    queue_dfs[label], modulesd_dfs[label], label, out)
 
 
 def _session_timeline_frame(df: pd.DataFrame) -> pd.DataFrame:
@@ -878,6 +943,115 @@ def _plot_with_total(
     print(f"  -> {out_path}")
 
 
+def _plot_grouped_disk_growth(
+    disk_dfs: dict[str, pd.DataFrame],
+    columns: list[str],
+    out_path: str,
+    figsize=(12, 6),
+):
+    """All disk-directory growth values in a single grouped-bar chart.
+
+    X-axis: directory names (columns prettified).
+    Groups: one bar per run/label.
+    """
+    labels = list(disk_dfs.keys())
+    n_labels = len(labels)
+    n_cols = len(columns)
+    bar_width = 0.7 / max(n_labels, 1)
+    x = np.arange(n_cols)
+
+    fig, ax = plt.subplots(figsize=figsize)
+    for i, label in enumerate(labels):
+        df = disk_dfs[label]
+        values = []
+        for col in columns:
+            if col in df.columns and len(df) > 0:
+                values.append(round(float(df[col].iloc[-1] - df[col].iloc[0]), 2))
+            else:
+                values.append(0.0)
+        offset = (i - n_labels / 2 + 0.5) * bar_width
+        bars = ax.bar(x + offset, values, bar_width,
+                      label=label, color=run_color(i), edgecolor="white")
+        for bar, val in zip(bars, values):
+            if val != 0:
+                ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() * 1.01,
+                        f"{val:.1f}", ha="center", va="bottom", fontsize=9)
+
+    pretty_names = [c.removeprefix("dir_").removesuffix("_mb").replace("_", "-")
+                    for c in columns]
+    ax.set_xticks(x)
+    ax.set_xticklabels(pretty_names, rotation=15, ha="right")
+    ax.set_ylabel("MB")
+    ax.set_title("Disk Growth (end − start) — All Directories", fontsize=14, fontweight="bold")
+    ax.legend(loc="upper left", fontsize=9)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  -> {out_path}")
+
+
+def _plot_sessions_rss_rocksdb(
+    queue_df: pd.DataFrame,
+    modulesd_df: pd.DataFrame,
+    title: str,
+    out_path: str,
+):
+    """Three stacked panels sharing X (elapsed_s):
+      - Top:    Active sessions (from invsync_queue_stats).
+      - Middle: RSS of modulesd (MB).
+      - Bottom: RocksDB directory size (converted to MB).
+    """
+    fig, (ax1, ax2, ax3) = plt.subplots(
+        3, 1,
+        figsize=(14, 10),
+        sharex=True,
+        gridspec_kw={"height_ratios": [1, 1, 1]},
+    )
+
+    # Panel 1 — Sessions
+    if "sessions" in queue_df.columns:
+        ax1.plot(queue_df["elapsed_s"], queue_df["sessions"],
+                 color=COLORS[0], linewidth=1.5, alpha=0.9, label="Active Sessions")
+        ax1.fill_between(queue_df["elapsed_s"], queue_df["sessions"],
+                         alpha=0.15, color=COLORS[0])
+    ax1.set_ylabel("Sessions")
+    ax1.set_ylim(0, None)
+    ax1.set_title(f"InventorySync — Sessions + RSS + RocksDB ({title})",
+                  fontsize=14, fontweight="bold")
+    ax1.legend(loc="upper left", fontsize=9)
+    ax1.grid(True, alpha=0.3)
+
+    # Panel 2 — RSS (modulesd)
+    if "rss_mb" in modulesd_df.columns:
+        ax2.plot(modulesd_df["elapsed_s"], modulesd_df["rss_mb"],
+                 color=COLORS[3], linewidth=1.5, alpha=0.9, label="RSS modulesd (MB)")
+        ax2.fill_between(modulesd_df["elapsed_s"], modulesd_df["rss_mb"],
+                         alpha=0.15, color=COLORS[3])
+    ax2.set_ylabel("MB")
+    ax2.set_ylim(0, None)
+    ax2.legend(loc="upper left", fontsize=9)
+    ax2.grid(True, alpha=0.3)
+
+    # Panel 3 — RocksDB dir size (bytes -> MB)
+    if "rocksdb_dir_bytes" in queue_df.columns:
+        rocksdb_mb = queue_df["rocksdb_dir_bytes"] / (1024 * 1024)
+        ax3.plot(queue_df["elapsed_s"], rocksdb_mb,
+                 color=COLORS[2], linewidth=1.5, alpha=0.9, label="RocksDB dir (MB)")
+        ax3.fill_between(queue_df["elapsed_s"], rocksdb_mb,
+                         alpha=0.15, color=COLORS[2])
+    ax3.set_ylabel("MB")
+    ax3.set_ylim(0, None)
+    ax3.set_xlabel("Elapsed time (s)")
+    ax3.legend(loc="upper left", fontsize=9)
+    ax3.grid(True, alpha=0.3)
+    ax3.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  -> {out_path}")
+
+
 def _plot_rss_vs_queues(
     monitor_df: pd.DataFrame,
     logs_df: pd.DataFrame,
@@ -911,9 +1085,8 @@ def _plot_rss_vs_queues(
     ax1.legend(loc="upper left", fontsize=9)
     ax1.grid(True, alpha=0.3)
     rss_max = monitor_df["rss_mb"].max()
-    rss_min = monitor_df["rss_mb"].min()
-    pad = max((rss_max - rss_min) * 0.1, 0.5)
-    ax1.set_ylim(max(0, rss_min - pad), rss_max + pad)
+    pad = max(rss_max * 0.05, 0.5)
+    ax1.set_ylim(0, rss_max + pad)
 
     # Panel 2 — workers_q (left axis) + sessions (right axis).
     x = logs_df["elapsed_s"]
@@ -929,6 +1102,7 @@ def _plot_rss_vs_queues(
                  label="indexer_q (m_indexerQueue depth)")
     ax2.set_xlabel("Elapsed time (s)")
     ax2.set_ylabel("Queue depth (messages)")
+    ax2.set_ylim(0, None)
     ax2.grid(True, alpha=0.3)
     ax2.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 

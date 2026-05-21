@@ -25,10 +25,13 @@ Usage:
 import argparse
 import atexit
 import csv
+import json
 import logging
 import os
 import re
 import signal
+import socket
+import struct
 import sys
 import time
 import threading
@@ -54,6 +57,48 @@ DEFAULT_DISK_PATHS = [
     "/var/wazuh-manager/queue/engine-output",
     "/var/wazuh-manager/queue/vd",
     "/var/wazuh-manager/",
+]
+
+DEFAULT_REMOTED_SOCKET = "/var/wazuh-manager/queue/sockets/remote"
+REMOTED_STATS_CSV = "stats-api-remoted.csv"
+REMOTED_QUERY = {"command": "getstats"}
+REMOTED_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
+REMOTED_HEADER = [
+    "timestamp",
+    "elapsed_s",
+    "query_ok",
+    "query_error",
+    "error",
+    "message",
+    "data_name",
+    "data_timestamp",
+    "data_uptime",
+    "metrics_bytes_received",
+    "metrics_bytes_sent",
+    "metrics_keys_reload_count",
+    "messages_received_breakdown_control",
+    "messages_received_breakdown_dequeued_after",
+    "messages_received_breakdown_discarded",
+    "messages_received_breakdown_event",
+    "messages_received_breakdown_ping",
+    "messages_received_breakdown_unknown",
+    "messages_received_breakdown_control_breakdown_keepalive",
+    "messages_received_breakdown_control_breakdown_request",
+    "messages_received_breakdown_control_breakdown_shutdown",
+    "messages_received_breakdown_control_breakdown_startup",
+    "messages_sent_breakdown_ack",
+    "messages_sent_breakdown_ar",
+    "messages_sent_breakdown_discarded",
+    "messages_sent_breakdown_request",
+    "messages_sent_breakdown_shared",
+    "queues_received_size",
+    "queues_received_usage",
+    "tcp_sessions",
+    "control_messages_queue_usage",
+    "control_messages_queue_breakdown_inserted",
+    "control_messages_queue_breakdown_replaced",
+    "control_messages_queue_breakdown_processed",
+    "raw_response_json",
 ]
 
 # ---------------------------------------------------------------------------
@@ -405,14 +450,188 @@ def disk_monitor_loop(csv_path: str, interval: float,
     logger.info("Disk monitor finished. CSV written to %s", csv_path)
 
 
+def _recv_exact(sock: socket.socket, size: int) -> bytes:
+    """Read exactly *size* bytes or raise if stream closes early."""
+    chunks: list[bytes] = []
+    remaining = size
+    while remaining > 0:
+        chunk = sock.recv(remaining)
+        if not chunk:
+            raise ConnectionError(f"Socket closed while reading {size} bytes")
+        chunks.append(chunk)
+        remaining -= len(chunk)
+    return b"".join(chunks)
+
+
+def _as_int(value: object, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _as_float(value: object, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _query_remoted_stats(socket_path: str, timeout: float = 2.0) -> dict[str, object]:
+    payload = json.dumps(REMOTED_QUERY, separators=(",", ":")).encode("utf-8")
+    header = struct.pack("<I", len(payload))
+
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as conn:
+        conn.settimeout(timeout)
+        conn.connect(socket_path)
+        conn.sendall(header + payload)
+
+        resp_size_raw = _recv_exact(conn, 4)
+        resp_size = struct.unpack("<I", resp_size_raw)[0]
+        if resp_size <= 0 or resp_size > REMOTED_MAX_RESPONSE_SIZE:
+            raise ValueError(f"Invalid response size: {resp_size}")
+
+        response = _recv_exact(conn, resp_size)
+
+    data = json.loads(response.decode("utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("Remoted response is not a JSON object")
+    return data
+
+
+def _empty_remoted_row(timestamp: str, elapsed_s: float) -> dict[str, object]:
+    row: dict[str, object] = {k: "" for k in REMOTED_HEADER}
+    row["timestamp"] = timestamp
+    row["elapsed_s"] = elapsed_s
+    return row
+
+
+def _flatten_remoted_stats(raw: dict[str, object], timestamp: str, elapsed_s: float) -> dict[str, object]:
+    row = _empty_remoted_row(timestamp, elapsed_s)
+    row["query_ok"] = 1
+    row["query_error"] = ""
+    row["error"] = _as_int(raw.get("error"))
+    row["message"] = str(raw.get("message", ""))
+
+    data = raw.get("data")
+    if not isinstance(data, dict):
+        return row
+
+    row["data_name"] = str(data.get("name", ""))
+    row["data_timestamp"] = _as_int(data.get("timestamp"))
+    row["data_uptime"] = _as_int(data.get("uptime"))
+
+    metrics = data.get("metrics")
+    if not isinstance(metrics, dict):
+        return row
+
+    bytes_data = metrics.get("bytes")
+    if isinstance(bytes_data, dict):
+        row["metrics_bytes_received"] = _as_int(bytes_data.get("received"))
+        row["metrics_bytes_sent"] = _as_int(bytes_data.get("sent"))
+
+    row["metrics_keys_reload_count"] = _as_int(metrics.get("keys_reload_count"))
+    row["tcp_sessions"] = _as_int(metrics.get("tcp_sessions"))
+    row["control_messages_queue_usage"] = _as_int(metrics.get("control_messages_queue_usage"))
+
+    messages = metrics.get("messages")
+    if isinstance(messages, dict):
+        recv_breakdown = messages.get("received_breakdown")
+        if isinstance(recv_breakdown, dict):
+            row["messages_received_breakdown_control"] = _as_int(recv_breakdown.get("control"))
+            row["messages_received_breakdown_dequeued_after"] = _as_int(recv_breakdown.get("dequeued_after"))
+            row["messages_received_breakdown_discarded"] = _as_int(recv_breakdown.get("discarded"))
+            row["messages_received_breakdown_event"] = _as_int(recv_breakdown.get("event"))
+            row["messages_received_breakdown_ping"] = _as_int(recv_breakdown.get("ping"))
+            row["messages_received_breakdown_unknown"] = _as_int(recv_breakdown.get("unknown"))
+
+            ctrl_breakdown = recv_breakdown.get("control_breakdown")
+            if isinstance(ctrl_breakdown, dict):
+                row["messages_received_breakdown_control_breakdown_keepalive"] = _as_int(ctrl_breakdown.get("keepalive"))
+                row["messages_received_breakdown_control_breakdown_request"] = _as_int(ctrl_breakdown.get("request"))
+                row["messages_received_breakdown_control_breakdown_shutdown"] = _as_int(ctrl_breakdown.get("shutdown"))
+                row["messages_received_breakdown_control_breakdown_startup"] = _as_int(ctrl_breakdown.get("startup"))
+
+        sent_breakdown = messages.get("sent_breakdown")
+        if isinstance(sent_breakdown, dict):
+            row["messages_sent_breakdown_ack"] = _as_int(sent_breakdown.get("ack"))
+            row["messages_sent_breakdown_ar"] = _as_int(sent_breakdown.get("ar"))
+            row["messages_sent_breakdown_discarded"] = _as_int(sent_breakdown.get("discarded"))
+            row["messages_sent_breakdown_request"] = _as_int(sent_breakdown.get("request"))
+            row["messages_sent_breakdown_shared"] = _as_int(sent_breakdown.get("shared"))
+
+    queues = metrics.get("queues")
+    if isinstance(queues, dict):
+        received = queues.get("received")
+        if isinstance(received, dict):
+            row["queues_received_size"] = _as_int(received.get("size"))
+            row["queues_received_usage"] = _as_float(received.get("usage"))
+
+    ctrl_queue_breakdown = metrics.get("control_messages_queue_breakdown")
+    if isinstance(ctrl_queue_breakdown, dict):
+        row["control_messages_queue_breakdown_inserted"] = _as_int(ctrl_queue_breakdown.get("inserted"))
+        row["control_messages_queue_breakdown_replaced"] = _as_int(ctrl_queue_breakdown.get("replaced"))
+        row["control_messages_queue_breakdown_processed"] = _as_int(ctrl_queue_breakdown.get("processed"))
+
+    row["raw_response_json"] = json.dumps(raw, separators=(",", ":"), ensure_ascii=True)
+    return row
+
+
+def remoted_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
+                             stop_event: threading.Event | None = None) -> None:
+    """Poll remoted getstats over framed unix socket and write per-second CSV."""
+    write_header = not os.path.isfile(csv_path) or os.path.getsize(csv_path) == 0
+    start_time = time.monotonic()
+
+    with open(csv_path, "a", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=REMOTED_HEADER)
+        if write_header:
+            writer.writeheader()
+            fh.flush()
+
+        logger.info("Remoted API monitor every %.1fs -> %s", interval, csv_path)
+        logger.info("Remoted API socket: %s", socket_path)
+
+        while _running and not (stop_event and stop_event.is_set()):
+            ts_now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            elapsed_s = round(time.monotonic() - start_time, 1)
+
+            try:
+                raw = _query_remoted_stats(socket_path)
+                row = _flatten_remoted_stats(raw, ts_now, elapsed_s)
+                logger.info(
+                    "[remoted-api] usage=%.3f recv_discarded=%d recv_event=%d sent_discarded=%d tcp_sessions=%d",
+                    _as_float(row.get("queues_received_usage")),
+                    _as_int(row.get("messages_received_breakdown_discarded")),
+                    _as_int(row.get("messages_received_breakdown_event")),
+                    _as_int(row.get("messages_sent_breakdown_discarded")),
+                    _as_int(row.get("tcp_sessions")),
+                )
+            except Exception as exc:
+                row = _empty_remoted_row(ts_now, elapsed_s)
+                row["query_ok"] = 0
+                row["query_error"] = str(exc)
+                logger.warning("Remoted API poll failed: %s", exc)
+
+            writer.writerow(row)
+            fh.flush()
+
+            deadline = time.monotonic() + interval
+            while time.monotonic() < deadline and _running and not (stop_event and stop_event.is_set()):
+                time.sleep(min(0.5, deadline - time.monotonic()))
+
+    logger.info("Remoted API monitor finished. CSV written to %s", csv_path)
+
+
 def monitor_multi(processes: dict[str, psutil.Process], output_dir: str,
                   interval: float, disk_paths: list[str]) -> None:
-    """Spawn one monitoring thread per process plus a disk-usage thread."""
+    """Spawn process, disk and remoted API monitoring threads."""
     os.makedirs(output_dir, exist_ok=True)
     logger.info("Output directory: %s", output_dir)
 
     proc_threads: list[threading.Thread] = []
     disk_stop = threading.Event()
+    remoted_stop = threading.Event()
 
     # Per-process resource threads
     for exe_path, proc in processes.items():
@@ -437,20 +656,32 @@ def monitor_multi(processes: dict[str, psutil.Process], output_dir: str,
             daemon=True,
         )
 
+    remoted_csv = os.path.join(output_dir, REMOTED_STATS_CSV)
+    remoted_thread = threading.Thread(
+        target=remoted_api_monitor_loop,
+        args=(remoted_csv, interval, DEFAULT_REMOTED_SOCKET, remoted_stop),
+        name="mon-remoted-api",
+        daemon=True,
+    )
+
     for t in proc_threads:
         t.start()
     if disk_thread:
         disk_thread.start()
+    remoted_thread.start()
 
     # Wait for all process threads to finish.
     while _running and any(t.is_alive() for t in proc_threads):
         for t in proc_threads:
             t.join(timeout=1.0)
 
-    # All process monitors done — stop the disk thread.
+    # All process monitors done — stop independent monitors.
     disk_stop.set()
+    remoted_stop.set()
     if disk_thread and disk_thread.is_alive():
         disk_thread.join(timeout=5.0)
+    if remoted_thread.is_alive():
+        remoted_thread.join(timeout=5.0)
 
     logger.info("All monitoring threads finished. Results in %s", output_dir)
 

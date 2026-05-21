@@ -44,12 +44,12 @@ MANAGER="127.0.0.1"
 PORT=1514
 REG_PORT=1515
 DRAIN_TIMEOUT=60
+# Post-run grace — how long monitor.py stays alive after the sender exits,
+# so RSS / CPU / disk / queue stats keep being sampled while the system
+# settles. CLI default is empty (let scenario decide); resolution order:
+#   CLI flag → behavior.post_run_grace → GRACE_TIME (remote only) → 0
+POST_RUN_GRACE_CLI=""
 CLEANUP_AFTER=false
-DISK_PATHS=(
-    "/var/wazuh-manager/queue/inventory_sync"
-    "/var/wazuh-manager/queue/engine-output"
-    "/var/wazuh-manager/queue/vd"
-)
 COMPARE_MODE=false
 COMPARE_DIRS=()
 CHART_FORMAT="png"
@@ -72,11 +72,13 @@ Benchmark mode:
   -l, --label LABEL       Run label for results directory (default: scenario name)
   -m, --manager HOST      Manager address (default: $MANAGER)
   -p, --port PORT         Manager port (default: $PORT)
-      --drain-timeout N   Seconds to keep draining in-flight sessions after the
-                          repeat_until deadline (default: $DRAIN_TIMEOUT)
-      --disk-path PATH    Recursive directory size to track every second.
-                          Repeat to track multiple (default: 3 Wazuh queues).
-                          Use --disk-path '' once to clear the defaults.
+      --drain-timeout N   (sender-side) seconds stats_collector keeps
+                          sampling bench.csv after agents finish, to capture
+                          late EndAcks. Default: $DRAIN_TIMEOUT.
+      --post-run-grace N  (script-side) seconds to keep monitor.py alive
+                          after the sender exits, so RSS / CPU / disk
+                          stabilise on the recorded charts. Overrides
+                          behavior.post_run_grace from the scenario.
       --cleanup-after     Delete bench-* agents at the end of the run too.
                           By default the post-run cleanup is SKIPPED so the
                           inventory documents survive and can be inspected
@@ -112,14 +114,7 @@ while [[ $# -gt 0 ]]; do
         -m|--manager)     MANAGER="$2"; shift 2 ;;
         -p|--port)        PORT="$2"; shift 2 ;;
         --drain-timeout)  DRAIN_TIMEOUT="$2"; shift 2 ;;
-        --disk-path)
-            if [[ "${DISK_PATHS_FROM_CLI:-false}" == false ]]; then
-                DISK_PATHS=()
-                DISK_PATHS_FROM_CLI=true
-            fi
-            [[ -n "$2" ]] && DISK_PATHS+=("$2")
-            shift 2
-            ;;
+        --post-run-grace) POST_RUN_GRACE_CLI="$2"; shift 2 ;;
         --cleanup-after)  CLEANUP_AFTER=true; shift ;;
         --manager-log)    MANAGER_LOG="$2"; shift 2 ;;
         --ssh-key)        SSH_KEY="$2"; shift 2 ;;
@@ -187,6 +182,18 @@ fi
 
 SC_NAME=$("$PYTHON" -c "import json,sys; print(json.load(open('$SCENARIO')).get('name',''))")
 [[ -z "$LABEL" && -n "$SC_NAME" ]] && LABEL="$SC_NAME"
+
+# Resolve behavior.post_run_grace from the scenario. Returns empty string
+# when the field is missing/null so we can fall back to the per-mode
+# default below.
+SC_POST_RUN_GRACE=$("$PYTHON" -c "
+import json
+try:
+    v = json.load(open('$SCENARIO')).get('behavior', {}).get('post_run_grace')
+    print(int(v) if v is not None else '')
+except Exception:
+    print('')
+")
 
 # ---------------------------------------------------------------------------
 # Remote mode detection & SSH setup
@@ -449,12 +456,26 @@ fi
     --summary-json "$SENDER_JSON" \
     -o "$BENCH_CSV" || true
 
-# Post-sender grace: let queues drain and indexer process remaining documents.
-if $REMOTE_MODE && [[ "$GRACE_TIME" -gt 0 ]]; then
+# Post-run grace: keep monitor.py sampling for N more seconds so the
+# stabilisation tail (RSS settling, indexer flushing, disk usage growing)
+# shows up on the charts. Resolution order:
+#   --post-run-grace CLI flag  →  behavior.post_run_grace in scenario  →
+#   GRACE_TIME (remote mode default, preserves prior behavior)         →
+#   0 (local mode default).
+POST_RUN_GRACE=0
+if [[ -n "$POST_RUN_GRACE_CLI" ]]; then
+    POST_RUN_GRACE="$POST_RUN_GRACE_CLI"
+elif [[ -n "$SC_POST_RUN_GRACE" ]]; then
+    POST_RUN_GRACE="$SC_POST_RUN_GRACE"
+elif $REMOTE_MODE; then
+    POST_RUN_GRACE="$GRACE_TIME"
+fi
+
+if [[ "$POST_RUN_GRACE" -gt 0 ]]; then
     echo ""
-    echo "Waiting ${GRACE_TIME}s post-sender grace (queue drain)..."
-    sleep "$GRACE_TIME"
-    echo "  Post-sender grace complete."
+    echo "Waiting ${POST_RUN_GRACE}s post-run grace (monitor keeps sampling)..."
+    sleep "$POST_RUN_GRACE"
+    echo "  Post-run grace complete."
 fi
 
 # 3. Stop monitor & retrieve data
