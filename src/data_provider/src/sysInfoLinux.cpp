@@ -20,7 +20,7 @@
 #include "cmdHelper.h"
 #include "osinfo/sysOsParsers.h"
 #include "sysInfo.hpp"
-#include "readproc.h"
+#include "procpsWrapperLinux.hpp"
 #include "networkUnixHelper.h"
 #include "networkHelper.h"
 #include "network/networkLinuxWrapper.h"
@@ -42,21 +42,6 @@
 #include "firefox.hpp"
 
 using ProcessInfo = std::unordered_map<int64_t, std::pair<int32_t, std::string>>;
-
-struct ProcTableDeleter
-{
-    void operator()(PROCTAB* proc)
-    {
-        closeproc(proc);
-    }
-    void operator()(proc_t* proc)
-    {
-        freeproc(proc);
-    }
-};
-
-using SysInfoProcessesTable = std::unique_ptr<PROCTAB, ProcTableDeleter>;
-using SysInfoProcess        = std::unique_ptr<proc_t, ProcTableDeleter>;
 
 static void parseLineAndFillMap(const std::string& line, const std::string& separator, std::map<std::string, std::string>& systemInfo)
 {
@@ -90,7 +75,7 @@ static bool getSystemInfo(const std::string& fileName, const std::string& separa
     return ret;
 }
 
-static nlohmann::json getProcessInfo(const SysInfoProcess& process)
+static nlohmann::json getProcessInfo(const proc_t* process)
 {
     nlohmann::json jsProcessInfo{};
     // Current process information
@@ -610,21 +595,14 @@ nlohmann::json SysInfo::getPorts() const
 
 void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) const
 {
+    const int flags = PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG
+                      | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV;
 
-    const SysInfoProcessesTable spProcTable
+    ProcpsWrapper::scanProcesses(flags, [&callback](const proc_t* process)
     {
-        openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV)
-    };
-
-    SysInfoProcess spProcInfo { readproc(spProcTable.get(), nullptr) };
-
-    while (nullptr != spProcInfo)
-    {
-        // Get process information object and push it to the caller
-        auto processInfo = getProcessInfo(spProcInfo);
+        auto processInfo = getProcessInfo(process);
         callback(processInfo);
-        spProcInfo.reset(readproc(spProcTable.get(), nullptr));
-    }
+    });
 }
 
 void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
