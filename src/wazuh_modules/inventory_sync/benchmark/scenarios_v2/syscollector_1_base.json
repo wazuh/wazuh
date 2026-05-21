@@ -1,0 +1,26 @@
+{
+  "name": "Syscollector first full + delta",
+  "description": "asdasd",
+  "agent_configs": [
+    {
+      "payload_dump": "sample_payloads/syscollector/session-delta-sin-vd.json",
+      "session_type": "delta",
+      "max_eps": 75,
+      "use_databatch": true,
+      "retransmit": true
+    },
+    {
+      "payload_dump": "sample_payloads/syscollector/session-full-con-vd.json",
+      "session_type": "delta",
+      "max_eps": 75,
+      "use_databatch": true,
+      "retransmit": true
+    }
+  ],
+  "behavior": {
+    "total_agents": 1,
+    "parallel_agents": 0,
+    "repeat_until": 0,
+    "drain_timeout": 30
+  }
+}

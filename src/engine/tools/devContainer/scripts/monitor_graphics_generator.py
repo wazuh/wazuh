@@ -617,6 +617,25 @@ def _generate_invsync_charts(
                 ylabel, out,
             )
 
+        # Session lifecycle Gantt: per-agent timeline showing when each
+        # session was Start → Processing → End. Lets you eyeball whether
+        # sessions chain back-to-back (the design we want from the sender)
+        # vs sitting idle, AND whether time is being spent on the agent→
+        # manager link (start→processing) or inside the manager
+        # (processing→end).
+        if {"timing_ms_start_to_end", "timing_ms_start_to_processing",
+            "agent", "timestamp"}.issubset(df.columns):
+            _plot_session_lifecycle(
+                df, label,
+                os.path.join(out_dir,
+                             f"invsync_session_lifecycle_{label.replace(' ', '_')}.{fmt}"),
+            )
+            _plot_session_gaps(
+                df, label,
+                os.path.join(out_dir,
+                             f"invsync_session_gaps_{label.replace(' ', '_')}.{fmt}"),
+            )
+
         # Sessions completed per module
         if "reason" in df.columns:
             completed = df[df["reason"] == "completed"]
@@ -633,6 +652,185 @@ def _generate_invsync_charts(
                     f"InventorySync — Sessions Completed by Module{suffix}",
                     "Count", out,
                 )
+
+
+def _session_timeline_frame(df: pd.DataFrame) -> pd.DataFrame:
+    """Reconstruct per-session (start, processing, end) wall-clock instants
+    from invsync_session_stats rows. Each row records the END of a session
+    plus durations relative to its start, so the start/processing instants
+    are derived by subtraction.
+
+    Returns a copy of df with extra columns:
+      ts_end, ts_start, ts_processing   (datetime)
+      start_s, proc_s, end_s            (float seconds since the earliest
+                                         session start in the frame)
+    Rows without numeric timings are dropped.
+    """
+    out = df.copy()
+    out["timing_ms_start_to_end"] = pd.to_numeric(
+        out.get("timing_ms_start_to_end"), errors="coerce")
+    out["timing_ms_start_to_processing"] = pd.to_numeric(
+        out.get("timing_ms_start_to_processing"), errors="coerce")
+    out = out.dropna(subset=["timing_ms_start_to_end",
+                             "timing_ms_start_to_processing"])
+    if out.empty:
+        return out
+
+    # invsync_session_stats.csv timestamps look like "2026/05/21 03:27:59"
+    # (1-second granularity). dur/proc are millisecond precision so the
+    # derived start/processing instants are accurate even though the
+    # recorded end is rounded to the second.
+    out["ts_end"] = pd.to_datetime(out["timestamp"], errors="coerce")
+    out = out.dropna(subset=["ts_end"])
+    if out.empty:
+        return out
+
+    out["ts_start"] = out["ts_end"] - pd.to_timedelta(
+        out["timing_ms_start_to_end"], unit="ms")
+    out["ts_processing"] = out["ts_start"] + pd.to_timedelta(
+        out["timing_ms_start_to_processing"], unit="ms")
+
+    t0 = out["ts_start"].min()
+    out["start_s"] = (out["ts_start"]      - t0).dt.total_seconds()
+    out["proc_s"]  = (out["ts_processing"] - t0).dt.total_seconds()
+    out["end_s"]   = (out["ts_end"]        - t0).dt.total_seconds()
+    return out
+
+
+def _plot_session_lifecycle(
+    df: pd.DataFrame,
+    label: str,
+    out_path: str,
+):
+    """Gantt-style chart of every session in the run, one lane per agent.
+
+    Each session draws two stacked segments:
+      - light segment: Start → Processing (agent→manager latency, manager
+        acceptance + StartAck, mostly network + queue admission)
+      - dark segment:  Processing → End (manager bulk-index + EndAck latency)
+
+    The gaps between bars on the same lane are the idle windows between
+    iterations of an agent — i.e. sender-side reconnect overhead +
+    handshake. If you see consistent narrow gaps, sessions chain
+    back-to-back; if you see large white blocks, the sender is sitting
+    idle and you should look at the reconnect path in agent_loop.
+    """
+    frame = _session_timeline_frame(df)
+    if frame.empty or "agent" not in frame.columns:
+        return
+
+    # One lane per agent. Sort by first-session time so the lanes are
+    # ordered the same way they started.
+    lane_order: list[str] = (
+        frame.sort_values("start_s")["agent"].drop_duplicates().tolist()
+    )
+    lane_y = {a: i for i, a in enumerate(lane_order)}
+
+    height = max(3.5, 0.55 * len(lane_order) + 2.0)
+    fig, ax = plt.subplots(figsize=(14, height))
+
+    # Color segments via the existing palette: start→processing in COLORS[0]
+    # (lighter accent), processing→end in COLORS[2] (where the time is
+    # actually spent in practice).
+    for _, row in frame.iterrows():
+        y = lane_y[row["agent"]]
+        pre  = max(0.0, row["proc_s"] - row["start_s"])
+        post = max(0.0, row["end_s"]  - row["proc_s"])
+        if pre > 0:
+            ax.barh(y, pre, left=row["start_s"], height=0.7,
+                    color=COLORS[0], alpha=0.55,
+                    edgecolor="white", linewidth=0.4)
+        if post > 0:
+            ax.barh(y, post, left=row["proc_s"], height=0.7,
+                    color=COLORS[2], alpha=0.85,
+                    edgecolor="white", linewidth=0.4)
+
+    ax.set_yticks(list(lane_y.values()))
+    ax.set_yticklabels(lane_order, fontsize=8)
+    ax.invert_yaxis()
+    ax.set_xlabel("Elapsed time (s) — t0 = first session start")
+    ax.set_title(f"InventorySync — Session Lifecycle ({label})",
+                 fontsize=14, fontweight="bold")
+    ax.grid(True, axis="x", alpha=0.3)
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+
+    # Custom legend so the colors map to phases regardless of which agent
+    # we drew first.
+    from matplotlib.patches import Patch
+    legend_handles = [
+        Patch(color=COLORS[0], alpha=0.55, label="Start → Processing"),
+        Patch(color=COLORS[2], alpha=0.85, label="Processing → End"),
+    ]
+    ax.legend(handles=legend_handles, loc="upper right", fontsize=9)
+
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  -> {out_path}")
+
+
+def _plot_session_gaps(
+    df: pd.DataFrame,
+    label: str,
+    out_path: str,
+):
+    """Histogram + per-agent strip of idle gaps between consecutive sessions.
+
+    Used to answer "are sessions of an agent running back-to-back?". A
+    narrow histogram clustered near 0 means yes; a long tail or multimodal
+    distribution means the sender (or manager) is inserting unexpected
+    waits between iterations.
+    """
+    frame = _session_timeline_frame(df)
+    if frame.empty or "agent" not in frame.columns:
+        return
+
+    # Per-agent gaps: gap = next.start_s − this.end_s
+    gap_records: list[tuple[str, float]] = []
+    for agent_id, sub in frame.groupby("agent"):
+        sub = sub.sort_values("start_s")
+        prev_end = sub["end_s"].shift(1)
+        gaps = (sub["start_s"] - prev_end).dropna()
+        for g in gaps:
+            gap_records.append((agent_id, float(g)))
+
+    if not gap_records:
+        return
+
+    agents = sorted({a for a, _ in gap_records})
+    agent_lane = {a: i for i, a in enumerate(agents)}
+    values = [g for _, g in gap_records]
+
+    fig, (ax1, ax2) = plt.subplots(
+        2, 1, figsize=(12, max(5, 0.4 * len(agents) + 4)),
+        gridspec_kw={"height_ratios": [1, max(1, len(agents) / 4)]},
+    )
+
+    # Top: histogram of all gaps.
+    ax1.hist(values, bins=20, color=COLORS[2], edgecolor="white", alpha=0.85)
+    ax1.set_title(f"Inter-session idle gaps ({label})",
+                  fontsize=13, fontweight="bold")
+    ax1.set_xlabel("Gap between end-of-session N and start-of-session N+1 (s)")
+    ax1.set_ylabel("Count")
+    ax1.grid(True, alpha=0.3)
+    median = float(np.median(values))
+    ax1.axvline(median, color=COLORS[3], linestyle="--", linewidth=1.4,
+                label=f"median = {median:.2f} s")
+    ax1.legend(loc="upper right", fontsize=9)
+
+    # Bottom: strip plot per agent (each dot = one gap).
+    for agent_id, g in gap_records:
+        ax2.scatter(g, agent_lane[agent_id], color=COLORS[0], alpha=0.8, s=30)
+    ax2.set_yticks(list(agent_lane.values()))
+    ax2.set_yticklabels(agents, fontsize=8)
+    ax2.invert_yaxis()
+    ax2.set_xlabel("Gap (s)")
+    ax2.grid(True, axis="x", alpha=0.3)
+
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  -> {out_path}")
 
 
 def _plot_with_total(

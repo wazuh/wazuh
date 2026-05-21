@@ -6,7 +6,7 @@
     "module": "syscollector",
     "mode": "ModuleDelta",
     "option": "Sync",
-    "size_declared": 1447,
+    "size": 1447,
     "indices": [
       "wazuh-states-inventory-groups",
       "wazuh-states-inventory-hardware",

@@ -6,7 +6,7 @@
     "module": "syscollector_vd",
     "mode": "ModuleDelta",
     "option": "VDSync",
-    "size_declared": 2,
+    "size": 2,
     "indices": [
       "wazuh-states-inventory-packages"
     ]

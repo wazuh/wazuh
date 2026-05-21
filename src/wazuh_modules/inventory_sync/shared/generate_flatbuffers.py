@@ -39,19 +39,34 @@ def find_flatc_executable():
 
 
 def main():
-    """Main function to generate FlatBuffers classes."""
-    print("🔧 Generating FlatBuffers classes for inventory sync...")
-    
+    """Main function to generate FlatBuffers classes.
+
+    Idempotent: if `generated/Wazuh/SyncSchema/Message.py` already exists and
+    is newer than the schema file, returns True immediately without running
+    flatc and without printing the verbose banner. This is the hot path —
+    callers (e.g. FlatBuffersManager) invoke main() on every benchmark agent
+    instantiation, so reaching flatc unnecessarily costs subprocess startup
+    plus ~25 lines of stdout per call.
+    """
     # Get current directory and schema path
     current_dir = Path(__file__).resolve().parent
     schema_file = current_dir.parent.parent.parent / "shared_modules" / "utils" / "flatbuffers" / "schemas" / "inventorySync.fbs"
     generated_dir = current_dir / "generated"
-    
+
     # Check if schema file exists
     if not schema_file.exists():
         print(f"❌ Schema file not found: {schema_file}")
         return False
-    
+
+    # Idempotency check: use the LAST file flatc emits as the witness so we
+    # don't false-positive when a previous run was interrupted mid-write.
+    witness = generated_dir / "Wazuh" / "SyncSchema" / "Message.py"
+    if witness.exists() and witness.stat().st_mtime >= schema_file.stat().st_mtime:
+        print("✅ FlatBuffers classes up to date — skipping regeneration.")
+        return True
+
+    print("🔧 Generating FlatBuffers classes for inventory sync...")
+
     # Find flatc executable
     flatc_path = find_flatc_executable()
     if not flatc_path:
@@ -59,10 +74,10 @@ def main():
         print("   On Ubuntu/Debian: sudo apt-get install flatbuffers-compiler")
         print("   On macOS: brew install flatbuffers")
         return False
-    
+
     print(f"✅ Using flatc: {flatc_path}")
     print(f"📄 Schema file: {schema_file}")
-    
+
     # Create generated directory
     generated_dir.mkdir(exist_ok=True)
     
