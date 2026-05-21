@@ -93,6 +93,103 @@ libraries/
 
 Smoke build logs (`smoke-build-<target>-<arch>`) are also retained 14 days and are the first place to look when a downstream build starts pulling deps from source unexpectedly.
 
+## Dependency matrix
+
+Which dependency each platform/target actually builds and links, and how it is
+published. The download set per target lives in `EXTERNAL_RES` (`src/Makefile`)
+and the build/link guards in `src/external/CMakeLists.txt`; the two are kept in
+sync — a dep is downloaded for exactly the targets that compile it.
+
+Legend: ✔ built & linked · — not used. Targets: **La** Linux agent · **Lm**
+Linux manager/server · **Ma** macOS agent · **Wa** Windows agent (MinGW).
+
+### Universal (every platform and target)
+
+| Dependency | La | Lm | Ma | Wa | Published as |
+|------------|----|----|----|----|--------------|
+| cJSON | ✔ | ✔ | ✔ | ✔ | precompiled `.a` (source-buildable fallback) |
+| openssl | ✔ | ✔ | ✔ | ✔ | precompiled `.a` |
+| zlib | ✔ | ✔ | ✔ | ✔ | precompiled `.a` (bundles minizip on non-Windows) |
+| sqlite | ✔ | ✔ | ✔ | ✔ | precompiled `.a` (source-buildable fallback) |
+| libyaml | ✔ | ✔ | ✔ | ✔ | precompiled `.a` |
+| curl | ✔ | ✔ | ✔ | ✔ | precompiled `.a` |
+| libpcre2 | ✔ | ✔ | ✔ | ✔ | precompiled `.a` |
+| flatbuffers | ✔ | ✔ | ✔ | ✔ | precompiled `.a` + `flatc` |
+| nlohmann | ✔ | ✔ | ✔ | ✔ | **source-only (header)** |
+
+### Shared by agent and server, non-Windows
+
+| Dependency | La | Lm | Ma | Wa | Published as |
+|------------|----|----|----|----|--------------|
+| bzip2 | ✔ | ✔ | ✔ | — | precompiled `.a`. Server links it via `shared/src/bzip2_op.c`→`libwazuhext` and rocksdb (`WITH_BZ2`). |
+
+### Linux agent only
+
+Consumers are `data_provider`/sysinfo, `syscheckd` (whodata), `rootcheck` — all
+agent-only subdirectories. The server's `wazuh_modules` builds
+inventory_sync/vulnerability_scanner instead, so it links none of these.
+
+| Dependency | La | Lm | Ma | Wa | Published as |
+|------------|----|----|----|----|--------------|
+| audit-userspace | ✔ | — | — | — | precompiled `.a` (gated by `ENABLE_AUDIT`, agent-only) |
+| procps | ✔ | — | — | — | precompiled `.a` (source-buildable fallback) |
+| libdb | ✔ | — | — | — | precompiled `.a` |
+| popt | ✔ | — | — | — | precompiled `.a` (rpm dependency) |
+| lua | ✔ | — | — | — | precompiled `.a` (rpm dependency) |
+| rpm | ✔ | — | — | — | precompiled `.a` |
+| dbus | ✔ | — | — | — | precompiled `.a` |
+| libbpf-bootstrap | ✔ | — | — | — | **re-shipped prebuilt** (see caveats) |
+
+### macOS agent only
+
+| Dependency | La | Lm | Ma | Wa | Published as |
+|------------|----|----|----|----|--------------|
+| libplist | — | — | ✔ | — | precompiled `.a` |
+
+### Linux server (manager) only
+
+| Dependency | La | Lm | Ma | Wa | Published as |
+|------------|----|----|----|----|--------------|
+| cpython | — | ✔ | — | — | **re-shipped** (`5_builderpackage_embedded-python.yml`) |
+| libffi | — | ✔ | — | — | precompiled `.a` (cpython/ctypes) |
+| jemalloc | — | ✔ | — | — | precompiled `.so` |
+| rocksdb | — | ✔ | — | — | precompiled `.so` |
+| simdjson | — | ✔ | — | — | precompiled `.a` |
+| abseil-cpp | — | ✔ | — | — | precompiled `.a` |
+| re2 | — | ✔ | — | — | precompiled `.a` (needs abseil) |
+| spdlog | — | ✔ | — | — | precompiled `.a` |
+| yaml-cpp | — | ✔ | — | — | precompiled `.a` |
+| pugixml | — | ✔ | — | — | precompiled `.a` |
+| libmaxminddb | — | ✔ | — | — | precompiled `.a` |
+| protobuf | — | ✔ | — | — | precompiled `.a` |
+| date | — | ✔ | — | — | precompiled `.a` (needs curl) |
+| fmt | — | ✔ | — | — | precompiled `.a` |
+| minizip | — | ✔ | — | — | precompiled `.a` — **lives in the zlib tree**, built on the non-Windows legs (incl. agent) so it ships inside `zlib.tar.gz` |
+| rapidjson | — | ✔ | — | — | **source-only (header)** |
+| RxCpp | — | ✔ | — | — | **source-only (header)** |
+| taskflow | — | ✔ | — | — | **source-only (header)** |
+| concurrentqueue | — | ✔ | — | — | **source-only (header)** |
+| fast_float | — | ✔ | — | — | **source-only (header)** |
+| cpp-httplib | — | ✔ | — | — | **source-only (header)** |
+| geo_db | — | ✔ | — | — | data blob (MaxMind GeoLite2), sources bucket |
+| tzdata | — | ✔ | — | — | data (IANA tz), sources bucket |
+
+### Test only
+
+Built only when `UNIT_TEST`/`WAZUH_ENGINE_TEST` is set, so they are not part of a
+normal deps release.
+
+| Dependency | Built for | Published as |
+|------------|-----------|--------------|
+| googletest | agent + server tests | precompiled `.a` |
+| benchmark | server tests | precompiled `.a` |
+
+> **Header-only deps** (nlohmann, cpp-httplib, rapidjson, RxCpp, taskflow,
+> concurrentqueue, fast_float) carry no compiled artifact — they belong only in
+> `libraries/sources/`. The generation snapshot still copies their (binary-free)
+> trees into `libraries/<os>/<arch>/`; pruning those redundant per-arch copies is
+> tracked as follow-up work for #36247.
+
 ## Publishing a new DEPS_VERSION — the safe order
 
 1. Open a branch, optionally edit `external_sources.sh` if you're changing a manifest URL.
