@@ -316,6 +316,7 @@ update_file_api() {
     local new_stage="$2"
     local setup_file="${DIR_API}/setup.py"
     local spec_file="${DIR_API}/api/spec/spec.yaml"
+    local api_reference_file="${DIR_ROOT}/docs/ref/modules/server-api/api-reference.md"
 
     [[ -z "$new_version" && -z "$new_stage" ]] && return
 
@@ -339,6 +340,12 @@ update_file_api() {
             log_action "Updated version to '${new_version}' in: $setup_file and $spec_file"
         fi
 
+        if [[ -f "$api_reference_file" ]]; then
+            sed -i -E \
+                "s|(\"api_version\":[[:space:]]*\")[0-9]+\.[0-9]+\.[0-9]+(\")|\1${new_version}\2|" \
+                "$api_reference_file"
+        fi
+
         # URL updates run independently of setup.py version to support two-step bump flow:
         # step 1 (--set-as-main) updates version values only, skipping all URL rewrites;
         # step 2 (no flag) replaces all URL refs (main or versioned) even when setup.py
@@ -346,9 +353,16 @@ update_file_api() {
         local version_short
         version_short=$(echo "$new_version" | awk -F. '{print $1 "." $2}')
         if [[ -z "$skip_urls" ]]; then
-            # blob/ paths use 3-part version with v prefix (e.g. blob/v5.0.0/)
+            # Build the target Git ref for blob/ URLs. Pre-release stages tag as
+            # vMAJOR.MINOR.PATCH-STAGE (e.g. v5.0.0-beta2), so without the stage
+            # suffix the URL would point to a tag that does not exist yet.
+            local tag_ref="v${new_version}"
+            [[ -n "$new_stage" ]] && tag_ref="${tag_ref}-${new_stage}"
+
+            # blob/ paths: match main, vMAJOR.MINOR.PATCH, and vMAJOR.MINOR.PATCH-STAGE
+            # so subsequent stage bumps can replace an existing tagged ref.
             sed -i -E \
-                "s~(blob/)(v?main|v[0-9]+\.[0-9]+\.[0-9]+)(/)~\1v${new_version}\3~g" \
+                "s~(blob/)(v?main|v[0-9]+\.[0-9]+\.[0-9]+(-[a-z]+[0-9]+)?)(/)~\1${tag_ref}\4~g" \
                 "$spec_file"
             # documentation URLs use 2-part version without v prefix (e.g. wazuh.com/5.0/)
             sed -i -E \
@@ -370,7 +384,29 @@ update_file_api() {
                 "s|^([[:space:]]*x-revision:[[:space:]]*')[^']+(')|\1${new_stage}\2|" \
                 "$spec_file"
 
+            # Also update inline `revision:` values in example response blocks so
+            # the example payload reflects the current stage instead of going stale.
+            sed -i -E \
+                "s|^([[:space:]]+revision:[[:space:]]*')[^']+(')|\1${new_stage}\2|" \
+                "$spec_file"
+
             log_action "Updated revision to '${new_stage}' in: $spec_file"
+        fi
+
+        if [[ -f "$api_reference_file" ]]; then
+            local current_api_ref_stage
+            current_api_ref_stage=$(
+                grep -E '"revision":[[:space:]]*"' "$api_reference_file" \
+                | head -n1 \
+                | sed -E 's/.*"revision":[[:space:]]*"([^"]+)".*/\1/'
+            )
+
+            if [[ "$current_api_ref_stage" != "$new_stage" ]]; then
+                sed -i -E \
+                    "s|(\"revision\":[[:space:]]*\")[^\"]+(\")|\1${new_stage}\2|" \
+                    "$api_reference_file"
+                log_action "Updated revision to '${new_stage}' in: $api_reference_file"
+            fi
         fi
     fi
 }
