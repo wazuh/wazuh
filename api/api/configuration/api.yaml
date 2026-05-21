@@ -55,6 +55,6 @@
 # upload_configuration:
 #   agents:
 #     allow_higher_versions:
-#       allow: no
+#       allow: yes
 #   indexer:
-#     allow: no
+#     allow: yes

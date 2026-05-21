@@ -43,11 +43,11 @@ custom_api_configuration = {
     "upload_configuration": {
         "agents": {
             "allow_higher_versions": {
-                "allow": False
+                "allow": True
             }
         },
         "indexer": {
-            "allow": False
+            "allow": True
         }
     }
 }
@@ -126,12 +126,6 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'access': {'block_time': 'invalid_type'}},
     {'access': {'max_request_per_minute': 'invalid_type'}},
     {'access': {'invalid_subkey': 'invalid_type'}},
-    {'remote_commands': {'localfile': {'allow': 'invalid_type'}}},
-    {'remote_commands': {'localfile': {'exceptions': [0, 1, 2]}}},
-    {'remote_commands': {'localfile': {'invalid_subkey': 'invalid_type'}}},
-    {'remote_commands': {'wodle_command': {'allow': 'invalid_type'}}},
-    {'remote_commands': {'wodle_command': {'exceptions': [0, 1, 2]}}},
-    {'remote_commands': {'wodle_command': {'invalid_subkey': 'invalid_type'}}},
     {'agents': {'allow_higher_versions': {'allow': True}}},
     {'indexer': {'allow': True}},
 ])

@@ -69,11 +69,11 @@ default_api_configuration = {
     "upload_configuration": {
         "agents": {
             "allow_higher_versions": {
-                "allow": False
+                "allow": True
             }
         },
         "indexer": {
-            "allow": False
+            "allow": True
         }
     }
 }
