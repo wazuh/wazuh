@@ -708,6 +708,7 @@ nlohmann::json SysInfo::getOsInfo() const
     };
     SysOsInfo::setOsInfo(spOsInfoProvider, ret);
     ret["os_kernel_name"] = "windows";
+    // ECS os.type allowed values include linux, macos, unix, windows, ios, android.
     ret["os_type"] = "windows";
     return ret;
 }

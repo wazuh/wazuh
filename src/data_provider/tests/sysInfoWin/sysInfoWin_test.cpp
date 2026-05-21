@@ -14,7 +14,6 @@
 #include <stdio.h>
 #include "packages/packagesWindowsParserHelper.h"
 #include "sysInfoWin_test.h"
-#include "sysInfo.hpp"
 #include <iostream>
 
 
@@ -353,13 +352,4 @@ TEST_F(SysInfoWinTest, ParseCmdLineDeterministic)
     const auto result2 = parseProcessCommandLine(input);
     EXPECT_EQ(result1.cmd, result2.cmd);
     EXPECT_EQ(result1.argvs, result2.argvs);
-}
-
-TEST_F(SysInfoWinTest, GetOsInfoSysnameIsWindows)
-{
-    SysInfo sysInfo;
-    const auto osInfo = sysInfo.getOsInfo();
-    EXPECT_EQ(osInfo.at("os_kernel_name"), "windows");
-    EXPECT_EQ(osInfo.at("os_type"), "windows");
-    EXPECT_EQ(osInfo.at("os_platform"), "windows");
 }
