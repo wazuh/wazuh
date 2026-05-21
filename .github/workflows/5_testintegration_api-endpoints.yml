@@ -115,7 +115,6 @@ jobs:
               echo "No tests specified, running all tests"
               echo "Selected tests: $files"
               echo "files=$files" >> $GITHUB_OUTPUT
-              exit 0
             else
               selected_files=$(validate_tests_files_input "$files" "${TEST_LIST}")
               echo "Selected tests: $selected_files"
@@ -124,8 +123,79 @@ jobs:
           fi
         shell: bash
 
-  api_endpoints_integration_tests_execution:
+  build_docker_images:
     needs: api_endpoints_integration_tests_setup
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    name: Build and cache Docker images for integration tests
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache Docker images
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/docker-images
+          key: docker-images-api-endpoints-ITs-${{ hashFiles('api/test/integration/env/**') }}
+
+      - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get install docker-compose-v2 zstd -y
+
+      - name: Build and save Docker images
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          cd api/test/integration/env
+          docker compose build --build-arg WAZUH_BRANCH=${{ github.ref_name }} --no-cache
+          mkdir -p /tmp/docker-images
+          readarray -t images < <(docker images | awk '/integration/ {print $1}')
+          for image in "${images[@]}"; do
+            docker save ${image}:latest | zstd -T0 > /tmp/docker-images/${image}.tar.zst&
+          done
+          wait
+
+  smoke_test:
+    needs: [api_endpoints_integration_tests_setup, build_docker_images]
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    name: Run smoke test for API endpoints
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version-file: "framework/.python-version"
+
+      - name: Install dependencies
+        run: |
+          pip install -r framework/requirements-dev.txt
+          sudo apt-get install docker-compose-v2 -y
+
+      - name: Restore Docker images from cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/docker-images
+          key: docker-images-api-endpoints-ITs-${{ hashFiles('api/test/integration/env/**') }}
+
+      - name: Load Docker images
+        run: |
+          for file in /tmp/docker-images/*.tar.zst; do
+            docker load --input "$file"&
+          done
+          wait
+
+      - name: Run smoke test
+        run: |
+          cd api/test/integration
+          pytest --nobuild -vvv _test_smoke.tavern.yaml
+
+  api_endpoints_integration_tests_execution:
+    needs: [api_endpoints_integration_tests_setup, smoke_test]
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     strategy:
@@ -147,8 +217,20 @@ jobs:
           pip install -r framework/requirements-dev.txt
           sudo apt-get install docker-compose-v2 -y
 
-      - name: Run smoke test
+      - name: Restore Docker images from cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/docker-images
+          key: docker-images-api-endpoints-ITs-${{ hashFiles('api/test/integration/env/**') }}
+
+      - name: Load Docker images
         run: |
-          echo "Running API endpoints integration test..."
+          for file in /tmp/docker-images/*.tar.zst; do
+            docker load --input "$file"&
+          done
+          wait
+
+      - name: Run tests
+        run: |
           cd api/test/integration
-          pytest -vvv ${{ github.event.inputs.pytest_extra_args }} "${{ matrix.test_file }}"
+          pytest --nobuild -vvv ${{ github.event.inputs.pytest_extra_args }} "${{ matrix.test_file }}"
