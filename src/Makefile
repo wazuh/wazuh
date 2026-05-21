@@ -459,7 +459,7 @@ EXTERNAL_RES := cJSON openssl zlib sqlite libyaml curl libpcre2 nlohmann flatbuf
 ifeq (${TARGET},agent)
 # Linux agent-specific dependencies
 ifeq (${uname_S}, Linux)
-	EXTERNAL_RES += audit-userspace procps libdb popt lua rpm dbus libarchive libbpf-bootstrap bzip2
+	EXTERNAL_RES += audit-userspace procps libdb popt lua rpm dbus libbpf-bootstrap bzip2
 endif
 # macOS agent-specific dependencies
 ifeq (${uname_S}, Darwin)

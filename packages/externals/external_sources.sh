@@ -95,7 +95,6 @@ _reg nlohmann           "https://github.com/nlohmann/json/archive/refs/tags/v{ve
 _reg googletest         "https://github.com/google/googletest/archive/refs/tags/release-{version}.tar.gz"                         tar.gz  1  googletest         false  "https://github.com/google/googletest"
 _reg libpcre2           "gh:PCRE2Project/pcre2:pcre2-{version}"                                                                   tar.gz  1  libpcre2           false  "https://github.com/PCRE2Project/pcre2"
 _reg libplist           "https://github.com/libimobiledevice/libplist/archive/refs/tags/{version}.tar.gz"                         tar.gz  1  libplist           false  "https://github.com/libimobiledevice/libplist"
-_reg libarchive         "https://github.com/libarchive/libarchive/releases/download/v{version}/libarchive-{version}.tar.gz"       tar.gz  1  libarchive         false  "https://github.com/libarchive/libarchive"
 _reg popt               "https://github.com/rpm-software-management/popt/archive/refs/tags/popt-{version}-release.tar.gz"         tar.gz  1  popt               false  "https://github.com/rpm-software-management/popt"
 # Note: popt versions older than ~1.18 (e.g. 1.16) predate this repo's tag
 # history and are not reachable via this template.

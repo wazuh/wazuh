@@ -512,38 +512,6 @@ if(NOT IS_WINDOWS)
 endif()
 
 # ------------------------------------------------------------------------------
-# libarchive (Linux agent only)
-# ------------------------------------------------------------------------------
-
-if(IS_LINUX AND IS_AGENT)
-  if(EXISTS ${EXTERNAL_DIR}/libarchive/.libs/libarchive.a)
-    message(STATUS "Using precompiled libarchive library")
-    add_custom_target(libarchive_external)
-  else()
-    ExternalProject_Add(
-      libarchive_external
-      SOURCE_DIR ${EXTERNAL_DIR}/libarchive
-      CONFIGURE_COMMAND
-        ${CMAKE_COMMAND} -E env CPPFLAGS=-fPIC
-        ${EXTERNAL_DIR}/libarchive/configure --disable-acl --without-expat
-        --without-iconv --without-xml2 --without-lz4 --without-lzma
-        --without-zstd --without-bz2lib --without-openssl --without-libb2
-      BUILD_COMMAND ${CMAKE_MAKE_PROGRAM} libarchive.la
-      BUILD_IN_SOURCE TRUE
-      INSTALL_COMMAND ""
-      BUILD_BYPRODUCTS ${EXTERNAL_DIR}/libarchive/.libs/libarchive.a)
-  endif()
-
-  add_library(ext_libarchive STATIC IMPORTED GLOBAL)
-  set_target_properties(
-    ext_libarchive PROPERTIES IMPORTED_LOCATION
-                              ${EXTERNAL_DIR}/libarchive/.libs/libarchive.a)
-  add_dependencies(ext_libarchive libarchive_external)
-  target_include_directories(ext_libarchive
-                             INTERFACE ${EXTERNAL_DIR}/libarchive/libarchive)
-endif()
-
-# ------------------------------------------------------------------------------
 # Berkeley DB (Linux agent only)
 # ------------------------------------------------------------------------------
 
@@ -1407,8 +1375,7 @@ if(NOT IS_WINDOWS)
       ext_rpm
       ext_popt
       ext_audit
-      ext_procps
-      ext_libarchive)
+      ext_procps)
   endif()
 endif()
 

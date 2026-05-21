@@ -55,7 +55,6 @@ file(
 file(
   GLOB
   UTIL_CXX_UNITTEST_LINUX_SRC
-  "archiveHelper_test.cpp"
   "hashHelper_test.cpp"
   "socketDBWrapper_test.cpp"
   "threadSafeMultiQueue_test.cpp"
@@ -80,7 +79,6 @@ file(
 file(COPY input_files DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 link_directories(${SRC_FOLDER}/external/googletest/lib)
-link_directories(${SRC_FOLDER}/external/libarchive/.libs/)
 
 add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
 
@@ -152,7 +150,6 @@ else()
     include_directories(${SRC_FOLDER}/external/lzma/src/liblzma/api)
     include_directories(${SRC_FOLDER}/external/zlib)
     include_directories(${SRC_FOLDER}/external/zlib/contrib/)
-    include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
 
     add_executable(
       utils_utest ${UTIL_CXX_UNITTEST_COMMON_SRC}
@@ -175,8 +172,7 @@ else()
       rt
       lzma
       z
-      minizip
-      archive)
+      minizip)
   endif(APPLE)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
