@@ -128,8 +128,13 @@ CMAKE_OPTS+=-DINOTIFY_ENABLED=ON
 endif
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 CMAKE_OPTS+=-DENABLE_AUDIT=ON
-else ifeq (${uname_S},Linux)
+else ifeq (${TARGET},agent)
+# Auto-enable audit only on the Linux agent: whodata/FIM (syscheckd) is the
+# sole consumer and it is an agent-only component, so the server neither needs
+# the ENABLE_AUDIT code path in shared/src/audit_op.c nor the libaudit dep.
+ifeq (${uname_S},Linux)
 CMAKE_OPTS+=-DENABLE_AUDIT=ON
+endif
 endif
 endif
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
@@ -467,10 +472,13 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	EXTERNAL_RES += googletest benchmark
 endif
 
-# Manager-only dependencies
+# Manager-only dependencies.
+# bzip2 is also listed here (not just under the agent target): the server links
+# it through shared/src/bzip2_op.c -> libwazuhext and rocksdb is built WITH_BZ2.
+# It is filtered out of the winagent leg, which never builds bzip2.
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
-	EXTERNAL_RES += $(CPYTHON) libffi jemalloc rocksdb simdjson abseil-cpp spdlog yaml-cpp pugixml libmaxminddb protobuf date fmt lzma re2 rapidjson taskflow RxCpp concurrentqueue fast_float geo_db tzdata cpp-httplib
+	EXTERNAL_RES += $(CPYTHON) libffi jemalloc rocksdb simdjson abseil-cpp spdlog yaml-cpp pugixml libmaxminddb protobuf date fmt lzma re2 rapidjson taskflow RxCpp concurrentqueue fast_float geo_db tzdata cpp-httplib bzip2
 endif
 endif
 
@@ -536,6 +544,13 @@ INDEXER_TEMPLATES_STREAMS := $(INDEXER_TEMPLATES_SERVER_STREAMS)
 endif
 
 INDEXER_TEMPLATE_FILES := $(INDEXER_TEMPLATES_STATES:%=$(INDEXER_PLUGINS_DIR)/%) $(INDEXER_TEMPLATES_STREAMS:%=$(INDEXER_PLUGINS_DIR)/%)
+
+# Print the resolved value of any Makefile variable for the active TARGET, e.g.
+#   make -s print-EXTERNAL_RES TARGET=agent
+# packages/externals tooling uses this to read the dependency list straight from
+# make (which evaluates the ifeq/TARGET logic) instead of re-parsing this file.
+print-%:
+	@echo '$($*)'
 
 .PHONY: deps
 deps: $(EXTERNAL_TAR) $(SHARED_TAR) $(INDEXER_TEMPLATE_FILES) $(WCS_FLAT_FILES)

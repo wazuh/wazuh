@@ -377,33 +377,16 @@ snapshot_built() {
     (cd "${EXTERNAL_DIR}" && zip -rq "${out}" "${target_dir}")
 }
 
-# Read EXTERNAL_RES out of src/Makefile so we don't duplicate the dep list here.
-# Returns (whitespace-separated) the deps that apply to this BUILD_TARGET.
-#
-# Substitutes the literal token `$(CPYTHON)` to `cpython` (defined at
-# src/Makefile:404 as `CPYTHON := cpython`). awk doesn't expand make
-# variables, so without this the manager dep list would carry an unresolved
-# `$(CPYTHON)` token that no downstream step matches.
+# Print the dependency list make resolves for a given TARGET (agent / manager /
+# winagent), reading it straight from src/Makefile's `print-%` helper. make
+# evaluates the ifeq/${TARGET}/${uname_S} logic, so it stays the single source
+# of truth: an awk parser here cannot evaluate those conditionals and silently
+# drifts whenever the EXTERNAL_RES blocks are restructured (e.g. it would miss
+# every per-OS agent dep and bzip2). `$(CPYTHON)` and any other make variable
+# are expanded for free.
 collect_deps_for_target() {
     local target="$1"
-    awk -v target="${target}" '
-        function expand(s) {
-            gsub(/\$\(CPYTHON\)/, "cpython", s)
-            return s
-        }
-        /^EXTERNAL_RES[[:space:]]*:=/ {
-            sub(/.*:=[[:space:]]*/, "", $0)
-            base = expand($0)
-            getline_done = 0
-        }
-        target == "manager" && /EXTERNAL_RES[[:space:]]*\+=/ {
-            sub(/.*\+=[[:space:]]*/, "", $0)
-            extra = expand($0)
-        }
-        END {
-            print base " " extra
-        }
-    ' "${SRC_DIR}/Makefile"
+    make -s -C "${SRC_DIR}" print-EXTERNAL_RES TARGET="${target}"
 }
 
 # ---------------------------------------------------------------------------
@@ -422,8 +405,10 @@ else
     MAKE_TARGET="${BUILD_TARGET}"
 fi
 
-# Determine the dep set this leg cares about up-front.
-DEPS_FOR_LEG="$(collect_deps_for_target "${BUILD_TARGET}")"
+# Determine the dep set this leg cares about up-front. Use MAKE_TARGET (not
+# BUILD_TARGET) so the windows leg resolves the winagent dep set rather than the
+# agent one, which would wrongly pull in the Linux-only deps.
+DEPS_FOR_LEG="$(collect_deps_for_target "${MAKE_TARGET}")"
 log "deps for this leg: ${DEPS_FOR_LEG}"
 
 # Populate source directories via `make deps EXTERNAL_SRC_ONLY=yes`.
