@@ -12,6 +12,14 @@ All notable changes to this project will be documented in this file.
 - Added Engine enrichment support: IOC matching, GeoIP lookup, and event filters. ([#33493](https://github.com/wazuh/wazuh/issues/33493))
 - Added Engine adaptation tier 2: raw archives handling, uncategorized event routing, input-level throttling, and internal metrics exposure. ([#34477](https://github.com/wazuh/wazuh/issues/34477))
 - Added Wazuh Instance Registration status to reflect CTI `access_token` availability (`Pending`, `Polling`, `Denied`, `Available`), allowing the Dashboard to query the subscription state. ([#31906](https://github.com/wazuh/wazuh/pull/31906))
+- Added Engine fast-metrics module for low-overhead internal metrics exposure. ([#34491](https://github.com/wazuh/wazuh/issues/34491))
+- Added retention policies to the Engine streamlog module. ([#35129](https://github.com/wazuh/wazuh/issues/35129))
+- Added filter synchronization in the Engine. ([#35530](https://github.com/wazuh/wazuh/issues/35530))
+- Added CVSS v4.0 support to the Vulnerability Scanner. ([#35623](https://github.com/wazuh/wazuh/issues/35623))
+- Added `os_type` field to the global database for agent metadata. ([#35627](https://github.com/wazuh/wazuh/issues/35627))
+- Added `wazuh.event.id` field to correlate events from a single log. ([#35631](https://github.com/wazuh/wazuh/issues/35631))
+- Added Engine metrics collection, normalization, and indexing pipeline. ([#35771](https://github.com/wazuh/wazuh/issues/35771))
+- Added new CVE 5.0 schema fields to the Vulnerability Detector content model. ([#36000](https://github.com/wazuh/wazuh/issues/36000))
 
 #### Changed
 
@@ -20,6 +28,28 @@ All notable changes to this project will be documented in this file.
 - Revamped Role-Based Access Control (RBAC) management and introduced an upgrade mechanism for existing RBAC configurations. ([#27706](https://github.com/wazuh/wazuh/issues/27706))
 - Removed legacy configuration surfaces, database schemas, build targets, and compatibility layers in the second server cleanup phase. ([#34608](https://github.com/wazuh/wazuh/issues/34608))
 - Reduced `wazuh-manager` Debian package dependencies, removed `adduser`, `lsb-release`, `debconf`, and `libc6`. ([#35881](https://github.com/wazuh/wazuh/issues/35881))
+- Upgraded external dependencies: `curl`, `sqlite`, `xz`, and `libarchive`. ([#29734](https://github.com/wazuh/wazuh/issues/29734))
+- Migrated configuration manager store-crud resources to the native JSON flow. ([#33792](https://github.com/wazuh/wazuh/issues/33792))
+- Replaced the Engine router synchronous workers with an async worker pool. ([#33784](https://github.com/wazuh/wazuh/issues/33784))
+- Implemented cooperative-cancellation graceful termination for `wmodules`. ([#34479](https://github.com/wazuh/wazuh/issues/34479))
+- Optimized error handling in the Engine GeoIP locator. ([#35128](https://github.com/wazuh/wazuh/issues/35128))
+- Improved Engine graceful (fast) shutdown handling. ([#35131](https://github.com/wazuh/wazuh/issues/35131))
+- Renamed the Engine archiver module to event dumper. ([#35257](https://github.com/wazuh/wazuh/issues/35257))
+- Separated Engine public and private APIs and split the OpenAPI specifications. ([#35261](https://github.com/wazuh/wazuh/issues/35261))
+- Reordered the module coordination sequence so modules resume before manager synchronization on group-metadata changes. ([#35303](https://github.com/wazuh/wazuh/issues/35303))
+- Included source IP in `wazuh-remoted` log messages. ([#35358](https://github.com/wazuh/wazuh/pull/35358))
+- Unified sandbox and trace into a single static parameter in policy creation. ([#35369](https://github.com/wazuh/wazuh/issues/35369))
+- Cleaned up temporary internal fields from the Engine `/logtest` endpoint response. ([#35416](https://github.com/wazuh/wazuh/issues/35416))
+- Preserved manager configuration files during package upgrades. ([#35478](https://github.com/wazuh/wazuh/issues/35478))
+- Improved Wazuh server directory layout. ([#35479](https://github.com/wazuh/wazuh/issues/35479))
+- Updated manager index names to align with the new sync model. ([#35525](https://github.com/wazuh/wazuh/issues/35525))
+- Standardized the wodle command event payload to a WCS-compatible JSON format. ([#35634](https://github.com/wazuh/wazuh/issues/35634))
+- Deferred Engine synchronization while the indexer is updating. ([#35835](https://github.com/wazuh/wazuh/issues/35835))
+- Changed the Vulnerability Detector provider name. ([#35861](https://github.com/wazuh/wazuh/issues/35861))
+- Aligned threat fields under the `wazuh` namespace. ([#35885](https://github.com/wazuh/wazuh/issues/35885))
+- Added caller module context to indexer-connector logs. ([#35905](https://github.com/wazuh/wazuh/issues/35905))
+- Updated JSON property names in the Wodle event payload. ([#35992](https://github.com/wazuh/wazuh/issues/35992))
+- Included `os_type` in the agent keepalive cluster synchronization. ([#36072](https://github.com/wazuh/wazuh/issues/36072))
 
 #### Removed
 
@@ -29,11 +59,30 @@ All notable changes to this project will be documented in this file.
 - Removed OpenSCAP server-side module. ([#31028](https://github.com/wazuh/wazuh/issues/31028))
 - Removed inventory-related API endpoints. ([#31299](https://github.com/wazuh/wazuh/issues/31299))
 - Removed legacy API security configuration endpoints. ([#28425](https://github.com/wazuh/wazuh/issues/28425))
+- Removed the legacy unclassified category from the Engine. ([#35123](https://github.com/wazuh/wazuh/issues/35123))
+- Removed leftover code from the deprecated agent 0. ([#35168](https://github.com/wazuh/wazuh/issues/35168))
+- Removed SELinux integration from the manager. ([#35908](https://github.com/wazuh/wazuh/issues/35908))
 
 #### Fixed
 
 - Fixed Vulnerability Detector version matcher logic for improved detection accuracy. ([#31746](https://github.com/wazuh/wazuh/issues/31746))
 - Fixed Cloudtrail log ingestion parsing errors. ([#33108](https://github.com/wazuh/wazuh/issues/33108))
+- Fixed `wazuh-db` error assigning groups by avoiding the keyentries counter as index. ([#34082](https://github.com/wazuh/wazuh/issues/34082))
+- Fixed Vulnerability Detector race condition by skipping `vdFirst` and polling for `vdSync` when a feed update occurs. ([#34092](https://github.com/wazuh/wazuh/issues/34092))
+- Fixed delimiter ambiguity in the enrich (NDJSON) protocol. ([#34460](https://github.com/wazuh/wazuh/issues/34460))
+- Fixed token validation race condition after revoke. ([#35043](https://github.com/wazuh/wazuh/issues/35043))
+- Fixed Vulnerability Scanner feed update re-scan revision. ([#35079](https://github.com/wazuh/wazuh/issues/35079))
+- Fixed first agent keepalive missing metadata after handshake. ([#35278](https://github.com/wazuh/wazuh/issues/35278))
+- Normalized stateless check fields in SCA. ([#35281](https://github.com/wazuh/wazuh/issues/35281))
+- Suppressed unexpected stateless events after the SCA initial scan. ([#35428](https://github.com/wazuh/wazuh/issues/35428))
+- Synchronized syscollector and Vulnerability Detector queue databases during the flush process. ([#35430](https://github.com/wazuh/wazuh/issues/35430))
+- Improved fast-metrics interface management to prevent a crash on shutdown. ([#35482](https://github.com/wazuh/wazuh/issues/35482))
+- Persisted Vulnerability Detector first-sync state in `table_metadata`. ([#35582](https://github.com/wazuh/wazuh/issues/35582))
+- Flushed the feed RocksDB memtable before marking the feed ready on download completion. ([#35637](https://github.com/wazuh/wazuh/issues/35637))
+- Handled the stop signal during vulnerability feed download. ([#35638](https://github.com/wazuh/wazuh/issues/35638))
+- Protected against double `vdFirst` scan. ([#35778](https://github.com/wazuh/wazuh/issues/35778))
+- Fixed the wrong value of the `wazuh.cluster.name` field in metrics indices. ([#35967](https://github.com/wazuh/wazuh/issues/35967))
+- Resolved relative indexer certificate paths. ([#36089](https://github.com/wazuh/wazuh/issues/36089))
 
 ### Agent
 
@@ -51,6 +100,7 @@ All notable changes to this project will be documented in this file.
 - Updated Windows Event Channel log collection to emit native XML from `EvtRender()` without an XML declaration header. ([#34462](https://github.com/wazuh/wazuh/issues/34462))
 - Increased default limits for agent event throughput and inventory message sizes. ([#35330](https://github.com/wazuh/wazuh/issues/35330))
 - Reduced `wazuh-agent` Debian package dependencies, removed `adduser`, `lsb-release`, and `debconf`. ([#35880](https://github.com/wazuh/wazuh/issues/35880))
+- Standardized agent-start and buffer-status events to a WCS-aligned JSON format. ([#35471](https://github.com/wazuh/wazuh/issues/35471))
 
 #### Removed
 
@@ -67,6 +117,21 @@ All notable changes to this project will be documented in this file.
 - Fixed FIM inventory reporting file modification time as 1970-01-01. ([#35162](https://github.com/wazuh/wazuh/issues/35162))
 - Fixed agent automatic reload failing after receiving centralized configuration. ([#35169](https://github.com/wazuh/wazuh/issues/35169))
 - Fixed syscollector false positive package detection on macOS. ([#35248](https://github.com/wazuh/wazuh/issues/35248))
+- Fixed agent uninstall on Windows after a WPK upgrade. ([#35329](https://github.com/wazuh/wazuh/issues/35329))
+- Fixed schema validation in syscollector by validating IP format in `host_ip` on Windows agent. ([#35411](https://github.com/wazuh/wazuh/issues/35411))
+- Validated initial scan completion before forcing synchronization in syscollector. ([#35426](https://github.com/wazuh/wazuh/issues/35426))
+- Fixed agent 5.x sending a trailing null byte in messages. ([#35474](https://github.com/wazuh/wazuh/issues/35474))
+- Fixed WUA hotfix collection regression in Windows agent v5.0.0. ([#35636](https://github.com/wazuh/wazuh/issues/35636))
+- Fixed wodle command argument construction for Windows paths. ([#35955](https://github.com/wazuh/wazuh/issues/35955))
+- Prevented Windows agent restart abort when the service is already stopping. ([#35960](https://github.com/wazuh/wazuh/issues/35960))
+- Fixed timeout message displayed after a 4.13-to-5.0 upgrade on Windows. ([#35978](https://github.com/wazuh/wazuh/issues/35978))
+- Fixed agent disconnection on direct 4.13-to-5.0 custom WPK upgrade. ([#35979](https://github.com/wazuh/wazuh/issues/35979))
+- Excluded `/bin` and `/sbin` from FIM monitored directories on usrmerge distributions. ([#35988](https://github.com/wazuh/wazuh/issues/35988))
+- Expanded Windows environment variables in SCA rule inputs. ([#36002](https://github.com/wazuh/wazuh/issues/36002))
+- Made `sync_end_delay` interruptible to remove stale `modulesd.pid` after agent stop. ([#36061](https://github.com/wazuh/wazuh/issues/36061))
+- Honored the shutdown signal in `agent-upgrade` `StartMQ` to avoid timeout warning on agent stop. ([#36092](https://github.com/wazuh/wazuh/issues/36092))
+- Adjusted DockerListener messages as log entries to fix event categorization. ([#36126](https://github.com/wazuh/wazuh/issues/36126))
+- Dropped orphan paths before promoting on agent startup to fix FIM. ([#36134](https://github.com/wazuh/wazuh/issues/36134))
 
 ## [v4.14.6]
 
