@@ -1,11 +1,11 @@
-# Migrating rules from Wazuh 4.x (XML) to Wazuh 5.x (Sigma-based)
+# Migrating rules from Wazuh 4.x (XML) to Wazuh 5.x (YAML)
 
 ## Overview
 
 Wazuh 5.0 introduces a fundamentally different architecture for log analysis and threat detection. The legacy XML-based analysis daemon is replaced by a pipeline that separates **event processing** from **threat detection**:
 
 1. **Wazuh Engine** — Receives raw logs, decodes them using the new decoder format, normalizes fields to the [Wazuh Common Schema (WCS)](https://github.com/wazuh/wazuh-indexer-plugins/tree/main/wcs/stateless/events/main/docs/README.md), and indexes the resulting events into `wazuh-events-v5-*` indices.
-2. **Security Analytics detectors** — Use a percolator to evaluate indexed events against Sigma-based rules stored in the `wazuh-threatintel-rules` index. When an event matches a rule, the detector creates a **finding**, an enriched copy of the event indexed it into `wazuh-findings-v5-*`.
+2. **Security Analytics detectors** — Use a percolator to evaluate indexed events against Sigma-based (YAML) rules stored in the `wazuh-threatintel-rules` index. When an event matches a rule, the detector creates a **finding**, an enriched copy of the event indexed it into `wazuh-findings-v5-*`.
 
 There is no automatic conversion tool. Rules must be manually rewritten following this guide.
 
@@ -15,7 +15,7 @@ There is no automatic conversion tool. Rules must be manually rewritten followin
 |---|---|---|
 | **Alert** | **Event** | The base log entry after decoding. In 4.x, the analysis daemon produced alerts directly. In 5.x, the Wazuh Engine produces normalized events. |
 | **Alert (matching a rule)** | **Finding** | In 5.x, when an event matches a detection rule, a finding is generated, the event enriched. |
-| **Rule (XML)** | **Rule (Sigma-based)** | Detection rules are now written in the Sigma format with Wazuh extensions. |
+| **Rule (XML)** | **Rule (YAML)** | Detection rules are now written in the Sigma format with Wazuh extensions. |
 | **Decoder (XML)** | **Decoder (Engine format)** | Decoders still exist but use a new format adapted to the Wazuh Engine. |
 | **Ruleset files on disk** | **Threat intelligence indices** | Rules, KVDBs, decoders, integrations, and enrichments are stored in Wazuh indices (`wazuh-threatintel-*`). |
 
@@ -26,7 +26,7 @@ In 5.x, detection content is organized into **integrations**, which bundle relat
 ```
 Integration (e.g., "o365")
 ├── Decoders — Parse raw logs into WCS-normalized events
-├── Rules — Sigma-based detection rules
+├── Rules — YAML detection rules
 ├── KVDBs — Key-Value Databases used as lookup tables during decoding
 └── Category — Determines the event index (e.g., "cloud-services" → wazuh-events-v5-cloud-services-*)
 ```
@@ -58,7 +58,7 @@ The promotion path for user-created content is: **Draft → Test → Custom**.
 
 ### Key architectural differences
 
-| Aspect | 4.x (XML) | 5.x (Sigma-based) |
+| Aspect | 4.x (XML) | 5.x (YAML) |
 |---|---|---|
 | **Format** | XML files on disk (`/var/ossec/ruleset/rules/`) | JSON documents in Wazuh indices (`wazuh-threatintel-*`) |
 | **Processing** | Single analysis daemon handles decoding + rule matching | Wazuh Engine decodes and indexes events; Security Analytics detectors match rules via percolator |
@@ -98,7 +98,7 @@ The promotion path for user-created content is: **Draft → Test → Custom**.
 </group>
 ```
 
-### 5.x Sigma-based rule structure
+### 5.x YAML rule structure
 
 ```yaml
 document:
@@ -494,7 +494,7 @@ The following 4.x features have no direct equivalent in the 5.x rule format and 
 </group>
 ```
 
-**5.x Sigma-based:**
+**5.x YAML:**
 ```yaml
 document:
   id: "aba9b03c-9dd0-4077-b99d-0002294b42a1"
@@ -565,7 +565,7 @@ This rule belongs to the **wazuh-vd** integration (category: `security`), so eve
 </group>
 ```
 
-**5.x Sigma-based:**
+**5.x YAML:**
 ```yaml
 document:
   id: "d166d57a-86e3-49b4-b560-db423b3c156a"
@@ -637,7 +637,7 @@ Note how the 4.x `if_sid` dependency is eliminated — the 5.x rule is self-cont
 
 In 4.x, these are two separate rules. In 5.x, they can be consolidated into a single rule using multiple selections:
 
-**5.x Sigma-based:**
+**5.x YAML:**
 ```yaml
 document:
   id: "0c5d2f15-66b4-4191-aeb7-f49fe2ab13c3"
@@ -695,7 +695,7 @@ The `1 of selection_*` condition means the rule fires if either `selection_sysca
 </group>
 ```
 
-**5.x Sigma-based:**
+**5.x YAML:**
 ```yaml
 document:
   id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
