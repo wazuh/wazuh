@@ -453,32 +453,36 @@ ifeq (,$(filter ${EXTERNAL_SRC_ONLY},YES yes y Y 1))
 PRECOMPILED_RES := $(PRECOMPILED_OS)$(PRECOMPILED_ARCH)
 endif
 
-# Universal dependencies (all platforms, all targets)
-EXTERNAL_RES := cJSON openssl zlib sqlite libyaml curl libpcre2 nlohmann flatbuffers
+# Universal dependencies (all platforms, all targets).
+#
+# bzip2, googletest and benchmark are build-time requirements on every target,
+# so they stay unconditional even though not every target links them:
+#   - bzip2: shared.h pulls in shared/include/bzip2_op.h, which includes
+#     <bzlib.h> unconditionally (the bzip2 unit-test wrapper needs the header
+#     too). Only non-Windows targets actually link libbz2 -- external/CMakeLists
+#     builds ext_bzip2 under NOT IS_WINDOWS, and the server additionally builds
+#     rocksdb WITH_BZ2.
+#   - googletest/benchmark: the published per-(os,arch) dependency bundle is
+#     shared by the unit-test CI, whose deps step runs `make deps TARGET=...`
+#     WITHOUT TEST=1 and only enables tests at build time. Gating these behind a
+#     TEST flag drops them from that bundle and breaks every test build (#36247).
+EXTERNAL_RES := cJSON openssl zlib sqlite libyaml curl libpcre2 nlohmann flatbuffers bzip2 googletest benchmark
 
 ifeq (${TARGET},agent)
 # Linux agent-specific dependencies
 ifeq (${uname_S}, Linux)
-	EXTERNAL_RES += audit-userspace procps libdb popt lua rpm dbus libbpf-bootstrap bzip2
+	EXTERNAL_RES += audit-userspace procps libdb popt lua rpm dbus libbpf-bootstrap
 endif
 # macOS agent-specific dependencies
 ifeq (${uname_S}, Darwin)
-	EXTERNAL_RES += libplist bzip2
+	EXTERNAL_RES += libplist
 endif
-endif
-
-# Test dependencies
-ifneq (,$(filter ${TEST},YES yes y Y 1))
-	EXTERNAL_RES += googletest benchmark
 endif
 
 # Manager-only dependencies.
-# bzip2 is also listed here (not just under the agent target): the server links
-# it through shared/src/bzip2_op.c -> libwazuhext and rocksdb is built WITH_BZ2.
-# It is filtered out of the winagent leg, which never builds bzip2.
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
-	EXTERNAL_RES += $(CPYTHON) libffi jemalloc rocksdb simdjson abseil-cpp spdlog yaml-cpp pugixml libmaxminddb protobuf date fmt re2 rapidjson taskflow RxCpp concurrentqueue fast_float geo_db tzdata cpp-httplib bzip2
+	EXTERNAL_RES += $(CPYTHON) libffi jemalloc rocksdb simdjson abseil-cpp spdlog yaml-cpp pugixml libmaxminddb protobuf date fmt re2 rapidjson taskflow RxCpp concurrentqueue fast_float geo_db tzdata cpp-httplib
 endif
 endif
 

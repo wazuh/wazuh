@@ -117,11 +117,16 @@ Linux manager/server · **Ma** macOS agent · **Wa** Windows agent (MinGW).
 | flatbuffers | ✔ | ✔ | ✔ | ✔ | precompiled `.a` + `flatc` |
 | nlohmann | ✔ | ✔ | ✔ | ✔ | **source-only (header)** |
 
-### Shared by agent and server, non-Windows
+### Shared build-time dependency (downloaded on all targets, linked non-Windows)
+
+`shared.h` pulls in `shared/include/bzip2_op.h` → `<bzlib.h>` on every target (and
+the bzip2 unit-test wrapper needs the header too), so the source is downloaded
+everywhere — including the Windows agent. Only non-Windows targets link `libbz2`
+(`external/CMakeLists.txt` builds `ext_bzip2` under `NOT IS_WINDOWS`).
 
 | Dependency | La | Lm | Ma | Wa | Published as |
 |------------|----|----|----|----|--------------|
-| bzip2 | ✔ | ✔ | ✔ | — | precompiled `.a`. Server links it via `shared/src/bzip2_op.c`→`libwazuhext` and rocksdb (`WITH_BZ2`). |
+| bzip2 | ✔ | ✔ | ✔ | ✔ | precompiled `.a` (linked on non-Windows only). Agent/server link it via `shared/src/bzip2_op.c`→`libwazuhext`; server also builds rocksdb (`WITH_BZ2`). |
 
 ### Linux agent only
 
@@ -174,15 +179,17 @@ inventory_sync/vulnerability_scanner instead, so it links none of these.
 | geo_db | — | ✔ | — | — | data blob (MaxMind GeoLite2), sources bucket |
 | tzdata | — | ✔ | — | — | data (IANA tz), sources bucket |
 
-### Test only
+### Test frameworks (downloaded on all targets, compiled only into test binaries)
 
-Built only when `UNIT_TEST`/`WAZUH_ENGINE_TEST` is set, so they are not part of a
-normal deps release.
+These are *compiled* only when `UNIT_TEST`/`WAZUH_ENGINE_TEST` is set, but they are
+*downloaded* unconditionally: the deps step (`make deps TARGET=…`) does not pass
+`TEST=1`, and the unit-test CI consumes the same per-(os,arch) bundle, so gating
+the download behind a flag drops them from the bundle and breaks every test build.
 
-| Dependency | Built for | Published as |
-|------------|-----------|--------------|
-| googletest | agent + server tests | precompiled `.a` |
-| benchmark | server tests | precompiled `.a` |
+| Dependency | Downloaded for | Compiled into | Published as |
+|------------|----------------|---------------|--------------|
+| googletest | all targets | agent + server tests | precompiled `.a` |
+| benchmark | all targets | server tests | precompiled `.a` |
 
 > **Header-only deps** (nlohmann, cpp-httplib, rapidjson, RxCpp, taskflow,
 > concurrentqueue, fast_float) carry no compiled artifact — they belong only in
