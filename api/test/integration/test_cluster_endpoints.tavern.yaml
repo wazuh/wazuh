@@ -611,16 +611,6 @@ stages:
                 drop_privileges: !anybool
                 authentication_pool_size: !anyint
                 upload_configuration:
-                  remote_commands:
-                    localfile:
-                      allow: !anybool
-                      exceptions: !anything
-                    wodle_command:
-                      allow: !anybool
-                      exceptions: !anything
-                  limits:
-                    eps:
-                      allow: !anybool
                   agents:
                     allow_higher_versions:
                       allow: !anybool

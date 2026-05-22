@@ -722,92 +722,6 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     return nested_dict
 
 
-def check_remote_commands(new_conf: Element, original_conf: Element):
-    """Check remote commands are allowed.
-
-    Parameters
-    ----------
-    new_conf : Element
-        New configuration file.
-    original_conf : Element
-        Original configuration file.
-
-    Raises
-    ------
-    WazuhError(1124)
-        Raised if remote command settings are modified in the configuration to upload.
-    """
-
-    def _filter_remote_commands(commands: list, exceptions: list) -> list:
-        """Keep only remote commands that are not part of the exception list.
-
-        Parameters
-        ----------
-        commands : list
-            List of commands to filter.
-        exceptions : list
-            List of exceptions to exclude from filtering.
-
-        Returns
-        -------
-        list
-            List of remote commands.
-        """
-        remote_commands = []
-
-        for command in commands:
-            if command['localfile']['log_format']['value'] in ['command', 'full_command'] \
-                and command['localfile']['command']['value'] not in exceptions:
-                remote_commands.append(command)
-
-        return remote_commands
-
-    def _filter_wodle_commands(commands: list, exceptions: list) -> list:
-        """Keep only wodle commands that are not part of the exception list.
-
-        Parameters
-        ----------
-        commands : list
-            List of commands to filter.
-        exceptions : list
-            List of exceptions to exclude from filtering.
-
-        Returns
-        -------
-        list
-            List of wodle commands.
-        """
-        wodle_commands = []
-
-        for command in commands:
-            if 'command' in command['wodle'] and command['wodle']['command']['value'] not in exceptions:
-                wodle_commands.append(command)
-
-        return wodle_commands
-
-    ALLOW_KEY = 'allow'
-    EXCEPTIONS_KEY = 'exceptions'
-    LOCALFILE_HIERARCHY = ['wazuh_config', 'localfile']
-    WODLE_HIERARCHY = ['wazuh_config', 'wodle']
-    LOCALFILE_SETTINGS = configuration.api_conf['upload_configuration']['remote_commands']['localfile']
-    WODLE_SETTINGS = configuration.api_conf['upload_configuration']['remote_commands']['wodle_command']
-
-    if not LOCALFILE_SETTINGS[ALLOW_KEY]:
-        new_localfile = xml_to_dict(new_conf, LOCALFILE_HIERARCHY)
-        original_localfile = xml_to_dict(original_conf, LOCALFILE_HIERARCHY)
-
-        if normalize(_filter_remote_commands(new_localfile, LOCALFILE_SETTINGS[EXCEPTIONS_KEY])) \
-            != normalize(_filter_remote_commands(original_localfile, LOCALFILE_SETTINGS[EXCEPTIONS_KEY])):
-            raise WazuhError(1124, extra_message="localfile")
-
-    if not WODLE_SETTINGS[ALLOW_KEY]:
-        new_wodle = xml_to_dict(new_conf, WODLE_HIERARCHY)
-        original_wodle = xml_to_dict(original_conf, WODLE_HIERARCHY)
-
-        if normalize(_filter_wodle_commands(new_wodle, WODLE_SETTINGS[EXCEPTIONS_KEY])) \
-            != normalize(_filter_wodle_commands(original_wodle, WODLE_SETTINGS[EXCEPTIONS_KEY])):
-            raise WazuhError(1124, extra_message="wodle")
-
 def xml_to_dict(root, section_path: list):
     """Extract configuration sections from an XML tree using dotted paths.
 
@@ -884,31 +798,6 @@ def normalize(data, preserve_root_order=True):
         return value
 
     return _normalize(data, True)
-
-
-def check_wazuh_limits_unchanged(new_conf, original_conf):
-    """Check if Wazuh limits remain unchanged.
-
-    Parameters
-    ----------
-    new_conf : Element
-        New configuration file.
-    original_conf : Element
-        Original configuration file.
-
-    Raises
-    -------
-    WazuhError(1127)
-        Raised if one of the protected limits is modified in the configuration to upload.
-    """
-    CONFIG_LIMITS_HIERARCHY = ['wazuh_config', 'global', 'limits']
-    limits_configuration = configuration.api_conf['upload_configuration']['limits']
-    for disabled_limit in [conf for conf, allowed in limits_configuration.items() if not allowed['allow']]:
-        new_limits = xml_to_dict(new_conf, CONFIG_LIMITS_HIERARCHY + [disabled_limit])
-        original_limits = xml_to_dict(original_conf, CONFIG_LIMITS_HIERARCHY + [disabled_limit])
-
-        if normalize(new_limits) != normalize(original_limits):
-            raise WazuhError(1127, extra_message=f"global > limits > {disabled_limit}")
 
 
 def check_agents_allow_higher_versions(new_conf: Element, original_conf: Element):
@@ -1904,11 +1793,9 @@ def validate_wazuh_xml(content: str):
         # Check xml format
         incoming_xml = load_wazuh_xml(xml_path='', data=final_xml)
         current_xml = load_wazuh_xml(xml_path=common.OSSEC_CONF)
-        # Check if remote commands are allowed
-        check_remote_commands(incoming_xml, current_xml)
+        # Check if configuration changes are allowed
         check_agents_allow_higher_versions(incoming_xml, current_xml)
         check_indexer(incoming_xml, current_xml)
-        check_wazuh_limits_unchanged(incoming_xml, current_xml)
 
     except ExpatError:
         raise WazuhError(1113)
