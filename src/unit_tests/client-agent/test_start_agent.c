@@ -353,8 +353,10 @@ static void test_agent_handshake_to_server(void **state) {
 #endif
     will_return(__wrap_metadata_provider_update, 0);
 
-    expect_any_count(__wrap__mdebug1, formatted_msg, 3);
-    expect_any_count(__wrap__minfo, formatted_msg, 2);
+    /* is_startup=true call now emits one extra mdebug1 from
+     * startup_gate_process_handshake() for the legacy_handshake path. */
+    expect_any_count(__wrap__mdebug1, formatted_msg, 5);
+    expect_any(__wrap__minfo, formatted_msg);
 
     handshaked = agent_handshake_to_server(1, true);
     assert_true(handshaked);

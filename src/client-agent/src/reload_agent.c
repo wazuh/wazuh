@@ -22,7 +22,7 @@
 
 static const char AG_IN_RCON[] = "wazuh: Invalid remote configuration";
 
-void * reloadAgent() {
+bool reloadAgent(void) {
 
 	char req[] = "reload";
 
@@ -33,7 +33,7 @@ void * reloadAgent() {
 
 	int sock = -1;
 	char sockname[PATH_MAX + 1];
-	const int max_retries = 10;
+	const int max_retries = 30;
 	const int retry_delay_s = 1;
 	int attempt;
 
@@ -50,29 +50,32 @@ void * reloadAgent() {
 			sleep(retry_delay_s);
 		} else {
 			merror("At reloadAgent(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
-			return NULL;
+			return false;
 		}
 	}
 
 	if (sock < 0) {
 		merror("Could not auto-reload agent. Could not connect to control socket '%s' after %d attempts.", sockname, max_retries);
-	} else {
-		if (OS_SendSecureTCP(sock, length, req)) {
-			merror("OS_SendSecureTCP(): %s", strerror(errno));
-		}
-
-		close(sock);
+		return false;
 	}
+
+	if (OS_SendSecureTCP(sock, length, req)) {
+		merror("OS_SendSecureTCP(): %s", strerror(errno));
+		close(sock);
+		return false;
+	}
+
+	close(sock);
+	return true;
 
 	#else
 
 	char *output = NULL;
 	control_dispatch(req, &output);
 	if (output) free(output);
+	return true;
 
 	#endif
-
-	return NULL;
 }
 
 int verifyRemoteConf(){
