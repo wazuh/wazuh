@@ -2989,6 +2989,26 @@ INSTANTIATE_TEST_SUITE_P(CheckDuplicateKey,
                                            std::make_pair(false, R"({
         "check": "$event == 2",
         "check": "$event.id == 2"
+        })"),
+                                           std::make_pair(false, R"({
+        "level": "5",
+        "level": "5"
+        })"),
+                                           std::make_pair(false, R"({
+        "a": {"x": 1},
+        "a": {"x": 1}
+        })"),
+                                           std::make_pair(false, R"({
+        "items": [
+            {"id": 1, "id": 2},
+            {"name": "foo"}
+        ]
+        })"),
+                                           std::make_pair(false, R"({
+        "items": [
+            {"name": "foo"},
+            {"id": 1, "id": 1}
+        ]
         })")));
 
 // ---------- Functors (templated-friendly) ----------
