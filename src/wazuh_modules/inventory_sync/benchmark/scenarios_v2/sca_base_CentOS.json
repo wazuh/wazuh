@@ -1,0 +1,24 @@
+{
+  "name": "sca_base_CentOS",
+  "description": "Replay one recorded CentOS SCA full sync session from a real agent.",
+  "agent_configs": [
+    {
+      "payload_dump": "sample_payloads/dump-sca/session_sca_centos.json",
+      "session_type": "delta",
+      "max_eps": 0,
+      "use_databatch": true,
+      "retransmit": true
+    }
+  ],
+  "behavior": {
+    "total_agents": 1,
+    "parallel_agents": 1,
+    "repeat_until": 0,
+    "drain_timeout": 30,
+    "post_run_grace": 30
+  },
+  "notes": [
+    "Payload: sample_payloads/dump-sca/session_sca_centos.json.",
+    "The sync mode is taken from the dump metadata."
+  ]
+}
