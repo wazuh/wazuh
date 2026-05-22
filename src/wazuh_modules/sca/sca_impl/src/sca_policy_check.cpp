@@ -2,6 +2,7 @@
 
 #include <sca_utils.hpp>
 #include <sca_impl.hpp>
+#include <wmodules.h>
 
 #include <file_io_utils.hpp>
 #include <filesystem_wrapper.hpp>
@@ -218,6 +219,11 @@ CommandRuleEvaluator::CommandRuleEvaluator(PolicyEvaluationContext ctx,
             {
                 return execResult;
             }
+            else if (wmExecResult == WM_ERROR_TIMEOUT)
+            {
+                execResult.TimedOut = true;
+                return execResult;
+            }
             else
             {
                 return std::nullopt;
@@ -244,6 +250,15 @@ RuleResult CommandRuleEvaluator::Evaluate()
     {
         if (auto execResult = m_commandExecFunc(m_ctx.rule))
         {
+            if (execResult->TimedOut)
+            {
+                m_lastInvalidReason = "Command timed out after " + std::to_string(m_ctx.commandsTimeout) +
+                                      " seconds: " + m_ctx.rule;
+                LoggingHelper::getInstance().log(LOG_DEBUG, "Command rule '" + m_ctx.rule + "' timed out after " +
+                                                 std::to_string(m_ctx.commandsTimeout) + " seconds");
+                return RuleResult::NotRun;
+            }
+
             if (m_ctx.pattern)
             {
                 // Trim ending lines if any (command output may have trailing newlines)

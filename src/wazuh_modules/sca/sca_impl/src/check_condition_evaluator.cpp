@@ -34,9 +34,10 @@ void CheckConditionEvaluator::AddResult(const RuleEvaluationResult& result)
         return;
     }
 
-    if (result.result == RuleResult::Invalid)
+    if (result.result == RuleResult::Invalid || result.result == RuleResult::NotRun)
     {
-        m_hasInvalid = true;
+        m_hasInvalid = m_hasInvalid || (result.result == RuleResult::Invalid);
+        m_hasNotRun = m_hasNotRun || (result.result == RuleResult::NotRun);
 
         if (!result.reason.empty())
         {
@@ -85,6 +86,11 @@ sca::CheckResult CheckConditionEvaluator::Result() const
     if (m_result.has_value())
     {
         return *m_result ? sca::CheckResult::Passed : sca::CheckResult::Failed;
+    }
+
+    if (m_hasNotRun)
+    {
+        return sca::CheckResult::NotRun;
     }
 
     if (m_totalRules == 0 || m_hasInvalid)

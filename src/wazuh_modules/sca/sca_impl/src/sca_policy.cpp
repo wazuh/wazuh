@@ -32,6 +32,7 @@ void SCAPolicy::Scan(
     const std::function<void(const CheckResult&)>& reportCheckResult)
 {
     auto requirementsOk = sca::CheckResult::Passed;
+    std::string requirementsReason;
 
     if (!m_requirements.rules.empty())
     {
@@ -50,6 +51,11 @@ void SCAPolicy::Scan(
         }
 
         requirementsOk = resultEvaluator.Result();
+
+        if (requirementsOk == sca::CheckResult::NotRun)
+        {
+            requirementsReason = resultEvaluator.GetInvalidReason();
+        }
 
         LoggingHelper::getInstance().log(LOG_DEBUG, "Policy requirements evaluation completed for policy \"" + m_id + "\", result: " + sca::CheckResultToString(requirementsOk));
     }
@@ -73,7 +79,9 @@ void SCAPolicy::Scan(
             }
 
             const auto result = resultEvaluator.Result();
-            const auto& reason = (result == sca::CheckResult::NotApplicable) ? resultEvaluator.GetInvalidReason() : std::string{};
+            const auto& reason = (result == sca::CheckResult::NotApplicable || result == sca::CheckResult::NotRun)
+                                 ? resultEvaluator.GetInvalidReason()
+                                 : std::string{};
 
             // NOLINTBEGIN(bugprone-unchecked-optional-access)
             LoggingHelper::getInstance().log(
@@ -92,6 +100,16 @@ void SCAPolicy::Scan(
         }
 
         LoggingHelper::getInstance().log(LOG_DEBUG, "Policy checks evaluation completed for policy \"" + m_id + "\"");
+    }
+    else if (requirementsOk == sca::CheckResult::NotRun)
+    {
+        // A requirement rule timed out — we can't determine whether the policy applies,
+        // so don't overwrite the manager's last known state for any check in this policy.
+        for (const auto& check : m_checks)
+        {
+            // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
+            reportCheckResult({m_id, check.id.value(), sca::CheckResultToString(sca::CheckResult::NotRun), requirementsReason});
+        }
     }
     else
     {

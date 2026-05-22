@@ -31,5 +31,6 @@ class CheckConditionEvaluator
         int m_passedRules {0};
         std::optional<bool> m_result;
         bool m_hasInvalid = false;
+        bool m_hasNotRun = false;
         std::string m_invalidReason;
 };

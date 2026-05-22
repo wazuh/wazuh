@@ -15,7 +15,8 @@ enum class RuleResult
 {
     Invalid = -1,
     Found,
-    NotFound
+    NotFound,
+    NotRun
 };
 
 struct RuleEvaluationResult
@@ -97,6 +98,7 @@ class CommandRuleEvaluator : public RuleEvaluator
             std::string StdOut;
             std::string StdErr;
             int ExitCode;
+            bool TimedOut = false;
         };
 
         /// @brief Function that takes a command and returns the output and error as a pair of strings.
