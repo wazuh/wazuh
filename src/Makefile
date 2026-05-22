@@ -468,10 +468,22 @@ endif
 #     TEST flag drops them from that bundle and breaks every test build (#36247).
 EXTERNAL_RES := cJSON openssl zlib sqlite libyaml curl libpcre2 nlohmann flatbuffers bzip2 googletest benchmark
 
+# Linux unit-test wrapper dependencies (every Linux leg except the winagent
+# cross-compile). unit_tests/wrappers/externals/{audit,procpc} include
+# <libaudit.h> and external/procps/readproc.h and are compiled into the Linux
+# test build for BOTH the agent and the manager, so the headers must be present
+# on every Linux target even though only the agent links libaudit/procps in
+# production (ext_audit/ext_procps are gated IS_LINUX AND IS_AGENT).
+ifneq (${TARGET},winagent)
+ifeq (${uname_S}, Linux)
+	EXTERNAL_RES += audit-userspace procps
+endif
+endif
+
 ifeq (${TARGET},agent)
 # Linux agent-specific dependencies
 ifeq (${uname_S}, Linux)
-	EXTERNAL_RES += audit-userspace procps libdb popt lua rpm dbus libbpf-bootstrap
+	EXTERNAL_RES += libdb popt lua rpm dbus libbpf-bootstrap
 endif
 # macOS agent-specific dependencies
 ifeq (${uname_S}, Darwin)
