@@ -1,0 +1,19 @@
+{
+  "name": "ubuntu22_fim_delta_create",
+  "description": "Replay an Ubuntu 22.04 FIM delta create session captured from Inventory Sync FlatBuffer dumps. 20 file Upserts targeting wazuh-states-fim-files.",
+  "agent_configs": [
+    {
+      "payload_dump": "sample_payloads/fim/ubuntu22_fim_delta_create.json",
+      "session_type": "delta",
+      "max_eps": 75,
+      "use_databatch": true,
+      "retransmit": true
+    }
+  ],
+  "behavior": {
+    "total_agents": 1,
+    "parallel_agents": 0,
+    "repeat_until": 0,
+    "drain_timeout": 30
+  }
+}
