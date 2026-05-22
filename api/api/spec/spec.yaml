@@ -6822,16 +6822,6 @@ paths:
                           block_time: 300
                           max_request_per_minute: 300
                         upload_configuration:
-                          remote_commands:
-                            localfile:
-                              allow: true
-                              exceptions: []
-                            wodle_command:
-                              allow: true
-                              exceptions: []
-                          limits:
-                            eps:
-                              allow: true
                           agents:
                             allow_higher_versions:
                               allow: true
@@ -6869,16 +6859,6 @@ paths:
                           block_time: 300
                           max_request_per_minute: 300
                         upload_configuration:
-                          remote_commands:
-                            localfile:
-                              allow: true
-                              exceptions: []
-                            wodle_command:
-                              allow: true
-                              exceptions: []
-                          limits:
-                            eps:
-                              allow: true
                           agents:
                             allow_higher_versions:
                               allow: true
@@ -6916,16 +6896,6 @@ paths:
                           block_time: 300
                           max_request_per_minute: 300
                         upload_configuration:
-                          remote_commands:
-                            localfile:
-                              allow: true
-                              exceptions: []
-                            wodle_command:
-                              allow: true
-                              exceptions: []
-                          limits:
-                            eps:
-                              allow: true
                           agents:
                             allow_higher_versions:
                               allow: true
