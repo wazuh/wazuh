@@ -525,13 +525,13 @@ def test_unmerge_info():
         with patch('wazuh.core.cluster.cluster.stat') as stat_mock:
             # Make sure that the function is running correctly
             stat_mock.return_value.st_size = len(agent_info) - 5
-            assert list(cluster.unmerge_info("destination/directory/", "path/file/", "filename")) == [
-                ('queue/destination/directory/005', b"b'default,windows-serve", '2019-03-29 14:57:29.610934')]
+            assert list(cluster.unmerge_info("destination", "path/file/", "filename")) == [
+                ('queue/destination/005', b"b'default,windows-serve", '2019-03-29 14:57:29.610934')]
 
             # Make sure that the Exception is being properly called
             stat_mock.return_value.st_size = len(agent_info)
             with patch.object(wazuh.core.cluster.cluster.logger, "warning") as mock_logger:
-                list(cluster.unmerge_info("destination/directory/", "path/file/", "filename"))
+                list(cluster.unmerge_info("destination", "path/file/", "filename"))
                 mock_logger.assert_called_once_with("Malformed file (not enough values to unpack "
                                                     "(expected 3, got 1)). Parsed line: rs'. "
                                                     "Some files won't be synced")

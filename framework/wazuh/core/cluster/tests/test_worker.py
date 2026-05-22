@@ -1147,22 +1147,24 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
     # Test the first for: for -> if -> for -> try
     # In the nested method, with the first value sent to the 'update_master_files_in_worker' (shared), we
     # are testing the if, meanwhile with the second (missing), we are testing the else.
-    with patch("wazuh.core.cluster.cluster.unmerge_info", return_value=[("name", "content", "_")]):
+    with patch("wazuh.core.cluster.cluster.unmerge_info", return_value=[("queue/TYPE/name", "content", "_")]):
         with patch("os.remove") as os_remove_mock:
-            result_logs = worker_handler.update_master_files_in_worker(
-                ko_files={"shared": {
-                    "filename1": {"merged": "value", "cluster_item_key": "cluster_item_key"}},
-                    "missing": {
-                        "filename1": {"merged": None, "cluster_item_key": "cluster_item_key"}},
-                    "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, zip_path="/zip/path",
-                cluster_items=cluster_items)
+            with patch("os.path.commonpath", return_value="queue/testing/"):
+                result_logs = worker_handler.update_master_files_in_worker(
+                    ko_files={"shared": {
+                        "filename1": {"merged": "value", "cluster_item_key": "cluster_item_key"}},
+                        "missing": {
+                            "filename1": {"merged": None, "cluster_item_key": "cluster_item_key"}},
+                        "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, zip_path="/zip/path",
+                    cluster_items=cluster_items)
 
-            os_remove_mock.assert_any_call("queue/testing/")
-            assert result_logs['error'] == defaultdict(list)
+                os_remove_mock.assert_any_call("queue/testing/")
+                assert result_logs['error'] == defaultdict(list)
             assert result_logs['debug2'] == {"filename1": ["Processing file filename1", "Processing file filename1"],
                                              "filename3": ["Remove file: 'filename3'"]}
             path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, 'filename1'),
-                                             call(core_common.WAZUH_PATH, 'name'),
+                                             call(core_common.WAZUH_PATH, 'queue/TYPE/name'),
+                                             call(core_common.WAZUH_PATH, 'cluster_item_key'),
                                              call(core_common.WAZUH_PATH, 'filename1'),
                                              call('/zip/path', 'filename1'),
                                              call(core_common.WAZUH_PATH, 'filename3')])
