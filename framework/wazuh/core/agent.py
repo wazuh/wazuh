@@ -11,7 +11,6 @@ from json import dumps, loads
 from os import listdir, path
 from shutil import rmtree
 
-
 from wazuh.core import common, configuration, stats
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status

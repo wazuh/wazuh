@@ -7,7 +7,6 @@ from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.rbac.decorators import expose_resources
 
 
-
 @expose_resources(actions=["mitre:read"], resources=["*:*:*"])
 def mitre_metadata() -> AffectedItemsWazuhResult:
     """Return the metadata of the MITRE's database.

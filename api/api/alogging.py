@@ -14,8 +14,6 @@ from api.api_exception import APIError
 logger = logging.getLogger('wazuh-api')
 
 
-
-
 class APILoggerSize:
     size_regex = re.compile(r"(\d+)([KM])")
     unit_conversion = {
