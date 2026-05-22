@@ -53,6 +53,8 @@ pthread_mutex_t sys_stop_mutex = PTHREAD_MUTEX_INITIALIZER;
 bool need_shutdown_wait = false;
 static pthread_t sys_main_thread;
 static bool sys_main_thread_initialized = false;
+static pthread_t sync_worker_thread;
+static bool sync_worker_thread_initialized = false;
 pthread_mutex_t sys_reconnect_mutex = PTHREAD_MUTEX_INITIALIZER;
 bool shutdown_process_started = false;
 
@@ -74,6 +76,7 @@ void* syscollector_module = NULL;
 syscollector_init_func syscollector_init_ptr = NULL;
 syscollector_start_func syscollector_start_ptr = NULL;
 syscollector_stop_func syscollector_stop_ptr = NULL;
+syscollector_release_resources_func syscollector_release_resources_ptr = NULL;
 
 // Sync protocol function pointers
 syscollector_init_sync_func syscollector_init_sync_ptr = NULL;
@@ -607,6 +610,7 @@ void* wm_sys_main(wm_sys_t* sys)
         syscollector_init_ptr = so_get_function_sym(syscollector_module, "syscollector_init");
         syscollector_start_ptr = so_get_function_sym(syscollector_module, "syscollector_start");
         syscollector_stop_ptr = so_get_function_sym(syscollector_module, "syscollector_stop");
+        syscollector_release_resources_ptr = so_get_function_sym(syscollector_module, "syscollector_release_resources");
 
         // Get sync protocol function pointers
         syscollector_init_sync_ptr = so_get_function_sym(syscollector_module, "syscollector_init_sync");
@@ -705,9 +709,14 @@ void* wm_sys_main(wm_sys_t* sys)
             syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps,
                                        integrity_interval);
 #ifndef WIN32
-            // Launch inventory synchronization thread
+            // Launch inventory synchronization thread as joinable so we can wait for it
+            // before releasing resources on shutdown
             sync_module_running = 1;
-            w_create_thread(wm_sync_module, NULL);
+            sync_worker_thread_initialized = (CreateThreadJoinable(&sync_worker_thread, wm_sync_module, NULL) == 0);
+            if (!sync_worker_thread_initialized)
+            {
+                merror(THREAD_ERROR);
+            }
 #else
             sync_module_running = 1;
 
@@ -741,6 +750,16 @@ void* wm_sys_main(wm_sys_t* sys)
         close(queue_fd);
         queue_fd = 0;
     }
+
+    // Wait for the inventory sync worker thread to finish before signaling that
+    // resources can be released.
+#ifndef WIN32
+    if (sync_worker_thread_initialized)
+    {
+        sync_worker_thread_initialized = false;
+        pthread_join(sync_worker_thread, NULL);
+    }
+#endif
 
     mtinfo(WM_SYS_LOGTAG, "Module finished.");
     w_mutex_lock(&sys_stop_mutex);
@@ -802,6 +821,12 @@ void wm_sys_stop(__attribute__((unused))wm_sys_t* data)
     }
 
     w_mutex_unlock(&sys_stop_mutex);
+
+    if (syscollector_release_resources_ptr)
+    {
+        syscollector_release_resources_ptr();
+        syscollector_release_resources_ptr = NULL;
+    }
 }
 
 cJSON* wm_sys_dump(const wm_sys_t* sys)
