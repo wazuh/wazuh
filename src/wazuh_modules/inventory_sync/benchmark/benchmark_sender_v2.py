@@ -157,6 +157,19 @@ MODE_STR_TO_INT: dict[str, int] = {
 }
 OPTION_STR_TO_INT: dict[str, int] = {"Sync": 0, "VDFirst": 1, "VDSync": 2}
 OPERATION_STR_TO_INT: dict[str, int] = {"Upsert": 0, "Delete": 1}
+JSON_COMPACT_SEPARATORS = (",", ":")
+
+
+def _payload_wire_bytes(payload: Any) -> bytes:
+    if isinstance(payload, (dict, list)):
+        return json.dumps(payload, separators=JSON_COMPACT_SEPARATORS).encode("utf-8")
+    if isinstance(payload, str):
+        return payload.encode("utf-8")
+    return bytes(payload)
+
+
+def _payload_wire_len(payload: Any) -> int:
+    return len(_payload_wire_bytes(payload))
 
 
 # ---------------------------------------------------------------------------
@@ -912,12 +925,7 @@ class BenchmarkAgent:
         builder = flatbuffers.Builder(1024)
         dv_offsets: list[int] = []
         for seq, doc_id, payload, operation, index in items:
-            if isinstance(payload, (dict, list)):
-                data_bytes = json.dumps(payload).encode("utf-8")
-            elif isinstance(payload, str):
-                data_bytes = payload.encode("utf-8")
-            else:
-                data_bytes = bytes(payload)
+            data_bytes = _payload_wire_bytes(payload)
             data_vec = builder.CreateByteVector(data_bytes)
             id_str = builder.CreateString(doc_id)
             index_str = builder.CreateString(index)
@@ -1239,7 +1247,7 @@ class SessionRunner:
             if not _running:
                 break
             try:
-                payload_bytes_len = len(json.dumps(payload).encode("utf-8"))
+                payload_bytes_len = _payload_wire_len(payload)
             except Exception:
                 payload_bytes_len = 600
             item_size = FB_OVERHEAD_PER_ITEM + len(doc_id) + len(index) + payload_bytes_len
