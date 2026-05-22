@@ -19,6 +19,7 @@ from wazuh_testing.constants.paths.api import RBAC_DATABASE_PATH
 from wazuh_testing.constants.paths.logs import (
     WAZUH_LOG_PATH,
     ALERTS_JSON_PATH,
+    ARCHIVES_LOG_PATH,
     WAZUH_API_LOG_FILE_PATH,
     WAZUH_API_JSON_LOG_FILE_PATH,
 )
@@ -323,6 +324,7 @@ def truncate_monitored_files_implementation() -> None:
         log_files = [
             WAZUH_LOG_PATH,
             ALERTS_JSON_PATH,
+            ARCHIVES_LOG_PATH,
             WAZUH_API_LOG_FILE_PATH,
             WAZUH_API_JSON_LOG_FILE_PATH,
             WAZUH_CLIENT_KEYS_PATH,
