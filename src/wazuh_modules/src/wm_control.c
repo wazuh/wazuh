@@ -125,6 +125,46 @@ bool wm_control_wait_for_service_active(const char *service) {
 }
 
 size_t wm_control_execute_action(const char *action, const char *service, char **output) {
+#ifdef __APPLE__
+    /* On macOS, do not run wazuh-control directly from here. Forking it from
+     * wazuh-modulesd makes modulesd the TCC "responsible process" of the
+     * respawned daemons, so wazuh-syscheckd's Full Disk Access entry gets filed
+     * under wazuh-modulesd and syscheckd never appears in the FDA list. Instead
+     * we drop a request flag that Wazuh-launcher (the launchd job anchor, a
+     * shell) polls; it runs `wazuh-control <action>` in the same launchd-clean
+     * lineage as boot, so tccd files the FDA entry under wazuh-syscheckd itself.
+     * See src/init/darwin-init.sh (Wazuh-launcher loop). */
+    (void)service;
+    {
+        /* Path is relative to the install dir, matching the "bin/wazuh-control"
+         * convention used in the non-Apple branch below. We write a temp file
+         * and rename() it onto the final flag so the launcher (the reader)
+         * never observes a partially written request: rename(2) is atomic
+         * within the same directory. */
+        const char *flag = "var/run/wazuh-control.request";
+        const char *flag_tmp = "var/run/wazuh-control.request.tmp";
+
+        FILE *fp = fopen(flag_tmp, "w");
+        if (fp == NULL) {
+            mterror(WM_CONTROL_LOGTAG, "Cannot create control request flag '%s': %s (%d)", flag_tmp, strerror(errno), errno);
+            os_strdup("err Cannot write control flag", *output);
+            return strlen(*output);
+        }
+        fprintf(fp, "%s\n", action);
+        fclose(fp);
+
+        if (rename(flag_tmp, flag) != 0) {
+            mterror(WM_CONTROL_LOGTAG, "Cannot commit control request flag '%s': %s (%d)", flag, strerror(errno), errno);
+            unlink(flag_tmp);
+            os_strdup("err Cannot write control flag", *output);
+            return strlen(*output);
+        }
+
+        mtinfo(WM_CONTROL_LOGTAG, "Requested '%s' via Wazuh-launcher (flag '%s')", action, flag);
+        os_strdup("ok ", *output);
+        return strlen(*output);
+    }
+#else
     bool use_systemd = wm_control_check_systemd();
     char *exec_cmd[4] = {NULL};
 
@@ -163,6 +203,7 @@ size_t wm_control_execute_action(const char *action, const char *service, char *
             os_strdup("ok ", *output);
             return strlen(*output);
     }
+#endif
 }
 
 size_t wm_control_dispatch(char *command, char **output) {
