@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 - Fixed string buffer handling in version comparison function. ([#36059](https://github.com/wazuh/wazuh/pull/36059))
 - Improved cluster file synchronization security. ([#36060](https://github.com/wazuh/wazuh/pull/36060))
 - Fixed missing `agent.host.ip` in inventory documents when agent IP is empty. ([#35475](https://github.com/wazuh/wazuh/pull/35475))
+- Fixed stale agent `synced` status after hot reload on cluster worker nodes. ([#6726](https://github.com/wazuh/external-devel-requests/issues/6726))
 
 ### Agent
 
