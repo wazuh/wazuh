@@ -5,7 +5,7 @@
 Wazuh 5.0 introduces a fundamentally different architecture for log analysis and threat detection. The legacy XML-based analysis daemon is replaced by a pipeline that separates **event processing** from **threat detection**:
 
 1. **Wazuh Engine** — Receives raw logs, decodes them using the new decoder format, normalizes fields to the [Wazuh Common Schema (WCS)](https://github.com/wazuh/wazuh-indexer-plugins/tree/main/wcs/stateless/events/main/docs/README.md), and indexes the resulting events into `wazuh-events-v5-*` indices.
-2. **Security Analytics detectors** — Use a percolator to evaluate indexed events against Sigma-based (YAML) rules stored in the `wazuh-threatintel-rules` index. When an event matches a rule, the detector creates a **finding**, an enriched copy of the event indexed it into `wazuh-findings-v5-*`.
+2. **Security Analytics detectors** — Use a percolator to evaluate indexed events against Sigma-based (YAML) rules stored in the `wazuh-threatintel-rules` index. When an event matches a rule, the detector creates a **finding**, an enriched copy of the event, indexed into `wazuh-findings-v5-*`.
 
 There is no automatic conversion tool. Rules must be manually rewritten following this guide.
 
@@ -13,8 +13,8 @@ There is no automatic conversion tool. Rules must be manually rewritten followin
 
 | 4.x term | 5.x term | Description |
 |---|---|---|
-| **Alert** | **Event** | The base log entry after decoding. In 4.x, the analysis daemon produced alerts directly. In 5.x, the Wazuh Engine produces normalized events. |
-| **Alert (matching a rule)** | **Finding** | In 5.x, when an event matches a detection rule, a finding is generated, the event enriched. |
+| **Event** | **Event** | The base log entry after decoding. In 4.x the events are the base logs before matching any rule. In 5.x, the Wazuh Engine produces normalized events. |
+| **Alert** | **Finding** | In 5.x, when an event matches a detection rule, a finding is generated and the event is enriched. |
 | **Rule (XML)** | **Rule (YAML)** | Detection rules are now written in the Sigma format with Wazuh extensions. |
 | **Decoder (XML)** | **Decoder (Engine format)** | Decoders still exist but use a new format adapted to the Wazuh Engine. |
 | **Ruleset files on disk** | **Threat intelligence indices** | Rules, KVDBs, decoders, integrations, and enrichments are stored in Wazuh indices (`wazuh-threatintel-*`). |
