@@ -906,10 +906,11 @@ WIndexerConnector::getIocTypeHashes(const std::optional<std::string_view>& consu
         return std::nullopt;
     }
 
+    // Hashes document not found, is expected on fresh installs without any IOC indexed yet — return empty map
     if (!hashesDoc.has_value())
     {
-        throw IndexerConnectorException(
-            fmt::format("Hash document '{}' not found in index '{}'", IOC_HASHES_DOC_ID, IOC_INDEX));
+        LOG_DEBUG("[indexer-connector] Hash document '{}' not found in index '{}'", IOC_HASHES_DOC_ID, IOC_INDEX);
+        return std::nullopt;
     }
 
     return parseIocHashesDocument(*hashesDoc);

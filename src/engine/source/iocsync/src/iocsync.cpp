@@ -500,7 +500,7 @@ void IocSync::synchronize()
         const auto remoteTypeHashesOpt = getRemoteHashesFromRemote();
         if (!remoteTypeHashesOpt.has_value())
         {
-            LOG_INFO("[IOC::Sync] IOC syncronization skipped because the IOC consumer is not idle (data is being "
+            LOG_INFO("[IOC::Sync] IOC syncronization skipped because the IOC consumer is not idle (data/hash is being "
                      "updated in the indexer)");
             return;
         }
