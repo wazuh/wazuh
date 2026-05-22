@@ -115,4 +115,8 @@
 - [Performance](ref/performance.md)
 - [Glossary](ref/glossary.md)
 
+# Migration Guide
+
+- [Mail Forwarding and Reporting to Dashboard Notifications](guide/migration/mail-forwarding-reporting.md)
+
 # Diagnostic Documentation
