@@ -3,7 +3,7 @@
   "description": "Replay a recorded syscollector delta session captured from a real debian10 agent. 1447 DataValues across 9 wazuh-states-inventory-* indices (groups, hardware, interfaces, networks, ports, processes, protocols, services, users). Per-item index is preserved — exercises the multi-index Start + DataBatch path end-to-end against the manager. Single agent, single pass.",
   "agent_configs": [
     {
-      "payload_dump": "sample_payloads/syscollector/session-delta-sin-vd.json",
+      "payload_dump": "sample_payloads/dump-syscollector/session_syscollector_sync_debian10.json",
       "session_type": "delta",
       "max_eps": 75,
       "use_databatch": true,
