@@ -1,0 +1,39 @@
+{
+  "modules": [
+    {
+      "name": "api",
+      "suite_type": "manager_install",
+      "pytest_target": "test_api/",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "_comment_tiers": "Each element produces one matrix row; space-separated values become individual --tier flags",
+      "paths": [
+        ".github/workflows/5_builderpackage_manager-multiples.yml",
+        ".github/workflows/5_testintegration_manager.yml",
+        ".github/test_modules_manager.json",
+        ".github/workflows/.python-version-it",
+        ".github/actions/reinstall_cmake/**",
+        "api/**",
+        "framework/wazuh/rbac/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_api/**"
+      ]
+    },
+    {
+      "name": "inventory_sync",
+      "suite_type": "inventory_sync",
+      "timeout_minutes": 60,
+      "paths": [
+        ".github/workflows/5_builderpackage_manager-multiples.yml",
+        ".github/workflows/5_testintegration_inventory-sync.yml",
+        ".github/test_modules_manager.json",
+        ".github/actions/reinstall_cmake/**",
+        "src/wazuh_modules/inventory_sync/**",
+        "src/shared_modules/utils/flatbuffers/**",
+        "src/shared_modules/indexer_connector/**",
+        "src/Makefile"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,280 @@
+name: 5.X - Manager - Integration tests
+run-name: "IT Manager: ${{ inputs.module_name || inputs.modules }} - ${{ github.ref_name }}"
+
+on:
+  workflow_call:
+    inputs:
+      build_run_id:
+        required: false
+        type: string
+        default: ''
+      module_name:
+        required: true
+        type: string
+      pytest_target:
+        required: false
+        type: string
+        default: ''
+      pytest_extra_args:
+        required: false
+        type: string
+        default: ''
+      pytest_tier_args:
+        required: false
+        type: string
+        default: '--tier 0 --tier 1'
+      timeout_minutes:
+        required: false
+        type: number
+        default: 120
+      base_branch:
+        required: false
+        type: string
+        default: 'main'
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: 'Run ID of a build that produced the manager package. Leave empty to build from source.'
+        required: false
+        default: ''
+      modules:
+        description: 'Comma-separated module names (e.g. api,remoted) or "all"'
+        required: false
+        default: 'all'
+      base_branch:
+        description: 'Base branch'
+        required: false
+        default: 'main'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  expand:
+    name: Build execution matrix
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.build.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v4
+
+      - name: Build matrix
+        id: build
+        env:
+          EVENT_NAME:        ${{ github.event_name }}
+          MODULE_NAME:       ${{ inputs.module_name }}
+          PYTEST_TARGET:     ${{ inputs.pytest_target }}
+          PYTEST_EXTRA_ARGS: ${{ inputs.pytest_extra_args }}
+          PYTEST_TIER_ARGS:  ${{ inputs.pytest_tier_args }}
+          TIMEOUT_MINUTES:   ${{ inputs.timeout_minutes || 120 }}
+          MODULES_INPUT:     ${{ inputs.modules || 'all' }}
+        shell: python
+        run: |
+          import json, os, sys
+
+          event_name    = os.environ.get("EVENT_NAME",        "").strip()
+          module_name   = os.environ.get("MODULE_NAME",       "").strip()
+          pytest_target = os.environ.get("PYTEST_TARGET",     "").strip()
+          pytest_extra  = os.environ.get("PYTEST_EXTRA_ARGS", "").strip()
+          pytest_tier   = os.environ.get("PYTEST_TIER_ARGS",  "").strip()
+          timeout       = int(os.environ.get("TIMEOUT_MINUTES", "120") or "120")
+          modules_input = os.environ.get("MODULES_INPUT",    "all").strip()
+
+          if event_name == "workflow_call":
+              entries = [{
+                  "name":              module_name,
+                  "pytest_target":     pytest_target,
+                  "pytest_extra_args": pytest_extra,
+                  "pytest_tier_args":  pytest_tier,
+                  "timeout_minutes":   timeout,
+              }]
+          else:
+              with open(".github/test_modules_manager.json") as f:
+                  config = json.load(f)
+              pytest_modules = [m for m in config["modules"] if m["suite_type"] == "manager_install"]
+
+              if modules_input == "all":
+                  selected = pytest_modules
+              else:
+                  requested = {m.strip() for m in modules_input.split(",") if m.strip()}
+                  known     = {m["name"] for m in pytest_modules}
+                  for u in requested - known:
+                      print(f"::warning::Module '{u}' not found in test_modules_manager.json - skipping")
+                  selected = [m for m in pytest_modules if m["name"] in requested]
+
+              if not selected:
+                  print("::error::No matching modules found. Available: " + ", ".join(m["name"] for m in pytest_modules))
+                  sys.exit(1)
+
+              entries = []
+              for mod in selected:
+                  for tier in mod.get("tiers", ["0 1"]):
+                      tier_args = " ".join(f"--tier {t}" for t in tier.split())
+                      entries.append({
+                          "name":              mod["name"],
+                          "pytest_target":     mod.get("pytest_target", ""),
+                          "pytest_extra_args": mod.get("pytest_extra_args", ""),
+                          "pytest_tier_args":  tier_args,
+                          "timeout_minutes":   mod.get("timeout_minutes", 120),
+                      })
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"matrix={json.dumps({'include': entries})}\n")
+
+  run-test:
+    needs: expand
+    timeout-minutes: ${{ matrix.timeout_minutes }}
+    name: Run ${{ matrix.name }} integration tests
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.expand.outputs.matrix) }}
+    env:
+      BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+      BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
+      INSTALLATION_DIR: /var/wazuh-manager
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Path A: use pre-built artifact ────────────────────────────────────
+
+      - name: Download manager package artifact
+        if: inputs.build_run_id != ''
+        uses: dawidd6/action-download-artifact@bf251b5aa9c2f7eeb574a96ee720e24f801b7c11 # v6
+        with:
+          workflow: 5_builderpackage_manager-multiples.yml
+          run_id: ${{ inputs.build_run_id }}
+          workflow_conclusion: success
+          name_is_regexp: true
+          name: wazuh-manager.*amd64.*\.deb
+          path: /tmp/packages
+          if_no_artifact_found: fail
+          check_artifacts: true
+          search_artifacts: true
+
+      - name: Install wazuh-manager from artifact
+        if: inputs.build_run_id != ''
+        run: |
+          PACKAGE_PATH=$(find /tmp/packages -maxdepth 2 -type f -name "wazuh-manager*amd64*.deb" \
+            | grep -v "wazuh-manager-dbg" | head -n 1)
+          if [ -z "$PACKAGE_PATH" ]; then
+            echo "No manager package found in /tmp/packages"
+            exit 1
+          fi
+          sudo dpkg -i "${PACKAGE_PATH}" || sudo apt-get install -f -y
+
+      # ── Path B: build from source ─────────────────────────────────────────
+
+      - name: Initialize submodules
+        if: inputs.build_run_id == ''
+        run: git submodule update --init --recursive
+
+      - name: Install compatible CMake
+        if: inputs.build_run_id == ''
+        uses: ./.github/actions/reinstall_cmake
+
+      - name: Build wazuh-manager
+        if: inputs.build_run_id == ''
+        run: |
+          make deps -C src TARGET=manager -j$(nproc)
+          make -C src TARGET=manager -j$(nproc)
+
+      - name: Install wazuh-manager from source
+        if: inputs.build_run_id == ''
+        run: |
+          cat > ./etc/preloaded-vars.conf << 'EOF'
+          USER_LANGUAGE="en"
+          USER_INSTALL_TYPE="manager"
+          USER_DIR="/var/wazuh-manager"
+          USER_ENABLE_AUTHD="n"
+          USER_AUTO_START="n"
+          EOF
+          sudo sh install.sh
+          rm ./etc/preloaded-vars.conf
+
+      # ── Common steps ──────────────────────────────────────────────────────
+
+      - name: Generate SSL certificates
+        run: |
+          sudo systemctl stop wazuh-manager 2>/dev/null || true
+          sudo mkdir -p "$INSTALLATION_DIR/etc/certs"
+          sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
+            -keyout "$INSTALLATION_DIR/etc/certs/root-ca.pem" \
+            -out "$INSTALLATION_DIR/etc/certs/root-ca.pem" \
+            -days 1 -subj "/CN=test" 2>/dev/null
+          sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
+            -keyout "$INSTALLATION_DIR/etc/certs/manager-key.pem" \
+            -out "$INSTALLATION_DIR/etc/certs/manager.pem" \
+            -days 1 -subj "/CN=test" 2>/dev/null
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".github/workflows/.python-version-it"
+          architecture: x64
+
+      - name: Download and install integration tests framework
+        run: |
+          QA_REPO="https://github.com/wazuh/qa-integration-framework.git"
+          VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
+          if git ls-remote --exit-code "${QA_REPO}" "${BRANCH_NAME}" >/dev/null 2>&1; then
+            QA_BRANCH="${BRANCH_NAME}"
+          elif git ls-remote --exit-code "${QA_REPO}" "${BRANCH_BASE}" >/dev/null 2>&1; then
+            QA_BRANCH="${BRANCH_BASE}"
+          elif git ls-remote --exit-code "${QA_REPO}" "${VERSION}" >/dev/null 2>&1; then
+            QA_BRANCH="${VERSION}"
+          else
+            QA_BRANCH="main"
+          fi
+          git clone -b "${QA_BRANCH}" --single-branch "${QA_REPO}"
+          sudo pip install qa-integration-framework/
+          sudo rm -rf qa-integration-framework/
+
+      - name: Run ${{ matrix.name }} integration tests
+        env:
+          PYTEST_EXTRA_ARGS: ${{ matrix.pytest_extra_args }}
+          PYTEST_TIER_ARGS:  ${{ matrix.pytest_tier_args }}
+          PYTEST_TARGET:     ${{ matrix.pytest_target }}
+        run: |
+          mkdir -p /tmp/wazuh-logs
+          sudo tail -F "$INSTALLATION_DIR/logs/api.log" 2>/dev/null | tee -a /tmp/wazuh-logs/api.log >/dev/null &
+          sudo tail -F "$INSTALLATION_DIR/logs/wazuh-manager.log" 2>/dev/null | tee -a /tmp/wazuh-logs/wazuh-manager.log >/dev/null &
+          sudo tail -F "$INSTALLATION_DIR/logs/cluster.log" 2>/dev/null | tee -a /tmp/wazuh-logs/cluster.log >/dev/null &
+          cd tests/integration
+          set +e
+          sudo WAZUH_PATH="$INSTALLATION_DIR" GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" \
+            python -m pytest ${PYTEST_EXTRA_ARGS} ${PYTEST_TIER_ARGS} ${PYTEST_TARGET} \
+            --html=results.html --self-contained-html
+          EXIT_CODE=$?
+          set -e
+          if [ $EXIT_CODE -eq 5 ]; then
+            echo "No tests were selected for this configuration. Skipping."
+            exit 0
+          fi
+          exit $EXIT_CODE
+
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          sudo journalctl -u wazuh-manager | tee /tmp/wazuh-logs/wazuh-manager.service.log >/dev/null || true
+          sudo chown -R "$(whoami):$(whoami)" /tmp/wazuh-logs || true
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}-test-results-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ./tests/integration/results.html
+          retention-days: 7
+
+      - name: Upload wazuh logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-logs-${{ matrix.name }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: /tmp/wazuh-logs
+          retention-days: 7
+          if-no-files-found: warn
