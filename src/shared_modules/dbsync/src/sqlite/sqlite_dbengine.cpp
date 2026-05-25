@@ -454,6 +454,10 @@ void SQLiteDBEngine::selectData(const std::string& table,
                 {
                     stmt->bind(paramIndex, param.at("value").get<int64_t>());
                 }
+                else
+                {
+                    throw dbengine_error { INVALID_DATA_BIND };
+                }
 
                 ++paramIndex;
             }
