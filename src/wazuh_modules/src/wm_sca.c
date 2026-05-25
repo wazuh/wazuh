@@ -509,10 +509,10 @@ void * wm_sca_main(wm_sca_t * data) {
 #endif
     // If module is disabled, exit
     if (data->enabled) {
-        mdebug1("SCA module enabled.");
+        mdebug1("Module enabled.");
     } else {
         wm_handle_sca_disable_and_notify_data_clean();
-        mdebug1("SCA module disabled. Exiting.");
+        mdebug1("Module disabled. Exiting.");
         pthread_exit(NULL);
     }
 
@@ -612,7 +612,7 @@ void * wm_sca_main(wm_sca_t * data) {
         sca_set_sync_limit_ptr(sync_limit);
     }
 
-    mdebug1("Starting SCA module...");
+    mdebug1("Starting module.");
 
     wm_sca_start(data);
 

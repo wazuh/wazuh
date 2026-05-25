@@ -1891,8 +1891,6 @@ void Syscollector::scan()
 
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
 {
-    m_logFunction(LOG_INFO, "Module started.");
-
     if (m_scanOnStart)
     {
         scan();

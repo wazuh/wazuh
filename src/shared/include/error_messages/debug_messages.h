@@ -194,7 +194,6 @@
 /* Modules messages */
 #define WM_UPGRADE_RESULT_AGENT_INFO         "(8151): Agent Information obtained: '%s'"
 #define WM_UPGRADE_MODULE_DISABLED           "(8152): Module Agent Upgrade disabled. Exiting..."
-#define WM_UPGRADE_MODULE_STARTED            "(8153): Module Agent Upgrade started."
 #define WM_UPGRADE_MODULE_FINISHED           "(8154): Module Agent Upgrade finished."
 #define WM_UPGRADE_INCOMMING_MESSAGE         "(8155): Incomming message: '%s'"
 #define WM_UPGRADE_RESPONSE_MESSAGE          "(8156): Response message: '%s'"
@@ -215,7 +214,6 @@
 #define WM_UPGRADE_UNSUPPORTED_UPGRADE       "(8171): Agent '%d' with unsupported platform '%s' won't be upgraded without a default package."
 #define WM_UPGRADE_UNSUPPORTED_DEFAULT       "(8172): Agent '%d' with unsupported platform '%s' will be upgraded with package '%s'"
 
-#define MOD_TASK_START                      "(8200): Module Task Manager started."
 #define MOD_TASK_FINISH                     "(8201): Module Task Manager finished."
 #define MOD_TASK_DISABLED                   "(8202): Module disabled. Exiting..."
 #define MOD_TASK_EMPTY_MESSAGE              "(8203): Empty message from local client."
