@@ -10,7 +10,7 @@ Starting with Wazuh 5.0, these backend mail forwarding capabilities have been re
 
 The following table maps each `ossec.conf` element from Wazuh 4.x to the corresponding feature in the Wazuh 5.x Dashboard. Entries use the form `section.element` - for example, `global.smtp_server` refers to `<global><smtp_server>` in your `ossec.conf`.
 
-> See the [ossec.conf reference](#ossecconf-reference) below for the full XML context of each section.
+> See the [ossec.conf reference](#wazuh-4x-ossecconf-reference) below for the full XML context of each section.
 
 ### Email alerts mapping
 
