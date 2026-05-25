@@ -380,7 +380,7 @@ bool connect_server(int server_id, bool verbose)
     }
 
     if (verbose) {
-        mdebug1("Trying to connect to server ([%s]:%d/%s).",
+        minfo("Trying to connect to server ([%s]:%d/%s).",
             agt->server[server_id].rip,
             agt->server[server_id].port,
             "tcp");

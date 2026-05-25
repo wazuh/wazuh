@@ -72,9 +72,9 @@ def wait_for_agent_gone():
 # limits_received to flip to true (src/client-agent/src/start_agent.c:142).
 _SCA_STARTUP_HIGHLIGHTS = {
     'SCA tagged lines': r':sca\b',
-    'SCA module enabled (DEBUG)': r'SCA module enabled',
-    'SCA module running (INFO)': r'SCA module running',
-    'Starting SCA module': r'Starting SCA module',
+    'SCA module enabled (DEBUG)': r'wazuh-modulesd:sca:.*Module enabled',
+    'SCA module running (DEBUG)': r'SCA module running',
+    'Starting SCA module': r'wazuh-modulesd:sca:.*Starting module',
     'agcom_dispatch failure': r'Failed to query agentd via agcom_dispatch',
     'AGCOM limits not configured': r'AGCOM Module limits not configured',
     'AGCOM err response': r'Agentd returned error',
@@ -85,6 +85,75 @@ _SCA_STARTUP_HIGHLIGHTS = {
     'Ruleset folder open fail': r'Could not open the default SCA ruleset folder',
     'Policy scan started': r'Starting Policy checks evaluation',
 }
+
+
+def _collect_service_diagnostics(log_path: str, highlight_patterns: dict) -> dict:
+    """Gather service state, processes and log highlights for failure messages.
+
+    Replacement for ``services.collect_service_diagnostics`` (which is not
+    exported by the installed ``wazuh_testing`` package). Kept local to avoid
+    swallowing the real timeout error with an ``AttributeError``.
+    """
+    diag: dict = {}
+
+    if sys.platform == WINDOWS:
+        try:
+            proc = subprocess.run(
+                ['sc', 'query', 'WazuhSvc'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10,
+            )
+            raw = proc.stdout.decode(errors='ignore')
+            state_match = re.search(r'STATE\s*:\s*\d+\s*(\S+)', raw)
+            diag['service_state'] = state_match.group(1) if state_match else 'UNKNOWN'
+            diag['service_raw'] = raw
+        except Exception as exc:
+            diag['service_state'] = 'UNKNOWN'
+            diag['service_raw'] = f"sc query failed: {exc}"
+    else:
+        try:
+            from wazuh_testing.constants.paths.binaries import WAZUH_CONTROL_PATH
+            proc = subprocess.run(
+                [WAZUH_CONTROL_PATH, 'status'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10,
+            )
+            raw = proc.stdout.decode(errors='ignore')
+            lines = [l for l in raw.splitlines() if l.strip()]
+            diag['service_state'] = (
+                'RUNNING' if lines and all('is running' in l for l in lines)
+                else 'STOPPED/PARTIAL'
+            )
+            diag['service_raw'] = raw
+        except Exception as exc:
+            diag['service_state'] = 'UNKNOWN'
+            diag['service_raw'] = f"wazuh-control status failed: {exc}"
+
+    procs = sorted({(p.info.get('name') or '') for p in psutil.process_iter(attrs=['name'])
+                    if (p.info.get('name') or '').lower().startswith('wazuh')})
+    diag['processes'] = ', '.join(procs) if procs else '(none)'
+
+    try:
+        with open(log_path, 'r', errors='ignore') as f:
+            log_lines = f.readlines()
+    except Exception:
+        log_lines = []
+
+    highlights: dict = {}
+    for label, pattern in (highlight_patterns or {}).items():
+        try:
+            regex = re.compile(pattern)
+        except re.error:
+            highlights[label] = {'count': 0, 'first': '', 'last': ''}
+            continue
+        matches = [line.strip() for line in log_lines if regex.search(line)]
+        highlights[label] = {
+            'count': len(matches),
+            'first': matches[0] if matches else '',
+            'last': matches[-1] if matches else '',
+        }
+    diag['highlights'] = highlights
+
+    diag['log_tail'] = ''.join(log_lines[-50:])
+    return diag
 
 
 def _wait_service_running(timeout: int) -> None:
@@ -220,13 +289,13 @@ def wait_for_sca_enabled():
           watching a file nobody is writing to.
 
       Phase 2 — SCA_ENABLED (DEBUG):
-          wm_sca_main emits "SCA module enabled." at the very start, BEFORE
+          wm_sca_main emits "Module enabled." at the very start, BEFORE
           loading the SCA shared object, resolving symbols, registering
           callbacks or doing any C++ setup. If this log never appears, the
           native wm_sca entrypoint is not being reached — the problem is
           upstream of the SCA module itself (config load, module registry).
 
-      Phase 3 — SCA_RUNNING (INFO):
+      Phase 3 — SCA_RUNNING (DEBUG):
           SecurityConfigurationAssessment::Run() emits "SCA module running."
           once the C++ implementation has finished initialising (sync manager,
           policy loader, scan loop). If Phase 2 passes but Phase 3 times out,
@@ -251,7 +320,7 @@ def wait_for_sca_enabled():
     try:
         _wait_service_running(service_timeout)
     except TimeoutError:
-        diag = services.collect_service_diagnostics(
+        diag = _collect_service_diagnostics(
             log_path=WAZUH_LOG_PATH, highlight_patterns=_SCA_STARTUP_HIGHLIGHTS)
         raise AssertionError(
             f"[Phase 1] Wazuh service did not reach RUNNING within {service_timeout}s.\n"
@@ -267,7 +336,7 @@ def wait_for_sca_enabled():
         only_new_events=False
     )
     if not log_monitor.callback_result:
-        diag = services.collect_service_diagnostics(
+        diag = _collect_service_diagnostics(
             log_path=WAZUH_LOG_PATH, highlight_patterns=_SCA_STARTUP_HIGHLIGHTS)
         raise AssertionError(
             f"[Phase 2] SCA module did not emit '{patterns.SCA_ENABLED}' within {enabled_timeout}s. "
@@ -283,7 +352,7 @@ def wait_for_sca_enabled():
         only_new_events=False
     )
     if not log_monitor.callback_result:
-        diag = services.collect_service_diagnostics(
+        diag = _collect_service_diagnostics(
             log_path=WAZUH_LOG_PATH, highlight_patterns=_SCA_STARTUP_HIGHLIGHTS)
         raise AssertionError(
             f"[Phase 3] SCA module did not emit '{patterns.SCA_RUNNING}' within {running_timeout}s. "
@@ -305,7 +374,7 @@ def wait_for_sca_enabled():
         only_new_events=False
     )
     if not log_monitor.callback_result:
-        diag = services.collect_service_diagnostics(
+        diag = _collect_service_diagnostics(
             log_path=WAZUH_LOG_PATH, highlight_patterns=_SCA_STARTUP_HIGHLIGHTS)
         raise AssertionError(
             f"[Phase 4] SCA scan did not start within {scan_start_timeout}s. "

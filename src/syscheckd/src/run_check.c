@@ -609,7 +609,7 @@ void start_daemon()
         return;
     }
 
-    mdebug1(FIM_DAEMON_STARTED);
+    minfo(FIM_DAEMON_STARTED);
 
     if (syscheck.file_limit_enabled) {
         mdebug2(FIM_FILE_LIMIT_VALUE, syscheck.file_entry_limit);
@@ -626,7 +626,7 @@ void start_daemon()
 #endif
 
     // Create File integrity monitoring base-line
-    mdebug1(FIM_FREQUENCY_TIME, syscheck.time);
+    minfo(FIM_FREQUENCY_TIME, syscheck.time);
     fim_scan();
 
 #ifndef WIN32

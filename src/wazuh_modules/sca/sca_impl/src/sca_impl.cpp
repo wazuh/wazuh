@@ -87,7 +87,7 @@ SecurityConfigurationAssessment::SecurityConfigurationAssessment(std::string dbP
         LoggingHelper::getInstance().log(level, message);
     });
 
-    LoggingHelper::getInstance().log(LOG_INFO, "SCA initialized.");
+    LoggingHelper::getInstance().log(LOG_DEBUG, "SCA initialized.");
 }
 
 SecurityConfigurationAssessment::~SecurityConfigurationAssessment()
@@ -128,7 +128,7 @@ void SecurityConfigurationAssessment::Run()
         m_spSyncProtocol->reset();
     }
 
-    LoggingHelper::getInstance().log(LOG_INFO, "SCA module running.");
+    LoggingHelper::getInstance().log(LOG_DEBUG, "SCA module running.");
 
     if (m_syncManager)
     {
@@ -205,7 +205,7 @@ void SecurityConfigurationAssessment::Run()
 
         if (firstScan && m_scanOnStart)
         {
-            LoggingHelper::getInstance().log(LOG_INFO, "SCA module scan on start.");
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Module scan on start.");
         }
 
         // Mark scan as in progress
@@ -274,7 +274,7 @@ void SecurityConfigurationAssessment::Run()
                 checkResult.policyId, checkResult.checkId, checkResult.result, checkResult.reason);
         };
 
-        LoggingHelper::getInstance().log(LOG_INFO, "SCA scan started.");
+        LoggingHelper::getInstance().log(LOG_INFO, "Scan started.");
 
         for (auto& policy : m_policies)
         {
@@ -292,7 +292,7 @@ void SecurityConfigurationAssessment::Run()
 
         firstScan = false;
 
-        LoggingHelper::getInstance().log(LOG_INFO, "SCA scan ended.");
+        LoggingHelper::getInstance().log(LOG_INFO, "Scan ended.");
 
         // Mark scan as complete
         setScanInProgress(false);
