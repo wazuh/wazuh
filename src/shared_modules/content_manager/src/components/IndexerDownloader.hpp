@@ -454,7 +454,7 @@ private:
                 {
                     syncConnector.deletePointInTime(*p);
                 }
-                catch (const IndexerConnectorException& e)
+                catch (const std::exception& e)
                 {
                     logWarn(WM_CONTENTUPDATER, "IndexerDownloader: Failed to delete PIT: %s", e.what());
                 }
@@ -543,7 +543,7 @@ private:
                 {
                     syncConnector.deletePointInTime(*p);
                 }
-                catch (const IndexerConnectorException& e)
+                catch (const std::exception& e)
                 {
                     logWarn(WM_CONTENTUPDATER, "IndexerDownloader: Failed to delete PIT: %s", e.what());
                 }
