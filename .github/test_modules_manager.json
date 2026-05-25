@@ -7,6 +7,7 @@
       "tiers": ["0 1"],
       "timeout_minutes": 60,
       "_comment_tiers": "Each element produces one matrix row; space-separated values become individual --tier flags",
+      "_comment_rbac": "rbac tests live under test_api/test_rbac/ — covered as a subset of test_api/. framework/wazuh/rbac/** is listed here so rbac-only changes also trigger this suite.",
       "paths": [
         ".github/workflows/5_builderpackage_manager-multiples.yml",
         ".github/workflows/5_testintegration_manager.yml",

@@ -106,7 +106,7 @@ jobs:
         id: set-matrix
         env:
           EVENT_NAME: ${{ github.event_name }}
-          RUN_ALL: ${{ inputs.run_all || 'true' }}
+          RUN_ALL: ${{ inputs.run_all }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         shell: python
@@ -125,6 +125,8 @@ jobs:
           base_sha   = os.environ.get("BASE_SHA",   "").strip()
           head_sha   = os.environ.get("HEAD_SHA",   "").strip()
 
+          # GitHub Actions rejects an empty matrix, so use a sentinel entry.
+          # Downstream jobs are gated on any_matched == "true", so this entry never runs.
           none_matrix = {"include": [{
               "name": "none", "suite_type": "none",
               "pytest_target": "", "pytest_extra_args": "",
@@ -175,9 +177,15 @@ jobs:
                       for tier in mod.get("tiers", ["0 1"]):
                           matrix_entries.append(build_entry(mod, tier))
           else:
-              print("::warning::No base/head SHA available and not a run_all dispatch. Skipping detection.")
+              # Push to main (merge) or unknown trigger: no PR SHAs available, run everything.
+              print("::warning::No base/head SHA available and not a run_all dispatch — running all modules.")
               matrix_entries = []
-              inventory_sync_matched = False
+              inventory_sync_matched = True
+              for mod in config["modules"]:
+                  if mod["suite_type"] == "inventory_sync":
+                      continue
+                  for tier in mod.get("tiers", ["0 1"]):
+                      matrix_entries.append(build_entry(mod, tier))
 
           matrix      = {"include": matrix_entries} if matrix_entries else none_matrix
           any_matched = "true" if matrix_entries else "false"

@@ -46,8 +46,9 @@ on:
         required: false
         default: 'main'
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}-${{ inputs.module_name || inputs.modules || 'all' }}
+  cancel-in-progress: true
 
 jobs:
   expand:
@@ -57,13 +58,11 @@ jobs:
       matrix: ${{ steps.build.outputs.matrix }}
     steps:
       - name: Checkout repository
-        if: github.event_name == 'workflow_dispatch'
         uses: actions/checkout@v4
 
       - name: Build matrix
         id: build
         env:
-          EVENT_NAME:        ${{ github.event_name }}
           MODULE_NAME:       ${{ inputs.module_name }}
           PYTEST_TARGET:     ${{ inputs.pytest_target }}
           PYTEST_EXTRA_ARGS: ${{ inputs.pytest_extra_args }}
@@ -74,7 +73,6 @@ jobs:
         run: |
           import json, os, sys
 
-          event_name    = os.environ.get("EVENT_NAME",        "").strip()
           module_name   = os.environ.get("MODULE_NAME",       "").strip()
           pytest_target = os.environ.get("PYTEST_TARGET",     "").strip()
           pytest_extra  = os.environ.get("PYTEST_EXTRA_ARGS", "").strip()
@@ -82,7 +80,8 @@ jobs:
           timeout       = int(os.environ.get("TIMEOUT_MINUTES", "120") or "120")
           modules_input = os.environ.get("MODULES_INPUT",    "all").strip()
 
-          if event_name == "workflow_call":
+          if module_name:
+              # Called from builder via workflow_call — inputs already resolved
               entries = [{
                   "name":              module_name,
                   "pytest_target":     pytest_target,
@@ -165,6 +164,10 @@ jobs:
             exit 1
           fi
           sudo dpkg -i "${PACKAGE_PATH}" || sudo apt-get install -f -y
+          if ! dpkg -l wazuh-manager | grep -q '^ii'; then
+            echo "wazuh-manager package installation failed"
+            exit 1
+          fi
 
       # ── Path B: build from source ─────────────────────────────────────────
 
@@ -210,6 +213,15 @@ jobs:
             -out "$INSTALLATION_DIR/etc/certs/manager.pem" \
             -days 1 -subj "/CN=test" 2>/dev/null
 
+      - name: Start wazuh-manager and verify
+        run: |
+          sudo systemctl start wazuh-manager
+          sleep 10
+          if ! systemctl is-active --quiet wazuh-manager; then
+            sudo systemctl status wazuh-manager --no-pager
+            exit 1
+          fi
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -240,9 +252,9 @@ jobs:
           PYTEST_TARGET:     ${{ matrix.pytest_target }}
         run: |
           mkdir -p /tmp/wazuh-logs
-          sudo tail -F "$INSTALLATION_DIR/logs/api.log" 2>/dev/null | tee -a /tmp/wazuh-logs/api.log >/dev/null &
-          sudo tail -F "$INSTALLATION_DIR/logs/wazuh-manager.log" 2>/dev/null | tee -a /tmp/wazuh-logs/wazuh-manager.log >/dev/null &
-          sudo tail -F "$INSTALLATION_DIR/logs/cluster.log" 2>/dev/null | tee -a /tmp/wazuh-logs/cluster.log >/dev/null &
+          sudo tail -F "$INSTALLATION_DIR/logs/api.log" >> /tmp/wazuh-logs/api.log 2>/dev/null &
+          sudo tail -F "$INSTALLATION_DIR/logs/wazuh-manager.log" >> /tmp/wazuh-logs/wazuh-manager.log 2>/dev/null &
+          sudo tail -F "$INSTALLATION_DIR/logs/cluster.log" >> /tmp/wazuh-logs/cluster.log 2>/dev/null &
           cd tests/integration
           set +e
           sudo WAZUH_PATH="$INSTALLATION_DIR" GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" \
@@ -259,7 +271,7 @@ jobs:
       - name: Collect logs on failure
         if: failure()
         run: |
-          sudo journalctl -u wazuh-manager | tee /tmp/wazuh-logs/wazuh-manager.service.log >/dev/null || true
+          sudo journalctl -u wazuh-manager > /tmp/wazuh-logs/wazuh-manager.service.log || true
           sudo chown -R "$(whoami):$(whoami)" /tmp/wazuh-logs || true
 
       - name: Upload test results
