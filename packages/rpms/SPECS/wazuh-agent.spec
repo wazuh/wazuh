@@ -782,6 +782,8 @@ rm -fr %{buildroot}
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-9-1.html
 * Thu Sep 05 2024 support <info@wazuh.com> - 4.9.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-9-0.html
+* Thu Aug 22 2024 support <info@wazuh.com> - 4.8.2
+- More info: https://documentation.wazuh.com/current/release-notes/release-4-8-2.html
 * Wed Jul 10 2024 support <info@wazuh.com> - 4.8.1
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-8-1.html
 * Wed Jun 12 2024 support <info@wazuh.com> - 4.8.0
