@@ -3041,9 +3041,9 @@ checks:
       subtechnique: ["T1090.001", "T1090.002", "T1557.001"]
     condition: all
     rules:
-      - 'c:iptables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*0.0.0.0/0\.*0.0.0.0/0'
-      - 'c:iptables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*127.0.0.0/8\.*0.0.0.0/0'
-      - 'c:iptables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*0.0.0.0/0\.*0.0.0.0/0'
+      - 'c:iptables -L INPUT -v -n -> r:.*ACCEPT.*all.*lo.*\*.*0\.0\.0\.0/0.*0\.0\.0\.0/0'
+      - 'c:iptables -L INPUT -v -n -> r:.*DROP.*all.*\*.*\*.*127\.0\.0\.0/8.*0\.0\.0\.0/0'
+      - 'c:iptables -L OUTPUT -v -n -> r:.*ACCEPT.*all.*\*.*lo.*0\.0\.0\.0/0.*0\.0\.0\.0/0'
 
   # 3.5.3.2.2 Ensure iptables outbound and established connections are configured. (Manual) - Not Implemented
   # 3.5.3.2.3 Ensure iptables rules exist for all open ports. (Automated) - Not Implemented
@@ -3130,9 +3130,9 @@ checks:
       subtechnique: ["T1090.001", "T1090.002", "T1557.001"]
     condition: all
     rules:
-      - 'c:ip6tables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*::/0\.*::/0'
-      - 'c:ip6tables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*::1\.*::/0'
-      - 'c:ip6tables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*::/0\.*::/0'
+      - 'c:ip6tables -L INPUT -v -n -> r:.*ACCEPT.*all.*lo.*\*.*::/0.*::/0'
+      - 'c:ip6tables -L INPUT -v -n -> r:.*DROP.*all.*\*.*\*.*::1.*::/0'
+      - 'c:ip6tables -L OUTPUT -v -n -> r:.*ACCEPT.*all.*\*.*lo.*::/0.*::/0'
 
   # 3.5.3.3.2 Ensure ip6tables outbound and established connections are configured. (Manual) - Not Implemented
   # 3.5.3.3.3 Ensure ip6tables firewall rules exist for all open ports. (Automated) - Not Implemented
@@ -3868,10 +3868,10 @@ checks:
       subtechnique: ["T1562.002", "T1070.001"]
     condition: all
     rules:
-      - 'f:/etc/rsyslog.conf -> !r:# && r:^*.* @@\.+'
-      - 'f:/etc/rsyslog.conf -> !r:# && r:^*.* action && r:target="'
-      - 'd:/etc/rsyslog.d/ -> r:*.conf -> !r:# && r:^*.* @@\.+'
-      - 'd:/etc/rsyslog.d/ -> r:*.conf -> !r:# && r:^*.* action && r:target="'
+      - 'f:/etc/rsyslog.conf -> !r:# && r:^\*\.\* @@.+'
+      - 'f:/etc/rsyslog.conf -> !r:# && r:^\*\.\* action && r:target="'
+      - 'd:/etc/rsyslog.d/ -> r:.*\.conf -> !r:# && r:^\*\.\* @@.+'
+      - 'd:/etc/rsyslog.d/ -> r:.*\.conf -> !r:# && r:^\*\.\* action && r:target="'
 
   # 4.2.1.6 Ensure remote rsyslog messages are only accepted on designated log hosts. (Manual)
   - id: 4640
