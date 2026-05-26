@@ -53,6 +53,12 @@ pthread_mutex_t sys_stop_mutex = PTHREAD_MUTEX_INITIALIZER;
 bool need_shutdown_wait = false;
 static pthread_t sys_main_thread;
 static bool sys_main_thread_initialized = false;
+#ifndef WIN32
+static pthread_t sync_worker_thread;
+#else
+static HANDLE sync_worker_thread = NULL;
+#endif
+static bool sync_worker_thread_initialized = false;
 pthread_mutex_t sys_reconnect_mutex = PTHREAD_MUTEX_INITIALIZER;
 bool shutdown_process_started = false;
 
@@ -74,6 +80,7 @@ void* syscollector_module = NULL;
 syscollector_init_func syscollector_init_ptr = NULL;
 syscollector_start_func syscollector_start_ptr = NULL;
 syscollector_stop_func syscollector_stop_ptr = NULL;
+syscollector_release_resources_func syscollector_release_resources_ptr = NULL;
 
 // Sync protocol function pointers
 syscollector_init_sync_func syscollector_init_sync_ptr = NULL;
@@ -607,6 +614,7 @@ void* wm_sys_main(wm_sys_t* sys)
         syscollector_init_ptr = so_get_function_sym(syscollector_module, "syscollector_init");
         syscollector_start_ptr = so_get_function_sym(syscollector_module, "syscollector_start");
         syscollector_stop_ptr = so_get_function_sym(syscollector_module, "syscollector_stop");
+        syscollector_release_resources_ptr = so_get_function_sym(syscollector_module, "syscollector_release_resources");
 
         // Get sync protocol function pointers
         syscollector_init_sync_ptr = so_get_function_sym(syscollector_module, "syscollector_init_sync");
@@ -705,15 +713,27 @@ void* wm_sys_main(wm_sys_t* sys)
             syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps,
                                        integrity_interval);
 #ifndef WIN32
-            // Launch inventory synchronization thread
-            sync_module_running = 1;
-            w_create_thread(wm_sync_module, NULL);
+            // Launch inventory synchronization thread as joinable so we can wait for it
+            // before releasing resources on shutdown
+            sync_worker_thread_initialized = (CreateThreadJoinable(&sync_worker_thread, wm_sync_module, NULL) == 0);
+            if (sync_worker_thread_initialized)
+            {
+                sync_module_running = 1;
+            }
+            else
+            {
+                merror(THREAD_ERROR);
+            }
 #else
-            sync_module_running = 1;
-
-            if (CreateThread(NULL, 0, wm_sync_module, NULL, 0, NULL) == NULL)
+            sync_worker_thread = CreateThread(NULL, 0, wm_sync_module, NULL, 0, NULL);
+            if (sync_worker_thread == NULL)
             {
                 mterror(WM_SYS_LOGTAG, THREAD_ERROR);
+            }
+            else
+            {
+                sync_worker_thread_initialized = true;
+                sync_module_running = 1;
             }
 
 #endif
@@ -742,12 +762,42 @@ void* wm_sys_main(wm_sys_t* sys)
         queue_fd = 0;
     }
 
+    // Ensure the sync worker exits even if syscollector_start_ptr returned early
+    // (e.g., all collectors disabled) without wm_sys_stop() being called first.
+    sync_module_running = 0;
+
+    // Wait for the inventory sync worker thread to finish before signaling that
+    // resources can be released.
+#ifndef WIN32
+    if (sync_worker_thread_initialized)
+    {
+        sync_worker_thread_initialized = false;
+        pthread_join(sync_worker_thread, NULL);
+    }
+#else
+    if (sync_worker_thread_initialized && sync_worker_thread != NULL)
+    {
+        sync_worker_thread_initialized = false;
+        WaitForSingleObject(sync_worker_thread, INFINITE);
+        CloseHandle(sync_worker_thread);
+        sync_worker_thread = NULL;
+    }
+#endif
+
     mtinfo(WM_SYS_LOGTAG, "Module finished.");
     w_mutex_lock(&sys_stop_mutex);
     need_shutdown_wait = false;
     sys_main_thread_initialized = false;
     w_cond_signal(&sys_stop_condition);
     w_mutex_unlock(&sys_stop_mutex);
+
+    // Safe to release resources now that the sync worker has exited.
+    if (syscollector_release_resources_ptr)
+    {
+        syscollector_release_resources_ptr();
+        syscollector_release_resources_ptr = NULL;
+    }
+
     return 0;
 }
 

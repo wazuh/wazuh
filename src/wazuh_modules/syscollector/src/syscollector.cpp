@@ -136,7 +136,12 @@ void syscollector_start()
 
 void syscollector_stop()
 {
-    Syscollector::instance().destroy();
+    Syscollector::instance().quiesce();
+}
+
+void syscollector_release_resources()
+{
+    Syscollector::instance().releaseResources();
 }
 
 void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const char* syncDbPathVD, const MQ_Functions* mqFuncs, unsigned int syncEndDelay, unsigned int timeout,

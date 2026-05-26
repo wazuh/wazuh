@@ -85,6 +85,8 @@ class EXPORTED Syscollector final
         void setAgentdQueryFunction(AgentdQueryFunc queryFunc);
 
         void start();
+        void quiesce();
+        void releaseResources();
         void destroy();
 
         // Sync protocol methods

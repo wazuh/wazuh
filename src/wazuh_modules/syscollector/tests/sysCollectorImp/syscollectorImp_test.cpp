@@ -4900,11 +4900,12 @@ TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
     // Expect NO persist callback for invalid hardware data (will be rejected by mock validator)
     EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(0);
 
-    // Capture log messages to verify validation errors
-    std::vector<std::string> loggedMessages;
-    auto customLogFunction = [&loggedMessages](modules_log_level_t, const std::string & message)
+    // Capture log messages to verify validation errors.
+    // Keep data on heap because Syscollector may still invoke the logger during fixture TearDown.
+    auto loggedMessages = std::make_shared<std::vector<std::string>>();
+    auto customLogFunction = [loggedMessages](modules_log_level_t, const std::string & message)
     {
-        loggedMessages.push_back(message);
+        loggedMessages->push_back(message);
     };
 
     // Create mock validator that will reject all validations
@@ -4974,13 +4975,13 @@ TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
     SchemaValidator::SchemaValidatorFactory::getInstance().reset();
 
     // Verify that validation errors were logged
-    EXPECT_FALSE(loggedMessages.empty());
+    ASSERT_FALSE(loggedMessages->empty());
 
     bool foundValidationError = false;
     bool foundDiscardMessage = false;
     bool foundDeferredDeletion = false;
 
-    for (const auto& msg : loggedMessages)
+    for (const auto& msg : *loggedMessages)
     {
         if (msg.find("Schema validation failed") != std::string::npos)
         {
