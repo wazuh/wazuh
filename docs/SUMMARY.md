@@ -111,7 +111,8 @@
 - [Upgrade](ref/upgrade.md)
 - [Uninstall](ref/uninstall.md)
 - [Back Up and Restore](ref/backup-restore.md)
-- [Security](ref/security.md)
+- [Security](ref/security/README.md)
+  - [Cluster Security Model](ref/security/cluster-model.md)
 - [Performance](ref/performance.md)
 - [Glossary](ref/glossary.md)
 
