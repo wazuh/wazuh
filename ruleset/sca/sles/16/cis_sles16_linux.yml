@@ -1866,7 +1866,7 @@ checks:
     rules:
       - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
       - 'f:/etc/sysctl.conf -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
-      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
+      - 'd:/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
 
   # 3.3.6 Ensure bogus ICMP responses are ignored. (Automated)
   - id: 40571
@@ -1892,7 +1892,7 @@ checks:
     rules:
       - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
       - 'f:/etc/sysctl.conf -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
-      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
+      - 'd:/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
 
   # 3.3.7 Ensure Reverse Path Filtering is enabled. (Automated) - Not Implemented
 
@@ -1920,7 +1920,7 @@ checks:
     rules:
       - 'c:sysctl net.ipv4.tcp_syncookies -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
       - 'f:/etc/sysctl.conf -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
-      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
+      - 'd:/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
 
   # 3.3.9 Ensure IPv6 router advertisements are not accepted. (Automated) - Not Implemented
 
