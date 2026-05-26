@@ -154,9 +154,13 @@ def test_WazuhQueue_send_msg_to_agent(mock_send, mock_conn, msg, agent_id, msg_t
     ('force_reconnect', None, None, 1014),
 ])
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
-@patch('wazuh.core.wazuh_queue.WazuhQueue._send', side_effect=Exception)
+@patch('wazuh.core.wazuh_queue.WazuhQueue._send', side_effect=OSError)
 def test_WazuhQueue_send_msg_to_agent_ko(mock_send, mock_conn, msg, agent_id, msg_type, expected_exception):
     """Test WazuhQueue.send_msg_to_agent function exceptions.
+
+    The send path narrows its handler to ``OSError`` (covering ``socket.error``,
+    which is an alias for ``OSError`` in Python 3), so the side effect used here
+    must be an ``OSError`` for the wrap into ``WazuhError(1014)`` to apply.
 
     Parameters
     ----------
@@ -174,5 +178,25 @@ def test_WazuhQueue_send_msg_to_agent_ko(mock_send, mock_conn, msg, agent_id, ms
 
     with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
         queue.send_msg_to_agent(msg, agent_id, msg_type)
+
+    mock_conn.assert_called_once_with('test_path')
+
+
+@pytest.mark.parametrize('propagated_exception', [KeyboardInterrupt, SystemExit, MemoryError])
+@patch('wazuh.core.wazuh_queue.socket.socket.connect')
+def test_WazuhQueue_send_msg_to_agent_propagates_non_oserror(mock_conn, propagated_exception):
+    """Regression test for #36149.
+
+    The previous bare ``except`` in ``WazuhQueue.send_msg_to_agent`` swallowed
+    ``KeyboardInterrupt``, ``SystemExit`` and ``MemoryError`` and re-raised them
+    as ``WazuhError(1014)``. After narrowing the handler to ``except OSError``,
+    these exceptions must propagate unchanged so controlled shutdowns and OOM
+    signals reach the calling code.
+    """
+    queue = WazuhQueue('test_path')
+
+    with patch('wazuh.core.wazuh_queue.WazuhQueue._send', side_effect=propagated_exception):
+        with pytest.raises(propagated_exception):
+            queue.send_msg_to_agent(WazuhQueue.HC_FORCE_RECONNECT, None, None)
 
     mock_conn.assert_called_once_with('test_path')
