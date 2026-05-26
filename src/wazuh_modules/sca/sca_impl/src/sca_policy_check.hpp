@@ -52,7 +52,7 @@ class IRuleEvaluator
 
         virtual const PolicyEvaluationContext& GetContext() const = 0;
 
-        virtual std::string GetInvalidReason() const = 0;
+        virtual std::string GetUnresolvedReason() const = 0;
 };
 
 class RuleEvaluator : public IRuleEvaluator
@@ -62,15 +62,15 @@ class RuleEvaluator : public IRuleEvaluator
 
         const PolicyEvaluationContext& GetContext() const override;
 
-        std::string GetInvalidReason() const override
+        std::string GetUnresolvedReason() const override
         {
-            return m_lastInvalidReason;
+            return m_lastUnresolvedReason;
         }
 
     protected:
         std::unique_ptr<IFileSystemWrapper> m_fileSystemWrapper = nullptr;
         PolicyEvaluationContext m_ctx = {};
-        std::string m_lastInvalidReason;
+        std::string m_lastUnresolvedReason;
 };
 
 class FileRuleEvaluator : public RuleEvaluator

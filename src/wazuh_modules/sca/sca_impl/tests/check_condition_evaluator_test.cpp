@@ -132,5 +132,5 @@ TEST(CheckConditionEvaluatorTest, NotRunSurfacesAsCheckResultNotRun)
     evaluator.AddResult(RuleEvaluationResult(RuleResult::Found));
     evaluator.AddResult(RuleEvaluationResult(RuleResult::NotRun, "Command timed out after 30 seconds: sleep 60"));
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::NotRun);
-    EXPECT_NE(evaluator.GetInvalidReason().find("timed out"), std::string::npos);
+    EXPECT_NE(evaluator.GetUnresolvedReason().find("timed out"), std::string::npos);
 }

@@ -47,14 +47,14 @@ void SCAPolicy::Scan(
                 return;
             }
 
-            resultEvaluator.AddResult(RuleEvaluationResult(rule->Evaluate(), rule->GetInvalidReason()));
+            resultEvaluator.AddResult(RuleEvaluationResult(rule->Evaluate(), rule->GetUnresolvedReason()));
         }
 
         requirementsOk = resultEvaluator.Result();
 
         if (requirementsOk == sca::CheckResult::NotRun)
         {
-            requirementsReason = resultEvaluator.GetInvalidReason();
+            requirementsReason = resultEvaluator.GetUnresolvedReason();
         }
 
         LoggingHelper::getInstance().log(LOG_DEBUG, "Policy requirements evaluation completed for policy \"" + m_id + "\", result: " + sca::CheckResultToString(requirementsOk));
@@ -75,12 +75,12 @@ void SCAPolicy::Scan(
                     return;
                 }
 
-                resultEvaluator.AddResult(RuleEvaluationResult(rule->Evaluate(), rule->GetInvalidReason()));
+                resultEvaluator.AddResult(RuleEvaluationResult(rule->Evaluate(), rule->GetUnresolvedReason()));
             }
 
             const auto result = resultEvaluator.Result();
             const auto& reason = (result == sca::CheckResult::NotApplicable || result == sca::CheckResult::NotRun)
-                                 ? resultEvaluator.GetInvalidReason()
+                                 ? resultEvaluator.GetUnresolvedReason()
                                  : std::string{};
 
             // NOLINTBEGIN(bugprone-unchecked-optional-access)

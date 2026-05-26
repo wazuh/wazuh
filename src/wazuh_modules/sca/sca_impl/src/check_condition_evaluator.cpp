@@ -41,12 +41,12 @@ void CheckConditionEvaluator::AddResult(const RuleEvaluationResult& result)
 
         if (!result.reason.empty())
         {
-            if (!m_invalidReason.empty())
+            if (!m_unresolvedReason.empty())
             {
-                m_invalidReason += "\n";
+                m_unresolvedReason += "\n";
             }
 
-            m_invalidReason += result.reason;
+            m_unresolvedReason += result.reason;
         }
     }
 
@@ -116,7 +116,7 @@ sca::CheckResult CheckConditionEvaluator::Result() const
     }
 }
 
-std::string CheckConditionEvaluator::GetInvalidReason() const
+std::string CheckConditionEvaluator::GetUnresolvedReason() const
 {
-    return m_invalidReason;
+    return m_unresolvedReason;
 }
