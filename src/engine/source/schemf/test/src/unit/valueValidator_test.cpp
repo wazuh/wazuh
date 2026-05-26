@@ -302,3 +302,151 @@ TEST(ValueValidatorTest, Incompatible_AlwaysFails)
     ASSERT_TRUE(base::isError(v(json::Json {"\"hello\""})));
     ASSERT_TRUE(base::isError(v(json::Json {"{}"})));
 }
+
+// ---------------------------------------------------------------------------
+// getGeoValidator — all six OpenSearch formats
+// ---------------------------------------------------------------------------
+
+TEST(GeoValidatorTest, Object_LatLon_Valid)
+{
+    auto v = getGeoValidator();
+    EXPECT_FALSE(base::isError(v(json::Json {R"({"lat":40.71,"lon":-74.00})"})));
+}
+
+TEST(GeoValidatorTest, Object_LatLon_LatOutOfRange)
+{
+    auto v = getGeoValidator();
+    EXPECT_TRUE(base::isError(v(json::Json {R"({"lat":91.0,"lon":0.0})"})));
+}
+
+TEST(GeoValidatorTest, Object_LatLon_LonOutOfRange)
+{
+    auto v = getGeoValidator();
+    EXPECT_TRUE(base::isError(v(json::Json {R"({"lat":0.0,"lon":181.0})"})));
+}
+
+TEST(GeoValidatorTest, Object_GeoJson_Valid)
+{
+    auto v = getGeoValidator();
+    EXPECT_FALSE(base::isError(v(json::Json {R"({"type":"Point","coordinates":[-74.00,40.71]})"})));
+}
+
+TEST(GeoValidatorTest, Object_GeoJson_WrongType)
+{
+    auto v = getGeoValidator();
+    EXPECT_TRUE(base::isError(v(json::Json {R"({"type":"LineString","coordinates":[-74.00,40.71]})"})));
+}
+
+TEST(GeoValidatorTest, Object_Invalid)
+{
+    auto v = getGeoValidator();
+    auto res = v(json::Json {R"({"x":1,"y":2})"});
+    ASSERT_TRUE(base::isError(res));
+    EXPECT_THAT(base::getError(res).message, HasSubstr("geo_point object"));
+}
+
+TEST(GeoValidatorTest, String_LatCommaLon_Valid)
+{
+    auto v = getGeoValidator();
+    EXPECT_FALSE(base::isError(v(json::Json {"\"40.71,-74.00\""})));
+}
+
+TEST(GeoValidatorTest, String_WKT_Valid)
+{
+    auto v = getGeoValidator();
+    EXPECT_FALSE(base::isError(v(json::Json {"\"POINT (-74.00 40.71)\""})));
+    EXPECT_FALSE(base::isError(v(json::Json {"\"POINT(-74.00 40.71)\""})));
+}
+
+TEST(GeoValidatorTest, String_WKT_Invalid)
+{
+    auto v = getGeoValidator();
+    EXPECT_TRUE(base::isError(v(json::Json {"\"POINT (-74.00 40.71)garbageAtTheENd\""})));
+    EXPECT_TRUE(base::isError(v(json::Json {"\"POINT)(-74.00 40.71)\""})));
+}
+
+TEST(GeoValidatorTest, String_Geohash_Valid)
+{
+    auto v = getGeoValidator();
+    EXPECT_FALSE(base::isError(v(json::Json {"\"txhxegj0uyp3\""})));
+}
+
+TEST(GeoValidatorTest, String_Malformed)
+{
+    auto v = getGeoValidator();
+    auto res = v(json::Json {"\"not_a_geo_value\""});
+    ASSERT_TRUE(base::isError(res));
+    EXPECT_THAT(base::getError(res).message, HasSubstr("geo_point string"));
+}
+
+TEST(GeoValidatorTest, Array_LonLat_Valid)
+{
+    auto v = getGeoValidator();
+    EXPECT_FALSE(base::isError(v(json::Json {"[-74.00,40.71]"})));
+}
+
+TEST(GeoValidatorTest, Array_LonLat_WrongSize)
+{
+    auto v = getGeoValidator();
+    EXPECT_TRUE(base::isError(v(json::Json {"[-74.00,40.71,0.0]"})));
+}
+
+TEST(GeoValidatorTest, Array_LonLat_OutOfRange)
+{
+    auto v = getGeoValidator();
+    EXPECT_TRUE(base::isError(v(json::Json {"[-74.00,91.0]"})));
+}
+
+TEST(GeoValidatorTest, Array_Of_GeoObjects_Valid)
+{
+    auto v = getGeoValidator();
+    EXPECT_FALSE(base::isError(
+        v(json::Json {R"([{"lat":40.71,"lon":-74.00},{"lat":50.0,"lon":10.0}])"})));
+}
+
+TEST(GeoValidatorTest, Array_Of_DifferentGeoObjects_Valid)
+{
+    auto v = getGeoValidator();
+    EXPECT_FALSE(base::isError(
+        v(json::Json {R"([{"lat":40.71,"lon":-74.00},{"type":"Point","coordinates":[-74.00,40.71]}])"})));
+}
+
+TEST(GeoValidatorTest, Array_Of_GeoJsonAndStrings_Valid)
+{
+    auto v = getGeoValidator();
+    EXPECT_FALSE(base::isError(
+        v(json::Json {R"([{"type":"Point","coordinates":[-74.00,40.71]},"40.71,-74.00"])"})));
+}
+
+TEST(GeoValidatorTest, Array_Of_GeoObjects_OneInvalid)
+{
+    auto v = getGeoValidator();
+    EXPECT_TRUE(base::isError(
+        v(json::Json {R"([{"lat":40.71,"lon":-74.00},{"lat":91.0,"lon":0.0}])"})));
+}
+
+TEST(GeoValidatorTest, Array_Of_GeoStrings_Valid)
+{
+    auto v = getGeoValidator();
+    EXPECT_FALSE(base::isError(v(json::Json {R"([[-74.00,40.71],[-7.00,4.71]])"})));
+}
+
+TEST(GeoValidatorTest, Array_Of_GeoStrings_ValidArrays)
+{
+    auto v = getGeoValidator();
+    EXPECT_FALSE(base::isError(v(json::Json {R"(["40.71,-74.00","50.0,10.0"])"})));
+}
+
+TEST(GeoValidatorTest, Array_Of_InvalidElements)
+{
+    auto v = getGeoValidator();
+    EXPECT_TRUE(base::isError(v(json::Json {R"([{"x":1},{"y":2}])"})));
+}
+
+TEST(GeoValidatorTest, Boolean_Unsupported)
+{
+    auto v = getGeoValidator();
+    auto res = v(json::Json {"true"});
+    ASSERT_TRUE(base::isError(res));
+    EXPECT_THAT(base::getError(res).message, HasSubstr("unsupported JSON type"));
+}
