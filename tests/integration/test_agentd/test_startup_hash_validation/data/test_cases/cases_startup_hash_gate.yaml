@@ -27,3 +27,9 @@
   configuration_parameters:
   metadata:
     scenario: no_premature_module_start_during_reload
+
+- name: startup hash gate blocks rootcheck on group reassignment
+  description: when an agent restarts with a stale local merged.mg (e.g. after a group reassignment), rootcheck (and every other agent module) must NOT log Started before the reload chain dispatches (issue 36239 regression observed 2026-05-26)
+  configuration_parameters:
+  metadata:
+    scenario: stale_local_merged_mg_no_premature_module_start
