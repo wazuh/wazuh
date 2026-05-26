@@ -74,7 +74,7 @@ For each `<command>` block record `<name>`, `<executable>`, `<extra_args>`, `<ti
 | What invokes the AR | The rule fires the AR directly                                            | The trigger's **Add active response** action invokes the channel                             |
 | Visibility          | Manager logs                                                              | Alerting evaluation + execution record in `wazuh-active-responses*`                          |
 
-Each 4.x `<active-response>` becomes two artifacts in 5.x: the AR channel (the **what**) and an Alerting monitor (the **when**). End-to-end walkthrough: [Attach to an Alerting trigger](../../ref/modules/active-response/alerting-integration.md).
+Each 4.x `<active-response>` becomes two artifacts in 5.x: the AR channel (the **what**) and an Alerting monitor (the **when**). The monitor query encodes the matching condition that used to live in `<rules_id>` / `<level>` / `<rules_group>`; the monitor's trigger then carries an **Add active response** action pointing at the channel. End-to-end wiring is covered in [Migration steps](#migration-steps), steps 4 and 5 below.
 
 > The monitor type **must** be `Active Response`. No other type exposes the **Add active response** action.
 
@@ -86,7 +86,7 @@ Each 4.x `<active-response>` becomes two artifacts in 5.x: the AR channel (the *
 | Structured fields      | Free text                                                                            | `wazuh.active_response.{name,type,executable,extra_arguments,stateful_timeout,location,agent_id}` + `event.doc_id` / `event.index`.        |
 | `@timestamp`           | Event time                                                                           | Indexing time. For event-time correlation use the linked alert via `event.doc_id`.                                                         |
 | Default retention      | Alerts ILM policy                                                                    | 3 days (`stream-active-responses-policy`, priority 100). Adjust the policy for longer retention.                                          |
-| Pivot to source alert  | Manual                                                                               | `event.doc_id` + `event.index` (see [`monitor-executions.md` Step 4](../../ref/modules/active-response/monitor-executions.md#step-4-pivot-to-the-source-alert)). |
+| Pivot to source alert  | Manual                                                                               | Each execution record carries `event.doc_id` + `event.index`; switch Discover to that index and filter `_id == event.doc_id` to open the triggering alert.       |
 
 ## API change
 
@@ -192,7 +192,7 @@ sudo chmod 750 /var/ossec/active-response/bin/<script>
 
 The 4.x manager `<command>` / `<active-response>` registration is replaced by a channel created in **Explore → Active Responses** and an Alerting monitor with query `wazuh.rule.id: 5712` whose trigger's **Add active response** action points at the channel. `<repeated_offenders>` has no direct replacement — model escalation in the monitor query.
 
-For the channel schema, see [`docs/dev/modules/active-responses.md`](https://github.com/wazuh/wazuh-dashboard-plugins/blob/main/docs/dev/modules/active-responses.md).
+For the channel schema, see [`docs/dev/modules/active-responses.md`](../../dev/modules/active-responses.md).
 
 ---
 
@@ -216,15 +216,31 @@ For every migrated AR that referenced a consolidated script, set **Executable** 
 1. **Finish the stack upgrade** ([Migration guide](../../ref/migration-4x-5x.md)) through dashboard startup. AR can only be validated once the manager and indexer are on 5.x.
 2. **Remove legacy AR config** from `/var/ossec/etc/ossec.conf`: delete every `<command>` and `<active-response>` block.
 3. **Rewrite custom scripts** following the [recipe above](#migration-recipe). Re-apply `root:wazuh` ownership and `750` permissions.
-4. **Recreate each AR** under **Explore → Active Responses → Create active response**, using the [field mapping table](#field-mapping-4x-xml--5x-channel) and the [Default scripts](#default-scripts) translation. Detailed form coverage: [Create an active response](../../ref/modules/active-response/create.md).
-5. **Wire each channel to a monitor** of type **Active Response**, encoding the 4.x match condition as the monitor query (e.g. `wazuh.rule.id: 5712`). Detailed walkthrough: [Attach to an Alerting trigger](../../ref/modules/active-response/alerting-integration.md).
+4. **Recreate each AR** under **Explore → Active Responses → Create active response**, using the [field mapping table](#field-mapping-4x-xml--5x-channel) and the [Default scripts](#default-scripts) translation.
+
+   ![Side menu — Explore → Active Responses](../images/ar-explore-menu-entry.png)
+
+   The creation form replaces the 4.x `<command>` / `<active-response>` XML blocks. Each row in the field-mapping table corresponds directly to a field in this form; conditional fields (**Stateful timeout**, **Agent ID**) only appear once **Type** or **Location** select the matching value.
+
+   ![Create active response — Configurations panel](../images/ar-create-form-configurations.png)
+
+5. **Wire each channel to a monitor** of type **Active Response**, encoding the 4.x match condition as the monitor query (e.g. `wazuh.rule.id: 5712`). The monitor type **must** be `Active Response` — no other type exposes the **Add active response** action.
+
+   ![Monitor type — Active Response](../images/ar-monitor-type-active-response.png)
+
+   In the trigger, the **Actions** section now exposes two separate buttons — **Add notification** (generic notifications) and **Add active response** (AR channels). Pick **Add active response** and select the channel created in the previous step.
+
+   ![Trigger — Add active response action](../images/ar-trigger-action.png)
+
 6. **Restart and smoke-test:**
 
    ```bash
    sudo systemctl restart wazuh-manager
    ```
 
-   Generate the triggering event, confirm an execution doc appears in `wazuh-active-responses*` within ~60 s, and verify revert behavior for stateful AR. See [Monitor executions](../../ref/modules/active-response/monitor-executions.md).
+   Generate the triggering event and open **Discover** with the `wazuh-active-responses*` index pattern. Within ~60 s an execution document appears; expand it to confirm `wazuh.active_response.{name,type,executable,location}` match the channel, and that `event.doc_id` / `event.index` point back to the source alert. For stateful AR, wait `stateful_timeout` seconds and verify the revert (a second log line in `/var/ossec/logs/active-responses.log` on the agent, plus restored connectivity for `block-ip`).
+
+   ![Discover — Expanded active response document](../images/ar-discover-document-expanded.png)
 
 ---
 
@@ -233,13 +249,20 @@ For every migrated AR that referenced a consolidated script, set **Executable** 
 - [ ] Every 4.x `<active-response>` block has a matching entity in **Explore → Active Responses** with the values from the inventory.
 - [ ] Custom scripts under `/var/ossec/active-response/bin/` use the 5.x JSON contract (no references to `parameters.alert.data.*` or `add` / `delete` / `continue`).
 - [ ] `ossec.conf` contains no `<command>` or `<active-response>` blocks.
-- [ ] The smoke test from [Migration steps](#migration-steps) §6 passes for at least one migrated AR.
+- [ ] The smoke test from [Migration steps](#migration-steps) (step 6) passes for at least one migrated AR.
 
 ---
 
 ## Troubleshooting
 
-For the general AR diagnostic flow, see the AR module [Troubleshooting](../../ref/modules/active-response/troubleshooting.md). Items below are specific to the 4.x → 5.x migration.
+Items below are specific to the 4.x → 5.x migration. For symptoms that are not migration-specific, the general diagnostic flow is:
+
+| Symptom                                                          | Likely cause                                                          | Action                                                                  |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| AR is not listed in the trigger selector                         | The monitor is not _Active Response_, or the channel is muted          | Recreate the monitor as _Active Response_; unmute the channel           |
+| No execution record appears in **Discover**                      | Indexer notifications or alerting plugins missing                     | Ask your administrator to verify the plugin installation                |
+| Record present but no effect on the agent                        | Manager did not deliver the command, or the agent is disconnected     | Check the manager service and the agent connection                     |
+| A stateful AR does not revert after the timeout                  | Timeout too large, or the executable does not support reversal        | Confirm the timeout; ask your administrator to verify reversal support |
 
 **AR entities not visible after upgrade.** Open **Dashboard Management → Index Patterns** and verify the `wazuh-active-responses*` pattern exists. If it is missing, ask your administrator to inspect the dashboard logs.
 
@@ -277,12 +300,7 @@ AR cannot be rolled back independently — restore it as part of the full stack 
 ## Additional resources
 
 - [Migration guide (4.x to 5.x)](../../ref/migration-4x-5x.md)
-- [Active Response overview](../../ref/modules/active-response/index.md)
-- [Create an active response](../../ref/modules/active-response/create.md)
-- [Attach to an Alerting trigger](../../ref/modules/active-response/alerting-integration.md)
-- [Monitor executions](../../ref/modules/active-response/monitor-executions.md)
-- [Troubleshooting](../../ref/modules/active-response/troubleshooting.md)
-- [Developer AR docs (channel schema)](https://github.com/wazuh/wazuh-dashboard-plugins/blob/main/docs/dev/modules/active-responses.md)
+- [Developer AR docs (channel schema)](../../dev/modules/active-responses.md)
 - Wazuh 4.14 AR reference: <https://documentation.wazuh.com/4.14/user-manual/capabilities/active-response/>
 - [CHANGELOG](../../../CHANGELOG.md)
 
