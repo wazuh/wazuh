@@ -79,6 +79,7 @@ class AgentSessionImpl final
     bool m_endReceived = false;         ///< Whether the END message has been received
     std::mutex m_mutex;                 ///< Mutex to guard shared state
     bool m_endEnqueued = false;         ///< Whether the END message has been enqueued
+    uint64_t m_declaredSize {0};        ///< DataValue count declared in the Start message (for quota accounting)
 
 public:
     explicit AgentSessionImpl(const uint64_t sessionId,
@@ -159,6 +160,7 @@ public:
             throw AgentSessionException("Invalid size");
         }
 
+        m_declaredSize = data->size();
         m_gapSet = std::make_unique<GapSet>(data->size());
 
         m_context =
@@ -440,6 +442,16 @@ public:
     std::shared_ptr<Context> getContext() const
     {
         return m_context;
+    }
+
+    /**
+     * @brief Get the number of DataValue items declared in the Start message.
+     *
+     * Used by the facade to reclaim the global DataValue quota when the session ends.
+     */
+    uint64_t declaredSize() const noexcept
+    {
+        return m_declaredSize;
     }
 };
 

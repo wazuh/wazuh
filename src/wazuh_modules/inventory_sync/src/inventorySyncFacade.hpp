@@ -24,6 +24,8 @@
 #include "stringHelper.h"
 #include "vulnerabilityScannerFacade.hpp"
 #include <asyncValueDispatcher.hpp>
+#include <atomic>
+#include <chrono>
 #include <filesystem>
 #include <format>
 #include <functional>
@@ -321,22 +323,59 @@ class InventorySyncFacadeImpl final
                 }
                 else
                 {
-                    // Generate random number for session ID.
-                    std::random_device rd;
-                    std::mt19937 gen(rd());
-                    std::uniform_int_distribution<uint64_t> dis(0, UINT64_MAX);
-                    const auto sessionId = dis(gen);
-
-                    // Check if session already exists.
-                    if (m_agentSessions.contains(sessionId))
+                    // Reserve DataValue quota for this session. Reject if reservation would go negative.
+                    const int64_t requestedSize = static_cast<int64_t>(startMsg->size());
+                    int64_t remaining = m_dataValueQuotaRemaining.load(std::memory_order_relaxed);
+                    bool admitted = false;
+                    while (remaining >= requestedSize)
                     {
-                        throw InventorySyncException("Session already exists");
+                        if (m_dataValueQuotaRemaining.compare_exchange_weak(
+                                remaining, remaining - requestedSize, std::memory_order_acq_rel))
+                        {
+                            admitted = true;
+                            break;
+                        }
                     }
+                    if (!admitted)
+                    {
+                        logWarn(LOGGER_DEFAULT_TAG,
+                                "InventorySyncFacade::start: DataValue quota exhausted "
+                                "(requested=%lld, remaining=%lld); rejecting session for agent %s",
+                                static_cast<long long>(requestedSize),
+                                static_cast<long long>(remaining),
+                                std::string(agentId).c_str());
+                        m_responseDispatcher->sendStartAck(
+                            Wazuh::SyncSchema::Status_Offline, agentId, -1, moduleName);
+                    }
+                    else
+                    {
+                        // Generate random number for session ID.
+                        std::random_device rd;
+                        std::mt19937 gen(rd());
+                        std::uniform_int_distribution<uint64_t> dis(0, UINT64_MAX);
+                        const auto sessionId = dis(gen);
 
-                    // AgentSession will extract all info (including module) from Start message
-                    m_agentSessions.try_emplace(
-                        sessionId, sessionId, startMsg, *m_dataStore, *m_indexerQueue, *m_responseDispatcher);
-                    logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Session created %llu", sessionId);
+                        // Check if session already exists.
+                        if (m_agentSessions.contains(sessionId))
+                        {
+                            restoreQuota(requestedSize);
+                            throw InventorySyncException("Session already exists");
+                        }
+
+                        try
+                        {
+                            // AgentSession will extract all info (including module) from Start message
+                            m_agentSessions.try_emplace(
+                                sessionId, sessionId, startMsg, *m_dataStore, *m_indexerQueue, *m_responseDispatcher);
+                        }
+                        catch (...)
+                        {
+                            // AgentSession ctor can throw (e.g. "Invalid size") — restore reservation.
+                            restoreQuota(requestedSize);
+                            throw;
+                        }
+                        logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Session created %llu", sessionId);
+                    }
                 }
             }
         }
@@ -586,6 +625,21 @@ public:
         }
         logDebug1(LOGGER_DEFAULT_TAG, "InventorySync session limit: %d", m_maxSessions);
 
+        // Get input queue size and DataValue quota from configuration
+        if (configuration.contains("queueSize"))
+        {
+            m_workersQueueSize = configuration.at("queueSize").get<size_t>();
+        }
+        if (configuration.contains("dataValueQuota"))
+        {
+            m_dataValueQuotaRemaining.store(configuration.at("dataValueQuota").get<int64_t>(),
+                                            std::memory_order_relaxed);
+        }
+        logDebug1(LOGGER_DEFAULT_TAG,
+                  "InventorySync queue size: %zu, DataValue quota: %lld",
+                  m_workersQueueSize,
+                  static_cast<long long>(m_dataValueQuotaRemaining.load()));
+
         logDebug2(LOGGER_DEFAULT_TAG, "Cluster name to be used in indexer: %s", m_clusterName.c_str());
 
         m_workersQueue = std::make_unique<WorkersQueue>(
@@ -622,17 +676,25 @@ public:
                 }
             },
             std::thread::hardware_concurrency(),
-            UNLIMITED_QUEUE_SIZE);
+            m_workersQueueSize);
 
         m_inventorySubscription =
             std::make_unique<TRouterSubscriber>(INVENTORY_SYNC_TOPIC, INVENTORY_SYNC_SUBSCRIBER_ID, false);
         m_inventorySubscription->subscribe(
             // coverity[copy_constructor_call]
-            [queue = m_workersQueue.get()](const std::vector<char>& message)
+            [this, queue = m_workersQueue.get()](const std::vector<char>& message)
             {
                 logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Received message from router");
                 // TODO: Temporal allocation, we need to use move semantics in router module.
-                queue->push(std::move(const_cast<std::vector<char>&>(message)));
+                if (!queue->push(std::move(const_cast<std::vector<char>&>(message))))
+                {
+                    if (shouldLogThrottled(m_lastQueueDropLogNs))
+                    {
+                        logWarn(LOGGER_DEFAULT_TAG,
+                                "InventorySyncFacade: workers queue full (max=%zu); dropping inbound message",
+                                m_workersQueueSize);
+                    }
+                }
             });
 
         m_indexerQueue = std::make_unique<IndexerQueue>(
@@ -1341,30 +1403,32 @@ public:
                     lock.unlock();
 
                     std::unique_lock agentSessionsLock(m_agentSessionsMutex);
-                    std::erase_if(m_agentSessions,
-                                  [this](const auto& pair)
-                                  {
-                                      if (!pair.second.isAlive(std::chrono::seconds(DEFAULT_TIME * 2)))
-                                      {
-                                          logDebug2(LOGGER_DEFAULT_TAG, "Session %llu has timed out", pair.first);
+                    for (auto it = m_agentSessions.begin(); it != m_agentSessions.end();)
+                    {
+                        if (!it->second.isAlive(std::chrono::seconds(DEFAULT_TIME * 2)))
+                        {
+                            logDebug2(LOGGER_DEFAULT_TAG, "Session %llu has timed out", it->first);
 
-                                          // Unlock agent if this session owns the lock
-                                          const auto& context = pair.second.getContext();
-                                          if (context->ownsAgentLock)
-                                          {
-                                              unlockAgent(context->agentId);
-                                              logDebug1(LOGGER_DEFAULT_TAG,
-                                                        "Session %llu for agent %s timed out - agent unlocked",
-                                                        pair.first,
-                                                        context->agentId.c_str());
-                                          }
+                            // Unlock agent if this session owns the lock
+                            const auto& context = it->second.getContext();
+                            if (context->ownsAgentLock)
+                            {
+                                unlockAgent(context->agentId);
+                                logDebug1(LOGGER_DEFAULT_TAG,
+                                          "Session %llu for agent %s timed out - agent unlocked",
+                                          it->first,
+                                          context->agentId.c_str());
+                            }
 
-                                          // Delete data from database.
-                                          m_dataStore->deleteByPrefix(std::to_string(pair.first));
-                                          return true;
-                                      }
-                                      return false;
-                                  });
+                            // Delete data from database.
+                            m_dataStore->deleteByPrefix(std::to_string(it->first));
+                            it = eraseSessionLocked(it);
+                        }
+                        else
+                        {
+                            ++it;
+                        }
+                    }
                     m_sessionCompletedCV.notify_all();
                 }
             });
@@ -1641,11 +1705,50 @@ public:
         return false; // no matching session found
     }
 
+    // Returns true if the caller should emit the warning now (rate-limited to WARN_THROTTLE_NS).
+    static bool shouldLogThrottled(std::atomic<int64_t>& lastLog)
+    {
+        const auto now = std::chrono::steady_clock::now().time_since_epoch().count();
+        int64_t prev = lastLog.load(std::memory_order_relaxed);
+        if (now - prev < WARN_THROTTLE_NS)
+        {
+            return false;
+        }
+        return lastLog.compare_exchange_strong(prev, now, std::memory_order_relaxed);
+    }
+
+    // Restore the DataValue quota that was reserved when the session was created.
+    // Safe to call even after a constructor failure — declaredSize() defaults to 0.
+    void restoreQuota(uint64_t size)
+    {
+        if (size > 0)
+        {
+            m_dataValueQuotaRemaining.fetch_add(static_cast<int64_t>(size), std::memory_order_acq_rel);
+        }
+    }
+
+    // Erase a session whose iterator is held by the caller. Caller MUST hold m_agentSessionsMutex
+    // exclusively. Restores the DataValue quota the session had reserved.
+    template<typename Iterator>
+    Iterator eraseSessionLocked(Iterator it)
+    {
+        const uint64_t reclaim = it->second.declaredSize();
+        auto next = m_agentSessions.erase(it);
+        restoreQuota(reclaim);
+        return next;
+    }
+
     // Always use this instead of erasing m_agentSessions directly — it holds the exclusive lock.
     size_t eraseSession(uint64_t sessionId)
     {
         std::unique_lock lock(m_agentSessionsMutex);
-        return m_agentSessions.erase(sessionId);
+        auto it = m_agentSessions.find(sessionId);
+        if (it == m_agentSessions.end())
+        {
+            return 0;
+        }
+        eraseSessionLocked(it);
+        return 1;
     }
 
     /**
@@ -1693,8 +1796,8 @@ public:
                 // Delete data from database
                 m_dataStore->deleteByPrefix(std::to_string(sessionId));
 
-                // Remove session
-                m_agentSessions.erase(it);
+                // Remove session (restores DataValue quota)
+                eraseSessionLocked(it);
                 cleanedCount++;
             }
         }
@@ -1905,15 +2008,19 @@ private:
                 // Delete data from database
                 m_dataStore->deleteByPrefix(std::to_string(staleSessionId));
 
-                // Remove session from map
-                m_agentSessions.erase(it);
+                // Remove session from map (restores DataValue quota)
+                eraseSessionLocked(it);
                 m_sessionCompletedCV.notify_all();
             }
         }
     }
 
     std::string m_clusterName;
-    int m_maxSessions {1000}; // Maximum concurrent sessions (configured from internal_options)
+    int m_maxSessions {1000};                                  // Maximum concurrent sessions (configured from internal_options)
+    size_t m_workersQueueSize {10000};                         // Input queue cap (configured from internal_options)
+    std::atomic<int64_t> m_dataValueQuotaRemaining {500000};   // Global DataValue quota (configured from internal_options)
+    std::atomic<int64_t> m_lastQueueDropLogNs {0};             // steady_clock ns of last queue-drop warning
+    static constexpr int64_t WARN_THROTTLE_NS = 90LL * 1000LL * 1000LL * 1000LL; // 90 s
     mutable std::shared_mutex m_agentSessionsMutex;
     mutable std::condition_variable_any m_sessionCompletedCV;
     std::mutex m_sessionTimeoutMutex;
