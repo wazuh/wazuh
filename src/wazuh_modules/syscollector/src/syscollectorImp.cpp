@@ -689,20 +689,11 @@ bool Syscollector::handleNotifyDataClean()
     return ret;
 }
 
-void Syscollector::destroy()
+void Syscollector::quiesce()
 {
     m_stopping = true;
     m_cv.notify_all();
 
-    std::unique_lock<std::mutex> lock{m_scan_mutex, std::try_to_lock};
-    const bool scanMutexAvailable = lock.owns_lock();
-
-    if (scanMutexAvailable)
-    {
-        lock.unlock();
-    }
-
-    // Signal sync protocols to stop any ongoing operations
     if (m_spSyncProtocol)
     {
         m_spSyncProtocol->stop();
@@ -717,6 +708,31 @@ void Syscollector::destroy()
     {
         m_asyncFlushController->waitForFlushToFinish();
     }
+}
+
+void Syscollector::releaseResources()
+{
+    // Explicitly release all resources to ensure clean state between tests
+    // and prevent use-after-free when Syscollector singleton destructs
+    // after static dependencies have already been destroyed
+    m_spDBSync.reset();
+    m_spNormalizer.reset();
+    m_spSyncProtocol.reset();
+    m_spSyncProtocolVD.reset();
+    m_spInfo.reset();
+}
+
+void Syscollector::destroy()
+{
+    quiesce();
+
+    std::unique_lock<std::mutex> lock{m_scan_mutex, std::try_to_lock};
+    const bool scanMutexAvailable = lock.owns_lock();
+
+    if (scanMutexAvailable)
+    {
+        lock.unlock();
+    }
 
     if (!scanMutexAvailable)
     {
@@ -728,14 +744,7 @@ void Syscollector::destroy()
         return;
     }
 
-    // Explicitly release all resources to ensure clean state between tests
-    // and prevent use-after-free when Syscollector singleton destructs
-    // after static dependencies have already been destroyed
-    m_spDBSync.reset();
-    m_spNormalizer.reset();
-    m_spSyncProtocol.reset();
-    m_spSyncProtocolVD.reset();
-    m_spInfo.reset();
+    releaseResources();
 }
 
 std::pair<nlohmann::json, uint64_t> Syscollector::ecsData(const nlohmann::json& data, const std::string& table, bool createFields)
