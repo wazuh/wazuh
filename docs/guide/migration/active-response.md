@@ -11,14 +11,14 @@ Complete the stack-wide upgrade (see the general [Migration guide (4.x to 5.x)](
 - `ossec.conf` `<command>` / `<active-response>` blocks are no longer parsed. `ar.conf` is removed from the agent.
 - AR is created under **Explore → Active Responses**. Each channel carries `name`, `description`, `enabled`, `executable`, `extra_arguments`, `type` (`stateful` / `stateless`), `stateful_timeout` (default `180s`), `location` (`local` / `defined-agent` / `all`), `agent_id`.
 - Matching (`<rules_id>` / `<level>` / `<rules_group>`) moves to the query of an Alerting monitor of type **Active Response**.
-- `PUT /active-response` is removed with no replacement. Dispatch is document-driven: a monitor action writes into `wazuh-active-responses`; the manager polls every 60 s (batches of 100, agents on the local cluster node) and forwards via `wazuh-remoted`. Pre-5.0 agents are filtered out.
+- `PUT /active-response` is removed with no replacement. Dispatch is document-driven: a monitor action writes into `wazuh-active-responses`; the manager polls every 60 s (batches of 100) and forwards via `wazuh-remoted`. Pre-5.0 agents are filtered out.
 - Executions land as structured documents in the `wazuh-active-responses` data stream (backing index `.wazuh-active-responses-v5`, 3-day ISM retention via `stream-active-responses-policy`).
 - The JSON delivered to scripts changed shape: `command` ∈ `enable` / `disable` (was `add` / `delete` / `continue`); alert fields use flat ECS paths (`source.ip`, `user.name`, …); AR metadata sits under `wazuh.active_response.*`.
 - Default firewall scripts (`firewall-drop`, `firewalld-drop`, `pf`, `npf`, `ipfw`, `netsh`, `route-null`, `host-deny`) are folded into a single `block-ip` executable. `restart-wazuh` moves to the Control Module. `wazuh-slack` is removed.
 - `<location>server</location>`, `<repeated_offenders>`, `<timeout_allowed>` have no direct equivalent.
 - `<disabled>` is replaced by the channel `enabled` field plus a **Mute / Unmute** runtime toggle.
 
-![Active Response pipeline — 4.x rule-engine driven vs 5.x channel + data stream + poller](images/ar-pipeline-4x-vs-5x.png)
+![Active Response pipeline — 4.x rule-engine driven vs 5.x channel + data stream + poller](../images/ar-pipeline-4x-vs-5x.png)
 
 ## Compatibility matrix
 
@@ -42,13 +42,7 @@ sudo cp -a /var/ossec/active-response/bin/ /root/backup-ar-bin-$(date +%Y%m%d)/
 
 For each `<command>` block record `<name>`, `<executable>`, `<extra_args>`, `<timeout_allowed>`. For each `<active-response>` block record the linked command, `<location>`, `<agent_id>`, the matching condition (`<rules_id>` / `<rules_group>` / `<level>`), `<timeout>`, `<repeated_offenders>`, `<disabled>`.
 
-4.x AR execution history is not migrated. Export it if you need long-term records:
-
-```bash
-curl -k -u admin:admin \
-  "https://localhost:9200/wazuh-alerts-*/_search?q=command:*&size=10000" \
-  -o ar-history-$(date +%Y%m%d).json
-```
+4.x AR execution history is not migrated. If you need long-term records, export them from your 4.x indexer using your standard data-export procedure before upgrading.
 
 ---
 
@@ -247,7 +241,7 @@ For every migrated AR that referenced a consolidated script, set **Executable** 
 
 For the general AR diagnostic flow, see the AR module [Troubleshooting](../../ref/modules/active-response/troubleshooting.md). Items below are specific to the 4.x → 5.x migration.
 
-**AR entities not visible after upgrade.** The dashboard did not finish bootstrap; the `wazuh-active-responses*` index pattern is missing. Ask your administrator to inspect dashboard logs and restart the service.
+**AR entities not visible after upgrade.** Open **Dashboard Management → Index Patterns** and verify the `wazuh-active-responses*` pattern exists. If it is missing, ask your administrator to inspect the dashboard logs.
 
 **Custom script silently does nothing.** The script still parses the 4.x JSON. `command` is now `enable`, not `add`; `parameters.alert.data.srcip` no longer exists (use `source.ip`). Re-apply the [recipe](#migration-recipe).
 
