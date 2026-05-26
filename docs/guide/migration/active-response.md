@@ -192,7 +192,7 @@ sudo chmod 750 /var/ossec/active-response/bin/<script>
 
 The 4.x manager `<command>` / `<active-response>` registration is replaced by a channel created in **Explore → Active Responses** and an Alerting monitor with query `wazuh.rule.id: 5712` whose trigger's **Add active response** action points at the channel. `<repeated_offenders>` has no direct replacement — model escalation in the monitor query.
 
-For the channel schema, see [`docs/dev/modules/active-responses.md`](../../dev/modules/active-responses.md).
+For the channel schema, see [`docs/dev/modules/active-responses.md`](https://github.com/wazuh/wazuh-dashboard-plugins/blob/main/docs/dev/modules/active-responses.md).
 
 ---
 
@@ -282,7 +282,7 @@ AR cannot be rolled back independently — restore it as part of the full stack 
 - [Attach to an Alerting trigger](../../ref/modules/active-response/alerting-integration.md)
 - [Monitor executions](../../ref/modules/active-response/monitor-executions.md)
 - [Troubleshooting](../../ref/modules/active-response/troubleshooting.md)
-- [Developer AR docs (channel schema, dispatch path)](../../dev/modules/active-responses.md)
+- [Developer AR docs (channel schema)](https://github.com/wazuh/wazuh-dashboard-plugins/blob/main/docs/dev/modules/active-responses.md)
 - Wazuh 4.14 AR reference: <https://documentation.wazuh.com/4.14/user-manual/capabilities/active-response/>
 - [CHANGELOG](../../../CHANGELOG.md)
 
