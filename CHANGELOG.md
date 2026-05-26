@@ -707,9 +707,6 @@ All notable changes to this project will be documented in this file.
 - Added the `security:revoke` action to the `PUT /security/user/revoke` endpoint. ([#26255](https://github.com/wazuh/wazuh/pull/26255))
 
 
-## [v4.10.5]
-
-
 ## [v4.10.4]
 
 ### Manager
