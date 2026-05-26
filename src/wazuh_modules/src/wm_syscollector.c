@@ -53,7 +53,11 @@ pthread_mutex_t sys_stop_mutex = PTHREAD_MUTEX_INITIALIZER;
 bool need_shutdown_wait = false;
 static pthread_t sys_main_thread;
 static bool sys_main_thread_initialized = false;
+#ifndef WIN32
 static pthread_t sync_worker_thread;
+#else
+static HANDLE sync_worker_thread = NULL;
+#endif
 static bool sync_worker_thread_initialized = false;
 pthread_mutex_t sys_reconnect_mutex = PTHREAD_MUTEX_INITIALIZER;
 bool shutdown_process_started = false;
@@ -719,10 +723,14 @@ void* wm_sys_main(wm_sys_t* sys)
             }
 #else
             sync_module_running = 1;
-
-            if (CreateThread(NULL, 0, wm_sync_module, NULL, 0, NULL) == NULL)
+            sync_worker_thread = CreateThread(NULL, 0, wm_sync_module, NULL, 0, NULL);
+            if (sync_worker_thread == NULL)
             {
                 mterror(WM_SYS_LOGTAG, THREAD_ERROR);
+            }
+            else
+            {
+                sync_worker_thread_initialized = true;
             }
 
 #endif
@@ -759,6 +767,14 @@ void* wm_sys_main(wm_sys_t* sys)
         sync_worker_thread_initialized = false;
         pthread_join(sync_worker_thread, NULL);
     }
+#else
+    if (sync_worker_thread_initialized && sync_worker_thread != NULL)
+    {
+        sync_worker_thread_initialized = false;
+        WaitForSingleObject(sync_worker_thread, INFINITE);
+        CloseHandle(sync_worker_thread);
+        sync_worker_thread = NULL;
+    }
 #endif
 
     mtinfo(WM_SYS_LOGTAG, "Module finished.");
@@ -767,6 +783,14 @@ void* wm_sys_main(wm_sys_t* sys)
     sys_main_thread_initialized = false;
     w_cond_signal(&sys_stop_condition);
     w_mutex_unlock(&sys_stop_mutex);
+
+    // Safe to release resources now that the sync worker has exited.
+    if (syscollector_release_resources_ptr)
+    {
+        syscollector_release_resources_ptr();
+        syscollector_release_resources_ptr = NULL;
+    }
+
     return 0;
 }
 
@@ -821,12 +845,6 @@ void wm_sys_stop(__attribute__((unused))wm_sys_t* data)
     }
 
     w_mutex_unlock(&sys_stop_mutex);
-
-    if (syscollector_release_resources_ptr)
-    {
-        syscollector_release_resources_ptr();
-        syscollector_release_resources_ptr = NULL;
-    }
 }
 
 cJSON* wm_sys_dump(const wm_sys_t* sys)

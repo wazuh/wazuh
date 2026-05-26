@@ -37,7 +37,11 @@
 
 // Global flag to stop sync module
 static volatile int sca_sync_module_running = 0;
+#ifndef WIN32
 static pthread_t sca_sync_worker_thread;
+#else
+static HANDLE sca_sync_worker_thread = NULL;
+#endif
 static bool sca_sync_worker_thread_initialized = false;
 
 // SCA message queue variables
@@ -657,8 +661,11 @@ static int wm_sca_start(wm_sca_t *sca) {
             merror(THREAD_ERROR);
         }
 #else
-        if (CreateThread(NULL, 0, wm_sca_sync_module, NULL, 0, NULL) == NULL) {
+        sca_sync_worker_thread = CreateThread(NULL, 0, wm_sca_sync_module, NULL, 0, NULL);
+        if (sca_sync_worker_thread == NULL) {
             merror(THREAD_ERROR);
+        } else {
+            sca_sync_worker_thread_initialized = true;
         }
 #endif
     } else {
@@ -698,6 +705,14 @@ void wm_sca_stop(__attribute__((unused)) wm_sca_t* data)
     {
         sca_sync_worker_thread_initialized = false;
         pthread_join(sca_sync_worker_thread, NULL);
+    }
+#else
+    if (sca_sync_worker_thread_initialized && sca_sync_worker_thread != NULL)
+    {
+        sca_sync_worker_thread_initialized = false;
+        WaitForSingleObject(sca_sync_worker_thread, INFINITE);
+        CloseHandle(sca_sync_worker_thread);
+        sca_sync_worker_thread = NULL;
     }
 #endif
 
