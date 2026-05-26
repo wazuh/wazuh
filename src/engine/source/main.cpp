@@ -879,8 +879,6 @@ int main(int argc, char* argv[])
                 }
             };
 
-            // Log initial state synchronously before the scheduler starts.
-            reportRouteStatus();
 
             // Async Synchronize on startup
             scheduler->scheduleTask(
