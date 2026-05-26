@@ -109,10 +109,11 @@ void sca_init()
     }
 }
 
-/// @brief Stops the SCA module execution.
+/// @brief Quiesces the SCA module execution.
 ///
-/// Cleanly shuts down the SCA module, stopping all assessments and
-/// releasing allocated resources.
+/// Signals the SCA module and sync protocol to stop all assessments.
+/// Resource teardown is deferred to sca_release_resources(), which must
+/// be called only after all threads using SCA resources have fully exited.
 void sca_stop()
 {
     SCA::instance().quiesce();

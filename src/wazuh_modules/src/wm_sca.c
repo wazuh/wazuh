@@ -651,12 +651,15 @@ static int wm_sca_start(wm_sca_t *sca) {
 
     // Initialize sync protocol if enabled
     if (sca_enable_synchronization && sca_sync_module_ptr) {
-        sca_sync_module_running = 1;
 #ifndef WIN32
         // Launch SCA synchronization thread as joinable so we can wait for it
         // before releasing resources on shutdown
         sca_sync_worker_thread_initialized = (CreateThreadJoinable(&sca_sync_worker_thread, wm_sca_sync_module, NULL) == 0);
-        if (!sca_sync_worker_thread_initialized)
+        if (sca_sync_worker_thread_initialized)
+        {
+            sca_sync_module_running = 1;
+        }
+        else
         {
             merror(THREAD_ERROR);
         }
@@ -666,6 +669,7 @@ static int wm_sca_start(wm_sca_t *sca) {
             merror(THREAD_ERROR);
         } else {
             sca_sync_worker_thread_initialized = true;
+            sca_sync_module_running = 1;
         }
 #endif
     } else {
@@ -673,33 +677,16 @@ static int wm_sca_start(wm_sca_t *sca) {
     }
 
     sca_start_ptr(sca);
-    return 0;
-}
 
-// Destroy data
-void wm_sca_destroy(wm_sca_t * data) {
-    if (data) {
-        os_free(data);
-    }
-}
-
-// Stop
-void wm_sca_stop(__attribute__((unused)) wm_sca_t* data)
-{
-    g_shutting_down = 1;
+    // Ensure the sync worker exits even if sca_start_ptr returned early
+    // (e.g., all collectors disabled) without wm_sca_stop() being called first.
     sca_sync_module_running = 0;
 
-    // Signal the sync protocol to stop any ongoing synchronizeModule() calls.
-    // This does NOT destroy m_dBSync yet.
-    if (sca_stop_ptr) {
-        sca_stop_ptr();
-    }
-
-    // Now wait for the sync worker to fully exit.  synchronizeModule() was
-    // aborted above, so the thread will check sca_sync_module_running and
-    // return promptly.  Joining here guarantees the thread is no longer
-    // executing synchronizeDatabaseSnapshot() (which uses m_dBSync) before
-    // we destroy it below.
+    // Join the sync worker before releasing m_dBSync.  This guarantees the worker
+    // is no longer inside synchronizeDatabaseSnapshot() (which uses m_dBSync).
+    // wm_sca_stop() only signals the thread to exit; the join must happen here,
+    // after the main SCA run loop has also returned, so no code path can still
+    // be holding a reference to m_dBSync.
 #ifndef WIN32
     if (sca_sync_worker_thread_initialized)
     {
@@ -716,11 +703,36 @@ void wm_sca_stop(__attribute__((unused)) wm_sca_t* data)
     }
 #endif
 
-    // Safe to release resources now that the sync worker has exited.
+    // Safe to release resources now that both the sync worker and the main SCA
+    // run loop have exited.  m_dBSync is no longer referenced by any thread.
     if (sca_release_resources_ptr)
     {
         sca_release_resources_ptr();
         sca_release_resources_ptr = NULL;
+    }
+
+    return 0;
+}
+
+// Destroy data
+void wm_sca_destroy(wm_sca_t * data) {
+    if (data) {
+        os_free(data);
+    }
+}
+
+// Stop
+void wm_sca_stop(__attribute__((unused)) wm_sca_t* data)
+{
+    g_shutting_down = 1;
+    sca_sync_module_running = 0;
+
+    // Quiesce the sync protocol and the main SCA loop.  Resource teardown
+    // (join + releaseResources) is deferred to wm_sca_start() after
+    // sca_start_ptr() returns, so that we do not free m_dBSync while the
+    // SCA run loop is still using it.
+    if (sca_stop_ptr) {
+        sca_stop_ptr();
     }
 }
 
