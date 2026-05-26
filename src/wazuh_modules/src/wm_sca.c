@@ -37,6 +37,8 @@
 
 // Global flag to stop sync module
 static volatile int sca_sync_module_running = 0;
+static pthread_t sca_sync_worker_thread;
+static bool sca_sync_worker_thread_initialized = false;
 
 // SCA message queue variables
 static int g_shutting_down = 0;
@@ -106,6 +108,7 @@ void *sca_module = NULL;
 sca_init_func sca_init_ptr = NULL;
 sca_start_func sca_start_ptr = NULL;
 sca_stop_func sca_stop_ptr = NULL;
+sca_release_resources_func sca_release_resources_ptr = NULL;
 sca_set_wm_exec_func sca_set_wm_exec_ptr = NULL;
 sca_set_log_function_func sca_set_log_function_ptr = NULL;
 sca_set_push_functions_func sca_set_push_functions_ptr = NULL;
@@ -521,6 +524,7 @@ void * wm_sca_main(wm_sca_t * data) {
         sca_init_ptr = so_get_function_sym(sca_module, "sca_init");
         sca_start_ptr = so_get_function_sym(sca_module, "sca_start");
         sca_stop_ptr = so_get_function_sym(sca_module, "sca_stop");
+        sca_release_resources_ptr = so_get_function_sym(sca_module, "sca_release_resources");
         sca_set_wm_exec_ptr = so_get_function_sym(sca_module, "sca_set_wm_exec");
         sca_set_log_function_ptr = so_get_function_sym(sca_module, "sca_set_log_function");
         sca_set_push_functions_ptr = so_get_function_sym(sca_module, "sca_set_push_functions");
@@ -645,8 +649,13 @@ static int wm_sca_start(wm_sca_t *sca) {
     if (sca_enable_synchronization && sca_sync_module_ptr) {
         sca_sync_module_running = 1;
 #ifndef WIN32
-        // Launch SCA synchronization thread
-        w_create_thread(wm_sca_sync_module, NULL);
+        // Launch SCA synchronization thread as joinable so we can wait for it
+        // before releasing resources on shutdown
+        sca_sync_worker_thread_initialized = (CreateThreadJoinable(&sca_sync_worker_thread, wm_sca_sync_module, NULL) == 0);
+        if (!sca_sync_worker_thread_initialized)
+        {
+            merror(THREAD_ERROR);
+        }
 #else
         if (CreateThread(NULL, 0, wm_sca_sync_module, NULL, 0, NULL) == NULL) {
             merror(THREAD_ERROR);
@@ -673,8 +682,30 @@ void wm_sca_stop(__attribute__((unused)) wm_sca_t* data)
     g_shutting_down = 1;
     sca_sync_module_running = 0;
 
+    // Signal the sync protocol to stop any ongoing synchronizeModule() calls.
+    // This does NOT destroy m_dBSync yet.
     if (sca_stop_ptr) {
         sca_stop_ptr();
+    }
+
+    // Now wait for the sync worker to fully exit.  synchronizeModule() was
+    // aborted above, so the thread will check sca_sync_module_running and
+    // return promptly.  Joining here guarantees the thread is no longer
+    // executing synchronizeDatabaseSnapshot() (which uses m_dBSync) before
+    // we destroy it below.
+#ifndef WIN32
+    if (sca_sync_worker_thread_initialized)
+    {
+        sca_sync_worker_thread_initialized = false;
+        pthread_join(sca_sync_worker_thread, NULL);
+    }
+#endif
+
+    // Safe to release resources now that the sync worker has exited.
+    if (sca_release_resources_ptr)
+    {
+        sca_release_resources_ptr();
+        sca_release_resources_ptr = NULL;
     }
 }
 

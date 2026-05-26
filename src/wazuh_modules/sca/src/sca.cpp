@@ -115,7 +115,12 @@ void sca_init()
 /// releasing allocated resources.
 void sca_stop()
 {
-    SCA::instance().destroy();
+    SCA::instance().quiesce();
+}
+
+void sca_release_resources()
+{
+    SCA::instance().releaseResources();
 }
 
 /// @brief Sets the logging callback function for the SCA module.
@@ -348,6 +353,22 @@ void SCA::destroy()
     }
 
     m_sca->Stop();
+}
+
+void SCA::quiesce()
+{
+    if (m_sca)
+    {
+        m_sca->quiesce();
+    }
+}
+
+void SCA::releaseResources()
+{
+    if (m_sca)
+    {
+        m_sca->releaseResources();
+    }
 }
 
 // LCOV_EXCL_START
