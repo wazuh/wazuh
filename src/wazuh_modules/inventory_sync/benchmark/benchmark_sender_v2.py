@@ -13,33 +13,71 @@ Usage:
         --scenario scenarios/baseline.json \\
         --manager 127.0.0.1 -o bench.csv --summary-json summary.json
 
-Scenario schema (see scenarios/*.json):
+Scenario schema (see scenarios_v2/*.json):
+
     {
       "name": "...", "description": "...",
-      "agent_configs": [
-        {
-          "payload_kind": "package",
-          "session_type": "delta",       // delta | modulecheck | dataclean
-          "sync_mode": 1,                 // 0=Full, 1=Delta
-          "data_size": 100,
-          "max_eps": 0,
-          "use_databatch": false,
-          "batch_max_bytes": 61440,
-          "retransmit": true,
-          "payload_size": 0,
-          "pad_field": null,
-          "modulecheck_checksum": null,
-          "auto_resync": false,
-          "module": null,
-          "index": null
-        }, ...
-      ],
-      "behavior": {
-        "total_agents": 10,
-        "parallel_agents": 0,   // 0 = all at once; >0 = sliding-window cap
-        "repeat_until": 0       // 0 = one pass; >0 = loop seconds
-      }
+
+      // Optional. Field defaults applied to every step in every lane unless
+      // the step overrides them explicitly. Use this to avoid repeating
+      // session_type / max_eps / use_databatch / retransmit in every step.
+      "defaults": {
+        "session_type": "delta",        // delta | modulecheck | dataclean
+        "max_eps": 75,
+        "use_databatch": true,
+        "retransmit": true
+      },
+
+      // Lanes are independent flows that run in parallel inside each agent
+      // (multiplexed over the agent's single socket). Inside a lane, steps
+      // run one after another. There are no cross-lane dependencies.
+      "lanes": {
+        "fim": [
+          { "dump": "sample_payloads/fim/windows11_fim_first_sync.json" },
+          { "dump": "sample_payloads/fim/windows11_fim_delta_modify.json",
+            "repeat_count": 20, "repeat_delay": 3, "initial_delay": 5 }
+        ],
+        "syscollector": [
+          { "dump": "sample_payloads/dump-syscollector/session_syscollector_sync_windows.json" }
+        ]
+      },
+
+      // Per-agent execution knobs (flat at the scenario root).
+      "total_agents": 1,      // ONLY when `fleets` is omitted (single-fleet
+                              //   shorthand). When `fleets` is present the
+                              //   total is sum(fleets[*].agents) — setting
+                              //   both is an error.
+      "parallel_agents": 0,   // 0 = all at once; >0 = sliding-window cap
+                              //   (global across all fleets)
+      "repeat_until": 0,      // 0 = single pass over the lanes;
+                              //   >0 = loop the whole set of lanes for N seconds
+      "drain_timeout": 60,    // optional: sender-side post-finish grace
+      "post_run_grace": 0,    // optional: monitor-side post-finish grace
+                              //   (read by run_benchmark_v2.sh)
+
+      // Optional. Splits the agent fleet so that different groups of agents
+      // run different subsets of the declared lanes. When omitted, an
+      // implicit single fleet runs every lane on every agent (controlled by
+      // `total_agents`).
+      "fleets": [
+        { "name": "windows", "agents": 20, "lanes": ["fim", "sysc"] },
+        { "name": "linux",   "agents": 30, "lanes": ["sca", "sysc"] }
+      ]
     }
+
+Step fields:
+  - Exactly one of `dump` (path to a recorded session JSON; resolved relative
+    to the scenario file or to the benchmark dir) or `kind` (synthetic payload
+    kind: package, system, hotfix, fim_file, fim_file_windows,
+    fim_registry_key, fim_registry_value, sca_check).
+  - Pacing (all optional):
+      `repeat_count`:  int >= 1   — how many times to run this step back-to-back (default 1)
+      `initial_delay`: float >= 0 — seconds to wait before the FIRST run (default 0)
+      `repeat_delay`:  float >= 0 — seconds to wait BETWEEN repeats (default 0)
+  - Other tunables (mostly the same as the old schema): `session_type`,
+    `sync_mode`, `data_size`, `max_eps`, `use_databatch`, `retransmit`,
+    `payload_size`, `pad_field`, `modulecheck_checksum`, `auto_resync`,
+    `module`, `index`, `option`.
 
 Dependencies:
     pip install pycryptodome
@@ -306,7 +344,7 @@ def _load_payload_dump_for_cfg(cfg: dict) -> dict:
             "module":  "syscollector" | "syscollector_vd",
             "mode":    "ModuleDelta" | "ModuleFull" | ...,
             "option":  "Sync" | "VDFirst" | "VDSync",
-            "size":    <int>,
+            "size":    <int>,                 # optional/informational; ignored
             "indices": [ "...", "..." ]      # some dumps use "index" instead
           },
           "items": [
@@ -355,8 +393,6 @@ def _load_payload_dump_for_cfg(cfg: dict) -> dict:
     if not isinstance(indices, list):
         raise ValueError(f"payload_dump {dump_path}: metadata.indices must be a list")
 
-    size = int(meta.get("size") or len(raw_items))
-
     # Normalize items: convert operation string → int once, so the sender's
     # hot path doesn't re-do the lookup per DataValue.
     items: list[dict] = []
@@ -380,6 +416,8 @@ def _load_payload_dump_for_cfg(cfg: dict) -> dict:
             "index":     idx,
             "data":      it.get("data") or {},
         })
+
+    size = len(items)
 
     return {
         "kind":      "dump",
@@ -1472,20 +1510,108 @@ def _run_runner_once(runner: SessionRunner) -> None:
     runner.run()
 
 
+def _interruptible_sleep(seconds: float, deadline: float) -> None:
+    """Sleep up to `seconds`, but wake early if `_running` flips or the
+    iteration deadline passes. Used between repeats so Ctrl-C and
+    repeat_until are still responsive while a long `repeat_delay` is pending."""
+    if seconds <= 0:
+        return
+    target = min(time.monotonic() + seconds, deadline)
+    while _running and time.monotonic() < target:
+        time.sleep(min(0.5, target - time.monotonic()))
+
+
+def _run_step_with_repeat(
+    agent: BenchmarkAgent,
+    step: dict,
+    payload_info: dict,
+    counters: AtomicCounters,
+    deadline: float,
+) -> None:
+    """Run a single lane step honoring `initial_delay` (before the first run),
+    `repeat_count` (how many times), and `repeat_delay` (between repeats). Each
+    repetition is a fresh SessionRunner. Returns early if `_running` flips
+    or the deadline passes."""
+    repeat_count = int(step.get("repeat_count", 1) or 1)
+    initial_delay = float(step.get("initial_delay", 0) or 0)
+    repeat_delay = float(step.get("repeat_delay", 0) or 0)
+
+    _interruptible_sleep(initial_delay, deadline)
+
+    for rep in range(repeat_count):
+        if not _running or time.monotonic() >= deadline:
+            return
+        runner = SessionRunner(agent, step, counters, payload_info)
+        _run_runner_once(runner)
+        if rep < repeat_count - 1:
+            _interruptible_sleep(repeat_delay, deadline)
+
+
+def _run_lane(
+    agent: BenchmarkAgent,
+    lane_name: str,
+    steps: list[dict],
+    payload_infos: list[dict],
+    counters: AtomicCounters,
+    deadline: float,
+) -> None:
+    """Run a single lane: steps execute back-to-back. Failures inside a
+    session are already counted as `sessions_failed` by SessionRunner.run(),
+    so a step that fails does NOT abort the lane — the next step still
+    runs."""
+    _ = lane_name  # available for future per-lane logging
+    for i, step in enumerate(steps):
+        if not _running or time.monotonic() >= deadline:
+            return
+        _run_step_with_repeat(agent, step, payload_infos[i], counters, deadline)
+
+
+def _run_iteration_lanes(
+    agent: BenchmarkAgent,
+    lanes: dict[str, list[dict]],
+    payload_infos: dict[str, list[dict]],
+    counters: AtomicCounters,
+    deadline: float,
+    iteration: int,
+) -> None:
+    """Spawn one thread per lane (all lanes run in parallel inside the
+    agent), wait for all of them to finish. The agent's single socket is
+    shared by every lane's SessionRunners thanks to the multiplexing
+    reader thread on BenchmarkAgent."""
+    threads = [
+        threading.Thread(
+            target=_run_lane,
+            args=(agent, lane_name, steps, payload_infos[lane_name],
+                  counters, deadline),
+            daemon=True,
+            name=f"lane-{agent.id}-it{iteration}-{lane_name}",
+        )
+        for lane_name, steps in lanes.items()
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+
 def agent_loop(
     agent: BenchmarkAgent,
-    configs: list[dict],
-    payload_infos: list[dict],
+    lanes: dict[str, list[dict]],
+    payload_infos: dict[str, list[dict]],
     behavior: dict,
     counters: AtomicCounters,
     deadline: float,
     barrier: threading.Barrier | None,
     parallel_sem: threading.Semaphore | None,
 ):
-    """Drive one agent through the scenario (single TCP socket, N runners per iteration).
+    """Drive one agent through the scenario.
 
-    Between iterations the socket is torn down and reconnected — mirroring
-    the pre-refactor sender. This keeps the manager from accumulating
+    Each iteration: connect (or reconnect, after iteration 1), run every
+    lane in parallel over the agent's single socket, then either exit
+    (single-pass) or loop until `repeat_until` seconds elapse.
+
+    The socket is torn down and reconnected between iterations to mirror
+    the pre-refactor sender: that keeps the manager from accumulating
     half-dead connections under burst load and gives every iteration a
     clean slate."""
     global _running
@@ -1493,12 +1619,13 @@ def agent_loop(
     if parallel_sem is not None:
         parallel_sem.acquire()
 
+    # Total steps across all lanes — used to attribute a connect/reconnect
+    # failure to the right number of sessions.
+    total_steps = sum(len(steps) for steps in lanes.values())
+
     try:
         if not agent.connect():
-            counters.add_sessions_failed(len(configs))
-            # Only signal the barrier if we are in barrier mode. With a
-            # sliding-window semaphore the barrier is `None` because not
-            # every agent reaches the convergence point at the same time.
+            counters.add_sessions_failed(total_steps)
             if barrier is not None:
                 try:
                     barrier.wait(timeout=5)
@@ -1522,15 +1649,9 @@ def agent_loop(
         while _running and time.monotonic() < deadline:
             iteration += 1
 
-            # Refresh the socket between iterations (mirrors the pre-refactor
-            # sender). Skip on iteration 1 — we already connected above and
-            # passed the barrier.
             if iteration > 1:
                 agent.stop_reader()
                 agent.disconnect()
-                # Brief breather before reconnecting — gives the manager a
-                # chance to free server-side state and avoids hammering a
-                # potentially saturated remoted.
                 if not _running or time.monotonic() >= deadline:
                     break
                 time.sleep(1.0)
@@ -1539,31 +1660,16 @@ def agent_loop(
                         "Agent %s: reconnect failed at iteration %d — exiting agent loop",
                         agent.id, iteration,
                     )
-                    counters.add_sessions_failed(len(configs))
+                    counters.add_sessions_failed(total_steps)
                     break
                 agent.start_reader()
 
-            runners = [
-                SessionRunner(agent, cfg, counters, payload_infos[i])
-                for i, cfg in enumerate(configs)
-            ]
-            threads = [
-                threading.Thread(
-                    target=_run_runner_once,
-                    args=(r,),
-                    daemon=True,
-                    name=f"runner-{agent.id}-it{iteration}-{i}",
-                )
-                for i, r in enumerate(runners)
-            ]
-            for t in threads:
-                t.start()
-            for t in threads:
-                t.join()
+            _run_iteration_lanes(
+                agent, lanes, payload_infos, counters, deadline, iteration,
+            )
 
             if repeat_until == 0:
                 break  # single-pass mode
-            # else: loop until deadline.
 
         agent.stop_reader()
         agent.disconnect()
@@ -1739,115 +1845,281 @@ def load_scenario(path: str) -> dict:
 
     name = raw.get("name") or Path(path).stem
     description = raw.get("description") or ""
-    agent_configs_raw = raw.get("agent_configs") or []
-    if not isinstance(agent_configs_raw, list) or not agent_configs_raw:
-        raise ValueError(f"Scenario {path}: agent_configs must be a non-empty list")
-
     scenario_dir = Path(path).parent
 
-    configs: list[dict] = []
-    for i, cfg in enumerate(agent_configs_raw):
-        if not isinstance(cfg, dict):
-            raise ValueError(f"Scenario {path}: agent_configs[{i}] must be an object")
+    defaults_raw = raw.get("defaults") or {}
+    if not isinstance(defaults_raw, dict):
+        raise ValueError(f"Scenario {path}: defaults must be an object")
 
-        kind = cfg.get("payload_kind")
-        dump_ref = cfg.get("payload_dump")
+    lanes_raw = raw.get("lanes")
+    if not isinstance(lanes_raw, dict) or not lanes_raw:
+        raise ValueError(
+            f"Scenario {path}: lanes must be a non-empty object mapping "
+            "lane_name -> [step, step, ...]"
+        )
 
-        if dump_ref and kind:
+    lanes: dict[str, list[dict]] = {}
+    for lane_name, steps_raw in lanes_raw.items():
+        if not isinstance(lane_name, str) or not lane_name.strip():
+            raise ValueError(f"Scenario {path}: lane names must be non-empty strings")
+        if not isinstance(steps_raw, list) or not steps_raw:
             raise ValueError(
-                f"Scenario {path}: agent_configs[{i}] cannot set both "
-                f"payload_kind and payload_dump"
+                f"Scenario {path}: lanes[{lane_name!r}] must be a non-empty list of steps"
             )
-        if not dump_ref and kind not in PAYLOAD_KINDS:
-            raise ValueError(
-                f"Scenario {path}: agent_configs[{i}].payload_kind={kind!r} "
-                f"not in {list(PAYLOAD_KINDS.keys())} (and payload_dump not set)"
-            )
+        resolved_steps: list[dict] = []
+        for i, step in enumerate(steps_raw):
+            if not isinstance(step, dict):
+                raise ValueError(
+                    f"Scenario {path}: lanes[{lane_name!r}][{i}] must be an object"
+                )
+            merged = {**defaults_raw, **step}
+            resolved_steps.append(_resolve_step(
+                merged, scenario_dir, lane_name, i, path,
+            ))
+        lanes[lane_name] = resolved_steps
 
-        # Resolve dump path relative to the scenario file so users can write
-        # short paths like "sample_payloads/syscollector/session-delta-sin-vd.json".
-        dump_path: str | None = None
-        if dump_ref:
-            cand = Path(dump_ref)
-            if not cand.is_absolute():
-                cand = (scenario_dir / cand).resolve()
-            if not cand.exists():
-                # Fall back to a path relative to the benchmark dir (the
-                # scripts that live next to the sender) — useful when the
-                # scenario lives in scenarios_v2/ and refers to
-                # sample_payloads/.
-                alt = (Path(__file__).resolve().parent / dump_ref).resolve()
-                if alt.exists():
-                    cand = alt
-                else:
-                    raise ValueError(
-                        f"Scenario {path}: agent_configs[{i}].payload_dump "
-                        f"file not found: {dump_ref}"
-                    )
-            dump_path = str(cand)
+    fleets = _resolve_fleets(raw, lanes, path)
 
-        session_type = cfg.get("session_type", "delta")
-        if session_type not in VALID_SESSION_TYPES:
-            raise ValueError(
-                f"Scenario {path}: agent_configs[{i}].session_type={session_type!r} "
-                f"not in {sorted(VALID_SESSION_TYPES)}"
-            )
+    total_agents    = sum(f["agents"] for f in fleets)
+    parallel_agents = int(raw.get("parallel_agents", 0) or 0)
+    repeat_until    = int(raw.get("repeat_until", 0) or 0)
+    if parallel_agents < 0:
+        raise ValueError(f"Scenario {path}: parallel_agents must be >= 0")
+    if repeat_until < 0:
+        raise ValueError(f"Scenario {path}: repeat_until must be >= 0")
 
-        kind_meta = PAYLOAD_KINDS[kind] if kind else None
-        default_module = kind_meta["module"] if kind_meta else None
-        default_index  = kind_meta["index"]  if kind_meta else None
-
-        resolved = {
-            "payload_kind":         kind,                # None when using a dump
-            "payload_dump":         dump_path,           # None when using payload_kind
-            "session_type":         session_type,
-            "sync_mode":            int(cfg.get("sync_mode", 1)),
-            "data_size":            int(cfg.get("data_size", 0)),
-            "max_eps":              int(cfg.get("max_eps", 0) or 0),
-            "use_databatch":        bool(cfg.get("use_databatch", False)),
-            "retransmit":           bool(cfg.get("retransmit", True)),
-            "payload_size":         int(cfg.get("payload_size", 0) or 0),
-            "pad_field":            cfg.get("pad_field"),
-            "modulecheck_checksum": cfg.get("modulecheck_checksum"),
-            "auto_resync":          bool(cfg.get("auto_resync", False)),
-            # `module` / `index` are placeholders for synthetic payloads; for
-            # dumps they will be overwritten by metadata at load time.
-            "module":               cfg.get("module") or default_module,
-            "index":                cfg.get("index")  or default_index,
-            "option":               OPTION_STR_TO_INT.get(cfg.get("option", "Sync"), 0),
-        }
-        configs.append(resolved)
-
-    behavior_raw = raw.get("behavior") or {}
-    if not isinstance(behavior_raw, dict):
-        raise ValueError(f"Scenario {path}: behavior must be an object")
     behavior = {
-        "total_agents":    int(behavior_raw.get("total_agents", 1)),
-        "parallel_agents": int(behavior_raw.get("parallel_agents", 0) or 0),
-        "repeat_until":    int(behavior_raw.get("repeat_until", 0) or 0),
+        "total_agents":    total_agents,
+        "parallel_agents": parallel_agents,
+        "repeat_until":    repeat_until,
     }
-    # Optional per-scenario override of the post-drain grace window. When
-    # `repeat_until=0` (single pass) the natural exit signal is "all agents
-    # finished their iteration"; the stats collector then waits up to
-    # drain_timeout extra seconds for in-flight EndAcks before closing.
-    # When omitted, the CLI default (`--drain-timeout`) is used.
-    if "drain_timeout" in behavior_raw and behavior_raw["drain_timeout"] is not None:
-        dt = int(behavior_raw["drain_timeout"])
+    if raw.get("drain_timeout") is not None:
+        dt = int(raw["drain_timeout"])
         if dt < 0:
-            raise ValueError(f"Scenario {path}: behavior.drain_timeout must be >= 0")
+            raise ValueError(f"Scenario {path}: drain_timeout must be >= 0")
         behavior["drain_timeout"] = dt
-    if behavior["total_agents"] < 1:
-        raise ValueError(f"Scenario {path}: behavior.total_agents must be >= 1")
-    if behavior["parallel_agents"] < 0:
-        raise ValueError(f"Scenario {path}: behavior.parallel_agents must be >= 0")
-    if behavior["repeat_until"] < 0:
-        raise ValueError(f"Scenario {path}: behavior.repeat_until must be >= 0")
+    if raw.get("post_run_grace") is not None:
+        prg = int(raw["post_run_grace"])
+        if prg < 0:
+            raise ValueError(f"Scenario {path}: post_run_grace must be >= 0")
+        behavior["post_run_grace"] = prg
 
     return {
-        "name":          name,
-        "description":   description,
-        "agent_configs": configs,
-        "behavior":      behavior,
+        "name":        name,
+        "description": description,
+        "lanes":       lanes,
+        "fleets":      fleets,
+        "behavior":    behavior,
+    }
+
+
+def _resolve_fleets(
+    raw: dict, lanes: dict[str, list[dict]], path: str,
+) -> list[dict]:
+    """Normalize the optional `fleets` section.
+
+    When absent, the scenario falls back to the legacy semantics: one
+    implicit fleet whose `agents` count comes from `total_agents` (default
+    1) and that runs *every* declared lane. This keeps single-fleet
+    scenarios short.
+
+    When present, `fleets` must be a non-empty list of objects with:
+      - name:   string, unique across fleets
+      - agents: int >= 1
+      - lanes:  non-empty list of lane names that exist in `lanes`
+    Setting both `fleets` and `total_agents` is an error (the count is
+    derived from `sum(fleets[*].agents)`).
+    """
+    fleets_raw = raw.get("fleets")
+
+    if fleets_raw is None:
+        total_agents = int(raw.get("total_agents", 1))
+        if total_agents < 1:
+            raise ValueError(f"Scenario {path}: total_agents must be >= 1")
+        return [{
+            "name":   "all",
+            "agents": total_agents,
+            "lanes":  list(lanes.keys()),
+        }]
+
+    if "total_agents" in raw:
+        raise ValueError(
+            f"Scenario {path}: cannot set both `fleets` and `total_agents`; "
+            "the agent count is derived from sum(fleets[*].agents)"
+        )
+
+    if not isinstance(fleets_raw, list) or not fleets_raw:
+        raise ValueError(
+            f"Scenario {path}: fleets must be a non-empty list of objects "
+            "(or be omitted entirely)"
+        )
+
+    seen_names: set[str] = set()
+    resolved: list[dict] = []
+    referenced_lanes: set[str] = set()
+    for i, f in enumerate(fleets_raw):
+        ctx = f"fleets[{i}]"
+        if not isinstance(f, dict):
+            raise ValueError(f"Scenario {path}: {ctx} must be an object")
+        fname = f.get("name")
+        if not isinstance(fname, str) or not fname.strip():
+            raise ValueError(f"Scenario {path}: {ctx}.name must be a non-empty string")
+        if fname in seen_names:
+            raise ValueError(f"Scenario {path}: duplicate fleet name {fname!r}")
+        seen_names.add(fname)
+
+        fagents = int(f.get("agents", 0))
+        if fagents < 1:
+            raise ValueError(f"Scenario {path}: {ctx}.agents must be >= 1")
+
+        flanes = f.get("lanes")
+        if not isinstance(flanes, list) or not flanes:
+            raise ValueError(
+                f"Scenario {path}: {ctx}.lanes must be a non-empty list of lane names"
+            )
+        seen_lanes: set[str] = set()
+        for lane_ref in flanes:
+            if not isinstance(lane_ref, str) or not lane_ref.strip():
+                raise ValueError(
+                    f"Scenario {path}: {ctx}.lanes entries must be non-empty strings"
+                )
+            if lane_ref not in lanes:
+                raise ValueError(
+                    f"Scenario {path}: {ctx} references unknown lane {lane_ref!r} "
+                    f"(declared lanes: {sorted(lanes)})"
+                )
+            if lane_ref in seen_lanes:
+                raise ValueError(
+                    f"Scenario {path}: {ctx}.lanes lists {lane_ref!r} more than once"
+                )
+            seen_lanes.add(lane_ref)
+            referenced_lanes.add(lane_ref)
+
+        resolved.append({
+            "name":   fname,
+            "agents": fagents,
+            "lanes":  list(flanes),
+        })
+
+    # Warn about lanes that no fleet references — almost certainly a typo.
+    orphans = set(lanes) - referenced_lanes
+    if orphans:
+        logger.warning(
+            "Scenario %s: declared lane(s) %s are not referenced by any fleet "
+            "and will never run",
+            path, sorted(orphans),
+        )
+
+    return resolved
+
+
+def _resolve_step(
+    cfg: dict, scenario_dir: Path, lane_name: str, step_idx: int, scenario_path: str,
+) -> dict:
+    """Validate + normalize a single lane step. `cfg` is the step JSON
+    already merged with the scenario's `defaults`. Returns the resolved
+    dict that the rest of the sender (SessionRunner, _load_payload_for_cfg)
+    expects to see."""
+    ctx = f"lanes[{lane_name!r}][{step_idx}]"
+
+    kind = cfg.get("kind")
+    dump_ref = cfg.get("dump")
+    if dump_ref and kind:
+        raise ValueError(
+            f"Scenario {scenario_path}: {ctx} cannot set both `kind` and `dump`"
+        )
+    if not dump_ref and kind not in PAYLOAD_KINDS:
+        raise ValueError(
+            f"Scenario {scenario_path}: {ctx}.kind={kind!r} not in "
+            f"{list(PAYLOAD_KINDS.keys())} (and `dump` not set)"
+        )
+
+    # Resolve dump path: relative to the scenario file, or to the benchmark
+    # dir (so scenarios can use short paths like
+    # "sample_payloads/fim/windows11_fim_first_sync.json").
+    dump_path: str | None = None
+    if dump_ref:
+        cand = Path(dump_ref)
+        if not cand.is_absolute():
+            cand = (scenario_dir / dump_ref).resolve()
+        if not cand.exists():
+            alt = (Path(__file__).resolve().parent / dump_ref).resolve()
+            if alt.exists():
+                cand = alt
+            else:
+                raise ValueError(
+                    f"Scenario {scenario_path}: {ctx}.dump file not found: {dump_ref}"
+                )
+        dump_path = str(cand)
+
+    session_type = cfg.get("session_type", "delta")
+    if session_type not in VALID_SESSION_TYPES:
+        raise ValueError(
+            f"Scenario {scenario_path}: {ctx}.session_type={session_type!r} "
+            f"not in {sorted(VALID_SESSION_TYPES)}"
+        )
+
+    renamed_fields = {
+        "repeat": "repeat_count",
+        "delay": "initial_delay",
+        "every": "repeat_delay",
+    }
+    for old_name, new_name in renamed_fields.items():
+        if old_name in cfg:
+            raise ValueError(
+                f"Scenario {scenario_path}: {ctx}.{old_name} was renamed to "
+                f"`{new_name}`"
+            )
+
+    repeat_count = (
+        int(cfg["repeat_count"]) if cfg.get("repeat_count") is not None else 1
+    )
+    if repeat_count < 1:
+        raise ValueError(
+            f"Scenario {scenario_path}: {ctx}.repeat_count must be >= 1"
+        )
+    initial_delay = (
+        float(cfg["initial_delay"]) if cfg.get("initial_delay") is not None else 0.0
+    )
+    if initial_delay < 0:
+        raise ValueError(
+            f"Scenario {scenario_path}: {ctx}.initial_delay must be >= 0"
+        )
+    repeat_delay = (
+        float(cfg["repeat_delay"]) if cfg.get("repeat_delay") is not None else 0.0
+    )
+    if repeat_delay < 0:
+        raise ValueError(
+            f"Scenario {scenario_path}: {ctx}.repeat_delay must be >= 0"
+        )
+
+    kind_meta = PAYLOAD_KINDS[kind] if kind else None
+    default_module = kind_meta["module"] if kind_meta else None
+    default_index  = kind_meta["index"]  if kind_meta else None
+
+    # The resolved step keeps the legacy `payload_kind` / `payload_dump`
+    # internal names so _load_payload_for_cfg() doesn't need to change.
+    return {
+        "lane":                  lane_name,
+        "step":                  step_idx,
+        "payload_kind":          kind,
+        "payload_dump":          dump_path,
+        "session_type":          session_type,
+        "sync_mode":             int(cfg.get("sync_mode", 1)),
+        "data_size":             int(cfg.get("data_size", 0)),
+        "max_eps":               int(cfg.get("max_eps", 0) or 0),
+        "use_databatch":         bool(cfg.get("use_databatch", False)),
+        "retransmit":            bool(cfg.get("retransmit", True)),
+        "payload_size":          int(cfg.get("payload_size", 0) or 0),
+        "pad_field":             cfg.get("pad_field"),
+        "modulecheck_checksum":  cfg.get("modulecheck_checksum"),
+        "auto_resync":           bool(cfg.get("auto_resync", False)),
+        "module":                cfg.get("module") or default_module,
+        "index":                 cfg.get("index")  or default_index,
+        "option":                OPTION_STR_TO_INT.get(cfg.get("option", "Sync"), 0),
+        "repeat_count":          repeat_count,
+        "initial_delay":         initial_delay,
+        "repeat_delay":          repeat_delay,
     }
 
 
@@ -1905,10 +2177,25 @@ def main() -> None:
     signal.signal(signal.SIGTERM, _signal_handler)
 
     scenario = load_scenario(args.scenario)
-    configs: list[dict] = scenario["agent_configs"]
+    lanes: dict[str, list[dict]] = scenario["lanes"]
+    fleets: list[dict] = scenario["fleets"]
     behavior: dict = scenario["behavior"]
 
-    payload_infos: list[dict] = [_load_payload_for_cfg(cfg) for cfg in configs]
+    payload_infos: dict[str, list[dict]] = {
+        lane_name: [_load_payload_for_cfg(step) for step in steps]
+        for lane_name, steps in lanes.items()
+    }
+
+    # Expand fleets into a per-agent assignment: agent_assignments[i] is the
+    # subset of lanes that agent #i should run. `total_agents` is the sum
+    # across fleets (computed in load_scenario).
+    agent_assignments: list[dict] = []
+    for f in fleets:
+        for _ in range(f["agents"]):
+            agent_assignments.append({
+                "fleet": f["name"],
+                "lanes": {ln: lanes[ln] for ln in f["lanes"]},
+            })
 
     total_agents = behavior["total_agents"]
     parallel_agents = behavior["parallel_agents"]
@@ -1920,18 +2207,33 @@ def main() -> None:
     print(f"  Total agents:      {total_agents}")
     print(f"  Parallel agents:   {parallel_agents if parallel_agents > 0 else 'all'}")
     print(f"  Repeat until:      {repeat_until}s ({'single pass' if repeat_until == 0 else 'loop'})")
-    print(f"  Sessions/agent:    {len(configs)} (multiplexed over 1 socket)")
-    for i, cfg in enumerate(configs):
-        info = payload_infos[i]
-        if cfg.get("payload_dump"):
-            source = f"dump={Path(cfg['payload_dump']).name}"
-        else:
-            source = f"kind={cfg.get('payload_kind')}"
-        print(f"    [{i}] {source:40s} "
-              f"session_type={cfg['session_type']:12s} "
-              f"module={info['module']:18s} mode={info['mode']} "
-              f"size={info['data_size']} max_eps={cfg['max_eps']} "
-              f"use_databatch={cfg['use_databatch']}")
+    if len(fleets) == 1 and fleets[0]["name"] == "all":
+        print(f"  Lanes per agent:   {len(lanes)} (every agent runs every lane)")
+    else:
+        print(f"  Fleets:            {len(fleets)}")
+        for f in fleets:
+            print(f"    - {f['name']!r}: {f['agents']} agent(s) "
+                  f"running lanes={f['lanes']}")
+    print(f"  Lane definitions:  {len(lanes)} (each lane: steps run sequentially)")
+    for lane_name, steps in lanes.items():
+        print(f"  - lane {lane_name!r} ({len(steps)} step{'s' if len(steps) != 1 else ''}):")
+        for i, step in enumerate(steps):
+            info = payload_infos[lane_name][i]
+            if step.get("payload_dump"):
+                source = f"dump={Path(step['payload_dump']).name}"
+            else:
+                source = f"kind={step.get('payload_kind')}"
+            extras = ""
+            if step.get("repeat_count", 1) > 1 or step.get("initial_delay", 0) > 0 \
+                    or step.get("repeat_delay", 0) > 0:
+                extras += (f" repeat_count={step.get('repeat_count', 1)}"
+                           f" initial_delay={step.get('initial_delay', 0)}s"
+                           f" repeat_delay={step.get('repeat_delay', 0)}s")
+            print(f"      [{i}] {source:40s} "
+                  f"session_type={step['session_type']:12s} "
+                  f"module={info['module']:18s} mode={info['mode']} "
+                  f"size={info['data_size']} max_eps={step['max_eps']} "
+                  f"use_databatch={step['use_databatch']}{extras}")
     print(f"  Output:            {args.output}")
     print()
 
@@ -1949,23 +2251,29 @@ def main() -> None:
         shared_fb_manager = None
 
     # ---- Phase 1: Register all agents ------------------------------------
-    logger.info("Registering %d agents...", total_agents)
-    agents: list[BenchmarkAgent] = []
+    logger.info("Registering %d agents across %d fleet(s)...",
+                total_agents, len(fleets))
+    # `registered` keeps each surviving agent paired with its fleet
+    # assignment, so we can hand the correct lane subset to agent_loop.
+    registered: list[tuple[BenchmarkAgent, dict]] = []
     for i in range(total_agents):
+        assignment = agent_assignments[i]
         agent = BenchmarkAgent(
             i, args.manager, args.port, args.reg_port,
             fb_manager=shared_fb_manager,
         )
         if not agent.register():
-            logger.error("Agent %d registration failed, skipping", i)
+            logger.error("Agent %d (fleet=%s) registration failed, skipping",
+                         i, assignment["fleet"])
             continue
-        agents.append(agent)
+        registered.append((agent, assignment))
         time.sleep(0.05)
 
-    if not agents:
+    if not registered:
         logger.error("No agents registered successfully, aborting")
         return
 
+    agents: list[BenchmarkAgent] = [a for a, _ in registered]
     logger.info(
         "%d/%d agents registered. Waiting %ds for remoted key reload...",
         len(agents), total_agents, args.key_wait,
@@ -1997,13 +2305,16 @@ def main() -> None:
         barrier = threading.Barrier(len(agents) + 1, timeout=180)
 
     threads: list[threading.Thread] = []
-    for agent in agents:
+    for agent, assignment in registered:
+        # Each agent only sees its fleet's subset of lanes — the rest of the
+        # scenario is invisible to it. `payload_infos` is shared (keyed by
+        # lane name), so it's safe to pass whole.
         t = threading.Thread(
             target=agent_loop,
-            args=(agent, configs, payload_infos, behavior,
+            args=(agent, assignment["lanes"], payload_infos, behavior,
                   counters, deadline, barrier, parallel_sem),
             daemon=True,
-            name=f"agent-loop-{agent.id}",
+            name=f"agent-loop-{agent.id}-{assignment['fleet']}",
         )
         t.start()
         threads.append(t)
@@ -2054,7 +2365,8 @@ def main() -> None:
         "parallel_agents":      parallel_agents,
         "repeat_until":         repeat_until,
         "drain_timeout":        drain_timeout,
-        "agent_configs":        configs,
+        "lanes":                lanes,
+        "fleets":               fleets,
         "started_at":           datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 

@@ -47,7 +47,7 @@ DRAIN_TIMEOUT=60
 # Post-run grace — how long monitor.py stays alive after the sender exits,
 # so RSS / CPU / disk / queue stats keep being sampled while the system
 # settles. CLI default is empty (let scenario decide); resolution order:
-#   CLI flag → behavior.post_run_grace → GRACE_TIME (remote only) → 0
+#   CLI flag → scenario post_run_grace → GRACE_TIME (remote only) → 0
 POST_RUN_GRACE_CLI=""
 CLEANUP_AFTER=false
 COMPARE_MODE=false
@@ -68,7 +68,7 @@ Usage: $(basename "$0") [OPTIONS]
 
 Benchmark mode:
   --scenario FILE         Scenario JSON (required). All load parameters
-                          (agent_configs, behavior) live inside the file.
+                          (lanes, fleets, pacing) live inside the file.
   -l, --label LABEL       Run label for results directory (default: scenario name)
   -m, --manager HOST      Manager address (default: $MANAGER)
   -p, --port PORT         Manager port (default: $PORT)
@@ -78,7 +78,7 @@ Benchmark mode:
       --post-run-grace N  (script-side) seconds to keep monitor.py alive
                           after the sender exits, so RSS / CPU / disk
                           stabilise on the recorded charts. Overrides
-                          behavior.post_run_grace from the scenario.
+                          post_run_grace from the scenario.
       --cleanup-after     Delete bench-* agents at the end of the run too.
                           By default the post-run cleanup is SKIPPED so the
                           inventory documents survive and can be inspected
@@ -183,13 +183,12 @@ fi
 SC_NAME=$("$PYTHON" -c "import json,sys; print(json.load(open('$SCENARIO')).get('name',''))")
 [[ -z "$LABEL" && -n "$SC_NAME" ]] && LABEL="$SC_NAME"
 
-# Resolve behavior.post_run_grace from the scenario. Returns empty string
-# when the field is missing/null so we can fall back to the per-mode
-# default below.
+# Resolve post_run_grace from the scenario root. Returns empty string when
+# the field is missing/null so we can fall back to the per-mode default below.
 SC_POST_RUN_GRACE=$("$PYTHON" -c "
 import json
 try:
-    v = json.load(open('$SCENARIO')).get('behavior', {}).get('post_run_grace')
+    v = json.load(open('$SCENARIO')).get('post_run_grace')
     print(int(v) if v is not None else '')
 except Exception:
     print('')
@@ -459,8 +458,8 @@ fi
 # Post-run grace: keep monitor.py sampling for N more seconds so the
 # stabilisation tail (RSS settling, indexer flushing, disk usage growing)
 # shows up on the charts. Resolution order:
-#   --post-run-grace CLI flag  →  behavior.post_run_grace in scenario  →
-#   GRACE_TIME (remote mode default, preserves prior behavior)         →
+#   --post-run-grace CLI flag  →  post_run_grace in scenario  →
+#   GRACE_TIME (remote mode default, preserves prior behavior) →
 #   0 (local mode default).
 POST_RUN_GRACE=0
 if [[ -n "$POST_RUN_GRACE_CLI" ]]; then
