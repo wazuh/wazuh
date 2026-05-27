@@ -268,6 +268,12 @@ void collectOutputErrors(const json::Json& node,
         }
     }
 
+    // Null accepted and treated as a missing value for every type.
+    if (node.isNull())
+    {
+        return;
+    }
+
     if (node.isObject())
     {
         if (!schemaPath.empty())
