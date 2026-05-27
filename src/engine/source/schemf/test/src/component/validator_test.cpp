@@ -86,7 +86,7 @@ const json::Json J_BINARY {"\"SGksIEkgYW0gTWFyaWFubyBLb3JlbWJsdW0sIGFuZCBJIGFtIG
 const json::Json J_OBJECT {"{}"};
 const json::Json J_NESTED {"{}"};
 const json::Json J_FLAT_OBJECT {"{}"};
-const json::Json J_GEO_POINT {"{}"};
+const json::Json J_GEO_POINT {"{\"lat\":40.71,\"lon\":-74.00}"};
 const json::Json J_UNSIGNED_LONG {"1"};
 const json::Json J_COMPLETION {"\"completion\""};
 const json::Json J_SEARCH_AS_YOU_TYPE {"\"search_as_you_type\""};
@@ -486,7 +486,7 @@ INSTANTIATE_TEST_SUITE_P(
                    ST::WILDCARD},
                   {},
                   {JT::String}),
-           BuildT(ST::GEO_POINT, {ST::GEO_POINT}, {}, {JT::Object}),
+           BuildT(ST::GEO_POINT, {ST::GEO_POINT}, {}, {JT::String, JT::Object}),
            BuildT(ST::JOIN, {ST::JOIN}, {}, {JT::Object})),
     [](const testing::TestParamInfo<BuildValidation::ParamType>& info)
     {

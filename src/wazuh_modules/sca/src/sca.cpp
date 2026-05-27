@@ -109,13 +109,19 @@ void sca_init()
     }
 }
 
-/// @brief Stops the SCA module execution.
+/// @brief Quiesces the SCA module execution.
 ///
-/// Cleanly shuts down the SCA module, stopping all assessments and
-/// releasing allocated resources.
+/// Signals the SCA module and sync protocol to stop all assessments.
+/// Resource teardown is deferred to sca_release_resources(), which must
+/// be called only after all threads using SCA resources have fully exited.
 void sca_stop()
 {
-    SCA::instance().destroy();
+    SCA::instance().quiesce();
+}
+
+void sca_release_resources()
+{
+    SCA::instance().releaseResources();
 }
 
 /// @brief Sets the logging callback function for the SCA module.
@@ -348,6 +354,22 @@ void SCA::destroy()
     }
 
     m_sca->Stop();
+}
+
+void SCA::quiesce()
+{
+    if (m_sca)
+    {
+        m_sca->quiesce();
+    }
+}
+
+void SCA::releaseResources()
+{
+    if (m_sca)
+    {
+        m_sca->releaseResources();
+    }
 }
 
 // LCOV_EXCL_START

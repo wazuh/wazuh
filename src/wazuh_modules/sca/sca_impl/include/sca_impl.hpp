@@ -59,6 +59,16 @@ class SecurityConfigurationAssessment
         /// @copydoc IModule::Stop
         void Stop() ;
 
+        /// @brief Signals the module to stop and waits for in-flight operations
+        /// to finish, but does not release owned resources (e.g. m_dBSync).
+        /// Safe to call while the sync worker thread is still running.
+        void quiesce();
+
+        /// @brief Releases owned resources after the sync worker thread has exited.
+        /// Must be called only after all threads that may use those resources
+        /// (in particular the sync worker thread) have been joined.
+        void releaseResources();
+
         /// @copydoc IModule::Name
         const std::string& Name() const ;
 
