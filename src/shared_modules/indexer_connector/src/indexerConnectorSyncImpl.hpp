@@ -710,15 +710,33 @@ public:
 
     void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery)
     {
-        // Join indices with comma
+        // Filter and join valid indices with comma separator for the URL.
+        // Only indices starting with "wazuh-states-" are included.
         std::string indexList;
-        for (size_t i = 0; i < indices.size(); ++i)
+        for (const auto& idx : indices)
         {
-            if (i > 0)
+            if (!idx.starts_with("wazuh-states-"))
+            {
+                logWarn(m_logTag.c_str(),
+                        "Skipping index '%s' for update by query: does not match expected prefix 'wazuh-states-'",
+                        idx.c_str());
+                continue;
+            }
+
+            if (!indexList.empty())
             {
                 indexList.append(",");
             }
-            indexList.append(indices[i]);
+            indexList.append(idx);
+        }
+
+        if (indexList.empty())
+        {
+            logWarn(m_logTag.c_str(),
+                    "Update by query skipped: no valid indices after filtering (input had %zu entries)",
+                    indices.size());
+            m_notify.clear();
+            return;
         }
 
         bool needToRetry = false;
