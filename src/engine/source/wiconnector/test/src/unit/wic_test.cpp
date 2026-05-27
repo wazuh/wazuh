@@ -810,7 +810,7 @@ TEST_F(WIndexerConnectorMockTest, GetIocTypeHashesNoDocumentThrows)
     EXPECT_CALL(*mock, search(_, _, _, _, _, _)).WillOnce(Return(hits));
 
     auto connector = makeConnector();
-    EXPECT_THROW(connector->getIocTypeHashes(), IndexerConnectorException);
+    EXPECT_EQ(connector->getIocTypeHashes(), std::nullopt);
 }
 
 TEST_F(WIndexerConnectorMockTest, GetIocTypeHashesFlatFormat)

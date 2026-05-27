@@ -72,6 +72,14 @@ class EXPORTED SCA final
         /// internal SecurityConfigurationAssessment instance.
         void destroy();
 
+        /// @brief Signals the SCA implementation to stop without releasing resources.
+        /// Safe to call while the sync worker thread is still running.
+        void quiesce();
+
+        /// @brief Releases SCA resources (e.g. DBSync).
+        /// Must be called only after the sync worker thread has been joined.
+        void releaseResources();
+
         /// @brief Synchronizes the SCA module with the centralized database.
         ///
         /// Performs database synchronization using the specified mode, handling
