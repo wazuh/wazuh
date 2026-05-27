@@ -233,17 +233,19 @@ public:
 
         logDebug2(LOGGER_DEFAULT_TAG, "Handling sequence number '%llu' for session '%llu'", seq, session);
 
-        // Avoid storing data if the sequence number is out of declared size bounds,
+        // Avoid storing data if the sequence number is out of declared size bounds;
+        // GapSet::observe will throw std::out_of_range below and the WorkersQueue
+        // wrapper will absorb it, so m_store.put never runs and no orphan key is left.
         if (seq >= m_declaredSize)
         {
             logWarn(LOGGER_DEFAULT_TAG,
-                    "Data sequence number '%llu' exceeds declared size '%llu' for session '%llu'.",
-                     seq,
-                     m_declaredSize,
-                     m_context->sessionId,
-                     m_context->agentId,
-                     m_context->moduleName.c_str()
-                    );
+                    "Data sequence number '%llu' exceeds declared size '%llu' for session %llu "
+                    "(agent '%s', module '%s'); rejecting message.",
+                    seq,
+                    m_declaredSize,
+                    m_context->sessionId,
+                    m_context->agentId.c_str(),
+                    m_context->moduleName.c_str());
         }
         m_gapSet->observe(data->seq());
 
@@ -259,7 +261,7 @@ public:
                   m_context->agentId,
                   m_context->moduleName.c_str());
 
-        if (m_endReceived)
+        if (m_endReceived && !m_endEnqueued)
         {
             if (m_gapSet->empty())
             {
@@ -284,6 +286,17 @@ public:
         }
 
         std::lock_guard lock(m_mutex);
+
+        // Once the session has been enqueued for indexing, mutating m_context->checksum/
+        // checksumIndex would race against the bulk thread that reads them. Drop late
+        // ChecksumModule messages — they can no longer influence the in-flight bulk.
+        if (m_endEnqueued)
+        {
+            logDebug2(LOGGER_DEFAULT_TAG,
+                      "ChecksumModule arrived after End was enqueued for session %llu; ignoring",
+                      m_context->sessionId);
+            return;
+        }
 
         if (data->checksum())
         {
@@ -327,17 +340,19 @@ public:
 
         logDebug2(LOGGER_DEFAULT_TAG, "Handling DataContext sequence number '%llu' for session '%llu'", seq, session);
 
-        // Avoid storing context if the sequence number is out of declared size bounds,
+        // Avoid storing context if the sequence number is out of declared size bounds;
+        // GapSet::observe will throw std::out_of_range below and the WorkersQueue
+        // wrapper will absorb it, so m_store.put never runs and no orphan key is left.
         if (seq >= m_declaredSize)
         {
             logWarn(LOGGER_DEFAULT_TAG,
-                    "DataContext sequence number '%llu' exceeds declared size '%llu' for session '%llu'.",
-                     seq,
-                     m_declaredSize,
-                     m_context->sessionId,
-                     m_context->agentId,
-                     m_context->moduleName.c_str()
-                    );
+                    "DataContext sequence number '%llu' exceeds declared size '%llu' for session %llu "
+                    "(agent '%s', module '%s'); rejecting message.",
+                    seq,
+                    m_declaredSize,
+                    m_context->sessionId,
+                    m_context->agentId.c_str(),
+                    m_context->moduleName.c_str());
         }
 
         // if fails validation, it won't added to the bulk of data messages
@@ -357,7 +372,7 @@ public:
                   m_context->agentId,
                   m_context->moduleName.c_str());
 
-        if (m_endReceived)
+        if (m_endReceived && !m_endEnqueued)
         {
             if (m_gapSet->empty())
             {
@@ -390,17 +405,18 @@ public:
 
         logDebug2(LOGGER_DEFAULT_TAG, "Handling DataClean sequence number '%llu' for session '%llu'", seq, session);
 
-        // Check if the sequence number is within declared size bounds before extracting index
+        // Check if the sequence number is within declared size bounds; GapSet::observe will
+        // throw std::out_of_range below and the WorkersQueue wrapper will absorb it.
         if (seq >= m_declaredSize)
         {
             logWarn(LOGGER_DEFAULT_TAG,
-                    "DataClean sequence number '%llu' exceeds declared size '%llu' for session '%llu'. Ignoring index but marking as observed.",
-                     seq,
-                     m_declaredSize,
-                     m_context->sessionId,
-                     m_context->agentId,
-                     m_context->moduleName.c_str()
-                    );
+                    "DataClean sequence number '%llu' exceeds declared size '%llu' for session %llu "
+                    "(agent '%s', module '%s'); rejecting message.",
+                    seq,
+                    m_declaredSize,
+                    m_context->sessionId,
+                    m_context->agentId.c_str(),
+                    m_context->moduleName.c_str());
         }
         m_gapSet->observe(seq);
 
@@ -423,7 +439,8 @@ public:
                      seq);
         }
 
-        if (m_endReceived)
+
+        if (m_endReceived && !m_endEnqueued)
         {
             if (m_gapSet->empty())
             {
