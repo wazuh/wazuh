@@ -233,10 +233,24 @@ public:
 
         logDebug2(LOGGER_DEFAULT_TAG, "Handling sequence number '%llu' for session '%llu'", seq, session);
 
+        // Avoid storing data if the sequence number is out of declared size bounds,
+        if (seq >= m_declaredSize)
+        {
+            logWarn(LOGGER_DEFAULT_TAG,
+                    "Data sequence number '%llu' exceeds declared size '%llu' for session '%llu'.",
+                     seq,
+                     m_declaredSize,
+                     m_context->sessionId,
+                     m_context->agentId,
+                     m_context->moduleName.c_str()
+                    );
+        }
+        m_gapSet->observe(data->seq());
+
+        // Store in RocksDB with session and sequence as key. If fails and throws, we will mark the sequence as observed
+        // anyway, to avoid blocking the session with infinit loop of retries. (The error should log and be investigated, but the session should continue)
         m_store.put(std::format("{}_{}", session, seq),
                     rocksdb::Slice(reinterpret_cast<const char*>(dataRaw), dataSize));
-
-        m_gapSet->observe(data->seq());
 
         logDebug2(LOGGER_DEFAULT_TAG,
                   "Data received: %s %llu %llu %s",
@@ -313,11 +327,28 @@ public:
 
         logDebug2(LOGGER_DEFAULT_TAG, "Handling DataContext sequence number '%llu' for session '%llu'", seq, session);
 
+        // Avoid storing context if the sequence number is out of declared size bounds,
+        if (seq >= m_declaredSize)
+        {
+            logWarn(LOGGER_DEFAULT_TAG,
+                    "DataContext sequence number '%llu' exceeds declared size '%llu' for session '%llu'.",
+                     seq,
+                     m_declaredSize,
+                     m_context->sessionId,
+                     m_context->agentId,
+                     m_context->moduleName.c_str()
+                    );
+        }
+
+        // if fails validation, it won't added to the bulk of data messages
+        m_gapSet->observe(seq);
+
         // Store in RocksDB with "_context" suffix to distinguish from DataValue
+        // If fails and throws, we will mark the sequence as observed anyway, to avoid blocking the session with
+        // infinit loop of retries. (The error should log and be investigated, but the session should continue)
         m_store.put(std::format("{}_{}_context", session, seq),
                     rocksdb::Slice(reinterpret_cast<const char*>(dataRaw), dataSize));
 
-        m_gapSet->observe(seq);
 
         logDebug2(LOGGER_DEFAULT_TAG,
                   "DataContext received: %s %llu %llu %s",
@@ -359,6 +390,20 @@ public:
 
         logDebug2(LOGGER_DEFAULT_TAG, "Handling DataClean sequence number '%llu' for session '%llu'", seq, session);
 
+        // Check if the sequence number is within declared size bounds before extracting index
+        if (seq >= m_declaredSize)
+        {
+            logWarn(LOGGER_DEFAULT_TAG,
+                    "DataClean sequence number '%llu' exceeds declared size '%llu' for session '%llu'. Ignoring index but marking as observed.",
+                     seq,
+                     m_declaredSize,
+                     m_context->sessionId,
+                     m_context->agentId,
+                     m_context->moduleName.c_str()
+                    );
+        }
+        m_gapSet->observe(seq);
+
         if (data->index())
         {
             std::string index = data->index()->str();
@@ -377,8 +422,6 @@ public:
                      m_context->sessionId,
                      seq);
         }
-
-        m_gapSet->observe(seq);
 
         if (m_endReceived)
         {

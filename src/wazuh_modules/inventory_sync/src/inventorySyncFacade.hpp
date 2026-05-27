@@ -705,7 +705,7 @@ public:
                     std::shared_lock sessionLock(m_agentSessionsMutex);
                     if (m_agentSessions.find(res.context->sessionId) == m_agentSessions.end())
                     {
-                        logError(LOGGER_DEFAULT_TAG,
+                        logWarn(LOGGER_DEFAULT_TAG,
                                  "InventorySyncFacade::start: Session not found, sessionId: %llu",
                                  res.context->sessionId);
                         return;
