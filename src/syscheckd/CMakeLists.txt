@@ -176,6 +176,8 @@ elseif(NOT UNIT_TEST)
                                  INSTALL_RPATH "@executable_path/../lib")
   else()
     # Linux/Unix
-    string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath,$ORIGIN/../lib")
+    set_target_properties(
+      wazuh-syscheckd PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
+                                 INSTALL_RPATH "$ORIGIN/../lib")
   endif()
 endif()

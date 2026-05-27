@@ -120,6 +120,8 @@ elseif(NOT UNIT_TEST)
       manage_agents PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
                                INSTALL_RPATH "@executable_path/../lib")
   else()
-    string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath,$ORIGIN/../lib")
+    set_target_properties(
+      manage_agents PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
+                               INSTALL_RPATH "$ORIGIN/../lib")
   endif()
 endif()

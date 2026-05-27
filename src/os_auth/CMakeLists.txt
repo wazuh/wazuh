@@ -89,6 +89,8 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT UNIT_TEST)
       wazuh-manager-authd PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
                                      INSTALL_RPATH "@executable_path/../lib")
   else()
-    string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath,$ORIGIN/../lib")
+    set_target_properties(
+      wazuh-manager-authd PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
+                                     INSTALL_RPATH "$ORIGIN/../lib")
   endif()
 endif()
