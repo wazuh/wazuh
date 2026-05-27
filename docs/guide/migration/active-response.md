@@ -40,39 +40,47 @@ sudo cp -a /var/ossec/etc/ossec.conf /root/backup-ossec-conf-$(date +%Y%m%d).con
 sudo cp -a /var/ossec/active-response/bin/ /root/backup-ar-bin-$(date +%Y%m%d)/
 ```
 
-For each `<command>` block record `<name>`, `<executable>`, `<extra_args>`, `<timeout_allowed>`. For each `<active-response>` block record the linked command, `<location>`, `<agent_id>`, the matching condition (`<rules_id>` / `<rules_group>` / `<level>`), `<timeout>`, `<repeated_offenders>`, `<disabled>`.
+For each `<command>` and `<active-response>` block in `/var/ossec/etc/ossec.conf`, record the values you will need to recreate the AR as a 5.x channel:
 
-4.x AR execution history is not migrated. If you need long-term records, export them from your 4.x indexer using your standard data-export procedure before upgrading.
+- `<command>`: `<name>`, `<executable>`, `<extra_args>`, `<timeout_allowed>`.
+- `<active-response>`: the linked command, `<location>`, `<agent_id>`, the matching condition (`<rules_id>` / `<rules_group>` / `<level>`), `<timeout>`, `<repeated_offenders>`, `<disabled>`.
+
+Historical AR records are not migrated to the 5.x `wazuh-active-responses` data stream. In 4.x they live in two places:
+
+- Alerts in your `wazuh-alerts-*` indices, filtered by `rule.groups: active_response`.
+- Lines in `/var/ossec/logs/active-responses.log` on each agent.
+
+If you need long-term records, export them from your 4.x indexer using your standard data-export procedure before upgrading.
 
 ---
 
 ## Field mapping (4.x XML → 5.x channel)
 
-| 4.x XML                                                     | 5.x equivalent                                           | Notes                                                                                                          |
-| ----------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `<command><name>`                                           | _(no direct field)_                                      | The channel replaces the named command. Pick a descriptive **Name**.                                           |
-| `<command><executable>`                                     | **Executable**                                           | Discovery path preserved at `/var/ossec/active-response/bin/<executable>` on Unix agents.                      |
-| `<command><extra_args>`                                     | **Extra arguments**                                      | Free-form string passed to the executable.                                                                     |
-| `<command><timeout_allowed>`                                | _(no replacement)_                                       | Reversal is driven by `type = Stateful` + **Stateful timeout**.                                                |
-| `<active-response><location>` = `local`                     | **Location** = `Local`                                   | Default.                                                                                                       |
-| `<active-response><location>` = `defined-agent`             | **Location** = `Defined agent`                           | Reveals **Agent ID**.                                                                                          |
-| `<active-response><location>` = `all`                       | **Location** = `All`                                     | Pushes the action to every connected agent.                                                                    |
-| `<active-response><location>` = `server`                    | _(no replacement)_                                       | Manager-side execution does not exist in 5.x. See [`Location = server`](#location--server-from-4x).            |
-| `<active-response><agent_id>`                               | **Agent ID**                                             | Only when `Location = Defined agent`.                                                                          |
-| `<active-response><rules_id>` / `<level>` / `<rules_group>` | Alerting monitor query                                   | Matching moves to the monitor — see [Triggering model](#triggering-model).                                     |
-| `<active-response><timeout>`                                | **Stateful timeout**                                     | Same unit (seconds). Forces `Type = Stateful`. Default `180s`.                                                 |
-| `<active-response><repeated_offenders>`                     | _(no replacement)_                                       | See [`<repeated_offenders>` is gone](#repeated_offenders-is-gone).                                             |
-| `<active-response><disabled>`                               | `enabled` field + **Mute / Unmute**                      | `enabled` is the persistent flag; **Mute / Unmute** is the runtime toggle.                                     |
-| `ar.conf`                                                   | _(deleted)_                                              | `wazuh-execd` reads the JSON message directly.                                                                 |
+| 4.x XML                                                     | 5.x equivalent                      | Notes                                                                                               |
+| ----------------------------------------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `<command><name>`                                           | _(no direct field)_                 | The channel replaces the named command. Pick a descriptive **Name**.                                |
+| `<command><executable>`                                     | **Executable**                      | Discovery path preserved at `/var/ossec/active-response/bin/<executable>` on Unix agents.           |
+| `<command><extra_args>`                                     | **Extra arguments**                 | Free-form string passed to the executable.                                                          |
+| `<command><timeout_allowed>`                                | _(no replacement)_                  | Reversal is driven by `type = Stateful` + **Stateful timeout**.                                     |
+| `<active-response><location>` = `local`                     | **Location** = `Local`              | Default.                                                                                            |
+| `<active-response><location>` = `defined-agent`             | **Location** = `Defined agent`      | Reveals **Agent ID**.                                                                               |
+| `<active-response><location>` = `all`                       | **Location** = `All`                | Pushes the action to every connected agent.                                                         |
+| `<active-response><location>` = `server`                    | _(no replacement)_                  | Manager-side execution does not exist in 5.x. See [`Location = server`](#location--server-from-4x). |
+| `<active-response><agent_id>`                               | **Agent ID**                        | Only when `Location = Defined agent`.                                                               |
+| `<active-response><rules_id>` / `<level>` / `<rules_group>` | Alerting monitor query              | Matching moves to the monitor — see [Triggering model](#triggering-model).                          |
+| `<active-response><timeout>`                                | **Stateful timeout**                | Same unit (seconds). Forces `Type = Stateful`. Default `180s`.                                      |
+| `<active-response><repeated_offenders>`                     | _(no replacement)_                  | See [`<repeated_offenders>` is gone](#repeated_offenders-is-gone).                                  |
+| `<active-response><disabled>`                               | `enabled` field + **Mute / Unmute** | `enabled` is the persistent flag; **Mute / Unmute** is the runtime toggle.                          |
+| `ar.conf`                                                   | _(deleted)_                         | `wazuh-execd` reads the JSON message directly.                                                      |
 
 ## Triggering model
 
-| Aspect              | 4.x                                                                       | 5.x                                                                                          |
-| ------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Where matching runs | Manager rules engine                                                      | Alerting monitor (indexer / dashboard plane)                                                 |
-| How to express it   | `<rules_id>` / `<level>` / `<rules_group>` in `<active-response>`         | Monitor of type **Active Response** with a query against `wazuh-findings-v5-*`               |
-| What invokes the AR | The rule fires the AR directly                                            | The trigger's **Add active response** action invokes the channel                             |
-| Visibility          | Manager logs                                                              | Alerting evaluation + execution record in `wazuh-active-responses*`                          |
+| Aspect              | 4.x                                                               | 5.x                                                                            |
+| ------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Where matching runs | Manager rules engine                                              | Alerting monitor (indexer / dashboard plane)                                   |
+| How to express it   | `<rules_id>` / `<level>` / `<rules_group>` in `<active-response>` | Monitor of type **Active Response** with a query against `wazuh-findings-v5-*` |
+| What invokes the AR | The rule fires the AR directly                                    | The trigger's **Add active response** action invokes the channel               |
+| Visibility          | Manager logs                                                      | Alerting evaluation + execution record in `wazuh-active-responses*`            |
 
 Each 4.x `<active-response>` becomes two artifacts in 5.x: the AR channel (the **what**) and an Alerting monitor (the **when**). The monitor query encodes the matching condition that used to live in `<rules_id>` / `<level>` / `<rules_group>`; the monitor's trigger then carries an **Add active response** action pointing at the channel. End-to-end wiring is covered in [Migration steps](#migration-steps), steps 4 and 5 below.
 
@@ -80,13 +88,13 @@ Each 4.x `<active-response>` becomes two artifacts in 5.x: the AR channel (the *
 
 ## Audit and visibility
 
-| Surface                | 4.x                                                                                  | 5.x                                                                                                                                       |
-| ---------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Executions land in     | `/var/ossec/logs/active-responses.log` + AR-tagged events in `wazuh-alerts-*`        | `wazuh-active-responses` data stream (`.wazuh-active-responses-v5` backing index). Agent log unchanged.                                    |
-| Structured fields      | Free text                                                                            | `wazuh.active_response.{name,type,executable,extra_arguments,stateful_timeout,location,agent_id}` + `event.doc_id` / `event.index`.        |
-| `@timestamp`           | Event time                                                                           | Indexing time. For event-time correlation use the linked alert via `event.doc_id`.                                                         |
-| Default retention      | Alerts ILM policy                                                                    | 3 days (`stream-active-responses-policy`, priority 100). Adjust the policy for longer retention.                                          |
-| Pivot to source alert  | Manual                                                                               | Each execution record carries `event.doc_id` + `event.index`; switch Discover to that index and filter `_id == event.doc_id` to open the triggering alert.       |
+| Surface               | 4.x                                                                                                       | 5.x                                                                                                                                                        |
+| --------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Executions land in    | `/var/ossec/logs/active-responses.log` + events from the `active_response` rule group in `wazuh-alerts-*` | `wazuh-active-responses` data stream (`.wazuh-active-responses-v5` backing index). Agent log unchanged.                                                    |
+| Structured fields     | Free text                                                                                                 | `wazuh.active_response.{name,type,executable,extra_arguments,stateful_timeout,location,agent_id}` + `event.doc_id` / `event.index`.                        |
+| `@timestamp`          | Event time                                                                                                | Indexing time. For event-time correlation use the linked alert via `event.doc_id`.                                                                         |
+| Default retention     | Alerts ILM policy                                                                                         | 3 days (`stream-active-responses-policy`, priority 100). Adjust the policy for longer retention.                                                           |
+| Pivot to source alert | Manual                                                                                                    | Each execution record carries `event.doc_id` + `event.index`; switch Discover to that index and filter `_id == event.doc_id` to open the triggering alert. |
 
 ## API change
 
@@ -112,7 +120,7 @@ The discovery path is unchanged on Unix agents (`/var/ossec/active-response/bin/
   "parameters": {
     "extra_args": [],
     "alert": {
-      "rule": { "id": "5712", "level": 5 },
+      "rule": { "id": "5763", "level": 5 },
       "data": { "srcip": "192.168.1.100", "dstuser": "root" }
     },
     "program": "/var/ossec/active-response/bin/firewall-drop"
@@ -190,7 +198,7 @@ sudo chown root:wazuh /var/ossec/active-response/bin/<script>
 sudo chmod 750 /var/ossec/active-response/bin/<script>
 ```
 
-The 4.x manager `<command>` / `<active-response>` registration is replaced by a channel created in **Explore → Active Responses** and an Alerting monitor with query `wazuh.rule.id: 5712` whose trigger's **Add active response** action points at the channel. `<repeated_offenders>` has no direct replacement — model escalation in the monitor query.
+The 4.x manager `<command>` / `<active-response>` registration is replaced by a channel created in **Explore → Active Responses** and an Alerting monitor with query `wazuh.rule.id: 5763` whose trigger's **Add active response** action points at the channel. `<repeated_offenders>` has no direct replacement — model escalation in the monitor query.
 
 For the channel schema, see [`docs/dev/modules/active-responses.md`](../../dev/modules/active-responses.md).
 
@@ -198,14 +206,14 @@ For the channel schema, see [`docs/dev/modules/active-responses.md`](../../dev/m
 
 ## Default scripts
 
-| 4.x script                                                                                   | 5.x replacement                                       | Notes                                                                |
-| -------------------------------------------------------------------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------- |
-| `firewall-drop`, `default-firewall-drop`, `firewalld-drop`, `pf`, `npf`, `ipfw`, `netsh.exe` | `block-ip`                                            | One cross-platform executable; backend selection is internal.        |
-| `route-null`, `host-deny`                                                                    | `block-ip` (route / hosts.deny fallbacks)             | Used when no native firewall is available.                           |
-| `ip-customblock`                                                                             | `block-ip` (or a custom script using the new contract) | Folded.                                                              |
-| `disable-account`                                                                            | `disable-account`                                     | Retained. Rewrite only if wrapped by a custom JSON-parsing script.   |
-| `restart-wazuh`                                                                              | _(removed from AR)_                                   | Agent restart belongs to the Control Module.                         |
-| `wazuh-slack`                                                                                | _(removed)_                                           | Use **Explore → Notifications → Channels** for Slack notifications.  |
+| 4.x script                                                                                   | 5.x replacement                                        | Notes                                                               |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------- |
+| `firewall-drop`, `default-firewall-drop`, `firewalld-drop`, `pf`, `npf`, `ipfw`, `netsh.exe` | `block-ip`                                             | One cross-platform executable; backend selection is internal.       |
+| `route-null`, `host-deny`                                                                    | `block-ip` (route / hosts.deny fallbacks)              | Used when no native firewall is available.                          |
+| `ip-customblock`                                                                             | `block-ip` (or a custom script using the new contract) | Folded.                                                             |
+| `disable-account`                                                                            | `disable-account`                                      | Retained. Rewrite only if wrapped by a custom JSON-parsing script.  |
+| `restart-wazuh`                                                                              | _(removed from AR)_                                    | Agent restart belongs to the Control Module.                        |
+| `wazuh-slack`                                                                                | _(removed)_                                            | Use **Explore → Notifications → Channels** for Slack notifications. |
 
 For every migrated AR that referenced a consolidated script, set **Executable** to `block-ip` (or `disable-account`).
 
@@ -224,7 +232,7 @@ For every migrated AR that referenced a consolidated script, set **Executable** 
 
    ![Create active response — Configurations panel](../images/ar-create-form-configurations.png)
 
-5. **Wire each channel to a monitor** of type **Active Response**, encoding the 4.x match condition as the monitor query (e.g. `wazuh.rule.id: 5712`). The monitor type **must** be `Active Response` — no other type exposes the **Add active response** action.
+5. **Wire each channel to a monitor** of type **Active Response**, encoding the 4.x match condition as the monitor query (e.g. `wazuh.rule.id: 5763`). The monitor type **must** be `Active Response` — no other type exposes the **Add active response** action.
 
    ![Monitor type — Active Response](../images/ar-monitor-type-active-response.png)
 
@@ -242,14 +250,12 @@ For every migrated AR that referenced a consolidated script, set **Executable** 
 
    ![Discover — Expanded active response document](../images/ar-discover-document-expanded.png)
 
----
-
 ## Post-migration validation
 
-- [ ] Every 4.x `<active-response>` block has a matching entity in **Explore → Active Responses** with the values from the inventory.
-- [ ] Custom scripts under `/var/ossec/active-response/bin/` use the 5.x JSON contract (no references to `parameters.alert.data.*` or `add` / `delete` / `continue`).
-- [ ] `ossec.conf` contains no `<command>` or `<active-response>` blocks.
-- [ ] The smoke test from [Migration steps](#migration-steps) (step 6) passes for at least one migrated AR.
+- Every 4.x `<active-response>` block has a matching entity in **Explore → Active Responses** with the values from the inventory.
+- Custom scripts under `/var/ossec/active-response/bin/` use the 5.x JSON contract (no references to `parameters.alert.data.*` or `add` / `delete` / `continue`).
+- `ossec.conf` contains no `<command>` or `<active-response>` blocks.
+- The smoke test from [Migration steps](#migration-steps) (step 6) passes for at least one migrated AR.
 
 ---
 
@@ -257,12 +263,12 @@ For every migrated AR that referenced a consolidated script, set **Executable** 
 
 Items below are specific to the 4.x → 5.x migration. For symptoms that are not migration-specific, the general diagnostic flow is:
 
-| Symptom                                                          | Likely cause                                                          | Action                                                                  |
-| ---------------------------------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| AR is not listed in the trigger selector                         | The monitor is not _Active Response_, or the channel is muted          | Recreate the monitor as _Active Response_; unmute the channel           |
-| No execution record appears in **Discover**                      | Indexer notifications or alerting plugins missing                     | Ask your administrator to verify the plugin installation                |
-| Record present but no effect on the agent                        | Manager did not deliver the command, or the agent is disconnected     | Check the manager service and the agent connection                     |
-| A stateful AR does not revert after the timeout                  | Timeout too large, or the executable does not support reversal        | Confirm the timeout; ask your administrator to verify reversal support |
+| Symptom                                         | Likely cause                                                      | Action                                                                 |
+| ----------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| AR is not listed in the trigger selector        | The monitor is not _Active Response_, or the channel is muted     | Recreate the monitor as _Active Response_; unmute the channel          |
+| No execution record appears in **Discover**     | Indexer notifications or alerting plugins missing                 | Ask your administrator to verify the plugin installation               |
+| Record present but no effect on the agent       | Manager did not deliver the command, or the agent is disconnected | Check the manager service and the agent connection                     |
+| A stateful AR does not revert after the timeout | Timeout too large, or the executable does not support reversal    | Confirm the timeout; ask your administrator to verify reversal support |
 
 **AR entities not visible after upgrade.** Open **Dashboard Management → Index Patterns** and verify the `wazuh-active-responses*` pattern exists. If it is missing, ask your administrator to inspect the dashboard logs.
 
@@ -299,9 +305,9 @@ AR cannot be rolled back independently — restore it as part of the full stack 
 
 ## Additional resources
 
-- [Migration guide (4.x to 5.x)](../../ref/migration-4x-5x.md)
-- [Developer AR docs (channel schema)](../../dev/modules/active-responses.md)
-- Wazuh 4.14 AR reference: <https://documentation.wazuh.com/4.14/user-manual/capabilities/active-response/>
+- [Migration guide (4.x to 5.x)](https://github.com/wazuh/wazuh-dashboard-plugins/blob/main/docs/ref/migration-4x-5x.md)
+- [Developer AR docs (channel schema)](https://github.com/wazuh/wazuh-dashboard-plugins/blob/main/docs/dev/modules/active-responses.md)
+- [Wazuh 4.14 AR reference](https://documentation.wazuh.com/4.14/user-manual/capabilities/active-response/)
 - [CHANGELOG](../../../CHANGELOG.md)
 
 ## Support
