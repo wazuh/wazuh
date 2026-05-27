@@ -649,7 +649,8 @@ def clean_up(node_name=""):
                 continue
 
     try:
-        rm_path = path.join(common.WAZUH_PATH, 'queue', 'cluster', node_name)
+        cluster_base = path.join(common.WAZUH_PATH, 'queue', 'cluster')
+        rm_path = safe_join(cluster_base, node_name)
         logger.debug(f"Removing '{rm_path}'.")
         remove_directory_contents(rm_path)
         logger.debug(f"Removed '{rm_path}'.")
