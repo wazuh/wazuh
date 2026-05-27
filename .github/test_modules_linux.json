@@ -304,6 +304,7 @@
         ".github/workflows/5_testintegration_linux-integration-tests.yml",
         ".github/test_modules_linux.json",
         "src/config/src/wmodules-syscollector.c",
+        "src/wazuh_modules/src/wm_syscollector.c",
         "src/wazuh_modules/syscollector/**",
         "src/Makefile",
         "tests/integration/conftest.py",
