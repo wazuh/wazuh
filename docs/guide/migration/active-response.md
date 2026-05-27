@@ -36,11 +36,13 @@ Mixed-version fleets may execute inconsistently — coordinate manager and agent
 Back up the 4.x AR state and inventory each entry before upgrading:
 
 ```bash
-sudo cp -a /var/ossec/etc/ossec.conf /root/backup-ossec-conf-$(date +%Y%m%d).conf
-sudo cp -a /var/ossec/active-response/bin/ /root/backup-ar-bin-$(date +%Y%m%d)/
+AR_BACKUP_DIR="/root/backup-ar-$(date +%Y%m%d)"
+sudo mkdir -p "$AR_BACKUP_DIR"
+sudo cp -a /var/ossec/etc/ossec.conf "$AR_BACKUP_DIR/"
+sudo cp -a /var/ossec/active-response/bin/ "$AR_BACKUP_DIR/"
 ```
 
-For each `<command>` block record `<name>`, `<executable>`, `<extra_args>`, `<timeout_allowed>`. For each `<active-response>` block record the linked command, `<location>`, `<agent_id>`, the matching condition (`<rules_id>` / `<rules_group>` / `<level>`), `<timeout>`, `<repeated_offenders>`, `<disabled>`.
+For each `<command>` block record `<name>`, `<executable>`, `<extra_args>`, `<timeout_allowed>`. For each `<active-response>` block record the linked command, `<location>`, `<agent_id>`, the matching condition (`<rules_id>` / `<rules_group>` / `<level>`), `<timeout>`, `<repeated_offenders>` and `<disabled>`.
 
 4.x AR execution history is not migrated. If you need long-term records, export them from your 4.x indexer using your standard data-export procedure before upgrading.
 
@@ -71,7 +73,7 @@ For each `<command>` block record `<name>`, `<executable>`, `<extra_args>`, `<ti
 | ------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | Where matching runs | Manager rules engine                                                      | Alerting monitor (indexer / dashboard plane)                                                 |
 | How to express it   | `<rules_id>` / `<level>` / `<rules_group>` in `<active-response>`         | Monitor of type **Active Response** with a query against `wazuh-findings-v5-*`               |
-| What invokes the AR | The rule fires the AR directly                                            | The trigger's **Add active response** action invokes the channel                             |
+| What invokes the AR | The alert fires the AR directly                                            | The trigger's **Add active response** action invokes the channel                             |
 | Visibility          | Manager logs                                                              | Alerting evaluation + execution record in `wazuh-active-responses*`                          |
 
 Each 4.x `<active-response>` becomes two artifacts in 5.x: the AR channel (the **what**) and an Alerting monitor (the **when**). The monitor query encodes the matching condition that used to live in `<rules_id>` / `<level>` / `<rules_group>`; the monitor's trigger then carries an **Add active response** action pointing at the channel. End-to-end wiring is covered in [Migration steps](#migration-steps), steps 4 and 5 below.
@@ -156,31 +158,102 @@ For each custom script:
 4. Honor `wazuh.active_response.stateful_timeout` for stateful scripts.
 5. Capture stdin in a wrapper (`tee /tmp/ar-input.json`) on a real dispatch to confirm the shape.
 
-### Example diff (custom SSH blocker)
+### Example diff
 
 **4.x body:**
 
 ```bash
-SRC_IP=$(echo  "$INPUT_JSON" | jq -r '.parameters.alert.data.srcip')
-RULE_ID=$(echo "$INPUT_JSON" | jq -r '.parameters.alert.rule.id')
+#!/bin/bash
 
-case "$COMMAND" in
-  add)      iptables -I INPUT -s "$SRC_IP" -j DROP ;;
-  delete)   iptables -D INPUT -s "$SRC_IP" -j DROP ;;
-  continue) ;; # repeated offenders
-esac
+# Log file
+LOGFILE="/var/ossec/logs/active-responses.log"
+
+logmsg(){
+  local msg="$@"
+  echo "$(date '+%Y-%m-%d %H:%M:%S') - custom-ar-sh - $msg" >> "$LOGFILE"
+}
+
+# Read AR input
+read INPUT_JSON
+
+logmsg "$INPUT_JSON"
+
+# Get command
+command=$(echo  "$INPUT_JSON" | jq -r '.command')
+
+# Get srcip from the alert
+ar_srcip=$(echo  "$INPUT_JSON" | jq -r '.parameters.alert.data.srcip')
+
+logmsg "Command: $command"
+
+if [ "$command" == "add" ]; then
+  # Send control message
+  printf '{"version":1,"origin":{"name":"custom-ar-sh","module":"active-response"},"command":"check_keys", "parameters":{"keys":[]}}\n'
+  read RESPONSE
+  response_command=$(echo $RESPONSE | jq -r .command)
+  if [ ${response_command} != "continue" ]; then
+    logmsg "Abort"
+    exit 0;
+  fi
+
+  # Execute the main AR command
+  logmsg "Execute AR"
+elif [ "$command" == "delete" ]; then
+  # Execute the revert/undone command
+  logmsg "Revert AR"
+else
+  logmsg "Invalid command: $command"
+fi
+
+exit 0
 ```
 
 **5.x body:**
 
 ```bash
-SRC_IP=$(echo  "$INPUT_JSON" | jq -r '.source.ip')
-AR_NAME=$(echo "$INPUT_JSON" | jq -r '.wazuh.active_response.name')
+#!/bin/bash
 
-case "$COMMAND" in
-  enable)  iptables -I INPUT -s "$SRC_IP" -j DROP ;;
-  disable) iptables -D INPUT -s "$SRC_IP" -j DROP ;;
-esac
+# Log file
+LOGFILE="/var/ossec/logs/active-responses.log"
+
+logmsg(){
+  local msg="$@"
+  echo "$(date '+%Y-%m-%d %H:%M:%S') - custom-ar-sh - $msg" >> "$LOGFILE"
+}
+
+# Read AR input
+read INPUT_JSON
+
+logmsg "$INPUT_JSON"
+
+# Get command
+command=$(echo  "$INPUT_JSON" | jq -r '.command')
+
+# Get srcip from the alert
+ar_srcip=$(echo  "$INPUT_JSON" | jq -r '.parameters.alert.data.srcip')
+
+logmsg "Command: $command"
+
+if [ "$command" == "enable" ]; then # 5.x MIGRATION: Changed from add to enable
+  # Send control message
+  printf '{"version":1,"origin":{"name":"custom-ar-sh","module":"active-response"},"command":"check_keys", "parameters":{"keys":[]}}\n'
+  read RESPONSE
+  response_command=$(echo $RESPONSE | jq -r .command)
+  if [ ${response_command} != "continue" ]; then
+    logmsg "Abort"
+    exit 0;
+  fi
+
+  # Execute the main AR command
+  logmsg "Execute AR"
+elif [ "$command" == "disable" ]; then # 5.x MIGRATION: Changed from delete to disable
+  # Execute the revert/undone command
+  logmsg "Revert AR"
+else
+  logmsg "Invalid command: $command"
+fi
+
+exit 0
 ```
 
 Ownership and permissions are unchanged:
@@ -303,8 +376,3 @@ AR cannot be rolled back independently — restore it as part of the full stack 
 - [Developer AR docs (channel schema)](../../dev/modules/active-responses.md)
 - Wazuh 4.14 AR reference: <https://documentation.wazuh.com/4.14/user-manual/capabilities/active-response/>
 - [CHANGELOG](../../../CHANGELOG.md)
-
-## Support
-
-- Community forum: <https://groups.google.com/g/wazuh>
-- GitHub issues: <https://github.com/wazuh/wazuh-dashboard-plugins/issues>
