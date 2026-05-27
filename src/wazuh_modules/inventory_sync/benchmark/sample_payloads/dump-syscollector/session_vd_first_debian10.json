@@ -6,7 +6,6 @@
     "module": "syscollector_vd",
     "mode": "ModuleDelta",
     "option": "VDFirst",
-    "size": 598,
     "index": [
       "wazuh-states-inventory-packages",
       "wazuh-states-inventory-system"

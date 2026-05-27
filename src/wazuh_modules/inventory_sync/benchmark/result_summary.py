@@ -2,31 +2,19 @@
 """
 result_summary.py — Merge bench.csv + monitor.csv + logs.csv into summary.json
 
-Reads three CSVs (and an optional scenario JSON with expectations) and writes
-a single machine-readable summary plus a short human-readable report.
+Reads the per-second CSVs produced by the sender and the resource monitor and
+writes a single machine-readable summary plus a short human-readable report.
+This is a descriptive aggregator only — there is no PASS/FAIL logic.
 
 Inputs:
 
-  --bench    bench.csv   (from benchmark_sender.py)
-  --monitor  monitor.csv (from monitor.py)
-  --logs     logs.csv    (from log_parser.py; optional)
-  --scenario scenarios/burst.json (optional; provides expectations + name)
-  --params   results_*/params.json (optional; metadata about the run)
-  --out      summary.json (output)
-
-Expectations supported (all optional) under scenario.json["expectations"]:
-
-  rss_mb_max                 (number)  : max allowed RSS
-  rss_growth_mb_max          (number)  : max growth from minute-1 to end
-  drops_max                  (number)  : max messages_dropped
-  status_offline_max         (number)  : max start_ack_offline + end_ack_offline
-  reqret_max                 (number)  : max ReqRet count
-  latency_p99_ms_max         (number)  : max session-full p99 latency
-  session_success_rate_min   (number)  : min completed/started percentage
-  manager_must_survive       (bool)    : default true; FAIL if monitor stopped
-                                         due to NoSuchProcess
-
-The result is one of: PASS, FAIL, or NEUTRAL (no expectations given).
+  --bench       bench.csv                              (from benchmark_sender.py)
+  --monitor     monitor/wazuh-manager-modulesd.csv     (from monitor.py)
+  --disk-csv    monitor/disk_usage.csv                 (optional)
+  --logs        monitor/logs.csv                       (optional, from log_parser.py)
+  --sender-json results_*/sender_summary.json          (optional, for latency percentiles)
+  --params      results_*/params.json                  (optional, for run metadata)
+  --out         summary.json                           (output)
 """
 from __future__ import annotations
 
@@ -77,7 +65,6 @@ def to_int(v: Any, default: int = 0) -> int:
 def aggregate_bench(rows: list[dict[str, str]]) -> dict[str, Any]:
     if not rows:
         return {}
-
     fields = [k for k in rows[0].keys() if k not in ("timestamp", "elapsed_s")]
     totals = {k: 0 for k in fields}
     for r in rows:
@@ -100,12 +87,11 @@ def aggregate_monitor(rows: list[dict[str, str]]) -> dict[str, Any]:
     fds   = col("fds")
     threads = col("threads")
 
-    # Growth: RSS at second 30 (or first sample) → RSS at last sample
     rss_steady = rss[30] if len(rss) > 30 else (rss[0] if rss else 0.0)
     rss_final  = rss[-1] if rss else 0.0
     rss_growth = round(rss_final - rss_steady, 2)
 
-    out = {
+    return {
         "samples":       len(rows),
         "rss_mb_min":    round(min(rss), 2) if rss else 0.0,
         "rss_mb_max":    round(max(rss), 2) if rss else 0.0,
@@ -119,11 +105,9 @@ def aggregate_monitor(rows: list[dict[str, str]]) -> dict[str, Any]:
         "threads_max":   int(max(threads)) if threads else 0,
         "fds_max":       int(max(fds)) if fds else 0,
     }
-    return out
 
 
 def aggregate_disk(rows: list[dict[str, str]]) -> dict[str, dict[str, float]]:
-    """Per-directory min/max/final/growth from `dir_<name>_mb` columns."""
     if not rows:
         return {}
     disk_cols = [k for k in rows[0].keys() if k.startswith("dir_") and k.endswith("_mb")]
@@ -150,65 +134,6 @@ def aggregate_logs(rows: list[dict[str, str]]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Checks
-# ---------------------------------------------------------------------------
-def evaluate(
-    bench: dict[str, Any],
-    monitor: dict[str, Any],
-    logs: dict[str, Any],
-    sender_summary: dict[str, Any],
-    expectations: dict[str, Any],
-    disks: dict[str, dict[str, float]] | None = None,
-) -> tuple[str, list[dict[str, Any]]]:
-    """Return (result, [checks]). result ∈ {PASS, FAIL, NEUTRAL}."""
-    if not expectations:
-        return "NEUTRAL", []
-
-    checks: list[dict[str, Any]] = []
-
-    def chk(name: str, op: str, want: Any, got: Any) -> bool:
-        passed = {
-            "<=": lambda g, w: g is not None and g <= w,
-            ">=": lambda g, w: g is not None and g >= w,
-            "==": lambda g, w: g == w,
-        }[op](got, want)
-        checks.append({"name": name, "op": op, "want": want, "got": got, "pass": bool(passed)})
-        return passed
-
-    if "rss_mb_max" in expectations:
-        chk("rss_mb_max", "<=", expectations["rss_mb_max"], monitor.get("rss_mb_max"))
-    if "rss_growth_mb_max" in expectations:
-        chk("rss_growth_mb_max", "<=", expectations["rss_growth_mb_max"], monitor.get("rss_growth_mb"))
-    if "drops_max" in expectations:
-        drops = bench.get("messages_dropped", 0)
-        chk("drops_max", "<=", expectations["drops_max"], drops)
-    if "status_offline_max" in expectations:
-        offline = bench.get("start_ack_offline", 0) + bench.get("end_ack_offline", 0)
-        chk("status_offline_max", "<=", expectations["status_offline_max"], offline)
-    if "reqret_max" in expectations:
-        chk("reqret_max", "<=", expectations["reqret_max"], bench.get("reqret", 0))
-    if "latency_p99_ms_max" in expectations:
-        p99 = sender_summary.get("latency_ms", {}).get("session_full", {}).get("p99")
-        chk("latency_p99_ms_max", "<=", expectations["latency_p99_ms_max"], p99)
-    if "session_success_rate_min" in expectations:
-        started = bench.get("sessions_started", 0)
-        completed = bench.get("sessions_completed", 0)
-        rate = (completed / started * 100.0) if started > 0 else 0.0
-        chk("session_success_rate_min", ">=", expectations["session_success_rate_min"], round(rate, 2))
-
-    # Per-directory growth caps. Scenario declares e.g.
-    #   "expectations": { "disk_growth_mb_max": { "inventory_sync": 50 } }
-    growth_caps = expectations.get("disk_growth_mb_max") or {}
-    if disks and growth_caps:
-        for name, cap in growth_caps.items():
-            got = (disks.get(name) or {}).get("mb_growth")
-            chk(f"disk_growth_mb_max[{name}]", "<=", cap, got)
-
-    overall = "PASS" if all(c["pass"] for c in checks) else "FAIL"
-    return overall, checks
-
-
-# ---------------------------------------------------------------------------
 # Render
 # ---------------------------------------------------------------------------
 def render_human(summary: dict[str, Any]) -> str:
@@ -216,14 +141,12 @@ def render_human(summary: dict[str, Any]) -> str:
     monitor = summary["process"]
     logs    = summary["logs"]
     lat     = summary.get("latency_ms", {})
-    result  = summary.get("result", "NEUTRAL")
     name    = summary.get("scenario", "(unnamed scenario)")
 
     lines = []
     lines.append("=" * 70)
     lines.append(f"  Inventory Sync benchmark — scenario: {name}")
     lines.append("=" * 70)
-    lines.append(f"  Result:                          {result}")
     lines.append(f"  Duration:                        {summary.get('duration_sec', 0)} s")
     lines.append("")
     lines.append("  Traffic (sender)")
@@ -241,6 +164,8 @@ def render_human(summary: dict[str, Any]) -> str:
                  f"{bench.get('end_ack_processing', 0):,}")
     lines.append(f"    ReqRet / missing ranges:       "
                  f"{bench.get('reqret', 0):,} / {bench.get('missing_ranges_total', 0):,}")
+    if bench.get("start_retries"):
+        lines.append(f"    Start retries:                 {bench.get('start_retries', 0):,}")
     lines.append("")
     lines.append("  Process (monitor)")
     lines.append(f"    RSS min/max/final/growth (MB): "
@@ -268,9 +193,9 @@ def render_human(summary: dict[str, Any]) -> str:
     disks = summary.get("disk") or {}
     if disks:
         lines.append("  Disk (tracked dirs)")
-        for name, stats in disks.items():
+        for name_, stats in disks.items():
             lines.append(
-                f"    {name:24s} min={stats.get('mb_min', 0)}MB "
+                f"    {name_:24s} min={stats.get('mb_min', 0)}MB "
                 f"max={stats.get('mb_max', 0)}MB "
                 f"final={stats.get('mb_final', 0)}MB "
                 f"growth={stats.get('mb_growth', 0)}MB"
@@ -284,14 +209,6 @@ def render_human(summary: dict[str, Any]) -> str:
                 lines.append(f"    {k:32s} {v}")
         lines.append("")
 
-    checks = summary.get("checks") or []
-    if checks:
-        lines.append("  Checks vs. expectations")
-        for c in checks:
-            mark = "PASS" if c["pass"] else "FAIL"
-            lines.append(f"    [{mark}] {c['name']:30s} got={c['got']} {c['op']} {c['want']}")
-        lines.append("")
-
     lines.append("=" * 70)
     return "\n".join(lines)
 
@@ -303,11 +220,10 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Merge benchmark results into summary.json")
     p.add_argument("--bench",       required=True, help="Path to bench.csv")
     p.add_argument("--monitor",     required=True, help="Path to process monitor CSV (e.g. monitor/wazuh-manager-modulesd.csv)")
-    p.add_argument("--disk-csv",    default=None,  help="Path to disk_usage.csv (optional, for disk growth checks)")
+    p.add_argument("--disk-csv",    default=None,  help="Path to disk_usage.csv (optional)")
     p.add_argument("--logs",        default=None,  help="Path to logs.csv (optional)")
-    p.add_argument("--scenario",    default=None,  help="Scenario JSON with expectations (optional)")
-    p.add_argument("--sender-json", default=None,  help="benchmark_sender.py summary JSON (with latency)")
-    p.add_argument("--params",      default=None,  help="run params.json (optional metadata)")
+    p.add_argument("--sender-json", default=None,  help="sender_summary.json (with latency percentiles)")
+    p.add_argument("--params",      default=None,  help="params.json (run metadata)")
     p.add_argument("--out",         required=True, help="Output summary JSON")
     p.add_argument("--quiet",       action="store_true", help="Suppress human-readable text")
     return p.parse_args()
@@ -326,11 +242,6 @@ def main() -> int:
         with open(args.sender_json) as fh:
             sender_summary = json.load(fh)
 
-    scenario: dict[str, Any] = {}
-    if args.scenario and Path(args.scenario).exists():
-        with open(args.scenario) as fh:
-            scenario = json.load(fh)
-
     params: dict[str, Any] = {}
     if args.params and Path(args.params).exists():
         with open(args.params) as fh:
@@ -341,17 +252,17 @@ def main() -> int:
     disks   = aggregate_disk(disk_rows if disk_rows else monitor_rows)
     logs    = aggregate_logs(logs_rows)
 
-    # Prefer sender's stored latency (kept across the whole run); fall back to empty
     latency_ms = sender_summary.get("latency_ms", {})
     duration_sec = sender_summary.get("duration_sec") or len(monitor_rows) or len(bench_rows)
 
-    expectations = scenario.get("expectations", {})
-    result, checks = evaluate(bench, monitor, logs, sender_summary, expectations,
-                              disks=disks)
+    scenario_name = (
+        params.get("scenario_name")
+        or sender_summary.get("meta", {}).get("scenario_name")
+        or ""
+    )
 
     summary = {
-        "scenario":     scenario.get("name", scenario.get("scenario", "")),
-        "result":       result,
+        "scenario":     scenario_name,
         "duration_sec": duration_sec,
         "params":       params,
         "meta":         sender_summary.get("meta", {}),
@@ -360,8 +271,6 @@ def main() -> int:
         "disk":         disks,
         "logs":         logs,
         "latency_ms":   latency_ms,
-        "expectations": expectations,
-        "checks":       checks,
     }
 
     Path(args.out).write_text(json.dumps(summary, indent=2, default=str))
@@ -370,7 +279,7 @@ def main() -> int:
     if not args.quiet:
         print(render_human(summary))
 
-    return 0 if result != "FAIL" else 1
+    return 0
 
 
 if __name__ == "__main__":

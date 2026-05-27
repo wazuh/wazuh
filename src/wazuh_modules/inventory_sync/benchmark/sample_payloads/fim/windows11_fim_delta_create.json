@@ -6,7 +6,6 @@
     "module": "fim",
     "mode": "ModuleDelta",
     "option": "Sync",
-    "size": 20,
     "indices": [
       "wazuh-states-fim-files"
     ],

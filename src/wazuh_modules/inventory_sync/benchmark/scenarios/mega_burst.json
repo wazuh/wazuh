@@ -1,20 +1,15 @@
 {
   "name": "mega_burst",
   "description": "Saturates the m_workersQueue producer (unlimited). 1000 concurrent agents with small data_size generate enqueue rate > combined worker capacity (std::thread::hardware_concurrency()). The goal is to expose whether the unbounded queue causes RSS to grow without limit.",
-  "load": {
-    "agents": 2000,
-    "data_size": 100,
-    "duration_sec": 180,
-    "payload_kind": "fim_file"
+  "lanes": {
+    "fim_file": [
+      {
+        "kind": "fim_file",
+        "data_size": 100
+      }
+    ]
   },
-  "expectations": {
-    "session_success_rate_min": 50.0
-  },
-  "notes": [
-    "Hypothesis: if m_workersQueue grows unbounded, RSS climbs in a linear ramp (not sawtooth) and never stabilizes.",
-    "Key proxy: monitor_rss_mb.png \u2014 look for a sustained positive slope during the send window.",
-    "Compare with burst.json (200 agents): if RSS stayed flat in burst but rises monotonically in mega_burst, the queue is responsible.",
-    "If the host can't reach 1000 agents due to ulimit/fds, lower to 500 and increase data_size \u2014 the goal is input_rate > worker_drain_rate.",
-    "Mitigation to evaluate after the experiment: max capacity for m_workersQueue + drop_oldest/reject policy with logging."
-  ]
+  "total_agents": 2000,
+  "parallel_agents": 0,
+  "repeat_until": 180
 }

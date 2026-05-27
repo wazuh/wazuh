@@ -6,7 +6,6 @@
     "module": "sca",
     "mode": "ModuleFull",
     "option": "Sync",
-    "size": 207,
     "indices": [
       "wazuh-states-sca"
     ],

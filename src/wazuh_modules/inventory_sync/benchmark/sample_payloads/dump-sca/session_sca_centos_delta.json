@@ -6,7 +6,6 @@
     "module": "sca",
     "mode": "ModuleDelta",
     "option": "Sync",
-    "size": 1,
     "indices": [
       "wazuh-states-sca"
     ],
