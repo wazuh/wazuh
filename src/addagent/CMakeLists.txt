@@ -4,6 +4,8 @@ project(manage_agents C)
 
 if(NOT DEFINED WAZUH_MAIN_PROJECT)
   get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
+  list(APPEND CMAKE_MODULE_PATH "${SRC_FOLDER}/cmake")
+  include(WazuhRpath)
 endif()
 
 # Include directories
@@ -115,13 +117,5 @@ elseif(NOT UNIT_TEST)
                                                ${SRC_FOLDER}/build/bin)
   target_link_libraries(manage_agents PRIVATE addagent_lib)
 
-  if(APPLE)
-    set_target_properties(
-      manage_agents PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
-                               INSTALL_RPATH "@executable_path/../lib")
-  else()
-    set_target_properties(
-      manage_agents PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
-                               INSTALL_RPATH "$ORIGIN/../lib")
-  endif()
+  wazuh_set_runtime_rpath(manage_agents)
 endif()
