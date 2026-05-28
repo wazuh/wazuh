@@ -724,6 +724,92 @@ All notable changes to this project will be documented in this file.
 - Added the `security:revoke` action to the `PUT /security/user/revoke` endpoint. ([#26255](https://github.com/wazuh/wazuh/pull/26255))
 
 
+## [v4.10.4]
+
+### Manager
+
+#### Changed
+
+- Masked `authd.pass` in configuration API responses for users without update permissions. ([#34128](https://github.com/wazuh/wazuh/pull/34128))
+
+#### Fixed
+
+- Fixed analysisd plugin decoder argument alignment. ([#35222](https://github.com/wazuh/wazuh/pull/35222))
+- Fixed path traversal in authd via agent group name validation. ([#35258](https://github.com/wazuh/wazuh/pull/35258))
+- Hardened cluster deserialization by restricting callable decoding to Wazuh modules and improving error handling. ([#35256](https://github.com/wazuh/wazuh/pull/35256))
+- Fixed DAPI callable resolution to restrict invocations to exposed resources only. ([#35256](https://github.com/wazuh/wazuh/pull/35256))
+- Fixed admin protection in update user endpoint. ([#35469](https://github.com/wazuh/wazuh/pull/35469))
+- Fixed protected settings checks when multiple `<ossec_config>` blocks are present. ([#34690](https://github.com/wazuh/wazuh/pull/34690))
+- Restricted cluster file transfer write paths. ([#34659](https://github.com/wazuh/wazuh/pull/34659))
+- Improved cluster file synchronization path handling by adding safe path joins. ([#35008](https://github.com/wazuh/wazuh/pull/35008))
+- Fixed Vulnerability Detector offset DB update to occur only after processing (backport from 4.12.0). ([#31901](https://github.com/wazuh/wazuh/pull/31901))
+
+### Agent
+
+#### Added
+
+- Added detection of the `-a never,task` Audit rule in FIM whodata for Linux. ([#34661](https://github.com/wazuh/wazuh/pull/34661))
+
+#### Changed
+
+- Changed sync primitive disposal to stop and soften teardown failures. ([#34680](https://github.com/wazuh/wazuh/pull/34680))
+
+#### Fixed
+
+- Fixed Windows FIM Registry scan crash on non-null-terminated values. ([#34679](https://github.com/wazuh/wazuh/pull/34679))
+
+### Other
+
+#### Changed
+
+- Updated curl dependency to 8.12.1. ([#34687](https://github.com/wazuh/wazuh/pull/34687))
+- Updated `starlette` dependency to 0.49.1. ([#33383](https://github.com/wazuh/wazuh/pull/33383))
+- Upgraded Python embedded interpreter to 3.10.19. ([#32790](https://github.com/wazuh/wazuh/pull/32790))
+
+
+## [v4.10.3]
+
+### Other
+
+#### Changed
+
+- Updated `requests` to version 2.32.4 (backport from 4.14.0). ([#30829](https://github.com/wazuh/wazuh/pull/30829))
+- Updated `urllib3` to version 2.5.0 and `protobuf` to version 5.29.5 (backport from 4.14.0). ([#30829](https://github.com/wazuh/wazuh/pull/30829))
+- Updated dependencies: setuptools, Jinja2, and PyJWT (backport from 4.14.0). ([#29933](https://github.com/wazuh/wazuh/pull/29933))
+
+
+## [v4.10.2]
+
+### Manager
+
+#### Fixed
+
+- Enabled inventory synchronization in Vulnerability Detector when the Indexer module is disabled (backport from 4.11.0). ([#29612](https://github.com/wazuh/wazuh/pull/29612))
+- Fixed the OS CPE build for package scans with data from Wazuh-DB (backport from 4.11.1). ([#29613](https://github.com/wazuh/wazuh/pull/29613))
+- Fixed heap buffer overflow in Analysisd rule parser (backport from 4.11.1). ([#29599](https://github.com/wazuh/wazuh/pull/29599))
+- Improved the signal handling during processes stop (backport from 4.12.0). ([#29615](https://github.com/wazuh/wazuh/pull/29615))
+- Fixed crash when reading email alerts missing the `email_to` attribute (backport from 4.12.0). ([#29616](https://github.com/wazuh/wazuh/pull/29616))
+
+#### Changed
+
+- Improved SCA and Syscheck decoders (backport from 4.11.0). ([#29633](https://github.com/wazuh/wazuh/pull/29633))
+
+### Agent
+
+#### Fixed
+
+- Fixed a bug that could cause `wazuh-modulesd` to crash at startup (backport from 4.12.0). ([#29598](https://github.com/wazuh/wazuh/pull/29598))
+- Fixed WPK package upgrades for DEB when upgrading from version 4.3.11 or earlier (backport from 4.12.0). ([#29600](https://github.com/wazuh/wazuh/pull/29600))
+- Fixed error in event processing on AWS Custom Logs Buckets module (backport from 4.11.0). ([#29635](https://github.com/wazuh/wazuh/pull/29635))
+- Improved URL validation in the Maltiverse integration (backport from 4.12.0). ([#29604](https://github.com/wazuh/wazuh/pull/29604))
+
+### Other
+
+#### Changed
+
+- Upgraded python-multipart to 0.0.20, starlette to 0.42.0 and Werkzeug to 3.1.3 (backport from 4.12.0), h11 to 0.16.0 and httpcore to 1.0.9. ([#29669](https://github.com/wazuh/wazuh/pull/29669))
+
+
 ## [v4.10.1] - 2025-01-17
 
 ### Manager
