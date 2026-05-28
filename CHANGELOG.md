@@ -1,8 +1,6 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.14.16]
-
 ## [v4.14.6]
 
 ### Manager
