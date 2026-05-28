@@ -12,10 +12,15 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Improved message decompression handling in remoted. ([#35773](https://github.com/wazuh/wazuh/pull/35773))
-- Improved agent name validation to reject names starting with dot. ([#4503](https://github.com/wazuh/internal-devel-requests/issues/4503))
+- Improved agent name validation to reject names starting with dot. ([#35833](https://github.com/wazuh/wazuh/pull/35833))
 - Fixed segfault in vulnerability scanner module shutdown when disabled. ([#36011](https://github.com/wazuh/wazuh/pull/36011))
 - Fixed string buffer handling in version comparison function. ([#36059](https://github.com/wazuh/wazuh/pull/36059))
 - Improved cluster file synchronization security. ([#36060](https://github.com/wazuh/wazuh/pull/36060))
+- Improved cluster file synchronization error handling on invalid task identifiers. ([#36129](https://github.com/wazuh/wazuh/pull/36129))
+- Improved cluster merged file parameter validation to prevent directory escape. ([#36204](https://github.com/wazuh/wazuh/pull/36204))
+- Improved `tmp_file` path validation in cluster DAPI. ([#36246](https://github.com/wazuh/wazuh/pull/36246))
+- Improved cluster non-merged file path validation during worker file processing. ([#36296](https://github.com/wazuh/wazuh/pull/36296))
+- Improved cluster node name format validation in the hello handler. ([#36460](https://github.com/wazuh/wazuh/pull/36460))
 - Fixed missing `agent.host.ip` in inventory documents when agent IP is empty. ([#35475](https://github.com/wazuh/wazuh/pull/35475))
 - Fixed stale agent `synced` status after hot reload on cluster worker nodes. ([#6726](https://github.com/wazuh/external-devel-requests/issues/6726))
 
@@ -24,6 +29,10 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed agent registration not running on reinstall after `apt-get remove`. ([#35727](https://github.com/wazuh/wazuh/pull/35727))
+- Fixed MS-Graph integration handling for relationships containing `/`. ([#35431](https://github.com/wazuh/wazuh/pull/35431))
+- Fixed macOS syscollector to skip package receipts whose payload is no longer installed. ([#35380](https://github.com/wazuh/wazuh/pull/35380))
+- Fixed missing eBPF create, modify and delete events on Ubuntu 24/26 and improved FIM whodata healthcheck. ([#35838](https://github.com/wazuh/wazuh/pull/35838))
+- Hardened FIM database path lookups by migrating to parameterized SQL queries. ([#36399](https://github.com/wazuh/wazuh/pull/36399))
 
 ### RESTful API
 
@@ -31,12 +40,20 @@ All notable changes to this project will be documented in this file.
 
 - Escaped control characters in API usernames in access logs. ([#35866](https://github.com/wazuh/wazuh/pull/35866))
 - Added input validation in cluster result handling and authentication. ([#35757](https://github.com/wazuh/wazuh/pull/35757))
+- Fixed current user resolution in the `update-user` endpoint to enforce admin protection. ([#35442](https://github.com/wazuh/wazuh/pull/35442))
+
+### Ruleset
+
+#### Fixed
+
+- Updated rootcheck trojan signatures to avoid false positives on modern distributions (Debian 13, Ubuntu 26, Arch Linux). ([#35927](https://github.com/wazuh/wazuh/pull/35927))
 
 ### Other
 
 #### Changed
 
 - Updated `cryptography`, `urllib3` and `python-multipart` Python dependencies. ([#35982](https://github.com/wazuh/wazuh/pull/35982))
+- Updated eBPF libraries: `libbpf` to 1.7.0 and `bpftool` to 7.7.0. ([#36467](https://github.com/wazuh/wazuh/pull/36467))
 
 
 ## [v4.14.5]
