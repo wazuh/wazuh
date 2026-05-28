@@ -45,8 +45,8 @@ jobs:
     runs-on: ubuntu-24.04
     name: Detect changed Windows test modules
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-      any_matched: ${{ steps.set-matrix.outputs.any_matched }}
+      matrix: ${{ steps.detect.outputs.matrix }}
+      any_matched: ${{ steps.detect.outputs.any_matched }}
 
     steps:
       - name: Checkout repository
@@ -54,86 +54,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Build matrix from JSON (windows)
-        id: set-matrix
-        shell: bash
-        env:
-          BASE_REF: ${{ github.base_ref }}
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          python3.12 - <<'PY'
-          import json
-          import os
-          import pathlib
-          import subprocess
-
-          event_name = os.environ['EVENT_NAME']
-          output_path = os.environ['GITHUB_OUTPUT']
-
-          if event_name != 'pull_request':
-              matched = []
-          else:
-              base_ref = os.environ['BASE_REF']
-              diff_range = f'origin/{base_ref}...HEAD'
-              changed_files = subprocess.check_output(
-                  ['git', 'diff', '--name-only', diff_range],
-                  text=True,
-              ).splitlines()
-
-              with open('.github/test-modules-windows.json', encoding='utf-8') as stream:
-                  modules = json.load(stream).get('modules', [])
-
-              matched = []
-              for module in modules:
-                  module_name = module['name']
-                  matched_pattern = None
-
-                  for pattern in module.get('paths', []):
-                      if any(pathlib.PurePosixPath(changed).match(pattern) for changed in changed_files):
-                          matched_pattern = pattern
-                          break
-
-                  if matched_pattern is not None:
-                      print(f"Matched {module_name} with pattern {matched_pattern}")
-                      tiers = module.get('tiers', ['0 1'])
-                      for tier in tiers:
-                          tier_args = ' '.join(f'--tier {t}' for t in tier.split())
-                          shard_name = f"tier-{tier.replace(' ', '-')}"
-                          excludes = module.get('exclude', [])
-                          ignore_args = ' '.join(f'--ignore={e}' for e in excludes)
-                          matched.append({
-                              'name': module_name,
-                              'shard_name': shard_name,
-                              'pytest_target': module['pytest_target'],
-                              'pytest_extra_args': module.get('pytest_extra_args', ''),
-                              'pytest_tier_args': tier_args,
-                              'pytest_ignore_args': ignore_args,
-                              'start_service': module.get('start_service', False),
-                              'skip_tests': False,
-                          })
-
-              print(f'Final matrix: {json.dumps(matched)}')
-
-          if matched:
-              matrix = {'include': matched}
-          else:
-              matrix = {
-                  'include': [{
-                      'name': 'none',
-                      'shard_name': 'none',
-                      'pytest_target': 'test_none\\',
-                      'pytest_extra_args': '',
-                      'pytest_tier_args': '',
-                      'pytest_ignore_args': '',
-                      'start_service': False,
-                      'skip_tests': True,
-                  }]
-              }
-          any_matched = 'true' if matched else 'false'
-          with open(output_path, 'a', encoding='utf-8') as stream:
-              stream.write(f"matrix={json.dumps(matrix, separators=(',', ':'))}\n")
-              stream.write(f"any_matched={any_matched}\n")
-          PY
+      - name: Detect changed modules
+        id: detect
+        uses: ./.github/actions/5_testintegration_detect-changes
+        with:
+          modules-config: .github/test-modules-windows.json
+          none-matrix: '{"include":[{"name":"none","shard_name":"none","pytest_target":"test_none\\","pytest_extra_args":"","pytest_tier_args":"","pytest_ignore_args":"","start_service":false,"skip_tests":true}]}'
+          field-defaults: '{"pytest_extra_args":"","pytest_ignore_args":"","start_service":false,"skip_tests":false}'
 
   build-windows-i686:
     needs: detect-changes
