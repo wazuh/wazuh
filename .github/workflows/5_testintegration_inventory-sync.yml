@@ -183,7 +183,7 @@ jobs:
           if systemctl is-active --quiet wazuh-manager 2>/dev/null; then
             sudo systemctl stop wazuh-manager
           fi
-          if [ -f "$INSTALLATION_DIR/logs/wazuh-manager.log" ]; then
+          if sudo test -f "$INSTALLATION_DIR/logs/wazuh-manager.log"; then
             sudo tail -50 "$INSTALLATION_DIR/logs/wazuh-manager.log"
             sudo cp "$INSTALLATION_DIR/logs/wazuh-manager.log" ./wazuh-manager.log
             sudo chown "$(id -un):$(id -gn)" ./wazuh-manager.log
@@ -206,4 +206,3 @@ jobs:
             src/wazuh_modules/inventory_sync/qa/wazuh_agents.json
           retention-days: 7
           if-no-files-found: warn
-

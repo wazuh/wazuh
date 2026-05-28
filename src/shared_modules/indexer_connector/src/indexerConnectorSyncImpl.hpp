@@ -735,7 +735,10 @@ public:
             logWarn(m_logTag.c_str(),
                     "Update by query skipped: no valid indices after filtering (input had %zu entries)",
                     indices.size());
-            m_notify.clear();
+            // No HTTP request needed, but pending notify callbacks (e.g. unlockAgent +
+            // sendEndAck) must still fire so the session terminates cleanly. Treat the
+            // missing/filtered indices as a no-op success.
+            m_shouldNotifyAfterBulk = true;
             return;
         }
 
