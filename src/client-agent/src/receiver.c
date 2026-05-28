@@ -263,7 +263,16 @@ int receive_msg()
                                             } else {
                                                 minfo("Agent is reloading due to shared configuration changes.");
                                             }
-                                            reloadAgent();
+                                            // The reload chain (modulesd CONTROL_SOCK -> wazuh-control
+                                            // reload -> SIGUSR1) is the normal release path; doing it
+                                            // there ensures modules don't briefly start with the new
+                                            // config and then get killed when the chain restarts them.
+                                            // Only release the gate inline if reloadAgent() reports the
+                                            // control socket is unreachable, in which case the chain
+                                            // will never fire and the gate would otherwise stay stuck.
+                                            if (!reloadAgent() && gate_would_release) {
+                                                startup_gate_refresh_from_local_hash();
+                                            }
                                         } else {
                                             startup_gate_refresh_from_local_hash();
                                             if (!config_changed) {
