@@ -13,7 +13,7 @@ Complete the stack-wide upgrade (see the general [Migration guide (4.x to 5.x)](
 - Matching (`<rules_id>` / `<level>` / `<rules_group>`) moves to the query of an Alerting monitor of type **Active Response**.
 - `PUT /active-response` is removed with no replacement. Dispatch is document-driven: a monitor action writes into `wazuh-active-responses`; the manager polls every 60 s (batches of 100) and forwards via `wazuh-remoted`. Pre-5.0 agents are filtered out.
 - Executions land as structured documents in the `wazuh-active-responses` data stream (backing index `.wazuh-active-responses-v5`, 3-day ISM retention via `stream-active-responses-policy`).
-- The JSON delivered to scripts changed shape: `command` ∈ `enable` / `disable` (was `add` / `delete` / `continue`); alert fields use flat ECS paths (`source.ip`, `user.name`, …); AR metadata sits under `wazuh.active_response.*`.
+- The JSON delivered to scripts changed shape: `command` ∈ `enable` / `disable` (was `add` / `delete`); alert fields use flat ECS paths (`source.ip`, `user.name`, …); AR metadata sits under `wazuh.active_response.*`.
 - Default firewall scripts (`firewall-drop`, `firewalld-drop`, `pf`, `npf`, `ipfw`, `netsh`, `route-null`, `host-deny`) are folded into a single `block-ip` executable. `restart-wazuh` moves to the Control Module. `wazuh-slack` is removed.
 - `<location>server</location>`, `<repeated_offenders>`, `<timeout_allowed>` have no direct equivalent.
 - `<disabled>` is replaced by the channel `enabled` field plus a **Mute / Unmute** runtime toggle.
@@ -168,7 +168,7 @@ Changes:
 For each custom script:
 
 1. Re-map field reads to ECS paths (`parameters.alert.data.srcip` → `source.ip`, etc.).
-2. Replace `case "$COMMAND" in add) ... delete) ... continue)` with `enable) ... disable)`. The inbound `.command` from the manager no longer carries `continue` (the 4.x "repeated offender" passthrough is gone — see [`<repeated_offenders>` is gone](#repeated_offenders-is-gone)). The `check_keys` deduplication protocol is unchanged: `wazuh-execd` still answers `continue` or `abort`, so scripts that issue a `check_keys` control message keep comparing the response against `"continue"` exactly as in 4.x.
+2. Replace the inbound command handling: the 4.x `case "$COMMAND" in add) ... delete)` becomes `enable) ... disable)`. The manager dispatches exactly one of those values — `add` / `delete` in 4.x, `enable` / `disable` in 5.x — so `continue` is **not** a dispatched command in either version. `continue` appears only as the `check_keys` deduplication reply: `wazuh-execd` answers `continue` or `abort` to a script that sends a `check_keys` control message, and this protocol is unchanged from 4.x, so scripts that issue `check_keys` keep comparing the response against `"continue"` exactly as before.
 3. Read `<extra_args>` values from `.wazuh.active_response.extra_arguments` instead of positional shell arguments (`$1`, `$2`, …) — in 5.x the manager serializes them into the JSON payload, not into argv. Other AR metadata in the same object is also accessible to the script when needed: `.wazuh.active_response.{name,executable,type,stateful_timeout,location,agent_id}`. See the rewritten script in [Example 2 — Step 3](#example-2--custom-ssh-blocker-with-extra_arguments-rule-5760) for the `extra_arguments` accessor in use.
 4. Honor `wazuh.active_response.stateful_timeout` for stateful scripts.
 5. Capture stdin **inside the script itself** — `read -r INPUT_JSON; echo "$INPUT_JSON" > /tmp/ar-input.json` — on a real dispatch to confirm the shape. **Do not** wrap as `tee /tmp/ar-input.json | impl.sh`: `wazuh-execd` keeps stdin open after sending the payload (it expects the script to optionally respond with a `check_keys` control message and read back the `continue`/`abort` answer), so `tee` never receives EOF and the dispatch hangs forever. See [Custom script hangs and AR queue stalls](#custom-script-hangs-and-ar-queue-stalls).
@@ -459,7 +459,6 @@ fi
 case "$COMMAND" in
   add)      iptables -I INPUT -s "$SRC_IP" -j DROP ;;
   delete)   iptables -D INPUT -s "$SRC_IP" -j DROP ;;
-  continue) ;; # repeated offenders
 esac
 
 exit 0
@@ -470,7 +469,7 @@ exit 0
 | Step                       | Action for this example                                                                                                                             |
 | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2 — Remove legacy blocks   | Delete both XML blocks above from `ossec.conf`.                                                                                                     |
-| 3 — Rewrite custom script  | Apply the diff below: `parameters.alert.data.srcip` → `source.ip`; `add`/`delete` → `enable`/`disable`; drop the `continue` branch (no equivalent). |
+| 3 — Rewrite custom script  | Apply the diff below: `parameters.alert.data.srcip` → `source.ip`; `add`/`delete` → `enable`/`disable`. |
 | 4 — Recreate as channel    | Use the field values in the table below.                                                                                                            |
 | 5 — Wire to monitor        | Monitor over `wazuh-findings-v5-*` with a `rule.title` query (4.x numeric `5760` has no 5.x equivalent — see [Triggering model](#triggering-model)); trigger action = **Add active response**. _(Case B's exact 5.x rule title is pending validation in the lab's Phase 7.)_ |
 | 6 — Restart and smoke-test | Trigger the rule; expect the rewritten script to run and a document in `wazuh-active-responses*`.                                                   |
@@ -571,7 +570,7 @@ Pick the rows that match your 4.14 inventory and run those lab cases before decl
 ## Post-migration validation
 
 - Every 4.x `<active-response>` block has a matching entity in **Explore → Active Responses** with the values from the inventory.
-- Custom scripts under `/var/ossec/active-response/bin/` use the 5.x JSON contract (no references to `parameters.alert.data.*` or `add` / `delete` / `continue`).
+- Custom scripts under `/var/ossec/active-response/bin/` use the 5.x JSON contract (no references to `parameters.alert.data.*` or the `add` / `delete` inbound commands).
 - `ossec.conf` contains no `<command>` or `<active-response>` blocks.
 - The smoke test from [Migration steps](#migration-steps) (step 6) passes for at least one migrated AR.
 
