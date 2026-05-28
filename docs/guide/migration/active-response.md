@@ -4,8 +4,6 @@ Active Response (AR) is rebuilt in 5.x. The 4.x XML in `ossec.conf`, the agent-s
 
 > **Manual migration only.** No converter, importer, or compatibility shim is provided. Every 4.x AR must be recreated as a 5.x channel; every custom script must be rewritten for the new JSON contract.
 
-Complete the stack-wide upgrade (see the general [Migration guide (4.x to 5.x)](../../ref/migration-4x-5x.md)) before touching AR.
-
 ## Breaking changes at a glance
 
 - `ossec.conf` `<command>` / `<active-response>` blocks are no longer parsed. `ar.conf` is removed from the agent.
@@ -108,8 +106,6 @@ The 4.x numeric IDs (`5763`, `5760`, …) have no 1:1 equivalent — locate the 
 ## API change
 
 `PUT /active-response` is removed with no replacement endpoint. Integrations that previously fired AR via the API must now emit an alert document and let an Alerting Active Response monitor pick it up. The manager keeps a bookmark at `/var/wazuh-manager/queue/cluster/ar_bookmark.json`.
-
-For general dashboard-plugin API namespace changes (`/api/status` → `/api/wazuh-core/status`, etc.) see [Migration guide — API changes](../../ref/migration-4x-5x.md#api-changes).
 
 ---
 
@@ -543,7 +539,7 @@ Together these two examples exercise every concrete shape you will encounter: a 
 
 ## Other 4.14 AR scenarios
 
-Examples 1 and 2 cover the two most common shapes (default consolidated script, custom shell script with `extra_arguments`). For every other scenario described in the [Wazuh 4.14 AR reference](https://documentation.wazuh.com/4.14/user-manual/capabilities/active-response/), the table below lists the 5.x migration approach and the lab section that exercises it end-to-end. The fifteen extended cases (C through Q) live in the in-place lab's [Phase 13 — Extended migration matrix](./active-response-lab-inplace.md#phase-13--extended-migration-matrix).
+Examples 1 and 2 cover the two most common shapes (default consolidated script, custom shell script with `extra_arguments`). The table below lists the 5.x migration approach and the lab section that exercises it end-to-end. The fifteen extended cases (C through Q) live in the in-place lab's [Phase 13 — Extended migration matrix](./active-response-lab-inplace.md#phase-13--extended-migration-matrix).
 
 | 4.14 feature                                                                     | 5.x migration approach                                                                                          | Validated in                                                                                                                                                                                                                    |
 | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
