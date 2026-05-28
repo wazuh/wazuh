@@ -999,12 +999,6 @@ rm -fr %{buildroot}
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-11-1.html
 * Wed Feb 19 2025 support <info@wazuh.com> - 4.11.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-11-0.html
-* Thu May 21 2026 support <info@wazuh.com> - 4.10.4
-- More info: https://documentation.wazuh.com/current/release-notes/release-4-10-4.html
-* Tue Aug 19 2025 support <info@wazuh.com> - 4.10.3
-- More info: https://documentation.wazuh.com/current/release-notes/release-4-10-3.html
-* Wed May 21 2025 support <info@wazuh.com> - 4.10.2
-- More info: https://documentation.wazuh.com/current/release-notes/release-4-10-2.html
 * Thu Jan 16 2025 support <info@wazuh.com> - 4.10.1
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-10-1.html
 * Thu Jan 09 2025 support <info@wazuh.com> - 4.10.0
@@ -1015,8 +1009,6 @@ rm -fr %{buildroot}
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-9-1.html
 * Thu Sep 05 2024 support <info@wazuh.com> - 4.9.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-9-0.html
-* Thu Aug 22 2024 support <info@wazuh.com> - 4.8.2
-- More info: https://documentation.wazuh.com/current/release-notes/release-4-8-2.html
 * Wed Jul 10 2024 support <info@wazuh.com> - 4.8.1
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-8-1.html
 * Wed Jun 12 2024 support <info@wazuh.com> - 4.8.0
