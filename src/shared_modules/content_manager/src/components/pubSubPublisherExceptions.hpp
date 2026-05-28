@@ -29,10 +29,7 @@ public:
      *
      * @param errorMessage Exception message.
      */
-    explicit OffsetProcessingException(std::string errorMessage)
-        : m_errorMessage(std::move(errorMessage))
-    {
-    }
+    explicit OffsetProcessingException(std::string errorMessage) : m_errorMessage(std::move(errorMessage)) {}
 
     /**
      * @brief Returns the exception message.
@@ -59,10 +56,7 @@ public:
      *
      * @param errorMessage Exception message.
      */
-    explicit SnapshotProcessingException(std::string errorMessage)
-        : m_errorMessage(std::move(errorMessage))
-    {
-    }
+    explicit SnapshotProcessingException(std::string errorMessage) : m_errorMessage(std::move(errorMessage)) {}
 
     /**
      * @brief Returns the exception message.

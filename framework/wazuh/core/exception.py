@@ -525,6 +525,13 @@ class WazuhException(Exception):
         3047: "Invalid HAProxy Dataplane API specification configured",
         3048: "Could not detect a valid HAProxy process linked to the Dataplane API",
         3049: "Unexpected response from HAProxy Dataplane API",
+        3050: "Payload size exceeds maximum allowed limit",
+        3051: "Too many concurrent divided messages",
+        3052: "Invalid cluster file parameter",
+        3060: {'message': "Invalid node name format",
+               'remediation': f"Check and fix [worker names](https://documentation.wazuh.com/{DOCU_VERSION}/"
+                              f"user-manual/reference/ossec-conf/cluster.html#node-name)"
+                              " and restart the `wazuh-manager` service."},
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.

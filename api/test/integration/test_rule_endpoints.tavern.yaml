@@ -6,7 +6,7 @@ stages:
   - name: Try to show the rules of the system
     request: &general_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -214,7 +214,7 @@ stages:
   - name: Search in rules
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -318,7 +318,7 @@ stages:
   - name: Try to show the rules of the system with a non-existent state
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -780,7 +780,7 @@ stages:
   - name: Try to show the rules by requirement pci_dss
     request: &pci_dss_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/pci_dss"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/requirement/pci_dss"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -888,7 +888,7 @@ stages:
   - name: Try to show the rules by requirement gdpr
     request: &gdpr_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/gdpr"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/requirement/gdpr"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -997,7 +997,7 @@ stages:
   - name: Try to show the rules by requirement gpg13
     request: &gpg13_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/gpg13"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/requirement/gpg13"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1111,7 +1111,7 @@ stages:
   - name: Try to show the rules by requirement hipaa
     request: &hipaa_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/hipaa"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/requirement/hipaa"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1198,7 +1198,7 @@ stages:
   - name: Try to show the rules by requirement nist-800-53
     request: &nist-800-53_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/nist-800-53"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/requirement/nist-800-53"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1285,7 +1285,7 @@ stages:
   - name: Try to show the rules by requirement tsc
     request: &tsc_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/tsc"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/requirement/tsc"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1370,7 +1370,7 @@ stages:
   - name: Try to show the rules by requirement mitre
     request: &mitre_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/requirement/mitre"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/requirement/mitre"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1457,7 +1457,7 @@ stages:
   - name: Try to show the rules groups
     request: &groups_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/groups"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/groups"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1559,7 +1559,7 @@ stages:
   - name: Get the rules files
     request: &files_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/files"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1728,7 +1728,7 @@ stages:
   - name: Download rule (JSON format)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0350-amazon_rules.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/files/0350-amazon_rules.xml"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1745,7 +1745,7 @@ stages:
   - name: Download rule (raw format)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0350-amazon_rules.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/files/0350-amazon_rules.xml"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -1758,7 +1758,7 @@ stages:
   - name: Download rule (it does not exist)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/no_exists.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/files/no_exists.xml"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1778,7 +1778,7 @@ stages:
   - name: Download rule (user ruleset, rule belongs to default ruleset)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0350-amazon_rules.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/files/0350-amazon_rules.xml"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -1800,7 +1800,7 @@ stages:
   - name: Download rule (invalid file 1)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/rulexml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/files/rulexml"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1812,7 +1812,7 @@ stages:
   - name: Download rule (invalid file 2)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/..%2F..%2Fetc%local_rules.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/files/..%2F..%2Fetc%local_rules.xml"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1829,7 +1829,7 @@ stages:
   - name: Upload new valid rule
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/files/new_rule.xml"
       method: PUT
       data: "{new_rules:s}"
       headers:
@@ -1849,7 +1849,7 @@ stages:
   - name: Upload new valid rule in custom subdir
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/files/new_rule.xml"
       method: PUT
       data: "{new_rules:s}"
       headers:
@@ -1871,7 +1871,7 @@ stages:
   - name: Upload same rule (overwrite=False)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/files/new_rule.xml"
       method: PUT
       data: "{new_rules:s}"
       headers:
@@ -1894,7 +1894,7 @@ stages:
   - name: Upload same rule (overwrite=True)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/files/new_rule.xml"
       method: PUT
       data: "{new_rules:s}"
       headers:
@@ -1908,7 +1908,7 @@ stages:
   - name: Upload rule with invalid name
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/files/new_rule"
       method: PUT
       data: "{new_rules:s}"
       headers:
@@ -1923,7 +1923,7 @@ stages:
   - name: Upload invalid rule
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/invalid_rule.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/files/invalid_rule.xml"
       method: PUT
       data: "{new_rules_with_syntax_error:s}"
       headers:
@@ -1946,7 +1946,7 @@ stages:
   - name: Upload invalid rule
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/empty_file.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/files/empty_file.xml"
       method: PUT
       data: "{empty_file_xml:s}"
       headers:
@@ -1974,7 +1974,7 @@ stages:
   - name: Delete user rule
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/files/new_rule.xml"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1992,7 +1992,7 @@ stages:
   - name: Delete user rule in subdir
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/files/new_rule.xml"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2012,7 +2012,7 @@ stages:
   - name: Delete same user rule (it does not exist now)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/files/new_rule.xml"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2033,7 +2033,7 @@ stages:
   - name: Delete ruleset rule
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0010-rules_config.xml"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/files/0010-rules_config.xml"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2054,7 +2054,7 @@ stages:
   - name: Delete invalid rule
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/ossec.conf"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules/files/ossec.conf"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2072,7 +2072,7 @@ stages:
   - name: Try to show a rule with a existent id
     request: &id_rules_request
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -2199,7 +2199,7 @@ stages:
   - name: No rule
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/rules"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

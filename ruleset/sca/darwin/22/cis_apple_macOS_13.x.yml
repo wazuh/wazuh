@@ -645,7 +645,7 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "c:pmset -b -g -> r:^DestroyFVKeyOnStandby 1"
+      - 'c:pmset -b -g -> r:^\s*\t*DestroyFVKeyOnStandby\s*\t*1'
 
   # 2.9.2 Ensure Power Nap Is Disabled for Intel Macs. (Automated)
   - id: 30027
@@ -666,7 +666,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'not c:sh -c "pmset -g custom" -> r:powernap\s*\t*1'
+      - 'not c:sh -c "pmset -g custom" -> r:^\s*\t*powernap\s*\t*1'
 
   # 2.9.3 Ensure Wake for Network Access Is Disabled. (Automated)
   - id: 30028
@@ -686,7 +686,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - 'c:sh -c "pmset -g | grep -e womp" -> r:0'
+      - 'not c:sh -c "pmset -g custom" -> r:^\s*\t*womp\s*\t*1'
       - 'not c:sh -c "profiles -P -o stdout | grep ''Wake On LAN''" -> n:=\s*(\d) compare != 0'
       - 'not c:sh -c "profiles -P -o stdout | grep ''Wake On Modem Ring''" -> n:=\s*(\d) compare != 0'
 

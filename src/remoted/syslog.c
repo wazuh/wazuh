@@ -56,6 +56,11 @@ void HandleSyslog()
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
+    /* Start up message - emitted after queue connection so the service is truly operational */
+    minfo(STARTUP_MSG " Listening on port %d/UDP (syslog).",
+        (int)getpid(),
+        logr.port[logr.position]);
+
     /* Infinite loop */
     while (1) {
         /* Receive message */

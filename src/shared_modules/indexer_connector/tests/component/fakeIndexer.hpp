@@ -57,6 +57,9 @@ public:
     {
     }
 
+    /**
+     * @brief Class destructor.
+     */
     ~FakeIndexer()
     {
         m_server.stop();

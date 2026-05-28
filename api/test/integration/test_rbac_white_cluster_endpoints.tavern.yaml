@@ -6,7 +6,7 @@ stages:
   - name: Get cluster config
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/local/config"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/local/config"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -37,7 +37,7 @@ stages:
   - name: Get cluster healtcheck
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/healthcheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/healthcheck"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -67,7 +67,7 @@ stages:
   - name: Get cluster healtcheck
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/healthcheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/healthcheck"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -102,7 +102,7 @@ stages:
   - name: Get cluster ruleset synchronization status (partial response, user agnostic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/ruleset/synchronization"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/ruleset/synchronization"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -128,7 +128,7 @@ stages:
   - name: Get cluster node
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/local/info"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/local/info"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -153,7 +153,7 @@ stages:
   - name: Get cluster nodes
     request: &get_cluster_nodes
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/nodes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -236,7 +236,7 @@ stages:
   - name: Get cluster (worker1) (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/nodes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -250,7 +250,7 @@ stages:
   - name: Get cluster (worker2) (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/nodes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -271,7 +271,7 @@ stages:
   - name: Get cluster (master-node,worker1,worker2) (Allow, Deny, Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/nodes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -303,7 +303,7 @@ stages:
   - name: Get cluster status
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/status"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -323,7 +323,7 @@ stages:
   - name: Request (master-node)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/master-node/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -356,7 +356,7 @@ stages:
   - name: Request (worker1) (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -366,7 +366,7 @@ stages:
   - name: Filters -> section=alerts (worker2) (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker2/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -393,7 +393,7 @@ stages:
   - name: Request cluster validation
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/configuration/validation"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -414,7 +414,7 @@ stages:
   - name: Request cluster validation
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/configuration/validation"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -444,7 +444,7 @@ stages:
   - name: Try to show the config of analisys/global through a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration/analysis/global"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/configuration/analysis/global"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -454,7 +454,7 @@ stages:
   - name: Try to show the config of analisys/global through a worker
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/configuration/analysis/global"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker2/configuration/analysis/global"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -469,7 +469,7 @@ stages:
   - name: Request (worker1)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/info"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/info"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -479,7 +479,7 @@ stages:
   - name: Request (master-node)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/info"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/master-node/info"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -494,7 +494,7 @@ stages:
   - name: Request (worker2) (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/logs"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker2/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -504,7 +504,7 @@ stages:
   - name: Request (worker1) (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/logs"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -519,7 +519,7 @@ stages:
   - name: Request (worker2) (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/logs/summary"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker2/logs/summary"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -529,7 +529,7 @@ stages:
   - name: Request (worker1) (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/logs/summary"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/logs/summary"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -544,7 +544,7 @@ stages:
   - name: Request daemons statistics from worker1 (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/daemons/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -554,7 +554,7 @@ stages:
   - name: Request daemons statistics from worker2 (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/daemons/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker2/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -569,7 +569,7 @@ stages:
   - name: Cluster stats (worker1) today (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -579,7 +579,7 @@ stages:
   - name: Cluster stats (worker2) today (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker2/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -596,7 +596,7 @@ stages:
   - name: Request (worker2) (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/status"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker2/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -606,7 +606,7 @@ stages:
   - name: Request (worker1) (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/status"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -621,7 +621,7 @@ stages:
   - name: Request API config (Allowed)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/api/config"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -651,7 +651,7 @@ stages:
   - name: Restart cluster
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -676,7 +676,7 @@ stages:
   - name: Restart cluster
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -702,7 +702,7 @@ stages:
   - name: Reload cluster nodes ruleset (worker1, worker2)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/analysisd/reload"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/analysisd/reload"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -734,7 +734,7 @@ stages:
   - name: Upload a valid configuration (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker2/configuration"
       method: PUT
       data: "{valid_ossec_conf:s}"
       headers:
@@ -754,7 +754,7 @@ stages:
   - name: Try to upload a valid configuration (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/configuration"
       method: PUT
       data: "{valid_ossec_conf:s}"
       headers:

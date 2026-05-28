@@ -13,6 +13,7 @@
 #define _PKGWRAPPER_TEST_H
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
+#include <string>
 
 class PKGWrapperTest : public ::testing::Test
 {
@@ -22,6 +23,8 @@ class PKGWrapperTest : public ::testing::Test
 
         void SetUp() override;
         void TearDown() override;
+
+        std::string m_tempDir;
 };
 
 #endif //_PKGWRAPPER_TEST_H

@@ -8,7 +8,7 @@ stages:
     request: &get_syscheck_agent
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck/000"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscheck/000"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -403,7 +403,7 @@ stages:
   - name: Try to get 012 agent's syscheck data (never connected)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck/012"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscheck/012"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -482,7 +482,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck/000/last_scan"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscheck/000/last_scan"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -506,7 +506,7 @@ stages:
     request:
       verify: False
       method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -526,7 +526,7 @@ stages:
     request:
       verify: False
       method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -555,7 +555,7 @@ stages:
     request:
       verify: False
       method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -581,7 +581,7 @@ stages:
     request:
       verify: False
       method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscheck"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -603,7 +603,7 @@ stages:
     request: &get_syscheck_agent_002
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck/002"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscheck/002"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1018,7 +1018,7 @@ stages:
     request:
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck/002/last_scan"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscheck/002/last_scan"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1042,7 +1042,7 @@ stages:
     request:
       verify: False
       method: DELETE
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck/001"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/syscheck/001"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:

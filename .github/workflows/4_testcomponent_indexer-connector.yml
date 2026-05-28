@@ -15,7 +15,7 @@ on:
 
 jobs:
   indexer_connector-qa:
-    runs-on: ubuntu-22.04
+    runs-on: wz-linux-amd64
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3

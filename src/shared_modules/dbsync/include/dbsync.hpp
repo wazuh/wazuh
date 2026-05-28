@@ -312,6 +312,22 @@ class EXPORTED SelectQuery final : public Query<SelectQuery>
          */
         SelectQuery& countOpt(const uint32_t count);
 
+        /**
+         * @brief Add a text bind parameter for the row filter.
+         *
+         * @param value Text value to bind to the next ? placeholder in the row filter.
+         *
+         */
+        SelectQuery& rowFilterBindText(const std::string& value);
+
+        /**
+         * @brief Add an integer bind parameter for the row filter.
+         *
+         * @param value Integer value to bind to the next ? placeholder in the row filter.
+         *
+         */
+        SelectQuery& rowFilterBindInt(const int64_t value);
+
 };
 
 class EXPORTED DeleteQuery final : public Query<DeleteQuery>

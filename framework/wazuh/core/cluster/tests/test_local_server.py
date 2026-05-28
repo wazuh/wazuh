@@ -165,7 +165,7 @@ async def test_LocalServerHandler_get_send_file_response(send_request_mock:Async
         lsh.get_send_file_response(future=future)
         await wait_callback_called(send_res_callback_mock)
         send_request_mock.assert_awaited_once_with(command=b"send_f_res", data="test_get_send_file_response")
-        send_res_callback_mock.assert_called_once() 
+        send_res_callback_mock.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -200,7 +200,7 @@ async def test_LocalServer_init(event_loop):
 
     with patch("asyncio.get_running_loop", return_value=event_loop):
         ls = LocalServer(node=node, performance_test=0, concurrency_test=0,
-                        configuration={}, cluster_items={}, enable_ssl=True)
+                        configuration={}, cluster_items={})
         assert ls.node == node
         assert ls.node.local_server == ls
         assert ls.handler_class == LocalServerHandler
@@ -240,7 +240,7 @@ async def test_LocalServer_start(join_mock, gather_mock, event_loop):
     logger = logging.getLogger("connection_made")
     with patch.object(logger, "error") as logger_error_mock:
         ls = LocalServer(node=NodeMock(), performance_test=0, concurrency_test=0,
-                         configuration={}, cluster_items={}, enable_ssl=True, logger=logger)
+                         configuration={}, cluster_items={}, logger=logger)
 
     with patch.object(ls, "handler_class", handler_class_mock):
         with patch.object(event_loop, "create_unix_server", create_unix_server_mock):
@@ -355,7 +355,7 @@ async def test_LocalServerHandlerMaster_send_file_request(event_loop):
 
     def callback_mock(future: asyncio.Future):
         assert future.result() == 'send_file_return_value'
-        
+
     server_mock = ServerMock()
     lshm = LocalServerHandlerMaster(server=server_mock, loop=event_loop, fernet_key=None, cluster_items={})
     with pytest.raises(WazuhClusterError, match=".* 3022 .*"):
@@ -368,7 +368,7 @@ async def test_LocalServerHandlerMaster_send_file_request(event_loop):
             await wait_callback_called(get_send_file_response_callback_mock)
             await wait_callback_called(send_file_mock)
             send_file_mock.assert_awaited_with("/tmp")
-            
+
 
 @pytest.mark.asyncio
 async def test_LocalServerMaster_init(event_loop):
@@ -381,7 +381,7 @@ async def test_LocalServerMaster_init(event_loop):
     node = NodeMock()
     with patch("asyncio.get_running_loop", return_value=event_loop):
         lsm = LocalServerMaster(node=node, performance_test=0, concurrency_test=0,
-                                configuration={}, cluster_items={}, enable_ssl=True)
+                                configuration={}, cluster_items={})
         assert lsm.handler_class == LocalServerHandlerMaster
         assert isinstance(lsm.dapi, dapi.APIRequestQueue)
         assert isinstance(lsm.sendsync, dapi.SendSyncRequestQueue)
@@ -445,7 +445,7 @@ async def test_LocalServerHandlerWorker_process_request(process_request_mock, ev
         send_request_mock.reset_mock()
 
         results = lshw.process_request(command=b"sendasync", data=b"bye")
-        assert results == (b"ok", b"Added request to sendsync requests queue")        
+        assert results == (b"ok", b"Added request to sendsync requests queue")
         await asyncio.sleep(0.1)
         send_request_mock.assert_awaited_once_with(b"sendsync", b"test1 bye")
 
@@ -520,4 +520,3 @@ async def test_AsyncReloadRulesetFlag_async_context_manager():
         assert flag.is_set()
     # After context, flag should still be set (lock is released, not flag)
     assert flag.is_set()
-

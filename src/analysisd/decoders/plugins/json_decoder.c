@@ -382,7 +382,8 @@ void *JSON_Decoder_Init()
     return (NULL);
 }
 
-void *JSON_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) regex_matching *decoder_match)
+void *JSON_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) OSHash *rules_hash,
+                        __attribute__((unused)) regex_matching *decoder_match)
 {
     cJSON *logJSON;
     const char * input;

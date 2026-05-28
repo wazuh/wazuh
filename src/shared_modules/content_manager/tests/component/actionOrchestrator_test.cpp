@@ -33,9 +33,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiation)
 
     EXPECT_NO_THROW(std::make_shared<ActionOrchestrator>(m_parameters,
                                                          m_spStopActionCondition,
-                                                         [](const std::string& msg) -> FileProcessingResult {
-                                                             return {0, "", false};
-                                                         }));
+                                                         [](const std::string& msg) -> FileProcessingResult
+                                                         { return {0, "", false}; }));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 }
@@ -54,9 +53,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutConfigData)
 
     EXPECT_THROW(std::make_shared<ActionOrchestrator>(parameters,
                                                       m_spStopActionCondition,
-                                                      [](const std::string& msg) -> FileProcessingResult {
-                                                          return {0, "", false};
-                                                      }),
+                                                      [](const std::string& msg) -> FileProcessingResult
+                                                      { return {0, "", false}; }),
                  std::invalid_argument);
 }
 
@@ -72,9 +70,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutContentSourceInConfigData
 
     EXPECT_THROW(std::make_shared<ActionOrchestrator>(m_parameters,
                                                       m_spStopActionCondition,
-                                                      [](const std::string& msg) -> FileProcessingResult {
-                                                          return {0, "", false};
-                                                      }),
+                                                      [](const std::string& msg) -> FileProcessingResult
+                                                      { return {0, "", false}; }),
                  std::invalid_argument);
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -92,9 +89,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutCompressionTypeInConfigDa
 
     EXPECT_THROW(std::make_shared<ActionOrchestrator>(m_parameters,
                                                       m_spStopActionCondition,
-                                                      [](const std::string& msg) -> FileProcessingResult {
-                                                          return {0, "", false};
-                                                      }),
+                                                      [](const std::string& msg) -> FileProcessingResult
+                                                      { return {0, "", false}; }),
                  std::invalid_argument);
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -112,9 +108,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitXZCompressionType)
 
     EXPECT_NO_THROW(std::make_shared<ActionOrchestrator>(m_parameters,
                                                          m_spStopActionCondition,
-                                                         [](const std::string& msg) -> FileProcessingResult {
-                                                             return {0, "", false};
-                                                         }));
+                                                         [](const std::string& msg) -> FileProcessingResult
+                                                         { return {0, "", false}; }));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 }
@@ -131,9 +126,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutVersionedContentInConfigD
 
     EXPECT_THROW(std::make_shared<ActionOrchestrator>(m_parameters,
                                                       m_spStopActionCondition,
-                                                      [](const std::string& msg) -> FileProcessingResult {
-                                                          return {0, "", false};
-                                                      }),
+                                                      [](const std::string& msg) -> FileProcessingResult
+                                                      { return {0, "", false}; }),
                  std::invalid_argument);
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -151,9 +145,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutDeleteDownloadedContentIn
 
     EXPECT_THROW(std::make_shared<ActionOrchestrator>(m_parameters,
                                                       m_spStopActionCondition,
-                                                      [](const std::string& msg) -> FileProcessingResult {
-                                                          return {0, "", false};
-                                                      }),
+                                                      [](const std::string& msg) -> FileProcessingResult
+                                                      { return {0, "", false}; }),
                  std::invalid_argument);
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -172,9 +165,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitRawCompressionTy
 
     auto actionOrchestrator {std::make_shared<ActionOrchestrator>(m_parameters,
                                                                   m_spStopActionCondition,
-                                                                  [](const std::string& msg) -> FileProcessingResult {
-                                                                      return {10, "", true};
-                                                                  })};
+                                                                  [](const std::string& msg) -> FileProcessingResult
+                                                                  { return {10, "", true}; })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -207,9 +199,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
 
     auto actionOrchestrator {std::make_shared<ActionOrchestrator>(m_parameters,
                                                                   m_spStopActionCondition,
-                                                                  [](const std::string& msg) -> FileProcessingResult {
-                                                                      return {10, "", true};
-                                                                  })};
+                                                                  [](const std::string& msg) -> FileProcessingResult
+                                                                  { return {10, "", true}; })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -244,9 +235,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
 
     auto actionOrchestrator {std::make_shared<ActionOrchestrator>(m_parameters,
                                                                   m_spStopActionCondition,
-                                                                  [](const std::string& msg) -> FileProcessingResult {
-                                                                      return {10, "", true};
-                                                                  })};
+                                                                  [](const std::string& msg) -> FileProcessingResult
+                                                                  { return {10, "", true}; })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -312,9 +302,8 @@ TEST_F(ActionOrchestratorTest, RunOffsetUpdate)
         // Trigger orchestrator in a reduced scope to avoid conflicts with the RocksDB connection below.
         ASSERT_NO_THROW(ActionOrchestrator(m_parameters,
                                            m_spStopActionCondition,
-                                           [](const std::string& msg) -> FileProcessingResult {
-                                               return {0, "", false};
-                                           })
+                                           [](const std::string& msg) -> FileProcessingResult
+                                           { return {0, "", false}; })
                             .run(updateData));
     }
 
@@ -346,9 +335,7 @@ TEST_F(ActionOrchestratorTest, RunFileHashUpdate)
 
     ASSERT_NO_THROW(ActionOrchestrator(m_parameters,
                                        m_spStopActionCondition,
-                                       [](const std::string& msg) -> FileProcessingResult {
-                                           return {0, "", false};
-                                       })
+                                       [](const std::string& msg) -> FileProcessingResult { return {0, "", false}; })
                         .run(updateData));
 
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
@@ -377,9 +364,8 @@ TEST_F(ActionOrchestratorTest, ContentUpdateStdExceptionRethrown)
 
     auto actionOrchestrator {std::make_shared<ActionOrchestrator>(m_parameters,
                                                                   m_spStopActionCondition,
-                                                                  [](const std::string& msg) -> FileProcessingResult {
-                                                                      return {0, "", false};
-                                                                  })};
+                                                                  [](const std::string& msg) -> FileProcessingResult
+                                                                  { return {0, "", false}; })};
 
     // Test that when runFullContentDownload throws a std::exception (not SnapshotProcessingException),
     // it is properly re-thrown instead of being swallowed.

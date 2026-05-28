@@ -43,6 +43,10 @@ public:
         m_action = std::make_shared<Action>(topicName, parameters, fileProcessingCallback);
     }
 
+    /**
+     * @brief Class destructor.
+     *
+     */
     ~ContentProvider()
     {
         m_action.reset();

@@ -19,7 +19,7 @@ from wazuh.core import cluster as metadata, common, exception, utils, analysis
 from wazuh.core.cluster import client, cluster, common as c_common
 from wazuh.core.cluster.utils import log_subprocess_execution, safe_join
 from wazuh.core.cluster.dapi import dapi
-from wazuh.core.exception import WazuhException
+from wazuh.core.exception import WazuhException, WazuhClusterError
 from wazuh.core.utils import safe_move, get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
 
@@ -792,12 +792,20 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             full_filename_path = safe_join(common.WAZUH_PATH, filename)
 
             if data_['merged']:  # worker nodes can only receive agent-groups files
+                item_key = data_['cluster_item_key']
+                if item_key not in cluster_items['files']:
+                    raise WazuhClusterError(3022, extra_message=f"Invalid cluster_item_key: {item_key}")
+
                 # Split merged file into individual files inside zipdir (directory containing unzipped files),
                 # and then move each one to the destination directory (<wazuh_path>/filename).
                 # The TYPE string used in the 'unmerge_info' function is a placeholder. It corresponds to the
                 # directory inside '{wazuh_path}/queue/' path.
                 for name, content, _ in cluster.unmerge_info('TYPE', zip_path, filename_):
                     full_unmerged_name = safe_join(common.WAZUH_PATH, name)
+                    expected_base = safe_join(common.WAZUH_PATH, item_key)
+                    if not os.path.commonpath([full_unmerged_name, expected_base]).startswith(expected_base):
+                        raise WazuhClusterError(3022,
+                            extra_message=f"File path outside allowed directory: {name}")
                     tmp_unmerged_path = full_unmerged_name + '.tmp'
                     with open(tmp_unmerged_path, 'wb') as f:
                         f.write(content)

@@ -28,7 +28,7 @@ results = dict()
 
 with open(common_file, 'r') as stream:
     common = yaml.safe_load(stream)['variables']
-login_url = f"{common['protocol']}://{common['host']}:{common['port']}/{common['login_endpoint']}"
+login_url = f"{common['protocol']}://{common['host']}:{common['master_port']}/{common['login_endpoint']}"
 basic_auth = f"{common['user']}:{common['pass']}".encode()
 login_headers = {'Content-Type': 'application/json',
                  'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
@@ -141,7 +141,7 @@ def down_env(env_mode: str):
     """Stop and remove all Docker containers."""
     os.chdir(env_path)
     with open(docker_log_path, mode='a') as f_docker:
-        current_process = subprocess.Popen(["docker", "compose", "--profile", env_mode, "down"],
+        current_process = subprocess.Popen(["docker", "compose", "--profile", env_mode, "down", "-v"],
                                            stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
         current_process.wait()
     os.chdir(current_path)

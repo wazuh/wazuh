@@ -159,6 +159,9 @@ public:
         const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
             logFunction = {});
 
+    /**
+     * @brief Class destructor.
+     */
     ~IndexerConnector();
 
     /**

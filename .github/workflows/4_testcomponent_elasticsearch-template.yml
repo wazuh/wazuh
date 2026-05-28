@@ -10,7 +10,7 @@ on:
 
 jobs:
   wazuh-template-elasticsearch:
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python 3.11

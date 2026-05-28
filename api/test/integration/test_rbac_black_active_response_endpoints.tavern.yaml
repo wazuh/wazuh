@@ -6,7 +6,7 @@ stages:
   - name: Runs an Active Response command on a specified agent (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -24,7 +24,7 @@ stages:
   - name: Send a message to an agent (Status=Active) (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -47,7 +47,7 @@ stages:
   - name: Send a message to a list of agents
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -81,7 +81,7 @@ stages:
   - name: Try to send a message to an agent (status=disconnected/never_connected) (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -97,7 +97,7 @@ stages:
   - name: Try to send a message to unexisting agents (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -131,7 +131,7 @@ stages:
   - name: Runs an Active Response command on all agents
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"

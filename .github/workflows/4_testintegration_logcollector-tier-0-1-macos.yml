@@ -81,7 +81,7 @@ jobs:
               QA_BRANCH="main"
           fi
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
-          sudo pip install qa-integration-framework/
+          sudo pip install --ignore-installed qa-integration-framework/
           sudo rm -rf qa-integration-framework/
       # Run logcollector integration tests.
       - name: Run logcollector integration tests

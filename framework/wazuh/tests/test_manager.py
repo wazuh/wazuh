@@ -320,6 +320,54 @@ def test_read_ossec_con_ko():
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1102
 
 
+# ---------------------------------------------------------------------------
+# Tests for cluster.key masking in read_ossec_conf (CVE fix)
+# ---------------------------------------------------------------------------
+
+_OSSEC_CONF_WITH_CLUSTER_KEY = """\
+<ossec_config>
+  <cluster>
+    <name>wazuh</name>
+    <node_name>master-node</node_name>
+    <key>REAL_CLUSTER_SECRET</key>
+    <port>1516</port>
+    <disabled>no</disabled>
+  </cluster>
+</ossec_config>"""
+
+
+@patch('wazuh.rbac.decorators._has_update_permissions', return_value=False)
+@patch('builtins.open', new_callable=mock_open, read_data=_OSSEC_CONF_WITH_CLUSTER_KEY)
+def test_read_ossec_conf_raw_masks_cluster_key_for_readonly(mock_file, mock_perms):
+    """read_ossec_conf(raw=True) hides cluster.key for users without update_config (readonly role)."""
+    result = read_ossec_conf(raw=True)
+
+    assert isinstance(result, str), 'No expected result type'
+    assert 'REAL_CLUSTER_SECRET' not in result
+    assert '<key>*****</key>' in result
+
+
+@patch('wazuh.rbac.decorators._has_update_permissions', return_value=True)
+@patch('builtins.open', new_callable=mock_open, read_data=_OSSEC_CONF_WITH_CLUSTER_KEY)
+def test_read_ossec_conf_raw_no_masking_for_admin(mock_file, mock_perms):
+    """read_ossec_conf(raw=True) returns the real cluster key for admin users with update_config."""
+    result = read_ossec_conf(raw=True)
+
+    assert isinstance(result, str), 'No expected result type'
+    assert 'REAL_CLUSTER_SECRET' in result
+
+
+@patch('wazuh.rbac.decorators._has_update_permissions', return_value=False)
+@patch('builtins.open', new_callable=mock_open, read_data=_OSSEC_CONF_WITH_CLUSTER_KEY)
+def test_read_ossec_conf_raw_masking_does_not_corrupt_other_fields(mock_file, mock_perms):
+    """Masking cluster.key must not corrupt other fields in the configuration."""
+    result = read_ossec_conf(raw=True)
+
+    assert '<name>wazuh</name>' in result
+    assert '<node_name>master-node</node_name>' in result
+    assert '<port>1516</port>' in result
+
+
 @patch('wazuh.core.common.os.chown')
 @patch('wazuh.core.common.os.path.exists', return_value=True)
 @patch('builtins.open', new_callable=mock_open, read_data='test-uuid')
@@ -369,3 +417,23 @@ def test_update_ossec_conf_ko(move_mock, remove_mock, exists_mock, full_copy_moc
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1125
     move_mock.assert_called_once()
+
+@pytest.mark.asyncio
+@patch('wazuh.manager.query_update_check_service_core')
+async def test_query_update_check_service(query_update_check_service_core):
+    """Test query_update_check_service() function works as expected."""
+    mock_response = {
+        'uuid': '71e94127-3823-4568-a0be-d96202bc2a3e',
+        'last_check_date': '2026-03-12T14:10:04.575816+00:00',
+        'current_version': 'v4.14.4',
+        'update_check': 'true',
+        'last_available_major': {},
+        'last_available_minor': {},
+        'last_available_patch': {},
+        'error': 0
+    }
+
+    query_update_check_service_core.return_value = mock_response
+    result = await query_update_check_service(installation_uid='71e94127-3823-4568-a0be-d96202bc2a3e')
+    query_update_check_service_core.assert_called_once()
+    assert result == mock_response

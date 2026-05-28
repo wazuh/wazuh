@@ -2185,7 +2185,7 @@ def test_check_wazuh_limits_unchanged(new_conf, unchanged_limits_conf, original_
      True),
 
     ("<ossec_config><remote></remote></ossec_config>",
-     "<ossec_config><remote><allow_higher_versions>yes</allow_higher_versions></remote></ossec_config>",
+     "<ossec_config><remote><agents><allow_higher_versions>yes</allow_higher_versions></agents></remote></ossec_config>",
      {'allow_higher_versions': {'allow': False}},
      True),
 
@@ -2194,8 +2194,8 @@ def test_check_wazuh_limits_unchanged(new_conf, unchanged_limits_conf, original_
      {'allow_higher_versions': {'allow': True}},
      False),
 
-    ("<ossec_config><remote><allow_higher_versions>yes</allow_higher_versions></remote></ossec_config>",
-     "<ossec_config><remote><allow_higher_versions>no</allow_higher_versions></remote></ossec_config>",
+    ("<ossec_config><remote><agents><allow_higher_versions>yes</allow_higher_versions></agents></remote></ossec_config>",
+     "<ossec_config><remote><agents><allow_higher_versions>no</allow_higher_versions></agents></remote></ossec_config>",
      {'allow_higher_versions': {'allow': True}},
      False),
 ])

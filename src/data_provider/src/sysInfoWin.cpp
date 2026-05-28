@@ -15,6 +15,7 @@
 #include <winternl.h>
 #include <ntstatus.h>
 #include <iphlpapi.h>
+#include <shellapi.h>
 #include <memory>
 #include <list>
 #include <set>
@@ -65,6 +66,8 @@ static const std::map<std::string, DWORD> gs_firmwareTableProviderSignature
     {"RSMB", 0x52534D42}
 };
 
+static constexpr auto ProcessCommandLineInformation = static_cast<PROCESSINFOCLASS>(60);
+
 class SysInfoProcess final
 {
     public:
@@ -97,6 +100,37 @@ class SysInfoProcess final
             }
 
             // else: Unable to retrieve executable path from current process.
+            return ret;
+        }
+
+        std::wstring cmdLineW()
+        {
+            std::wstring ret;
+            ULONG size = 0;
+
+            auto status = NtQueryInformationProcess(
+                              m_hProcess, ProcessCommandLineInformation, nullptr, 0, &size);
+
+            if (STATUS_INFO_LENGTH_MISMATCH != status && STATUS_BUFFER_OVERFLOW != status
+                    && STATUS_BUFFER_TOO_SMALL != status)
+            {
+                return ret;
+            }
+
+            auto buffer = std::make_unique<BYTE[]>(size);
+            status = NtQueryInformationProcess(
+                         m_hProcess, ProcessCommandLineInformation, buffer.get(), size, &size);
+
+            if (NT_SUCCESS(status))
+            {
+                const auto* unicodeStr = reinterpret_cast<UNICODE_STRING*>(buffer.get());
+
+                if (unicodeStr->Buffer && unicodeStr->Length > 0)
+                {
+                    ret.assign(unicodeStr->Buffer, unicodeStr->Length / sizeof(WCHAR));
+                }
+            }
+
             return ret;
         }
 
@@ -348,7 +382,6 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
 
         // Current process information
         jsProcessInfo["name"]       = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(processName(processEntry));
-        jsProcessInfo["cmd"]        = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8((isSystemProcess(pId)) ? "none" : process.cmd());
         jsProcessInfo["stime"]      = process.kernelModeTime();
         jsProcessInfo["size"]       = process.pageFileUsage();
         jsProcessInfo["ppid"]       = processEntry.th32ParentProcessID;
@@ -359,6 +392,29 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
         jsProcessInfo["utime"]      = process.userModeTime();
         jsProcessInfo["vm_size"]    = process.virtualSize();
         jsProcessInfo["start_time"] = process.creationTime();
+
+        if (isSystemProcess(pId))
+        {
+            jsProcessInfo["cmd"]    = "none";
+            jsProcessInfo["argvs"]  = "";
+        }
+        else
+        {
+            const auto fullCmdLineW = process.cmdLineW();
+            const auto parsed = parseProcessCommandLine(fullCmdLineW);
+
+            if (!parsed.cmd.empty())
+            {
+                jsProcessInfo["cmd"]   = parsed.cmd;
+                jsProcessInfo["argvs"] = parsed.argvs;
+            }
+            else
+            {
+                jsProcessInfo["cmd"]   = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(process.cmd());
+                jsProcessInfo["argvs"] = "";
+            }
+        }
+
         CloseHandle(processHandle);
     }
 

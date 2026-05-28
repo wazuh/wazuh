@@ -51,6 +51,6 @@
 <decoder name="roundcube-denied-new">
   <parent>roundcube</parent>
   <prematch>> \w+ Error: Login failed |> Failed login </prematch>
-  <regex offset="after_prematch">^for (\S+) from (\S+)\. |^for (\S+) from (\S+) in session |^for (\S+) against \S+ from (\S+)\. |^for (\S+) against \S+ from (\S+) in session </regex>
+  <regex offset="after_prematch">^for (\S+) from (\S+). |^for (\S+) from (\S+) in session |^for (\S+) against \S+ from (\S+). |^for (\S+) against \S+ from (\S+) in session </regex>
   <order>user, srcip</order>
 </decoder>

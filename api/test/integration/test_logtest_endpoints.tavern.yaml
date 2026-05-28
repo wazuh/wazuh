@@ -6,7 +6,7 @@ stages:
   - name: Run logtest with an invalid body (invalid key)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/logtest"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/logtest"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -19,7 +19,7 @@ stages:
   - name: Run logtest with a token with no session started
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/logtest"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/logtest"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -46,7 +46,7 @@ stages:
   - name: Run logtest with a valid body but no token (start session)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/logtest"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/logtest"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -65,7 +65,7 @@ stages:
   - name: Run logtest using a token from a running session
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/logtest"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/logtest"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -92,7 +92,7 @@ stages:
   - name: Run logtest in order to generate the session token
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/logtest"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/logtest"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -113,7 +113,7 @@ stages:
   - name: Try to end logtest session using an invalid token
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/logtest/sessions/wrong_token"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/logtest/sessions/wrong_token"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -126,7 +126,7 @@ stages:
   - name: End logtest session
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/logtest/sessions/{delete_session_token:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/logtest/sessions/{delete_session_token:s}"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -140,7 +140,7 @@ stages:
   - name: Check the logtest session has ended
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/logtest/sessions/{delete_session_token:s}"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/logtest/sessions/{delete_session_token:s}"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"

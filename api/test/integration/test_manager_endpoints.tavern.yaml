@@ -7,7 +7,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/status"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -47,7 +47,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/info"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/info"
       method: GET
       headers:
           Authorization: "Bearer {test_login_token}"
@@ -99,7 +99,7 @@ stages:
   - name: Request all sections
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration"
       method: GET
       headers:
           Authorization: "Bearer {test_login_token}"
@@ -117,7 +117,7 @@ stages:
   - name: Request all sections in raw format
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -137,7 +137,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration"
       method: GET
       headers:
           Authorization: "Bearer {test_login_token}"
@@ -172,7 +172,7 @@ stages:
   - name: Request section and field (1)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration"
       method: GET
       headers:
           Authorization: "Bearer {test_login_token}"
@@ -195,7 +195,7 @@ stages:
   - name: Request section and field (2)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration"
       method: GET
       headers:
           Authorization: "Bearer {test_login_token}"
@@ -218,7 +218,7 @@ stages:
   - name: Request invalid section
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration"
       method: GET
       headers:
           Authorization: "Bearer {test_login_token}"
@@ -231,7 +231,7 @@ stages:
   - name: Request invalid field
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration"
       method: GET
       headers:
           Authorization: "Bearer {test_login_token}"
@@ -255,7 +255,7 @@ stages:
   - name: Get ruleset decoder_dir section distinct configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration"
       method: GET
       headers:
           Authorization: "Bearer {test_login_token}"
@@ -271,7 +271,7 @@ stages:
   - name: Get ruleset rule_dir section distinct configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration"
       method: GET
       headers:
           Authorization: "Bearer {test_login_token}"
@@ -293,7 +293,7 @@ stages:
   - name: Get all daemons' statistics
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/daemons/stats"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -314,7 +314,7 @@ stages:
   - name: Get statistics from a single daemon
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/daemons/stats"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -335,7 +335,7 @@ stages:
   - name: Get statistics from a list of daemons
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/daemons/stats"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -358,7 +358,7 @@ stages:
   - name: Try to get statistics from a wrong daemon
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/daemons/stats"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -376,7 +376,7 @@ stages:
   - name: Manager stats
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/stats"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -388,7 +388,7 @@ stages:
   - name: Manager stats
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/stats"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -414,7 +414,7 @@ stages:
   - name: Manager stats with old date
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/stats"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -434,7 +434,7 @@ stages:
   - name: Hourly stats
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/hourly"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/stats/hourly"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -458,7 +458,7 @@ stages:
   - name: Weekly stats
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/weekly"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/stats/weekly"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -501,7 +501,7 @@ stages:
   - name: Analysisd stats
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/analysisd"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/stats/analysisd"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -560,7 +560,7 @@ stages:
   - name: Remoted stats
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/stats/remoted"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/stats/remoted"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -591,7 +591,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -609,7 +609,7 @@ stages:
   - name: Filters -> limit=4
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -637,7 +637,7 @@ stages:
   - name: Filters -> limit=2, sort=-level
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -656,7 +656,7 @@ stages:
   - name: Filters -> offset=3, limit=3
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -680,7 +680,7 @@ stages:
   - name: Filters -> offset=3, level=info, limit=4
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -706,7 +706,7 @@ stages:
   - name: Filters -> tag=wazuh-analysisd, limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -728,7 +728,7 @@ stages:
   - name: Filters -> tag=wazuh-syscheckd, limit=1
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -749,7 +749,7 @@ stages:
   - name: Filters by query (tag=wazuh-syscheckd, level=info)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -770,7 +770,7 @@ stages:
   - name: Filters by query (timestamp<2021-07-01)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -789,7 +789,7 @@ stages:
   - name: Filter by non-existent tag
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -808,7 +808,7 @@ stages:
   - name: Read logs using valid select
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -831,7 +831,7 @@ stages:
   - name: Try to read logs using invalid select
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -845,7 +845,7 @@ stages:
   - name: Get distinct manager logs
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -865,7 +865,7 @@ stages:
   - name: Request
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/logs/summary"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/logs/summary"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -888,7 +888,7 @@ stages:
   - name: Get API configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/api/config"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/api/config"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -962,7 +962,7 @@ stages:
   - name: Request validation
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/validation"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/validation"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -986,7 +986,7 @@ stages:
   - name: Show the config of analysis/global in the manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/global"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/analysis/global"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1004,7 +1004,7 @@ stages:
   - name: Show the config of analysis/active_response in the manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/active_response"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/analysis/active_response"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1023,7 +1023,7 @@ stages:
   - name: Show the config of analysis/alerts in the manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/alerts"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/analysis/alerts"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1041,7 +1041,7 @@ stages:
   - name: Show the config of analysis/command in the manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/command"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/analysis/command"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1059,7 +1059,7 @@ stages:
   - name: Show the config of analysis/internal in the manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/analysis/internal"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/analysis/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1077,7 +1077,7 @@ stages:
   - name: Show the config of auth in the manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/auth/auth"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/auth/auth"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1095,7 +1095,7 @@ stages:
   - name: Show the config of com/internal in the manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/com/internal"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/com/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1113,7 +1113,7 @@ stages:
   - name: Show the config of logcollector/localfile in the manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/logcollector/localfile"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/logcollector/localfile"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1131,7 +1131,7 @@ stages:
   - name: Show the config of logcollector/socket in the manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/logcollector/socket"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/logcollector/socket"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1148,7 +1148,7 @@ stages:
   - name: Show the config of logcollector/internal in the manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/logcollector/internal"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/logcollector/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1166,7 +1166,7 @@ stages:
   - name: Show the config of monitor/internal in the manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/monitor/internal"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/monitor/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1184,7 +1184,7 @@ stages:
   - name: Show the config of monitor/reports in the manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/monitor/reports"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/monitor/reports"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1202,7 +1202,7 @@ stages:
   - name: Show the config of request/remote in the manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/request/remote"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/request/remote"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1220,7 +1220,7 @@ stages:
   - name: Show the config of request/internal in the manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/request/internal"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/request/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1238,7 +1238,7 @@ stages:
   - name: Show the config of syscheck/syscheck in the manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/syscheck/syscheck"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/syscheck/syscheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1256,7 +1256,7 @@ stages:
   - name: Show the config of syscheck/rootcheck in the manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/syscheck/rootcheck"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/syscheck/rootcheck"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1274,7 +1274,7 @@ stages:
   - name: Show the config of syscheck/internal in the manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/syscheck/internal"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/syscheck/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1292,7 +1292,7 @@ stages:
   - name: Show the config of wazuh-db/internal in the manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/wazuh-db/internal"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/wazuh-db/internal"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1314,7 +1314,7 @@ stages:
   - name: Show the config of wazuh-db/wdb in the manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/wazuh-db/wdb"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/wazuh-db/wdb"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1337,7 +1337,7 @@ stages:
   - name: Try to show the config of wmodules/wmodules in the manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/wmodules/wmodules"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/wmodules/wmodules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1355,7 +1355,7 @@ stages:
   - name: Try to show the invalid config of component in the manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/agent/wmodules"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration/agent/wmodules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1372,7 +1372,7 @@ stages:
   - name: Reload analysisd on master
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/analysisd/reload"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/analysisd/reload"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1397,7 +1397,7 @@ stages:
   - name: Upload a valid configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration"
       method: PUT
       data: "{valid_ossec_conf:s}"
       headers:
@@ -1418,7 +1418,7 @@ stages:
   - name: Ensure the new config has been applied by checking a field
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1442,7 +1442,7 @@ stages:
   - name: Try to upload an invalid configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration"
       method: PUT
       data: "{invalid_ossec_conf:s}"
       headers:
@@ -1466,7 +1466,7 @@ stages:
   - name: Try to upload an empty configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration"
       method: PUT
       data: "{invalid_ossec_conf:s}"
       headers:
@@ -1489,7 +1489,7 @@ stages:
   - name: Try to upload an invalid xml
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration"
       method: PUT
       data: "{invalid_ossec_xml:s}"
       headers:
@@ -1513,7 +1513,7 @@ stages:
   - name: Try to upload an invalid configuration with an invalid content-type
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration"
       method: PUT
       data: "{invalid_ossec_conf:s}"
       headers:
@@ -1528,7 +1528,7 @@ stages:
   - name: Ensure the config didn't change
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1555,7 +1555,7 @@ stages:
   - name: Get wazuh version
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/"
+      url: "{protocol:s}://{host:s}:{master_port:d}/"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1568,7 +1568,7 @@ stages:
   - name: Get available updates
     request:
       verify: false
-      url: "{protocol:s}://{host:s}:{port:d}/manager/version/check"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/version/check"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1583,7 +1583,7 @@ stages:
   - name: Get available updates with force option
     request:
       verify: false
-      url: "{protocol:s}://{host:s}:{port:d}/manager/version/check"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/version/check"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1604,7 +1604,7 @@ stages:
   - name: Get wazuh version
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/"
+      url: "{protocol:s}://{host:s}:{master_port:d}/"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1617,7 +1617,7 @@ stages:
   - name: Enable update check
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration"
       method: PUT
       data: "{valid_ossec_conf_with_update_check_enabled:s}"
       headers:
@@ -1637,7 +1637,7 @@ stages:
   - name: Restart manager to apply the configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/restart"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1656,7 +1656,7 @@ stages:
   - name: Get available updates
     request:
       verify: false
-      url: "{protocol:s}://{host:s}:{port:d}/manager/version/check"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/version/check"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1673,7 +1673,7 @@ stages:
   - name: Get available updates with force option
     request:
       verify: false
-      url: "{protocol:s}://{host:s}:{port:d}/manager/version/check"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/version/check"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1697,7 +1697,7 @@ stages:
   - name: Set an invalid CTI url
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/configuration"
       method: PUT
       data: "{ossec_conf_with_invalid_cti_url:s}"
       headers:
@@ -1717,7 +1717,7 @@ stages:
   - name: Restart manager to apply the configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/restart"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1736,7 +1736,7 @@ stages:
   - name: Try to get available updates
     request:
       verify: false
-      url: "{protocol:s}://{host:s}:{port:d}/manager/version/check"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/version/check"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1748,7 +1748,7 @@ stages:
   - name: Try to get available updates with force option
     request:
       verify: false
-      url: "{protocol:s}://{host:s}:{port:d}/manager/version/check"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/version/check"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1768,7 +1768,7 @@ stages:
   - name: Restart manager
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/restart"
+      url: "{protocol:s}://{host:s}:{master_port:d}/manager/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"

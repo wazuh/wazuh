@@ -131,6 +131,11 @@ void HandleSyslogTCP()
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
+    /* Start up message - emitted after queue connection so the service is truly operational */
+    minfo(STARTUP_MSG " Listening on port %d/TCP (syslog).",
+        (int)getpid(),
+        logr.port[logr.position]);
+
     while (1) {
         /* Wait for the children */
         while (childcount) {

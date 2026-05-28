@@ -6,7 +6,7 @@ stages:
   - name: Runs an Active Response command on a specified agent with version >= 4.2.0
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -29,7 +29,7 @@ stages:
   - name: Send a message to an agent with version < 4.2.0 (Status=Active)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -52,7 +52,7 @@ stages:
   - name: Send a message to a list of agents (Status=Active)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -79,7 +79,7 @@ stages:
   - name: Try to send a message to an agent (status=disconnected/never_connected)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -106,7 +106,7 @@ stages:
   - name: Try to send a message to an unexisting agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -133,7 +133,7 @@ stages:
   - name: Try to send a message to an agent, without body
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -145,7 +145,7 @@ stages:
   - name: Try to send a message to an agent, malformed body
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -161,7 +161,7 @@ stages:
   - name: Send a message to one agent (Active response disabled)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -194,7 +194,7 @@ stages:
   - name: Runs an Active Response command on all agents
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -234,7 +234,7 @@ stages:
   - name: Try to send a message to all agents, malformed body
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/active-response"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"

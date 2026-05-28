@@ -6,7 +6,7 @@ stages:
   - name: Send webhook events (Allowed)
     request:
       verify: false
-      url: "{protocol:s}://{host:s}:{port:d}/events"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/events"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"

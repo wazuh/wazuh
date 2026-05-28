@@ -85,7 +85,8 @@ void *SonicWall_Decoder_Init()
  * Jan  3 13:45:36 192.168.5.1 id=firewall sn=000SERIAL time="2007-01-03 14:48:06" fw=1.1.1.1 pri=6 c=262144 m=98 msg="Connection Opened" n=23419 src=2.2.2.2:36701:WAN dst=1.1.1.1:50000:WAN proto=tcp/50000
  * Jan  3 13:45:36 192.168.5.1 id=firewall sn=000SERIAL time="2007-01-03 14:48:07" fw=1.1.1.1 pri=1 c=32 m=30 msg="Administrator login denied due to bad credentials" n=7 src=2.2.2.2:36701:WAN dst=1.1.1.1:50000:WAN
  */
-void *SonicWall_Decoder_Exec(Eventinfo *lf, regex_matching *decoder_match)
+void *SonicWall_Decoder_Exec(Eventinfo *lf, __attribute__((unused)) OSHash *rules_hash,
+                             regex_matching *decoder_match)
 {
     int i = 0;
     char category[8];

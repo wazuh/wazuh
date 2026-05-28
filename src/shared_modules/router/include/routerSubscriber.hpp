@@ -19,7 +19,6 @@
 #endif
 
 #include <functional>
-#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -46,25 +45,15 @@ public:
      * @param isLocal True for a local subscriber, false otherwise.
      */
     explicit RouterSubscriber(std::string topicName, std::string subscriberId, const bool isLocal = true)
-        : m_topicName {std::move(topicName)}
-        , m_subscriberId {std::move(subscriberId)}
-        , m_isLocal {isLocal}
+        : m_topicName {std::move(topicName)}, m_subscriberId {std::move(subscriberId)}, m_isLocal {isLocal}
     {
     }
 
-    // LCOV_EXCL_START
-    virtual ~RouterSubscriber()
-    {
-        try
-        {
-            unsubscribe();
-        }
-        catch (...)
-        {
-            std::cerr << "Error in ~RouterSubscriber()" << std::endl;
-        }
-    }
-    // LCOV_EXCL_STOP
+    /**
+     * @brief Class destructor.
+     *
+     */
+    virtual ~RouterSubscriber();
 
     /**
      * @brief Adds subscriber to the list.

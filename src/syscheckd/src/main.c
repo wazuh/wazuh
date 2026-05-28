@@ -330,7 +330,15 @@ int main(int argc, char **argv)
 
             w_mutex_lock(&syscheck.fim_realtime_mutex);
             if (syscheck.realtime == NULL) {
-                realtime_start();
+                if (realtime_start() < 0) {
+                    OSList_foreach(node_it, syscheck.directories) {
+                        dir_it = node_it->data;
+                        if (dir_it->options & REALTIME_ACTIVE) {
+                            dir_it->options &= ~REALTIME_ACTIVE;
+                            dir_it->options |= SCHEDULED_ACTIVE;
+                        }
+                    }
+                }
             }
             w_mutex_unlock(&syscheck.fim_realtime_mutex);
 

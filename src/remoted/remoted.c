@@ -27,7 +27,6 @@ char* node_name;
 void HandleRemote(int uid)
 {
     const int position = logr.position;
-    char * str_protocol = NULL;
 
     /* If syslog connection and allowips is not defined, exit */
     if (logr.conn[position] == SYSLOG_CONN) {
@@ -98,28 +97,6 @@ void HandleRemote(int uid)
     if (CreatePID(ARGV0, getpid()) < 0) {
         merror_exit(PID_ERROR);
     }
-
-    /* Start up message */
-    // If TCP is enabled
-    if (logr.proto[position] & REMOTED_NET_PROTOCOL_TCP) {
-        wm_strcat(&str_protocol, REMOTED_NET_PROTOCOL_TCP_STR, WM_STRCAT_NO_SEPARATOR);
-    }
-    // If UDP is enabled
-    if (logr.proto[position] & REMOTED_NET_PROTOCOL_UDP) {
-        wm_strcat(&str_protocol, REMOTED_NET_PROTOCOL_UDP_STR, (str_protocol == NULL) ? WM_STRCAT_NO_SEPARATOR : ',');
-    }
-
-    /* This should never happen */
-    if (str_protocol == NULL) {
-        merror_exit(REMOTED_NET_PROTOCOL_NOT_SET);
-    }
-
-    minfo(STARTUP_MSG " Listening on port %d/%s (%s).",
-        (int)getpid(),
-        logr.port[position],
-        str_protocol,
-        logr.conn[position] == SECURE_CONN ? "secure" : "syslog");
-    os_free(str_protocol);
 
     /* If secure connection, deal with it */
     if (logr.conn[position] == SECURE_CONN) {

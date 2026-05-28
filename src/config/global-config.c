@@ -206,7 +206,7 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
         }
     }
 
-    if (Config) {
+    if (Config && Config->cti_url == NULL) {
         os_strdup(CTI_URL_DEFAULT, Config->cti_url);
     }
 
@@ -224,7 +224,7 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
     if (Config) {
         Config->update_check = 1;
     }
-    
+
     while (node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);

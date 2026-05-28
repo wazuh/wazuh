@@ -121,7 +121,6 @@ int main (int argc, char **argv) {
         write_debug_file(argv[0], log_msg);
     }
 
-    char *exec_args_add[11] = { netsh_path, "advfirewall", "firewall", "add", "rule", name, "interface=any", "dir=in", "action=block", remoteip, NULL };
     char *exec_args_delete[8] = { netsh_path, "advfirewall", "firewall", "delete", "rule", name, remoteip, NULL };
 
     if ((action == ADD_COMMAND)) {
@@ -133,13 +132,36 @@ int main (int argc, char **argv) {
     }
 
     if (1 == checkVista()) {
-        wfd = wpopenv(netsh_path, (action == ADD_COMMAND) ? exec_args_add : exec_args_delete, W_BIND_STDERR);
-        if (!wfd) {
-            memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: '%s', rule: '%s'", (action == ADD_COMMAND) ? "ADD" : "DELETE", RULE_NAME);
-            write_debug_file(argv[0], log_msg);
+        char *exec_args_add_in[11] = { netsh_path, "advfirewall", "firewall", "add", "rule", name, "interface=any", "dir=in", "action=block", remoteip, NULL };
+        char *exec_args_add_out[11] = { netsh_path, "advfirewall", "firewall", "add", "rule", name, "interface=any", "dir=out", "action=block", remoteip, NULL };
+
+        if (action == ADD_COMMAND) {
+            wfd = wpopenv(netsh_path, exec_args_add_in, W_BIND_STDERR);
+            if (!wfd) {
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'ADD dir=in', rule: '%s'", RULE_NAME);
+                write_debug_file(argv[0], log_msg);
+            } else {
+                wpclose(wfd);
+            }
+
+            wfd = wpopenv(netsh_path, exec_args_add_out, W_BIND_STDERR);
+            if (!wfd) {
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'ADD dir=out', rule: '%s'", RULE_NAME);
+                write_debug_file(argv[0], log_msg);
+            } else {
+                wpclose(wfd);
+            }
         } else {
-            wpclose(wfd);
+            wfd = wpopenv(netsh_path, exec_args_delete, W_BIND_STDERR);
+            if (!wfd) {
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR -1, "Unable to run netsh, action: 'DELETE', rule: '%s'", RULE_NAME);
+                write_debug_file(argv[0], log_msg);
+            } else {
+                wpclose(wfd);
+            }
         }
     } else {
         snprintf(description, OS_MAXSTR -1, "description=\"%s\"", RULE_NAME);

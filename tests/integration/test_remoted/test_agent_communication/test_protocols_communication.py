@@ -103,6 +103,6 @@ def test_protocols_communication(test_configuration, test_metadata, configure_lo
 
     monitored_sockets[0].start(callback=callback)
 
-    assert monitored_sockets[0].callback_result
-
     injector.stop_receive()
+
+    assert monitored_sockets[0].callback_result

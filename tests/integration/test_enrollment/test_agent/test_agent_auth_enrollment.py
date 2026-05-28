@@ -85,7 +85,7 @@ def launch_agent_with_retry(configuration, retries=5, delay=1):
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
 def test_agent_auth_enrollment(test_configuration, test_metadata, set_wazuh_configuration, daemons_handler_module,
-                               set_keys, set_password, configure_socket_listener):
+                               shutdown_agentd, set_keys, set_password, configure_socket_listener):
     """
     description:
         "Check that different configuration generates the adequate enrollment message or the corresponding

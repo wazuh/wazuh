@@ -11,7 +11,7 @@ from content_size_limit_asgi.errors import ContentSizeExceeded
 from api import configuration
 from api.middlewares import ip_block, ip_stats, ip_lock, LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
 from api.api_exception import BlockedIPException, MaxRequestsException, ExpectFailedException
-from api.controllers.util import json_response, ERROR_CONTENT_TYPE
+from api.controllers.util import json_response, build_recursion_error_response, ERROR_CONTENT_TYPE
 from wazuh.core.utils import get_utc_now
 
 
@@ -196,3 +196,25 @@ async def content_size_handler(request: ConnexionRequest, exc: ContentSizeExceed
     }
     return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
                          status_code=413, content_type=ERROR_CONTENT_TYPE)
+
+
+async def recursion_error_handler(request: ConnexionRequest, exc: RecursionError) -> ConnexionResponse:
+    """ Recursion error handler.
+    
+    Parameters
+    ----------
+    request : ConnexionRequest
+        Incomming request.
+    exc : RecursionError
+        Raised exception.
+
+    Returns
+    -------
+    Response
+        Returns status code 400 if the maximum recursion depth is exceeded,
+            which can be caused by a too deeply nested JSON in the request body.
+    """
+
+    return build_recursion_error_response(
+        pretty=request.query_params.get('pretty', 'false') == 'true'
+    )

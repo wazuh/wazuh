@@ -43,7 +43,7 @@ OSHash *remoted_agents_state;
 extern remoted_state_t remoted_state;
 ROUTER_PROVIDER_HANDLE router_rsync_handle = NULL;
 ROUTER_PROVIDER_HANDLE router_syscollector_handle = NULL;
-// ROUTER_PROVIDER_HANDLE router_syscheck_handle = NULL; // DISABLED 
+// ROUTER_PROVIDER_HANDLE router_syscheck_handle = NULL; // DISABLED
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
@@ -283,6 +283,23 @@ void HandleSecure()
      */
     if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
+    }
+
+    /* Start up message - emitted after queue connection so the service is truly operational */
+    {
+        const int _pos = logr.position;
+        char *_protocol = NULL;
+        if (logr.proto[_pos] & REMOTED_NET_PROTOCOL_TCP) {
+            wm_strcat(&_protocol, REMOTED_NET_PROTOCOL_TCP_STR, 0);
+        }
+        if (logr.proto[_pos] & REMOTED_NET_PROTOCOL_UDP) {
+            wm_strcat(&_protocol, REMOTED_NET_PROTOCOL_UDP_STR, _protocol ? ',' : 0);
+        }
+        minfo(STARTUP_MSG " Listening on port %d/%s (secure).",
+            (int)getpid(),
+            logr.port[_pos],
+            _protocol ? _protocol : "unknown");
+        os_free(_protocol);
     }
 
     /* Read authentication keys */
@@ -776,6 +793,23 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         return;
     }
 
+    if (msg_length > OS_MAXSTR) {
+        mwarn("Message length (%zu) exceeds maximum allowed size (%d) from agent '%s'",
+              msg_length, OS_MAXSTR, keys.keyentries[agentid]->id);
+        key_unlock();
+
+        if (message->sock >= 0) {
+            _close_sock(&keys, message->sock);
+        }
+
+        if (sock_idle >= 0) {
+            _close_sock(&keys, sock_idle);
+        }
+
+        rem_inc_recv_unknown();
+        return;
+    }
+
     /* Recieved valid message timestamp updated. */
     keys.keyentries[agentid]->rcvd = current_ts;
 
@@ -905,6 +939,12 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     os_strdup(keys.keyentries[agentid]->ip->ip, agent_ip);
 
     key_unlock();
+
+    /* Agents registered without a fixed address use "any"; fall back to the real connection IP. */
+    if (strcmp(agent_ip, "any") == 0 && srcip[0] != '\0') {
+        os_free(agent_ip);
+        os_strdup(srcip, agent_ip);
+    }
 
     if (sock_idle >= 0) {
         _close_sock(&keys, sock_idle);

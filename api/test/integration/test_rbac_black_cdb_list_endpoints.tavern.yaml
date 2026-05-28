@@ -6,7 +6,7 @@ stages:
   - name: Show the lists of the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -32,7 +32,7 @@ stages:
   - name: Show an specified filename (Allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -54,7 +54,7 @@ stages:
   - name: Try to show an specified path (Deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -74,7 +74,7 @@ stages:
   - name: Show the lists files of the system
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -102,7 +102,7 @@ stages:
   - name: Try to show content from a list (deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/aws-eventnames"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files/aws-eventnames"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -112,7 +112,7 @@ stages:
   - name: Show content from a list (allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/security-eventchannel"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files/security-eventchannel"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -133,7 +133,7 @@ stages:
   - name: Try to update audit-keys list, overwrite=False (deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/audit-keys"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files/audit-keys"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -144,7 +144,7 @@ stages:
   - name: Try to update audit-keys list, overwrite=True (deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/audit-keys"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files/audit-keys"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: PUT
@@ -161,7 +161,7 @@ stages:
   - name: Try to delete a CDB list (deny)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/audit-keys"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files/audit-keys"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -171,7 +171,7 @@ stages:
   - name: Delete a CDB list (allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/security-eventchannel"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/lists/files/security-eventchannel"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE

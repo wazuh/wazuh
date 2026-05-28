@@ -108,6 +108,13 @@ t7_configuration_parameters, t7_configuration_metadata, t7_case_ids = get_test_c
 t7_configurations = load_configuration_template(configs_path, t7_configuration_parameters,
                                                 t7_configuration_metadata)
 
+# ---------------------------------------------------- TEST_429_RETRY ---------------------------------------------------
+# Test configurations
+t8_cases_path = Path(TEST_CASES_PATH, 'cases_429_retry.yaml')
+t8_configuration_parameters, t8_configuration_metadata, t8_case_ids = get_test_cases_data(t8_cases_path)
+t8_configurations = load_configuration_template(configs_path, t8_configuration_parameters,
+                                                t8_configuration_metadata)
+
 # Test configurations.
 daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
 local_internal_options = {MODULESD_DEBUG: '2'}
@@ -513,3 +520,57 @@ def test_invalid_auth(test_configuration, test_metadata, set_wazuh_configuration
         callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*WARNING: Received unsuccessful "\
                                              r"status code when attempting to obtain access token"))
     assert (wazuh_log_monitor.callback_result != None), f'Error, `unsuccessful status code` not found in log'
+
+
+@pytest.mark.parametrize('test_configuration, test_metadata', zip(t8_configurations, t8_configuration_metadata), ids=t8_case_ids)
+def test_429_retry(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
+                   truncate_monitored_files, daemons_handler, wait_for_msgraph_start, proxy_setup):
+    '''
+    description: Check 'ms-graph' behavior when the API returns HTTP 429 with a Retry-After header.
+    wazuh_min_version: 4.14.5
+
+    tier: 0
+
+    parameters:
+        - test_configuration:
+            type: data
+            brief: Configuration used in the test.
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - set_wazuh_configuration:
+            type: fixture
+            brief: Configure a custom environment for testing.
+        - configure_local_internal_options:
+            type: fixture
+            brief: Set internal configuration for testing.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Reset the 'ossec.log' file and start a new monitor.
+        - daemons_handler:
+            type: fixture
+            brief: Manages daemons to reset Wazuh.
+        - wait_for_msgraph_start:
+            type: fixture
+            brief: Checks integration start message does not appear.
+        - proxy_setup:
+            type: fixture
+            brief: Setups the API proxy application.
+
+    assertions:
+        - Verify that when the API returns HTTP 429 with a Retry-After header, the ms-graph module
+          logs a retry message with the correct wait time parsed from the header.
+
+    input_description: A configuration template is contained in an external YAML file
+                       (config_API.yaml). That template is combined with different test cases defined in
+                       the module. Those include configuration settings for the 'ms-graph' module.
+
+    expected_output:
+        - r".*wazuh-modulesd:ms-graph.*Received HTTP 429 for relationship 'signIns'. Retrying after 10s"
+    '''
+
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+
+    wazuh_log_monitor.start(
+        callback=callbacks.generate_callback(r".*wazuh-modulesd:ms-graph.*Received HTTP 429 for relationship 'signIns'\. Retrying after 10s"))
+    assert (wazuh_log_monitor.callback_result != None), f'Error, HTTP 429 retry message not found in log'

@@ -59,8 +59,7 @@ public:
      * @param errorType Error code.
      */
     explicit cti_server_error(std::string errorMessage, CtiErrorType errorType)
-        : m_errorMessage(std::move(errorMessage))
-        , m_errorType(errorType)
+        : m_errorMessage(std::move(errorMessage)), m_errorType(errorType)
     {
     }
 
