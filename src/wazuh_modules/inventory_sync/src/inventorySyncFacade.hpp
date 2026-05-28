@@ -344,8 +344,7 @@ class InventorySyncFacadeImpl final
                                 static_cast<long long>(requestedSize),
                                 static_cast<long long>(remaining),
                                 std::string(agentId).c_str());
-                        m_responseDispatcher->sendStartAck(
-                            Wazuh::SyncSchema::Status_Offline, agentId, -1, moduleName);
+                        m_responseDispatcher->sendStartAck(Wazuh::SyncSchema::Status_Offline, agentId, -1, moduleName);
                     }
                     else
                     {
@@ -706,8 +705,8 @@ public:
                     if (m_agentSessions.find(res.context->sessionId) == m_agentSessions.end())
                     {
                         logWarn(LOGGER_DEFAULT_TAG,
-                                 "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                                 res.context->sessionId);
+                                "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                res.context->sessionId);
                         return;
                     }
                 }
@@ -1030,6 +1029,15 @@ public:
                     }
                     else
                     {
+                        // Track whether anything was actually enqueued to the indexer connector.
+                        // The Mode_ModuleFull branch and the dataCleanIndices loop both rely on
+                        // res.context->indices / dataCleanIndices being non-empty AFTER the layer-2
+                        // filter; if every entry got dropped (e.g. an agent sent only non-states
+                        // indices) we must NOT register a notify callback that would never fire —
+                        // it would strand the session's final end_ack and leak through to a future
+                        // session's response stream.
+                        bool hasDeleteByQueryEnqueued = false;
+
                         // Execute DataClean deletions if any were received during the session
                         if (!res.context->dataCleanIndices.empty())
                         {
@@ -1044,6 +1052,7 @@ public:
                                           index.c_str(),
                                           res.context->agentId.c_str());
                                 m_indexerConnector->deleteByQuery(index, res.context->agentId);
+                                hasDeleteByQueryEnqueued = true;
                             }
                         }
 
@@ -1057,6 +1066,7 @@ public:
                             for (const auto& index : res.context->indices)
                             {
                                 m_indexerConnector->deleteByQuery(index, res.context->agentId);
+                                hasDeleteByQueryEnqueued = true;
                             }
                         }
 
@@ -1077,7 +1087,6 @@ public:
                                 continue;
                             }
 
-                            hasBulkData = true;
                             logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Processing data...");
                             flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(value.data()),
                                                            value.size());
@@ -1090,6 +1099,60 @@ public:
                                     throw InventorySyncException("Invalid data message");
                                 }
 
+                                // Validate the per-document index against the inventory_sync domain rule
+                                const auto rawIndex = data->index() ? data->index()->string_view() : std::string_view();
+                                if (!isInventoryStateIndex(rawIndex))
+                                {
+                                    logWarn(LOGGER_DEFAULT_TAG,
+                                            "InventorySyncFacade::start: skipping bulk entry for session %llu - "
+                                            "index '%.*s' does not belong to wazuh-states-* family.",
+                                            res.context->sessionId,
+                                            static_cast<int>(rawIndex.size()),
+                                            rawIndex.data());
+                                    continue;
+                                }
+
+                                // For Upsert: parse the agent-supplied document body up-front. nlohmann::json
+                                // rejects unescaped control characters (literal '\n' / '\r' that would otherwise
+                                // enable bulk request smuggling against the NDJSON stream), trailing garbage,
+                                // and we additionally require an object at the root. Doing this BEFORE
+                                // hasBulkData = true keeps the bookkeeping consistent if every entry is invalid.
+                                nlohmann::json document;
+                                const bool isUpsert = data->operation() == Wazuh::SyncSchema::Operation_Upsert;
+                                if (isUpsert)
+                                {
+                                    try
+                                    {
+                                        document = nlohmann::json::parse(std::string_view(
+                                            reinterpret_cast<const char*>(data->data()->data()), data->data()->size()));
+                                    }
+                                    catch (const nlohmann::json::parse_error& e)
+                                    {
+                                        logWarn(LOGGER_DEFAULT_TAG,
+                                                "InventorySyncFacade::start: skipping bulk entry for session "
+                                                "%llu (seq %llu) - DataValue body is not valid JSON: %s",
+                                                res.context->sessionId,
+                                                data->seq(),
+                                                e.what());
+                                        continue;
+                                    }
+                                    if (!document.is_object())
+                                    {
+                                        logWarn(LOGGER_DEFAULT_TAG,
+                                                "InventorySyncFacade::start: skipping bulk entry for session "
+                                                "%llu (seq %llu) - DataValue body is not a JSON object",
+                                                res.context->sessionId,
+                                                data->seq());
+                                        continue;
+                                    }
+                                }
+                                else if (data->operation() != Wazuh::SyncSchema::Operation_Delete)
+                                {
+                                    throw InventorySyncException("Invalid operation");
+                                }
+
+                                hasBulkData = true;
+
                                 thread_local std::string elementId;
                                 elementId.clear();
 
@@ -1100,34 +1163,29 @@ public:
                                 elementId.append("_");
                                 elementId.append(data->id()->string_view());
 
-                                if (data->operation() == Wazuh::SyncSchema::Operation_Upsert)
+                                if (isUpsert)
                                 {
                                     logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Upserting data...");
 
-                                    // Build metadata using nlohmann::json for automatic escaping
-                                    nlohmann::json metadata;
-                                    metadata["wazuh"]["agent"]["id"] = res.context->agentId;
-                                    metadata["wazuh"]["agent"]["name"] = res.context->agentName;
-                                    metadata["wazuh"]["agent"]["version"] = res.context->agentVersion;
-                                    metadata["wazuh"]["agent"]["groups"] = res.context->groups;
-                                    metadata["wazuh"]["agent"]["host"]["architecture"] = res.context->architecture;
-                                    metadata["wazuh"]["agent"]["host"]["hostname"] = res.context->hostname;
-                                    metadata["wazuh"]["agent"]["host"]["os"]["name"] = res.context->osname;
-                                    metadata["wazuh"]["agent"]["host"]["os"]["platform"] = res.context->osplatform;
-                                    metadata["wazuh"]["agent"]["host"]["os"]["type"] = res.context->ostype;
-                                    metadata["wazuh"]["agent"]["host"]["os"]["version"] = res.context->osversion;
-                                    metadata["wazuh"]["cluster"]["name"] =
+                                    // Overlay manager-controlled metadata on top of the agent payload.
+                                    // Any field the agent tries to set under wazuh.* gets clobbered here,
+                                    // so the agent cannot impersonate another agent or another cluster.
+                                    document["wazuh"]["agent"]["id"] = res.context->agentId;
+                                    document["wazuh"]["agent"]["name"] = res.context->agentName;
+                                    document["wazuh"]["agent"]["version"] = res.context->agentVersion;
+                                    document["wazuh"]["agent"]["groups"] = res.context->groups;
+                                    document["wazuh"]["agent"]["host"]["architecture"] = res.context->architecture;
+                                    document["wazuh"]["agent"]["host"]["hostname"] = res.context->hostname;
+                                    document["wazuh"]["agent"]["host"]["os"]["name"] = res.context->osname;
+                                    document["wazuh"]["agent"]["host"]["os"]["platform"] = res.context->osplatform;
+                                    document["wazuh"]["agent"]["host"]["os"]["type"] = res.context->ostype;
+                                    document["wazuh"]["agent"]["host"]["os"]["version"] = res.context->osversion;
+                                    document["wazuh"]["cluster"]["name"] =
                                         !res.context->clusterName.empty() ? res.context->clusterName : m_clusterName;
 
-                                    // Serialize metadata to string and append FlatBuffer inventory data
                                     thread_local std::string dataString;
-                                    dataString = metadata.dump();
-                                    // Remove closing brace to append inventory data
-                                    dataString.pop_back();
-                                    dataString.append(",");
-                                    // Append inventory data (skip opening brace from FlatBuffer data)
-                                    dataString.append(std::string_view((const char*)data->data()->data() + 1,
-                                                                       data->data()->size() - 1));
+                                    dataString = document.dump();
+
                                     const auto version = data->version();
                                     const auto indexName = data->index()->string_view();
                                     if (version && version > 0)
@@ -1140,14 +1198,10 @@ public:
                                         m_indexerConnector->bulkIndex(elementId, indexName, dataString);
                                     }
                                 }
-                                else if (data->operation() == Wazuh::SyncSchema::Operation_Delete)
+                                else
                                 {
                                     logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Deleting data...");
                                     m_indexerConnector->bulkDelete(elementId, data->index()->string_view());
-                                }
-                                else
-                                {
-                                    throw InventorySyncException("Invalid operation");
                                 }
                             }
                             else
@@ -1270,9 +1324,14 @@ public:
                             }
                         }
 
-                        // Only register notify callback if there's bulk data or deleteByQuery operations
-                        if (hasBulkData || !res.context->dataCleanIndices.empty() ||
-                            res.context->mode == Wazuh::SyncSchema::Mode_ModuleFull)
+                        // Only register notify callback if there's bulk data or deleteByQuery
+                        // operations actually enqueued. Checking hasDeleteByQueryEnqueued (instead
+                        // of mode == Mode_ModuleFull or dataCleanIndices.empty()) is critical: if
+                        // every potential delete target was filtered out by the inventory_sync
+                        // index allowlist, no HTTP request will be made and no future flush will
+                        // fire the notify — the callback would be stranded and leak its end_ack
+                        // into the next session's response stream.
+                        if (hasBulkData || hasDeleteByQueryEnqueued)
                         {
                             // Register notify callback for bulk operations (after accumulating all data)
                             m_indexerConnector->registerNotify(
@@ -2016,10 +2075,11 @@ private:
     }
 
     std::string m_clusterName;
-    int m_maxSessions {1000};                                  // Maximum concurrent sessions (configured from internal_options)
-    size_t m_workersQueueSize {10000};                         // Input queue cap (configured from internal_options)
-    std::atomic<int64_t> m_dataValueQuotaRemaining {500000};   // Global DataValue quota (configured from internal_options)
-    std::atomic<int64_t> m_lastQueueDropLogNs {0};             // steady_clock ns of last queue-drop warning
+    int m_maxSessions {1000};          // Maximum concurrent sessions (configured from internal_options)
+    size_t m_workersQueueSize {10000}; // Input queue cap (configured from internal_options)
+    std::atomic<int64_t> m_dataValueQuotaRemaining {
+        500000};                                   // Global DataValue quota (configured from internal_options)
+    std::atomic<int64_t> m_lastQueueDropLogNs {0}; // steady_clock ns of last queue-drop warning
     static constexpr int64_t WARN_THROTTLE_NS = 90LL * 1000LL * 1000LL * 1000LL; // 90 s
     mutable std::shared_mutex m_agentSessionsMutex;
     mutable std::condition_variable_any m_sessionCompletedCV;

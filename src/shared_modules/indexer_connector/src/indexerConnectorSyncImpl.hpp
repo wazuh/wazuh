@@ -60,6 +60,38 @@ constexpr auto DELETE_FORMATTED_LENGTH {DELETE_OPERATION_PREFIX + DELETE_ID_FIEL
                                         NEWLINE_CHAR};
 
 /**
+ * @brief Validates that an index name is safe to embed in a URL path component or
+ *        in a JSON string sent to wazuh-indexer.
+ *
+ * Rejects empty strings and any character outside the conservative allowlist
+ * `[a-zA-Z0-9._*-]`. Blocks `/`, `?`, `#`, `,`, whitespace and quote characters,
+ * which would otherwise enable path traversal, query-string injection in URLs,
+ * or JSON-body escape attacks. `*` is allowed because wazuh-indexer interprets it
+ * as a wildcard and the connector has legitimate callers that use patterns such
+ * as `wazuh-states-*`.
+ *
+ * @param idx Candidate index name.
+ * @return true if the name is non-empty and contains only safe characters.
+ */
+inline bool isSafeIndexName(std::string_view idx) noexcept
+{
+    if (idx.empty())
+    {
+        return false;
+    }
+    for (const char c : idx)
+    {
+        const bool ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' ||
+                        c == '_' || c == '.' || c == '*';
+        if (!ok)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
  * @brief Appends an ID to bulkData, escaping special characters if necessary
  * @param bulkData The string to append the ID to
  * @param id The ID to append (will be escaped if needed)
@@ -704,21 +736,29 @@ public:
 
     void deleteByQuery(const std::string& index, const std::string& agentId)
     {
+        if (!isSafeIndexName(index))
+        {
+            logWarn(m_logTag.c_str(),
+                    "Refusing deleteByQuery for unsafe index name '%s' (empty or contains characters outside "
+                    "[a-zA-Z0-9._*-]).",
+                    index.c_str());
+            return;
+        }
         auto [it, success] = m_deleteByQuery.try_emplace(index, nlohmann::json::object());
         it->second["query"]["bool"]["filter"]["terms"]["wazuh.agent.id"].push_back(agentId);
     }
 
     void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery)
     {
-        // Filter and join valid indices with comma separator for the URL.
-        // Only indices starting with "wazuh-states-" are included.
+        // Reject any entry that fails the connector's safe-name check
         std::string indexList;
         for (const auto& idx : indices)
         {
-            if (!idx.starts_with("wazuh-states-"))
+            if (!isSafeIndexName(idx))
             {
                 logWarn(m_logTag.c_str(),
-                        "Skipping index '%s' for update by query: does not match expected prefix 'wazuh-states-'",
+                        "Skipping index '%s' for update by query: empty or contains characters outside "
+                        "[a-zA-Z0-9._*-].",
                         idx.c_str());
                 continue;
             }
@@ -858,6 +898,12 @@ public:
 
     nlohmann::json executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery)
     {
+        if (!isSafeIndexName(index))
+        {
+            throw IndexerConnectorException("executeSearchQuery: unsafe index name '" + index +
+                                            "' (empty or contains characters outside [a-zA-Z0-9._*-])");
+        }
+
         nlohmann::json resultJson;
 
         const auto onSuccess = [this, &resultJson](const std::string& response)
@@ -894,6 +940,12 @@ public:
                                           const nlohmann::json& query,
                                           std::function<void(const nlohmann::json&)> onResponse)
     {
+        if (!isSafeIndexName(index))
+        {
+            throw IndexerConnectorException("executeSearchQueryWithPagination: unsafe index name '" + index +
+                                            "' (empty or contains characters outside [a-zA-Z0-9._*-])");
+        }
+
         nlohmann::json currentQuery = query;
         while (true)
         {
@@ -957,6 +1009,15 @@ public:
         if (keepAlive.empty())
         {
             throw IndexerConnectorException("keepAlive parameter cannot be empty for PIT creation");
+        }
+
+        for (const auto& idx : indices)
+        {
+            if (!isSafeIndexName(idx))
+            {
+                throw IndexerConnectorException("createPointInTime: unsafe index name '" + idx +
+                                                "' (empty or contains characters outside [a-zA-Z0-9._*-])");
+            }
         }
 
         std::string indicesStr;
@@ -1155,6 +1216,18 @@ public:
 
     void bulkDelete(std::string_view id, std::string_view index)
     {
+        if (!isSafeIndexName(index))
+        {
+            logError(m_logTag.c_str(),
+                     "Refusing bulkDelete for unsafe index name '%.*s' (empty or contains characters outside "
+                     "[a-zA-Z0-9._*-]) on document '%.*s'",
+                     static_cast<int>(index.size()),
+                     index.data(),
+                     static_cast<int>(id.size()),
+                     id.data());
+            throw IndexerConnectorException("Unsafe index name");
+        }
+
         if (constexpr auto FORMATTED_SIZE {DELETE_FORMATTED_LENGTH};
             m_bulkData.length() + FORMATTED_SIZE + index.size() + id.size() > MaxBulkSize)
         {
@@ -1180,13 +1253,16 @@ public:
         constexpr auto VERSION_SIZE {32};
 
         // Validate input parameters
-        if (index.empty())
+        if (!isSafeIndexName(index))
         {
             logError(m_logTag.c_str(),
-                     "Index name cannot be empty for document: %.*s",
+                     "Refusing bulkIndex for unsafe index name '%.*s' (empty or contains characters outside "
+                     "[a-zA-Z0-9._*-]) on document '%.*s'",
+                     static_cast<int>(index.size()),
+                     index.data(),
                      static_cast<int>(id.size()),
                      id.data());
-            throw IndexerConnectorException("Index name cannot be empty");
+            throw IndexerConnectorException("Unsafe index name");
         }
 
         if (data.empty())
@@ -1310,6 +1386,12 @@ public:
 
     void refresh(std::string_view indexPattern)
     {
+        if (!isSafeIndexName(indexPattern))
+        {
+            throw IndexerConnectorException("refresh: unsafe index pattern '" + std::string(indexPattern) +
+                                            "' (empty or contains characters outside [a-zA-Z0-9._*-])");
+        }
+
         std::string url;
         url += m_selector->getNext();
         url += "/";

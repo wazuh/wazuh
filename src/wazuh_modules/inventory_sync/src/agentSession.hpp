@@ -40,6 +40,20 @@ struct Response
 using WorkersQueue = Utils::AsyncValueDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
 using IndexerQueue = Utils::AsyncValueDispatcher<Response, std::function<void(const Response&)>>;
 
+/**
+ * @brief Inventory-sync business rule: an index name must belong to the
+ *        wazuh-states-* family and have a non-empty suffix.
+ *
+ * The connector layer applies an independent safety check (non-empty, only
+ * [a-zA-Z0-9._*-]) that prevents URL/JSON injection regardless of caller. This
+ * helper only encodes the inventory_sync-specific domain rule.
+ */
+inline bool isInventoryStateIndex(std::string_view idx) noexcept
+{
+    constexpr std::string_view kPrefix = "wazuh-states-";
+    return idx.starts_with(kPrefix) && idx.size() > kPrefix.size();
+}
+
 class AgentSessionException : public std::exception
 {
 public:
@@ -134,7 +148,9 @@ public:
             }
         }
 
-        // Extract indices
+        // Extract indices. Only keep entries that belong to the wazuh-states-* family
+        // (inventory_sync's domain rule). The connector layer applies an additional
+        // safety check that rejects characters outside [a-zA-Z0-9._*-].
         std::vector<std::string> indices;
 
         if (data->index())
@@ -143,7 +159,19 @@ public:
             {
                 if (index)
                 {
-                    indices.emplace_back(index->str());
+                    auto entry = index->str();
+                    if (!isInventoryStateIndex(entry))
+                    {
+                        logWarn(LOGGER_DEFAULT_TAG,
+                                "Start: ignoring index '%s' (does not belong to wazuh-states-* family) for "
+                                "agent '%.*s' (session %llu).",
+                                entry.c_str(),
+                                static_cast<int>(agentId.size()),
+                                agentId.data(),
+                                sessionId);
+                        continue;
+                    }
+                    indices.emplace_back(std::move(entry));
                 }
             }
         }
@@ -250,7 +278,8 @@ public:
         m_gapSet->observe(data->seq());
 
         // Store in RocksDB with session and sequence as key. If fails and throws, we will mark the sequence as observed
-        // anyway, to avoid blocking the session with infinit loop of retries. (The error should log and be investigated, but the session should continue)
+        // anyway, to avoid blocking the session with infinit loop of retries. (The error should log and be
+        // investigated, but the session should continue)
         m_store.put(std::format("{}_{}", session, seq),
                     rocksdb::Slice(reinterpret_cast<const char*>(dataRaw), dataSize));
 
@@ -305,7 +334,19 @@ public:
 
         if (data->index())
         {
-            m_context->checksumIndex = data->index()->str();
+            auto candidate = data->index()->str();
+            if (!isInventoryStateIndex(candidate))
+            {
+                logWarn(LOGGER_DEFAULT_TAG,
+                        "ChecksumModule: ignoring index '%s' (does not belong to wazuh-states-* family) for "
+                        "session %llu.",
+                        candidate.c_str(),
+                        m_context->sessionId);
+            }
+            else
+            {
+                m_context->checksumIndex = std::move(candidate);
+            }
         }
 
         logDebug2(LOGGER_DEFAULT_TAG,
@@ -363,7 +404,6 @@ public:
         // infinit loop of retries. (The error should log and be investigated, but the session should continue)
         m_store.put(std::format("{}_{}_context", session, seq),
                     rocksdb::Slice(reinterpret_cast<const char*>(dataRaw), dataSize));
-
 
         logDebug2(LOGGER_DEFAULT_TAG,
                   "DataContext received: %s %llu %llu %s",
@@ -423,13 +463,25 @@ public:
         if (data->index())
         {
             std::string index = data->index()->str();
-            m_context->dataCleanIndices.insert(index);
+            if (!isInventoryStateIndex(index))
+            {
+                logWarn(LOGGER_DEFAULT_TAG,
+                        "DataClean: ignoring index '%s' (does not belong to wazuh-states-* family) for "
+                        "session %llu, seq %llu.",
+                        index.c_str(),
+                        m_context->sessionId,
+                        seq);
+            }
+            else
+            {
+                m_context->dataCleanIndices.insert(index);
 
-            logDebug2(LOGGER_DEFAULT_TAG,
-                      "DataClean received for session %llu, seq %llu, index: %s",
-                      m_context->sessionId,
-                      seq,
-                      index.c_str());
+                logDebug2(LOGGER_DEFAULT_TAG,
+                          "DataClean received for session %llu, seq %llu, index: %s",
+                          m_context->sessionId,
+                          seq,
+                          index.c_str());
+            }
         }
         else
         {
@@ -438,7 +490,6 @@ public:
                      m_context->sessionId,
                      seq);
         }
-
 
         if (m_endReceived && !m_endEnqueued)
         {
