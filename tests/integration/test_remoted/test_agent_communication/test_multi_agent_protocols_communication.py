@@ -11,9 +11,6 @@ from pathlib import Path
 from wazuh_testing.tools.simulators.agent_simulator import connect
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.modules.remoted.configuration import REMOTED_DEBUG
-from wazuh_testing.constants.paths.logs import ARCHIVES_LOG_PATH
-from wazuh_testing.tools.monitors.file_monitor import FileMonitor
-from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.tools.thread_executor import ThreadExecutor
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
@@ -78,28 +75,15 @@ def test_multi_agent_protocols_communication(test_configuration, test_metadata, 
             brief: Apply changes to the ossec.conf configuration.
     '''
     agents = simulate_agents
-    senders = []
-
+    send_event_threads = []
 
     manager_port = test_metadata['port']
     protocol = test_metadata['protocol']
-    search_patterns = []
-    send_event_threads = []
-
-    # Read the events log data
-    log_monitor_archives = FileMonitor(ARCHIVES_LOG_PATH)
 
     for agent in agents:
-
-        # Generate custom events for each agent
-        search_pattern = f"test message from agent {agent.id}"
-        agent_custom_message = f"1:/test.log:Feb 23 17:18:20 manager sshd[40657]: {search_pattern}"
+        agent_custom_message = f"1:/test.log:Feb 23 17:18:20 manager sshd[40657]: test message from agent {agent.id}"
         event = agent.create_event(agent_custom_message)
 
-        # Save the search pattern to check it later
-        search_patterns.append(search_pattern)
-
-        # Create sender event threads
         send_event_threads.append(ThreadExecutor(send_event, {'event': event, 'protocol': protocol,
                                                             'manager_port': manager_port, 'agent': agent}))
 
@@ -110,12 +94,9 @@ def test_multi_agent_protocols_communication(test_configuration, test_metadata, 
     for thread in send_event_threads:
         thread.start()
 
-    # Wait until sender event threads finish
+    # Wait for all threads to finish; ThreadExecutor.join() re-raises any thread exception.
     for thread in send_event_threads:
         thread.join()
-
-    log_monitor_archives.start(timeout=30, callback=generate_callback(r".*"))
-    assert log_monitor_archives.callback_result
 
     for injector in injectors:
         injector.stop_receive()

@@ -952,7 +952,7 @@ def simulate_agents(test_metadata):
 
     # Delete simulated agents
     control_service("start")
-    remove_agents([a.id for a in agents], "manage_agents")
+    remove_agents([a.id for a in agents], "api")
     control_service("stop")
 
 @pytest.fixture(scope="session", autouse=True)
