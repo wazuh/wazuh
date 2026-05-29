@@ -34,7 +34,7 @@ policy:
     - https://www.ssh.com/ssh/
 
 requirements:
-  title: "Check that the SSH service and password-related files are present on the system"
+  name: "Check that the SSH service and password-related files are present on the system"
   description: "Requirements for running the SCA scan against the Unix based systems policy."
   condition: any
   rules:
@@ -48,7 +48,7 @@ variables:
 
 checks:
   - id: 3000
-    title: "SSH Hardening: Port should not be 22"
+    name: "SSH Hardening: Port should not be 22"
     description: "The ssh daemon should not be listening on port 22 (the default value) for incoming connections."
     rationale: "Changing the default port you may reduce the number of successful attacks from zombie bots."
     remediation: "Change the Port option value in the sshd_config file."
@@ -63,7 +63,7 @@ checks:
       - 'f:$sshd_file -> !r:^# && r:Port && !r:\s*\t*22$'
 
   - id: 3001
-    title: "SSH Hardening: Protocol should be set to 2"
+    name: "SSH Hardening: Protocol should be set to 2"
 ```
 
 > **Note**  
@@ -77,10 +77,9 @@ checks:
 |-------------|-----------|------------------|------------------------------|---------------------|
 | id          | Yes       | String           | Any string                   | Policy ID           |
 | file        | Yes       | String           | Any string                   | Policy filename     |
-| name        | Yes       | String           | Any string                   | Policy title        |
+| name        | Yes       | String           | Any string                   | Policy name         |
 | description | Yes       | String           | Any string                   | Brief description   |
 | references  | No        | Array of strings | Any string                   | Reference links     |
-| regex_type  | No        | String           | osregex, pcre2               | Regex engine        |
 
 ---
 
@@ -88,7 +87,7 @@ checks:
 
 | Field       | Mandatory | Type             | Allowed values |
 |------------|-----------|------------------|----------------|
-| title      | Yes       | String           | Any string     |
+| name       | Yes       | String           | Any string     |
 | description| Yes       | String           | Any string     |
 | condition  | Yes       | String           | Any string     |
 | rules      | Yes       | Array of strings | Any string     |
@@ -136,7 +135,7 @@ Checks define what actions the agent performs and how results are evaluated.
 | Field        | Mandatory | Type                      | Allowed values        |
 |-------------|-----------|---------------------------|-----------------------|
 | id          | Yes       | Numeric                   | Any integer           |
-| title       | Yes       | String                    | Any string            |
+| name        | Yes       | String                    | Any string            |
 | description | No        | String                    | Any string            |
 | rationale   | No        | String                    | Any string            |
 | remediation | No        | String                    | Any string            |
@@ -145,10 +144,8 @@ Checks define what actions the agent performs and how results are evaluated.
 | references  | No        | Array of strings          | Any string            |
 | condition   | Yes       | String                    | all, any, none        |
 | rules       | Yes       | Array of strings          | Any string            |
-| regex_type  | No        | String                    | pcre2, osregex        |
 
-> **Note**
-> A `regex_type` defined at the check level overrides the policy-level regex engine.
+SCA rules are evaluated with PCRE2. Custom policies migrated from 4.x must not rely on OSRegex syntax. See [SCA policies from 4.x to 5.x](../../../guide/migration/sca-policies-4x-to-5x.md) for migration guidance.
 
 #### Compliance keys
 
@@ -275,8 +272,8 @@ c:systemctl is-enabled cups -> r:^enabled
 
 ## Composite rules
 
-- `f:/etc/ssh/sshd_config -> !r:^# && r:Port\.+22`
-- `not f:/etc/ssh/sshd_config -> !r:^# && r:Port\.+22`
+- `f:/etc/ssh/sshd_config -> !r:^# && r:Port\s+22`
+- `not f:/etc/ssh/sshd_config -> !r:^# && r:Port\s+22`
 
 ---
 
@@ -286,4 +283,4 @@ c:systemctl is-enabled cups -> r:^enabled
 - `p:avahi-daemon`
 - `d:/etc/mysql`
 - `c:sshd -T -> !r:^\s*maxauthtries\s+4\s*$`
-- `f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:`
+- `f:/etc/passwd -> !r:^# && !r:^root: && r:^[\w@-]+:[\w@-]+:0:`
