@@ -1291,17 +1291,15 @@ void fim_file_scan() {
         char *path = fim_get_real_path(dir_it);
 
 #ifndef WIN32
-        // Warn if a configured path is a symlink but follow_symbolic_link is not enabled.
-        // On usrmerge systems (Ubuntu 20+, Debian 10+, RHEL 7+, Fedora, SLES 15+, etc.),
-        // /bin and /sbin are symlinks to /usr/bin and /usr/sbin. Without CHECK_FOLLOW,
-        // lstat() returns S_IFLNK which falls through to FIM_REGULAR in fim_checker(),
-        // so the directory contents are silently never scanned. See issue #36077.
-        if ((dir_it->options & CHECK_FOLLOW) == 0 && IsLink(path) == 0) {
+        if ((dir_it->options & CHECK_FOLLOW) == 0
+                && !dir_it->symlink_warned
+                && IsLink(path) == 0) {
             char *link_target = realpath(path, NULL);
             if (link_target) {
                 mwarn(FIM_WARN_SYMLINK_NOFOLLOW, path, link_target, link_target);
                 os_free(link_target);
             }
+            dir_it->symlink_warned = true;
         }
 #endif
 
