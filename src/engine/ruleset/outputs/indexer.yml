@@ -13,7 +13,7 @@ outputs:
         - wazuh-indexer:
             index: "wazuh-events-v5-unclassified"
 
-    - check: string_not_equal($wazuh.integration.category, "unclassified")
+    - check: string_not_equal($wazuh.integration.decoders, "unclassified")
       then:
         - wazuh-indexer:
             index: "wazuh-events-v5-${wazuh.integration.category}"

@@ -248,29 +248,29 @@ protected:
     void TearDown() override { SingletonLocator::unregisterManager<fastmetrics::IManager>(); }
 };
 
-// More than 1 decoder => no increment
+// Category != "unclassified" => no increment
 TEST_F(UnclassifiedCounterTest, MultipleDecodersNoIncrement)
 {
     auto expr = postOutputUnclassifiedCounter("space1", mockCounter);
 
-    auto event = makeEvent(R"({"wazuh":{"integration":{"decoders":["dec1","dec2"]}}})");
+    auto event = makeEvent(R"({"wazuh":{"integration":{"category":"security"}}})");
     EXPECT_CALL(*mockCounter, add(_)).Times(0);
     auto result = evalTerm(expr, event);
     EXPECT_TRUE(result.success());
 }
 
-// Exactly 1 decoder => increment
+// Category == "unclassified" => increment
 TEST_F(UnclassifiedCounterTest, SingleDecoderIncrements)
 {
     auto expr = postOutputUnclassifiedCounter("space1", mockCounter);
 
-    auto event = makeEvent(R"({"wazuh":{"integration":{"decoders":["dec1"]}}})");
+    auto event = makeEvent(R"({"wazuh":{"integration":{"category":"unclassified"}}})");
     EXPECT_CALL(*mockCounter, add(1)).Times(1);
     auto result = evalTerm(expr, event);
     EXPECT_TRUE(result.success());
 }
 
-// No decoders field => no crash, no increment
+// No category field => no crash, no increment
 TEST_F(UnclassifiedCounterTest, NoDecodersFieldNoCrash)
 {
     auto expr = postOutputUnclassifiedCounter("space1", mockCounter);
