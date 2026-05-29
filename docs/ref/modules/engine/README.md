@@ -2486,7 +2486,7 @@ Most Engine messages use the `wazuh-manager-analysisd` component tag, but some s
 2026/04/14 20:07:44 wazuh-manager-analysisd: INFO: Indexer Connector initialized.
 2026/04/14 20:09:16 wazuh-manager-analysisd: INFO: Archiver initialized.
 2026/04/14 20:09:16 wazuh-manager-analysisd: INFO: Remote engine's server initialized and started.
-2026/04/14 20:09:16 wazuh-manager-analysisd: INFO: Engine started and ready to process events.
+2026/04/14 20:09:16 wazuh-manager-analysisd: INFO: Engine started.
 ```
 
 Warning and error lines include a context tag in brackets that identifies the internal
