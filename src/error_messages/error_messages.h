@@ -491,6 +491,17 @@
 #define FIM_ERROR_EBPF_HEALTHCHECK_TIMEOUT          "(6978): eBPF healthcheck timeout."
 #define FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL         "(6979): Healthcheck file can't be removed. Path: %s"
 #define FIM_ERROR_EBPF_INVALID_KERNEL               "(6980): Invalid Kernel version detected. Must be +5.8."
+#define FIM_ERROR_EBPF_HEALTHCHECK_ACTION_FAILED    "(6981): eBPF healthcheck action failed: %s. %s"
+#define FIM_ERROR_EBPF_HEALTHCHECK_ACTION_SKIPPED   "(6982): eBPF healthcheck action skipped: %s. %s"
+#define FIM_ERROR_EBPF_OBJ_ATTACH_DETAIL            "(6983): Attaching BPF program '%s' failed (errno=%d: %s)."
+#define FIM_EBPF_HEALTHCHECK_EVENT_CONSUME_DETAIL   "Failed while consuming healthcheck events."
+#define FIM_EBPF_HEALTHCHECK_EVENT_TIMEOUT_DETAIL   "Timed out waiting for the corresponding event."
+#define FIM_EBPF_HEALTHCHECK_CREATE_DETAIL          "Could not create the temporary healthcheck file."
+#define FIM_EBPF_HEALTHCHECK_CONTENT_DETAIL         "Could not open the healthcheck file for append."
+#define FIM_EBPF_HEALTHCHECK_STAT_DETAIL            "Could not stat the healthcheck file. Path: %s. Error: %s"
+#define FIM_EBPF_HEALTHCHECK_CHMOD_DETAIL           "Could not update file permissions. Path: %s. Error: %s"
+#define FIM_EBPF_HEALTHCHECK_DELETE_DETAIL          "Could not remove the temporary healthcheck file."
+#define FIM_EBPF_HEALTHCHECK_SKIP_DETAIL            "Skipped because the healthcheck file is not available."
 
 /* Wazuh Logtest error messsages */
 #define LOGTEST_ERROR_BIND_SOCK                     "(7300): Unable to bind to socket '%s'. Errno: (%d) %s"

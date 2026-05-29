@@ -498,13 +498,13 @@ def test_compare_files_ko(logger_mock, mock_get_cluster_items):
 def test_clean_up_ok():
     """Check if the cleaning function is working properly."""
 
-    with patch('os.path.join', return_value="some/path/"):
+    with patch('wazuh.core.cluster.cluster.safe_join', return_value="some/path"):
         with patch.object(wazuh.core.cluster.cluster.logger, "debug") as mock_logger:
             with patch('os.path.exists', return_value=False) as path_exists_mock:
                 cluster.clean_up("worker1")
-                mock_logger.assert_any_call("Removing 'some/path/'.")
-                mock_logger.assert_any_call("Nothing to remove in 'some/path/'.")
-                mock_logger.assert_called_with("Removed 'some/path/'.")
+                mock_logger.assert_any_call("Removing 'some/path'.")
+                mock_logger.assert_any_call("Nothing to remove in 'some/path'.")
+                mock_logger.assert_called_with("Removed 'some/path'.")
 
                 path_exists_mock.return_value = True
                 with patch('wazuh.core.cluster.cluster.listdir',
@@ -512,38 +512,43 @@ def test_clean_up_ok():
                     with patch('os.path.isdir', return_value=True) as is_dir_mock:
                         with patch('shutil.rmtree'):
                             cluster.clean_up("worker1")
-                            mock_logger.assert_any_call("Removing 'some/path/'.")
-                            mock_logger.assert_called_with("Removed 'some/path/'.")
+                            mock_logger.assert_any_call("Removing 'some/path'.")
+                            mock_logger.assert_called_with("Removed 'some/path'.")
 
                         is_dir_mock.return_value = False
                         with patch('wazuh.core.cluster.cluster.remove'):
                             cluster.clean_up("worker1")
-                            mock_logger.assert_any_call("Removing 'some/path/'.")
-                            mock_logger.assert_called_with("Removed 'some/path/'.")
+                            mock_logger.assert_any_call("Removing 'some/path'.")
+                            mock_logger.assert_called_with("Removed 'some/path'.")
 
 
 def test_clean_up_ko():
     """Check if the cleaning function raising the exceptions properly."""
-    error_cleaning = "Error cleaning up: stat: path should be string, bytes, os.PathLike or integer, not type."
-    error_removing = f"Error removing '{Exception}': " \
-                     f"'stat: path should be string, bytes, os.PathLike or integer, not type'."
+    error_removing = "Error removing 'some/path/other_file.txt': 'test error'."
 
-    with patch('os.path.join') as path_join_mock:
+    with patch('wazuh.core.cluster.cluster.safe_join', return_value="some/path"):
         with patch.object(wazuh.core.cluster.cluster.logger, "error") as mock_error_logger:
             with patch.object(wazuh.core.cluster.cluster.logger, "debug") as mock_debug_logger:
-                path_join_mock.return_value = Exception
-                cluster.clean_up("worker1")
-                mock_debug_logger.assert_any_call(f"Removing '{Exception}'.")
-                mock_error_logger.assert_called_once_with(error_cleaning)
-
                 with patch('os.path.exists', return_value=True):
                     with patch('wazuh.core.cluster.cluster.listdir',
                                return_value=["c-internal.sock", "other_file.txt"]):
-                        with patch('shutil.rmtree', side_effect=Exception):
-                            cluster.clean_up("worker1")
-                            mock_debug_logger.assert_any_call(f"Removing '{Exception}'.")
-                            mock_error_logger.assert_any_call(error_removing)
-                            mock_debug_logger.assert_called_with(f"Removed '{Exception}'.")
+                        with patch('os.path.isdir', return_value=True):
+                            with patch('shutil.rmtree', side_effect=Exception("test error")):
+                                cluster.clean_up("worker1")
+                                mock_debug_logger.assert_any_call("Removing 'some/path'.")
+                                mock_error_logger.assert_any_call(error_removing)
+                                mock_debug_logger.assert_called_with("Removed 'some/path'.")
+
+
+def test_clean_up_node_name_validation():
+    """Check that clean_up rejects invalid node names."""
+    with patch('wazuh.core.cluster.cluster.safe_join') as safe_join_mock:
+        safe_join_mock.side_effect = WazuhInternalError(3003, extra_message="unsafe path")
+
+        with patch.object(wazuh.core.cluster.cluster.logger, "error") as mock_error_logger:
+            cluster.clean_up("../../etc")
+            mock_error_logger.assert_called_once()
+            assert "Error cleaning up" in str(mock_error_logger.call_args)
 
 
 @patch('wazuh.core.cluster.cluster.listdir', return_value=['005', '006'])
