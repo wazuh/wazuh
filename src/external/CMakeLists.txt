@@ -391,10 +391,10 @@ add_dependencies(ext_pcre2 pcre2_external)
 add_library(pcre2-8 ALIAS ext_pcre2)
 
 # ------------------------------------------------------------------------------
-# audit-userspace (Linux only)
+# audit-userspace (Linux agent only)
 # ------------------------------------------------------------------------------
 
-if(IS_LINUX)
+if(IS_LINUX AND IS_AGENT)
   if(EXISTS ${EXTERNAL_DIR}/audit-userspace/lib/.libs/libaudit.a)
     message(STATUS "Using precompiled audit library")
     add_custom_target(audit_external)
@@ -512,42 +512,10 @@ if(NOT IS_WINDOWS)
 endif()
 
 # ------------------------------------------------------------------------------
-# libarchive (Linux only, not winagent)
+# Berkeley DB (Linux agent only)
 # ------------------------------------------------------------------------------
 
-if(IS_LINUX AND NOT IS_WINDOWS)
-  if(EXISTS ${EXTERNAL_DIR}/libarchive/.libs/libarchive.a)
-    message(STATUS "Using precompiled libarchive library")
-    add_custom_target(libarchive_external)
-  else()
-    ExternalProject_Add(
-      libarchive_external
-      SOURCE_DIR ${EXTERNAL_DIR}/libarchive
-      CONFIGURE_COMMAND
-        ${CMAKE_COMMAND} -E env CPPFLAGS=-fPIC
-        ${EXTERNAL_DIR}/libarchive/configure --disable-acl --without-expat
-        --without-iconv --without-xml2 --without-lz4 --without-lzma
-        --without-zstd --without-bz2lib --without-openssl --without-libb2
-      BUILD_COMMAND ${CMAKE_MAKE_PROGRAM} libarchive.la
-      BUILD_IN_SOURCE TRUE
-      INSTALL_COMMAND ""
-      BUILD_BYPRODUCTS ${EXTERNAL_DIR}/libarchive/.libs/libarchive.a)
-  endif()
-
-  add_library(ext_libarchive STATIC IMPORTED GLOBAL)
-  set_target_properties(
-    ext_libarchive PROPERTIES IMPORTED_LOCATION
-                              ${EXTERNAL_DIR}/libarchive/.libs/libarchive.a)
-  add_dependencies(ext_libarchive libarchive_external)
-  target_include_directories(ext_libarchive
-                             INTERFACE ${EXTERNAL_DIR}/libarchive/libarchive)
-endif()
-
-# ------------------------------------------------------------------------------
-# Berkeley DB (Linux only)
-# ------------------------------------------------------------------------------
-
-if(IS_LINUX)
+if(IS_LINUX AND IS_AGENT)
   if(EXISTS ${EXTERNAL_DIR}/libdb/build_unix/.libs/libdb-18.1.a)
     message(STATUS "Using precompiled Berkeley DB library")
     add_custom_target(libdb_external)
@@ -575,10 +543,10 @@ if(IS_LINUX)
 endif()
 
 # ------------------------------------------------------------------------------
-# Lua (Linux only)
+# Lua (Linux agent only)
 # ------------------------------------------------------------------------------
 
-if(IS_LINUX)
+if(IS_LINUX AND IS_AGENT)
   if(EXISTS ${EXTERNAL_DIR}/lua/liblua.a)
     message(STATUS "Using precompiled Lua library")
     add_custom_target(lua_external)
@@ -601,10 +569,10 @@ if(IS_LINUX)
 endif()
 
 # ------------------------------------------------------------------------------
-# dbus (Linux only)
+# dbus (Linux agent only)
 # ------------------------------------------------------------------------------
 
-if(IS_LINUX)
+if(IS_LINUX AND IS_AGENT)
   set(DBUS_CONFIG_OPTS
       --enable-static
       --disable-shared
@@ -1036,38 +1004,10 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
 endif()
 
 # ------------------------------------------------------------------------------
-# lzma (server only)
+# popt (Linux agent only)
 # ------------------------------------------------------------------------------
 
-if(NOT IS_AGENT AND NOT IS_WINDOWS)
-  if(EXISTS ${EXTERNAL_DIR}/lzma/build/liblzma.a)
-    message(STATUS "Using precompiled lzma library")
-    add_custom_target(lzma_external)
-  else()
-    ExternalProject_Add(
-      lzma_external
-      SOURCE_DIR ${EXTERNAL_DIR}/lzma
-      BINARY_DIR ${EXTERNAL_DIR}/lzma/build
-      CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=0
-                 -DCMAKE_POSITION_INDEPENDENT_CODE=1
-      INSTALL_COMMAND ""
-      BUILD_BYPRODUCTS ${EXTERNAL_DIR}/lzma/build/liblzma.a)
-  endif()
-
-  add_library(ext_lzma STATIC IMPORTED GLOBAL)
-  set_target_properties(
-    ext_lzma PROPERTIES IMPORTED_LOCATION ${EXTERNAL_DIR}/lzma/build/liblzma.a)
-  add_dependencies(ext_lzma lzma_external)
-  target_include_directories(ext_lzma
-                             INTERFACE ${EXTERNAL_DIR}/lzma/src/liblzma/api)
-  add_library(lzma ALIAS ext_lzma)
-endif()
-
-# ------------------------------------------------------------------------------
-# popt (Linux only)
-# ------------------------------------------------------------------------------
-
-if(IS_LINUX)
+if(IS_LINUX AND IS_AGENT)
   if(EXISTS ${EXTERNAL_DIR}/popt/build/output/src/.libs/libpopt.a)
     message(STATUS "Using precompiled popt library")
     add_custom_target(popt_external)
@@ -1247,10 +1187,10 @@ add_library(sqlite3 ALIAS ext_sqlite)
 add_library(sqlite ALIAS ext_sqlite)
 
 # ------------------------------------------------------------------------------
-# procps (Linux only)
+# procps (Linux agent only)
 # ------------------------------------------------------------------------------
 
-if(IS_LINUX)
+if(IS_LINUX AND IS_AGENT)
   if(EXISTS ${EXTERNAL_DIR}/procps/libproc.a)
     message(STATUS "Using precompiled procps library")
     add_library(ext_procps STATIC IMPORTED GLOBAL)
@@ -1269,10 +1209,10 @@ if(IS_LINUX)
 endif()
 
 # ------------------------------------------------------------------------------
-# RPM (Linux only, CMake-based but with special env)
+# RPM (Linux agent only, CMake-based but with special env)
 # ------------------------------------------------------------------------------
 
-if(IS_LINUX)
+if(IS_LINUX AND IS_AGENT)
   set(RPM_INC_PATHS
       "-I${EXTERNAL_DIR}/openssl/include" "-I${EXTERNAL_DIR}/zlib"
       "-I${EXTERNAL_DIR}/popt/src" "-I${EXTERNAL_DIR}/sqlite"
@@ -1389,11 +1329,16 @@ endif()
 
 # Non-Windows additions
 if(NOT IS_WINDOWS)
+  # bzip2 is shared: the agent links it via shared/src/bzip2_op.c and the server
+  # additionally builds rocksdb WITH_BZ2, so it stays in every non-Windows leg.
   list(APPEND WAZUHEXT_WHOLE_LIBS ext_bzip2)
   if(NOT IS_AGENT)
     list(APPEND WAZUHEXT_WHOLE_LIBS ext_libffi)
   endif()
-  if(IS_LINUX)
+  # Linux agent-only libraries. Their only consumers (data_provider/sysinfo,
+  # syscheckd, rootcheck) are agent-only subdirectories, so the server build
+  # neither compiles nor links them.
+  if(IS_LINUX AND IS_AGENT)
     list(
       APPEND
       WAZUHEXT_WHOLE_LIBS
@@ -1402,8 +1347,7 @@ if(NOT IS_WINDOWS)
       ext_rpm
       ext_popt
       ext_audit
-      ext_procps
-      ext_libarchive)
+      ext_procps)
   endif()
 endif()
 
@@ -1414,7 +1358,7 @@ endif()
 
 # Server-only additions to whole-archive
 if(NOT IS_AGENT AND NOT IS_WINDOWS)
-  list(APPEND WAZUHEXT_WHOLE_LIBS ext_lzma ext_minizip)
+  list(APPEND WAZUHEXT_WHOLE_LIBS ext_minizip)
 endif()
 
 # --- Platform-specific linking ---
