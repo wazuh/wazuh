@@ -353,7 +353,13 @@ static void test_agent_handshake_to_server(void **state) {
 #endif
     will_return(__wrap_metadata_provider_update, 0);
 
-    expect_any_count(__wrap__mdebug1, formatted_msg, 3);
+    /* Same call shape as the previous (1, false) invocation above, with
+     * is_startup=true adding exactly one extra mdebug1 line from
+     * startup_gate_process_handshake() on the legacy_handshake path
+     * (no merged_sum in the handshake response). minfo count is unchanged
+     * from the (1, false) call: connect_server() emits "Trying to connect"
+     * and agent_handshake_to_server() emits "Connected to the server". */
+    expect_any_count(__wrap__mdebug1, formatted_msg, 4);
     expect_any_count(__wrap__minfo, formatted_msg, 2);
 
     handshaked = agent_handshake_to_server(1, true);

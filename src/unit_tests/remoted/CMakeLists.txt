@@ -57,7 +57,9 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,agent_meta_from_agent_info -Wl,--wrap,agent_meta_upsert_locked \
                             -Wl,--wrap,batch_queue_enqueue_ex \
                             -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default \
-                            -Wl,--wrap,wnotify_add -Wl,--wrap,SendMSG -Wl,--wrap,rem_inc_recv_evt \
+                            -Wl,--wrap,wnotify_add -Wl,--wrap,SendMSG -Wl,--wrap,rem_inc_recv_events \
+                            -Wl,--wrap,rem_inc_recv_states -Wl,--wrap,rem_inc_recv_upgrade_ack \
+                            -Wl,--wrap,rem_inc_recv_discarded -Wl,--wrap,rem_inc_recv_events_failed \
                             -Wl,--wrap,OS_DupKeyEntry -Wl,--wrap,OS_FreeKey ${DEBUG_OP_WRAPPERS} \
                             -Wl,--wrap,router_provider_send -Wl,--wrap,router_provider_send_sync \
                             -Wl,--wrap,w_query_agentd ${HASH_OP_WRAPPERS}")
