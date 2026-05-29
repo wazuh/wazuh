@@ -10,7 +10,7 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
 
 | Area | 4.x behavior | 5.x behavior | Migration action |
 |---|---|---|---|
-| Regular expression engine | `osregex` was the default SCA regex engine. Policies and checks could set `regex_type: pcre2`. | SCA rules are evaluated with PCRE2. `osregex` must not be used for migrated custom policies. | Rewrite every `r:` and `n:` expression that depends on OSRegex syntax. Remove `regex_type: osregex`; use PCRE2-compatible patterns. |
+| Regular expression engine | `osregex` was the default SCA regex engine. Policies and checks could set `regex_type`. | All SCA rules are evaluated with PCRE2. The `regex_type` field is ignored: the engine is always PCRE2 and OSRegex is no longer available. | Rewrite every `r:` and `n:` expression that depends on OSRegex syntax so it is valid PCRE2. The now-ignored `regex_type` field can be removed. |
 | Policy and check names | Requirements and checks used `title`. | `name` is the canonical field; stock policies, runtime state, and generated events use `name`. A `title` field is still accepted and automatically mapped to `name`, but is deprecated. | Rename `requirements.title` and each `checks[*].title` to `name`. The rename is recommended rather than mandatory, since legacy `title` is still mapped to `name`. |
 | Compliance metadata | Many stock policies used an array of single-key objects, often with versioned keys such as `pci_dss_v4.0`. | `compliance` is an object. Only normalized keys are accepted: `cmmc`, `fedramp`, `gdpr`, `hipaa`, `iso_27001`, `nis2`, `nist_800_171`, `nist_800_53`, `pci_dss`, and `tsc`. | Convert the array format to an object and use only supported keys. Unsupported keys are ignored with a warning. |
 | MITRE metadata | MITRE values were commonly stored under compliance keys such as `mitre_tactics`, `mitre_techniques`, and `mitre_mitigations`. | MITRE data is stored in a separate `mitre` object. Only the `tactic`, `technique`, and `subtechnique` keys are recognized. | Move MITRE values out of `compliance` and into `mitre`, using only `tactic`, `technique`, and `subtechnique`. |
@@ -61,7 +61,7 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
 
 4. Convert SCA rules to PCRE2.
 
-   Remove `regex_type: osregex` and review every rule that uses `r:` or `n:`. Common conversions are:
+   The `regex_type` field is ignored in 5.x (the engine is always PCRE2), so it can be removed. Because every pattern is now evaluated as PCRE2, review every rule that uses `r:` or `n:`. Common conversions are:
 
    | 4.x OSRegex-style pattern | 5.x PCRE2 pattern | Reason |
    |---|---|---|
@@ -136,7 +136,7 @@ checks:
       - 'not f:/etc/shadow -> n:^\w+:\$\.*:\d+:\d+:(\d+): compare > 365'
 ```
 
-The 5.x version uses `name`, removes the OSRegex selection, converts compliance and MITRE metadata, and rewrites the expressions for PCRE2:
+The 5.x version uses `name`, drops the now-ignored `regex_type` field, converts compliance and MITRE metadata, and rewrites the expressions for PCRE2:
 
 ```yaml
 policy:
@@ -172,7 +172,7 @@ checks:
 - Custom policies are stored outside `$WAZUH_HOME/ruleset/sca`.
 - SCA configuration references the migrated custom policy paths.
 - `requirements` and checks use `name` (the deprecated `title` still works but should be replaced).
-- No policy or check uses `regex_type: osregex`.
+- The `regex_type` field is removed (it is ignored in 5.x; all patterns are PCRE2).
 - All regex and numeric expressions compile as PCRE2.
 - `compliance` is an object with supported keys only.
 - MITRE metadata is under `mitre`.
