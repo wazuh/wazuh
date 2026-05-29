@@ -159,7 +159,7 @@ Unknown keys are rejected with a warning and excluded from the check.
 
 The `mitre` field is an object that maps MITRE ATT&CK categories to arrays of identifier strings. The following keys are supported:
 
-`tactic`, `technique`, `subtechnique`, `mitigation`
+`tactic`, `technique`, `subtechnique`
 
 ---
 
