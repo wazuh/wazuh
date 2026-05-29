@@ -3,6 +3,7 @@
 #include <exception>
 #include <fmt/format.h>
 
+#include <cmstore/categories.hpp>
 #include <fastmetrics/registry.hpp>
 
 #include "syntax.hpp"
@@ -97,16 +98,12 @@ base::Expression postOutputUnclassifiedCounter(const std::string& spaceName,
         "postOutputUnclassified",
         [unclassifiedCounter](base::Event event) -> base::result::Result<base::Event>
         {
-            try
+            std::string_view category;
+            const json::PointerPath ppIntegrationCategory {syntax::asset::CATEGORY_PATH};
+            if (event->getString(category, ppIntegrationCategory) == json::RetGet::Success
+                && category == cm::store::categories::UNCLASSIFIED_CATEGORY)
             {
-                if (event->size(syntax::asset::DECODERS_PATH) == 1)
-                {
-                    unclassifiedCounter->add(1);
-                }
-            }
-            catch (...)
-            {
-                // Ignore size() errors
+                unclassifiedCounter->add(1);
             }
             return base::result::makeSuccess<decltype(event)>(event);
         });

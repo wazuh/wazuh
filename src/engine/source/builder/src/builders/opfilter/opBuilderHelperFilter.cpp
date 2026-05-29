@@ -10,6 +10,7 @@
 #include "syntax.hpp"
 #include <base/baseTypes.hpp>
 #include <base/utils/ipUtils.hpp>
+#include <cmstore/categories.hpp>
 #include <fastmetrics/registry.hpp>
 
 namespace builder::builders::opfilter
@@ -1900,10 +1901,11 @@ FilterOp opBuilderHelperIndexUnclassifiedEvents(const Reference& targetField,
                                                 const std::vector<OpArg>& opArgs,
                                                 const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    if (targetField.jsonPath() != syntax::asset::DECODERS_PATH)
+    if (targetField.jsonPath() != syntax::asset::CATEGORY_PATH)
     {
-        throw std::runtime_error(fmt::format("index_unclassified_events: target field must be 'wazuh.integration.decoders', got '{}'",
-                                             targetField.dotPath()));
+        throw std::runtime_error(
+            fmt::format("index_unclassified_events: target field must be 'wazuh.integration.category', got '{}'",
+                        targetField.dotPath()));
     }
 
     // Assert expected number of parameters
@@ -1914,16 +1916,17 @@ FilterOp opBuilderHelperIndexUnclassifiedEvents(const Reference& targetField,
 
     // Tracing
     const std::string successTrace {
-        fmt::format("[{}] -> Success: Policy index_unclassified_events=true and array has 1 element", name)};
+        fmt::format("[{}] -> Success: Policy index_unclassified_events=true and category is 'unclassified'", name)};
     const std::string failureTrace1 {
         fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
     const std::string failureTrace2 {
-        fmt::format("[{}] -> Failure: Target field '{}' is not an array", name, targetField.dotPath())};
+        fmt::format("[{}] -> Failure: Target field '{}' is not a string", name, targetField.dotPath())};
     const std::string failureTrace3 {fmt::format(
-        "[{}] -> Failure: Policy index_unclassified_events=false or array does not have exactly 1 element", name)};
+        "[{}] -> Failure: Policy index_unclassified_events=false or category is not 'unclassified'", name)};
 
-    return [=, isTestMode = buildCtx->isTestMode(), targetField = targetField.jsonPath()](
-               base::ConstEvent event) -> FilterResult
+    return [=,
+            isTestMode = buildCtx->isTestMode(),
+            targetFieldPP = json::PointerPath(targetField.jsonPath())](base::ConstEvent event) -> FilterResult
     {
         // Check if policy flag is enabled
         if (!policyIndexUnclassified)
@@ -1931,24 +1934,20 @@ FilterOp opBuilderHelperIndexUnclassifiedEvents(const Reference& targetField,
             RETURN_FAILURE(isTestMode, false, failureTrace3);
         }
 
-        // Check if field exists
-        if (!event->exists(targetField))
+        std::string_view category;
+        const auto ret = event->getString(category, targetFieldPP);
+        if (ret == json::RetGet::NotFound)
         {
             RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
-
-        // Check if array has exactly 1 element
-        try
+        if (ret == json::RetGet::WrongType)
         {
-            if (event->size(targetField) == 1)
-            {
-                RETURN_SUCCESS(isTestMode, true, successTrace);
-            }
-        }
-        catch (const std::exception&)
-        {
-            // size() throws if field is not an array, object, or string
             RETURN_FAILURE(isTestMode, false, failureTrace2);
+        }
+
+        if (category == cm::store::categories::UNCLASSIFIED_CATEGORY)
+        {
+            RETURN_SUCCESS(isTestMode, true, successTrace);
         }
 
         RETURN_FAILURE(isTestMode, false, failureTrace3);

@@ -755,15 +755,15 @@ FilterOp opBuilderHelperArrayLength(const Reference& targetField,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Create `index_unclassified_events` helper function that checks policy settings and array size.
+ * @brief Create `index_unclassified_events` helper function that checks policy settings and integration category.
  *
  * This helper returns true if:
  * - The policy has indexUnclassifiedEvents flag set to true AND
- * - $wazuh.integration.decoders has exactly 1 element
+ * - $wazuh.integration.category equals "unclassified"
  *
  * Otherwise, it returns false.
  *
- * @param targetField Reference to $wazuh.integration.decoders. Any other field is rejected at build-time.
+ * @param targetField Reference to $wazuh.integration.category. Any other field is rejected at build-time.
  * @param opArgs Vector of operation arguments (empty for this helper)
  * @param buildCtx Build context containing policy configuration
  * @return FilterOp The filter operation
