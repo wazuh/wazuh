@@ -63,21 +63,24 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
 
 4. Convert SCA rules to PCRE2.
 
-   The `regex_type` field is ignored in 5.x (the engine is always PCRE2), so it can be removed. Because every pattern is now evaluated as PCRE2, review every rule that uses `r:` or `n:`. Common conversions are:
+   The `regex_type` field is ignored in 5.x (the engine is always PCRE2), so it can be removed. Because every pattern is now evaluated as PCRE2, review every rule that uses `r:` or `n:`. The following changes are required, because the original pattern either fails to compile under PCRE2 or no longer evaluates correctly:
 
-   | 4.x OSRegex-style pattern | 5.x PCRE2 pattern | Reason |
+   | 4.x pattern | 5.x pattern | Reason |
    |---|---|---|
-   | `r:\.+` | `r:.+` | `\.` is a literal dot in PCRE2; use `.` for any character. |
-   | `r:\.*.conf` | `r:.*\.conf` | Use `.*` for any prefix and escape the literal dot before `conf`. |
-   | `r:pam_unix.so` | `r:pam_unix\.so` | Escape literal dots when they must match dots only. |
-   | `r:127.0.0.1` | `r:127\.0\.0\.1` | Escape literal IP-address dots. |
-   | `r:*` | `r:\*` | `*` is a quantifier in PCRE2 and must be escaped when literal. |
-   | `r:\w+` | `r:[\w@-]+` | Expand word matches when target values can contain characters such as `@` or `-`. |
-   | `n:audit_backlog_limit=(d+) compare >= 8192` | `n:audit_backlog_limit=(\d+) compare >= 8192` | Use PCRE2 digit classes and capture the numeric value. |
-   | `n:remember=(\d+) compare => 5` | `n:remember=(\d+) compare >= 5` | Use standard comparison operators. |
+   | `r:*` | `r:\*` | A bare `*` is a quantifier with nothing to repeat and fails PCRE2 compilation; escape it to match a literal `*`. |
+   | `n:audit_backlog_limit=(d+) compare >= 8192` | `n:audit_backlog_limit=(\d+) compare >= 8192` | Use the `\d` digit class so the capture group matches the numeric value. |
+   | `n:remember=(\d+) compare => 5` | `n:remember=(\d+) compare >= 5` | `=`, `=>`, and `=<` are not valid operators; use `==`, `>=`, and `<=`. |
    | `n:gpgcheck=(\d+) compare \!= 1` | `n:gpgcheck=(\d+) compare != 1` | Do not escape comparison operators. |
 
-   Replace OSRegex-specific wildcards such as `\p` with an explicit PCRE2 character class that matches the intended data. For example, if the policy needs one of `*`, `!`, `+`, or `-`, use `[*!+-]`.
+   Also replace OSRegex-specific wildcards such as `\p` with an explicit PCRE2 character class that matches the intended data. For example, if the policy needs one of `*`, `!`, `+`, or `-`, use `[*!+-]`.
+
+   The following patterns still compile under PCRE2 but change meaning, so rewrite them only when the original intent requires it:
+
+   | 4.x pattern | PCRE2 rewrite | When to apply |
+   |---|---|---|
+   | `r:pam_unix.so`, `r:127.0.0.1` | `r:pam_unix\.so`, `r:127\.0\.0\.1` | `.` matches any character in PCRE2. Escape the dots if they must match literal dots only. |
+   | `r:\.+`, `r:\.*.conf` | `r:.+`, `r:.*\.conf` | `\.` is a literal dot in PCRE2. If the intent was "any character", use `.`. |
+   | `r:\w+` | `r:[\w@-]+` | `\w+` is valid as-is; widen the class only if matched values can contain characters such as `@` or `-`. |
 
 5. Convert compliance and MITRE metadata.
 
