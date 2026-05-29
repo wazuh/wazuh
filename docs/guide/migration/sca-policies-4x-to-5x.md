@@ -11,7 +11,7 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
 | Area | 4.x behavior | 5.x behavior | Migration action |
 |---|---|---|---|
 | Regular expression engine | `osregex` was the default SCA regex engine. Policies and checks could set `regex_type: pcre2`. | SCA rules are evaluated with PCRE2. `osregex` must not be used for migrated custom policies. | Rewrite every `r:` and `n:` expression that depends on OSRegex syntax. Remove `regex_type: osregex`; use PCRE2-compatible patterns. |
-| Policy and check names | Requirements and checks used `title`. | Stock policies use `name`. Runtime state and generated events expose `name`. | Rename `requirements.title` and each `checks[*].title` to `name`. |
+| Policy and check names | Requirements and checks used `title`. | `name` is the canonical field; stock policies, runtime state, and generated events use `name`. A `title` field is still accepted and automatically mapped to `name`, but is deprecated. | Rename `requirements.title` and each `checks[*].title` to `name`. The rename is recommended rather than mandatory, since legacy `title` is still mapped to `name`. |
 | Compliance metadata | Many stock policies used an array of single-key objects, often with versioned keys such as `pci_dss_v4.0`. | `compliance` is an object. Only normalized keys are accepted: `cmmc`, `fedramp`, `gdpr`, `hipaa`, `iso_27001`, `nis2`, `nist_800_171`, `nist_800_53`, `pci_dss`, and `tsc`. | Convert the array format to an object and use only supported keys. Unsupported keys are ignored with a warning. |
 | MITRE metadata | MITRE values were commonly stored under compliance keys such as `mitre_tactics`, `mitre_techniques`, and `mitre_mitigations`. | MITRE data is stored in a separate `mitre` object. Only the `tactic`, `technique`, and `subtechnique` keys are recognized. | Move MITRE values out of `compliance` and into `mitre`, using only `tactic`, `technique`, and `subtechnique`. |
 | Numeric comparisons | Some stock 4.x rules used forms such as `compare =`, `compare =>`, `compare =<`, missing spaces, or an escaped `\!=`. | Numeric expressions require `compare <`, `compare <=`, `compare ==`, `compare !=`, `compare >=`, or `compare >` followed by a value. Spaces are required around `compare` and the operator. | Normalize every `n:` expression and make sure the regex captures the numeric value in a group. |
@@ -48,7 +48,7 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
 
 3. Rename `title` fields to `name`.
 
-   Apply this change to `requirements` and to every check:
+   `name` is the canonical field. For backward compatibility, a `title` field is still accepted and automatically mapped to `name`, so existing 4.x policies keep working; however, `title` is deprecated. Rename it in `requirements` and in every check:
 
    ```yaml
    requirements:
@@ -171,7 +171,7 @@ checks:
 
 - Custom policies are stored outside `$WAZUH_HOME/ruleset/sca`.
 - SCA configuration references the migrated custom policy paths.
-- `requirements` and checks use `name`.
+- `requirements` and checks use `name` (the deprecated `title` still works but should be replaced).
 - No policy or check uses `regex_type: osregex`.
 - All regex and numeric expressions compile as PCRE2.
 - `compliance` is an object with supported keys only.
