@@ -13,7 +13,7 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
 | Regular expression engine | `osregex` was the default SCA regex engine. Policies and checks could set `regex_type: pcre2`. | SCA rules are evaluated with PCRE2. `osregex` must not be used for migrated custom policies. | Rewrite every `r:` and `n:` expression that depends on OSRegex syntax. Remove `regex_type: osregex`; use PCRE2-compatible patterns. |
 | Policy and check names | Requirements and checks used `title`. | Stock policies use `name`. Runtime state and generated events expose `name`. | Rename `requirements.title` and each `checks[*].title` to `name`. |
 | Compliance metadata | Many stock policies used an array of single-key objects, often with versioned keys such as `pci_dss_v4.0`. | `compliance` is an object. Only normalized keys are accepted: `cmmc`, `fedramp`, `gdpr`, `hipaa`, `iso_27001`, `nis2`, `nist_800_171`, `nist_800_53`, `pci_dss`, and `tsc`. | Convert the array format to an object and use only supported keys. Unsupported keys are ignored with a warning. |
-| MITRE metadata | MITRE values were commonly stored under compliance keys such as `mitre_tactics`, `mitre_techniques`, and `mitre_mitigations`. | MITRE data is stored in a separate `mitre` object with `tactic`, `technique`, `subtechnique`, and `mitigation` keys. | Move MITRE values out of `compliance` and into `mitre`. |
+| MITRE metadata | MITRE values were commonly stored under compliance keys such as `mitre_tactics`, `mitre_techniques`, and `mitre_mitigations`. | MITRE data is stored in a separate `mitre` object. Only the `tactic`, `technique`, and `subtechnique` keys are recognized. | Move MITRE values out of `compliance` and into `mitre`, using only `tactic`, `technique`, and `subtechnique`. |
 | Numeric comparisons | Some stock 4.x rules used forms such as `compare =`, `compare =>`, `compare =<`, missing spaces, or an escaped `\!=`. | Numeric expressions require `compare <`, `compare <=`, `compare ==`, `compare !=`, `compare >=`, or `compare >` followed by a value. Spaces are required around `compare` and the operator. | Normalize every `n:` expression and make sure the regex captures the numeric value in a group. |
 | SCA configuration | Some 4.x configurations included `<skip_nfs>`. | `<skip_nfs>` is deprecated for SCA and produces a warning. SCA synchronization settings are available under `<synchronization>`. | Remove `<skip_nfs>` from SCA configuration. Keep or tune synchronization settings as needed. |
 | Stock policies | Stock policy files under `ruleset/sca` were package-managed. | Upgrades replace stock policies. Some legacy stock policies were removed, including HP-UX, RHEL 5, SLES/SUSE 11, and Solaris/SunOS policies. | Do not customize files under `ruleset/sca`. Keep custom policies in a separate managed path and reference them explicitly. |
@@ -89,7 +89,6 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
    mitre:
      tactic: ["TA0005"]
      technique: ["T1036"]
-     mitigation: ["M1022"]
    ```
 
 6. Remove deprecated SCA configuration.
