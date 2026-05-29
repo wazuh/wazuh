@@ -998,7 +998,7 @@ checks:
     condition: all
     rules:
       - "c:getenforce -> r:^Enforcing$|^Permissive$"
-      - 'f:/etc/selinux/config -> r:^\s*SELINUX\s*=\s*enforcing|\s*SELINUX\s*=\s*permisive'
+      - 'f:/etc/selinux/config -> r:^\s*SELINUX\s*=\s*enforcing|\s*SELINUX\s*=\s*permissive'
 
   # 1.6.1.5 Ensure the SELinux mode is enforcing. (Automated)
   - id: 6546
