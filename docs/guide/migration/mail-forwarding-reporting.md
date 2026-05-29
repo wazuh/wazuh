@@ -1,20 +1,20 @@
-# Migrating Mail Forwarding and Reporting to Dashboard Notifications
+# Migrating Mail Forwarding and Reporting to dashboard Notifications
 
 In previous Wazuh versions (4.x), email alerts and reporting were configured directly in the Wazuh manager's `ossec.conf` file using the `<email_alerts>`, `<reports>`, and related global SMTP configuration blocks.
 
-Starting with Wazuh 5.0, these backend mail forwarding capabilities have been removed from the manager. Mail forwarding and scheduled reporting must now be configured directly through the Wazuh Dashboard using the **Notifications**, **Alerting**, and **Reporting** Dashboard plugins.
+Starting with Wazuh 5.0, these backend mail forwarding capabilities have been removed from the manager. Mail forwarding and scheduled reporting must now be configured directly through the Wazuh dashboard using the **Notifications**, **Alerting**, and **Reporting** dashboard plugins.
 
-> **Note:** There is no automatic upgrade tooling to migrate your existing Wazuh 4.x email configurations. You must manually recreate your alerting and reporting logic in the Wazuh Dashboard. Use the mapping tables below to identify which Wazuh 5.x feature corresponds to each element in your `ossec.conf`.
+> **Note:** There is no automatic upgrade tooling to migrate your existing Wazuh 4.x email configurations. You must manually recreate your alerting and reporting logic in the Wazuh dashboard. Use the mapping tables below to identify which Wazuh 5.x feature corresponds to each element in your `ossec.conf`.
 
 ## Configuration mapping (4.x -> 5.x)
 
-The following table maps each `ossec.conf` element from Wazuh 4.x to the corresponding feature in the Wazuh 5.x Dashboard. Entries use the form `section.element` - for example, `global.smtp_server` refers to `<global><smtp_server>` in your `ossec.conf`.
+The following table maps each `ossec.conf` element from Wazuh 4.x to the corresponding feature in the Wazuh 5.x dashboard. Entries use the form `section.element` - for example, `global.smtp_server` refers to `<global><smtp_server>` in your `ossec.conf`.
 
 > See the [ossec.conf reference](#wazuh-4x-ossecconf-reference) below for the full XML context of each section.
 
 ### Email alerts mapping
 
-| 4.x `ossec.conf`              | 5.x Dashboard                                    | Guide                                                                         |
+| 4.x `ossec.conf`              | 5.x dashboard                                    | Guide                                                                         |
 | ----------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------- |
 | `global.smtp_server`          | Notifications > Email Senders (SMTP host/port)   | [Step 1](#1-creating-an-email-sender)                                         |
 | `global.email_from`           | Notifications > Email Senders (outbound address) | [Step 1](#1-creating-an-email-sender)                                         |
@@ -24,7 +24,7 @@ The following table maps each `ossec.conf` element from Wazuh 4.x to the corresp
 
 ### Reports mapping
 
-| 4.x `ossec.conf`   | 5.x Dashboard                                            | Guide                                     |
+| 4.x `ossec.conf`   | 5.x dashboard                                            | Guide                                     |
 | ------------------ | -------------------------------------------------------- | ----------------------------------------- |
 | `reports.title`    | Reporting > Report Definition > Name                     | [Step 5](#5-recreating-scheduled-reports) |
 | `reports.email_to` | Reporting > Report Definition > Notification > Channels  | [Step 5](#5-recreating-scheduled-reports) |
@@ -68,7 +68,7 @@ Below are the typical Wazuh 4.x configuration blocks you may have in your `ossec
 Before proceeding, make sure you have:
 
 - Wazuh 5.0 or later fully deployed (indexer, manager, dashboard)
-- Access to the Wazuh Dashboard as an administrator
+- Access to the Wazuh dashboard as an administrator
 - SMTP server credentials or Amazon SES configuration
 - Recipient email addresses ready
 
@@ -80,7 +80,7 @@ Before creating an email channel, you must set up an outbound email server by cr
 
 In your Wazuh 4.x `ossec.conf`, the [`global.smtp_server`](#email-alerts-mapping) and [`global.email_from`](#email-alerts-mapping) settings configured the SMTP relay and outbound email address used for all alerts. In Wazuh 5.0, both values are now part of the email sender configuration below.
 
-1. Open the Wazuh Dashboard and navigate to the **Notifications** plugin.
+1. Open the Wazuh dashboard and navigate to the **Notifications** plugin.
 2. Go to **Email senders**.
 
 ![Email Senders](../../images/email-forwarding-reporting/create-email-sender.png)
@@ -100,7 +100,7 @@ In your Wazuh 4.x `ossec.conf`, the [`global.smtp_server`](#email-alerts-mapping
    /usr/share/opensearch/bin/opensearch-keystore add opensearch.notifications.core.email.<sender_name>.password
    ```
 
-7. After adding credentials to all nodes, go to the Wazuh Dashboard **DevTools** and call the reload API to apply the changes without restarting OpenSearch:
+7. After adding credentials to all nodes, go to the Wazuh dashboard **DevTools** and call the reload API to apply the changes without restarting OpenSearch:
 
    ```
    POST _nodes/reload_secure_settings
@@ -111,7 +111,7 @@ In your Wazuh 4.x `ossec.conf`, the [`global.smtp_server`](#email-alerts-mapping
 
 8. Click **Create** to save the sender.
 
-> **Wazuh 4.x note:** SMTP authentication was not supported in Wazuh 4.x - users typically relayed through a local Postfix or similar MTA. In Wazuh 5.0, the Wazuh Dashboard **Notifications** plugin supports SMTP authentication directly via the OpenSearch keystore. Certificate-based SMTP authentication (e.g., Postfix with TLS client certificates) is not supported by the Wazuh Dashboard **Notifications** plugin in the current release.
+> **Wazuh 4.x note:** SMTP authentication was not supported in Wazuh 4.x - users typically relayed through a local Postfix or similar MTA. In Wazuh 5.0, the Wazuh dashboard **Notifications** plugin supports SMTP authentication directly via the OpenSearch keystore. Certificate-based SMTP authentication (e.g., Postfix with TLS client certificates) is not supported by the Wazuh dashboard **Notifications** plugin in the current release.
 
 ![Creating an SMTP Sender](../../images/email-forwarding-reporting/create-smtp-sender-with-data.png)
 
@@ -180,7 +180,7 @@ A Monitor evaluates documents against the configured query, and when the trigger
 
 ### 4.1. Creating a Monitor
 
-Create a **monitor** in the Wazuh Dashboard **Alerting** plugin according to your needs (for example, a **per-document monitor** to trigger on individual matching documents). Define a query that selects the documents you want to alert on and set the checking schedule. The image below shows an example configured for SSH root login events.
+Create a **monitor** in the Wazuh dashboard **Alerting** plugin according to your needs (for example, a **per-document monitor** to trigger on individual matching documents). Define a query that selects the documents you want to alert on and set the checking schedule. The image below shows an example configured for SSH root login events.
 
 ![Recreating Email Alerts with Monitors](../../images/email-forwarding-reporting/create-monitor-with-data-one.png)
 ![Configuring query](../../images/email-forwarding-reporting/create-monitor-with-data-two.png)
@@ -206,7 +206,7 @@ When adding a trigger, configure the action to use your notification channel. Th
 ### 4.3. Testing the Monitor
 
 1. Trigger the condition by generating an event that matches your query.
-2. Verify the alert appears in the Wazuh Dashboard **Alerting** plugin under the **Alerts** tab.
+2. Verify the alert appears in the Wazuh dashboard **Alerting** plugin under the **Alerts** tab.
 3. Confirm the email notification is received in the recipient's inbox.
 
 ![Alert tab](../../images/email-forwarding-reporting/alert-tab.png)
@@ -251,7 +251,7 @@ You can recreate it with the following monitor configuration:
 
 ## 5. Recreating Scheduled Reports
 
-If you previously used the [`<reports>`](#reports-mapping) block in `ossec.conf` to generate daily or weekly summaries, you can replicate this behavior using the Wazuh Dashboard **Reporting** plugin.
+If you previously used the [`<reports>`](#reports-mapping) block in `ossec.conf` to generate daily or weekly summaries, you can replicate this behavior using the Wazuh dashboard **Reporting** plugin.
 
 In your Wazuh 4.x `ossec.conf`, the `<reports>` block defined the report content with filters like `<group>`, `<rule>`, `<level>`, `<srcip>`, `<location>`, and `<user>`, plus the [`<email_to>`](#reports-mapping) destination and [`<showlogs>`](#reports-mapping) toggle. In Wazuh 5.0, these are split into two parts:
 
@@ -260,7 +260,7 @@ In your Wazuh 4.x `ossec.conf`, the `<reports>` block defined the report content
 
 Create a report definition configured to your needs, then set up email notification to deliver it through your channel. The images below show a daily vulnerability report as an example.
 
-1. Navigate to the **Reporting** plugin in the Wazuh Dashboard.
+1. Navigate to the **Reporting** plugin in the Wazuh dashboard.
 
 ![Reporting page](../../images/email-forwarding-reporting/reporting-base.png)
 
@@ -297,4 +297,4 @@ Create a report definition configured to your needs, then set up email notificat
 
 ![Report Email Received](../../images/email-forwarding-reporting/received-mail-final.png)
 
-You have now migrated your email alerts and scheduled reports from `ossec.conf` to the Wazuh Dashboard.
+You have now migrated your email alerts and scheduled reports from `ossec.conf` to the Wazuh dashboard.
