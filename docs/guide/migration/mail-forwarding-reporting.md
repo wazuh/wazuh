@@ -96,8 +96,8 @@ In your Wazuh 4.x `ossec.conf`, the [`global.smtp_server`](#email-alerts-mapping
 6. If you selected SSL/TLS or STARTTLS, authenticate the sender account by storing its credentials in the OpenSearch keystore. On **each indexer node**, run the following commands via the terminal (replace `<sender_name>` with the name you entered in step 2):
 
    ```
-   /usr/share/opensearch/bin/opensearch-keystore add opensearch.notifications.core.email.<sender_name>.username
-   /usr/share/opensearch/bin/opensearch-keystore add opensearch.notifications.core.email.<sender_name>.password
+   /usr/share/wazuh-indexer/bin/opensearch-keystore add opensearch.notifications.core.email.<sender_name>.username
+   /usr/share/wazuh-indexer/bin/opensearch-keystore add opensearch.notifications.core.email.<sender_name>.password
    ```
 
 7. After adding credentials to all nodes, go to the Wazuh dashboard **DevTools** and call the reload API to apply the changes without restarting OpenSearch:
