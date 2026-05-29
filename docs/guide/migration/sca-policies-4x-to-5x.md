@@ -24,6 +24,8 @@ For the current custom policy schema, see [Creating custom SCA policies](../../r
 
    Include policies referenced from `<sca><policies>` and any policy copied into a shared agent group. Check both local agent policies and manager-distributed policies.
 
+   Watch for legacy 4.x stock policies that used the old `*_rcl.yml` naming, such as `cis_rhel7_linux_rcl.yml`, `system_audit_rcl.yml`, or `win_audit_rcl.yml`. If these remain referenced in `<sca><policies>` after the upgrade, SCA skips them silently without logging a warning, so remove or replace those references.
+
 2. Back up policies and move custom files out of package-managed paths.
 
    Do not edit or store custom policies in `$WAZUH_HOME/ruleset/sca`. Package upgrades replace stock policy files in that directory. Use an administrator-managed path, such as a policy directory under `$WAZUH_HOME/etc/shared`, and point `<policy>` entries to that path.
