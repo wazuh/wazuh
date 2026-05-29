@@ -56,7 +56,7 @@
       "name": "fim",
       "pytest_target": "test_fim\\",
       "tiers": ["0", "1"],
-      "exclude": ["test_fim\\test_files\\test_basic_usage\\test_rename.py"],
+      "pytest_ignore_args": "--ignore=test_fim\\test_files\\test_basic_usage\\test_rename.py",
       "start_service": true,
       "paths": [
         ".github/workflows/5_testintegration_windows-integration-tests.yml",
