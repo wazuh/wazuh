@@ -226,7 +226,7 @@ checks:
     name: "Ensure nosuid option set on /tmp partition"
     description: "The nosuid mount option specifies that the filesystem cannot contain set userid files."
     rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create set userid files in /tmp."
-    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp: # mount -o remount,nodev /tmp"
+    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp partition. See the fstab(5) manual page for more information. Run the following command to remount /tmp: # mount -o remount,nosuid /tmp"
     compliance:
       cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
       fedramp: ["CM-8"]
