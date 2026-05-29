@@ -158,7 +158,7 @@ checks:
   - id: 90001
     name: "Check SSH and password aging"
     compliance:
-      pci_dss: ["2.2"]
+      pci_dss: ["2.2.6"]
       nist_800_53: ["CM-6"]
     mitre:
       tactic: ["TA0005"]
