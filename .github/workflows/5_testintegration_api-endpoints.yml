@@ -50,12 +50,12 @@ jobs:
             local files=$1
             local str=$2
 
-            IFS=',' read -r -a tests <<<${str}
+            IFS=',' read -r -a tests <<< "${str}"
             prefix="test_"
             sufix=".tavern.yaml"
 
             valid_tests=""
-            for test in ${tests[@]}; do
+            for test in "${tests[@]}"; do
               input_filename="${prefix}${test}${sufix}"
               matched=false
               for file in $(echo "$files" | jq -r '.[]'); do
