@@ -11,7 +11,10 @@ from pathlib import Path
 from wazuh_testing.tools.simulators.agent_simulator import connect
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.modules.remoted.configuration import REMOTED_DEBUG
+from wazuh_testing.modules.remoted import patterns
+from wazuh_testing.tools.monitors import queue_monitor
 from wazuh_testing.tools.thread_executor import ThreadExecutor
+from wazuh_testing.utils.callbacks import generate_callback
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 
@@ -28,16 +31,14 @@ daemons_handler_configuration = {'all_daemons': True}
 
 local_internal_options = {REMOTED_DEBUG: '2'}
 
-injectors = []
 
-
-def send_event(event, protocol, manager_port, agent):
-    """Send an event to the manager"""
-
-    sender, injector = connect(agent, manager_port = manager_port, protocol = protocol)
+def send_event(event, protocol, manager_port, agent, injectors):
+    """Connect an agent, send startup + custom event; the ACK arrives in agent.rcv_msg_queue."""
+    sender, injector = connect(agent, manager_port=manager_port, protocol=protocol, wait_status='')
     injectors.append(injector)
+    sender.send_event(agent.startup_msg)
     sender.send_event(event)
-    return injector
+
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
@@ -47,12 +48,11 @@ def test_multi_agent_protocols_communication(test_configuration, test_metadata, 
     '''
     description: Check agent-manager communication with several agents simultaneously via TCP, UDP or both.
                  For this purpose, the test will create all the agents and select the protocol using Round-Robin. Then,
-                 an event and a message will be created for each agent created. Finally, it will search for
-                 those events within the messages sent to the manager.
-
+                 an event and a message will be created for each agent created. Finally, it will verify that
+                 each agent received an ACK from the manager, confirming the events were delivered.
 
     parameters:
-        - test_configuration
+        - test_configuration:
             type: dict
             brief: Configuration applied to ossec.conf.
         - test_metadata:
@@ -67,7 +67,7 @@ def test_multi_agent_protocols_communication(test_configuration, test_metadata, 
         - daemons_handler:
             type: fixture
             brief: Restart service once the test finishes stops the daemons.
-        - simulate_agents
+        - simulate_agents:
             type: fixture
             brief: create agents
         - set_wazuh_configuration:
@@ -76,6 +76,7 @@ def test_multi_agent_protocols_communication(test_configuration, test_metadata, 
     '''
     agents = simulate_agents
     send_event_threads = []
+    injectors = []
 
     manager_port = test_metadata['port']
     protocol = test_metadata['protocol']
@@ -85,7 +86,8 @@ def test_multi_agent_protocols_communication(test_configuration, test_metadata, 
         event = agent.create_event(agent_custom_message)
 
         send_event_threads.append(ThreadExecutor(send_event, {'event': event, 'protocol': protocol,
-                                                            'manager_port': manager_port, 'agent': agent}))
+                                                            'manager_port': manager_port, 'agent': agent,
+                                                            'injectors': injectors}))
 
     # Wait 10 seconds until remoted is fully initialized
     time.sleep(10)
@@ -97,6 +99,16 @@ def test_multi_agent_protocols_communication(test_configuration, test_metadata, 
     # Wait for all threads to finish; ThreadExecutor.join() re-raises any thread exception.
     for thread in send_event_threads:
         thread.join()
+
+    # Verify each agent received an ACK from the manager, confirming full bidirectional
+    # communication is working for all agents simultaneously.
+    for agent in agents:
+        ack_monitor = queue_monitor.QueueMonitor(agent.rcv_msg_queue)
+        ack_monitor.start(callback=generate_callback(patterns.ACK_MESSAGE))
+        assert ack_monitor.callback_result, (
+            f"Agent {agent.id} did not receive ACK from manager via "
+            f"{protocol} on port {manager_port} — event did not reach the manager."
+        )
 
     for injector in injectors:
         injector.stop_receive()

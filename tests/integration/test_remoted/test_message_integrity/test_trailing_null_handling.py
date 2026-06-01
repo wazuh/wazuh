@@ -15,6 +15,7 @@ from . import CONFIGS_PATH, TEST_CASES_PATH
 
 pytestmark = [pytest.mark.server, pytest.mark.tier(level=2)]
 
+
 cases_path = Path(TEST_CASES_PATH, 'cases_message_integrity.yaml')
 config_path = Path(CONFIGS_PATH, 'config_message_integrity.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
@@ -58,6 +59,7 @@ def test_legacy_text_event_with_trailing_null_does_not_reach_engine_with_null(
     payload = f"1:syslog:{marker}".encode() + b"\x00"
     sender.send_event(_build_raw_event(agent, payload))
 
+    # --- Verify remoted stripped the trailing NUL (remoted-side check) ---
     deadline = time.time() + 15.0
     matching_line = None
     while time.time() < deadline:

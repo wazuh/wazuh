@@ -73,19 +73,15 @@ def test_protocols_communication(test_configuration, test_metadata, configure_lo
     sender, injector = connect(agent, protocol=test_metadata['protocol1'],
                                manager_port=test_metadata['port'], wait_status='')
 
-    # Verify remoted detected the agent key — confirms the connection was established on the
-    # configured protocol and port.
-    log_monitor.start(callback=generate_callback(patterns.KEY_UPDATE))
+    log_monitor.start(callback=generate_callback(patterns.KEY_UPDATE), timeout=60)
     assert log_monitor.callback_result, (
         f"Remoted did not load the agent key via {test_metadata['protocol1']} "
         f"on port {test_metadata['port']} — agent-manager communication failed."
     )
 
-    # Send startup message and verify the manager ACKs it, confirming full bidirectional
-    # communication on this protocol/port combination.
     sender.send_event(agent.startup_msg)
     ack_monitor = queue_monitor.QueueMonitor(agent.rcv_msg_queue)
-    ack_monitor.start(callback=generate_callback(patterns.ACK_MESSAGE))
+    ack_monitor.start(callback=generate_callback(patterns.ACK_MESSAGE), timeout=30)
 
     injector.stop_receive()
 
