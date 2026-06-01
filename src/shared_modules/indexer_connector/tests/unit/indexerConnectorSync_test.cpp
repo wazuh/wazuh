@@ -4049,17 +4049,18 @@ TEST_F(IndexerConnectorSyncTest, BulkDelete_RejectsIndexWithSlash)
     EXPECT_THROW(connector.bulkDelete("id1", "wazuh-states-/secret"), IndexerConnectorException);
 }
 
-TEST_F(IndexerConnectorSyncTest, DeleteByQuery_SkipsUnsafeIndex_NoEnqueue)
+TEST_F(IndexerConnectorSyncTest, DeleteByQuery_RejectsUnsafeIndex_Throws)
 {
-    // An unsafe index is silently dropped (logged + return). The follow-up
-    // flush() must not POST anything because nothing was enqueued.
+    // An unsafe index must throw so the caller can't assume the delete was
+    // enqueued. The follow-up flush() must not POST anything because nothing
+    // was enqueued.
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
     IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
 
-    connector.deleteByQuery("wazuh-states-/evil", "001");
+    EXPECT_THROW(connector.deleteByQuery("wazuh-states-/evil", "001"), IndexerConnectorException);
     connector.flush();
 }
 

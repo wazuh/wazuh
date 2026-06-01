@@ -742,7 +742,7 @@ public:
                     "Refusing deleteByQuery for unsafe index name '%s' (empty or contains characters outside "
                     "[a-zA-Z0-9._*-]).",
                     index.c_str());
-            return;
+            throw IndexerConnectorException("Unsafe index name");
         }
         auto [it, success] = m_deleteByQuery.try_emplace(index, nlohmann::json::object());
         it->second["query"]["bool"]["filter"]["terms"]["wazuh.agent.id"].push_back(agentId);

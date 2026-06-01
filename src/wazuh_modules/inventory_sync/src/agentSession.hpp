@@ -274,14 +274,15 @@ public:
                     m_context->sessionId,
                     m_context->agentId.c_str(),
                     m_context->moduleName.c_str());
+            throw std::out_of_range("Sequence number out of declared size bounds");
         }
-        m_gapSet->observe(data->seq());
 
-        // Store in RocksDB with session and sequence as key. If fails and throws, we will mark the sequence as observed
-        // anyway, to avoid blocking the session with infinit loop of retries. (The error should log and be
-        // investigated, but the session should continue)
         m_store.put(std::format("{}_{}", session, seq),
                     rocksdb::Slice(reinterpret_cast<const char*>(dataRaw), dataSize));
+
+        // The validation of the sequence number against declared size is performed above, so if we reach this line
+        // the observation should not throw, though if it does the data chunk is already stored.
+        m_gapSet->observe(data->seq());
 
         logDebug2(LOGGER_DEFAULT_TAG,
                   "Data received: %s %llu %llu %s",
@@ -394,16 +395,16 @@ public:
                     m_context->sessionId,
                     m_context->agentId.c_str(),
                     m_context->moduleName.c_str());
+            throw std::out_of_range("Sequence number out of declared size bounds");
         }
 
-        // if fails validation, it won't added to the bulk of data messages
-        m_gapSet->observe(seq);
-
         // Store in RocksDB with "_context" suffix to distinguish from DataValue
-        // If fails and throws, we will mark the sequence as observed anyway, to avoid blocking the session with
-        // infinit loop of retries. (The error should log and be investigated, but the session should continue)
         m_store.put(std::format("{}_{}_context", session, seq),
                     rocksdb::Slice(reinterpret_cast<const char*>(dataRaw), dataSize));
+
+        // The validation of the sequence number against declared size is performed above, so if we reach this line
+        // the observation should not throw, though if it does the data chunk is already stored.
+        m_gapSet->observe(seq);
 
         logDebug2(LOGGER_DEFAULT_TAG,
                   "DataContext received: %s %llu %llu %s",

@@ -323,9 +323,9 @@ class InventorySyncFacadeImpl final
                 }
                 else
                 {
-                    // Reserve DataValue quota for this session. Reject if reservation would go negative.
-                    const int64_t requestedSize = static_cast<int64_t>(startMsg->size());
-                    int64_t remaining = m_dataValueQuotaRemaining.load(std::memory_order_relaxed);
+                    // Reserve DataValue quota for this session. Reject if reservation would underflow.
+                    const uint64_t requestedSize = startMsg->size();
+                    uint64_t remaining = m_dataValueQuotaRemaining.load(std::memory_order_relaxed);
                     bool admitted = false;
                     while (remaining >= requestedSize)
                     {
@@ -340,9 +340,9 @@ class InventorySyncFacadeImpl final
                     {
                         logWarn(LOGGER_DEFAULT_TAG,
                                 "InventorySyncFacade::start: DataValue quota exhausted "
-                                "(requested=%lld, remaining=%lld); rejecting session for agent %s",
-                                static_cast<long long>(requestedSize),
-                                static_cast<long long>(remaining),
+                                "(requested=%llu, remaining=%llu); rejecting session for agent %s",
+                                static_cast<unsigned long long>(requestedSize),
+                                static_cast<unsigned long long>(remaining),
                                 std::string(agentId).c_str());
                         m_responseDispatcher->sendStartAck(Wazuh::SyncSchema::Status_Offline, agentId, -1, moduleName);
                     }
@@ -631,13 +631,13 @@ public:
         }
         if (configuration.contains("dataValueQuota"))
         {
-            m_dataValueQuotaRemaining.store(configuration.at("dataValueQuota").get<int64_t>(),
+            m_dataValueQuotaRemaining.store(configuration.at("dataValueQuota").get<uint64_t>(),
                                             std::memory_order_relaxed);
         }
         logDebug1(LOGGER_DEFAULT_TAG,
-                  "InventorySync queue size: %zu, DataValue quota: %lld",
+                  "InventorySync queue size: %zu, DataValue quota: %llu",
                   m_workersQueueSize,
-                  static_cast<long long>(m_dataValueQuotaRemaining.load()));
+                  static_cast<unsigned long long>(m_dataValueQuotaRemaining.load()));
 
         logDebug2(LOGGER_DEFAULT_TAG, "Cluster name to be used in indexer: %s", m_clusterName.c_str());
 
@@ -1051,8 +1051,20 @@ public:
                                           "InventorySyncFacade::start: Deleting data from index '%s' for agent %s",
                                           index.c_str(),
                                           res.context->agentId.c_str());
-                                m_indexerConnector->deleteByQuery(index, res.context->agentId);
-                                hasDeleteByQueryEnqueued = true;
+                                try
+                                {
+                                    m_indexerConnector->deleteByQuery(index, res.context->agentId);
+                                    hasDeleteByQueryEnqueued = true;
+                                }
+                                catch (const std::exception& e)
+                                {
+                                    logWarn(LOGGER_DEFAULT_TAG,
+                                            "InventorySyncFacade::start: deleteByQuery rejected for index '%s' "
+                                            "(session %llu): %s",
+                                            index.c_str(),
+                                            res.context->sessionId,
+                                            e.what());
+                                }
                             }
                         }
 
@@ -1065,8 +1077,20 @@ public:
                             // Delete from all indices specified in the Start message
                             for (const auto& index : res.context->indices)
                             {
-                                m_indexerConnector->deleteByQuery(index, res.context->agentId);
-                                hasDeleteByQueryEnqueued = true;
+                                try
+                                {
+                                    m_indexerConnector->deleteByQuery(index, res.context->agentId);
+                                    hasDeleteByQueryEnqueued = true;
+                                }
+                                catch (const std::exception& e)
+                                {
+                                    logWarn(LOGGER_DEFAULT_TAG,
+                                            "InventorySyncFacade::start: deleteByQuery rejected for index '%s' "
+                                            "(session %llu): %s",
+                                            index.c_str(),
+                                            res.context->sessionId,
+                                            e.what());
+                                }
                             }
                         }
 
@@ -1782,7 +1806,7 @@ public:
     {
         if (size > 0)
         {
-            m_dataValueQuotaRemaining.fetch_add(static_cast<int64_t>(size), std::memory_order_acq_rel);
+            m_dataValueQuotaRemaining.fetch_add(size, std::memory_order_acq_rel);
         }
     }
 
@@ -2077,7 +2101,7 @@ private:
     std::string m_clusterName;
     int m_maxSessions {1000};          // Maximum concurrent sessions (configured from internal_options)
     size_t m_workersQueueSize {10000}; // Input queue cap (configured from internal_options)
-    std::atomic<int64_t> m_dataValueQuotaRemaining {
+    std::atomic<uint64_t> m_dataValueQuotaRemaining {
         500000};                                   // Global DataValue quota (configured from internal_options)
     std::atomic<int64_t> m_lastQueueDropLogNs {0}; // steady_clock ns of last queue-drop warning
     static constexpr int64_t WARN_THROTTLE_NS = 90LL * 1000LL * 1000LL * 1000LL; // 90 s
