@@ -111,7 +111,7 @@ def test_sync_agent_groups(daemons_handler, test_metadata, create_groups, pre_in
     response = query_wdb(test_metadata["input"])
 
     # Validate response
-    assert str(response) == output, "Did not get expected response: {output}, recieved: {response}"
+    assert str(response) == output, f"Did not get expected response: {output}, received: {response}"
 
     # Validate if the status of the group has change
     if "new_status" in test_metadata:

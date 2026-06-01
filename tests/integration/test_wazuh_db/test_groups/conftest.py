@@ -6,17 +6,51 @@ This program is free software; you can redistribute it and/or modify it under th
 import pytest
 import time
 
-from wazuh_testing.utils.agent_groups import create_group, delete_group
-from wazuh_testing.utils.db_queries.global_db import create_or_update_agent, set_agent_group, delete_agent
+from wazuh_testing.utils.database import query_wdb
+from wazuh_testing.utils.db_queries.global_db import set_agent_group
+
+
+def _query_ok(command):
+    response = query_wdb(command)
+    assert response == 'ok', f"Unexpected response for {command!r}: {response}"
+
+
+def _query_sql_ok(command):
+    response = query_wdb(command)
+    assert response == [], f"Unexpected SQL response for {command!r}: {response}"
+
+
+def _create_group(group):
+    response = query_wdb(f'global find-group {group}')
+    if response == []:
+        _query_ok(f'global insert-agent-group {group}')
+        response = query_wdb(f'global find-group {group}')
+    assert isinstance(response, list) and response, f"Group {group!r} was not inserted into global.db: {response}"
+
+
+def _insert_agent(agent_id, name):
+    date_add = int(time.time()) - 2
+    _query_ok(f'global insert-agent {{"id":{agent_id},"name":"{name}","ip":"any","date_add":{date_add}}}')
+
+
+def _clean_agents():
+    _query_sql_ok('global sql DELETE FROM belongs')
+    _query_sql_ok('global sql DELETE FROM agent WHERE id != 0')
 
 
 @pytest.fixture()
 def create_groups(test_metadata):
+    # global.db is shared across all group tests and clean_databases only runs at module teardown, so
+    # start every test from a clean agent table to avoid cross-test state pollution.
+    _clean_agents()
+
+    _create_group('default')
+
     if 'pre_required_group' in test_metadata:
         groups = test_metadata['pre_required_group'].split(',')
 
         for group in groups:
-            create_group(group)
+            _create_group(group)
 
     yield
 
@@ -24,18 +58,20 @@ def create_groups(test_metadata):
         groups = test_metadata['pre_required_group'].split(',')
 
         for group in groups:
-            delete_group(group)
+            query_wdb(f'global delete-group {group}')
 
 
 @pytest.fixture()
 def pre_insert_agents_into_group():
+    _clean_agents()
+
     for i in range(2):
         id = i + 1
         name = 'Agent-test' + str(id)
-        date = time.time()
-        create_or_update_agent(agent_id=id, name=name, date_add=date)
-        set_agent_group(sync_status="syncreq", id=id, group=f"Test_group{id}")
+        _insert_agent(id, name)
+        response = set_agent_group(sync_status="syncreq", id=id, group=f"Test_group{id}")
+        assert response == 'ok', f"Unable to assign Test_group{id} to agent {id}: {response}"
 
     yield
 
-    delete_agent()
+    _clean_agents()
