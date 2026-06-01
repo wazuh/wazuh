@@ -18,6 +18,7 @@ on:
       - ".github/actions/reinstall_cmake/**"
       - "tests/integration/conftest.py"
       - "tests/integration/test_api/**"
+      - "tests/integration/test_wazuh_db/**"
   workflow_dispatch:
     inputs:
       targets:

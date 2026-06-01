@@ -22,6 +22,25 @@
       ]
     },
     {
+      "name": "wazuh_db",
+      "suite_type": "manager_install",
+      "pytest_target": "test_wazuh_db/",
+      "tiers": ["0"],
+      "timeout_minutes": 60,
+      "_comment_tiers": "wazuh-db integration tests are all tier 0 (smoke/functional against the wdb socket)",
+      "paths": [
+        ".github/workflows/5_builderpackage_manager-multiples.yml",
+        ".github/workflows/5_testintegration_manager.yml",
+        ".github/test_modules_manager.json",
+        ".github/workflows/.python-version-it",
+        ".github/actions/reinstall_cmake/**",
+        "src/wazuh_db/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_wazuh_db/**"
+      ]
+    },
+    {
       "name": "inventory_sync",
       "suite_type": "inventory_sync",
       "timeout_minutes": 60,
