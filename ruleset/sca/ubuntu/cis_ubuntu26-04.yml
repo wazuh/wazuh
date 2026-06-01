@@ -7,7 +7,7 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation
 #
-# SCA policy for Ubuntu Linux 24.04 LTS based on Center for Internet Security Ubuntu Linux 24.04 LTS Benchmark v1.0.0 - 08-26-2024
+# SCA policy for Ubuntu Linux 26.04 LTS based on Center for Internet Security Ubuntu Linux 24.04 LTS Benchmark v1.0.0 - 08-26-2024
 
 policy:
   id: "cis_ubuntu26-04"
