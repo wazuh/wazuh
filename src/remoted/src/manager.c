@@ -632,6 +632,11 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
 
             os_strdup(msg, data->message);
 
+            /* Snapshot of the last merged_sum reported by the agent, used after
+             * unlocking to detect changes (e.g. after a hot reload). */
+            os_md5 prev_reported_merged_sum;
+            memcpy(prev_reported_merged_sum, data->last_reported_merged_sum, sizeof(os_md5));
+
             if (OS_SUCCESS == lookfor_agent_group(key->id, data->message, &data->group, wdb_sock)) {
                 group_t *aux = NULL;
 
@@ -684,15 +689,26 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
                 os_strdup(node_name, agent_data->node_name);
             }
 
+            /* Detect a change in the merged_sum reported by the agent versus the
+             * previous keepalive. After a hot reload the agent does not send
+             * #!-agent startup, so on worker nodes the cluster sync would only
+             * propagate {id, last_keepalive} (syncreq_keepalive) and the master DB
+             * would keep the stale merged_sum. Escalating to syncreq triggers a
+             * full sync that includes merged_sum and group_config_status. */
+            bool agent_merged_sum_changed = agent_data->merged_sum &&
+                                            agent_data->merged_sum[0] &&
+                                            prev_reported_merged_sum[0] &&
+                                            strcmp(prev_reported_merged_sum, agent_data->merged_sum) != 0;
+
             agent_data->id = atoi(key->id);
             os_strdup(AGENT_CS_ACTIVE, agent_data->connection_status);
 
             // Only set syncreq if keepalive is complete (has full metadata)
             bool is_complete = (msg[0] != '{') || is_keepalive_complete(msg);
-            if (!is_complete && *post_startup) {
+            if (!is_complete && (*post_startup || agent_merged_sum_changed)) {
                 mdebug1("Agent '%s' sent incomplete keepalive, deferring cluster sync (syncreq) until complete metadata is received", key->id);
             }
-            os_strdup(logr.worker_node ? (*post_startup && is_complete ? "syncreq" : "syncreq_keepalive") : "synced", agent_data->sync_status);
+            os_strdup(logr.worker_node ? (((*post_startup || agent_merged_sum_changed) && is_complete) ? "syncreq" : "syncreq_keepalive") : "synced", agent_data->sync_status);
 
             // Only clear post_startup flag if keepalive is complete
             if (is_complete) {
@@ -700,6 +716,11 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
             }
 
             w_mutex_lock(&lastmsg_mutex);
+
+            if (agent_data->merged_sum && agent_data->merged_sum[0]) {
+                strncpy(data->last_reported_merged_sum, agent_data->merged_sum, sizeof(os_md5) - 1);
+                data->last_reported_merged_sum[sizeof(os_md5) - 1] = '\0';
+            }
 
             if (data->merged_sum[0] && (!agent_data->merged_sum || (strcmp(data->merged_sum, agent_data->merged_sum) != 0))) {
                 /* Mark data as changed and insert into queue */

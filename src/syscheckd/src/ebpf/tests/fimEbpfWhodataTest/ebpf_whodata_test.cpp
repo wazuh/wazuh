@@ -31,6 +31,11 @@ class EbpfWhodataTest : public ::testing::Test
         {
             event_received  = false;
             ebpf_hc_created = false;
+            fake_time_now = 0;
+            w_time = time;
+            MockFimebpf::mock_loggingFunction = mock_loggingFunction;
+            MockFimebpf::mock_abspath = mock_abspath;
+            MockFimebpf::SetMockFunctions();
 
             bpf_helpers = std::make_unique<w_bpf_helpers_t>();
             bpf_helpers->init_ring_buffer            = (init_ring_buffer_t)mock_init_ring_buffer_success;
@@ -49,7 +54,13 @@ class EbpfWhodataTest : public ::testing::Test
             bpf_helpers->ring_buffer_poll            = (ring_buffer__poll_t)mock_ring_buffer_poll_success_barrier;
         }
 
-        void TearDown() override {}
+        void TearDown() override
+        {
+            std::remove("/tmp/ebpf_hc");
+            event_received = false;
+            ebpf_hc_created = false;
+            w_time = time;
+        }
 };
 
 time_t mock_time(time_t* t)
@@ -101,7 +112,8 @@ TEST_F(EbpfWhodataTest, RingBufferPollError)
 
 TEST_F(EbpfWhodataTest, EbpfWhodataHealthcheckTestSuccess)
 {
-    event_received = true;
+    bpf_helpers->ring_buffer_poll = (ring_buffer__poll_t)mock_ring_buffer_poll_healthcheck_success;
+
     EXPECT_FALSE(ebpf_whodata_healthcheck());
 }
 
