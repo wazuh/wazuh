@@ -33,26 +33,28 @@ agent_groups = b"default,windows-servers"
 # Valid configurations
 default_cluster_configuration = {
     'cluster': {
+        'disabled': 'yes',
         'node_type': 'master',
         'name': 'wazuh',
         'node_name': 'node01',
-        'key': 'fd3350b86d239654e34866ab3c4988a8',
+        'key': '',
         'port': 1516,
-        'bind_addr': '127.0.0.1',
-        'nodes': ['127.0.0.1'],
+        'bind_addr': '0.0.0.0',
+        'nodes': ['NODE_IP'],
         'hidden': 'no'
     }
 }
 
 custom_cluster_configuration = {
     'cluster': {
+        'disabled': 'no',
         'node_type': 'master',
         'name': 'wazuh',
         'node_name': 'node01',
         'key': 'a' * 32,
         'port': 1516,
-        'bind_addr': '127.0.0.1',
-        'nodes': ['172.10.0.1'],
+        'bind_addr': '0.0.0.0',
+        'nodes': ['172.10.0.100'],
         'hidden': False
     }
 }
@@ -73,7 +75,7 @@ custom_incomplete_configuration = {
     ({'cluster': {'port': 90}}, "Port must be"),
     ({'cluster': {'port': 70000}}, "Port must be"),
     ({'cluster': {'port': 1516, 'nodes': ['127.0.1.1'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
-    ({'cluster': {'nodes': ['127.0.1.1'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
+    ({'cluster': {'nodes': ['localhost'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
     ({'cluster': {'nodes': ['0.0.0.0'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
     ({'cluster': {'nodes': ['127.0.1.1'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
     ({'cluster': {'nodes': ['127.0.1.1', '127.0.1.2'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
@@ -118,7 +120,7 @@ def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
             mock.reset_mock()
 
     # Check the first if and nested else
-    assert cluster.walk_dir(dirname="/foo/bar", recursive=False, files=['all'], excluded_files=[],
+    assert cluster.walk_dir(dirname="/foo/bar", recursive=False, files=['all'], excluded_files=['ar.conf'],
                             excluded_extensions=[".xml", ".txt"], get_cluster_item_key="") == ({},
                                                                                                {'debug': defaultdict(
                                                                                                    list),
@@ -132,7 +134,7 @@ def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
     reset_mocks(all_mocks)
 
     # Check nested if
-    assert cluster.walk_dir(dirname="/foo/bar", recursive=True, files=['all'], excluded_files=['spam'],
+    assert cluster.walk_dir(dirname="/foo/bar", recursive=True, files=['all'], excluded_files=['ar.conf', 'spam'],
                             excluded_extensions=[".xml", ".txt"], get_cluster_item_key="",
                             previous_status={path_join_mock.return_value: {'mod_time': 45}}) == (
                {path_join_mock.return_value: {'mod_time': 45}},
@@ -148,7 +150,7 @@ def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
 
     reset_mocks(all_mocks)
 
-    assert cluster.walk_dir(dirname="/foo/bar", recursive=True, files=['all'], excluded_files=['spam'],
+    assert cluster.walk_dir(dirname="/foo/bar", recursive=True, files=['all'], excluded_files=['ar.conf', 'spam'],
                             excluded_extensions=[".xml", ".txt"], get_cluster_item_key="",
                             previous_status={path_join_mock.return_value: {'mod_time': 35}}) == (
                {'/mock/foo/bar': {'mod_time': 45, 'cluster_item_key': '', 'merged': True, 'merge_type': 'TYPE',
@@ -166,7 +168,7 @@ def test_walk_dir(walk_mock, path_join_mock, blake2b_mock, getmtime_mock):
     reset_mocks(all_mocks)
 
     # Check the key error
-    assert cluster.walk_dir(dirname="/foo/bar", recursive=True, files=['all'], excluded_files=['spam'],
+    assert cluster.walk_dir(dirname="/foo/bar", recursive=True, files=['all'], excluded_files=['ar.conf', 'spam'],
                             excluded_extensions=[".xml", ".txt"], get_cluster_item_key="",
                             previous_status={path_join_mock.return_value: {'mod_mock_time': 35}}) == (
                {'/mock/foo/bar': {'mod_time': 45, 'cluster_item_key': '', 'merged': True, 'merge_type': 'TYPE',
@@ -188,22 +190,22 @@ def test_walk_dir_ko(mock_path_join, mock_walk):
     """Check all errors that can be raised by the function walk_dir."""
 
     with patch('os.path.getmtime', side_effect=FileNotFoundError):
-        _, logs = cluster.walk_dir("/foo/bar", True, ["all"], [], [".xml", ".txt"], "",
+        _, logs = cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "",
                          {'/foo/bar/': {'mod_time': True}})
         assert logs['debug']['/foo/bar'] == ["File spam was deleted in previous iteration: "]
 
     with patch('os.path.getmtime', side_effect=PermissionError):
-        _, logs = cluster.walk_dir("/foo/bar", True, ["all"], [], [".xml", ".txt"], "",
+        _, logs = cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "",
                          {'/foo/bar/': {'mod_time': True}})
         assert logs['error']['/foo/bar'] == ["Can't read metadata from file spam: "]
 
     with patch('wazuh.core.cluster.cluster.walk', side_effect=OSError):
         with pytest.raises(WazuhInternalError, match=r'.* 3015 .*'):
-            cluster.walk_dir("/foo/bar", True, ["all"], [], [".xml", ".txt"], "",
+            cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "",
                              {'/foo/bar/': {'mod_time': True}})
 
     with patch('os.path.getmtime', return_value=35):
-        cluster.walk_dir("/foo/bar", True, ["all"], [], [".xml", ".txt"], "",
+        cluster.walk_dir("/foo/bar", True, ["all"], ["ar.conf"], [".xml", ".txt"], "",
                          {'/foo/bar/': {'mod_time': False}})
 
 
@@ -222,7 +224,8 @@ def test_walk_dir_ko(mock_path_join, mock_walk):
             "description": "client keys file database"
         },
         "excluded_files": [
-            "wazuh-manager.conf"
+            "ar.conf",
+            "ossec.conf"
         ],
         "excluded_extensions": [
             "~",
@@ -447,52 +450,57 @@ def test_compare_files_ko(logger_mock, mock_get_cluster_items):
 def test_clean_up_ok():
     """Check if the cleaning function is working properly."""
 
-    with patch('os.path.join', return_value="some/path/"):
+    with patch('wazuh.core.cluster.cluster.safe_join', return_value="some/path"):
         with patch.object(wazuh.core.cluster.cluster.logger, "debug") as mock_logger:
             with patch('os.path.exists', return_value=False) as path_exists_mock:
                 cluster.clean_up("worker1")
-                mock_logger.assert_any_call("Removing 'some/path/'.")
-                mock_logger.assert_any_call("Nothing to remove in 'some/path/'.")
-                mock_logger.assert_called_with("Removed 'some/path/'.")
+                mock_logger.assert_any_call("Removing 'some/path'.")
+                mock_logger.assert_any_call("Nothing to remove in 'some/path'.")
+                mock_logger.assert_called_with("Removed 'some/path'.")
 
                 path_exists_mock.return_value = True
                 with patch('wazuh.core.cluster.cluster.listdir',
-                           return_value=["c-internal.sock", "ar_bookmark.json", "other_file.txt"]):
+                           return_value=["c-internal.sock", "other_file.txt"]):
                     with patch('os.path.isdir', return_value=True) as is_dir_mock:
                         with patch('shutil.rmtree'):
                             cluster.clean_up("worker1")
-                            mock_logger.assert_any_call("Removing 'some/path/'.")
-                            mock_logger.assert_called_with("Removed 'some/path/'.")
+                            mock_logger.assert_any_call("Removing 'some/path'.")
+                            mock_logger.assert_called_with("Removed 'some/path'.")
 
                         is_dir_mock.return_value = False
                         with patch('wazuh.core.cluster.cluster.remove'):
                             cluster.clean_up("worker1")
-                            mock_logger.assert_any_call("Removing 'some/path/'.")
-                            mock_logger.assert_called_with("Removed 'some/path/'.")
+                            mock_logger.assert_any_call("Removing 'some/path'.")
+                            mock_logger.assert_called_with("Removed 'some/path'.")
 
 
 def test_clean_up_ko():
     """Check if the cleaning function raising the exceptions properly."""
-    error_cleaning = "Error cleaning up: stat: path should be string, bytes, os.PathLike or integer, not type."
-    error_removing = f"Error removing '{Exception}': " \
-                     f"'stat: path should be string, bytes, os.PathLike or integer, not type'."
+    error_removing = "Error removing 'some/path/other_file.txt': 'test error'."
 
-    with patch('os.path.join') as path_join_mock:
+    with patch('wazuh.core.cluster.cluster.safe_join', return_value="some/path"):
         with patch.object(wazuh.core.cluster.cluster.logger, "error") as mock_error_logger:
             with patch.object(wazuh.core.cluster.cluster.logger, "debug") as mock_debug_logger:
-                path_join_mock.return_value = Exception
-                cluster.clean_up("worker1")
-                mock_debug_logger.assert_any_call(f"Removing '{Exception}'.")
-                mock_error_logger.assert_called_once_with(error_cleaning)
-
                 with patch('os.path.exists', return_value=True):
                     with patch('wazuh.core.cluster.cluster.listdir',
-                               return_value=["c-internal.sock", "ar_bookmark.json", "other_file.txt"]):
-                        with patch('shutil.rmtree', side_effect=Exception):
-                            cluster.clean_up("worker1")
-                            mock_debug_logger.assert_any_call(f"Removing '{Exception}'.")
-                            mock_error_logger.assert_any_call(error_removing)
-                            mock_debug_logger.assert_called_with(f"Removed '{Exception}'.")
+                               return_value=["c-internal.sock", "other_file.txt"]):
+                        with patch('os.path.isdir', return_value=True):
+                            with patch('shutil.rmtree', side_effect=Exception("test error")):
+                                cluster.clean_up("worker1")
+                                mock_debug_logger.assert_any_call("Removing 'some/path'.")
+                                mock_error_logger.assert_any_call(error_removing)
+                                mock_debug_logger.assert_called_with("Removed 'some/path'.")
+
+
+def test_clean_up_node_name_validation():
+    """Check that clean_up rejects invalid node names."""
+    with patch('wazuh.core.cluster.cluster.safe_join') as safe_join_mock:
+        safe_join_mock.side_effect = WazuhInternalError(3003, extra_message="unsafe path")
+
+        with patch.object(wazuh.core.cluster.cluster.logger, "error") as mock_error_logger:
+            cluster.clean_up("../../etc")
+            mock_error_logger.assert_called_once()
+            assert "Error cleaning up" in str(mock_error_logger.call_args)
 
 
 @patch('wazuh.core.cluster.cluster.listdir', return_value=['005', '006'])
@@ -535,6 +543,55 @@ def test_unmerge_info():
                 mock_logger.assert_called_once_with("Malformed file (not enough values to unpack "
                                                     "(expected 3, got 1)). Parsed line: rs'. "
                                                     "Some files won't be synced")
+
+
+@pytest.mark.parametrize('merge_type, filename, expected_exception', [
+    ("../etc", "payload.merged", True),
+    ("..\\etc", "payload.merged", True),
+    (".hidden", "payload.merged", True),
+    ("valid/path", "payload.merged", True),
+    ("valid", "../../../etc/ossec.conf", True),
+    ("valid", "..\\..\\..\\etc\\ossec.conf", True),
+    ("valid", ".hidden", True),
+    ("valid", "file/with/slash", True),
+])
+def test_unmerge_info_path_validation(merge_type, filename, expected_exception):
+    """Test that unmerge_info validates merge_type and filename parameters."""
+    agent_info = b"23 005 2019-03-29 14:57:29.610934\ndefault"
+
+    with patch('builtins.open', mock_open(read_data=agent_info)):
+        with patch('wazuh.core.cluster.cluster.stat') as stat_mock:
+            stat_mock.return_value.st_size = len(agent_info)
+
+            if expected_exception:
+                with pytest.raises(WazuhException, match='3052'):
+                    list(cluster.unmerge_info(merge_type, "path/file/", filename))
+
+
+@pytest.mark.parametrize('header_name, should_skip', [
+    ("../../../etc/ossec.conf", False),
+    ("..\\..\\..\\etc\\ossec.conf", True),
+    (".hidden", True),
+    ("valid_file.txt", False),
+])
+def test_unmerge_info_header_name_sanitization(header_name, should_skip):
+    """Test that unmerge_info sanitizes file names from merged headers."""
+    agent_info = f"12 {header_name} 2019-03-29 14:57:29.610934\ntest_content".encode()
+
+    with patch('builtins.open', mock_open(read_data=agent_info)):
+        with patch('wazuh.core.cluster.cluster.stat') as stat_mock:
+            stat_mock.return_value.st_size = len(agent_info)
+
+            with patch.object(wazuh.core.cluster.cluster.logger, "warning") as mock_logger:
+                result = list(cluster.unmerge_info("valid", "path/file/", "filename"))
+
+                if should_skip:
+                    assert len(result) == 0
+                    mock_logger.assert_called()
+                else:
+                    assert len(result) == 1
+                    expected_basename = os.path.basename(header_name)
+                    assert result[0][0] == f"queue/valid/{expected_basename}"
 
 
 @pytest.mark.asyncio

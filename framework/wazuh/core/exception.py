@@ -351,6 +351,10 @@ class WazuhException(Exception):
         3050: "Payload size exceeds maximum allowed limit",
         3051: "Too many concurrent divided messages",
         3052: "Invalid cluster file parameter",
+        3060: {'message': "Invalid node name format",
+               'remediation': f"Check and fix [worker names](https://documentation.wazuh.com/{DOCU_VERSION}/"
+                              f"user-manual/reference/ossec-conf/cluster.html#node-name)"
+                              " and restart the `wazuh-manager` service."},
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
