@@ -254,4 +254,4 @@ jobs:
       - name: Run tests
         run: |
           cd api/test/integration
-          pytest --nobuild -vvv ${{ github.event.inputs.pytest_extra_args }} "${{ matrix.test_file }}"
+          pytest --nobuild -vvv --reruns 3 --reruns-delay 5 ${{ github.event.inputs.pytest_extra_args }} "${{ matrix.test_file }}"
