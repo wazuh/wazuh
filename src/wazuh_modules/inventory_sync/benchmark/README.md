@@ -31,7 +31,8 @@ inventory_sync/
     ├── generate_payloads.py     # Builds synthetic payload templates
     ├── migrate_scenarios.py     # One-shot helper for old-format scenarios
     ├── scenarios/               # Current scenario JSON files
-    └── sample_payloads/         # Synthetic templates and recorded session dumps
+    ├── sample_payloads/         # Synthetic templates and recorded session dumps
+    └── patches/                 # Optional local instrumentation patches
 ```
 
 `run_benchmark.sh` uses monitor and chart helpers from
@@ -120,6 +121,22 @@ Each run writes `results_<label>/`:
 | `charts/` | `monitor_graphics_generator.py` | PNG/SVG/PDF charts for the run. |
 
 If `monitor/logs.csv` exists, `result_summary.py` includes log counters too.
+
+## Optional Instrumentation Patches
+
+Optional benchmark-only instrumentation that should not remain applied to the
+main code is stored as patches under `patches/`.
+
+The DB sync log metrics patch keeps the temporary queue/session metric logging
+out of the branch while preserving it for benchmark or debug runs. Apply it
+from the repository root:
+
+```bash
+git apply src/wazuh_modules/inventory_sync/benchmark/patches/dbsync_metrics/0001-dbsync-log-metrics.patch
+```
+
+The Python monitor changes from `1f2893e727b662820c51b360b85fa4d9fd80f4d9`
+remain in the branch and are not duplicated in that patch.
 
 ## Scenario Schema
 

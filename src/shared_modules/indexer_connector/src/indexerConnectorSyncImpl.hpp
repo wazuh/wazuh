@@ -281,11 +281,7 @@ class IndexerConnectorSyncImpl final
     std::vector<std::function<void()>> m_notify;
     std::chrono::steady_clock::time_point m_lastBulkTime;
     std::condition_variable m_cv;
-    // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
-    // 'mutable' permite a los getters const (getBulkDataSize / getPendingNotifyCount /
-    // getDeleteByQueryCount) tomar el lock para leer sin romper el contrato const.
-    mutable std::mutex m_mutex;
-    // === END TEMP ===
+    std::mutex m_mutex;
     std::thread m_bulkThread;
     std::atomic<bool> m_stopping {false};
     std::vector<size_t> m_boundaries;
@@ -1387,42 +1383,6 @@ public:
     {
         m_notify.push_back(std::move(callback));
     }
-
-    // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
-    // Los getters usan try_to_lock: si el mutex está hold (p. ej. scopeLock() durante
-    // un waitForFeedReady() del VD scanner que dura minutos), devuelven SIZE_MAX como
-    // sentinela "locked" en lugar de bloquear al sampler. Esto evita que el log de
-    // colas se calle durante esperas largas.
-    size_t getBulkDataSize() const
-    {
-        std::unique_lock<std::mutex> lock(m_mutex, std::try_to_lock);
-        if (!lock.owns_lock())
-        {
-            return SIZE_MAX;
-        }
-        return m_bulkData.size();
-    }
-
-    size_t getPendingNotifyCount() const
-    {
-        std::unique_lock<std::mutex> lock(m_mutex, std::try_to_lock);
-        if (!lock.owns_lock())
-        {
-            return SIZE_MAX;
-        }
-        return m_notify.size();
-    }
-
-    size_t getDeleteByQueryCount() const
-    {
-        std::unique_lock<std::mutex> lock(m_mutex, std::try_to_lock);
-        if (!lock.owns_lock())
-        {
-            return SIZE_MAX;
-        }
-        return m_deleteByQuery.size();
-    }
-    // === END TEMP ===
 
     void refresh(std::string_view indexPattern)
     {

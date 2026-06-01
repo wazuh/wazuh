@@ -1,0 +1,587 @@
+diff --git a/src/shared_modules/indexer_connector/include/indexerConnector.hpp b/src/shared_modules/indexer_connector/include/indexerConnector.hpp
+index 4b7b5e6113..be29aefd27 100644
+--- a/src/shared_modules/indexer_connector/include/indexerConnector.hpp
++++ b/src/shared_modules/indexer_connector/include/indexerConnector.hpp
+@@ -306,6 +306,23 @@ public:
+      * @return true if have a server available, false otherwise.
+      */
+     bool isAvailable() const;
++
++    // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
++    /**
++     * @brief Bytes currently buffered in the bulk write payload (m_bulkData.size()).
++     */
++    size_t getBulkDataSize() const;
++
++    /**
++     * @brief Pending registerNotify() callbacks waiting for the next bulk flush.
++     */
++    size_t getPendingNotifyCount() const;
++
++    /**
++     * @brief Pending deleteByQuery operations queued for the next bulk flush.
++     */
++    size_t getDeleteByQueryCount() const;
++    // === END TEMP ===
+ };
+ 
+ /**
+diff --git a/src/shared_modules/indexer_connector/src/indexerConnectorSync.cpp b/src/shared_modules/indexer_connector/src/indexerConnectorSync.cpp
+index 174da8ea95..5e4bebf3b2 100644
+--- a/src/shared_modules/indexer_connector/src/indexerConnectorSync.cpp
++++ b/src/shared_modules/indexer_connector/src/indexerConnectorSync.cpp
+@@ -116,6 +116,23 @@ public:
+     {
+         return m_impl.isAvailable();
+     }
++
++    // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
++    size_t getBulkDataSize() const
++    {
++        return m_impl.getBulkDataSize();
++    }
++
++    size_t getPendingNotifyCount() const
++    {
++        return m_impl.getPendingNotifyCount();
++    }
++
++    size_t getDeleteByQueryCount() const
++    {
++        return m_impl.getDeleteByQueryCount();
++    }
++    // === END TEMP ===
+ };
+ 
+ IndexerConnectorSync::IndexerConnectorSync(const nlohmann::json& config, LoggingContext logging)
+@@ -219,4 +236,21 @@ bool IndexerConnectorSync::isAvailable() const
+     return m_impl->isAvailable();
+ }
+ 
++// === BEGIN TEMP: inventory-sync queue stats instrumentation ===
++size_t IndexerConnectorSync::getBulkDataSize() const
++{
++    return m_impl->getBulkDataSize();
++}
++
++size_t IndexerConnectorSync::getPendingNotifyCount() const
++{
++    return m_impl->getPendingNotifyCount();
++}
++
++size_t IndexerConnectorSync::getDeleteByQueryCount() const
++{
++    return m_impl->getDeleteByQueryCount();
++}
++// === END TEMP ===
++
+ // LCOV_EXCL_STOP
+diff --git a/src/shared_modules/indexer_connector/src/indexerConnectorSyncImpl.hpp b/src/shared_modules/indexer_connector/src/indexerConnectorSyncImpl.hpp
+index ec95034ba8..f1939a3418 100644
+--- a/src/shared_modules/indexer_connector/src/indexerConnectorSyncImpl.hpp
++++ b/src/shared_modules/indexer_connector/src/indexerConnectorSyncImpl.hpp
+@@ -281,7 +281,11 @@ class IndexerConnectorSyncImpl final
+     std::vector<std::function<void()>> m_notify;
+     std::chrono::steady_clock::time_point m_lastBulkTime;
+     std::condition_variable m_cv;
+-    std::mutex m_mutex;
++    // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
++    // 'mutable' permite a los getters const (getBulkDataSize / getPendingNotifyCount /
++    // getDeleteByQueryCount) tomar el lock para leer sin romper el contrato const.
++    mutable std::mutex m_mutex;
++    // === END TEMP ===
+     std::thread m_bulkThread;
+     std::atomic<bool> m_stopping {false};
+     std::vector<size_t> m_boundaries;
+@@ -1384,6 +1388,42 @@ public:
+         m_notify.push_back(std::move(callback));
+     }
+ 
++    // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
++    // Los getters usan try_to_lock: si el mutex está hold (p. ej. scopeLock() durante
++    // un waitForFeedReady() del VD scanner que dura minutos), devuelven SIZE_MAX como
++    // sentinela "locked" en lugar de bloquear al sampler. Esto evita que el log de
++    // colas se calle durante esperas largas.
++    size_t getBulkDataSize() const
++    {
++        std::unique_lock<std::mutex> lock(m_mutex, std::try_to_lock);
++        if (!lock.owns_lock())
++        {
++            return SIZE_MAX;
++        }
++        return m_bulkData.size();
++    }
++
++    size_t getPendingNotifyCount() const
++    {
++        std::unique_lock<std::mutex> lock(m_mutex, std::try_to_lock);
++        if (!lock.owns_lock())
++        {
++            return SIZE_MAX;
++        }
++        return m_notify.size();
++    }
++
++    size_t getDeleteByQueryCount() const
++    {
++        std::unique_lock<std::mutex> lock(m_mutex, std::try_to_lock);
++        if (!lock.owns_lock())
++        {
++            return SIZE_MAX;
++        }
++        return m_deleteByQuery.size();
++    }
++    // === END TEMP ===
++
+     void refresh(std::string_view indexPattern)
+     {
+         if (!isSafeIndexName(indexPattern))
+diff --git a/src/wazuh_modules/inventory_sync/src/agentSession.hpp b/src/wazuh_modules/inventory_sync/src/agentSession.hpp
+index a2d8fa84a1..c7974602e6 100644
+--- a/src/wazuh_modules/inventory_sync/src/agentSession.hpp
++++ b/src/wazuh_modules/inventory_sync/src/agentSession.hpp
+@@ -18,11 +18,16 @@
+ #include "responseDispatcher.hpp"
+ #include "rocksDBWrapper.hpp"
+ #include "threadDispatcher.h"
++#include <algorithm>
+ #include <cctype>
++#include <chrono>
++#include <cstdint>
+ #include <functional>
+ #include <memory>
++#include <optional>
+ #include <ranges>
+ #include <string>
++#include <string_view>
+ #include <utility>
+ 
+ enum class ResponseStatus : std::uint8_t
+@@ -95,6 +100,25 @@ class AgentSessionImpl final
+     bool m_endEnqueued = false;         ///< Whether the END message has been enqueued
+     uint64_t m_declaredSize {0};        ///< DataValue count declared in the Start message (for quota accounting)
+ 
++    // === BEGIN TEMP: inventory-sync session stats instrumentation ===
++    struct SyncStats
++    {
++        std::chrono::steady_clock::time_point startTime {};
++        std::optional<std::chrono::steady_clock::time_point> processingTime;
++        std::uint64_t declaredSize {0};
++        std::uint64_t receivedCount {0};
++        std::uint64_t retransmissionRequests {0};
++        std::uint64_t totalRawBytes {0};
++        std::uint64_t totalInnerBytes {0};
++        std::uint64_t maxRawBytes {0};
++        std::uint64_t maxInnerBytes {0};
++        std::uint64_t minRawBytesNonzero {UINT64_MAX};
++        std::uint64_t minInnerBytesNonzero {UINT64_MAX};
++        std::string terminationReason {"implicit"};
++    };
++    SyncStats m_stats;
++    // === END TEMP ===
++
+ public:
+     explicit AgentSessionImpl(const uint64_t sessionId,
+                               Wazuh::SyncSchema::Start const* data,
+@@ -225,6 +249,11 @@ public:
+ 
+         responseDispatcher.sendStartAck(
+             Wazuh::SyncSchema::Status_Ok, m_context->agentId, m_context->sessionId, m_context->moduleName);
++
++        // === BEGIN TEMP: inventory-sync session stats instrumentation ===
++        m_stats.startTime = std::chrono::steady_clock::now();
++        m_stats.declaredSize = data->size();
++        // === END TEMP ===
+     }
+ 
+     /// Deleted copy constructor and assignment operator (C.12 compliant).
+@@ -235,7 +264,70 @@ public:
+     AgentSessionImpl(AgentSessionImpl&&) = delete;
+     AgentSessionImpl& operator=(AgentSessionImpl&&) = delete;
+ 
+-    ~AgentSessionImpl() = default;
++    // === BEGIN TEMP: inventory-sync session stats instrumentation ===
++    ~AgentSessionImpl()
++    {
++        if (!m_context)
++        {
++            return;
++        }
++
++        const auto now = std::chrono::steady_clock::now();
++        const auto msSince = [this](std::chrono::steady_clock::time_point tp)
++        { return std::chrono::duration_cast<std::chrono::milliseconds>(tp - m_stats.startTime).count(); };
++
++        const std::uint64_t avgRaw =
++            m_stats.receivedCount ? (m_stats.totalRawBytes / m_stats.receivedCount) : 0;
++        const std::uint64_t avgInner =
++            m_stats.receivedCount ? (m_stats.totalInnerBytes / m_stats.receivedCount) : 0;
++        const std::uint64_t minRaw =
++            (m_stats.minRawBytesNonzero == UINT64_MAX) ? 0 : m_stats.minRawBytesNonzero;
++        const std::uint64_t minInner =
++            (m_stats.minInnerBytesNonzero == UINT64_MAX) ? 0 : m_stats.minInnerBytesNonzero;
++        const long long startToProcessingMs =
++            m_stats.processingTime ? static_cast<long long>(msSince(*m_stats.processingTime)) : -1;
++        const long long startToEndMs = static_cast<long long>(msSince(now));
++
++        const char* reason = m_stats.terminationReason.c_str();
++        std::string inferredReason;
++        if (m_stats.terminationReason == "implicit")
++        {
++            inferredReason = m_stats.processingTime.has_value() ? "completed" : "abandoned";
++            reason = inferredReason.c_str();
++        }
++
++        logInfo(LOGGER_DEFAULT_TAG,
++                "InventorySync session stats: agent=%s(%s) module=%s sessionId=%llu "
++                "reason=%s declared_size=%llu received=%llu retransmissions=%llu "
++                "raw_bytes={total=%llu avg=%llu max=%llu min_nonzero=%llu} "
++                "inner_bytes={total=%llu avg=%llu max=%llu min_nonzero=%llu} "
++                "timing_ms={start_to_processing=%lld start_to_end=%lld}",
++                m_context->agentName.c_str(),
++                m_context->agentId.c_str(),
++                m_context->moduleName.c_str(),
++                static_cast<unsigned long long>(m_context->sessionId),
++                reason,
++                static_cast<unsigned long long>(m_stats.declaredSize),
++                static_cast<unsigned long long>(m_stats.receivedCount),
++                static_cast<unsigned long long>(m_stats.retransmissionRequests),
++                static_cast<unsigned long long>(m_stats.totalRawBytes),
++                static_cast<unsigned long long>(avgRaw),
++                static_cast<unsigned long long>(m_stats.maxRawBytes),
++                static_cast<unsigned long long>(minRaw),
++                static_cast<unsigned long long>(m_stats.totalInnerBytes),
++                static_cast<unsigned long long>(avgInner),
++                static_cast<unsigned long long>(m_stats.maxInnerBytes),
++                static_cast<unsigned long long>(minInner),
++                startToProcessingMs,
++                startToEndMs);
++    }
++
++    void markTerminating(std::string_view reason)
++    {
++        std::lock_guard lock(m_mutex);
++        m_stats.terminationReason.assign(reason);
++    }
++    // === END TEMP ===
+ 
+     /**
+      * @brief Handles an incoming data chunk.
+@@ -284,6 +376,27 @@ public:
+         // the observation should not throw, though if it does the data chunk is already stored.
+         m_gapSet->observe(data->seq());
+ 
++        // === BEGIN TEMP: inventory-sync session stats instrumentation ===
++        {
++            const std::uint64_t rawSize = static_cast<std::uint64_t>(dataSize);
++            const std::uint64_t innerSize =
++                data->data() ? static_cast<std::uint64_t>(data->data()->size()) : 0ULL;
++            ++m_stats.receivedCount;
++            m_stats.totalRawBytes += rawSize;
++            m_stats.totalInnerBytes += innerSize;
++            m_stats.maxRawBytes = std::max(m_stats.maxRawBytes, rawSize);
++            m_stats.maxInnerBytes = std::max(m_stats.maxInnerBytes, innerSize);
++            if (rawSize > 0)
++            {
++                m_stats.minRawBytesNonzero = std::min(m_stats.minRawBytesNonzero, rawSize);
++            }
++            if (innerSize > 0)
++            {
++                m_stats.minInnerBytesNonzero = std::min(m_stats.minInnerBytesNonzero, innerSize);
++            }
++        }
++        // === END TEMP ===
++
+         logDebug2(LOGGER_DEFAULT_TAG,
+                   "Data received: %s %llu %llu %s",
+                   std::format("{}_{}", session, seq).c_str(),
+@@ -527,11 +640,20 @@ public:
+             logDebug2(LOGGER_DEFAULT_TAG, "All sequences received for session %llu", m_context->sessionId);
+             m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
+             m_endEnqueued = true;
++            // === BEGIN TEMP: inventory-sync session stats instrumentation ===
++            if (!m_stats.processingTime.has_value())
++            {
++                m_stats.processingTime = std::chrono::steady_clock::now();
++            }
++            // === END TEMP ===
+             responseDispatcher.sendEndAck(
+                 Wazuh::SyncSchema::Status_Processing, m_context->agentId, m_context->sessionId, m_context->moduleName);
+         }
+         else
+         {
++            // === BEGIN TEMP: inventory-sync session stats instrumentation ===
++            ++m_stats.retransmissionRequests;
++            // === END TEMP ===
+             responseDispatcher.sendEndMissingSeq(
+                 m_context->agentId, m_context->sessionId, m_context->moduleName, m_gapSet->ranges());
+         }
+diff --git a/src/wazuh_modules/inventory_sync/src/inventorySyncFacade.hpp b/src/wazuh_modules/inventory_sync/src/inventorySyncFacade.hpp
+index ac7e170bab..cfd58acdda 100644
+--- a/src/wazuh_modules/inventory_sync/src/inventorySyncFacade.hpp
++++ b/src/wazuh_modules/inventory_sync/src/inventorySyncFacade.hpp
+@@ -41,6 +41,9 @@
+ 
+ constexpr int SINGLE_THREAD_COUNT = 1;
+ constexpr int DEFAULT_TIME {60 * 10}; // 10 minutes
++// === BEGIN TEMP: inventory-sync queue stats instrumentation ===
++constexpr int QUEUE_STATS_INTERVAL_MS {500}; // Sampler period for queue-size logging
++// === END TEMP ===
+ constexpr auto INVENTORY_SYNC_PATH {"queue/inventory_sync"};
+ constexpr auto INVENTORY_SYNC_TOPIC {"inventory-states"};
+ constexpr auto INVENTORY_SYNC_SUBSCRIBER_ID {"inventory-sync-module"};
+@@ -1001,6 +1004,9 @@ public:
+                                             "full resync required",
+                                             res.context->agentId.c_str(),
+                                             MAX_RETRIES);
++                                    // === BEGIN TEMP: inventory-sync session stats instrumentation ===
++                                    markSession(res.context->sessionId, "modulecheck-mismatch");
++                                    // === END TEMP ===
+                                     m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_ChecksumMismatch,
+                                                                      res.context->agentId,
+                                                                      res.context->sessionId,
+@@ -1014,6 +1020,9 @@ public:
+                                      "ModuleCheck failed for agent %s: %s",
+                                      res.context->agentId.c_str(),
+                                      e.what());
++                            // === BEGIN TEMP: inventory-sync session stats instrumentation ===
++                            markSession(res.context->sessionId, "modulecheck-error");
++                            // === END TEMP ===
+                             m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
+                                                              res.context->agentId,
+                                                              res.context->sessionId,
+@@ -1320,6 +1329,9 @@ public:
+                                                          "agent %s: %s",
+                                                          res.context->agentId.c_str(),
+                                                          e.what());
++                                                // === BEGIN TEMP: inventory-sync session stats instrumentation ===
++                                                markSession(res.context->sessionId, "error-vd-scanner");
++                                                // === END TEMP ===
+                                                 m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
+                                                                                  res.context->agentId,
+                                                                                  res.context->sessionId,
+@@ -1415,6 +1427,10 @@ public:
+                         unlockAgent(res.context->agentId);
+                     }
+ 
++                    // === BEGIN TEMP: inventory-sync session stats instrumentation ===
++                    markSession(res.context->sessionId, "error-inventory-exception");
++                    // === END TEMP ===
++
+                     // Send ACK to agent.
+                     m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
+                                                      res.context->agentId,
+@@ -1444,6 +1460,10 @@ public:
+                         unlockAgent(res.context->agentId);
+                     }
+ 
++                    // === BEGIN TEMP: inventory-sync session stats instrumentation ===
++                    markSession(res.context->sessionId, "error-std-exception");
++                    // === END TEMP ===
++
+                     // Send ACK to agent.
+                     m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
+                                                      res.context->agentId,
+@@ -1505,6 +1525,9 @@ public:
+ 
+                             // Delete data from database.
+                             m_dataStore->deleteByPrefix(std::to_string(it->first));
++                            // === BEGIN TEMP: inventory-sync session stats instrumentation ===
++                            it->second.markTerminating("timeout");
++                            // === END TEMP ===
+                             it = eraseSessionLocked(it);
+                         }
+                         else
+@@ -1519,6 +1542,78 @@ public:
+         // Init the socket server to attend keystore requests
+         initializeKeystoreSocket();
+ 
++        // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
++        m_queueStatsThread = std::thread(
++            [this]()
++            {
++                std::unique_lock<std::mutex> lock(m_queueStatsMutex);
++                while (!m_stopping.load())
++                {
++                    m_queueStatsCv.wait_for(lock,
++                                            std::chrono::milliseconds(QUEUE_STATS_INTERVAL_MS),
++                                            [this]() { return m_stopping.load(); });
++                    if (m_stopping.load())
++                    {
++                        break;
++                    }
++                    lock.unlock();
++
++                    const std::size_t workersQ = m_workersQueue ? m_workersQueue->size() : 0;
++                    const std::size_t indexerQ = m_indexerQueue ? m_indexerQueue->size() : 0;
++
++                    std::size_t sessions = 0;
++                    {
++                        std::shared_lock<std::shared_mutex> l(m_agentSessionsMutex);
++                        sessions = m_agentSessions.size();
++                    }
++
++                    std::size_t blocked = 0;
++                    {
++                        std::shared_lock<std::shared_mutex> l(m_blockedAgentsMutex);
++                        blocked = m_blockedAgents.size();
++                    }
++
++                    std::size_t vdFirst = 0;
++                    {
++                        std::lock_guard<std::mutex> l(m_activeVDFirstScansMutex);
++                        vdFirst = m_activeVDFirstScans.size();
++                    }
++
++                    // Los 3 getters del IndexerConnector usan try_lock. Si el mutex
++                    // estaba hold (p. ej. waitForFeedReady() de un VDFirst/VDSync),
++                    // retornan SIZE_MAX y aquí se imprimen como "?" para no callar
++                    // al sampler durante esperas largas.
++                    const auto fmtCnt = [](std::size_t v)
++                    { return (v == SIZE_MAX) ? std::string("?") : std::to_string(v); };
++                    const std::string bulkBytesStr =
++                        m_indexerConnector ? fmtCnt(m_indexerConnector->getBulkDataSize()) : "0";
++                    const std::string notifyStr =
++                        m_indexerConnector ? fmtCnt(m_indexerConnector->getPendingNotifyCount()) : "0";
++                    const std::string delByQStr =
++                        m_indexerConnector ? fmtCnt(m_indexerConnector->getDeleteByQueryCount()) : "0";
++
++                    const auto rocksBytes = recursiveDirSize(INVENTORY_SYNC_PATH);
++
++                    logInfo(LOGGER_DEFAULT_TAG,
++                            "InventorySync queue stats: workers_q=%zu indexer_q=%zu "
++                            "sessions=%zu blocked_agents=%zu active_vdfirst=%zu "
++                            "indexer_bulk_bytes=%s indexer_notify=%s indexer_delbyq=%s "
++                            "rocksdb_dir_bytes=%llu",
++                            workersQ,
++                            indexerQ,
++                            sessions,
++                            blocked,
++                            vdFirst,
++                            bulkBytesStr.c_str(),
++                            notifyStr.c_str(),
++                            delByQStr.c_str(),
++                            static_cast<unsigned long long>(rocksBytes));
++
++                    lock.lock();
++                }
++            });
++        // === END TEMP ===
++
+         logInfo(LOGGER_DEFAULT_TAG, "InventorySyncFacade started.");
+     }
+ 
+@@ -1867,6 +1962,18 @@ public:
+         return 1;
+     }
+ 
++    // === BEGIN TEMP: inventory-sync session stats instrumentation ===
++    void markSession(uint64_t sessionId, std::string_view reason)
++    {
++        std::shared_lock lock(m_agentSessionsMutex);
++        auto it = m_agentSessions.find(sessionId);
++        if (it != m_agentSessions.end())
++        {
++            it->second.markTerminating(reason);
++        }
++    }
++    // === END TEMP ===
++
+     /**
+      * @brief Clean up zombie sessions for an agent
+      * @param agentId Agent ID to clean up sessions for
+@@ -1912,6 +2019,10 @@ public:
+                 // Delete data from database
+                 m_dataStore->deleteByPrefix(std::to_string(sessionId));
+ 
++                // === BEGIN TEMP: inventory-sync session stats instrumentation ===
++                it->second.markTerminating("zombie");
++                // === END TEMP ===
++
+                 // Remove session (restores DataValue quota)
+                 eraseSessionLocked(it);
+                 cleanedCount++;
+@@ -2009,6 +2120,19 @@ public:
+             m_sessionTimeoutThread.join();
+         }
+ 
++        // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
++        // m_stopping ya está en true; despertar el sampler y unirlo antes de los reset()
++        // porque su lambda lee m_workersQueue / m_indexerQueue / m_indexerConnector.
++        {
++            std::lock_guard<std::mutex> l(m_queueStatsMutex);
++            m_queueStatsCv.notify_all();
++        }
++        if (m_queueStatsThread.joinable())
++        {
++            m_queueStatsThread.join();
++        }
++        // === END TEMP ===
++
+         // Clear VDFirst scan tracking
+         {
+             std::unique_lock lock(m_activeVDFirstScansMutex);
+@@ -2026,6 +2150,39 @@ public:
+ private:
+     InventorySyncFacadeImpl() = default;
+ 
++    // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
++    static std::uintmax_t recursiveDirSize(const std::filesystem::path& root)
++    {
++        std::error_code ec;
++        if (!std::filesystem::exists(root, ec))
++        {
++            return 0;
++        }
++        std::uintmax_t total = 0;
++        for (auto it = std::filesystem::recursive_directory_iterator(
++                 root, std::filesystem::directory_options::skip_permission_denied, ec);
++             it != std::filesystem::recursive_directory_iterator();
++             it.increment(ec))
++        {
++            if (ec)
++            {
++                ec.clear();
++                continue;
++            }
++            std::error_code ec2;
++            if (it->is_regular_file(ec2) && !ec2)
++            {
++                const auto sz = it->file_size(ec2);
++                if (!ec2)
++                {
++                    total += sz;
++                }
++            }
++        }
++        return total;
++    }
++    // === END TEMP ===
++
+     void deleteAgent(const std::string& agentId)
+     {
+         if (agentId.empty())
+@@ -2124,6 +2281,10 @@ private:
+                 // Delete data from database
+                 m_dataStore->deleteByPrefix(std::to_string(staleSessionId));
+ 
++                // === BEGIN TEMP: inventory-sync session stats instrumentation ===
++                it->second.markTerminating("stale");
++                // === END TEMP ===
++
+                 // Remove session from map (restores DataValue quota)
+                 eraseSessionLocked(it);
+                 m_sessionCompletedCV.notify_all();
+@@ -2152,6 +2313,12 @@ private:
+     std::map<uint64_t, TAgentSession, std::less<>> m_agentSessions;
+     std::thread m_sessionTimeoutThread;
+ 
++    // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
++    std::thread m_queueStatsThread;
++    std::mutex m_queueStatsMutex;
++    std::condition_variable m_queueStatsCv;
++    // === END TEMP ===
++
+     // Agent locking mechanism for metadata/groups updates
+     std::unordered_set<std::string> m_blockedAgents; ///< Set of locked agent IDs
+     mutable std::shared_mutex m_blockedAgentsMutex;  ///< Mutex for blocked agents set
