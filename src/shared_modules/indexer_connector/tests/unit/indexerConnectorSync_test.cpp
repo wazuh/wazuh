@@ -3984,3 +3984,323 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithPaginationSortArray)
 
     EXPECT_EQ(pageCount, 2);
 }
+
+// =============================================================================
+// PTests for the connector-layer `isSafeIndexName` allowlist.
+// The connector refuses any index name that is empty or contains characters
+// outside [a-zA-Z0-9._*-]. Domain rules (e.g. "starts with wazuh-states-")
+// are enforced by callers, not here.
+// =============================================================================
+
+TEST_F(IndexerConnectorSyncTest, BulkIndex_RejectsIndexWithSlash)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_THROW(connector.bulkIndex("id1", "wazuh-states-/secret", R"({"a":1})"), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkIndex_RejectsIndexWithQuestionMark)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_THROW(connector.bulkIndex("id1", "wazuh-states-?q=1", R"({"a":1})"), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkIndex_RejectsIndexWithComma)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_THROW(connector.bulkIndex("id1", "wazuh-states-a,wazuh-states-b", R"({"a":1})"), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkIndex_RejectsIndexWithNewline)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_THROW(connector.bulkIndex("id1", "wazuh-states-\nfoo", R"({"a":1})"), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkIndex_AcceptsSystemIndexWithDotPrefix)
+{
+    // Indexes like `.wazuh-cti-consumers` are valid OpenSearch system indices
+    // used by other modules (content_manager). They must pass the safety check
+    // because they contain only [a-zA-Z0-9._-].
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_NO_THROW(connector.bulkIndex("id1", ".wazuh-cti-consumers", R"({"a":1})"));
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkDelete_RejectsIndexWithSlash)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_THROW(connector.bulkDelete("id1", "wazuh-states-/secret"), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, DeleteByQuery_RejectsUnsafeIndex_Throws)
+{
+    // An unsafe index must throw so the caller can't assume the delete was
+    // enqueued. The follow-up flush() must not POST anything because nothing
+    // was enqueued.
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+
+    EXPECT_THROW(connector.deleteByQuery("wazuh-states-/evil", "001"), IndexerConnectorException);
+    connector.flush();
+}
+
+TEST_F(IndexerConnectorSyncTest, DeleteByQuery_AcceptsSafeIndex_Enqueues)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::string capturedUrl;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedUrl](auto requestParams, auto postParams, auto /*configParams*/)
+            {
+                std::visit([&capturedUrl](const auto& p) { capturedUrl = p.url.url(); }, requestParams);
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{}");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{}");
+                }
+            }));
+
+    connector.deleteByQuery("wazuh-states-vulnerabilities", "001");
+    connector.flush();
+    EXPECT_THAT(capturedUrl, HasSubstr("/wazuh-states-vulnerabilities/_delete_by_query"));
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQuery_RejectsUnsafeIndex_Throws)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+    EXPECT_THROW(connector.executeSearchQuery("wazuh-states-/x", nlohmann::json::object()), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithPagination_RejectsUnsafeIndex_Throws)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+    EXPECT_THROW(connector.executeSearchQueryWithPagination(
+                     "wazuh-states-/x", nlohmann::json::object(), [](const nlohmann::json&) {}),
+                 IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQuery_FiltersUnsafeEntries)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::string capturedUrl;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedUrl](auto requestParams, auto postParams, auto /*configParams*/)
+            {
+                std::visit([&capturedUrl](const auto& p) { capturedUrl = p.url.url(); }, requestParams);
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"updated":0,"total":0,"failures":[]})");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"({"updated":0,"total":0,"failures":[]})");
+                }
+            }));
+
+    nlohmann::json q;
+    q["query"]["match_all"] = nlohmann::json::object();
+
+    std::vector<std::string> indices = {"wazuh-states-fim-files", "wazuh-states-/evil", "bad name with space"};
+    connector.executeUpdateByQuery(indices, q);
+
+    // Only the safe entry should appear in the URL path.
+    EXPECT_THAT(capturedUrl, HasSubstr("/wazuh-states-fim-files/_update_by_query"));
+    EXPECT_THAT(capturedUrl, ::testing::Not(HasSubstr("/evil")));
+    EXPECT_THAT(capturedUrl, ::testing::Not(HasSubstr("bad name")));
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQuery_AllUnsafe_FiresPendingNotify)
+{
+    // When all entries are filtered out, the function must still mark
+    // m_shouldNotifyAfterBulk=true so that the caller's invokePendingCallbacks
+    // can fire the registered notify (this is what kept the agent unlocked
+    // after the GroupCheck flow).
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+
+    std::atomic<bool> called {false};
+    connector.registerNotify([&called]() { called = true; });
+
+    nlohmann::json q;
+    q["query"]["match_all"] = nlohmann::json::object();
+    connector.executeUpdateByQuery({"wazuh-states-/x", ""}, q);
+    connector.invokePendingCallbacks();
+
+    EXPECT_TRUE(called);
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQuery_AcceptsAnyValidNameRegardlessOfPrefix)
+{
+    // The connector no longer enforces the "wazuh-states-" prefix — that domain
+    // rule belongs to the inventory_sync caller. The connector only refuses
+    // injection-unsafe characters. Therefore an arbitrary safe name like
+    // "wazuh-other-foo" must be forwarded to the indexer.
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::string capturedUrl;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedUrl](auto requestParams, auto postParams, auto /*configParams*/)
+            {
+                std::visit([&capturedUrl](const auto& p) { capturedUrl = p.url.url(); }, requestParams);
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"updated":0,"total":0,"failures":[]})");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"({"updated":0,"total":0,"failures":[]})");
+                }
+            }));
+
+    nlohmann::json q;
+    q["query"]["match_all"] = nlohmann::json::object();
+    connector.executeUpdateByQuery({"wazuh-other-foo"}, q);
+
+    EXPECT_THAT(capturedUrl, HasSubstr("/wazuh-other-foo/_update_by_query"));
+}
+
+TEST_F(IndexerConnectorSyncTest, CreatePointInTime_RejectsAnyUnsafeEntry_Throws)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+    EXPECT_THROW(connector.createPointInTime({"wazuh-states-x", "wazuh-states-/x"}, "5m"), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, CreatePointInTime_AcceptsWildcardIndices)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, auto /*configParams*/)
+            {
+                const std::string ok = R"({"pit_id":"abc","creation_time":1})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(ok);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(ok));
+                }
+            }));
+
+    EXPECT_NO_THROW(connector.createPointInTime({"wazuh-states-*"}, "5m"));
+}
+
+TEST_F(IndexerConnectorSyncTest, Refresh_RejectsUnsafePattern)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+    EXPECT_THROW(connector.refresh("wazuh-states-/oh"), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, Refresh_AcceptsWildcard)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::string capturedUrl;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedUrl](auto requestParams, auto postParams, auto /*configParams*/)
+            {
+                std::visit([&capturedUrl](const auto& p) { capturedUrl = p.url.url(); }, requestParams);
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{}");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{}");
+                }
+            }));
+
+    EXPECT_NO_THROW(connector.refresh("wazuh-states-*"));
+    EXPECT_THAT(capturedUrl, HasSubstr("/wazuh-states-*/_refresh"));
+}
+
+TEST_F(IndexerConnectorSyncTest, IsSafeIndexName_Allowlist)
+{
+    // Spot-check the helper directly with a representative set of vectors so
+    // the documented allowlist is locked in by a regression test rather than
+    // only by indirect API exercising.
+    EXPECT_FALSE(isSafeIndexName(""));
+    EXPECT_FALSE(isSafeIndexName("wazuh-states-/x"));
+    EXPECT_FALSE(isSafeIndexName("wazuh-states-?q=1"));
+    EXPECT_FALSE(isSafeIndexName("wazuh-states-#x"));
+    EXPECT_FALSE(isSafeIndexName("wazuh-states-a,b"));
+    EXPECT_FALSE(isSafeIndexName("wazuh-states- "));
+    EXPECT_FALSE(isSafeIndexName("wazuh-states-\nfoo"));
+    EXPECT_FALSE(isSafeIndexName("wazuh-states-\"foo\""));
+    EXPECT_FALSE(isSafeIndexName("wazuh-states-foo\\bar"));
+
+    EXPECT_TRUE(isSafeIndexName("wazuh-states-vulnerabilities"));
+    EXPECT_TRUE(isSafeIndexName("wazuh-states-inventory-system"));
+    EXPECT_TRUE(isSafeIndexName("wazuh-states-fim-files"));
+    EXPECT_TRUE(isSafeIndexName(".wazuh-cti-consumers"));
+    EXPECT_TRUE(isSafeIndexName("wazuh-states-*"));
+    EXPECT_TRUE(isSafeIndexName("Idx_With.MixedCase-1.2.3"));
+}

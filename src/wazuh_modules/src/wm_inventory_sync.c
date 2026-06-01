@@ -82,12 +82,16 @@
              os_free(manager_node_name);
 
              // Add max sessions from internal_options (inventory_sync specific)
-#ifdef CLIENT
-             int max_sessions = getDefine_Int("wazuh_modules", "max_sessions", 1, 100000);
-#else
              int max_sessions = getDefine_Int_default("wazuh_modules", "max_sessions", 1, 100000, 1000);
-#endif
              cJSON_AddNumberToObject(config_json, "maxSessions", max_sessions);
+
+             // Add input worker queue size from internal_options
+             int queue_size = getDefine_Int_default("wazuh_modules", "inventory_sync_queue_size", 100, 1000000, 10000);
+             cJSON_AddNumberToObject(config_json, "queueSize", queue_size);
+
+             // Add global DataValue quota from internal_options
+             int data_value_quota = getDefine_Int_default("wazuh_modules", "inventory_sync_data_value_quota", 1, 1000000000, 500000);
+             cJSON_AddNumberToObject(config_json, "dataValueQuota", data_value_quota);
 
              wm_inventory_sync_log_config(config_json);
              inventory_sync_start_ptr(mtLoggingFunctionsWrapper, config_json);

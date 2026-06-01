@@ -10,6 +10,8 @@ The runtime configuration passed to Inventory Sync contains:
 - **`clusterName`**: the manager cluster name.
 - **`clusterNodeName`**: the local manager node name.
 - **`maxSessions`**: the session cap derived from internal options.
+- **`queueSize`**: the input worker queue cap derived from internal options.
+- **`dataValueQuota`**: the global `DataValue` quota derived from internal options.
 
 The module refuses to start if `clusterName` is missing.
 
@@ -33,7 +35,9 @@ Example configuration payload passed to the module:
   },
   "clusterName": "wazuh",
   "clusterNodeName": "node01",
-  "maxSessions": 1000
+  "maxSessions": 1000,
+  "queueSize": 10000,
+  "dataValueQuota": 500000
 }
 ```
 
@@ -48,6 +52,32 @@ Current manager-side behavior:
 - Allowed range: `1` to `100000`.
 - Default on manager builds: `1000`.
 - New Start messages are rejected when the active session count reaches that limit.
+
+### Input worker queue size
+
+Inventory Sync reads the input worker queue cap from the internal option `wazuh_modules.inventory_sync_queue_size`.
+
+The cap is applied to the queue that buffers incoming router messages before they reach the worker threads.
+
+Current manager-side behavior:
+
+- Allowed range: `100` to `1000000`.
+- Default on manager builds: `10000`.
+- When the queue is full, the incoming message is dropped.
+- A warning is logged for the first drop and is then suppressed for the next `90` seconds to avoid log flooding.
+
+### Global DataValue quota
+
+Inventory Sync reads the global `DataValue` quota from the internal option `wazuh_modules.inventory_sync_data_value_quota`.
+
+The quota bounds the total number of `DataValue` items that all active sessions can collectively handle. When a Start message arrives, the value declared in its `size` field is reserved from the quota; when the session ends (success, error, stale cleanup, or timeout), the reservation is returned.
+
+Current manager-side behavior:
+
+- Allowed range: `1` to `1000000000`.
+- Default on manager builds: `500000`.
+- If the requested `size` exceeds the remaining quota, the Start message is rejected with `Status_Offline` (the agent will retry later, mirroring the `max_sessions` rejection shape).
+- Quota-rejection events are always logged (no rate limiting).
 
 ## Operational constants
 
