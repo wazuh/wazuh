@@ -1721,103 +1721,6 @@
             "string"
           ]
         },
-        "enrichments.indicator.confidence": {
-          "description": "Module: ecs\nIndexerType: short\n\nIndicator confidence rating.",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "type": [
-            "number",
-            "string"
-          ]
-        },
-        "enrichments.indicator.feed.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nName of the feed that supplied the indicator.",
-          "type": [
-            "string"
-          ]
-        },
-        "enrichments.indicator.first_seen": {
-          "description": "Module: ecs\nIndexerType: date\n\nDate/time indicator was first reported.",
-          "type": [
-            "string"
-          ]
-        },
-        "enrichments.indicator.id": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nUnique identifier for the enrichment data, such as a hash of the indicator data or a unique ID from the provider.",
-          "type": [
-            "string"
-          ]
-        },
-        "enrichments.indicator.last_seen": {
-          "description": "Module: ecs\nIndexerType: date\n\nDate/time indicator was last reported.",
-          "type": [
-            "string"
-          ]
-        },
-        "enrichments.indicator.name": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nIndicator display name.",
-          "type": [
-            "string"
-          ]
-        },
-        "enrichments.indicator.provider": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nIndicator provider.",
-          "type": [
-            "string"
-          ]
-        },
-        "enrichments.indicator.reference": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nIndicator reference URL.",
-          "type": [
-            "string"
-          ]
-        },
-        "enrichments.indicator.software": {
-          "additionalProperties": false,
-          "description": "Module: ecs\nIndexerType: object\n\nName of the software associated with the indicator, such as malware or attack framework.",
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-          "properties": {
-            "alias": {
-              "description": "Module: ecs\nIndexerType: keyword\n\nAlias or alternative names for the software associated with the indicator.",
-              "type": [
-                "string"
-              ]
-            },
-            "name": {
-              "description": "Module: ecs\nIndexerType: keyword\n\nName of the software associated with the indicator.",
-              "type": [
-                "string"
-              ]
-            },
-            "type": {
-              "description": "Module: ecs\nIndexerType: keyword\n\nType of software associated with the indicator, such as malware, attack framework, or tool.",
-              "type": [
-                "string"
-              ]
-            }
-          },
-          "type": [
-            "object",
-            "string"
-          ]
-        },
-        "enrichments.indicator.tags": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nList of tags associated with the indicator.",
-          "type": [
-            "string"
-          ]
-        },
-        "enrichments.indicator.type": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nType of indicator.",
-          "type": [
-            "string"
-          ]
-        },
-        "enrichments.source": {
-          "description": "Module: ecs\nIndexerType: keyword\n\nSource of the enrichment data identifying the external provider that supplied the indicator.",
-          "type": [
-            "string"
-          ]
-        },
         "error.code": {
           "description": "Module: ecs\nIndexerType: keyword\n\nError code describing the error.",
           "type": [
@@ -8182,7 +8085,7 @@
         },
         "threat.enrichments": {
           "additionalProperties": false,
-          "description": "Module: ecs\nIndexerType: nested\n\nA list of associated indicators objects enriching the event, and the context of that association/enrichment.",
+          "description": "Module: ecs\nIndexerType: object\n\nA list of associated indicators objects enriching the event, and the context of that association/enrichment.",
           "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
           "properties": {
             "indicator": {
@@ -12710,7 +12613,7 @@
         },
         "wazuh.threat.enrichments": {
           "additionalProperties": false,
-          "description": "Module: ecs\nIndexerType: nested\n\nA list of associated indicators objects enriching the event, and the context of that association/enrichment.",
+          "description": "Module: ecs\nIndexerType: object\n\nA list of associated indicators objects enriching the event, and the context of that association/enrichment.",
           "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
           "properties": {
             "indicator": {
