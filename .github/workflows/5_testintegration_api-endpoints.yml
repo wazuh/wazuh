@@ -16,7 +16,12 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testintegration_api-endpoints.yml"
+      - "api/api/**"
+      - "api/scripts/**"
       - "api/test/**"
+      - "framework/.python-version"
+      - "framework/requirements*.txt"
+      - "framework/scripts/**"
       - "framework/wazuh/**"
 
 concurrency:
@@ -43,7 +48,7 @@ jobs:
           python3 _test_mapping.py
 
           # Valid test files
-          files=$(jq -c '([.[].files[].tests[]] | unique | sort)' ./integration_test_api_endpoints.json)
+          full_file_list=$(jq -c '([.[].files[].tests[]] | unique | sort)' ./integration_test_api_endpoints.json)
 
           # Validate the input tests in workflow_dispatch
           function validate_tests_files_input() {
@@ -52,16 +57,16 @@ jobs:
 
             IFS=',' read -r -a tests <<< "${str}"
             prefix="test_"
-            sufix=".tavern.yaml"
+            suffix=".tavern.yaml"
 
             valid_tests=""
-            for test in "${tests[@]}"; do
-              input_filename="${prefix}${test}${sufix}"
+            for test in ${tests[@]}; do
+              input_filename="${prefix}${test}${suffix}"
               matched=false
               for file in $(echo "$files" | jq -r '.[]'); do
                 if [[ "${input_filename,,}" == "${file,,}" ]]; then
                 matched=true
-                valid_tests+="\"${input_filename}\","
+                valid_tests+="\"${file}\","
                 break
                 fi
               done
@@ -107,16 +112,22 @@ jobs:
           }
 
           if [[ ${{ github.event_name }} == 'pull_request' ]]; then
-            files=$(get_tests_files)
-            echo "Selected tests: $files"
-            echo "files=$files" >> $GITHUB_OUTPUT
+            selected_files=$(get_tests_files)
+            if [[ -z "$selected_files" || "$selected_files" == "[]" ]]; then
+              echo "No relevant files modified, running all tests"
+              echo "Selected tests: $full_file_list"
+              echo "files=$full_file_list" >> $GITHUB_OUTPUT
+            else
+              echo "Selected tests: $selected_files"
+              echo "files=$selected_files" >> $GITHUB_OUTPUT
+            fi
           else
             if [[ -z ${TEST_LIST} ]]; then
               echo "No tests specified, running all tests"
-              echo "Selected tests: $files"
-              echo "files=$files" >> $GITHUB_OUTPUT
+              echo "Selected tests: $full_file_list"
+              echo "files=$full_file_list" >> $GITHUB_OUTPUT
             else
-              selected_files=$(validate_tests_files_input "$files" "${TEST_LIST}")
+              selected_files=$(validate_tests_files_input "$full_file_list" "${TEST_LIST}")
               echo "Selected tests: $selected_files"
               echo "files=$selected_files" >> $GITHUB_OUTPUT
             fi
