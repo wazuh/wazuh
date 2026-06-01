@@ -95,14 +95,12 @@ _reg nlohmann           "https://github.com/nlohmann/json/archive/refs/tags/v{ve
 _reg googletest         "https://github.com/google/googletest/archive/refs/tags/release-{version}.tar.gz"                         tar.gz  1  googletest         false  "https://github.com/google/googletest"
 _reg libpcre2           "gh:PCRE2Project/pcre2:pcre2-{version}"                                                                   tar.gz  1  libpcre2           false  "https://github.com/PCRE2Project/pcre2"
 _reg libplist           "https://github.com/libimobiledevice/libplist/archive/refs/tags/{version}.tar.gz"                         tar.gz  1  libplist           false  "https://github.com/libimobiledevice/libplist"
-_reg libarchive         "https://github.com/libarchive/libarchive/releases/download/v{version}/libarchive-{version}.tar.gz"       tar.gz  1  libarchive         false  "https://github.com/libarchive/libarchive"
 _reg popt               "https://github.com/rpm-software-management/popt/archive/refs/tags/popt-{version}-release.tar.gz"         tar.gz  1  popt               false  "https://github.com/rpm-software-management/popt"
 # Note: popt versions older than ~1.18 (e.g. 1.16) predate this repo's tag
 # history and are not reachable via this template.
 _reg lua                "https://www.lua.org/ftp/lua-{version}.tar.gz"                                                            tar.gz  1  lua                false  "https://github.com/lua/lua"
 _reg rpm                "https://github.com/rpm-software-management/rpm/archive/refs/tags/rpm-{version}-release.tar.gz"           tar.gz  1  rpm                false  "https://github.com/rpm-software-management/rpm"
 _reg rocksdb            "https://github.com/facebook/rocksdb/archive/refs/tags/v{version}.tar.gz"                                 tar.gz  1  rocksdb            false  "https://github.com/facebook/rocksdb"
-_reg lzma               "https://github.com/tukaani-project/xz/releases/download/v{version}/xz-{version}.tar.gz"                  tar.gz  1  lzma               false  "https://github.com/tukaani-project/xz"
 _reg cpp-httplib        "https://github.com/yhirose/cpp-httplib/archive/refs/tags/v{version}.tar.gz"                              tar.gz  1  cpp-httplib        false  "https://github.com/yhirose/cpp-httplib"
 _reg benchmark          "https://github.com/google/benchmark/archive/refs/tags/v{version}.tar.gz"                                 tar.gz  1  benchmark          false  "https://github.com/google/benchmark"
 _reg libbpf-bootstrap   "https://github.com/libbpf/libbpf-bootstrap/archive/refs/tags/v{version}.tar.gz"                          tar.gz  1  libbpf-bootstrap   true   "https://github.com/libbpf/libbpf-bootstrap"
