@@ -49,7 +49,8 @@ else()
                                     -Wl,--wrap,stat -Wl,--wrap=fgetc -Wl,--wrap=w_fseek -Wl,--wrap,w_ftell \
                                     -Wl,--wrap,OS_SHA1_File_Nbytes_with_fp_check -Wl,--wrap,cJSON_CreateString \
                                     -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,wpclose -Wl,--wrap,kill \
-                                    -Wl,--wrap,so_get_function_sym -Wl,--wrap,so_get_module_handle -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS} \
+                                    -Wl,--wrap,so_get_function_sym -Wl,--wrap,so_get_module_handle -Wl,--wrap,popen \
+                                    -Wl,--wrap,rename -Wl,--wrap,unlink -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS} \
                                     ${HASH_OP_WRAPPERS}")
 
     list(APPEND logcollector_names "test_read_multiline_regex")
