@@ -23,6 +23,8 @@ target_link_libraries(ACTIVE-RESPONSE_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 if(NOT ${TARGET} STREQUAL "winagent")
     list(APPEND active-response_names "test_active-response")
     list(APPEND active-response_flags "-Wl,--wrap,getaddrinfo -Wl,--wrap,fcntl")
+    list(APPEND active-response_names "test_ip-customblock")
+    list(APPEND active-response_flags "-Wl,--wrap,getaddrinfo -Wl,--wrap,fcntl")
 endif()
 
 list(LENGTH active-response_names count)
