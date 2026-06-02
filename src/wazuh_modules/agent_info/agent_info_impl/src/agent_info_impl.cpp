@@ -36,7 +36,7 @@ constexpr auto AGENT_METADATA_TABLE = "agent_metadata";
 constexpr auto AGENT_GROUPS_TABLE = "agent_groups";
 
 // Module coordination configuration
-const std::vector<std::string> COORDINATION_MODULES = {SCA_WM_NAME, SYSCOLLECTOR_WM_NAME, FIM_NAME};
+const std::vector<std::string> COORDINATION_MODULES = {FIM_NAME, SCA_WM_NAME, SYSCOLLECTOR_WM_NAME};
 constexpr int MAX_COORDINATION_RETRIES = 3;
 constexpr int COORDINATION_RETRY_DELAY_MS = 1000;
 
@@ -1141,12 +1141,21 @@ bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
     // fim_run_integrity holds fim_scan_mutex (across the full sync iteration). Retries
     // are needed until the current sync cycle ends and the mutex becomes available.
     // 30 attempts at 1 s covers sync cycles that take up to ~30 s under high load.
-    constexpr int MAX_PAUSE_POLL_ATTEMPTS = 30; // 30 seconds max
-    constexpr int PAUSE_POLL_DELAY_MS = 1000;   // 1 second between polls
+    constexpr int MAX_PAUSE_POLL_ATTEMPTS = 30; // 30 seconds steady-state budget
+
+    // The first FIM sync after a 4.x -> 5.x upgrade rebuilds the agent_sync_protocol DB
+    // from scratch and can hold fim_scan_mutex for several minutes. The 30 seconds
+    // budget is too tight for that one-shot case, so when FIM reports first sync still
+    // in progress we extend to 600 s for this call only.
+    constexpr int FIRST_SYNC_PAUSE_POLL_ATTEMPTS = 600; // 10 minutes
+    const int PAUSE_POLL_DELAY_MS = m_pausePollDelayMs > 0 ? m_pausePollDelayMs : 1;
+
+    int maxAttempts = MAX_PAUSE_POLL_ATTEMPTS;
+    bool budgetExtended = false;
 
     m_logFunction(LOG_DEBUG_VERBOSE, "Polling " + moduleName + " for pause completion (async pause)");
 
-    for (int attempt = 1; attempt <= MAX_PAUSE_POLL_ATTEMPTS; ++attempt)
+    for (int attempt = 1; attempt <= maxAttempts; ++attempt)
     {
         std::string isPauseCompletedMessage = createJsonCommand("is_pause_completed");
         ModuleResponse pollResponse = queryModuleWithRetry(moduleName, isPauseCompletedMessage);
@@ -1155,7 +1164,7 @@ bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
         {
             m_logFunction(LOG_WARNING,
                           "Failed to poll pause status for " + moduleName + " (attempt " + std::to_string(attempt) +
-                          "/" + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) + ")");
+                          "/" + std::to_string(maxAttempts) + ")");
             std::this_thread::sleep_for(std::chrono::milliseconds(PAUSE_POLL_DELAY_MS));
             continue;
         }
@@ -1167,13 +1176,25 @@ bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
 
             if (pollJson.contains("data") && pollJson["data"].contains("status"))
             {
+                // Extend the poll budget while FIM is still completing its first post-start sync.
+                if (!budgetExtended && moduleName == FIM_NAME &&
+                        pollJson["data"].contains("first_sync_completed") &&
+                        pollJson["data"]["first_sync_completed"].is_boolean() &&
+                        pollJson["data"]["first_sync_completed"].get<bool>() == false)
+                {
+                    maxAttempts = FIRST_SYNC_PAUSE_POLL_ATTEMPTS;
+                    budgetExtended = true;
+                    m_logFunction(LOG_INFO,
+                                  "Extending FIM pause poll budget while first sync is in progress");
+                }
+
                 std::string status = pollJson["data"]["status"].get<std::string>();
 
                 if (status == "in_progress")
                 {
                     m_logFunction(LOG_DEBUG,
                                   moduleName + " pause still in progress (attempt " + std::to_string(attempt) + "/" +
-                                  std::to_string(MAX_PAUSE_POLL_ATTEMPTS) + ")");
+                                  std::to_string(maxAttempts) + ")");
                     std::this_thread::sleep_for(std::chrono::milliseconds(PAUSE_POLL_DELAY_MS));
                     continue;
                 }
@@ -1204,7 +1225,7 @@ bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
     }
 
     m_logFunction(LOG_ERROR,
-                  moduleName + " pause did not complete within " + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) +
+                  moduleName + " pause did not complete within " + std::to_string(maxAttempts) +
                   " seconds (scan mutex may be held by a long sync cycle, or IPC communication failure)");
     return false;
 }

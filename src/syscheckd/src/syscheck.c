@@ -484,6 +484,7 @@ void fim_initialize() {
 #endif
     syscheck.fim_pause_requested = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
     syscheck.fim_pausing_is_allowed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+    syscheck.fim_first_sync_completed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
 
     notify_scan = syscheck.notify_first_scan;
 

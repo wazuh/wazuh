@@ -386,6 +386,8 @@ size_t syscom_handle_agent_info_query(char * json_command, char ** output) {
         // Call is_pause_completed function
         result = fim_execute_is_pause_completed();
 
+        bool first_sync_completed = atomic_int_get(&syscheck.fim_first_sync_completed) ? true : false;
+
         if (result == 1) {
             // Pause in progress
             status_item = cJSON_CreateNumber(MQ_SUCCESS);
@@ -394,6 +396,7 @@ size_t syscom_handle_agent_info_query(char * json_command, char ** output) {
             if (data_item) {
                 cJSON_AddStringToObject(data_item, "module", "fim");
                 cJSON_AddStringToObject(data_item, "status", "in_progress");
+                cJSON_AddBoolToObject(data_item, "first_sync_completed", first_sync_completed);
             }
         } else if (result == 0) {
             // Pause completed successfully
@@ -404,6 +407,7 @@ size_t syscom_handle_agent_info_query(char * json_command, char ** output) {
                 cJSON_AddStringToObject(data_item, "module", "fim");
                 cJSON_AddStringToObject(data_item, "status", "completed");
                 cJSON_AddStringToObject(data_item, "result", "success");
+                cJSON_AddBoolToObject(data_item, "first_sync_completed", first_sync_completed);
             }
         } else {
             // Unexpected result

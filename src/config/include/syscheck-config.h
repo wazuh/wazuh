@@ -455,6 +455,7 @@ typedef struct _config {
 #endif // WIN32
     atomic_int_t fim_pause_requested;                  /* Flag to indicate scans should be paused (0=false, 1=true) */
     atomic_int_t fim_pausing_is_allowed;               /* Flag to indicate fim_run_integrity acknowledged pause (0=false, 1=true) */
+    atomic_int_t fim_first_sync_completed;             /* Flag to indicate the first post-start FIM sync iteration finished (0=false, 1=true) */
     rtfim *realtime;
     fdb_t *database;
 

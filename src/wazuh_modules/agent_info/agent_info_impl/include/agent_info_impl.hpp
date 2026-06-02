@@ -65,6 +65,13 @@ class AgentInfoImpl
             m_flushPollDelayMs = delayMs < 0 ? 0 : delayMs;
         }
 
+        /// @brief Override the FIM pause poll delay (milliseconds). Only used in unit tests to avoid real sleeps.
+        /// Negative values are clamped to 0.
+        void setPausePollDelayMs(int delayMs)
+        {
+            m_pausePollDelayMs = delayMs < 0 ? 0 : delayMs;
+        }
+
         /// @brief Initialize the synchronization protocol with only in-memory synchronization
         /// @param moduleName Name of the module
         /// @param mqFuncs Message queue functions
@@ -266,6 +273,10 @@ class AgentInfoImpl
         /// @brief Delay in milliseconds between flush completion polls (10 seconds in production).
         /// Overridable in unit tests to avoid real sleeps.
         int m_flushPollDelayMs = 10000;
+
+        /// @brief Delay in milliseconds between FIM pause completion polls (1 second in production).
+        /// Overridable in unit tests to avoid real sleeps.
+        int m_pausePollDelayMs = 1000;
 
         /// @brief Condition variable for efficient sleep/wake mechanism
         std::condition_variable m_cv;
