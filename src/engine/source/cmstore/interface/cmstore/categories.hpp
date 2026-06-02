@@ -23,13 +23,13 @@ inline constexpr std::string_view UNCLASSIFIED_CATEGORY = "unclassified";
  * in the CMStore system. Any integration or asset should belong to one of these categories.
  */
 inline constexpr std::array<std::string_view, 8> AVAILABLE_CATEGORIES = {"access-management",
-                                                                        "applications",
-                                                                        "cloud-services",
-                                                                        "network-activity",
-                                                                        "other",
-                                                                        "security",
-                                                                        "system-activity",
-                                                                        UNCLASSIFIED_CATEGORY};
+                                                                         "applications",
+                                                                         "cloud-services",
+                                                                         "network-activity",
+                                                                         "other",
+                                                                         "security",
+                                                                         "system-activity",
+                                                                         UNCLASSIFIED_CATEGORY};
 
 /**
  * @brief Get all available categories and their indexes in the namespace

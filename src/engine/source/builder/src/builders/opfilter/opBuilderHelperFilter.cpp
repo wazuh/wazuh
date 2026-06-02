@@ -1921,12 +1921,11 @@ FilterOp opBuilderHelperIndexUnclassifiedEvents(const Reference& targetField,
         fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
     const std::string failureTrace2 {
         fmt::format("[{}] -> Failure: Target field '{}' is not a string", name, targetField.dotPath())};
-    const std::string failureTrace3 {fmt::format(
-        "[{}] -> Failure: Policy index_unclassified_events=false or category is not 'unclassified'", name)};
+    const std::string failureTrace3 {
+        fmt::format("[{}] -> Failure: Policy index_unclassified_events=false or category is not 'unclassified'", name)};
 
-    return [=,
-            isTestMode = buildCtx->isTestMode(),
-            targetFieldPP = json::PointerPath(targetField.jsonPath())](base::ConstEvent event) -> FilterResult
+    return [=, isTestMode = buildCtx->isTestMode(), targetFieldPP = json::PointerPath(targetField.jsonPath())](
+               base::ConstEvent event) -> FilterResult
     {
         // Check if policy flag is enabled
         if (!policyIndexUnclassified)

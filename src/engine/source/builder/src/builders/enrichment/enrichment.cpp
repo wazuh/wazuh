@@ -56,7 +56,8 @@ getDiscardedEventsFilter(const cm::store::dataType::Policy& policy,
 
     auto op = base::Term<base::EngineOp>::create(
         DISCARDED_EVENTS_FILTER_TRACEABLE_NAME,
-        [shouldIndex, discardFieldPath, isTestMode, discardedCounter](base::Event event) -> base::result::Result<base::Event>
+        [shouldIndex, discardFieldPath, isTestMode, discardedCounter](
+            base::Event event) -> base::result::Result<base::Event>
         {
             // Policy enables indexing of discarded events
             if (shouldIndex)
