@@ -301,7 +301,7 @@ void test_start_mq_predicated_write_fail(void ** state){
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
     will_return(__wrap_OS_ConnectUnixDomain, -1);
-    expect_string(__wrap__mdebug2, formatted_msg, "(6220): Reconnection attempts terminated due to the shutdown of FIM.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(8301): Reconnection attempts terminated due to shutdown.");
 
     ret = StartMQPredicated(path, type, n_attempts, ptr_function);
     assert_int_equal(ret, -1);
@@ -335,7 +335,7 @@ void test_start_mq_predicated_write_shutdown_during_backoff(void ** state){
     snprintf(message, OS_SIZE_128, "Can't connect to '%s': %s (%d). Attempt: %d", path, strerror(errno), errno, 1);
     expect_string(__wrap__mdebug1, formatted_msg, message);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6220): Reconnection attempts terminated due to the shutdown of FIM.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(8301): Reconnection attempts terminated due to shutdown.");
 
     ret = StartMQPredicated(path, type, n_attempts, ptr_function);
     assert_int_equal(ret, -1);
