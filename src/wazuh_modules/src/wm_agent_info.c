@@ -203,26 +203,12 @@ static bool wm_agent_info_is_shutting_down()
     return g_shutting_down || wm_shutdown_requested;
 }
 
-// Open the queue. For infinite attempts, retry with a 1 s interruptible delay
-// so shutdown is honored within ~1 s. Finite attempts are delegated as-is.
+// Open the queue. StartMQPredicated re-checks the shutdown predicate during its
+// (now interruptible) backoff, so both finite and infinite attempts honor
+// shutdown within ~1 s; delegate directly.
 static int wm_agent_info_startmq(const char* key, short type, short attempts)
 {
-    if (attempts != INFINITE_OPENQ_ATTEMPTS)
-    {
-        return StartMQPredicated(key, type, attempts, wm_agent_info_is_shutting_down);
-    }
-
-    while (!wm_agent_info_is_shutting_down())
-    {
-        int queue = StartMQPredicated(key, type, 1, wm_agent_info_is_shutting_down);
-        if (queue >= 0)
-        {
-            return queue;
-        }
-        wm_sleep_interruptible(1);
-    }
-
-    return OS_INVALID;
+    return StartMQPredicated(key, type, attempts, wm_agent_info_is_shutting_down);
 }
 
 static int
