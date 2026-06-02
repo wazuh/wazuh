@@ -150,6 +150,19 @@ protected:
     {
         return ::ERR_reason_error_string(e);
     }
+
+    // From OpenSSL 3.9.1 we need to use ERR_clear_last_error and ERR_peek_last_error on this
+    // wrapper
+
+    inline void ERR_clear_error(void)
+    {
+        ::ERR_clear_error();
+    }
+
+    inline unsigned long ERR_peek_error(void)
+    {
+        return ::ERR_peek_error();
+    }
 #pragma GCC diagnostic pop
 };
 

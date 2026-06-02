@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.10.5]
 
+### Manager
+
+#### Fixed
+
+- Hardened RSA decryption to reject malformed ciphertext blobs. ([#36243](https://github.com/wazuh/wazuh/issues/36243))
+
 
 ## [v4.10.4]
 
