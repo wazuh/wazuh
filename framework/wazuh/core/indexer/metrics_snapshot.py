@@ -403,7 +403,10 @@ class MetricsSnapshotTasks:
         raw_queue_usage = queues.get("usage")
         raw_queue_capacity = queues.get("size")
         raw_tcp_sessions = m.get("tcp_sessions")
-        raw_evt_total = msgs_recv.get("event")
+        raw_evt_total = msgs_recv.get("events")
+        raw_evt_failed = msgs_recv.get("events_failed")
+        raw_states = msgs_recv.get("states")
+        raw_upgrade_ack = msgs_recv.get("upgrade_ack")
         raw_discarded = msgs_recv.get("discarded")
         raw_sent_bytes = bytes_info.get("sent")
         raw_recv_bytes = bytes_info.get("received")
@@ -432,6 +435,9 @@ class MetricsSnapshotTasks:
                     if raw_evt_total is not None
                     else doc.get("evt_count")
                 },
+                "events_failed": {"total": raw_evt_failed},
+                "states": {"total": raw_states},
+                "upgrade_ack": {"total": raw_upgrade_ack},
                 "queue": {
                     "size": raw_queue_usage
                     if raw_queue_usage is not None

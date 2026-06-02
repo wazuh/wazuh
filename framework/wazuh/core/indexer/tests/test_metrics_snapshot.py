@@ -213,7 +213,8 @@ async def test_collect_agents(mock_wazuh_db_query_agents):
 # _collect_comms_all_nodes
 # ---------------------------------------------------------------------------
 
-# Normalized dotted-path field names expected in every comms document
+# Normalized dotted-path field names emitted regardless of whether the
+# input is v5.0 nested or legacy v4 flat.
 EXPECTED_COMMS_FIELDS = {
     "queue.size",
     "queue.capacity",
@@ -233,6 +234,14 @@ EXPECTED_COMMS_FIELDS = {
     "wazuh.cluster.name",
     "wazuh.cluster.node",
     "wazuh.schema.version",
+}
+
+# Additional fields only emitted from v5.0 input (counters that didn't
+# exist in the legacy flat format).
+EXPECTED_COMMS_FIELDS_V5_ONLY = {
+    "events_failed.total",
+    "states.total",
+    "upgrade_ack.total",
 }
 
 
@@ -1828,7 +1837,10 @@ REMOTED_STATS_V5_ALL_ZEROS = {
         "queues": {"received": {"usage": 0, "size": 0}},
         "messages": {
             "received_breakdown": {
-                "event": 0,
+                "events": 0,
+                "events_failed": 0,
+                "states": 0,
+                "upgrade_ack": 0,
                 "discarded": 0,
                 "dequeued_after": 0,
                 "control": 0,
@@ -1851,7 +1863,10 @@ REMOTED_STATS_V5_NONZERO = {
         "queues": {"received": {"usage": 10, "size": 100}},
         "messages": {
             "received_breakdown": {
-                "event": 1000,
+                "events": 1000,
+                "events_failed": 4,
+                "states": 333,
+                "upgrade_ack": 2,
                 "discarded": 3,
                 "dequeued_after": 1,
                 "control": 200,
@@ -1886,7 +1901,7 @@ class TestNormalizeCommsDocZeroPreservation:
         assert len(docs) == 1
         doc = docs[0]
         flat_keys = _deep_keys(doc)
-        for field in EXPECTED_COMMS_FIELDS:
+        for field in EXPECTED_COMMS_FIELDS | EXPECTED_COMMS_FIELDS_V5_ONLY:
             assert field in flat_keys, (
                 f"Field '{field}' missing from normalized comms doc with all-zero v5.0 counters"
             )
@@ -1950,6 +1965,9 @@ class TestNormalizeCommsDocZeroPreservation:
         assert doc["queue"]["capacity"] == 100
         assert doc["tcp"]["sessions"] == 5
         assert doc["events"]["total"] == 1000
+        assert doc["events_failed"]["total"] == 4
+        assert doc["states"]["total"] == 333
+        assert doc["upgrade_ack"]["total"] == 2
         assert doc["discarded"]["total"] == 3
         assert doc["network"]["egress"]["bytes"] == 512
         assert doc["network"]["ingress"]["bytes"] == 256
