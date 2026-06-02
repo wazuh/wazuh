@@ -415,7 +415,7 @@ static bool wm_agent_info_query_agentd_handshake(char* cluster_name,
 // Callback to send stateless messages
 static int wm_agent_info_send_stateless(const char* message)
 {
-    if (g_shutting_down)
+    if (wm_agent_info_is_shutting_down())
     {
         return -1;
     }
@@ -687,7 +687,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     char agent_groups[OS_SIZE_65536] = {0};
     bool handshake_success = false;
 
-    while (!handshake_success && !g_shutting_down)
+    while (!handshake_success && !wm_agent_info_is_shutting_down())
     {
         if (wm_agent_info_query_agentd_handshake(cluster_name,
                                                  sizeof(cluster_name),
@@ -716,11 +716,11 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         else
         {
             mdebug1("Handshake data not available yet, retrying in 1 second...");
-            sleep(1);
+            wm_sleep_interruptible(1);
         }
     }
 
-    if (g_shutting_down)
+    if (wm_agent_info_is_shutting_down())
     {
         mdebug1("Shutdown requested during handshake wait, exiting.");
         return NULL;
