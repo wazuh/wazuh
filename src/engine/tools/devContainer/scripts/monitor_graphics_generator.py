@@ -152,6 +152,43 @@ def plot_timeseries(
     print(f"  -> {out_path}")
 
 
+def plot_multiline_timeseries(
+    df: pd.DataFrame,
+    columns: list[str],
+    title: str,
+    ylabel: str,
+    out_path: str,
+    figsize=(14, 6),
+    y_min: float | None = None,
+):
+    fig, ax = plt.subplots(figsize=figsize)
+    plotted = 0
+    for idx, col in enumerate(columns):
+        if col not in df.columns:
+            continue
+        label = col.removeprefix("dir_").removesuffix("_mb").replace("_", "-")
+        ax.plot(
+            df["elapsed_s"], df[col],
+            label=label, color=run_color(idx),
+            linewidth=1.4, alpha=0.85,
+        )
+        plotted += 1
+    if plotted == 0:
+        plt.close(fig)
+        return
+    ax.set_title(title, fontsize=14, fontweight="bold")
+    ax.set_xlabel("Elapsed time (s)")
+    ax.set_ylabel(ylabel)
+    if y_min is not None:
+        ax.set_ylim(bottom=y_min)
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1), fontsize=9)
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  -> {out_path}")
+
+
 def plot_bar(
     labels: list[str],
     values: list[float],
@@ -454,6 +491,28 @@ def generate_charts(
                 "MB", out,
                 y_min=0,
             )
+
+        sorted_disk_cols = sorted(disk_cols)
+        if sorted_disk_cols:
+            if len(disk_dfs) == 1:
+                _, df = next(iter(disk_dfs.items()))
+                plot_multiline_timeseries(
+                    df, sorted_disk_cols,
+                    "Disk Usage - All Directories",
+                    "MB",
+                    os.path.join(out_dir, f"disk_all_dirs.{fmt}"),
+                    y_min=0,
+                )
+            else:
+                for label, df in disk_dfs.items():
+                    safe_label = label.replace(" ", "_")
+                    plot_multiline_timeseries(
+                        df, sorted_disk_cols,
+                        f"Disk Usage - All Directories ({label})",
+                        "MB",
+                        os.path.join(out_dir, f"disk_all_dirs_{safe_label}.{fmt}"),
+                        y_min=0,
+                    )
 
     # -- Bench time-series ---------------------------------------------------
     if benches:
