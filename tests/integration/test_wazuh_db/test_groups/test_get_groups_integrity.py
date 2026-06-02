@@ -91,7 +91,7 @@ def test_get_groups_integrity(daemons_handler, test_metadata, create_groups):
                  taken from the list of test_metadata's 'input' field, and compare the result with the test_metadata's
                  'output' field.
 
-    wazuh_min_version: 4.4.0
+    wazuh_min_version: 5.0.0
 
     parameters:
         - test_metadata:

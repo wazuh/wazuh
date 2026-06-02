@@ -302,6 +302,113 @@
       output: ok
       stage: global delete-agent after insert
 
+- name: update-status-code command
+  description: Check success and error use cases for update-status-code command on global DB.
+  configuration_parameters:
+  metadata:
+    test_case:
+    - input: global delete-agent 1
+      output: ok
+      stage: global delete-agent previous insert
+    - input: global insert-agent {"id":1,"name":"TestName1","date_add":1599223378}
+      output: ok
+      stage: global insert-agent success
+    - input: global update-status-code {"id":1,"status_code":0,"version":"Wazuh v5.0.0","sync_status":"synced"}
+      output: ok
+      stage: global update-status-code with version success
+    - input: global sql SELECT id,version,status_code,sync_status FROM agent WHERE id=1
+      output: ok [{"id":1,"version":"Wazuh v5.0.0","status_code":0,"sync_status":"synced"}]
+      stage: global checking fields after update-status-code with version
+    - input: global update-status-code {"id":1,"status_code":1,"sync_status":"syncreq"}
+      output: ok
+      stage: global update-status-code without version success
+    - input: global sql SELECT id,version,status_code,sync_status FROM agent WHERE id=1
+      output: ok [{"id":1,"status_code":1,"sync_status":"syncreq"}]
+      stage: global checking fields after update-status-code without version clears it
+    - input: global update-status-code not-json
+      output: err Invalid JSON syntax, near 'not-json'
+      stage: global update-status-code invalid json error
+    - input: global delete-agent 1
+      output: ok
+      stage: global delete-agent cleanup
+
+- name: Group membership commands
+  description: Check success and error use cases for get-distinct-groups, get-group-agents, select-group-belong and recalculate-agent-group-hashes commands on global DB.
+  configuration_parameters:
+  metadata:
+    test_case:
+    - input: global delete-agent 1
+      output: ok
+      stage: global delete-agent previous insert
+    - input: global delete-agent 2
+      output: ok
+      stage: global delete-agent previous insert
+    - input: global delete-group GroupA
+      output: ok
+      stage: global delete-group previous insert
+    - input: global delete-group GroupB
+      output: ok
+      stage: global delete-group previous insert
+    - input: global insert-agent {"id":1,"name":"TestName1","date_add":1599223378}
+      output: ok
+      stage: global insert-agent 1 success
+    - input: global insert-agent {"id":2,"name":"TestName2","date_add":1599223378}
+      output: ok
+      stage: global insert-agent 2 success
+    - input: global insert-agent-group GroupA
+      output: ok
+      stage: global insert-agent-group GroupA success
+    - input: global insert-agent-group GroupB
+      output: ok
+      stage: global insert-agent-group GroupB success
+    - input: global set-agent-groups {"mode":"append","sync_status":"syncreq","source":"remote","data":[{"id":1,"groups":["GroupA"]}]}
+      output: ok
+      stage: global set-agent-groups agent 1 to GroupA success
+    - input: global set-agent-groups {"mode":"append","sync_status":"syncreq","source":"remote","data":[{"id":2,"groups":["GroupB"]}]}
+      output: ok
+      stage: global set-agent-groups agent 2 to GroupB success
+    - input: global get-distinct-groups
+      output: ok [{"group":"GroupA","group_hash":"*"},{"group":"GroupB","group_hash":"*"}]
+      stage: global get-distinct-groups success
+      use_regex: "yes"
+    - input: global get-group-agents GroupA last_id 0
+      output: ok [1]
+      stage: global get-group-agents success
+    - input: global get-group-agents GroupA
+      output: err Invalid arguments, 'last_id' not found.
+      stage: global get-group-agents missing last_id error
+    - input: global select-group-belong 1
+      output: ok ["GroupA"]
+      stage: global select-group-belong agent 1 success
+    - input: global select-group-belong 2
+      output: ok ["GroupB"]
+      stage: global select-group-belong agent 2 success
+    - input: global recalculate-agent-group-hashes
+      output: ok
+      stage: global recalculate-agent-group-hashes success
+    - input: global delete-agent 1
+      output: ok
+      stage: global delete-agent 1 cleanup
+    - input: global delete-agent 2
+      output: ok
+      stage: global delete-agent 2 cleanup
+    - input: global delete-group GroupA
+      output: ok
+      stage: global delete-group GroupA cleanup
+    - input: global delete-group GroupB
+      output: ok
+      stage: global delete-group GroupB cleanup
+
+- name: vacuum command
+  description: Check success use case for vacuum command on global DB.
+  configuration_parameters:
+  metadata:
+    test_case:
+    - input: global vacuum
+      output: ok {"fragmentation_after_vacuum":*}
+      stage: global vacuum success
+      use_regex: "yes"
+
 - name: Synchronization value
   description: Check global db synchronization value
   configuration_parameters:

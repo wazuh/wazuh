@@ -67,7 +67,7 @@ def test_sync_agent_groups(daemons_handler, test_metadata, create_groups, pre_in
                            clean_databases):
     '''
     description: Check that commands about sync_aget_groups_get works properly.
-    wazuh_min_version: 4.4.0
+    wazuh_min_version: 5.0.0
     parameters:
         - daemons_handler:
             type: fixture

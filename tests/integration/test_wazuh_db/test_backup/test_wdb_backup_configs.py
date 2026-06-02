@@ -83,9 +83,8 @@ backups_path = Path(WAZUH_PATH, 'backup', 'db')
 interval = 5
 timeout = 15
 
-# The "Created Global database backup" event is logged by wazuh-db at debug level 1
-# (mdebug1). In Wazuh 5.0 manager daemons read internal options from
-# wazuh-manager-internal-options.conf, not local_internal_options.conf.
+# The "Created Global database backup" event requires wazuh_db debug level 1, set in the
+# manager internal options file.
 internal_options_path = Path(WAZUH_PATH, 'etc', 'wazuh-manager-internal-options.conf')
 wazuh_db_debug_option = 'wazuh_db.debug'
 

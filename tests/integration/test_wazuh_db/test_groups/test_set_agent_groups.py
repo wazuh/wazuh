@@ -101,7 +101,7 @@ def test_set_agent_groups(clean_databases, daemons_handler, test_metadata, creat
                  taken from the list of test_metadata's 'input' field, and compare the result with the test_metadata's
                  'output' and 'expected_group' fields.
 
-    wazuh_min_version: 4.4.0
+    wazuh_min_version: 5.0.0
 
     parameters:
         - clean_databases:

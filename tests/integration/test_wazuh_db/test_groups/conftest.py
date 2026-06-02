@@ -29,7 +29,9 @@ def _create_group(group):
 
 
 def _insert_agent(agent_id, name):
-    date_add = int(time.time()) - 2
+    # Register agents 100s in the past so the default sync-agent-groups-get filter (date_add < now)
+    # reliably includes them, while staying well under the 10000s registration delta used by other cases.
+    date_add = int(time.time()) - 100
     _query_ok(f'global insert-agent {{"id":{agent_id},"name":"{name}","ip":"any","date_add":{date_add}}}')
 
 

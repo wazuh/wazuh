@@ -8,9 +8,8 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 type: integration
 
 brief: Wazuh-db is the daemon in charge of the databases with all the Wazuh persistent information, exposing a socket
-       to receive requests and provide information. In Wazuh 5.0 the daemon manages three databases: global, mitre
-       and task. Per-agent databases were removed when agent and manager were architecturally split, so this suite
-       only exercises the `global` and `task` actors.
+       to receive requests and provide information. The daemon manages the global, mitre and task databases; this
+       suite exercises the `global` and `task` actors.
 
 components:
     - wazuh_db
