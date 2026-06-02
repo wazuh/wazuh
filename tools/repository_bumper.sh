@@ -410,72 +410,46 @@ update_file_packages() {
     formatted_date=$(date -d "$new_date" +"%a, %d %b %Y 00:00:00 +0000")
     spec_date=$(date -d "$new_date" +"%a %b %d %Y")
 
-    # Update .spec files
-    for spec_file in $(find "$DIR_PACKAGE" -type f -name "*.spec"); do
-        local existing_line
-        existing_line=$(grep -E "^\\* .+ - ${final_version}$" "$spec_file" || true)
+    local version_dashed="${final_version//./-}"
 
-        if [[ -n "$existing_line" ]]; then
-            sed -i -E \
-                "s|^\* .+ - ${final_version}$|* ${spec_date} support <info@wazuh.com> - ${final_version}|" \
-                "$spec_file"
-            log_action "Updated changelog date for version ${final_version} in: $spec_file"
-        else
-            sed -i -E \
-                "/^%changelog\s*$/a * ${spec_date} support <info@wazuh.com> - ${final_version}\n- More info: https://documentation.wazuh.com/current/release-notes/release-${final_version//./-}.html" \
-                "$spec_file"
-            log_action "Prepended changelog entry for version ${final_version} in: $spec_file"
-        fi
+    # Update .spec files - always update the first changelog entry in place
+    for spec_file in $(find "$DIR_PACKAGE" -type f -name "*.spec"); do
+        sed -i -E \
+            "0,/^\* .+ support <info@wazuh\.com> - [0-9]+\.[0-9]+\.[0-9]+$/s|^\* .+ support <info@wazuh\.com> - [0-9]+\.[0-9]+\.[0-9]+$|* ${spec_date} support <info@wazuh.com> - ${final_version}|" \
+            "$spec_file"
+        sed -i -E \
+            "0,/^- More info: https:\/\/documentation\.wazuh\.com\/current\/release-notes\/release-[0-9]+-[0-9]+-[0-9]+\.html$/s|^- More info: .*$|- More info: https://documentation.wazuh.com/current/release-notes/release-${version_dashed}.html|" \
+            "$spec_file"
+        log_action "Updated changelog entry for version ${final_version} in: $spec_file"
     done
 
-    # Update changelog files (prepend entry)
+    # Update changelog files - always update the first entry in place
     for changelog_file in $(find "$DIR_PACKAGE" -type f -name "changelog"); do
         local INSTALL_TYPE
         INSTALL_TYPE=$(basename "$(dirname "$(dirname "$changelog_file")")")
-        local changelog_entry
-        changelog_entry="$(
-cat <<EOF
-${INSTALL_TYPE} (${final_version}-RELEASE) stable; urgency=low
 
-  * More info: https://documentation.wazuh.com/current/release-notes/release-${final_version//./-}.html
+        awk -v pkg="$INSTALL_TYPE" -v new_ver="$final_version" -v new_url="https://documentation.wazuh.com/current/release-notes/release-${version_dashed}.html" -v new_date="$formatted_date" '
+        BEGIN { header_done = 0; url_done = 0; date_done = 0 }
+        {
+            if (!header_done && $0 ~ ("^" pkg " \\([0-9]+\\.[0-9]+\\.[0-9]+-RELEASE\\) stable; urgency=low$")) {
+                print pkg " (" new_ver "-RELEASE) stable; urgency=low"
+                header_done = 1
+                next
+            }
+            if (!url_done && $0 ~ /^  \* More info: https:\/\/documentation\.wazuh\.com\/current\/release-notes\/release-[0-9]+-[0-9]+-[0-9]+\.html$/) {
+                print "  * More info: " new_url
+                url_done = 1
+                next
+            }
+            if (!date_done && $0 ~ /^ -- Wazuh, Inc <info@wazuh\.com>  /) {
+                print " -- Wazuh, Inc <info@wazuh.com>  " new_date
+                date_done = 1
+                next
+            }
+            print
+        }' "$changelog_file" > "${changelog_file}.tmp" && mv "${changelog_file}.tmp" "$changelog_file"
 
- -- Wazuh, Inc <info@wazuh.com>  ${formatted_date}
-
-EOF
-)"
-        local version_pattern_grep
-        local version_pattern_awk
-        version_pattern_grep="^${INSTALL_TYPE} \(${final_version//./\\.}-RELEASE\) stable; urgency=low"
-        version_pattern_awk="^${INSTALL_TYPE} [(]${final_version//./.}-RELEASE[)] stable; urgency=low"
-
-        if grep -qE "$version_pattern_grep" "$changelog_file"; then
-            awk -v version_regex="$version_pattern_awk" -v new_date="$formatted_date" '
-            BEGIN { inside_match = 0 }
-            {
-                if ($0 ~ version_regex) {
-                    inside_match = 1
-                    print
-                    next
-                }
-                if (inside_match && $0 ~ /^ -- Wazuh, Inc <info@wazuh.com>  /) {
-                    print " -- Wazuh, Inc <info@wazuh.com>  " new_date
-                    inside_match = 0
-                    next
-                }
-                print
-            }' "$changelog_file" > "${changelog_file}.tmp" && mv "${changelog_file}.tmp" "$changelog_file"
-
-            log_action "Updated changelog date for version ${final_version} in: $changelog_file"
-        else
-            local tmp_file
-            tmp_file=$(mktemp)
-            {
-                printf "%s\n\n" "$changelog_entry"
-                cat "$changelog_file"
-            } > "$tmp_file" && mv "$tmp_file" "$changelog_file"
-
-            log_action "Prepended changelog entry for version ${final_version} in: $changelog_file"
-        fi
+        log_action "Updated changelog entry for version ${final_version} in: $changelog_file"
     done
 
     # Update copyright files
