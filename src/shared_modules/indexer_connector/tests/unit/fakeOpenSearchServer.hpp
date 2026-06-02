@@ -26,13 +26,13 @@ class FakeOpenSearchServer
 {
 private:
     httplib::Server m_server;
-    std::thread m_thread;
     std::string m_host;
     std::string m_health;
     int m_port;
     int m_statusCode;
     std::string m_response;
     uint16_t m_forcedDelay;
+    std::thread m_thread;
 
 public:
     /**
@@ -51,39 +51,15 @@ public:
                          uint16_t forcedDelay = 0,
                          int code = 200,
                          std::string response = "")
-        : m_thread(&FakeOpenSearchServer::run, this)
-        , m_host(std::move(host))
+        : m_host(std::move(host))
         , m_health(std::move(health))
         , m_port(port)
         , m_statusCode(code)
         , m_response(std::move(response))
         , m_forcedDelay(forcedDelay)
     {
-        // Wait until server is ready
-        while (!m_server.is_running())
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-    }
-
-    ~FakeOpenSearchServer()
-    {
-        m_server.stop();
-        if (m_thread.joinable())
-        {
-            m_thread.join();
-        }
-    }
-
-    /**
-     * @brief Starts the server and listens for new connections.
-     *
-     * Setups a fake OpenSearch endpoint, configures the server and starts listening
-     * for new connections.
-     *
-     */
-    void run()
-    {
+        // Register routes before the worker thread starts so the route table is fully published
+        // when the main thread observes m_server.is_running().
         m_server.Get("/_cat/health",
                      [this](const httplib::Request& /*req*/, httplib::Response& res)
                      {
@@ -118,6 +94,33 @@ public:
                          }
                      });
         m_server.set_keep_alive_max_count(1);
+
+        // Start the worker thread only after every member it touches is initialized.
+        m_thread = std::thread(&FakeOpenSearchServer::run, this);
+
+        // Wait until server is ready
+        while (!m_server.is_running())
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    }
+
+    ~FakeOpenSearchServer()
+    {
+        m_server.stop();
+        if (m_thread.joinable())
+        {
+            m_thread.join();
+        }
+    }
+
+    /**
+     * @brief Starts the server and listens for new connections.
+     *
+     * Routes are already registered by the constructor; this only blocks on listen().
+     */
+    void run()
+    {
         m_server.listen(m_host.c_str(), m_port);
     }
 };
