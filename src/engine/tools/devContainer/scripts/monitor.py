@@ -790,14 +790,15 @@ _RE_SESSION_STATS = re.compile(
 # Event counter patterns — matches error/warning events in the manager log.
 # Each match increments a per-second counter in logs.csv.
 _EVENT_PATTERNS: dict[str, re.Pattern] = {
-    "session_limit_reached": re.compile(r"Session limit reached \(\d+/\d+ active sessions\)"),
-    "zombie_cleaned":        re.compile(r"Cleaning up zombie session \d+ for agent"),
-    "session_timeout":       re.compile(r"Session \d+ has timed out"),
-    "vdsync_timeout":        re.compile(r"Feed update scan timeout waiting for VDSync"),
-    "parse_error":           re.compile(r"Failed to parse JSON message"),
-    "module_check_failed":   re.compile(r"ModuleCheck failed"),
-    "inventory_sync_error":  re.compile(r"InventorySyncFacade::start: (?!Session not found)"),
-    "indexer_error":         re.compile(r"(indexer.*error|Indexer.*error|indexer.*offline|indexer.*not available)",
+    "session_limit_reached":        re.compile(r"Session limit reached \(\d+/\d+ active sessions\)"),
+    "data_value_quota_exhausted":   re.compile(r"DataValue quota exhausted"),
+    "zombie_cleaned":               re.compile(r"Cleaning up zombie session \d+ for agent"),
+    "session_timeout":              re.compile(r"Session \d+ has timed out"),
+    "vdsync_timeout":               re.compile(r"Feed update scan timeout waiting for VDSync"),
+    "parse_error":                  re.compile(r"Failed to parse JSON message"),
+    "module_check_failed":          re.compile(r"ModuleCheck failed"),
+    "inventory_sync_error":         re.compile(r"InventorySyncFacade::start: (?!(Session not found|DataValue quota exhausted))"),
+    "indexer_error":                re.compile(r"(indexer.*error|Indexer.*error|indexer.*offline|indexer.*not available)",
                                         re.IGNORECASE),
 }
 
@@ -809,15 +810,27 @@ _GAUGE_PATTERN = re.compile(
     r"sessions=(?P<sessions>\d+)\s+"
     r"blocked_agents=(?P<blocked_agents>\d+)\s+"
     r"active_vdfirst=(?P<active_vdfirst>\d+)\s+"
-    r"indexer_bulk_bytes=(?P<indexer_bulk_bytes>\d+)\s+"
-    r"indexer_notify=(?P<indexer_notify>\d+)\s+"
-    r"indexer_delbyq=(?P<indexer_delbyq>\d+)\s+"
+    r"indexer_bulk_bytes=(?P<indexer_bulk_bytes>\d+|\?)\s+"
+    r"indexer_notify=(?P<indexer_notify>\d+|\?)\s+"
+    r"indexer_delbyq=(?P<indexer_delbyq>\d+|\?)\s+"
     r"rocksdb_dir_bytes=(?P<rocksdb_dir_bytes>\d+)"
+    r"(?:\s+workers_q_limit=(?P<workers_q_limit>\d+)"
+    r"\s+workers_q_used_pct=(?P<workers_q_used_pct>\d+(?:\.\d+)?)"
+    r"\s+session_limit=(?P<session_limit>\d+)"
+    r"\s+session_used_pct=(?P<session_used_pct>\d+(?:\.\d+)?)"
+    r"\s+data_value_quota_total=(?P<data_value_quota_total>\d+)"
+    r"\s+data_value_quota_remaining=(?P<data_value_quota_remaining>\d+)"
+    r"\s+data_value_quota_reserved=(?P<data_value_quota_reserved>\d+)"
+    r"\s+data_value_quota_used_pct=(?P<data_value_quota_used_pct>\d+(?:\.\d+)?)"
+    r"\s+data_value_quota_rejections=(?P<data_value_quota_rejections>\d+))?"
 )
 
 _GAUGE_NAMES: tuple[str, ...] = (
     "workers_q", "indexer_q", "sessions", "blocked_agents", "active_vdfirst",
     "indexer_bulk_bytes", "indexer_notify", "indexer_delbyq", "rocksdb_dir_bytes",
+    "workers_q_limit", "workers_q_used_pct", "session_limit", "session_used_pct",
+    "data_value_quota_total", "data_value_quota_remaining", "data_value_quota_reserved",
+    "data_value_quota_used_pct", "data_value_quota_rejections",
 )
 
 _LOGS_CSV_HEADER = (
@@ -828,6 +841,12 @@ _LOGS_CSV_HEADER = (
 
 _RE_LOG_TIMESTAMP = re.compile(r"^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})")
 _LOG_TS_FMT = "%Y/%m/%d %H:%M:%S"
+
+
+def _parse_gauge_number(value: str | None) -> int | float | None:
+    if value in (None, "", "?"):
+        return None
+    return float(value) if "." in value else int(value)
 
 
 def _parse_flat_kv(text: str) -> dict[str, str]:
@@ -890,9 +909,9 @@ def extract_invsync_logs(output_dir: str,
     # Key = integer elapsed second, value = {counter_name: count, ...}
     buckets: dict[int, dict[str, int]] = {}
     # Gauge values carry forward — last seen value persists until updated.
-    gauges: dict[str, int] = {}
+    gauges: dict[str, int | float] = {}
     # Track per-bucket gauge snapshots separately so carry-forward works.
-    bucket_gauges: dict[int, dict[str, int]] = {}
+    bucket_gauges: dict[int, dict[str, int | float]] = {}
 
     logger.info("Extracting InventorySync logs from %s (since %s) ...",
                 log_path,
@@ -925,7 +944,9 @@ def extract_invsync_logs(output_dir: str,
                 gauge_match = _GAUGE_PATTERN.search(line)
                 if gauge_match:
                     for name in _GAUGE_NAMES:
-                        gauges[name] = int(gauge_match.group(name))
+                        parsed = _parse_gauge_number(gauge_match.group(name))
+                        if parsed is not None:
+                            gauges[name] = parsed
                     bucket_gauges[elapsed_s] = dict(gauges)
                 continue
 
@@ -959,7 +980,7 @@ def extract_invsync_logs(output_dir: str,
             max(bucket_gauges.keys()) if bucket_gauges else 0,
         )
         logs_rows: list[dict] = []
-        carried_gauges: dict[str, int] = {}
+        carried_gauges: dict[str, int | float] = {}
         for sec in range(0, max_sec + 1):
             # Update carried gauges if this second has a snapshot
             if sec in bucket_gauges:

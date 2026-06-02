@@ -589,6 +589,12 @@ INVSYNC_QUEUE_METRICS = [
     ("indexer_notify",    "Indexer Notify Count",      "Count"),
     ("indexer_delbyq",    "Indexer Delete-by-Query",   "Count"),
     ("rocksdb_dir_bytes", "RocksDB Directory Size",    "Bytes"),
+    ("workers_q_used_pct", "Workers Queue Saturation",  "Percent"),
+    ("session_used_pct",  "Session Limit Saturation",  "Percent"),
+    ("data_value_quota_remaining", "DataValue Quota Remaining", "DataValues"),
+    ("data_value_quota_reserved",  "DataValue Quota Reserved",  "DataValues"),
+    ("data_value_quota_used_pct",  "DataValue Quota Saturation", "Percent"),
+    ("data_value_quota_rejections", "DataValue Quota Rejections", "Count"),
 ]
 
 INVSYNC_SESSION_TIMING = [

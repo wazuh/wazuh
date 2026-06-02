@@ -77,65 +77,201 @@ index 174da8ea95..5e4bebf3b2 100644
 +
  // LCOV_EXCL_STOP
 diff --git a/src/shared_modules/indexer_connector/src/indexerConnectorSyncImpl.hpp b/src/shared_modules/indexer_connector/src/indexerConnectorSyncImpl.hpp
-index ec95034ba8..f1939a3418 100644
+index ec95034ba8..f4b01bbef4 100644
 --- a/src/shared_modules/indexer_connector/src/indexerConnectorSyncImpl.hpp
 +++ b/src/shared_modules/indexer_connector/src/indexerConnectorSyncImpl.hpp
-@@ -281,7 +281,11 @@ class IndexerConnectorSyncImpl final
+@@ -281,12 +281,36 @@ class IndexerConnectorSyncImpl final
      std::vector<std::function<void()>> m_notify;
      std::chrono::steady_clock::time_point m_lastBulkTime;
      std::condition_variable m_cv;
--    std::mutex m_mutex;
 +    // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
-+    // 'mutable' permite a los getters const (getBulkDataSize / getPendingNotifyCount /
-+    // getDeleteByQueryCount) tomar el lock para leer sin romper el contrato const.
-+    mutable std::mutex m_mutex;
+     std::mutex m_mutex;
++    std::atomic<size_t> m_bulkDataSizeMetric {0};
++    std::atomic<size_t> m_pendingNotifyCountMetric {0};
++    std::atomic<size_t> m_deleteByQueryCountMetric {0};
 +    // === END TEMP ===
      std::thread m_bulkThread;
      std::atomic<bool> m_stopping {false};
      std::vector<size_t> m_boundaries;
-@@ -1384,6 +1388,42 @@ public:
-         m_notify.push_back(std::move(callback));
-     }
+     bool m_shouldNotifyAfterBulk {false};
  
 +    // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
-+    // Los getters usan try_to_lock: si el mutex está hold (p. ej. scopeLock() durante
-+    // un waitForFeedReady() del VD scanner que dura minutos), devuelven SIZE_MAX como
-+    // sentinela "locked" en lugar de bloquear al sampler. Esto evita que el log de
-+    // colas se calle durante esperas largas.
++    // Approximate benchmark metrics: writers publish after queue mutations,
++    // while getters read relaxed atomics without blocking the main flow.
++    void publishBulkDataSizeMetric() noexcept
++    {
++        m_bulkDataSizeMetric.store(m_bulkData.size(), std::memory_order_relaxed);
++    }
++
++    void publishPendingNotifyCountMetric() noexcept
++    {
++        m_pendingNotifyCountMetric.store(m_notify.size(), std::memory_order_relaxed);
++    }
++
++    void publishDeleteByQueryCountMetric() noexcept
++    {
++        m_deleteByQueryCountMetric.store(m_deleteByQuery.size(), std::memory_order_relaxed);
++    }
++    // === END TEMP ===
++
+     void processBulk()
+     {
+         bool needToRetry = false;
+@@ -326,6 +350,7 @@ class IndexerConnectorSyncImpl final
+             {
+                 logError(m_logTag.c_str(), "deleteByQuery error: %s, status code: %ld.", error.c_str(), statusCode);
+                 m_bulkData.clear();
++                publishBulkDataSizeMetric();
+                 m_lastBulkTime = std::chrono::steady_clock::now();
+                 throw IndexerConnectorException(error);
+             }
+@@ -359,6 +384,7 @@ class IndexerConnectorSyncImpl final
+                 logError(m_logTag.c_str(), "Bulk operation had indexing failures");
+                 m_bulkData.clear();
+                 m_boundaries.clear();
++                publishBulkDataSizeMetric();
+                 m_lastBulkTime = std::chrono::steady_clock::now();
+                 throw IndexerConnectorException("Bulk operation had indexing failures");
+             }
+@@ -384,6 +410,7 @@ class IndexerConnectorSyncImpl final
+                              m_bulkData.size());
+                     m_bulkData.clear();
+                     m_boundaries.clear();
++                    publishBulkDataSizeMetric();
+                     throw IndexerConnectorException("Single operation exceeds server payload limits");
+                 }
+                 splitAndProcessBulk();
+@@ -395,6 +422,7 @@ class IndexerConnectorSyncImpl final
+                         "handled by validateBulkResponse().");
+                 m_bulkData.clear();
+                 m_boundaries.clear();
++                publishBulkDataSizeMetric();
+                 m_lastBulkTime = std::chrono::steady_clock::now();
+                 throw IndexerConnectorException("Bulk version conflict at request level");
+             }
+@@ -408,6 +436,7 @@ class IndexerConnectorSyncImpl final
+                 logError(m_logTag.c_str(), "%s, status code: %ld.", error.c_str(), statusCode);
+                 m_bulkData.clear();
+                 m_boundaries.clear();
++                publishBulkDataSizeMetric();
+                 m_lastBulkTime = std::chrono::steady_clock::now();
+                 throw IndexerConnectorException(error);
+             }
+@@ -450,6 +479,8 @@ class IndexerConnectorSyncImpl final
+         m_bulkData.clear();
+         m_boundaries.clear();
+         m_deleteByQuery.clear();
++        publishBulkDataSizeMetric();
++        publishDeleteByQueryCountMetric();
+         m_lastBulkTime = std::chrono::steady_clock::now();
+     }
+ 
+@@ -505,6 +536,7 @@ class IndexerConnectorSyncImpl final
+         }
+         m_bulkData.clear();
+         m_boundaries.clear();
++        publishBulkDataSizeMetric();
+         m_lastBulkTime = std::chrono::steady_clock::now();
+     }
+ 
+@@ -705,6 +737,7 @@ public:
+                             {
+                                 std::vector<std::function<void()>> callbacksCopy = std::move(m_notify);
+                                 m_notify.clear();
++                                publishPendingNotifyCountMetric();
+                                 m_shouldNotifyAfterBulk = false;
+ 
+                                 timeoutLock.unlock();
+@@ -746,6 +779,7 @@ public:
+         }
+         auto [it, success] = m_deleteByQuery.try_emplace(index, nlohmann::json::object());
+         it->second["query"]["bool"]["filter"]["terms"]["wazuh.agent.id"].push_back(agentId);
++        publishDeleteByQueryCountMetric();
+     }
+ 
+     void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery)
+@@ -851,6 +885,7 @@ public:
+                         "Update by query returned 409 version conflict. This indicates documents were modified by "
+                         "another process.");
+                 m_notify.clear();
++                publishPendingNotifyCountMetric();
+                 throw IndexerConnectorException("Update by query version conflict");
+             }
+             else if (statusCode == HTTP_TOO_MANY_REQUESTS)
+@@ -862,6 +897,7 @@ public:
+             {
+                 logError(m_logTag.c_str(), "Update by query failed: %s, status code: %ld.", error.c_str(), statusCode);
+                 m_notify.clear();
++                publishPendingNotifyCountMetric();
+                 throw IndexerConnectorException(error);
+             }
+         };
+@@ -872,6 +908,7 @@ public:
+             {
+                 logDebug2(m_logTag.c_str(), "Stopping requested, aborting update by query");
+                 m_notify.clear();
++                publishPendingNotifyCountMetric();
+                 return;
+             }
+ 
+@@ -1240,6 +1277,7 @@ public:
+         m_bulkData.append(R"("}})");
+         m_bulkData.append("\n");
+         m_boundaries.push_back(m_bulkData.size());
++        publishBulkDataSizeMetric();
+     }
+ 
+     void bulkIndex(std::string_view id, std::string_view index, std::string_view data)
+@@ -1325,6 +1363,7 @@ public:
+         m_bulkData.append(data);
+         m_bulkData.append("\n");
+         m_boundaries.push_back(m_bulkData.size());
++        publishBulkDataSizeMetric();
+     }
+ 
+     void flush()
+@@ -1344,6 +1383,7 @@ public:
+             {
+                 callbacksCopy = std::move(m_notify);
+                 m_notify.clear();
++                publishPendingNotifyCountMetric();
+                 m_shouldNotifyAfterBulk = false;
+             }
+         }
+@@ -1369,6 +1409,7 @@ public:
+             {
+                 callbacksCopy = std::move(m_notify);
+                 m_notify.clear();
++                publishPendingNotifyCountMetric();
+                 m_shouldNotifyAfterBulk = false;
+             }
+         }
+@@ -1382,7 +1423,25 @@ public:
+     void registerNotify(std::function<void()> callback)
+     {
+         m_notify.push_back(std::move(callback));
++        publishPendingNotifyCountMetric();
++    }
++
++    // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
 +    size_t getBulkDataSize() const
 +    {
-+        std::unique_lock<std::mutex> lock(m_mutex, std::try_to_lock);
-+        if (!lock.owns_lock())
-+        {
-+            return SIZE_MAX;
-+        }
-+        return m_bulkData.size();
++        return m_bulkDataSizeMetric.load(std::memory_order_relaxed);
 +    }
 +
 +    size_t getPendingNotifyCount() const
 +    {
-+        std::unique_lock<std::mutex> lock(m_mutex, std::try_to_lock);
-+        if (!lock.owns_lock())
-+        {
-+            return SIZE_MAX;
-+        }
-+        return m_notify.size();
++        return m_pendingNotifyCountMetric.load(std::memory_order_relaxed);
 +    }
 +
 +    size_t getDeleteByQueryCount() const
 +    {
-+        std::unique_lock<std::mutex> lock(m_mutex, std::try_to_lock);
-+        if (!lock.owns_lock())
-+        {
-+            return SIZE_MAX;
-+        }
-+        return m_deleteByQuery.size();
-+    }
++        return m_deleteByQueryCountMetric.load(std::memory_order_relaxed);
+     }
 +    // === END TEMP ===
-+
+ 
      void refresh(std::string_view indexPattern)
      {
-         if (!isSafeIndexName(indexPattern))
 diff --git a/src/wazuh_modules/inventory_sync/src/agentSession.hpp b/src/wazuh_modules/inventory_sync/src/agentSession.hpp
 index a2d8fa84a1..c7974602e6 100644
 --- a/src/wazuh_modules/inventory_sync/src/agentSession.hpp
@@ -317,7 +453,7 @@ index a2d8fa84a1..c7974602e6 100644
                  m_context->agentId, m_context->sessionId, m_context->moduleName, m_gapSet->ranges());
          }
 diff --git a/src/wazuh_modules/inventory_sync/src/inventorySyncFacade.hpp b/src/wazuh_modules/inventory_sync/src/inventorySyncFacade.hpp
-index ac7e170bab..cfd58acdda 100644
+index 47c6f82220..04327393f6 100644
 --- a/src/wazuh_modules/inventory_sync/src/inventorySyncFacade.hpp
 +++ b/src/wazuh_modules/inventory_sync/src/inventorySyncFacade.hpp
 @@ -41,6 +41,9 @@
@@ -330,7 +466,29 @@ index ac7e170bab..cfd58acdda 100644
  constexpr auto INVENTORY_SYNC_PATH {"queue/inventory_sync"};
  constexpr auto INVENTORY_SYNC_TOPIC {"inventory-states"};
  constexpr auto INVENTORY_SYNC_SUBSCRIBER_ID {"inventory-sync-module"};
-@@ -1001,6 +1004,9 @@ public:
+@@ -338,6 +341,9 @@ class InventorySyncFacadeImpl final
+                     }
+                     if (!admitted)
+                     {
++                        // === BEGIN TEMP: inventory-sync queue stats instrumentation ===
++                        m_dataValueQuotaRejectedSessions.fetch_add(1, std::memory_order_relaxed);
++                        // === END TEMP ===
+                         logWarn(LOGGER_DEFAULT_TAG,
+                                 "InventorySyncFacade::start: DataValue quota exhausted "
+                                 "(requested=%llu, remaining=%llu); rejecting session for agent %s",
+@@ -631,8 +637,9 @@ public:
+         }
+         if (configuration.contains("dataValueQuota"))
+         {
+-            m_dataValueQuotaRemaining.store(configuration.at("dataValueQuota").get<uint64_t>(),
+-                                            std::memory_order_relaxed);
++            const auto dataValueQuota = configuration.at("dataValueQuota").get<uint64_t>();
++            m_dataValueQuotaTotal.store(dataValueQuota, std::memory_order_relaxed);
++            m_dataValueQuotaRemaining.store(dataValueQuota, std::memory_order_relaxed);
+         }
+         logDebug1(LOGGER_DEFAULT_TAG,
+                   "InventorySync queue size: %zu, DataValue quota: %llu",
+@@ -1001,6 +1008,9 @@ public:
                                              "full resync required",
                                              res.context->agentId.c_str(),
                                              MAX_RETRIES);
@@ -340,7 +498,7 @@ index ac7e170bab..cfd58acdda 100644
                                      m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_ChecksumMismatch,
                                                                       res.context->agentId,
                                                                       res.context->sessionId,
-@@ -1014,6 +1020,9 @@ public:
+@@ -1014,6 +1024,9 @@ public:
                                       "ModuleCheck failed for agent %s: %s",
                                       res.context->agentId.c_str(),
                                       e.what());
@@ -350,7 +508,7 @@ index ac7e170bab..cfd58acdda 100644
                              m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
                                                               res.context->agentId,
                                                               res.context->sessionId,
-@@ -1320,6 +1329,9 @@ public:
+@@ -1320,6 +1333,9 @@ public:
                                                           "agent %s: %s",
                                                           res.context->agentId.c_str(),
                                                           e.what());
@@ -360,7 +518,7 @@ index ac7e170bab..cfd58acdda 100644
                                                  m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
                                                                                   res.context->agentId,
                                                                                   res.context->sessionId,
-@@ -1415,6 +1427,10 @@ public:
+@@ -1415,6 +1431,10 @@ public:
                          unlockAgent(res.context->agentId);
                      }
  
@@ -371,7 +529,7 @@ index ac7e170bab..cfd58acdda 100644
                      // Send ACK to agent.
                      m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
                                                       res.context->agentId,
-@@ -1444,6 +1460,10 @@ public:
+@@ -1444,6 +1464,10 @@ public:
                          unlockAgent(res.context->agentId);
                      }
  
@@ -382,7 +540,7 @@ index ac7e170bab..cfd58acdda 100644
                      // Send ACK to agent.
                      m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
                                                       res.context->agentId,
-@@ -1505,6 +1525,9 @@ public:
+@@ -1505,6 +1529,9 @@ public:
  
                              // Delete data from database.
                              m_dataStore->deleteByPrefix(std::to_string(it->first));
@@ -392,7 +550,7 @@ index ac7e170bab..cfd58acdda 100644
                              it = eraseSessionLocked(it);
                          }
                          else
-@@ -1519,6 +1542,78 @@ public:
+@@ -1519,6 +1546,107 @@ public:
          // Init the socket server to attend keystore requests
          initializeKeystoreSocket();
  
@@ -433,26 +591,46 @@ index ac7e170bab..cfd58acdda 100644
 +                        vdFirst = m_activeVDFirstScans.size();
 +                    }
 +
-+                    // Los 3 getters del IndexerConnector usan try_lock. Si el mutex
-+                    // estaba hold (p. ej. waitForFeedReady() de un VDFirst/VDSync),
-+                    // retornan SIZE_MAX y aquí se imprimen como "?" para no callar
-+                    // al sampler durante esperas largas.
-+                    const auto fmtCnt = [](std::size_t v)
-+                    { return (v == SIZE_MAX) ? std::string("?") : std::to_string(v); };
-+                    const std::string bulkBytesStr =
-+                        m_indexerConnector ? fmtCnt(m_indexerConnector->getBulkDataSize()) : "0";
-+                    const std::string notifyStr =
-+                        m_indexerConnector ? fmtCnt(m_indexerConnector->getPendingNotifyCount()) : "0";
-+                    const std::string delByQStr =
-+                        m_indexerConnector ? fmtCnt(m_indexerConnector->getDeleteByQueryCount()) : "0";
++                    // Read approximate queue metrics through relaxed atomics to avoid blocking
++                    // the benchmark sampler.
++                    const std::string bulkBytesStr = m_indexerConnector
++                                                         ? std::to_string(m_indexerConnector->getBulkDataSize())
++                                                         : "0";
++                    const std::string notifyStr = m_indexerConnector
++                                                      ? std::to_string(m_indexerConnector->getPendingNotifyCount())
++                                                      : "0";
++                    const std::string delByQStr = m_indexerConnector
++                                                      ? std::to_string(m_indexerConnector->getDeleteByQueryCount())
++                                                      : "0";
 +
 +                    const auto rocksBytes = recursiveDirSize(INVENTORY_SYNC_PATH);
++                    const auto quotaTotal = m_dataValueQuotaTotal.load(std::memory_order_relaxed);
++                    const auto quotaRemaining = m_dataValueQuotaRemaining.load(std::memory_order_relaxed);
++                    const auto quotaReserved = (quotaTotal > quotaRemaining) ? (quotaTotal - quotaRemaining) : 0ULL;
++                    const auto quotaRejections =
++                        m_dataValueQuotaRejectedSessions.load(std::memory_order_relaxed);
++                    const double quotaUsedPct =
++                        quotaTotal ? (static_cast<double>(quotaReserved) * 100.0 / static_cast<double>(quotaTotal))
++                                   : 0.0;
++                    const double sessionUsedPct =
++                        (m_maxSessions > 0)
++                            ? (static_cast<double>(sessions) * 100.0 / static_cast<double>(m_maxSessions))
++                            : 0.0;
++                    const double workersQueueUsedPct =
++                        m_workersQueueSize
++                            ? (static_cast<double>(workersQ) * 100.0 / static_cast<double>(m_workersQueueSize))
++                            : 0.0;
 +
 +                    logInfo(LOGGER_DEFAULT_TAG,
 +                            "InventorySync queue stats: workers_q=%zu indexer_q=%zu "
 +                            "sessions=%zu blocked_agents=%zu active_vdfirst=%zu "
 +                            "indexer_bulk_bytes=%s indexer_notify=%s indexer_delbyq=%s "
-+                            "rocksdb_dir_bytes=%llu",
++                            "rocksdb_dir_bytes=%llu "
++                            "workers_q_limit=%zu workers_q_used_pct=%.2f "
++                            "session_limit=%d session_used_pct=%.2f "
++                            "data_value_quota_total=%llu data_value_quota_remaining=%llu "
++                            "data_value_quota_reserved=%llu data_value_quota_used_pct=%.2f "
++                            "data_value_quota_rejections=%llu",
 +                            workersQ,
 +                            indexerQ,
 +                            sessions,
@@ -461,7 +639,16 @@ index ac7e170bab..cfd58acdda 100644
 +                            bulkBytesStr.c_str(),
 +                            notifyStr.c_str(),
 +                            delByQStr.c_str(),
-+                            static_cast<unsigned long long>(rocksBytes));
++                            static_cast<unsigned long long>(rocksBytes),
++                            m_workersQueueSize,
++                            workersQueueUsedPct,
++                            m_maxSessions,
++                            sessionUsedPct,
++                            static_cast<unsigned long long>(quotaTotal),
++                            static_cast<unsigned long long>(quotaRemaining),
++                            static_cast<unsigned long long>(quotaReserved),
++                            quotaUsedPct,
++                            static_cast<unsigned long long>(quotaRejections));
 +
 +                    lock.lock();
 +                }
@@ -471,7 +658,7 @@ index ac7e170bab..cfd58acdda 100644
          logInfo(LOGGER_DEFAULT_TAG, "InventorySyncFacade started.");
      }
  
-@@ -1867,6 +1962,18 @@ public:
+@@ -1834,6 +1962,18 @@ public:
          return 1;
      }
  
@@ -490,7 +677,7 @@ index ac7e170bab..cfd58acdda 100644
      /**
       * @brief Clean up zombie sessions for an agent
       * @param agentId Agent ID to clean up sessions for
-@@ -1912,6 +2019,10 @@ public:
+@@ -1879,6 +2019,10 @@ public:
                  // Delete data from database
                  m_dataStore->deleteByPrefix(std::to_string(sessionId));
  
@@ -501,7 +688,7 @@ index ac7e170bab..cfd58acdda 100644
                  // Remove session (restores DataValue quota)
                  eraseSessionLocked(it);
                  cleanedCount++;
-@@ -2009,6 +2120,19 @@ public:
+@@ -1976,6 +2120,19 @@ public:
              m_sessionTimeoutThread.join();
          }
  
@@ -521,7 +708,7 @@ index ac7e170bab..cfd58acdda 100644
          // Clear VDFirst scan tracking
          {
              std::unique_lock lock(m_activeVDFirstScansMutex);
-@@ -2026,6 +2150,39 @@ public:
+@@ -1993,6 +2150,39 @@ public:
  private:
      InventorySyncFacadeImpl() = default;
  
@@ -561,7 +748,7 @@ index ac7e170bab..cfd58acdda 100644
      void deleteAgent(const std::string& agentId)
      {
          if (agentId.empty())
-@@ -2124,6 +2281,10 @@ private:
+@@ -2091,6 +2281,10 @@ private:
                  // Delete data from database
                  m_dataStore->deleteByPrefix(std::to_string(staleSessionId));
  
@@ -572,7 +759,19 @@ index ac7e170bab..cfd58acdda 100644
                  // Remove session from map (restores DataValue quota)
                  eraseSessionLocked(it);
                  m_sessionCompletedCV.notify_all();
-@@ -2152,6 +2313,12 @@ private:
+@@ -2101,8 +2295,11 @@ private:
+     std::string m_clusterName;
+     int m_maxSessions {1000};          // Maximum concurrent sessions (configured from internal_options)
+     size_t m_workersQueueSize {10000}; // Input queue cap (configured from internal_options)
++    std::atomic<uint64_t> m_dataValueQuotaTotal {
++        500000}; // Global DataValue quota capacity (configured from internal_options)
+     std::atomic<uint64_t> m_dataValueQuotaRemaining {
+         500000};                                   // Global DataValue quota (configured from internal_options)
++    std::atomic<uint64_t> m_dataValueQuotaRejectedSessions {0}; // Start messages rejected by DataValue quota
+     std::atomic<int64_t> m_lastQueueDropLogNs {0}; // steady_clock ns of last queue-drop warning
+     static constexpr int64_t WARN_THROTTLE_NS = 90LL * 1000LL * 1000LL * 1000LL; // 90 s
+     mutable std::shared_mutex m_agentSessionsMutex;
+@@ -2119,6 +2316,12 @@ private:
      std::map<uint64_t, TAgentSession, std::less<>> m_agentSessions;
      std::thread m_sessionTimeoutThread;
  
