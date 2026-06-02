@@ -1539,7 +1539,7 @@ public:
         // Init the socket server to attend keystore requests
         initializeKeystoreSocket();
 
-        logInfo(LOGGER_DEFAULT_TAG, "InventorySyncFacade started.");
+        logDebug1(LOGGER_DEFAULT_TAG, "InventorySyncFacade started.");
     }
 
     /**

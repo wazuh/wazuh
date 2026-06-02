@@ -294,8 +294,18 @@ REMOTED_METRICS = [
         "Count",
     ),
     (
-        "messages_received_breakdown_event",
-        "Remoted Messages Received Event",
+        "messages_received_breakdown_events",
+        "Remoted Messages Received Events",
+        "Count",
+    ),
+    (
+        "messages_received_breakdown_events_failed",
+        "Remoted Messages Received Events Failed",
+        "Count",
+    ),
+    (
+        "messages_received_breakdown_states",
+        "Remoted Messages Received States",
         "Count",
     ),
     (

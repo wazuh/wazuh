@@ -79,8 +79,10 @@ REMOTED_HEADER = [
     "messages_received_breakdown_control",
     "messages_received_breakdown_dequeued_after",
     "messages_received_breakdown_discarded",
-    "messages_received_breakdown_event",
+    "messages_received_breakdown_events",
+    "messages_received_breakdown_events_failed",
     "messages_received_breakdown_ping",
+    "messages_received_breakdown_states",
     "messages_received_breakdown_unknown",
     "messages_received_breakdown_control_breakdown_keepalive",
     "messages_received_breakdown_control_breakdown_request",
@@ -541,8 +543,10 @@ def _flatten_remoted_stats(raw: dict[str, object], timestamp: str, elapsed_s: fl
             row["messages_received_breakdown_control"] = _as_int(recv_breakdown.get("control"))
             row["messages_received_breakdown_dequeued_after"] = _as_int(recv_breakdown.get("dequeued_after"))
             row["messages_received_breakdown_discarded"] = _as_int(recv_breakdown.get("discarded"))
-            row["messages_received_breakdown_event"] = _as_int(recv_breakdown.get("event"))
+            row["messages_received_breakdown_events"] = _as_int(recv_breakdown.get("events"))
+            row["messages_received_breakdown_events_failed"] = _as_int(recv_breakdown.get("events_failed"))
             row["messages_received_breakdown_ping"] = _as_int(recv_breakdown.get("ping"))
+            row["messages_received_breakdown_states"] = _as_int(recv_breakdown.get("states"))
             row["messages_received_breakdown_unknown"] = _as_int(recv_breakdown.get("unknown"))
 
             ctrl_breakdown = recv_breakdown.get("control_breakdown")
@@ -600,10 +604,11 @@ def remoted_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
                 raw = _query_remoted_stats(socket_path)
                 row = _flatten_remoted_stats(raw, ts_now, elapsed_s)
                 logger.info(
-                    "[remoted-api] usage=%.3f recv_discarded=%d recv_event=%d sent_discarded=%d tcp_sessions=%d",
+                    "[remoted-api] usage=%.3f recv_discarded=%d recv_events=%d recv_states=%d sent_discarded=%d tcp_sessions=%d",
                     _as_float(row.get("queues_received_usage")),
                     _as_int(row.get("messages_received_breakdown_discarded")),
-                    _as_int(row.get("messages_received_breakdown_event")),
+                    _as_int(row.get("messages_received_breakdown_events")),
+                    _as_int(row.get("messages_received_breakdown_states")),
                     _as_int(row.get("messages_sent_breakdown_discarded")),
                     _as_int(row.get("tcp_sessions")),
                 )

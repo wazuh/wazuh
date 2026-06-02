@@ -655,7 +655,7 @@ index 47c6f82220..04327393f6 100644
 +            });
 +        // === END TEMP ===
 +
-         logInfo(LOGGER_DEFAULT_TAG, "InventorySyncFacade started.");
+         logDebug1(LOGGER_DEFAULT_TAG, "InventorySyncFacade started.");
      }
  
 @@ -1834,6 +1962,18 @@ public:
