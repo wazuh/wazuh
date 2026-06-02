@@ -120,5 +120,6 @@
 # Migration Guide
 
 - [Mail Forwarding and Reporting to Dashboard Notifications](guide/migration/mail-forwarding-reporting.md)
+- [Remote Syslog Output to Dashboard Notifications](guide/migration/remote-syslog-output.md)
 
 # Diagnostic Documentation
