@@ -79,12 +79,7 @@ For each block, note the benchmark content and profile it referenced (the `<cont
 
 Delete the `<wodle name="cis-cat">` and `<wodle name="open-scap">` blocks. Edit the local `ossec.conf` directly on each agent, and edit any shared `agent.conf` on the manager (in the group's `etc/shared/<group>/` directory) — not on the agents, which receive that file from the manager.
 
-This step is mandatory. Wazuh 5.0 no longer registers a module under either name, so leaving the block in place causes the agent to reject the configuration and log:
-
-```
-ERROR: Unknown module 'cis-cat'
-ERROR: Unknown module 'open-scap'
-```
+This step is mandatory. Wazuh 5.0 no longer registers a module under either name, so leaving the block in place causes the agent to reject the configuration.
 
 ## 3. Map your benchmarks to SCA policies
 
@@ -103,7 +98,6 @@ Add or update the `<sca>` block in `ossec.conf`. SCA is enabled by default and a
   <interval>1d</interval>
   <policies>
     <policy>ruleset/sca/centos/7/cis_centos7_linux.yml</policy>
-    <policy enabled="no">ruleset/sca/rhel/7/cis_rhel7_linux.yml</policy>
   </policies>
 </sca>
 ```
@@ -138,7 +132,7 @@ If the deprecated wodles were distributed through a shared `agent.conf`, push th
 Confirm that the migration succeeded on a representative agent:
 
 1. Check the agent log (`/var/ossec/logs/ossec.log`) and verify there are **no** `Unknown module 'cis-cat'` or `Unknown module 'open-scap'` errors.
-2. Confirm SCA runs. With `wazuh_modules.debug` raised, the log shows the scan boundaries:
+2. Confirm SCA runs. The log shows the scan boundaries:
 
    ```
    INFO: Scan started.
