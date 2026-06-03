@@ -69,7 +69,7 @@ int StartMQPredicated(const char *path, short int type, short int n_attempts, bo
         // If n_attempts is 0, trying to reconnect infinitely
         while ((rc = OS_ConnectUnixDomain(path, SOCK_DGRAM, OS_MAXSTR + 256)), rc < 0) {
             if ((*fn_ptr)()) {
-                mdebug2(FIM_SHUTDOWN_DETECTED);
+                mdebug2(MQ_SHUTDOWN_DETECTED);
                 return OS_INVALID;
             }
             attempt++;
@@ -77,7 +77,16 @@ int StartMQPredicated(const char *path, short int type, short int n_attempts, bo
             if (n_attempts != INFINITE_OPENQ_ATTEMPTS && attempt == n_attempts) {
                 break;
             }
-            sleep(sleep_time += 5);
+            // Interruptible backoff: keep the escalating delay, but re-check the
+            // shutdown predicate every second so shutdown is honored within ~1 s.
+            sleep_time += 5;
+            for (int slept = 0; slept < sleep_time; slept++) {
+                if ((*fn_ptr)()) {
+                    mdebug2(MQ_SHUTDOWN_DETECTED);
+                    return OS_INVALID;
+                }
+                sleep(1);
+            }
         }
 
         if (rc < 0) {
