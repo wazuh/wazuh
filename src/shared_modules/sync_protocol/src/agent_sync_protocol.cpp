@@ -610,7 +610,9 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         {
             if (!sendFlatBufferMessageAsString(messageVector))
             {
-                m_logger(LOG_WARNING, "Failed to send Start message.");
+                // During shutdown the local socket is gone; the failure is expected, so
+                // log at debug instead of warning to avoid misleading restart noise.
+                m_logger(shouldStop() ? LOG_DEBUG : LOG_WARNING, "Failed to send Start message.");
                 continue;
             }
 
@@ -642,7 +644,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                 return true;
             }
 
-            m_logger(LOG_WARNING, "Timed out waiting for StartAck. Retrying...");
+            m_logger(shouldStop() ? LOG_DEBUG : LOG_WARNING, "Timed out waiting for StartAck. Retrying...");
         }
 
         // Clean up metadata if we successfully retrieved it
@@ -651,7 +653,15 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
             metadata_provider_free_metadata(&metadata);
         }
 
-        m_logger(LOG_ERROR, "Exceeded maximum retries for Start message. Exiting...");
+        if (shouldStop())
+        {
+            // Expected during agent restart/shutdown: keep it as a debug breadcrumb.
+            m_logger(LOG_DEBUG, "Sync Start message retries exhausted because module is stopping.");
+        }
+        else
+        {
+            m_logger(LOG_ERROR, "Exceeded maximum retries for Start message. Exiting...");
+        }
 
         return false;
     }
@@ -945,7 +955,9 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
         {
             if (resendEnd && !sendFlatBufferMessageAsString(messageVector))
             {
-                m_logger(LOG_WARNING, "Failed to send End message.");
+                // During shutdown the local socket is gone; the failure is expected, so
+                // log at debug instead of warning to avoid misleading restart noise.
+                m_logger(shouldStop() ? LOG_DEBUG : LOG_WARNING, "Failed to send End message.");
                 attempt++;
                 continue;
             }
@@ -1040,7 +1052,8 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
 
         if (shouldStop())
         {
-            m_logger(LOG_INFO, "Sync End message retries exhausted because module is stopping.");
+            // Expected during agent restart/shutdown: keep it as a debug breadcrumb.
+            m_logger(LOG_DEBUG, "Sync End message retries exhausted because module is stopping.");
         }
         else
         {
