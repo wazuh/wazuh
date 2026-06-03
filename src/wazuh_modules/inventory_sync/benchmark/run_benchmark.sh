@@ -49,6 +49,11 @@ DRAIN_TIMEOUT=60
 # settles. CLI default is empty (let scenario decide); resolution order:
 #   CLI flag → scenario post_run_grace → GRACE_TIME (remote only) → 0
 POST_RUN_GRACE_CLI=""
+# Go-sender-only knobs; empty = let the binary use its built-in default.
+# Initialized here so `set -u` doesn't trip when the user doesn't pass them.
+START_ACK_TIMEOUT=""
+END_ACK_TIMEOUT=""
+POST_DATA_DELAY=""
 CLEANUP_AFTER=false
 COMPARE_MODE=false
 COMPARE_DIRS=()
