@@ -1155,8 +1155,20 @@ bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
 
     m_logFunction(LOG_DEBUG_VERBOSE, "Polling " + moduleName + " for pause completion (async pause)");
 
+    auto interruptibleDelay = [this, PAUSE_POLL_DELAY_MS]() -> bool
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        return m_cv.wait_for(lock, std::chrono::milliseconds(PAUSE_POLL_DELAY_MS), [this] { return m_stopped; });
+    };
+
     for (int attempt = 1; attempt <= maxAttempts; ++attempt)
     {
+        if (m_stopped)
+        {
+            m_logFunction(LOG_INFO, "Agent stopping, aborting FIM pause poll for " + moduleName);
+            return false;
+        }
+
         std::string isPauseCompletedMessage = createJsonCommand("is_pause_completed");
         ModuleResponse pollResponse = queryModuleWithRetry(moduleName, isPauseCompletedMessage);
 
@@ -1165,7 +1177,13 @@ bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
             m_logFunction(LOG_WARNING,
                           "Failed to poll pause status for " + moduleName + " (attempt " + std::to_string(attempt) +
                           "/" + std::to_string(maxAttempts) + ")");
-            std::this_thread::sleep_for(std::chrono::milliseconds(PAUSE_POLL_DELAY_MS));
+
+            if (interruptibleDelay())
+            {
+                m_logFunction(LOG_INFO, "Agent stopping, aborting FIM pause poll for " + moduleName);
+                return false;
+            }
+
             continue;
         }
 
@@ -1195,7 +1213,13 @@ bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
                     m_logFunction(LOG_DEBUG,
                                   moduleName + " pause still in progress (attempt " + std::to_string(attempt) + "/" +
                                   std::to_string(maxAttempts) + ")");
-                    std::this_thread::sleep_for(std::chrono::milliseconds(PAUSE_POLL_DELAY_MS));
+
+                    if (interruptibleDelay())
+                    {
+                        m_logFunction(LOG_INFO, "Agent stopping, aborting FIM pause poll for " + moduleName);
+                        return false;
+                    }
+
                     continue;
                 }
                 else if (status == "completed")
@@ -1221,7 +1245,11 @@ bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
                           " - Response: " + pollResponse.response);
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(PAUSE_POLL_DELAY_MS));
+        if (interruptibleDelay())
+        {
+            m_logFunction(LOG_INFO, "Agent stopping, aborting FIM pause poll for " + moduleName);
+            return false;
+        }
     }
 
     m_logFunction(LOG_ERROR,
@@ -1361,7 +1389,18 @@ bool AgentInfoImpl::pauseCoordinationModules(std::set<std::string>& pausedModule
             {
                 if (!pollFimPauseCompletion(module))
                 {
-                    m_logFunction(LOG_ERROR, module + " pause failed or timed out, aborting coordination");
+                    // Distinguish a genuine pause failure/timeout from a graceful
+                    // shutdown that interrupted the poll. On stop this is expected.
+                    if (m_stopped)
+                    {
+                        m_logFunction(LOG_INFO,
+                                      module + " pause aborted due to shutdown, stopping coordination");
+                    }
+                    else
+                    {
+                        m_logFunction(LOG_ERROR, module + " pause failed or timed out, aborting coordination");
+                    }
+
                     resumePausedModules(pausedModules);
                     return false;
                 }
@@ -1993,6 +2032,11 @@ bool AgentInfoImpl::performDeltaSync(const std::string& table)
         {
             m_logFunction(LOG_INFO, "Successfully coordinated " + table);
             resetSyncFlag(table);
+        }
+        else if (m_stopped)
+        {
+            // Coordination was interrupted by a graceful stop, not a real failure.
+            m_logFunction(LOG_INFO, "Coordination of " + table + " aborted due to shutdown");
         }
         else
         {

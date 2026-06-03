@@ -10,9 +10,12 @@
 #include <mock_filesystem_wrapper.hpp>
 #include <mock_sysinfo.hpp>
 
+#include <atomic>
+#include <chrono>
 #include <map>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 class AgentInfoCoordinationTest : public ::testing::Test
@@ -1696,6 +1699,129 @@ TEST_F(AgentInfoCoordinationTest, PausePollBudgetExtendedWhileFimFirstSyncInProg
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Extending FIM pause poll budget while first sync is in progress"));
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("fim pause completed successfully"));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("pause did not complete within")));
+}
+
+// Regression guard for issue #36408: while the (possibly extended) FIM pause
+// poll is in progress, a stop() request must abort the loop promptly instead of
+// running out the full budget. This keeps agent-info within the modulesd
+// shutdown deadline even with the extended first-sync budget.
+TEST_F(AgentInfoCoordinationTest, PausePollAbortsPromptlyOnStop)
+{
+    int selectRowsCalls = 0;
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([&selectRowsCalls](const nlohmann::json& /* query */,
+                                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        if (selectRowsCalls++ == 0)
+        {
+            nlohmann::json flagData;
+            flagData["should_sync_metadata"] = 1;
+            flagData["should_sync_groups"] = 0;
+            flagData["last_metadata_integrity"] = 0;
+            flagData["last_groups_integrity"] = 0;
+            flagData["is_first_run"] = 0;
+            flagData["is_first_groups_run"] = 0;
+            callback(SELECTED, flagData);
+        }
+    }));
+
+    // FIM never finishes pausing and reports first_sync_completed=false, so the
+    // poll would otherwise run the extended 600 s budget. stop() must cut it short.
+    std::atomic<int> fimPausePollCount {0};
+
+    auto queryModuleFunc = [&fimPausePollCount](const std::string & module_name,
+                                                const std::string & query,
+                                                char** response) -> int
+    {
+        nlohmann::json commandJson = nlohmann::json::parse(query);
+        const auto command = commandJson["command"].get<std::string>();
+
+        nlohmann::json responseJson;
+        responseJson["error"] = 0;
+        responseJson["message"] = "Success";
+
+        if (command == "is_pause_completed" && module_name == "fim")
+        {
+            ++fimPausePollCount;
+            responseJson["data"]["status"] = "in_progress";
+            responseJson["data"]["first_sync_completed"] = false;
+        }
+        else if (command == "is_pause_completed")
+        {
+            responseJson["data"]["status"] = "completed";
+            responseJson["data"]["result"] = "success";
+        }
+        else if (command == "is_flush_completed")
+        {
+            responseJson["data"]["status"] = "completed";
+            responseJson["data"]["result"] = "success";
+        }
+        else if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        std::string responseStr = responseJson.dump();
+        * response = strdup(responseStr.c_str());
+        return 0;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->setFlushPollDelayMs(0);
+    // Non-zero poll delay so stop() has a wait to interrupt.
+    m_agentInfo->setPausePollDelayMs(50);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+
+    // Wait until the FIM pause poll has actually started (at least a couple of
+    // in-progress polls observed), then request stop. Generous cap so coordination
+    // has time to reach the pause phase in the unit harness; we only fire stop()
+    // once we know we are inside the poll loop, so the abort path is exercised.
+    std::thread stopper([this, &fimPausePollCount]()
+    {
+        for (int i = 0; i < 2000 && fimPausePollCount.load() < 2; ++i)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+
+        m_agentInfo->stop();
+    });
+
+    const auto begin = std::chrono::steady_clock::now();
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+    const auto elapsedMs =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - begin).count();
+
+    stopper.join();
+
+    // Must abort well under the extended budget (600 s). The key guarantee is that
+    // stop() cuts the poll short rather than running the budget out; a generous
+    // upper bound keeps this stable on slow CI while still catching a real hang.
+    EXPECT_LT(elapsedMs, 30000);
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent stopping, aborting FIM pause poll"));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("pause did not complete within")));
+    // A shutdown-interrupted poll is NOT a failure: it must not emit the
+    // pause-timeout ERROR nor the "Failed to coordinate" WARNING noise.
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("pause failed or timed out")));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("Failed to coordinate")));
 }
 
 // When FIM reports first_sync_completed=true (steady state),
