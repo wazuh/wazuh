@@ -16,9 +16,11 @@
 #include "metadata_provider.h"
 
 #include <future>
+#include <mutex>
 #include <optional>
 #include <thread>
 #include <iostream>
+#include <utility>
 
 using ::testing::_;
 using ::testing::Return;
@@ -1587,6 +1589,43 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForStartAck)
     EXPECT_TRUE(response);
 }
 
+// Thread-safe capture of (level, message) pairs emitted by the protocol logger,
+// so tests can assert the level a given sync message is logged at.
+struct LogCapture
+{
+    std::mutex mtx;
+    std::vector<std::pair<modules_log_level_t, std::string>> entries;
+
+    LoggerFunc logger()
+    {
+        return [this](modules_log_level_t level, const std::string & msg)
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            entries.emplace_back(level, msg);
+        };
+    }
+
+    // Asserts a message containing 'needle' was logged at LOG_DEBUG and never at LOG_ERROR.
+    void expectDebugNotError(const std::string& needle)
+    {
+        std::lock_guard<std::mutex> lock(mtx);
+        bool debugLogged = false;
+        bool errorLogged = false;
+
+        for (const auto& entry : entries)
+        {
+            if (entry.second.find(needle) != std::string::npos)
+            {
+                debugLogged = debugLogged || (entry.first == LOG_DEBUG);
+                errorLogged = errorLogged || (entry.first == LOG_ERROR);
+            }
+        }
+
+        EXPECT_TRUE(debugLogged) << "Expected '" << needle << "' to be logged at LOG_DEBUG";
+        EXPECT_FALSE(errorLogged) << "Did not expect '" << needle << "' to be logged at LOG_ERROR";
+    }
+};
+
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckError)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
@@ -1598,7 +1637,8 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckError)
             return 0;
         }
     };
-    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    LogCapture logCapture;
+    LoggerFunc testLogger = logCapture.logger();
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Enter in WaitingStartAck phase
@@ -1640,6 +1680,10 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckError)
     EXPECT_TRUE(response);
 
     syncThread.join();
+
+    // Transient manager-reported failures must be debug, not error (issue #36724).
+    logCapture.expectDebugNotError("Received StartAck with error status");
+    logCapture.expectDebugNotError("Synchronization failed due to manager error.");
 }
 
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckOffline)
@@ -1653,7 +1697,8 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckOffline)
             return 0;
         }
     };
-    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    LogCapture logCapture;
+    LoggerFunc testLogger = logCapture.logger();
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Enter in WaitingStartAck phase
@@ -1695,6 +1740,9 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckOffline)
     EXPECT_TRUE(response);
 
     syncThread.join();
+
+    // Offline StartAck is the same transient class: debug, not error (issue #36724).
+    logCapture.expectDebugNotError("Received StartAck with error status");
 }
 
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckSuccess)
@@ -1796,7 +1844,8 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckError)
             return 0;
         }
     };
-    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    LogCapture logCapture;
+    LoggerFunc testLogger = logCapture.logger();
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Enter in WaitingEndAck phase
@@ -1858,6 +1907,10 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckError)
     EXPECT_TRUE(response);
 
     syncThread.join();
+
+    // Transient manager-reported failures must be debug, not error (issue #36724).
+    logCapture.expectDebugNotError("Received EndAck with Error status");
+    logCapture.expectDebugNotError("Synchronization failed: Manager reported an error status.");
 }
 
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckOffline)
@@ -1871,7 +1924,8 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckOffline)
             return 0;
         }
     };
-    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    LogCapture logCapture;
+    LoggerFunc testLogger = logCapture.logger();
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
 
     // Enter in WaitingEndAck phase
@@ -1933,6 +1987,9 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckOffline)
     EXPECT_TRUE(response);
 
     syncThread.join();
+
+    // Offline EndAck is the same transient class: debug, not error (issue #36724).
+    logCapture.expectDebugNotError("Received EndAck with Offline status");
 }
 
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckSuccess)

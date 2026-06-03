@@ -620,7 +620,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
 
                 if (m_syncState.syncFailed)
                 {
-                    m_logger(LOG_ERROR, "Synchronization failed due to manager error.");
+                    m_logger(LOG_DEBUG, "Synchronization failed due to manager error.");
 
                     // Clean up metadata before returning
                     if (has_metadata)
@@ -980,7 +980,7 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
                 // Don't log error for checksum mismatch - it's an expected condition
                 if (m_syncState.lastSyncResult != SyncResult::CHECKSUM_ERROR)
                 {
-                    m_logger(LOG_ERROR, "Synchronization failed: Manager reported an error status.");
+                    m_logger(LOG_DEBUG, "Synchronization failed: Manager reported an error status.");
                 }
 
                 return false;
@@ -1096,7 +1096,7 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
                         if (startAck->status() == Wazuh::SyncSchema::Status::Error ||
                                 startAck->status() == Wazuh::SyncSchema::Status::Offline)
                         {
-                            m_logger(LOG_ERROR, "Received StartAck with error status. Aborting synchronization.");
+                            m_logger(LOG_DEBUG, "Received StartAck with error status. Aborting synchronization.");
                             m_syncState.syncFailed = true;
                             m_syncState.cv.notify_all();
                             break;
@@ -1136,7 +1136,7 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
                         if (endAck->status() == Wazuh::SyncSchema::Status::Offline)
                         {
                             m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
-                            m_logger(LOG_ERROR, "Received EndAck with Offline status. Aborting synchronization.");
+                            m_logger(LOG_DEBUG, "Received EndAck with Offline status. Aborting synchronization.");
                         }
                         else if (endAck->status() == Wazuh::SyncSchema::Status::ChecksumMismatch)
                         {
@@ -1146,7 +1146,7 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
                         else if (endAck->status() == Wazuh::SyncSchema::Status::Error)
                         {
                             m_syncState.lastSyncResult = SyncResult::GENERIC_ERROR;
-                            m_logger(LOG_ERROR, "Received EndAck with Error status. Aborting synchronization.");
+                            m_logger(LOG_DEBUG, "Received EndAck with Error status. Aborting synchronization.");
                         }
 
                         m_syncState.syncFailed = true;

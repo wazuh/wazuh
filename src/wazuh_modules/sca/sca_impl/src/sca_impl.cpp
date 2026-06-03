@@ -1208,7 +1208,9 @@ bool SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseV
         }
         else
         {
-            LoggingHelper::getInstance().log(LOG_ERROR, "SCA " + syncReason + " failed");
+            // Transient sync failure (manager reported an error / communication issue).
+            // The syncModule() caller emits the single WARNING; recovery retries later. (#36724)
+            LoggingHelper::getInstance().log(LOG_DEBUG, "SCA " + syncReason + " failed");
         }
 
         return success;
