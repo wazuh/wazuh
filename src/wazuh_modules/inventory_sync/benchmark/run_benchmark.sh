@@ -103,6 +103,16 @@ Remote manager (SSH) — activated when --manager is not 127.0.0.1:
                           When 'go' and tool_simulator/benchmark_sender
                           is missing, it is auto-built (or invoked via
                           'go run' if the build fails).
+      --start-ack-timeout D  Per-session StartAck timeout (Go sender
+                          only). Go-style duration: 15s, 1m30s, ...
+                          Default 15s.
+      --end-ack-timeout D    Per-session terminal EndAck timeout (Go
+                          sender only). Reset on each intermediate
+                          Status_Processing. Default 120s.
+      --post-data-delay D    Pause between the last data message and
+                          EVERY End (initial and post-ReqRet). Lets
+                          the manager finish handleData before End is
+                          processed. Default 1s. Pass 0s to disable.
 
 Comparison mode:
       --compare DIR...    Compare results from multiple directories
@@ -139,6 +149,12 @@ while [[ $# -gt 0 ]]; do
             ;;
         --engine)         BENCH_ENGINE="$2"; shift 2 ;;
         --engine=*)       BENCH_ENGINE="${1#--engine=}"; shift ;;
+        --start-ack-timeout)   START_ACK_TIMEOUT="$2"; shift 2 ;;
+        --start-ack-timeout=*) START_ACK_TIMEOUT="${1#--start-ack-timeout=}"; shift ;;
+        --end-ack-timeout)     END_ACK_TIMEOUT="$2"; shift 2 ;;
+        --end-ack-timeout=*)   END_ACK_TIMEOUT="${1#--end-ack-timeout=}"; shift ;;
+        --post-data-delay)     POST_DATA_DELAY="$2"; shift 2 ;;
+        --post-data-delay=*)   POST_DATA_DELAY="${1#--post-data-delay=}"; shift ;;
         -h|--help)        usage; exit 0 ;;
         *)                echo "Unknown option: $1"; usage; exit 1 ;;
     esac
@@ -487,6 +503,15 @@ case "$BENCH_ENGINE" in
             --summary-json "$SENDER_JSON"
             -o "$BENCH_CSV"
         )
+        if [[ -n "$START_ACK_TIMEOUT" ]]; then
+            GO_ARGS+=( --start-ack-timeout "$START_ACK_TIMEOUT" )
+        fi
+        if [[ -n "$END_ACK_TIMEOUT" ]]; then
+            GO_ARGS+=( --end-ack-timeout "$END_ACK_TIMEOUT" )
+        fi
+        if [[ -n "$POST_DATA_DELAY" ]]; then
+            GO_ARGS+=( --post-data-delay "$POST_DATA_DELAY" )
+        fi
 
         # Prefer the built binary. If it's missing or older than any .go
         # source file, try to rebuild it. If that fails (e.g. no FlatBuffer

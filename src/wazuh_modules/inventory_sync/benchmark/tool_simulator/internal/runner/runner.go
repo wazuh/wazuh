@@ -30,6 +30,14 @@ type Config struct {
 	// inventory package defaults (15s start, 120s end).
 	StartAckTimeout time.Duration
 	EndAckTimeout   time.Duration
+
+	// PostDataDelay is the pause inserted between the last data message
+	// of a session and its End (applied for both the initial End and
+	// every End following a ReqRet). Use PostDataDelaySet=true together
+	// with PostDataDelay=0 to explicitly disable the pause; otherwise
+	// the inventory package's default (1s) is used.
+	PostDataDelay    time.Duration
+	PostDataDelaySet bool
 }
 
 // Run launches all agents, runs the scenario, and returns when every
@@ -144,8 +152,10 @@ func runAgent(ctx context.Context, idx int, lanes []string, scn *scenario.Scenar
 	}
 
 	invOpts := inventory.Options{
-		StartAckTimeout: cfg.StartAckTimeout,
-		EndAckTimeout:   cfg.EndAckTimeout,
+		StartAckTimeout:  cfg.StartAckTimeout,
+		EndAckTimeout:    cfg.EndAckTimeout,
+		PostDataDelay:    cfg.PostDataDelay,
+		PostDataDelaySet: cfg.PostDataDelaySet,
 	}
 
 	for {

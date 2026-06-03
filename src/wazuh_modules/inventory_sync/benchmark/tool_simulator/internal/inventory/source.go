@@ -13,11 +13,18 @@ import (
 	"github.com/wazuh/wazuh-modules/inventory_sync/benchmark/internal/scenario"
 )
 
-// Default timeouts. Mirror the Python SessionRunner constants; can be
-// overridden per-session via Options.
+// Default timeouts and pacing. Mirror the Python SessionRunner constants
+// where applicable; can be overridden per-session via Options.
 const (
 	DefaultStartAckTimeout = 15 * time.Second
 	DefaultEndAckTimeout   = 120 * time.Second
+	// DefaultPostDataDelay is the pause inserted between the last data
+	// message and the End message of a session. Gives the manager time
+	// to drain its handleData queue so the End hits the gapSet-empty
+	// branch (which sets processingTime + emits Status_Ok directly),
+	// instead of needing a ReqRet round. Set to 0 to send End back-to-
+	// back with the last DataValue.
+	DefaultPostDataDelay = 1 * time.Second
 	// MaxRetransmitRounds caps how many times we'll respond to a ReqRet
 	// before declaring the session failed. Matches Python's MAX_RETRANSMIT.
 	MaxRetransmitRounds = 5
@@ -34,6 +41,20 @@ type Options struct {
 	// extended each time a Status_Processing arrives. 0 means use
 	// DefaultEndAckTimeout.
 	EndAckTimeout time.Duration
+	// PostDataDelay is the pause inserted before EACH End send — both
+	// the initial End (after the data body completes) AND every End that
+	// follows a ReqRet retransmission. A non-zero value reduces the
+	// chance of triggering a ReqRet round in the first place. Setting to
+	// a negative value (e.g. -1) means "use the default 1s"; 0 (the zero
+	// value) means "no pause at all". Use PostDataDelaySet to make the
+	// distinction explicit when threading through Config.
+	PostDataDelay time.Duration
+	// PostDataDelaySet, when true, takes PostDataDelay verbatim (allowing
+	// the operator to explicitly request 0s). When false, the default
+	// (DefaultPostDataDelay) is applied. This matters because we want
+	// 0-value time.Duration to remain a valid "no pause" choice rather
+	// than triggering the default.
+	PostDataDelaySet bool
 }
 
 func (o Options) startAckTimeout() time.Duration {
@@ -48,6 +69,18 @@ func (o Options) endAckTimeout() time.Duration {
 		return o.EndAckTimeout
 	}
 	return DefaultEndAckTimeout
+}
+
+// postDataDelay returns the configured delay, honoring the "explicitly
+// zero" case via PostDataDelaySet.
+func (o Options) postDataDelay() time.Duration {
+	if o.PostDataDelaySet {
+		if o.PostDataDelay < 0 {
+			return 0
+		}
+		return o.PostDataDelay
+	}
+	return DefaultPostDataDelay
 }
 
 // Source drives one inventory_sync session per Run() call. SessionType=delta
@@ -158,6 +191,14 @@ func (s *Source) Run(ctx context.Context, conn *agent.Conn, c *metrics.Counters)
 		return err
 	}
 
+	// Pause before End so the manager finishes draining its handleData
+	// queue first — see Options.PostDataDelay. Same pause is reused on
+	// every End we send (initial and post-ReqRet) for consistency.
+	if err := sleepCtx(ctx, s.opts.postDataDelay()); err != nil {
+		c.Inc(metrics.CSessionsFailed)
+		return err
+	}
+
 	// Send End.
 	tEnd := time.Now()
 	if err := conn.SendBinary(s.moduleID, fbbuild.BuildEnd(sessionID)); err != nil {
@@ -209,6 +250,10 @@ func (s *Source) Run(ctx context.Context, conn *agent.Conn, c *metrics.Counters)
 				// truth is this sender's `sessions_completed` /
 				// `end_ack_ok` counters. See docu/09 §"ReqRet stats
 				// quirk" for the manager-side fix.
+				if err := sleepCtx(ctx, s.opts.postDataDelay()); err != nil {
+					c.Inc(metrics.CSessionsFailed)
+					return err
+				}
 				tEnd = time.Now()
 				if err := conn.SendBinary(s.moduleID, fbbuild.BuildEnd(sessionID)); err != nil {
 					c.Inc(metrics.CSessionsFailed)
@@ -262,6 +307,22 @@ func countSeqs(ranges []fbbuild.SeqRange) int {
 		}
 	}
 	return n
+}
+
+// sleepCtx waits for d to elapse, returning ctx.Err() if the context is
+// canceled first. d <= 0 returns immediately.
+func sleepCtx(ctx context.Context, d time.Duration) error {
+	if d <= 0 {
+		return nil
+	}
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-t.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // handleReqRet resends the items whose seq numbers fall in the requested
