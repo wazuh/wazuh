@@ -67,7 +67,8 @@
           { "type": "integer" },
           { "type": "boolean" },
           { "type": "array" },
-          { "type": "object" }
+          { "type": "object" },
+          { "type": "null" }
         ]
       }
     },
@@ -134,6 +135,7 @@
                 { "type": "boolean" },
                 { "type": "array" },
                 { "type": "object" },
+                { "type": "null" },
                 { "type": "string", "pattern": "^\\$[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*$" },
                 { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\([^)]*\\)$" }
               ]
