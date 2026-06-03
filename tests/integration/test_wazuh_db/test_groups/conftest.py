@@ -10,6 +10,23 @@ from wazuh_testing.utils.database import query_wdb
 from wazuh_testing.utils.db_queries.global_db import set_agent_group
 
 
+# wazuh-modulesd (wm_database) runs a one-shot synchronization of global.db against
+# client.keys and the shared-groups directory roughly 5 seconds after it starts (see
+# src/wazuh_modules/src/wm_database.c). That startup sync deletes every agent that is not
+# in client.keys and (re)creates the 'default' group, racing with and undoing the
+# synthetic agents/groups these tests write. On a master node modulesd never touches
+# global.db again afterwards, so it is enough to let that startup sync finish before the
+# tests run: we restart the manager once per module (daemons_handler_module) and wait a
+# generous margin over modulesd's 5s startup delay here.
+MODULESD_DB_SYNC_SETTLE = 30
+
+
+@pytest.fixture(scope='module')
+def wait_for_modulesd_db_sync(daemons_handler_module):
+    time.sleep(MODULESD_DB_SYNC_SETTLE)
+    yield
+
+
 def _query_ok(command):
     response = query_wdb(command)
     assert response == 'ok', f"Unexpected response for {command!r}: {response}"
@@ -41,7 +58,7 @@ def _clean_agents():
 
 
 @pytest.fixture()
-def create_groups(test_metadata):
+def create_groups(test_metadata, wait_for_modulesd_db_sync):
     # global.db is shared across all group tests and clean_databases only runs at module teardown, so
     # start every test from a clean agent table to avoid cross-test state pollution.
     _clean_agents()
@@ -60,11 +77,11 @@ def create_groups(test_metadata):
         groups = test_metadata['pre_required_group'].split(',')
 
         for group in groups:
-            query_wdb(f'global delete-group {group}')
+            _query_ok(f'global delete-group {group}')
 
 
 @pytest.fixture()
-def pre_insert_agents_into_group():
+def pre_insert_agents_into_group(wait_for_modulesd_db_sync):
     _clean_agents()
 
     for i in range(2):

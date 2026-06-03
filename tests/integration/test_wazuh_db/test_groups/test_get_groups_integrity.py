@@ -84,7 +84,7 @@ def insert_agent(agent_id):
 
 # Tests
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
-def test_get_groups_integrity(daemons_handler, test_metadata, create_groups):
+def test_get_groups_integrity(daemons_handler_module, test_metadata, create_groups):
     '''
     description: Check that every input message using the 'get-groups-integrity' command in wazuh-manager-db socket generates
                  the proper output to wazuh-manager-db socket. To do this, it performs a query to the socket with a command

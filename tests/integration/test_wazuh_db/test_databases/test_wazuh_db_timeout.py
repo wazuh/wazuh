@@ -64,7 +64,7 @@ def pre_insert_agents():
 
     for start in range(1, AGENTS_TO_INSERT + 1, INSERT_BATCH):
         end = min(start + INSERT_BATCH, AGENTS_TO_INSERT + 1)
-        values = ','.join(f'({i},"Agent{i}",1)' for i in range(start, end))
+        values = ','.join(f"({i},'Agent{i}',1)" for i in range(start, end))
         response = query_wdb(f'global sql INSERT INTO agent (id, name, date_add) VALUES {values}')
         assert not (isinstance(response, str) and response.startswith('err')), \
             f"Bulk agent insert failed: {response}"

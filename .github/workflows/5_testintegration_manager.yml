@@ -40,7 +40,7 @@ on:
       modules:
         description: 'Comma-separated module names. Example: "api,wazuh_db" or "all".'
         required: false
-        default: 'api,wazuh_db'
+        default: 'all'
       base_branch:
         description: 'Base branch'
         required: false

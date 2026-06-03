@@ -94,7 +94,7 @@ def insert_agent_in_db(id=1, name='TestAgent', ip='any', registration_time=0, co
 
 # Tests
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
-def test_set_agent_groups(clean_databases, daemons_handler, test_metadata, create_groups):
+def test_set_agent_groups(clean_databases, daemons_handler_module, test_metadata, create_groups):
     '''
     description: Check that every input message using the 'set_agent_groups' command in wazuh-manager-db socket generates
                  the proper output to wazuh-manager-db socket. To do this, it performs a query to the socket with a command
@@ -107,9 +107,9 @@ def test_set_agent_groups(clean_databases, daemons_handler, test_metadata, creat
         - clean_databases:
             type: fixture
             brief: Delete databases.
-        - daemons_handler:
+        - daemons_handler_module:
             type: fixture
-            brief: Handler of Wazuh daemons.
+            brief: Handler of Wazuh daemons (module scope).
         - test_metadata:
             type: dict
             brief: Test case metadata.

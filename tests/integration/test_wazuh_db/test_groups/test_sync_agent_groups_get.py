@@ -63,15 +63,15 @@ daemons_handler_configuration = {'all_daemons': True}
 
 # Tests
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
-def test_sync_agent_groups(daemons_handler, test_metadata, create_groups, pre_insert_agents_into_group,
+def test_sync_agent_groups(daemons_handler_module, test_metadata, create_groups, pre_insert_agents_into_group,
                            clean_databases):
     '''
-    description: Check that commands about sync_aget_groups_get works properly.
+    description: Check that commands about sync-agent-groups-get works properly.
     wazuh_min_version: 5.0.0
     parameters:
-        - daemons_handler:
+        - daemons_handler_module:
             type: fixture
-            brief: Handler of Wazuh daemons.
+            brief: Handler of Wazuh daemons (module scope).
         - test_metadata:
             type: dict
             brief: Test case metadata.
