@@ -1,0 +1,18 @@
+{
+  "name": "engine_smoke",
+  "description": "One agent streams syslog lines as engine events at 500 EPS for ~10s. Validates the new `engine` step type end-to-end.",
+  "lanes": {
+    "engine_syslog": [
+      {
+        "engine":   "sample_payloads/engine/syslog.log",
+        "location": "syslog",
+        "max_eps":  500,
+        "loop":     true
+      }
+    ]
+  },
+  "total_agents":    1,
+  "parallel_agents": 0,
+  "repeat_until":    10,
+  "drain_timeout":   5
+}
