@@ -82,7 +82,7 @@ test_configuration_t1 = load_configuration_template(test_configuration_path_t1, 
 # Variables
 local_internal_options = {AUTHD_DEBUG_CONFIG: '2'}
 receiver_sockets_params = [(('localhost', DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2')]
-monitored_sockets_params = [(AUTHD_DAEMON, None, True), (WAZUH_DB_DAEMON, None, True)]
+monitored_sockets_params = [(WAZUH_DB_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
 receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
 daemons_handler_configuration = {'daemons': [AUTHD_DAEMON], 'ignore_errors': True}
@@ -95,7 +95,7 @@ def check_options(test_metadata):
         # Reopen socket (socket is closed by manager after sending message with client key)
         authd_sock.open()
         authd_sock.send(create_authd_request(stage['input']), size=False)
-        timeout = time.time()
+        timeout = time.time() + 10
         response = ''
         while response == '':
             response = authd_sock.receive().decode()
@@ -121,7 +121,7 @@ def test_authd_force_options(test_configuration, test_metadata, set_wazuh_config
         Checks that every input message in authd port generates the adequate output.
 
     wazuh_min_version:
-        4.3.0
+        5.0.0
 
     tier: 0
 

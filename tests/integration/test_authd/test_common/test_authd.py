@@ -10,7 +10,7 @@ type: integration
 brief: These tests will check if the 'wazuh-manager-authd' daemon correctly handles the enrollment requests,
        generating consistent responses to the requests received on its IP v4 network socket.
        The 'wazuh-manager-authd' daemon can automatically add a Wazuh agent to a Wazuh manager and provide
-       the key to the agent. 
+       the key to the agent.
 
 components:
     - authd
@@ -69,7 +69,7 @@ test_configuration = load_configuration_template(test_configuration_path, test_c
 # Variables
 receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2')]
 
-monitored_sockets_params = [(MODULES_DAEMON, None, True), (WAZUH_DB_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
+monitored_sockets_params = [(WAZUH_DB_DAEMON, None, True), (MODULES_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
 
 receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
@@ -89,7 +89,7 @@ def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_config
         an IP v4 network socket.
 
     wazuh_min_version:
-        4.2.0
+        5.0.0
 
     tier: 0
 
