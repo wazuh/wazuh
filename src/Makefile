@@ -888,8 +888,8 @@ endif
 .PHONY: winagent
 winagent: external win32/libwinpthread-1.dll win32/libwinpthreadpatched.a ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME} ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME} win32/version-dll.o win32/version-app.o
 	${MAKE} ${WAZUHEXT_LIB} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lws2_32 -lcrypt32"
-	${MAKE} ${WINDOWS_LIBS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1"
-	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32 -lwintrust"
+	${MAKE} ${WINDOWS_LIBS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1 -D_WIN32_WINNT=0x600"
+	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1 -D_WIN32_WINNT=0x600" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32 -lwintrust"
 	${MAKE} ${WINDOWS_ACTIVE_RESPONSES} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32 -lwintrust"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
 	cd win32/ && ./unix2dos.pl help.txt > help_win.txt
