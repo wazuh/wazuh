@@ -423,6 +423,20 @@ void LogCollectorStart()
             os_free(current->fp);
         }
 
+#ifndef WIN32
+        else if (current->k8s_log != NULL) {
+            /* Kubernetes logreader: scans /var/log/pods/ and (T-K7.3+) tails
+             * matched containers. The "file" string is the location value
+             * ("kubernetes" or "kubernetes:/path") used only as a label; we
+             * release it so the downstream main loop does not try to fopen()
+             * it like a host log path (mirrors what JOURNALD_LOG / MACOS do). */
+            current->read = read_kubernetes;
+            os_free(current->file);
+            current->command = NULL;
+            os_free(current->fp);
+        }
+#endif
+
         else if (j < 0) {
             set_read(current, i, j);
             if (current->file) {
@@ -2092,6 +2106,11 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         } else {
                             mdebug2(LOGCOLLECTOR_JOURNAL_LOG_NOT_OWNER);
                         }
+                    }
+                    /* Kubernetes localfile: read_kubernetes manages its own file
+                     * tracking internally (no current->fp). */
+                    else if (current->k8s_log != NULL) {
+                        current->read(current, &r, 0);
                     }
 #endif
                     w_mutex_unlock(&current->mutex);

@@ -197,6 +197,37 @@ typedef struct w_journal_log_config_t
     bool disable_filters;              // Disable filters
 } w_journal_log_config_t;
 
+/* Kubernetes log source configuration.
+ *
+ * Built from a <localfile> whose <location> starts with "kubernetes". The two
+ * modes the module supports:
+ *
+ *   Mode A (stdout/stderr) — <location>kubernetes</location>
+ *     Tail files under /var/log/pods/<ns>_<pod>_<uid>/<container>/<N>.log,
+ *     the canonical kubelet stdout/stderr destination.
+ *     `container_path` stays NULL.
+ *
+ *   Mode B (arbitrary file inside container) — <location>kubernetes:/path</location>
+ *     Tail the named path inside each matching container's rootfs, read from
+ *     the host via /proc/<container-pid>/root/<container_path>.
+ *     `container_path` holds the in-container path.
+ *
+ * Filters are AND-combined. NULL members mean "do not constrain on this
+ * field". An empty filter set selects every container on the node. */
+typedef struct _w_k8s_log_config {
+    char    *container_path;       ///< Mode B path (NULL => Mode A stdout/stderr).
+    OSMatch *container_name_match; ///< Filter: container name (regex). NULL = any.
+    OSMatch *image_name_match;     ///< Filter: image (regex). NULL = any.
+    char    *namespace_;           ///< Filter: K8s namespace (exact). NULL = any.
+    char    *pod_name;             ///< Filter: pod name (exact). NULL = any.
+    char   **labels;               ///< Filter: NULL-terminated array of "key=value". NULL = any.
+
+    /* Runtime state owned by read_kubernetes.c (opaque pointer, free with
+     * k8s_logreader_destroy_runtime()). Allocated lazily on the first read()
+     * call so the parser does not depend on the runtime. */
+    void    *runtime;
+} w_k8s_log_config_t;
+
 /* Logreader config */
 typedef struct _logreader {
     off_t size;
@@ -249,6 +280,8 @@ typedef struct _logreader {
 
     FILE *fp;
     fpos_t position; // Pointer offset when closed
+
+    w_k8s_log_config_t *k8s_log; ///< Non-NULL when this <localfile> targets K8s containers.
 } logreader;
 
 typedef struct _logreader_glob {
