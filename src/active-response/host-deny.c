@@ -32,10 +32,10 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
-    // Get srcip
+    // Get srcip (now validated automatically by get_srcip_from_json)
     const char *srcip = get_srcip_from_json(input_json);
     if (!srcip) {
-        write_debug_file(argv[0], "Cannot read 'srcip' from data");
+        write_debug_file(argv[0], "Cannot read 'srcip' from data or invalid IP format");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }
@@ -63,14 +63,6 @@ int main (int argc, char **argv) {
                 return OS_INVALID;
             }
         }
-    }
-
-    if (get_ip_version(srcip) == OS_INVALID) {
-        memset(log_msg, '\0', OS_MAXSTR);
-        snprintf(log_msg, OS_MAXSTR -1, "Unable to run active response (invalid IP: '%s')", srcip);
-        write_debug_file(argv[0], log_msg);
-        cJSON_Delete(input_json);
-        return OS_INVALID;
     }
 
     if (uname(&uname_buffer) != 0) {

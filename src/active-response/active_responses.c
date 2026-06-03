@@ -250,12 +250,26 @@ const char* get_srcip_from_json(const cJSON *input) {
     // Detect srcip from win.eventdata
     srcip_json = get_srcip_from_win_eventdata(data_json);
     if (cJSON_IsString(srcip_json)) {
-        return srcip_json->valuestring;
+        const char *srcip = srcip_json->valuestring;
+
+        // Validate IP format
+        if (get_ip_version(srcip) == OS_INVALID) {
+            return NULL;
+        }
+
+        return srcip;
     }
     // Detect srcip from data
     srcip_json = cJSON_GetObjectItem(data_json, "srcip");
     if (cJSON_IsString(srcip_json)) {
-        return srcip_json->valuestring;
+        const char *srcip = srcip_json->valuestring;
+
+        // Validate IP format
+        if (get_ip_version(srcip) == OS_INVALID) {
+            return NULL;
+        }
+
+        return srcip;
     }
 
     return NULL;
@@ -293,6 +307,61 @@ static cJSON* get_srcip_from_win_eventdata(const cJSON *data) {
     return NULL;
 }
 
+int is_valid_username(const char *username) {
+    if (!username || !*username) {
+        return 0;
+    }
+
+    // Reject reserved names
+    if (strcmp(username, "root") == 0) {
+        return 0;
+    }
+
+    size_t len = strlen(username);
+
+    // Maximum username length (typical limit is 32, but we allow up to 256 for compatibility)
+    if (len > 256) {
+        return 0;
+    }
+
+    // Must not start with dash, plus, or tilde (Debian constraint)
+    if (username[0] == '-' || username[0] == '+' || username[0] == '~') {
+        return 0;
+    }
+
+    // Check for prohibited characters
+    for (size_t i = 0; i < len; i++) {
+        char c = username[i];
+
+        // Reject colon (used as field separator in /etc/passwd)
+        if (c == ':') {
+            return 0;
+        }
+
+        // Reject comma (used in GECOS field)
+        if (c == ',') {
+            return 0;
+        }
+
+        // Reject whitespace characters
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+            return 0;
+        }
+
+        // Reject slash (breaks home directory paths)
+        if (c == '/' || c == '\\') {
+            return 0;
+        }
+    }
+
+    // Reject directory traversal sequence
+    if (strstr(username, "..") != NULL) {
+        return 0;
+    }
+
+    return 1;
+}
+
 const char* get_username_from_json(const cJSON *input) {
     cJSON *parameters_json = NULL;
     cJSON *alert_json = NULL;
@@ -320,7 +389,14 @@ const char* get_username_from_json(const cJSON *input) {
     // Detect username
     username_json = cJSON_GetObjectItem(data_json, "dstuser");
     if (cJSON_IsString(username_json)) {
-        return username_json->valuestring;
+        const char *username = username_json->valuestring;
+
+        // Validate username format
+        if (!is_valid_username(username)) {
+            return NULL;
+        }
+
+        return username;
     }
 
     return NULL;
@@ -483,6 +559,39 @@ int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, co
     return retVal;
 }
 
+int get_ip_version(const char *ip) {
+    struct addrinfo hint, *res = NULL;
+    int ret;
+    int version = OS_INVALID;
+
+    if (!ip) {
+        return OS_INVALID;
+    }
+
+    memset(&hint, '\0', sizeof hint);
+
+    hint.ai_family = AF_UNSPEC;
+    hint.ai_flags = AI_NUMERICHOST;
+
+    ret = getaddrinfo(ip, NULL, &hint, &res);
+    if (ret != 0) {
+        // getaddrinfo failed, res may not be initialized
+        return OS_INVALID;
+    }
+
+    // getaddrinfo succeeded, check the address family
+    if (res != NULL) {
+        if (res->ai_family == AF_INET) {
+            version = 4;
+        } else if (res->ai_family == AF_INET6) {
+            version = 6;
+        }
+        freeaddrinfo(res);
+    }
+
+    return version;
+}
+
 #ifndef WIN32
 
 int lock(const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name) {
@@ -623,29 +732,4 @@ void unlock(const char *lock_path, const char *log_path) {
     }
 }
 
-int get_ip_version(const char *ip) {
-    struct addrinfo hint, *res = NULL;
-    int ret;
-
-    memset(&hint, '\0', sizeof hint);
-
-    hint.ai_family = AF_UNSPEC;
-    hint.ai_flags = AI_NUMERICHOST;
-
-    ret = getaddrinfo(ip, NULL, &hint, &res);
-    if (ret) {
-        freeaddrinfo(res);
-        return OS_INVALID;
-    }
-    if (res->ai_family == AF_INET) {
-        freeaddrinfo(res);
-        return 4;
-    } else if (res->ai_family == AF_INET6) {
-        freeaddrinfo(res);
-        return 6;
-    }
-
-    freeaddrinfo(res);
-    return OS_INVALID;
-}
 #endif
