@@ -139,6 +139,17 @@ void* read_macos(logreader* lf, int* rc, int drop_it);
  */
 void* read_journald(logreader* lf, int* rc, int drop_it);
 
+#ifndef WIN32
+/**
+ * @brief Logcollector reader for &lt;localfile&gt; entries with &lt;location&gt;kubernetes&lt;/location&gt;.
+ *
+ * Scans /var/log/pods/, resolves each container's K8s metadata via the
+ * container-connector IPC and applies the configured filters. Tracks every
+ * matched container; (T-K7.3+) tails its log file. T-K7.2 ends at tracking.
+ */
+void *read_kubernetes(logreader *lf, int *rc, int drop_it);
+#endif
+
 /**
  * @brief Check if journald can be read for a specific id
  *
