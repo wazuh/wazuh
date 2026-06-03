@@ -119,6 +119,7 @@
 
 # Migration Guide
 
+- [Mail Forwarding and Reporting to Dashboard Notifications](guide/migration/mail-forwarding-reporting.md)
 - [Integratord to notifications plugin](guide/migration/integratord-notifications.md)
 
 # Diagnostic Documentation

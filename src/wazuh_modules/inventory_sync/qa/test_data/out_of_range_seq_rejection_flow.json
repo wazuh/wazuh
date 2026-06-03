@@ -1,0 +1,75 @@
+{
+  "description": "Out-of-range seq rejection test: a DataValue with seq >= declared size must be ignored by handleData (GapSet::observe throws std::out_of_range absorbed by the WorkersQueue wrapper). The GapSet must NOT mark that seq as observed, so the End triggers a ReqRet for the still-missing valid seq, and after retransmission the session completes normally.",
+  "messages": [
+    {
+      "type": "start",
+      "data": {
+        "module": "inventory_sync",
+        "mode": 1,
+        "size": 2,
+        "agentid": "001",
+        "agentname": "out-of-range-agent",
+        "agentversion": "5.0.0"
+      },
+      "description": "Start a ModuleDelta session declaring exactly 2 DataValues (valid seqs are 0 and 1)",
+      "delay": 0.5,
+      "expect_session_response": true,
+      "session_id": "oor_test"
+    },
+    {
+      "type": "data",
+      "data": {
+        "seq": 0,
+        "operation": 0,
+        "id": "doc-valid-0",
+        "index": "wazuh-states-inventory-system",
+        "data": {"description": "first valid datavalue"}
+      },
+      "description": "Legitimate DataValue with seq=0 (in range)",
+      "delay": 0.3,
+      "use_session_from_start": "oor_test"
+    },
+    {
+      "type": "data",
+      "data": {
+        "seq": 5,
+        "operation": 0,
+        "id": "doc-out-of-range",
+        "index": "wazuh-states-inventory-system",
+        "data": {"description": "should be rejected"}
+      },
+      "description": "DataValue with seq=5 (declaredSize is 2) - GapSet::observe throws and the message is dropped; the GapSet must NOT be flipped to allObserved",
+      "delay": 0.3,
+      "use_session_from_start": "oor_test"
+    },
+    {
+      "type": "end",
+      "data": {},
+      "description": "End - GapSet still has seq=1 missing (seq=5 did not register), so the manager must answer with a ReqRet asking for seq=1",
+      "delay": 0.5,
+      "use_session_from_start": "oor_test"
+    },
+    {
+      "type": "data",
+      "data": {
+        "seq": 1,
+        "operation": 0,
+        "id": "doc-valid-1",
+        "index": "wazuh-states-inventory-system",
+        "data": {"description": "second valid datavalue retransmitted"}
+      },
+      "description": "Retransmit the still-missing seq=1",
+      "delay": 0.3,
+      "use_session_from_start": "oor_test"
+    },
+    {
+      "type": "end",
+      "data": {},
+      "description": "End again - all seqs in [0,1] are observed, the session must complete with end_ack(Status_Ok)",
+      "delay": 0.5,
+      "use_session_from_start": "oor_test",
+      "expect_end_response": true,
+      "expected_status": "Status_Ok"
+    }
+  ]
+}

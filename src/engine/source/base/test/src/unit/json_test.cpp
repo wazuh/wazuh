@@ -2939,57 +2939,72 @@ INSTANTIATE_TEST_SUITE_P(Json,
                                            isEmptyT(false, R"({"a":false})", "/a/0"),
                                            isEmptyT(false, R"({"a":null})", "/a/0")));
 
-class JsonValidParamTest : public ::testing::TestWithParam<std::pair<bool, std::string>>
+class JsonDuplicateKeyTest : public ::testing::TestWithParam<std::tuple<std::string, size_t, std::string>>
 {
 };
 
-TEST_P(JsonValidParamTest, CheckDuplicateKey)
+TEST_P(JsonDuplicateKeyTest, CheckAndRemoveDuplicateKeys)
 {
-    const auto& param = GetParam();
-    const auto& verify = param.first;
-    const auto& jsonInput = param.second;
+    const auto& [jsonInput, expectedDups, expectedJson] = GetParam();
 
-    if (verify)
+    // Construction should NOT throw even with duplicates
+    json::Json doc {jsonInput.c_str()};
+
+    // checkDuplicateKeys detects them
+    auto error = doc.checkDuplicateKeys();
+    if (expectedDups > 0)
     {
-        ASSERT_NO_THROW(auto result = json::Json {jsonInput.c_str()});
+        ASSERT_TRUE(error.has_value());
     }
     else
     {
-        ASSERT_ANY_THROW(auto result = json::Json {jsonInput.c_str()});
+        ASSERT_FALSE(error.has_value());
+    }
+
+    // removeDuplicateKeys removes them and returns count
+    size_t removed = doc.removeDuplicateKeys();
+    ASSERT_EQ(removed, expectedDups);
+
+    // After removal, no more duplicates
+    ASSERT_FALSE(doc.checkDuplicateKeys().has_value());
+
+    // Verify resulting JSON matches expected
+    if (expectedDups > 0)
+    {
+        json::Json expected {expectedJson.c_str()};
+        ASSERT_EQ(doc, expected);
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(CheckDuplicateKey,
-                         JsonValidParamTest,
-                         ::testing::Values(std::make_pair(true, R"({
-        "check": "$event.id == 2"
-        })"),
-                                           std::make_pair(false, R"({
-        "a": 1,
-        "b": 2,
-        "c": {
-            "c": 3,
-            "c": 4
-        }
-        })"),
-                                           std::make_pair(false, R"({
-        "a": 1,
-        "b": 3,
-        "a": 2
-        })"),
-                                           std::make_pair(false, R"({
-        "b": 1,
-        "a": 3,
-        "a": 2
-        })"),
-                                           std::make_pair(false, R"({
-        "a": 3,
-        "a": 2
-        })"),
-                                           std::make_pair(false, R"({
-        "check": "$event == 2",
-        "check": "$event.id == 2"
-        })")));
+INSTANTIATE_TEST_SUITE_P(
+    CheckDuplicateKey,
+    JsonDuplicateKeyTest,
+    ::testing::Values(
+        // No duplicates
+        std::make_tuple(R"({"check": "$event.id == 2"})", size_t(0), R"({"check": "$event.id == 2"})"),
+        // Nested duplicate
+        std::make_tuple(R"({"a": 1, "b": 2, "c": {"c": 3, "c": 4}})", size_t(1), R"({"a":1,"b":2,"c":{"c":3}})"),
+        // Root duplicate (a appears twice)
+        std::make_tuple(R"({"a": 1, "b": 3, "a": 2})", size_t(1), R"({"a":1,"b":3})"),
+        // Root duplicate (different order)
+        std::make_tuple(R"({"b": 1, "a": 3, "a": 2})", size_t(1), R"({"b":1,"a":3})"),
+        // Only duplicates
+        std::make_tuple(R"({"a": 3, "a": 2})", size_t(1), R"({"a":3})"),
+        // Duplicate with complex values
+        std::make_tuple(
+            R"({"check": "$event == 2", "check": "$event.id == 2"})", size_t(1), R"({"check":"$event == 2"})"),
+        // Duplicate with same values
+        std::make_tuple(R"({"level": "5", "level": "5"})", size_t(1), R"({"level":"5"})"),
+        // Duplicate with object values
+        std::make_tuple(R"({"a": {"x": 1}, "a": {"x": 1}})", size_t(1), R"({"a":{"x":1}})"),
+        // Duplicate inside array element
+        std::make_tuple(R"({"items": [{"id": 1, "id": 2}, {"name": "foo"}]})",
+                        size_t(1),
+                        R"({"items":[{"id":1},{"name":"foo"}]})"),
+        // Duplicate inside second array element
+        std::make_tuple(R"({"items": [{"name": "foo"}, {"id": 1, "id": 1}]})",
+                        size_t(1),
+                        R"({"items":[{"name":"foo"},{"id":1}]})")));
 
 // ---------- Functors (templated-friendly) ----------
 struct Identity

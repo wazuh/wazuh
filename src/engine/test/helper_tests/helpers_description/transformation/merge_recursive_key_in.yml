@@ -5,9 +5,11 @@ metadata:
   description: |
     Recursively merge the target field value with the content of a specified key in the given object.
     The key is identified through a reference to another field.
-    If the key's value contains nested objects, the merge operation is applied recursively, combining all levels of the structure.
+    If the key's value contains nested objects or arrays, the merge operation is applied recursively, combining all levels of the structure.
+    For primitive values (strings, numbers, booleans), when a key exists in both source and target, the source value overwrites the target value.
     The object parameter must be a definition object or a reference to a field containing the object.
     This helper function is typically used in the map stage to ensure deep merging of complex objects.
+    If the source contains duplicate keys, all occurrences are iterated and the last duplicate value is the one that remains in the target.
 
   keywords:
     - undefined

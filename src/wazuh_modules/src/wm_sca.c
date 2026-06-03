@@ -654,22 +654,21 @@ static int wm_sca_start(wm_sca_t *sca) {
 #ifndef WIN32
         // Launch SCA synchronization thread as joinable so we can wait for it
         // before releasing resources on shutdown
+        sca_sync_module_running = 1;
         sca_sync_worker_thread_initialized = (CreateThreadJoinable(&sca_sync_worker_thread, wm_sca_sync_module, NULL) == 0);
-        if (sca_sync_worker_thread_initialized)
-        {
-            sca_sync_module_running = 1;
-        }
-        else
+        if (!sca_sync_worker_thread_initialized)
         {
             merror(THREAD_ERROR);
+            sca_sync_module_running = 0;
         }
 #else
+        sca_sync_module_running = 1;
         sca_sync_worker_thread = CreateThread(NULL, 0, wm_sca_sync_module, NULL, 0, NULL);
         if (sca_sync_worker_thread == NULL) {
             merror(THREAD_ERROR);
+            sca_sync_module_running = 0;
         } else {
             sca_sync_worker_thread_initialized = true;
-            sca_sync_module_running = 1;
         }
 #endif
     } else {

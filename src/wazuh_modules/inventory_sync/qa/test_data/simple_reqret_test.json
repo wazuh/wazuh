@@ -22,7 +22,7 @@
         "seq": 0,
         "operation": 0,
         "id": "doc001",
-        "index": "test_simple_reqret",
+        "index": "wazuh-states-inventory-system",
         "data": {"message": "Message 0", "seq": 0}
       },
       "description": "Send message seq=0",
@@ -35,7 +35,7 @@
         "seq": 2,
         "operation": 0,
         "id": "doc003",
-        "index": "test_simple_reqret",
+        "index": "wazuh-states-inventory-system",
         "data": {"message": "Message 2", "seq": 2}
       },
       "description": "Send message seq=2 (skip seq=1 intentionally)",
@@ -55,7 +55,7 @@
         "seq": 1,
         "operation": 0,
         "id": "doc002",
-        "index": "test_simple_reqret",
+        "index": "wazuh-states-inventory-system",
         "data": {"message": "Message 1 (retransmitted)", "seq": 1}
       },
       "description": "Send missing seq=1 after receiving ReqRet",

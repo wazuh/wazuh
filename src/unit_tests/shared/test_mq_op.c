@@ -301,7 +301,41 @@ void test_start_mq_predicated_write_fail(void ** state){
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
     will_return(__wrap_OS_ConnectUnixDomain, -1);
-    expect_string(__wrap__mdebug2, formatted_msg, "(6220): Reconnection attempts terminated due to the shutdown of FIM.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(8301): Reconnection attempts terminated due to shutdown.");
+
+    ret = StartMQPredicated(path, type, n_attempts, ptr_function);
+    assert_int_equal(ret, -1);
+}
+
+void test_start_mq_predicated_write_shutdown_during_backoff(void ** state){
+    (void)state; // Unused
+
+    /* Function parameters */
+    short int n_attempts = 0; // INFINITE_OPENQ_ATTEMPTS
+    short int type = WRITE;
+    char * path = "/test";
+
+    int ret = 0;
+    char message[OS_SIZE_128];
+
+    errno = ERRNO;
+
+    /* ptr_function toggles its return value on each call. Seeding it to true
+     * makes the first (top-of-loop) check return false, so the connection
+     * failure proceeds into the escalating backoff; the second call (now inside
+     * the backoff) returns true, so shutdown must be honored without waiting out
+     * the sleep. */
+    ptr_function_value = true;
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, path);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
+    will_return(__wrap_OS_ConnectUnixDomain, -1);
+
+    snprintf(message, OS_SIZE_128, "Can't connect to '%s': %s (%d). Attempt: %d", path, strerror(errno), errno, 1);
+    expect_string(__wrap__mdebug1, formatted_msg, message);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(8301): Reconnection attempts terminated due to shutdown.");
 
     ret = StartMQPredicated(path, type, n_attempts, ptr_function);
     assert_int_equal(ret, -1);
@@ -579,6 +613,7 @@ int main(void){
        cmocka_unit_test(test_reconnect_mq_simple_success),
        cmocka_unit_test(test_start_mq_predicated_write_success),
        cmocka_unit_test(test_start_mq_predicated_write_fail),
+       cmocka_unit_test(test_start_mq_predicated_write_shutdown_during_backoff),
        // Test test_SendMSGAction
        cmocka_unit_test(test_SendMSGAction_format_error),
        cmocka_unit_test(test_SendMSGAction_secure_msg),

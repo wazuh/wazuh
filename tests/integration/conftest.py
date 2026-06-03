@@ -531,53 +531,121 @@ def configure_sockets_environment_implementation(
     Args:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.
     """
+
     monitored_sockets_params = getattr(request.module, "monitored_sockets_params")
 
-    # Stop wazuh-service and ensure all daemons are stopped
-    services.control_service("stop")
-    services.wait_expected_daemon_status(running_condition=False)
-
     monitored_sockets = list()
-    mitm_list = list()
+    started_mitms = list()
+    started_daemons = list()
 
-    # Start selected daemons and monitored sockets MITM
-    for daemon, mitm, daemon_first in monitored_sockets_params:
-        not daemon_first and mitm is not None and mitm.start()
-        services.control_service("start", daemon=daemon, debug_mode=True)
-        services.wait_expected_daemon_status(
-            running_condition=True,
-            target_daemon=daemon,
-            extra_sockets=[mitm.listener_socket_address]
-            if mitm is not None and mitm.family == "AF_UNIX"
-            else [],
-        )
-        daemon_first and mitm is not None and mitm.start()
-        if mitm is not None:
-            monitored_sockets.append(
-                queue_monitor.QueueMonitor(monitored_object=mitm.queue)
+    try:
+        # Stop wazuh-service and ensure all daemons are stopped
+        try:
+            services.control_service("stop")
+        except Exception as e:
+            logger.warning(f"Setup step failed: {e}")
+
+        try:
+            services.wait_expected_daemon_status(running_condition=False)
+        except Exception as e:
+            logger.warning(f"Setup step failed: {e}")
+
+
+        # Clean leftover daemons. Missing files are the expected case when the
+        # previous teardown ran cleanly, so swallow FileNotFoundError silently.
+        for daemon, mitm, daemon_first in monitored_sockets_params:
+            pid_file = f"/var/ossec/var/run/{daemon}.pid"
+            try:
+                os.unlink(pid_file)
+            except FileNotFoundError:
+                pass
+
+            if mitm is not None and mitm.family == "AF_UNIX":
+                try:
+                    os.unlink(mitm.listener_socket_address)
+                except FileNotFoundError:
+                    pass
+
+                try:
+                    os.unlink(f"{mitm.listener_socket_address}.original")
+                except FileNotFoundError:
+                    pass
+
+                mitm.event.clear()
+
+        # Start selected daemons and monitored sockets MITM
+        for daemon, mitm, daemon_first in monitored_sockets_params:
+            if not daemon_first and mitm is not None:
+                mitm.start()
+                started_mitms.append(mitm)
+
+            services.control_service("start", daemon=daemon, debug_mode=True)
+            started_daemons.append(daemon)
+
+            # Use a 60s timeout (vs the framework default of 10s) because
+            # test_authd_key_request_worker has been observed to need >30s for
+            # wazuh-authd to publish its pid file when started right after the
+            # previous module killed wazuh-authd (likely TIME_WAIT on port 1515
+            # or post-fork init taking longer than expected). If the timeout
+            # still hits, the next step is to capture /var/ossec/logs/ossec.log
+            # to see what wazuh-authd is doing after goDaemon().
+            services.wait_expected_daemon_status(
+                target_daemon=daemon,
+                running_condition=True,
+                timeout=60,
+                extra_sockets=[mitm.listener_socket_address]
+                if mitm is not None and mitm.family == "AF_UNIX"
+                else [],
             )
-            mitm_list.append(mitm)
 
-    setattr(request.module, "monitored_sockets", monitored_sockets)
+            if daemon_first and mitm is not None:
+                mitm.start()
+                started_mitms.append(mitm)
 
-    yield
+            if mitm is not None:
+                monitored_sockets.append(
+                    queue_monitor.QueueMonitor(monitored_object=mitm.queue)
+                )
 
-    # Stop daemons and monitored sockets MITM
-    for daemon, mitm, _ in monitored_sockets_params:
-        mitm is not None and mitm.shutdown()
-        services.control_service("stop", daemon=daemon)
-        services.wait_expected_daemon_status(
-            running_condition=False,
-            target_daemon=daemon,
-            extra_sockets=[mitm.listener_socket_address]
-            if mitm is not None and mitm.family == "AF_UNIX"
-            else [],
-        )
+        setattr(request.module, "monitored_sockets", monitored_sockets)
 
-    # Delete all db
-    database.delete_dbs()
+        yield
+    finally:
+        # Stop daemons and monitored sockets MITM
+        for daemon, mitm, _ in monitored_sockets_params:
+            if mitm is not None and mitm in started_mitms:
+                try:
+                    mitm.shutdown()
+                except Exception as e:
+                    logger.warning(f"Cleanup step failed: {e}")
 
-    services.control_service("start")
+            if daemon in started_daemons:
+                try:
+                    services.control_service("stop", daemon=daemon)
+                except Exception as e:
+                    logger.warning(f"Cleanup step failed: {e}")
+
+                try:
+                    services.wait_expected_daemon_status(
+                        running_condition=False,
+                        target_daemon=daemon,
+                        extra_sockets=[mitm.listener_socket_address]
+                        if mitm is not None and mitm.family == "AF_UNIX"
+                        else [],
+                    )
+                except Exception as e:
+                    logger.warning(f"Cleanup step failed: {e}")
+
+        # Delete all db
+        try:
+            database.delete_dbs()
+        except Exception as e:
+            logger.warning(f"Cleanup step failed: {e}")
+
+        try:
+            services.control_service("start")
+        except Exception as e:
+            logger.warning(f"Cleanup step failed: {e}")
 
 
 @pytest.fixture(scope="module")

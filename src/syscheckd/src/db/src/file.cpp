@@ -64,7 +64,8 @@ void DB::getFile(const std::string& path, std::function<void(const nlohmann::jso
                                    "mtime",
                                    "version",
                                    "sync"})
-                      .rowFilter(std::string("WHERE path=\"") + encodedPath + "\"")
+                      .rowFilter("WHERE path=?")
+                      .rowFilterBindText(encodedPath)
                       .orderByOpt(FILE_PRIMARY_KEY)
                       .distinctOpt(false)
                       .countOpt(100)
@@ -106,32 +107,37 @@ void DB::updateFile(const nlohmann::json& file, std::function<void(int, const nl
 void DB::searchFile(const SearchData& data, std::function<void(const std::string&)> callback)
 {
     const auto searchType {std::get<SEARCH_FIELD_TYPE>(data)};
-    std::string filter;
+
+    auto queryBuilder {SelectQuery::builder()
+                       .table(FIMDB_FILE_TABLE_NAME)
+                       .columnList({"path"})};
 
     if (SEARCH_TYPE_INODE == searchType)
     {
-        filter =
-            "WHERE inode=" + std::get<SEARCH_FIELD_INODE>(data) + " AND device=" + std::get<SEARCH_FIELD_DEV>(data);
+        queryBuilder.rowFilter("WHERE inode=? AND device=?")
+        .rowFilterBindInt(std::stoll(std::get<SEARCH_FIELD_INODE>(data)))
+        .rowFilterBindInt(std::stoll(std::get<SEARCH_FIELD_DEV>(data)));
     }
     else if (SEARCH_TYPE_PATH == searchType)
     {
         std::string encodedPath = std::get<SEARCH_FIELD_PATH>(data);
         FIMDBCreator<OS_TYPE>::encodeString(encodedPath);
 
-        filter = "WHERE path LIKE \"" + encodedPath + "\"";
+        queryBuilder.rowFilter("WHERE path LIKE ?")
+        .rowFilterBindText(encodedPath);
     }
     else
     {
         throw std::runtime_error {"Invalid search type"};
     }
 
-    auto selectQuery {SelectQuery::builder()
-                      .table(FIMDB_FILE_TABLE_NAME)
-                      .columnList({"path"})
-                      .rowFilter(filter)
-                      .orderByOpt(FILE_PRIMARY_KEY)
-                      .distinctOpt(false)
-                      .build()};
+    auto selectQuery
+    {
+        queryBuilder
+        .orderByOpt(FILE_PRIMARY_KEY)
+        .distinctOpt(false)
+        .build()
+    };
 
     const auto localCallback {[callback](ReturnTypeCallback type, const nlohmann::json & jsonResult)
     {

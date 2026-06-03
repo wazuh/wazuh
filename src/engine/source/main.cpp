@@ -159,7 +159,7 @@ int main(int argc, char* argv[])
 
         if (chdir(base::process::getWazuhHome().string().c_str()) == -1)
         {
-            fprintf(stderr, "chdir to WAZUH_HOME failed: %s\n", strerror(errno));
+            fprintf(stderr, "chdir to Wazuh home failed: %s\n", strerror(errno));
             return EXIT_FAILURE;
         }
 
