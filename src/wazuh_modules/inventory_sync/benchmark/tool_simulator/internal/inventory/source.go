@@ -91,6 +91,11 @@ type Source struct {
 	payload *PayloadInfo
 	opts    Options
 
+	// lim is recreated at the start of every Run() call so the EPS cap is
+	// enforced strictly per-session (matching Python, which constructs a
+	// fresh SessionRunner per iteration — benchmark_sender.py:1544).
+	// Keeping a single limiter on the Source would let idle time between
+	// sessions silently accumulate tokens.
 	lim *pacing.Limiter
 
 	moduleID string // routing tag, e.g. "syscollector_sync"
@@ -103,8 +108,8 @@ func New(step scenario.Step, payload *PayloadInfo, opts Options) *Source {
 		step:     step,
 		payload:  payload,
 		opts:     opts,
-		lim:      pacing.New(step.MaxEPS),
 		moduleID: moduleIDFor(payload.Module, payload.Option),
+		// lim is left nil — Run() builds a fresh one per session.
 	}
 }
 
@@ -117,9 +122,14 @@ func (s *Source) Label() string {
 }
 
 // Run drives one Start→Data→End→EndAck cycle, with full bookkeeping.
-// ReqRet handling is not yet implemented for the Go port — see FR-9 in
-// docu/02-functional-requirements.md.
 func (s *Source) Run(ctx context.Context, conn *agent.Conn, c *metrics.Counters) error {
+	// Fresh per-session EPS limiter (matches Python's SessionRunner — a
+	// new instance per iteration with _eps_t0 reset to None). Without
+	// this the bucket would carry tokens across the gap between
+	// repeat_count iterations and the first DataValue of the next
+	// session could burst past the cap.
+	s.lim = pacing.New(s.step.MaxEPS)
+
 	c.Inc(metrics.CSessionsStarted)
 
 	identity := conn.Identity()
@@ -444,12 +454,13 @@ func (s *Source) sendItemsBatched(ctx context.Context, conn *agent.Conn, session
 		if len(batch) == 0 {
 			return nil
 		}
-		// EPS pacing applies per item, but we throttle once per batch:
-		// burst at most batchTargetBytes worth of items, then wait.
-		for i := 0; i < len(batch); i++ {
-			if err := s.lim.Wait(ctx); err != nil {
-				return err
-			}
+		// max_eps is a wire-message cap, not an item cap. A DataBatch is
+		// ONE wire message regardless of how many DataValues it carries —
+		// mirrors Python's SessionRunner._send (benchmark_sender.py:1083)
+		// which calls _eps_throttle() exactly once per wire send. So we
+		// wait for a single token here, not len(batch).
+		if err := s.lim.Wait(ctx); err != nil {
+			return err
 		}
 		buf := fbbuild.BuildDataBatch(sessionID, batch)
 		if err := conn.SendBinary(s.moduleID, buf); err != nil {

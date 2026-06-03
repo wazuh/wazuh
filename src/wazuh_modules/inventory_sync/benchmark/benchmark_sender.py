@@ -1772,14 +1772,22 @@ def stats_collector(
             )
 
             if phase == "drain":
-                if in_flight <= 0:
-                    logger.info("All in-flight sessions drained after %ds.", second)
-                    break
+                # Always honor the full drain_timeout window so monitor.py
+                # (and any other concurrent samplers) keep capturing the
+                # tail of the run. Without this, the sender exited the
+                # moment in_flight reached 0 and run_benchmark.sh killed
+                # the monitor immediately, hiding the staggered TCP-
+                # session closures that the Go sender's csv exposes.
                 if drain_started_at is not None and now > drain_started_at + drain_timeout:
-                    logger.warning(
-                        "Drain timeout reached with %d session(s) still in flight.",
-                        in_flight,
-                    )
+                    if in_flight > 0:
+                        logger.warning(
+                            "Drain timeout reached with %d session(s) still in flight.",
+                            in_flight,
+                        )
+                    else:
+                        logger.info(
+                            "Drain window of %.0fs elapsed; exiting.", drain_timeout,
+                        )
                     break
 
     latency = counters.latency_summary()
