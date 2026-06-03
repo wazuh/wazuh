@@ -1,6 +1,6 @@
 {
   "name": "mixed_fleet_windows_linux",
-  "description": "Two fleets sharing a syscollector init lane. Windows fleet (5 agents) also runs FIM first sync. Linux fleet (3 agents) also runs SCA base.",
+  "description": "Two realistic Windows/Linux fleets. Each agent starts four inventory_sync lanes in parallel: FIM first scan, SCA full sync, syscollector Sync, and VD first scan. After the initial lane step, FIM, SCA, syscollector, and VD Sync deltas are replayed repeatedly to keep pressure on the manager.",
   "defaults": {
     "session_type": "delta",
     "max_eps": 75,
@@ -8,39 +8,87 @@
     "retransmit": true
   },
   "lanes": {
-    "syscollector_windows": [
-      { "dump": "sample_payloads/dump-syscollector/session_syscollector_sync_windows.json" },
-      { "dump": "sample_payloads/dump-syscollector/session_vd_sync_windows.json",
-        "repeat_count": 2,
-        "repeat_delay": 3,
-        "initial_delay": 15
-      }
-    ],
-    "syscollector_linux": [
-      { "dump": "sample_payloads/dump-syscollector/session_syscollector_sync_debian10.json" }
-    ],
     "fim_windows": [
-      { "dump": "sample_payloads/fim/windows11_fim_first_sync.json"},
+      { "dump": "sample_payloads/fim/windows11_fim_first_sync.json" },
+      { "dump": "sample_payloads/fim/windows11_fim_delta_create.json",
+        "repeat_count": 10,
+        "repeat_delay": 3,
+        "initial_delay": 0
+      },
       { "dump": "sample_payloads/fim/windows11_fim_delta_modify.json",
         "repeat_count": 10,
         "repeat_delay": 3,
+        "initial_delay": 0
+      }
+    ],
+    "sca_windows": [
+      { "dump": "sample_payloads/dump-sca/session_sca_windows.json" },
+      { "dump": "sample_payloads/dump-sca/session_sca_windows_delta.json",
+        "repeat_count": 20,
+        "repeat_delay": 5,
+        "initial_delay": 10
+      }
+    ],
+    "syscollector_windows": [
+      { "dump": "sample_payloads/dump-syscollector/session_syscollector_sync_windows.json" },
+      { "dump": "sample_payloads/dump-syscollector/session_syscollector_sync_windows.json",
+        "repeat_count": 4,
+        "repeat_delay": 30,
+        "initial_delay": 30
+      }
+    ],
+    "vd_windows": [
+      { "dump": "sample_payloads/dump-syscollector/session_vd_first_windows.json" },
+      { "dump": "sample_payloads/dump-syscollector/session_vd_sync_windows.json",
+        "repeat_count": 20,
+        "repeat_delay": 5,
         "initial_delay": 10
       }
     ],
     "fim_linux": [
       { "dump": "sample_payloads/fim/ubuntu22_fim_first_sync.json" },
+      { "dump": "sample_payloads/fim/ubuntu22_fim_delta_create.json",
+        "repeat_count": 10,
+        "repeat_delay": 3,
+        "initial_delay": 0
+      },
       { "dump": "sample_payloads/fim/ubuntu22_fim_delta_modify.json",
         "repeat_count": 10,
         "repeat_delay": 3,
+        "initial_delay": 0
+      }
+    ],
+    "sca_linux": [
+      { "dump": "sample_payloads/dump-sca/session_sca_ubuntu.json" },
+      { "dump": "sample_payloads/dump-sca/session_sca_ubuntu_delta.json",
+        "repeat_count": 20,
+        "repeat_delay": 5,
+        "initial_delay": 10
+      }
+    ],
+    "syscollector_linux": [
+      { "dump": "sample_payloads/dump-syscollector/session_syscollector_sync_debian10.json" },
+      { "dump": "sample_payloads/dump-syscollector/session_syscollector_sync_debian10.json",
+        "repeat_count": 4,
+        "repeat_delay": 30,
+        "initial_delay": 30
+      }
+    ],
+    "vd_linux": [
+      { "dump": "sample_payloads/dump-syscollector/session_vd_first_debian10.json" },
+      { "dump": "sample_payloads/dump-syscollector/session_vd_sync_debian10.json",
+        "repeat_count": 20,
+        "repeat_delay": 5,
         "initial_delay": 10
       }
     ]
   },
   "fleets": [
-    { "name": "windows", "agents": 1, "lanes": ["syscollector_windows", "fim_windows"] },
-    { "name": "linux",   "agents": 1, "lanes": ["syscollector_linux", "fim_linux"] }
+    { "name": "windows", "agents": 5, "lanes": ["fim_windows", "sca_windows", "syscollector_windows", "vd_windows"] },
+    { "name": "linux",   "agents": 5, "lanes": ["fim_linux", "sca_linux", "syscollector_linux", "vd_linux"] }
   ],
   "parallel_agents": 0,
   "repeat_until": 0,
-  "drain_timeout": 30
+  "drain_timeout": 90,
+  "post_run_grace": 30
 }
