@@ -248,7 +248,7 @@ protected:
 };
 
 // Category != "unclassified" => no increment
-TEST_F(UnclassifiedCounterTest, MultipleDecodersNoIncrement)
+TEST_F(UnclassifiedCounterTest, ClassifiedCategoryNoIncrement)
 {
     auto expr = postOutputUnclassifiedCounter("space1", mockCounter);
 
@@ -259,7 +259,7 @@ TEST_F(UnclassifiedCounterTest, MultipleDecodersNoIncrement)
 }
 
 // Category == "unclassified" => increment
-TEST_F(UnclassifiedCounterTest, SingleDecoderIncrements)
+TEST_F(UnclassifiedCounterTest, UnclassifiedCategoryIncrements)
 {
     auto expr = postOutputUnclassifiedCounter("space1", mockCounter);
 
@@ -270,7 +270,7 @@ TEST_F(UnclassifiedCounterTest, SingleDecoderIncrements)
 }
 
 // No category field => no crash, no increment
-TEST_F(UnclassifiedCounterTest, NoDecodersFieldNoCrash)
+TEST_F(UnclassifiedCounterTest, NoCategoryFieldNoCrash)
 {
     auto expr = postOutputUnclassifiedCounter("space1", mockCounter);
 
