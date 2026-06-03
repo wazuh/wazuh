@@ -117,4 +117,8 @@
 - [Performance](ref/performance.md)
 - [Glossary](ref/glossary.md)
 
+# Migration Guide
+
+- [Integratord to notifications plugin](guide/migration/integratord-notifications.md)
+
 # Diagnostic Documentation
