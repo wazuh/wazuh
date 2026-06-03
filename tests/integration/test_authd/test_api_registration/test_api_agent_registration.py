@@ -118,7 +118,7 @@ def check_api_data_response(api_response, expected_response):
 
 @pytest.mark.filterwarnings('ignore::urllib3.exceptions.InsecureRequestWarning')
 @pytest.mark.parametrize('test_metadata', test_metadata, ids=test_cases_ids)
-def test_agentd_server_configuration(test_metadata, truncate_monitored_files_module,
+def test_agentd_server_configuration(test_metadata, configure_for_api_test, truncate_monitored_files_module,
                                      daemons_handler_module, wait_for_api_startup_module):
     '''
     description:
@@ -126,7 +126,7 @@ def test_agentd_server_configuration(test_metadata, truncate_monitored_files_mod
         accordingly to the new agents parameters.
 
     wazuh_min_version:
-        4.4.0
+        5.0.0
 
     parameters:
         - test_metadata:
