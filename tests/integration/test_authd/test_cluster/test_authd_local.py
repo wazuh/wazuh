@@ -92,9 +92,6 @@ def test_authd_local_messages(test_configuration, test_metadata, set_wazuh_confi
         - set_wazuh_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
-        - configure_sockets_environment_module:
-            type: fixture
-            brief: Configure the socket listener to receive and send messages on the sockets at function scope.
         - connect_to_sockets:
             type: fixture
             brief: Bind to the configured sockets at function scope.
@@ -104,6 +101,9 @@ def test_authd_local_messages(test_configuration, test_metadata, set_wazuh_confi
         - insert_pre_existent_agents:
             type: fixture
             brief: adds the required agents to the client.keys and global.db
+        - configure_local_internal_options:
+            type: fixture
+            brief: Handle the monitoring of a specified file.
         - daemons_handler:
             type: fixture
             brief: Restarts wazuh or a specific daemon passed.

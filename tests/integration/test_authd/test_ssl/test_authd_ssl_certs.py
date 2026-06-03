@@ -133,6 +133,9 @@ def test_authd_ssl_certs(test_configuration, test_metadata, set_wazuh_configurat
         - truncate_monitored_files:
             type: fixture
             brief: Truncate all the log files and json alerts files before and after the test execution.
+        - configure_local_internal_options:
+            type: fixture
+            brief: Handle the monitoring of a specified file.
         - daemons_handler:
             type: fixture
             brief: Handler of Wazuh daemons.

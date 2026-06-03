@@ -155,6 +155,9 @@ def test_ossec_authd_agents_ctx(test_configuration, test_metadata, set_wazuh_con
         - clean_agents_ctx
             type: fixture
             brief: Clean agents files.
+        - configure_local_internal_options:
+            type: fixture
+            brief: Handle the monitoring of a specified file.
         - daemons_handler:
             type: fixture
             brief: Handler of Wazuh daemons.

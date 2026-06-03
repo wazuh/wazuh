@@ -132,6 +132,9 @@ def test_agentd_server_configuration(test_metadata, configure_for_api_test, trun
         - test_metadata:
             type: dict
             brief: Test case metadata.
+        - configure_for_api_test:
+            type: fixture
+            brief: Enables authd for API registration.
         - truncate_monitored_files_module:
             type: fixture
             brief: Truncate all the log files and json alerts files before and after the test execution.
