@@ -85,15 +85,15 @@ void test_ip_customblock_valid_ipv6(void **state) {
     assert_int_equal(ret, 6);
 }
 
-void test_ip_customblock_invalid_ip_with_path_traversal(void **state) {
+void test_ip_customblock_invalid_ip_with_dots_and_slashes(void **state) {
     test_struct_t *data = (test_struct_t *)*state;
-    char *malicious_ip = "../../tmp/malicious";
+    char *malformed_ip = "../../tmp/malicious";
 
-    expect_string(__wrap_getaddrinfo, node, malicious_ip);
+    expect_string(__wrap_getaddrinfo, node, malformed_ip);
     will_return(__wrap_getaddrinfo, data->addr);
     will_return(__wrap_getaddrinfo, 1);
 
-    int ret = get_ip_version(malicious_ip);
+    int ret = get_ip_version(malformed_ip);
 
     assert_int_equal(ret, OS_INVALID);
 }
@@ -128,7 +128,7 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_ip_customblock_valid_ipv4, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_ip_customblock_valid_ipv6, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_ip_customblock_invalid_ip_with_path_traversal, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_ip_customblock_invalid_ip_with_dots_and_slashes, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_ip_customblock_invalid_ip_with_special_chars, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_ip_customblock_invalid_ip_empty_string, test_setup, test_teardown),
     };
