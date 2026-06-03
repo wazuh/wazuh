@@ -273,7 +273,7 @@ index ec95034ba8..f4b01bbef4 100644
      void refresh(std::string_view indexPattern)
      {
 diff --git a/src/wazuh_modules/inventory_sync/src/agentSession.hpp b/src/wazuh_modules/inventory_sync/src/agentSession.hpp
-index a2d8fa84a1..c7974602e6 100644
+index a2d8fa84a1..085ffc2d35 100644
 --- a/src/wazuh_modules/inventory_sync/src/agentSession.hpp
 +++ b/src/wazuh_modules/inventory_sync/src/agentSession.hpp
 @@ -18,11 +18,16 @@
@@ -431,7 +431,61 @@ index a2d8fa84a1..c7974602e6 100644
          logDebug2(LOGGER_DEFAULT_TAG,
                    "Data received: %s %llu %llu %s",
                    std::format("{}_{}", session, seq).c_str(),
-@@ -527,11 +640,20 @@ public:
+@@ -297,6 +410,17 @@ public:
+             {
+                 m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
+                 m_endEnqueued = true;
++                // === BEGIN TEMP: inventory-sync session stats instrumentation ===
++                // Late-DataValue completion path (End arrived BEFORE all
++                // sequences were on disk — typical after a retransmit
++                // round). Without this assignment, the destructor reports
++                // reason=abandoned for sessions that DID complete via
++                // Status_Ok. Mirrors the assignment in handleEnd().
++                if (!m_stats.processingTime.has_value())
++                {
++                    m_stats.processingTime = std::chrono::steady_clock::now();
++                }
++                // === END TEMP ===
+             }
+         }
+     }
+@@ -419,6 +543,15 @@ public:
+             {
+                 m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
+                 m_endEnqueued = true;
++                // === BEGIN TEMP: inventory-sync session stats instrumentation ===
++                // Late-DataContext completion path — see the matching note
++                // in handleData(). Without setting processingTime here the
++                // destructor mislabels successful sessions as abandoned.
++                if (!m_stats.processingTime.has_value())
++                {
++                    m_stats.processingTime = std::chrono::steady_clock::now();
++                }
++                // === END TEMP ===
+             }
+         }
+     }
+@@ -498,6 +631,19 @@ public:
+             {
+                 m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
+                 m_endEnqueued = true;
++                // === BEGIN TEMP: inventory-sync session stats instrumentation ===
++                // Mark the session as "processing" here as well — this is the
++                // late-DataValue path where End arrived BEFORE all sequences
++                // were on disk. Without this assignment, sessions that finish
++                // via this branch (typical when the agent had to retransmit
++                // missing seqs) get logged as reason=abandoned in the
++                // destructor even though Status_Ok was sent and the data was
++                // indexed correctly. Mirrors the assignment in handleEnd().
++                if (!m_stats.processingTime.has_value())
++                {
++                    m_stats.processingTime = std::chrono::steady_clock::now();
++                }
++                // === END TEMP ===
+             }
+         }
+     }
+@@ -527,11 +673,20 @@ public:
              logDebug2(LOGGER_DEFAULT_TAG, "All sequences received for session %llu", m_context->sessionId);
              m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
              m_endEnqueued = true;
@@ -453,7 +507,7 @@ index a2d8fa84a1..c7974602e6 100644
                  m_context->agentId, m_context->sessionId, m_context->moduleName, m_gapSet->ranges());
          }
 diff --git a/src/wazuh_modules/inventory_sync/src/inventorySyncFacade.hpp b/src/wazuh_modules/inventory_sync/src/inventorySyncFacade.hpp
-index 47c6f82220..04327393f6 100644
+index 7a31022b8a..2f40ee4acf 100644
 --- a/src/wazuh_modules/inventory_sync/src/inventorySyncFacade.hpp
 +++ b/src/wazuh_modules/inventory_sync/src/inventorySyncFacade.hpp
 @@ -41,6 +41,9 @@
