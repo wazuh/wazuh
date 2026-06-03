@@ -225,9 +225,9 @@ TEST_F(FileRuleEvaluatorTest, FileDoesNotExistHasReasonString)
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
-    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("some/file"));
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("does not exist"));
+    EXPECT_FALSE(evaluator.GetUnresolvedReason().empty());
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("some/file"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("does not exist"));
 }
 
 TEST_F(FileRuleEvaluatorTest, FileIsNotRegularFileHasReasonString)
@@ -240,9 +240,9 @@ TEST_F(FileRuleEvaluatorTest, FileIsNotRegularFileHasReasonString)
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
-    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("some/file"));
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("not a regular file"));
+    EXPECT_FALSE(evaluator.GetUnresolvedReason().empty());
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("some/file"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("not a regular file"));
 }
 
 TEST_F(FileRuleEvaluatorTest, FileContentReadFailureHasReasonString)
@@ -257,9 +257,9 @@ TEST_F(FileRuleEvaluatorTest, FileContentReadFailureHasReasonString)
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
-    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("some/file"));
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("Failed to read"));
+    EXPECT_FALSE(evaluator.GetUnresolvedReason().empty());
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("some/file"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("Failed to read"));
 }
 
 TEST_F(FileRuleEvaluatorTest, FileSystemAccessErrorHasReasonString)
@@ -273,9 +273,9 @@ TEST_F(FileRuleEvaluatorTest, FileSystemAccessErrorHasReasonString)
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
-    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("some/file"));
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("access error"));
+    EXPECT_FALSE(evaluator.GetUnresolvedReason().empty());
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("some/file"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("access error"));
 }
 
 TEST_F(FileRuleEvaluatorTest, NegatedPatternRegexMatchesContentReturnsNotFound)
