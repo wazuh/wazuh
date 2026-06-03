@@ -11,6 +11,12 @@
 - [Build external dependencies](dev/build-external-dependencies.md)
 - [Test execution](dev/test-execution.md)
 
+# User Guides
+
+- [Overview](guide/README.md)
+- [Migration](guide/migration/README.md)
+  - [SCA policies from 4.x to 5.x](guide/migration/sca-policies-4x-to-5x.md)
+
 # Reference Manual
 
 - [Introduction](ref/README.md)
