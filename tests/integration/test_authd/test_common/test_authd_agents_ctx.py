@@ -9,7 +9,7 @@ type: integration
 
 brief: These tests will check if the 'wazuh-manager-authd' daemon correctly handles the enrollment requests
        from agents with pre-existing IP addresses or names. The 'wazuh-manager-authd' daemon can automatically
-       add a Wazuh agent to a Wazuh manager and provide the key to the agent. 
+       add a Wazuh agent to a Wazuh manager and provide the key to the agent.
 
 components:
     - authd
@@ -55,6 +55,7 @@ from wazuh_testing.utils.client_keys import check_client_keys
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH, utils
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
+from wazuh_testing.modules.authd.configuration import AUTHD_DEBUG_CONFIG
 
 # Marks
 pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
@@ -69,6 +70,7 @@ test_configuration = load_configuration_template(test_configuration_path, test_c
 
 # Variables
 daemons_handler_configuration = {'all_daemons': True}
+local_internal_options = {AUTHD_DEBUG_CONFIG: '2'}
 
 receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2'), (AUTHD_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 
@@ -123,7 +125,8 @@ def register_agent_local_server(receiver_sockets, Name, Group=None, IP=None):
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_ossec_authd_agents_ctx(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
-                                clean_agents_ctx, daemons_handler, wait_for_authd_startup, connect_to_sockets, set_up_groups):
+                                clean_agents_ctx, configure_local_internal_options, daemons_handler,
+                                wait_for_authd_startup, connect_to_sockets, set_up_groups):
     '''
     description:
         Check if when the 'wazuh-manager-authd' daemon receives an enrollment request from an agent
@@ -132,7 +135,7 @@ def test_ossec_authd_agents_ctx(test_configuration, test_metadata, set_wazuh_con
         are sent to an IP v4 network socket.
 
     wazuh_min_version:
-        4.2.0
+        5.0.0
 
     tier: 0
 
