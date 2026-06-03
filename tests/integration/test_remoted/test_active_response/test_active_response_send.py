@@ -81,10 +81,6 @@ def test_active_response_ar_sending(test_configuration, test_metadata, configure
                                manager_port=test_metadata['port'], wait_status='')
 
     try:
-        # Send startup and wait for the manager ACK. The timeout is set to 30 s to cover the
-        # case where remoted is still loading the agent key when the startup message arrives:
-        # remoted drops undecryptable messages, but the injector's keepalive thread resends
-        # the startup after 10 s, giving remoted a second chance once the key is loaded.
         sender.send_event(agent.startup_msg)
 
         ack_monitor = queue_monitor.QueueMonitor(agent.rcv_msg_queue)

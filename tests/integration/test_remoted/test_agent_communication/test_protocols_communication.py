@@ -81,9 +81,10 @@ def test_protocols_communication(test_configuration, test_metadata, configure_lo
 
     sender.send_event(agent.startup_msg)
     ack_monitor = queue_monitor.QueueMonitor(agent.rcv_msg_queue)
-    ack_monitor.start(callback=generate_callback(patterns.ACK_MESSAGE), timeout=30)
-
-    injector.stop_receive()
+    try:
+        ack_monitor.start(callback=generate_callback(patterns.ACK_MESSAGE), timeout=30)
+    finally:
+        injector.stop_receive()
 
     assert ack_monitor.callback_result, (
         f"Manager did not send ACK for startup message via {test_metadata['protocol1']} "

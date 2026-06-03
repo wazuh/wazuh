@@ -4,7 +4,6 @@
  This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 """
 
-import time
 import pytest
 
 from pathlib import Path
@@ -42,22 +41,23 @@ def validate_agent_manager_protocol_communication():
                                            wait_status='')
                 sender.send_event(event)
                 injectors.append(injector)
-            except Exception:
+            except OSError:
                 pass  # invalid-protocol connections are expected to fail at the transport layer
+
+        Path(ALERTS_JSON_PATH).parent.mkdir(parents=True, exist_ok=True)
+        Path(ALERTS_JSON_PATH).touch(exist_ok=True)
+
+        alert_monitor = FileMonitor(ALERTS_JSON_PATH)
 
         event = agent.create_event(_SSH_AUTH_EVENT)
         thread = ThreadExecutor(_send, {'event': event, 'protocol': protocol,
                                         'manager_port': manager_port, 'agent': agent})
         thread.start()
-        thread.join()
 
-        # Ensure alerts.json exists so FileMonitor can open it.
-        Path(ALERTS_JSON_PATH).parent.mkdir(parents=True, exist_ok=True)
-        Path(ALERTS_JSON_PATH).touch(exist_ok=True)
-
-        alert_monitor = FileMonitor(ALERTS_JSON_PATH)
         alert_monitor.start(timeout=_NEGATIVE_TIMEOUT,
                             callback=callbacks.generate_callback(_ALERT_PATTERN))
+
+        thread.join()
 
         assert not alert_monitor.callback_result, (
             f"An alert was generated for an event sent via {protocol} to port {manager_port} "
@@ -65,7 +65,6 @@ def validate_agent_manager_protocol_communication():
             f"the event should not have reached the engine."
         )
 
-        time.sleep(2)
         for injector in injectors:
             injector.stop_receive()
 

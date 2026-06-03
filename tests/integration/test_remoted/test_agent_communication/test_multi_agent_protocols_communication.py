@@ -96,19 +96,18 @@ def test_multi_agent_protocols_communication(test_configuration, test_metadata, 
     for thread in send_event_threads:
         thread.start()
 
-    # Wait for all threads to finish; ThreadExecutor.join() re-raises any thread exception.
+    # Wait for all threads to finish
     for thread in send_event_threads:
         thread.join()
 
-    # Verify each agent received an ACK from the manager, confirming full bidirectional
-    # communication is working for all agents simultaneously.
-    for agent in agents:
-        ack_monitor = queue_monitor.QueueMonitor(agent.rcv_msg_queue)
-        ack_monitor.start(callback=generate_callback(patterns.ACK_MESSAGE))
-        assert ack_monitor.callback_result, (
-            f"Agent {agent.id} did not receive ACK from manager via "
-            f"{protocol} on port {manager_port} — event did not reach the manager."
-        )
-
-    for injector in injectors:
-        injector.stop_receive()
+    try:
+        for agent in agents:
+            ack_monitor = queue_monitor.QueueMonitor(agent.rcv_msg_queue)
+            ack_monitor.start(callback=generate_callback(patterns.ACK_MESSAGE))
+            assert ack_monitor.callback_result, (
+                f"Agent {agent.id} did not receive ACK from manager via "
+                f"{protocol} on port {manager_port} — event did not reach the manager."
+            )
+    finally:
+        for injector in injectors:
+            injector.stop_receive()

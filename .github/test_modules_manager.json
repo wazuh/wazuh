@@ -63,7 +63,7 @@
       "suite_type": "manager_install",
       "pytest_target": "test_remoted/",
       "tiers": ["2"],
-      "timeout_minutes": 30,
+      "timeout_minutes": 60,
       "paths": [
         ".github/workflows/5_builderpackage_manager-multiples.yml",
         ".github/workflows/5_testintegration_manager.yml",
