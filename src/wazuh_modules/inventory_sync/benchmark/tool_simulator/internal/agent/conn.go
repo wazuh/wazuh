@@ -1,0 +1,326 @@
+package agent
+
+import (
+	"container/list"
+	"context"
+	"fmt"
+	"net"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	fb "github.com/wazuh/wazuh-modules/inventory_sync/benchmark/internal/fb/Wazuh/SyncSchema"
+	"github.com/wazuh/wazuh-modules/inventory_sync/benchmark/internal/fbbuild"
+	"github.com/wazuh/wazuh-modules/inventory_sync/benchmark/internal/wire"
+)
+
+// StartAckCallback receives the manager's StartAck for the next pending
+// runner (FIFO). status comes straight from the FB enum.
+type StartAckCallback func(session uint64, status fb.Status)
+
+// InboundCallback receives EndAck/ReqRet frames routed by session id.
+type InboundCallback func(msg fbbuild.Inbound)
+
+// Conn is one agent's outbound socket + reader goroutine.
+type Conn struct {
+	identity Identity
+	aesKey   []byte
+	manager  string
+	port     int
+
+	sock net.Conn
+
+	sendMu sync.Mutex
+	// pendingStarts is the FIFO of StartAckCallbacks awaiting their ack.
+	// Protected by sendMu so wire order == FIFO order.
+	pendingStarts *list.List
+
+	sessionsMu sync.RWMutex
+	sessions   map[uint64]InboundCallback
+
+	readerCtx    context.Context
+	readerCancel context.CancelFunc
+	readerDone   chan struct{}
+
+	socketAlive atomic.Bool
+}
+
+// New creates a Conn, derives its AES key from the identity. Call Dial to
+// open the TCP socket and StartReader to spawn the demuxer.
+func New(identity Identity, manager string, port int) *Conn {
+	return &Conn{
+		identity:      identity,
+		aesKey:        wire.DeriveAESKey(identity.ManagerKey, identity.Name, identity.ID),
+		manager:       manager,
+		port:          port,
+		pendingStarts: list.New(),
+		sessions:      make(map[uint64]InboundCallback),
+	}
+}
+
+// Identity returns the agent's id+name (read-only).
+func (c *Conn) Identity() Identity { return c.identity }
+
+// Dial opens the TCP socket to remoted and sends the startup control msg.
+func (c *Conn) Dial(timeout time.Duration) error {
+	addr := net.JoinHostPort(c.manager, fmt.Sprintf("%d", c.port))
+	dialer := &net.Dialer{Timeout: timeout}
+	conn, err := dialer.Dial("tcp", addr)
+	if err != nil {
+		return fmt.Errorf("remoted dial: %w", err)
+	}
+	c.sock = conn
+	c.socketAlive.Store(true)
+
+	ctrl := wire.BuildStartupControlMessage(c.identity.Name, c.identity.ID)
+	frame, err := wire.EncodeText(c.aesKey, c.identity.ID, ctrl)
+	if err != nil {
+		return fmt.Errorf("encode control: %w", err)
+	}
+	if err := wire.WriteFrame(c.sock, frame); err != nil {
+		return fmt.Errorf("write control: %w", err)
+	}
+	// Give remoted ~1s to ingest then drain any incidental bytes.
+	time.Sleep(time.Second)
+	return nil
+}
+
+// Close shuts the socket and stops the reader.
+func (c *Conn) Close() {
+	c.socketAlive.Store(false)
+	if c.readerCancel != nil {
+		c.readerCancel()
+	}
+	if c.sock != nil {
+		_ = c.sock.Close()
+	}
+	if c.readerDone != nil {
+		select {
+		case <-c.readerDone:
+		case <-time.After(2 * time.Second):
+		}
+	}
+}
+
+// Alive returns whether the socket is still considered live.
+func (c *Conn) Alive() bool { return c.socketAlive.Load() }
+
+// EnqueueStart MUST be called immediately before sending a Start frame.
+// The Start send and the FIFO push are wrapped under sendMu — wire order
+// then equals FIFO order, so the reader can match StartAcks correctly.
+//
+//	c.SendStart(runner, identifier, fbBytes)
+//
+// is the supported pattern; this method is only exposed for tests.
+func (c *Conn) sendStartLocked(cb StartAckCallback, frame []byte) error {
+	c.pendingStarts.PushBack(cb)
+	if err := wire.WriteFrame(c.sock, frame); err != nil {
+		// On failure, undo the push so the FIFO doesn't drift.
+		c.pendingStarts.Remove(c.pendingStarts.Back())
+		return err
+	}
+	return nil
+}
+
+// SendStart atomically pushes cb to the StartAck FIFO and writes the Start
+// frame. cb is invoked from the reader goroutine when the next StartAck
+// arrives (or from Close() with status=Status_Offline on socket teardown).
+func (c *Conn) SendStart(identifier string, fbBytes []byte, cb StartAckCallback) error {
+	frame, err := wire.EncodeBinary(c.aesKey, c.identity.ID, identifier, fbBytes)
+	if err != nil {
+		return err
+	}
+	c.sendMu.Lock()
+	defer c.sendMu.Unlock()
+	if !c.socketAlive.Load() {
+		return fmt.Errorf("socket not alive")
+	}
+	return c.sendStartLocked(cb, frame)
+}
+
+// SendBinary writes an inventory_sync FlatBuffer payload (non-Start type).
+// Caller is responsible for any session-id bookkeeping via RegisterSession.
+func (c *Conn) SendBinary(identifier string, fbBytes []byte) error {
+	frame, err := wire.EncodeBinary(c.aesKey, c.identity.ID, identifier, fbBytes)
+	if err != nil {
+		return err
+	}
+	c.sendMu.Lock()
+	defer c.sendMu.Unlock()
+	if !c.socketAlive.Load() {
+		return fmt.Errorf("socket not alive")
+	}
+	return wire.WriteFrame(c.sock, frame)
+}
+
+// SendText writes a plain-text payload (engine event / control). For
+// engine events the caller passes "1:<location>:<line>" verbatim.
+func (c *Conn) SendText(text string) error {
+	frame, err := wire.EncodeText(c.aesKey, c.identity.ID, text)
+	if err != nil {
+		return err
+	}
+	c.sendMu.Lock()
+	defer c.sendMu.Unlock()
+	if !c.socketAlive.Load() {
+		return fmt.Errorf("socket not alive")
+	}
+	return wire.WriteFrame(c.sock, frame)
+}
+
+// RegisterSession remembers a callback for inbound frames carrying this
+// session id. Call UnregisterSession when the runner is done.
+func (c *Conn) RegisterSession(sessionID uint64, cb InboundCallback) {
+	c.sessionsMu.Lock()
+	c.sessions[sessionID] = cb
+	c.sessionsMu.Unlock()
+}
+
+// UnregisterSession removes the inbound routing for a session id.
+func (c *Conn) UnregisterSession(sessionID uint64) {
+	c.sessionsMu.Lock()
+	delete(c.sessions, sessionID)
+	c.sessionsMu.Unlock()
+}
+
+// StartReader spawns the per-agent reader goroutine. It returns when ctx
+// is canceled or the socket reports EOF.
+func (c *Conn) StartReader(ctx context.Context) {
+	c.readerCtx, c.readerCancel = context.WithCancel(ctx)
+	c.readerDone = make(chan struct{})
+	go c.readLoop()
+}
+
+func (c *Conn) readLoop() {
+	defer close(c.readerDone)
+	for {
+		select {
+		case <-c.readerCtx.Done():
+			return
+		default:
+		}
+		frame, err := wire.ReadFrame(c.sock)
+		if err != nil {
+			c.socketAlive.Store(false)
+			c.wakeAll()
+			return
+		}
+		payload, err := wire.DecodeFrame(c.aesKey, frame)
+		if err != nil {
+			// drop; manager garbage shouldn't kill the reader
+			continue
+		}
+		fbBytes := stripIdentifier(payload)
+		if fbBytes == nil {
+			// Control acks (`#!-agent ack`), unknown shapes, etc. Ignored.
+			continue
+		}
+		in, err := fbbuild.ParseInbound(fbBytes)
+		if err != nil {
+			continue
+		}
+		c.dispatch(in)
+	}
+}
+
+func (c *Conn) dispatch(in fbbuild.Inbound) {
+	switch in.Type {
+	case fb.MessageTypeStartAck:
+		c.sendMu.Lock()
+		var cb StartAckCallback
+		if e := c.pendingStarts.Front(); e != nil {
+			cb = e.Value.(StartAckCallback)
+			c.pendingStarts.Remove(e)
+		}
+		c.sendMu.Unlock()
+		if cb != nil {
+			cb(in.Session, in.Status)
+		}
+	case fb.MessageTypeEndAck, fb.MessageTypeReqRet:
+		c.sessionsMu.RLock()
+		target := c.sessions[in.Session]
+		c.sessionsMu.RUnlock()
+		if target != nil {
+			target(in)
+		}
+	}
+}
+
+// wakeAll notifies pending Start callbacks and registered session
+// callbacks that the socket is gone.
+func (c *Conn) wakeAll() {
+	c.sendMu.Lock()
+	pending := make([]StartAckCallback, 0, c.pendingStarts.Len())
+	for e := c.pendingStarts.Front(); e != nil; e = e.Next() {
+		pending = append(pending, e.Value.(StartAckCallback))
+	}
+	c.pendingStarts.Init() // clear
+	c.sendMu.Unlock()
+	for _, cb := range pending {
+		cb(0, fb.StatusOffline)
+	}
+	c.sessionsMu.RLock()
+	regs := make([]InboundCallback, 0, len(c.sessions))
+	for _, cb := range c.sessions {
+		regs = append(regs, cb)
+	}
+	c.sessionsMu.RUnlock()
+	for _, cb := range regs {
+		cb(fbbuild.Inbound{Type: fb.MessageTypeEndAck, Status: fb.StatusOffline})
+	}
+}
+
+// stripIdentifier returns the FlatBuffer bytes from an inbound payload.
+// Two routing formats are accepted, matching Python's _parse_response:
+//
+//	"s:<tag>:<fbBytes>"      — agent → manager (and any echo back)
+//	"#!-<tag> <fbBytes>"      — manager → agent for inventory_sync responses
+//
+// The control-message ack `#!-agent ack ` (empty body) returns nil so the
+// reader skips it. Same for any other unknown shape.
+func stripIdentifier(payload []byte) []byte {
+	if len(payload) < 4 {
+		return nil
+	}
+	// Manager → agent: `#!-<module>_sync <fbBytes>`. We only accept tags
+	// that end with `_sync` (the inventory_sync routing convention) so that
+	// control responses such as `#!-agent ack` are filtered out before
+	// they reach the FlatBuffer parser, which would crash on non-FB input.
+	if payload[0] == '#' && payload[1] == '!' && payload[2] == '-' {
+		sp := indexByte(payload[3:], ' ')
+		if sp < 0 {
+			return nil
+		}
+		tag := payload[3 : 3+sp]
+		if len(tag) < 5 || string(tag[len(tag)-5:]) != "_sync" {
+			return nil
+		}
+		fb := payload[3+sp+1:]
+		// FlatBuffer Message needs at least the 4-byte root offset + a
+		// vtable, so anything below 8 bytes can't be a valid Message.
+		if len(fb) < 8 {
+			return nil
+		}
+		return fb
+	}
+	// Agent → manager (or echo): `s:<module>_sync:<fbBytes>`
+	if payload[0] == 's' && payload[1] == ':' {
+		for i := 2; i < len(payload); i++ {
+			if payload[i] == ':' {
+				return payload[i+1:]
+			}
+		}
+	}
+	return nil
+}
+
+// indexByte is bytes.IndexByte without the import (kept inline so this
+// file stays focused).
+func indexByte(b []byte, c byte) int {
+	for i, x := range b {
+		if x == c {
+			return i
+		}
+	}
+	return -1
+}
