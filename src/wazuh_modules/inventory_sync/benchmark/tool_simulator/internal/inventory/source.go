@@ -13,11 +13,42 @@ import (
 	"github.com/wazuh/wazuh-modules/inventory_sync/benchmark/internal/scenario"
 )
 
-// Timeouts mirror the Python SessionRunner constants.
+// Default timeouts. Mirror the Python SessionRunner constants; can be
+// overridden per-session via Options.
 const (
-	startAckTimeout = 15 * time.Second
-	endAckTimeout   = 120 * time.Second
+	DefaultStartAckTimeout = 15 * time.Second
+	DefaultEndAckTimeout   = 120 * time.Second
+	// MaxRetransmitRounds caps how many times we'll respond to a ReqRet
+	// before declaring the session failed. Matches Python's MAX_RETRANSMIT.
+	MaxRetransmitRounds = 5
 )
+
+// Options controls per-Source behavior beyond what the scenario step
+// carries. CLI flags / scenario knobs flow through here.
+type Options struct {
+	// StartAckTimeout is how long the runner waits for the manager's
+	// StartAck before giving up. 0 means use DefaultStartAckTimeout.
+	StartAckTimeout time.Duration
+	// EndAckTimeout is how long the runner waits for the manager's
+	// terminal EndAck (Status_Ok / _Error / _Offline). The timer is
+	// extended each time a Status_Processing arrives. 0 means use
+	// DefaultEndAckTimeout.
+	EndAckTimeout time.Duration
+}
+
+func (o Options) startAckTimeout() time.Duration {
+	if o.StartAckTimeout > 0 {
+		return o.StartAckTimeout
+	}
+	return DefaultStartAckTimeout
+}
+
+func (o Options) endAckTimeout() time.Duration {
+	if o.EndAckTimeout > 0 {
+		return o.EndAckTimeout
+	}
+	return DefaultEndAckTimeout
+}
 
 // Source drives one inventory_sync session per Run() call. SessionType=delta
 // is the only fully-implemented variant at this time; modulecheck/dataclean
@@ -25,6 +56,7 @@ const (
 type Source struct {
 	step    scenario.Step
 	payload *PayloadInfo
+	opts    Options
 
 	lim *pacing.Limiter
 
@@ -33,10 +65,11 @@ type Source struct {
 
 // New returns an inventory Source. payload should have been loaded once
 // and may be shared across Run() iterations (caller's choice).
-func New(step scenario.Step, payload *PayloadInfo) *Source {
+func New(step scenario.Step, payload *PayloadInfo, opts Options) *Source {
 	return &Source{
 		step:     step,
 		payload:  payload,
+		opts:     opts,
 		lim:      pacing.New(step.MaxEPS),
 		moduleID: moduleIDFor(payload.Module, payload.Option),
 	}
@@ -69,9 +102,10 @@ func (s *Source) Run(ctx context.Context, conn *agent.Conn, c *metrics.Counters)
 	)
 	tStart := time.Now()
 	ackC := make(chan ackResult, 1)
-	if err := conn.SendStart(s.moduleID, startBytes, func(session uint64, status fb.Status) {
+	pending, err := conn.SendStart(s.moduleID, startBytes, func(session uint64, status fb.Status) {
 		ackC <- ackResult{session: session, status: status}
-	}); err != nil {
+	})
+	if err != nil {
 		c.Inc(metrics.CSessionsFailed)
 		return fmt.Errorf("send Start: %w", err)
 	}
@@ -79,14 +113,17 @@ func (s *Source) Run(ctx context.Context, conn *agent.Conn, c *metrics.Counters)
 
 	// Await StartAck.
 	var sessionID uint64
+	startAckT := s.opts.startAckTimeout()
 	select {
 	case <-ctx.Done():
+		pending.Cancel() // FIFO orphan removal
 		c.Inc(metrics.CSessionsFailed)
 		return ctx.Err()
-	case <-time.After(startAckTimeout):
+	case <-time.After(startAckT):
+		pending.Cancel() // FIFO orphan removal — critical for session-id correctness
 		c.Inc(metrics.CSessionsFailed)
 		c.Inc(metrics.CStartRetries) // surfaced as a hint to the operator
-		return fmt.Errorf("StartAck timeout")
+		return fmt.Errorf("StartAck timeout after %s", startAckT)
 	case ack := <-ackC:
 		c.RecordLatency(metrics.LStartAck, float64(time.Since(tStart).Milliseconds()))
 		switch ack.status {
@@ -129,9 +166,13 @@ func (s *Source) Run(ctx context.Context, conn *agent.Conn, c *metrics.Counters)
 	}
 	c.Inc(metrics.CMessagesSent)
 
-	// Await terminal EndAck (Status_Processing → keep waiting).
-	deadline := time.NewTimer(endAckTimeout)
+	// Await terminal EndAck (Status_Processing → keep waiting). Inbound
+	// ReqRet messages trigger a retransmit round + another End. Capped at
+	// MaxRetransmitRounds to avoid pathological loops.
+	endAckT := s.opts.endAckTimeout()
+	deadline := time.NewTimer(endAckT)
 	defer deadline.Stop()
+	retransmits := 0
 	for {
 		select {
 		case <-ctx.Done():
@@ -139,10 +180,49 @@ func (s *Source) Run(ctx context.Context, conn *agent.Conn, c *metrics.Counters)
 			return ctx.Err()
 		case <-deadline.C:
 			c.Inc(metrics.CSessionsFailed)
-			return fmt.Errorf("EndAck timeout")
+			return fmt.Errorf("EndAck timeout after %s", endAckT)
 		case in := <-endC:
+			if in.Type == fb.MessageTypeReqRet {
+				c.Inc(metrics.CReqRet)
+				c.Add(metrics.CMissingRangesTotal, int64(len(in.Ranges)))
+				if retransmits >= MaxRetransmitRounds {
+					c.Add(metrics.CMessagesDropped, int64(countSeqs(in.Ranges)))
+					c.Inc(metrics.CSessionsFailed)
+					return fmt.Errorf("ReqRet budget exhausted after %d rounds", retransmits)
+				}
+				retransmits++
+				if err := s.handleReqRet(ctx, conn, sessionID, in.Ranges, c); err != nil {
+					c.Inc(metrics.CSessionsFailed)
+					return fmt.Errorf("retransmit: %w", err)
+				}
+				// Re-send End so the manager re-runs its gap check.
+				//
+				// NOTE: the manager's `agentSession::handleData` enqueues
+				// the indexer push when the last gap-filling DataValue
+				// arrives, but it does NOT set `processingTime`. The
+				// subsequent handleEnd then short-circuits via
+				// `m_endEnqueued == true` and likewise does not set it.
+				// The session DOES complete successfully (Status_Ok is
+				// sent and the indexer flush happens), but the manager
+				// stats log misreports `reason=abandoned` /
+				// `start_to_processing=-1`. The authoritative source of
+				// truth is this sender's `sessions_completed` /
+				// `end_ack_ok` counters. See docu/09 §"ReqRet stats
+				// quirk" for the manager-side fix.
+				tEnd = time.Now()
+				if err := conn.SendBinary(s.moduleID, fbbuild.BuildEnd(sessionID)); err != nil {
+					c.Inc(metrics.CSessionsFailed)
+					return fmt.Errorf("send End (retransmit): %w", err)
+				}
+				c.Inc(metrics.CMessagesSent)
+				// Reset the deadline — we just did real work.
+				if !deadline.Stop() {
+					<-deadline.C
+				}
+				deadline.Reset(endAckT)
+				continue
+			}
 			if in.Type != fb.MessageTypeEndAck {
-				// e.g. ReqRet — full retransmit support is a TODO.
 				continue
 			}
 			c.RecordLatency(metrics.LEndAck, float64(time.Since(tEnd).Milliseconds()))
@@ -158,7 +238,7 @@ func (s *Source) Run(ctx context.Context, conn *agent.Conn, c *metrics.Counters)
 				if !deadline.Stop() {
 					<-deadline.C
 				}
-				deadline.Reset(endAckTimeout)
+				deadline.Reset(endAckT)
 			case fb.StatusOffline:
 				c.Inc(metrics.CEndAckOffline)
 				c.Inc(metrics.CSessionsFailed)
@@ -170,6 +250,72 @@ func (s *Source) Run(ctx context.Context, conn *agent.Conn, c *metrics.Counters)
 			}
 		}
 	}
+}
+
+// countSeqs returns the total number of sequence numbers across all
+// inclusive ranges.
+func countSeqs(ranges []fbbuild.SeqRange) int {
+	n := 0
+	for _, r := range ranges {
+		if r.End >= r.Begin {
+			n += int(r.End-r.Begin) + 1
+		}
+	}
+	return n
+}
+
+// handleReqRet resends the items whose seq numbers fall in the requested
+// ranges, paced by the same per-session EPS limiter as the original send.
+// Items are always emitted as individual DataValue messages (not batched)
+// since retransmissions are typically sparse.
+func (s *Source) handleReqRet(ctx context.Context, conn *agent.Conn, sessionID uint64, ranges []fbbuild.SeqRange, c *metrics.Counters) error {
+	// Build a lookup of seq → Item once. For dumps, the items list is
+	// fixed; for static kinds the items are generated on the fly so we
+	// just regenerate matching seqs from the template.
+	resend := func(seq uint64) error {
+		var it Item
+		if s.payload.Kind == "dump" {
+			for _, candidate := range s.payload.Items {
+				if candidate.Seq == seq {
+					it = candidate
+					goto found
+				}
+			}
+			return nil // unknown seq — best effort, skip
+		} else {
+			// static kind: regenerate the item that was originally sent
+			// for this seq. Index from the step, data from the template.
+			it = Item{
+				Seq:       seq,
+				Operation: scenario.OperationUpsert,
+				ID:        fmt.Sprintf("doc-%d", seq),
+				Index:     s.step.Index,
+				Data:      s.payload.Template,
+			}
+		}
+	found:
+		if err := s.lim.Wait(ctx); err != nil {
+			return err
+		}
+		buf := fbbuild.BuildDataValue(sessionID, it.Seq, fb.Operation(it.Operation),
+			it.ID, it.Index, it.Data)
+		if err := conn.SendBinary(s.moduleID, buf); err != nil {
+			return err
+		}
+		c.Inc(metrics.CMessagesSent)
+		return nil
+	}
+	for _, r := range ranges {
+		if r.End < r.Begin {
+			continue
+		}
+		for seq := r.Begin; seq <= r.End; seq++ {
+			if err := resend(seq); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (s *Source) sendDataBody(ctx context.Context, conn *agent.Conn, sessionID uint64, c *metrics.Counters) error {

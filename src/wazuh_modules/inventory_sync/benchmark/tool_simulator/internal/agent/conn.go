@@ -18,6 +18,29 @@ import (
 // runner (FIFO). status comes straight from the FB enum.
 type StartAckCallback func(session uint64, status fb.Status)
 
+// PendingStart is one entry in the per-agent StartAck FIFO.
+//
+// Two safeguards prevent session-id mixups when the manager processes
+// concurrent Starts out of order or a reply is lost:
+//
+//  1. `alive` is cleared by the runner on timeout / cancel; the dispatcher
+//     skips dead entries (mirrors Python's start_pending filter).
+//  2. `tag` records the module-sync routing identifier we sent with the
+//     Start. The dispatcher MATCHES inbound StartAcks against this tag
+//     (the manager echoes it in the `#!-<tag> <fb>` wire prefix), so when
+//     two concurrent Starts on different modules race, each runner gets
+//     its OWN session id, not the other one's.
+type PendingStart struct {
+	cb    StartAckCallback
+	tag   string
+	alive atomic.Bool
+}
+
+// Cancel marks this pending start as abandoned so the next StartAck
+// arriving will skip past it. Safe to call multiple times; safe to call
+// from any goroutine.
+func (p *PendingStart) Cancel() { p.alive.Store(false) }
+
 // InboundCallback receives EndAck/ReqRet frames routed by session id.
 type InboundCallback func(msg fbbuild.Inbound)
 
@@ -105,15 +128,10 @@ func (c *Conn) Close() {
 // Alive returns whether the socket is still considered live.
 func (c *Conn) Alive() bool { return c.socketAlive.Load() }
 
-// EnqueueStart MUST be called immediately before sending a Start frame.
-// The Start send and the FIFO push are wrapped under sendMu — wire order
-// then equals FIFO order, so the reader can match StartAcks correctly.
-//
-//	c.SendStart(runner, identifier, fbBytes)
-//
-// is the supported pattern; this method is only exposed for tests.
-func (c *Conn) sendStartLocked(cb StartAckCallback, frame []byte) error {
-	c.pendingStarts.PushBack(cb)
+// sendStartLocked pushes a PendingStart onto the FIFO and writes the
+// frame, all under sendMu so wire order == FIFO order.
+func (c *Conn) sendStartLocked(ps *PendingStart, frame []byte) error {
+	c.pendingStarts.PushBack(ps)
 	if err := wire.WriteFrame(c.sock, frame); err != nil {
 		// On failure, undo the push so the FIFO doesn't drift.
 		c.pendingStarts.Remove(c.pendingStarts.Back())
@@ -122,20 +140,29 @@ func (c *Conn) sendStartLocked(cb StartAckCallback, frame []byte) error {
 	return nil
 }
 
-// SendStart atomically pushes cb to the StartAck FIFO and writes the Start
-// frame. cb is invoked from the reader goroutine when the next StartAck
-// arrives (or from Close() with status=Status_Offline on socket teardown).
-func (c *Conn) SendStart(identifier string, fbBytes []byte, cb StartAckCallback) error {
+// SendStart atomically pushes a PendingStart onto the FIFO and writes the
+// Start frame. cb is invoked from the reader goroutine when the manager's
+// StartAck for THIS module's Start arrives — matched by tag, so two
+// concurrent Starts on different modules can't swap session ids. The
+// caller MUST call ps.Cancel() if it gives up before receiving the
+// StartAck. See docu/04-agent-state-machine.md.
+func (c *Conn) SendStart(identifier string, fbBytes []byte, cb StartAckCallback) (*PendingStart, error) {
 	frame, err := wire.EncodeBinary(c.aesKey, c.identity.ID, identifier, fbBytes)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	ps := &PendingStart{cb: cb, tag: identifier}
+	ps.alive.Store(true)
+
 	c.sendMu.Lock()
 	defer c.sendMu.Unlock()
 	if !c.socketAlive.Load() {
-		return fmt.Errorf("socket not alive")
+		return nil, fmt.Errorf("socket not alive")
 	}
-	return c.sendStartLocked(cb, frame)
+	if err := c.sendStartLocked(ps, frame); err != nil {
+		return nil, err
+	}
+	return ps, nil
 }
 
 // SendBinary writes an inventory_sync FlatBuffer payload (non-Start type).
@@ -210,7 +237,7 @@ func (c *Conn) readLoop() {
 			// drop; manager garbage shouldn't kill the reader
 			continue
 		}
-		fbBytes := stripIdentifier(payload)
+		tag, fbBytes := stripIdentifier(payload)
 		if fbBytes == nil {
 			// Control acks (`#!-agent ack`), unknown shapes, etc. Ignored.
 			continue
@@ -219,18 +246,38 @@ func (c *Conn) readLoop() {
 		if err != nil {
 			continue
 		}
-		c.dispatch(in)
+		c.dispatch(tag, in)
 	}
 }
 
-func (c *Conn) dispatch(in fbbuild.Inbound) {
+func (c *Conn) dispatch(tag string, in fbbuild.Inbound) {
 	switch in.Type {
 	case fb.MessageTypeStartAck:
-		c.sendMu.Lock()
+		// Match this StartAck to the FIRST live PendingStart whose tag
+		// equals `tag`. Skipping non-matching live entries handles the
+		// case where the manager processes two concurrent Starts (on
+		// different modules) out of wire order — without this match by
+		// tag, the wrong runner would capture a foreign session id and
+		// subsequent DataValues would be rejected with "seq exceeds
+		// declared size". Dead orphans are pruned along the way.
 		var cb StartAckCallback
-		if e := c.pendingStarts.Front(); e != nil {
-			cb = e.Value.(StartAckCallback)
-			c.pendingStarts.Remove(e)
+		c.sendMu.Lock()
+		for e := c.pendingStarts.Front(); e != nil; {
+			next := e.Next()
+			ps := e.Value.(*PendingStart)
+			if !ps.alive.Load() {
+				c.pendingStarts.Remove(e)
+				e = next
+				continue
+			}
+			if ps.tag == tag {
+				cb = ps.cb
+				c.pendingStarts.Remove(e)
+				break
+			}
+			// Live entry for a different module — leave it in place; its
+			// own StartAck will arrive later.
+			e = next
 		}
 		c.sendMu.Unlock()
 		if cb != nil {
@@ -250,14 +297,16 @@ func (c *Conn) dispatch(in fbbuild.Inbound) {
 // callbacks that the socket is gone.
 func (c *Conn) wakeAll() {
 	c.sendMu.Lock()
-	pending := make([]StartAckCallback, 0, c.pendingStarts.Len())
+	pending := make([]*PendingStart, 0, c.pendingStarts.Len())
 	for e := c.pendingStarts.Front(); e != nil; e = e.Next() {
-		pending = append(pending, e.Value.(StartAckCallback))
+		pending = append(pending, e.Value.(*PendingStart))
 	}
 	c.pendingStarts.Init() // clear
 	c.sendMu.Unlock()
-	for _, cb := range pending {
-		cb(0, fb.StatusOffline)
+	for _, ps := range pending {
+		if ps.alive.Load() {
+			ps.cb(0, fb.StatusOffline)
+		}
 	}
 	c.sessionsMu.RLock()
 	regs := make([]InboundCallback, 0, len(c.sessions))
@@ -270,17 +319,18 @@ func (c *Conn) wakeAll() {
 	}
 }
 
-// stripIdentifier returns the FlatBuffer bytes from an inbound payload.
-// Two routing formats are accepted, matching Python's _parse_response:
+// stripIdentifier returns the module tag and FlatBuffer bytes from an
+// inbound payload. Two routing formats are accepted, matching Python's
+// _parse_response:
 //
 //	"s:<tag>:<fbBytes>"      — agent → manager (and any echo back)
 //	"#!-<tag> <fbBytes>"      — manager → agent for inventory_sync responses
 //
-// The control-message ack `#!-agent ack ` (empty body) returns nil so the
-// reader skips it. Same for any other unknown shape.
-func stripIdentifier(payload []byte) []byte {
+// The control-message ack `#!-agent ack ` (empty body) returns ("", nil)
+// so the reader skips it. Same for any other unknown shape.
+func stripIdentifier(payload []byte) (string, []byte) {
 	if len(payload) < 4 {
-		return nil
+		return "", nil
 	}
 	// Manager → agent: `#!-<module>_sync <fbBytes>`. We only accept tags
 	// that end with `_sync` (the inventory_sync routing convention) so that
@@ -289,29 +339,29 @@ func stripIdentifier(payload []byte) []byte {
 	if payload[0] == '#' && payload[1] == '!' && payload[2] == '-' {
 		sp := indexByte(payload[3:], ' ')
 		if sp < 0 {
-			return nil
+			return "", nil
 		}
-		tag := payload[3 : 3+sp]
-		if len(tag) < 5 || string(tag[len(tag)-5:]) != "_sync" {
-			return nil
+		tag := string(payload[3 : 3+sp])
+		if len(tag) < 5 || tag[len(tag)-5:] != "_sync" {
+			return "", nil
 		}
 		fb := payload[3+sp+1:]
 		// FlatBuffer Message needs at least the 4-byte root offset + a
 		// vtable, so anything below 8 bytes can't be a valid Message.
 		if len(fb) < 8 {
-			return nil
+			return "", nil
 		}
-		return fb
+		return tag, fb
 	}
 	// Agent → manager (or echo): `s:<module>_sync:<fbBytes>`
 	if payload[0] == 's' && payload[1] == ':' {
 		for i := 2; i < len(payload); i++ {
 			if payload[i] == ':' {
-				return payload[i+1:]
+				return string(payload[2:i]), payload[i+1:]
 			}
 		}
 	}
-	return nil
+	return "", nil
 }
 
 // indexByte is bytes.IndexByte without the import (kept inline so this

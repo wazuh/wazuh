@@ -25,6 +25,11 @@ type Config struct {
 	RegPort  int
 	KeyWait  time.Duration
 	BenchDir string // resolves sample_payloads/ for static kinds
+
+	// Inventory session timeouts. Zero values fall back to the
+	// inventory package defaults (15s start, 120s end).
+	StartAckTimeout time.Duration
+	EndAckTimeout   time.Duration
 }
 
 // Run launches all agents, runs the scenario, and returns when every
@@ -138,6 +143,11 @@ func runAgent(ctx context.Context, idx int, lanes []string, scn *scenario.Scenar
 		}
 	}
 
+	invOpts := inventory.Options{
+		StartAckTimeout: cfg.StartAckTimeout,
+		EndAckTimeout:   cfg.EndAckTimeout,
+	}
+
 	for {
 		conn := agent.New(id, cfg.Manager, cfg.Port)
 		if err := conn.Dial(15 * time.Second); err != nil {
@@ -146,7 +156,7 @@ func runAgent(ctx context.Context, idx int, lanes []string, scn *scenario.Scenar
 		}
 		conn.StartReader(ctx)
 
-		runIteration(ctx, conn, lanes, scn, c, cache)
+		runIteration(ctx, conn, lanes, scn, c, cache, invOpts)
 
 		conn.Close()
 		if !shouldRepeat(deadline) {
@@ -168,7 +178,7 @@ func shouldRepeat(deadline time.Time) bool {
 }
 
 func runIteration(ctx context.Context, conn *agent.Conn, lanes []string, scn *scenario.Scenario,
-	c *metrics.Counters, cache payloadCache) {
+	c *metrics.Counters, cache payloadCache, invOpts inventory.Options) {
 	var wg sync.WaitGroup
 	for _, laneName := range lanes {
 		laneName := laneName
@@ -179,16 +189,16 @@ func runIteration(ctx context.Context, conn *agent.Conn, lanes []string, scn *sc
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			runLane(ctx, conn, laneName, steps, c, cache)
+			runLane(ctx, conn, laneName, steps, c, cache, invOpts)
 		}()
 	}
 	wg.Wait()
 }
 
 func runLane(ctx context.Context, conn *agent.Conn, laneName string, steps []scenario.Step,
-	c *metrics.Counters, cache payloadCache) {
+	c *metrics.Counters, cache payloadCache, invOpts inventory.Options) {
 	for _, step := range steps {
-		if err := runStep(ctx, conn, laneName, step, c, cache); err != nil {
+		if err := runStep(ctx, conn, laneName, step, c, cache, invOpts); err != nil {
 			if ctx.Err() != nil {
 				return
 			}
@@ -201,9 +211,9 @@ func runLane(ctx context.Context, conn *agent.Conn, laneName string, steps []sce
 }
 
 func runStep(ctx context.Context, conn *agent.Conn, laneName string, step scenario.Step,
-	c *metrics.Counters, cache payloadCache) error {
+	c *metrics.Counters, cache payloadCache, invOpts inventory.Options) error {
 
-	src := buildSource(step, cache)
+	src := buildSource(step, cache, invOpts)
 	if src == nil {
 		return fmt.Errorf("nil source")
 	}
@@ -236,7 +246,7 @@ func runStep(ctx context.Context, conn *agent.Conn, laneName string, step scenar
 	return nil
 }
 
-func buildSource(step scenario.Step, cache payloadCache) source.Source {
+func buildSource(step scenario.Step, cache payloadCache, opts inventory.Options) source.Source {
 	if step.Kind == scenario.SourceKindEngine {
 		return engine.New(step)
 	}
@@ -244,5 +254,5 @@ func buildSource(step scenario.Step, cache payloadCache) source.Source {
 	if info == nil {
 		return nil
 	}
-	return inventory.New(step, info)
+	return inventory.New(step, info, opts)
 }
