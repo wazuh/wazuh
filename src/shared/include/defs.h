@@ -109,8 +109,13 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 #define ROOT_GID (0)
 
-// Wazuh home environment variable
-#define WAZUH_HOME_ENV "WAZUH_HOME"
+// Wazuh home environment variable (target-specific to avoid clashes on
+// co-hosted manager + agent installs).
+#ifdef CLIENT
+#define WAZUH_HOME_ENV "WAZUH_AGENT_HOME"
+#else
+#define WAZUH_HOME_ENV "WAZUH_MANAGER_HOME"
+#endif
 
 /* Default queue */
 #define DEFAULTQUEUE "queue/sockets/queue"
