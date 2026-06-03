@@ -302,7 +302,12 @@ func resolveStep(cfg map[string]any, scenarioDir, benchDir, laneName string, idx
 	step.SyncMode = Mode(asIntDefault(cfg["sync_mode"], 1))
 	step.DataSize = asInt(cfg["data_size"])
 	step.MaxEPS = asInt(cfg["max_eps"])
-	step.UseDatabatch = asBool(cfg["use_databatch"], false)
+	// DataBatch is the only batching policy the real agent uses
+	// (MAX_BATCH_PAYLOAD = 60 KB in shared_modules/sync_protocol).
+	// Default to true so scenarios match the real wire shape; explicit
+	// `"use_databatch": false` in the scenario disables it for the rare
+	// test that needs individual DataValues.
+	step.UseDatabatch = asBool(cfg["use_databatch"], true)
 	step.Retransmit = asBool(cfg["retransmit"], true)
 	step.PayloadSize = asInt(cfg["payload_size"])
 	step.PadField = asString(cfg["pad_field"])

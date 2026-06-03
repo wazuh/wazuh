@@ -409,7 +409,15 @@ func (s *Source) sendDataBody(ctx context.Context, conn *agent.Conn, sessionID u
 	return s.sendItems(ctx, conn, sessionID, items, c)
 }
 
-const batchTargetBytes = 60 * 1024
+// Batching policy mirrors Python's SessionRunner._send_data_as_batches
+// (benchmark_sender.py:1261) and ultimately the real agent's
+// MAX_BATCH_PAYLOAD in shared_modules/sync_protocol. Same numbers in
+// both senders → same item-per-batch count given the same dump.
+const (
+	batchTargetBytes      = 60 * 1024 // DEFAULT_BATCH_MAX_BYTES
+	fbOverheadPerItem     = 80        // FB_OVERHEAD_PER_ITEM
+	batchMessageOverhead  = 128       // BATCH_MESSAGE_OVERHEAD
+)
 
 func (s *Source) sendItems(ctx context.Context, conn *agent.Conn, sessionID uint64, items []Item, c *metrics.Counters) error {
 	if s.step.UseDatabatch {
@@ -431,7 +439,7 @@ func (s *Source) sendItems(ctx context.Context, conn *agent.Conn, sessionID uint
 
 func (s *Source) sendItemsBatched(ctx context.Context, conn *agent.Conn, sessionID uint64, items []Item, c *metrics.Counters) error {
 	batch := make([]fbbuild.BatchItem, 0, 32)
-	approxSize := 0
+	batchEst := batchMessageOverhead
 	flush := func() error {
 		if len(batch) == 0 {
 			return nil
@@ -449,7 +457,7 @@ func (s *Source) sendItemsBatched(ctx context.Context, conn *agent.Conn, session
 		}
 		c.Inc(metrics.CMessagesSent)
 		batch = batch[:0]
-		approxSize = 0
+		batchEst = batchMessageOverhead
 		return nil
 	}
 	for _, it := range items {
@@ -457,14 +465,14 @@ func (s *Source) sendItemsBatched(ctx context.Context, conn *agent.Conn, session
 			Seq: it.Seq, Operation: fb.Operation(it.Operation),
 			DocID: it.ID, Index: it.Index, Data: it.Data,
 		}
-		itemSize := len(it.Data) + len(it.ID) + len(it.Index) + 32 // rough overhead
-		if approxSize+itemSize > batchTargetBytes && len(batch) > 0 {
+		itemSize := fbOverheadPerItem + len(it.ID) + len(it.Index) + len(it.Data)
+		if len(batch) > 0 && batchEst+itemSize > batchTargetBytes {
 			if err := flush(); err != nil {
 				return err
 			}
 		}
 		batch = append(batch, bi)
-		approxSize += itemSize
+		batchEst += itemSize
 	}
 	return flush()
 }

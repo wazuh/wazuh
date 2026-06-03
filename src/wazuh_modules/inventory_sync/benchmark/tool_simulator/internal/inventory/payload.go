@@ -139,9 +139,23 @@ func loadDump(path string) (*PayloadInfo, error) {
 		if id == "" {
 			id = fmt.Sprintf("%d", i)
 		}
+		// Re-marshal the data payload to compact JSON (no whitespace).
+		// Dump files on disk are pretty-printed for readability, but
+		// Python's _payload_wire_bytes serialises with compact separators
+		// (",", ":") before putting items on the wire — see
+		// benchmark_sender.py:201. Without this step the Go sender would
+		// emit larger DataValue payloads than Python given the same
+		// dump, inflating bandwidth and skewing DataBatch counts.
 		data := []byte(raw.Data)
 		if len(data) == 0 {
 			data = []byte("{}")
+		} else {
+			var v any
+			if err := json.Unmarshal(data, &v); err == nil {
+				if compact, merr := json.Marshal(v); merr == nil {
+					data = compact
+				}
+			}
 		}
 		items[i] = Item{
 			Seq:       raw.Seq,
