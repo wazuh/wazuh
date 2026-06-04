@@ -130,6 +130,21 @@ type Step struct {
 	RepeatCount  int
 	InitialDelay float64
 	RepeatDelay  float64
+
+	// OfflineRetry controls what the runner does when the manager replies
+	// to a Start with Status_Offline (typically: data_value_quota
+	// exhausted, or the agent locked by a concurrent Metadata/Group
+	// session). Semantics:
+	//   -1 → abort the iteration on the first Offline (default; matches
+	//        the historical behavior).
+	//    0 → retry indefinitely until Status_Ok or ctx.Done.
+	//   N>0 → at most N total attempts; fail the iteration if all N return
+	//         Offline.
+	// Only Status_Offline triggers retries — Status_Error / timeouts still
+	// abort immediately. Between attempts the runner sleeps
+	// OfflineRetryDelay seconds.
+	OfflineRetry      int
+	OfflineRetryDelay float64
 }
 
 // Fleet is a group of agents that share the same set of lanes.

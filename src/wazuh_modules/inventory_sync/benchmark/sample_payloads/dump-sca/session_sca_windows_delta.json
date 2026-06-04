@@ -25,138 +25,136 @@
   "items": [
     {
       "seq": 0,
-        "operation": "Upsert",
-        "id": "34ab89d32e9888a7a100aac9b5ce3e4ddc19a60c",
-        "index": "wazuh-states-sca",
-        "version": 1,
-        "data": {
-          "json": {
-            "check": {
-              "compliance": {
-                "cmmc": [
-                  "IA.L2-3.5.7"
-                ],
-                "fedramp": [
-                  "AC-2",
-                  "IA-2",
-                  "IA-5",
-                  "AC-11",
-                  "AC-7",
-                  "AU-6"
-                ],
-                "gdpr": [
-                  "IV_32.1.a",
-                  "IV_32.1.b",
-                  "IV_32.1.c",
-                  "IV_32.1.d",
-                  "IV_32.2",
-                  "IV_32.3",
-                  "IV_32.4"
-                ],
-                "hipaa": [
-                  "164.308(a)(4)",
-                  "164.312(a)(1)",
-                  "164.312(d)",
-                  "164.312(b)"
-                ],
-                "iso_27001": [
-                  "A.9.2.1",
-                  "A.9.2.2",
-                  "A.9.2.5",
-                  "A.9.2.6",
-                  "A.9.2.4",
-                  "A.9.4.2"
-                ],
-                "nis2": [
-                  "21.2.i",
-                  "21.2.k"
-                ],
-                "nist_800_171": [
-                  "3.5.7"
-                ],
-                "nist_800_53": [
-                  "AC-2",
-                  "IA-2",
-                  "IA-5",
-                  "AC-11",
-                  "AC-7",
-                  "AU-6"
-                ],
-                "pci_dss": [
-                  "2.2",
-                  "8.3",
-                  "8.1",
-                  "8.2"
-                ],
-                "tsc": [
-                  "CC6.1",
-                  "CC6.2",
-                  "CC6.3",
-                  "CC6.4",
-                  "CC6.5",
-                  "CC6.6",
-                  "CC6.7",
-                  "CC6.8",
-                  "CC7.1",
-                  "CC7.2",
-                  "CC7.3",
-                  "CC7.4",
-                  "CC7.5"
-                ]
-              },
-              "condition": "all",
-              "description": "This policy setting defines how long a user can use their password before it expires. Values for this policy setting range from 0 to 999 days. If you set the value to 0, the password will never expire. Because attackers can crack passwords, the more frequently you change the password the less opportunity an attacker has to use a cracked password. However, the lower this value is set, the higher the potential for an increase in calls to help desk support due to users having to change their password or forgetting which password is current. The recommended state for this setting is 365 or fewer days, but not 0. Note: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center.",
-              "id": "27001",
-              "mitre": {
-                "subtechnique": [
-                  "T1556.001",
-                  "T1550.001",
-                  "T1550.002"
-                ],
-                "tactic": [
-                  "TA0006",
-                  "TA0003"
-                ],
-                "technique": [
-                  "T1078",
-                  "T1098",
-                  "T1110",
-                  "T1136",
-                  "T1556"
-                ]
-              },
-              "name": "Ensure 'Maximum password age' is set to '365 or fewer days, but not 0'.",
-              "rationale": "The longer a password exists the higher the likelihood that it will be compromised by a brute force attack, by an attacker gaining general knowledge about the user, or by the user sharing the password. Configuring the Maximum password age setting to 0 so that users are never required to change their passwords is a major security risk because that allows a compromised password to be used by the malicious user for as long as the valid user has authorized access.",
-              "references": [
-                "[\"https://www.cisecurity.org/white-papers/cis-password-policy-guide/\"]"
-              ],
-              "remediation": "To establish the recommended configuration via GP, set the following UI path to 365 or fewer days, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Maximum password age.",
-              "result": "Failed",
-              "rules": [
-                "[\"c:powershell secedit /export /cfg $env:TEMP\\\\secpol.cfg; Get-Content $env:TEMP\\\\secpol.cfg | Select-String \\\"MaximumPasswordAge\\\"; Remove-Item $env:TEMP\\\\secpol.cfg -> n:MaximumPasswordAge = (\\\\d+) compare <= 365\"",
-                "\"c:powershell secedit /export /cfg $env:TEMP\\\\secpol.cfg; Get-Content $env:TEMP\\\\secpol.cfg | Select-String \\\"MaximumPasswordAge\\\"; Remove-Item $env:TEMP\\\\secpol.cfg -> n:MaximumPasswordAge = (\\\\d+) compare > 0\"]"
-              ]
-            },
-            "checksum": {
-              "hash": {
-                "sha1": "c06f3081f53741b417f0393ee5bb4036badf9553"
-              }
-            },
-            "policy": {
-              "description": "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows Server 2022. Please note that the rules provide accurate results for Microsoft Windows Server 2022 Operating Systems with the System language set to English. The SCA policy will work with other languages but the results will be less accurate due to some of the rules that depend on the System language.",
-              "file": "cis_win2022.yml",
-              "id": "cis_win2022",
-              "name": "CIS Microsoft Windows Server 2022 Benchmark v2.0.0",
-              "references": [
-                "[\"https://www.cisecurity.org/cis-benchmarks/\"]"
-              ]
-            },
-            "state": {
-              "document_version": 1,
-              "modified_at": "2026-05-22T16:40:00.943Z"
-            }
+      "operation": "Upsert",
+      "id": "34ab89d32e9888a7a100aac9b5ce3e4ddc19a60c",
+      "index": "wazuh-states-sca",
+      "version": 1,
+      "data": {
+        "check": {
+          "compliance": {
+            "cmmc": [
+              "IA.L2-3.5.7"
+            ],
+            "fedramp": [
+              "AC-2",
+              "IA-2",
+              "IA-5",
+              "AC-11",
+              "AC-7",
+              "AU-6"
+            ],
+            "gdpr": [
+              "IV_32.1.a",
+              "IV_32.1.b",
+              "IV_32.1.c",
+              "IV_32.1.d",
+              "IV_32.2",
+              "IV_32.3",
+              "IV_32.4"
+            ],
+            "hipaa": [
+              "164.308(a)(4)",
+              "164.312(a)(1)",
+              "164.312(d)",
+              "164.312(b)"
+            ],
+            "iso_27001": [
+              "A.9.2.1",
+              "A.9.2.2",
+              "A.9.2.5",
+              "A.9.2.6",
+              "A.9.2.4",
+              "A.9.4.2"
+            ],
+            "nis2": [
+              "21.2.i",
+              "21.2.k"
+            ],
+            "nist_800_171": [
+              "3.5.7"
+            ],
+            "nist_800_53": [
+              "AC-2",
+              "IA-2",
+              "IA-5",
+              "AC-11",
+              "AC-7",
+              "AU-6"
+            ],
+            "pci_dss": [
+              "2.2",
+              "8.3",
+              "8.1",
+              "8.2"
+            ],
+            "tsc": [
+              "CC6.1",
+              "CC6.2",
+              "CC6.3",
+              "CC6.4",
+              "CC6.5",
+              "CC6.6",
+              "CC6.7",
+              "CC6.8",
+              "CC7.1",
+              "CC7.2",
+              "CC7.3",
+              "CC7.4",
+              "CC7.5"
+            ]
+          },
+          "condition": "all",
+          "description": "This policy setting defines how long a user can use their password before it expires. Values for this policy setting range from 0 to 999 days. If you set the value to 0, the password will never expire. Because attackers can crack passwords, the more frequently you change the password the less opportunity an attacker has to use a cracked password. However, the lower this value is set, the higher the potential for an increase in calls to help desk support due to users having to change their password or forgetting which password is current. The recommended state for this setting is 365 or fewer days, but not 0. Note: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center.",
+          "id": "27001",
+          "mitre": {
+            "subtechnique": [
+              "T1556.001",
+              "T1550.001",
+              "T1550.002"
+            ],
+            "tactic": [
+              "TA0006",
+              "TA0003"
+            ],
+            "technique": [
+              "T1078",
+              "T1098",
+              "T1110",
+              "T1136",
+              "T1556"
+            ]
+          },
+          "name": "Ensure 'Maximum password age' is set to '365 or fewer days, but not 0'.",
+          "rationale": "The longer a password exists the higher the likelihood that it will be compromised by a brute force attack, by an attacker gaining general knowledge about the user, or by the user sharing the password. Configuring the Maximum password age setting to 0 so that users are never required to change their passwords is a major security risk because that allows a compromised password to be used by the malicious user for as long as the valid user has authorized access.",
+          "references": [
+            "[\"https://www.cisecurity.org/white-papers/cis-password-policy-guide/\"]"
+          ],
+          "remediation": "To establish the recommended configuration via GP, set the following UI path to 365 or fewer days, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Maximum password age.",
+          "result": "Failed",
+          "rules": [
+            "[\"c:powershell secedit /export /cfg $env:TEMP\\\\secpol.cfg; Get-Content $env:TEMP\\\\secpol.cfg | Select-String \\\"MaximumPasswordAge\\\"; Remove-Item $env:TEMP\\\\secpol.cfg -> n:MaximumPasswordAge = (\\\\d+) compare <= 365\"",
+            "\"c:powershell secedit /export /cfg $env:TEMP\\\\secpol.cfg; Get-Content $env:TEMP\\\\secpol.cfg | Select-String \\\"MaximumPasswordAge\\\"; Remove-Item $env:TEMP\\\\secpol.cfg -> n:MaximumPasswordAge = (\\\\d+) compare > 0\"]"
+          ]
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "c06f3081f53741b417f0393ee5bb4036badf9553"
           }
+        },
+        "policy": {
+          "description": "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows Server 2022. Please note that the rules provide accurate results for Microsoft Windows Server 2022 Operating Systems with the System language set to English. The SCA policy will work with other languages but the results will be less accurate due to some of the rules that depend on the System language.",
+          "file": "cis_win2022.yml",
+          "id": "cis_win2022",
+          "name": "CIS Microsoft Windows Server 2022 Benchmark v2.0.0",
+          "references": [
+            "[\"https://www.cisecurity.org/cis-benchmarks/\"]"
+          ]
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2026-05-22T16:40:00.943Z"
         }
       }
+    }
   ]
 }

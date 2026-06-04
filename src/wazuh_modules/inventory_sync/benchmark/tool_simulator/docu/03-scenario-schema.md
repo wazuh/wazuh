@@ -123,7 +123,19 @@ log lines as engine events — see [12-engine-event-streams.md](./12-engine-even
   // Repetition controls.
   "repeat_count":  1,    // ≥ 1
   "initial_delay": 0.0,  // seconds before the first run
-  "repeat_delay":  0.0   // seconds between repeats
+  "repeat_delay":  0.0,  // seconds between repeats
+
+  // Retry policy when the manager replies to Start with Status_Offline
+  // (typically: inventory_sync_data_value_quota exhausted, or agent
+  // locked by a concurrent Metadata/Group session). Only Status_Offline
+  // triggers retries — Status_Error and timeouts still abort.
+  "offline_retry":       -1,   // -1 = abort on first Offline (default,
+                               //      historical behavior)
+                               //  0 = retry indefinitely until Ok or ctx cancels
+                               // N>0 = up to N total attempts; if all return
+                               //      Offline, the iteration fails
+  "offline_retry_delay": 1.0   // seconds to wait between retry attempts
+                               // (ignored when offline_retry == -1)
 }
 ```
 
@@ -280,7 +292,7 @@ Run at startup, before any socket is opened:
 1. `lanes` is present, is a non-empty object, and every value is a non-empty array of steps.
 2. Exactly one of `total_agents` or `fleets` is present. `total_agents ≥ 1`. Every fleet has `name`, `agents ≥ 1`, and `lanes` is a non-empty subset of the lane names defined above.
 3. Every step has exactly one of `dump` XOR `kind`.
-4. `repeat_count ≥ 1`, `initial_delay ≥ 0`, `repeat_delay ≥ 0`, `max_eps ≥ 0`, `payload_size ≥ 0`, `data_size ≥ 0`.
+4. `repeat_count ≥ 1`, `initial_delay ≥ 0`, `repeat_delay ≥ 0`, `max_eps ≥ 0`, `payload_size ≥ 0`, `data_size ≥ 0`, `offline_retry ≥ -1`, `offline_retry_delay ≥ 0`.
 5. `repeat_until ≥ 0`, `drain_timeout ≥ 0`, `post_run_grace ≥ 0`, `parallel_agents ≥ 0`.
 6. `session_type ∈ {delta, modulecheck, dataclean}` if set; default is the value from `defaults.session_type`, fallback `delta`.
 7. `option ∈ {Sync, VDFirst, VDSync}` if set.

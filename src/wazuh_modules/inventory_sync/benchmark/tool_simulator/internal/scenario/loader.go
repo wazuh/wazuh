@@ -314,6 +314,18 @@ func resolveStep(cfg map[string]any, scenarioDir, benchDir, laneName string, idx
 	step.ModuleCheckChecksum = asString(cfg["modulecheck_checksum"])
 	step.AutoResync = asBool(cfg["auto_resync"], false)
 
+	// offline_retry policy (per-step; see scenario.Step.OfflineRetry).
+	step.OfflineRetry = asIntDefault(cfg["offline_retry"], -1)
+	if step.OfflineRetry < -1 {
+		return step, fmt.Errorf("scenario %s: %s.offline_retry must be -1, 0, or a positive integer (got %d)",
+			scenarioPath, ctx, step.OfflineRetry)
+	}
+	step.OfflineRetryDelay = asFloatDefault(cfg["offline_retry_delay"], 1.0)
+	if step.OfflineRetryDelay < 0 {
+		return step, fmt.Errorf("scenario %s: %s.offline_retry_delay must be >= 0 (got %g)",
+			scenarioPath, ctx, step.OfflineRetryDelay)
+	}
+
 	var defaultModule, defaultIndex string
 	if step.Kind == SourceKindStatic {
 		meta := PayloadKinds[step.PayloadKind]
@@ -464,6 +476,24 @@ func asFloat(v any) float64 {
 		return float64(t)
 	}
 	return 0
+}
+
+// asFloatDefault returns def when v is nil/absent, otherwise the numeric
+// value of v. Mirrors asIntDefault for float fields where 0.0 is a valid
+// explicit user choice distinct from "field not set".
+func asFloatDefault(v any, def float64) float64 {
+	if v == nil {
+		return def
+	}
+	switch t := v.(type) {
+	case float64:
+		return t
+	case int:
+		return float64(t)
+	case int64:
+		return float64(t)
+	}
+	return def
 }
 
 func asBool(v any, def bool) bool {

@@ -238,7 +238,7 @@ These are constants in the Python script; the Go port MUST reuse them
 | ---------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------- |
 | `Status_Ok (0)`                    | `*_ack_ok`                    | Proceed                                                                                       |
 | `Status_Error (1)`                 | `*_ack_error`                 | Abort runner immediately; no End is sent if it was a Start                                    |
-| `Status_Offline (2)`               | `*_ack_offline`               | Abort runner; do not retry (scenario decides via `repeat_count`)                              |
+| `Status_Offline (2)`               | `*_ack_offline`               | **StartAck**: depends on the step's `offline_retry` policy — `-1` (default) aborts the runner; `0` retries indefinitely; `N>0` retries up to N total attempts (waiting `offline_retry_delay` between each). Each retry also bumps `start_retries`. **EndAck**: always aborts (no retry path for End). |
 | `Status_ChecksumMismatch (3)`      | `start_ack_checksum_mismatch` | Only in `modulecheck`. If `auto_resync=true`, enqueue a delta resync after End                |
 | `Status_Processing (4)`            | `end_ack_processing`          | Keep waiting for the next ack; record latency only on the first occurrence                    |
 

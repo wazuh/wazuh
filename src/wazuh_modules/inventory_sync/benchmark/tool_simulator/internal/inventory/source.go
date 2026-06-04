@@ -138,49 +138,86 @@ func (s *Source) Run(ctx context.Context, conn *agent.Conn, c *metrics.Counters)
 		indices = []string{s.step.Index}
 	}
 
-	// Build + send Start, capture session id via callback.
+	// Build the Start payload once — it's identical across retry attempts.
+	// The manager treats each Start frame as a fresh session request and
+	// assigns a new session_id per ack, so we don't need to vary anything.
 	startBytes := fbbuild.BuildStart(
 		s.payload.Module, fb.Mode(s.payload.Mode), uint64(s.payload.DataSize),
 		fb.Option(s.payload.Option), identity.ID, identity.Name, "5.0.0", indices,
 	)
-	tStart := time.Now()
-	ackC := make(chan ackResult, 1)
-	pending, err := conn.SendStart(s.moduleID, startBytes, func(session uint64, status fb.Status) {
-		ackC <- ackResult{session: session, status: status}
-	})
-	if err != nil {
-		c.Inc(metrics.CSessionsFailed)
-		return fmt.Errorf("send Start: %w", err)
-	}
-	c.Inc(metrics.CMessagesSent)
 
-	// Await StartAck.
-	var sessionID uint64
+	// Retry policy on Status_Offline. See scenario.Step.OfflineRetry for
+	// the semantics. We translate it into an internal "max attempts":
+	//   -1 → 1 (no retry — historical default)
+	//    0 → unlimitedOfflineAttempts (loop until Ok or ctx.Done)
+	//   N>0 → N
+	const unlimitedOfflineAttempts = -1
+	maxAttempts := 1
+	switch {
+	case s.step.OfflineRetry == -1:
+		maxAttempts = 1
+	case s.step.OfflineRetry == 0:
+		maxAttempts = unlimitedOfflineAttempts
+	default:
+		maxAttempts = s.step.OfflineRetry
+	}
+	retryDelay := time.Duration(s.step.OfflineRetryDelay * float64(time.Second))
+
+	ackC := make(chan ackResult, 1)
+	tStart := time.Now()
 	startAckT := s.opts.startAckTimeout()
-	select {
-	case <-ctx.Done():
-		pending.Cancel() // FIFO orphan removal
-		c.Inc(metrics.CSessionsFailed)
-		return ctx.Err()
-	case <-time.After(startAckT):
-		pending.Cancel() // FIFO orphan removal — critical for session-id correctness
-		c.Inc(metrics.CSessionsFailed)
-		c.Inc(metrics.CStartRetries) // surfaced as a hint to the operator
-		return fmt.Errorf("StartAck timeout after %s", startAckT)
-	case ack := <-ackC:
-		c.RecordLatency(metrics.LStartAck, float64(time.Since(tStart).Milliseconds()))
-		switch ack.status {
-		case fb.StatusOk:
-			c.Inc(metrics.CStartAckOk)
-			sessionID = ack.session
-		case fb.StatusOffline:
-			c.Inc(metrics.CStartAckOffline)
+
+	var sessionID uint64
+	attempt := 0
+retryLoop:
+	for {
+		attempt++
+
+		pending, err := conn.SendStart(s.moduleID, startBytes, func(session uint64, status fb.Status) {
+			ackC <- ackResult{session: session, status: status}
+		})
+		if err != nil {
 			c.Inc(metrics.CSessionsFailed)
-			return nil
-		default:
-			c.Inc(metrics.CStartAckError)
+			return fmt.Errorf("send Start: %w", err)
+		}
+		c.Inc(metrics.CMessagesSent)
+
+		select {
+		case <-ctx.Done():
+			pending.Cancel()
 			c.Inc(metrics.CSessionsFailed)
-			return nil
+			return ctx.Err()
+		case <-time.After(startAckT):
+			pending.Cancel()
+			c.Inc(metrics.CSessionsFailed)
+			c.Inc(metrics.CStartRetries)
+			return fmt.Errorf("StartAck timeout after %s", startAckT)
+		case ack := <-ackC:
+			switch ack.status {
+			case fb.StatusOk:
+				c.RecordLatency(metrics.LStartAck, float64(time.Since(tStart).Milliseconds()))
+				c.Inc(metrics.CStartAckOk)
+				sessionID = ack.session
+				break retryLoop
+			case fb.StatusOffline:
+				c.Inc(metrics.CStartAckOffline)
+				if maxAttempts != unlimitedOfflineAttempts && attempt >= maxAttempts {
+					// Budget exhausted — fail the iteration.
+					c.Inc(metrics.CSessionsFailed)
+					return nil
+				}
+				c.Inc(metrics.CStartRetries)
+				if err := sleepCtx(ctx, retryDelay); err != nil {
+					c.Inc(metrics.CSessionsFailed)
+					return err
+				}
+				// Loop: the next iteration sends a fresh Start.
+				continue
+			default:
+				c.Inc(metrics.CStartAckError)
+				c.Inc(metrics.CSessionsFailed)
+				return nil
+			}
 		}
 	}
 
