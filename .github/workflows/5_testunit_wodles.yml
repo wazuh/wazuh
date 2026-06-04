@@ -54,7 +54,7 @@ jobs:
       - name: Run Wodles tests
         run: |
           set -o pipefail
-          python -m pytest wodles -vv --ignore=tests --cov=wodles | tee ${TEST_REPORT_PATH}
+          python -m pytest wodles -vv --cov=wodles | tee ${TEST_REPORT_PATH}
 
       - name: Generate test report
         if: inputs.generate_report
