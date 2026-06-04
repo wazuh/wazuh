@@ -81,7 +81,8 @@ TEST_F(CMStoreNSJsonTest, JsonResourcesOnDiskAreLoadedDuringStoreInitialization)
     const auto jsonPath = m_root / "decoders" / "decoder_syslog_0.json";
     std::ofstream jsonFile(jsonPath);
     ASSERT_TRUE(jsonFile.is_open());
-    jsonFile << R"({"name":"decoder/syslog/0","id":"3f086ce2-32a4-42b0-be7e-40dcfb9c6160","metadata":{"module":"syslog"}})";
+    jsonFile
+        << R"({"name":"decoder/syslog/0","id":"3f086ce2-32a4-42b0-be7e-40dcfb9c6160","metadata":{"module":"syslog"}})";
     jsonFile.close();
 
     cm::store::CMStoreNS store {cm::store::NamespaceId("test"), m_root, m_outputs};
@@ -337,16 +338,15 @@ TEST(IntegrationTest, ConstructorEmptyCategoryThrows)
 
 TEST(IntegrationTest, ConstructorInvalidCategoryThrows)
 {
-    EXPECT_THROW(
-        cm::store::dataType::Integration(validUUID(), "name", true, "invalid_category", std::nullopt, {}, {}),
-        std::runtime_error);
+    EXPECT_THROW(cm::store::dataType::Integration(validUUID(), "name", true, "invalid_category", std::nullopt, {}, {}),
+                 std::runtime_error);
 }
 
 TEST(IntegrationTest, ConstructorInvalidDefaultParentThrows)
 {
-    EXPECT_THROW(cm::store::dataType::Integration(
-                     validUUID(), "name", true, "security", std::string("not-a-uuid"), {}, {}),
-                 std::runtime_error);
+    EXPECT_THROW(
+        cm::store::dataType::Integration(validUUID(), "name", true, "security", std::string("not-a-uuid"), {}, {}),
+        std::runtime_error);
 }
 
 TEST(IntegrationTest, ConstructorDuplicateDecoderUUIDsThrows)
@@ -558,6 +558,7 @@ TEST(CategoriesTest, ExistingCategoriesFound)
 {
     EXPECT_TRUE(cm::store::categories::exists("security"));
     EXPECT_TRUE(cm::store::categories::exists("network-activity"));
+    EXPECT_TRUE(cm::store::categories::exists("unclassified"));
 }
 
 TEST(CategoriesTest, UnknownCategoryNotFound)
@@ -569,7 +570,7 @@ TEST(CategoriesTest, UnknownCategoryNotFound)
 TEST(CategoriesTest, GetAvailableCategoriesNonEmpty)
 {
     const auto& cats = cm::store::categories::getAvailableCategories();
-    EXPECT_EQ(cats.size(), 7U);
+    EXPECT_EQ(cats.size(), 8U);
 }
 
 // ======================================================================
@@ -649,16 +650,17 @@ TEST_F(CMStoreNSTest, CreateDuplicateNameThrows)
     auto store = makeStore();
 
     store->createResource("decoder/test/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/test/0"));
-    EXPECT_THROW(store->createResource("decoder/test/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/test/0")),
-                 std::runtime_error);
+    EXPECT_THROW(
+        store->createResource("decoder/test/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/test/0")),
+        std::runtime_error);
 }
 
 TEST_F(CMStoreNSTest, ResolveUUIDFromName)
 {
     auto store = makeStore();
 
-    auto uuid =
-        store->createResource("filter/myfilter/0", cm::store::ResourceType::FILTER, makeFilterJson("filter/myfilter/0"));
+    auto uuid = store->createResource(
+        "filter/myfilter/0", cm::store::ResourceType::FILTER, makeFilterJson("filter/myfilter/0"));
     auto resolved = store->resolveUUIDFromName("filter/myfilter/0", cm::store::ResourceType::FILTER);
     EXPECT_EQ(uuid, resolved);
 }
@@ -841,8 +843,7 @@ TEST_F(CMStoreNSTest, CreateAndGetIntegration)
 
     auto uuid = store->createResource("test_integration",
                                       cm::store::ResourceType::INTEGRATION,
-                                      makeIntegrationJson("test_integration",
-                                                          "f47ac10b-58cc-4372-a567-0e02b2c3d479"));
+                                      makeIntegrationJson("test_integration", "f47ac10b-58cc-4372-a567-0e02b2c3d479"));
     EXPECT_FALSE(uuid.empty());
 
     auto integration = store->getIntegrationByName("test_integration");
@@ -872,9 +873,8 @@ TEST_F(CMStoreNSTest, CreateAndGetKVDB)
 {
     auto store = makeStore();
 
-    auto uuid = store->createResource("test_kvdb",
-                                      cm::store::ResourceType::KVDB,
-                                      makeKVDBJson("test_kvdb", "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e"));
+    auto uuid = store->createResource(
+        "test_kvdb", cm::store::ResourceType::KVDB, makeKVDBJson("test_kvdb", "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e"));
     EXPECT_FALSE(uuid.empty());
 
     auto kvdb = store->getKVDBByName("test_kvdb");
@@ -1145,8 +1145,7 @@ TEST(KVDBTest, ConstructorInvalidUUIDThrows)
 {
     json::Json content;
     content.setString("v", "/k");
-    EXPECT_THROW(cm::store::dataType::KVDB("not-a-uuid", "name", std::move(content), true, true),
-                 std::runtime_error);
+    EXPECT_THROW(cm::store::dataType::KVDB("not-a-uuid", "name", std::move(content), true, true), std::runtime_error);
 }
 
 TEST(KVDBTest, ConstructorEmptyNameThrows)
@@ -1293,72 +1292,32 @@ TEST(PolicyTest, ConstructorValidData)
 
 TEST(PolicyTest, ConstructorInvalidOriginSpaceThrows)
 {
-    EXPECT_THROW(cm::store::dataType::Policy("title",
-                                             true,
-                                             validUUID(),
-                                             {},
-                                             {},
-                                             {},
-                                             {},
-                                             "invalid space!",
-                                             "",
-                                             false,
-                                             false,
-                                             true),
+    EXPECT_THROW(cm::store::dataType::Policy(
+                     "title", true, validUUID(), {}, {}, {}, {}, "invalid space!", "", false, false, true),
                  std::runtime_error);
 }
 
 TEST(PolicyTest, ConstructorDuplicateIntegrationsThrows)
 {
     const std::string uuid = validUUID();
-    EXPECT_THROW(cm::store::dataType::Policy("title",
-                                             true,
-                                             validUUID(),
-                                             {uuid, uuid},
-                                             {},
-                                             {},
-                                             {},
-                                             "UNDEFINED",
-                                             "",
-                                             false,
-                                             false,
-                                             true),
+    EXPECT_THROW(cm::store::dataType::Policy(
+                     "title", true, validUUID(), {uuid, uuid}, {}, {}, {}, "UNDEFINED", "", false, false, true),
                  std::runtime_error);
 }
 
 TEST(PolicyTest, ConstructorDuplicateFiltersThrows)
 {
     const std::string uuid = validUUID();
-    EXPECT_THROW(cm::store::dataType::Policy("title",
-                                             true,
-                                             validUUID(),
-                                             {},
-                                             {uuid, uuid},
-                                             {},
-                                             {},
-                                             "UNDEFINED",
-                                             "",
-                                             false,
-                                             false,
-                                             true),
+    EXPECT_THROW(cm::store::dataType::Policy(
+                     "title", true, validUUID(), {}, {uuid, uuid}, {}, {}, "UNDEFINED", "", false, false, true),
                  std::runtime_error);
 }
 
 TEST(PolicyTest, ConstructorDuplicateOutputsThrows)
 {
     const std::string uuid = validUUID();
-    EXPECT_THROW(cm::store::dataType::Policy("title",
-                                             true,
-                                             validUUID(),
-                                             {},
-                                             {},
-                                             {},
-                                             {uuid, uuid},
-                                             "UNDEFINED",
-                                             "",
-                                             false,
-                                             false,
-                                             true),
+    EXPECT_THROW(cm::store::dataType::Policy(
+                     "title", true, validUUID(), {}, {}, {}, {uuid, uuid}, "UNDEFINED", "", false, false, true),
                  std::runtime_error);
 }
 
@@ -1824,16 +1783,14 @@ TEST_F(CMStoreNSTest, CreateResourceWithNonObjectContentThrows)
 {
     auto store = makeStore();
     json::Json arrayJson("[]");
-    EXPECT_THROW(store->createResource("decoder/x/0", cm::store::ResourceType::DECODER, arrayJson),
-                 std::runtime_error);
+    EXPECT_THROW(store->createResource("decoder/x/0", cm::store::ResourceType::DECODER, arrayJson), std::runtime_error);
 }
 
 TEST_F(CMStoreNSTest, CreateResourceWithInvalidNameThrows)
 {
     auto store = makeStore();
     auto j = makeDecoderJson("decoder/with*star/0");
-    EXPECT_THROW(store->createResource("decoder/with*star/0", cm::store::ResourceType::DECODER, j),
-                 std::runtime_error);
+    EXPECT_THROW(store->createResource("decoder/with*star/0", cm::store::ResourceType::DECODER, j), std::runtime_error);
 }
 
 TEST_F(CMStoreNSTest, CreateResourceWithUndefinedTypeThrows)
@@ -1871,23 +1828,22 @@ TEST_F(CMStoreNSTest, CreateResourceFailsWhenFilePathBlockedByDirectory)
 TEST_F(CMStoreNSTest, UpdateResourceByNameFailsWhenWriteFails)
 {
     auto store = makeStore();
-    const auto uuid = store->createResource(
-        "decoder/upd/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/upd/0"));
+    const auto uuid =
+        store->createResource("decoder/upd/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/upd/0"));
 
     const auto path = storagePath() / "decoders" / "decoder_upd_0.json";
     std::filesystem::remove(path);
     std::filesystem::create_directories(path);
 
     auto j = makeDecoderJson("decoder/upd/0", uuid);
-    EXPECT_THROW(store->updateResourceByName("decoder/upd/0", cm::store::ResourceType::DECODER, j),
-                 std::runtime_error);
+    EXPECT_THROW(store->updateResourceByName("decoder/upd/0", cm::store::ResourceType::DECODER, j), std::runtime_error);
 }
 
 TEST_F(CMStoreNSTest, UpdateResourceByUUIDFailsWhenWriteFails)
 {
     auto store = makeStore();
-    const auto uuid = store->createResource(
-        "decoder/upd2/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/upd2/0"));
+    const auto uuid =
+        store->createResource("decoder/upd2/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/upd2/0"));
 
     const auto path = storagePath() / "decoders" / "decoder_upd2_0.json";
     std::filesystem::remove(path);
@@ -1906,8 +1862,7 @@ TEST_F(CMStoreNSTest, DeleteResourceByNameFailsWhenPathIsNonEmptyDir)
     std::filesystem::remove(path);
     std::filesystem::create_directories(path / "blocker");
 
-    EXPECT_THROW(store->deleteResourceByName("decoder/del/0", cm::store::ResourceType::DECODER),
-                 std::runtime_error);
+    EXPECT_THROW(store->deleteResourceByName("decoder/del/0", cm::store::ResourceType::DECODER), std::runtime_error);
 }
 
 TEST_F(CMStoreNSTest, DeleteResourceByUUIDFailsWhenPathIsNonEmptyDir)
@@ -1948,10 +1903,9 @@ TEST_F(CMStoreNSTest, UpsertPolicyFailsWhenFilePathBlockedByDirectory)
     auto store = makeStore();
     std::filesystem::create_directories(storagePath() / "policy.json");
 
-    EXPECT_THROW(
-        store->upsertPolicy(
-            cm::store::dataType::Policy {"title", true, validUUID(), {}, {}, {}, {}, "UNDEFINED", "", false, false, true}),
-        std::runtime_error);
+    EXPECT_THROW(store->upsertPolicy(cm::store::dataType::Policy {
+                     "title", true, validUUID(), {}, {}, {}, {}, "UNDEFINED", "", false, false, true}),
+                 std::runtime_error);
 }
 
 TEST_F(CMStoreNSTest, DeletePolicyFailsWhenPathIsNonEmptyDir)
@@ -2029,9 +1983,8 @@ TEST_F(CMStoreNSTest, TemplateGetResourceByNameWorksForSupportedTypes)
 {
     auto store = makeStore();
 
-    store->createResource("decoder/template/0",
-                          cm::store::ResourceType::DECODER,
-                          makeDecoderJson("decoder/template/0"));
+    store->createResource(
+        "decoder/template/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/template/0"));
     store->createResource("templ_integration",
                           cm::store::ResourceType::INTEGRATION,
                           makeIntegrationJson("templ_integration", validUUID()));
@@ -2054,14 +2007,13 @@ TEST_F(CMStoreNSTest, TemplateGetResourceByUUIDWorksForSupportedTypes)
 {
     auto store = makeStore();
 
-    const auto assetUUID = store->createResource("decoder/templateuuid/0",
-                                                 cm::store::ResourceType::DECODER,
-                                                 makeDecoderJson("decoder/templateuuid/0"));
+    const auto assetUUID = store->createResource(
+        "decoder/templateuuid/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/templateuuid/0"));
     const auto integrationUUID = store->createResource("templ_uuid_integration",
                                                        cm::store::ResourceType::INTEGRATION,
                                                        makeIntegrationJson("templ_uuid_integration", validUUID()));
-    const auto kvdbUUID =
-        store->createResource("templ_uuid_kvdb", cm::store::ResourceType::KVDB, makeKVDBJson("templ_uuid_kvdb", validUUID()));
+    const auto kvdbUUID = store->createResource(
+        "templ_uuid_kvdb", cm::store::ResourceType::KVDB, makeKVDBJson("templ_uuid_kvdb", validUUID()));
 
     const auto& reader = static_cast<const cm::store::ICMStoreNSReader&>(*store);
 
