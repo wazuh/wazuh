@@ -16,6 +16,8 @@
 - [Overview](guide/README.md)
 - [Migration](guide/migration/README.md)
   - [SCA policies from 4.x to 5.x](guide/migration/sca-policies-4x-to-5x.md)
+  - [CIS-CAT and OpenSCAP to SCA](guide/migration/ciscat-openscap-to-sca.md)
+  - [Mail Forwarding and Reporting to Dashboard Notifications](guide/migration/mail-forwarding-reporting.md)
 
 # Reference Manual
 
@@ -122,9 +124,5 @@
   - [Cluster Security Model](ref/security/cluster-model.md)
 - [Performance](ref/performance.md)
 - [Glossary](ref/glossary.md)
-
-# Migration Guide
-
-- [Mail Forwarding and Reporting to Dashboard Notifications](guide/migration/mail-forwarding-reporting.md)
 
 # Diagnostic Documentation
