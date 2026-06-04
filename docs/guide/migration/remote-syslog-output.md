@@ -29,6 +29,8 @@ The following table maps each `ossec.conf` element from Wazuh 4.x to the corresp
 
 Below is a typical Wazuh 4.x configuration block you may have in your `ossec.conf`. Use it as a reference when following the migration steps.
 
+> **Port context:** In this legacy 4.x example, port `514` is the standard Syslog transport port (UDP/TCP). In Wazuh 5.x webhook routing, use the HTTP/HTTPS port exposed by your receiver (for example, `8080`).
+
 ```xml
 <syslog_output>
   <server>192.168.1.50</server>
@@ -60,7 +62,8 @@ Instead of defining raw server endpoints inside XML blocks, destinations are now
 4. (Optional) Provide a **Description** clarifying the purpose of this channel.
 5. Under **Configurations**, select **Custom webhook** as the **Channel type**.
 6. Set the **Method** to `POST`.
-7. Under **Define endpoints by**, select **Webhook URL** and enter your endpoint address matching your legacy `syslog_output.server` configuration (for example, `http://192.168.1.50:8080`).
+7. Under **Define endpoints by**, select **Webhook URL** and enter your endpoint address matching your legacy `syslog_output.server` configuration (for example, `http://192.168.1.50:10515`).
+  Use the HTTP/HTTPS listening port of your webhook endpoint here (for example, `8080`), not the legacy Syslog transport port `514`.
 8. (Optional) Click **Send test message** to verify network connectivity.
 9. Click **Create** to save the channel.
 
