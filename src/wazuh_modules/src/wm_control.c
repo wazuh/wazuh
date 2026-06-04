@@ -150,8 +150,20 @@ size_t wm_control_execute_action(const char *action, const char *service, char *
             os_strdup("err Cannot write control flag", *output);
             return strlen(*output);
         }
-        fprintf(fp, "%s\n", action);
-        fclose(fp);
+        if (fprintf(fp, "%s\n", action) < 0) {
+            mterror(WM_CONTROL_LOGTAG, "Cannot write control request flag '%s': %s (%d)", flag_tmp, strerror(errno), errno);
+            fclose(fp);
+            unlink(flag_tmp);
+            os_strdup("err Cannot write control flag", *output);
+            return strlen(*output);
+        }
+
+        if (fclose(fp) != 0) {
+            mterror(WM_CONTROL_LOGTAG, "Cannot flush control request flag '%s': %s (%d)", flag_tmp, strerror(errno), errno);
+            unlink(flag_tmp);
+            os_strdup("err Cannot write control flag", *output);
+            return strlen(*output);
+        }
 
         if (rename(flag_tmp, flag) != 0) {
             mterror(WM_CONTROL_LOGTAG, "Cannot commit control request flag '%s': %s (%d)", flag, strerror(errno), errno);
