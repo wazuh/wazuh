@@ -188,7 +188,9 @@ STATIC int SendBinaryMSGAction(int queue, const void *message, size_t message_le
     if ((__mq_rcode = OS_SendUnix(queue, tmpstr, total_len)) < 0) {
         // Error on the socket
         if (__mq_rcode == OS_SOCKTERR) {
-            merror("socketerr (not available).");
+            // The socket being unavailable is a transient, caller-handled condition
+            // (e.g. expected during agent restart). Log at debug, like SendMSGAction().
+            mdebug1("socketerr (not available).");
             close(queue);
             return (-1);
         }
