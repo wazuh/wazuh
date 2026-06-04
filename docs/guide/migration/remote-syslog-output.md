@@ -80,8 +80,8 @@ In Wazuh 4.x, you used `<syslog_output>` blocks with tags such as `<level>`, `<g
 2. Click **Create monitor**.
 3. Configure the monitor:
    - **Monitor name:** Enter a name (for example, `Syslog-Forwarding-Monitor`).
-   - **Monitor type:** Select **Per query monitor** or **Per document monitor** depending on your forwarding behavior.
-   - **Indexes:** Target the unified system activity schema by entering `wazuh-events-v5*`.
+  - **Monitor type:** Select **Per query monitor** or **Per document monitor** depending on your forwarding behavior.
+  - **Indexes:** Use `wazuh-findings-v5*` when your filters depend on `wazuh.rule.*` fields (for example, `wazuh.rule.level` or `wazuh.rule.groups`).
 4. Under **Query / Data filter**, translate your old XML rules into dashboard filter conditions.
    For example, to replicate a `<group>` filter, add a condition where `wazuh.rule.groups` contains your keyword.
 
@@ -131,7 +131,7 @@ You can replicate this behavior with the following dashboard workflow:
 **Monitor setup:**
 
 - **Type:** Per document monitor
-- **Index pattern:** `wazuh-events-v5*`
+- **Index pattern:** `wazuh-findings-v5*`
 - **Data filter:** `wazuh.rule.groups` matches `authentication_failed`
 
 **Trigger setup:**
