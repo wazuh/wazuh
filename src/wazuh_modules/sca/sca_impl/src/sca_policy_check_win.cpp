@@ -200,14 +200,14 @@ RuleResult RegistryRuleEvaluator::CheckKeyForContents()
         if (!m_isValidKey(m_ctx.rule))
         {
             LoggingHelper::getInstance().log(LOG_DEBUG, "Key '" + m_ctx.rule + "' does not exist");
-            m_lastInvalidReason = "Registry key '" + m_ctx.rule + "' does not exist";
+            m_lastUnresolvedReason = "Registry key '" + m_ctx.rule + "' does not exist";
             return RuleResult::Invalid;
         }
     }
     catch (const std::exception& e)
     {
         LoggingHelper::getInstance().log(LOG_DEBUG, std::string("RegistryRuleEvaluator::Evaluate: Exception: ") + e.what());
-        m_lastInvalidReason = "Exception accessing registry key '" + m_ctx.rule + "': " + e.what();
+        m_lastUnresolvedReason = "Exception accessing registry key '" + m_ctx.rule + "': " + e.what();
         return RuleResult::Invalid;
     }
 
@@ -223,7 +223,7 @@ RuleResult RegistryRuleEvaluator::CheckKeyForContents()
         if (!obtainedValue.has_value())
         {
             LoggingHelper::getInstance().log(LOG_DEBUG, "Value '" + valueName + "' does not exist");
-            m_lastInvalidReason = "Registry value '" + valueName + "' does not exist in key '" + m_ctx.rule + "'";
+            m_lastUnresolvedReason = "Registry value '" + valueName + "' does not exist in key '" + m_ctx.rule + "'";
             return RuleResult::Invalid;
         }
 
@@ -289,7 +289,7 @@ RuleResult RegistryRuleEvaluator::CheckKeyExistence()
     catch (const std::exception& e)
     {
         LoggingHelper::getInstance().log(LOG_DEBUG, std::string("RegistryRuleEvaluator::Evaluate: Exception: ") + e.what());
-        m_lastInvalidReason = "Exception checking registry key existence '" + m_ctx.rule + "': " + e.what();
+        m_lastUnresolvedReason = "Exception checking registry key existence '" + m_ctx.rule + "': " + e.what();
         return RuleResult::Invalid;
     }
 

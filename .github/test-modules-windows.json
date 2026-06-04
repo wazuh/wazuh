@@ -126,6 +126,7 @@
         "src/config/src/wmodules-sca.c",
         "src/wazuh_modules/src/wm_sca.c",
         "src/wazuh_modules/src/wm_sca.h",
+        "src/wazuh_modules/sca/**",
         "src/win32/**",
         "src/Makefile",
         "tests/integration/conftest.py",

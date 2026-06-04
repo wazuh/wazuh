@@ -53,9 +53,11 @@ tags:
     - wazuh_db
 '''
 from pathlib import Path
+import time
 import pytest
 
-from wazuh_testing.utils.db_queries.global_db import create_or_update_agent, set_agent_group, sync_agent_groups, get_groups_integrity, delete_agent
+from wazuh_testing.utils.database import query_wdb
+from wazuh_testing.utils.db_queries.global_db import set_agent_group, sync_agent_groups, get_groups_integrity, delete_agent
 from wazuh_testing.utils import configuration
 
 from . import TEST_CASES_FOLDER_PATH
@@ -70,16 +72,26 @@ t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_case
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
+
+def insert_agent(agent_id):
+    date_add = int(time.time()) - 1
+    response = query_wdb(
+        f'global insert-agent {{"id":{agent_id},"name":"Agent-test{agent_id}",'
+        f'"ip":"any","date_add":{date_add}}}'
+    )
+    assert response == 'ok', f"Unable to add agent {agent_id}: {response}"
+
+
 # Tests
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
-def test_get_groups_integrity(daemons_handler, test_metadata, create_groups):
+def test_get_groups_integrity(daemons_handler_module, test_metadata, create_groups):
     '''
     description: Check that every input message using the 'get-groups-integrity' command in wazuh-manager-db socket generates
                  the proper output to wazuh-manager-db socket. To do this, it performs a query to the socket with a command
                  taken from the list of test_metadata's 'input' field, and compare the result with the test_metadata's
                  'output' field.
 
-    wazuh_min_version: 4.4.0
+    wazuh_min_version: 5.0.0
 
     parameters:
         - test_metadata:
@@ -112,8 +124,9 @@ def test_get_groups_integrity(daemons_handler, test_metadata, create_groups):
 
     # Insert test Agents
     for index, id in enumerate(agent_ids):
-        response = create_or_update_agent(agent_id=id+1, connection_status="disconnected")
+        insert_agent(id)
         response = set_agent_group(sync_status=agent_status[index], id=id, group=f"Test_group{id}")
+        assert response == 'ok', f"Unable to assign Test_group{id} to agent {id}: {response}"
 
     # Get database hash
     if "invalid_hash" in test_metadata:

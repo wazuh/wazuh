@@ -266,9 +266,9 @@ TEST_F(RegistryRuleEvaluatorTest, KeyDoesNotExistHasReasonString)
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
-    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("HKLM\\NonExistentKey"));
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("does not exist"));
+    EXPECT_FALSE(evaluator.GetUnresolvedReason().empty());
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("HKLM\\NonExistentKey"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("does not exist"));
 }
 
 TEST_F(RegistryRuleEvaluatorTest, KeyAccessExceptionHasReasonString)
@@ -283,10 +283,10 @@ TEST_F(RegistryRuleEvaluatorTest, KeyAccessExceptionHasReasonString)
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
-    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("HKLM\\SomeKey"));
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("Exception accessing registry"));
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("Access denied to registry"));
+    EXPECT_FALSE(evaluator.GetUnresolvedReason().empty());
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("HKLM\\SomeKey"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("Exception accessing registry"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("Access denied to registry"));
 }
 
 TEST_F(RegistryRuleEvaluatorTest, ValueDoesNotExistHasReasonString)
@@ -306,10 +306,10 @@ TEST_F(RegistryRuleEvaluatorTest, ValueDoesNotExistHasReasonString)
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
-    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("NonExistentValue"));
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("HKLM\\SomeKey"));
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("does not exist"));
+    EXPECT_FALSE(evaluator.GetUnresolvedReason().empty());
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("NonExistentValue"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("HKLM\\SomeKey"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("does not exist"));
 }
 
 TEST_F(RegistryRuleEvaluatorTest, KeyExistenceCheckExceptionHasReasonString)
@@ -323,8 +323,8 @@ TEST_F(RegistryRuleEvaluatorTest, KeyExistenceCheckExceptionHasReasonString)
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
-    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("HKLM\\SomeKey"));
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("Exception checking registry key existence"));
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("Registry access error"));
+    EXPECT_FALSE(evaluator.GetUnresolvedReason().empty());
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("HKLM\\SomeKey"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("Exception checking registry key existence"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("Registry access error"));
 }

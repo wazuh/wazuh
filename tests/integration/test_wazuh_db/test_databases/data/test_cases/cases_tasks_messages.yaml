@@ -7,3 +7,13 @@
       output: ok [{"synchronous":2}]
       stage: tasks db sync type
       use_regex: "no"
+
+- name: Database user version
+  description: Check task db schema user version.
+  configuration_parameters:
+  metadata:
+    test_case:
+    - input: task sql PRAGMA user_version
+      output: ok [{"user_version":1}]
+      stage: task db user version
+      use_regex: "no"

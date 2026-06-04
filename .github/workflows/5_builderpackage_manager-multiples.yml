@@ -18,6 +18,7 @@ on:
       - ".github/actions/reinstall_cmake/**"
       - "tests/integration/conftest.py"
       - "tests/integration/test_api/**"
+      - "tests/integration/test_wazuh_db/**"
   workflow_dispatch:
     inputs:
       targets:
@@ -109,6 +110,7 @@ jobs:
           RUN_ALL: ${{ inputs.run_all }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch || 'main' }}
         shell: python
         run: |
           import json, os, re, subprocess
@@ -126,7 +128,7 @@ jobs:
           head_sha   = os.environ.get("HEAD_SHA",   "").strip()
 
           # GitHub Actions rejects an empty matrix, so use a sentinel entry.
-          # Downstream jobs are gated on any_matched == "true", so this entry never runs.
+          # Downstream jobs are gated on any_matched == "true", so this entry is skipped (never runs).
           none_matrix = {"include": [{
               "name": "none", "suite_type": "none",
               "pytest_target": "", "pytest_extra_args": "",
@@ -150,6 +152,18 @@ jobs:
 
           inv_mod = next((m for m in config["modules"] if m["suite_type"] == "inventory_sync"), {})
           inv_timeout = inv_mod.get("timeout_minutes", 60)
+
+          # Manual dispatch without run_all has no PR SHAs, so resolve them by diffing the
+          # dispatched branch against its base branch. If it can't be resolved, the SHAs stay
+          # empty and the logic below falls back to running everything.
+          if event_name == "workflow_dispatch" and not run_all and not (base_sha and head_sha):
+              base_branch = os.environ.get("BASE_BRANCH", "main").strip() or "main"
+              subprocess.run(["git", "fetch", "--quiet", "origin", base_branch], check=False)
+              base_sha = subprocess.run(
+                  ["git", "merge-base", "FETCH_HEAD", "HEAD"],
+                  capture_output=True, text=True,
+              ).stdout.strip()
+              head_sha = "HEAD" if base_sha else ""
 
           if event_name == "workflow_dispatch" and run_all:
               matrix_entries = []
@@ -177,8 +191,8 @@ jobs:
                       for tier in mod.get("tiers", ["0 1"]):
                           matrix_entries.append(build_entry(mod, tier))
           else:
-              # Push to main (merge) or unknown trigger: no PR SHAs available, run everything.
-              print("::warning::No base/head SHA available and not a run_all dispatch — running all modules.")
+              # Fallback: no diff base could be resolved — run everything to stay safe.
+              print("::warning::Could not resolve a diff base — running all modules.")
               matrix_entries = []
               inventory_sync_matched = True
               for mod in config["modules"]:
@@ -221,7 +235,7 @@ jobs:
       (github.event_name != 'pull_request' || !github.event.pull_request.draft) &&
       needs.detect-changes.outputs.any_matched == 'true' &&
       needs.build-wazuh-manager.result == 'success'
-    name: Integration tests - ${{ matrix.name }}
+    name: ${{ matrix.name == 'none' && 'Integration tests - No relevant changes' || format('Integration tests - {0}', matrix.name) }}
     needs: [build-wazuh-manager, detect-changes]
     strategy:
       fail-fast: false
@@ -242,7 +256,7 @@ jobs:
       (github.event_name != 'pull_request' || !github.event.pull_request.draft) &&
       needs.detect-changes.outputs.inventory_sync_changed == 'true' &&
       needs.build-wazuh-manager.result == 'success'
-    name: Integration tests - inventory_sync
+    name: ${{ needs.detect-changes.outputs.inventory_sync_changed == 'true' && 'Integration tests - inventory_sync' || 'Integration tests - inventory_sync - No relevant changes' }}
     needs: [build-wazuh-manager, detect-changes]
     uses: ./.github/workflows/5_testintegration_inventory-sync.yml
     with:
