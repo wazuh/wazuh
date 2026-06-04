@@ -902,6 +902,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 #endif
 
     if (first_sync_completed) {
+        atomic_int_set(&syscheck.fim_first_sync_completed, 1);
         mdebug1("FIM first synchronization already completed in a previous run. Keeping startup synchronization delay.");
     } else {
         mdebug1("Initial FIM scan data is ready. Triggering first synchronization without startup delay.");
@@ -959,6 +960,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             if (sync_result && !first_sync_completed) {
                 fim_db_update_last_sync_time_value(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY, (int64_t)time(NULL));
                 first_sync_completed = true;
+                atomic_int_set(&syscheck.fim_first_sync_completed, 1);
             }
         } else {
             // Take a snapshot of the current directories list to avoid holding the lock during integrity checks.
@@ -973,12 +975,6 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 continue;
             }
 
-            // Lock FIM's scheduled and realtime scans during sync and recovery process
-            w_mutex_lock(&syscheck.fim_scan_mutex);
-            w_mutex_lock(&syscheck.fim_realtime_mutex);
-            #ifdef WIN32
-            w_mutex_lock(&syscheck.fim_registry_scan_mutex);
-            #endif
             minfo("Starting FIM synchronization.");
 
             bool sync_result = asp_sync_module(syscheck.sync_handle,
@@ -989,7 +985,30 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 if (!first_sync_completed) {
                     fim_db_update_last_sync_time_value(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY, (int64_t)time(NULL));
                     first_sync_completed = true;
+                    atomic_int_set(&syscheck.fim_first_sync_completed, 1);
                 }
+            } else {
+                minfo("FIM synchronization failed.");
+            }
+
+            // If a flush was triggered while paused but processed here (after resume),
+            // clear the flush state so pollFlushCompletion() can return "completed".
+            // Touches only atomics, so it stays outside the scan mutex.
+            if (flush_request_detected) {
+                int result = sync_result ? 0 : -1;
+                atomic_int_set(&fim_flush_result, result);
+                atomic_int_set(&fim_flush_in_progress, 0);
+                mdebug1("Pending flush request completed via normal sync path.");
+            }
+
+            // Lock FIM's scheduled and realtime scans only for the recovery/integrity
+            // process, which reads and writes the file_entry table.
+            if (sync_result) {
+                w_mutex_lock(&syscheck.fim_scan_mutex);
+                w_mutex_lock(&syscheck.fim_realtime_mutex);
+                #ifdef WIN32
+                w_mutex_lock(&syscheck.fim_registry_scan_mutex);
+                #endif
 
                 for (int i = 0; i < table_count; i++) {
                     if (fim_recovery_integrity_interval_has_elapsed(table_names[i], syscheck.integrity_interval)) {
@@ -1006,26 +1025,16 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                         fim_db_update_last_sync_time(table_names[i]);
                     }
                 }
-            } else {
-                minfo("FIM synchronization failed.");
-            }
 
-            // If a flush was triggered while paused but processed here (after resume),
-            // clear the flush state so pollFlushCompletion() can return "completed".
-            if (flush_request_detected) {
-                int result = sync_result ? 0 : -1;
-                atomic_int_set(&fim_flush_result, result);
-                atomic_int_set(&fim_flush_in_progress, 0);
-                mdebug1("Pending flush request completed via normal sync path.");
+                #ifdef WIN32
+                w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
+                #endif
+                w_mutex_unlock(&syscheck.fim_realtime_mutex);
+                w_mutex_unlock(&syscheck.fim_scan_mutex);
             }
 
             // Clean up the directories snapshot
             OSList_Destroy(directories_snapshot);
-            #ifdef WIN32
-            w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
-            #endif
-            w_mutex_unlock(&syscheck.fim_realtime_mutex);
-            w_mutex_unlock(&syscheck.fim_scan_mutex);
             mdebug1("FIM synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
         }
     }

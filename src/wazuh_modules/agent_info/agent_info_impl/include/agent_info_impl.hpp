@@ -65,6 +65,13 @@ class AgentInfoImpl
             m_flushPollDelayMs = delayMs < 0 ? 0 : delayMs;
         }
 
+        /// @brief Override the FIM pause-completion poll delay (milliseconds). Only used in unit tests
+        /// to avoid real sleeps. Negative values are clamped to 0.
+        void setPausePollDelayMs(int delayMs)
+        {
+            m_pausePollDelayMs = delayMs < 0 ? 0 : delayMs;
+        }
+
         /// @brief Initialize the synchronization protocol with only in-memory synchronization
         /// @param moduleName Name of the module
         /// @param mqFuncs Message queue functions
@@ -115,11 +122,23 @@ class AgentInfoImpl
         /// @param groups List of agent groups
         void updateMetadataProvider(const nlohmann::json& agentMetadata, const std::vector<std::string>& groups);
 
+        /// @brief Result of probing FIM for pause completion
+        /// Deferred means FIM's first sync is still in progress: the caller must not
+        /// treat this as an error, must resume FIM, and must retry next cycle.
+        enum class PauseProbeResult { Completed, Deferred, Failed };
+
+        /// @brief Result of a module coordination cycle. Deferred is distinct from
+        /// Failed so the caller can retry quietly (no WARNING) and keep the sync flag set.
+        enum class CoordinationResult { Success, Deferred, Failed };
+
+        /// @brief Result of pausing the coordination modules.
+        enum class PauseCoordinationResult { Success, Deferred, Failed };
+
         /// @brief Coordinate modules for version synchronization
         /// This method manages the coordination process: pause, flush, sync versions, set version, sync table, resume
         /// @param table Table name (AGENT_METADATA_TABLE or AGENT_GROUPS_TABLE)
-        /// @return true if coordination was successful, false otherwise
-        bool coordinateModules(const std::string& table);
+        /// @return CoordinationResult: Success, Deferred (FIM first sync in progress, retry), or Failed
+        CoordinationResult coordinateModules(const std::string& table);
 
         /// @brief Get the create statement for the database
         std::string GetCreateStatement() const;
@@ -197,8 +216,9 @@ class AgentInfoImpl
 
         /// @brief Poll FIM module for pause completion
         /// @param moduleName Module name (should be FIM)
-        /// @return true if pause completed successfully, false otherwise
-        bool pollFimPauseCompletion(const std::string& moduleName);
+        /// @return Completed (pause acknowledged), Deferred (FIM first sync still running,
+        ///         caller should defer coordination), or Failed (timeout/error/shutdown)
+        PauseProbeResult pollFimPauseCompletion(const std::string& moduleName);
 
         /// @brief Poll all requested module flushes until completion.
         /// @param pendingModules Set of modules with an accepted flush request.
@@ -207,8 +227,8 @@ class AgentInfoImpl
 
         /// @brief Pause all coordination modules
         /// @param pausedModules Output parameter for successfully paused modules
-        /// @return true if at least one module was paused successfully
-        bool pauseCoordinationModules(std::set<std::string>& pausedModules);
+        /// @return Success, Deferred (FIM first sync in progress; modules resumed, retry next cycle), or Failed
+        PauseCoordinationResult pauseCoordinationModules(std::set<std::string>& pausedModules);
 
         /// @brief Trigger flush on all paused modules (fire-and-forget, does not wait for completion)
         /// @param pausedModules Set of paused modules to flush
@@ -266,6 +286,10 @@ class AgentInfoImpl
         /// @brief Delay in milliseconds between flush completion polls (10 seconds in production).
         /// Overridable in unit tests to avoid real sleeps.
         int m_flushPollDelayMs = 10000;
+
+        /// @brief Delay in milliseconds between FIM pause completion polls (1 second in production).
+        /// Overridable in unit tests to avoid real sleeps.
+        int m_pausePollDelayMs = 1000;
 
         /// @brief Condition variable for efficient sleep/wake mechanism
         std::condition_variable m_cv;
