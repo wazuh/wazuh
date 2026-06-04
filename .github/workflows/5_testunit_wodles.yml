@@ -36,6 +36,7 @@ jobs:
     env:
       PYTHONPATH: /home/runner/work/wazuh/wazuh/api:/home/runner/work/wazuh/wazuh/framework
       TEST_REPORT_PATH: /home/runner/work/test_report.txt
+      COVERAGE_REPORT_PATH: /home/runner/work/coverage_report
     steps:
       - uses: actions/checkout@v4
 
@@ -54,7 +55,16 @@ jobs:
       - name: Run Wodles tests
         run: |
           set -o pipefail
-          python -m pytest wodles -vv --cov=wodles | tee ${TEST_REPORT_PATH}
+          python -m pytest wodles -vv --color=yes --tb=short --cov=wodles --cov-report=term-missing --cov-report=html:${COVERAGE_REPORT_PATH} | tee ${TEST_REPORT_PATH}
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: wodles-unit-tests-coverage
+          path: ${{ env.COVERAGE_REPORT_PATH }}
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Generate test report
         if: inputs.generate_report
