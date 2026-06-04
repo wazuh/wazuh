@@ -64,11 +64,12 @@ func TestRunner_EngineSmokeEndToEnd(t *testing.T) {
 	defer cancel()
 
 	registered, err := Run(ctx, scn, Config{
-		Manager:  host,
-		Port:     remoPort,
-		RegPort:  authPort,
-		KeyWait:  0,
-		BenchDir: benchDir,
+		Manager:           host,
+		Port:              remoPort,
+		RegPort:           authPort,
+		KeyWait:           0,
+		BenchDir:          benchDir,
+		KeepaliveInterval: 100 * time.Millisecond, // dense for the 2 s test window
 	}, c)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -84,13 +85,21 @@ func TestRunner_EngineSmokeEndToEnd(t *testing.T) {
 	if cum[metrics.CEngineEventsSent] < 200 { // ~2s @ 200 EPS minus warm-up
 		t.Fatalf("engine_events_sent = %d, want >= 200", cum[metrics.CEngineEventsSent])
 	}
+	if cum[metrics.CKeepalivesSent] < 5 {
+		t.Errorf("keepalives_sent = %d, want >= 5 over a ~2s run @ 100ms interval",
+			cum[metrics.CKeepalivesSent])
+	}
+	if cum[metrics.CShutdownsSent] != 1 {
+		t.Errorf("shutdowns_sent = %d, want 1", cum[metrics.CShutdownsSent])
+	}
 	got := atomic.LoadInt64(&receivedFrames)
 	// Subtract the startup control frame.
 	if got < 200 {
 		t.Fatalf("remoted received = %d frames, want >= 200", got)
 	}
-	t.Logf("OK: registered=%d engine_events_sent=%d remoted_received=%d",
-		registered, cum[metrics.CEngineEventsSent], got)
+	t.Logf("OK: registered=%d engine_events_sent=%d keepalives=%d shutdowns=%d remoted_received=%d",
+		registered, cum[metrics.CEngineEventsSent], cum[metrics.CKeepalivesSent],
+		cum[metrics.CShutdownsSent], got)
 }
 
 // ----- helpers -----

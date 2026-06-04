@@ -54,6 +54,7 @@ POST_RUN_GRACE_CLI=""
 START_ACK_TIMEOUT=""
 END_ACK_TIMEOUT=""
 POST_DATA_DELAY=""
+KEEPALIVE_INTERVAL=""
 CLEANUP_AFTER=false
 COMPARE_MODE=false
 COMPARE_DIRS=()
@@ -118,6 +119,10 @@ Remote manager (SSH) — activated when --manager is not 127.0.0.1:
                           EVERY End (initial and post-ReqRet). Lets
                           the manager finish handleData before End is
                           processed. Default 1s. Pass 0s to disable.
+      --keepalive-interval D Frequency of the per-agent control-message
+                          keepalive (`#!-<JSON>`). Matches the real
+                          agent's NOTIFY_TIME default. Default 20s.
+                          Pass 0s to disable keepalives.
 
 Comparison mode:
       --compare DIR...    Compare results from multiple directories
@@ -160,6 +165,8 @@ while [[ $# -gt 0 ]]; do
         --end-ack-timeout=*)   END_ACK_TIMEOUT="${1#--end-ack-timeout=}"; shift ;;
         --post-data-delay)     POST_DATA_DELAY="$2"; shift 2 ;;
         --post-data-delay=*)   POST_DATA_DELAY="${1#--post-data-delay=}"; shift ;;
+        --keepalive-interval)   KEEPALIVE_INTERVAL="$2"; shift 2 ;;
+        --keepalive-interval=*) KEEPALIVE_INTERVAL="${1#--keepalive-interval=}"; shift ;;
         -h|--help)        usage; exit 0 ;;
         *)                echo "Unknown option: $1"; usage; exit 1 ;;
     esac
@@ -516,6 +523,9 @@ case "$BENCH_ENGINE" in
         fi
         if [[ -n "$POST_DATA_DELAY" ]]; then
             GO_ARGS+=( --post-data-delay "$POST_DATA_DELAY" )
+        fi
+        if [[ -n "$KEEPALIVE_INTERVAL" ]]; then
+            GO_ARGS+=( --keepalive-interval "$KEEPALIVE_INTERVAL" )
         fi
 
         # Prefer the built binary. If it's missing or older than any .go

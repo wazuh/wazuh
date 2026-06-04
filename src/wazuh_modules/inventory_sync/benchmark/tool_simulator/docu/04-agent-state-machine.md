@@ -72,6 +72,37 @@ that depends on `session_type`. This document fixes both.
   by a semaphore of that size. An agent slot is released when the agent
   reaches `Done`.
 
+### Keepalive + shutdown (control conversation)
+
+Independent of the session work above, every agent maintains a small
+side conversation with the manager during its lifetime — mirroring the
+real Wazuh agent ([`client-agent/src/notify.c`](../../../../client-agent/src/notify.c)):
+
+1. **On `Connected`**: spawn a `StartKeepalive` goroutine that ticks at
+   `--keepalive-interval` (default 20 s, matches `NOTIFY_TIME`). Every
+   tick emits `#!-<JSON>` with a minimal payload
+   `{"version":"1.0","agent":{"id,name,version,merged_sum,groups}}`. The
+   first keepalive carries `merged_sum=""`, prompting the manager to
+   push us the shared file `merged.mg` via `#!-up file <md5> merged.mg`.
+2. **On `#!-up file` arrival** (the reader, [`agent/conn.go`](../internal/agent/conn.go#L237)
+   handles the prefix BEFORE the FB parser): extract the MD5, cache it
+   on the `Conn`, fire the optional `MergedSumObserver` so the supervisor
+   can bump `merged_sum_updates`. Subsequent keepalives report this hash
+   → manager logs the agent as `synced`, stops resending the file.
+3. **On `Disconnecting`**: stop the keepalive ticker, then send a
+   `#!-agent shutdown ` frame (no payload), then close the socket. This
+   mirrors `send_agent_stopped_message()` and lets the manager mark the
+   agent disconnected immediately instead of waiting for the inactivity
+   timeout.
+
+The keepalive and shutdown frames go through the same `Conn.SendText` →
+`sendMu` path as inventory_sync writes, so they interleave atomically
+with whatever session work is in flight.
+
+Counters added (opt-in via `--report-engine`):
+`keepalives_sent`, `keepalive_errors`, `shutdowns_sent`,
+`merged_sum_updates`.
+
 ## Inner: per-session state machine by `session_type`
 
 Three session types exist. They differ only between `AwaitStartAck` and

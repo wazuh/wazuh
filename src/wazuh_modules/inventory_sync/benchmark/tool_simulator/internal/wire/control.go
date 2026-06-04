@@ -4,7 +4,7 @@ import "fmt"
 
 // AgentVersion is hard-coded to match the value the Python sender uses in
 // the post-connect control message. See benchmark_sender.py connect().
-const AgentVersion = "4.8.0"
+const AgentVersion = "5.0.0"
 
 // BuildStartupControlMessage returns the literal text payload for the
 // `#!-agent startup` control frame that an agent emits immediately after

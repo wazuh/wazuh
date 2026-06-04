@@ -141,7 +141,7 @@ func (s *Source) Run(ctx context.Context, conn *agent.Conn, c *metrics.Counters)
 	// Build + send Start, capture session id via callback.
 	startBytes := fbbuild.BuildStart(
 		s.payload.Module, fb.Mode(s.payload.Mode), uint64(s.payload.DataSize),
-		fb.Option(s.payload.Option), identity.ID, identity.Name, "4.8.0", indices,
+		fb.Option(s.payload.Option), identity.ID, identity.Name, "5.0.0", indices,
 	)
 	tStart := time.Now()
 	ackC := make(chan ackResult, 1)
@@ -424,9 +424,9 @@ func (s *Source) sendDataBody(ctx context.Context, conn *agent.Conn, sessionID u
 // MAX_BATCH_PAYLOAD in shared_modules/sync_protocol. Same numbers in
 // both senders → same item-per-batch count given the same dump.
 const (
-	batchTargetBytes      = 60 * 1024 // DEFAULT_BATCH_MAX_BYTES
-	fbOverheadPerItem     = 80        // FB_OVERHEAD_PER_ITEM
-	batchMessageOverhead  = 128       // BATCH_MESSAGE_OVERHEAD
+	batchTargetBytes     = 60 * 1024 // DEFAULT_BATCH_MAX_BYTES
+	fbOverheadPerItem    = 80        // FB_OVERHEAD_PER_ITEM
+	batchMessageOverhead = 128       // BATCH_MESSAGE_OVERHEAD
 )
 
 func (s *Source) sendItems(ctx context.Context, conn *agent.Conn, sessionID uint64, items []Item, c *metrics.Counters) error {
@@ -510,4 +510,3 @@ type ackResult struct {
 	session uint64
 	status  fb.Status
 }
-

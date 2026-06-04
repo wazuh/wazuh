@@ -11,7 +11,7 @@ func newBuilder() *flatbuffers.Builder { return flatbuffers.NewBuilder(256) }
 
 func TestStartBuildAndParse(t *testing.T) {
 	out := BuildStart("syscollector", fb.ModeModuleFull, 42, fb.OptionSync,
-		"001", "bench-0001", "4.8.0", []string{"wazuh-states-inventory-packages"})
+		"001", "bench-0001", "5.0.0", []string{"wazuh-states-inventory-packages"})
 	if len(out) == 0 {
 		t.Fatal("empty buffer")
 	}

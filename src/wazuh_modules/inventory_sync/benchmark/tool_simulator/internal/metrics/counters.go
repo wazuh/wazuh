@@ -31,6 +31,13 @@ const (
 	CEngineEventsSent
 	CEngineFilesEOFWrap
 	CEngineSendErrors
+	// Control-message counters (Go-only, also opt-in via --report-engine).
+	// Track the keepalive/shutdown chatter the agent maintains with the
+	// manager outside the inventory_sync session loop.
+	CKeepalivesSent
+	CKeepaliveErrors
+	CShutdownsSent
+	CMergedSumUpdates
 
 	counterCount // sentinel; keep last
 )
@@ -55,11 +62,16 @@ var PythonHeader = []string{
 	"start_retries",
 }
 
-// EngineHeader is the Go-only addendum, opt-in via --report-engine.
+// EngineHeader is the Go-only addendum, opt-in via --report-engine. The
+// column order MUST match the CounterField enum order in this file.
 var EngineHeader = []string{
 	"engine_events_sent",
 	"engine_files_eof_wrap",
 	"engine_send_errors",
+	"keepalives_sent",
+	"keepalive_errors",
+	"shutdowns_sent",
+	"merged_sum_updates",
 }
 
 // LatencyKind identifies a latency series.

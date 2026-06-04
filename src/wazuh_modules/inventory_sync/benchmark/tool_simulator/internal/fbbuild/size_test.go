@@ -11,7 +11,7 @@ func TestStartSizeIsEncodedCorrectly(t *testing.T) {
 	cases := []uint64{0, 1, 17, 100, 1000, 731, 1447}
 	for _, want := range cases {
 		buf := BuildStart("syscollector_vd", fb.ModeModuleDelta, want, fb.OptionVDFirst,
-			"001", "bench", "4.8.0",
+			"001", "bench", "5.0.0",
 			[]string{"wazuh-states-inventory-packages"})
 		msg := fb.GetRootAsMessage(buf, 0)
 		if msg.ContentType() != fb.MessageTypeStart {

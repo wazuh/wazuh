@@ -201,7 +201,7 @@ Immediately after the TCP connect to remoted, before any inventory_sync
 traffic, the sender sends:
 
 ```
-identifier_blob = "#!-agent startup {\"version\":\"4.8.0\",\"name\":\"<name>\",\"id\":\"<id>\"}"
+identifier_blob = "#!-agent startup {\"version\":\"5.0.0\",\"name\":\"<name>\",\"id\":\"<id>\"}"
 ```
 
 Same wrapping as any other frame (zlib + AES + length-prefix). This puts the
@@ -210,9 +210,54 @@ agent in the `active` state in the manager's `keys` table.
 Notes:
 
 - The literal prefix `#!-` is required by remoted to recognise control.
-- The JSON object's `version` is set to a hard-coded `"4.8.0"` in
+- The JSON object's `version` is set to a hard-coded `"5.0.0"` in
   benchmark_sender.py. Keep the literal in the Go port for parity unless
   test parity is broken.
+
+### Periodic keepalive
+
+After startup, the agent emits a control keepalive every
+`--keepalive-interval` (default 20 s, matches the real agent's
+`NOTIFY_TIME`):
+
+```
+identifier_blob = "#!-{\"version\":\"1.0\",\"agent\":{\"id\":\"<id>\",\"name\":\"<name>\",\"version\":\"5.0.0\",\"merged_sum\":\"<md5 or empty>\",\"groups\":[\"default\"]}}"
+```
+
+The Go simulator emits the **minimal** payload — only the `agent.*` subobject
+without `host`/`os`/`cluster`. The manager accepts this; the extra fields
+are optional and the real agent only includes them when metadata is
+available.
+
+`merged_sum` starts at `""` until the manager pushes the shared file:
+
+### Inbound: shared-file push
+
+When the manager detects a `merged_sum` mismatch (or empty) for the
+agent's group, it pushes the file in a single frame:
+
+```
+"#!-up file <md5_hex_32> merged.mg\n<file body>"
+```
+
+The simulator's reader detects the `#!-up file ` prefix, extracts the
+32-character hex MD5 and stores it on the `Conn`. The file body is
+discarded. Subsequent keepalives report this MD5, so the manager
+transitions the agent from `not synced` to `synced` and stops resending
+the file. See [`agent/conn.go`](../internal/agent/conn.go) `parseFileUpdate`.
+
+### Farewell shutdown
+
+Immediately before disconnecting, the agent emits:
+
+```
+identifier_blob = "#!-agent shutdown "
+```
+
+No payload, just the literal (trailing space included — that's how
+[`client-agent/src/start_agent.c`](../../../../client-agent/src/start_agent.c#L863)
+`send_agent_stopped_message()` formats it). The manager marks the agent
+as disconnected as soon as it parses this control frame.
 
 ## 6. Hexdump example (illustrative)
 

@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"bytes"
 	"container/list"
 	"context"
 	"fmt"
@@ -13,6 +14,12 @@ import (
 	"github.com/wazuh/wazuh-modules/inventory_sync/benchmark/internal/fbbuild"
 	"github.com/wazuh/wazuh-modules/inventory_sync/benchmark/internal/wire"
 )
+
+// MergedSumObserver is fired whenever the reader extracts a new merged.mg
+// hash from a `#!-up file <md5> merged.mg` frame. Wired to a metrics
+// counter from the supervisor so we can graph "how often did the manager
+// resync the agent's shared file".
+type MergedSumObserver func(newMD5 string)
 
 // StartAckCallback receives the manager's StartAck for the next pending
 // runner (FIFO). status comes straight from the FB enum.
@@ -60,6 +67,15 @@ type Conn struct {
 
 	sessionsMu sync.RWMutex
 	sessions   map[uint64]InboundCallback
+
+	// mergedSum is the MD5 the manager last advertised for the agent's
+	// group (`default`). Updated by the reader when it parses a
+	// `#!-up file <md5> merged.mg` frame. Read by the keepalive builder.
+	// Empty until the manager pushes us the file (typically right after
+	// the first keepalive with merged_sum=""). Atomic so the keepalive
+	// goroutine can read it lock-free.
+	mergedSum         atomic.Pointer[string]
+	mergedSumObserver MergedSumObserver
 
 	readerCtx    context.Context
 	readerCancel context.CancelFunc
@@ -195,6 +211,62 @@ func (c *Conn) SendText(text string) error {
 	return wire.WriteFrame(c.sock, frame)
 }
 
+// SendShutdown emits the agent farewell control message
+// (`#!-agent shutdown `, no payload). Best-effort: errors are returned
+// for telemetry but the caller is expected to Close() right after.
+// Mirrors send_agent_stopped_message() in client-agent/src/start_agent.c.
+func (c *Conn) SendShutdown() error {
+	return c.SendText("#!-agent shutdown ")
+}
+
+// MergedSum returns the most recently observed `merged.mg` MD5 advertised
+// by the manager. Returns "" until the first `#!-up file` arrives.
+func (c *Conn) MergedSum() string {
+	if p := c.mergedSum.Load(); p != nil {
+		return *p
+	}
+	return ""
+}
+
+// SetMergedSumObserver installs an optional callback fired every time
+// the reader observes a new merged.mg hash from the manager. Used by
+// the supervisor to bump a `merged_sum_updates` counter.
+func (c *Conn) SetMergedSumObserver(obs MergedSumObserver) {
+	c.mergedSumObserver = obs
+}
+
+// fileUpdatePrefix is the wire-level header the manager uses to push a
+// shared file (typically merged.mg) to the agent. See
+// remoted/src/manager.c:1731 — `snprintf(... "%s%s%s %s\n", CONTROL_HEADER,
+// FILE_UPDATE_HEADER, sum, name)`.
+var fileUpdatePrefix = []byte("#!-up file ")
+
+// parseFileUpdate extracts the MD5 hash from a payload that begins with
+// `#!-up file <md5> <name>\n<body>`. Stores it in c.mergedSum and fires
+// the observer if one is set. Tolerates short / malformed payloads
+// silently — the file body is discarded.
+func (c *Conn) parseFileUpdate(payload []byte) {
+	rest := payload[len(fileUpdatePrefix):]
+	sp := bytes.IndexByte(rest, ' ')
+	if sp < 32 {
+		// MD5 hex is exactly 32 chars; anything shorter is malformed.
+		return
+	}
+	md5 := string(rest[:sp])
+	for i := 0; i < len(md5); i++ {
+		b := md5[i]
+		isHex := (b >= '0' && b <= '9') || (b >= 'a' && b <= 'f') || (b >= 'A' && b <= 'F')
+		if !isHex {
+			return
+		}
+	}
+	prev := c.MergedSum()
+	c.mergedSum.Store(&md5)
+	if md5 != prev && c.mergedSumObserver != nil {
+		c.mergedSumObserver(md5)
+	}
+}
+
 // RegisterSession remembers a callback for inbound frames carrying this
 // session id. Call UnregisterSession when the runner is done.
 func (c *Conn) RegisterSession(sessionID uint64, cb InboundCallback) {
@@ -235,6 +307,15 @@ func (c *Conn) readLoop() {
 		payload, err := wire.DecodeFrame(c.aesKey, frame)
 		if err != nil {
 			// drop; manager garbage shouldn't kill the reader
+			continue
+		}
+		// Shared-file push from the manager:
+		//   "#!-up file <md5> <filename>\n<body>"
+		// We don't care about the file body — only the MD5 so the next
+		// keepalive can echo a matching merged_sum and break the manager's
+		// "not synced → resend" loop. See remoted/src/manager.c:1731.
+		if bytes.HasPrefix(payload, fileUpdatePrefix) {
+			c.parseFileUpdate(payload)
 			continue
 		}
 		tag, fbBytes := stripIdentifier(payload)

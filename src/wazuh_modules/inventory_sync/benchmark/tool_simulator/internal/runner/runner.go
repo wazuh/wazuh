@@ -31,6 +31,11 @@ type Config struct {
 	StartAckTimeout time.Duration
 	EndAckTimeout   time.Duration
 
+	// KeepaliveInterval is how often each agent emits a `#!-<JSON>`
+	// control keepalive. 0 disables the ticker entirely (no keepalives,
+	// only the initial startup + shutdown frames).
+	KeepaliveInterval time.Duration
+
 	// PostDataDelay is the pause inserted between the last data message
 	// of a session and its End (applied for both the initial End and
 	// every End following a ReqRet). Use PostDataDelaySet=true together
@@ -164,10 +169,40 @@ func runAgent(ctx context.Context, idx int, lanes []string, scn *scenario.Scenar
 			log.Printf("agent %d: connect failed: %v", idx, err)
 			return
 		}
+		// Forward merged_sum updates from the reader to the metrics
+		// counter. Installed BEFORE StartReader so we never miss the
+		// first `#!-up file` push.
+		conn.SetMergedSumObserver(func(string) {
+			c.Inc(metrics.CMergedSumUpdates)
+		})
 		conn.StartReader(ctx)
+
+		// Keepalive ticker: emits `#!-<JSON>` every cfg.KeepaliveInterval
+		// for as long as the iteration runs. The first keepalive ships
+		// `merged_sum=""`, which prompts the manager to push us the
+		// shared file; we record the hash and report it on subsequent
+		// keepalives, breaking the "not synced" loop.
+		stopKeepalive := conn.StartKeepalive(ctx, agent.KeepaliveOptions{
+			Interval: cfg.KeepaliveInterval,
+			Groups:   []string{"default"},
+			OnTick: func(r agent.KeepaliveResult) {
+				if r.Err != nil {
+					c.Inc(metrics.CKeepaliveErrors)
+				} else {
+					c.Inc(metrics.CKeepalivesSent)
+				}
+			},
+		})
 
 		runIteration(ctx, conn, lanes, scn, c, cache, invOpts)
 
+		// Stop the ticker first so it doesn't race with the shutdown
+		// frame for the sendMu. Then send the farewell control message
+		// — best-effort, error is informational only.
+		stopKeepalive()
+		if err := conn.SendShutdown(); err == nil {
+			c.Inc(metrics.CShutdownsSent)
+		}
 		conn.Close()
 		if !shouldRepeat(deadline) {
 			return
