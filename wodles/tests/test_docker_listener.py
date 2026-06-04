@@ -257,26 +257,20 @@ def test_check_docker_service_returns_false_when_ping_fails():
 # wait_time — reconnect delay
 # ---------------------------------------------------------------------------
 
-def test_wait_time_is_used_in_connect_loop():
-    """connect() calls time.sleep(wait_time) while Docker is unavailable."""
+@patch('DockerListener.threading.Thread')
+@patch('DockerListener.time.sleep')
+def test_connect_sleeps_wait_time_while_docker_unavailable(mock_sleep, mock_thread):
+    """connect() sleeps wait_time between retries while Docker is unavailable."""
     listener = DockerListener()
-    # check_docker_service returns False once then True, so the loop runs once.
-    listener.check_docker_service = MagicMock(side_effect=[False, False, True])
-    listener.connect = MagicMock(wraps=lambda: None)  # stop recursion after first real call
+    listener.thread1 = MagicMock()
+    # call sequence:
+    #   #1 False: if self.check_docker_service()
+    #   #2 False: while not self.check_docker_service()
+    #   #3 True: while not self.check_docker_service()
+    #   #4 True: if self.check_docker_service() (recursive)
+    listener.check_docker_service = MagicMock(side_effect=[False, False, True, True])
 
-    call_count = [0]
+    listener.connect(first_time=True)
 
-    def fake_connect(first_time=False):
-        call_count[0] += 1
-        if call_count[0] > 1:
-            return
-        with patch('DockerListener.time.sleep') as mock_sleep:
-            # simulate the while loop body once
-            while not listener.check_docker_service():
-                mock_sleep(listener.wait_time)
-            # assert sleep was called with wait_time
-            for c in mock_sleep.call_args_list:
-                logger.info("time.sleep called with => %s", c)
-                assert c == call(DockerListener.wait_time)
-
-    fake_connect(first_time=True)
+    logger.info("time.sleep called with => %s", mock_sleep.call_args_list)
+    mock_sleep.assert_called_once_with(listener.wait_time)
