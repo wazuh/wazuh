@@ -75,7 +75,17 @@ func Load(path string, opts LoaderOptions) (*Scenario, error) {
 			if !ok {
 				return nil, fmt.Errorf("scenario %s: lanes[%q][%d] must be an object", abs, laneName, i)
 			}
-			merged := mergeDefaults(defaultsRaw, sMap)
+			// Engine steps don't carry inventory-sync session state, so
+			// merging the top-level `defaults` blindly into them would
+			// push `session_type`, `use_databatch`, etc. — fields the
+			// engine loader explicitly rejects. Strip those before
+			// the merge when the step opts into the engine type.
+			// Step-local overrides still win because they live in sMap.
+			effDefaults := defaultsRaw
+			if _, isEngine := sMap["engine"]; isEngine {
+				effDefaults = filterDefaultsForEngine(defaultsRaw)
+			}
+			merged := mergeDefaults(effDefaults, sMap)
 			step, err := resolveStep(merged, scenarioDir, bench, laneName, i, abs)
 			if err != nil {
 				return nil, err
@@ -186,6 +196,53 @@ func validateEngineSiblings(fleets []Fleet, lanes map[string][]Step, scenarioPat
 		}
 	}
 	return nil
+}
+
+// inventoryOnlyDefaultKeys lists scenario `defaults` keys that only make
+// sense for inventory_sync steps. When merging defaults into an engine
+// step we strip these to avoid: (a) the engine loader's strict reject
+// list (e.g. session_type, use_databatch), and (b) silent noise from
+// the retry/timeout knobs that the engine doesn't consume anyway.
+//
+// Keeping the list narrow on purpose: knobs that genuinely apply to
+// both (`initial_delay`, `repeat_delay`, `max_eps`) are NOT included.
+var inventoryOnlyDefaultKeys = map[string]struct{}{
+	"session_type":               {},
+	"sync_mode":                  {},
+	"data_size":                  {},
+	"use_databatch":              {},
+	"retransmit":                 {},
+	"payload_size":               {},
+	"pad_field":                  {},
+	"modulecheck_checksum":       {},
+	"auto_resync":                {},
+	"module":                     {},
+	"index":                      {},
+	"option":                     {},
+	"offline_retry":              {},
+	"offline_retry_delay":        {},
+	"start_ack_timeout":          {},
+	"end_ack_processing_timeout": {},
+	"end_ack_timeout":            {},
+	"ack_timeout_retry":          {},
+	"ack_timeout_retry_delay":    {},
+	"post_data_delay":            {},
+}
+
+// filterDefaultsForEngine returns a copy of `defaults` with all
+// inventory-only keys removed. The original map is left untouched.
+func filterDefaultsForEngine(defaults map[string]any) map[string]any {
+	if defaults == nil {
+		return nil
+	}
+	out := make(map[string]any, len(defaults))
+	for k, v := range defaults {
+		if _, drop := inventoryOnlyDefaultKeys[k]; drop {
+			continue
+		}
+		out[k] = v
+	}
+	return out
 }
 
 func mergeDefaults(defaults, step map[string]any) map[string]any {

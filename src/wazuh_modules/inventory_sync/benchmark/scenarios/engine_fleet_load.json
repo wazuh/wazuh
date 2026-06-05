@@ -1,6 +1,17 @@
 {
   "name": "engine_fleet_load",
   "description": "50 agents, each runs engine + fim + sca + syscollector. Engine uses both terminators (whichever-first): stops when all three inventory lanes finish on that specific agent, with a 60s safety upper bound. Validates Mode B at scale and confirms each agent's counter is independent.",
+  "defaults": {
+    "session_type": "delta",
+    "max_eps": 75,
+    "use_databatch": true,
+    "ack_timeout_retry": 0,
+    "offline_retry": 0,
+    "offline_retry_delay": 2.0,
+    "start_ack_timeout": 5,
+    "end_ack_processing_timeout": 10,
+    "end_ack_timeout": 120
+  },
   "lanes": {
     "engine": [
       {
@@ -13,43 +24,13 @@
       }
     ],
     "fim": [
-      {
-        "dump": "sample_payloads/fim/ubuntu22_fim_first_sync.json",
-        "max_eps": 75,
-        "use_databatch": true,
-        "ack_timeout_retry": 0,
-        "offline_retry": 0,
-        "offline_retry_delay": 2.0,
-        "start_ack_timeout": 5,
-        "end_ack_processing_timeout": 10,
-        "end_ack_timeout": 120
-      }
+      { "dump": "sample_payloads/fim/ubuntu22_fim_first_sync.json" }
     ],
     "sca": [
-      {
-        "dump": "sample_payloads/dump-sca/session_sca_ubuntu.json",
-        "max_eps": 75,
-        "use_databatch": true,
-        "ack_timeout_retry": 0,
-        "offline_retry": 0,
-        "offline_retry_delay": 2.0,
-        "start_ack_timeout": 5,
-        "end_ack_processing_timeout": 10,
-        "end_ack_timeout": 120
-      }
+      { "dump": "sample_payloads/dump-sca/session_sca_ubuntu.json" }
     ],
     "syscollector": [
-      {
-        "dump": "sample_payloads/dump-syscollector/session_syscollector_sync_debian10.json",
-        "max_eps": 75,
-        "use_databatch": true,
-        "ack_timeout_retry": 0,
-        "offline_retry": 0,
-        "offline_retry_delay": 2.0,
-        "start_ack_timeout": 5,
-        "end_ack_processing_timeout": 10,
-        "end_ack_timeout": 120
-      }
+      { "dump": "sample_payloads/dump-syscollector/session_syscollector_sync_debian10.json" }
     ]
   },
   "fleets": [

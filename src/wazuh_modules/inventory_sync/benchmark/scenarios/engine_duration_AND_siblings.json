@@ -1,6 +1,12 @@
 {
   "name": "engine_duration_AND_siblings",
   "description": "Engine has BOTH duration=30 AND run_while_siblings_active. Inventory (Ubuntu SCA ~207 items @ 75 EPS ~= 3s) finishes well before 30s. Whichever-first composition: siblings must win.",
+  "defaults": {
+    "session_type": "delta",
+    "max_eps": 75,
+    "use_databatch": true,
+    "ack_timeout_retry": 0
+  },
   "lanes": {
     "engine": [
       {
@@ -13,12 +19,7 @@
       }
     ],
     "sca": [
-      {
-        "dump": "sample_payloads/dump-sca/session_sca_ubuntu.json",
-        "max_eps": 75,
-        "use_databatch": true,
-        "ack_timeout_retry": 0
-      }
+      { "dump": "sample_payloads/dump-sca/session_sca_ubuntu.json" }
     ]
   },
   "fleets": [

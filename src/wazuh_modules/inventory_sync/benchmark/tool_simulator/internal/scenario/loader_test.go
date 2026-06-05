@@ -92,6 +92,50 @@ func TestLoadEngineRejectsRepeatCount(t *testing.T) {
 	}
 }
 
+// TestLoadEngineIgnoresInventoryDefaults: when a scenario's top-level
+// `defaults` block contains inventory-only knobs (session_type,
+// use_databatch, ack_timeout_retry, etc.), the loader must strip them
+// before merging into engine steps. Mixed scenarios (engine + inventory
+// lanes) should load cleanly even with rich defaults.
+func TestLoadEngineIgnoresInventoryDefaults(t *testing.T) {
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "x.log")
+	_ = os.WriteFile(logPath, []byte("a\n"), 0644)
+	scn := `{
+  "defaults": {
+    "session_type": "delta",
+    "use_databatch": true,
+    "ack_timeout_retry": 0,
+    "offline_retry": 0,
+    "end_ack_timeout": 60
+  },
+  "lanes": {
+    "engine": [
+      { "engine": "x.log", "max_eps": 10 }
+    ],
+    "inv": [ { "kind": "fim_file" } ]
+  },
+  "total_agents": 1
+}`
+	p := filepath.Join(dir, "s.json")
+	_ = os.WriteFile(p, []byte(scn), 0644)
+	s, err := Load(p, LoaderOptions{BenchDir: dir})
+	if err != nil {
+		t.Fatalf("Load: %v (expected engine step to ignore inventory-only defaults)", err)
+	}
+	if s.Lanes["engine"][0].Kind != SourceKindEngine {
+		t.Errorf("engine step Kind = %v, want SourceKindEngine", s.Lanes["engine"][0].Kind)
+	}
+	// Defaults must still reach the inventory step.
+	inv := s.Lanes["inv"][0]
+	if inv.SessionType != SessionDelta {
+		t.Errorf("inventory step SessionType = %q, want %q", inv.SessionType, SessionDelta)
+	}
+	if !inv.UseDatabatch {
+		t.Errorf("inventory step UseDatabatch = false, want true (from defaults)")
+	}
+}
+
 // TestLoadEngineDurationDefaultsAndOverride: duration defaults to 0
 // (no time limit) and can be set per-step.
 func TestLoadEngineDurationAndSiblings(t *testing.T) {

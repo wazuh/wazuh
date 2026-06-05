@@ -93,14 +93,31 @@ pre-increments the counter before launching any lane goroutine, and
 each non-engine lane decrements it on exit via `defer`. Engine sources
 that opted in poll the counter every 20 events (cheap atomic load).
 
-### Forbidden fields
+### Forbidden fields (per-step)
 
 These are inventory-sync-only and the loader rejects them when `engine`
-is set:
+is set explicitly on the step itself:
 
 `session_type`, `sync_mode`, `data_size`, `use_databatch`, `retransmit`,
 `payload_size`, `pad_field`, `modulecheck_checksum`, `auto_resync`,
 `module`, `index`, `option`.
+
+### Defaults inheritance
+
+The scenario-wide `defaults` block is merged into every step before
+loading. To make mixed scenarios (engine + inventory lanes) ergonomic,
+the loader **strips inventory-only fields from `defaults` before merging
+into an engine step**. The stripped set is the union of the forbidden
+fields above plus the inventory-only retry/timeout knobs
+(`offline_retry`, `offline_retry_delay`, `start_ack_timeout`,
+`end_ack_processing_timeout`, `end_ack_timeout`, `ack_timeout_retry`,
+`ack_timeout_retry_delay`, `post_data_delay`).
+
+The result: a scenario can keep one rich `defaults` block that applies
+to its inventory lanes, and the engine lanes ignore the inapplicable
+keys silently. Step-local overrides on an engine step still win over
+defaults (because they ride in the step's own map, not the filtered
+defaults).
 
 ### Validation
 
