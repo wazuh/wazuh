@@ -25,6 +25,7 @@ Usage:
 import argparse
 import atexit
 import csv
+import http.client
 import json
 import logging
 import os
@@ -63,6 +64,27 @@ DEFAULT_REMOTED_SOCKET = "/var/wazuh-manager/queue/sockets/remote"
 REMOTED_STATS_CSV = "stats-api-remoted.csv"
 REMOTED_QUERY = {"command": "getstats"}
 REMOTED_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
+
+DEFAULT_ANALYSISD_SOCKET = "/var/wazuh-manager/queue/sockets/analysis"
+ANALYSISD_STATS_CSV = "stats-api-analysisd.csv"
+ANALYSISD_MAX_RESPONSE_SIZE = 4 * 1024 * 1024
+ANALYSISD_HEADER = [
+    "timestamp",
+    "elapsed_s",
+    "query_ok",
+    "query_error",
+    "server_events_received",
+    "router_queue_size",
+    "router_queue_usage_percent",
+    "router_events_processed",
+    "indexer_queue_usage_percent",
+    "indexer_queue_size",
+    "indexer_events_dropped",
+    "router_eps_1m",
+    "spaces_standard_events_unclassified",
+    "raw_response_json",
+]
+
 REMOTED_HEADER = [
     "timestamp",
     "elapsed_s",
@@ -628,6 +650,133 @@ def remoted_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
     logger.info("Remoted API monitor finished. CSV written to %s", csv_path)
 
 
+# ---------------------------------------------------------------------------
+# Analysisd HTTP API monitor
+# ---------------------------------------------------------------------------
+class _UnixSocketHTTPConnection(http.client.HTTPConnection):
+    """HTTPConnection that routes traffic through a Unix domain socket."""
+
+    def __init__(self, socket_path: str, timeout: float = 5.0) -> None:
+        super().__init__("localhost", timeout=timeout)
+        self._socket_path = socket_path
+
+    def connect(self) -> None:
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.settimeout(self.timeout)
+        sock.connect(self._socket_path)
+        self.sock = sock
+
+
+def _query_analysisd_stats(socket_path: str, timeout: float = 5.0) -> dict[str, object]:
+    """POST /metrics/dump over the analysisd HTTP Unix socket."""
+    conn = _UnixSocketHTTPConnection(socket_path, timeout=timeout)
+    try:
+        body = b"{}"
+        conn.request(
+            "POST", "/metrics/dump",
+            body=body,
+            headers={"Content-Type": "text/plain", "Content-Length": str(len(body))},
+        )
+        resp = conn.getresponse()
+        raw_bytes = resp.read(ANALYSISD_MAX_RESPONSE_SIZE)
+    finally:
+        conn.close()
+
+    data = json.loads(raw_bytes.decode("utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("Analysisd response is not a JSON object")
+    return data
+
+
+def _empty_analysisd_row(timestamp: str, elapsed_s: float) -> dict[str, object]:
+    row: dict[str, object] = {k: "" for k in ANALYSISD_HEADER}
+    row["timestamp"] = timestamp
+    row["elapsed_s"] = elapsed_s
+    return row
+
+
+def _flatten_analysisd_stats(raw: dict[str, object], timestamp: str, elapsed_s: float) -> dict[str, object]:
+    row = _empty_analysisd_row(timestamp, elapsed_s)
+    row["query_ok"] = 1
+    row["query_error"] = ""
+
+    # Index global metrics by name for O(1) access.
+    global_metrics: dict[str, object] = {}
+    for item in raw.get("global") or []:
+        if isinstance(item, dict) and "name" in item:
+            global_metrics[item["name"]] = item.get("value")
+
+    row["server_events_received"]     = _as_int(global_metrics.get("server.events.received"))
+    row["router_queue_size"]          = _as_int(global_metrics.get("router.queue.size"))
+    row["router_queue_usage_percent"] = _as_float(global_metrics.get("router.queue.usage.percent"))
+    row["router_events_processed"]    = _as_int(global_metrics.get("router.events.processed"))
+    row["indexer_queue_usage_percent"] = _as_float(global_metrics.get("indexer.queue.usage.percent"))
+    row["indexer_queue_size"]         = _as_int(global_metrics.get("indexer.queue.size"))
+    row["indexer_events_dropped"]     = _as_int(global_metrics.get("indexer.events.dropped"))
+    row["router_eps_1m"]              = _as_float(global_metrics.get("router.eps.1m"))
+
+    # Walk spaces to find the "standard" space and extract events.unclassified.
+    for space in raw.get("spaces") or []:
+        if not isinstance(space, dict) or space.get("name") != "standard":
+            continue
+        for metric in space.get("metrics") or []:
+            if isinstance(metric, dict) and metric.get("name") == "events.unclassified":
+                row["spaces_standard_events_unclassified"] = _as_int(metric.get("value"))
+                break
+
+    row["raw_response_json"] = json.dumps(raw, separators=(",", ":"), ensure_ascii=True)
+    return row
+
+
+def analysisd_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
+                               stop_event: threading.Event | None = None) -> None:
+    """Poll analysisd /metrics/dump over HTTP Unix socket and write per-second CSV."""
+    write_header = not os.path.isfile(csv_path) or os.path.getsize(csv_path) == 0
+    start_time = time.monotonic()
+
+    with open(csv_path, "a", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=ANALYSISD_HEADER)
+        if write_header:
+            writer.writeheader()
+            fh.flush()
+
+        logger.info("Analysisd API monitor every %.1fs -> %s", interval, csv_path)
+        logger.info("Analysisd API socket: %s", socket_path)
+
+        while _running and not (stop_event and stop_event.is_set()):
+            ts_now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            elapsed_s = round(time.monotonic() - start_time, 1)
+
+            try:
+                raw = _query_analysisd_stats(socket_path)
+                row = _flatten_analysisd_stats(raw, ts_now, elapsed_s)
+                logger.info(
+                    "[analysisd-api] events_received=%d router_q=%d router_q_pct=%.1f "
+                    "indexer_q=%d indexer_q_pct=%.1f indexer_dropped=%d unclassified=%d",
+                    _as_int(row.get("server_events_received")),
+                    _as_int(row.get("router_queue_size")),
+                    _as_float(row.get("router_queue_usage_percent")),
+                    _as_int(row.get("indexer_queue_size")),
+                    _as_float(row.get("indexer_queue_usage_percent")),
+                    _as_int(row.get("indexer_events_dropped")),
+                    _as_int(row.get("spaces_standard_events_unclassified")),
+                )
+            except Exception as exc:
+                row = _empty_analysisd_row(ts_now, elapsed_s)
+                row["query_ok"] = 0
+                row["query_error"] = str(exc)
+                logger.warning("Analysisd API poll failed: %s", exc)
+
+            writer.writerow(row)
+            fh.flush()
+
+            deadline = time.monotonic() + interval
+            while time.monotonic() < deadline and _running and not (stop_event and stop_event.is_set()):
+                time.sleep(min(0.5, deadline - time.monotonic()))
+
+    logger.info("Analysisd API monitor finished. CSV written to %s", csv_path)
+
+
 def monitor_multi(processes: dict[str, psutil.Process], output_dir: str,
                   interval: float, disk_paths: list[str]) -> None:
     """Spawn process, disk and remoted API monitoring threads."""
@@ -637,6 +786,7 @@ def monitor_multi(processes: dict[str, psutil.Process], output_dir: str,
     proc_threads: list[threading.Thread] = []
     disk_stop = threading.Event()
     remoted_stop = threading.Event()
+    analysisd_stop = threading.Event()
 
     # Per-process resource threads
     for exe_path, proc in processes.items():
@@ -669,11 +819,20 @@ def monitor_multi(processes: dict[str, psutil.Process], output_dir: str,
         daemon=True,
     )
 
+    analysisd_csv = os.path.join(output_dir, ANALYSISD_STATS_CSV)
+    analysisd_thread = threading.Thread(
+        target=analysisd_api_monitor_loop,
+        args=(analysisd_csv, interval, DEFAULT_ANALYSISD_SOCKET, analysisd_stop),
+        name="mon-analysisd-api",
+        daemon=True,
+    )
+
     for t in proc_threads:
         t.start()
     if disk_thread:
         disk_thread.start()
     remoted_thread.start()
+    analysisd_thread.start()
 
     # Wait for all process threads to finish.
     while _running and any(t.is_alive() for t in proc_threads):
@@ -683,10 +842,13 @@ def monitor_multi(processes: dict[str, psutil.Process], output_dir: str,
     # All process monitors done — stop independent monitors.
     disk_stop.set()
     remoted_stop.set()
+    analysisd_stop.set()
     if disk_thread and disk_thread.is_alive():
         disk_thread.join(timeout=5.0)
     if remoted_thread.is_alive():
         remoted_thread.join(timeout=5.0)
+    if analysisd_thread.is_alive():
+        analysisd_thread.join(timeout=5.0)
 
     logger.info("All monitoring threads finished. Results in %s", output_dir)
 

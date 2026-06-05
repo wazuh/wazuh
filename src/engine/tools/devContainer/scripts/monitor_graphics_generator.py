@@ -110,6 +110,18 @@ def load_remoted_stats(path: str) -> pd.DataFrame:
     return df
 
 
+def load_analysisd_stats(path: str) -> pd.DataFrame:
+    df = pd.read_csv(path)
+    if "elapsed_s" not in df.columns:
+        df["elapsed_s"] = range(len(df))
+    df = _keep_last_run(df)
+    for col in df.columns:
+        if col in ("timestamp", "query_error", "raw_response_json"):
+            continue
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df
+
+
 def parse_result_arg(arg: str) -> tuple[str, str]:
     """Parse 'path::label' into (path, label)."""
     if "::" in arg:
@@ -353,6 +365,14 @@ REMOTED_METRICS = [
     ("tcp_sessions", "Remoted TCP Sessions", "Count"),
 ]
 
+ANALYSISD_METRICS = [
+    ("server_events_received",              "Events Received (cumulative)",          "Count"),
+    ("router_events_processed",             "Router Events Processed",               "Count"),
+    ("router_eps_1m",                       "Router EPS (1 min)",                    "Events/s"),
+    ("indexer_events_dropped",              "Indexer Events Dropped",                "Count"),
+    ("spaces_standard_events_unclassified", "Standard Space — Events Unclassified",  "Count"),
+]
+
 
 # ---------------------------------------------------------------------------
 # Main chart generation
@@ -368,6 +388,7 @@ def generate_charts(
     benches: dict[str, pd.DataFrame] = {}
     disk_dfs: dict[str, pd.DataFrame] = {}
     remoted_dfs: dict[str, pd.DataFrame] = {}
+    analysisd_dfs: dict[str, pd.DataFrame] = {}
     logs: dict[str, pd.DataFrame] = {}
     modulesd_dfs: dict[str, pd.DataFrame] = {}
 
@@ -391,6 +412,11 @@ def generate_charts(
         if not os.path.isfile(remoted_stats_path):
             remoted_stats_path = os.path.join(path, "stats-api-remoted.csv")
 
+        # Analysisd API stats: prefer monitor/ subdir, fall back to root
+        analysisd_stats_path = os.path.join(monitor_dir, "stats-api-analysisd.csv")
+        if not os.path.isfile(analysisd_stats_path):
+            analysisd_stats_path = os.path.join(path, "stats-api-analysisd.csv")
+
         if os.path.isfile(bench_path):
             benches[label] = load_bench(bench_path)
         if os.path.isfile(disk_path):
@@ -405,6 +431,11 @@ def generate_charts(
                 remoted_dfs[label] = load_remoted_stats(remoted_stats_path)
             except Exception as exc:
                 print(f"  warning: could not load {remoted_stats_path}: {exc}")
+        if os.path.isfile(analysisd_stats_path):
+            try:
+                analysisd_dfs[label] = load_analysisd_stats(analysisd_stats_path)
+            except Exception as exc:
+                print(f"  warning: could not load {analysisd_stats_path}: {exc}")
 
         # Per-process CSVs: prefer monitor/ subdir, then root-level monitor.csv,
         # then auto-discover per-process CSVs in root.
@@ -414,7 +445,7 @@ def generate_charts(
                     continue
                 if fname in ("disk_usage.csv", "logs.csv",
                              "invsync_queue_stats.csv", "invsync_session_stats.csv",
-                             "stats-api-remoted.csv"):
+                             "stats-api-remoted.csv", "stats-api-analysisd.csv"):
                     continue
                 fpath = os.path.join(monitor_dir, fname)
                 proc_name = fname.removesuffix(".csv")
@@ -434,7 +465,7 @@ def generate_charts(
                     continue
                 if fname in ("bench.csv", "disk_usage.csv", "logs.csv",
                              "invsync_queue_stats.csv", "invsync_session_stats.csv",
-                             "stats-api-remoted.csv"):
+                             "stats-api-remoted.csv", "stats-api-analysisd.csv"):
                     continue
                 fpath = os.path.join(path, fname)
                 proc_name = fname.removesuffix(".csv")
@@ -454,6 +485,7 @@ def generate_charts(
     benches = {k: v for k, v in benches.items() if len(v) > 0}
     disk_dfs = {k: v for k, v in disk_dfs.items() if len(v) > 0}
     remoted_dfs = {k: v for k, v in remoted_dfs.items() if len(v) > 0}
+    analysisd_dfs = {k: v for k, v in analysisd_dfs.items() if len(v) > 0}
 
     if not monitors and not benches and not disk_dfs and not remoted_dfs:
         print("All CSV files are empty — nothing to generate.")
@@ -547,6 +579,42 @@ def generate_charts(
                 f"Wazuh Remoted API — {title_suffix}",
                 ylabel,
                 out,
+            )
+
+    # -- Analysisd API time-series ------------------------------------------
+    if analysisd_dfs:
+        for col, title_suffix, ylabel in ANALYSISD_METRICS:
+            if not any(col in df.columns for df in analysisd_dfs.values()):
+                continue
+            out = os.path.join(out_dir, f"analysisd_{col}.{fmt}")
+            plot_timeseries(
+                analysisd_dfs,
+                col,
+                f"Analysisd — {title_suffix}",
+                ylabel,
+                out,
+            )
+
+        # Router queue: size + usage percent — stacked panels
+        if any("router_queue_size" in df.columns for df in analysisd_dfs.values()):
+            plot_stacked_timeseries(
+                analysisd_dfs,
+                "router_queue_size", "router_queue_usage_percent",
+                "Router Queue Size", "Router Queue Usage %",
+                "Messages", "%",
+                "Analysisd — Router Queue",
+                os.path.join(out_dir, f"analysisd_router_queue.{fmt}"),
+            )
+
+        # Indexer queue: size + usage percent — stacked panels
+        if any("indexer_queue_size" in df.columns for df in analysisd_dfs.values()):
+            plot_stacked_timeseries(
+                analysisd_dfs,
+                "indexer_queue_size", "indexer_queue_usage_percent",
+                "Indexer Queue Size", "Indexer Queue Usage %",
+                "Messages", "%",
+                "Analysisd — Indexer Queue",
+                os.path.join(out_dir, f"analysisd_indexer_queue.{fmt}"),
             )
 
     # -- Summary bar charts --------------------------------------------------
