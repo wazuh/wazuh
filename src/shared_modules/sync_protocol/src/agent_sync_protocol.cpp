@@ -610,7 +610,9 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         {
             if (!sendFlatBufferMessageAsString(messageVector))
             {
-                m_logger(LOG_WARNING, "Failed to send Start message.");
+                // During shutdown the local socket is gone; the failure is expected, so
+                // log at debug instead of warning to avoid misleading restart noise.
+                m_logger(shouldStop() ? LOG_DEBUG : LOG_WARNING, "Failed to send Start message.");
                 continue;
             }
 
@@ -620,7 +622,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
 
                 if (m_syncState.syncFailed)
                 {
-                    m_logger(LOG_ERROR, "Synchronization failed due to manager error.");
+                    m_logger(LOG_DEBUG, "Synchronization failed due to manager error.");
 
                     // Clean up metadata before returning
                     if (has_metadata)
@@ -642,7 +644,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                 return true;
             }
 
-            m_logger(LOG_WARNING, "Timed out waiting for StartAck. Retrying...");
+            m_logger(shouldStop() ? LOG_DEBUG : LOG_WARNING, "Timed out waiting for StartAck. Retrying...");
         }
 
         // Clean up metadata if we successfully retrieved it
@@ -651,7 +653,15 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
             metadata_provider_free_metadata(&metadata);
         }
 
-        m_logger(LOG_ERROR, "Exceeded maximum retries for Start message. Exiting...");
+        if (shouldStop())
+        {
+            // Expected during agent restart/shutdown: keep it as a debug breadcrumb.
+            m_logger(LOG_DEBUG, "Sync Start message retries exhausted because module is stopping.");
+        }
+        else
+        {
+            m_logger(LOG_ERROR, "Exceeded maximum retries for Start message. Exiting...");
+        }
 
         return false;
     }
@@ -945,7 +955,9 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
         {
             if (resendEnd && !sendFlatBufferMessageAsString(messageVector))
             {
-                m_logger(LOG_WARNING, "Failed to send End message.");
+                // During shutdown the local socket is gone; the failure is expected, so
+                // log at debug instead of warning to avoid misleading restart noise.
+                m_logger(shouldStop() ? LOG_DEBUG : LOG_WARNING, "Failed to send End message.");
                 attempt++;
                 continue;
             }
@@ -980,7 +992,7 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
                 // Don't log error for checksum mismatch - it's an expected condition
                 if (m_syncState.lastSyncResult != SyncResult::CHECKSUM_ERROR)
                 {
-                    m_logger(LOG_ERROR, "Synchronization failed: Manager reported an error status.");
+                    m_logger(LOG_DEBUG, "Synchronization failed: Manager reported an error status.");
                 }
 
                 return false;
@@ -1040,7 +1052,8 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
 
         if (shouldStop())
         {
-            m_logger(LOG_INFO, "Sync End message retries exhausted because module is stopping.");
+            // Expected during agent restart/shutdown: keep it as a debug breadcrumb.
+            m_logger(LOG_DEBUG, "Sync End message retries exhausted because module is stopping.");
         }
         else
         {
@@ -1096,7 +1109,7 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
                         if (startAck->status() == Wazuh::SyncSchema::Status::Error ||
                                 startAck->status() == Wazuh::SyncSchema::Status::Offline)
                         {
-                            m_logger(LOG_ERROR, "Received StartAck with error status. Aborting synchronization.");
+                            m_logger(LOG_DEBUG, "Received StartAck with error status. Aborting synchronization.");
                             m_syncState.syncFailed = true;
                             m_syncState.cv.notify_all();
                             break;
@@ -1136,7 +1149,7 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
                         if (endAck->status() == Wazuh::SyncSchema::Status::Offline)
                         {
                             m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
-                            m_logger(LOG_ERROR, "Received EndAck with Offline status. Aborting synchronization.");
+                            m_logger(LOG_DEBUG, "Received EndAck with Offline status. Aborting synchronization.");
                         }
                         else if (endAck->status() == Wazuh::SyncSchema::Status::ChecksumMismatch)
                         {
@@ -1146,7 +1159,7 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
                         else if (endAck->status() == Wazuh::SyncSchema::Status::Error)
                         {
                             m_syncState.lastSyncResult = SyncResult::GENERIC_ERROR;
-                            m_logger(LOG_ERROR, "Received EndAck with Error status. Aborting synchronization.");
+                            m_logger(LOG_DEBUG, "Received EndAck with Error status. Aborting synchronization.");
                         }
 
                         m_syncState.syncFailed = true;

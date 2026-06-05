@@ -9,9 +9,6 @@ import pytest
 from pathlib import Path
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.modules.remoted.configuration import REMOTED_DEBUG
-from wazuh_testing.constants.paths.sockets import ANALYSISD_QUEUE_SOCKET_PATH
-from wazuh_testing.constants.daemons import ANALYSISD_DAEMON
-from wazuh_testing.tools.mitm import ManInTheMiddle
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
@@ -29,30 +26,20 @@ daemons_handler_configuration = {'all_daemons': True}
 
 local_internal_options = {REMOTED_DEBUG: '2'}
 
-# Test variables.
-receiver_sockets_params = [(ANALYSISD_QUEUE_SOCKET_PATH, 'AF_UNIX', 'UDP')]
-
-mitm_analysisd = ManInTheMiddle(address=ANALYSISD_QUEUE_SOCKET_PATH, family='AF_UNIX', connection_protocol='UDP')
-monitored_sockets_params = [(ANALYSISD_DAEMON, mitm_analysisd, True)]
-
-receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
-
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
-def test_invalid_protocols_communication(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
-                            set_wazuh_configuration, configure_sockets_environment_module, daemons_handler,simulate_agents,
-                       connect_to_sockets_module, waiting_for_analysisd_startup, validate_agent_manager_protocol_communication):
-
+def test_invalid_protocols_communication(test_configuration, test_metadata, configure_local_internal_options,
+                                         truncate_monitored_files, set_wazuh_configuration, daemons_handler,
+                                         simulate_agents, validate_agent_manager_protocol_communication):
     '''
-    description: Check agent-manager communication with several agents simultaneously via TCP, UDP or both.
-                 For this purpose, the test will create all the agents and select the protocol using Round-Robin. Then,
-                 an event and a message will be created for each agent created. Finally, it will search for
-                 those events within the messages sent to the manager.
-
+    description: Check that agent-manager communication with an invalid protocol does not deliver
+                 events to the engine. When the manager is configured for TCP only, UDP packets are
+                 dropped at the network layer. When configured for UDP only, TCP connections are
+                 refused. In both cases no alert should be generated.
 
     parameters:
-        - test_configuration
+        - test_configuration:
             type: dict
             brief: Configuration applied to ossec.conf.
         - test_metadata:
@@ -66,28 +53,18 @@ def test_invalid_protocols_communication(test_configuration, test_metadata, conf
             brief: Configure the Wazuh local internal options using the values from `local_internal_options`.
         - daemons_handler:
             type: fixture
-            brief: Restart service once the test finishes stops the daemons.
-        - simulate_agents
+            brief: Restart all wazuh services once the test finishes.
+        - simulate_agents:
             type: fixture
-            brief: create agents
+            brief: Create simulated agents.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
-        - configure_sockets_environment_module:
+        - validate_agent_manager_protocol_communication:
             type: fixture
-            brief: Configure environment for sockets and MITM.
-        - connect_to_sockets_module:
-            type: fixture
-            brief: Connect to a given list of sockets.
-        - waiting_for_analysisd_startup:
-            type: fixture
-            brief: Wait until the 'wazuh-manager-analysisd' has begun.
-        - validate_agent_manager_protocol_communication
-            type: fixture
-            brief: connect agent , launch thread and send events
+            brief: Send event via the specified protocol and verify it does not generate an alert.
     '''
-
     protocol = test_metadata['protocol']
     manager_port = test_metadata['port']
 
-    validate_agent_manager_protocol_communication(monitored_sockets, simulate_agents, protocol, manager_port)
+    validate_agent_manager_protocol_communication(simulate_agents, protocol, manager_port)

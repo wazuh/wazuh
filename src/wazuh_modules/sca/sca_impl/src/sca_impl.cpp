@@ -1106,11 +1106,14 @@ bool SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseV
             m_dBSync->increaseEachEntryVersion("sca_check");
         }
 
+        // Exclude "Not run" rows from the snapshot. A timed-out check stays at "Not run"
+        // after the scan, and we don't want those rows leaking to the manager —
+        // it should keep the last known executed state instead.
         std::vector<nlohmann::json> checks;
         auto selectQuery = SelectQuery::builder()
                            .table("sca_check")
                            .columnList({"*"})
-                           .rowFilter("WHERE sync = 1")
+                           .rowFilter("WHERE sync = 1 AND result != 'Not run'")
                            .build();
 
         const auto selectCallback = [&checks](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
@@ -1208,7 +1211,9 @@ bool SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseV
         }
         else
         {
-            LoggingHelper::getInstance().log(LOG_ERROR, "SCA " + syncReason + " failed");
+            // Transient sync failure (manager reported an error / communication issue).
+            // The syncModule() caller emits the single WARNING; recovery retries later. (#36724)
+            LoggingHelper::getInstance().log(LOG_DEBUG, "SCA " + syncReason + " failed");
         }
 
         return success;

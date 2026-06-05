@@ -4,6 +4,8 @@ project(wazuh-util C)
 
 if(NOT DEFINED WAZUH_MAIN_PROJECT)
   get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
+  list(APPEND CMAKE_MODULE_PATH "${SRC_FOLDER}/cmake")
+  include(WazuhRpath)
 endif()
 
 # Skip building utilities during unit tests
@@ -62,11 +64,5 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
     endif(NOT APPLE)
   endif(UNIX)
 
-  if(APPLE)
-    set_target_properties(
-      verify-agent-conf PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
-                                   INSTALL_RPATH "@executable_path/../lib")
-  else()
-    string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath,$ORIGIN/../lib")
-  endif()
+  wazuh_set_runtime_rpath(verify-agent-conf)
 endif()

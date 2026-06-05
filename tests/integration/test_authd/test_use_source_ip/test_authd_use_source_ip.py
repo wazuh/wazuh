@@ -58,7 +58,7 @@ test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cas
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
 # Variables
-monitored_sockets_params = [(MODULES_DAEMON, None, True), (WAZUH_DB_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
+monitored_sockets_params = [(WAZUH_DB_DAEMON, None, True), (MODULES_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
 receiver_sockets, monitored_sockets, log_monitors = None, None, None  # Set in the fixtures
 daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}
 
@@ -72,7 +72,7 @@ def test_authd_use_source_ip(test_configuration, test_metadata, set_wazuh_config
         Checks that every input message in authd port generates the adequate output
 
     wazuh_min_version:
-        4.2.0
+        5.0.0
 
     tier: 0
 

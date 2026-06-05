@@ -6,17 +6,18 @@ metadata:
     Determines whether unclassified events should be indexed based on policy configuration.
     This filter returns true if and only if:
     1. The policy flag 'indexUnclassifiedEvents' is enabled (configured at build time)
-    2. The target field is exactly 'wazuh.integration.decoders'
-    3. 'wazuh.integration.decoders' is an array containing exactly 1 element
+    2. The target field is exactly 'wazuh.integration.category'
+    3. 'wazuh.integration.category' equals the string "unclassified"
 
-    This helper is used in output routing to decide whether to index events that have only
-    one decoder (unclassified events) when the policy allows it. If the policy flag is
-    disabled or the array has a different size, the validation fails.
+    This helper is used in output routing to decide whether to index events that the
+    root decoder tagged as unclassified (no integration decoder matched) when the
+    policy allows it. If the policy flag is disabled, the category differs from
+    "unclassified", or the field is missing / not a string, the validation fails.
 
     Note: This helper does not accept any arguments, rejects any target field other than
-    'wazuh.integration.decoders', and depends on the policy context configured at build time.
+    'wazuh.integration.category', and depends on the policy context configured at build time.
   keywords:
-    - array
+    - string
     - policy
 
 helper_type: filter
@@ -24,32 +25,32 @@ helper_type: filter
 # Indicates whether the helper function supports a variable number of arguments
 is_variadic: false
 
-# No arguments - this helper only checks the array size and policy flag
+# No arguments - this helper only checks the category value and policy flag
 arguments: {}
 
 target_field:
-  type: array
-  generate: all
-  path: wazuh.integration.decoders
+  type: string
+  generate: string
+  path: wazuh.integration.category
 
 # Note: These tests assume the policy flag 'indexUnclassifiedEvents' is enabled in the test environment.
 # In production, this flag is configured per policy and evaluated at build time.
 test:
-  - target_field: ["single_decoder"]
+  - target_field: "unclassified"
     should_pass: true
-    description: Array with exactly one element (unclassified event)
-  - target_field: []
+    description: Category equals "unclassified" (event tagged by the root decoder)
+  - target_field: "security"
     should_pass: false
-    description: Empty array - not an unclassified event
-  - target_field: ["decoder1", "decoder2"]
+    description: Category is a known one different from "unclassified"
+  - target_field: "system-activity"
     should_pass: false
-    description: Array with two elements - classified event
-  - target_field: ["d1", "d2", "d3"]
+    description: Category is a known one different from "unclassified"
+  - target_field: ""
     should_pass: false
-    description: Array with three elements - classified event
-  - target_field: "not_an_array"
-    should_pass: false
-    description: Target field is not an array
+    description: Category is an empty string
   - target_field: 42
     should_pass: false
-    description: Target field is a number, not an array
+    description: Target field is a number, not a string
+  - target_field: ["unclassified"]
+    should_pass: false
+    description: Target field is an array, not a string

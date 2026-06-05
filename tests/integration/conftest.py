@@ -15,6 +15,7 @@ from wazuh_testing import session_parameters
 from wazuh_testing.constants import platforms
 from wazuh_testing.constants.daemons import WAZUH_MANAGER, API_DAEMONS_REQUIREMENTS
 from wazuh_testing.constants.paths import ROOT_PREFIX
+from wazuh_testing.constants.paths.variables import VAR_RUN_PATH
 from wazuh_testing.constants.paths.api import RBAC_DATABASE_PATH
 from wazuh_testing.constants.paths.logs import (
     WAZUH_LOG_PATH,
@@ -398,9 +399,10 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
             services.control_service("restart")
         else:
             for daemon in daemons:
-                logger.debug(f"Restarting {daemon}")
-                # Restart daemon instead of starting due to legacy used fixture in the test suite.
-                services.control_service("restart", daemon=daemon)
+                if daemon is not None:
+                    logger.debug(f"Restarting {daemon}")
+                    # Restart daemon instead of starting due to legacy used fixture in the test suite.
+                    services.control_service("restart", daemon=daemon)
 
     except ValueError as value_error:
         logger.error(f"{str(value_error)}")
@@ -420,8 +422,9 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
         if daemons == API_DAEMONS_REQUIREMENTS:
             daemons.reverse()  # Stop in reverse, otherwise the next start will fail
         for daemon in daemons:
-            logger.debug(f"Stopping {daemon}")
-            services.control_service("stop", daemon=daemon)
+            if daemon is not None:
+                logger.debug(f"Stopping {daemon}")
+                services.control_service("stop", daemon=daemon)
 
 
 @pytest.fixture()
@@ -543,22 +546,26 @@ def configure_sockets_environment_implementation(
         try:
             services.control_service("stop")
         except Exception as e:
-            logger.warning(f"Setup step failed: {e}")
+            logger.error(f"Setup step failed: {e}")
+            raise
 
         try:
             services.wait_expected_daemon_status(running_condition=False)
         except Exception as e:
-            logger.warning(f"Setup step failed: {e}")
+            logger.error(f"Setup step failed: {e}")
+            raise
 
 
         # Clean leftover daemons. Missing files are the expected case when the
         # previous teardown ran cleanly, so swallow FileNotFoundError silently.
         for daemon, mitm, daemon_first in monitored_sockets_params:
-            pid_file = f"/var/ossec/var/run/{daemon}.pid"
-            try:
-                os.unlink(pid_file)
-            except FileNotFoundError:
-                pass
+
+            if daemon is not None:
+                pid_file = os.path.join(VAR_RUN_PATH, f"{daemon}.pid")
+                try:
+                    os.unlink(pid_file)
+                except FileNotFoundError:
+                    pass
 
             if mitm is not None and mitm.family == "AF_UNIX":
                 try:
@@ -580,7 +587,9 @@ def configure_sockets_environment_implementation(
                 started_mitms.append(mitm)
 
             services.control_service("start", daemon=daemon, debug_mode=True)
-            started_daemons.append(daemon)
+
+            if daemon is not None:
+                started_daemons.append(daemon)
 
             # Use a 60s timeout (vs the framework default of 10s) because
             # test_authd_key_request_worker has been observed to need >30s for
@@ -640,12 +649,14 @@ def configure_sockets_environment_implementation(
         try:
             database.delete_dbs()
         except Exception as e:
-            logger.warning(f"Cleanup step failed: {e}")
+            logger.error(f"Cleanup step failed: {e}")
+            raise
 
         try:
             services.control_service("start")
         except Exception as e:
-            logger.warning(f"Cleanup step failed: {e}")
+            logger.error(f"Cleanup step failed: {e}")
+            raise
 
 
 @pytest.fixture(scope="module")
@@ -935,13 +946,13 @@ def autostart_simulators(request: pytest.FixtureRequest) -> None:
 def simulate_agents(test_metadata):
 
     agents_amount = test_metadata.get("agents_number", 1)
-    agents = create_agents(agents_amount, "localhost")
+    agents = create_agents(agents_amount, "localhost", retry_enrollment=True)
 
     yield agents
 
     # Delete simulated agents
     control_service("start")
-    remove_agents([a.id for a in agents], "manage_agents")
+    remove_agents([a.id for a in agents], "api")
     control_service("stop")
 
 @pytest.fixture(scope="session", autouse=True)

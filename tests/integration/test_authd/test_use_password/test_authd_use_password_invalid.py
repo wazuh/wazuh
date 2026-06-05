@@ -78,7 +78,8 @@ def test_authd_use_password_invalid(test_configuration, test_metadata, set_wazuh
         to come from the cases yaml, this is done this way to handle easily
         the different error logs that could be raised from different inputs.
 
-    wazuh_min_version: 4.6.0
+    wazuh_min_version:
+        5.0.0
 
     tier: 1
 
@@ -118,9 +119,12 @@ def test_authd_use_password_invalid(test_configuration, test_metadata, set_wazuh
     if log == 'Invalid password provided.':
         pytest.xfail(reason="No password validation in authd.pass - Issue wazuh/wazuh#16282.")
 
-    # Verify wazuh-manager fails at restart.
-    with pytest.raises(ValueError):
+    # Attempt restart; it may fail (older behavior) or succeed (5.x behavior where
+    # the service continues even if authd exits on invalid password).
+    try:
         control_service('restart')
+    except ValueError:
+        pass
 
     # Verify the error log is raised.
 

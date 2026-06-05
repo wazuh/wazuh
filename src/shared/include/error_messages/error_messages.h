@@ -21,7 +21,11 @@
 #define NULL_ERROR    "(1105): Attempted to use null string."
 #define FORMAT_ERROR  "(1106): String not correctly formatted."
 #define MKDIR_ERROR   "(1107): Could not create directory '%s' due to [(%d)-(%s)]."
-#define HOME_ERROR    "(1108): Unable to find Wazuh install directory. Export it to WAZUH_HOME environment variable."
+#ifdef CLIENT
+#define HOME_ERROR    "(1108): Unable to find Wazuh install directory. Export it to WAZUH_AGENT_HOME environment variable."
+#else
+#define HOME_ERROR    "(1108): Unable to find Wazuh install directory. Export it to WAZUH_MANAGER_HOME environment variable."
+#endif
 #define THREAD_ERROR  "(1109): Unable to create new pthread."
 #define FWRITE_ERROR  "(1110): Could not write file '%s' due to [(%d)-(%s)]."
 #define WAITPID_ERROR "(1111): Error during waitpid()-call due to [(%d)-(%s)]."
