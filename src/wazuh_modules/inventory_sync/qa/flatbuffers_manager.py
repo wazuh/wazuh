@@ -6,46 +6,17 @@ This module handles the import and generation of FlatBuffers classes.
 import os
 import sys
 import importlib
-import threading
 from pathlib import Path
 from typing import Optional, Any
 
 class FlatBuffersManager:
-    """Manages FlatBuffers classes for inventory sync testing.
-
-    The schema dict and fallback module are cached at the class level the
-    first time any instance is constructed. Subsequent instances reuse the
-    same references — this matters for callers that spin up many instances
-    (the inventory_sync benchmark constructs one FlatBuffersManager per
-    simulated agent; without the cache, a 2000-agent run would re-run
-    generate_main() and the full import chain 2000 times).
-    """
-
-    # Class-level cache shared across all instances.
-    _shared_schema: Optional[dict] = None
-    _shared_fallback: Any = None
-    _init_lock = threading.Lock()
+    """Manages FlatBuffers classes for inventory sync testing."""
 
     def __init__(self):
         self.schema = None
         self.generated_module = None
         self.fallback_module = None
-
-        # Fast path: another instance has already done the work.
-        if FlatBuffersManager._shared_schema is not None:
-            self.schema = FlatBuffersManager._shared_schema
-            self.fallback_module = FlatBuffersManager._shared_fallback
-            return
-
-        # Slow path: serialize first-time initialization across threads.
-        with FlatBuffersManager._init_lock:
-            if FlatBuffersManager._shared_schema is None:
-                self._load_modules()
-                FlatBuffersManager._shared_schema = self.schema
-                FlatBuffersManager._shared_fallback = self.fallback_module
-            else:
-                self.schema = FlatBuffersManager._shared_schema
-                self.fallback_module = FlatBuffersManager._shared_fallback
+        self._load_modules()
 
     def _load_modules(self):
         """Load FlatBuffers modules, generating them if necessary."""
@@ -145,18 +116,6 @@ class FlatBuffersManager:
                 agentname_str = builder.CreateString(data.get('agentname', 'test-agent'))
                 agentversion_str = builder.CreateString(data.get('agentversion', '4.8.0'))
 
-                # Optional: build the index vector (Start.index is [string])
-                # BEFORE we open the Start table, since vector creation
-                # mutates the builder and must not be nested inside StartStart.
-                indices = data.get('indices')
-                index_vec_off = None
-                if indices and isinstance(indices, list):
-                    idx_offsets = [builder.CreateString(s) for s in indices]
-                    StartModule.StartStartIndexVector(builder, len(idx_offsets))
-                    for off in reversed(idx_offsets):
-                        builder.PrependUOffsetTRelative(off)
-                    index_vec_off = builder.EndVector()
-
                 StartModule.StartStart(builder)
                 StartModule.StartAddModule(builder, module_str)
                 StartModule.StartAddMode(builder, data.get('mode', 0))
@@ -164,11 +123,6 @@ class FlatBuffersManager:
                 StartModule.StartAddAgentid(builder, agentid_str)
                 StartModule.StartAddAgentname(builder, agentname_str)
                 StartModule.StartAddAgentversion(builder, agentversion_str)
-                option = data.get('option')
-                if isinstance(option, int):
-                    StartModule.StartAddOption(builder, option)
-                if index_vec_off is not None:
-                    StartModule.StartAddIndex(builder, index_vec_off)
                 start = StartModule.StartEnd(builder)
                 content = start
 

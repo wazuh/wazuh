@@ -11,28 +11,33 @@ The canonical workflow is scenario-driven:
 ./run_benchmark.sh --scenario scenarios/windows11_fim_first_sync.json
 ```
 
-`run_benchmark.sh` orchestrates the whole run. `benchmark_sender.py` is the
-Python sender used by the orchestrator and can also be run directly for focused
-debugging.
+`run_benchmark.sh` orchestrates the whole run. The load generator is the Go
+binary in `tool_simulator/` (`benchmark_sender`), which is auto-built on first
+use. It can also be invoked directly for focused debugging.
 
 ## Layout
 
 ```text
 inventory_sync/
-├── shared/                      # FlatBuffers and agent-controller helpers
-├── qa/                          # Integration tests
 └── benchmark/
     ├── run_benchmark.sh         # Orchestrator: monitor + sender + summary + charts
-    ├── benchmark_sender.py      # Scenario-driven multi-agent sender
     ├── result_summary.py        # Descriptive summary aggregator
     ├── run_monitor_only.sh      # Monitor-only companion for real-agent runs
     ├── cleanup_agents.sh        # Deletes bench-* agents via the manager API
     ├── indexer_control.sh       # Convenience wrapper for wazuh-indexer
     ├── generate_payloads.py     # Builds synthetic payload templates
-    ├── migrate_scenarios.py     # One-shot helper for old-format scenarios
     ├── scenarios/               # Current scenario JSON files
     ├── sample_payloads/         # Synthetic templates and recorded session dumps
-    └── patches/                 # Optional local instrumentation patches
+    ├── scripts/                 # Helpers for real-agent test coordination
+    │   ├── orchestrate_real_agents.sh
+    │   ├── syscollector_inventory_count.sh
+    │   └── sca_test.sh
+    ├── patches/                 # Optional local instrumentation patches
+    └── tool_simulator/          # Go benchmark sender
+        ├── cmd/benchmark_sender/ # Entry point (main.go)
+        ├── internal/            # agent, inventory, runner, metrics, …
+        ├── docu/                # Design and implementation notes
+        └── Makefile
 ```
 
 `run_benchmark.sh` uses monitor and chart helpers from
@@ -43,8 +48,9 @@ inventory_sync/
 ```bash
 cd src/wazuh_modules/inventory_sync/benchmark
 pip install -r requirements.txt
-pip install -r ../shared/requirements.txt
-python3 ../shared/generate_flatbuffers.py
+# The Go sender is built automatically on first run.
+# To pre-build it manually:
+cd tool_simulator && make benchmark_sender_go
 ```
 
 ## Quick Start
@@ -77,11 +83,18 @@ Direct sender invocation, useful when you only need `bench.csv` and
 `sender_summary.json`:
 
 ```bash
-python3 benchmark_sender.py \
+tool_simulator/benchmark_sender \
   --scenario scenarios/windows11_fim_first_sync.json \
   --manager 127.0.0.1 \
   -o bench.csv \
   --summary-json sender_summary.json
+```
+
+If the binary is not yet built, `run_benchmark.sh` will build it automatically,
+or you can build it explicitly:
+
+```bash
+(cd tool_simulator && make benchmark_sender_go)
 ```
 
 ## Orchestrator
@@ -111,8 +124,8 @@ Each run writes `results_<label>/`:
 
 | File | Source | Contents |
 |---|---|---|
-| `bench.csv` | `benchmark_sender.py` | Per-second sender counters: messages, sessions, ACKs, ReqRet, retries. |
-| `sender_summary.json` | `benchmark_sender.py` | Totals, latency percentiles, normalized scenario metadata. |
+| `bench.csv` | `tool_simulator/benchmark_sender` | Per-second sender counters: messages, sessions, ACKs, ReqRet, retries. |
+| `sender_summary.json` | `tool_simulator/benchmark_sender` | Totals, latency percentiles, normalized scenario metadata. |
 | `monitor/` | `monitor.py` | Process and disk CSVs, including `wazuh-manager-modulesd.csv` and `disk_usage.csv`. |
 | `scenario.json` | `run_benchmark.sh` | Exact scenario file copied for reproducibility. |
 | `params.json` | `run_benchmark.sh` | Run metadata: label, scenario path/name, manager, process, timestamp. |
@@ -134,9 +147,6 @@ from the repository root:
 ```bash
 git apply src/wazuh_modules/inventory_sync/benchmark/patches/dbsync_metrics/0001-dbsync-log-metrics.patch
 ```
-
-The Python monitor changes from `1f2893e727b662820c51b360b85fa4d9fd80f4d9`
-remain in the branch and are not duplicated in that patch.
 
 ## Scenario Schema
 
