@@ -11,7 +11,7 @@ All integration configuration is now done from the dashboard, with no changes re
 
 ---
 
-> **⚠️ Warning:** The Notifications plugin does not support bi-directional integrations such as Maltiverse or Virustotal, which were previously supported by `integratord`. These threat enrichment integrations are now handled through [Security Analytics enrichments](#enrichment-integrations).
+> **⚠️ Warning:** The Notifications plugin does not support bi-directional integrations such as Maltiverse or Virustotal, which were previously supported by `integratord`. See [Security Analytics enrichments](#enrichment-integrations).
 
 > **Note:** This migration must be performed manually. There is no automatic tool to convert `<integration>` blocks from `ossec.conf` to the Wazuh 5.x dashboard configuration.
 
@@ -213,6 +213,8 @@ Navigate to **Explore > Notifications > Channels**.
 
 Wazuh ships a set of pre-configured channels that are muted by default. To use one, un-mute it and fill in the required credentials. Each channel includes a brief description with configuration instructions.
 
+In this example either use the default channel or create a new channel from scratch, see [Custom webhook channel](#122-custom-webhook-channel-type).
+
 **Example — PagerDuty channel:**
 
 1. Un-mute the channel.
@@ -250,6 +252,29 @@ Custom webhook channels support:
 - Methods: `PUT`, `POST`, or `PATCH`
 - Endpoint definition: webhook URL or a custom URL with query parameters
 - Custom headers: e.g. `Authorization`, `Content-Type`
+
+**Example — Creating PagerDuty Channel from scratch:**
+
+To create a custom channel is important to set the goal and refer to the proper documentation of the external service to obtain the configuration. Configure the PagerDuty account, services and integrations first.
+
+In this example, the channel will be used to trigger event creations on PagerDuty: [Send an event to PagerDuty](https://developer.pagerduty.com/api-reference/368ae3d938c9e-send-an-event-to-pager-duty)
+
+1. Set channel `Name` to `PagerDuty Channel` (or something like `PagerDuty Incident Channel` in case you have one already).
+2. Create a description for your channel (Optional).
+3. Select `Custom webhook` under `Channel type` selector.
+4. As stated by the [PagerDuty docs](https://developer.pagerduty.com/api-reference/368ae3d938c9e-send-an-event-to-pager-duty) select `POST` as the `Method`.
+5. `PagerDuty V2 Events API` uses a generic endpoint, so no custom attributes are needed, select `Webhook URL`.
+6. Introduce the url you can find in the documentation: `https://events.pagerduty.com/v2/enqueue`
+7. Create a header with key: `X-Routing-Key` and for the value your integration key, this will map to `routing_key` in the payload, see warning below.
+8. Create the channel.
+
+> **⚠️ Warning:** Most external services support passing credentials via request headers or a custom URL.
+>
+> In this specific example, PagerDuty expects a required `routing_key` field in the payload. This means you must include the routing key directly in each monitor's action message payload (see [action messages](#24-actions)).
+>
+> In 4.x this wasn't a problem because the built-in script constructed the payload automatically. In 5.x, this is handled by mapping the `X-Routing-Key` header defined above to the `routing_key` field in the payload before sending.
+>
+> If the user wants to replicate this in any other integration that has a api_key on the payload and its not supported by wazuh, a proxy can be configured externally.
 
 ---
 
@@ -417,8 +442,10 @@ For building message payloads with dynamic variables, refer to:
 
 ## Enrichment integrations
 
-The `integratord` daemon supported integrations like `Maltiverse` and `Virustotal`, these integrations received the alert that matched the `<integration>` block and after processing the alert, it was returned to wazuh with enriched information, creating a new alert in the process.
+In 4.x, `Maltiverse` and `Virustotal` worked as a bi-directional callback loop: the built-in script sent the alert to the external service, received an enriched response, and re-injected it into Wazuh as a new alert. **There is no equivalent mechanism in 5.x — these integrations cannot be migrated.**
 
-The **Notifications** and **Alerting** plugins do not support this workflow directly (simply using channels and monitors), but the new **Security Analytics** plugin manages the creation of `Integrations`, `Decoders`, ... and the user can configure a series of pre-set enrichments for the custom spaces, meaning that the enrichment integrations are now integrated with the **Security Analytics** plugin. See the `Wazuh dashboard > Modules > Security Analytics` documentation to create these integrations in 5.x.
+Enrichment is now handled inline by the [Engine](../../ref/modules/engine/#security-enrichment-process) during event processing, before events reach the indexer. The Engine provides exactly two built-in enrichment plugins (Geo/ASN and IOC), and they cannot be extended with custom third-party services. See [Security enrichment process](../../ref/modules/engine/#security-enrichment-process) for details.
+
+---
 
 After creating and testing the channel and monitors you have successfully migrated your 4.x integratord configuration.
