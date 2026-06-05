@@ -11,7 +11,7 @@ All integration configuration is now done from the dashboard, with no changes re
 
 ---
 
-> **⚠️ Warning:** The Notifications plugin does not support bi-directional integrations such as Maltiverse or Virustotal, which were previously supported by `integratord`. These threat enrichment integrations are now handled through `security-analytics enrichments`. See [enrichment integrations](#enrichment-integrations).
+> **⚠️ Warning:** The Notifications plugin does not support bi-directional integrations such as Maltiverse or Virustotal, which were previously supported by `integratord`. These threat enrichment integrations are now handled through [Security Analytics enrichments](#enrichment-integrations).
 
 > **Note:** This migration must be performed manually. There is no automatic tool to convert `<integration>` blocks from `ossec.conf` to the Wazuh 5.x dashboard configuration.
 
@@ -228,14 +228,14 @@ Wazuh ships a set of pre-configured channels that are muted by default. To use o
 **Example — PagerDuty channel:**
 
 1. Un-mute the channel.
-2. Edit the channel and enter the `<api_key>` from your 4.x config in the `X-Routing-Key` field under **Webhook Headers**.
+2. Edit the channel and enter the `<api_key>` from your 4.x config in the `X-Routing-Key` field under **Webhook headers**.
 3. Optionally update the channel name and description.
 
 **Example — Jira channel:**
 
 1. Un-mute the channel.
 2. Edit the channel and enter the `<hook_url>` from your 4.x config on the **Webhook URL**
-3. In 4.x the `<api_key>` had the structure `email:token`, in 5.x encode the string in base64 and then in the **Webhook Headers** **Authentication** field set the value `Basic encodedString`.
+3. In 4.x the `<api_key>` had the structure `email:token`, in 5.x encode the string in base64 and then set the value `Basic encodedString` in the `Authentication` header under **Webhook headers**.
 
 > **Note:** The PagerDuty and Jira example continue in [step 2](#2-create-one-or-more-monitors-using-the-alerting-plugin) below.
 
@@ -271,7 +271,7 @@ Navigate to **Explore > Alerting > Create Monitor**.
 
 #### 2.1 Basic configuration
 
-A monitor defines the index pattern, schedule, and query/trigger/action structure. Because a single monitor supports multiple queries, triggers, and actions, the basic configuration determines whether you need one monitor or several.
+A monitor defines the indexes, schedule, and query/trigger/action structure. Because a single monitor supports multiple queries, triggers, and actions, the basic configuration determines whether you need one monitor or several.
 
 **Example — Security Monitor (reusable for PagerDuty, Slack, Jira, and Shuffle):**
 
@@ -425,6 +425,6 @@ For building message payloads with dynamic variables, refer to:
 
 The `integratord` daemon supported integrations like `Maltiverse` and `Virustotal`, these integrations received the alert that matched the `<integration>` block and after processing the alert, it was returned to wazuh with enriched information, creating a new alert in the process.
 
-The **Notifications** and **Alerting** plugins do not support this workflow directly (simply using channels and monitors), but the new **Security Analytics** plugin manages the creation of `Integrations`, `Decoders`, ... and the user can configure a series of pre-set enrichments for the custom spaces, meaning that the enrichment integrations are now integrated with the **Security Analytics** plugin. See the `Wazuh Dashboard > Modules > Security Analytics` documentation to create these integrations in 5.x.
+The **Notifications** and **Alerting** plugins do not support this workflow directly (simply using channels and monitors), but the new **Security Analytics** plugin manages the creation of `Integrations`, `Decoders`, ... and the user can configure a series of pre-set enrichments for the custom spaces, meaning that the enrichment integrations are now integrated with the **Security Analytics** plugin. See the `Wazuh dashboard > Modules > Security Analytics` documentation to create these integrations in 5.x.
 
 After creating and testing the channel and monitors you have successfully migrated your 4.x integratord configuration.
