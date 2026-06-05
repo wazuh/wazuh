@@ -96,7 +96,7 @@ In Wazuh 4.x, you used `<syslog_output>` blocks with tags such as `<level>`, `<g
 Triggers act as threshold selectors (similar to legacy `<level>` intent), while actions define the outbound payload format.
 
 1. Add a trigger and set its condition.
-2. If migrating a specific severity tier, configure the condition to trigger when document count **IS ABOVE** `0`, and add a data threshold filter for the desired severity keywords in `wazuh.rule.level` (for example, `informational`, `low`, `medium`, `high`, or `critical`).
+2. Configure the trigger so it activates when your query matches events, and add a severity filter for the desired keywords in `wazuh.rule.level` (for example, `low`, `medium`, `high`, or `critical`). If you use a **Per document monitor**, use a document-level trigger condition.
 3. Under **Actions**, click **Add notification** and configure:
    - **Action name:** Provide a label (for example, `Send-Syslog-Payload`).
    - **Channel:** Select the custom webhook channel created in [Step 1](#1-setting-up-a-custom-webhook-notification-channel).
@@ -107,9 +107,9 @@ Triggers act as threshold selectors (similar to legacy `<level>` intent), while 
   "alert_id": "{{ctx.results.0.hits.hits.0._id}}",
   "rule_id": "{{ctx.results.0.hits.hits.0._source.wazuh.rule.id}}",
   "rule_title": "{{ctx.results.0.hits.hits.0._source.wazuh.rule.title}}",
-  "severity_level": "{ctx.results.0.hits.hits.0._source.wazuh.rule.level}}",
+  "severity_level": "{{ctx.results.0.hits.hits.0._source.wazuh.rule.level}}",
   "agent_name": "{{ctx.results.0.hits.hits.0._source.wazuh.agent.name}}",
-  "event_dataset": "{{ctx.results.0.hits.hits.0._source.event.dataset}}",
+  "event_dataset": "{{ctx.results.0.hits.hits.0._source.event.dataset}}"
 }
 ```
 4. Click **Create** to activate the monitor pipeline.
@@ -144,14 +144,14 @@ You can replicate this behavior with the following dashboard workflow:
 
 **Monitor setup:**
 
-- **Type:** Per document monitor
+- **Type:** Per query monitor
 - **Index pattern:** `wazuh-findings-v5*`
 - **Data filter:** `wazuh.rule.tags` contains `authentication_failed`
 
 **Trigger setup:**
 
-- **Condition:** Document count **IS ABOVE** `0`
-- **Data threshold filter:** `wazuh.rule.level` is one of `informational` or `low` (adjust to the severity values present in your environment)
+- **Condition:** Trigger when the query returns at least one matching document
+- **Data threshold filter:** `wazuh.rule.level` is one of `informational`, `low`, `medium`, `high`, or `critical` (adjust to the severity values present in your environment)
 
 **Action setup:**
 
@@ -160,10 +160,10 @@ You can replicate this behavior with the following dashboard workflow:
 
 ```json
 {
-  "alert_id": "{{ctx.results.0._id}}",
-  "rule_description": "{{ctx.results.0.wazuh.rule.description}}",
-  "severity_level": "{{ctx.results.0.wazuh.rule.level}}",
-  "agent_host": "{{ctx.results.0.wazuh.agent.name}}"
+  "alert_id": "{{ctx.results.0.hits.hits.0._id}}",
+  "rule_description": "{{ctx.results.0.hits.hits.0._source.wazuh.rule.title}}",
+  "severity_level": "{{ctx.results.0.hits.hits.0._source.wazuh.rule.level}}",
+  "agent_host": "{{ctx.results.0.hits.hits.0._source.wazuh.agent.name}}"
 }
 ```
 
