@@ -24,7 +24,9 @@ The following table maps each `ossec.conf` element from Wazuh 4.x to the corresp
 | `syslog_output.group`    | Alerting > Monitor > Query / data filter (`wazuh.rule.tags`) | [Step 2.1](#21-creating-a-monitor)                                |
 | `syslog_output.rule_id`  | Alerting > Monitor > Query / data filter (`wazuh.rule.id`) | [Step 2.1](#21-creating-a-monitor)                                  |
 > **Option scope note:** `protocol` is not a valid `<syslog_output>` option in Wazuh 4.x `ossec.conf` (the documented options are `server`, `port`, `level`, `group`, `rule_id`, `location`, `use_fqdn`, and `format`).
+
 > **Wazuh 4.x protocol note:** In Wazuh 4.x, `syslog_output` forwarding uses Syslog transport (UDP by default on port `514`). In Wazuh 5.x, Notifications uses HTTP/HTTPS POST webhooks for outbound routing. Target endpoints must support HTTP webhook ingestion, or you must deploy a webhook-to-syslog translation layer on the receiving side.
+
 > **Note on Output Formats**: In Wazuh 4.x, the <format> tag automatically converted the data layout into predefined profiles (json, cef, or splunk). In Wazuh 5.x, the Notifications plugin does not include these pre-configured encoding profiles. To migrate specific formats (such as ArcSight CEF, Splunk key-value pairs, or custom JSON payloads), the structure must be manually designed inside the Message text block using Mustache syntax variables during the Action configuration phase.
 
 ## Wazuh 4.x ossec.conf reference
