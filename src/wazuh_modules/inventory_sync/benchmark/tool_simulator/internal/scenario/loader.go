@@ -326,6 +326,48 @@ func resolveStep(cfg map[string]any, scenarioDir, benchDir, laneName string, idx
 			scenarioPath, ctx, step.OfflineRetryDelay)
 	}
 
+	// Per-step ack timeout overrides. 0 means "use the inventory package
+	// default" (DefaultStartAckTimeout / DefaultEndAckProcessingTimeout /
+	// DefaultEndAckTimeout). These are scenario-only knobs — there are no
+	// equivalent CLI flags.
+	step.StartAckTimeout = asFloatDefault(cfg["start_ack_timeout"], 0)
+	if step.StartAckTimeout < 0 {
+		return step, fmt.Errorf("scenario %s: %s.start_ack_timeout must be >= 0 (got %g)",
+			scenarioPath, ctx, step.StartAckTimeout)
+	}
+	step.EndAckTimeout = asFloatDefault(cfg["end_ack_timeout"], 0)
+	if step.EndAckTimeout < 0 {
+		return step, fmt.Errorf("scenario %s: %s.end_ack_timeout must be >= 0 (got %g)",
+			scenarioPath, ctx, step.EndAckTimeout)
+	}
+	step.EndAckProcessingTimeout = asFloatDefault(cfg["end_ack_processing_timeout"], 0)
+	if step.EndAckProcessingTimeout < 0 {
+		return step, fmt.Errorf("scenario %s: %s.end_ack_processing_timeout must be >= 0 (got %g)",
+			scenarioPath, ctx, step.EndAckProcessingTimeout)
+	}
+
+	// post_data_delay: pause between the last DataValue and every End
+	// frame of the session. Sentinel -1 = use the inventory package
+	// default (1 s). 0 disables the pause entirely. >0 is the explicit
+	// value in seconds.
+	step.PostDataDelay = asFloatDefault(cfg["post_data_delay"], -1)
+	if step.PostDataDelay < -1 {
+		return step, fmt.Errorf("scenario %s: %s.post_data_delay must be -1, 0, or a positive number (got %g)",
+			scenarioPath, ctx, step.PostDataDelay)
+	}
+
+	// ack timeout retry policy. Same -1/0/N semantics as offline_retry.
+	step.AckTimeoutRetry = asIntDefault(cfg["ack_timeout_retry"], -1)
+	if step.AckTimeoutRetry < -1 {
+		return step, fmt.Errorf("scenario %s: %s.ack_timeout_retry must be -1, 0, or a positive integer (got %d)",
+			scenarioPath, ctx, step.AckTimeoutRetry)
+	}
+	step.AckTimeoutRetryDelay = asFloatDefault(cfg["ack_timeout_retry_delay"], 1.0)
+	if step.AckTimeoutRetryDelay < 0 {
+		return step, fmt.Errorf("scenario %s: %s.ack_timeout_retry_delay must be >= 0 (got %g)",
+			scenarioPath, ctx, step.AckTimeoutRetryDelay)
+	}
+
 	var defaultModule, defaultIndex string
 	if step.Kind == SourceKindStatic {
 		meta := PayloadKinds[step.PayloadKind]

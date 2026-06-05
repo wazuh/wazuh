@@ -38,6 +38,11 @@ const (
 	CKeepaliveErrors
 	CShutdownsSent
 	CMergedSumUpdates
+	// CEndRetries counts End frames re-sent because the previous attempt
+	// timed out (manager's input queue may have dropped it). Independent
+	// from CStartRetries which still counts Start-side retries (offline
+	// + timeout).
+	CEndRetries
 
 	counterCount // sentinel; keep last
 )
@@ -72,6 +77,7 @@ var EngineHeader = []string{
 	"keepalive_errors",
 	"shutdowns_sent",
 	"merged_sum_updates",
+	"end_retries",
 }
 
 // LatencyKind identifies a latency series.

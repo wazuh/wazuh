@@ -5,7 +5,14 @@
     "session_type": "delta",
     "max_eps": 75,
     "use_databatch": true,
-    "retransmit": true
+    "retransmit": true,
+    "offline_retry": 0,
+    "offline_retry_delay": 2.0,
+    "start_ack_timeout": 5,
+    "end_ack_processing_timeout": 5,
+    "end_ack_timeout": 60,
+    "ack_timeout_retry": 0,
+    "ack_timeout_retry_delay": 3
   },
   "lanes": {
     "fim_windows": [

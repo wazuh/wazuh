@@ -134,8 +134,48 @@ log lines as engine events — see [12-engine-event-streams.md](./12-engine-even
                                //  0 = retry indefinitely until Ok or ctx cancels
                                // N>0 = up to N total attempts; if all return
                                //      Offline, the iteration fails
-  "offline_retry_delay": 1.0   // seconds to wait between retry attempts
+  "offline_retry_delay": 1.0,  // seconds to wait between retry attempts
                                // (ignored when offline_retry == -1)
+
+  // Per-step ack timeout overrides. These knobs live ONLY in the
+  // scenario — there are no equivalent CLI flags. All default to 0 =
+  // "use the inventory package default" (15s start, 5s end-processing,
+  // 120s end-final). Set them per-step or under `defaults:` to apply
+  // to every step in the scenario.
+  //
+  // The End→EndAck wait is two-phase: a SHORT window between End and
+  // the first Status_Processing (manager queue ack — should be fast),
+  // and a LONG window between Status_Processing and the terminal
+  // Status_Ok (covers indexer flush, can legitimately be 40+ s). When
+  // the short window elapses without any Processing, the End frame
+  // was almost certainly dropped by the manager's input queue → the
+  // ack_timeout_retry budget resends it. The long window is reset on
+  // every subsequent Status_Processing.
+  "start_ack_timeout":            0, // seconds (float). 0 = package default (15s)
+  "end_ack_processing_timeout":   0, // seconds (float). SHORT phase, 0 = package default (5s)
+  "end_ack_timeout":              0, // seconds (float). LONG phase,  0 = package default (120s)
+
+  // Pause inserted between the last DataValue of a session and EVERY
+  // End frame (initial + every End that follows a ReqRet round). Lets
+  // the manager drain its handleData queue so the End hits the
+  // gap-empty branch instead of triggering an extra ReqRet round.
+  // Sentinel:
+  //   -1 = use the inventory package default (1 s) — DEFAULT.
+  //    0 = no pause (back-to-back DataValue → End).
+  //   N>0 = wait N seconds.
+  // Scenario-only; no CLI flag.
+  "post_data_delay":         -1,
+
+  // Retry on ack timeout (independent budget for Start and End). The
+  // manager's input queue is bounded — under pressure a Start or End
+  // frame can be silently dropped. Resending the frame gives the
+  // manager another chance. Mirrors offline_retry semantics:
+  //   -1 = no retry; the timeout fails the iteration (default).
+  //    0 = retry indefinitely until ack arrives or ctx cancels.
+  //   N>0 = up to N total attempts per ack (Start and End budgets
+  //         are independent).
+  "ack_timeout_retry":       -1,
+  "ack_timeout_retry_delay": 1.0
 }
 ```
 
@@ -292,7 +332,7 @@ Run at startup, before any socket is opened:
 1. `lanes` is present, is a non-empty object, and every value is a non-empty array of steps.
 2. Exactly one of `total_agents` or `fleets` is present. `total_agents ≥ 1`. Every fleet has `name`, `agents ≥ 1`, and `lanes` is a non-empty subset of the lane names defined above.
 3. Every step has exactly one of `dump` XOR `kind`.
-4. `repeat_count ≥ 1`, `initial_delay ≥ 0`, `repeat_delay ≥ 0`, `max_eps ≥ 0`, `payload_size ≥ 0`, `data_size ≥ 0`, `offline_retry ≥ -1`, `offline_retry_delay ≥ 0`.
+4. `repeat_count ≥ 1`, `initial_delay ≥ 0`, `repeat_delay ≥ 0`, `max_eps ≥ 0`, `payload_size ≥ 0`, `data_size ≥ 0`, `offline_retry ≥ -1`, `offline_retry_delay ≥ 0`, `start_ack_timeout ≥ 0`, `end_ack_processing_timeout ≥ 0`, `end_ack_timeout ≥ 0`, `post_data_delay ≥ -1`, `ack_timeout_retry ≥ -1`, `ack_timeout_retry_delay ≥ 0`.
 5. `repeat_until ≥ 0`, `drain_timeout ≥ 0`, `post_run_grace ≥ 0`, `parallel_agents ≥ 0`.
 6. `session_type ∈ {delta, modulecheck, dataclean}` if set; default is the value from `defaults.session_type`, fallback `delta`.
 7. `option ∈ {Sync, VDFirst, VDSync}` if set.

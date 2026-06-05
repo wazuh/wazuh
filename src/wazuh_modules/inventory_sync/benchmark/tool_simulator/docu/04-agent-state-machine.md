@@ -221,16 +221,35 @@ _Ok     _ChecksumMismatch     Error/Offline/Processing
 
 ## Timeouts
 
-These are constants in the Python script; the Go port MUST reuse them
-(absolute time budgets, not relative).
+Budgets are configured per-step in the scenario JSON (via
+`start_ack_timeout`, `end_ack_processing_timeout`, `end_ack_timeout`,
+or under `defaults:` to apply to every step). They are scenario-only —
+there are no CLI flags. Unset (zero) values fall back to the inventory
+package defaults: 15 s start, 5 s end-processing, 120 s end-final.
 
-| Event                        | Budget    | On expiry                                                                |
-| ---------------------------- | --------- | ------------------------------------------------------------------------ |
-| StartAck                     | 15 s      | `start_ack_timeout++`, abort runner (pre-StartAck → no further messages) |
-| EndAck (final)               | 60 s      | `end_ack_timeout++`, session counted failed                              |
-| EndAck (intermediate `Status_Processing` → next ack) | 60 s | Same as above                                                            |
-| ReqRet round (resend + await any Status update)      | 30 s | Treat as a missed ack; counts against the 5-round budget                 |
-| Reconnect retry (per attempt)| 1 s sleep, 3 attempts | Mark agent failed                                                 |
+The EndAck wait is **two-phase**: a SHORT window between End and the
+first `Status_Processing` (the manager queue ack), then a LONG window
+between `Status_Processing` and the terminal `Status_Ok` that covers
+indexer-flush latency. When the short window elapses without any
+Processing, the End frame was almost certainly dropped from the
+manager's input queue — so `ack_timeout_retry` resends it. The long
+window resets on every subsequent `Status_Processing`.
+
+| Event                                                                   | Budget          | On expiry |
+| ----------------------------------------------------------------------- | --------------- | --------- |
+| StartAck                                                                | 15 s (default)  | `start_retries++` and resend Start if `ack_timeout_retry` budget allows; otherwise abort. |
+| EndAck (Phase 1: End → first `Status_Processing`)                       | 5 s (default)   | `end_retries++` and resend End if `ack_timeout_retry` budget allows; otherwise session counted failed. The End frame was almost certainly dropped by the manager's input queue. |
+| EndAck (Phase 2: `Status_Processing` → terminal `Status_Ok`)            | 120 s (default) | `end_retries++` and resend End if `ack_timeout_retry` budget allows; otherwise session counted failed. The indexer flush has stalled; manager handles duplicate End gracefully (re-emits Status_Processing). |
+| EndAck (intermediate `Status_Processing` → next ack while in Phase 2)   | same as Phase 2 | Same as Phase 2 (the timer restarts on each Processing). |
+| ReqRet round (resend + await any Status update)                         | 30 s            | Treat as a missed ack; counts against the 5-round budget. After ReqRet the EndAck wait drops back to Phase 1 because the manager must ack the new End from scratch. |
+| Reconnect retry (per attempt)                                           | 1 s sleep, 3 attempts | Mark agent failed. |
+
+The `ack_timeout_retry` knob (`-1` = no retry, `0` = unlimited, `N>0` =
+up to N attempts) and `ack_timeout_retry_delay` (default 1.0 s pause
+between attempts) are independent budgets for Start and End — a Start
+timeout exhausting its retries does not consume the End budget. This
+handles the manager's bounded input queue dropping messages under
+pressure.
 
 ## Status code reaction (recap)
 

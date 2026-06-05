@@ -140,11 +140,59 @@ type Step struct {
 	//    0 → retry indefinitely until Status_Ok or ctx.Done.
 	//   N>0 → at most N total attempts; fail the iteration if all N return
 	//         Offline.
-	// Only Status_Offline triggers retries — Status_Error / timeouts still
-	// abort immediately. Between attempts the runner sleeps
+	// Only Status_Offline triggers retries — Status_Error / timeouts use
+	// AckTimeoutRetry below. Between attempts the runner sleeps
 	// OfflineRetryDelay seconds.
 	OfflineRetry      int
 	OfflineRetryDelay float64
+
+	// StartAckTimeout / EndAckTimeout override the CLI defaults
+	// (--start-ack-timeout, --end-ack-timeout) for this specific step.
+	// Expressed in seconds. Zero means "use the CLI/Options value".
+	// EndAckTimeout in this two-phase design is the LONG window: time
+	// allowed between Status_Processing and the terminal Status_Ok
+	// (covers indexer flush latency, can legitimately be 40-120 s).
+	StartAckTimeout float64
+	EndAckTimeout   float64
+
+	// EndAckProcessingTimeout is the SHORT window between sending End
+	// and receiving the first ack (typically Status_Processing). The
+	// manager should ack End very quickly — if this elapses, the End
+	// frame was almost certainly dropped from the manager's input
+	// queue, so retrying it (via ack_timeout_retry) is the correct
+	// response. Distinct from EndAckTimeout so the post-Processing
+	// indexer-flush window can be long without making lost-End
+	// detection slow. Zero = inherit from CLI/Options.
+	EndAckProcessingTimeout float64
+
+	// PostDataDelay is the pause inserted between the last DataValue of
+	// a session and EVERY End frame (initial + every End that follows a
+	// ReqRet round). Lets the manager drain its handleData queue so the
+	// End hits the gap-empty branch instead of triggering an extra
+	// ReqRet round. Sentinel:
+	//   -1 → use the inventory package default (1 s).
+	//    0 → no pause (back-to-back DataValue → End).
+	//   N>0 → wait N seconds.
+	// Scenario-only knob; no CLI equivalent.
+	PostDataDelay float64
+
+	// AckTimeoutRetry controls retry behaviour when EITHER the StartAck
+	// or the terminal EndAck times out. The manager's input queue is
+	// bounded — under sustained pressure a Start or End frame can be
+	// dropped silently. Resending the frame gives the manager another
+	// chance. Semantics mirror OfflineRetry:
+	//   -1 → no retry; the timeout fails the iteration (default,
+	//        backward-compatible).
+	//    0 → retry indefinitely until ack arrives or ctx cancels.
+	//   N>0 → up to N attempts total per ack (Start and End budgets are
+	//         independent — a Start timeout exhausting its budget does
+	//         not consume the End budget).
+	// Between attempts the runner sleeps AckTimeoutRetryDelay seconds.
+	// On retry: Start resends the Start frame (manager assigns a new
+	// session_id); End resends the End frame for the same session_id
+	// (manager handles duplicate End gracefully via m_endEnqueued).
+	AckTimeoutRetry      int
+	AckTimeoutRetryDelay float64
 }
 
 // Fleet is a group of agents that share the same set of lanes.

@@ -194,13 +194,14 @@ func newRunnableSource(t *testing.T, step scenario.Step, payload *PayloadInfo, f
 	}
 	t.Cleanup(func() { conn.Close() })
 	conn.StartReader(context.Background())
-	src := New(step, payload, Options{
-		StartAckTimeout: 2 * time.Second,
-		EndAckTimeout:   2 * time.Second,
-		PostDataDelay:   0,
-	})
-	src.opts.PostDataDelaySet = true
-	return src, conn, metrics.New()
+	// Tight timeouts so tests fail fast on the unhappy path.
+	if step.StartAckTimeout == 0 {
+		step.StartAckTimeout = 2.0
+	}
+	if step.EndAckTimeout == 0 {
+		step.EndAckTimeout = 2.0
+	}
+	return New(step, payload), conn, metrics.New()
 }
 
 func basePayload() *PayloadInfo {
@@ -217,14 +218,15 @@ func basePayload() *PayloadInfo {
 
 func baseStep() scenario.Step {
 	return scenario.Step{
-		Kind:        scenario.SourceKindStatic,
-		PayloadKind: "fim_file",
-		SessionType: scenario.SessionDelta,
-		SyncMode:    scenario.ModeModuleDelta,
-		DataSize:    0, // no DataValues — just Start+End
-		MaxEPS:      0,
-		Index:       "wazuh-states-fim-files",
-		Module:      "fim",
+		Kind:          scenario.SourceKindStatic,
+		PayloadKind:   "fim_file",
+		SessionType:   scenario.SessionDelta,
+		SyncMode:      scenario.ModeModuleDelta,
+		DataSize:      0, // no DataValues — just Start+End
+		MaxEPS:        0,
+		Index:         "wazuh-states-fim-files",
+		Module:        "fim",
+		PostDataDelay: 0, // explicit "no pause" — keep tests fast
 	}
 }
 

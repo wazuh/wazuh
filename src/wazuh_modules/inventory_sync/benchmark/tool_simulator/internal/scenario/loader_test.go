@@ -208,6 +208,121 @@ func TestLoadOfflineRetry_StepOverridesDefaults(t *testing.T) {
 	}
 }
 
+// TestLoadAckTimeout_Defaults: when not set, all four ack-timeout related
+// fields take their respective defaults (0 for the overrides, -1/1.0 for
+// the retry knobs).
+func TestLoadAckTimeout_Defaults(t *testing.T) {
+	dir := t.TempDir()
+	scn := `{
+  "lanes": { "l": [{"kind":"fim_file"}] },
+  "total_agents": 1
+}`
+	p := filepath.Join(dir, "s.json")
+	_ = os.WriteFile(p, []byte(scn), 0644)
+	s, err := Load(p, LoaderOptions{BenchDir: dir})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	step := s.Lanes["l"][0]
+	if step.StartAckTimeout != 0 {
+		t.Errorf("StartAckTimeout default = %v, want 0", step.StartAckTimeout)
+	}
+	if step.EndAckTimeout != 0 {
+		t.Errorf("EndAckTimeout default = %v, want 0", step.EndAckTimeout)
+	}
+	if step.AckTimeoutRetry != -1 {
+		t.Errorf("AckTimeoutRetry default = %d, want -1", step.AckTimeoutRetry)
+	}
+	if step.AckTimeoutRetryDelay != 1.0 {
+		t.Errorf("AckTimeoutRetryDelay default = %v, want 1.0", step.AckTimeoutRetryDelay)
+	}
+}
+
+// TestLoadAckTimeout_InheritsAndOverrides: defaults block sets values,
+// step-level overrides take precedence.
+func TestLoadAckTimeout_InheritsAndOverrides(t *testing.T) {
+	dir := t.TempDir()
+	scn := `{
+  "defaults": {
+    "start_ack_timeout": 7.5,
+    "end_ack_timeout": 60,
+    "ack_timeout_retry": 5,
+    "ack_timeout_retry_delay": 0.5
+  },
+  "lanes": {
+    "inherits": [{"kind":"fim_file"}],
+    "overrides": [{"kind":"fim_file","start_ack_timeout":2,"ack_timeout_retry":0}]
+  },
+  "total_agents": 1
+}`
+	p := filepath.Join(dir, "s.json")
+	_ = os.WriteFile(p, []byte(scn), 0644)
+	s, err := Load(p, LoaderOptions{BenchDir: dir})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	inh := s.Lanes["inherits"][0]
+	if inh.StartAckTimeout != 7.5 || inh.EndAckTimeout != 60 ||
+		inh.AckTimeoutRetry != 5 || inh.AckTimeoutRetryDelay != 0.5 {
+		t.Errorf("inherits: got %+v", inh)
+	}
+	ovr := s.Lanes["overrides"][0]
+	if ovr.StartAckTimeout != 2 {
+		t.Errorf("overrides StartAckTimeout = %v, want 2", ovr.StartAckTimeout)
+	}
+	if ovr.EndAckTimeout != 60 {
+		t.Errorf("overrides EndAckTimeout = %v, want 60 (inherited)", ovr.EndAckTimeout)
+	}
+	if ovr.AckTimeoutRetry != 0 {
+		t.Errorf("overrides AckTimeoutRetry = %d, want 0", ovr.AckTimeoutRetry)
+	}
+	if ovr.AckTimeoutRetryDelay != 0.5 {
+		t.Errorf("overrides AckTimeoutRetryDelay = %v, want 0.5 (inherited)", ovr.AckTimeoutRetryDelay)
+	}
+}
+
+// TestLoadAckTimeout_RejectsInvalidValues: negative timeouts and
+// out-of-range retries are rejected.
+func TestLoadAckTimeout_RejectsInvalidValues(t *testing.T) {
+	cases := []struct {
+		name string
+		scn  string
+		need string
+	}{
+		{
+			"start_ack_timeout<0",
+			`{"lanes":{"l":[{"kind":"fim_file","start_ack_timeout":-1}]},"total_agents":1}`,
+			"start_ack_timeout",
+		},
+		{
+			"end_ack_timeout<0",
+			`{"lanes":{"l":[{"kind":"fim_file","end_ack_timeout":-2.5}]},"total_agents":1}`,
+			"end_ack_timeout",
+		},
+		{
+			"ack_timeout_retry<-1",
+			`{"lanes":{"l":[{"kind":"fim_file","ack_timeout_retry":-5}]},"total_agents":1}`,
+			"ack_timeout_retry",
+		},
+		{
+			"ack_timeout_retry_delay<0",
+			`{"lanes":{"l":[{"kind":"fim_file","ack_timeout_retry_delay":-0.1}]},"total_agents":1}`,
+			"ack_timeout_retry_delay",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			p := filepath.Join(dir, "s.json")
+			_ = os.WriteFile(p, []byte(tc.scn), 0644)
+			_, err := Load(p, LoaderOptions{BenchDir: dir})
+			if err == nil || !strings.Contains(err.Error(), tc.need) {
+				t.Fatalf("expected rejection mentioning %q, got: %v", tc.need, err)
+			}
+		})
+	}
+}
+
 // TestLoadOfflineRetry_RejectsInvalidValues: negative offline_retry (other
 // than -1) and negative offline_retry_delay are rejected at load time.
 func TestLoadOfflineRetry_RejectsInvalidValues(t *testing.T) {

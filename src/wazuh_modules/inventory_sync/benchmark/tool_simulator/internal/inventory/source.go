@@ -16,8 +16,9 @@ import (
 // Default timeouts and pacing. Mirror the Python SessionRunner constants
 // where applicable; can be overridden per-session via Options.
 const (
-	DefaultStartAckTimeout = 15 * time.Second
-	DefaultEndAckTimeout   = 120 * time.Second
+	DefaultStartAckTimeout         = 15 * time.Second
+	DefaultEndAckProcessingTimeout = 5 * time.Second
+	DefaultEndAckTimeout           = 120 * time.Second
 	// DefaultPostDataDelay is the pause inserted between the last data
 	// message and the End message of a session. Gives the manager time
 	// to drain its handleData queue so the End hits the gapSet-empty
@@ -30,57 +31,16 @@ const (
 	MaxRetransmitRounds = 5
 )
 
-// Options controls per-Source behavior beyond what the scenario step
-// carries. CLI flags / scenario knobs flow through here.
-type Options struct {
-	// StartAckTimeout is how long the runner waits for the manager's
-	// StartAck before giving up. 0 means use DefaultStartAckTimeout.
-	StartAckTimeout time.Duration
-	// EndAckTimeout is how long the runner waits for the manager's
-	// terminal EndAck (Status_Ok / _Error / _Offline). The timer is
-	// extended each time a Status_Processing arrives. 0 means use
-	// DefaultEndAckTimeout.
-	EndAckTimeout time.Duration
-	// PostDataDelay is the pause inserted before EACH End send — both
-	// the initial End (after the data body completes) AND every End that
-	// follows a ReqRet retransmission. A non-zero value reduces the
-	// chance of triggering a ReqRet round in the first place. Setting to
-	// a negative value (e.g. -1) means "use the default 1s"; 0 (the zero
-	// value) means "no pause at all". Use PostDataDelaySet to make the
-	// distinction explicit when threading through Config.
-	PostDataDelay time.Duration
-	// PostDataDelaySet, when true, takes PostDataDelay verbatim (allowing
-	// the operator to explicitly request 0s). When false, the default
-	// (DefaultPostDataDelay) is applied. This matters because we want
-	// 0-value time.Duration to remain a valid "no pause" choice rather
-	// than triggering the default.
-	PostDataDelaySet bool
-}
-
-func (o Options) startAckTimeout() time.Duration {
-	if o.StartAckTimeout > 0 {
-		return o.StartAckTimeout
+// postDataDelayFromStep resolves the scenario step's post_data_delay
+// sentinel to a concrete duration:
+//   -1 (or anything < 0) → DefaultPostDataDelay
+//    0                    → no pause
+//   N>0                   → N seconds
+func postDataDelayFromStep(step scenario.Step) time.Duration {
+	if step.PostDataDelay < 0 {
+		return DefaultPostDataDelay
 	}
-	return DefaultStartAckTimeout
-}
-
-func (o Options) endAckTimeout() time.Duration {
-	if o.EndAckTimeout > 0 {
-		return o.EndAckTimeout
-	}
-	return DefaultEndAckTimeout
-}
-
-// postDataDelay returns the configured delay, honoring the "explicitly
-// zero" case via PostDataDelaySet.
-func (o Options) postDataDelay() time.Duration {
-	if o.PostDataDelaySet {
-		if o.PostDataDelay < 0 {
-			return 0
-		}
-		return o.PostDataDelay
-	}
-	return DefaultPostDataDelay
+	return time.Duration(step.PostDataDelay * float64(time.Second))
 }
 
 // Source drives one inventory_sync session per Run() call. SessionType=delta
@@ -89,7 +49,6 @@ func (o Options) postDataDelay() time.Duration {
 type Source struct {
 	step    scenario.Step
 	payload *PayloadInfo
-	opts    Options
 
 	// lim is recreated at the start of every Run() call so the EPS cap is
 	// enforced strictly per-session (matching Python, which constructs a
@@ -102,12 +61,14 @@ type Source struct {
 }
 
 // New returns an inventory Source. payload should have been loaded once
-// and may be shared across Run() iterations (caller's choice).
-func New(step scenario.Step, payload *PayloadInfo, opts Options) *Source {
+// and may be shared across Run() iterations (caller's choice). All
+// per-session timing knobs (start_ack_timeout, end_ack_timeout,
+// end_ack_processing_timeout, post_data_delay) live on the scenario
+// step — set them there.
+func New(step scenario.Step, payload *PayloadInfo) *Source {
 	return &Source{
 		step:     step,
 		payload:  payload,
-		opts:     opts,
 		moduleID: moduleIDFor(payload.Module, payload.Option),
 		// lim is left nil — Run() builds a fresh one per session.
 	}
@@ -146,35 +107,52 @@ func (s *Source) Run(ctx context.Context, conn *agent.Conn, c *metrics.Counters)
 		fb.Option(s.payload.Option), identity.ID, identity.Name, "5.0.0", indices,
 	)
 
-	// Retry policy on Status_Offline. See scenario.Step.OfflineRetry for
-	// the semantics. We translate it into an internal "max attempts":
-	//   -1 → 1 (no retry — historical default)
-	//    0 → unlimitedOfflineAttempts (loop until Ok or ctx.Done)
-	//   N>0 → N
-	const unlimitedOfflineAttempts = -1
-	maxAttempts := 1
-	switch {
-	case s.step.OfflineRetry == -1:
-		maxAttempts = 1
-	case s.step.OfflineRetry == 0:
-		maxAttempts = unlimitedOfflineAttempts
-	default:
-		maxAttempts = s.step.OfflineRetry
+	// Effective timeouts: scenario step value if set, else package default.
+	startAckT := DefaultStartAckTimeout
+	if s.step.StartAckTimeout > 0 {
+		startAckT = time.Duration(s.step.StartAckTimeout * float64(time.Second))
 	}
-	retryDelay := time.Duration(s.step.OfflineRetryDelay * float64(time.Second))
+	endAckT := DefaultEndAckTimeout
+	if s.step.EndAckTimeout > 0 {
+		endAckT = time.Duration(s.step.EndAckTimeout * float64(time.Second))
+	}
+	endAckProcT := DefaultEndAckProcessingTimeout
+	if s.step.EndAckProcessingTimeout > 0 {
+		endAckProcT = time.Duration(s.step.EndAckProcessingTimeout * float64(time.Second))
+	}
+	postDataT := postDataDelayFromStep(s.step)
+
+	// Retry budgets — same -1/0/N semantics for both offline and timeout.
+	const unlimited = -1
+	maxOfflineAttempts := attemptsFromRetry(s.step.OfflineRetry)
+	maxTimeoutAttempts := attemptsFromRetry(s.step.AckTimeoutRetry)
+	offlineRetryDelay := time.Duration(s.step.OfflineRetryDelay * float64(time.Second))
+	timeoutRetryDelay := time.Duration(s.step.AckTimeoutRetryDelay * float64(time.Second))
 
 	ackC := make(chan ackResult, 1)
 	tStart := time.Now()
-	startAckT := s.opts.startAckTimeout()
 
 	var sessionID uint64
-	attempt := 0
+	offlineAttempt := 0
+	timeoutAttempt := 0
 retryLoop:
 	for {
-		attempt++
+		// Drain any stale ack from a previous attempt (e.g. a delayed
+		// reply from a Start that timed out). The PendingStart was
+		// already Cancel()ed so the dispatcher would skip it, but the
+		// callback may still write to ackC if it raced. Non-blocking.
+		select {
+		case <-ackC:
+		default:
+		}
 
 		pending, err := conn.SendStart(s.moduleID, startBytes, func(session uint64, status fb.Status) {
-			ackC <- ackResult{session: session, status: status}
+			select {
+			case ackC <- ackResult{session: session, status: status}:
+			default:
+				// channel full means a previous late ack already
+				// landed; drop this one.
+			}
 		})
 		if err != nil {
 			c.Inc(metrics.CSessionsFailed)
@@ -188,10 +166,21 @@ retryLoop:
 			c.Inc(metrics.CSessionsFailed)
 			return ctx.Err()
 		case <-time.After(startAckT):
+			// StartAck timeout — manager may have dropped our Start
+			// from the input queue. Honor ack_timeout_retry policy.
 			pending.Cancel()
-			c.Inc(metrics.CSessionsFailed)
+			timeoutAttempt++
+			if maxTimeoutAttempts != unlimited && timeoutAttempt >= maxTimeoutAttempts {
+				c.Inc(metrics.CSessionsFailed)
+				return fmt.Errorf("StartAck timeout after %s (gave up after %d attempt(s))",
+					startAckT, timeoutAttempt)
+			}
 			c.Inc(metrics.CStartRetries)
-			return fmt.Errorf("StartAck timeout after %s", startAckT)
+			if err := sleepCtx(ctx, timeoutRetryDelay); err != nil {
+				c.Inc(metrics.CSessionsFailed)
+				return err
+			}
+			continue
 		case ack := <-ackC:
 			switch ack.status {
 			case fb.StatusOk:
@@ -201,17 +190,16 @@ retryLoop:
 				break retryLoop
 			case fb.StatusOffline:
 				c.Inc(metrics.CStartAckOffline)
-				if maxAttempts != unlimitedOfflineAttempts && attempt >= maxAttempts {
-					// Budget exhausted — fail the iteration.
+				offlineAttempt++
+				if maxOfflineAttempts != unlimited && offlineAttempt >= maxOfflineAttempts {
 					c.Inc(metrics.CSessionsFailed)
 					return nil
 				}
 				c.Inc(metrics.CStartRetries)
-				if err := sleepCtx(ctx, retryDelay); err != nil {
+				if err := sleepCtx(ctx, offlineRetryDelay); err != nil {
 					c.Inc(metrics.CSessionsFailed)
 					return err
 				}
-				// Loop: the next iteration sends a fresh Start.
 				continue
 			default:
 				c.Inc(metrics.CStartAckError)
@@ -239,9 +227,10 @@ retryLoop:
 	}
 
 	// Pause before End so the manager finishes draining its handleData
-	// queue first — see Options.PostDataDelay. Same pause is reused on
-	// every End we send (initial and post-ReqRet) for consistency.
-	if err := sleepCtx(ctx, s.opts.postDataDelay()); err != nil {
+	// queue first — see scenario.Step.PostDataDelay. Same pause is
+	// reused on every End we send (initial and post-ReqRet) for
+	// consistency.
+	if err := sleepCtx(ctx, postDataT); err != nil {
 		c.Inc(metrics.CSessionsFailed)
 		return err
 	}
@@ -254,21 +243,65 @@ retryLoop:
 	}
 	c.Inc(metrics.CMessagesSent)
 
-	// Await terminal EndAck (Status_Processing → keep waiting). Inbound
-	// ReqRet messages trigger a retransmit round + another End. Capped at
-	// MaxRetransmitRounds to avoid pathological loops.
-	endAckT := s.opts.endAckTimeout()
-	deadline := time.NewTimer(endAckT)
+	// Await terminal EndAck. Two-phase wait:
+	//   Phase 1 (pre-Processing): uses endAckProcT. The manager should
+	//     ack End very quickly with Status_Processing; if endAckProcT
+	//     elapses, the End frame was almost certainly dropped by the
+	//     manager's input queue → resend End (ack_timeout_retry).
+	//   Phase 2 (post-Processing): uses endAckT, the long window that
+	//     covers indexer-flush latency (can legitimately be 40+ s).
+	//     Resets on every subsequent Status_Processing.
+	//
+	// Inbound ReqRet triggers a retransmit round + another End (capped
+	// at MaxRetransmitRounds); we drop back to Phase 1 because the
+	// manager has to ack the fresh End all over again.
+	//
+	// The manager handles duplicate End gracefully (m_endEnqueued=true
+	// → just emits another Status_Processing) so retrying End is safe
+	// in both phases.
+	gotProcessing := false
+	deadline := time.NewTimer(endAckProcT)
 	defer deadline.Stop()
 	retransmits := 0
+	endTimeoutAttempt := 1 // first End above already counts as attempt 1
 	for {
 		select {
 		case <-ctx.Done():
 			c.Inc(metrics.CSessionsFailed)
 			return ctx.Err()
 		case <-deadline.C:
-			c.Inc(metrics.CSessionsFailed)
-			return fmt.Errorf("EndAck timeout after %s", endAckT)
+			// EndAck timed out. Honor ack_timeout_retry policy.
+			curT := endAckProcT
+			phase := "pre-Processing (End likely dropped by manager queue)"
+			if gotProcessing {
+				curT = endAckT
+				phase = "post-Processing (indexer flush stalled)"
+			}
+			if maxTimeoutAttempts != unlimited && endTimeoutAttempt >= maxTimeoutAttempts {
+				c.Inc(metrics.CSessionsFailed)
+				return fmt.Errorf("EndAck timeout after %s [%s] (gave up after %d attempt(s))",
+					curT, phase, endTimeoutAttempt)
+			}
+			endTimeoutAttempt++
+			c.Inc(metrics.CEndRetries)
+			if err := sleepCtx(ctx, timeoutRetryDelay); err != nil {
+				c.Inc(metrics.CSessionsFailed)
+				return err
+			}
+			tEnd = time.Now()
+			if err := conn.SendBinary(s.moduleID, fbbuild.BuildEnd(sessionID)); err != nil {
+				c.Inc(metrics.CSessionsFailed)
+				return fmt.Errorf("send End (timeout retry): %w", err)
+			}
+			c.Inc(metrics.CMessagesSent)
+			// In Phase 2 keep the long window — the indexer may finish
+			// at any moment. In Phase 1, stay on the short window.
+			if gotProcessing {
+				deadline.Reset(endAckT)
+			} else {
+				deadline.Reset(endAckProcT)
+			}
+			continue
 		case in := <-endC:
 			if in.Type == fb.MessageTypeReqRet {
 				c.Inc(metrics.CReqRet)
@@ -297,7 +330,7 @@ retryLoop:
 				// truth is this sender's `sessions_completed` /
 				// `end_ack_ok` counters. See docu/09 §"ReqRet stats
 				// quirk" for the manager-side fix.
-				if err := sleepCtx(ctx, s.opts.postDataDelay()); err != nil {
+				if err := sleepCtx(ctx, postDataT); err != nil {
 					c.Inc(metrics.CSessionsFailed)
 					return err
 				}
@@ -307,11 +340,17 @@ retryLoop:
 					return fmt.Errorf("send End (retransmit): %w", err)
 				}
 				c.Inc(metrics.CMessagesSent)
-				// Reset the deadline — we just did real work.
+				// We sent a fresh End — drop back to Phase 1. The
+				// manager has to ack the new End all over again, and
+				// any prior Processing referred to the now-superseded
+				// gap state. gotProcessing is reset so the next
+				// timeout (if any) is correctly classified as a
+				// "lost End" rather than a "stalled indexer".
+				gotProcessing = false
 				if !deadline.Stop() {
 					<-deadline.C
 				}
-				deadline.Reset(endAckT)
+				deadline.Reset(endAckProcT)
 				continue
 			}
 			if in.Type != fb.MessageTypeEndAck {
@@ -326,7 +365,10 @@ retryLoop:
 				return nil
 			case fb.StatusProcessing:
 				c.Inc(metrics.CEndAckProcessing)
-				// Keep waiting for a terminal ack.
+				// Phase 1 → Phase 2 transition (or stay in Phase 2 on
+				// subsequent Processing). Either way, the deadline
+				// becomes the long indexer-flush window.
+				gotProcessing = true
 				if !deadline.Stop() {
 					<-deadline.C
 				}
@@ -341,6 +383,23 @@ retryLoop:
 				return nil
 			}
 		}
+	}
+}
+
+// attemptsFromRetry maps the -1/0/N user-facing retry knob to the
+// internal "max attempts" representation used by the retry loops:
+//   user -1 → 1 attempt (no retry)
+//   user  0 → -1 sentinel meaning "unlimited"
+//   user  N → N attempts
+// The internal sentinel value matches the `unlimited` constant in Run().
+func attemptsFromRetry(retry int) int {
+	switch {
+	case retry == -1:
+		return 1
+	case retry == 0:
+		return -1
+	default:
+		return retry
 	}
 }
 

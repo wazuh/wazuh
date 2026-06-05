@@ -19,6 +19,10 @@ import (
 )
 
 // Config holds the runtime knobs (CLI-derived + scenario-derived).
+// Inventory session timing knobs (start_ack_timeout, end_ack_timeout,
+// end_ack_processing_timeout, post_data_delay) live in the scenario
+// JSON and are read directly off scenario.Step — they are intentionally
+// NOT mirrored on Config to keep the wiring single-sourced.
 type Config struct {
 	Manager  string
 	Port     int
@@ -26,23 +30,10 @@ type Config struct {
 	KeyWait  time.Duration
 	BenchDir string // resolves sample_payloads/ for static kinds
 
-	// Inventory session timeouts. Zero values fall back to the
-	// inventory package defaults (15s start, 120s end).
-	StartAckTimeout time.Duration
-	EndAckTimeout   time.Duration
-
 	// KeepaliveInterval is how often each agent emits a `#!-<JSON>`
 	// control keepalive. 0 disables the ticker entirely (no keepalives,
 	// only the initial startup + shutdown frames).
 	KeepaliveInterval time.Duration
-
-	// PostDataDelay is the pause inserted between the last data message
-	// of a session and its End (applied for both the initial End and
-	// every End following a ReqRet). Use PostDataDelaySet=true together
-	// with PostDataDelay=0 to explicitly disable the pause; otherwise
-	// the inventory package's default (1s) is used.
-	PostDataDelay    time.Duration
-	PostDataDelaySet bool
 }
 
 // Run launches all agents, runs the scenario, and returns when every
@@ -156,13 +147,6 @@ func runAgent(ctx context.Context, idx int, lanes []string, scn *scenario.Scenar
 		}
 	}
 
-	invOpts := inventory.Options{
-		StartAckTimeout:  cfg.StartAckTimeout,
-		EndAckTimeout:    cfg.EndAckTimeout,
-		PostDataDelay:    cfg.PostDataDelay,
-		PostDataDelaySet: cfg.PostDataDelaySet,
-	}
-
 	for {
 		conn := agent.New(id, cfg.Manager, cfg.Port)
 		if err := conn.Dial(15 * time.Second); err != nil {
@@ -194,7 +178,7 @@ func runAgent(ctx context.Context, idx int, lanes []string, scn *scenario.Scenar
 			},
 		})
 
-		runIteration(ctx, conn, lanes, scn, c, cache, invOpts)
+		runIteration(ctx, conn, lanes, scn, c, cache)
 
 		// Stop the ticker first so it doesn't race with the shutdown
 		// frame for the sendMu. Then send the farewell control message
@@ -223,7 +207,7 @@ func shouldRepeat(deadline time.Time) bool {
 }
 
 func runIteration(ctx context.Context, conn *agent.Conn, lanes []string, scn *scenario.Scenario,
-	c *metrics.Counters, cache payloadCache, invOpts inventory.Options) {
+	c *metrics.Counters, cache payloadCache) {
 	var wg sync.WaitGroup
 	for _, laneName := range lanes {
 		laneName := laneName
@@ -234,16 +218,16 @@ func runIteration(ctx context.Context, conn *agent.Conn, lanes []string, scn *sc
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			runLane(ctx, conn, laneName, steps, c, cache, invOpts)
+			runLane(ctx, conn, laneName, steps, c, cache)
 		}()
 	}
 	wg.Wait()
 }
 
 func runLane(ctx context.Context, conn *agent.Conn, laneName string, steps []scenario.Step,
-	c *metrics.Counters, cache payloadCache, invOpts inventory.Options) {
+	c *metrics.Counters, cache payloadCache) {
 	for _, step := range steps {
-		if err := runStep(ctx, conn, laneName, step, c, cache, invOpts); err != nil {
+		if err := runStep(ctx, conn, laneName, step, c, cache); err != nil {
 			if ctx.Err() != nil {
 				return
 			}
@@ -256,9 +240,9 @@ func runLane(ctx context.Context, conn *agent.Conn, laneName string, steps []sce
 }
 
 func runStep(ctx context.Context, conn *agent.Conn, laneName string, step scenario.Step,
-	c *metrics.Counters, cache payloadCache, invOpts inventory.Options) error {
+	c *metrics.Counters, cache payloadCache) error {
 
-	src := buildSource(step, cache, invOpts)
+	src := buildSource(step, cache)
 	if src == nil {
 		return fmt.Errorf("nil source")
 	}
@@ -291,7 +275,7 @@ func runStep(ctx context.Context, conn *agent.Conn, laneName string, step scenar
 	return nil
 }
 
-func buildSource(step scenario.Step, cache payloadCache, opts inventory.Options) source.Source {
+func buildSource(step scenario.Step, cache payloadCache) source.Source {
 	if step.Kind == scenario.SourceKindEngine {
 		return engine.New(step)
 	}
@@ -299,5 +283,5 @@ func buildSource(step scenario.Step, cache payloadCache, opts inventory.Options)
 	if info == nil {
 		return nil
 	}
-	return inventory.New(step, info, opts)
+	return inventory.New(step, info)
 }
