@@ -100,7 +100,18 @@ Triggers act as threshold selectors (similar to legacy `<level>` intent), while 
 3. Under **Actions**, click **Add notification** and configure:
    - **Action name:** Provide a label (for example, `Send-Syslog-Payload`).
    - **Channel:** Select the custom webhook channel created in [Step 1](#1-setting-up-a-custom-webhook-notification-channel).
-   - **Message:** Use Mustache templates to map the payload fields to your destination JSON structure.
+  - **Message:** Replace the default monitor/trigger text with a finding-based payload. Use Mustache templates from `ctx.results` to map alert fields to your destination JSON structure. For example:
+
+```json
+{
+  "alert_id": "{{ctx.results.0.hits.hits.0._id}}",
+  "rule_id": "{{ctx.results.0.hits.hits.0._source.wazuh.rule.id}}",
+  "rule_title": "{{ctx.results.0.hits.hits.0._source.wazuh.rule.title}}",
+  "severity_level": "{ctx.results.0.hits.hits.0._source.wazuh.rule.level}}",
+  "agent_name": "{{ctx.results.0.hits.hits.0._source.wazuh.agent.name}}",
+  "event_dataset": "{{ctx.results.0.hits.hits.0._source.event.dataset}}",
+}
+```
 4. Click **Create** to activate the monitor pipeline.
 
 ![Notification Triggers and Actions](../../images/remote-syslog-output/create-notification-trigger-and-action.png)
