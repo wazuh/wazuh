@@ -93,3 +93,96 @@ def test_main_type_ko(args: list[str], error_code: int):
             pytest.raises(SystemExit) as e:
         aws_s3.main(args)
     assert e.value.code == error_code
+
+
+def test_main_sets_debug_level_when_debug_flag_provided():
+    """main() sets aws_tools.debug_level and logs a debug message when --debug > 0."""
+    args = ['main', '--bucket', 'bucket-name', '--type', 'cloudtrail', '--debug', '2']
+    instance = MagicMock()
+    with patch("sys.argv", args), \
+            patch("configparser.RawConfigParser.has_option", return_value=False), \
+            patch('buckets_s3.cloudtrail.AWSCloudTrailBucket') as mocked_class, \
+            patch.object(aws_tools, 'debug') as mock_debug:
+        mocked_class.return_value = instance
+        aws_s3.main(args)
+    assert aws_tools.debug_level == 2
+    mock_debug.assert_any_call('+++ Debug mode on - Level: 2', 1)
+
+
+def test_main_exits_22_on_invalid_bucket_region():
+    """main() exits with code 22 when a region passes format validation but is not in ALL_REGIONS."""
+    # zz-fake-1 matches the regex in arg_valid_regions but is not in aws_tools.ALL_REGIONS
+    args = ['main', '--bucket', 'bucket-name', '--type', 'cloudtrail', '--regions', 'zz-fake-1']
+    with patch("sys.argv", args), \
+            pytest.raises(SystemExit) as e:
+        aws_s3.main(args)
+    assert e.value.code == 22
+
+
+def test_main_appends_region_from_aws_config_when_no_regions_specified():
+    """main() appends the region from the AWS config profile when no --regions are given."""
+    args = ['main', '--service', 'cloudwatchlogs']
+    instance = MagicMock()
+    with patch("sys.argv", args), \
+            patch("configparser.RawConfigParser.has_option", return_value=True), \
+            patch("configparser.RawConfigParser.get", return_value="us-east-1"), \
+            patch('services.cloudwatchlogs.AWSCloudWatchLogs') as mocked_class:
+        mocked_class.return_value = instance
+        aws_s3.main(args)
+    mocked_class.assert_called_once()
+    assert mocked_class.call_args.kwargs['region'] == 'us-east-1'
+
+
+def test_main_reraises_exception_in_debug_mode():
+    """main() re-raises exceptions inside the except block when debug_level > 0."""
+    args = ['main', '--bucket', 'bucket-name', '--type', 'cloudtrail', '--debug', '1']
+    aws_tools.debug_level = 1
+    instance = MagicMock()
+    instance.check_bucket.side_effect = RuntimeError("forced error")
+    with patch("sys.argv", args), \
+            patch("configparser.RawConfigParser.has_option", return_value=False), \
+            patch('buckets_s3.cloudtrail.AWSCloudTrailBucket') as mocked_class:
+        mocked_class.return_value = instance
+        with pytest.raises(RuntimeError, match="forced error"):
+            aws_s3.main(args)
+    aws_tools.debug_level = 0
+
+
+def test_main_block_success():
+    """__main__ block registers SIGINT handler and exits 0 on success."""
+    import runpy
+    import signal as signal_mod
+    aws_s3_path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'aws_s3.py'))
+    mock_opts = MagicMock(debug='0', logBucket=None, service=None, subscriber=None)
+    with patch('aws_tools.get_script_arguments', return_value=mock_opts), \
+            patch('signal.signal') as mock_signal, \
+            pytest.raises(SystemExit) as e:
+        runpy.run_path(aws_s3_path, run_name='__main__')
+    assert e.value.code == 0
+    mock_signal.assert_called_once_with(signal_mod.SIGINT, aws_tools.handler)
+
+
+def test_main_block_exits_1_on_exception():
+    """__main__ block calls aws_tools.error and exits 1 on unhandled exception."""
+    import runpy
+    aws_s3_path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'aws_s3.py'))
+    with patch('aws_tools.get_script_arguments', side_effect=Exception("boom")), \
+            patch('aws_tools.error') as mock_error, \
+            pytest.raises(SystemExit) as e:
+        runpy.run_path(aws_s3_path, run_name='__main__')
+    assert e.value.code == 1
+    mock_error.assert_called_once_with("Unknown error: boom")
+
+
+def test_main_block_reraises_when_debug_level_gt_0():
+    """__main__ block re-raises the exception when aws_tools.debug_level > 0."""
+    import runpy
+    aws_s3_path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'aws_s3.py'))
+    aws_tools.debug_level = 1
+    try:
+        with patch('aws_tools.get_script_arguments', side_effect=Exception("boom")), \
+                patch('aws_tools.error'), \
+                pytest.raises(Exception, match="boom"):
+            runpy.run_path(aws_s3_path, run_name='__main__')
+    finally:
+        aws_tools.debug_level = 0
