@@ -535,7 +535,7 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
     }
     else
     {
-        LoggingHelper::getInstance().log(LOG_WARNING, "SCA synchronization failed.");
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization failed.");
     }
 
     return result;
