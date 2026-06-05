@@ -368,6 +368,7 @@ REMOTED_METRICS = [
 ANALYSISD_METRICS = [
     ("server_events_received",              "Events Received (cumulative)",          "Count"),
     ("router_events_processed",             "Router Events Processed",               "Count"),
+    ("router_events_dropped",               "Router Events Dropped",                 "Count"),
     ("router_eps_1m",                       "Router EPS (1 min)",                    "Events/s"),
     ("indexer_events_dropped",              "Indexer Events Dropped",                "Count"),
     ("spaces_standard_events_unclassified", "Standard Space — Events Unclassified",  "Count"),

@@ -77,6 +77,7 @@ ANALYSISD_HEADER = [
     "router_queue_size",
     "router_queue_usage_percent",
     "router_events_processed",
+    "router_events_dropped",
     "indexer_queue_usage_percent",
     "indexer_queue_size",
     "indexer_events_dropped",
@@ -710,6 +711,7 @@ def _flatten_analysisd_stats(raw: dict[str, object], timestamp: str, elapsed_s: 
     row["router_queue_size"]          = _as_int(global_metrics.get("router.queue.size"))
     row["router_queue_usage_percent"] = _as_float(global_metrics.get("router.queue.usage.percent"))
     row["router_events_processed"]    = _as_int(global_metrics.get("router.events.processed"))
+    row["router_events_dropped"]      = _as_int(global_metrics.get("router.events.dropped"))
     row["indexer_queue_usage_percent"] = _as_float(global_metrics.get("indexer.queue.usage.percent"))
     row["indexer_queue_size"]         = _as_int(global_metrics.get("indexer.queue.size"))
     row["indexer_events_dropped"]     = _as_int(global_metrics.get("indexer.events.dropped"))

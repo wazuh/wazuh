@@ -93,9 +93,8 @@
       {
         "engine": "sample_payloads/engine/syslog.log",
         "location": "syslog",
-        "max_eps": 200,
+        "max_eps": 250,
         "loop": true,
-        "duration": 300.0,
         "run_while_siblings_active": true
       }
     ]
