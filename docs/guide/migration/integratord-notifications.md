@@ -17,42 +17,32 @@ All integration configuration is now done from the dashboard, with no changes re
 
 ## Configuration mapping 4.x → 5.x
 
-The following tables map each `<integration>` field from Wazuh 4.x to its equivalent location in the 5.x dashboard.
+The following table maps each `<integration>` field from Wazuh 4.x to its equivalent in the 5.x dashboard.
 
-### Required configuration → Notifications channel
+| 4.x field          | 5.x plugin    | 5.x location             | Notes                                                                                                                                    |
+| ------------------ | ------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `<name>`           | Notifications | Channel name             | Identifies the channel                                                                                                                   |
+| `<hook_url>`       | Notifications | Webhook URL              | Some 4.x built-in scripts (e.g. PagerDuty) had the endpoint hardcoded and did not require this field                                     |
+| `<api_key>`        | Notifications | Webhook URL / Headers    | Depending on the service, credentials may be placed in the URL, request headers, or not be needed at all                                 |
+| `<alert_format>`   | —             | No match                 | Obsolete in 5.x; the **Alerting** plugin works with JSON documents directly                                                              |
+| `<rule_id>`        | Alerting      | Monitor query            | Monitors use queries on index patterns instead of rule matching. The matching field is `wazuh.rule.id`.                                  |
+| `<level>`          | Alerting      | Monitor query            | In 4.x the field was `rule.level`; see the note below.                                                                                   |
+| `<group>`          | Alerting      | Monitor query            | The group tag referred to the internal Wazuh component that generated the data. Now, it's represented by `wazuh.integration.name`.       |
+| `<event_location>` | Alerting      | Monitor query            | The 4.x tag used a sregex expression to match Wazuh modules or log sources/files; In 5.x, there is no direct conversion. See note below. |
+| `<options>`        | Alerting      | Trigger → Action message | See below                                                                                                                                |
 
-Configure these fields at **Explore > Notifications > Channel**.
+> **Note:** In 5.x, rule.level is now called wazuh.rule.level and uses categorical values (low, medium, high) instead of an integer from 1 to 16. Because there is no direct conversion, you must review your existing alert thresholds and determine how best to map your legacy numeric levels to these new categories based on your organization's specific routing needs.
 
-| 4.x field        | 5.x field    | Notes                        |
-| ---------------- | ------------ | ---------------------------- |
-| `<name>`         | Channel name | Identifies the channel       |
-| `<hook_url>`     | Webhook URL  | Endpoint for the integration |
-| `<api_key>`      | Headers      | Passed as a request header   |
-| `<alert_format>` | Headers      | Passed as a request header   |
-
-> **Note:** Not all fields are required for every integration. For example, Slack requires `<hook_url>` but not `<api_key>`. Channels in 5.x offer a broader set of configuration options than 4.x.
-
-### Optional filters → Alerting monitors
-
-Configure these fields at **Explore > Alerting > Monitors**.
-
-| 4.x field          | 5.x equivalent           | Notes                                                                                                                            |
-| ------------------ | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| `<rule_id>`        | Monitor query            | Monitors use queries on index patterns instead of rule matching. The matching field is `wazuh.rule.id`.                          |
-| `<level>`          | Monitor query            | In 4.x the tag was a threshold, but in 5.x it's a value between `{low, medium, high}`. The matching field is `wazuh.rule.level`. |
-| `<group>`          | Monitor query            | The group tag referred to the internal Wazuh component that generated the data. Now, its represented by `wazuh.integration.name` |
-| `<event_location>` | Monitor query            | The 4.x field matched Wazuh modules or log sources via regex; in 5.x, queries using fields like `log.file.value`                 |
-| `<options>`        | Trigger → Action message | See below                                                                                                                        |
-
-![Configuration mapping channels](../../images/integratord-notifications/configuration_mapping.png)
-
-#### From `<options>` to trigger actions
-
-In 4.x, the `<integration>` block invoked a built-in script (referenced by `<name>`) that sent a default JSON payload to the external service. The `<options>` block allowed appending extra fields to that payload.
-
-In 5.x, the monitor defines a **Trigger** containing one or more **Actions**. Each action targets a channel and includes a fully user-defined message body — there is no default payload. This gives full control over the content sent to the external integration.
+> **Note:** The `<event_location>` tag has no direct 1-to-1 replacement in 5.x. Because 5.x parses alerts into highly structured documents, the legacy `"location"` string is split across multiple independent fields. You should review your current use cases to determine which specific 5.x fields ( e.g: `wazuh.protocol.location`, `file.path`, `wazuh.agent.name`, ... ) align best with your implementation.
 
 ![Configuration mapping index pattern and queries](../../images/integratord-notifications/data_queries.png)
+
+### From `<options>` to trigger actions
+
+In 4.x, the `<integration>` block invoked a built-in script that generated a hardcoded, default JSON payload. To mold this payload for specific use cases without modifying the script's source code, users relied on the `<options>` block. The integration script would read the JSON provided in `<options>` and merge it with its default payload (typically appending new fields or overwriting existing ones).
+
+In 5.x, this concept is completely replaced by Triggers and Actions within a Monitor. When defining an Action, you target a specific Channel and write the exact message payload yourself using variables. Because there is no hardcoded default script to override, you have 100% control over the structure and content sent to the external integration from the start.
+
 ![Configuration mapping triggers and actions](../../images/integratord-notifications/trigger_actions.png)
 
 ### Use case mapping
@@ -61,13 +51,11 @@ In 4.x, each use case could involve multiple `<integration>` blocks paired with 
 
 The table below maps some examples on 4.x to their 5.x equivalents:
 
-| 4.x setup                                                                                             | 5.x equivalent                                                                                                                                                                                 |
-| ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| One `<integration>` block + one script                                                                | One channel, one monitor with one query per filter, and one trigger                                                                                                                            |
-| Multiple `<integration>` blocks with the same required config, different filters, same script         | One channel; one monitor per distinct `<event_location>` (different index patterns), or one monitor with multiple queries                                                                      |
-| Multiple `<integration>` blocks with different required config (different hooks or auth), same script | One channel per distinct connection config; one or more monitors per channel with their own queries and triggers                                                                               |
-| Multiple `<integration>` blocks with the same config, different scripts                               | One channel; one monitor with one trigger per script, each trigger having an action with a distinct message payload                                                                            |
-| No equivalent                                                                                         | More than one channel (for different integrations) with one monitor — one trigger with one action per channel, sharing the same query conditions but targeting different channels/integrations |
+| 4.x setup                                                                                                                  | 5.x equivalent                                                                                                   |
+| -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| One `<integration>` block + script                                                                                         | One channel, a monitor with one query per filter, and only one trigger                                           |
+| Multiple `<integration>` blocks with the same authentication and endpoint but different filters, all using the same script | One channel; one monitor with multiple queries and one trigger per `<integration>`block                          |
+| More than one `<integration>` blocks for different services, but the same filters.                                         | One channel per service; one monitor with one trigger and one action per service with a distinct message payload |
 
 The 5.x plugins provide a significantly more flexible configuration model. A typical migration results in one channel per external service and one or more monitors combining queries and triggers to cover all the previous `<integration>` blocks.
 
@@ -255,6 +243,8 @@ Wazuh 5.x provides dedicated channel types for common services such as `Slack`, 
 
 For integrations without a dedicated channel type, use the **Custom webhook** type. This is also the underlying type used by the Wazuh-provided `PagerDuty`, `Jira`, and `Shuffle` channels.
 
+The custom webhook channel can be used for services like `Slack` or `Chime`, this can be useful if the user wants to send `Slack` a json payload instead of plain text, see [Trigger Actions](#24-actions).
+
 Custom webhook channels support:
 
 - Methods: `PUT`, `POST`, or `PATCH`
@@ -288,7 +278,7 @@ A single monitor can have multiple queries. Create one query for each filter con
 
 **Example query for PagerDuty:**
 
-In the PagerDuty example, the original `<level>14</level>` maps to `wazuh.rule.level` is `high` in 5.x.
+In the PagerDuty example, the original `<level>14</level>` doesn't have a direct matching, see [Configuration mapping 4x -> 5.x](#configuration-mapping-4x--5x), in this example we will use the value `high`.
 
 | Field      | Value                   |
 | ---------- | ----------------------- |
@@ -299,7 +289,7 @@ In the PagerDuty example, the original `<level>14</level>` maps to `wazuh.rule.l
 
 **Example queries for Jira:**
 
-In the Jira example, the original `<group>syscheck</group>` was a group for rules related to FIM (File integrity monitoring), so that maps to the `wazuh.integration.name` is `wazuh-fim` and the `<level>9</level>` maps to `wazuh.rule.level` is `medium` in 5.x.
+In the Jira example, the original `<group>syscheck</group>` was a group for rules related to FIM (File integrity monitoring), so that maps to the `wazuh.integration.name` is `wazuh-fim` and for the `<level>9</level>` see [Configuration mapping 4x -> 5.x](#configuration-mapping-4x--5x), in this example we will use the value `medium`.
 
 | Field      | Value                     |
 | ---------- | ------------------------- |
@@ -307,6 +297,8 @@ In the Jira example, the original `<group>syscheck</group>` was a group for rule
 | Field      | `wazuh.rule.level`        |
 | Operator   | `is`                      |
 | Value      | `medium`                  |
+
+&nbsp;
 
 | Field      | Value                    |
 | ---------- | ------------------------ |
@@ -338,6 +330,8 @@ A monitor can have multiple triggers, and each trigger can reference multiple qu
 #### 2.4 Actions
 
 Each trigger can have multiple actions, allowing a single trigger to notify more than one channel.
+
+> **Note:** The examples below show messages for `PagerDuty` and `Jira`, both a json payload, this is not always the case, for example, using `Slack default channel` (created by wazuh using Slack notification type) the message it's parsed in plain text instead of json. This is also defined by the header `Content Type` in custom webhooks.
 
 **Example action for PagerDuty:**
 
