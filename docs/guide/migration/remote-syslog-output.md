@@ -66,7 +66,7 @@ Instead of defining raw server endpoints inside XML blocks, destinations are now
 5. Under **Configurations**, select **Custom webhook** as the **Channel type**.
 6. Set the **Method** to `POST`.
 7. Under **Define endpoints by**, select **Webhook URL** and enter your endpoint address matching your legacy `syslog_output.server` configuration (for example, `http://192.168.1.50:10515`).
-  Use the HTTP/HTTPS listening port of your webhook endpoint here (for example, `10515`), not the legacy Syslog transport port `514`.
+  Use the HTTP/HTTPS listening port of your webhook endpoint here (for example, `10515`), not the legacy Syslog transport port `514`. If your destination only accepts Syslog (UDP/TCP 514), place a webhook-to-syslog bridge in front of it and configure this URL to point to the bridge HTTP endpoint.
 8. (Optional) Click **Send test message** to verify network connectivity.
 9. Click **Create** to save the channel.
 
