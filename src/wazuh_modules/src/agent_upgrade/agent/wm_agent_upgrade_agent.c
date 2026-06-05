@@ -99,7 +99,7 @@ void wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config, c
     }
     else
     {
-        mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_STARTED);
+        mtinfo(WM_AGENT_UPGRADE_LOGTAG, STARTUP_MSG, (int)getpid());
     }
 
 #ifndef WIN32

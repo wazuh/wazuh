@@ -72,6 +72,10 @@ set(WAZUH_MAIN_PROJECT
     ON
     CACHE BOOL "Main Wazuh CMake project" FORCE)
 
+# Shared CMake helpers
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+include(WazuhRpath)
+
 # Define CLIENT for agent builds
 if("${TARGET}" STREQUAL "winagent" OR "${TARGET}" STREQUAL "agent")
   add_definitions(-DCLIENT)

@@ -1,0 +1,257 @@
+name: 5.X - API endpoints - Integration tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      pytest_extra_args:
+        description: 'Extra arguments to pass to pytest'
+        required: false
+        default: ''
+      test_list:
+        description: 'List of tests to run, separated by commas (without test_ prefix and .tavern.yaml suffix). If empty or not set, all tests will be run.'
+        required: false
+        default: ''
+
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/5_testintegration_api-endpoints.yml"
+      - "api/api/**"
+      - "api/scripts/**"
+      - "api/test/**"
+      - "framework/.python-version"
+      - "framework/requirements*.txt"
+      - "framework/scripts/**"
+      - "framework/wazuh/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  api_endpoints_integration_tests_setup:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    outputs:
+      custom_matrix: ${{ steps.test_files.outputs.files }}
+    name: Generate execution matrix for API endpoints integration tests
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate integration test api endpoint JSON file
+        id: test_files
+        run: |
+          TEST_LIST="${{ github.event.inputs.test_list || '' }}"
+          cd api/test/integration/mapping
+          python3 _test_mapping.py
+
+          # Valid test files
+          full_file_list=$(jq -c '([.[].files[].tests[]] | unique | sort)' ./integration_test_api_endpoints.json)
+
+          # Validate the input tests in workflow_dispatch
+          function validate_tests_files_input() {
+            local files=$1
+            local str=$2
+
+            IFS=',' read -r -a tests <<< "${str}"
+            prefix="test_"
+            suffix=".tavern.yaml"
+
+            valid_tests=""
+            for test in ${tests[@]}; do
+              input_filename="${prefix}${test}${suffix}"
+              matched=false
+              for file in $(echo "$files" | jq -r '.[]'); do
+                if [[ "${input_filename,,}" == "${file,,}" ]]; then
+                matched=true
+                valid_tests+="\"${file}\","
+                break
+                fi
+              done
+
+              if [[ "$matched" == false ]]; then
+                echo "$input_filename is not valid"
+                exit 1
+              fi
+            done
+
+            echo "[${valid_tests::-1}]"
+          }
+
+          function parse_integration_test_json_file() {
+            local json_file="integration_test_api_endpoints.json"
+            local basename=$1
+            local parent_dir=$2
+            local matched_files=$(jq -r --arg basename "$basename" --arg parent_dir "$parent_dir" '[.[]|select(.path == $parent_dir).files[]|select(.name == $basename).tests[]] | join(",")' integration_test_api_endpoints.json)
+            if [[ ! -z "$matched_files" ]]; then
+              echo "$matched_files"
+            fi
+          }
+
+          # Get the list of tests to run based on the modified files in the pull request
+          function get_tests_files() {
+            local base_ref="${{ github.base_ref }}"
+            git fetch --depth=1 origin "${base_ref}"
+            local modified_files=$(git diff --name-only FETCH_HEAD..HEAD)
+            total_files=""
+            while read -r file; do
+              parent_dir="${file%/*}"
+              file_name="${file##*/}"
+              result="$(parse_integration_test_json_file "$file_name" "$parent_dir")"
+              if [[ ! -z "$result" ]]; then
+                total_files+="$result,"
+              fi
+            done <<< "$modified_files"
+            if [[ -z "$total_files" ]]; then
+              echo "[]"
+            else
+              echo "${total_files::-1}" | tr ',' '\n' | jq -R . | jq -sc '[.[]]|unique'
+            fi
+          }
+
+          if [[ ${{ github.event_name }} == 'pull_request' ]]; then
+            selected_files=$(get_tests_files)
+            if [[ -z "$selected_files" || "$selected_files" == "[]" ]]; then
+              echo "No relevant files modified, running all tests"
+              echo "Selected tests: $full_file_list"
+              echo "files=$full_file_list" >> $GITHUB_OUTPUT
+            else
+              echo "Selected tests: $selected_files"
+              echo "files=$selected_files" >> $GITHUB_OUTPUT
+            fi
+          else
+            if [[ -z ${TEST_LIST} ]]; then
+              echo "No tests specified, running all tests"
+              echo "Selected tests: $full_file_list"
+              echo "files=$full_file_list" >> $GITHUB_OUTPUT
+            else
+              selected_files=$(validate_tests_files_input "$full_file_list" "${TEST_LIST}")
+              echo "Selected tests: $selected_files"
+              echo "files=$selected_files" >> $GITHUB_OUTPUT
+            fi
+          fi
+        shell: bash
+
+  build_docker_images:
+    needs: api_endpoints_integration_tests_setup
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    name: Build and cache Docker images for integration tests
+    outputs:
+      checksum: ${{ steps.calculate_checksum.outputs.checksum }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Calculate checksum for environment files
+        id: calculate_checksum
+        run: |
+          checksum=$(find api/test/integration/env/ -type f -print0 | xargs -0 sha256sum | sha256sum | awk '{print $1}')
+          echo "Checksum: $checksum"
+          echo "checksum=$checksum" >> $GITHUB_OUTPUT
+
+      - name: Cache Docker images
+        if: steps.calculate_checksum.outputs.checksum != ''
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/docker-images
+          key: docker-images-api-endpoints-ITs-${{ steps.calculate_checksum.outputs.checksum }}
+
+      - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get install docker-compose-v2 zstd -y
+
+      - name: Build and save Docker images
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          cd api/test/integration/env
+          docker compose build --build-arg WAZUH_BRANCH=${{ github.head_ref || github.ref_name }} --no-cache
+          mkdir -p /tmp/docker-images
+          readarray -t images < <(docker images | awk '/integration/ {print $1}')
+          for image in "${images[@]}"; do
+            docker save ${image}:latest | zstd -T0 > /tmp/docker-images/${image}.tar.zst&
+          done
+          wait
+
+  smoke_test:
+    needs: [api_endpoints_integration_tests_setup, build_docker_images]
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    name: Run smoke test for API endpoints
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version-file: "framework/.python-version"
+
+      - name: Install dependencies
+        run: |
+          pip install -r framework/requirements-dev.txt
+          sudo apt-get install docker-compose-v2 -y
+
+      - name: Restore Docker images from cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/docker-images
+          key: docker-images-api-endpoints-ITs-${{ needs.build_docker_images.outputs.checksum }}
+
+      - name: Load Docker images
+        run: |
+          for file in /tmp/docker-images/*.tar.zst; do
+            docker load --input "$file"&
+          done
+          wait
+
+      - name: Run smoke test
+        run: |
+          cd api/test/integration
+          pytest --nobuild -vvv _test_smoke.tavern.yaml
+
+  api_endpoints_integration_tests_execution:
+    needs: [api_endpoints_integration_tests_setup, build_docker_images, smoke_test]
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        test_file: ${{ fromJson(needs.api_endpoints_integration_tests_setup.outputs.custom_matrix) }}
+    name: Run integration tests for API endpoints
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version-file: "framework/.python-version"
+
+      - name: Install dependencies
+        run: |
+          pip install -r framework/requirements-dev.txt
+          sudo apt-get install docker-compose-v2 -y
+
+      - name: Restore Docker images from cache
+        uses: actions/cache/restore@v4
+        with:
+          path: /tmp/docker-images
+          key: docker-images-api-endpoints-ITs-${{ needs.build_docker_images.outputs.checksum }}
+
+      - name: Load Docker images
+        run: |
+          for file in /tmp/docker-images/*.tar.zst; do
+            docker load --input "$file"&
+          done
+          wait
+
+      - name: Run tests
+        run: |
+          cd api/test/integration
+          pytest --nobuild -vvv --reruns 3 --reruns-delay 5 ${{ github.event.inputs.pytest_extra_args }} "${{ matrix.test_file }}"

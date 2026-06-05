@@ -35,7 +35,6 @@ target_link_libraries(
   gmock
   urlrequest
   wazuhext
-  lzma
   rocksdb
   pthread)
 

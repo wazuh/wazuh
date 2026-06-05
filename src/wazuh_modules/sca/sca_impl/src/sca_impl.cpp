@@ -87,7 +87,7 @@ SecurityConfigurationAssessment::SecurityConfigurationAssessment(std::string dbP
         LoggingHelper::getInstance().log(level, message);
     });
 
-    LoggingHelper::getInstance().log(LOG_INFO, "SCA initialized.");
+    LoggingHelper::getInstance().log(LOG_DEBUG, "SCA initialized.");
 }
 
 SecurityConfigurationAssessment::~SecurityConfigurationAssessment()
@@ -128,7 +128,7 @@ void SecurityConfigurationAssessment::Run()
         m_spSyncProtocol->reset();
     }
 
-    LoggingHelper::getInstance().log(LOG_INFO, "SCA module running.");
+    LoggingHelper::getInstance().log(LOG_DEBUG, "SCA module running.");
 
     if (m_syncManager)
     {
@@ -205,7 +205,7 @@ void SecurityConfigurationAssessment::Run()
 
         if (firstScan && m_scanOnStart)
         {
-            LoggingHelper::getInstance().log(LOG_INFO, "SCA module scan on start.");
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Module scan on start.");
         }
 
         // Mark scan as in progress
@@ -274,7 +274,7 @@ void SecurityConfigurationAssessment::Run()
                 checkResult.policyId, checkResult.checkId, checkResult.result, checkResult.reason);
         };
 
-        LoggingHelper::getInstance().log(LOG_INFO, "SCA scan started.");
+        LoggingHelper::getInstance().log(LOG_INFO, "Scan started.");
 
         for (auto& policy : m_policies)
         {
@@ -292,7 +292,7 @@ void SecurityConfigurationAssessment::Run()
 
         firstScan = false;
 
-        LoggingHelper::getInstance().log(LOG_INFO, "SCA scan ended.");
+        LoggingHelper::getInstance().log(LOG_INFO, "Scan ended.");
 
         // Mark scan as complete
         setScanInProgress(false);
@@ -323,9 +323,9 @@ void SecurityConfigurationAssessment::Setup(bool enabled,
     m_yamlToJsonFunc = yamlToJsonFunc;
 }
 
-void SecurityConfigurationAssessment::Stop()
+void SecurityConfigurationAssessment::quiesce()
 {
-    LoggingHelper::getInstance().log(LOG_DEBUG, "SecurityConfigurationAssessment::Stop() called");
+    LoggingHelper::getInstance().log(LOG_DEBUG, "SecurityConfigurationAssessment::quiesce() called");
     {
         std::lock_guard<std::mutex> lock(m_pauseMutex);
         m_keepRunning = false;
@@ -336,7 +336,7 @@ void SecurityConfigurationAssessment::Stop()
     // Wake up the Run() loop if it's sleeping
     m_cv.notify_all();
 
-    // Signal sync protocol to stop any ongoing operations
+    // Signal sync protocol to stop any ongoing synchronizeModule() calls
     if (m_spSyncProtocol)
     {
         m_spSyncProtocol->stop();
@@ -354,11 +354,22 @@ void SecurityConfigurationAssessment::Stop()
         policy->Stop();
     }
 
-    // Explicitly release DBSync before static destruction to avoid use-after-free
-    // during shutdown when DBSyncImplementation singleton may be destroyed first
-    m_dBSync.reset();
-
     LoggingHelper::getInstance().log(LOG_INFO, "SCA module stopped.");
+}
+
+void SecurityConfigurationAssessment::releaseResources()
+{
+    // Explicitly release DBSync before static destruction to avoid use-after-free
+    // during shutdown when DBSyncImplementation singleton may be destroyed first.
+    // Must be called only after the sync worker thread has been joined, because
+    // synchronizeDatabaseSnapshot() uses m_dBSync without holding any mutex.
+    m_dBSync.reset();
+}
+
+void SecurityConfigurationAssessment::Stop()
+{
+    quiesce();
+    releaseResources();
 }
 
 const std::string& SecurityConfigurationAssessment::Name() const
@@ -1095,11 +1106,14 @@ bool SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseV
             m_dBSync->increaseEachEntryVersion("sca_check");
         }
 
+        // Exclude "Not run" rows from the snapshot. A timed-out check stays at "Not run"
+        // after the scan, and we don't want those rows leaking to the manager —
+        // it should keep the last known executed state instead.
         std::vector<nlohmann::json> checks;
         auto selectQuery = SelectQuery::builder()
                            .table("sca_check")
                            .columnList({"*"})
-                           .rowFilter("WHERE sync = 1")
+                           .rowFilter("WHERE sync = 1 AND result != 'Not run'")
                            .build();
 
         const auto selectCallback = [&checks](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
@@ -1197,7 +1211,9 @@ bool SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseV
         }
         else
         {
-            LoggingHelper::getInstance().log(LOG_ERROR, "SCA " + syncReason + " failed");
+            // Transient sync failure (manager reported an error / communication issue).
+            // The syncModule() caller emits the single WARNING; recovery retries later. (#36724)
+            LoggingHelper::getInstance().log(LOG_DEBUG, "SCA " + syncReason + " failed");
         }
 
         return success;

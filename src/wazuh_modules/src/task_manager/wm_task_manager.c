@@ -138,7 +138,7 @@ STATIC void* wm_task_manager_main(wm_task_manager* task_config) {
     // Initial configuration
     sock = wm_task_manager_init(task_config);
 
-    mtinfo(WM_TASK_MANAGER_LOGTAG, MOD_TASK_START);
+    mtinfo(WM_TASK_MANAGER_LOGTAG, STARTUP_MSG, (int)getpid());
 
     while (!wm_shutdown_requested) {
 

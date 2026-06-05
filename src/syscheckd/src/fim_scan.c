@@ -58,7 +58,7 @@ time_t fim_scan() {
 #endif
     cputime_start = clock();
     gettime(&start);
-    mdebug1(FIM_FREQUENCY_STARTED);
+    minfo(FIM_FREQUENCY_STARTED);
 
     fim_diff_folder_size();
     syscheck.disk_quota_full_msg = true;

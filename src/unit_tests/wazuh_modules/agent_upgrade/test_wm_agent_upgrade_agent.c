@@ -1050,7 +1050,7 @@ void test_wm_agent_upgrade_start_agent_module_enabled(void **state)
     allow_upgrades = false;
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mtinfo, formatted_msg, "(8153): Module Agent Upgrade started.");
+    expect_any(__wrap__mtinfo, formatted_msg);
 
 #ifndef TEST_WINAGENT
     expect_memory(__wrap_CreateThread, function_pointer, wm_agent_upgrade_listen_messages, sizeof(wm_agent_upgrade_listen_messages));

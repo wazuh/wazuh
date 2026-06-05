@@ -52,7 +52,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     // /var/ossec/logs/ossec.json
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #else
-    // WAZUH_HOME/logs/<wazuh log file>
+    // <wazuh-home>/logs/<wazuh log file>
     snprintf(path, PATH_MAX, "%s", LOGFILE);
     // /var/ossec/logs/ossec.json
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);

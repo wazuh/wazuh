@@ -486,7 +486,7 @@ void LogCollectorStart()
 #endif
     set_can_read(1);
     atomic_int_set(&_startup_completed, 1);
-    mdebug1("Startup completed. Runtime-discovered files will be read from beginning.");
+    minfo("Startup completed. Runtime-discovered files will be read from beginning.");
     /* Daemon loop */
     while (1) {
 
@@ -2616,15 +2616,32 @@ STATIC void w_save_file_status() {
 
     FILE * fd = NULL;
     size_t size_str = strlen(str);
+    const char * const tmp_path = LOCALFILE_STATUS ".tmp";
 
-    if (fd = wfopen(LOCALFILE_STATUS, "w"), fd != NULL) {
-        if (fwrite(str, 1, size_str, fd) == 0) {
-            merror(FWRITE_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
+    if (fd = wfopen(tmp_path, "w"), fd != NULL) {
+        if (fwrite(str, 1, size_str, fd) != size_str) {
+            merror(FWRITE_ERROR, tmp_path, errno, strerror(errno));
             clearerr(fd);
+            fclose(fd);
+            unlink(tmp_path);
+        } else if (fclose(fd) != 0) {
+            merror("Could not close file '%s': %s", tmp_path, strerror(errno));
+            unlink(tmp_path);
+        } else {
+#ifdef WIN32
+            if (!MoveFileExA(tmp_path, LOCALFILE_STATUS, MOVEFILE_REPLACE_EXISTING)) {
+                merror("Could not rename '%s' to '%s' (error %lu)", tmp_path, LOCALFILE_STATUS, GetLastError());
+                unlink(tmp_path);
+            }
+#else
+            if (rename(tmp_path, LOCALFILE_STATUS) != 0) {
+                merror("Could not rename '%s' to '%s': %s", tmp_path, LOCALFILE_STATUS, strerror(errno));
+                unlink(tmp_path);
+            }
+#endif
         }
-        fclose(fd);
     } else {
-        merror_exit(FOPEN_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
+        merror_exit(FOPEN_ERROR, tmp_path, errno, strerror(errno));
     }
 
     os_free(str);

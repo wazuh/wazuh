@@ -1789,7 +1789,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     will_return(__wrap_fim_db_transaction_start, &mock_handle);
 
-    expect_string(__wrap__mdebug1, formatted_msg, FIM_FREQUENCY_STARTED);
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // fim_diff_folder_size
     expect_string(__wrap_IsDir, file, "queue/diff/local");
@@ -1803,6 +1803,9 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     // First scan
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
+        expect_string(__wrap_IsLink, file, dir_it->path);
+        will_return(__wrap_IsLink, -1);
+
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -1830,6 +1833,9 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     will_return(__wrap_fim_db_transaction_start, &mock_handle);
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
+        expect_string(__wrap_IsLink, file, dir_it->path);
+        will_return(__wrap_IsLink, -1);
+
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -1877,7 +1883,7 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     will_return(__wrap_fim_db_transaction_start, &mock_handle);
 
-    expect_string(__wrap__mdebug1, formatted_msg, FIM_FREQUENCY_STARTED);
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // fim_diff_folder_size
     expect_string(__wrap_IsDir, file, "queue/diff/local");
@@ -1891,6 +1897,9 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     // First scan
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
+        expect_string(__wrap_IsLink, file, dir_it->path);
+        will_return(__wrap_IsLink, -1);
+
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -1941,7 +1950,7 @@ static void test_fim_scan_realtime_enabled(void **state) {
 
     syscheck.realtime = &realtime;
 
-    expect_string(__wrap__mdebug1, formatted_msg, FIM_FREQUENCY_STARTED);
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // fim_diff_folder_size
     expect_string(__wrap_IsDir, file, "queue/diff/local");
@@ -1955,6 +1964,9 @@ static void test_fim_scan_realtime_enabled(void **state) {
     // First scan
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
+        expect_string(__wrap_IsLink, file, dir_it->path);
+        will_return(__wrap_IsLink, -1);
+
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -2014,7 +2026,7 @@ static void test_fim_scan_no_limit(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     will_return(__wrap_fim_db_transaction_start, &mock_handle);
 
-    expect_string(__wrap__mdebug1, formatted_msg, FIM_FREQUENCY_STARTED);
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // fim_diff_folder_size
     expect_string(__wrap_IsDir, file, "queue/diff/local");
@@ -2028,6 +2040,9 @@ static void test_fim_scan_no_limit(void **state) {
     // First scan
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
+        expect_string(__wrap_IsLink, file, dir_it->path);
+        will_return(__wrap_IsLink, -1);
+
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -2054,6 +2069,153 @@ static void test_fim_scan_no_limit(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     fim_scan();
+}
+
+static int setup_fim_file_scan_symlink_test(void **state) {
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    syscheck.file_limit_enabled = false;
+
+    syscheck.directories = OSList_Create();
+    if (!syscheck.directories) {
+        return -1;
+    }
+    OSList_SetFreeDataPointer(syscheck.directories, (void (*)(void *))free_directory);
+
+    directory_t *dir = fim_create_directory("/test/symdir", CHECK_SIZE, NULL, 256, NULL, 1024, 0);
+    if (!dir) {
+        return -1;
+    }
+    OSList_InsertData(syscheck.directories, NULL, dir);
+
+    *state = dir;
+    return 0;
+}
+
+static int teardown_fim_file_scan_symlink_test(void **state) {
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    OSList_Destroy(syscheck.directories);
+    syscheck.directories = NULL;
+    *state = NULL;
+    return 0;
+}
+
+static void test_fim_file_scan_symlink_warns_when_no_follow(void **state) {
+    directory_t *dir = *state;
+    struct stat directory_buf = { .st_mode = S_IFDIR };
+    TXN_HANDLE mock_handle = NULL;
+
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_fim_db_transaction_start, &mock_handle);
+
+    expect_string(__wrap_IsLink, file, "/test/symdir");
+    will_return(__wrap_IsLink, 0);
+
+    expect_string(__wrap_realpath, path, "/test/symdir");
+    will_return(__wrap_realpath, strdup("/actual/dir"));
+
+    expect_string(__wrap__mwarn, formatted_msg,
+        "(6961): Configured path '/test/symdir' is a symbolic link to '/actual/dir'. "
+        "Without 'follow_symbolic_link' enabled, only the symlink itself will be monitored, "
+        "not the directory contents. Consider monitoring '/actual/dir' directly or enabling "
+        "'follow_symbolic_link'.");
+
+    expect_string(__wrap_lstat, filename, "/test/symdir");
+    will_return(__wrap_lstat, &directory_buf);
+    will_return(__wrap_lstat, 0);
+
+    expect_string(__wrap_HasFilesystem, path, "/test/symdir");
+    will_return(__wrap_HasFilesystem, 1);
+
+    expect_string(__wrap_realtime_adddir, dir, "/test/symdir");
+    will_return(__wrap_realtime_adddir, 0);
+
+    expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
+
+    fim_file_scan();
+
+    assert_true(dir->symlink_warned);
+}
+
+static void test_fim_file_scan_no_warn_second_scan(void **state) {
+    directory_t *dir = *state;
+    dir->symlink_warned = true;
+    struct stat directory_buf = { .st_mode = S_IFDIR };
+    TXN_HANDLE mock_handle = NULL;
+
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_fim_db_transaction_start, &mock_handle);
+
+    expect_string(__wrap_lstat, filename, "/test/symdir");
+    will_return(__wrap_lstat, &directory_buf);
+    will_return(__wrap_lstat, 0);
+
+    expect_string(__wrap_HasFilesystem, path, "/test/symdir");
+    will_return(__wrap_HasFilesystem, 1);
+
+    expect_string(__wrap_realtime_adddir, dir, "/test/symdir");
+    will_return(__wrap_realtime_adddir, 0);
+
+    expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
+
+    fim_file_scan();
+
+    assert_true(dir->symlink_warned);
+}
+
+static void test_fim_file_scan_no_warn_not_symlink(void **state) {
+    struct stat directory_buf = { .st_mode = S_IFDIR };
+    TXN_HANDLE mock_handle = NULL;
+
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_fim_db_transaction_start, &mock_handle);
+
+    expect_string(__wrap_IsLink, file, "/test/symdir");
+    will_return(__wrap_IsLink, -1);
+
+    expect_string(__wrap_lstat, filename, "/test/symdir");
+    will_return(__wrap_lstat, &directory_buf);
+    will_return(__wrap_lstat, 0);
+
+    expect_string(__wrap_HasFilesystem, path, "/test/symdir");
+    will_return(__wrap_HasFilesystem, 1);
+
+    expect_string(__wrap_realtime_adddir, dir, "/test/symdir");
+    will_return(__wrap_realtime_adddir, 0);
+
+    expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
+
+    fim_file_scan();
 }
 
 #else
@@ -2403,7 +2565,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     will_return(__wrap_fim_db_transaction_start, mock_handle);
-    expect_string(__wrap__mdebug1, formatted_msg, FIM_FREQUENCY_STARTED);
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // fim_diff_folder_size
     expect_string(__wrap_IsDir, file, "queue/diff/local");
@@ -2469,7 +2631,7 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     will_return(__wrap_fim_db_transaction_start, &mock_handle);
 
-    expect_string(__wrap__mdebug1, formatted_msg, FIM_FREQUENCY_STARTED);
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // fim_diff_folder_size
     expect_string(__wrap_IsDir, file, "queue/diff/local");
@@ -2532,7 +2694,7 @@ static void test_fim_scan_no_limit(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     will_return(__wrap_fim_db_transaction_start, &mock_handle);
-    expect_string(__wrap__mdebug1, formatted_msg, FIM_FREQUENCY_STARTED);
+    expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_STARTED);
 
     // fim_diff_folder_size
     expect_string(__wrap_IsDir, file, "queue/diff/local");
@@ -4131,6 +4293,21 @@ int main(void) {
     retval += cmocka_run_group_tests(fim_regex_tests, setup_fim_regex_group, teardown_group);
     retval += cmocka_run_group_tests(root_monitor_tests, setup_root_group, teardown_group);
     retval += cmocka_run_group_tests(wildcards_tests, setup_wildcards, teardown_wildcards);
+
+#ifndef TEST_WINAGENT
+    const struct CMUnitTest fim_file_scan_symlink_tests[] = {
+        cmocka_unit_test_setup_teardown(test_fim_file_scan_symlink_warns_when_no_follow,
+                                        setup_fim_file_scan_symlink_test,
+                                        teardown_fim_file_scan_symlink_test),
+        cmocka_unit_test_setup_teardown(test_fim_file_scan_no_warn_second_scan,
+                                        setup_fim_file_scan_symlink_test,
+                                        teardown_fim_file_scan_symlink_test),
+        cmocka_unit_test_setup_teardown(test_fim_file_scan_no_warn_not_symlink,
+                                        setup_fim_file_scan_symlink_test,
+                                        teardown_fim_file_scan_symlink_test),
+    };
+    retval += cmocka_run_group_tests(fim_file_scan_symlink_tests, NULL, NULL);
+#endif
 
     return retval;
 

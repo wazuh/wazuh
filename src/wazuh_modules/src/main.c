@@ -143,10 +143,13 @@ int main(int argc, char **argv)
     // Start com request thread
     w_create_thread(wmcom_main, NULL);
 
-    // Wait for threads
-
-    for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-        pthread_join(cur_module->thread, NULL);
+    // Modules run until a shutdown signal arrives. The SIGTERM/SIGINT handler
+    // performs the orderly stop + timed-join + exit, so the main thread must NOT
+    // also join the module threads: two concurrent joins of the same thread
+    // return EINVAL/ESRCH, which were misreported as shutdown timeouts. Idle here
+    // until the handler exits the process.
+    for (;;) {
+        pause();
     }
 
     return EXIT_SUCCESS;
@@ -292,8 +295,10 @@ void wm_handler(int signum)
                 if (cur_module->thread == (pthread_t)0) continue;
                 if (cur_module->thread == pthread_self()) continue;
 #ifdef __linux__
-                if (pthread_timedjoin_np(cur_module->thread, NULL, &deadline) != 0) {
-                    mwarn("Module '%s' did not stop within the shutdown timeout.", cur_module->context->name);
+                int join_rc = pthread_timedjoin_np(cur_module->thread, NULL, &deadline);
+                if (join_rc != 0) {
+                    mwarn("Module '%s' did not stop within the shutdown timeout. (rc=%d: %s)",
+                          cur_module->context->name, join_rc, strerror(join_rc));
                 }
 #else
                 pthread_join(cur_module->thread, NULL);

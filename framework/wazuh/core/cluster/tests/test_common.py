@@ -1500,19 +1500,12 @@ def test_wazuh_common_end_receiving_file_ok(logger_mock, wazuh_common_mock):
         assert isinstance(wazuh_common.sync_tasks["task_ID"], cluster_common.ReceiveFileTask)
 
 
-@patch('os.remove')
-@patch('os.path.exists', return_value=True)
-def test_wazuh_common_end_receiving_file_ko(path_exists_mock, os_remove_mock):
+def test_wazuh_common_end_receiving_file_ko():
     """Test the 'end_receiving_file' correct functioning in a failure scenario."""
 
     with patch('wazuh.core.cluster.common.WazuhCommon.get_logger'):
         with pytest.raises(exception.WazuhClusterError, match=r'.* 3027 .*'):
             wazuh_common.end_receiving_file("not_task_ID queue/cluster/filepath")
-
-        with pytest.raises(exception.WazuhClusterError, match=r'.* 3027 .*'):
-            os_remove_mock.side_effect = Exception
-            wazuh_common.end_receiving_file("not_task_ID queue/cluster/filepath")
-        assert os_remove_mock.call_count == 2
 
 
 @patch('json.loads')
@@ -1579,6 +1572,19 @@ def test_wazuh_common_end_receiving_file_path_validation_with_valid_task(path_ex
     with patch('wazuh.core.cluster.common.WazuhCommon.get_logger'):
         with pytest.raises(exception.WazuhClusterError, match=r'.* 3027 .*'):
             wazuh_common.end_receiving_file("valid_task_id /etc/passwd")
+
+
+@patch('os.remove')
+@patch('os.path.exists', return_value=True)
+def test_wazuh_common_end_receiving_file_no_deletion_on_invalid_task(path_exists_mock, os_remove_mock):
+    """Test that no file deletion occurs when task_id is not found (CVE fix)."""
+
+    with patch('wazuh.core.cluster.common.WazuhCommon.get_logger'):
+        # Attempt to use end_receiving_file with non-existent task_id
+        with pytest.raises(exception.WazuhClusterError, match=r'.* 3027 .*'):
+            wazuh_common.end_receiving_file("non_existent_task /var/wazuh-manager/api/configuration/security/rbac.db")
+
+        assert os_remove_mock.call_count == 0, "File deletion should not occur when task_id is not found"
 
 
 def test_wazuh_common_get_node():

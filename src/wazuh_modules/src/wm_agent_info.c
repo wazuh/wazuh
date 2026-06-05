@@ -196,16 +196,19 @@ agent_info_log_callback(const modules_log_level_t level, const char* log, __attr
     }
 }
 
-// Check if module is shutting down
+// True once a shutdown is requested. Checks both flags: wm_shutdown_requested
+// is set first, g_shutting_down later.
 static bool wm_agent_info_is_shutting_down()
 {
-    return g_shutting_down;
+    return g_shutting_down || wm_shutdown_requested;
 }
 
-// Agent-info message queue functions
+// Open the queue. StartMQPredicated re-checks the shutdown predicate during its
+// (now interruptible) backoff, so both finite and infinite attempts honor
+// shutdown within ~1 s; delegate directly.
 static int wm_agent_info_startmq(const char* key, short type, short attempts)
 {
-    return StartMQ(key, type, attempts);
+    return StartMQPredicated(key, type, attempts, wm_agent_info_is_shutting_down);
 }
 
 static int
@@ -398,7 +401,7 @@ static bool wm_agent_info_query_agentd_handshake(char* cluster_name,
 // Callback to send stateless messages
 static int wm_agent_info_send_stateless(const char* message)
 {
-    if (g_shutting_down)
+    if (wm_agent_info_is_shutting_down())
     {
         return -1;
     }
@@ -413,11 +416,17 @@ static int wm_agent_info_send_stateless(const char* message)
     if (SendMSGPredicated(
             g_agent_info_queue, message, WM_AGENT_INFO_LOGTAG, LOCALFILE_MQ, wm_agent_info_is_shutting_down) < 0)
     {
+        // Aborted by shutdown: exit quietly.
+        if (wm_agent_info_is_shutting_down())
+        {
+            return -1;
+        }
+
         merror("Error sending message to queue");
 
-        if ((g_agent_info_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0)
+        // A negative result here means shutdown, so exit quietly.
+        if ((g_agent_info_queue = wm_agent_info_startmq(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0)
         {
-            merror("Cannot restart agent-info message queue");
             return -1;
         }
 
@@ -425,7 +434,10 @@ static int wm_agent_info_send_stateless(const char* message)
         if (SendMSGPredicated(
                 g_agent_info_queue, message, WM_AGENT_INFO_LOGTAG, LOCALFILE_MQ, wm_agent_info_is_shutting_down) < 0)
         {
-            merror("Error sending message to queue after reconnection");
+            if (!wm_agent_info_is_shutting_down())
+            {
+                merror("Error sending message to queue after reconnection");
+            }
             return -1;
         }
     }
@@ -580,7 +592,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
 #endif
     g_shutting_down = 0;
 
-    mdebug1("Starting agent-info module.");
+    mdebug1("Module enabled.");
 
     if (!agent_info)
     {
@@ -589,11 +601,15 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     }
 
     // Initialize message queue
-    g_agent_info_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+    g_agent_info_queue = wm_agent_info_startmq(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
     if (g_agent_info_queue < 0)
     {
-        merror("Cannot initialize agent-info message queue.");
+        // A negative result here means shutdown, so don't log an error.
+        if (!wm_agent_info_is_shutting_down())
+        {
+            merror("Cannot initialize agent-info message queue.");
+        }
         return NULL;
     }
 
@@ -657,7 +673,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     char agent_groups[OS_SIZE_65536] = {0};
     bool handshake_success = false;
 
-    while (!handshake_success && !g_shutting_down)
+    while (!handshake_success && !wm_agent_info_is_shutting_down())
     {
         if (wm_agent_info_query_agentd_handshake(cluster_name,
                                                  sizeof(cluster_name),
@@ -686,11 +702,11 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         else
         {
             mdebug1("Handshake data not available yet, retrying in 1 second...");
-            sleep(1);
+            wm_sleep_interruptible(1);
         }
     }
 
-    if (g_shutting_down)
+    if (wm_agent_info_is_shutting_down())
     {
         mdebug1("Shutdown requested during handshake wait, exiting.");
         return NULL;
@@ -700,8 +716,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     // This call will populate the agent metadata and send it to the queue
     if (agent_info_start_ptr)
     {
-        mdebug1("Starting agent-info module...");
-
+        minfo(STARTUP_MSG, (int)getpid());
         agent_info_start_ptr(agent_info);
     }
     else

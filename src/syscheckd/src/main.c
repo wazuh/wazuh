@@ -162,15 +162,11 @@ int main(int argc, char **argv)
         }
     }
 
-    /* Rootcheck config */
-    if (rootcheck_init(test_config) == 0) {
-        syscheck.rootcheck = 1;
-    } else {
-        syscheck.rootcheck = 0;
-    }
-
     /* Exit if testing config */
     if (test_config) {
+        // Validate rootcheck config too; rootcheck_init() with test_config=1
+        // only parses and exits without emitting STARTUP_MSG.
+        rootcheck_init(test_config);
         exit(0);
     }
 
@@ -196,6 +192,17 @@ int main(int argc, char **argv)
     }
 
     startup_gate_wait_for_ready(ARGV0);
+
+    // Rootcheck initialization is deferred until after the startup hash
+    // gate releases. rootcheck_init() emits STARTUP_MSG ("wazuh-rootcheck:
+    // INFO: Started"); running it before the gate would make rootcheck
+    // appear as "Started" while every module is in fact still blocked
+    // waiting for the manager's merged.mg hash to validate (issue 36239).
+    if (rootcheck_init(0) == 0) {
+        syscheck.rootcheck = 1;
+    } else {
+        syscheck.rootcheck = 0;
+    }
 
     if (syscheck.rootcheck) {
         rootcheck_connect();

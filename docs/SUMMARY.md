@@ -11,6 +11,14 @@
 - [Build external dependencies](dev/build-external-dependencies.md)
 - [Test execution](dev/test-execution.md)
 
+# User Guides
+
+- [Overview](guide/README.md)
+- [Migration](guide/migration/README.md)
+  - [SCA policies from 4.x to 5.x](guide/migration/sca-policies-4x-to-5x.md)
+  - [CIS-CAT and OpenSCAP to SCA](guide/migration/ciscat-openscap-to-sca.md)
+  - [Mail Forwarding and Reporting to Dashboard Notifications](guide/migration/mail-forwarding-reporting.md)
+
 # Reference Manual
 
 - [Introduction](ref/README.md)
@@ -21,7 +29,8 @@
   - [Requirements](ref/getting-started/requirements.md)
   - [Packages](ref/getting-started/packages.md)
   - [Installation](ref/getting-started/installation.md)
-- [Configuration](ref/configuration.md)
+- [Configuration](ref/configuration/README.md)
+  - [Cluster](ref/configuration/cluster.md)
 - [Modules](ref/modules/README.md)
   - [Active Response](ref/modules/active-response/README.md)
     - [Architecture](ref/modules/active-response/architecture.md)
@@ -111,7 +120,8 @@
 - [Upgrade](ref/upgrade.md)
 - [Uninstall](ref/uninstall.md)
 - [Back Up and Restore](ref/backup-restore.md)
-- [Security](ref/security.md)
+- [Security](ref/security/README.md)
+  - [Cluster Security Model](ref/security/cluster-model.md)
 - [Performance](ref/performance.md)
 - [Glossary](ref/glossary.md)
 

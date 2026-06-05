@@ -4,6 +4,8 @@ project(wazuh-syscheckd C CXX)
 
 if(NOT DEFINED WAZUH_MAIN_PROJECT)
   get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
+  list(APPEND CMAKE_MODULE_PATH "${SRC_FOLDER}/cmake")
+  include(WazuhRpath)
 endif()
 
 include_directories(${SRC_FOLDER}/shared/include/)
@@ -169,13 +171,5 @@ elseif(NOT UNIT_TEST)
                                                    ${SRC_FOLDER}/build/bin)
   target_link_libraries(wazuh-syscheckd PRIVATE syscheckd_lib)
 
-  if(APPLE)
-    # macOS
-    set_target_properties(
-      wazuh-syscheckd PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE
-                                 INSTALL_RPATH "@executable_path/../lib")
-  else()
-    # Linux/Unix
-    string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath,$ORIGIN/../lib")
-  endif()
+  wazuh_set_runtime_rpath(wazuh-syscheckd)
 endif()

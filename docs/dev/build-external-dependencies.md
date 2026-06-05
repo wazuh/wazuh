@@ -93,6 +93,110 @@ libraries/
 
 Smoke build logs (`smoke-build-<target>-<arch>`) are also retained 14 days and are the first place to look when a downstream build starts pulling deps from source unexpectedly.
 
+## Dependency matrix
+
+Which dependency each platform/target actually builds and links, and how it is
+published. The download set per target lives in `EXTERNAL_RES` (`src/Makefile`)
+and the build/link guards in `src/external/CMakeLists.txt`; the two are kept in
+sync — a dep is downloaded for exactly the targets that compile it.
+
+Legend: ✔ built & linked · — not used. Targets: **La** Linux agent · **Lm**
+Linux manager/server · **Ma** macOS agent · **Wa** Windows agent (MinGW).
+
+### Universal (every platform and target)
+
+| Dependency | La | Lm | Ma | Wa | Published as |
+|------------|----|----|----|----|--------------|
+| cJSON | ✔ | ✔ | ✔ | ✔ | precompiled `.a` (source-buildable fallback) |
+| openssl | ✔ | ✔ | ✔ | ✔ | precompiled `.a` |
+| zlib | ✔ | ✔ | ✔ | ✔ | precompiled `.a` (bundles minizip on non-Windows) |
+| sqlite | ✔ | ✔ | ✔ | ✔ | precompiled `.a` (source-buildable fallback) |
+| libyaml | ✔ | ✔ | ✔ | ✔ | precompiled `.a` |
+| curl | ✔ | ✔ | ✔ | ✔ | precompiled `.a` |
+| libpcre2 | ✔ | ✔ | ✔ | ✔ | precompiled `.a` |
+| flatbuffers | ✔ | ✔ | ✔ | ✔ | precompiled `.a` + `flatc` |
+| nlohmann | ✔ | ✔ | ✔ | ✔ | **source-only (header)** |
+
+### Shared build-time dependency (downloaded on all targets, linked non-Windows)
+
+`shared.h` pulls in `shared/include/bzip2_op.h` → `<bzlib.h>` on every target (and
+the bzip2 unit-test wrapper needs the header too), so the source is downloaded
+everywhere — including the Windows agent. Only non-Windows targets link `libbz2`
+(`external/CMakeLists.txt` builds `ext_bzip2` under `NOT IS_WINDOWS`).
+
+| Dependency | La | Lm | Ma | Wa | Published as |
+|------------|----|----|----|----|--------------|
+| bzip2 | ✔ | ✔ | ✔ | ✔ | precompiled `.a` (linked on non-Windows only). Agent/server link it via `shared/src/bzip2_op.c`→`libwazuhext`; server also builds rocksdb (`WITH_BZ2`). |
+
+### Linux agent only
+
+Consumers are `data_provider`/sysinfo, `syscheckd` (whodata), `rootcheck` — all
+agent-only subdirectories. The server's `wazuh_modules` builds
+inventory_sync/vulnerability_scanner instead, so it links none of these.
+
+| Dependency | La | Lm | Ma | Wa | Published as |
+|------------|----|----|----|----|--------------|
+| audit-userspace | ✔ | — | — | — | precompiled `.a` (gated by `ENABLE_AUDIT`, agent-only) |
+| procps | ✔ | — | — | — | precompiled `.a` (source-buildable fallback) |
+| libdb | ✔ | — | — | — | precompiled `.a` |
+| popt | ✔ | — | — | — | precompiled `.a` (rpm dependency) |
+| lua | ✔ | — | — | — | precompiled `.a` (rpm dependency) |
+| rpm | ✔ | — | — | — | precompiled `.a` |
+| dbus | ✔ | — | — | — | precompiled `.a` |
+| libbpf-bootstrap | ✔ | — | — | — | **re-shipped prebuilt** (see caveats) |
+
+### macOS agent only
+
+| Dependency | La | Lm | Ma | Wa | Published as |
+|------------|----|----|----|----|--------------|
+| libplist | — | — | ✔ | — | precompiled `.a` |
+
+### Linux server (manager) only
+
+| Dependency | La | Lm | Ma | Wa | Published as |
+|------------|----|----|----|----|--------------|
+| cpython | — | ✔ | — | — | **re-shipped** (`5_builderpackage_embedded-python.yml`) |
+| libffi | — | ✔ | — | — | precompiled `.a` (cpython/ctypes) |
+| jemalloc | — | ✔ | — | — | precompiled `.so` |
+| rocksdb | — | ✔ | — | — | precompiled `.so` |
+| simdjson | — | ✔ | — | — | precompiled `.a` |
+| abseil-cpp | — | ✔ | — | — | precompiled `.a` |
+| re2 | — | ✔ | — | — | precompiled `.a` (needs abseil) |
+| spdlog | — | ✔ | — | — | precompiled `.a` |
+| yaml-cpp | — | ✔ | — | — | precompiled `.a` |
+| pugixml | — | ✔ | — | — | precompiled `.a` |
+| libmaxminddb | — | ✔ | — | — | precompiled `.a` |
+| protobuf | — | ✔ | — | — | precompiled `.a` |
+| date | — | ✔ | — | — | precompiled `.a` (needs curl) |
+| fmt | — | ✔ | — | — | precompiled `.a` |
+| minizip | — | ✔ | — | — | precompiled `.a` — **lives in the zlib tree**, built on the non-Windows legs (incl. agent) so it ships inside `zlib.tar.gz` |
+| rapidjson | — | ✔ | — | — | **source-only (header)** |
+| RxCpp | — | ✔ | — | — | **source-only (header)** |
+| taskflow | — | ✔ | — | — | **source-only (header)** |
+| concurrentqueue | — | ✔ | — | — | **source-only (header)** |
+| fast_float | — | ✔ | — | — | **source-only (header)** |
+| cpp-httplib | — | ✔ | — | — | **source-only (header)** |
+| geo_db | — | ✔ | — | — | data blob (MaxMind GeoLite2), sources bucket |
+| tzdata | — | ✔ | — | — | data (IANA tz), sources bucket |
+
+### Test frameworks (downloaded on all targets, compiled only into test binaries)
+
+These are *compiled* only when `UNIT_TEST`/`WAZUH_ENGINE_TEST` is set, but they are
+*downloaded* unconditionally: the deps step (`make deps TARGET=…`) does not pass
+`TEST=1`, and the unit-test CI consumes the same per-(os,arch) bundle, so gating
+the download behind a flag drops them from the bundle and breaks every test build.
+
+| Dependency | Downloaded for | Compiled into | Published as |
+|------------|----------------|---------------|--------------|
+| googletest | all targets | agent + server tests | precompiled `.a` |
+| benchmark | all targets | server tests | precompiled `.a` |
+
+> **Header-only deps** (nlohmann, cpp-httplib, rapidjson, RxCpp, taskflow,
+> concurrentqueue, fast_float) carry no compiled artifact — they belong only in
+> `libraries/sources/`. The generation snapshot still copies their (binary-free)
+> trees into `libraries/<os>/<arch>/`; pruning those redundant per-arch copies is
+> tracked as follow-up work for #36247.
+
 ## Publishing a new DEPS_VERSION — the safe order
 
 1. Open a branch, optionally edit `external_sources.sh` if you're changing a manifest URL.

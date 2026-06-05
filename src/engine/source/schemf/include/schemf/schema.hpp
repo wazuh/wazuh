@@ -88,6 +88,11 @@ public:
     inline json::Json::Type getJsonType(const DotPath& name) const override { return typeToJType(get(name).type()); }
 
     /**
+     * @copydoc ISchema::getJsonTypes
+     */
+    std::unordered_set<json::Json::Type> getJsonTypes(const DotPath& name) const override;
+
+    /**
      * @copydoc ISchema::hasField
      */
     bool hasField(const DotPath& name) const override;

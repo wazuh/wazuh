@@ -1,0 +1,41 @@
+{
+  "description": "Forbidden index in DataValue test: a DataValue whose 'index' does not match 'wazuh-states-*' must be silently filtered by the bulk loop. With no other DataValue accepted, the session must still close cleanly via the no-op path and emit a final end_ack(Status_Ok) instead of stranding the notify callback.",
+  "messages": [
+    {
+      "type": "start",
+      "data": {
+        "module": "inventory_sync",
+        "mode": 0,
+        "size": 1,
+        "agentid": "001",
+        "agentname": "forbidden-index-agent",
+        "agentversion": "5.0.0"
+      },
+      "description": "Start a ModuleFull session declaring 1 DataValue",
+      "delay": 0.5,
+      "expect_session_response": true
+    },
+    {
+      "type": "data",
+      "data": {
+        "seq": 0,
+        "operation": 0,
+        "id": "doc-forbidden",
+        "index": "forbidden-index",
+        "data": {"x": 42}
+      },
+      "description": "DataValue with a non wazuh-states-* index - must be skipped by the bulk loop",
+      "delay": 0.3,
+      "use_session_from_start": true
+    },
+    {
+      "type": "end",
+      "data": {},
+      "description": "End the session - bulk loop has nothing valid to send, but the Fix B path must still emit a final end_ack(Status_Ok)",
+      "delay": 0.5,
+      "use_session_from_start": true,
+      "expect_end_response": true,
+      "expected_status": "Status_Ok"
+    }
+  ]
+}

@@ -59,6 +59,16 @@ class SecurityConfigurationAssessment
         /// @copydoc IModule::Stop
         void Stop() ;
 
+        /// @brief Signals the module to stop and waits for in-flight operations
+        /// to finish, but does not release owned resources (e.g. m_dBSync).
+        /// Safe to call while the sync worker thread is still running.
+        void quiesce();
+
+        /// @brief Releases owned resources after the sync worker thread has exited.
+        /// Must be called only after all threads that may use those resources
+        /// (in particular the sync worker thread) have been joined.
+        void releaseResources();
+
         /// @copydoc IModule::Name
         const std::string& Name() const ;
 
@@ -159,8 +169,10 @@ class SecurityConfigurationAssessment
         std::atomic<bool> m_firstSyncCompleted {false};
 
         /// @brief In-memory flag set after each complete scan iteration, cleared at Run() startup.
-        /// Polled by the C sync thread (via get_scan_completed query) to avoid triggering the first
-        /// snapshot while the DB still contains "Not run" placeholders. Non-zero means completed.
+        /// Polled by the C sync thread (via get_scan_completed query) to avoid triggering the
+        /// first snapshot before any check has had a chance to run. Note that "Not run" rows
+        /// are additionally filtered out of the snapshot SELECT to handle timeouts, which
+        /// legitimately leave checks in that state past scan completion. Non-zero means completed.
         std::atomic<int64_t> m_scanCompleted {0};
 
         /// @brief Condition variable for pause/resume coordination
