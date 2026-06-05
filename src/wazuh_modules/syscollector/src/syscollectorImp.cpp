@@ -2302,7 +2302,7 @@ bool Syscollector::syncModule(Mode mode)
     }
     else
     {
-        m_logFunction(LOG_WARNING, "Syscollector synchronization process failed.");
+        m_logFunction(LOG_INFO, "Syscollector synchronization process failed.");
     }
 
     return success;
