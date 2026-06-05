@@ -11,6 +11,7 @@
 
 #include <json.hpp>
 
+#include <atomic>
 #include <condition_variable>
 #include <functional>
 #include <map>
@@ -62,14 +63,14 @@ class AgentInfoImpl
         /// Negative values are clamped to 0.
         void setFlushPollDelayMs(int delayMs)
         {
-            m_flushPollDelayMs = delayMs < 0 ? 0 : delayMs;
+            m_flushPollDelayMs = clampNonNegative(delayMs);
         }
 
         /// @brief Override the FIM pause-completion poll delay (milliseconds). Only used in unit tests
         /// to avoid real sleeps. Negative values are clamped to 0.
         void setPausePollDelayMs(int delayMs)
         {
-            m_pausePollDelayMs = delayMs < 0 ? 0 : delayMs;
+            m_pausePollDelayMs = clampNonNegative(delayMs);
         }
 
         /// @brief Initialize the synchronization protocol with only in-memory synchronization
@@ -121,6 +122,12 @@ class AgentInfoImpl
         /// @param agentMetadata Agent metadata JSON
         /// @param groups List of agent groups
         void updateMetadataProvider(const nlohmann::json& agentMetadata, const std::vector<std::string>& groups);
+
+        /// @brief Clamp a delay value to be non-negative (shared by the poll-delay setters).
+        static int clampNonNegative(int delayMs)
+        {
+            return delayMs < 0 ? 0 : delayMs;
+        }
 
         /// @brief Result of probing FIM for pause completion
         /// Deferred means FIM's first sync is still in progress: the caller must not
@@ -280,8 +287,10 @@ class AgentInfoImpl
         /// @brief Sync configuration: maximum events per second
         long m_syncMaxEps = 10;
 
-        /// @brief Flag to track if module has been stopped
-        bool m_stopped = false;
+        /// @brief Flag to track if module has been stopped.
+        /// Atomic so the poll loops can read it without holding m_mutex while
+        /// stop() writes it from another thread (avoids a data race).
+        std::atomic<bool> m_stopped{false};
 
         /// @brief Delay in milliseconds between flush completion polls (10 seconds in production).
         /// Overridable in unit tests to avoid real sleeps.
@@ -290,6 +299,11 @@ class AgentInfoImpl
         /// @brief Delay in milliseconds between FIM pause completion polls (1 second in production).
         /// Overridable in unit tests to avoid real sleeps.
         int m_pausePollDelayMs = 1000;
+
+        /// @brief True once the current deferral streak has logged its INFO line, so
+        /// repeated deferrals during the same first sync stay at DEBUG
+        /// Reset when coordination finally completes.
+        bool m_deferralLogged = false;
 
         /// @brief Condition variable for efficient sleep/wake mechanism
         std::condition_variable m_cv;

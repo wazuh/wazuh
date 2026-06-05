@@ -386,7 +386,8 @@ size_t syscom_handle_agent_info_query(char * json_command, char ** output) {
         // Call is_pause_completed function
         result = fim_execute_is_pause_completed();
 
-        int first_sync_completed = atomic_int_get(&syscheck.fim_first_sync_completed) ? 1 : 0;
+        int first_sync_completed = (!syscheck.enable_synchronization ||
+                                    atomic_int_get(&syscheck.fim_first_sync_completed)) ? 1 : 0;
 
         if (result == 1) {
             // Pause in progress

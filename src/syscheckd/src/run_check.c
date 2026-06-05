@@ -596,6 +596,7 @@ void start_daemon()
 
     if (syscheck.disabled) {
         handle_fim_disabled();
+        atomic_int_set(&syscheck.fim_first_sync_completed, 1);
         minfo("Syscheck is disabled. Exiting.");
         return;
     }
@@ -605,6 +606,7 @@ void start_daemon()
     if (!fim_has_configured_paths()) {
         mdebug1("Syscheck enabled but no monitored paths configured. Checking for orphaned data.");
         handle_all_paths_removed();
+        atomic_int_set(&syscheck.fim_first_sync_completed, 1);
         minfo("No monitored paths configured. FIM module exiting after DataClean.");
         return;
     }

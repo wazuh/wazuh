@@ -173,7 +173,7 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
     }
 
     // Initial delay before first run to allow other modules to start
-    m_cv.wait_for(lock, std::chrono::seconds(5), [this] { return m_stopped; });
+    m_cv.wait_for(lock, std::chrono::seconds(5), [this] { return m_stopped.load(); });
 
     // Run at least once
     do
@@ -240,7 +240,7 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
         if (shouldLoop && !m_stopped)
         {
             // Wait for the interval or until stop is signaled
-            m_cv.wait_for(lock, std::chrono::seconds(interval), [this] { return m_stopped; });
+            m_cv.wait_for(lock, std::chrono::seconds(interval), [this] { return m_stopped.load(); });
         }
 
     }
@@ -1149,7 +1149,7 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
     auto waitOrStopped = [this]() -> bool
     {
         std::unique_lock<std::mutex> lock(m_mutex);
-        return m_cv.wait_for(lock, std::chrono::milliseconds(m_pausePollDelayMs), [this] { return m_stopped; });
+        return m_cv.wait_for(lock, std::chrono::milliseconds(m_pausePollDelayMs), [this] { return m_stopped.load(); });
     };
 
     for (int attempt = 1; attempt <= MAX_PAUSE_POLL_ATTEMPTS; ++attempt)
@@ -1195,8 +1195,18 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
 
                 if (moduleName == FIM_NAME && !firstSyncCompleted)
                 {
-                    m_logFunction(LOG_INFO,
-                                  "Deferring coordination until FIM first sync completes, will retry next cycle");
+                    if (!m_deferralLogged)
+                    {
+                        m_logFunction(LOG_INFO,
+                                      "Deferring coordination until FIM first sync completes, will retry next cycle");
+                        m_deferralLogged = true;
+                    }
+                    else
+                    {
+                        m_logFunction(LOG_DEBUG,
+                                      "Still deferring coordination until FIM first sync completes");
+                    }
+
                     return PauseProbeResult::Deferred;
                 }
 
@@ -1673,6 +1683,8 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
         {
             m_logFunction(LOG_WARNING, "Sync protocol not available, skipping synchronization");
         }
+
+        m_deferralLogged = false;
 
         m_logFunction(LOG_INFO, "Synchronization coordination completed successfully");
         m_logFunction(LOG_DEBUG,
