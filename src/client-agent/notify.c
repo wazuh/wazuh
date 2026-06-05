@@ -75,6 +75,12 @@ void clear_merged_hash_cache() {
     os_free(g_shared_mg_file_hash);
 }
 
+#ifdef WAZUH_UNIT_TESTING
+void notify_reset_saved_time(void) {
+    g_saved_time = 0;
+}
+#endif
+
 /* Periodically send notification to server */
 void run_notify()
 {
