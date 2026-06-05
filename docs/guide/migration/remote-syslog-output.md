@@ -94,7 +94,7 @@ In Wazuh 4.x, you used `<syslog_output>` blocks with tags such as `<level>`, `<g
 Triggers act as threshold selectors (similar to legacy `<level>` intent), while actions define the outbound payload format.
 
 1. Add a trigger and set its condition.
-2. If migrating a specific severity tier, configure the condition to trigger when document count **IS ABOVE** `0`.
+2. If migrating a specific severity tier, configure the condition to trigger when document count **IS ABOVE** `0`, and add a data threshold filter for the desired severity keywords in `wazuh.rule.level` (for example, `informational`, `low`, `medium`, `high`, or `critical`).
 3. Under **Actions**, click **Add notification** and configure:
    - **Action name:** Provide a label (for example, `Send-Syslog-Payload`).
    - **Channel:** Select the custom webhook channel created in [Step 1](#1-setting-up-a-custom-webhook-notification-channel).
@@ -138,7 +138,7 @@ You can replicate this behavior with the following dashboard workflow:
 **Trigger setup:**
 
 - **Condition:** Document count **IS ABOVE** `0`
-- **Data threshold filter:** `wazuh.rule.level >= 10`
+- **Data threshold filter:** `wazuh.rule.level` is one of `informational` or `low` (adjust to the severity values present in your environment)
 
 **Action setup:**
 
