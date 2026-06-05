@@ -176,3 +176,92 @@ def test_filter_and_sort_bucket_files(bucket_file):
     # Check the order of the files
     assert filtered_sorted_files[0]["Key"] == "AWSLogs/xxxxxxx/Config/us-east-1/2024/05/18/some_log_file_1"
     assert filtered_sorted_files[1]["Key"] == "AWSLogs/xxxxxxx/Config/us-east-1/2024/05/19/some_log_file_2"
+
+
+def test_aws_config_bucket_format_created_date():
+    """Test '_format_created_date' returns date in DB_DATE_FORMAT ('%Y%m%d')."""
+    instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
+    assert instance._format_created_date('2023/1/1') == '20230101'
+
+
+def test_filter_bucket_files_yields_all_files_when_only_logs_after_is_none():
+    """Test '_filter_bucket_files' yields all files sorted by date when only_logs_after is None."""
+    instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
+    assert instance.only_logs_after is None
+
+    result = list(instance._filter_bucket_files(bucket_files))
+
+    assert len(result) == 3
+    assert result[0]["Key"] == "AWSLogs/xxxxxxx/Config/us-east-1/2024/05/17/some_log_file_3"
+    assert result[1]["Key"] == "AWSLogs/xxxxxxx/Config/us-east-1/2024/05/18/some_log_file_1"
+    assert result[2]["Key"] == "AWSLogs/xxxxxxx/Config/us-east-1/2024/05/19/some_log_file_2"
+
+
+@patch('builtins.print')
+@patch('aws_bucket.AWSBucket.reformat_msg')
+def test_aws_config_bucket_reformat_msg_security_groups_unexpected_type_prints_warning(mock_reformat, mock_print):
+    """reformat_msg prints WARNING when securityGroups is neither str, list, nor dict."""
+    event = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
+    event['aws']['configuration'] = {'securityGroups': 42}
+
+    instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
+    instance.reformat_msg(event)
+
+    mock_print.assert_called_once()
+    assert 'WARNING' in mock_print.call_args.args[0]
+
+
+@patch('builtins.print')
+@patch('aws_bucket.AWSBucket.reformat_msg')
+def test_aws_config_bucket_reformat_msg_availability_zones_unexpected_type_prints_warning(mock_reformat, mock_print):
+    """reformat_msg prints WARNING when availabilityZones is neither str, list, nor dict."""
+    event = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
+    event['aws']['configuration'] = {'availabilityZones': 42}
+
+    instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
+    instance.reformat_msg(event)
+
+    mock_print.assert_called_once()
+    assert 'WARNING' in mock_print.call_args.args[0]
+
+
+@patch('builtins.print')
+@patch('aws_bucket.AWSBucket.reformat_msg')
+def test_aws_config_bucket_reformat_msg_state_unexpected_type_prints_warning(mock_reformat, mock_print):
+    """reformat_msg prints WARNING when state is neither str nor dict."""
+    event = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
+    event['aws']['configuration'] = {'state': 42}
+
+    instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
+    instance.reformat_msg(event)
+
+    mock_print.assert_called_once()
+    assert 'WARNING' in mock_print.call_args.args[0]
+
+
+@patch('builtins.print')
+@patch('aws_bucket.AWSBucket.reformat_msg')
+def test_aws_config_bucket_reformat_msg_created_time_invalid_format_prints_warning(mock_reformat, mock_print):
+    """reformat_msg prints WARNING when createdTime string doesn't match the expected datetime format."""
+    event = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
+    event['aws']['configuration'] = {'createdTime': 'invalid-date-string'}
+
+    instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
+    instance.reformat_msg(event)
+
+    mock_print.assert_called_once()
+    assert 'WARNING' in mock_print.call_args.args[0]
+
+
+@patch('builtins.print')
+@patch('aws_bucket.AWSBucket.reformat_msg')
+def test_aws_config_bucket_reformat_msg_iam_instance_profile_unexpected_type_prints_warning(mock_reformat, mock_print):
+    """reformat_msg prints WARNING when iamInstanceProfile is neither str nor dict."""
+    event = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
+    event['aws']['configuration'] = {'iamInstanceProfile': 42}
+
+    instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
+    instance.reformat_msg(event)
+
+    mock_print.assert_called_once()
+    assert 'WARNING' in mock_print.call_args.args[0]
