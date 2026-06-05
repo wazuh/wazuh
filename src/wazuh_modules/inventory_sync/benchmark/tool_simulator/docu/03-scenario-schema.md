@@ -333,12 +333,14 @@ Run at startup, before any socket is opened:
 2. Exactly one of `total_agents` or `fleets` is present. `total_agents ≥ 1`. Every fleet has `name`, `agents ≥ 1`, and `lanes` is a non-empty subset of the lane names defined above.
 3. Every step has exactly one of `dump` XOR `kind`.
 4. `repeat_count ≥ 1`, `initial_delay ≥ 0`, `repeat_delay ≥ 0`, `max_eps ≥ 0`, `payload_size ≥ 0`, `data_size ≥ 0`, `offline_retry ≥ -1`, `offline_retry_delay ≥ 0`, `start_ack_timeout ≥ 0`, `end_ack_processing_timeout ≥ 0`, `end_ack_timeout ≥ 0`, `post_data_delay ≥ -1`, `ack_timeout_retry ≥ -1`, `ack_timeout_retry_delay ≥ 0`.
+   - **Engine-only**: `repeat_count` must be exactly `1` (engine controls its own iteration via `loop` + `duration`). `duration ≥ 0` (`0` = no time limit).
 5. `repeat_until ≥ 0`, `drain_timeout ≥ 0`, `post_run_grace ≥ 0`, `parallel_agents ≥ 0`.
 6. `session_type ∈ {delta, modulecheck, dataclean}` if set; default is the value from `defaults.session_type`, fallback `delta`.
 7. `option ∈ {Sync, VDFirst, VDSync}` if set.
 8. Dump path resolution order: relative to the scenario file's directory, then relative to the benchmark directory. Reject with a clear error if neither exists.
 9. `auto_resync` is meaningful only when `session_type == "modulecheck"`. Other combinations SHOULD warn but not abort.
 10. Reject scenarios that define `total_agents` and `fleets` simultaneously (no implicit override).
+11. **Engine sibling check** (cross-fleet): if a fleet uses an engine step with `run_while_siblings_active: true`, at least one lane assigned to that fleet must contain at least one non-engine step. Otherwise the engine source would never see a sibling decrement and could only exit on `duration` or `ctx`. See [12-engine-event-streams.md](./12-engine-event-streams.md#validation) for the rationale.
 
 ## Typical ranges observed in committed scenarios
 

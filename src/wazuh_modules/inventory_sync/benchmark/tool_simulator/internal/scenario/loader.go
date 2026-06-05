@@ -90,6 +90,15 @@ func Load(path string, opts LoaderOptions) (*Scenario, error) {
 		return nil, err
 	}
 
+	// Cross-fleet validation: every fleet that uses an engine step with
+	// `run_while_siblings_active: true` must include at least one lane
+	// with at least one non-engine step. Otherwise the engine would
+	// never see any sibling and would terminate immediately (or wait
+	// forever with no decrementer), neither of which is useful.
+	if err := validateEngineSiblings(fleets, lanes, abs); err != nil {
+		return nil, err
+	}
+
 	total := 0
 	for _, f := range fleets {
 		total += f.Agents
@@ -130,6 +139,53 @@ func Load(path string, opts LoaderOptions) (*Scenario, error) {
 		Behavior:    beh,
 		FilePath:    abs,
 	}, nil
+}
+
+// laneHasNonEngineStep reports whether the lane contains at least one
+// step whose Kind is not SourceKindEngine. Used by the engine-siblings
+// validation: an engine step with run_while_siblings_active needs a
+// peer that can decrement the siblings counter on completion.
+func laneHasNonEngineStep(steps []Step) bool {
+	for _, s := range steps {
+		if s.Kind != SourceKindEngine {
+			return true
+		}
+	}
+	return false
+}
+
+// validateEngineSiblings rejects scenarios where a fleet has at least
+// one engine step with run_while_siblings_active=true but no lane that
+// would ever decrement the siblings counter (all-engine fleet).
+func validateEngineSiblings(fleets []Fleet, lanes map[string][]Step, scenarioPath string) error {
+	for _, f := range fleets {
+		// Does this fleet use any engine step with run_while_siblings_active?
+		var siblingDependentSteps []string // "lane[idx]" identifiers for the error message
+		hasNonEngineLane := false
+		for _, laneName := range f.Lanes {
+			steps, ok := lanes[laneName]
+			if !ok {
+				continue
+			}
+			if laneHasNonEngineStep(steps) {
+				hasNonEngineLane = true
+			}
+			for _, s := range steps {
+				if s.Kind == SourceKindEngine && s.EngineRunWhileSiblings {
+					siblingDependentSteps = append(siblingDependentSteps,
+						fmt.Sprintf("lanes[%q][%d]", laneName, s.StepIdx))
+				}
+			}
+		}
+		if len(siblingDependentSteps) > 0 && !hasNonEngineLane {
+			return fmt.Errorf(
+				"scenario %s: fleet %q uses engine step(s) %v with run_while_siblings_active=true "+
+					"but has no non-engine lane on the same agent — the siblings counter would "+
+					"never be decremented",
+				scenarioPath, f.Name, siblingDependentSteps)
+		}
+	}
+	return nil
 }
 
 func mergeDefaults(defaults, step map[string]any) map[string]any {
@@ -434,6 +490,13 @@ func resolveEngineStep(cfg map[string]any, engineRef, scenarioDir, benchDir, lan
 	if step.RepeatCount < 1 {
 		return step, fmt.Errorf("scenario %s: %s.repeat_count must be >= 1", scenarioPath, ctx)
 	}
+	// Engine steps control their own iteration via `loop` + `duration`;
+	// repeat_count > 1 wouldn't compose cleanly (per-iteration deadlines,
+	// nested loop semantics). Reject upfront for clarity.
+	if step.RepeatCount > 1 {
+		return step, fmt.Errorf("scenario %s: %s.repeat_count must be 1 for engine steps (use `loop` and `duration` instead)",
+			scenarioPath, ctx)
+	}
 	if v, ok := cfg["initial_delay"]; ok && v != nil {
 		step.InitialDelay = asFloat(v)
 	}
@@ -446,6 +509,15 @@ func resolveEngineStep(cfg map[string]any, engineRef, scenarioDir, benchDir, lan
 	if step.RepeatDelay < 0 {
 		return step, fmt.Errorf("scenario %s: %s.repeat_delay must be >= 0", scenarioPath, ctx)
 	}
+
+	// New termination knobs (whichever-first composition).
+	step.EngineDuration = asFloatDefault(cfg["duration"], 0)
+	if step.EngineDuration < 0 {
+		return step, fmt.Errorf("scenario %s: %s.duration must be >= 0 (got %g)",
+			scenarioPath, ctx, step.EngineDuration)
+	}
+	step.EngineRunWhileSiblings = asBool(cfg["run_while_siblings_active"], false)
+
 	return step, nil
 }
 

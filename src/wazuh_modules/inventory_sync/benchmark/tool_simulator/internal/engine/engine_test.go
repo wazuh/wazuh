@@ -91,7 +91,7 @@ func TestEngineSource_SingleFile_NoLoop(t *testing.T) {
 		EngineLoop:     false,
 		MaxEPS:         10000,
 	}
-	src := New(step)
+	src := New(step, nil)
 	c := metrics.New()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -186,7 +186,7 @@ func TestEngineSource_Loop_RewindsOnEOF(t *testing.T) {
 		EngineLoop:     true,
 		MaxEPS:         200,
 	}
-	src := New(step)
+	src := New(step, nil)
 	cm := metrics.New()
 	ctx, cancel := context.WithTimeout(context.Background(), 600*time.Millisecond)
 	defer cancel()

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/wazuh/wazuh-modules/inventory_sync/benchmark/internal/agent"
@@ -208,6 +209,22 @@ func shouldRepeat(deadline time.Time) bool {
 
 func runIteration(ctx context.Context, conn *agent.Conn, lanes []string, scn *scenario.Scenario,
 	c *metrics.Counters, cache payloadCache) {
+	// Per-agent counter of non-engine lanes still in progress. Engine
+	// sources opted into run_while_siblings_active observe this counter
+	// and terminate once it reaches zero. We pre-increment for every
+	// non-engine lane BEFORE launching any goroutine so that engine
+	// lanes can never race ahead and see counter=0 spuriously.
+	var siblingsActive atomic.Int32
+	for _, laneName := range lanes {
+		steps, ok := scn.Lanes[laneName]
+		if !ok {
+			continue
+		}
+		if laneHasNonEngineStep(steps) {
+			siblingsActive.Add(1)
+		}
+	}
+
 	var wg sync.WaitGroup
 	for _, laneName := range lanes {
 		laneName := laneName
@@ -215,19 +232,35 @@ func runIteration(ctx context.Context, conn *agent.Conn, lanes []string, scn *sc
 		if !ok {
 			continue
 		}
+		isNonEngine := laneHasNonEngineStep(steps)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			runLane(ctx, conn, laneName, steps, c, cache)
+			if isNonEngine {
+				defer siblingsActive.Add(-1)
+			}
+			runLane(ctx, conn, laneName, steps, c, cache, &siblingsActive)
 		}()
 	}
 	wg.Wait()
 }
 
+// laneHasNonEngineStep returns true if the lane contains at least one
+// non-engine step. Mirrors the loader-side check used for validation
+// of run_while_siblings_active.
+func laneHasNonEngineStep(steps []scenario.Step) bool {
+	for _, s := range steps {
+		if s.Kind != scenario.SourceKindEngine {
+			return true
+		}
+	}
+	return false
+}
+
 func runLane(ctx context.Context, conn *agent.Conn, laneName string, steps []scenario.Step,
-	c *metrics.Counters, cache payloadCache) {
+	c *metrics.Counters, cache payloadCache, siblings *atomic.Int32) {
 	for _, step := range steps {
-		if err := runStep(ctx, conn, laneName, step, c, cache); err != nil {
+		if err := runStep(ctx, conn, laneName, step, c, cache, siblings); err != nil {
 			if ctx.Err() != nil {
 				return
 			}
@@ -240,9 +273,9 @@ func runLane(ctx context.Context, conn *agent.Conn, laneName string, steps []sce
 }
 
 func runStep(ctx context.Context, conn *agent.Conn, laneName string, step scenario.Step,
-	c *metrics.Counters, cache payloadCache) error {
+	c *metrics.Counters, cache payloadCache, siblings *atomic.Int32) error {
 
-	src := buildSource(step, cache)
+	src := buildSource(step, cache, siblings)
 	if src == nil {
 		return fmt.Errorf("nil source")
 	}
@@ -275,9 +308,9 @@ func runStep(ctx context.Context, conn *agent.Conn, laneName string, step scenar
 	return nil
 }
 
-func buildSource(step scenario.Step, cache payloadCache) source.Source {
+func buildSource(step scenario.Step, cache payloadCache, siblings *atomic.Int32) source.Source {
 	if step.Kind == scenario.SourceKindEngine {
-		return engine.New(step)
+		return engine.New(step, siblings)
 	}
 	info := cache[payloadKey{step.Lane, step.StepIdx}]
 	if info == nil {

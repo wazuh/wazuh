@@ -25,6 +25,12 @@ func TestLoadAllCommittedScenarios(t *testing.T) {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 			continue
 		}
+		// Negative test scenarios (those that must fail to load) are
+		// named with the "_invalid" infix and verified by dedicated
+		// "must reject" tests below.
+		if strings.Contains(e.Name(), "_invalid") {
+			continue
+		}
 		full := filepath.Join(scnDir, e.Name())
 		s, err := Load(full, LoaderOptions{BenchDir: benchDir})
 		if err != nil {
@@ -43,6 +49,77 @@ func TestLoadAllCommittedScenarios(t *testing.T) {
 		t.Fatal("no scenarios were loaded")
 	}
 	t.Logf("loaded %d committed scenarios OK", loaded)
+}
+
+// TestLoadEngineSiblingsRequiresNonEngineLane covers the negative
+// scenario shipped at scenarios/engine_invalid_all_engine.json: a
+// fleet with only engine lanes (one of which has
+// run_while_siblings_active=true) must be rejected by the loader.
+func TestLoadEngineSiblingsRequiresNonEngineLane(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	benchDir := filepath.Clean(filepath.Join(wd, "..", "..", ".."))
+	full := filepath.Join(benchDir, "scenarios", "engine_invalid_all_engine.json")
+	_, err = Load(full, LoaderOptions{BenchDir: benchDir})
+	if err == nil {
+		t.Fatal("expected Load to reject scenario, got nil error")
+	}
+	if !strings.Contains(err.Error(), "run_while_siblings_active") {
+		t.Fatalf("expected error mentioning run_while_siblings_active, got: %v", err)
+	}
+}
+
+// TestLoadEngineRejectsRepeatCount: engine steps with repeat_count > 1
+// must be rejected at load time (the engine controls iteration via
+// `loop` and `duration`).
+func TestLoadEngineRejectsRepeatCount(t *testing.T) {
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "x.log")
+	_ = os.WriteFile(logPath, []byte("x\n"), 0644)
+	scn := `{
+  "lanes": {
+    "l": [ { "engine": "x.log", "max_eps": 10, "repeat_count": 3 } ]
+  },
+  "total_agents": 1
+}`
+	p := filepath.Join(dir, "s.json")
+	_ = os.WriteFile(p, []byte(scn), 0644)
+	_, err := Load(p, LoaderOptions{BenchDir: dir})
+	if err == nil || !strings.Contains(err.Error(), "repeat_count must be 1") {
+		t.Fatalf("expected rejection of repeat_count>1, got: %v", err)
+	}
+}
+
+// TestLoadEngineDurationDefaultsAndOverride: duration defaults to 0
+// (no time limit) and can be set per-step.
+func TestLoadEngineDurationAndSiblings(t *testing.T) {
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "x.log")
+	_ = os.WriteFile(logPath, []byte("x\n"), 0644)
+	scn := `{
+  "lanes": {
+    "l": [
+      { "engine": "x.log", "max_eps": 10, "duration": 7.5, "run_while_siblings_active": true },
+      { "kind": "fim_file" }
+    ]
+  },
+  "total_agents": 1
+}`
+	p := filepath.Join(dir, "s.json")
+	_ = os.WriteFile(p, []byte(scn), 0644)
+	s, err := Load(p, LoaderOptions{BenchDir: dir})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	step := s.Lanes["l"][0]
+	if step.EngineDuration != 7.5 {
+		t.Errorf("EngineDuration = %v, want 7.5", step.EngineDuration)
+	}
+	if !step.EngineRunWhileSiblings {
+		t.Errorf("EngineRunWhileSiblings = false, want true")
+	}
 }
 
 func TestLoadEngineStep(t *testing.T) {

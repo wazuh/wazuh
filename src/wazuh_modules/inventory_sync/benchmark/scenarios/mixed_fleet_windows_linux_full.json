@@ -1,5 +1,5 @@
 {
-  "name": "mixed_fleet_windows_linux",
+  "name": "mixed_fleet_windows_linux_full",
   "description": "Two realistic Windows/Linux fleets. Each agent starts four inventory_sync lanes in parallel: FIM first scan, SCA full sync, syscollector Sync, and VD first scan. After the initial lane step, FIM, SCA, syscollector, and VD Sync deltas are replayed repeatedly to keep pressure on the manager.",
   "defaults": {
     "session_type": "delta",
@@ -88,11 +88,21 @@
         "repeat_delay": 5,
         "initial_delay": 10
       }
+    ],
+    "engine": [
+      {
+        "engine": "sample_payloads/engine/syslog.log",
+        "location": "syslog",
+        "max_eps": 200,
+        "loop": true,
+        "duration": 300.0,
+        "run_while_siblings_active": true
+      }
     ]
   },
   "fleets": [
-    { "name": "windows", "agents": 50, "lanes": ["fim_windows", "sca_windows", "syscollector_windows", "vd_windows"] },
-    { "name": "linux",   "agents": 50, "lanes": ["fim_linux", "sca_linux", "syscollector_linux", "vd_linux"] }
+    { "name": "windows", "agents": 50, "lanes": ["fim_windows", "sca_windows", "syscollector_windows", "vd_windows", "engine"] },
+    { "name": "linux",   "agents": 50, "lanes": ["fim_linux", "sca_linux", "syscollector_linux", "vd_linux", "engine"] }
   ],
   "parallel_agents": 0,
   "repeat_until": 0,

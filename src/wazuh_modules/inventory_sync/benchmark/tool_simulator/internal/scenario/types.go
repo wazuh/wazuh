@@ -125,6 +125,20 @@ type Step struct {
 	EngineLocation string
 	EngineLoop     bool
 
+	// EngineDuration is the upper-bound run time for the engine source,
+	// in seconds. 0 (default) = no time limit. When >0, engine.Run()
+	// returns nil as soon as the deadline elapses, regardless of how
+	// much file content is left. Composes with EngineRunWhileSiblings
+	// via whichever-fires-first.
+	EngineDuration float64
+
+	// EngineRunWhileSiblings, when true, makes the engine source
+	// terminate as soon as ALL non-engine lanes on the same agent have
+	// completed (their goroutines returned from runLane). The loader
+	// rejects scenarios where a fleet using a step with this flag has
+	// no non-engine lane — see scenario/loader.go for the validation.
+	EngineRunWhileSiblings bool
+
 	// Common pacing/repeat.
 	MaxEPS       int
 	RepeatCount  int

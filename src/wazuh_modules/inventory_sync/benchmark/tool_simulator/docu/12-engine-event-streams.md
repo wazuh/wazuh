@@ -44,19 +44,54 @@ A step with an `engine` key is mutually exclusive with `kind` and `dump`:
   "engine":   "sample_payloads/engine/syslog.log",
   "location": "syslog",
   "max_eps":  500,
-  "loop":     true
+  "loop":     true,
+  "duration": 5.0,
+  "run_while_siblings_active": true
 }
 ```
 
-| Field      | Required | Default                         | Description                                                                             |
-| ---------- | -------- | ------------------------------- | --------------------------------------------------------------------------------------- |
-| `engine`   | yes      | —                               | Path to the input text file. Resolved relative to the scenario file, then the benchmark dir. |
-| `max_eps`  | yes      | —                               | Per-stream rate cap. `0` is rejected for engine streams (there is no point in unbounded). |
-| `location` | no       | basename(`engine`) sans ext     | Logical location string sent as the `<location>` field of the frame.                    |
-| `loop`     | no       | `true`                          | At EOF: rewind and continue (`true`) or end the iteration (`false`).                    |
+| Field                       | Required | Default                         | Description                                                                                 |
+| --------------------------- | -------- | ------------------------------- | ------------------------------------------------------------------------------------------- |
+| `engine`                    | yes      | —                               | Path to the input text file. Resolved relative to the scenario file, then the benchmark dir. |
+| `max_eps`                   | yes      | —                               | Per-stream rate cap. `0` is rejected for engine streams (there is no point in unbounded).   |
+| `location`                  | no       | basename(`engine`) sans ext     | Logical location string sent as the `<location>` field of the frame.                        |
+| `loop`                      | no       | `true`                          | At EOF: rewind and continue (`true`) or end the iteration (`false`).                        |
+| `duration`                  | no       | `0` (no limit)                  | Upper bound on the engine step's wall-clock runtime, in seconds. `0` = no limit. See termination semantics below. |
+| `run_while_siblings_active` | no       | `false`                         | When `true`, the engine source terminates as soon as every non-engine lane on the same agent finishes. Requires at least one non-engine lane in the fleet — see Validation. |
 
-Repeat controls (`repeat_count`, `initial_delay`, `repeat_delay`) apply the
-same way as inventory_sync steps.
+`initial_delay` and `repeat_delay` apply the same way as inventory_sync
+steps. **`repeat_count` is restricted to `1` for engine steps** — the engine
+controls its own iteration through `loop` + `duration`, and nesting both
+mechanisms would produce ambiguous deadlines.
+
+### Termination semantics
+
+An engine step's `Run()` returns once **any** of the following fires
+(whichever-first composition). The exit reason is recorded in a one-line
+info log at the end of the step:
+
+```
+engine step terminated: file=<basename> location=<loc> reason=<reason> events_sent=<N> elapsed=<T>s
+```
+
+| reason       | Trigger                                                                                          |
+| ------------ | ------------------------------------------------------------------------------------------------ |
+| `eof`        | End-of-file was hit and `loop=false`.                                                            |
+| `duration`   | The `duration` deadline elapsed (only set if `duration > 0`).                                    |
+| `siblings`   | The per-agent non-engine sibling counter dropped to 0 (only set if `run_while_siblings_active`). |
+| `ctx`        | The outer context (SIGINT / `repeat_until` / orchestrator cancel) was cancelled.                 |
+
+The two new terminators are designed to compose: a step can set both
+`duration` and `run_while_siblings_active` — `duration` then acts as a
+safety upper bound in case siblings somehow never finish. When neither is
+set and `loop=true`, the step runs until `ctx` is cancelled (the legacy
+behavior).
+
+The sibling counter is **per-agent, per-iteration**: a lane is counted
+as a sibling iff it contains at least one non-engine step. The runner
+pre-increments the counter before launching any lane goroutine, and
+each non-engine lane decrements it on exit via `defer`. Engine sources
+that opted in poll the counter every 20 events (cheap atomic load).
 
 ### Forbidden fields
 
@@ -66,6 +101,17 @@ is set:
 `session_type`, `sync_mode`, `data_size`, `use_databatch`, `retransmit`,
 `payload_size`, `pad_field`, `modulecheck_checksum`, `auto_resync`,
 `module`, `index`, `option`.
+
+### Validation
+
+In addition to the field-level rules above, the loader rejects:
+
+- `repeat_count > 1` on an engine step (use `loop` + `duration` instead).
+- `duration < 0`.
+- A fleet that uses an engine step with `run_while_siblings_active=true`
+  but contains no lane with at least one non-engine step. Without a
+  sibling, the counter would either start at 0 (engine exits before
+  emitting anything) or never decrement, neither of which is useful.
 
 ## Concurrency model
 
@@ -78,6 +124,11 @@ is set:
   per source instance, burst=1).
 - SIGINT / `ctx.Done()` interrupts the read loop, the limiter's `Wait`,
   and the write at every iteration boundary.
+- Each agent's `runIteration` owns one `atomic.Int32` siblings counter.
+  Lane goroutines that include at least one non-engine step increment
+  the counter before launching and decrement it on exit. Engine sources
+  with `run_while_siblings_active` receive a pointer to that counter and
+  read it every 20 events.
 
 ## Metrics
 
@@ -104,6 +155,33 @@ totals.
   `engine_events_sent > 200 000`, no decoder errors. tcpdump capture
   decoded out-of-band shows engine frames and inventory_sync frames
   interleaved on the same TCP stream without corruption.
+- **AC-M (duration)**: `scenarios/engine_duration_only.json` finishes in
+  `5 ± 0.5 s` with `engine_events_sent ≈ 2500` (500 EPS × 5 s) and exactly
+  one `engine step terminated: ... reason=duration ...` log line per
+  agent.
+- **AC-N (eof)**: `scenarios/engine_eof_short_file.json` finishes in
+  `< 1 s` with `engine_events_sent = 50` (matches `short.log` line
+  count), `engine_files_eof_wrap = 0` (loop=false), and `reason=eof`.
+- **AC-O (siblings)**: `scenarios/engine_while_siblings_inventory.json`
+  finishes when the FIM lane completes (≈ 3–4 s); the engine source
+  logs `reason=siblings` and `engine_events_sent` is consistent with
+  500 EPS × elapsed.
+- **AC-P (whichever-first)**:
+  `scenarios/engine_duration_AND_siblings.json` finishes with
+  `reason=siblings` (siblings beats the 30 s `duration` safety net);
+  `scenarios/engine_duration_safety_net.json` finishes with
+  `reason=duration` at ≈ 20 s while the FIM lane keeps streaming
+  afterwards (overall run lasts ≈ FIM duration).
+- **AC-Q (load)**: `scenarios/engine_fleet_load.json` (50 agents, 1
+  engine + 3 inventory lanes each) completes all 150 inventory
+  sessions, no `sessions_failed`, `engine_events_sent` proportional to
+  per-agent inventory elapsed × 200 EPS, and every engine step logs a
+  termination line (one per agent per iteration).
+- **AC-R (validation)**:
+  `scenarios/engine_invalid_all_engine.json` is rejected at load time
+  with the substring `run_while_siblings_active` in the error message.
+  Likewise, a scenario with `repeat_count > 1` on an engine step is
+  rejected with the substring `repeat_count must be 1`.
 
 ## Example: end-to-end frame chain
 
@@ -131,8 +209,17 @@ a Go round-trip with this exact payload semantic-matches the Python sender.
 
 | Path                                                                | Role                                                                  |
 | ------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| [`internal/engine/source.go`](../internal/engine/source.go)          | `engine.Source` — file reader + EPS loop + frame writer               |
+| [`internal/engine/source.go`](../internal/engine/source.go)          | `engine.Source` — file reader + EPS loop + frame writer + terminators |
 | [`internal/engine/engine_test.go`](../internal/engine/engine_test.go)| Integration test against a fake remoted server                       |
+| [`internal/runner/runner.go`](../internal/runner/runner.go)          | Sibling counter wiring (`runIteration` → `runLane` → `engine.New`)    |
 | [`sample_payloads/engine/syslog.log`](../../sample_payloads/engine/syslog.log) | 1 000-line fixture used by smoke scenarios                       |
-| [`scenarios/engine_smoke.json`](../../scenarios/engine_smoke.json)      | Minimal 1-agent / 10-second test                                      |
+| [`sample_payloads/engine/short.log`](../../sample_payloads/engine/short.log)   | 50-line fixture for the EOF-before-duration test                 |
+| [`scenarios/engine_smoke.json`](../../scenarios/engine_smoke.json)      | Minimal 1-agent / 10-second test (no terminators set)                 |
 | [`scenarios/engine_burst_mixed.json`](../../scenarios/engine_burst_mixed.json) | Mixed engine+inventory_sync workload                            |
+| [`scenarios/engine_duration_only.json`](../../scenarios/engine_duration_only.json) | Duration-only test (Mode A in isolation)                          |
+| [`scenarios/engine_eof_short_file.json`](../../scenarios/engine_eof_short_file.json) | EOF wins over `duration` upper bound                            |
+| [`scenarios/engine_while_siblings_inventory.json`](../../scenarios/engine_while_siblings_inventory.json) | Mode B in isolation: engine stops when single inventory lane finishes |
+| [`scenarios/engine_duration_AND_siblings.json`](../../scenarios/engine_duration_AND_siblings.json) | Both terminators set; whichever-first: siblings win              |
+| [`scenarios/engine_duration_safety_net.json`](../../scenarios/engine_duration_safety_net.json) | Both terminators; duration trips first to cap engine while inventory keeps running |
+| [`scenarios/engine_invalid_all_engine.json`](../../scenarios/engine_invalid_all_engine.json) | Negative scenario: loader must reject (all-engine fleet + run_while_siblings_active) |
+| [`scenarios/engine_fleet_load.json`](../../scenarios/engine_fleet_load.json) | Mode B at scale: 50 agents × engine + 3 inventory lanes each       |
