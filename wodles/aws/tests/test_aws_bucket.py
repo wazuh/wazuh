@@ -1421,3 +1421,20 @@ def test_custom_bucket_load_information_handles_macie_location_pattern(mock_wazu
 
     # The function should return a list (even if empty due to no 'detail' key)
     assert isinstance(result, list)
+
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_custom_bucket_load_information_reraises_value_error_when_pattern_not_found(mock_wazuh_aws_database, mock_sts):
+    """load_information_from_file re-raises ValueError when macie_location_pattern does not match."""
+    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
+    # Invalid JSON that does NOT contain zero-padded lat/lon → pattern won't match → raise err
+    raw = '{invalid_json_no_macie_pattern}'
+    import io
+    mock_file = io.StringIO(raw)
+
+    with patch.object(instance, 'decompress_file') as mock_decompress:
+        mock_decompress.return_value.__enter__ = lambda s: mock_file
+        mock_decompress.return_value.__exit__ = MagicMock(return_value=False)
+        with pytest.raises(ValueError):
+            instance.load_information_from_file('fake_key')
