@@ -34,10 +34,52 @@
         ".github/test_modules_manager.json",
         ".github/workflows/.python-version-it",
         ".github/actions/reinstall_cmake/**",
+        "src/config/src/wazuh_db-config.c",
+        "src/config/include/wazuh_db-config.h",
         "src/wazuh_db/**",
         "src/Makefile",
         "tests/integration/conftest.py",
         "tests/integration/test_wazuh_db/**"
+      ]
+    },
+    {
+      "name": "remoted-tier-0-1",
+      "suite_type": "manager_install",
+      "pytest_target": "test_remoted/",
+      "tiers": ["0 1"],
+      "timeout_minutes": 60,
+      "paths": [
+        ".github/workflows/5_builderpackage_manager-multiples.yml",
+        ".github/workflows/5_testintegration_manager.yml",
+        ".github/test_modules_manager.json",
+        ".github/workflows/.python-version-it",
+        ".github/actions/reinstall_cmake/**",
+        "src/config/src/remote-config.c",
+        "src/config/include/remote-config.h",
+        "src/remoted/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_remoted/**"
+      ]
+    },
+    {
+      "name": "remoted-tier-2",
+      "suite_type": "manager_install",
+      "pytest_target": "test_remoted/",
+      "tiers": ["2"],
+      "timeout_minutes": 60,
+      "paths": [
+        ".github/workflows/5_builderpackage_manager-multiples.yml",
+        ".github/workflows/5_testintegration_manager.yml",
+        ".github/test_modules_manager.json",
+        ".github/workflows/.python-version-it",
+        ".github/actions/reinstall_cmake/**",
+        "src/config/src/remote-config.c",
+        "src/config/include/remote-config.h",
+        "src/remoted/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_remoted/**"
       ]
     },
     {
@@ -60,6 +102,7 @@
       "suite_type": "manager_install",
       "pytest_target": "test_authd/",
       "tiers": ["0 1"],
+      "timeout_minutes": 60,
       "paths": [
         ".github/workflows/5_builderpackage_manager-multiples.yml",
         ".github/workflows/5_testintegration_manager.yml",
@@ -70,7 +113,7 @@
         "src/config/include/authd-config.h",
         "src/os_auth/**",
         "src/Makefile",
-        "tests/integration/conftest.py/",
+        "tests/integration/conftest.py",
         "tests/integration/test_authd/**"
       ]
     }

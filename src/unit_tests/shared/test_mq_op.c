@@ -545,7 +545,7 @@ void test_SendBinaryMSGAction_socket_error(void **state) {
     expect_value(__wrap_OS_SendUnix, size, 19);
     will_return(__wrap_OS_SendUnix, OS_SOCKTERR);
 
-    expect_string(__wrap__merror, formatted_msg, "socketerr (not available).");
+    expect_string(__wrap__mdebug1, formatted_msg, "socketerr (not available).");
 
     int ret = SendBinaryMSG(queue, payload, payload_len, "location", 's');
 

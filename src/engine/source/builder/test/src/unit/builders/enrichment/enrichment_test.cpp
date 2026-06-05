@@ -1,5 +1,5 @@
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include <memory>
 #include <string>
@@ -25,19 +25,18 @@ cm::store::dataType::Policy makePolicy(const std::string& originSpace = "testspa
                                        bool indexDiscardedEvents = false,
                                        bool cleanupDecoderVariables = true)
 {
-    return cm::store::dataType::Policy(
-        "Test Policy",                                                       // title
-        true,                                                                // enabled
-        "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",                            // rootDecoder
-        {"b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e"},                           // integrations
-        {},                                                                  // filters
-        {},                                                                  // enrichments
-        {},                                                                  // outputs
-        originSpace,                                                         // originSpace
-        "",                                                                  // hash
-        false,                                                               // indexUnclassifiedEvents
-        indexDiscardedEvents,                                                // indexDiscardedEvents
-        cleanupDecoderVariables                                              // cleanupDecoderVariables
+    return cm::store::dataType::Policy("Test Policy",                            // title
+                                       true,                                     // enabled
+                                       "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",   // rootDecoder
+                                       {"b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e"}, // integrations
+                                       {},                                       // filters
+                                       {},                                       // enrichments
+                                       {},                                       // outputs
+                                       originSpace,                              // originSpace
+                                       "",                                       // hash
+                                       false,                                    // indexUnclassifiedEvents
+                                       indexDiscardedEvents,                     // indexDiscardedEvents
+                                       cleanupDecoderVariables                   // cleanupDecoderVariables
     );
 }
 
@@ -248,30 +247,30 @@ protected:
     void TearDown() override { SingletonLocator::unregisterManager<fastmetrics::IManager>(); }
 };
 
-// More than 1 decoder => no increment
-TEST_F(UnclassifiedCounterTest, MultipleDecodersNoIncrement)
+// Category != "unclassified" => no increment
+TEST_F(UnclassifiedCounterTest, ClassifiedCategoryNoIncrement)
 {
     auto expr = postOutputUnclassifiedCounter("space1", mockCounter);
 
-    auto event = makeEvent(R"({"wazuh":{"integration":{"decoders":["dec1","dec2"]}}})");
+    auto event = makeEvent(R"({"wazuh":{"integration":{"category":"security"}}})");
     EXPECT_CALL(*mockCounter, add(_)).Times(0);
     auto result = evalTerm(expr, event);
     EXPECT_TRUE(result.success());
 }
 
-// Exactly 1 decoder => increment
-TEST_F(UnclassifiedCounterTest, SingleDecoderIncrements)
+// Category == "unclassified" => increment
+TEST_F(UnclassifiedCounterTest, UnclassifiedCategoryIncrements)
 {
     auto expr = postOutputUnclassifiedCounter("space1", mockCounter);
 
-    auto event = makeEvent(R"({"wazuh":{"integration":{"decoders":["dec1"]}}})");
+    auto event = makeEvent(R"({"wazuh":{"integration":{"category":"unclassified"}}})");
     EXPECT_CALL(*mockCounter, add(1)).Times(1);
     auto result = evalTerm(expr, event);
     EXPECT_TRUE(result.success());
 }
 
-// No decoders field => no crash, no increment
-TEST_F(UnclassifiedCounterTest, NoDecodersFieldNoCrash)
+// No category field => no crash, no increment
+TEST_F(UnclassifiedCounterTest, NoCategoryFieldNoCrash)
 {
     auto expr = postOutputUnclassifiedCounter("space1", mockCounter);
 
@@ -371,10 +370,9 @@ protected:
 // Inner expression succeeds => counter not incremented
 TEST_F(FilterDiscardCounterTest, InnerSuccessNoIncrement)
 {
-    auto innerTerm = base::Term<base::EngineOp>::create(
-        "inner",
-        [](base::Event event) -> base::result::Result<base::Event>
-        { return base::result::makeSuccess<base::Event>(event); });
+    auto innerTerm = base::Term<base::EngineOp>::create("inner",
+                                                        [](base::Event event) -> base::result::Result<base::Event>
+                                                        { return base::result::makeSuccess<base::Event>(event); });
 
     auto expr = makeFilterDiscardCounter(innerTerm, mockCounter, "testWrapper");
 
@@ -387,10 +385,9 @@ TEST_F(FilterDiscardCounterTest, InnerSuccessNoIncrement)
 // Inner expression fails => counter incremented, result is failure
 TEST_F(FilterDiscardCounterTest, InnerFailureIncrementsCounter)
 {
-    auto innerTerm = base::Term<base::EngineOp>::create(
-        "inner",
-        [](base::Event event) -> base::result::Result<base::Event>
-        { return base::result::makeFailure<base::Event>(event); });
+    auto innerTerm = base::Term<base::EngineOp>::create("inner",
+                                                        [](base::Event event) -> base::result::Result<base::Event>
+                                                        { return base::result::makeFailure<base::Event>(event); });
 
     auto expr = makeFilterDiscardCounter(innerTerm, mockCounter, "testWrapper");
 

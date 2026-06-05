@@ -946,13 +946,13 @@ def autostart_simulators(request: pytest.FixtureRequest) -> None:
 def simulate_agents(test_metadata):
 
     agents_amount = test_metadata.get("agents_number", 1)
-    agents = create_agents(agents_amount, "localhost")
+    agents = create_agents(agents_amount, "localhost", retry_enrollment=True)
 
     yield agents
 
     # Delete simulated agents
     control_service("start")
-    remove_agents([a.id for a in agents], "manage_agents")
+    remove_agents([a.id for a in agents], "api")
     control_service("stop")
 
 @pytest.fixture(scope="session", autouse=True)

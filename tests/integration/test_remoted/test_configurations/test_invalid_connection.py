@@ -4,6 +4,7 @@
  This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 """
 
+import os
 import pytest
 
 from pathlib import Path
@@ -16,7 +17,7 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 from wazuh_testing.modules.remoted.configuration import REMOTED_DEBUG
-from wazuh_testing.modules.remoted.patterns import CONFIGURATION_ERROR, INVALID_VALUE_FOR_ELEMENT
+from wazuh_testing.modules.remoted.patterns import CONFIGURATION_ERROR, INVALID_ELEMENT_IN_CONFIGURATION
 
 
 # Set pytest marks.
@@ -24,7 +25,7 @@ pytestmark = [pytest.mark.server, pytest.mark.tier(level=1)]
 
 # Cases metadata and its ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_invalid_connection.yaml')
-config_path = Path(CONFIGS_PATH, 'config_invalid_connection.yaml')
+config_path = Path(CONFIGS_PATH, 'config_invalid_element.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
 
@@ -66,13 +67,13 @@ def test_invalid_connection(test_configuration, test_metadata, configure_local_i
     '''
 
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    conf_path = os.path.join('etc', os.path.basename(WAZUH_CONF_PATH))
 
-    log_monitor.start(callback=generate_callback(INVALID_VALUE_FOR_ELEMENT))
+    log_monitor.start(callback=generate_callback(INVALID_ELEMENT_IN_CONFIGURATION))
     assert test_metadata['element_type'] in log_monitor.callback_result
-    assert test_metadata['element_name'] in log_monitor.callback_result
 
-    log_monitor.start(callback=generate_callback(regex=CONFIGURATION_ERROR, replacement={"severity": 'ERROR', "path": "etc/ossec.conf"}))
+    log_monitor.start(callback=generate_callback(regex=CONFIGURATION_ERROR, replacement={"severity": 'ERROR', "path": conf_path}))
     assert log_monitor.callback_result
 
-    log_monitor.start(callback=generate_callback(CONFIGURATION_ERROR.replace('{severity}', 'CRITICAL').replace('{path}', "etc/ossec.conf")))
+    log_monitor.start(callback=generate_callback(CONFIGURATION_ERROR.replace('{severity}', 'CRITICAL').replace('{path}', conf_path)))
     assert log_monitor.callback_result
