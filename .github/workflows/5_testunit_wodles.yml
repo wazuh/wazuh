@@ -53,6 +53,8 @@ jobs:
           pip install -r framework/requirements-wodles-dev.txt --no-build-isolation
 
       - name: Run Wodles tests
+        env:
+          COLUMNS: 200
         run: |
           set -o pipefail
           python -m pytest wodles -vv --color=yes --tb=short --cov=wodles --cov-report=term --cov-report=html:${COVERAGE_REPORT_PATH} | tee ${TEST_REPORT_PATH}
