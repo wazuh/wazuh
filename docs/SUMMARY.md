@@ -18,6 +18,7 @@
   - [SCA policies from 4.x to 5.x](guide/migration/sca-policies-4x-to-5x.md)
   - [CIS-CAT and OpenSCAP to SCA](guide/migration/ciscat-openscap-to-sca.md)
   - [Mail Forwarding and Reporting to Dashboard Notifications](guide/migration/mail-forwarding-reporting.md)
+  - [Remote Syslog Output to Dashboard Notifications](guide/migration/remote-syslog-output.md)
   - [OSquery to IT Hygiene](guide/migration/osquery-to-it-hygiene.md)
 
 # Reference Manual
@@ -125,10 +126,5 @@
   - [Cluster Security Model](ref/security/cluster-model.md)
 - [Performance](ref/performance.md)
 - [Glossary](ref/glossary.md)
-
-# Migration Guide
-
-- [Mail Forwarding and Reporting to Dashboard Notifications](guide/migration/mail-forwarding-reporting.md)
-- [Remote Syslog Output to Dashboard Notifications](guide/migration/remote-syslog-output.md)
 
 # Diagnostic Documentation
