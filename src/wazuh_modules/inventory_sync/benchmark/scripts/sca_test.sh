@@ -5,7 +5,7 @@ set -Eeuo pipefail
 # 5.x Ubuntu test agent, including monitor capture and chart generation.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COMPOSE_FILE="${COMPOSE_FILE:-${SCRIPT_DIR}/../e2e/agents/docker-compose.yml}"
+COMPOSE_FILE="${COMPOSE_FILE:-${SCRIPT_DIR}/../../../../engine/tools/devContainer/e2e/agents/docker-compose.yml}"
 AGENT_SERVICE="${AGENT_SERVICE:-agent_5x_ubuntu}"
 AGENT_CONTAINER="${AGENT_CONTAINER:-wazuh-agent-5x-ubuntu}"
 AGENT_NAME="${AGENT_NAME:-wazuh-agent-5x-ubuntu}"

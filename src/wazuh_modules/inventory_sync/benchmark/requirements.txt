@@ -1,6 +1,4 @@
 psutil>=5.9.0
-pycryptodome>=3.15.0
 matplotlib>=3.5.0
 pandas>=1.4.0
 numpy>=1.22.0
-flatbuffers>=23.1.4

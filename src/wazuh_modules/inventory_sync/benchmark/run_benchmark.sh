@@ -104,11 +104,6 @@ Remote manager (SSH) — activated when --manager is not 127.0.0.1:
                           finishes, so the manager detects the indexer and
                           queues drain (default: $GRACE_TIME)
 
-      --engine ENGINE     Sender implementation: go (default) | python.
-                          Can also be set via the BENCH_ENGINE env var.
-                          When 'go' and tool_simulator/benchmark_sender
-                          is missing, it is auto-built (or invoked via
-                          'go run' if the build fails).
       --keepalive-interval D Frequency of the per-agent control-message
                           keepalive (`#!-<JSON>`). Matches the real
                           agent's NOTIFY_TIME default. Default 20s.
@@ -147,24 +142,12 @@ while [[ $# -gt 0 ]]; do
                 shift
             done
             ;;
-        --engine)         BENCH_ENGINE="$2"; shift 2 ;;
-        --engine=*)       BENCH_ENGINE="${1#--engine=}"; shift ;;
         --keepalive-interval)   KEEPALIVE_INTERVAL="$2"; shift 2 ;;
         --keepalive-interval=*) KEEPALIVE_INTERVAL="${1#--keepalive-interval=}"; shift ;;
         -h|--help)        usage; exit 0 ;;
         *)                echo "Unknown option: $1"; usage; exit 1 ;;
     esac
 done
-
-# --engine: which sender implementation to invoke. Defaults to the value
-# of the BENCH_ENGINE env var (if set) or "go" otherwise:
-#   --engine=go      (the Go binary in tool_simulator/ — default)
-#   --engine=python  (the legacy benchmark_sender.py)
-BENCH_ENGINE="${BENCH_ENGINE:-go}"
-case "$BENCH_ENGINE" in
-    python|go) ;;
-    *) echo "Error: --engine must be 'python' or 'go' (got: $BENCH_ENGINE)"; exit 1 ;;
-esac
 
 # ---------------------------------------------------------------------------
 # Comparison mode
@@ -476,65 +459,50 @@ if $REMOTE_MODE; then
     SENDER_MANAGER="127.0.0.1"
 fi
 
-case "$BENCH_ENGINE" in
-    python)
-        "$PYTHON" "$SCRIPT_DIR/benchmark_sender.py" \
-            --scenario "$SCENARIO" \
-            --manager "$SENDER_MANAGER" \
-            --port "$PORT" \
-            --reg-port "$REG_PORT" \
-            --drain-timeout "$DRAIN_TIMEOUT" \
-            --summary-json "$SENDER_JSON" \
-            -o "$BENCH_CSV" || true
-        ;;
-    go)
-        TS_DIR="$SCRIPT_DIR/tool_simulator"
-        GO_BIN="$TS_DIR/benchmark_sender"
-        GO_ARGS=(
-            --scenario "$SCENARIO"
-            --manager "$SENDER_MANAGER"
-            --port "$PORT"
-            --reg-port "$REG_PORT"
-            --drain-timeout "$DRAIN_TIMEOUT"
-            --summary-json "$SENDER_JSON"
-            -o "$BENCH_CSV"
-        )
-        if [[ -n "$KEEPALIVE_INTERVAL" ]]; then
-            GO_ARGS+=( --keepalive-interval "$KEEPALIVE_INTERVAL" )
-        fi
+TS_DIR="$SCRIPT_DIR/tool_simulator"
+GO_BIN="$TS_DIR/benchmark_sender"
+GO_ARGS=(
+    --scenario "$SCENARIO"
+    --manager "$SENDER_MANAGER"
+    --port "$PORT"
+    --reg-port "$REG_PORT"
+    --drain-timeout "$DRAIN_TIMEOUT"
+    --summary-json "$SENDER_JSON"
+    -o "$BENCH_CSV"
+)
+if [[ -n "$KEEPALIVE_INTERVAL" ]]; then
+    GO_ARGS+=( --keepalive-interval "$KEEPALIVE_INTERVAL" )
+fi
 
-        # Prefer the built binary. If it's missing or older than any .go
-        # source file, try to rebuild it. If that fails (e.g. no FlatBuffer
-        # stubs yet, or compile error after editing), fall back to
-        # `go run` so the user is never blocked.
-        need_build=false
-        if [[ ! -x "$GO_BIN" ]]; then
-            need_build=true
-        elif [[ -n "$(find "$TS_DIR" -name '*.go' -newer "$GO_BIN" -print -quit 2>/dev/null)" ]]; then
-            need_build=true
-        fi
+# Prefer the built binary. If it's missing or older than any .go source
+# file, try to rebuild it. If that fails, fall back to `go run` so the
+# user is never blocked.
+need_build=false
+if [[ ! -x "$GO_BIN" ]]; then
+    need_build=true
+elif [[ -n "$(find "$TS_DIR" -name '*.go' -newer "$GO_BIN" -print -quit 2>/dev/null)" ]]; then
+    need_build=true
+fi
 
-        ran_with_go_run=false
-        if $need_build; then
-            if ! command -v go >/dev/null 2>&1; then
-                echo "Error: Go toolchain not found and $GO_BIN does not exist."
-                echo "Install Go, or pre-build with: (cd $TS_DIR && make benchmark_sender_go)"
-                exit 1
-            fi
-            echo "Building $GO_BIN ..."
-            if (cd "$TS_DIR" && CGO_ENABLED=0 go build -trimpath -o benchmark_sender ./cmd/benchmark_sender); then
-                echo "Built OK."
-            else
-                echo "Build failed; falling back to 'go run' (slower, recompiles each time)."
-                (cd "$TS_DIR" && go run ./cmd/benchmark_sender "${GO_ARGS[@]}") || true
-                ran_with_go_run=true
-            fi
-        fi
-        if ! $ran_with_go_run; then
-            "$GO_BIN" "${GO_ARGS[@]}" || true
-        fi
-        ;;
-esac
+ran_with_go_run=false
+if $need_build; then
+    if ! command -v go >/dev/null 2>&1; then
+        echo "Error: Go toolchain not found and $GO_BIN does not exist."
+        echo "Install Go, or pre-build with: (cd $TS_DIR && make benchmark_sender_go)"
+        exit 1
+    fi
+    echo "Building $GO_BIN ..."
+    if (cd "$TS_DIR" && CGO_ENABLED=0 go build -trimpath -o benchmark_sender ./cmd/benchmark_sender); then
+        echo "Built OK."
+    else
+        echo "Build failed; falling back to 'go run' (slower, recompiles each time)."
+        (cd "$TS_DIR" && go run ./cmd/benchmark_sender "${GO_ARGS[@]}") || true
+        ran_with_go_run=true
+    fi
+fi
+if ! $ran_with_go_run; then
+    "$GO_BIN" "${GO_ARGS[@]}" || true
+fi
 
 # Post-run grace: keep monitor.py sampling for N more seconds so the
 # stabilisation tail (RSS settling, indexer flushing, disk usage growing)

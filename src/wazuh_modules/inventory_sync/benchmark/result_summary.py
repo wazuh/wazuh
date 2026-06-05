@@ -8,7 +8,7 @@ This is a descriptive aggregator only — there is no PASS/FAIL logic.
 
 Inputs:
 
-  --bench       bench.csv                              (from benchmark_sender.py)
+  --bench       bench.csv                              (from tool_simulator/benchmark_sender)
   --monitor     monitor/wazuh-manager-modulesd.csv     (from monitor.py)
   --disk-csv    monitor/disk_usage.csv                 (optional)
   --logs        monitor/logs.csv                       (optional, from log_parser.py)
