@@ -47,7 +47,7 @@ func Run(ctx context.Context, scn *scenario.Scenario, cfg Config, c *metrics.Cou
 		return 0, err
 	}
 
-	// Build the assignment table: each agent_idx → list of lane names.
+	// Build the assignment table: each entry carries fleet name + lane list.
 	assignments := buildAssignments(scn)
 	totalAgents := len(assignments)
 
@@ -70,7 +70,7 @@ func Run(ctx context.Context, scn *scenario.Scenario, cfg Config, c *metrics.Cou
 
 	for i := 0; i < totalAgents; i++ {
 		i := i
-		lanes := assignments[i]
+		a := assignments[i]
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -82,18 +82,29 @@ func Run(ctx context.Context, scn *scenario.Scenario, cfg Config, c *metrics.Cou
 				}
 				defer func() { <-sem }()
 			}
-			runAgent(ctx, i, lanes, scn, cfg, c, cache, deadline, &registered, &regMu)
+			runAgent(ctx, i, a, scn, cfg, c, cache, deadline, &registered, &regMu)
 		}()
 	}
 	wg.Wait()
 	return registered, nil
 }
 
-func buildAssignments(scn *scenario.Scenario) [][]string {
-	var out [][]string
+// assignment groups the fleet name and lane list for one agent slot.
+type assignment struct {
+	fleetName string // empty when total_agents shorthand is used
+	fleetIdx  int    // index within the fleet (for naming)
+	lanes     []string
+}
+
+func buildAssignments(scn *scenario.Scenario) []assignment {
+	var out []assignment
 	for _, f := range scn.Fleets {
 		for i := 0; i < f.Agents; i++ {
-			out = append(out, append([]string{}, f.Lanes...))
+			out = append(out, assignment{
+				fleetName: f.Name,
+				fleetIdx:  i,
+				lanes:     append([]string{}, f.Lanes...),
+			})
 		}
 	}
 	return out
@@ -125,11 +136,20 @@ func buildPayloadCache(scn *scenario.Scenario, benchDir string) (payloadCache, e
 	return cache, nil
 }
 
-func runAgent(ctx context.Context, idx int, lanes []string, scn *scenario.Scenario,
+func runAgent(ctx context.Context, idx int, a assignment, scn *scenario.Scenario,
 	cfg Config, c *metrics.Counters, cache payloadCache, deadline time.Time,
 	registered *int, regMu *sync.Mutex) {
 
-	name := fmt.Sprintf("bench-%04d-%s", idx, randHex12())
+	// Agent name: include fleet name when fleets are used so agents are
+	// easier to identify in the manager and indexer.
+	//   with fleets:    bench-<fleet>-<idx_within_fleet>-<hex6>
+	//   without fleets: bench-<global_idx>-<hex6>
+	var name string
+	if a.fleetName != "" {
+		name = fmt.Sprintf("bench-%s-%04d-%s", a.fleetName, a.fleetIdx, randHex12())
+	} else {
+		name = fmt.Sprintf("bench-%04d-%s", idx, randHex12())
+	}
 	id, err := agent.Register(cfg.Manager, cfg.RegPort, name, 15*time.Second)
 	if err != nil {
 		log.Printf("agent %d: register failed: %v", idx, err)
@@ -179,7 +199,7 @@ func runAgent(ctx context.Context, idx int, lanes []string, scn *scenario.Scenar
 			},
 		})
 
-		runIteration(ctx, conn, lanes, scn, c, cache)
+		runIteration(ctx, conn, a.lanes, scn, c, cache)
 
 		// Stop the ticker first so it doesn't race with the shutdown
 		// frame for the sendMu. Then send the farewell control message
