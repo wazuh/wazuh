@@ -35,10 +35,7 @@ jobs:
 
   indexerconnector-asan:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
-    strategy:
-      matrix:
-        os: [ubuntu-24.04, ubuntu-22.04]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
