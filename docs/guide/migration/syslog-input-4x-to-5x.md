@@ -6,8 +6,8 @@ Starting with Wazuh 5.0, this syslog input capability has been removed from `rem
 
 This guide covers two approaches for the rsyslog-to-Wazuh pipeline:
 
-- **[Option A](#option-a-rsyslog--journald--logcollector)** — rsyslog writes to the systemd journal (`omjournal`), which the Wazuh agent reads by default.
-- **[Option B](#option-b-rsyslog--log-file--logcollector)** — rsyslog writes to per-host log files, which the Wazuh agent monitors via a `<localfile>` stanza.
+- **[Option A](#option-a-rsyslog--journald--logcollector)** — rsyslog writes to the systemd journal (`omjournal`), which the Wazuh agent reads.
+- **[Option B](#option-b-rsyslog--log-file--logcollector)** — rsyslog writes to per-host log files, which the Wazuh agent monitors via a `<localfile>` block.
 
 > **Note:** There is no automatic migration tooling for this change. You must manually configure rsyslog and install a Wazuh agent on the syslog collection host.
 
@@ -53,7 +53,7 @@ Network device ──(UDP/TCP port 514)──► rsyslog ──► /var/log/remo
 
 | | Option A — journald | Option B — log file |
 | --------------------------- | ----------------------------------------- | ------------------------------------------ |
-| **Agent config change** | None — journald is read by default | `<localfile>` stanza required |
+| **Agent config change** | None — journald is read by Wazuh agent | `<localfile>` block required |
 | **Log rotation** | Managed by `journald` automatically | Requires logrotate configuration |
 | **Per-host filtering** | Via journald fields (`_HOSTNAME`, etc.) | By file path (`/var/log/remote/<host>.log`) |
 | **OS requirement** | systemd-based Linux hosts | Any Linux host |
@@ -125,7 +125,7 @@ The agent appears in the Wazuh dashboard under **Agent management -> Summary** w
 
 rsyslog receives the syslog messages and writes them directly to the systemd journal using the `omjournal` output module. The Wazuh agent reads the journal by default — no additional agent configuration is required.
 
-> **Important:** The `_HOSTNAME` field in the systemd journal is a *trusted field* — journald always sets it to the local machine's hostname, and no application (including rsyslog) can override it. This means that without additional configuration, all remote syslog entries written to the journal appear to come from the collection host, making sources indistinguishable. The configuration below uses a template that embeds `%HOSTNAME%` — the sender's hostname extracted from the received syslog packet by rsyslog — into the `MESSAGE` field, preserving the standard syslog format that Wazuh decoders expect.
+> **Important:** The `_HOSTNAME` field in the systemd journal is a *trusted field* — journald always sets it to the local machine's hostname, and no application (including rsyslog) can override it.
 
 ### 1. Install the rsyslog journal output module
 
@@ -155,36 +155,15 @@ module(load="imudp")
 module(load="imtcp")
 module(load="omjournal")
 
-# Preserve the original syslog format so the sender hostname is visible in the journal
-template(name="JournalFwd" type="string" string="%HOSTNAME% %syslogtag%%msg%")
-
 ruleset(name="remote_to_journal") {
-    action(type="omjournal" template="JournalFwd")
+    action(type="omjournal")
 }
 
 input(type="imudp" port="514" ruleset="remote_to_journal")
 input(type="imtcp" port="514" ruleset="remote_to_journal")
 ```
 
-> **Known issue — rsyslog 8.x and `omjournal` templates:** On rsyslog 8.x (including 8.2312.0, shipped with Ubuntu 24.04), specifying a `template` parameter in an `omjournal` action causes all journal writes to be **silently dropped**. No error is logged and `rsyslogd -N1` reports no config issues. This is a separate issue from the journald trusted-field behavior described above — it is a bug in the rsyslog `omjournal` implementation on this version family.
->
-> If you apply the configuration above and see no messages in `journalctl -f`, confirm the issue by removing the `template` parameter temporarily:
->
-> ```
-> ruleset(name="remote_to_journal") {
->     action(type="omjournal")
-> }
-> ```
->
-> Without the template, writes succeed but the remote hostname will not appear in the `MESSAGE` field. If your rsyslog version is affected, use **[Option B](#option-b-rsyslog--log-file--logcollector)** instead, which preserves the remote hostname reliably across all rsyslog versions.
-
-With this template, a message sent by host `ubu24-2` will appear in the journal as:
-
-```
-Jun 04 21:09:01 ubuntu-VirtualBox rsyslogd[1234]: ubu24-2 ubuntu: New remote log 628
-```
-
-The `ubu24-2` at the start of the message body is the sender's hostname from the syslog packet header. Wazuh decoders parse this as standard syslog format and extract it as the event source.
+> **NOTE:** Without the template, writes succeed but the remote hostname will not appear in the `MESSAGE` field.
 
 If you previously used `<allowed-ips>` in Wazuh 4.x to restrict which hosts could send syslog, enforce an equivalent restriction at the firewall:
 
@@ -226,13 +205,13 @@ The Wazuh agent reads the journal by default — no changes to `/var/ossec/etc/o
 
 ### 4. Verify events appear in the dashboard
 
-In the Wazuh dashboard, go to **Threat Intelligence -> Events**. Events from remote devices will appear with `location: journald`. The same decoders that matched your devices in Wazuh 4.x continue to fire without modification.
+In the Wazuh dashboard, go to **Explore -> Discover**. Events from remote devices will appear with `wazuh.protocol.location: journald`. The same decoders that matched your devices in Wazuh 4.x continue to fire without modification.
 
 ---
 
 ## Option B: rsyslog → log file → logcollector
 
-rsyslog receives the syslog messages and writes them to per-host log files under `/var/log/remote/`. The Wazuh agent monitors those files via a `<localfile>` stanza.
+rsyslog receives the syslog messages and writes them to per-host log files under `/var/log/remote/`. The Wazuh agent monitors those files via a `<localfile>` block.
 
 ### 1. Configure rsyslog
 
@@ -295,7 +274,7 @@ Edit the agent's configuration file at `/var/ossec/etc/ossec.conf` and add a `<l
 </ossec_config>
 ```
 
-This single stanza covers all files written by rsyslog under `/var/log/remote/`, regardless of how many source hosts are added in the future.
+This single block covers all files written by rsyslog under `/var/log/remote/`, regardless of how many source hosts are added in the future.
 
 > **Message format and Wazuh decoder compatibility:** The `dynaFile` approach above uses rsyslog's default message format, which includes the syslog timestamp (`Jun  3 08:14:22`). Wazuh's built-in syslog decoders require this timestamp as the first field to match. If you use a custom message template, it **must** include `%timereported:::date-rfc3164%` at the start:
 >
@@ -325,33 +304,12 @@ sudo grep "logcollector" /var/ossec/logs/ossec.log | grep "remote"
 Expected output:
 
 ```
-2026/06/03 08:16:01 wazuh-logcollector: INFO: (1950): Analyzing file: '/var/log/remote/asa-01.log'.
-```
-
-### 3. Configure log rotation
-
-With per-host log files accumulating under `/var/log/remote/`, configure logrotate to prevent unbounded disk growth.
-
-Create `/etc/logrotate.d/wazuh-remote-syslog`:
-
-```
-/var/log/remote/*.log {
-    daily
-    missingok
-    rotate 7
-    compress
-    delaycompress
-    notifempty
-    sharedscripts
-    postrotate
-        /usr/lib/rsyslog/rsyslog-rotate
-    endscript
-}
+2026/06/03 08:16:01 wazuh-logcollector: INFO: (1950): Analyzing file: '<log_file_configured>'.
 ```
 
 ### 4. Verify events appear in the dashboard
 
-In the Wazuh dashboard, go to **Threat Intelligence -> Events** and filter by `location: /var/log/remote/`. The same decoders that matched your devices in Wazuh 4.x continue to fire without modification.
+In the Wazuh dashboard, go to **Explore -> Discover** and filter by `location: /var/log/remote/`. The same decoders that matched your devices in Wazuh 4.x continue to fire without modification.
 
 ---
 
