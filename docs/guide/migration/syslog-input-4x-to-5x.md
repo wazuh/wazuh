@@ -139,13 +139,6 @@ sudo apt install rsyslog
 sudo yum install rsyslog
 ```
 
-Verify the module is available:
-
-```bash
-ls /usr/lib/x86_64-linux-gnu/rsyslog/omjournal.so 2>/dev/null || \
-ls /usr/lib64/rsyslog/omjournal.so 2>/dev/null && echo "omjournal available"
-```
-
 ### 2. Configure rsyslog
 
 Create `/etc/rsyslog.d/99-wazuh-remote.conf` with the following content:
@@ -201,7 +194,7 @@ On the collection host, confirm the message arrived in the journal:
 journalctl -f
 ```
 
-The Wazuh agent reads the journal by default — no changes to `/var/ossec/etc/ossec.conf` are needed.
+The Wazuh agent reads the journal — no changes to `/var/ossec/etc/ossec.conf` are needed.
 
 ### 4. Verify events appear in the dashboard
 
@@ -222,7 +215,7 @@ module(load="imudp")
 module(load="imtcp")
 
 template(name="RemoteHostLogs" type="string"
-         string="/var/log/remote/%HOSTNAME%.log")
+         string="/var/log/<logs_dump>.log")
 
 ruleset(name="remote_to_file") {
     action(type="omfile" dynaFile="RemoteHostLogs")
@@ -230,14 +223,6 @@ ruleset(name="remote_to_file") {
 
 input(type="imudp" port="514" ruleset="remote_to_file")
 input(type="imtcp" port="514" ruleset="remote_to_file")
-```
-
-Create the output directory and set permissions:
-
-```bash
-sudo mkdir -p /var/log/remote
-sudo chown syslog:adm /var/log/remote
-sudo chmod 755 /var/log/remote
 ```
 
 If you previously used `<allowed-ips>` in Wazuh 4.x, add the equivalent restriction:
@@ -268,13 +253,13 @@ Edit the agent's configuration file at `/var/ossec/etc/ossec.conf` and add a `<l
 ```xml
 <ossec_config>
   <localfile>
-    <location>/var/log/remote/*.log</location>
+    <location>/var/log/*.log</location>
     <log_format>syslog</log_format>
   </localfile>
 </ossec_config>
 ```
 
-This single block covers all files written by rsyslog under `/var/log/remote/`, regardless of how many source hosts are added in the future.
+This single block covers all files written by rsyslog under `/var/log/`, regardless of how many source hosts are added in the future.
 
 > **Message format and Wazuh decoder compatibility:** The `dynaFile` approach above uses rsyslog's default message format, which includes the syslog timestamp (`Jun  3 08:14:22`). Wazuh's built-in syslog decoders require this timestamp as the first field to match. If you use a custom message template, it **must** include `%timereported:::date-rfc3164%` at the start:
 >
@@ -317,7 +302,7 @@ In the Wazuh dashboard, go to **Explore -> Discover** and filter by `location: /
 
 Existing Wazuh decoders and rules for network device syslog (for example, `cisco-asa`, `pf`, `juniper`) continue to work without modification under both options. The syslog message body forwarded by rsyslog is identical to what `remoted` previously received on port 514. No decoder updates are required as part of this migration.
 
-> **Note:** In Wazuh 4.x, the source IP of the remote device was available in `remoted`. In Wazuh 5.x, the source IP is embedded in the syslog message itself by the device (standard syslog behavior). If your rules relied on a remoted-injected source IP field, verify them after migration.
+> **Note:** In Wazuh 4.x, the source IP of the remote device was available in `remoted`.
 
 ---
 
@@ -439,7 +424,7 @@ Add a `<localfile>` block to `/var/ossec/etc/ossec.conf` on the collection host:
 <ossec_config>
   <localfile>
     <log_format>syslog</log_format>
-    <location>/var/log/remote-syslog.log</location>
+    <location>/var/log/*.log</location>
   </localfile>
 </ossec_config>
 ```
