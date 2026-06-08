@@ -533,6 +533,16 @@ int send_log_msg(const char * msg)
 
 // LCOV_EXCL_START
 // Periodically run the integrity checker
+// Prime the in-memory first-sync flag from the persisted marker. On a restart where the
+// first sync already completed in a previous run, this lets syscom report
+// first_sync_completed=true immediately so agent-info does not defer coordination during
+// the startup baseline-scan window (before fim_run_integrity sets the flag itself).
+STATIC void prime_fim_first_sync_from_marker(void) {
+    if (fim_db_get_last_sync_time(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY) > 0) {
+        atomic_int_set(&syscheck.fim_first_sync_completed, 1);
+    }
+}
+
 void start_daemon()
 {
     int day_scanned = 0;
@@ -626,6 +636,11 @@ void start_daemon()
         mdebug2(FIM_LIMIT_UNLIMITED, "registry");
     }
 #endif
+
+    // Prime the first-sync flag from the persisted marker so that on a restart — where the
+    // first sync already completed in a previous run — agent-info does not defer coordination
+    // during the startup baseline-scan window, before fim_run_integrity sets it.
+    prime_fim_first_sync_from_marker();
 
     // Create File integrity monitoring base-line
     minfo(FIM_FREQUENCY_TIME, syscheck.time);
