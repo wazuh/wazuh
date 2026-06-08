@@ -24,7 +24,7 @@ The following table maps each `<integration>` field from Wazuh 4.x to its equiva
 | `<name>`           | Notifications | Channel name             | Identifies the channel                                                                                                                   |
 | `<hook_url>`       | Notifications | Webhook URL              | Some 4.x built-in scripts (e.g. PagerDuty) had the endpoint hardcoded and did not require this field                                     |
 | `<api_key>`        | Notifications | Webhook URL / Headers    | Depending on the service, credentials may be placed in the URL, request headers, or not be needed at all                                 |
-| `<alert_format>`   | —             | No match                 | This depends on the configurated message in the channel. |
+| `<alert_format>`   | —             | No match                 | This depends on the configurated message in the channel.                                                                                 |
 | `<rule_id>`        | Alerting      | Monitor query            | Monitors use queries on index patterns instead of rule matching. The matching field is `wazuh.rule.id`.                                  |
 | `<level>`          | Alerting      | Monitor query            | In 4.x the field was `rule.level`; see the note below.                                                                                   |
 | `<group>`          | Alerting      | Monitor query            | The group tag referred to the internal Wazuh component that generated the data. Now, it's represented by `wazuh.integration.name`.       |
@@ -42,6 +42,7 @@ The following table maps each `<integration>` field from Wazuh 4.x to its equiva
 In 4.x, the `<options>` block allowed to the users customize the behavior of the script. This was defined as a **JSON** string.The integration script would read the JSON provided in `<options>` and apply the custom behavior.
 
 In 5.x, this concept is completely replaced by:
+
 - message defined in the notification action of a monitor trigger in **Alerting**
 - query parameters in the URL of the notification channel
 - header parameters in the notification channel
@@ -270,16 +271,10 @@ In this example, the channel will be used to trigger event creations on PagerDut
 4. As stated by the [PagerDuty docs](https://developer.pagerduty.com/api-reference/368ae3d938c9e-send-an-event-to-pager-duty) select `POST` as the `Method`.
 5. `PagerDuty V2 Events API` uses a generic endpoint, so no custom attributes are needed, select `Webhook URL`.
 6. Introduce the url you can find in the documentation: `https://events.pagerduty.com/v2/enqueue`
-7. Create a header with key: `X-Routing-Key` and for the value your integration key, this will map to `routing_key` in the payload, see warning below.
+7. Create a header with key: `X-Routing-Key` and for the value your integration key.
 8. Create the channel.
 
-> **⚠️ Warning:** Most external services support passing credentials via request headers or a custom URL.
->
-> In this specific example, PagerDuty expects a required `routing_key` field in the payload. This means you must include the routing key directly in each monitor's action message payload (see [action messages](#24-actions)).
->
-> In 4.x this wasn't a problem because the built-in script constructed the payload automatically. In 5.x, this is handled by mapping the `X-Routing-Key` header defined above to the `routing_key` field in the payload before sending.
->
-> If the user wants to replicate this in any other integration that has a api_key on the payload and its not supported by wazuh, a proxy can be configured externally.
+<!-- PagerDuty public docs define routing_key as a required field, but the X-Routing-Key header can be used instead (even if its not in the public documentation from PagerDuty). This makes it simpler because the user won't have to include the routing_key parameter in every monitor message to PagerDuty -->
 
 ---
 
