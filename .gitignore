@@ -75,7 +75,6 @@ src/wazuh-manager-db
 src/wazuh-manager-modulesd
 src/wazuh-manager-monitord
 src/wazuh-manager-remoted
-src/wazuh_modules/inventory_sync/benchmark/results*
 
 # Active responses
 src/firewall-drop
