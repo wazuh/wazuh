@@ -34,6 +34,7 @@ void* wm_agent_upgrade_listen_messages(void *arg);
 void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config);
 bool wm_upgrade_agent_search_upgrade_result(int *queue_fd);
 void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_state state, unsigned int raw_code);
+bool wm_agent_upgrade_is_shutting_down(void);
 
 // Setup / teardown
 
@@ -151,9 +152,10 @@ void test_wm_upgrade_agent_send_ack_message_error(void **state)
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Success'");
 
-    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
-    expect_value(__wrap_StartMQ, type, WRITE);
-    will_return(__wrap_StartMQ, 1);
+    expect_string(__wrap_StartMQPredicated, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQPredicated, type, WRITE);
+    expect_value(__wrap_StartMQPredicated, fn_ptr, wm_agent_upgrade_is_shutting_down);
+    will_return(__wrap_StartMQPredicated, 1);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
@@ -188,9 +190,10 @@ void test_wm_upgrade_agent_send_ack_message_error_exit(void **state)
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Success'");
 
-    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
-    expect_value(__wrap_StartMQ, type, WRITE);
-    will_return(__wrap_StartMQ, -1);
+    expect_string(__wrap_StartMQPredicated, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQPredicated, type, WRITE);
+    expect_value(__wrap_StartMQPredicated, fn_ptr, wm_agent_upgrade_is_shutting_down);
+    will_return(__wrap_StartMQPredicated, -1);
 
     expect_string(__wrap__mterror_exit, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mterror_exit, formatted_msg, "(1211): Unable to access queue: 'queue/sockets/queue'. Giving up.");
@@ -205,6 +208,44 @@ void test_wm_upgrade_agent_send_ack_message_error_exit(void **state)
     wm_upgrade_agent_send_ack_message(&queue, upgrade_state, (unsigned int)upgrade_state);
 
     assert_int_equal(queue, -1);
+}
+
+void test_wm_upgrade_agent_send_ack_message_shutdown(void **state)
+{
+    (void) state;
+    int queue = 0;
+    int result = -1;
+    wm_upgrade_agent_state upgrade_state = WM_UPGRADE_FAILED;
+
+    expect_value(__wrap_wm_sendmsg, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg, queue, queue);
+    expect_string(__wrap_wm_sendmsg, message, "{\"command\":\"upgrade_update_status\","
+                                               "\"parameters\":{\"error\":2,"
+                                                           "\"message\":\"Upgrade failed\","
+                                                           "\"status\":\"Failed\"}}");
+    expect_string(__wrap_wm_sendmsg, locmsg, task_manager_modules_list[WM_TASK_UPGRADE_MODULE]);
+    expect_value(__wrap_wm_sendmsg, loc, UPGRADE_MQ);
+
+    will_return(__wrap_wm_sendmsg, result);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Success'");
+
+    expect_string(__wrap_StartMQPredicated, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQPredicated, type, WRITE);
+    expect_value(__wrap_StartMQPredicated, fn_ptr, wm_agent_upgrade_is_shutting_down);
+    will_return(__wrap_StartMQPredicated, OS_INVALID);
+
+    // Simulates SIGTERM arriving during the StartMQPredicated retry loop: the
+    // predicate fires, the wrapper returns OS_INVALID, and the function must
+    // return without escalating to mterror_exit.
+    wm_shutdown_requested = 1;
+
+    wm_upgrade_agent_send_ack_message(&queue, upgrade_state, (unsigned int)upgrade_state);
+
+    assert_int_equal(queue, OS_INVALID);
+
+    wm_shutdown_requested = 0;
 }
 
 void test_wm_upgrade_agent_search_upgrade_result_successful(void **state)
@@ -421,9 +462,10 @@ void test_wm_agent_upgrade_check_status_successful(void **state)
 
     allow_upgrades = false;
 
-    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
-    expect_value(__wrap_StartMQ, type, WRITE);
-    will_return(__wrap_StartMQ, queue);
+    expect_string(__wrap_StartMQPredicated, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQPredicated, type, WRITE);
+    expect_value(__wrap_StartMQPredicated, fn_ptr, wm_agent_upgrade_is_shutting_down);
+    will_return(__wrap_StartMQPredicated, queue);
 
 #ifndef TEST_WINAGENT
     expect_any_always(__wrap_sleep, seconds);
@@ -484,9 +526,10 @@ void test_wm_agent_upgrade_check_status_time_limit(void **state)
 
     allow_upgrades = false;
 
-    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
-    expect_value(__wrap_StartMQ, type, WRITE);
-    will_return(__wrap_StartMQ, queue);
+    expect_string(__wrap_StartMQPredicated, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQPredicated, type, WRITE);
+    expect_value(__wrap_StartMQPredicated, fn_ptr, wm_agent_upgrade_is_shutting_down);
+    will_return(__wrap_StartMQPredicated, queue);
 
 #ifndef TEST_WINAGENT
     expect_any_always(__wrap_sleep, seconds);
@@ -646,9 +689,10 @@ void test_wm_agent_upgrade_check_status_queue_error(void **state)
 
     allow_upgrades = false;
 
-    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
-    expect_value(__wrap_StartMQ, type, WRITE);
-    will_return(__wrap_StartMQ, queue);
+    expect_string(__wrap_StartMQPredicated, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQPredicated, type, WRITE);
+    expect_value(__wrap_StartMQPredicated, fn_ptr, wm_agent_upgrade_is_shutting_down);
+    will_return(__wrap_StartMQPredicated, queue);
 
 #ifndef TEST_WINAGENT
     expect_any_always(__wrap_sleep, seconds);
@@ -1006,15 +1050,16 @@ void test_wm_agent_upgrade_start_agent_module_enabled(void **state)
     allow_upgrades = false;
 
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mtinfo, formatted_msg, "(8153): Module Agent Upgrade started.");
+    expect_any(__wrap__mtinfo, formatted_msg);
 
 #ifndef TEST_WINAGENT
     expect_memory(__wrap_CreateThread, function_pointer, wm_agent_upgrade_listen_messages, sizeof(wm_agent_upgrade_listen_messages));
 #endif
 
-    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
-    expect_value(__wrap_StartMQ, type, WRITE);
-    will_return(__wrap_StartMQ, queue);
+    expect_string(__wrap_StartMQPredicated, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQPredicated, type, WRITE);
+    expect_value(__wrap_StartMQPredicated, fn_ptr, wm_agent_upgrade_is_shutting_down);
+    will_return(__wrap_StartMQPredicated, queue);
 
 #ifndef TEST_WINAGENT
     expect_any_always(__wrap_sleep, seconds);
@@ -1049,6 +1094,7 @@ int main(void) {
         cmocka_unit_test_setup(test_wm_upgrade_agent_send_ack_message_successful, setup_test_executions),
         cmocka_unit_test_setup(test_wm_upgrade_agent_send_ack_message_failed, setup_test_executions),
         cmocka_unit_test_setup(test_wm_upgrade_agent_send_ack_message_error, setup_test_executions),
+        cmocka_unit_test_setup(test_wm_upgrade_agent_send_ack_message_shutdown, setup_test_executions),
         // test_wm_upgrade_agent_send_ack_message_error_exit disabled: _mterror_exit is declared
         // __attribute__((noreturn)), so any code after the wrapped call is undefined behavior
         // and segfaults under ASAN. This path is not testable via cmocka without setjmp/longjmp.

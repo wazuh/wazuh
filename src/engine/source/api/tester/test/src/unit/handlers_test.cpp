@@ -933,6 +933,17 @@ INSTANTIATE_TEST_SUITE_P(
                 EXPECT_EQ(v.errors(1).path(), "zzz");
                 EXPECT_EQ(v.errors(1).kind(), "unknown_field");
             },
+        },
+        // 14 ─ Geo Array with correct format
+        OutputValidationCase {
+            "GEO_POINTarrayCorrectCase",
+            R"({"observer_geo_location": [-74.00, 40.71]})",
+            []() -> std::shared_ptr<schemf::IValidator> { return makeSchemaMock({{"observer_geo_location", schemf::Type::GEO_POINT}}); },
+            [](const eEngine::tester::Result_Validation& v)
+            {
+                ASSERT_TRUE(v.valid());
+                EXPECT_EQ(v.errors_size(), 0);
+            },
         }),
     [](const testing::TestParamInfo<OutputValidationCase>& info) { return info.param.name; });
 

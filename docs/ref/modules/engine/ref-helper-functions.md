@@ -1612,9 +1612,9 @@ field: index_unclassified_events()
 
 ## Target Field
 
-| Type | Possible values |
-| ---- | --------------- |
-| array | [number, string, boolean, object, array] |
+| Path | Type | Possible values |
+| ---- | ---- | --------------- |
+| wazuh.integration.category | string | unclassified, access-management, applications, cloud-services, network-activity, other, security, system-activity |
 
 
 ## Description
@@ -1622,19 +1622,21 @@ field: index_unclassified_events()
 Determines whether unclassified events should be indexed based on policy configuration.
 This filter returns true if and only if:
 1. The policy flag 'indexUnclassifiedEvents' is enabled (configured at build time)
-2. The target field is an array containing exactly 1 element
+2. The target field is exactly 'wazuh.integration.category'
+3. 'wazuh.integration.category' equals the string "unclassified"
 
-This helper is used in output routing to decide whether to index events that have only
-one decoder (unclassified events) when the policy allows it. If the policy flag is
-disabled or the array has a different size, the validation fails.
+This helper is used in output routing to decide whether to index events that the
+root decoder tagged as unclassified (no integration decoder matched) when the policy
+allows it. If the policy flag is disabled, the category differs from "unclassified",
+or the field is missing / not a string, the validation fails.
 
-Note: This helper does not accept any arguments and depends on the policy context
-configured at build time.
+Note: This helper does not accept any arguments, rejects any target field other than
+'wazuh.integration.category', and depends on the policy context configured at build time.
 
 
 ## Keywords
 
-- `array` 
+- `string` 
 
 - `policy` 
 
@@ -1642,22 +1644,20 @@ configured at build time.
 
 ### Example 1
 
-Array with exactly one element (unclassified event)
+Category equals "unclassified" (event tagged by the root decoder)
 
 #### Asset
 
 ```yaml
 check:
-  - target_field: index_unclassified_events()
+  - wazuh.integration.category: index_unclassified_events()
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": [
-    "single_decoder"
-  ]
+  "wazuh.integration.category": "unclassified"
 }
 ```
 
@@ -1665,42 +1665,41 @@ check:
 
 ### Example 2
 
-Empty array - not an unclassified event
+Category is a known one different from "unclassified"
 
 #### Asset
 
 ```yaml
 check:
-  - target_field: index_unclassified_events()
-```
-
-#### Input Event
-
-```json
-{}
-```
-
-*The check was performed with errors*
-
-### Example 3
-
-Array with two elements - classified event
-
-#### Asset
-
-```yaml
-check:
-  - target_field: index_unclassified_events()
+  - wazuh.integration.category: index_unclassified_events()
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": [
-    "decoder1",
-    "decoder2"
-  ]
+  "wazuh.integration.category": "security"
+}
+```
+
+*The check was performed with errors*
+
+### Example 3
+
+Category is a known one different from "unclassified"
+
+#### Asset
+
+```yaml
+check:
+  - wazuh.integration.category: index_unclassified_events()
+```
+
+#### Input Event
+
+```json
+{
+  "wazuh.integration.category": "system-activity"
 }
 ```
 
@@ -1708,24 +1707,20 @@ check:
 
 ### Example 4
 
-Array with three elements - classified event
+Category is an empty string
 
 #### Asset
 
 ```yaml
 check:
-  - target_field: index_unclassified_events()
+  - wazuh.integration.category: index_unclassified_events()
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": [
-    "d1",
-    "d2",
-    "d3"
-  ]
+  "wazuh.integration.category": ""
 }
 ```
 
@@ -1733,20 +1728,20 @@ check:
 
 ### Example 5
 
-Target field is not an array
+Target field is a number, not a string
 
 #### Asset
 
 ```yaml
 check:
-  - target_field: index_unclassified_events()
+  - wazuh.integration.category: index_unclassified_events()
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": "not_an_array"
+  "wazuh.integration.category": 42
 }
 ```
 
@@ -1754,20 +1749,22 @@ check:
 
 ### Example 6
 
-Target field is a number, not an array
+Target field is an array, not a string
 
 #### Asset
 
 ```yaml
 check:
-  - target_field: index_unclassified_events()
+  - wazuh.integration.category: index_unclassified_events()
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": 42
+  "wazuh.integration.category": [
+    "unclassified"
+  ]
 }
 ```
 
@@ -16150,6 +16147,8 @@ field: merge_key_in(any_object, key)
 Merge in target field value with the content of some key in the specified object, where the key is specified with a reference to another field.
 The object parameter must be a definition object or a reference to a field containing the object.
 This helper function is typically used in the map stage.
+When a key exists in both the source and the target, the source value overwrites the target value entirely (no recursion into nested structures).
+If the source contains duplicate keys, all occurrences are iterated and the last duplicate value is the one that remains in the target.
 
 
 ## Keywords
@@ -16372,9 +16371,11 @@ field: merge_recursive_key_in(any_object, key)
 
 Recursively merge the target field value with the content of a specified key in the given object.
 The key is identified through a reference to another field.
-If the key's value contains nested objects, the merge operation is applied recursively, combining all levels of the structure.
+If the key's value contains nested objects or arrays, the merge operation is applied recursively, combining all levels of the structure.
+For primitive values (strings, numbers, booleans), when a key exists in both source and target, the source value overwrites the target value.
 The object parameter must be a definition object or a reference to a field containing the object.
 This helper function is typically used in the map stage to ensure deep merging of complex objects.
+If the source contains duplicate keys, all occurrences are iterated and the last duplicate value is the one that remains in the target.
 
 
 ## Keywords

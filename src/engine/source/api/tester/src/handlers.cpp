@@ -86,7 +86,7 @@ eTester::Result fromOutput(const ::router::test::Output& output)
     return result;
 }
 
-std::variant<std::string,json::Json> validatePublicMetadata(const json::Json& metadataObj)
+std::variant<std::string, json::Json> validatePublicMetadata(const json::Json& metadataObj)
 {
     // Empty metadata is allowed
     if (metadataObj.isEmpty())
@@ -317,23 +317,39 @@ void collectOutputErrors(const json::Json& node,
 
     if (node.isArray())
     {
-        if (!schemaPath.empty() && isArrayItem)
+        if (!schemaPath.empty())
         {
-            // Arrays of arrays are not supported. Report as invalid_type.
             const DotPath dotPath(schemaPath);
-            try
+            if (schema.getType(dotPath) == schemf::Type::GEO_POINT)
             {
-                errors.push_back(makeValidationError(reportPath,
-                                                     "invalid_type",
-                                                     schemf::typeToStr(schema.getType(dotPath)),
-                                                     json::Json::typeToStr(node.type())));
+                // GEO_POINT allows arrays of two floats as representation.
+                auto validation = schema.validate(dotPath, node);
+                if (base::isError(validation))
+                {
+                    errors.push_back(makeValidationError(reportPath,
+                                                         "invalid_type",
+                                                         schemf::typeToStr(schema.getType(dotPath)),
+                                                         json::Json::typeToStr(node.type())));
+                }
+                return;
             }
-            catch (const std::exception&)
+            else if (isArrayItem)
             {
-                errors.push_back(
-                    makeValidationError(reportPath, "invalid_type", {}, json::Json::typeToStr(node.type())));
+                // Arrays of arrays are not supported. Report as invalid_type.
+                try
+                {
+                    errors.push_back(makeValidationError(reportPath,
+                                                         "invalid_type",
+                                                         schemf::typeToStr(schema.getType(dotPath)),
+                                                         json::Json::typeToStr(node.type())));
+                }
+                catch (const std::exception&)
+                {
+                    errors.push_back(
+                        makeValidationError(reportPath, "invalid_type", {}, json::Json::typeToStr(node.type())));
+                }
+                return;
             }
-            return;
         }
 
         auto arrOpt = node.getArray();

@@ -1,0 +1,19 @@
+{
+  "description": "DataValue quota exhausted test: Start with size larger than the global quota (default 500000) must be rejected with Status_Offline before the session is created.",
+  "messages": [
+    {
+      "type": "start",
+      "data": {
+        "module": "inventory_sync",
+        "mode": 1,
+        "size": 500001,
+        "agentid": "001",
+        "agentname": "quota-test-agent",
+        "agentversion": "5.0.0"
+      },
+      "description": "Start request declaring size=500001, one above the default DataValue quota - manager must refuse with Status_Offline",
+      "delay": 0.5,
+      "expect_session_response": true
+    }
+  ]
+}

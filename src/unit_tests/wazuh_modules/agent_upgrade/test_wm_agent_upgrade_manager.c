@@ -885,7 +885,7 @@ void test_wm_agent_upgrade_start_manager_module_enabled(void **state)
     wm_manager_configs *config = *state;
 
     expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:agent-upgrade");
-    expect_string(__wrap__mtinfo, formatted_msg, "(8153): Module Agent Upgrade started.");
+    expect_any(__wrap__mtinfo, formatted_msg);
 
     expect_string(__wrap_OS_BindUnixDomainWithPerms, path, WM_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_STREAM);

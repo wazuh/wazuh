@@ -26,7 +26,6 @@ target_link_libraries(
   gmock_main
   pthread
   sqlite3
-  archive
   ssl
   crypto
   cjson

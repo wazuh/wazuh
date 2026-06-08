@@ -42,6 +42,7 @@ protected:
         m_schema->addField("@timestamp", Field::Parameters {.type = Type::DATE});
         m_schema->addField("event.tags", Field::Parameters {.type = Type::KEYWORD});
         m_schema->addField("rank.feature", Field::Parameters {.type = Type::RANK_FEATURE});
+        m_schema->addField("geo.location", Field::Parameters {.type = Type::GEO_POINT});
         m_validator = std::make_unique<Schema::Validator>(*m_schema);
     }
 };
@@ -250,4 +251,152 @@ TEST_F(ValidatorTest, ValidateJType_IncompatibleField_Fails)
     auto token = JTypeToken::create(json::Json::Type::String);
     auto res = m_validator->validate(DotPath {"rank.feature"}, token);
     EXPECT_ERR(res, "JSON type");
+}
+
+// ---------------------------------------------------------------------------
+// GEO_POINT — JTypeToken dispatch
+// ---------------------------------------------------------------------------
+
+TEST_F(ValidatorTest, GeoPoint_JType_AcceptsObject)
+{
+    auto token = JTypeToken::create(json::Json::Type::Object);
+    auto res = m_validator->validate(DotPath {"geo.location"}, token);
+    EXPECT_OK(res);
+    EXPECT_TRUE(base::getResponse(res).needsRuntimeValidation());
+}
+
+TEST_F(ValidatorTest, GeoPoint_JType_AcceptsString)
+{
+    auto token = JTypeToken::create(json::Json::Type::String);
+    auto res = m_validator->validate(DotPath {"geo.location"}, token);
+    EXPECT_OK(res);
+    EXPECT_TRUE(base::getResponse(res).needsRuntimeValidation());
+}
+
+TEST_F(ValidatorTest, GeoPoint_JType_RejectsNumber)
+{
+    auto token = JTypeToken::create(json::Json::Type::Number);
+    auto res = m_validator->validate(DotPath {"geo.location"}, token);
+    EXPECT_ERR(res, "JSON type");
+    EXPECT_THAT(base::getError(res).message, HasSubstr("object"));
+    EXPECT_THAT(base::getError(res).message, HasSubstr("string"));
+}
+
+TEST_F(ValidatorTest, GeoPoint_Regression_IntegerRejectsString)
+{
+    auto token = JTypeToken::create(json::Json::Type::String);
+    auto res = m_validator->validate(DotPath {"source.port"}, token);
+    EXPECT_ERR(res, "JSON type");
+}
+
+// ---------------------------------------------------------------------------
+// GEO_POINT — ValueToken build-time validation
+// ---------------------------------------------------------------------------
+
+TEST_F(ValidatorTest, GeoPoint_Value_ValidObject)
+{
+    auto token = ValueToken::create(json::Json {R"({"lat":40.71,"lon":-74.00})"});
+    auto res = m_validator->validate(DotPath {"geo.location"}, token);
+    EXPECT_OK(res);
+}
+
+TEST_F(ValidatorTest, GeoPoint_Value_ValidString)
+{
+    auto token = ValueToken::create(json::Json {"\"40.71,-74.00\""});
+    auto res = m_validator->validate(DotPath {"geo.location"}, token);
+    EXPECT_OK(res);
+}
+
+TEST_F(ValidatorTest, GeoPoint_Value_ValidArray)
+{
+    auto token = ValueToken::create(json::Json {"[-74.00,40.71]"});
+    auto res = m_validator->validate(DotPath {"geo.location"}, token);
+    EXPECT_OK(res);
+}
+
+TEST_F(ValidatorTest, GeoPoint_Value_InvalidString)
+{
+    auto token = ValueToken::create(json::Json {"\"not_geo\""});
+    auto res = m_validator->validate(DotPath {"geo.location"}, token);
+    EXPECT_ERR(res, "value validation failed");
+}
+
+// ---------------------------------------------------------------------------
+// GEO_POINT — getJsonTypes
+// ---------------------------------------------------------------------------
+
+TEST_F(ValidatorTest, GeoPoint_GetJsonTypes_ContainsObjectAndString)
+{
+    auto types = m_validator->getJsonTypes(DotPath {"geo.location"});
+    EXPECT_TRUE(types.count(json::Json::Type::Object));
+    EXPECT_TRUE(types.count(json::Json::Type::String));
+    EXPECT_FALSE(types.count(json::Json::Type::Number));
+}
+
+// ---------------------------------------------------------------------------
+// GEO_POINT — JTypeToken: Array token construction, and runtime validator
+//             behaviour when the actual value is an array
+// ---------------------------------------------------------------------------
+
+// JtypeObject with [lon, lat]
+// The geo validator (skipArrayWrap=true) must accept it via isGeoArray().
+TEST_F(ValidatorTest, GeoPoint_JType_Object_RuntimeValidator_AcceptsLonLatArray)
+{
+    auto token = JTypeToken::create(json::Json::Type::Object);
+    auto res = m_validator->validate(DotPath {"geo.location"}, token);
+    EXPECT_OK(res);
+    EXPECT_TRUE(base::getResponse(res).needsRuntimeValidation());
+
+    auto validator = base::getResponse(res).getValidator();
+    json::Json arrValue {"[-74.00,40.71]"};
+    EXPECT_FALSE(base::isError(validator(arrValue)));
+}
+
+// String with [lon, lat]
+TEST_F(ValidatorTest, GeoPoint_JType_String_RuntimeValidator_AcceptsLonLatArray)
+{
+    auto token = JTypeToken::create(json::Json::Type::String);
+    auto res = m_validator->validate(DotPath {"geo.location"}, token);
+    EXPECT_OK(res);
+    EXPECT_TRUE(base::getResponse(res).needsRuntimeValidation());
+
+    auto validator = base::getResponse(res).getValidator();
+    json::Json arrValue {"[-74.00,40.71]"};
+    EXPECT_FALSE(base::isError(validator(arrValue)));
+}
+
+// Ojects with "array of geo_points".
+TEST_F(ValidatorTest, GeoPoint_JType_Object_RuntimeValidator_AcceptsArrayOfGeoObjects)
+{
+    auto token = JTypeToken::create(json::Json::Type::Object);
+    auto res = m_validator->validate(DotPath {"geo.location"}, token);
+    EXPECT_OK(res);
+
+    auto validator = base::getResponse(res).getValidator();
+    json::Json arrValue {R"([{"lat":40.71,"lon":-74.00},{"lat":51.50,"lon":-0.12}])"};
+    EXPECT_FALSE(base::isError(validator(arrValue)));
+}
+
+// Array whose elements are geo_point strings — accepted.
+TEST_F(ValidatorTest, GeoPoint_JType_Object_RuntimeValidator_AcceptsArrayOfGeoStrings)
+{
+    auto token = JTypeToken::create(json::Json::Type::Object);
+    auto res = m_validator->validate(DotPath {"geo.location"}, token);
+    EXPECT_OK(res);
+
+    auto validator = base::getResponse(res).getValidator();
+    json::Json arrValue {R"(["40.71,-74.00","51.50,-0.12"])"};
+    EXPECT_FALSE(base::isError(validator(arrValue)));
+}
+
+// Array that is neither a valid [lon,lat] pair nor an array of valid, rejected.
+TEST_F(ValidatorTest, GeoPoint_JType_Object_RuntimeValidator_RejectsInvalidArray)
+{
+    auto token = JTypeToken::create(json::Json::Type::Object);
+    auto res = m_validator->validate(DotPath {"geo.location"}, token);
+    EXPECT_OK(res);
+
+    auto validator = base::getResponse(res).getValidator();
+    json::Json arrValue {R"(["not_geo","also_not_geo"])"};
+    EXPECT_TRUE(base::isError(validator(arrValue)));
 }

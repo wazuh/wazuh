@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12.4)
 
-project(keystore_component_tests)
+project(keystore_ctests)
 
 file(GLOB SOURCES *.cpp)
 
@@ -21,4 +21,4 @@ target_link_libraries(
 
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
 
-set_tests_properties(${PROJECT_NAME} PROPERTIES LABELS "keystore")
+set_tests_properties(${PROJECT_NAME} PROPERTIES LABELS ${PROJECT_NAME})

@@ -2038,13 +2038,13 @@ checks:
       - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:^net\.ipv4\.conf\.all\.send_redirects\s*=\s*0$'
       - 'c:sysctl net.ipv4.conf.default.send_redirects -> r:^net\.ipv4\.conf\.default\.send_redirects\s*=\s*0$'
       - 'f:/etc/sysctl.conf -> r:^net\.ipv4\.conf\.all\.send_redirects\s*=\s*0$'
-      - 'd:->/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.send_redirects\s*=\s*0$'
-      - 'd:->/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.send_redirects\s*=\s*0$'
-      - 'd:->/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.send_redirects\s*=\s*0$'
+      - 'd:/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.send_redirects\s*=\s*0$'
+      - 'd:/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.send_redirects\s*=\s*0$'
+      - 'd:/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.send_redirects\s*=\s*0$'
       - 'f:/etc/sysctl.conf -> r:^net\.ipv4\.conf\.default\.send_redirects\s*=\s*0$'
-      - 'd:->/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.send_redirects\s*=\s*0$'
-      - 'd:->/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.send_redirects\s*=\s*0$'
-      - 'd:->/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.send_redirects\s*=\s*0$'
+      - 'd:/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.send_redirects\s*=\s*0$'
+      - 'd:/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.send_redirects\s*=\s*0$'
+      - 'd:/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.send_redirects\s*=\s*0$'
 
   ##################################################
   # 3.3 Network Parameters (Host and Router)
@@ -2075,13 +2075,13 @@ checks:
       - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:^net\.ipv4\.conf\.all\.accept_source_route\s*=\s*0$'
       - 'c:sysctl net.ipv4.conf.default.accept_source_route -> r:^net\.ipv4\.conf\.default\.accept_source_route\s*=\s*0$'
       - 'f:/etc/sysctl.conf -> r:^net\.ipv4\.conf\.all\.accept_source_route\s*=\s*0$'
-      - 'd:->/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.accept_source_route\s*=\s*0$'
-      - 'd:->/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.accept_source_route\s*=\s*0$'
-      - 'd:->/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.accept_source_route\s*=\s*0$'
+      - 'd:/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.accept_source_route\s*=\s*0$'
+      - 'd:/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.accept_source_route\s*=\s*0$'
+      - 'd:/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.accept_source_route\s*=\s*0$'
       - 'f:/etc/sysctl.conf -> r:^net\.ipv4\.conf\.default\.accept_source_route\s*=\s*0$'
-      - 'd:->/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.accept_source_route\s*=\s*0$'
-      - 'd:->/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.accept_source_route\s*=\s*0$'
-      - 'd:->/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.accept_source_route\s*=\s*0$'
+      - 'd:/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.accept_source_route\s*=\s*0$'
+      - 'd:/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.accept_source_route\s*=\s*0$'
+      - 'd:/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.accept_source_route\s*=\s*0$'
 
   # 3.3.2 Ensure ICMP redirects are not accepted. (Automated) - Not Implemented
 
@@ -2110,13 +2110,13 @@ checks:
       - 'c:sysctl net.ipv4.conf.all.secure_redirects -> r:^net\.ipv4\.conf\.all\.secure_redirects\s*=\s*0$'
       - 'c:sysctl net.ipv4.conf.default.secure_redirects -> r:^net\.ipv4\.conf\.default\.secure_redirects\s*=\s*0$'
       - 'f:/etc/sysctl.conf -> r:^net\.ipv4\.conf\.all\.secure_redirects\s*=\s*0$'
-      - 'd:->/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.secure_redirects\s*=\s*0$'
-      - 'd:->/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.secure_redirects\s*=\s*0$'
-      - 'd:->/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.secure_redirects\s*=\s*0$'
+      - 'd:/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.secure_redirects\s*=\s*0$'
+      - 'd:/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.secure_redirects\s*=\s*0$'
+      - 'd:/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.secure_redirects\s*=\s*0$'
       - 'f:/etc/sysctl.conf -> r:^net\.ipv4\.conf\.default\.secure_redirects\s*=\s*0$'
-      - 'd:->/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.secure_redirects\s*=\s*0$'
-      - 'd:->/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.secure_redirects\s*=\s*0$'
-      - 'd:->/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.secure_redirects\s*=\s*0$'
+      - 'd:/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.secure_redirects\s*=\s*0$'
+      - 'd:/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.secure_redirects\s*=\s*0$'
+      - 'd:/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.secure_redirects\s*=\s*0$'
 
   # 3.3.4 Ensure suspicious packets are logged. (Automated)
   - id: 6081
@@ -2144,13 +2144,13 @@ checks:
       - 'c:sysctl net.ipv4.conf.all.log_martians -> r:^net\.ipv4\.conf\.all\.log_martians\s*=\s*1$'
       - 'c:sysctl net.ipv4.conf.default.log_martians -> r:^net\.ipv4\.conf\.default\.log_martians\s*=\s*1$'
       - 'f:/etc/sysctl.conf -> r:^net\.ipv4\.conf\.all\.log_martians\s*=\s*1$'
-      - 'd:->/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.log_martians\s*=\s*1$'
-      - 'd:->/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.log_martians\s*=\s*1$'
-      - 'd:->/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.log_martians\s*=\s*1$'
+      - 'd:/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.log_martians\s*=\s*1$'
+      - 'd:/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.log_martians\s*=\s*1$'
+      - 'd:/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.log_martians\s*=\s*1$'
       - 'f:/etc/sysctl.conf -> r:^net\.ipv4\.conf\.default\.log_martians\s*=\s*1$'
-      - 'd:->/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.log_martians\s*=\s*1$'
-      - 'd:->/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.log_martians\s*=\s*1$'
-      - 'd:->/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.log_martians\s*=\s*1$'
+      - 'd:/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.log_martians\s*=\s*1$'
+      - 'd:/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.log_martians\s*=\s*1$'
+      - 'd:/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.default\.log_martians\s*=\s*1$'
 
   # 3.3.5 Ensure broadcast ICMP requests are ignored. (Automated)
   - id: 6082
@@ -2176,9 +2176,9 @@ checks:
     rules:
       - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:^net\.ipv4\.icmp_echo_ignore_broadcasts\s*=\s*1$'
       - 'f:/etc/sysctl.conf -> r:^net\.ipv4\.icmp_echo_ignore_broadcasts\s*=\s*1$'
-      - 'd:->/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.icmp_echo_ignore_broadcasts\s*=\s*1$'
-      - 'd:->/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.icmp_echo_ignore_broadcasts\s*=\s*1$'
-      - 'd:->/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.icmp_echo_ignore_broadcasts\s*=\s*1$'
+      - 'd:/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.icmp_echo_ignore_broadcasts\s*=\s*1$'
+      - 'd:/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.icmp_echo_ignore_broadcasts\s*=\s*1$'
+      - 'd:/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.icmp_echo_ignore_broadcasts\s*=\s*1$'
 
   # 3.3.6 Ensure bogus ICMP responses are ignored. (Automated)
   - id: 6083
@@ -2204,9 +2204,9 @@ checks:
     rules:
       - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^net\.ipv4\.icmp_ignore_bogus_error_responses\s*=\s*1$'
       - 'f:/etc/sysctl.conf -> r:^net\.ipv4\.icmp_ignore_bogus_error_responses\s*=\s*1$'
-      - 'd:->/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.icmp_ignore_bogus_error_responses\s*=\s*1$'
-      - 'd:->/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.icmp_ignore_bogus_error_responses\s*=\s*1$'
-      - 'd:->/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.icmp_ignore_bogus_error_responses\s*=\s*1$'
+      - 'd:/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.icmp_ignore_bogus_error_responses\s*=\s*1$'
+      - 'd:/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.icmp_ignore_bogus_error_responses\s*=\s*1$'
+      - 'd:/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.icmp_ignore_bogus_error_responses\s*=\s*1$'
 
   # 3.3.7 Ensure Reverse Path Filtering is enabled. (Automated)
   - id: 6084
@@ -2232,9 +2232,9 @@ checks:
     rules:
       - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:^net\.ipv4\.conf\.all\.rp_filter\s*=\s*1$'
       - 'f:/etc/sysctl.conf -> r:^net\.ipv4\.conf\.all\.rp_filter\s*=\s*1$'
-      - 'd:->/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.rp_filter\s*=\s*1$'
-      - 'd:->/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.rp_filter\s*=\s*1$'
-      - 'd:->/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.rp_filter\s*=\s*1$'
+      - 'd:/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.rp_filter\s*=\s*1$'
+      - 'd:/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.rp_filter\s*=\s*1$'
+      - 'd:/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.conf\.all\.rp_filter\s*=\s*1$'
 
   # 3.3.8 Ensure TCP SYN Cookies is enabled. (Automated)
   - id: 6085
@@ -2260,9 +2260,9 @@ checks:
     rules:
       - 'c:sysctl net.ipv4.tcp_syncookies -> r:^net\.ipv4\.tcp_syncookies\s*=\s*1$'
       - 'f:/etc/sysctl.conf -> r:^net\.ipv4\.tcp_syncookies\s*=\s*1$'
-      - 'd:->/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.tcp_syncookies\s*=\s*1$'
-      - 'd:->/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.tcp_syncookies\s*=\s*1$'
-      - 'd:->/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.tcp_syncookies\s*=\s*1$'
+      - 'd:/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.tcp_syncookies\s*=\s*1$'
+      - 'd:/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.tcp_syncookies\s*=\s*1$'
+      - 'd:/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.tcp_syncookies\s*=\s*1$'
 
   # 3.3.9 Ensure IPv6 router advertisements are not accepted. (Automated)
   - id: 6086
@@ -2289,13 +2289,13 @@ checks:
       - 'c:sysctl net.ipv6.conf.all.accept_raa -> r:^net\.ipv6\.conf\.all\.accept_raa\s*=\s*1$'
       - 'c:sysctl net.ipv6.conf.default.accept_ra -> r:^net\.ipv6\.conf\.default\.accept_ra\s*=\s*1$'
       - 'f:/etc/sysctl.conf -> r:^net\.ipv6\.conf\.all\.accept_raa\s*=\s*1$'
-      - 'd:->/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv6\.conf\.all\.accept_raa\s*=\s*1$'
-      - 'd:->/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv6\.conf\.all\.accept_raa\s*=\s*1$'
-      - 'd:->/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv6\.conf\.all\.accept_raa\s*=\s*1$'
+      - 'd:/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv6\.conf\.all\.accept_raa\s*=\s*1$'
+      - 'd:/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv6\.conf\.all\.accept_raa\s*=\s*1$'
+      - 'd:/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv6\.conf\.all\.accept_raa\s*=\s*1$'
       - 'f:/etc/sysctl.conf -> r:^net\.ipv6\.conf\.default\.accept_ra\s*=\s*1$'
-      - 'd:->/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv6\.conf\.default\.accept_ra\s*=\s*1$'
-      - 'd:->/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv6\.conf\.default\.accept_ra\s*=\s*1$'
-      - 'd:->/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv6\.conf\.default\.accept_ra\s*=\s*1$'
+      - 'd:/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv6\.conf\.default\.accept_ra\s*=\s*1$'
+      - 'd:/usr/lib/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv6\.conf\.default\.accept_ra\s*=\s*1$'
+      - 'd:/run/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv6\.conf\.default\.accept_ra\s*=\s*1$'
 
   ###############################################
   # 3.4 Uncommon Network Protocols

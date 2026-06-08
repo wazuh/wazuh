@@ -11,6 +11,14 @@ on:
       - "packages/*/SPECS/wazuh-manager/**"
       - "packages/*"
       - "packages/*/utils/*"
+      - ".github/workflows/5_testintegration_manager.yml"
+      - ".github/workflows/5_testintegration_inventory-sync.yml"
+      - ".github/workflows/.python-version-it"
+      - ".github/test_modules_manager.json"
+      - ".github/actions/reinstall_cmake/**"
+      - "tests/integration/conftest.py"
+      - "tests/integration/test_api/**"
+      - "tests/integration/test_wazuh_db/**"
   workflow_dispatch:
     inputs:
       targets:
@@ -38,6 +46,18 @@ on:
           By default: false
         type: boolean
         required: false
+      run_all:
+        description: |
+          Run all integration test modules.
+          By default: true
+        type: boolean
+        default: true
+        required: false
+      base_branch:
+        description: 'Base branch for qa-integration-framework resolution'
+        type: string
+        default: 'main'
+        required: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -64,6 +84,132 @@ jobs:
             core.info('Generated matrix: ' + JSON.stringify(matrix));
             return { include: matrix };
           result-encoding: json
+
+  detect-changes:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    name: Detect changed manager test modules
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      any_matched: ${{ steps.set-matrix.outputs.any_matched }}
+      inventory_sync_changed: ${{ steps.set-matrix.outputs.inventory_sync_changed }}
+      inventory_sync_timeout: ${{ steps.set-matrix.outputs.inventory_sync_timeout }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build matrix from changed files
+        id: set-matrix
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RUN_ALL: ${{ inputs.run_all }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch || 'main' }}
+        shell: python
+        run: |
+          import json, os, re, subprocess
+
+          def github_glob_to_regex(pattern):
+              parts = pattern.split("**")
+              return ".*".join(
+                  re.escape(p).replace(r"\*", "[^/]*").replace(r"\?", "[^/]")
+                  for p in parts
+              )
+
+          event_name = os.environ.get("EVENT_NAME", "").strip()
+          run_all    = os.environ.get("RUN_ALL",    "true").strip().lower() == "true"
+          base_sha   = os.environ.get("BASE_SHA",   "").strip()
+          head_sha   = os.environ.get("HEAD_SHA",   "").strip()
+
+          # GitHub Actions rejects an empty matrix, so use a sentinel entry.
+          # Downstream jobs are gated on any_matched == "true", so this entry is skipped (never runs).
+          none_matrix = {"include": [{
+              "name": "none", "suite_type": "none",
+              "pytest_target": "", "pytest_extra_args": "",
+              "pytest_tier_args": "",
+              "timeout_minutes": 1,
+          }]}
+
+          with open(".github/test_modules_manager.json") as f:
+              config = json.load(f)
+
+          def build_entry(mod, tier):
+              tier_args = " ".join(f"--tier {t}" for t in tier.split())
+              return {
+                  "name":              mod["name"],
+                  "suite_type":        mod["suite_type"],
+                  "pytest_target":     mod.get("pytest_target", ""),
+                  "pytest_extra_args": mod.get("pytest_extra_args", ""),
+                  "pytest_tier_args":  tier_args,
+                  "timeout_minutes":   mod.get("timeout_minutes", 120),
+              }
+
+          inv_mod = next((m for m in config["modules"] if m["suite_type"] == "inventory_sync"), {})
+          inv_timeout = inv_mod.get("timeout_minutes", 60)
+
+          # Manual dispatch without run_all has no PR SHAs, so resolve them by diffing the
+          # dispatched branch against its base branch. If it can't be resolved, the SHAs stay
+          # empty and the logic below falls back to running everything.
+          if event_name == "workflow_dispatch" and not run_all and not (base_sha and head_sha):
+              base_branch = os.environ.get("BASE_BRANCH", "main").strip() or "main"
+              subprocess.run(["git", "fetch", "--quiet", "origin", base_branch], check=False)
+              base_sha = subprocess.run(
+                  ["git", "merge-base", "FETCH_HEAD", "HEAD"],
+                  capture_output=True, text=True,
+              ).stdout.strip()
+              head_sha = "HEAD" if base_sha else ""
+
+          if event_name == "workflow_dispatch" and run_all:
+              matrix_entries = []
+              inventory_sync_matched = True
+              for mod in config["modules"]:
+                  if mod["suite_type"] == "inventory_sync":
+                      continue
+                  for tier in mod.get("tiers", ["0 1"]):
+                      matrix_entries.append(build_entry(mod, tier))
+          elif base_sha and head_sha:
+              result = subprocess.run(
+                  ["git", "diff", "--name-only", base_sha, head_sha],
+                  capture_output=True, text=True, check=True,
+              )
+              changed = set(result.stdout.splitlines())
+              matrix_entries = []
+              inventory_sync_matched = False
+              for mod in config["modules"]:
+                  regexes = [github_glob_to_regex(p) for p in mod["paths"]]
+                  if not any(any(re.fullmatch(rx, fp) for rx in regexes) for fp in changed):
+                      continue
+                  if mod["suite_type"] == "inventory_sync":
+                      inventory_sync_matched = True
+                  else:
+                      for tier in mod.get("tiers", ["0 1"]):
+                          matrix_entries.append(build_entry(mod, tier))
+          else:
+              # Fallback: no diff base could be resolved — run everything to stay safe.
+              print("::warning::Could not resolve a diff base — running all modules.")
+              matrix_entries = []
+              inventory_sync_matched = True
+              for mod in config["modules"]:
+                  if mod["suite_type"] == "inventory_sync":
+                      continue
+                  for tier in mod.get("tiers", ["0 1"]):
+                      matrix_entries.append(build_entry(mod, tier))
+
+          matrix      = {"include": matrix_entries} if matrix_entries else none_matrix
+          any_matched = "true" if matrix_entries else "false"
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"matrix={json.dumps(matrix)}\n")
+              f.write(f"any_matched={any_matched}\n")
+              f.write(f"inventory_sync_changed={'true' if inventory_sync_matched else 'false'}\n")
+              f.write(f"inventory_sync_timeout={inv_timeout}\n")
+
   build-wazuh-manager:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Build Wazuh Manager
@@ -82,4 +228,39 @@ jobs:
       revision: ${{ inputs.revision || '0' }}
       is_stage: "${{ inputs.is_stage || false }}"
       debug: "${{ inputs.debug || false }}"
+    secrets: inherit
+
+  run-integration-tests:
+    if: >
+      (github.event_name != 'pull_request' || !github.event.pull_request.draft) &&
+      needs.detect-changes.outputs.any_matched == 'true' &&
+      needs.build-wazuh-manager.result == 'success'
+    name: ${{ matrix.name == 'none' && 'Integration tests - No relevant changes' || format('Integration tests - {0}', matrix.name) }}
+    needs: [build-wazuh-manager, detect-changes]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
+    uses: ./.github/workflows/5_testintegration_manager.yml
+    with:
+      build_run_id: ${{ github.run_id }}
+      module_name: ${{ matrix.name }}
+      pytest_target: ${{ matrix.pytest_target }}
+      pytest_extra_args: ${{ matrix.pytest_extra_args }}
+      pytest_tier_args: ${{ matrix.pytest_tier_args }}
+      timeout_minutes: ${{ matrix.timeout_minutes }}
+      base_branch: ${{ github.event.pull_request.base.ref || inputs.base_branch || 'main' }}
+    secrets: inherit
+
+  run-inventory-sync:
+    if: >
+      (github.event_name != 'pull_request' || !github.event.pull_request.draft) &&
+      needs.detect-changes.outputs.inventory_sync_changed == 'true' &&
+      needs.build-wazuh-manager.result == 'success'
+    name: ${{ needs.detect-changes.outputs.inventory_sync_changed == 'true' && 'Integration tests - inventory_sync' || 'Integration tests - inventory_sync - No relevant changes' }}
+    needs: [build-wazuh-manager, detect-changes]
+    uses: ./.github/workflows/5_testintegration_inventory-sync.yml
+    with:
+      build_run_id: ${{ github.run_id }}
+      timeout_minutes: ${{ fromJSON(needs.detect-changes.outputs.inventory_sync_timeout) }}
+      base_branch: ${{ github.event.pull_request.base.ref || inputs.base_branch || 'main' }}
     secrets: inherit

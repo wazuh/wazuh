@@ -123,7 +123,7 @@ Unknown keys are rejected with a warning during policy parsing and excluded from
 
 The `mitre` column stores a JSON-serialized object that maps MITRE ATT&CK categories to arrays of identifier strings. The following keys are supported:
 
-`tactic`, `technique`, `subtechnique`, `mitigation`
+`tactic`, `technique`, `subtechnique`
 
 **Example Data:**
 ```sql

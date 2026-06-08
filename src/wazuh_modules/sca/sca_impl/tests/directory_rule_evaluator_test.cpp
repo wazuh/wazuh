@@ -400,9 +400,9 @@ TEST_F(DirRuleEvaluatorTest, PathDoesNotExistHasReasonString)
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
-    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("nonexistent/"));
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("does not exist"));
+    EXPECT_FALSE(evaluator.GetUnresolvedReason().empty());
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("nonexistent/"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("does not exist"));
 }
 
 TEST_F(DirRuleEvaluatorTest, CannotResolvePathHasReasonString)
@@ -416,9 +416,9 @@ TEST_F(DirRuleEvaluatorTest, CannotResolvePathHasReasonString)
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
-    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("dir/"));
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("could not be resolved"));
+    EXPECT_FALSE(evaluator.GetUnresolvedReason().empty());
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("dir/"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("could not be resolved"));
 }
 
 TEST_F(DirRuleEvaluatorTest, PathNotDirectoryHasReasonString)
@@ -431,9 +431,9 @@ TEST_F(DirRuleEvaluatorTest, PathNotDirectoryHasReasonString)
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
-    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("notadir"));
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("not a directory"));
+    EXPECT_FALSE(evaluator.GetUnresolvedReason().empty());
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("notadir"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("not a directory"));
 }
 
 TEST_F(DirRuleEvaluatorTest, CannotListDirectoryHasReasonString)
@@ -448,9 +448,9 @@ TEST_F(DirRuleEvaluatorTest, CannotListDirectoryHasReasonString)
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
-    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("dir/"));
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("could not be listed"));
+    EXPECT_FALSE(evaluator.GetUnresolvedReason().empty());
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("dir/"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("could not be listed"));
 }
 
 TEST_F(DirRuleEvaluatorTest, InvalidRegexPatternHasReasonString)
@@ -466,9 +466,9 @@ TEST_F(DirRuleEvaluatorTest, InvalidRegexPatternHasReasonString)
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
-    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("dir/"));
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("Invalid pattern"));
+    EXPECT_FALSE(evaluator.GetUnresolvedReason().empty());
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("dir/"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("Invalid pattern"));
 }
 
 

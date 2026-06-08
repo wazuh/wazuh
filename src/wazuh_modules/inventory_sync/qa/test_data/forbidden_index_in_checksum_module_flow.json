@@ -1,0 +1,45 @@
+{
+  "description": "Forbidden index in ChecksumModule test: a ChecksumModule message whose 'index' does not match wazuh-states-* must be silently dropped by handleChecksumModule, leaving m_context->checksumIndex empty. Mode_ModuleCheck (mode=2 per the FlatBuffer schema) downstream detects the missing checksum index and responds with Status_Error.",
+  "messages": [
+    {
+      "type": "start",
+      "data": {
+        "module": "inventory_sync",
+        "mode": 2,
+        "size": 0,
+        "option": 0,
+        "agentid": "001",
+        "agentname": "checksum-filter-agent",
+        "agentversion": "5.0.0",
+        "architecture": "x86_64",
+        "hostname": "test-host",
+        "osname": "Linux",
+        "osplatform": "linux",
+        "ostype": "linux",
+        "osversion": "5.0"
+      },
+      "description": "Start a ModuleCheck (mode=2) session - no indices field so res.context->indices stays empty",
+      "delay": 0.5,
+      "expect_session_response": true
+    },
+    {
+      "type": "checksum_module",
+      "data": {
+        "index": "bogus-index",
+        "checksum": "should-not-matter"
+      },
+      "description": "ChecksumModule with non wazuh-states-* index - handleChecksumModule must NOT set m_context->checksumIndex",
+      "delay": 0.3,
+      "use_session_from_start": true
+    },
+    {
+      "type": "end",
+      "data": {},
+      "description": "End the session - Mode_ModuleCheck branch sees empty checksumIndex and must send end_ack(Status_Error)",
+      "delay": 0.5,
+      "use_session_from_start": true,
+      "expect_end_response": true,
+      "expected_status": "Status_Error"
+    }
+  ]
+}

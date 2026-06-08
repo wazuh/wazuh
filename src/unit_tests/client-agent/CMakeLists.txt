@@ -117,6 +117,9 @@ endif()
 if(${TARGET} STREQUAL "agent")
 list(APPEND client-agent_names "test_agentd")
 list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request ${DEBUG_OP_WRAPPERS}")
+
+list(APPEND client-agent_names "test_startup_gate")
+list(APPEND client-agent_flags "-Wl,--wrap,getsharedfiles ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(LENGTH client-agent_names count)

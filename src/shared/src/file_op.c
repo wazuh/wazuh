@@ -3173,7 +3173,9 @@ int w_uncompress_bz2_gz_file(const char * path, const char * dest) {
 /**
  * @brief Get the Wazuh installation directory
  *
- * It is obtained from the /proc directory, argv[0], or the env variable WAZUH_HOME
+ * The target-specific env var (`WAZUH_MANAGER_HOME` or `WAZUH_AGENT_HOME`,
+ * picked at build time via `WAZUH_HOME_ENV`) wins if set. Otherwise the path
+ * is auto-detected from /proc, then argv[0].
  *
  * @param arg ARGV0 - Program name
  * @return Pointer to the Wazuh installation path on success
@@ -3183,34 +3185,35 @@ char *w_homedir(char *arg) {
     struct stat buff_stat;
     char * delim = "/bin";
     os_calloc(PATH_MAX, sizeof(char), buff);
-#ifdef __MACH__
-    pid_t pid = getpid();
-    if (proc_pidpath(pid, buff, PATH_MAX) > 0) {
-        buff = w_strtok_r_str_delim(delim, &buff);
-    }
-#else
-    if (realpath("/proc/self/exe", buff) != NULL) {
-        dirname(buff);
-        buff = w_strtok_r_str_delim(delim, &buff);
-    }
-    else if (realpath("/proc/curproc/file", buff) != NULL) {
-        dirname(buff);
-        buff = w_strtok_r_str_delim(delim, &buff);
-    }
-    else if (realpath("/proc/self/path/a.out", buff) != NULL) {
-        dirname(buff);
-        buff = w_strtok_r_str_delim(delim, &buff);
-    }
-#endif
-    else if (realpath(arg, buff) != NULL) {
-        dirname(buff);
-        buff = w_strtok_r_str_delim(delim, &buff);
+
+    // Target-specific home env var wins if set.
+    char * home_env = getenv(WAZUH_HOME_ENV);
+    if (home_env && *home_env) {
+        snprintf(buff, PATH_MAX, "%s", home_env);
     } else {
-        // The path was not found so read WAZUH_HOME env var
-        char * home_env = NULL;
-        if (home_env = getenv(WAZUH_HOME_ENV), home_env) {
-            snprintf(buff, PATH_MAX, "%s", home_env);
+#ifdef __MACH__
+        pid_t pid = getpid();
+        if (proc_pidpath(pid, buff, PATH_MAX) > 0) {
+            buff = w_strtok_r_str_delim(delim, &buff);
         }
+#else
+        if (realpath("/proc/self/exe", buff) != NULL) {
+            dirname(buff);
+            buff = w_strtok_r_str_delim(delim, &buff);
+        }
+        else if (realpath("/proc/curproc/file", buff) != NULL) {
+            dirname(buff);
+            buff = w_strtok_r_str_delim(delim, &buff);
+        }
+        else if (realpath("/proc/self/path/a.out", buff) != NULL) {
+            dirname(buff);
+            buff = w_strtok_r_str_delim(delim, &buff);
+        }
+        else if (realpath(arg, buff) != NULL) {
+            dirname(buff);
+            buff = w_strtok_r_str_delim(delim, &buff);
+        }
+#endif
     }
 
     if ((w_stat(buff, &buff_stat) < 0) || !S_ISDIR(buff_stat.st_mode)) {

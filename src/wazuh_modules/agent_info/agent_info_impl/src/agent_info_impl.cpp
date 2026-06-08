@@ -145,7 +145,7 @@ AgentInfoImpl::AgentInfoImpl(std::string dbPath,
         throw std::invalid_argument("Query module function must be provided");
     }
 
-    m_logFunction(LOG_INFO, "AgentInfo initialized.");
+    m_logFunction(LOG_DEBUG, "AgentInfo initialized.");
 }
 
 AgentInfoImpl::~AgentInfoImpl()
@@ -1188,7 +1188,7 @@ bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
                         return false;
                     }
 
-                    m_logFunction(LOG_INFO, moduleName + " pause completed successfully");
+                    m_logFunction(LOG_DEBUG, moduleName + " pause completed successfully");
                     return true;
                 }
             }
@@ -1391,7 +1391,7 @@ bool AgentInfoImpl::triggerModuleFlush(const std::set<std::string>& pausedModule
             return false;
         }
 
-        m_logFunction(LOG_INFO, "Triggering flush for " + module + " module");
+        m_logFunction(LOG_DEBUG, "Triggering flush for " + module + " module");
 
         std::string flushMessage = createJsonCommand("flush");
         ModuleResponse response = queryModuleWithRetry(module, flushMessage);

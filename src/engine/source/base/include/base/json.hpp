@@ -824,6 +824,14 @@ public:
      */
     std::optional<base::Error> checkDuplicateKeys() const;
 
+    /**
+     * @brief Remove duplicate keys from the Json document, keeping the first occurrence.
+     * Operates recursively on nested objects and arrays.
+     *
+     * @return size_t The number of duplicate keys that were removed.
+     */
+    size_t removeDuplicateKeys();
+
     /************************************************************************************/
     // Setters
     /************************************************************************************/

@@ -40,6 +40,11 @@ static const char* task_statuses_map[] = {[WM_UPGRADE_SUCCESSFUL] = WM_TASK_STAT
 // CA certificates
 char** wcom_ca_store = NULL;
 
+STATIC bool wm_agent_upgrade_is_shutting_down(void)
+{
+    return wm_shutdown_requested != 0;
+}
+
 #ifndef WIN32
 
 /**
@@ -94,7 +99,7 @@ void wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config, c
     }
     else
     {
-        mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_STARTED);
+        mtinfo(WM_AGENT_UPGRADE_LOGTAG, STARTUP_MSG, (int)getpid());
     }
 
 #ifndef WIN32
@@ -190,9 +195,15 @@ STATIC void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config)
 {
     /**
      *  StartMQ will wait until agent connection which is when the pkg_install.sh will write
-     *  the upgrade result
+     *  the upgrade result. The predicate aborts the retry loop on shutdown so the module
+     *  does not block past the cooperative cancellation deadline.
      */
-    int queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+    int queue_fd = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, wm_agent_upgrade_is_shutting_down);
+
+    if (wm_shutdown_requested)
+    {
+        return;
+    }
 
     // Wait until pkg_installer script verifies the agent was connected and writes the upgrade_result file
     wm_sleep_interruptible(WM_AGENT_UPGRADE_RESULT_WAIT_TIME);
@@ -293,7 +304,13 @@ STATIC void wm_upgrade_agent_send_ack_message(int* queue_fd, wm_upgrade_agent_st
         {
             close(*queue_fd);
         }
-        *queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+        *queue_fd = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, wm_agent_upgrade_is_shutting_down);
+        if (wm_shutdown_requested)
+        {
+            os_free(msg_string);
+            cJSON_Delete(root);
+            return;
+        }
         if (*queue_fd < 0)
         {
             mterror_exit(WM_AGENT_UPGRADE_LOGTAG, QUEUE_FATAL, DEFAULTQUEUE);

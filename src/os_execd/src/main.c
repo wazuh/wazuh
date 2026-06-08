@@ -157,11 +157,12 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    /* Start up message */
-    minfo(STARTUP_MSG, (int)getpid());
-
     /* If AR is disabled, do not continue */
     if (c == 1) {
+        // AR-disabled branch never blocks on the startup hash gate, so
+        // emit STARTUP_MSG here. The active path emits it after the gate
+        // releases (see below).
+        minfo(STARTUP_MSG, (int)getpid());
         pthread_join(wcom_thread, NULL);
         exit(EXIT_SUCCESS);
     }
@@ -172,6 +173,13 @@ int main(int argc, char **argv)
     }
 
     startup_gate_wait_for_ready(ARGV0);
+
+    // STARTUP_MSG is emitted after the startup hash gate releases. The
+    // previous order logged "wazuh-execd: INFO: Started" before the gate
+    // could even be queried, making execd appear "Started" while every
+    // module was in fact still blocked waiting for the manager's
+    // merged.mg hash to validate (issue 36239).
+    minfo(STARTUP_MSG, (int)getpid());
 
     /* The real daemon Now */
     ExecdStart(m_queue);

@@ -319,7 +319,9 @@ STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
         }
 
         // Try to send it again
-        SendMSGPredicated(syscheck.queue, msg, location, mq, fim_shutdown_process_on);
+        if (SendMSGPredicated(syscheck.queue, msg, location, mq, fim_shutdown_process_on) < 0) {
+            merror("Failed to send message after reopening queue");
+        }
     }
 }
 
@@ -607,7 +609,7 @@ void start_daemon()
         return;
     }
 
-    mdebug1(FIM_DAEMON_STARTED);
+    minfo(FIM_DAEMON_STARTED);
 
     if (syscheck.file_limit_enabled) {
         mdebug2(FIM_FILE_LIMIT_VALUE, syscheck.file_entry_limit);
@@ -624,7 +626,7 @@ void start_daemon()
 #endif
 
     // Create File integrity monitoring base-line
-    mdebug1(FIM_FREQUENCY_TIME, syscheck.time);
+    minfo(FIM_FREQUENCY_TIME, syscheck.time);
     fim_scan();
 
 #ifndef WIN32
@@ -1005,7 +1007,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                     }
                 }
             } else {
-                mwarn("FIM synchronization failed.");
+                minfo("FIM synchronization failed.");
             }
 
             // If a flush was triggered while paused but processed here (after resume),

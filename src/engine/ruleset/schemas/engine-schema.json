@@ -771,51 +771,6 @@
     "email.x_mailer": {
       "type": "keyword"
     },
-    "enrichments.indicator.confidence": {
-      "type": "short"
-    },
-    "enrichments.indicator.feed.name": {
-      "type": "keyword"
-    },
-    "enrichments.indicator.first_seen": {
-      "type": "date"
-    },
-    "enrichments.indicator.id": {
-      "type": "keyword"
-    },
-    "enrichments.indicator.last_seen": {
-      "type": "date"
-    },
-    "enrichments.indicator.name": {
-      "type": "keyword"
-    },
-    "enrichments.indicator.provider": {
-      "type": "keyword"
-    },
-    "enrichments.indicator.reference": {
-      "type": "keyword"
-    },
-    "enrichments.indicator.software": {
-      "type": "object"
-    },
-    "enrichments.indicator.software.alias": {
-      "type": "keyword"
-    },
-    "enrichments.indicator.software.name": {
-      "type": "keyword"
-    },
-    "enrichments.indicator.software.type": {
-      "type": "keyword"
-    },
-    "enrichments.indicator.tags": {
-      "type": "keyword"
-    },
-    "enrichments.indicator.type": {
-      "type": "keyword"
-    },
-    "enrichments.source": {
-      "type": "keyword"
-    },
     "error.code": {
       "type": "keyword"
     },
@@ -3685,7 +3640,7 @@
       "type": "keyword"
     },
     "threat.enrichments": {
-      "type": "nested"
+      "type": "object"
     },
     "threat.enrichments.indicator": {
       "type": "object"
@@ -5797,7 +5752,7 @@
       "type": "keyword"
     },
     "wazuh.threat.enrichments": {
-      "type": "nested"
+      "type": "object"
     },
     "wazuh.threat.enrichments.indicator": {
       "type": "object"

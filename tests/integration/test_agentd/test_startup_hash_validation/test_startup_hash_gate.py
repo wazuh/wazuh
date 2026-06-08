@@ -41,6 +41,7 @@ os_platform:
 references:
     - https://github.com/wazuh/wazuh/issues/34509
     - https://github.com/wazuh/wazuh/issues/34329
+    - https://github.com/wazuh/wazuh/issues/36239
 '''
 
 import hashlib
@@ -362,6 +363,290 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
             # The file push triggers an agent reload; after the reload the
             # gate transitions directly to hash_match during re-handshake.
             _wait_startup_gate_status(True, "hash_match", timeout=push_delay + 60)
+
+        elif scenario == "reload_chain_fails_gate_still_releases":
+            # Regression for issue #36239. When the simulator pushes merged.mg,
+            # receiver.c calls reloadAgent() to propagate the new config via
+            # the modulesd control socket. If that socket isn't reachable, the
+            # call exhausts its 30 retries. Before the fix, the gate stayed at
+            # waiting_hash_match forever (only an agentd restart recovered).
+            # After the fix, the gate is released by receive_msg() once
+            # reloadAgent() reports failure (i.e. the reload chain definitively
+            # cannot run), so modules can still start without a full restart.
+            #
+            # We force the failure by stopping wazuh-modulesd between the
+            # handshake and the merged.mg push, so its CONTROL_SOCK is gone
+            # by the time reloadAgent() runs.
+            push_delay = 10
+
+            remoted_server = RemotedSimulator(
+                protocol="tcp",
+                limits_config=limits_config,
+                merged_mg_content=merged_content,
+                merged_mg_send_delay=push_delay,
+            )
+            remoted_server.start()
+            wait_connect()
+
+            # Handshake done, merged.mg not yet pushed -> blocked.
+            _wait_startup_gate_status(False, "waiting_hash_match")
+
+            # Kill modulesd: queue/sockets/control now disappears, so the
+            # reloadAgent() call triggered by the upcoming push will fail.
+            control_service('stop', daemon='wazuh-modulesd')
+
+            # The push arrives during the delay. reloadAgent() spends ~30s
+            # retrying the now-dead socket, returns false, and the fallback
+            # in receive_msg() releases the gate inline. Allow generous slack
+            # on top of the retry window.
+            _wait_startup_gate_status(True, "hash_match", timeout=push_delay + 90)
+
+            # Sanity: confirm the reload chain actually failed in this run,
+            # so we know the test exercised the fix path and not the normal
+            # one. Without this assertion a future change that, say, started
+            # modulesd back up automatically would silently turn this into a
+            # happy-path test.
+            reload_fail_monitor = FileMonitor(WAZUH_LOG_PATH)
+            reload_fail_monitor.start(
+                callback=callbacks.generate_callback(
+                    r".*Could not auto-reload agent\..*after 30 attempts\."
+                ),
+                timeout=30,
+            )
+            assert reload_fail_monitor.callback_result, (
+                "Expected 'Could not auto-reload agent ... after 30 attempts.' "
+                "log line was not observed; the test did not exercise the "
+                "broken-reload-chain path."
+            )
+
+        elif scenario == "no_premature_module_start_during_reload":
+            # Regression caught on 2026-05-22: an earlier iteration of the
+            # #36239 fix released the gate inline BEFORE reloadAgent() got to
+            # dispatch. Module daemons that were already polling the gate
+            # (syscheckd, rootcheck, etc.) would unblock immediately, finish
+            # their startup, run scans, and then be killed when the reload
+            # chain restarted them — duplicated work and partial scans.
+            #
+            # This scenario reproduces the normal-reload path (push delayed,
+            # reload chain succeeds) and asserts that modules do NOT start
+            # before the reload chain dispatches. Concretely: the first
+            # "wazuh-syscheckd: INFO: Started (pid: ..." log line in the run
+            # must come AFTER modulesd's "Executing 'reload' on wazuh-agent"
+            # log line.
+            push_delay = 10
+
+            remoted_server = RemotedSimulator(
+                protocol="tcp",
+                limits_config=limits_config,
+                merged_mg_content=merged_content,
+                merged_mg_send_delay=push_delay,
+            )
+            remoted_server.start()
+            wait_connect()
+
+            # Gate blocked while waiting for the push.
+            _wait_startup_gate_status(False, "waiting_hash_match")
+
+            # Wait for the push -> reload chain -> SIGUSR1 -> gate released.
+            _wait_startup_gate_status(True, "hash_match", timeout=push_delay + 60)
+
+            # Wait until both events have hit the log: the reload chain
+            # dispatching ("Executing 'reload' on wazuh-agent") and the
+            # post-reload syscheckd finishing startup. Polling for both
+            # avoids a race where we read the log before syscheckd's
+            # startup log line is flushed.
+            deadline = time.time() + 60
+            exec_reload_idx = None
+            sys_started_idx = None
+            while time.time() < deadline:
+                with open(WAZUH_LOG_PATH, 'r') as log_file:
+                    log_lines = log_file.readlines()
+                exec_reload_idx = next(
+                    (i for i, line in enumerate(log_lines)
+                     if "Executing 'reload' on wazuh-agent" in line),
+                    None,
+                )
+                sys_started_idx = next(
+                    (i for i, line in enumerate(log_lines)
+                     if "wazuh-syscheckd: INFO: Started" in line),
+                    None,
+                )
+                if exec_reload_idx is not None and sys_started_idx is not None:
+                    break
+                time.sleep(1)
+
+            assert exec_reload_idx is not None, (
+                "Reload chain log line 'Executing reload on wazuh-agent' not "
+                "found within timeout; the test did not exercise the reload "
+                "path."
+            )
+            assert sys_started_idx is not None, (
+                "wazuh-syscheckd never logged 'Started' within timeout; the "
+                "agent did not come up as expected."
+            )
+
+            # If syscheckd's first 'Started' line appears before the reload
+            # chain dispatch, modules unblocked during the reloadAgent retry
+            # window — the regression we're guarding against.
+            assert sys_started_idx > exec_reload_idx, (
+                f"REGRESSION: wazuh-syscheckd logged 'Started' (log line "
+                f"{sys_started_idx + 1}) BEFORE the reload chain dispatched "
+                f"(log line {exec_reload_idx + 1}). Modules started during "
+                f"the reloadAgent retry window, indicating the startup hash "
+                f"gate was released prematurely."
+            )
+
+        elif scenario == "stale_local_merged_mg_no_premature_module_start":
+            # Regression observed on 2026-05-26: real-world flow where the
+            # bug surfaces is a group reassignment while the agent is
+            # stopped. On restart, the local merged.mg still has the OLD
+            # group's hash; the manager handshake declares the NEW hash;
+            # the gate detects the mismatch and waits; the manager pushes
+            # the new merged.mg; the reload chain runs.
+            #
+            # During the gate-blocking window the agent must hold back
+            # EVERY module — not just wazuh-syscheckd's own startup, but
+            # also wazuh-rootcheck (which is statically linked into
+            # wazuh-syscheckd and historically logged "Started" from
+            # rootcheck_init() before the gate was queried). The user's
+            # field report showed exactly that:
+            #
+            #     wazuh-agentd ... receiver.c: INFO: Agent is reloading...
+            #     wazuh-agentd ... reload_agent.c: ... attempt 1/30
+            #     wazuh-rootcheck: INFO: Started (pid: 32440).   <-- BUG
+            #     wazuh-agentd ... reload_agent.c: ... attempt 2/30
+            #     ...
+            #     wazuh-modulesd ... main.c: INFO: Started (pid: 32465).
+            #
+            # This scenario reproduces that flow and asserts that, for
+            # every agent module ("wazuh-rootcheck", "wazuh-syscheckd",
+            # "wazuh-logcollector", "wazuh-execd"), the first
+            # "<module>: INFO: Started" log line appears AFTER the reload
+            # chain dispatches ("Executing 'reload' on wazuh-agent" log
+            # emitted by wm_control).
+            push_delay = 15
+
+            # Pre-create a local merged.mg with a DIFFERENT payload (and
+            # therefore a different MD5) than what the manager is going to
+            # advertise. This mirrors the "agent had group A, was stopped,
+            # then reassigned to group B server-side" condition: the local
+            # cache is stale relative to the manager's view.
+            stale_merged_content = (
+                b"!23 stale-agent.conf\n"
+                b"<agent_config></agent_config>"
+            )
+            assert (
+                hashlib.md5(stale_merged_content).hexdigest()
+                != hashlib.md5(merged_content).hexdigest()
+            ), (
+                "Test setup error: stale merged.mg content must hash to a "
+                "different value than the simulator's merged_sum, otherwise "
+                "the gate would release immediately and the scenario would "
+                "not exercise the reload chain."
+            )
+            os.makedirs(os.path.dirname(WAZUH_MERGED_MG_PATH), exist_ok=True)
+            with open(WAZUH_MERGED_MG_PATH, 'wb') as f:
+                f.write(stale_merged_content)
+            if sys.platform != platforms.WINDOWS:
+                os.chmod(WAZUH_MERGED_MG_PATH, 0o660)
+                try:
+                    import grp
+                    wazuh_gid = grp.getgrnam('wazuh').gr_gid
+                    os.chown(WAZUH_MERGED_MG_PATH, -1, wazuh_gid)
+                except (KeyError, PermissionError):
+                    pass
+
+            # Simulator advertises the NEW group's hash and pushes the
+            # matching merged.mg after a delay (simulating the manager
+            # finishing its per-agent recompute).
+            remoted_server = RemotedSimulator(
+                protocol="tcp",
+                limits_config=limits_config,
+                merged_mg_content=merged_content,
+                merged_mg_send_delay=push_delay,
+            )
+            remoted_server.start()
+            wait_connect()
+
+            # Handshake done, local hash is stale -> blocked.
+            _wait_startup_gate_status(False, "waiting_hash_match")
+
+            # Wait for the push -> reload chain -> SIGUSR1 -> gate released.
+            _wait_startup_gate_status(True, "hash_match", timeout=push_delay + 60)
+
+            # Poll the log until the reload chain dispatched AND every
+            # module daemon has logged "Started" — only then is it
+            # meaningful to compare line orders. Polling avoids a race
+            # where we read the log before slower modules' "Started"
+            # lines are flushed.
+            module_started_patterns = {
+                "wazuh-rootcheck": "wazuh-rootcheck: INFO: Started",
+                "wazuh-syscheckd": "wazuh-syscheckd: INFO: Started",
+                "wazuh-logcollector": "wazuh-logcollector: INFO: Started",
+                "wazuh-execd": "wazuh-execd: INFO: Started",
+            }
+            deadline = time.time() + 90
+            exec_reload_idx = None
+            module_started_indices = {}
+            while time.time() < deadline:
+                with open(WAZUH_LOG_PATH, 'r') as log_file:
+                    log_lines = log_file.readlines()
+                exec_reload_idx = next(
+                    (i for i, line in enumerate(log_lines)
+                     if "Executing 'reload' on wazuh-agent" in line),
+                    None,
+                )
+                module_started_indices = {
+                    module: next(
+                        (i for i, line in enumerate(log_lines) if needle in line),
+                        None,
+                    )
+                    for module, needle in module_started_patterns.items()
+                }
+                if exec_reload_idx is not None and all(
+                    idx is not None for idx in module_started_indices.values()
+                ):
+                    break
+                time.sleep(1)
+
+            assert exec_reload_idx is not None, (
+                "Reload chain log line 'Executing reload on wazuh-agent' not "
+                "found within timeout; the test did not exercise the reload "
+                "path."
+            )
+
+            # Build a single combined failure message rather than asserting
+            # one module at a time, so a failing run pinpoints every
+            # premature-start in one shot instead of one per re-run.
+            premature_starts = []
+            missing_starts = []
+            for module, idx in module_started_indices.items():
+                if idx is None:
+                    missing_starts.append(module)
+                elif idx < exec_reload_idx:
+                    premature_starts.append((module, idx + 1))
+
+            assert not missing_starts, (
+                "Module(s) never logged 'Started' within timeout: "
+                f"{missing_starts}. The agent did not come up as expected; "
+                "the assertions below cannot be made."
+            )
+
+            assert not premature_starts, (
+                "REGRESSION (issue 36239 follow-up): the following "
+                "module(s) logged 'Started' BEFORE the reload chain "
+                "dispatched at log line "
+                f"{exec_reload_idx + 1} ('Executing reload on "
+                "wazuh-agent'):\n  "
+                + "\n  ".join(
+                    f"{module} at log line {line_num}"
+                    for module, line_num in premature_starts
+                )
+                + "\nThis means at least one agent module bypassed the "
+                "startup hash gate during the gate-blocking window. Only "
+                "modulesd's control thread is allowed to run before the "
+                "gate releases."
+            )
 
         else:
             raise ValueError(f"Unknown startup gate scenario: {scenario}")
