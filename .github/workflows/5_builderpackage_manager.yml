@@ -113,13 +113,6 @@ jobs:
     name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
 
     steps:
-      - name: Cancel previous runs
-        uses: fkirc/skip-duplicate-actions@master
-        with:
-          cancel_others: "true"
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          skip_after_successful_duplicate: "false"
-
       - uses: actions/checkout@v6
 
       - name: Set ARCH and PACKAGE_ARCH

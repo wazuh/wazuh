@@ -14,7 +14,7 @@ on:
       build_run_id:
         required: false
         type: string
-        default: ''
+        default: ""
       timeout_minutes:
         required: false
         type: number
@@ -22,20 +22,20 @@ on:
       base_branch:
         required: false
         type: string
-        default: 'main'
+        default: "main"
   workflow_dispatch:
     inputs:
       build_run_id:
         required: false
-        default: ''
+        default: ""
       timeout_minutes:
-        description: 'Job timeout in minutes'
+        description: "Job timeout in minutes"
         required: false
-        default: '60'
+        default: "60"
       base_branch:
-        description: 'Base branch'
+        description: "Base branch"
         required: false
-        default: 'main'
+        default: "main"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -64,13 +64,6 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - name: Cancel previous runs
-        uses: fkirc/skip-duplicate-actions@master
-        with:
-          cancel_others: "true"
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          skip_after_successful_duplicate: "false"
-
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
@@ -188,7 +181,7 @@ jobs:
       - name: Run inventory_sync integration tests
         working-directory: src/wazuh_modules/inventory_sync/qa
         env:
-          TEST_MANAGER: '127.0.0.1'
+          TEST_MANAGER: "127.0.0.1"
         run: |
           source venv/bin/activate
           python3 run_tests.py --manager "$TEST_MANAGER" --verbose

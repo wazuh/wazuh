@@ -22,13 +22,6 @@ jobs:
       changes: ${{ steps.changes.outputs.changes }}
       tag: ${{ steps.set-tag.outputs.tag }}
     steps:
-      - name: Cancel previous runs
-        uses: fkirc/skip-duplicate-actions@master
-        with:
-          cancel_others: "true"
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          skip_after_successful_duplicate: "false"
-
       - name: Checkout repository
         uses: actions/checkout@v6
 
@@ -159,4 +152,3 @@ jobs:
           eval $CMD
         env:
           GH_TOKEN: ${{ matrix.repo == 'current' && secrets.GITHUB_TOKEN || secrets.CI_WAZUH_AGENT_PACKAGES }}
-
