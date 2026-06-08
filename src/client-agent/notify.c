@@ -75,6 +75,12 @@ void clear_merged_hash_cache() {
     os_free(g_shared_mg_file_hash);
 }
 
+#ifdef WAZUH_UNIT_TESTING
+void notify_reset_saved_time(void) {
+    g_saved_time = 0;
+}
+#endif
+
 /* Periodically send notification to server */
 void run_notify()
 {
@@ -88,7 +94,12 @@ void run_notify()
     static const char no_hash_value[] = "x merged.mg\n";
 
     tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 1] = '\0';
+    time_t mono_now = w_get_monotonic_time();
     curr_time = time(0);
+
+    if (g_saved_time == 0) {
+        g_saved_time = mono_now;
+    }
 
 #ifndef ONEWAY_ENABLED
     /* Check if the server has responded */
@@ -121,11 +132,11 @@ void run_notify()
         w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
     }
 
-    /* Check if time has elapsed */
-    if ((curr_time - g_saved_time) < agt->notify_time) {
+    /* Check if time has elapsed (monotonic — immune to clock changes) */
+    if ((mono_now - g_saved_time) < agt->notify_time) {
         return;
     }
-    g_saved_time = curr_time;
+    g_saved_time = mono_now;
 
     mdebug1("Sending agent notification.");
 
@@ -161,10 +172,8 @@ void run_notify()
         clear_merged_hash_cache();
     }
 
-    time_t now = time(NULL);
-    if ((now - last_update) >= agt->main_ip_update_interval) {
-        // Update agent_ip considering main_ip_update_interval value
-        last_update = now;
+    if ((mono_now - last_update) >= agt->main_ip_update_interval) {
+        last_update = mono_now;
         char *tmp_agent_ip = get_agent_ip();
 
         if (tmp_agent_ip) {
