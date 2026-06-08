@@ -1388,7 +1388,7 @@ TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
-DEPS_VERSION = 52
+DEPS_VERSION = 53
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
 CPYTHON := cpython
@@ -2503,7 +2503,7 @@ ifeq (,${INSTALLDIR})
 endif
 
 ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
-	export WPATH_LIB="'\$$\$$ORIGIN/../../../lib'" && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && export LD_LIBRARY_PATH=${ROUTE_PATH} && cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --libdir="${WPYTHON_DIR}/lib" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="${ARCH_FLAGS} -L${ROUTE_PATH} -L${ROUTE_PATH}/${EXTERNAL_SQLITE} -L${ROUTE_PATH}/${EXTERNAL_LIBFFI}${TARGET}/.libs -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include -I${ROUTE_PATH}/${EXTERNAL_SQLITE} -I${ROUTE_PATH}/${EXTERNAL_LIBFFI}include" LIBS="-lwazuhext" $(CPYTHON_FLAGS) && ${MAKE}
+	export WPATH_LIB="'\$$\$$ORIGIN/../../../lib'" && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && export LD_LIBRARY_PATH=${ROUTE_PATH} && export ac_cv_header_crypt_h=no && export ac_cv_lib_crypt_crypt=no && cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --libdir="${WPYTHON_DIR}/lib" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="${ARCH_FLAGS} -L${ROUTE_PATH} -L${ROUTE_PATH}/${EXTERNAL_SQLITE} -L${ROUTE_PATH}/${EXTERNAL_LIBFFI}${TARGET}/.libs -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include -I${ROUTE_PATH}/${EXTERNAL_SQLITE} -I${ROUTE_PATH}/${EXTERNAL_LIBFFI}include" LIBS="-lwazuhext" $(CPYTHON_FLAGS) && ${MAKE}
 endif
 
 build_python: $(WAZUHEXT_LIB)
