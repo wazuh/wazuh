@@ -125,7 +125,7 @@ The agent appears in the Wazuh dashboard under **Agent management -> Summary** w
 
 rsyslog receives the syslog messages and writes them directly to the systemd journal using the `omjournal` output module. The Wazuh agent reads the journal by default — no additional agent configuration is required.
 
-> **Important:** Without a message template, `omjournal` forwards only the `MSG` field of the syslog packet. The sender's hostname (from the syslog header) is silently dropped, so all journal entries appear to come from the local machine. The configuration below uses a template that embeds `%HOSTNAME%` — the sender's hostname as declared in the received syslog packet — at the start of each journal message, preserving the standard syslog format that Wazuh decoders expect.
+> **Important:** The `_HOSTNAME` field in the systemd journal is a *trusted field* — journald always sets it to the local machine's hostname, and no application (including rsyslog) can override it. This means that without additional configuration, all remote syslog entries written to the journal appear to come from the collection host, making sources indistinguishable. The configuration below uses a template that embeds `%HOSTNAME%` — the sender's hostname extracted from the received syslog packet by rsyslog — into the `MESSAGE` field, preserving the standard syslog format that Wazuh decoders expect.
 
 ### 1. Install the rsyslog journal output module
 
@@ -166,9 +166,9 @@ input(type="imudp" port="514" ruleset="remote_to_journal")
 input(type="imtcp" port="514" ruleset="remote_to_journal")
 ```
 
-> **Known limitation — `omjournal` and custom templates on rsyslog 8.x:** On rsyslog 8.x (including 8.2312.0, the version shipped with Ubuntu 24.04), specifying a `template` parameter in an `omjournal` action causes all journal writes to be **silently dropped**. No error is logged and `rsyslogd -N1` reports no config issues. The root cause is an internal code path split between `send_non_template_message` and `send_template_message` in `omjournal.c` — the template path is broken in this version family.
+> **Known issue — rsyslog 8.x and `omjournal` templates:** On rsyslog 8.x (including 8.2312.0, shipped with Ubuntu 24.04), specifying a `template` parameter in an `omjournal` action causes all journal writes to be **silently dropped**. No error is logged and `rsyslogd -N1` reports no config issues. This is a separate issue from the journald trusted-field behavior described above — it is a bug in the rsyslog `omjournal` implementation on this version family.
 >
-> If you apply the configuration above and see no messages in `journalctl -f`, confirm the issue by removing the template parameter temporarily:
+> If you apply the configuration above and see no messages in `journalctl -f`, confirm the issue by removing the `template` parameter temporarily:
 >
 > ```
 > ruleset(name="remote_to_journal") {
@@ -176,7 +176,7 @@ input(type="imtcp" port="514" ruleset="remote_to_journal")
 > }
 > ```
 >
-> Without a template, `omjournal` writes only the syslog `MSG` field as the journal `MESSAGE`. The remote sender's hostname is **not** embedded in the message body, and the trusted `_HOSTNAME` journal field always reflects the local machine. If your rsyslog version is affected, use **[Option B](#option-b-rsyslog--log-file--logcollector)** instead — it preserves the remote hostname reliably across all rsyslog versions.
+> Without the template, writes succeed but the remote hostname will not appear in the `MESSAGE` field. If your rsyslog version is affected, use **[Option B](#option-b-rsyslog--log-file--logcollector)** instead, which preserves the remote hostname reliably across all rsyslog versions.
 
 With this template, a message sent by host `ubu24-2` will appear in the journal as:
 
@@ -362,3 +362,158 @@ Existing Wazuh decoders and rules for network device syslog (for example, `cisco
 > **Note:** In Wazuh 4.x, the source IP of the remote device was available in `remoted`. In Wazuh 5.x, the source IP is embedded in the syslog message itself by the device (standard syslog behavior). If your rules relied on a remoted-injected source IP field, verify them after migration.
 
 ---
+
+## Migration example
+
+### Wazuh 4.x with syslog configured
+
+#### Generating remote logs
+
+```bash
+ubuntu@ubu24-2:~$ i=22; while true; do logger -n 192.168.70.104 --rfc3164 -P 514 "New remote log $i"; ((i++)); sleep 1; done
+```
+
+#### Wazuh manager configuration
+
+Configure `/var/ossec/etc/ossec.conf` to enable remote syslog reception:
+
+```xml
+<ossec_config>
+  <remote>
+    <connection>syslog</connection>
+    <port>514</port>
+    <protocol>udp</protocol>
+    <allowed-ips>192.168.1.0/24</allowed-ips>
+  </remote>
+</ossec_config>
+```
+
+Add a rule in `/var/ossec/etc/rules/local_rules.xml` to match the remote logs:
+
+```xml
+<group name="syslog,remote_test,">
+  <rule id="100002" level="3">
+    <match>New remote log</match>
+    <description>Remote syslog test message</description>
+  </rule>
+</group>
+```
+
+Alerts appear in `/var/ossec/logs/alerts/alerts.log`:
+
+```
+[wazuh-user@wazuh-server ~]$ sudo tail -f /var/ossec/logs/alerts/alerts.log
+** Alert 1780935033.426378: - syslog,remote_test,
+2026 Jun 08 16:10:33 ubu24-2->192.168.70.105
+Rule: 100002 (level 3) -> 'Remote syslog test message from ubu24-2'
+Jun  8 13:10:24 ubu24-2 ubuntu: New remote log 1619
+
+** Alert 1780935036.426594: - syslog,remote_test,
+2026 Jun 08 16:10:36 ubu24-2->192.168.70.105
+Rule: 100002 (level 3) -> 'Remote syslog test message from ubu24-2'
+Jun  8 13:10:26 ubu24-2 ubuntu: New remote log 1620
+
+** Alert 1780935038.426810: - syslog,remote_test,
+2026 Jun 08 16:10:38 ubu24-2->192.168.70.105
+Rule: 100002 (level 3) -> 'Remote syslog test message from ubu24-2'
+Jun  8 13:10:29 ubu24-2 ubuntu: New remote log 1621
+```
+
+Events visible in the dashboard:
+
+![Events generated by rsyslog in Wazuh 4.x](../../images/syslog-input/4x-rsyslog-event.png)
+
+
+### Wazuh 5.0 — Option A: rsyslog → journald
+
+#### Generating remote logs
+
+```bash
+ubuntu@ubu24-2:~$ i=22; while true; do logger -n 192.168.70.104 -P 514 "New remote log $i"; ((i++)); sleep 1; done
+```
+
+#### rsyslog configuration
+
+Create `/etc/rsyslog.d/remote.conf` to forward remote syslog to the systemd journal:
+
+```
+module(load="imudp")
+module(load="imtcp")
+module(load="omjournal")
+
+ruleset(name="remote_to_journal") {
+    action(type="omjournal")
+}
+
+input(type="imudp" port="514" ruleset="remote_to_journal")
+input(type="imtcp" port="514" ruleset="remote_to_journal")
+```
+
+Remote logs appear in the journal:
+
+```bash
+ubuntu@ubuntu-VirtualBox:~$ journalctl -f
+Jun 08 15:55:49 ubuntu-VirtualBox ubuntu[99023]: New remote log 2138
+Jun 08 15:55:51 ubuntu-VirtualBox ubuntu[99023]: New remote log 2139
+Jun 08 15:55:53 ubuntu-VirtualBox ubuntu[99023]: New remote log 2140
+Jun 08 15:55:55 ubuntu-VirtualBox ubuntu[99023]: New remote log 2141
+Jun 08 15:55:57 ubuntu-VirtualBox ubuntu[99023]: New remote log 2284
+Jun 08 15:55:59 ubuntu-VirtualBox ubuntu[99023]: New remote log 2285
+```
+
+Events visible in the dashboard:
+
+![Events generated by rsyslog in Wazuh 5.x — Option A](../../images/syslog-input/5x-rsyslog-journal-event.png)
+
+### Wazuh 5.0 — Option B: rsyslog → log file
+
+#### Generating remote logs
+
+```bash
+ubuntu@ubu24-2:~$ i=22; while true; do logger -n 192.168.70.104 --rfc3164 -P 514 "New remote log $i"; ((i++)); sleep 1; done
+```
+
+#### Wazuh agent configuration
+
+Add a `<localfile>` block to `/var/ossec/etc/ossec.conf` on the collection host:
+
+```xml
+<ossec_config>
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/remote-syslog.log</location>
+  </localfile>
+</ossec_config>
+```
+
+#### rsyslog configuration
+
+Create `/etc/rsyslog.d/remote.conf` to forward remote syslog to a file:
+
+```
+module(load="imudp")
+module(load="imtcp")
+
+template(name="RemoteSyslog" type="string" string="%timereported:::date-rfc3164% %HOSTNAME% %app-name%[%procid%]: %msg%\n")
+
+ruleset(name="remote_syslog") {
+    action(type="omfile" file="/var/log/remote-syslog.log" template="RemoteSyslog")
+}
+
+input(type="imudp" port="514" ruleset="remote_syslog")
+input(type="imtcp" port="514" ruleset="remote_syslog")
+```
+
+Remote logs appear in the output file:
+
+```bash
+ubuntu@ubuntu-VirtualBox:~$ tail -f /var/log/remote-syslog.log
+Jun  8 16:12:58 ubu24-2 ubuntu[-]: New remote log 22
+Jun  8 16:12:59 ubu24-2 ubuntu[-]: New remote log 23
+Jun  8 16:13:00 ubu24-2 ubuntu[-]: New remote log 24
+Jun  8 16:13:01 ubu24-2 ubuntu[-]: New remote log 25
+```
+
+Events visible in the dashboard:
+
+![Events generated by rsyslog in Wazuh 5.x — Option B](../../images/syslog-input/5x-rsyslog-file-event.png)
