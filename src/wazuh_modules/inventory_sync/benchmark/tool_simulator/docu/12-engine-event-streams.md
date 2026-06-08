@@ -1,6 +1,7 @@
 # 12 — Engine event streams
 
-A second payload type the Go sender supports (the Python sender does not).
+A second payload type supported by the sender alongside the default
+inventory_sync sessions.
 Where inventory_sync sessions push FlatBuffer messages prefixed with
 `s:<module_id>:`, an **engine event stream** reads a text file line by
 line and emits one frame per line, prefixed with `1:<location>:`.
@@ -220,7 +221,7 @@ wire            :  uint32_le(len(frame)) || frame
 ```
 
 See `tool_simulator/internal/wire/parity_test.go` for the test that asserts
-a Go round-trip with this exact payload semantic-matches the Python sender.
+a round-trip with this exact payload.
 
 ## Files
 

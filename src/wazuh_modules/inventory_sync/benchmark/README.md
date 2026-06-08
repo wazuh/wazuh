@@ -36,7 +36,7 @@ inventory_sync/
     └── tool_simulator/          # Go benchmark sender
         ├── cmd/benchmark_sender/ # Entry point (main.go)
         ├── internal/            # agent, inventory, runner, metrics, …
-        ├── docu/                # Design and implementation notes
+        ├── docu/                # Design docs — see [tool_simulator/docu/00-index.md](tool_simulator/docu/00-index.md)
         └── Makefile
 ```
 

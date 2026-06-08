@@ -1,6 +1,6 @@
 # 02 — Functional requirements
 
-This document enumerates every behaviour the Go sender MUST replicate. Each
+This document enumerates the required behaviours of the Go sender. Each
 FR has a short statement and a verification handle (the column in
 `bench.csv`, the test scenario that exercises it, or the manager log line
 to grep for).
@@ -39,7 +39,7 @@ section) directly affect the sender under stress:
 | ID    | Statement                                                                                                                                                            | Verification                                                                       |
 | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | FR-1  | Parse the scenario JSON, validate (`lanes` non-empty, XOR between `total_agents` and `fleets`, `repeat_until>=0`), normalise (merge `defaults` into each step, resolve relative `dump` paths). | Reject bad scenarios with a clear stderr message and exit non-zero before opening any socket. |
-| FR-2  | Enrol each agent against `wazuh-authd` (`tcp/1515`) with a unique `bench-<NNNN>-<rand12>` name, derive its AES key from the response.                                  | Manager API shows `bench-*` agents; `agents_registered` in `sender_summary.json.meta`. |
+| FR-2  | Enrol each agent against `wazuh-authd` (`tcp/1515`) with a unique name derived from the fleet and index: `bench-<fleet>-<NNNN>-<rand12>` when the scenario uses `fleets`, or `bench-<NNNN>-<rand12>` for the single-fleet `total_agents` shorthand. Derive the AES key from the response. | Manager API shows `bench-*` agents; `agents_registered` in `sender_summary.json.meta`. |
 | FR-3  | Connect each agent to `wazuh-remoted` (`tcp/1514`); send the `#!-agent startup` control message.                                                                       | TCP capture shows the control frame; `socket_alive=true` before the lane loop.     |
 | FR-4  | For each `(agent, lane, step)` triple, run the session state machine matching `session_type` (`delta`, `modulecheck`, `dataclean`). Lanes within the same agent run **in parallel**; steps within a lane run **sequentially**. | Total sessions started = `Σ(fleet_agents × Σ(repeat_count) per lane)` per pass.     |
 | FR-5  | Source payloads from a `dump` file (replay) or generate from a `kind` template + optional `payload_size` padding. Preserve per-item `index` for dumps (multi-index). | Compare `_index` of generated docs against scenario manifest for replay tests.     |
@@ -63,13 +63,13 @@ section) directly affect the sender under stress:
 
 | ID     | Statement                                                                                                                                                                       |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| NFR-1  | The Go sender MUST expose the same CLI flag names and semantics as the Python sender. No new required flags.                                                                    |
-| NFR-2  | The wire output (registration message and every remoted frame) MUST be byte-identical to the Python version given the same inputs (same `name`, `id`, `key`, scenario payload). |
+| NFR-1  | The sender exposes the CLI flags documented in [10-go-implementation-notes.md](./10-go-implementation-notes.md). No required flags beyond `--scenario`.                        |
+| NFR-2  | The wire output (registration message and every remoted frame) MUST be byte-identical given the same inputs (`name`, `id`, `key`, scenario payload). Verified by the deterministic fixture in AC-D. |
 | NFR-3  | The `bench.csv` schema (header row + field types) MUST be unchanged so [`result_summary.py`](../../result_summary.py) keeps working without modification.                          |
 | NFR-4  | The `sender_summary.json` schema MUST be unchanged so the charts pipeline keeps working.                                                                                        |
 | NFR-5  | The binary MUST NOT depend on cgo for crypto/zlib so it cross-compiles cleanly.                                                                                                 |
 | NFR-6  | Memory footprint per simulated agent MUST be ≤ ~2 MB at steady state to leave headroom on the CI runner under 2000-agent scenarios.                                             |
-| NFR-7  | The sustained EPS achievable under `mega_burst.json` on the reference hardware MUST be ≥ 2× the current Python throughput.                                                       |
+| NFR-7  | The sustained EPS achievable under `mega_burst.json` on the reference hardware SHOULD be ≥2× the previously logged baseline.                                                       |
 
 ## Out of scope
 

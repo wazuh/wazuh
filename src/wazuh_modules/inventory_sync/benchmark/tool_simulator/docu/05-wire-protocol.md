@@ -1,10 +1,9 @@
 # 05 — Wire protocol
 
 Every byte the sender emits is covered here: authd handshake, remoted
-framing, crypto stack, control messages. Reference implementation:
-[`benchmark_sender.py`](../../benchmark_sender.py) functions `_register_agent`,
-`_create_encryption_key`, `_encrypt_message`, `_decrypt_message`,
-`_send_event`, `_recv_event`.
+framing, crypto stack, control messages. The canonical implementation is in
+`internal/wire/` — functions `RegisterAgent`, `DeriveAESKey`,
+`EncryptMessage`, `DecryptMessage`, `SendEvent`, `RecvEvent`.
 
 ## 1. Authd (TCP/1515) — enrolment
 
@@ -22,7 +21,7 @@ The Go equivalent:
 
 ```go
 tls.Dial("tcp", addr, &tls.Config{
-    InsecureSkipVerify: true,   // matches Python's CERT_NONE
+    InsecureSkipVerify: true,   // manager cert is self-signed
 })
 ```
 
@@ -43,8 +42,7 @@ The single quotes are literal. No length prefix at this layer.
 OSSEC K:'<id> <name> <ip> <key>'\n
 ```
 
-Parsing (Python uses positional split; the Go port MUST be tolerant of leading
-whitespace and of `\r\n`):
+Parsing (the parser MUST be tolerant of leading whitespace and of `\r\n`):
 
 ```
 trim    response
@@ -63,8 +61,8 @@ Close the TLS connection immediately after parsing the response.
 
 ## 2. Key derivation
 
-Done once per agent immediately after enrolment, see
-`_create_encryption_key` in the Python source.
+Done once per agent immediately after enrolment (see `DeriveAESKey` in
+`internal/wire/`).
 
 ```
 sum1 = MD5(MD5_hex(name) || MD5_hex(agentid))           # 16 bytes
@@ -168,8 +166,8 @@ sca                        sca_sync
 vd_*                       syscollector_vd  (when option = VDFirst/VDSync)
 ```
 
-The exact mapping lives in `MODULE_TO_SYNC_TAG` near the top of
-`benchmark_sender.py`. The Go port MUST reproduce the table.
+The exact mapping lives in `MODULE_TO_SYNC_TAG` in `internal/wire/`.
+The sender MUST implement this table.
 
 ### Inbound frames
 
@@ -190,10 +188,9 @@ the socket:
 10. The trailing bytes are a FlatBuffer `Message` — see
    [06-flatbuffers-messages.md](./06-flatbuffers-messages.md).
 
-The reader MUST NOT validate the MD5 — the Python sender ignores it for
-inbound frames (the manager-side encryption is symmetric and any garbage
-shows up as a zlib/AES failure instead). The Go port SHOULD verify it for
-diagnostic logging only.
+The reader MUST NOT validate the MD5 — any corruption shows up as a
+zlib/AES failure before reaching the digest check. The reader SHOULD verify
+it for diagnostic logging only.
 
 ## 5. Control message (post-connect)
 
@@ -210,9 +207,8 @@ agent in the `active` state in the manager's `keys` table.
 Notes:
 
 - The literal prefix `#!-` is required by remoted to recognise control.
-- The JSON object's `version` is set to a hard-coded `"5.0.0"` in
-  benchmark_sender.py. Keep the literal in the Go port for parity unless
-  test parity is broken.
+- The JSON object's `version` is set to a hard-coded `"5.0.0"`.
+  Keep the literal unless a protocol change requires otherwise.
 
 ### Periodic keepalive
 

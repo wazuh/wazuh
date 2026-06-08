@@ -1,22 +1,22 @@
 # 07 — Concurrency and pacing
 
-This document maps the Python threading model to Go and fixes the pacing
-semantics the Go sender MUST replicate.
+This document describes the Go concurrency model and EPS pacing semantics
+used by the benchmark sender.
 
-## Python → Go primitive mapping
+## Concurrency primitive mapping
 
-| Python construct                                  | Go equivalent                                              | Notes |
+| Concept                                           | Go implementation                                          | Notes |
 | ------------------------------------------------- | ---------------------------------------------------------- | ----- |
-| `threading.Thread(daemon=True)` per agent         | `goroutine` + `context.Context`                            | One per agent. |
-| Per-agent reader thread (blocking `recv`)         | One goroutine per agent that reads frames and demuxes      | The reader does not parse FlatBuffers; it routes raw payloads to per-session channels and to the per-agent StartAck FIFO. |
-| Per-session `queue.Queue` inbox                   | `chan inboundFrame` (buffered, capacity 16)                | Closed by the runner when it leaves `AwaitEndAck`. |
-| `_send_lock` mutex (per agent)                    | `sync.Mutex` per agent                                     | Serialises wire writes for one agent — the manager requires intra-agent order. |
-| `_pending_starts` deque (per agent)               | `container/list.List` guarded by the send mutex            | StartAck FIFO; see 06-flatbuffers-messages.md. |
-| `threading.Semaphore(parallel_agents)`            | Buffered `chan struct{}` of capacity N                     | Acquire on agent entry, release on agent exit. |
-| `threading.Barrier(total_agents+1)`               | `sync.WaitGroup` + `chan struct{}` signal                  | Used when `parallel_agents == 0` to launch all agents together. |
-| `_eps_throttle` (sleep-until-target loop)         | `golang.org/x/time/rate.Limiter` per runner                | OR a custom leaky bucket (Python's algorithm; see §3). |
-| `stats_collector` thread                          | One goroutine driven by `time.Ticker(1s)`                  | Owns the CSV writer; no other goroutine writes to bench.csv. |
-| `signal.signal(SIGINT, …)` handler                | `signal.Notify(ch, syscall.SIGINT)` consumed by the supervisor goroutine | Cancels the root context on first signal. |
+| Per-agent execution unit                          | `goroutine` + `context.Context`                            | One per agent. |
+| Per-agent frame reader                            | One goroutine per agent that reads frames and demuxes      | Does not parse FlatBuffers; routes raw payloads to per-session channels and to the per-agent StartAck FIFO. |
+| Per-session inbox                                 | `chan inboundFrame` (buffered, capacity 16)                | Closed by the runner when it leaves `AwaitEndAck`. |
+| Per-agent send lock                               | `sync.Mutex` per agent                                     | Serialises wire writes for one agent — the manager requires intra-agent order. |
+| Pending-starts FIFO                               | `container/list.List` guarded by the send mutex            | StartAck FIFO; see 06-flatbuffers-messages.md. |
+| Concurrency limiter (`parallel_agents`)           | Buffered `chan struct{}` of capacity N                     | Acquire on agent entry, release on agent exit. |
+| All-agents-ready barrier                          | `sync.WaitGroup` + `chan struct{}` signal                  | Used when `parallel_agents == 0` to launch all agents together. |
+| Per-session EPS throttle                          | `golang.org/x/time/rate.Limiter` per runner                | Leaky-bucket semantics; see §3. |
+| Stats collector                                   | One goroutine driven by `time.Ticker(1s)`                  | Owns the CSV writer; no other goroutine writes to bench.csv. |
+| SIGINT handler                                    | `signal.Notify(ch, syscall.SIGINT)` consumed by the supervisor goroutine | Cancels the root context on first signal. |
 
 ## Goroutine map
 
@@ -86,13 +86,12 @@ func (a *AgentConn) readLoop(ctx context.Context) {
 }
 ```
 
-Channel capacity 16 is the Python default and matches manager batch sizes;
-under sustained ReqRet floods, larger may be warranted — measure first.
+Channel capacity 16 matches manager batch sizes; under sustained ReqRet
+floods, larger may be warranted — measure first.
 
 ## Pacing — per-session EPS
 
-Per-session `max_eps` is enforced by a leaky bucket. The Python algorithm
-(`_eps_throttle` in `benchmark_sender.py`):
+Per-session `max_eps` is enforced by a leaky bucket:
 
 ```
 t0   = time.monotonic()           # captured once per session
@@ -107,7 +106,7 @@ for each Message to send:
         sleep(target - now)
 ```
 
-This produces a *steady* EPS — bursts are not allowed. The Go equivalent:
+This produces a *steady* EPS — bursts are not allowed. The Go implementation:
 
 ```go
 limiter := rate.NewLimiter(rate.Limit(step.MaxEPS), 1)  // burst=1
@@ -118,8 +117,8 @@ for ... {
 }
 ```
 
-`burst=1` matches the Python behaviour. `burst > 1` allows short bursts and
-diverges from parity — do not change without test evidence.
+`burst=1` enforces strict leaky-bucket semantics. `burst > 1` allows short
+bursts and diverges — do not change without test evidence.
 
 Notes:
 
@@ -127,8 +126,7 @@ Notes:
 - The limiter is per-session, NOT per-agent and NOT global.
 - For dumps with `use_databatch=true`, the EPS cap applies to the **logical
   items** (each `DataValue` inside a `DataBatch` counts as 1), not the batch
-  envelopes. The Python code increments `sent` per item; the Go port MUST
-  do the same.
+  envelopes. The counter increments per item, not per batch.
 
 ## Pacing — scenario-level cadence
 
@@ -149,14 +147,12 @@ Never call `time.Sleep` for any of these — always use the
   closes the channel and they all start their lane work simultaneously.
 - `parallel_agents > 0`: use a buffered channel of capacity N as a
   semaphore. Each agent acquires before entering `IterationLoop` and
-  releases when leaving it (i.e. between iterations, the slot is held —
-  not the case in the Python code, see below).
+  releases when leaving it (i.e. between iterations, the slot is held).
 
-**Subtle difference**: in the Python sender, an agent holds its semaphore
-slot for the *entire* set of iterations. If `repeat_until > 0`, that
-behaviour caps the number of agents looping at once, not the number of
-agents performing a single iteration. The Go port MUST preserve this — do
-NOT release between iterations.
+**Semantics**: an agent holds its semaphore slot for the *entire* set of
+iterations. If `repeat_until > 0`, that behaviour caps the number of
+agents looping at once, not the number of agents performing a single
+iteration. Do NOT release between iterations.
 
 ## Cancellation
 
@@ -184,15 +180,13 @@ or a separate `signal.Notify` channel that triggers `os.Exit(130)`.
 - The hot path is: build → MD5 → zlib → pad → AES → write. Every step
   should reuse buffers; do not allocate slices in the inner loop.
 
-## Why a single reader per agent is fine (not the Python bottleneck)
+## Why a single reader per agent is sufficient
 
-In Python, the reader serialises **across all agents** because of the GIL —
-all readers fight one core's worth of throughput when decrypting + decoding
-+ dispatching. In Go, each reader runs on its own goroutine on its own
-core; the runtime schedules them across N cores without contention.
-A 2000-agent run on a 16-core box has 2000 readers, each typically idle
-(blocking on `recv`), and decode work runs on whatever scheduler thread
-picks up the runnable goroutine — exactly the speedup target of NFR-7.
+Each reader runs on its own goroutine and the runtime schedules them across
+cores without contention. In a 2000-agent run on a 16-core box there are
+2000 reader goroutines, each typically idle (blocking on `recv`);
+decryption and decode work runs in parallel across all available cores —
+exactly the throughput target of NFR-7.
 
 ## Counters and the stats collector
 

@@ -105,8 +105,8 @@ Rules:
    send, decremented on terminal ack or runner abort). Exit when
    `inFlight == 0` OR `drain_timeout` elapses.
 3. On timeout, sessions still in-flight are counted as `sessions_failed`
-   with `end_ack_timeout` reason. The Python script does this; the Go port
-   MUST replicate so summary numbers reconcile.
+   with `end_ack_timeout` reason. The implementation MUST do this so
+   summary numbers reconcile.
 
 ### Drain budget interaction with `--drain-timeout`
 
@@ -152,9 +152,8 @@ A panic in the supervisor itself: log, drain, `os.Exit(1)`.
 - Critical errors (registration failed, all-agents-failed) go to stderr.
 - Counter snapshots and progress go to stdout.
 
-The Python sender uses Python's `logging` module with one logger per
-component (`agent`, `runner`, `collector`). The Go port SHOULD use one
-logger per component too; `log/slog` is fine.
+The sender uses one logger per component (`agent`, `runner`, `collector`);
+`log/slog` is the implementation.
 
 ## Exit codes
 

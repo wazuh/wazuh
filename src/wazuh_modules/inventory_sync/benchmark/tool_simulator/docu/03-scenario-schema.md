@@ -1,9 +1,8 @@
 # 03 — Scenario file schema
 
 The sender's only structured input is a scenario JSON. This document is the
-canonical schema reference. The Python implementation reads it in
-`load_scenario()` in [`benchmark_sender.py`](../../benchmark_sender.py) (~line
-1833); the Go implementation MUST accept exactly the same inputs.
+canonical schema reference. The implementation reads it in
+`internal/scenario/` (`LoadScenario`); the format is stable.
 
 ## Top-level object
 
@@ -108,7 +107,7 @@ log lines as engine events — see [12-engine-event-streams.md](./12-engine-even
   "payload_size": 0,
 
   // Optional. Synthetic only: dotted-path field to expand with padding.
-  // Defaults per kind: see PAD_FIELD_BY_KIND in benchmark_sender.py.
+  // Defaults per kind: see kindDefaults in runner.go.
   "pad_field":    "file.path",
 
   // Optional. session_type=modulecheck only.
@@ -192,8 +191,7 @@ log lines as engine events — see [12-engine-event-streams.md](./12-engine-even
 ## Step `kind` table
 
 When `kind` is set instead of `dump`, the sender loads a template JSON from
-[`sample_payloads/`](../../sample_payloads/). The mapping (from
-`benchmark_sender.py`, `PAYLOAD_KINDS`):
+[`sample_payloads/`](../../sample_payloads/). The mapping:
 
 | `kind`                | Template file                    | Default module           | Default index                       |
 | --------------------- | -------------------------------- | ------------------------ | ----------------------------------- |

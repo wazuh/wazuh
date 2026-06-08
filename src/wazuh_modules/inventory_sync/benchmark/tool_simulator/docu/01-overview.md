@@ -2,7 +2,7 @@
 
 ## What the sender is
 
-[`benchmark_sender.py`](../../benchmark_sender.py) (~2400 LOC) simulates a fleet
+The benchmark sender (`tool_simulator/benchmark_sender`) simulates a fleet
 of Wazuh agents talking to a real `wazuh-manager`. Each simulated agent:
 
 1. Enrols itself against `wazuh-authd` on port `1515` (TLS, no client cert).
@@ -14,12 +14,12 @@ of Wazuh agents talking to a real `wazuh-manager`. Each simulated agent:
 5. On request, retransmits missing sequences (`ReqRet` handling).
 6. Records per-second counters and per-message latencies.
 
-The script is invoked from [`run_benchmark.sh`](../../run_benchmark.sh) once the
+The binary is invoked from [`run_benchmark.sh`](../../run_benchmark.sh) once the
 resource monitor is in place; it writes `bench.csv` and an optional
 `sender_summary.json`, and exits when either `repeat_until` elapses or all
 agents finish their pass — followed by a configurable `drain_timeout`.
 
-## Why move to Go
+## Why Go
 
 Python is the wrong tool for this workload:
 
@@ -43,10 +43,10 @@ The goal is **a 2× or better sustained-EPS improvement** under the
 `mega_burst` scenario on the same hardware, while preserving exact wire
 compatibility and output format.
 
-## Scope of this migration
+## Scope
 
-**In scope**: replace `benchmark_sender.py` with a Go binary that exposes
-the same CLI flags and produces the same CSV/JSON outputs.
+**In scope**: the sender binary (`cmd/benchmark_sender`) handles agent
+enrolment, wire framing, session state machines, EPS pacing, and output.
 
 **Out of scope** (everything else in
 [`benchmark/`](../../) stays as-is):
@@ -80,7 +80,7 @@ the same CLI flags and produces the same CSV/JSON outputs.
            |
            v
     3) ===== sender =====
-        benchmark_sender.py    <-- REPLACED BY GO BINARY
+        tool_simulator/benchmark_sender
            --scenario FILE
            --manager HOST
            --port 1514 --reg-port 1515
@@ -138,8 +138,7 @@ The Go sender slots into step 3 with no changes to steps 1, 2, 4, 5, 6.
 
 Pick one canonical workload as the gating benchmark: `mega_burst.json` with
 2000 agents and `repeat_until=180` on a fixed reference host (e.g. the CI
-runner spec). Record Python's sustained EPS and peak memory; the Go
-implementation must equal-or-exceed EPS by ≥2× and stay within a comparable
-memory envelope (no GC thrash). See
+runner spec). Record sustained EPS and peak memory; compare against the
+baseline logged at the time of last major change (see
 [11-acceptance-criteria.md](./11-acceptance-criteria.md) for the full
-verification protocol.
+verification protocol).

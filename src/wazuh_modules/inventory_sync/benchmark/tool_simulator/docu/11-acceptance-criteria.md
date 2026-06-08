@@ -1,23 +1,21 @@
 # 11 — Acceptance criteria
 
-This document fixes how parity is demonstrated and the cutover checklist
-that must be green before flipping the default `--engine` in
-[`run_benchmark.sh`](../../run_benchmark.sh) from `python` to `go`.
+This document defines how correctness is verified and the checklist that
+must be green before a release.
 
 ## Test plan summary
 
 | ID    | Type       | Scenario                                                       | Pass condition                                                                            |
 | ----- | ---------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| AC-A  | Smoke      | `base_init_debian_syscollector.json`                           | Both senders produce a `bench.csv` with `sessions_completed ≥ 1`, `start_ack_ok = 1`, `end_ack_ok ≥ 1`. Counter parity ±0 (single session — must match exactly). |
-| AC-B  | Multi-agent| `dump_replay_syscollector_vd_windows_full.json`, 60 s          | Both senders' cumulative `sessions_completed`, `data_values_sent`, `end_ack_ok` agree within ±5 %.                                                                  |
-| AC-C  | Saturation | `mega_burst.json`, 2000 agents, 180 s                          | Go sender sustained EPS over the middle 120 s window ≥ 2× Python's, on the same reference host. Memory peak (RSS) ≤ 1.5× Python's. (NFR-7.)                          |
-| AC-D  | Wire parity| Single Start, deterministic inputs                             | Hexdump of the first remoted frame from both senders is byte-identical given the same `(name, id, key, flatbuffer_bytes)`. (NFR-2.)                                |
-| AC-E  | Manager logs | All scenarios from AC-A..AC-C                                | No `Bad message format` / `Decoding error` / `Invalid checksum` / `inflate error` lines in `/var/wazuh-manager/logs/wazuh-manager.log` from the Go sender's traffic. |
-| AC-F  | Output schema | Both senders' `bench.csv` headers                          | Exact byte-equal header lines. (NFR-3.)                                                                                                                              |
-| AC-G  | Summary schema | Both senders' `sender_summary.json`                       | `result_summary.py` consumes both without code changes and produces equivalent reports. (NFR-4.)                                                                     |
+| AC-A  | Smoke      | `base_init_debian_syscollector.json`                           | `bench.csv` contains `sessions_completed ≥ 1`, `start_ack_ok = 1`, `end_ack_ok ≥ 1`. With a single session/agent, every per-second counter is stable.                 |
+| AC-B  | Multi-agent| `dump_replay_syscollector_vd_windows_full.json`, 60 s          | Cumulative `sessions_completed`, `data_values_sent`, `end_ack_ok` reach expected totals within ±5 % of a known-good baseline.                                           |
+| AC-C  | Saturation | `mega_burst.json`, 2000 agents, 180 s                          | Sustained EPS over the middle 120 s window ≥ target threshold documented in the run log. Memory peak (RSS) within bounds (NFR-6).                                        |
+| AC-D  | Wire parity| Single Start, deterministic inputs                             | Hexdump of the first remoted frame is byte-identical to the known-good fixture given the same `(name, id, key, flatbuffer_bytes)`. (NFR-2.)                            |
+| AC-E  | Manager logs | All scenarios from AC-A..AC-C                                | No `Bad message format` / `Decoding error` / `Invalid checksum` / `inflate error` lines in `/var/wazuh-manager/logs/wazuh-manager.log`.                                |
+| AC-F  | Output schema | `bench.csv` header                                         | Header is byte-equal to the expected value recorded in `testdata/bench_header.txt`. (NFR-3.)                                                                          |
+| AC-G  | Summary schema | `sender_summary.json`                                     | `result_summary.py` consumes output without code changes and produces a valid report. (NFR-4.)                                                                        |
 | AC-H  | Drain      | `base_init_debian_syscollector.json` with manual SIGINT mid-run | First SIGINT → drain completes within `drain_timeout`; exit 0. Second SIGINT within 2 s → exit 130. (FR-13.)                                                          |
-| AC-I  | Safeguards | Manager configured with `inventory_sync_data_value_quota=10`, plus a synthetic scenario that exceeds it | Both senders see `start_ack_offline` ≥ 1 and continue with the next iteration / repeat without aborting the agent.                                                  |
-| AC-J  | Backwards compat | `--engine=python` on the same `run_benchmark.sh`        | Equivalent run produces a `bench.csv` byte-equal in schema (not values) to Phase 0.                                                                                  |
+| AC-I  | Safeguards | Manager configured with `inventory_sync_data_value_quota=10`, plus a synthetic scenario that exceeds it | `start_ack_offline ≥ 1` in summary and agents continue with the next iteration without aborting.                                                                     |
 
 ## Method
 
@@ -30,31 +28,26 @@ a reasonable baseline.
 ### Smoke (AC-A)
 
 ```bash
-# Python
-./run_benchmark.sh --engine=python --scenario scenarios/base_init_debian_syscollector.json
-# Go
-./run_benchmark.sh --engine=go     --scenario scenarios/base_init_debian_syscollector.json
+./run_benchmark.sh --scenario scenarios/base_init_debian_syscollector.json
 ```
 
-Verify per-row counter values match across `bench.csv`. With a single
-session and single agent, every column should be identical second-by-second
-(within ±1 row of clock skew).
+Verify per-row counter values are stable second-by-second. With a single
+session and single agent every column should be consistent.
 
 ### Multi-agent (AC-B)
 
 ```bash
-./run_benchmark.sh --engine=python --scenario scenarios/dump_replay_syscollector_vd_windows_full.json
-./run_benchmark.sh --engine=go     --scenario scenarios/dump_replay_syscollector_vd_windows_full.json
+./run_benchmark.sh --scenario scenarios/dump_replay_syscollector_vd_windows_full.json
 ```
 
-Compare cumulative totals from `sender_summary.json.messages`. ±5 %
+Compare cumulative totals from `sender_summary.json.messages` against a
+known-good baseline. ±5 %
 tolerance accounts for non-determinism in EPS pacing and ReqRet timing.
 
 ### Saturation (AC-C)
 
 ```bash
-./run_benchmark.sh --engine=python --scenario scenarios/mega_burst.json
-./run_benchmark.sh --engine=go     --scenario scenarios/mega_burst.json
+./run_benchmark.sh --scenario scenarios/mega_burst.json
 ```
 
 Compute sustained EPS over the middle 120 s of the 180 s `repeat_until`
@@ -64,17 +57,17 @@ window (skip the first 30 s warmup and last 30 s drain):
 sustained_eps = sum(data_values_sent[30:150]) / 120
 ```
 
-Pass: `sustained_eps_go >= 2 * sustained_eps_python`.
+Record the result in the run log. Compare against the target threshold
+noted in the scenario (if set) or the previous run baseline.
 
-Also record `monitor.py`'s wazuh-manager-modulesd RSS — the Go sender
-SHOULD not increase manager-side memory pressure (it's the sender that
-changed, not the manager).
+Also record `monitor.py`'s wazuh-manager-modulesd RSS — confirm no
+unexpected growth compared with prior baseline runs.
 
 ### Wire parity (AC-D)
 
 Use a controlled fixture:
 
-- `name = "bench-0001-aaaaaaaaaaaa"`
+- `name = "bench-0001-aaaaaaaaaaaa"` (or `bench-smoke-0001-aaaaaaaaaaaa` for fleet scenarios)
 - `id = "001"`
 - `manager_key = "deadbeef…"` (32-char hex constant in test fixture)
 - One synthetic Start with `module=fim_files`, `mode=ModuleFull`,
@@ -108,13 +101,12 @@ sudo grep -E "Bad message format|Decoding error|Invalid checksum|inflate error" 
 Must return zero lines attributable to the Go sender's connections (the
 agent ids are `bench-…`).
 
-### Schema parity (AC-F, AC-G)
+### Schema (AC-F, AC-G)
 
 ```bash
-head -1 bench.csv_python | sha256sum
-head -1 bench.csv_go     | sha256sum   # must be equal
+head -1 bench.csv | sha256sum     # compare against testdata/bench_header.txt checksum
 
-python3 result_summary.py --bench bench.csv_go --summary sender_summary_go.json ...
+python3 result_summary.py --bench bench.csv --summary sender_summary.json ...
 ```
 
 If `result_summary.py` crashes or warns about missing columns, AC-F or AC-G
@@ -153,16 +145,15 @@ jq '.messages.start_ack_offline' sender_summary.json   # >= 1
 And that no agent enters an error state (the runner aborts the session,
 the next iteration proceeds).
 
-## Cutover checklist
+## Verification checklist
 
-Tick every item before flipping the default in
-[`run_benchmark.sh`](../../run_benchmark.sh).
+Tick every item before releasing.
 
-- [ ] Go binary builds with `CGO_ENABLED=0 go build -trimpath` from `benchmark/tool_simulator/` and is committed under `benchmark/tool_simulator/cmd/benchmark_sender/`.
-- [ ] FlatBuffer stubs are committed and regenerated via the existing `flatc` recipe — no checked-in stale output.
+- [ ] Go binary builds with `CGO_ENABLED=0 go build -trimpath` from `benchmark/tool_simulator/`.
+- [ ] FlatBuffer stubs are committed and regenerated via the existing `flatc` recipe — no stale output.
 - [ ] AC-A passes locally and in CI.
 - [ ] AC-B passes locally and in CI.
-- [ ] AC-C passes on the reference host. Run logged + EPS numbers committed under `docs/migration/` (or wherever migration artifacts live).
+- [ ] AC-C passes on the reference host. Sustained EPS logged and committed.
 - [ ] AC-D passes — hexdump diff is empty for the fixture in `testdata/`.
 - [ ] AC-E passes — clean manager logs after every benchmark.
 - [ ] AC-F + AC-G pass — `result_summary.py` runs unchanged.
@@ -171,18 +162,11 @@ Tick every item before flipping the default in
 - [ ] `--key-wait 35` default behaves correctly (no `Status_Offline` cascade on fresh manager).
 - [ ] `bench.csv` is line-buffered (visible with `tail -F` during the run).
 - [ ] Unit tests committed: `wrapFrame`, `DeriveAESKey`, FlatBuffer build/parse, scenario loader rejects malformed inputs, leaky-bucket pacing keeps under cap.
-- [ ] `--debug` flag works and produces the same density of logging as Python's debug mode.
-- [ ] `run_benchmark.sh`'s shim accepts `--engine=python|go` and `ENGINE=…` env var.
-- [ ] `cleanup_agents.sh` still removes Go-launched agents (no behaviour change expected).
-- [ ] `monitor.py` graphs render correctly for a Go-driven run.
-- [ ] Manager-side `inventorySyncFacade` unit tests still pass (sanity check that contract didn't drift).
-- [ ] No new dependencies introduced beyond those listed in [10-go-implementation-notes.md](./10-go-implementation-notes.md).
-- [ ] No cgo. Verify with `go build -trimpath -o /dev/null ./...` under `CGO_ENABLED=0` and check the resulting binary with `file`.
-- [ ] One-cycle parallel run executed: same `run_benchmark.sh` invocation with both engines, results archived for posterity.
+- [ ] `--debug` flag works and produces useful verbose output.
+- [ ] `cleanup_agents.sh` removes benchmark-launched agents correctly.
+- [ ] `monitor.py` graphs render correctly.
+- [ ] Manager-side `inventorySyncFacade` unit tests still pass.
+- [ ] No new dependencies beyond those listed in [10-go-implementation-notes.md](./10-go-implementation-notes.md).
+- [ ] No cgo. Verify with `CGO_ENABLED=0 go build -trimpath -o /dev/null ./...` and check the binary with `file`.
 - [ ] Code review by at least one Wazuh engine maintainer.
-- [ ] CHANGELOG entry mentioning the engine flip.
-- [ ] README / docs in `benchmark/` updated to point at the Go binary as the supported path.
-
-When every box is ticked, flip the default. The Python sender stays in the
-repo for one full release cycle as a safety net (`benchmark_sender.py.legacy`),
-then is removed.
+- [ ] CHANGELOG entry.

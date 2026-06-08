@@ -153,8 +153,7 @@ add fields, do not reorder.
 
 ## Builder reference per message type
 
-The Python sender uses the `flatbuffers` Python module. The Go port should
-use the generated stubs:
+The sender uses the generated Go stubs from:
 
 ```
 flatc --go inventorySync.fbs
@@ -244,7 +243,7 @@ const BatchTargetBytes = 60 * 1024
 | `entries` | vector of `Pair{key,value}` from the dump's `metadata.context` (if present), else `[]` |
 
 The current Python implementation emits `DataContext` only when the dump
-explicitly provides a context block. The Go port should do the same.
+explicitly provides a context block. The sender should do the same.
 
 ## Parser reference (inbound)
 

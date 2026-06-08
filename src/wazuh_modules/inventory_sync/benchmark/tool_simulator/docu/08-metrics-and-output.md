@@ -1,9 +1,8 @@
 # 08 — Metrics and output
 
-The Go sender MUST produce `bench.csv` and (optionally) `sender_summary.json`
-with the **exact** schemas that the Python sender produces.
+The sender produces `bench.csv` and (optionally) `sender_summary.json`.
 [`result_summary.py`](../../result_summary.py) and the chart generator consume
-both files and MUST keep working unchanged.
+both files.
 
 ## `bench.csv`
 
@@ -14,7 +13,7 @@ both files and MUST keep working unchanged.
 - Timestamp format: ISO-8601 UTC with seconds precision, e.g.
   `2026-06-02T14:23:45Z`.
 
-### Header row (exact order, matches Python's `COUNTER_FIELDS`)
+### Header row (exact order)
 
 ```
 timestamp,elapsed_s,
@@ -25,9 +24,8 @@ end_ack_ok,end_ack_offline,end_ack_error,end_ack_processing,
 reqret,missing_ranges_total,messages_dropped,start_retries
 ```
 
-This is `COUNTER_FIELDS` in `benchmark_sender.py`. The Go port MUST emit
-exactly these columns in this order so that `result_summary.py` keeps
-working unchanged.
+The sender MUST emit exactly these columns in this order so that
+`result_summary.py` keeps working unchanged.
 
 **Go-only addendum** (opt-in via `--report-engine`, default `true`): three
 more columns appended at the end:
@@ -187,15 +185,15 @@ The collector also emits a human-readable line every 5 seconds:
 ```
 
 This is for the developer watching the terminal — not parsed by any tool.
-The Go port SHOULD emit equivalent lines.
+Emit equivalent lines.
 
 ## Compatibility checks
 
 - `result_summary.py`'s `aggregate_bench()` reads `bench.csv` with
   `pandas.read_csv` and references columns by name; missing columns crash.
   Therefore: every column listed above MUST be present, in any order
-  (pandas reorders by name). The Python sender writes them in the order
-  above for human readability — keep that.
+  (pandas reorders by name). Write them in the order above for human
+  readability.
 - The chart generator (`monitor_graphics_generator.py`) reads
   `sender_summary.json` and looks for `meta.scenario_name`, `duration_sec`,
   `messages.sessions_completed`, `latency_ms.session_full.p99`. Renaming
