@@ -58,14 +58,29 @@ def test_aws_sqs_queue_initializes_properly(mock_wazuh_integration, mock_get_sqs
     assert integration.iam_role_arn == kwargs['iam_role_arn']
     mock_get_sqs_url.assert_called_once()
     mock_bucket_log_handler_init.assert_called_once()
-    mock_sts_client.assert_called_with(None, None, None)
-    mock_client.get_caller_identity.assert_called_once()
+
+
+# both configs must omit the owner id when resolving the queue URL
+@pytest.mark.parametrize('iam_role_arn', [
+    utils.TEST_IAM_ROLE_ARN,  # cross-/same-account via assumed role
+    None,                     # direct credentials, no role
+])
+@patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
+def test_aws_sqs_queue_get_sqs_url_omits_queue_owner_account_id(mock_wazuh_integration, iam_role_arn):
+    """Test '_get_sqs_url' resolves the queue URL without passing QueueOwnerAWSAccountId.
+
+    The SQS client is already scoped to the iam_role_arn target (or to the direct credentials),
+    so SQS derives the queue owner from the caller account. Passing an account id would break the
+    cross-account case (queue looked up in the manager's account instead of the role's account).
+    """
+    instance = utils.get_mocked_aws_sqs_queue(iam_role_arn=iam_role_arn)
+    # asserting the exact kwargs guarantees QueueOwnerAWSAccountId is not passed
+    instance.client.get_queue_url.assert_called_once_with(QueueName=instance.sqs_name)
 
 
 @patch('sqs_queue.AWSSQSQueue._get_sqs_url', return_value=SAMPLE_URL)
-@patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
-def test_aws_sqs_queue_delete_message(mock_wazuh_integration, mock_sts_client, mock_get_url):
+def test_aws_sqs_queue_delete_message(mock_wazuh_integration, mock_get_url):
     """Test 'delete_message' method sends the given message to SQS."""
     instance = utils.get_mocked_aws_sqs_queue()
     instance.delete_message(SAMPLE_MESSAGE)
