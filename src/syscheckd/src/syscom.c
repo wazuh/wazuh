@@ -63,9 +63,9 @@ int fim_execute_is_pause_completed(void) {
     }
 
     // Use trylock so the IPC thread never blocks. fim_run_integrity holds
-    // fim_scan_mutex for the full sync operation (asp_sync_module + integrity
-    // validation), which can take minutes on large trees. Blocking here would
-    // reintroduce the pause window this PR is eliminating.
+    // fim_scan_mutex only for the integrity/recovery loop (asp_sync_module now
+    // runs unlocked), which can still take minutes on large trees. Blocking here
+    // would reintroduce the pause window this PR is eliminating.
     //
     // If a scan is in progress, return 1 (in-progress) so pollFimPauseCompletion()
     // retries in ~1 second. The mutex becomes free as soon as the current sync

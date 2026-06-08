@@ -301,8 +301,9 @@ class AgentInfoImpl
         int m_pausePollDelayMs = 1000;
 
         /// @brief True once the current deferral streak has logged its INFO line, so
-        /// repeated deferrals during the same first sync stay at DEBUG
-        /// Reset when coordination finally completes.
+        /// repeated deferrals during the same first sync stay at DEBUG.
+        /// Reset as soon as FIM reports the first sync is complete (the deferral
+        /// episode ends), independent of whether later coordination steps succeed.
         bool m_deferralLogged = false;
 
         /// @brief Condition variable for efficient sleep/wake mechanism

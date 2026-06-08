@@ -1210,6 +1210,15 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
                     return PauseProbeResult::Deferred;
                 }
 
+                // FIM first sync is no longer in progress: the deferral episode (if any)
+                // has ended. Clear the throttle here rather than only on full coordination
+                // success, so a failure later in the cycle does not leave it stuck true and
+                // suppress the operator-visible INFO on a future deferral episode.
+                if (moduleName == FIM_NAME)
+                {
+                    m_deferralLogged = false;
+                }
+
                 std::string status = pollJson["data"]["status"].get<std::string>();
 
                 if (status == "in_progress")
@@ -1683,8 +1692,6 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
         {
             m_logFunction(LOG_WARNING, "Sync protocol not available, skipping synchronization");
         }
-
-        m_deferralLogged = false;
 
         m_logFunction(LOG_INFO, "Synchronization coordination completed successfully");
         m_logFunction(LOG_DEBUG,
