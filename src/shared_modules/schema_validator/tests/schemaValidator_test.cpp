@@ -5,56 +5,71 @@ using namespace SchemaValidator;
 
 class SchemaValidatorTest : public ::testing::Test
 {
-protected:
-    void SetUp() override
-    {
-        // Create test schema in memory
-        createTestSchema();
-    }
+    protected:
+        void SetUp() override
+        {
+            // Create test schema in memory
+            createTestSchema();
+        }
 
-    void createTestSchema()
-    {
-        nlohmann::json schema = {
-            {"index_patterns", {"test-index*"}},
-            {"priority", 1},
-            {"template", {
-                {"settings", {
-                    {"index", {
-                        {"number_of_replicas", "0"},
-                        {"number_of_shards", "1"}
-                    }}
-                }},
-                {"mappings", {
-                    {"date_detection", false},
-                    {"dynamic", "strict"},
-                    {"properties", {
-                        {"name", {{"type", "keyword"}, {"ignore_above", 1024}}},
-                        {"age", {{"type", "integer"}}},
-                        {"score", {{"type", "long"}}},
-                        {"email", {{"type", "keyword"}}},
-                        {"created_at", {{"type", "date"}}},
-                        {"is_active", {{"type", "boolean"}}},
-                        {"ip_address", {{"type", "ip"}}},
-                        {"port", {{"type", "short"}}},
-                        {"counter", {{"type", "unsigned_long"}}},
-                        {"price", {{"type", "scaled_float"}}},
-                        {"description", {{"type", "match_only_text"}}},
-                        {"metadata", {{"type", "object"}}},
-                        {"address", {
-                            {"properties", {
-                                {"street", {{"type", "keyword"}}},
-                                {"city", {{"type", "keyword"}}}
-                            }}
-                        }}
-                    }}
-                }}
-            }}
-        };
+        void createTestSchema()
+        {
+            nlohmann::json schema =
+            {
+                {"index_patterns", {"test-index*"}},
+                {"priority", 1},
+                {
+                    "template", {
+                        {
+                            "settings", {
+                                {
+                                    "index", {
+                                        {"number_of_replicas", "0"},
+                                        {"number_of_shards", "1"}
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "mappings", {
+                                {"date_detection", false},
+                                {"dynamic", "strict"},
+                                {
+                                    "properties", {
+                                        {"name", {{"type", "keyword"}, {"ignore_above", 1024}}},
+                                        {"age", {{"type", "integer"}}},
+                                        {"score", {{"type", "long"}}},
+                                        {"email", {{"type", "keyword"}}},
+                                        {"created_at", {{"type", "date"}}},
+                                        {"is_active", {{"type", "boolean"}}},
+                                        {"ip_address", {{"type", "ip"}}},
+                                        {"port", {{"type", "short"}}},
+                                        {"counter", {{"type", "unsigned_long"}}},
+                                        {"price", {{"type", "scaled_float"}}},
+                                        {"description", {{"type", "match_only_text"}}},
+                                        {"metadata", {{"type", "object"}}},
+                                        {
+                                            "address", {
+                                                {
+                                                    "properties", {
+                                                        {"street", {{"type", "keyword"}}},
+                                                        {"city", {{"type", "keyword"}}}
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
 
-        m_testSchemaString = schema.dump();
-    }
+            m_testSchemaString = schema.dump();
+        }
 
-    std::string m_testSchemaString;
+        std::string m_testSchemaString;
 };
 
 TEST_F(SchemaValidatorTest, LoadSchemaSuccess)
@@ -75,14 +90,16 @@ TEST_F(SchemaValidatorTest, ValidateValidMessage)
     SchemaValidatorEngine validator;
     validator.loadSchemaFromString(m_testSchemaString);
 
-    nlohmann::json message = {
+    nlohmann::json message =
+    {
         {"name", "John Doe"},
         {"age", 30},
         {"score", 12345},
         {"email", "john@example.com"},
         {"created_at", "2025-12-29T10:00:00.000Z"},
         {"is_active", true},
-        {"address", {{"street", "123 Main St"}, {"city", "New York"}}}};
+        {"address", {{"street", "123 Main St"}, {"city", "New York"}}}
+    };
 
     ValidationResult result = validator.validate(message);
     EXPECT_TRUE(result.isValid);
@@ -133,8 +150,10 @@ TEST_F(SchemaValidatorTest, ValidateStrictModeExtraField)
     validator.loadSchemaFromString(m_testSchemaString);
 
     // OpenSearch rejects extra fields with non-null values in strict mode
-    nlohmann::json message = {
-        {"name", "John Doe"}, {"age", 30}, {"extra_field", "not allowed"}};
+    nlohmann::json message =
+    {
+        {"name", "John Doe"}, {"age", 30}, {"extra_field", "not allowed"}
+    };
 
     ValidationResult result = validator.validate(message);
     EXPECT_FALSE(result.isValid);
@@ -148,8 +167,10 @@ TEST_F(SchemaValidatorTest, ValidateStrictModeExtraFieldNull)
     validator.loadSchemaFromString(m_testSchemaString);
 
     // OpenSearch ACCEPTS extra fields if their value is null in strict mode
-    nlohmann::json message = {
-        {"name", "John Doe"}, {"age", 30}, {"extra_field", nullptr}};
+    nlohmann::json message =
+    {
+        {"name", "John Doe"}, {"age", 30}, {"extra_field", nullptr}
+    };
 
     ValidationResult result = validator.validate(message);
     EXPECT_TRUE(result.isValid);
@@ -162,7 +183,8 @@ TEST_F(SchemaValidatorTest, ValidateStrictModeNestedExtraFieldNull)
     validator.loadSchemaFromString(m_testSchemaString);
 
     // OpenSearch ACCEPTS extra fields in nested objects if value is null
-    nlohmann::json message = {
+    nlohmann::json message =
+    {
         {"name", "John Doe"},
         {"age", 30},
         {"address", {{"street", "123 Main St"}, {"city", "New York"}, {"extra", nullptr}}}
@@ -179,7 +201,8 @@ TEST_F(SchemaValidatorTest, ValidateStrictModeNestedExtraFieldNonNull)
     validator.loadSchemaFromString(m_testSchemaString);
 
     // OpenSearch REJECTS extra fields in nested objects if value is non-null
-    nlohmann::json message = {
+    nlohmann::json message =
+    {
         {"name", "John Doe"},
         {"age", 30},
         {"address", {{"street", "123 Main St"}, {"city", "New York"}, {"extra", "not allowed"}}}
@@ -197,8 +220,9 @@ TEST_F(SchemaValidatorTest, ValidateNestedObject)
     validator.loadSchemaFromString(m_testSchemaString);
 
     nlohmann::json message = {{"name", "John Doe"},
-                              {"age", 30},
-                              {"address", {{"street", "123 Main St"}, {"city", "New York"}}}};
+        {"age", 30},
+        {"address", {{"street", "123 Main St"}, {"city", "New York"}}}
+    };
 
     ValidationResult result = validator.validate(message);
     EXPECT_TRUE(result.isValid);
@@ -276,7 +300,8 @@ TEST_F(SchemaValidatorTest, ValidateNullValues)
     validator.loadSchemaFromString(m_testSchemaString);
 
     // OpenSearch allows null for any field
-    nlohmann::json message = {
+    nlohmann::json message =
+    {
         {"name", nullptr},
         {"age", nullptr},
         {"created_at", nullptr},
@@ -294,7 +319,8 @@ TEST_F(SchemaValidatorTest, ValidateNullForNestedObject)
     validator.loadSchemaFromString(m_testSchemaString);
 
     // OpenSearch allows null for nested objects too
-    nlohmann::json message = {
+    nlohmann::json message =
+    {
         {"name", "John Doe"},
         {"age", 30},
         {"address", nullptr}  // Nested object can be null
@@ -401,7 +427,8 @@ TEST_F(SchemaValidatorTest, ValidateDateAsArray)
     validator.loadSchemaFromString(m_testSchemaString);
 
     // OpenSearch accepts both single values and arrays for date fields
-    nlohmann::json message = {
+    nlohmann::json message =
+    {
         {"name", "John Doe"},
         {"age", 30},
         {"created_at", nlohmann::json::array({1735468800000, "2025-12-29T10:00:00.000Z"})}
@@ -534,6 +561,7 @@ TEST_F(SchemaValidatorTest, FactoryGetValidator)
     // This test depends on embedded schemas being available
     // In a real deployment, the schemas would be embedded at build time
     auto validator = factory.getValidator("wazuh-states-fim-file");
+
     // May be nullptr if schemas weren't embedded during build
     // Just verify the API works without crashing
     if (validator)

@@ -128,6 +128,8 @@ TEST_F(SchemaValidatorConcurrencyTest, ConcurrentInitializeDoesNotLoseValidators
                 while (!go.load())
                 {
                     // Spin so all threads hit initialize() at the same time.
+                    // Yield to stay friendly under valgrind's serialized scheduler.
+                    std::this_thread::yield();
                 }
 
                 if (!factory.isInitialized())
@@ -140,6 +142,7 @@ TEST_F(SchemaValidatorConcurrencyTest, ConcurrentInitializeDoesNotLoseValidators
         while (ready.load() < kThreads)
         {
             // Wait until every thread is parked on the barrier.
+            std::this_thread::yield();
         }
 
         go.store(true);

@@ -12,11 +12,11 @@
 
 // Network headers for inet_pton
 #ifdef _WIN32
-    #include <winsock2.h>
-    #include <ws2tcpip.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #else
-    #include <arpa/inet.h>
-    #include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #endif
 
 namespace SchemaValidator
@@ -50,10 +50,12 @@ namespace SchemaValidator
         if (!initialized)
         {
             auto hWs2_32 = GetModuleHandleA("ws2_32.dll");
+
             if (hWs2_32)
             {
                 pfnInetPton = reinterpret_cast<inet_pton_t>(GetProcAddress(hWs2_32, "inet_pton"));
             }
+
             initialized = true;
         }
 
@@ -77,6 +79,7 @@ namespace SchemaValidator
 
         return false;
 #else
+
         // Linux/Unix: Use inet_pton directly
         if (inet_pton(AF_INET, ipStr.c_str(), &addr4) == 1)
         {
