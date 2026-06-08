@@ -302,9 +302,15 @@ class AgentInfoImpl
 
         /// @brief True once the current deferral streak has logged its INFO line, so
         /// repeated deferrals during the same first sync stay at DEBUG.
-        /// Reset as soon as FIM reports the first sync is complete (the deferral
-        /// episode ends), independent of whether later coordination steps succeed.
+        /// Reset when the deferral episode ends: either FIM reports the first sync is
+        /// complete, or the FIM probe gives up (timeout/IPC failure) without deferring.
         bool m_deferralLogged = false;
+
+        /// @brief Number of consecutive coordination cycles deferred waiting for FIM's
+        /// first sync. Used to escalate the throttled log to WARNING when the first sync
+        /// is taking abnormally long, so a stuck first sync is operator-visible instead of
+        /// silently deferring forever. Reset whenever the deferral episode ends.
+        int m_consecutiveDeferrals = 0;
 
         /// @brief Condition variable for efficient sleep/wake mechanism
         std::condition_variable m_cv;

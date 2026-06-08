@@ -154,6 +154,7 @@ static int setup_group(void ** state) {
     fim_flush_result.data = 0;
     syscheck.fim_pause_requested = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
     syscheck.fim_pausing_is_allowed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+    syscheck.fim_first_sync_completed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
 
 #ifdef TEST_WINAGENT
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -297,6 +298,7 @@ static int teardown_group(void **state) {
     fim_flush_result.data = 0;
     syscheck.fim_pause_requested.data = 0;
     syscheck.fim_pausing_is_allowed.data = 0;
+    syscheck.fim_first_sync_completed.data = 0;
 
 #ifdef TEST_WINAGENT
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
