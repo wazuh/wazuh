@@ -1712,21 +1712,27 @@ TEST_F(AgentInfoCoordinationTest, DeferCoordinationWhenFimFirstSyncNotCompleted)
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("Successfully coordinated")));
 }
 
-// Deferral must resume EVERY paused module, including FIM (which accepted the pause
-// request but is not yet in pausedModules at the deferral point — guards R2).
-TEST_F(AgentInfoCoordinationTest, DeferralResumesAllPausedModulesIncludingFim)
+// FIM is probed first, so a deferral pauses and resumes only FIM and never touches
+// SCA/Syscollector. FIM accepted the pause request but is not yet in pausedModules
+// at the deferral point, so it must still be resumed (guards R2).
+TEST_F(AgentInfoCoordinationTest, DeferralResumesFimOnlyAndSkipsOtherModulePauses)
 {
     int selectRowsCalls = 0;
     expectMetadataSyncNeeded(m_mockDBSync, selectRowsCalls);
 
+    std::vector<std::string> pauseLog;
     std::vector<std::string> resumeLog;
 
-    auto queryModuleFunc = [&resumeLog](const std::string & module_name, const std::string & query, char** response) -> int
+    auto queryModuleFunc = [&pauseLog, &resumeLog](const std::string & module_name, const std::string & query, char** response) -> int
     {
         nlohmann::json commandJson = nlohmann::json::parse(query);
         const auto command = commandJson["command"].get<std::string>();
 
-        if (command == "resume")
+        if (command == "pause")
+        {
+            pauseLog.push_back(module_name);
+        }
+        else if (command == "resume")
         {
             resumeLog.push_back(module_name);
         }
@@ -1767,9 +1773,13 @@ TEST_F(AgentInfoCoordinationTest, DeferralResumesAllPausedModulesIncludingFim)
         return false;
     });
 
+    // FIM is paused (and resumed) because it is probed first; the deferral aborts the
+    // cycle before SCA/Syscollector are ever paused.
     EXPECT_NE(std::find(resumeLog.begin(), resumeLog.end(), "fim"), resumeLog.end());
-    EXPECT_NE(std::find(resumeLog.begin(), resumeLog.end(), "sca"), resumeLog.end());
-    EXPECT_NE(std::find(resumeLog.begin(), resumeLog.end(), "syscollector"), resumeLog.end());
+    EXPECT_EQ(std::find(pauseLog.begin(), pauseLog.end(), "sca"), pauseLog.end());
+    EXPECT_EQ(std::find(pauseLog.begin(), pauseLog.end(), "syscollector"), pauseLog.end());
+    EXPECT_EQ(std::find(resumeLog.begin(), resumeLog.end(), "sca"), resumeLog.end());
+    EXPECT_EQ(std::find(resumeLog.begin(), resumeLog.end(), "syscollector"), resumeLog.end());
 }
 
 // Steady state (first_sync_completed=true): pause completes normally, no deferral,

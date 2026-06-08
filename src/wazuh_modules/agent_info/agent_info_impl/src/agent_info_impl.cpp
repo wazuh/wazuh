@@ -35,8 +35,13 @@ constexpr auto QUEUE_SIZE = 4096;
 constexpr auto AGENT_METADATA_TABLE = "agent_metadata";
 constexpr auto AGENT_GROUPS_TABLE = "agent_groups";
 
-// Module coordination configuration
-const std::vector<std::string> COORDINATION_MODULES = {SCA_WM_NAME, SYSCOLLECTOR_WM_NAME, FIM_NAME};
+// Module coordination configuration.
+// FIM is listed first so its async pause-completion probe runs before the other
+// modules are paused: while FIM's first sync is in progress the probe defers the
+// whole cycle, and pausing SCA/Syscollector first would freeze them for nothing
+// (every cycle for the entire first-sync window). Probing FIM first means a
+// deferral pauses and resumes only FIM, leaving the other modules untouched.
+const std::vector<std::string> COORDINATION_MODULES = {FIM_NAME, SCA_WM_NAME, SYSCOLLECTOR_WM_NAME};
 constexpr int MAX_COORDINATION_RETRIES = 3;
 constexpr int COORDINATION_RETRY_DELAY_MS = 1000;
 
