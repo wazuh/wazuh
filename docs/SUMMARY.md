@@ -24,6 +24,7 @@
   - [Integratord to notifications plugin](guide/migration/integratord-notifications.md)
   - [Migrating Syslog Input to Logcollector with rsyslog](guide/migration/syslog-input-4x-to-5x.md)
   - [Active Response](guide/migration/active-response.md)
+  - [Upgrade 4.X to 5.X](guide/migration/upgrade-4x-to-5x.md)
 
 # Reference Manual
 
