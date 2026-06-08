@@ -18,6 +18,7 @@
   - [SCA policies from 4.x to 5.x](guide/migration/sca-policies-4x-to-5x.md)
   - [CIS-CAT and OpenSCAP to SCA](guide/migration/ciscat-openscap-to-sca.md)
   - [Mail Forwarding and Reporting to Dashboard Notifications](guide/migration/mail-forwarding-reporting.md)
+  - [Remote Syslog Output to Dashboard Notifications](guide/migration/remote-syslog-output.md)
   - [OSquery to IT Hygiene](guide/migration/osquery-to-it-hygiene.md)
   - [Migrating Agent Groups](guide/migration/agent-groups-migration.md)
   - [Integratord to notifications plugin](guide/migration/integratord-notifications.md)
