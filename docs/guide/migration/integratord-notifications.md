@@ -24,24 +24,29 @@ The following table maps each `<integration>` field from Wazuh 4.x to its equiva
 | `<name>`           | Notifications | Channel name             | Identifies the channel                                                                                                                   |
 | `<hook_url>`       | Notifications | Webhook URL              | Some 4.x built-in scripts (e.g. PagerDuty) had the endpoint hardcoded and did not require this field                                     |
 | `<api_key>`        | Notifications | Webhook URL / Headers    | Depending on the service, credentials may be placed in the URL, request headers, or not be needed at all                                 |
-| `<alert_format>`   | —             | No match                 | Obsolete in 5.x; the **Alerting** plugin works with JSON documents directly                                                              |
+| `<alert_format>`   | —             | No match                 | This depends on the configurated message in the channel. |
 | `<rule_id>`        | Alerting      | Monitor query            | Monitors use queries on index patterns instead of rule matching. The matching field is `wazuh.rule.id`.                                  |
 | `<level>`          | Alerting      | Monitor query            | In 4.x the field was `rule.level`; see the note below.                                                                                   |
 | `<group>`          | Alerting      | Monitor query            | The group tag referred to the internal Wazuh component that generated the data. Now, it's represented by `wazuh.integration.name`.       |
 | `<event_location>` | Alerting      | Monitor query            | The 4.x tag used a sregex expression to match Wazuh modules or log sources/files; In 5.x, there is no direct conversion. See note below. |
 | `<options>`        | Alerting      | Trigger → Action message | See below                                                                                                                                |
 
-> **Note:** In 5.x, rule.level is now called wazuh.rule.level and uses categorical values (low, medium, high) instead of an integer from 1 to 16. Because there is no direct conversion, you must review your existing alert thresholds and determine how best to map your legacy numeric levels to these new categories based on your organization's specific routing needs.
+> **Note:** In 5.x, `rule.level` is now called `wazuh.rule.level` and uses categorical values (low, medium, high) instead of an integer from 0 to 16. Because there is no direct conversion, you must review your existing alert thresholds and determine how best to map your legacy numeric levels to these new categories based on your organization's specific routing needs.
 
-> **Note:** The `<event_location>` tag has no direct 1-to-1 replacement in 5.x. Because 5.x parses alerts into highly structured documents, the legacy `"location"` string is split across multiple independent fields. You should review your current use cases to determine which specific 5.x fields ( e.g: `wazuh.protocol.location`, `file.path`, `wazuh.agent.name`, ... ) align best with your implementation.
+> **Note:** The `<event_location>` tag has no direct 1-to-1 replacement in 5.x. Because 5.x parses alerts into highly structured documents, the legacy `location` field is split across multiple independent fields. You should review your current use cases to determine which specific 5.x fields ( e.g: `wazuh.protocol.location`, `file.path`, `wazuh.agent.name`, ... ) align best with your implementation.
 
 ![Configuration mapping index pattern and queries](../../images/integratord-notifications/data_queries.png)
 
 ### From `<options>` to trigger actions
 
-In 4.x, the `<integration>` block invoked a built-in script that generated a hardcoded, default JSON payload. To mold this payload for specific use cases without modifying the script's source code, users relied on the `<options>` block. The integration script would read the JSON provided in `<options>` and merge it with its default payload (typically appending new fields or overwriting existing ones).
+In 4.x, the `<options>` block allowed to the users customize the behavior of the script. This was defined as a **JSON** string.The integration script would read the JSON provided in `<options>` and apply the custom behavior.
 
-In 5.x, this concept is completely replaced by Triggers and Actions within a Monitor. When defining an Action, you target a specific Channel and write the exact message payload yourself using variables. Because there is no hardcoded default script to override, you have 100% control over the structure and content sent to the external integration from the start.
+In 5.x, this concept is completely replaced by:
+- message defined in the notification action of a monitor trigger in **Alerting**
+- query parameters in the URL of the notification channel
+- header parameters in the notification channel
+
+The notification channel should support and manage the customization of the behavior through the expected type. You have 100% control over the structure and content sent to the external integration from the start.
 
 ![Configuration mapping triggers and actions](../../images/integratord-notifications/trigger_actions.png)
 
