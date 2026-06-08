@@ -28,13 +28,14 @@ namespace Utils
      * @brief Asynchronously dispatches queued values to a callable using a fixed set of worker threads.
      *
      * The dispatcher owns a thread-safe queue and starts the worker threads during construction. Each worker waits for
-     * values and invokes the supplied functor for every value successfully popped from the queue. If the functor's first
-     * argument is an rvalue reference, the queued value is moved into the call; otherwise, it is passed as an lvalue.
+     * values and invokes the supplied functor for every value successfully popped from the queue. If the functor's
+     * first argument is an rvalue reference, the queued value is moved into the call; otherwise, it is passed as an
+     * lvalue.
      *
      * @tparam Type Value type stored in the queue. It must be default-constructible because workers create a temporary
      *              value before popping from the queue.
-     * @tparam Functor Callable type used to process values. It must be compatible with function_traits and callable with
-     *                 either Type& or Type&& depending on its first argument type.
+     * @tparam Functor Callable type used to process values. It must be compatible with function_traits and callable
+     * with either Type& or Type&& depending on its first argument type.
      *
      * @note The same functor instance may be called concurrently by several worker threads. Stateful functors must
      *       provide their own synchronization.

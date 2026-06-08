@@ -184,30 +184,59 @@ for _, item := range items {
 ### Per-agent StartAck FIFO
 
 ```go
-type AgentConn struct {
-    mu             sync.Mutex
-    conn           net.Conn
-    pendingStarts  list.List           // FIFO of *Runner waiting for StartAck
-    sessions       sync.Map            // session_id → *Runner (Established)
+// PendingStart carries the module tag so the dispatcher can match each
+// StartAck to the correct runner when two concurrent Starts on different
+// modules race (the manager may process them out of wire order).
+type PendingStart struct {
+    tag   string       // module identifier echoed by the manager in "#!-<tag> <fb>"
+    alive atomic.Bool  // cleared on runner timeout / cancel
+    cb    StartAckCallback
 }
 
-func (a *AgentConn) SendStart(r *Runner, payload []byte) error {
+type AgentConn struct {
+    mu            sync.Mutex
+    conn          net.Conn
+    pendingStarts list.List // FIFO of *PendingStart, matched by tag
+    sessions      sync.Map  // session_id → InboundCallback (Established)
+}
+
+func (a *AgentConn) SendStart(tag string, cb StartAckCallback, payload []byte) error {
+    ps := &PendingStart{tag: tag, cb: cb}
+    ps.alive.Store(true)
     a.mu.Lock()
-    a.pendingStarts.PushBack(r)
+    a.pendingStarts.PushBack(ps)
     err := a.writeFrame(payload)
+    if err != nil {
+        a.pendingStarts.Remove(a.pendingStarts.Back())
+    }
     a.mu.Unlock()
     return err
 }
 
-func (a *AgentConn) onStartAck(sessionID uint64, status Status) {
+// onStartAck matches the ack to the FIRST live PendingStart whose tag
+// equals `tag`. Dead (cancelled) entries and entries for other modules
+// are skipped. Within the same tag, FIFO order is preserved.
+func (a *AgentConn) onStartAck(tag string, sessionID uint64, status Status) {
+    var cb StartAckCallback
     a.mu.Lock()
-    front := a.pendingStarts.Front()
-    a.pendingStarts.Remove(front)
+    for e := a.pendingStarts.Front(); e != nil; {
+        next := e.Next()
+        ps := e.Value.(*PendingStart)
+        if !ps.alive.Load() {
+            a.pendingStarts.Remove(e)
+            e = next
+            continue
+        }
+        if ps.tag == tag {
+            cb = ps.cb
+            a.pendingStarts.Remove(e)
+            break
+        }
+        e = next // live entry for a different module — leave in place
+    }
     a.mu.Unlock()
-    r := front.Value.(*Runner)
-    r.startResult <- StartResult{Session: sessionID, Status: status}
-    if status == Status_Ok {
-        a.sessions.Store(sessionID, r)
+    if cb != nil {
+        cb(sessionID, status)
     }
 }
 ```

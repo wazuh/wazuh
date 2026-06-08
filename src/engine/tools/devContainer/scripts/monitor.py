@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from __future__ import annotations
 """
 Process resource monitor for Wazuh Manager benchmarks.
 
@@ -21,6 +20,7 @@ Usage:
     # Stop a running monitor
     kill $(cat monitor.pid)
 """
+from __future__ import annotations
 
 import argparse
 import atexit
