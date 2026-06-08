@@ -20,6 +20,7 @@
   - [Mail Forwarding and Reporting to Dashboard Notifications](guide/migration/mail-forwarding-reporting.md)
   - [OSquery to IT Hygiene](guide/migration/osquery-to-it-hygiene.md)
   - [Migrating Agent Groups](guide/migration/agent-groups-migration.md)
+  - [Integratord to notifications plugin](guide/migration/integratord-notifications.md)
 
 # Reference Manual
 
