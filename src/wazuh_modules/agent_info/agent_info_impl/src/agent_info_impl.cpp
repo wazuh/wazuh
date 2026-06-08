@@ -45,13 +45,6 @@ const std::vector<std::string> COORDINATION_MODULES = {FIM_NAME, SCA_WM_NAME, SY
 constexpr int MAX_COORDINATION_RETRIES = 3;
 constexpr int COORDINATION_RETRY_DELAY_MS = 1000;
 
-// After this many consecutive coordination cycles deferred waiting for FIM's first
-// sync, escalate the throttled deferral log from DEBUG to a periodic WARNING so an
-// abnormally long (or stuck) first sync becomes operator-visible. Deferral is still
-// the correct action — coordination must not run during FIM's first sync — this only
-// raises visibility. Emitted once at the threshold and every interval thereafter.
-constexpr int DEFERRAL_WARNING_INTERVAL = 10;
-
 // Map DBSync callback results to operation strings for stateless events
 static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
 {
@@ -1207,21 +1200,11 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
 
                 if (moduleName == FIM_NAME && !firstSyncCompleted)
                 {
-                    ++m_consecutiveDeferrals;
-
                     if (!m_deferralLogged)
                     {
                         m_logFunction(LOG_INFO,
                                       "Deferring coordination until FIM first sync completes, will retry next cycle");
                         m_deferralLogged = true;
-                    }
-                    else if (m_consecutiveDeferrals % DEFERRAL_WARNING_INTERVAL == 0)
-                    {
-                        // Escalate to WARNING so an abnormally long (or stuck) first sync is
-                        // operator-visible instead of silently deferring forever at DEBUG.
-                        m_logFunction(LOG_WARNING,
-                                      "FIM first sync still not complete after " + std::to_string(m_consecutiveDeferrals) +
-                                      " consecutive coordination cycles; agent metadata/groups synchronization remains deferred");
                     }
                     else
                     {
@@ -1239,7 +1222,6 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
                 if (moduleName == FIM_NAME)
                 {
                     m_deferralLogged = false;
-                    m_consecutiveDeferrals = 0;
                 }
 
                 std::string status = pollJson["data"]["status"].get<std::string>();
@@ -1294,7 +1276,6 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
     if (moduleName == FIM_NAME)
     {
         m_deferralLogged = false;
-        m_consecutiveDeferrals = 0;
     }
 
     m_logFunction(LOG_ERROR,

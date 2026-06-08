@@ -2170,101 +2170,6 @@ TEST_F(AgentInfoCoordinationTest, RepeatedDeferralLogsInfoOnce)
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Still deferring coordination"));
 }
 
-// Counts substring occurrences in the captured log output.
-static size_t countLogOccurrences(const std::string& hay, const std::string& needle)
-{
-    size_t n = 0, pos = 0;
-
-    while ((pos = hay.find(needle, pos)) != std::string::npos)
-    {
-        ++n;
-        pos += needle.size();
-    }
-
-    return n;
-}
-
-// After DEFERRAL_WARNING_INTERVAL (10) consecutive deferrals, the throttled log escalates
-// to WARNING so an abnormally long / stuck first sync is operator-visible instead of
-// deferring forever at DEBUG. The one-time INFO marker still appears exactly once.
-// The loop is driven off the per-cycle FIM "pause" count (one per cycle) rather than the
-// shouldContinue call count, because shouldContinue is invoked twice per loop iteration.
-// interval=0 keeps the loop from sleeping between iterations so the test stays sub-second.
-TEST_F(AgentInfoCoordinationTest, EscalatesToWarningAfterRepeatedDeferrals)
-{
-    EXPECT_CALL(*m_mockDBSync, handle())
-    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
-    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
-    .WillRepeatedly(::testing::Return());
-    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
-    .WillRepeatedly(::testing::Invoke([](const nlohmann::json& /* query */,
-                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
-    {
-        nlohmann::json flagData;
-        flagData["should_sync_metadata"] = 1;
-        flagData["should_sync_groups"] = 0;
-        flagData["last_metadata_integrity"] = 0;
-        flagData["last_groups_integrity"] = 0;
-        flagData["is_first_run"] = 0;
-        flagData["is_first_groups_run"] = 0;
-        callback(SELECTED, flagData);
-    }));
-
-    // One FIM pause is issued per coordination cycle (only FIM is paused on a deferral).
-    auto fimPauseCount = std::make_shared<int>(0);
-
-    auto queryModuleFunc = [fimPauseCount](const std::string & module_name, const std::string & query, char** response) -> int
-    {
-        nlohmann::json commandJson = nlohmann::json::parse(query);
-        const auto command = commandJson["command"].get<std::string>();
-
-        if (command == "pause" && module_name == "fim")
-        {
-            ++(*fimPauseCount);
-        }
-
-        nlohmann::json responseJson;
-        responseJson["error"] = 0;
-        responseJson["message"] = "Success";
-
-        if (command == "is_pause_completed" && module_name == "fim")
-        {
-            responseJson["data"]["status"] = "in_progress";
-            responseJson["data"]["first_sync_completed"] = false;  // keep deferring
-        }
-        else if (command == "get_version")
-        {
-            responseJson["data"]["version"] = 5;
-        }
-
-        std::string responseStr = responseJson.dump();
-        * response = strdup(responseStr.c_str());
-        return 0;
-    };
-
-    m_agentInfo = std::make_shared<AgentInfoImpl>(
-                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
-                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
-    m_agentInfo->setPausePollDelayMs(0);
-
-    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
-    .WillRepeatedly(::testing::Return(false));
-
-    nlohmann::json osData = {{"os_name", "TestOS"}};
-    EXPECT_CALL(*m_mockSysInfo, os())
-    .WillRepeatedly(::testing::Return(osData));
-
-    m_logOutput.clear();
-    // Run 12 coordination cycles (> the 10-deferral escalation threshold).
-    m_agentInfo->start(0, 86400, [fimPauseCount]()
-    {
-        return *fimPauseCount < 12;
-    });
-
-    EXPECT_EQ(countLogOccurrences(m_logOutput, "Deferring coordination until FIM first sync completes"), 1U);
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("FIM first sync still not complete after"));
-}
-
 // The deferral throttle must reset when the FIM probe gives up (timeout / no status) without
 // FIM ever reporting first-sync completion, so a later deferral episode logs its INFO marker
 // again instead of being stuck at DEBUG. Cycle 1 defers (INFO #1), cycle 2 times out (resets),
@@ -2350,6 +2255,19 @@ TEST_F(AgentInfoCoordinationTest, DeferralThrottleResetsAfterProbeGivesUp)
         return *fimPauseCount < 3;
     });
 
+    auto countOccurrences = [](const std::string & hay, const std::string & needle)
+    {
+        size_t n = 0, pos = 0;
+
+        while ((pos = hay.find(needle, pos)) != std::string::npos)
+        {
+            ++n;
+            pos += needle.size();
+        }
+
+        return n;
+    };
+
     // INFO appears in cycle 1 and again in cycle 3 (throttle reset by the cycle-2 give-up).
-    EXPECT_EQ(countLogOccurrences(m_logOutput, "Deferring coordination until FIM first sync completes"), 2U);
+    EXPECT_EQ(countOccurrences(m_logOutput, "Deferring coordination until FIM first sync completes"), 2U);
 }
