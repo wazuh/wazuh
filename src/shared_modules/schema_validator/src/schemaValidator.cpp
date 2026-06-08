@@ -41,6 +41,19 @@ namespace SchemaValidator
         struct in_addr addr4;
         struct in6_addr addr6;
 
+        // An address may carry an RFC 4007 zone/scope id (e.g. "fe80::1%eth0").
+        // inet_pton() rejects the "%zone" suffix, but OpenSearch's IpFieldMapper
+        // (InetAddresses.ipStringToBytes) ignores everything from the first '%'
+        // before parsing, so a value OpenSearch would index as "fe80::1" must be
+        // considered valid here too. Mirror that by stripping from the first '%'.
+        std::string ipCandidate = ipStr;
+        const std::size_t zonePos = ipStr.find('%');
+
+        if (zonePos != std::string::npos)
+        {
+            ipCandidate = ipStr.substr(0, zonePos);
+        }
+
 #ifdef _WIN32
         // Windows: Use GetProcAddress pattern (same as windowsHelper.h)
         typedef INT (WINAPI * inet_pton_t)(INT, PCSTR, PVOID);
@@ -66,13 +79,13 @@ namespace SchemaValidator
         }
 
         // Try IPv4 first
-        if (pfnInetPton(AF_INET, ipStr.c_str(), &addr4) == 1)
+        if (pfnInetPton(AF_INET, ipCandidate.c_str(), &addr4) == 1)
         {
             return true;
         }
 
         // Try IPv6
-        if (pfnInetPton(AF_INET6, ipStr.c_str(), &addr6) == 1)
+        if (pfnInetPton(AF_INET6, ipCandidate.c_str(), &addr6) == 1)
         {
             return true;
         }
@@ -81,12 +94,12 @@ namespace SchemaValidator
 #else
 
         // Linux/Unix: Use inet_pton directly
-        if (inet_pton(AF_INET, ipStr.c_str(), &addr4) == 1)
+        if (inet_pton(AF_INET, ipCandidate.c_str(), &addr4) == 1)
         {
             return true;
         }
 
-        if (inet_pton(AF_INET6, ipStr.c_str(), &addr6) == 1)
+        if (inet_pton(AF_INET6, ipCandidate.c_str(), &addr6) == 1)
         {
             return true;
         }
