@@ -36,9 +36,56 @@ int send_msg(const char *msg, ssize_t msg_length)
     }
 
     w_mutex_lock(&send_mutex);
+    if (agt->sock < 0) {
+        /* Socket was already invalidated by another thread; skip the send
+         * to avoid calling OS_SendSecureTCP(-1, ...) and reading a stale errno. */
+        w_mutex_unlock(&send_mutex);
+        return -1;
+    }
     retval = OS_SendSecureTCP(agt->sock, msg_size, crypt_msg);
 #ifndef WIN32
     error = errno;
+    if (retval != 0) {
+        bool socket_dead = false;
+        switch (error) {
+        case EPIPE:
+            mdebug2(TCP_EPIPE);
+            socket_dead = true;
+            break;
+        case ECONNRESET:
+            mdebug2("Connection reset by manager.");
+            socket_dead = true;
+            break;
+        case ETIMEDOUT:
+        case EAGAIN:
+#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
+        case EWOULDBLOCK:
+#endif
+            /* SO_SNDTIMEO expiry: kernel returns EAGAIN/EWOULDBLOCK on
+             * blocking sockets, or ETIMEDOUT on retransmit exhaustion. */
+            mwarn(SEND_ERROR, "server", strerror(error));
+            socket_dead = true;
+            break;
+        case ECONNREFUSED:
+            /* The remote end refused the connection — socket is unusable. */
+            mdebug2(CONN_REF);
+            socket_dead = true;
+            break;
+        case ENOTCONN:
+            /* Kernel already tore down the connection (e.g. after keepalive
+             * exhaustion or a previous hard error). */
+            mdebug2("Socket not connected.");
+            socket_dead = true;
+            break;
+        default:
+            mwarn(SEND_ERROR, "server", strerror(error));
+            break;
+        }
+        if (socket_dead && agt->sock >= 0) {
+            OS_CloseSocket(agt->sock);
+            agt->sock = -1;
+        }
+    }
 #endif
     w_mutex_unlock(&send_mutex);
 
@@ -49,20 +96,8 @@ int send_msg(const char *msg, ssize_t msg_length)
         error = WSAGetLastError();
         mwarn(SEND_ERROR, "server", win_strerror(error));
 #else
-        switch (error) {
-        case EPIPE:
-            mdebug2(TCP_EPIPE);
-            break;
-        case ECONNREFUSED:
-            mdebug2(CONN_REF);
-            break;
-        default:
-            minfo(SEND_ERROR, "server", strerror(error));
-            break;
-        }
-
+        /* TCP send errors are handled inside send_mutex above. */
 #endif
-        sleep(1);
     }
 
     return retval;

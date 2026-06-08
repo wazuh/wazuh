@@ -160,8 +160,28 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     /* Monitor loop */
     while (1) {
 
+        /* Reconnect if the socket was invalidated (either carried over from
+         * the previous iteration or by the receiver thread via SO_SNDTIMEO).
+         * Using continue ensures run_notify() always runs on a valid descriptor. */
+        if (agt->sock < 0) {
+            w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
+            merror(LOST_ERROR);
+            os_setwait();
+            start_agent(0);
+            minfo(SERVER_UP);
+            os_delwait();
+            w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
+            continue;
+        }
+
         /* Continuously send notifications */
         run_notify();
+
+        /* If run_notify() invalidated the socket, restart the loop to reconnect
+         * before FD_SET(), which requires a valid descriptor. */
+        if (agt->sock < 0) {
+            continue;
+        }
 
         if (agt->sock > maxfd - 1) {
             maxfd = agt->sock + 1;
