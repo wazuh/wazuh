@@ -65,7 +65,14 @@ extern "C" {
 
             if (!validator)
             {
-                return true; // No validator for this index, consider it valid
+                // No validator for this index: be restrictive and reject the message
+                // instead of letting it through unvalidated.
+                if (errorMessage)
+                {
+                    *errorMessage = strdup("No schema validator found for index");
+                }
+
+                return false;
             }
 
             auto result = validator->validate(std::string(message));

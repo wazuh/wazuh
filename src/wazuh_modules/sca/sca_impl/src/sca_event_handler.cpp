@@ -967,7 +967,10 @@ bool SCAEventHandler::ValidateAndHandleStatefulMessage(const nlohmann::json& sta
 
     if (!validator)
     {
-        return true;
+        // No validator for this index: be restrictive and discard the message.
+        LoggingHelper::getInstance().log(LOG_WARNING,
+                                         "No schema validator found for index: " + std::string(SCA_SYNC_INDEX) + ". Discarding message.");
+        return false;
     }
 
     std::string statefulData = statefulEvent.dump();

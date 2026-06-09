@@ -1172,13 +1172,15 @@ TEST_F(SchemaValidatorTest, CApiValidateWhenNotInitializedReturnsTrue)
     SchemaValidatorFactory::getInstance().initialize(); // restore for other tests
 }
 
-TEST_F(SchemaValidatorTest, CApiValidateUnknownIndexReturnsTrue)
+TEST_F(SchemaValidatorTest, CApiValidateUnknownIndexReturnsFalse)
 {
     schema_validator_initialize();
 
+    // Restrictive behaviour: no validator for the index -> reject the message.
     char* errorMessage = nullptr;
-    EXPECT_TRUE(schema_validator_validate("there-is-no-such-index", "{}", &errorMessage));
-    EXPECT_EQ(errorMessage, nullptr);
+    EXPECT_FALSE(schema_validator_validate("there-is-no-such-index", "{}", &errorMessage));
+    ASSERT_NE(errorMessage, nullptr);
+    free(errorMessage);
 }
 
 TEST_F(SchemaValidatorTest, CApiValidateValidMessageReturnsTrue)
