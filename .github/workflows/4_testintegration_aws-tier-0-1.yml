@@ -18,13 +18,14 @@ on:
 
 jobs:
   build:
+    permissions:
+      id-token: write  # Required for OIDC token generation (aws-actions/configure-aws-credentials)
+      contents: read
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
       QA_IT_FW_BRANCH: ${{ github.base_ref || inputs.base_qa_it_fw_branch }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.IT_AWS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.IT_AWS_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: 'us-east-1'
+      AWS_VPC_ID: ${{ secrets.IT_AWS_VPC_ID }}
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout Repo
@@ -93,15 +94,40 @@ jobs:
           sudo pip install --ignore-installed --break-system-packages qa-integration-framework/
           sudo rm -rf qa-integration-framework/
 
-      - name: Set AWS credentials file
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.IT_AWS_OIDC_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Write AWS named profiles for integration tests
         run: |
-          sudo aws configure set aws_access_key_id ${AWS_ACCESS_KEY_ID} --profile default
-          sudo aws configure set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY} --profile default
-          sudo aws configure set default.region ${AWS_DEFAULT_REGION} --profile default
-      - name: Set AWS credentials file for inspector2 tests (us-east-2)
-        run: |
-          sudo aws configure set aws_access_key_id ${AWS_ACCESS_KEY_ID} --profile inspector_tests
-          sudo aws configure set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY} --profile inspector_tests
+          # Write 'default' profile (us-east-1) from the OIDC temporary credentials.
+          # AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_SESSION_TOKEN are injected as
+          # environment variables by the preceding 'Configure AWS credentials via OIDC' step.
+          sudo aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID" --profile default
+          sudo aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY" --profile default
+          sudo aws configure set aws_session_token "$AWS_SESSION_TOKEN" --profile default
+          sudo aws configure set region us-east-1 --profile default
+
+          # Assume the Inspector role via role chaining to build the 'inspector_tests' profile.
+          # Inspector tests run against the wazuh-dev account and require us-east-2.
+          STS_OUTPUT=$(aws sts assume-role \
+            --role-arn "${{ secrets.IT_AWS_INSPECTOR_ROLE_ARN }}" \
+            --role-session-name "github-actions-inspector-tests" \
+            --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" \
+            --output text) || { echo "::error::Failed to assume Inspector role"; exit 1; }
+
+          read -r INSPECTOR_KEY INSPECTOR_SECRET INSPECTOR_TOKEN <<< "$STS_OUTPUT"
+
+          if [ -z "$INSPECTOR_KEY" ] || [ -z "$INSPECTOR_SECRET" ] || [ -z "$INSPECTOR_TOKEN" ]; then
+            echo "::error::Inspector role credentials are empty"
+            exit 1
+          fi
+
+          sudo aws configure set aws_access_key_id "$INSPECTOR_KEY" --profile inspector_tests
+          sudo aws configure set aws_secret_access_key "$INSPECTOR_SECRET" --profile inspector_tests
+          sudo aws configure set aws_session_token "$INSPECTOR_TOKEN" --profile inspector_tests
           sudo aws configure set region us-east-2 --profile inspector_tests
 
       - name: "Install a compatible CMake"
@@ -158,7 +184,7 @@ jobs:
         if: steps.filter.outputs.integration == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 test_aws/
+          sudo AWS_VPC_ID="${AWS_VPC_ID}" python3 -m pytest -vvv --tier 0 --tier 1 test_aws/
 
       - name: Run Custom Buckets tests
         if: steps.filter.outputs.bucket == 'true'
@@ -210,7 +236,7 @@ jobs:
         if: steps.filter.outputs.vpcflow == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k vpc test_aws/
+          sudo AWS_VPC_ID="${AWS_VPC_ID}" python3 -m pytest -vvv --tier 0 --tier 1 -k vpc test_aws/
 
       - name: Run WAF tests
         if: steps.filter.outputs.waf == 'true' || steps.filter.outputs.bucket == 'true'
