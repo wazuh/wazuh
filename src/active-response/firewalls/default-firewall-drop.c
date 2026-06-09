@@ -27,10 +27,10 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
-    // Get srcip
+    // Get srcip (validated automatically by get_srcip_from_json)
     const char *srcip = get_srcip_from_json(input_json);
     if (!srcip) {
-        write_debug_file(argv[0], "Cannot read 'srcip' from data");
+        write_debug_file(argv[0], "Cannot read 'srcip' from data or invalid IP format");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }

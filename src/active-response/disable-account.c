@@ -23,10 +23,10 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
-    // Detect username
+    // Detect username (now validated automatically by get_username_from_json)
     const char *user = get_username_from_json(input_json);
     if (!user) {
-        write_debug_file(argv[0], "Cannot read 'dstuser' from data");
+        write_debug_file(argv[0], "Cannot read 'dstuser' from data or invalid username format");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }
@@ -54,12 +54,6 @@ int main (int argc, char **argv) {
                 return OS_INVALID;
             }
         }
-    }
-
-    if (!strcmp("root", user)) {
-        write_debug_file(argv[0], "Invalid username");
-        cJSON_Delete(input_json);
-        return OS_INVALID;
     }
 
     if (uname(&uname_buffer) < 0) {

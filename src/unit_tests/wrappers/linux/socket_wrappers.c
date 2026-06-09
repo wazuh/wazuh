@@ -118,12 +118,18 @@ int __wrap_fcntl(int __fd, int __cmd, ...) {
 
 int __wrap_getaddrinfo(const char *node, __attribute__((unused))const char *service, __attribute__((unused))const struct addrinfo *hints, struct addrinfo **res) {
     struct addrinfo* addr;
+    int ret;
     check_expected(node);
 
     addr = mock_type(struct addrinfo*);
-    if (addr != NULL) {
+    ret = mock();
+
+    // Only allocate memory if the call will succeed (ret == 0)
+    // Per POSIX, on error, the content of *res is undefined and should not be freed
+    if (ret == 0 && addr != NULL) {
         *res = calloc(1, sizeof(struct addrinfo));
         memcpy(*res, addr, sizeof(struct addrinfo));
     }
-    return mock();
+
+    return ret;
 }
