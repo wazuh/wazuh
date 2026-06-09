@@ -208,13 +208,22 @@ if(NOT _orig_rpath)
   set(_orig_rpath "")
 endif()
 
+# $ORIGIN/../lib -> manager install (bin/ -> ../lib/)
+# $ORIGIN/lib    -> standalone package and wazuh-indexer (bin/ -> bin/lib/)
 set(_new_paths
-  ${CMAKE_SOURCE_DIR}/build/lib     # For shared libwazuhext.so
-  ${ROCKSDB_LIB_BUILD_DIR}          # External precompiled rocksdb lib
-  ${INDEXERCONNECTOR_LIB_BUILD_DIR} # Internal precompiled indexer connector lib
   "$ORIGIN/../lib"
   "$ORIGIN/lib"
 )
+
+# Debug/sanitizer: also resolve libs from the build tree so the binary runs
+# straight from src/build/engine/ without LD_LIBRARY_PATH. Never in Release.
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR FSANITIZE)
+  list(PREPEND _new_paths
+    ${CMAKE_SOURCE_DIR}/build/lib
+    ${ROCKSDB_LIB_BUILD_DIR}
+    ${INDEXERCONNECTOR_LIB_BUILD_DIR}
+  )
+endif()
 
 # Append the new paths to the original RPATH
 list(APPEND _orig_rpath ${_new_paths})

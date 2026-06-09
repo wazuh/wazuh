@@ -68,7 +68,7 @@ test_configuration = load_configuration_template(test_configuration_path, test_c
 
 # Variables
 receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2')]
-monitored_sockets_params = [(MODULES_DAEMON, None, True), (WAZUH_DB_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
+monitored_sockets_params = [(WAZUH_DB_DAEMON, None, True), (MODULES_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
 receiver_sockets, monitored_sockets = None, None
 
 daemons_handler_configuration = {'all_daemons': True}
@@ -87,7 +87,7 @@ def test_ossec_auth_configurations(test_configuration, test_metadata, set_wazuh_
         that automatically chooses the protocol to be used.
 
     wazuh_min_version:
-        4.2.0
+        5.0.0
 
     tier: 0
 

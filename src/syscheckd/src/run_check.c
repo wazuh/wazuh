@@ -1007,7 +1007,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                     }
                 }
             } else {
-                mwarn("FIM synchronization failed.");
+                minfo("FIM synchronization failed.");
             }
 
             // If a flush was triggered while paused but processed here (after resume),

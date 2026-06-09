@@ -9,3 +9,24 @@
                     value: '1514'
             - notify_time:
                 value: '1'
+      # syscheck + rootcheck must be explicitly enabled: these scenarios assert
+      # that wazuh-syscheckd / wazuh-rootcheck log "Started" after the gate
+      # releases, but syscheckd exits early ("Syscheck is disabled. Exiting.")
+      # when syscheck is disabled and never logs it. Relying on the base config
+      # to enable them is environment-dependent (enabled in a source build,
+      # disabled in the packaged agent on CI), which made these scenarios pass
+      # locally but fail on CI. Pin them on so syscheckd reliably comes up.
+      - section: syscheck
+        elements:
+            - disabled:
+                value: 'no'
+            - directories:
+                value: '/tmp/wazuh_gate_fim'
+                attributes:
+                  - check_all: 'yes'
+            - scan_on_start:
+                value: 'yes'
+      - section: rootcheck
+        elements:
+            - disabled:
+                value: 'no'

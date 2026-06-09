@@ -1,4 +1,4 @@
-#include <atomic>
+#include <algorithm>
 #include <csignal>
 #include <exception>
 #include <filesystem>
@@ -159,7 +159,7 @@ int main(int argc, char* argv[])
 
         if (chdir(base::process::getWazuhHome().string().c_str()) == -1)
         {
-            fprintf(stderr, "chdir to WAZUH_HOME failed: %s\n", strerror(errno));
+            fprintf(stderr, "chdir to Wazuh home failed: %s\n", strerror(errno));
             return EXIT_FAILURE;
         }
 
@@ -841,11 +841,45 @@ int main(int argc, char* argv[])
         }
         else
         {
-            LOG_INFO("Engine started and ready to process events.");
+            LOG_INFO("Engine started.");
         }
 
         if (enableProcessing)
         {
+            // Helper to check if the orchestrator has any enabled route.
+            const auto hasEnabledRoutes = [&orchestrator]()
+            {
+                const auto entries = orchestrator->getEntries();
+                return std::any_of(entries.begin(),
+                                   entries.end(),
+                                   [](const auto& e) { return e.status() == router::env::State::ENABLED; });
+            };
+
+            // Tracks the last reported state. nullopt = no prior report, so the
+            // first observation always logs.
+            auto lastWarned = std::make_shared<std::optional<bool>>();
+
+            // Logs only on state transitions (no routes <-> at least one enabled route).
+            const auto reportRouteStatus = [hasEnabledRoutes, lastWarned]()
+            {
+                const bool shouldWarn = !hasEnabledRoutes();
+                if (*lastWarned == shouldWarn)
+                {
+                    return;
+                }
+                *lastWarned = shouldWarn;
+                if (shouldWarn)
+                {
+                    LOG_WARNING("[CMSync] No active routes available. Incoming events will be discarded "
+                                "until content synchronization completes.");
+                }
+                else
+                {
+                    LOG_INFO("[CMSync] Event processing is now active.");
+                }
+            };
+
+
             // Async Synchronize on startup
             scheduler->scheduleTask(
                 "cm-sync-task",
@@ -854,12 +888,19 @@ int main(int argc, char* argv[])
                                        .CPUPriority = 0,
                                        .taskFunction = [=]()
                                        {
+                                           // Detect external loss of routes between sync runs
+                                           // (e.g., manual route deletion).
+                                           reportRouteStatus();
+
                                            // Expand the router worker pool before the initial
                                            // content synchronization. This ensures the initial sync
                                            // mutates the complete worker pool instead of only the
                                            // primary worker.
                                            orchestrator->expandWorkerPool();
                                            cmSyncService->synchronize();
+
+                                           // Detect recovery (or re-loss) after sync.
+                                           reportRouteStatus();
                                        }});
             scheduler->scheduleTaskFirst("cm-sync-task");
 

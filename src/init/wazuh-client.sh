@@ -10,9 +10,6 @@ cd ${LOCAL}
 PWD=`pwd`
 DIR=`dirname $PWD`;
 
-# Ensure the correct lib dir is used when agent/manager are co-hosted.
-export LD_LIBRARY_PATH="${DIR}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-
 # Installation info
 VERSION="v5.0.0"
 REVISION="beta2"

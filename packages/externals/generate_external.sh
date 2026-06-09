@@ -241,7 +241,7 @@ repack() {
 # curl.tar.gz. Deciding which copy survives needs both legs' output side by
 # side — a leg only owns a dep's binary if it actually *compiled* it (the
 # agent leg gets a source-only snapshot for server-only deps like rocksdb /
-# lzma that src/external/CMakeLists.txt gates behind `if(NOT IS_AGENT ...)`),
+# jemalloc that src/external/CMakeLists.txt gates behind `if(NOT IS_AGENT ...)`),
 # and where both legs compiled a dep the agent copy wins because its
 # centos:6 / glibc-2.12 binaries link in every Wazuh builder image while the
 # manager's centos:7 / glibc-2.17 binaries do not. That comparison is the

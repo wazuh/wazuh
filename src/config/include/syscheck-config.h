@@ -222,6 +222,7 @@ typedef struct _directory_s {
 #endif
     unsigned int is_wildcard:1; // 1 if it is a wildcard, 0 if it is a directory
     unsigned int is_expanded:1; // Indicates if the wilcard has been expanded in this scan
+    bool symlink_warned;        // True after the one-time symlink warning has been issued
 } directory_t;
 
 typedef struct whodata_evt {

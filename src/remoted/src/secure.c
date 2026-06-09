@@ -1037,6 +1037,9 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         if (rc < 0) {
             dispose_evt_item(e);
             mwarn("Dropping event for agent '%s' (rc=%d)", agentid_str, rc);
+            rem_inc_recv_events_failed();
+        } else {
+            rem_inc_recv_events(agentid_str);
         }
     }
 
@@ -1117,6 +1120,7 @@ bool router_message_forward(char* msg, size_t msg_length, const char* agent_id) 
             return false;
         }
 
+        rem_inc_recv_states(agent_id);
         return true;
     }
     else if (message_type == MT_UPGRADE_ACK) {
@@ -1148,6 +1152,7 @@ bool router_message_forward(char* msg, size_t msg_length, const char* agent_id) 
             // Free the printed message and JSON object
             cJSON_free(upgrade_message);
             cJSON_Delete(upgrade_ack_json);
+            rem_inc_recv_upgrade_ack(agent_id);
             return true;
         }
         else {
@@ -1369,6 +1374,7 @@ static uint64_t mono_ms(void) {
 static void drop_consumer(void *data, void *user) {
     (void)user;
     mwarn("Dropped event: unable to connect with analysisd");
+    rem_inc_recv_events_failed();
     dispose_evt_item((evt_item_t *)data);
 }
 

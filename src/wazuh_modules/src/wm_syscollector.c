@@ -715,25 +715,24 @@ void* wm_sys_main(wm_sys_t* sys)
 #ifndef WIN32
             // Launch inventory synchronization thread as joinable so we can wait for it
             // before releasing resources on shutdown
+            sync_module_running = 1;
             sync_worker_thread_initialized = (CreateThreadJoinable(&sync_worker_thread, wm_sync_module, NULL) == 0);
-            if (sync_worker_thread_initialized)
+            if (!sync_worker_thread_initialized)
             {
-                sync_module_running = 1;
-            }
-            else
-            {
-                merror(THREAD_ERROR);
+                mterror(WM_SYS_LOGTAG, THREAD_ERROR);
+                sync_module_running = 0;
             }
 #else
+            sync_module_running = 1;
             sync_worker_thread = CreateThread(NULL, 0, wm_sync_module, NULL, 0, NULL);
             if (sync_worker_thread == NULL)
             {
                 mterror(WM_SYS_LOGTAG, THREAD_ERROR);
+                sync_module_running = 0;
             }
             else
             {
                 sync_worker_thread_initialized = true;
-                sync_module_running = 1;
             }
 
 #endif

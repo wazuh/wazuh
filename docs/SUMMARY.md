@@ -11,6 +11,19 @@
 - [Build external dependencies](dev/build-external-dependencies.md)
 - [Test execution](dev/test-execution.md)
 
+# User Guides
+
+- [Overview](guide/README.md)
+- [Migration](guide/migration/README.md)
+  - [SCA policies from 4.x to 5.x](guide/migration/sca-policies-4x-to-5x.md)
+  - [CIS-CAT and OpenSCAP to SCA](guide/migration/ciscat-openscap-to-sca.md)
+  - [Mail Forwarding and Reporting to Dashboard Notifications](guide/migration/mail-forwarding-reporting.md)
+  - [Remote Syslog Output to Dashboard Notifications](guide/migration/remote-syslog-output.md)
+  - [OSquery to IT Hygiene](guide/migration/osquery-to-it-hygiene.md)
+  - [Migrating Agent Groups](guide/migration/agent-groups-migration.md)
+  - [Integratord to notifications plugin](guide/migration/integratord-notifications.md)
+  - [Migrating Syslog Input to Logcollector with rsyslog](guide/migration/syslog-input-4x-to-5x.md)
+
 # Reference Manual
 
 - [Introduction](ref/README.md)

@@ -617,9 +617,10 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
                 check.erase("sync");
             }
 
-            // "Not run" is a DB placeholder — the check has not been executed yet in this
-            // scan cycle. Never emit a stateless event for a check in this state, regardless
-            // of the operation type (INSERTED, MODIFIED, DELETED).
+            // "Not run" means either (a) the check has not been executed yet in this
+            // scan cycle (DB placeholder), or (b) the check was attempted but did not
+            // complete (e.g. command timeout). Never emit a stateless event for a check
+            // in this state, regardless of the operation type (INSERTED, MODIFIED, DELETED).
             {
                 const auto resultIt = check.find("result");
 
@@ -635,10 +636,11 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
             {
                 const auto& old = event["check"]["old"];
 
-                // For MODIFIED events, stateless is only meaningful for valid result state
-                // transitions. "Not run" is a DB placeholder (not a real observable state),
-                // and metadata-only changes (no result change) don't constitute a state
-                // transition worth alerting on.
+                // For MODIFIED events, stateless is only meaningful for transitions
+                // between real executed results. Transitions where the old result was
+                // "Not run" (placeholder being replaced by first real result, or a
+                // timeout recovering) don't generate alerts. Metadata-only changes
+                // (no result change) also don't constitute a transition worth alerting on.
                 // Note: new result == "Not run" is already caught above.
                 if (static_cast<ReturnTypeCallback>(event["result"]) == MODIFIED)
                 {

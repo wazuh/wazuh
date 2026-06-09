@@ -207,8 +207,8 @@ TEST_F(CommandRuleEvaluatorTest, CommandsDisabledHasReasonString)
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
-    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("Remote commands are disabled"));
+    EXPECT_FALSE(evaluator.GetUnresolvedReason().empty());
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("Remote commands are disabled"));
 }
 
 TEST_F(CommandRuleEvaluatorTest, CommandExecutionFailureHasReasonString)
@@ -223,9 +223,31 @@ TEST_F(CommandRuleEvaluatorTest, CommandExecutionFailureHasReasonString)
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
-    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("some command"));
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("Command execution failed"));
+    EXPECT_FALSE(evaluator.GetUnresolvedReason().empty());
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("some command"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("Command execution failed"));
+}
+
+TEST_F(CommandRuleEvaluatorTest, CommandTimedOutIsNotRunWithTimeoutReason)
+{
+    m_ctx.rule = "sleep 60";
+    m_ctx.pattern = std::string("something");
+    m_ctx.commandsTimeout = 5;
+
+    m_execMock = [](const std::string&) -> std::optional<CommandRuleEvaluator::ExecResult>
+    {
+        CommandRuleEvaluator::ExecResult result;
+        result.TimedOut = true;
+        return result;
+    };
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::NotRun);
+    EXPECT_FALSE(evaluator.GetUnresolvedReason().empty());
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("timed out"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("5"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("sleep 60"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::Not(::testing::HasSubstr("Command execution failed")));
 }
 
 TEST_F(CommandRuleEvaluatorTest, InvalidPatternHasReasonString)
@@ -244,7 +266,7 @@ TEST_F(CommandRuleEvaluatorTest, InvalidPatternHasReasonString)
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
-    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("***invalid***"));
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("Invalid pattern"));
+    EXPECT_FALSE(evaluator.GetUnresolvedReason().empty());
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("***invalid***"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("Invalid pattern"));
 }

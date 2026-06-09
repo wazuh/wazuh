@@ -8,6 +8,7 @@ import functools
 import inspect
 import itertools
 import logging
+import re
 import traceback
 from time import perf_counter
 from typing import Tuple, Dict
@@ -137,20 +138,20 @@ class AbstractServerHandler(c_common.Handler):
         bytes
             Response message.
         """
-        self.name = data.decode()
-        if self.name in self.server.clients:
-            self.name = ''
-            raise exception.WazuhClusterError(3028, extra_message=data.decode())
-
-        if self.name == self.server.configuration['node_name']:
+        node_name = data.decode()
+        if not re.fullmatch(r'[A-Za-z0-9_-]+', node_name):
+            raise exception.WazuhClusterError(3060, extra_message=node_name)
+        elif node_name in self.server.clients:
+            raise exception.WazuhClusterError(3028, extra_message=node_name)
+        elif node_name == self.server.configuration['node_name']:
             raise exception.WazuhClusterError(3029)
-
-        self.server.clients[self.name] = self
-        self.tag = f'{self.tag} {self.name}'
-        context_tag.set(self.tag)
-        self.handler_tasks.append(self.loop.create_task(self.broadcast_reader()))
-
-        return b'ok', f'Client {self.name} added'.encode()
+        else:
+            self.name = node_name
+            self.server.clients[self.name] = self
+            self.tag = f'{self.tag} {self.name}'
+            context_tag.set(self.tag)
+            self.handler_tasks.append(self.loop.create_task(self.broadcast_reader()))
+            return b'ok', f'Client {self.name} added'.encode()
 
     def process_response(self, command: bytes, payload: bytes) -> bytes:
         """Define response commands for servers.

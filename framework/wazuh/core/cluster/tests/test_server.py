@@ -143,7 +143,21 @@ def test_AbstractServerHandler_hello(event_loop):
     abstract_server_handler.server.clients["if_test"] = "testing"
     with pytest.raises(WazuhClusterError, match=f".* 3028 .* if_test"):
         abstract_server_handler.hello(b"if_test")
-    assert abstract_server_handler.name == ""
+
+    with pytest.raises(WazuhClusterError, match=".* 3060 .*"):
+        abstract_server_handler.hello(b"../../etc")
+
+    with pytest.raises(WazuhClusterError, match=".* 3060 .*"):
+        abstract_server_handler.hello(b"test/node")
+
+    with pytest.raises(WazuhClusterError, match=".* 3060 .*"):
+        abstract_server_handler.hello(b"test\\node")
+
+    with pytest.raises(WazuhClusterError, match=".* 3060 .*"):
+        abstract_server_handler.hello(b".")
+
+    with pytest.raises(WazuhClusterError, match=".* 3060 .*"):
+        abstract_server_handler.hello(b"..")
 
 
 @pytest.mark.asyncio
