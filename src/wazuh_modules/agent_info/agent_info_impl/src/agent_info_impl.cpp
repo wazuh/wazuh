@@ -1108,7 +1108,7 @@ AgentInfoImpl::ModuleResponse AgentInfoImpl::queryModuleWithRetry(const std::str
         }
     }
 
-    m_logFunction(LOG_WARNING,
+    m_logFunction(LOG_INFO,
                   "Failed to query " + moduleName + " after " + std::to_string(MAX_COORDINATION_RETRIES) + " attempts");
 
     // Return failure response with structured error JSON
@@ -1450,7 +1450,7 @@ AgentInfoImpl::PauseCoordinationResult AgentInfoImpl::pauseCoordinationModules(s
             else
             {
                 // Communication error or other failure - abort coordination
-                m_logFunction(LOG_WARNING,
+                m_logFunction(LOG_DEBUG,
                               "Failed to pause " + module + " (communication error " +
                               std::to_string(response.errorCode) +
                               "), aborting coordination: " + response.response);
@@ -1918,7 +1918,7 @@ void AgentInfoImpl::resetSyncFlag(const std::string& table)
 
             if (!m_dBSync)
             {
-                m_logFunction(LOG_WARNING, "Cannot reset sync flag: DBSync not available");
+                m_logFunction(LOG_DEBUG, "Cannot reset sync flag: DBSync not available");
                 return;
             }
         }
@@ -2074,7 +2074,7 @@ bool AgentInfoImpl::performDeltaSync(const std::string& table)
         }
         else
         {
-            m_logFunction(LOG_WARNING, "Failed to coordinate " + table + ", will retry in next cycle");
+            m_logFunction(LOG_INFO, "Failed to coordinate " + table + ", will retry in next cycle");
             return false;
         }
     }

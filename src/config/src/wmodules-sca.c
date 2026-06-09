@@ -428,7 +428,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         }
         else if (!strcmp(nodes[i]->element, XML_SKIP_NFS))
         {
-            mwarn("Detected a deprecated configuration for SCA: 'skip_nfs' is no longer available.");
+            minfo("Detected a deprecated configuration for SCA: 'skip_nfs' is no longer available.");
         }
         else if (!strcmp(nodes[i]->element, XML_SYNC)) {
             // Synchronization section - Let's get the children node and iterate the values

@@ -153,7 +153,7 @@ void ag_send_syscheck(char * message, size_t length) {
     int sock = OS_ConnectUnixDomain(SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
 
     if (sock < 0) {
-        mwarn("dbsync: cannot connect to syscheck: %s (%d)", strerror(errno), errno);
+        minfo("dbsync: cannot connect to syscheck: %s (%d)", strerror(errno), errno);
         return;
     }
 
