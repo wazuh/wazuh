@@ -12,10 +12,13 @@ extern "C" {
             auto& factory = SchemaValidator::SchemaValidatorFactory::getInstance();
             return factory.initialize();
         }
+        // LCOV_EXCL_START
         catch (...)
         {
             return false;
         }
+
+        // LCOV_EXCL_STOP
     }
 
     bool schema_validator_is_initialized(void)
@@ -25,10 +28,13 @@ extern "C" {
             auto& factory = SchemaValidator::SchemaValidatorFactory::getInstance();
             return factory.isInitialized();
         }
+        // LCOV_EXCL_START
         catch (...)
         {
             return false;
         }
+
+        // LCOV_EXCL_STOP
     }
 
     bool schema_validator_validate(const char* indexPattern,
@@ -90,10 +96,13 @@ extern "C" {
             // Message is valid
             return true;
         }
+        // LCOV_EXCL_START
         catch (...)
         {
             return false;
         }
+
+        // LCOV_EXCL_STOP
     }
 
 } // extern "C"

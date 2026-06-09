@@ -1,5 +1,12 @@
 #include <gtest/gtest.h>
 #include "schemaValidator.hpp"
+#include "schemaValidator_c.h"
+
+#include <cstdlib>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
 
 using namespace SchemaValidator;
 
@@ -1041,6 +1048,188 @@ TEST_F(SchemaValidatorTest, ValidateLongAsArray)
     nlohmann::json message = {{"score", nlohmann::json::array({100, 200, 300})}};
     ValidationResult result = validator.validate(message);
     EXPECT_TRUE(result.isValid);
+}
+
+// ---------------------------------------------------------------------------
+// Engine edge cases
+// ---------------------------------------------------------------------------
+
+TEST_F(SchemaValidatorTest, LoadSchemaWithoutPropertiesFails)
+{
+    SchemaValidatorEngine validator;
+    // No template.mappings.properties -> parseAndInitializeSchema returns false.
+    EXPECT_FALSE(validator.loadSchemaFromString(
+                     R"({"index_patterns":["x*"],"template":{"mappings":{}}})"));
+}
+
+TEST_F(SchemaValidatorTest, SchemaNameFromIndexPatternWithoutWildcard)
+{
+    SchemaValidatorEngine validator;
+    // index_patterns without '*' -> the schema name is used verbatim.
+    ASSERT_TRUE(validator.loadSchemaFromString(
+                    R"({"index_patterns":["exact-index-name"],"template":{"mappings":{"properties":{"a":{"type":"keyword"}}}}})"));
+    EXPECT_EQ(validator.getSchemaName(), "exact-index-name");
+}
+
+TEST_F(SchemaValidatorTest, NonObjectTopLevelMessageIsInvalid)
+{
+    SchemaValidatorEngine validator;
+    validator.loadSchemaFromString(m_testSchemaString);
+
+    // Top-level value is an array, not an object.
+    ValidationResult result = validator.validate(std::string("[1, 2, 3]"));
+    EXPECT_FALSE(result.isValid);
+    EXPECT_FALSE(result.errors.empty());
+}
+
+TEST_F(SchemaValidatorTest, NestedObjectFieldWithNonObjectValueIsInvalid)
+{
+    SchemaValidatorEngine validator;
+    validator.loadSchemaFromString(m_testSchemaString);
+
+    // "address" is a nested object in the schema, but the message gives a scalar.
+    ValidationResult result = validator.validate(std::string(R"({"address": "not-an-object"})"));
+    EXPECT_FALSE(result.isValid);
+    EXPECT_FALSE(result.errors.empty());
+}
+
+TEST_F(SchemaValidatorTest, FactoryInitializeWithCustomValidators)
+{
+    auto& factory = SchemaValidatorFactory::getInstance();
+    factory.reset();
+
+    auto engine = std::make_shared<SchemaValidatorEngine>();
+    ASSERT_TRUE(engine->loadSchemaFromString(
+                    R"({"index_patterns":["custom-index*"],"template":{"mappings":{"properties":{"a":{"type":"keyword"}}}}})"));
+
+    std::map<std::string, std::shared_ptr<ISchemaValidatorEngine>> customValidators;
+    customValidators["custom-index"] = engine;
+
+    EXPECT_TRUE(factory.initialize(std::move(customValidators)));
+    EXPECT_TRUE(factory.isInitialized());
+    EXPECT_NE(factory.getValidator("custom-index"), nullptr);
+
+    // Restore embedded validators for any test that runs afterwards.
+    factory.reset();
+    factory.initialize();
+}
+
+// ---------------------------------------------------------------------------
+// C interface (schemaValidator_c.cpp)
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    // Return the first embedded index that has a registered validator, or "" if
+    // none are embedded (so a test can skip instead of asserting vacuously).
+    std::string firstEmbeddedIndex()
+    {
+        auto& factory = SchemaValidatorFactory::getInstance();
+        factory.initialize();
+
+        const std::vector<std::string> candidates =
+        {
+            "wazuh-states-inventory-hardware",
+            "wazuh-states-inventory-system",
+            "wazuh-states-fim-files",
+            "wazuh-states-sca",
+        };
+
+        for (const auto& index : candidates)
+        {
+            if (factory.getValidator(index))
+            {
+                return index;
+            }
+        }
+
+        return "";
+    }
+}
+
+TEST_F(SchemaValidatorTest, CApiInitializeAndIsInitialized)
+{
+    EXPECT_TRUE(schema_validator_initialize());
+    EXPECT_TRUE(schema_validator_is_initialized());
+}
+
+TEST_F(SchemaValidatorTest, CApiValidateNullArgumentsReturnFalse)
+{
+    char* errorMessage = nullptr;
+    EXPECT_FALSE(schema_validator_validate(nullptr, "{}", &errorMessage));
+    EXPECT_FALSE(schema_validator_validate("some-index", nullptr, &errorMessage));
+}
+
+TEST_F(SchemaValidatorTest, CApiValidateWhenNotInitializedReturnsTrue)
+{
+    // Backward-compatibility path: with no validators loaded, validation is a no-op.
+    SchemaValidatorFactory::getInstance().reset();
+
+    char* errorMessage = nullptr;
+    EXPECT_TRUE(schema_validator_validate("wazuh-states-inventory-hardware", "{}", &errorMessage));
+    EXPECT_EQ(errorMessage, nullptr);
+
+    SchemaValidatorFactory::getInstance().initialize(); // restore for other tests
+}
+
+TEST_F(SchemaValidatorTest, CApiValidateUnknownIndexReturnsTrue)
+{
+    schema_validator_initialize();
+
+    char* errorMessage = nullptr;
+    EXPECT_TRUE(schema_validator_validate("there-is-no-such-index", "{}", &errorMessage));
+    EXPECT_EQ(errorMessage, nullptr);
+}
+
+TEST_F(SchemaValidatorTest, CApiValidateValidMessageReturnsTrue)
+{
+    const std::string index = firstEmbeddedIndex();
+
+    if (index.empty())
+    {
+        GTEST_SKIP() << "No embedded schemas in this build.";
+    }
+
+    char* errorMessage = nullptr;
+    EXPECT_TRUE(schema_validator_validate(index.c_str(), "{}", &errorMessage));
+    EXPECT_EQ(errorMessage, nullptr);
+}
+
+TEST_F(SchemaValidatorTest, CApiValidateInvalidMessageSetsErrorMessage)
+{
+    const std::string index = firstEmbeddedIndex();
+
+    if (index.empty())
+    {
+        GTEST_SKIP() << "No embedded schemas in this build.";
+    }
+
+    // The inventory/fim/sca templates are strict, so unknown non-null fields are
+    // rejected. Two unknown fields produce two errors, exercising the newline
+    // join used to concatenate them into the C error string.
+    const char* message = "{\"this_field_does_not_exist\": \"x\", \"another_bad_field\": \"y\"}";
+
+    char* errorMessage = nullptr;
+    EXPECT_FALSE(schema_validator_validate(index.c_str(), message, &errorMessage));
+    ASSERT_NE(errorMessage, nullptr);
+    EXPECT_NE(std::string(errorMessage).find("this_field_does_not_exist"), std::string::npos);
+    EXPECT_NE(std::string(errorMessage).find('\n'), std::string::npos);
+    free(errorMessage);
+}
+
+TEST_F(SchemaValidatorTest, CApiValidateInvalidMessageWithNullErrorPointer)
+{
+    const std::string index = firstEmbeddedIndex();
+
+    if (index.empty())
+    {
+        GTEST_SKIP() << "No embedded schemas in this build.";
+    }
+
+    // errorMessage == nullptr: the invalid result is reported without building a string.
+    EXPECT_FALSE(schema_validator_validate(index.c_str(),
+                                           "{\"this_field_does_not_exist\": \"x\"}",
+                                           nullptr));
 }
 
 int main(int argc, char** argv)
