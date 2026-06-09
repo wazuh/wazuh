@@ -22,7 +22,7 @@
   - [OSquery to IT Hygiene](guide/migration/osquery-to-it-hygiene.md)
   - [Migrating Agent Groups](guide/migration/agent-groups-migration.md)
   - [Integratord to notifications plugin](guide/migration/integratord-notifications.md)
-  - [Migrating Agent Groups](guide/migration/agent-groups-migration.md)
+  - [Migrating Syslog Input to Logcollector with rsyslog](guide/migration/syslog-input-4x-to-5x.md)
 
 # Reference Manual
 
