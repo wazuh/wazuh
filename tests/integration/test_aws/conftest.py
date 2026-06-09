@@ -18,8 +18,6 @@ from wazuh_testing.modules.aws.utils import (
     upload_log_events,
     create_log_group,
     create_log_stream,
-    create_flow_log,
-    delete_vpc,
     delete_bucket,
     delete_log_group,
     delete_log_stream,
@@ -308,12 +306,22 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client):
     if log_number:
         files_to_upload = []
         metadata['uploaded_file'] = ''
+        flow_log_id = None
         try:
             if vpc_bucket:
-                # Create VPC resources
-                flow_log_id, vpc_id = create_flow_log(vpc_name=metadata['vpc_name'],
-                                                      bucket_name=bucket_name,
-                                                      client=ec2_client)
+                vpc_id = os.environ.get('AWS_VPC_ID')
+                if not vpc_id:
+                    raise EnvironmentError(
+                        "AWS_VPC_ID is not set. A pre-existing VPC ID is required "
+                        "for VPC flow log tests. Set the IT_AWS_VPC_ID GitHub secret."
+                    )
+                flow_log_id = ec2_client.create_flow_logs(
+                    ResourceIds=[vpc_id],
+                    ResourceType='VPC',
+                    TrafficType='REJECT',
+                    LogDestinationType='s3',
+                    LogDestination=f'arn:aws:s3:::{bucket_name}'
+                )['FlowLogIds'][0]
                 metadata['flow_log_id'] = flow_log_id
                 for region in regions:
                     data, key = generate_file(bucket_type=bucket_type,
@@ -352,6 +360,11 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client):
                 "bucket_name": bucket_name,
                 "error": str(error)
             })
+            if flow_log_id is not None:
+                try:
+                    ec2_client.delete_flow_logs(FlowLogIds=[flow_log_id])
+                except Exception:
+                    pass
             raise error
 
         except Exception as error:
@@ -360,6 +373,11 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client):
                 "bucket_name": bucket_name,
                 "error": str(error)
             })
+            if flow_log_id is not None:
+                try:
+                    ec2_client.delete_flow_logs(FlowLogIds=[flow_log_id])
+                except Exception:
+                    pass
             raise error
 
     yield
@@ -369,9 +387,9 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client):
             # Delete all bucket files
             delete_bucket_files(bucket_name=bucket_name, client=s3_client)
 
-            if vpc_bucket:
-                # Delete VPC resources (VPC and Flow Log)
-                delete_vpc(vpc_id=vpc_id, flow_log_id=flow_log_id, client=ec2_client)
+            if vpc_bucket and flow_log_id is not None:
+                # Only delete the flow log; the VPC is pre-existing and must not be deleted.
+                ec2_client.delete_flow_logs(FlowLogIds=[flow_log_id])
 
     except ClientError as error:
         logger.error({
