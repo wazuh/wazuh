@@ -140,8 +140,14 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     else {
         if (!strcmp(node->values[0], VU_WM_NAME)) {
             mwarn("The '%s' module only works for the manager", node->values[0]);
+        } else if (!strcmp(node->values[0], "cis-cat")) {
+            mwarn("The 'cis-cat' module is deprecated. Use the SCA module instead.");
+        } else if (!strcmp(node->values[0], "osquery")) {
+            mwarn("The 'osquery' module is deprecated. Use the Syscollector module instead.");
+        } else if (!strcmp(node->values[0], "open-scap")) {
+            mwarn("The 'open-scap' module is deprecated. Use the SCA module instead.");
         } else {
-            merror("Unknown module '%s'", node->values[0]);
+            mwarn("Unknown module '%s'", node->values[0]);
         }
     }
 

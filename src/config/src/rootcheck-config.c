@@ -139,9 +139,9 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 }
             }
         } else if (strcmp(node[i]->element, "windows_malware") == 0) {
-            mwarn("Rootcheck option 'windows_malware' is no longer supported. Use the SCA module instead.");
+            minfo("Rootcheck option 'windows_malware' is no longer supported. Use the SCA module instead.");
         } else if (strcmp(node[i]->element, "windows_apps") == 0) {
-            mwarn("Rootcheck option 'windows_apps' is no longer supported. Use the SCA module instead.");
+            minfo("Rootcheck option 'windows_apps' is no longer supported. Use the SCA module instead.");
         } else if (strcmp(node[i]->element, xml_base_dir) == 0) {
             os_strdup(node[i]->content, rootcheck->basedir);
         } else if (strcmp(node[i]->element, xml_check_dev) == 0) {
