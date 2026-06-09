@@ -125,7 +125,7 @@ The discovery path is unchanged on Unix agents (`/var/ossec/active-response/bin/
   "parameters": {
     "extra_args": [],
     "alert": {
-      "rule": { "id": "5763", "level": 5 },
+      "rule": { "id": "5763", "level": 10 },
       "data": { "srcip": "192.168.1.100", "dstuser": "root" }
     },
     "program": "/var/ossec/active-response/bin/firewall-drop"
@@ -653,7 +653,7 @@ The JSON written to the script's stdin (capture inside the script with `read -r 
 }
 ```
 
-The `disable` payload sent at +60 s additionally carries `stateful_timeout` at the root — confirming the [JSON stdin contract](#json-stdin-contract) claim about reversal messages.
+The `disable` payload sent at +60 s additionally carries `stateful_timeout` at the root, as specified in the [JSON stdin contract](#json-stdin-contract).
 
 ---
 
