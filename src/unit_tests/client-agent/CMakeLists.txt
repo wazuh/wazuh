@@ -41,6 +41,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 # Generate agentd tests
 list(APPEND client-agent_names "test_start_agent")
 set(START_AGENT_BASE_FLAGS "-Wl,--wrap,w_rotate_log -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default -Wl,--wrap,OS_ConnectUDP \
+                            -Wl,--wrap,OS_SetKeepalive -Wl,--wrap,OS_SetKeepalive_Options -Wl,--wrap,OS_SetSendTimeout \
                             -Wl,--wrap,OS_ConnectTCP -Wl,--wrap,OS_SetRecvTimeout -Wl,--wrap,OS_GetHost \
                             -Wl,--wrap,send_msg -Wl,--wrap,recv -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,fseek \
                             -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
