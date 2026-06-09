@@ -24,6 +24,8 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 
 import DockerListener as dl_module
 from DockerListener import DockerListener
 
+DOCKER_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'docker-listener', 'DockerListener.py')
+
 
 # ---------------------------------------------------------------------------
 # Module-level constants
@@ -282,24 +284,21 @@ def test_connect_sleeps_wait_time_while_docker_unavailable(mock_sleep, mock_thre
 
 def test_docker_import_error_writes_stderr_and_exits():
     """Importing DockerListener without docker available writes an error to stderr and exits 1."""
+    import runpy
     import sys
-    import types
 
-    # Build a minimal fake module that mimics what DockerListener.py does at import time
-    fake_mod = types.ModuleType('DockerListener_import_test')
-    fake_mod.__file__ = 'DockerListener.py'
-
-    import_error_code = (
-        "import sys\n"
-        "try:\n"
-        "    raise ImportError('No module named docker')\n"
-        "except:\n"
-        "    sys.stderr.write(\"'docker' module needs to be installed. Execute 'pip3 install docker' to do it.\\n\")\n"
-        "    exit(1)\n"
-    )
-
-    with patch('sys.stderr') as mock_stderr, pytest.raises(SystemExit) as exc:
-        exec(compile(import_error_code, 'DockerListener.py', 'exec'), fake_mod.__dict__)
+    # Setting sys.modules['docker'] = None causes 'import docker' to raise ImportError
+    # (documented Python behaviour: if sys.modules[name] is None, ImportError is raised)
+    saved_docker = sys.modules.get('docker', _SENTINEL := object())
+    sys.modules['docker'] = None
+    try:
+        with patch('sys.stderr') as mock_stderr, pytest.raises(SystemExit) as exc:
+            runpy.run_path(DOCKER_PATH, run_name='DockerListener_import_error_test')
+    finally:
+        if saved_docker is _SENTINEL:
+            sys.modules.pop('docker', None)
+        else:
+            sys.modules['docker'] = saved_docker
 
     assert exc.value.code == 1
     written = ''.join(c[0][0] for c in mock_stderr.write.call_args_list)
@@ -333,21 +332,19 @@ def test_log_does_not_double_newline_when_already_present():
 # ---------------------------------------------------------------------------
 
 def test_main_block_creates_and_starts_docker_listener():
-    """The __main__ block in DockerListener.py creates a DockerListener and calls start()."""
-    import types
+    """Running DockerListener.py as __main__ creates a DockerListener and calls start()."""
+    import runpy
 
-    # Execute only the __main__ block in an isolated namespace where DockerListener
-    # is already replaced by a mock — no real Docker connection is made.
-    main_code = (
-        "dl = DockerListener()\n"
-        "dl.start()\n"
-    )
+    # Patch threading.Thread so no real threads are spawned during start().
+    # Since runpy uses sys.modules['threading'], this patch is visible inside the
+    # fresh execution namespace created by run_path.
+    with patch('threading.Thread') as mock_thread_cls, \
+            patch('sys.stderr'):
+        mock_thread_instance = MagicMock()
+        mock_thread_cls.return_value = mock_thread_instance
 
-    mock_dl_instance = MagicMock()
-    mock_dl_class = MagicMock(return_value=mock_dl_instance)
+        runpy.run_path(DOCKER_PATH, run_name='__main__')
 
-    ns = {'DockerListener': mock_dl_class}
-    exec(compile(main_code, 'DockerListener.py', 'exec'), ns)
-
-    mock_dl_class.assert_called_once_with()
-    mock_dl_instance.start.assert_called_once_with()
+    # DockerListener.start() creates two Thread objects and starts at least one
+    assert mock_thread_cls.call_count >= 1
+    mock_thread_instance.start.assert_called()
