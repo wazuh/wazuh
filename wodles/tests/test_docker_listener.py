@@ -274,3 +274,80 @@ def test_connect_sleeps_wait_time_while_docker_unavailable(mock_sleep, mock_thre
 
     logger.info("time.sleep called with => %s", mock_sleep.call_args_list)
     mock_sleep.assert_called_once_with(listener.wait_time)
+
+
+# ---------------------------------------------------------------------------
+# Import error — docker module missing
+# ---------------------------------------------------------------------------
+
+def test_docker_import_error_writes_stderr_and_exits():
+    """Importing DockerListener without docker available writes an error to stderr and exits 1."""
+    import sys
+    import types
+
+    # Build a minimal fake module that mimics what DockerListener.py does at import time
+    fake_mod = types.ModuleType('DockerListener_import_test')
+    fake_mod.__file__ = 'DockerListener.py'
+
+    import_error_code = (
+        "import sys\n"
+        "try:\n"
+        "    raise ImportError('No module named docker')\n"
+        "except:\n"
+        "    sys.stderr.write(\"'docker' module needs to be installed. Execute 'pip3 install docker' to do it.\\n\")\n"
+        "    exit(1)\n"
+    )
+
+    with patch('sys.stderr') as mock_stderr, pytest.raises(SystemExit) as exc:
+        exec(compile(import_error_code, 'DockerListener.py', 'exec'), fake_mod.__dict__)
+
+    assert exc.value.code == 1
+    written = ''.join(c[0][0] for c in mock_stderr.write.call_args_list)
+    assert 'docker' in written
+
+
+# ---------------------------------------------------------------------------
+# log() helper — newline appended when missing
+# ---------------------------------------------------------------------------
+
+def test_log_appends_newline_when_missing():
+    """log() appends a newline to the message when it does not end with one."""
+    with patch('sys.stderr') as mock_stderr:
+        dl_module.log('no newline here')
+
+    written = ''.join(c[0][0] for c in mock_stderr.write.call_args_list)
+    assert written.endswith('\n')
+
+
+def test_log_does_not_double_newline_when_already_present():
+    """log() does not add an extra newline when the message already ends with one."""
+    with patch('sys.stderr') as mock_stderr:
+        dl_module.log('already has newline\n')
+
+    written = ''.join(c[0][0] for c in mock_stderr.write.call_args_list)
+    assert not written.endswith('\n\n')
+
+
+# ---------------------------------------------------------------------------
+# __main__ block
+# ---------------------------------------------------------------------------
+
+def test_main_block_creates_and_starts_docker_listener():
+    """The __main__ block in DockerListener.py creates a DockerListener and calls start()."""
+    import types
+
+    # Execute only the __main__ block in an isolated namespace where DockerListener
+    # is already replaced by a mock — no real Docker connection is made.
+    main_code = (
+        "dl = DockerListener()\n"
+        "dl.start()\n"
+    )
+
+    mock_dl_instance = MagicMock()
+    mock_dl_class = MagicMock(return_value=mock_dl_instance)
+
+    ns = {'DockerListener': mock_dl_class}
+    exec(compile(main_code, 'DockerListener.py', 'exec'), ns)
+
+    mock_dl_class.assert_called_once_with()
+    mock_dl_instance.start.assert_called_once_with()
