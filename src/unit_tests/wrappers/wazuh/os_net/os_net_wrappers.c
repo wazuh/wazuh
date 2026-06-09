@@ -127,6 +127,7 @@ void __wrap_OS_SetKeepalive_Options(__attribute__((unused)) int socket,
                                     __attribute__((unused)) int idle,
                                     __attribute__((unused)) int intvl,
                                     __attribute__((unused)) int cnt) {
+    function_called();
 }
 
 int __wrap_wnet_select(__attribute__((unused)) int sock,

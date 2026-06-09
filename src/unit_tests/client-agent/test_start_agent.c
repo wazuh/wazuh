@@ -215,6 +215,7 @@ static void test_connect_server_send_timeout_fails(void **state) {
     expect_any(__wrap_OS_ConnectTCP, ipv6);
     will_return(__wrap_OS_ConnectTCP, 10);
     will_return(__wrap_OS_SetKeepalive, 0);
+    expect_function_call(__wrap_OS_SetKeepalive_Options);
     will_return(__wrap_getDefine_Int, 60);   /* tcp_keepidle */
     will_return(__wrap_getDefine_Int, 15);   /* tcp_keepintvl */
     will_return(__wrap_getDefine_Int, 4);    /* tcp_keepcnt */
@@ -259,6 +260,7 @@ static void test_connect_server(void **state) {
     expect_value(__wrap_OS_CloseSocket, sock, 11);
     will_return(__wrap_OS_CloseSocket, 0);
     will_return(__wrap_OS_SetKeepalive, 0);
+    expect_function_call(__wrap_OS_SetKeepalive_Options);
     will_return(__wrap_getDefine_Int, 60);  /* tcp_keepidle */
     will_return(__wrap_getDefine_Int, 15);  /* tcp_keepintvl */
     will_return(__wrap_getDefine_Int, 4);   /* tcp_keepcnt */
@@ -364,6 +366,7 @@ static void test_agent_handshake_to_server(void **state) {
     expect_value(__wrap_OS_CloseSocket, sock, 21);
     will_return(__wrap_OS_CloseSocket, 0);
     will_return(__wrap_OS_SetKeepalive, 0);
+    expect_function_call(__wrap_OS_SetKeepalive_Options);
     will_return(__wrap_getDefine_Int, 60);  /* tcp_keepidle */
     will_return(__wrap_getDefine_Int, 15);  /* tcp_keepintvl */
     will_return(__wrap_getDefine_Int, 4);   /* tcp_keepcnt */
@@ -405,6 +408,7 @@ static void test_agent_handshake_to_server(void **state) {
     expect_value(__wrap_OS_CloseSocket, sock, 22);
     will_return(__wrap_OS_CloseSocket, 0);
     will_return(__wrap_OS_SetKeepalive, 0);
+    expect_function_call(__wrap_OS_SetKeepalive_Options);
     will_return(__wrap_getDefine_Int, 60);  /* tcp_keepidle */
     will_return(__wrap_getDefine_Int, 15);  /* tcp_keepintvl */
     will_return(__wrap_getDefine_Int, 4);   /* tcp_keepcnt */
