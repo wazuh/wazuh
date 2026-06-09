@@ -1346,7 +1346,7 @@ checks:
     condition: all
     rules:
       - "d:/Library/Security -> r:^PolicyBanner"
-      - 'c:stat -f %A /Library/Security/PolicyBanner.* -> r:\d\d4'
+      - 'c:sh -c "stat -f %A /Library/Security/PolicyBanner.*" -> r:\d\d4'
 
   # 5.9 Ensure the Guest Home Folder Does Not Exist. (Automated)
   - id: 35059
