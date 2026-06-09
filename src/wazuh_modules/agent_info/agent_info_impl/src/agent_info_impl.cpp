@@ -2074,7 +2074,7 @@ bool AgentInfoImpl::performDeltaSync(const std::string& table)
         }
         else
         {
-            m_logFunction(LOG_WARNING, "Failed to coordinate " + table + ", will retry in next cycle");
+            m_logFunction(LOG_INFO, "Failed to coordinate " + table + ", will retry in next cycle");
             return false;
         }
     }
