@@ -13,6 +13,18 @@
 
 static const char *XML_NAME = "name";
 
+// Deprecated modules and their corresponding informational messages
+static const struct {
+    const char *name;
+    const char *message;
+} DEPRECATED_MODULES[] = {
+    { "cis-cat",   "The 'cis-cat' module is deprecated. Use the SCA module instead." },
+    { "osquery",   "The 'osquery' module is deprecated. Use the Syscollector module instead." },
+    { "open-scap", "The 'open-scap' module is deprecated. Use the SCA module instead." },
+};
+
+#define DEPRECATED_MODULES_COUNT (sizeof(DEPRECATED_MODULES) / sizeof(DEPRECATED_MODULES[0]))
+
 // Read wodle element
 
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
@@ -139,15 +151,22 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
 #endif
     else {
         if (!strcmp(node->values[0], VU_WM_NAME)) {
-            mwarn("The '%s' module only works for the manager", node->values[0]);
-        } else if (!strcmp(node->values[0], "cis-cat")) {
-            mwarn("The 'cis-cat' module is deprecated. Use the SCA module instead.");
-        } else if (!strcmp(node->values[0], "osquery")) {
-            mwarn("The 'osquery' module is deprecated. Use the Syscollector module instead.");
-        } else if (!strcmp(node->values[0], "open-scap")) {
-            mwarn("The 'open-scap' module is deprecated. Use the SCA module instead.");
+            minfo("The '%s' module only works for the manager", node->values[0]);
         } else {
-            mwarn("Unknown module '%s'", node->values[0]);
+            const char *deprecated_message = NULL;
+
+            for (size_t i = 0; i < DEPRECATED_MODULES_COUNT; i++) {
+                if (!strcmp(node->values[0], DEPRECATED_MODULES[i].name)) {
+                    deprecated_message = DEPRECATED_MODULES[i].message;
+                    break;
+                }
+            }
+
+            if (deprecated_message) {
+                minfo("%s", deprecated_message);
+            } else {
+                mwarn("Unknown module '%s'", node->values[0]);
+            }
         }
     }
 
