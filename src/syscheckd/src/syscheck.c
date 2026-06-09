@@ -439,6 +439,15 @@ bool fetch_document_limits_from_agentd(){
 }
 
 void fim_initialize() {
+    // Initialize the coordination atomics first, before any early return below.
+    // On Windows (winpthreads) PTHREAD_MUTEX_INITIALIZER is a non-zero sentinel,
+    // so a zero-initialized global mutex is invalid: if fim_db_init() fails and we
+    // return early, the disabled path in start_daemon() would call atomic_int_set()
+    // on an uninitialized mutex and abort. They are also read by the syscom thread.
+    syscheck.fim_pause_requested = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+    syscheck.fim_pausing_is_allowed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+    syscheck.fim_first_sync_completed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+
     // Create store data
 #ifndef WIN32
     FIMDBErrorCode ret_val = fim_db_init(FIM_DB_DISK,
@@ -482,8 +491,6 @@ void fim_initialize() {
 #else
     w_mutex_init(&syscheck.fim_symlink_mutex, NULL);
 #endif
-    syscheck.fim_pause_requested = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
-    syscheck.fim_pausing_is_allowed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
 
     notify_scan = syscheck.notify_first_scan;
 
