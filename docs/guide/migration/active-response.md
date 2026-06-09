@@ -2,7 +2,7 @@
 
 Active Response (AR) is rebuilt in 5.x. The 4.x XML in `ossec.conf`, the agent-side `ar.conf`, rule-based matching, and the `PUT /active-response` API are all removed. 5.x replaces them with channels managed in the dashboard, an Alerting monitor that triggers them, a `wazuh-active-responses` data stream that records executions, and a manager-side poller that dispatches to agents over `wazuh-remoted`.
 
-> **Manual migration only.** No converter, importer, or compatibility shim is provided. Every 4.x AR must be recreated as a 5.x channel; every custom script must be rewritten for the new JSON contract.
+> **Manual migration only.** No converter, importer, or compatibility shim is provided. Every 4.x AR must be recreated as a 5.x active response; every custom script must be rewritten for the new JSON contract.
 
 ## Breaking changes at a glance
 
@@ -11,12 +11,12 @@ Active Response (AR) is rebuilt in 5.x. The 4.x XML in `ossec.conf`, the agent-s
 - Matching (`<rules_id>` / `<level>` / `<rules_group>`) moves to the query of an Alerting monitor of type **Active Response**.
 - `PUT /active-response` is removed with no replacement. Dispatch is document-driven: a monitor action writes into `wazuh-active-responses`; the manager polls every 60 s (batches of 100) and forwards via `wazuh-remoted`. Pre-5.0 agents are filtered out.
 - Executions land as structured documents in the `wazuh-active-responses` data stream (backing index `.wazuh-active-responses-v5`, 3-day ISM retention via `stream-active-responses-policy`).
-- The JSON delivered to scripts changed shape: `command` ∈ `enable` / `disable` (was `add` / `delete`); alert fields use flat ECS paths (`source.ip`, `user.name`, …); AR metadata sits under `wazuh.active_response.*`.
+- The JSON delivered to scripts changed shape: `command` ∈ `enable` / `disable` (was `add` / `delete`); alert fields use flat WCS paths (`source.ip`, `user.name`, …); AR metadata sits under `wazuh.active_response.*`.
 - Default firewall scripts (`firewall-drop`, `firewalld-drop`, `pf`, `npf`, `ipfw`, `netsh`, `route-null`, `host-deny`) are folded into a single `block-ip` executable. `restart-wazuh` moves to the Control Module. `wazuh-slack` is removed.
 - `<location>server</location>`, `<repeated_offenders>`, `<timeout_allowed>` have no direct equivalent.
 - `<disabled>` is replaced by the channel `enabled` field plus a **Mute / Unmute** runtime toggle.
 
-![Active Response pipeline — 4.x rule-engine driven vs 5.x channel + data stream + poller](../images/ar-pipeline-4x-vs-5x.png)
+![Active Response pipeline — 4.x rule-engine driven vs 5.x active response + data stream + poller](../images/ar-pipeline-4x-vs-5x.png)
 
 ## Compatibility matrix
 
@@ -40,7 +40,7 @@ sudo cp -a /var/ossec/etc/ossec.conf "$AR_BACKUP_DIR/"
 sudo cp -a /var/ossec/active-response/bin/ "$AR_BACKUP_DIR/"
 ```
 
-For each `<command>` and `<active-response>` block in `/var/ossec/etc/ossec.conf`, record the values you will need to recreate the AR as a 5.x channel:
+For each `<command>` and `<active-response>` block in `/var/ossec/etc/ossec.conf`, record the values you will need to recreate the AR as a 5.x active response:
 
 - `<command>`: `<name>`, `<executable>`, `<extra_args>`, `<timeout_allowed>`.
 - `<active-response>`: the linked command, `<location>`, `<agent_id>`, the matching condition (`<rules_id>` / `<rules_group>` / `<level>`), `<timeout>`, `<repeated_offenders>`, `<disabled>`.
@@ -54,7 +54,7 @@ If you need long-term records, export them from your 4.x indexer using your stan
 
 ---
 
-## Field mapping (4.x XML → 5.x channel)
+## Field mapping (4.x XML → 5.x active response)
 
 | 4.x XML                                                     | 5.x equivalent                      | Notes                                                                                               |
 | ----------------------------------------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------- |
@@ -86,12 +86,12 @@ Each 4.x `<active-response>` becomes two artifacts in 5.x: the AR channel (the *
 
 > The monitor type **must** be `Active Response`. No other type exposes the **Add active response** action.
 
-**Writing the monitor query.** The 4.x numeric rule ID does not carry over. Detection in 5.x is indexed under `wazuh-findings-v5-*` data streams (split by category, e.g. `wazuh-findings-v5-system-activity*` for authentication, `-security*` for SCA), where a finding's rule identity is **`rule.title`** (a human-readable string) and **`rule.id`** / **`rule.sigma_id`** (a UUID — not a number). So the query is **not** `wazuh.rule.id: 5763`. Pick the findings index that carries your events and match on:
+**Writing the monitor query.** The 4.x numeric rule ID does not carry over. Detection in 5.x is indexed under `wazuh-findings-v5-*` indices (split by category, e.g. `wazuh-findings-v5-system-activity*`, `wazuh-findings-v5-security*`, etc...), where a finding's rule identity is **`wazuh.rule.title`** (a human-readable string) and **`wazuh.rule.id`** (a UUID — not a number). So the query is **not** `wazuh.rule.id: 5763`. Pick the findings index that carries your events and match on:
 
-- **`rule.title`** — recommended for monitors, e.g. `rule.title is "Failed authentication attempt"`. Readable, but note that titles can change between ruleset versions.
-- **`rule.id`** — the stable UUID, but it is mapped as text; an exact-match (`is`) operator may fail to match the dashed UUID. Prefer `rule.title` unless you confirm `rule.id.keyword` works in your build.
+- **`wazuh.rule.title`** — recommended for monitors, e.g. `wazuh.rule.title is "Failed authentication attempt"`. Readable, but note that titles can change between ruleset versions.
+- **`wazuh.rule.id`** — the stable UUID, but it is mapped as text; an exact-match (`is`) operator may fail to match the dashed UUID. Prefer `wazuh.rule.title` unless you confirm `wazuh.rule.id.keyword` works in your build.
 
-The 4.x numeric IDs (`5763`, `5760`, …) have no 1:1 equivalent — locate the 5.x rule that detects the same condition by its `rule.title` in `wazuh-findings-v5-*` (e.g. with `GET wazuh-findings-v5-*/_search`). The match field lives at the document root (`rule.title`, `rule.id`), **not** under `wazuh.` — `wazuh.rule.id` does not exist in 5.x findings.
+The 4.x numeric IDs (`5763`, `5760`, …) have no 1:1 equivalent — locate the 5.x rule that detects the same condition by its `wazuh.rule.title` in `wazuh-findings-v5-*` (e.g. with `GET wazuh-findings-v5-*/_search`).
 
 ## Audit and visibility
 
@@ -156,18 +156,17 @@ The discovery path is unchanged on Unix agents (`/var/ossec/active-response/bin/
 Changes:
 
 - `command` ∈ `enable` / `disable`. `disable` messages additionally carry `stateful_timeout` at the root.
-- Alert fields are flat ECS 9.1 paths (`source.ip`, `source.port`, `user.name`). `parameters.alert.data.*` is gone.
+- Alert fields are flat WCS 9.1 paths (`source.ip`, `source.port`, `user.name`). `parameters.alert.data.*` is gone.
 - AR metadata under `wazuh.active_response.*`. `wazuh-execd` reads `.executable`, `.type`, `.stateful_timeout` before invoking the script.
 
 ### Migration recipe
 
 For each custom script:
 
-1. Re-map field reads to ECS paths (`parameters.alert.data.srcip` → `source.ip`, etc.).
-2. Replace the inbound command handling: the 4.x `case "$COMMAND" in add) ... delete)` becomes `enable) ... disable)`. The manager dispatches exactly one of those values — `add` / `delete` in 4.x, `enable` / `disable` in 5.x — so `continue` is **not** a dispatched command in either version. `continue` appears only as the `check_keys` deduplication reply: `wazuh-execd` answers `continue` or `abort` to a script that sends a `check_keys` control message, and this protocol is unchanged from 4.x, so scripts that issue `check_keys` keep comparing the response against `"continue"` exactly as before.
+1. Re-map field reads to WCS paths (`parameters.alert.data.srcip` → `source.ip`, etc.).
+2. Replace the inbound command handling: the 4.x `case "$COMMAND" in add) ... delete)` becomes `enable) ... disable)`. The manager dispatches exactly one of those values — `add` / `delete` in 4.x, `enable` / `disable` in 5.x. `continue` appears only as the `check_keys` deduplication reply: `wazuh-execd` answers `continue` or `abort` to a script that sends a `check_keys` control message, and this protocol is unchanged from 4.x, so scripts that issue `check_keys` keep comparing the response against `"continue"` exactly as before.
 3. Read `<extra_args>` values from `.wazuh.active_response.extra_arguments` instead of positional shell arguments (`$1`, `$2`, …) — in 5.x the manager serializes them into the JSON payload, not into argv. Other AR metadata in the same object is also accessible to the script when needed: `.wazuh.active_response.{name,executable,type,stateful_timeout,location,agent_id}`. See the rewritten script in [Example 2 — Step 3](#example-2--custom-ssh-blocker-with-extra_arguments-rule-5760) for the `extra_arguments` accessor in use.
-4. Honor `wazuh.active_response.stateful_timeout` for stateful scripts.
-5. Capture stdin **inside the script itself** — `read -r INPUT_JSON; echo "$INPUT_JSON" > /tmp/ar-input.json` — on a real dispatch to confirm the shape. **Do not** wrap as `tee /tmp/ar-input.json | impl.sh`: `wazuh-execd` keeps stdin open after sending the payload (it expects the script to optionally respond with a `check_keys` control message and read back the `continue`/`abort` answer), so `tee` never receives EOF and the dispatch hangs forever. See [Custom script hangs and AR queue stalls](#custom-script-hangs-and-ar-queue-stalls).
+4. Capture stdin **inside the script itself** — `read -r INPUT_JSON; echo "$INPUT_JSON" > /tmp/ar-input.json` — on a real dispatch to confirm the shape. **Do not** wrap as `tee /tmp/ar-input.json | impl.sh`: `wazuh-execd` keeps stdin open after sending the payload (it expects the script to optionally respond with a `check_keys` control message and read back the `continue`/`abort` answer), so `tee` never receives EOF and the dispatch hangs forever. See [Custom script hangs and AR queue stalls](#custom-script-hangs-and-ar-queue-stalls).
 
 ### Example diff
 
@@ -241,7 +240,7 @@ logmsg "$INPUT_JSON"
 command=$(echo "$INPUT_JSON" | jq -r '.command')
 
 # Get srcip from the alert
-ar_srcip=$(echo "$INPUT_JSON" | jq -r '.source.ip') # 5.x MIGRATION: Changed from .parameters.alert.data.srcip to ECS path .source.ip
+ar_srcip=$(echo "$INPUT_JSON" | jq -r '.source.ip') # 5.x MIGRATION: Changed from .parameters.alert.data.srcip to WCS path .source.ip
 
 logmsg "Command: $command"
 
@@ -274,7 +273,7 @@ sudo chown root:wazuh /var/ossec/active-response/bin/<script>
 sudo chmod 750 /var/ossec/active-response/bin/<script>
 ```
 
-The 4.x manager `<command>` / `<active-response>` registration is replaced by a channel created in **Explore → Active Responses** and an Alerting monitor whose query matches the rule by `rule.title` over `wazuh-findings-v5-*` (the 4.x numeric `wazuh.rule.id` is gone — see [Triggering model](#triggering-model)) and whose trigger's **Add active response** action points at the channel. `<repeated_offenders>` has no direct replacement — see [`<repeated_offenders>` is gone](#repeated_offenders-is-gone).
+The 4.x manager `<command>` / `<active-response>` registration is replaced by a channel created in **Explore → Active Responses** and an Alerting monitor whose query matches the rule by `wazuh.rule.title` over `wazuh-findings-v5-*` (the 4.x numeric `rule.id` is gone — see [Triggering model](#triggering-model)) and whose trigger's **Add active response** action points at the channel. `<repeated_offenders>` has no direct replacement — see [`<repeated_offenders>` is gone](#repeated_offenders-is-gone).
 
 ---
 
@@ -296,9 +295,8 @@ For every migrated AR that referenced a consolidated script, set **Executable** 
 ## Migration steps
 
 1. **Finish the stack upgrade** through dashboard startup. AR can only be validated once the manager and indexer are on 5.x.
-2. **Remove legacy AR config** from `/var/ossec/etc/ossec.conf`: delete every `<command>` and `<active-response>` block.
-3. **Rewrite custom scripts** following the [recipe above](#migration-recipe). Re-apply `root:wazuh` ownership and `750` permissions.
-4. **Recreate each AR** under **Explore → Active Responses → Create active response**, using the [field mapping table](#field-mapping-4x-xml--5x-channel) and the [Default scripts](#default-scripts) translation.
+2. **Rewrite custom scripts** following the [recipe above](#migration-recipe). Re-apply `root:wazuh` ownership and `750` permissions.
+3. **Recreate each 4.x AR** under **Explore → Active Responses → Create active response**, using the [field mapping table](#field-mapping-4x-xml--5x-channel) and the [Default scripts](#default-scripts) translation.
 
    ![Side menu — Explore → Active Responses](../images/ar-explore-menu-entry.png)
 
@@ -306,7 +304,7 @@ For every migrated AR that referenced a consolidated script, set **Executable** 
 
    ![Create active response — Configurations panel](../images/ar-create-form-configurations.png)
 
-5. **Wire each channel to a monitor** of type **Active Response**, encoding the 4.x match condition as the monitor query — by `rule.title` over `wazuh-findings-v5-*` (the 4.x numeric `wazuh.rule.id` has no 5.x equivalent; see [Triggering model](#triggering-model)). The monitor type **must** be `Active Response` — no other type exposes the **Add active response** action.
+4. **Wire each channel to a monitor** of type **Active Response**, encoding the 4.x match condition as the monitor query — by `wazuh.rule.title` over `wazuh-findings-v5-*` (the 4.x numeric `rule.id` has no 5.x equivalent; see [Triggering model](#triggering-model)). The monitor type **must** be `Active Response` — no other type exposes the **Add active response** action.
 
    ![Monitor type — Active Response](../images/ar-monitor-type-active-response.png)
 
@@ -314,7 +312,7 @@ For every migrated AR that referenced a consolidated script, set **Executable** 
 
    ![Trigger — Add active response action](../images/ar-trigger-action.png)
 
-6. **Restart and smoke-test:**
+5. **Restart and smoke-test:**
 
    ```bash
    sudo systemctl restart wazuh-manager
@@ -358,11 +356,10 @@ What this does in 4.x: when rule `5763` (composite SSH brute force — fires aft
 
 | Step                       | Action for this example                                                                                                                                                                                                                                                                                                                                               |
 | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2 — Remove legacy blocks   | Delete both XML blocks above from `ossec.conf`.                                                                                                                                                                                                                                                                                                                       |
-| 3 — Rewrite custom scripts | Not applicable — uses the default script.                                                                                                                                                                                                                                                                                                                             |
-| 4 — Recreate as channel    | Use the field values in the table below.                                                                                                                                                                                                                                                                                                                              |
-| 5 — Wire to monitor        | Create an `Active Response` monitor over `wazuh-findings-v5-system-activity*` with query `rule.title is "<5.x rule title for the SSH auth failure>"` — **not** `wazuh.rule.id: 5763` (the 4.x numeric ID has no 5.x equivalent; match by `rule.title`, see [Triggering model](#triggering-model)). In the trigger choose **Add active response** → the channel above. |
-| 6 — Restart and smoke-test | Trigger an SSH authentication failure on the agent; expect a document in `wazuh-active-responses*` within ~1-2 min (allow for ingest latency + the monitor interval).                                                                                                                                                                                                 |
+| 2 — Rewrite custom scripts | Not applicable — uses the default script.                                                                                                                                                                                                                                                                                                                             |
+| 3 — Recreate as active response    | Use the field values in the table below.                                                                                                                                                                                                                                                                                                                              |
+| 4 — Wire to monitor        | Create an `Active Response` monitor over `wazuh-findings-v5-system-activity*` with query `wazuh.rule.title is "<5.x rule title for the SSH auth failure>"` — **not** `wazuh.rule.id: 5763` (the 4.x numeric ID has no 5.x equivalent; match by `wazuh.rule.title`, see [Triggering model](#triggering-model)). In the trigger choose **Add active response** → the channel above. |
+| 5 — Restart and smoke-test | Trigger an SSH authentication failure on the agent; expect a document in `wazuh-active-responses*` within ~1-2 min (allow for ingest latency + the monitor interval).                                                                                                                                                                                                 |
 
 **Step 4 — channel field values:**
 
@@ -464,11 +461,10 @@ exit 0
 
 | Step                       | Action for this example                                                                                                                                                                                                                                                      |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2 — Remove legacy blocks   | Delete both XML blocks above from `ossec.conf`.                                                                                                                                                                                                                              |
-| 3 — Rewrite custom script  | Apply the diff below: `parameters.alert.data.srcip` → `source.ip`; `add`/`delete` → `enable`/`disable`.                                                                                                                                                                      |
-| 4 — Recreate as channel    | Use the field values in the table below.                                                                                                                                                                                                                                     |
-| 5 — Wire to monitor        | Monitor over `wazuh-findings-v5-*` with a `rule.title` query (4.x numeric `5760` has no 5.x equivalent — see [Triggering model](#triggering-model)); trigger action = **Add active response**. |
-| 6 — Restart and smoke-test | Trigger the rule; expect the rewritten script to run and a document in `wazuh-active-responses*`.                                                                                                                                                                            |
+| 2 — Rewrite custom script  | Apply the diff below: `parameters.alert.data.srcip` → `source.ip`; `add`/`delete` → `enable`/`disable`.                                                                                                                                                                      |
+| 3 — Recreate as active response    | Use the field values in the table below.                                                                                                                                                                                                                                     |
+| 4 — Wire to monitor        | Monitor over `wazuh-findings-v5-*` with a `wazuh.rule.title` query (4.x numeric `5760` has no 5.x equivalent — see [Triggering model](#triggering-model)); trigger action = **Add active response**. |
+| 5 — Restart and smoke-test | Trigger the rule; expect the rewritten script to run and a document in `wazuh-active-responses*`.                                                                                                                                                                            |
 
 **Step 3 — rewritten script** (`/var/ossec/active-response/bin/block-ssh.sh`, `chown root:wazuh`, `chmod 750`):
 
@@ -535,7 +531,7 @@ The `disable` payload sent at +60 s additionally carries `stateful_timeout` at t
 
 ---
 
-Together these two examples exercise every concrete shape you will encounter: a default consolidated script (`block-ip`), a custom script needing a JSON rewrite, the field-mapping table, monitor wiring, `extra_arguments` propagation, the `wazuh-active-responses` data-stream record, the `event.doc_id` pivot back to the originating alert. Anything more complex (multiple ARs, non-shell scripts, Windows agents) follows the same pattern: **4.x XML → field-mapping table → 5.x channel + monitor → JSON contract → execution document**.
+Together these two examples exercise every concrete shape you will encounter: a default consolidated script (`block-ip`), a custom script needing a JSON rewrite, the field-mapping table, monitor wiring, `extra_arguments` propagation, the `wazuh-active-responses` data-stream record, the `event.doc_id` pivot back to the originating alert. Anything more complex (multiple ARs, non-shell scripts, Windows agents) follows the same pattern: **4.x XML → field-mapping table → 5.x active response + monitor → JSON contract → execution document**.
 
 ## Other 4.14 AR scenarios
 
