@@ -63,9 +63,9 @@ int fim_execute_is_pause_completed(void) {
     }
 
     // Use trylock so the IPC thread never blocks. fim_run_integrity holds
-    // fim_scan_mutex for the full sync operation (asp_sync_module + integrity
-    // validation), which can take minutes on large trees. Blocking here would
-    // reintroduce the pause window this PR is eliminating.
+    // fim_scan_mutex only for the integrity/recovery loop (asp_sync_module now
+    // runs unlocked), which can still take minutes on large trees. Blocking here
+    // would reintroduce the pause window this PR is eliminating.
     //
     // If a scan is in progress, return 1 (in-progress) so pollFimPauseCompletion()
     // retries in ~1 second. The mutex becomes free as soon as the current sync
@@ -386,6 +386,9 @@ size_t syscom_handle_agent_info_query(char * json_command, char ** output) {
         // Call is_pause_completed function
         result = fim_execute_is_pause_completed();
 
+        int first_sync_completed = (!syscheck.enable_synchronization ||
+                                    atomic_int_get(&syscheck.fim_first_sync_completed)) ? 1 : 0;
+
         if (result == 1) {
             // Pause in progress
             status_item = cJSON_CreateNumber(MQ_SUCCESS);
@@ -394,6 +397,7 @@ size_t syscom_handle_agent_info_query(char * json_command, char ** output) {
             if (data_item) {
                 cJSON_AddStringToObject(data_item, "module", "fim");
                 cJSON_AddStringToObject(data_item, "status", "in_progress");
+                cJSON_AddBoolToObject(data_item, "first_sync_completed", first_sync_completed);
             }
         } else if (result == 0) {
             // Pause completed successfully
@@ -404,6 +408,7 @@ size_t syscom_handle_agent_info_query(char * json_command, char ** output) {
                 cJSON_AddStringToObject(data_item, "module", "fim");
                 cJSON_AddStringToObject(data_item, "status", "completed");
                 cJSON_AddStringToObject(data_item, "result", "success");
+                cJSON_AddBoolToObject(data_item, "first_sync_completed", first_sync_completed);
             }
         } else {
             // Unexpected result
