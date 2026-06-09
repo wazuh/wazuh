@@ -10,7 +10,7 @@ Active Response (AR) is rebuilt in 5.x. The 4.x XML in `ossec.conf`, the agent-s
 - AR is created under **Explore → Active Responses**. Each channel carries `name`, `description`, `enabled`, `executable`, `extra_arguments`, `type` (`stateful` / `stateless`), `stateful_timeout` (default `180s`), `location` (`local` / `defined-agent` / `all`), `agent_id`.
 - Matching (`<rules_id>` / `<level>` / `<rules_group>`) moves to the query of an Alerting monitor of type **Active Response**.
 - `PUT /active-response` is removed with no replacement. Dispatch is document-driven: a monitor action writes into `wazuh-active-responses`; the manager polls every 60 s (batches of 100) and forwards via `wazuh-remoted`. Pre-5.0 agents are filtered out.
-- Executions land as structured documents in the `wazuh-active-responses` data stream (backing index `.wazuh-active-responses-v5`, 3-day ISM retention via `stream-active-responses-policy`).
+- Executions land as structured documents in the `wazuh-active-responses` data stream (backing data stream `.ds-wazuh-active-responses`, 3-day ISM retention via `stream-active-responses-policy`).
 - The JSON delivered to scripts changed shape: `command` ∈ `enable` / `disable` (was `add` / `delete`); alert fields use flat WCS paths (`source.ip`, `user.name`, …); AR metadata sits under `wazuh.active_response.*`.
 - Default firewall scripts (`firewall-drop`, `firewalld-drop`, `pf`, `npf`, `ipfw`, `netsh`, `route-null`, `host-deny`) are folded into a single `block-ip` executable. `restart-wazuh` moves to the Control Module. `wazuh-slack` is removed.
 - `<location>server</location>`, `<repeated_offenders>`, `<timeout_allowed>` have no direct equivalent.
@@ -88,7 +88,7 @@ Each 4.x `<active-response>` becomes two artifacts in 5.x: the AR channel (the *
 
 **Writing the monitor query.** The 4.x numeric rule ID does not carry over. Detection in 5.x is indexed under `wazuh-findings-v5-*` indices (split by category, e.g. `wazuh-findings-v5-system-activity*`, `wazuh-findings-v5-security*`, etc...), where a finding's rule identity is **`wazuh.rule.title`** (a human-readable string) and **`wazuh.rule.id`** (a UUID — not a number). So the query is **not** `wazuh.rule.id: 5763`. Pick the findings index that carries your events and match on:
 
-- **`wazuh.rule.title`** — recommended for monitors, e.g. `wazuh.rule.title is "Failed authentication attempt"`. Readable, but note that titles can change between ruleset versions.
+- **`wazuh.rule.title`** — recommended for monitors, e.g. `wazuh.rule.title is "Docker secret removed"`. Readable, but note that titles can change between ruleset versions.
 - **`wazuh.rule.id`** — the stable UUID, but it is mapped as text; an exact-match (`is`) operator may fail to match the dashed UUID. Prefer `wazuh.rule.title` unless you confirm `wazuh.rule.id.keyword` works in your build.
 
 The 4.x numeric IDs (`5763`, `5760`, …) have no 1:1 equivalent — locate the 5.x rule that detects the same condition by its `wazuh.rule.title` in `wazuh-findings-v5-*` (e.g. with `GET wazuh-findings-v5-*/_search`).
@@ -97,7 +97,7 @@ The 4.x numeric IDs (`5763`, `5760`, …) have no 1:1 equivalent — locate the 
 
 | Surface               | 4.x                                                                                                       | 5.x                                                                                                                                                        |
 | --------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Executions land in    | `/var/ossec/logs/active-responses.log` + events from the `active_response` rule group in `wazuh-alerts-*` | `wazuh-active-responses` data stream (`.wazuh-active-responses-v5` backing index). Agent log unchanged.                                                    |
+| Executions land in    | `/var/ossec/logs/active-responses.log` + events from the `active_response` rule group in `wazuh-alerts-*` | `wazuh-active-responses` alias (`.wazuh-active-responses-v5` backing data stream). Agent log unchanged.                                                    |
 | Structured fields     | Free text                                                                                                 | `wazuh.active_response.{name,type,executable,extra_arguments,stateful_timeout,location,agent_id}` + `event.doc_id` / `event.index`.                        |
 | `@timestamp`          | Event time                                                                                                | Indexing time. For event-time correlation use the linked alert via `event.doc_id`.                                                                         |
 | Default retention     | Alerts ILM policy                                                                                         | 3 days (`stream-active-responses-policy`, priority 100). Adjust the policy for longer retention.                                                           |
@@ -165,7 +165,7 @@ For each custom script:
 
 1. Re-map field reads to WCS paths (`parameters.alert.data.srcip` → `source.ip`, etc.).
 2. Replace the inbound command handling: the 4.x `case "$COMMAND" in add) ... delete)` becomes `enable) ... disable)`. The manager dispatches exactly one of those values — `add` / `delete` in 4.x, `enable` / `disable` in 5.x. `continue` appears only as the `check_keys` deduplication reply: `wazuh-execd` answers `continue` or `abort` to a script that sends a `check_keys` control message, and this protocol is unchanged from 4.x, so scripts that issue `check_keys` keep comparing the response against `"continue"` exactly as before.
-3. Read `<extra_args>` values from `.wazuh.active_response.extra_arguments` instead of positional shell arguments (`$1`, `$2`, …) — in 5.x the manager serializes them into the JSON payload, not into argv. Other AR metadata in the same object is also accessible to the script when needed: `.wazuh.active_response.{name,executable,type,stateful_timeout,location,agent_id}`. See the rewritten script in [Example 2 — Step 3](#example-2--custom-ssh-blocker-with-extra_arguments-rule-5760) for the `extra_arguments` accessor in use.
+3. Read `<extra_args>` values from `wazuh.active_response.extra_arguments` instead of positional shell arguments (`$1`, `$2`, …) — in 5.x the manager serializes them into the JSON payload, not into argv. Other AR metadata in the same object is also accessible to the script when needed: `.wazuh.active_response.{name,executable,type,stateful_timeout,location,agent_id}`. See the rewritten script in [Example 2 — Step 3](#example-2--custom-ssh-blocker-with-extra_arguments-rule-5760) for the `extra_arguments` accessor in use.
 4. Capture stdin **inside the script itself** — `read -r INPUT_JSON; echo "$INPUT_JSON" > /tmp/ar-input.json` — on a real dispatch to confirm the shape. **Do not** wrap as `tee /tmp/ar-input.json | impl.sh`: `wazuh-execd` keeps stdin open after sending the payload (it expects the script to optionally respond with a `check_keys` control message and read back the `continue`/`abort` answer), so `tee` never receives EOF and the dispatch hangs forever. See [Custom script hangs and AR queue stalls](#custom-script-hangs-and-ar-queue-stalls).
 
 ### Example diff
@@ -358,7 +358,7 @@ What this does in 4.x: when rule `5763` (composite SSH brute force — fires aft
 | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2 — Rewrite custom scripts | Not applicable — uses the default script.                                                                                                                                                                                                                                                                                                                             |
 | 3 — Recreate as active response    | Use the field values in the table below.                                                                                                                                                                                                                                                                                                                              |
-| 4 — Wire to monitor        | Create an `Active Response` monitor over `wazuh-findings-v5-system-activity*` with query `wazuh.rule.title is "<5.x rule title for the SSH auth failure>"` — **not** `wazuh.rule.id: 5763` (the 4.x numeric ID has no 5.x equivalent; match by `wazuh.rule.title`, see [Triggering model](#triggering-model)). In the trigger choose **Add active response** → the channel above. |
+| 4 — Wire to monitor        | Create an `Active Response` monitor over `wazuh-findings-v5-system-activity` index alias with query `wazuh.rule.title is "<5.x rule title for the SSH auth failure>"` — **not** `wazuh.rule.id: 5763` (the 4.x numeric ID has no 5.x equivalent; match by `wazuh.rule.title`, see [Triggering model](#triggering-model)). In the trigger choose **Add active response** → the channel above. |
 | 5 — Restart and smoke-test | Trigger an SSH authentication failure on the agent; expect a document in `wazuh-active-responses*` within ~1-2 min (allow for ingest latency + the monitor interval).                                                                                                                                                                                                 |
 
 **Step 4 — channel field values:**
@@ -378,31 +378,157 @@ What this does in 4.x: when rule `5763` (composite SSH brute force — fires aft
 **Expected outcome after Step 6:**
 
 1. Agent's `/var/ossec/logs/active-responses.log` shows two lines for the same source IP: a BLOCK at firing time, then an UNBLOCK ~60 s later.
-2. The indexer's `wazuh-active-responses*` data stream gets at least two documents (one per command). The `enable` document looks like:
+2. The indexer's `wazuh-active-responses*` data stream gets one document. The `enable` document looks like:
 
    ```json
-   {
-     "@timestamp": "<indexing time, not event time>",
-     "command": "enable",
-     "source": { "ip": "1.2.3.4" },
-     "wazuh": {
-       "active_response": {
-         "name": "block-ip-ssh-local",
-         "executable": "block-ip",
-         "type": "stateful",
-         "stateful_timeout": 60,
-         "location": "local"
-       },
-       "agent": { "id": "001", "name": "wazuh-agent" }
-     },
-     "event": {
-       "doc_id": "<originating alert _id>",
-       "index": "wazuh-findings-v5-..."
-     }
-   }
+    {
+      "@timestamp": "<indexing time, not event time>",
+      "event": {
+        "doc_id": "X2cQrZ4BDAFZz_TTUaKz",
+        "index": ".ds-wazuh-findings-v5-system-activity-000001"
+      },
+      "wazuh": {
+        "cluster": {
+          "node": "node01",
+          "name": "wazuh"
+        },
+        "protocol": {
+          "location": "journald",
+          "queue": 49
+        },
+        "agent": {
+          "host": {
+            "hostname": "ubuntu-2404",
+            "os": {
+              "name": "Ubuntu",
+              "type": "linux",
+              "version": "24.04.2 LTS (Noble Numbat)",
+              "platform": "ubuntu"
+            },
+            "architecture": "x86_64"
+          },
+          "name": "ubuntu24",
+          "groups": [
+            "default"
+          ],
+          "id": "003",
+          "version": "v5.0.0"
+        },
+        "integration": {
+          "name": "linux",
+          "decoders": [
+            "decoder/core-wazuh-message/0",
+            "decoder/syslog/0",
+            "decoder/system-auth/0"
+          ],
+          "category": "system-activity"
+        },
+        "rule": {
+          "sigma_id": "d5cc0e71-bcbb-4adc-98de-caed210cebf2",
+          "level": "low",
+          "compliance": {
+            "iso_27001": [
+              "A.9.2.1",
+              "A.9.4.2",
+              "A.12.4.1"
+            ],
+            "hipaa": [
+              "164.308.a.1.ii.D",
+              "164.308.a.5.ii.C",
+              "164.312.a.2.i"
+            ],
+            "pci_dss": [
+              "8.2",
+              "10.2"
+            ],
+            "tsc": [
+              "CC6.1",
+              "CC7.2"
+            ],
+            "nis2": [
+              "21.2.a",
+              "21.2.e"
+            ],
+            "nist_800_171": [
+              "3.1.1",
+              "3.3.1",
+              "3.5.1"
+            ],
+            "fedramp": [
+              "AC-2",
+              "AU-2",
+              "IA-2"
+            ],
+            "nist_800_53": [
+              "AC-2",
+              "AU-2",
+              "IA-2"
+            ],
+            "cmmc": [
+              "AC.L2-3.1.1",
+              "AU.L2-3.3.1",
+              "IA.L2-3.5.1"
+            ],
+            "gdpr": [
+              "II_5.1.f",
+              "IV_32.1.a",
+              "IV_33.1"
+            ]
+          },
+          "mitre": {
+            "technique": {
+              "name": [
+                "Brute Force",
+                "Valid Accounts"
+              ],
+              "id": [
+                "T1110",
+                "T1078"
+              ]
+            },
+            "tactic": {
+              "name": [
+                "Credential Access",
+                "Initial Access"
+              ],
+              "id": [
+                "TA0006",
+                "TA0001"
+              ]
+            }
+          },
+          "id": "d5cc0e71-bcbb-4adc-98de-caed210cebf2",
+          "title": "Failed authentication attempt - vagrant from 192.168.56.1",
+          "tags": [
+            "low",
+            "wazuh-generic",
+            "attack.credential-access",
+            "attack.initial-access",
+            "attack.t1110",
+            "attack.t1078"
+          ],
+          "status": "stable"
+        },
+        "event": {
+          "id": "f166aa6b-3b97-42c6-9700-37e0863a425d"
+        },
+        "space": {
+          "name": "standard"
+        },
+        "active_response": {
+          "name": "block-ip-ssh-local",
+          "type": "stateful",
+          "stateful_timeout": 60,
+          "executable": "block-ip",
+          "extra_arguments": null,
+          "location": "local",
+          "agent_id": null
+        }
+      }
+    }
    ```
 
-3. Switching Discover to `wazuh-findings-v5-*` and filtering `_id == <event.doc_id>` opens the originating alert.
+3. Switching Discover to `wazuh-findings-v5*` and filtering in the search bar `_id:<event.doc_id>` opens the originating finding.
 
 ### Example 2 — Custom SSH blocker with `extra_arguments` (rule 5760)
 
