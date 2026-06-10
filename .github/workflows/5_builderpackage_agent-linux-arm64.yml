@@ -98,12 +98,14 @@ jobs:
         id: build
         env:
           INPUT_REVISION: ${{ inputs.revision || '0' }}
+          INPUT_CHECKSUM: ${{ inputs.checksum }}
+          INPUT_DEBUG: ${{ inputs.debug }}
         run: |
           REVISION="$INPUT_REVISION"
           FLAGS="--verbose -t agent -s /tmp --dont-build-docker -j $(nproc) "
           FLAGS+="-r $REVISION "
-          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
-          if [ "${{ inputs.debug }}" == "true" ]; then FLAGS+="--debug "; fi
+          if [ "$INPUT_CHECKSUM" == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "$INPUT_DEBUG" == "true" ]; then FLAGS+="--debug "; fi
           echo "generate_package.sh -a $ARCH --tag $TAG --system $SYSTEM $FLAGS"
           bash packages/generate_package.sh -a "$ARCH" --tag "$TAG" --system "$SYSTEM" $FLAGS
 
@@ -350,12 +352,14 @@ jobs:
         id: build
         env:
           INPUT_REVISION: ${{ inputs.revision || '0' }}
+          INPUT_CHECKSUM: ${{ inputs.checksum }}
+          INPUT_DEBUG: ${{ inputs.debug }}
         run: |
           REVISION="$INPUT_REVISION"
           FLAGS="--verbose -t agent -s /tmp --dont-build-docker -j $(nproc) "
           FLAGS+="-r $REVISION "
-          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
-          if [ "${{ inputs.debug }}" == "true" ]; then FLAGS+="--debug "; fi
+          if [ "$INPUT_CHECKSUM" == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "$INPUT_DEBUG" == "true" ]; then FLAGS+="--debug "; fi
           echo "generate_package.sh -a $ARCH --tag $TAG --system $SYSTEM $FLAGS"
           bash packages/generate_package.sh -a "$ARCH" --tag "$TAG" --system "$SYSTEM" $FLAGS
 

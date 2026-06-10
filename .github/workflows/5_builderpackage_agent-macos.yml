@@ -83,11 +83,15 @@ jobs:
 
       - name: Build macOS intel64 package (without notarization)
         id: build
+        env:
+          INPUT_REVISION: ${{ inputs.revision || '1' }}
+          INPUT_CHECKSUM: ${{ inputs.checksum }}
+          INPUT_DEBUG: ${{ inputs.debug }}
         run: |
-          REVISION=${{ inputs.revision || '1' }}
-          FLAGS="-a ${{ env.ARCH }} -j 2 -r $REVISION --verbose "
-          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
-          if [ "${{ inputs.debug }}" == "true" ]; then FLAGS+="--debug "; fi
+          REVISION="$INPUT_REVISION"
+          FLAGS="-a $ARCH -j 2 -r $REVISION --verbose "
+          if [ "$INPUT_CHECKSUM" == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "$INPUT_DEBUG" == "true" ]; then FLAGS+="--debug "; fi
           echo "generate_wazuh_packages.sh $FLAGS"
           sudo bash packages/macos/generate_wazuh_packages.sh $FLAGS
 
@@ -96,7 +100,7 @@ jobs:
 
           echo "package-name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
           echo "package-symbols-name=$PACKAGE_SYMBOLS_NAME" >> $GITHUB_OUTPUT
-          echo "version=${{ env.VERSION }}" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Upload package as artifact
         uses: actions/upload-artifact@v4
@@ -147,7 +151,7 @@ jobs:
 
       - name: Test install macOS package
         run: |
-          sudo installer -pkg packages/macos/output/${{ env.PACKAGE_NAME }} -target / | sudo tee installer.log
+          sudo installer -pkg "packages/macos/output/$PACKAGE_NAME" -target / | sudo tee installer.log
           if grep -q "The install was successful" "installer.log"; then
             echo "Installation successfully."
           else
@@ -314,11 +318,15 @@ jobs:
 
       - name: Build macOS arm64 package (without notarization)
         id: build
+        env:
+          INPUT_REVISION: ${{ inputs.revision || '1' }}
+          INPUT_CHECKSUM: ${{ inputs.checksum }}
+          INPUT_DEBUG: ${{ inputs.debug }}
         run: |
-          REVISION=${{ inputs.revision || '1' }}
-          FLAGS="-a ${{ env.ARCH }} -j 2 -r $REVISION --verbose "
-          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
-          if [ "${{ inputs.debug }}" == "true" ]; then FLAGS+="--debug "; fi
+          REVISION="$INPUT_REVISION"
+          FLAGS="-a $ARCH -j 2 -r $REVISION --verbose "
+          if [ "$INPUT_CHECKSUM" == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "$INPUT_DEBUG" == "true" ]; then FLAGS+="--debug "; fi
           echo "generate_wazuh_packages.sh $FLAGS"
           sudo bash packages/macos/generate_wazuh_packages.sh $FLAGS
 
@@ -327,7 +335,7 @@ jobs:
 
           echo "package-name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
           echo "package-symbols-name=$PACKAGE_SYMBOLS_NAME" >> $GITHUB_OUTPUT
-          echo "version=${{ env.VERSION }}" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Upload package as artifact
         uses: actions/upload-artifact@v4
@@ -378,7 +386,7 @@ jobs:
 
       - name: Test install macOS package
         run: |
-          sudo installer -pkg packages/macos/output/${{ env.PACKAGE_NAME }} -target / | sudo tee installer.log
+          sudo installer -pkg "packages/macos/output/$PACKAGE_NAME" -target / | sudo tee installer.log
           if grep -q "The install was successful" "installer.log"; then
             echo "Installation successfully."
           else
