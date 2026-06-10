@@ -26,6 +26,7 @@ jobs:
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
       QA_IT_FW_BRANCH: ${{ github.base_ref || inputs.base_qa_it_fw_branch }}
       AWS_VPC_ID: ${{ secrets.IT_AWS_VPC_ID }}
+      AWS_BUCKET_NAME: ${{ secrets.IT_AWS_BUCKET_NAME }}
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout Repo
@@ -99,6 +100,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.IT_AWS_OIDC_ROLE_ARN }}
           aws-region: us-east-1
+          role-duration-seconds: 7200
 
       - name: Write AWS named profiles for integration tests
         run: |
@@ -112,11 +114,17 @@ jobs:
 
           # Assume the Inspector role via role chaining to build the 'inspector_tests' profile.
           # Inspector tests run against the wazuh-dev account and require us-east-2.
+          STS_ERROR_FILE=$(mktemp)
           STS_OUTPUT=$(aws sts assume-role \
             --role-arn "${{ secrets.IT_AWS_INSPECTOR_ROLE_ARN }}" \
             --role-session-name "github-actions-inspector-tests" \
             --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" \
-            --output text) || { echo "::error::Failed to assume Inspector role"; exit 1; }
+            --output text 2>"$STS_ERROR_FILE") || {
+              echo "::error::Failed to assume Inspector role: $(cat $STS_ERROR_FILE)"
+              rm -f "$STS_ERROR_FILE"
+              exit 1
+            }
+          rm -f "$STS_ERROR_FILE"
 
           read -r INSPECTOR_KEY INSPECTOR_SECRET INSPECTOR_TOKEN <<< "$STS_OUTPUT"
 
@@ -178,86 +186,86 @@ jobs:
         if: steps.filter.outputs.parser == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 test_aws/test_parser.py
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 test_aws/test_parser.py
 
       - name: Run every test due to base WazuhIntegration class change or manual dispatch
         if: steps.filter.outputs.integration == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           cd tests/integration
-          sudo AWS_VPC_ID="${AWS_VPC_ID}" python3 -m pytest -vvv --tier 0 --tier 1 test_aws/
+          sudo AWS_VPC_ID="${AWS_VPC_ID}" AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 test_aws/
 
       - name: Run Custom Buckets tests
         if: steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k kms test_aws/
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k macie test_aws/
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k trusted_advisor test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k kms test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k macie test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k trusted_advisor test_aws/
 
       - name: Run Config tests
         if: steps.filter.outputs.config == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k config test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k config test_aws/
 
       - name: Run GuardDuty tests
         if: steps.filter.outputs.guardduty == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k guardduty test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k guardduty test_aws/
 
       - name: Run CloudTrail tests
         if: steps.filter.outputs.cloudtrail == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k cloudtrail test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k cloudtrail test_aws/
 
       - name: Run Load Balancers tests
         if: steps.filter.outputs.loadbalancers == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k alb test_aws/
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k clb test_aws/
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k nlb test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k alb test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k clb test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k nlb test_aws/
 
       - name: Run Server Access tests
         if: steps.filter.outputs.serveraccess == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k server_access test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k server_access test_aws/
 
       - name: Run Umbrella tests
         if: steps.filter.outputs.umbrella == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k cisco test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k cisco test_aws/
 
       - name: Run VPC Flow tests
         if: steps.filter.outputs.vpcflow == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo AWS_VPC_ID="${AWS_VPC_ID}" python3 -m pytest -vvv --tier 0 --tier 1 -k vpc test_aws/
+          sudo AWS_VPC_ID="${AWS_VPC_ID}" AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k vpc test_aws/
 
       - name: Run WAF tests
         if: steps.filter.outputs.waf == 'true' || steps.filter.outputs.bucket == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k waf test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k waf test_aws/
 
       - name: Run CloudWatch tests
         if: steps.filter.outputs.cloudwatch == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k cloudwatch test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k cloudwatch test_aws/
 
       - name: Run Inspector tests
         if: steps.filter.outputs.inspector == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 -k inspector test_aws/
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k inspector test_aws/
 
       - name: Run Custom Bucket tests
         if: steps.filter.outputs.custom_bucket == 'true'
         run: |
           cd tests/integration
-          sudo python3 -m pytest -vvv --tier 0 --tier 1 test_aws/test_custom_bucket.py
+          sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 test_aws/test_custom_bucket.py
