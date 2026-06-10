@@ -389,13 +389,29 @@ cat > "$RESULTS_DIR/params.json" <<PARAMS
 }
 PARAMS
 
+# In remote mode, system_info describes the manager host (where the workload
+# actually runs). Collect via SSH so the numbers are meaningful.
+if $REMOTE_MODE; then
+    _si_hostname=$(ssh -S "$SSH_SOCKET" "root@$MANAGER" "hostname" 2>/dev/null || echo "unknown")
+    _si_kernel=$(ssh -S "$SSH_SOCKET" "root@$MANAGER" "uname -r" 2>/dev/null || echo "unknown")
+    _si_cpu=$(ssh -S "$SSH_SOCKET" "root@$MANAGER" "lscpu 2>/dev/null | grep 'Model name' | head -1 | sed 's/Model name:[[:space:]]*//' || echo unknown" 2>/dev/null || echo "unknown")
+    _si_cores=$(ssh -S "$SSH_SOCKET" "root@$MANAGER" "nproc 2>/dev/null || echo unknown" 2>/dev/null || echo "unknown")
+    _si_mem=$(ssh -S "$SSH_SOCKET" "root@$MANAGER" "free -h 2>/dev/null | awk '/^Mem:/ {print \$2}' || echo unknown" 2>/dev/null || echo "unknown")
+else
+    _si_hostname=$(hostname)
+    _si_kernel=$(uname -r)
+    _si_cpu=$(lscpu 2>/dev/null | grep "Model name" | head -1 | sed 's/Model name:\s*//' || echo "unknown")
+    _si_cores=$(nproc 2>/dev/null || echo "unknown")
+    _si_mem=$(free -h 2>/dev/null | awk '/^Mem:/ {print $2}' || echo "unknown")
+fi
+
 cat > "$RESULTS_DIR/system_info.txt" <<INFO
 Date: $(date -u)
-Hostname: $(hostname)
-Kernel: $(uname -r)
-CPU: $(lscpu 2>/dev/null | grep "Model name" | head -1 | sed 's/Model name:\s*//' || echo "unknown")
-Cores: $(nproc 2>/dev/null || echo "unknown")
-Memory: $(free -h 2>/dev/null | awk '/^Mem:/ {print $2}' || echo "unknown")
+Hostname: $_si_hostname
+Kernel: $_si_kernel
+CPU: $_si_cpu
+Cores: $_si_cores
+Memory: $_si_mem
 INFO
 
 # 0. Cleanup old benchmark agents
