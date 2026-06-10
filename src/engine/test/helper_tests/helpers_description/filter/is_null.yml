@@ -26,7 +26,7 @@ target_field:
 
 test:
   - target_field: null
-    should_pass: false
+    should_pass: true
     description: Is null
   - target_field: "hello"
     should_pass: false

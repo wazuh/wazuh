@@ -944,6 +944,20 @@ INSTANTIATE_TEST_SUITE_P(
                 ASSERT_TRUE(v.valid());
                 EXPECT_EQ(v.errors_size(), 0);
             },
+        },
+        // 15 ─ null leaf on known schema fields is accepted
+        OutputValidationCase {
+            "NullLeafKnownField",
+            R"({"agent.id":null,"source.port":null})",
+            []() -> std::shared_ptr<schemf::IValidator>
+            {
+                return makeSchemaMock({{"agent.id", schemf::Type::KEYWORD}, {"source.port", schemf::Type::INTEGER}});
+            },
+            [](const eEngine::tester::Result_Validation& v)
+            {
+                EXPECT_TRUE(v.valid());
+                EXPECT_EQ(v.errors_size(), 0);
+            },
         }),
     [](const testing::TestParamInfo<OutputValidationCase>& info) { return info.param.name; });
 
