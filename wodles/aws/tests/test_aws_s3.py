@@ -99,14 +99,18 @@ def test_main_sets_debug_level_when_debug_flag_provided():
     """main() sets aws_tools.debug_level and logs a debug message when --debug > 0."""
     args = ['main', '--bucket', 'bucket-name', '--type', 'cloudtrail', '--debug', '2']
     instance = MagicMock()
-    with patch("sys.argv", args), \
-            patch("configparser.RawConfigParser.has_option", return_value=False), \
-            patch('buckets_s3.cloudtrail.AWSCloudTrailBucket') as mocked_class, \
-            patch.object(aws_tools, 'debug') as mock_debug:
-        mocked_class.return_value = instance
-        aws_s3.main(args)
-    assert aws_tools.debug_level == 2
-    mock_debug.assert_any_call('+++ Debug mode on - Level: 2', 1)
+    original_debug_level = aws_tools.debug_level
+    try:
+        with patch("sys.argv", args), \
+                patch("configparser.RawConfigParser.has_option", return_value=False), \
+                patch('buckets_s3.cloudtrail.AWSCloudTrailBucket') as mocked_class, \
+                patch.object(aws_tools, 'debug') as mock_debug:
+            mocked_class.return_value = instance
+            aws_s3.main(args)
+        assert aws_tools.debug_level == 2
+        mock_debug.assert_any_call('+++ Debug mode on - Level: 2', 1)
+    finally:
+        aws_tools.debug_level = original_debug_level
 
 
 def test_main_exits_22_on_invalid_bucket_region():
