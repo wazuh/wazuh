@@ -146,3 +146,5 @@ if(UNIT_TEST)
   add_coverage_libraries(schema_validator)
   add_subdirectory(tests)
 endif()
+
+add_subdirectory(testtool)

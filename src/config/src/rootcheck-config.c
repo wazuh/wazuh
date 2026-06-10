@@ -139,9 +139,9 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 }
             }
         } else if (strcmp(node[i]->element, "windows_malware") == 0) {
-            mwarn("Rootcheck option 'windows_malware' is no longer supported. Use the SCA module instead.");
+            minfo("Rootcheck option 'windows_malware' is no longer supported. Use the SCA module instead.");
         } else if (strcmp(node[i]->element, "windows_apps") == 0) {
-            mwarn("Rootcheck option 'windows_apps' is no longer supported. Use the SCA module instead.");
+            minfo("Rootcheck option 'windows_apps' is no longer supported. Use the SCA module instead.");
         } else if (strcmp(node[i]->element, xml_base_dir) == 0) {
             os_strdup(node[i]->content, rootcheck->basedir);
         } else if (strcmp(node[i]->element, xml_check_dev) == 0) {
@@ -151,7 +151,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, "check_files") == 0) {
-            mwarn("Rootcheck option 'check_files' is no longer supported. Use the FIM module instead.");
+            minfo("Rootcheck option 'check_files' is no longer supported. Use the FIM module instead.");
 
         } else if (strcmp(node[i]->element, xml_check_if) == 0) {
             rootcheck->checks.rc_if = eval_bool(node[i]->content);
@@ -178,15 +178,15 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, "check_trojans") == 0) {
-            mwarn("Rootcheck option 'check_trojans' is no longer supported. Use the FIM module instead.");
+            minfo("Rootcheck option 'check_trojans' is no longer supported. Use the FIM module instead.");
         } else if (strcmp(node[i]->element, "check_unixaudit") == 0) {
-            mwarn("Rootcheck option 'check_unixaudit' is no longer supported. Use the SCA module instead.");
+            minfo("Rootcheck option 'check_unixaudit' is no longer supported. Use the SCA module instead.");
         } else if (strcmp(node[i]->element, "check_winapps") == 0) {
-            mwarn("Rootcheck option 'check_winapps' is no longer supported. Use the SCA module instead.");
+            minfo("Rootcheck option 'check_winapps' is no longer supported. Use the SCA module instead.");
         } else if (strcmp(node[i]->element, "check_winaudit") == 0) {
-            mwarn("Rootcheck option 'check_winaudit' is no longer supported. Use the SCA module instead.");
+            minfo("Rootcheck option 'check_winaudit' is no longer supported. Use the SCA module instead.");
         } else if (strcmp(node[i]->element, "check_winmalware") == 0) {
-            mwarn("Rootcheck option 'check_winmalware' is no longer supported. Use the SCA module instead.");
+            minfo("Rootcheck option 'check_winmalware' is no longer supported. Use the SCA module instead.");
         } else {
             mwarn(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

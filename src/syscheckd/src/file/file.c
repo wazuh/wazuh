@@ -1296,7 +1296,7 @@ void fim_file_scan() {
                 && IsLink(path) == 0) {
             char *link_target = realpath(path, NULL);
             if (link_target) {
-                mwarn(FIM_WARN_SYMLINK_NOFOLLOW, path, link_target, link_target);
+                minfo(FIM_WARN_SYMLINK_NOFOLLOW, path, link_target, link_target);
                 os_free(link_target);
             }
             dir_it->symlink_warned = true;
