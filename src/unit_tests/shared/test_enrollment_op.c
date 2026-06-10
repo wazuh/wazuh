@@ -897,6 +897,27 @@ void test_w_enrollment_process_agent_key_invalid_key(void **state) {
     assert_int_equal(ret,-1);
 }
 
+void test_w_enrollment_process_agent_key_malformed_one_field(void **state) {
+    char key[] = "OSSEC K:'1'";
+    expect_string(__wrap__merror, formatted_msg, "One of the received key parameters does not have a valid format");
+    int ret = w_enrollment_process_agent_key(key);
+    assert_int_equal(ret,-1);
+}
+
+void test_w_enrollment_process_agent_key_malformed_two_fields(void **state) {
+    char key[] = "OSSEC K:'006 ubuntu1610'";
+    expect_string(__wrap__merror, formatted_msg, "One of the received key parameters does not have a valid format");
+    int ret = w_enrollment_process_agent_key(key);
+    assert_int_equal(ret,-1);
+}
+
+void test_w_enrollment_process_agent_key_malformed_three_fields(void **state) {
+    char key[] = "OSSEC K:'006 ubuntu1610 192.168.1.1'";
+    expect_string(__wrap__merror, formatted_msg, "One of the received key parameters does not have a valid format");
+    int ret = w_enrollment_process_agent_key(key);
+    assert_int_equal(ret,-1);
+}
+
 void test_w_enrollment_process_agent_key_valid_key(void **state) {
     char key[] = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'";
     expect_string(__wrap_OS_IsValidIP, ip_address, "192.168.1.1");
@@ -1318,6 +1339,9 @@ int main() {
         cmocka_unit_test(test_w_enrollment_process_agent_key_short_buff),
         cmocka_unit_test(test_w_enrollment_process_agent_key_invalid_format),
         cmocka_unit_test(test_w_enrollment_process_agent_key_invalid_key),
+        cmocka_unit_test(test_w_enrollment_process_agent_key_malformed_one_field),
+        cmocka_unit_test(test_w_enrollment_process_agent_key_malformed_two_fields),
+        cmocka_unit_test(test_w_enrollment_process_agent_key_malformed_three_fields),
         cmocka_unit_test_setup_teardown(test_w_enrollment_process_agent_key_valid_key, setup_file_ops, teardown_file_ops),
         // w_enrollment_process_response
         cmocka_unit_test(test_w_enrollment_process_response_ssl_null),
