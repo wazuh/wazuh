@@ -69,6 +69,16 @@ def test_find_wazuh_path_cache():
         assert mock_abspath.call_count == 1
 
 
+def test_find_wazuh_path_relative_path_sentinel():
+    """find_wazuh_path handles a single-component relative path (sentinel for relative paths branch)."""
+    # os.path.split('wodles') => ('', 'wodles'), so parts[1] == abs_path triggers the elif branch.
+    with patch('utils.os.path.abspath', return_value='wodles'):
+        utils.find_wazuh_path.cache_clear()
+        result = utils.find_wazuh_path()
+    # 'wodles' is found at index 0, so range(0, 0) produces no iterations → wazuh_path == ''
+    assert result == ''
+
+
 # ---------------------------------------------------------------------------
 # call_wazuh_control
 # ---------------------------------------------------------------------------
