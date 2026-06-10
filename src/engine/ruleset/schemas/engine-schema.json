@@ -64,12 +64,30 @@
       "type": "keyword"
     },
     "check.mitre.subtechnique": {
+      "type": "object"
+    },
+    "check.mitre.subtechnique.id": {
+      "type": "keyword"
+    },
+    "check.mitre.subtechnique.name": {
       "type": "keyword"
     },
     "check.mitre.tactic": {
+      "type": "object"
+    },
+    "check.mitre.tactic.id": {
+      "type": "keyword"
+    },
+    "check.mitre.tactic.name": {
       "type": "keyword"
     },
     "check.mitre.technique": {
+      "type": "object"
+    },
+    "check.mitre.technique.id": {
+      "type": "keyword"
+    },
+    "check.mitre.technique.name": {
       "type": "keyword"
     },
     "check.name": {
@@ -1699,12 +1717,30 @@
       "type": "keyword"
     },
     "mitre.subtechnique": {
+      "type": "object"
+    },
+    "mitre.subtechnique.id": {
+      "type": "keyword"
+    },
+    "mitre.subtechnique.name": {
       "type": "keyword"
     },
     "mitre.tactic": {
+      "type": "object"
+    },
+    "mitre.tactic.id": {
+      "type": "keyword"
+    },
+    "mitre.tactic.name": {
       "type": "keyword"
     },
     "mitre.technique": {
+      "type": "object"
+    },
+    "mitre.technique.id": {
+      "type": "keyword"
+    },
+    "mitre.technique.name": {
       "type": "keyword"
     },
     "network.application": {
@@ -3289,12 +3325,30 @@
       "type": "keyword"
     },
     "rule.mitre.subtechnique": {
+      "type": "object"
+    },
+    "rule.mitre.subtechnique.id": {
+      "type": "keyword"
+    },
+    "rule.mitre.subtechnique.name": {
       "type": "keyword"
     },
     "rule.mitre.tactic": {
+      "type": "object"
+    },
+    "rule.mitre.tactic.id": {
+      "type": "keyword"
+    },
+    "rule.mitre.tactic.name": {
       "type": "keyword"
     },
     "rule.mitre.technique": {
+      "type": "object"
+    },
+    "rule.mitre.technique.id": {
+      "type": "keyword"
+    },
+    "rule.mitre.technique.name": {
       "type": "keyword"
     },
     "rule.name": {
