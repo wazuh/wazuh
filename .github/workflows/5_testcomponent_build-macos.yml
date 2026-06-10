@@ -6,6 +6,27 @@ on:
     paths:
       - "src/**"
       - ".github/workflows/5_testcomponent_build-macos.yml"
+      - "!src/engine/**"
+      - "!src/remoted/**"
+      - "!src/util/**"
+      # Windows-only, never built for the macOS agent
+      - "!src/win32/**"
+      - "!src/shared_modules/indexer_connector/**"
+      - "!src/shared_modules/keystore/**"
+      # Only src/ for these server trees: agent modules compile against their include/
+      - "!src/monitord/src/**"
+      - "!src/os_auth/src/**"
+      - "!src/wazuh_db/src/**"
+      - "!src/wazuh_db/schemas/**"
+      - "!src/shared_modules/content_manager/src/**"
+      - "!src/shared_modules/router/src/**"
+      - "!src/wazuh_modules/vulnerability_scanner/src/**"
+      - "!src/wazuh_modules/inventory_sync/src/**"
+      # Test trees: UNIT_TEST-gated, never built by this workflow
+      - "!src/unit_tests/**"
+      - "!src/**/tests/**"
+      - "!src/**/integrationTests/**"
+      - "!src/**/qa/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
