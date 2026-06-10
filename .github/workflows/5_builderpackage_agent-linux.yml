@@ -83,12 +83,12 @@ jobs:
           VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "TAG=$VERSION" >> $GITHUB_ENV
-          echo "CONTAINER_NAME=pkg_deb_agent_builder_${{ env.ARCH }}" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_deb_agent_builder_${ARCH}" >> $GITHUB_ENV
           echo "SYSTEM=deb" >> $GITHUB_ENV
 
       - name: Download docker image for package building
         run: |
-          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }} ${{ github.actor}} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh "${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}" "${{ github.actor }}" "$CONTAINER_NAME" "$TAG"
 
       - name: Append short commit to VERSION file
         run: |
@@ -100,23 +100,25 @@ jobs:
 
       - name: Build DEB ${{ env.ARCH }} package
         id: build
+        env:
+          INPUT_REVISION: ${{ inputs.revision || '0' }}
         run: |
-          REVISION=${{ inputs.revision || '0' }}
+          REVISION="$INPUT_REVISION"
           FLAGS="--verbose -t agent -s /tmp --dont-build-docker -j $(nproc) "
           FLAGS+="-r $REVISION "
           if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
           if [ "${{ inputs.debug }}" == "true" ]; then FLAGS+="--debug "; fi
-          echo "generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ env.SYSTEM }} $FLAGS"
-          bash packages/generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ env.SYSTEM }} $FLAGS
+          echo "generate_package.sh -a $ARCH --tag $TAG --system $SYSTEM $FLAGS"
+          bash packages/generate_package.sh -a "$ARCH" --tag "$TAG" --system "$SYSTEM" $FLAGS
 
           PACKAGE_NAME=$(find /tmp -maxdepth 1 -type f -name *agent*.deb -exec basename {} 2>/dev/null \;| grep -v -E "^wazuh-agent-dbg")
           PACKAGE_SYMBOLS_NAME=$(find /tmp -maxdepth 1 -type f -name *agent*.deb -exec basename {} 2>/dev/null \;| grep -E "^wazuh-agent-dbg")
 
           echo "package-name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
           echo "package-symbols-name=$PACKAGE_SYMBOLS_NAME" >> $GITHUB_OUTPUT
-          echo "version=${{ env.VERSION }}" >> $GITHUB_OUTPUT
-          echo "container-name=${{ env.CONTAINER_NAME }}" >> $GITHUB_OUTPUT
-          echo "tag=${{ env.TAG }}" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "container-name=$CONTAINER_NAME" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Upload package as artifact
         uses: actions/upload-artifact@v4
@@ -187,12 +189,12 @@ jobs:
 
       - name: Download docker image for testing
         run: |
-          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }} ${{ github.actor}} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh "${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}" "${{ github.actor }}" "$CONTAINER_NAME" "$TAG"
 
       - name: Test install package
         run: |
           TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/test-install-components/
-          if [ -z "${{ env.PACKAGE_NAME }}" ]; then
+          if [ -z "$PACKAGE_NAME" ]; then
             echo "No package found!"
             exit 1
           fi
@@ -200,11 +202,11 @@ jobs:
             -v $TESTS_PATH/:/tests \
             -v /tmp/:/packages \
             -v /var/ossec:/var/ossec \
-            -e ARCH="${{ env.ARCH }}" \
-            -e SYSTEM="${{ env.SYSTEM }}" \
+            -e ARCH="$ARCH" \
+            -e SYSTEM="$SYSTEM" \
             --entrypoint '/tests/install_component.sh' \
-            ${{ env.CONTAINER_NAME }}:${{ env.TAG }} \
-            ${{ env.PACKAGE_NAME }} agent
+            "$CONTAINER_NAME:$TAG" \
+            "$PACKAGE_NAME" agent
           if grep -iq " installed.*wazuh-agent" /tmp/status.log ; then
             echo "Installation successfully."
           else
@@ -216,7 +218,7 @@ jobs:
 
       - name: CSV filename Formation
         run: |
-          echo "CSV_FILENAME=${{ env.SYSTEM }}_linux_agent_${{ matrix.arch }}.csv" | tee -a $GITHUB_ENV
+          echo "CSV_FILENAME=${SYSTEM}_linux_agent_${{ matrix.arch }}.csv" | tee -a $GITHUB_ENV
 
       - name: Check installed files
         uses: ./.github/actions/check_files
@@ -253,7 +255,7 @@ jobs:
       - name: Prepare package for upgrade test
         run: |
           mkdir -p /tmp/upgrade_test
-          cp /tmp/${{ env.PACKAGE_NAME }} /tmp/upgrade_test/
+          cp "/tmp/$PACKAGE_NAME" /tmp/upgrade_test/
 
       - name: Test upgrade from ${{ steps.last-stable-version.outputs.latest_stable_version }} to ${{ env.VERSION }}
         uses: ./.github/actions/5_builderpackage_linux-smoke-upgrade-test
@@ -360,12 +362,12 @@ jobs:
           VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "TAG=$VERSION" >> $GITHUB_ENV
-          echo "CONTAINER_NAME=pkg_rpm_agent_builder_${{ env.ARCH }}" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_rpm_agent_builder_${ARCH}" >> $GITHUB_ENV
           echo "SYSTEM=rpm" >> $GITHUB_ENV
 
       - name: Download docker image for package building
         run: |
-          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }} ${{ github.actor}} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh "${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}" "${{ github.actor }}" "$CONTAINER_NAME" "$TAG"
 
       - name: Append short commit to VERSION file
         run: |
@@ -377,23 +379,25 @@ jobs:
 
       - name: Build RPM ${{ env.ARCH }} package
         id: build
+        env:
+          INPUT_REVISION: ${{ inputs.revision || '0' }}
         run: |
-          REVISION=${{ inputs.revision || '0' }}
+          REVISION="$INPUT_REVISION"
           FLAGS="--verbose -t agent -s /tmp --dont-build-docker -j $(nproc) "
           FLAGS+="-r $REVISION "
           if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
           if [ "${{ inputs.debug }}" == "true" ]; then FLAGS+="--debug "; fi
-          echo "generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ env.SYSTEM }} $FLAGS"
-          bash packages/generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ env.SYSTEM }} $FLAGS
+          echo "generate_package.sh -a $ARCH --tag $TAG --system $SYSTEM $FLAGS"
+          bash packages/generate_package.sh -a "$ARCH" --tag "$TAG" --system "$SYSTEM" $FLAGS
 
           PACKAGE_NAME=$(find /tmp -maxdepth 1 -type f -name *agent*.rpm -exec basename {} 2>/dev/null \;| grep -v -E "^wazuh-agent-debuginfo")
           PACKAGE_SYMBOLS_NAME=$(find /tmp -maxdepth 1 -type f -name *agent*.rpm -exec basename {} 2>/dev/null \;| grep -E "^wazuh-agent-debuginfo")
 
           echo "package-name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
           echo "package-symbols-name=$PACKAGE_SYMBOLS_NAME" >> $GITHUB_OUTPUT
-          echo "version=${{ env.VERSION }}" >> $GITHUB_OUTPUT
-          echo "container-name=${{ env.CONTAINER_NAME }}" >> $GITHUB_OUTPUT
-          echo "tag=${{ env.TAG }}" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "container-name=$CONTAINER_NAME" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Upload package as artifact
         uses: actions/upload-artifact@v4
@@ -472,12 +476,12 @@ jobs:
 
       - name: Download docker image for testing
         run: |
-          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }} ${{ github.actor}} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh "${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}" "${{ github.actor }}" "$CONTAINER_NAME" "$TAG"
 
       - name: Test install package
         run: |
           TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/test-install-components/
-          if [ -z "${{ env.PACKAGE_NAME }}" ]; then
+          if [ -z "$PACKAGE_NAME" ]; then
             echo "No package found!"
             exit 1
           fi
@@ -485,11 +489,11 @@ jobs:
             -v $TESTS_PATH/:/tests \
             -v /tmp/:/packages \
             -v /var/ossec:/var/ossec \
-            -e ARCH="${{ env.ARCH }}" \
-            -e SYSTEM="${{ env.SYSTEM }}" \
+            -e ARCH="$ARCH" \
+            -e SYSTEM="$SYSTEM" \
             --entrypoint '/tests/install_component.sh' \
-            ${{ env.CONTAINER_NAME }}:${{ env.TAG }} \
-            ${{ env.PACKAGE_NAME }} agent
+            "$CONTAINER_NAME:$TAG" \
+            "$PACKAGE_NAME" agent
           if grep -iq " installed.*wazuh-agent" /tmp/status.log ; then
             echo "Installation successfully."
           else
@@ -501,7 +505,7 @@ jobs:
 
       - name: CSV filename Formation
         run: |
-          echo "CSV_FILENAME=${{ env.SYSTEM }}_linux_agent_${{ matrix.arch }}.csv" | tee -a $GITHUB_ENV
+          echo "CSV_FILENAME=${SYSTEM}_linux_agent_${{ matrix.arch }}.csv" | tee -a $GITHUB_ENV
 
       - name: Check installed files
         uses: ./.github/actions/check_files
@@ -538,7 +542,7 @@ jobs:
       - name: Prepare package for upgrade test
         run: |
           mkdir -p /tmp/upgrade_test
-          cp /tmp/${{ env.PACKAGE_NAME }} /tmp/upgrade_test/
+          cp "/tmp/$PACKAGE_NAME" /tmp/upgrade_test/
 
       - name: Test upgrade from ${{ steps.last-stable-version.outputs.latest_stable_version }} to ${{ env.VERSION }}
         uses: ./.github/actions/5_builderpackage_linux-smoke-upgrade-test
