@@ -32,7 +32,7 @@ else
     done
     if [[ -z "${PYTHON:-}" ]]; then
         echo "Error: No python3 with psutil found."
-        echo "  Run: pip install -r $SCRIPT_DIR/requirements.txt"
+        echo "  Run: $SCRIPT_DIR/../../../engine/tools/devContainer/scripts/setup_monitor.sh"
         exit 1
     fi
 fi
@@ -283,12 +283,18 @@ if $REMOTE_MODE; then
     echo "  python3: $REMOTE_PY_VERSION"
 
     echo "Checking psutil on remote..."
-    if ! "${SSH_PREFIX[@]}" ssh "${SSH_OPTS[@]}" "root@$MANAGER" "python3 -c 'import psutil'" 2>/dev/null; then
+    if "${SSH_PREFIX[@]}" ssh "${SSH_OPTS[@]}" "root@$MANAGER" \
+            "/opt/wazuh-monitor-venv/bin/python3 -c 'import psutil'" 2>/dev/null; then
+        echo "  psutil: OK (venv)"
+    elif "${SSH_PREFIX[@]}" ssh "${SSH_OPTS[@]}" "root@$MANAGER" \
+            "python3 -c 'import psutil'" 2>/dev/null; then
+        echo "  psutil: OK (system python3)"
+    else
         echo "Error: psutil not available on remote host $MANAGER"
-        echo "  Install: pip3 install psutil"
+        echo "  Run setup_monitor.sh on the remote host:"
+        echo "    curl -fsSL https://raw.githubusercontent.com/wazuh/wazuh/<branch>/src/engine/tools/devContainer/scripts/setup_monitor.sh | sudo bash"
         exit 1
     fi
-    echo "  psutil: OK"
 
     echo "Checking wazuh-manager status on remote..."
     REMOTE_STATUS=$("${SSH_PREFIX[@]}" ssh "${SSH_OPTS[@]}" "root@$MANAGER" \
@@ -425,8 +431,16 @@ mkdir -p "$MONITOR_DIR"
 if $REMOTE_MODE; then
     echo "Starting resource monitor on remote ($MANAGER)..."
     REMOTE_OUTPUT_DIR="$REMOTE_MONITOR_DIR/output"
+    # Use the venv installed by setup_monitor.sh if present, fall back to
+    # system python3 (which must have psutil available in that case).
+    REMOTE_PYTHON="python3"
+    if ssh -S "$SSH_SOCKET" "root@$MANAGER" \
+            "test -x /opt/wazuh-monitor-venv/bin/python3" 2>/dev/null; then
+        REMOTE_PYTHON="/opt/wazuh-monitor-venv/bin/python3"
+        echo "  Using remote venv: /opt/wazuh-monitor-venv"
+    fi
     ssh -S "$SSH_SOCKET" "root@$MANAGER" \
-        "mkdir -p $REMOTE_OUTPUT_DIR && python3 $REMOTE_MONITOR_DIR/monitor.py \
+        "mkdir -p $REMOTE_OUTPUT_DIR && $REMOTE_PYTHON $REMOTE_MONITOR_DIR/monitor.py \
             --output-dir $REMOTE_OUTPUT_DIR \
             -s 1.0 \
             --pidfile $REMOTE_MONITOR_DIR/monitor.pid \

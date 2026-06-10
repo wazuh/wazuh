@@ -28,9 +28,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Detect Python with psutil (same logic as run_benchmark.sh).
+# Detect Python with psutil — same resolution order as run_benchmark.sh:
+#   1. Active venv (VIRTUAL_ENV)
+#   2. setup_monitor.sh venv (/opt/wazuh-monitor-venv)
+#   3. System python3 that already has psutil
+#   4. Known alternative paths
 if [[ -n "${VIRTUAL_ENV:-}" ]]; then
     PYTHON="$VIRTUAL_ENV/bin/python3"
+elif [[ -x "/opt/wazuh-monitor-venv/bin/python3" ]]; then
+    PYTHON="/opt/wazuh-monitor-venv/bin/python3"
 elif python3 -c "import psutil" 2>/dev/null; then
     PYTHON="$(command -v python3)"
 else
@@ -41,6 +47,7 @@ else
     done
     if [[ -z "${PYTHON:-}" ]]; then
         echo "Error: No python3 with psutil found." >&2
+        echo "  Run: $(dirname "${BASH_SOURCE[0]}")/../../../engine/tools/devContainer/scripts/setup_monitor.sh" >&2
         exit 1
     fi
 fi
@@ -136,6 +143,15 @@ cat > "$RESULTS_DIR/params.json" <<PARAMS
     "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 PARAMS
+
+cat > "$RESULTS_DIR/system_info.txt" <<INFO
+Date: $(date -u)
+Hostname: $(hostname)
+Kernel: $(uname -r)
+CPU: $(lscpu 2>/dev/null | grep "Model name" | head -1 | sed 's/Model name:\s*//' || echo "unknown")
+Cores: $(nproc 2>/dev/null || echo "unknown")
+Memory: $(free -h 2>/dev/null | awk '/^Mem:/ {print $2}' || echo "unknown")
+INFO
 
 # Cleanup hook: stop background processes if we exit early (Ctrl+C, error).
 cleanup() {
