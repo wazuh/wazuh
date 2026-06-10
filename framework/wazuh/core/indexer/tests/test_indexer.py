@@ -29,8 +29,8 @@ async def test_get_indexer_client_resolves_relative_certificate_paths():
     client.close = AsyncMock()
     keystore_client = MagicMock()
     keystore_client.__enter__.return_value.get.side_effect = [
-        {"value": "admin"},
-        {"value": "admin"},
+        {"value": "wazuh-server"},
+        {"value": "wazuh-server"},
     ]
 
     wazuh_config = {
@@ -64,8 +64,8 @@ async def test_get_indexer_client_resolves_relative_certificate_paths():
     create_indexer.assert_awaited_once_with(
         hosts=["localhost"],
         ports=[9200],
-        user="admin",
-        password="admin",
+        user="wazuh-server",
+        password="wazuh-server",
         use_ssl=True,
         verify_certs=True,
         client_cert_path="/var/wazuh-manager/etc/certs/manager.pem",
