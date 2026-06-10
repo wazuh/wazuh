@@ -23,6 +23,7 @@
   - [Migrating Agent Groups](guide/migration/agent-groups-migration.md)
   - [Integratord to notifications plugin](guide/migration/integratord-notifications.md)
   - [Migrating Syslog Input to Logcollector with rsyslog](guide/migration/syslog-input-4x-to-5x.md)
+  - [Active Response](guide/migration/active-response.md)
 
 # Reference Manual
 
