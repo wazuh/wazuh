@@ -5,6 +5,7 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testunit_indexerconnector.yml"
+      - ".github/actions/cpp_test_pipeline/**"
       - "src/shared_modules/utils/**"
       - "src/shared_modules/indexer_connector/**"
   workflow_dispatch:

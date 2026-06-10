@@ -5,6 +5,7 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testunit_inventorysync.yml"
+      - ".github/actions/cpp_test_pipeline/**"
       - "src/shared_modules/utils/**"
       - "src/wazuh_modules/inventory_sync/**"
   workflow_dispatch:

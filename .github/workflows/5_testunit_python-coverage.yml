@@ -26,16 +26,12 @@ jobs:
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
       PYTHONPATH: /home/runner/work/wazuh/wazuh/api:/home/runner/work/wazuh/wazuh/framework
     runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.12"]
     steps:
       - uses: actions/checkout@v6
-      - name: Setup Python ${{ matrix.python-version }}
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
           cache: "pip"
 
       - name: Download integration tests framework

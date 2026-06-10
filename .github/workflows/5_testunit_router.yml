@@ -5,6 +5,7 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testunit_router.yml"
+      - ".github/actions/cpp_test_pipeline/**"
       - "src/shared_modules/utils/**"
       - "src/shared_modules/router/**"
   workflow_dispatch:
