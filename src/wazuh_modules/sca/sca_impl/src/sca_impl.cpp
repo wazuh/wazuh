@@ -1180,6 +1180,13 @@ bool SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseV
                         shouldPersist = false;
                     }
                 }
+                else
+                {
+                    // No validator for this index: be restrictive and discard the message.
+                    LoggingHelper::getInstance().log(LOG_WARNING,
+                                                     "No schema validator found for index: " + std::string(SCA_SYNC_INDEX) + ". Discarding message.");
+                    shouldPersist = false;
+                }
             }
 
             if (shouldPersist)
