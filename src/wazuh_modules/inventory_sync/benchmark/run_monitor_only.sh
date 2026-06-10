@@ -3,30 +3,79 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # run_monitor_only.sh — Capture manager-side metrics during a real-agent test.
 #
-# Sister script to run_benchmark.sh: same monitor + log_parser + charts setup,
-# but NO sender (the load comes from real Wazuh agents you start separately).
+# Sister script to run_benchmark.sh: same monitor + charts setup, but NO sender
+# (the load comes from real Wazuh agents or another external source).
 #
 # Workflow:
 #   1. Run this script on the MANAGER host BEFORE starting the agents:
 #        ./run_monitor_only.sh --label real_agents_4
-#   2. The script wipes stale outputs, starts the engine monitor + log_parser
-#      in the background, and waits.
+#   2. The script wipes stale outputs, starts the engine monitor in the
+#      background, and waits.
 #   3. Start your 4 real Wazuh agents (or restart them after clearing their
 #      syscollector DB to force a first-sync).
-#   4. The script auto-stops when the manager has been idle (workers_q == 0
-#      AND indexer_q == 0 AND sessions == 0) for --auto-stop-after seconds.
-#      Or you can Ctrl+C at any time; cleanup runs.
-#   5. monitor.csv (legacy merged) + logs.csv + charts get produced under
+#   4. Stop with Ctrl+C when the workload is done, or let --duration expire.
+#      InventorySync logs are parsed once by monitor.py while it exits.
+#   5. monitor.csv (legacy merged) + monitor/logs.csv + charts get produced under
 #      results_<label>/, ready for ./run_benchmark.sh --compare.
 #
 # Usage:
 #   ./run_monitor_only.sh                                 # label=monitor_<ts>, duration=600s
 #   ./run_monitor_only.sh --label real_agents_4 -t 300
-#   ./run_monitor_only.sh --label real_agents_4 --auto-stop-after 60
-#   ./run_monitor_only.sh --label real_agents_4 --no-auto-stop -t 1200
+#   ./run_monitor_only.sh --label real_agents_4 -t 1200
 # ---------------------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Defaults
+LABEL=""
+DURATION=600
+PROCESS_NAME=""
+MANAGER_LOG="/var/wazuh-manager/logs/wazuh-manager.log"
+DISK_PATHS=(
+    "/var/wazuh-manager/queue/inventory_sync"
+    "/var/wazuh-manager/queue/engine-output"
+    "/var/wazuh-manager/queue/vd"
+)
+
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") [OPTIONS]
+  -l, --label LABEL          Results directory label (default: monitor_<timestamp>)
+  -t, --duration N           Maximum duration in seconds (default: $DURATION)
+      --process NAME         Restrict monitoring to one manager process. By default,
+                             monitor.py tracks all default Wazuh manager daemons.
+      --manager-log PATH     Manager log path (default: $MANAGER_LOG)
+      --disk-path PATH       Recursive directory size to track. Repeat for
+                             multiple. Default: 3 Wazuh queues.
+  -h, --help                 Show this help
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -l|--label)            LABEL="$2"; shift 2 ;;
+        -t|--duration)         DURATION="$2"; shift 2 ;;
+        --auto-stop-after)
+            echo "warning: --auto-stop-after is deprecated and ignored; stop with Ctrl+C or --duration" >&2
+            shift 2
+            ;;
+        --no-auto-stop)
+            echo "warning: --no-auto-stop is deprecated and ignored; monitoring is duration/signal based" >&2
+            shift
+            ;;
+        --process)             PROCESS_NAME="$2"; shift 2 ;;
+        --manager-log)         MANAGER_LOG="$2"; shift 2 ;;
+        --disk-path)
+            if [[ "${DISK_PATHS_FROM_CLI:-false}" == false ]]; then
+                DISK_PATHS=(); DISK_PATHS_FROM_CLI=true
+            fi
+            [[ -n "$2" ]] && DISK_PATHS+=("$2")
+            shift 2
+            ;;
+        -h|--help)             usage; exit 0 ;;
+        *)                     echo "Unknown option: $1" >&2; usage; exit 1 ;;
+    esac
+done
 
 # Detect Python with psutil — same resolution order as run_benchmark.sh:
 #   1. Active venv (VIRTUAL_ENV)
@@ -52,67 +101,19 @@ else
     fi
 fi
 
-# Defaults
-LABEL=""
-DURATION=600
-AUTO_STOP_AFTER=60
-PROCESS_NAME="wazuh-manager-modulesd"
-MANAGER_LOG="/var/wazuh-manager/logs/wazuh-manager.log"
-DISK_PATHS=(
-    "/var/wazuh-manager/queue/inventory_sync"
-    "/var/wazuh-manager/queue/engine-output"
-    "/var/wazuh-manager/queue/vd"
-)
-
-usage() {
-    cat <<EOF
-Usage: $(basename "$0") [OPTIONS]
-  -l, --label LABEL          Results directory label (default: monitor_<timestamp>)
-  -t, --duration N           Maximum duration in seconds (default: $DURATION)
-      --auto-stop-after N    Stop early after N idle seconds in a row
-                             (workers_q=indexer_q=sessions=0). 0 to disable.
-                             Default: $AUTO_STOP_AFTER
-      --no-auto-stop         Alias for --auto-stop-after 0
-      --process NAME         Process to monitor (default: $PROCESS_NAME)
-      --manager-log PATH     Manager log path (default: $MANAGER_LOG)
-      --disk-path PATH       Recursive directory size to track. Repeat for
-                             multiple. Default: 3 Wazuh queues.
-  -h, --help                 Show this help
-EOF
-}
-
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        -l|--label)            LABEL="$2"; shift 2 ;;
-        -t|--duration)         DURATION="$2"; shift 2 ;;
-        --auto-stop-after)     AUTO_STOP_AFTER="$2"; shift 2 ;;
-        --no-auto-stop)        AUTO_STOP_AFTER=0; shift ;;
-        --process)             PROCESS_NAME="$2"; shift 2 ;;
-        --manager-log)         MANAGER_LOG="$2"; shift 2 ;;
-        --disk-path)
-            if [[ "${DISK_PATHS_FROM_CLI:-false}" == false ]]; then
-                DISK_PATHS=(); DISK_PATHS_FROM_CLI=true
-            fi
-            [[ -n "$2" ]] && DISK_PATHS+=("$2")
-            shift 2
-            ;;
-        -h|--help)             usage; exit 0 ;;
-        *)                     echo "Unknown option: $1" >&2; usage; exit 1 ;;
-    esac
-done
-
 [[ -z "$LABEL" ]] && LABEL="monitor_$(date +%Y%m%d_%H%M%S)"
+PROCESS_LABEL="${PROCESS_NAME:-all_default_manager_processes}"
+MERGE_PROCESS_NAME="${PROCESS_NAME:-wazuh-manager-modulesd}"
 RESULTS_DIR="results_${LABEL}"
 mkdir -p "$RESULTS_DIR"
 
 MONITOR_CSV="$RESULTS_DIR/monitor.csv"
 MONITOR_DIR="$RESULTS_DIR/monitor"
 MONITOR_PID_FILE="$RESULTS_DIR/monitor.pid"
-LOGS_CSV="$RESULTS_DIR/logs.csv"
-LOG_PARSER_PID_FILE="$RESULTS_DIR/log_parser.pid"
+LOGS_CSV="$MONITOR_DIR/logs.csv"
 
 # Wipe stale outputs from previous runs that reused this label.
-rm -f "$MONITOR_CSV" "$LOGS_CSV" "$MONITOR_PID_FILE" "$LOG_PARSER_PID_FILE"
+rm -f "$MONITOR_CSV" "$RESULTS_DIR/logs.csv" "$MONITOR_PID_FILE" "$RESULTS_DIR/log_parser.pid" "$RESULTS_DIR/log_parser.log"
 rm -rf "$RESULTS_DIR/charts" "$MONITOR_DIR"
 mkdir -p "$MONITOR_DIR"
 
@@ -123,9 +124,9 @@ cat <<EOF
 =======================================================
   Label:              $LABEL
   Results dir:        $RESULTS_DIR/
-  Process:            $PROCESS_NAME
+  Process scope:      $PROCESS_LABEL
   Max duration:       ${DURATION}s
-  Auto-stop after:    ${AUTO_STOP_AFTER}s of idle (0 = disabled)
+  Completion:         duration expires or Ctrl+C
   Manager log:        $MANAGER_LOG
   Disk paths:         ${DISK_PATHS[*]}
 
@@ -137,8 +138,7 @@ cat > "$RESULTS_DIR/params.json" <<PARAMS
     "label": "$LABEL",
     "mode": "monitor_only",
     "duration": $DURATION,
-    "auto_stop_after": $AUTO_STOP_AFTER,
-    "process": "$PROCESS_NAME",
+    "process": "$PROCESS_LABEL",
     "manager_log": "$MANAGER_LOG",
     "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
@@ -154,29 +154,39 @@ Memory: $(free -h 2>/dev/null | awk '/^Mem:/ {print $2}' || echo "unknown")
 INFO
 
 # Cleanup hook: stop background processes if we exit early (Ctrl+C, error).
+STOP_REQUESTED=false
+
 cleanup() {
     local pid
-    for pid_file in "$MONITOR_PID_FILE" "$LOG_PARSER_PID_FILE"; do
-        if [[ -f "$pid_file" ]]; then
-            pid=$(cat "$pid_file" 2>/dev/null || true)
-            if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
-                kill -TERM "$pid" 2>/dev/null || true
-            fi
+    if [[ -f "$MONITOR_PID_FILE" ]]; then
+        pid=$(cat "$MONITOR_PID_FILE" 2>/dev/null || true)
+        if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+            kill -TERM "$pid" 2>/dev/null || true
         fi
-    done
+    fi
 }
-trap cleanup EXIT INT TERM
+
+request_stop() {
+    STOP_REQUESTED=true
+    echo
+    echo "Stop requested — finalizing capture."
+}
+trap cleanup EXIT
+trap request_stop INT TERM
 
 # 1. Start resource monitor.
 MONITOR_PY="$SCRIPT_DIR/../../../engine/tools/devContainer/scripts/monitor.py"
 echo "Starting resource monitor..."
 MONITOR_ARGS=(
-    --exe "/var/wazuh-manager/bin/$PROCESS_NAME"
     --output-dir "$MONITOR_DIR"
     -s 1.0
     --pidfile "$MONITOR_PID_FILE"
     --timeout 30
+    --log-path "$MANAGER_LOG"
 )
+if [[ -n "$PROCESS_NAME" ]]; then
+    MONITOR_ARGS=(--exe "/var/wazuh-manager/bin/$PROCESS_NAME" "${MONITOR_ARGS[@]}")
+fi
 for p in "${DISK_PATHS[@]}"; do
     [[ -n "$p" ]] && MONITOR_ARGS+=(--disk-path "$p")
 done
@@ -190,45 +200,25 @@ if ! kill -0 "$MONITOR_BG_PID" 2>/dev/null; then
 fi
 echo "  Monitor PID: $MONITOR_BG_PID  (output: $MONITOR_DIR/)"
 
-# 2. Start log parser if the manager log is readable.
-LOG_PARSER_BG_PID=""
-if [[ -r "$MANAGER_LOG" ]]; then
-    echo "Starting log parser..."
-    "$PYTHON" "$SCRIPT_DIR/log_parser.py" \
-        --log "$MANAGER_LOG" \
-        -o "$LOGS_CSV" \
-        -s 1.0 \
-        --pidfile "$LOG_PARSER_PID_FILE" >"$RESULTS_DIR/log_parser.log" 2>&1 &
-    LOG_PARSER_BG_PID=$!
-    sleep 1
-    if kill -0 "$LOG_PARSER_BG_PID" 2>/dev/null; then
-        echo "  Log parser PID: $LOG_PARSER_BG_PID"
-    else
-        echo "  (log parser failed to start; auto-stop disabled)"
-        LOG_PARSER_BG_PID=""
-        AUTO_STOP_AFTER=0
-    fi
-else
-    echo "Manager log not readable at $MANAGER_LOG — log parser skipped."
-    echo "Auto-stop disabled (needs queue stats from logs.csv)."
-    AUTO_STOP_AFTER=0
-fi
-
 cat <<EOF
 
 =======================================================
   READY. Start your real agents now (or restart them).
+  Press Ctrl+C when the workload is done.
 =======================================================
 
 EOF
 
-# 3. Poll for completion: either max duration or idle for AUTO_STOP_AFTER s.
+# 2. Wait for completion: max duration or user signal.
 start_time=$(date +%s)
-idle_streak=0
-prev_progress=""
 
 while true; do
-    sleep 5
+    sleep 5 || true
+
+    if [[ "$STOP_REQUESTED" == true ]]; then
+        break
+    fi
+
     now=$(date +%s)
     elapsed=$(( now - start_time ))
 
@@ -237,63 +227,7 @@ while true; do
         break
     fi
 
-    # If auto-stop is enabled and logs.csv exists, check idleness.
-    if (( AUTO_STOP_AFTER > 0 )) && [[ -f "$LOGS_CSV" ]]; then
-        idle=$("$PYTHON" - "$LOGS_CSV" <<'PYIDLE'
-import csv, sys
-try:
-    with open(sys.argv[1]) as f:
-        rows = list(csv.DictReader(f))
-except FileNotFoundError:
-    print("unknown")
-    sys.exit()
-if not rows:
-    print("unknown"); sys.exit()
-# Look at the last 5 rows; require ALL of them to be idle to avoid flapping.
-recent = rows[-5:]
-def n(row, key):
-    v = (row.get(key) or "").strip()
-    try:
-        return int(v)
-    except (ValueError, TypeError):
-        return -1  # unknown → treat as not-idle
-busy = False
-for r in recent:
-    if n(r, "workers_q") > 0 or n(r, "indexer_q") > 0 or n(r, "sessions") > 0:
-        busy = True; break
-if any(n(r, "workers_q") < 0 for r in recent):
-    print("unknown")
-else:
-    print("idle" if not busy else "busy")
-PYIDLE
-)
-
-        case "$idle" in
-            idle)
-                idle_streak=$((idle_streak + 5))
-                progress="idle for ${idle_streak}s / ${AUTO_STOP_AFTER}s threshold (elapsed=${elapsed}s)"
-                if (( idle_streak >= AUTO_STOP_AFTER )); then
-                    echo
-                    echo "Manager idle for ${idle_streak}s — auto-stopping."
-                    break
-                fi
-                ;;
-            busy)
-                idle_streak=0
-                progress="busy (elapsed=${elapsed}s)"
-                ;;
-            *)
-                progress="waiting for queue stats from manager log... (elapsed=${elapsed}s)"
-                ;;
-        esac
-
-        if [[ "$progress" != "$prev_progress" ]]; then
-            echo "  [$progress]"
-            prev_progress="$progress"
-        fi
-    else
-        echo "  [elapsed=${elapsed}s / ${DURATION}s — auto-stop off, waiting for --duration]"
-    fi
+    echo "  [elapsed=${elapsed}s / ${DURATION}s — monitoring]"
 done
 
 # 4. Stop background processes.
@@ -305,19 +239,12 @@ if kill -0 "$MONITOR_BG_PID" 2>/dev/null; then
 fi
 echo "  Monitor stopped"
 
-if [[ -n "$LOG_PARSER_BG_PID" ]] && kill -0 "$LOG_PARSER_BG_PID" 2>/dev/null; then
-    echo "Stopping log parser..."
-    kill -TERM "$LOG_PARSER_BG_PID" 2>/dev/null || true
-    wait "$LOG_PARSER_BG_PID" 2>/dev/null || true
-    echo "  Log parser stopped"
-fi
-
 # Clear the EXIT trap now that we've stopped cleanly — otherwise it would
 # fire again and try to kill already-stopped PIDs.
 trap - EXIT INT TERM
 
 # 5. Merge legacy monitor.csv (same logic as run_benchmark.sh).
-"$PYTHON" - "$MONITOR_DIR" "$MONITOR_CSV" "$PROCESS_NAME" <<'PYMERGE' || true
+"$PYTHON" - "$MONITOR_DIR" "$MONITOR_CSV" "$MERGE_PROCESS_NAME" <<'PYMERGE' || true
 import csv, sys
 from pathlib import Path
 
@@ -363,22 +290,13 @@ PYMERGE
 
 # 6. Generate charts using the shared engine monitor_graphics_generator.py.
 # That generator does auto-discovery of per-process CSVs, reads
-# disk_usage.csv directly, and parses invsync_queue_stats.csv /
-# invsync_session_stats.csv. We feed it $MONITOR_DIR (already has the
-# per-process CSVs and disk_usage.csv) plus a symlink from logs.csv so the
-# InventorySync queue chart section kicks in.
+# disk_usage.csv directly, and parses logs.csv / invsync_queue_stats.csv /
+# invsync_session_stats.csv from $MONITOR_DIR.
 ENGINE_GFX="$SCRIPT_DIR/../../../engine/tools/devContainer/scripts/monitor_graphics_generator.py"
 if [[ ! -f "$ENGINE_GFX" ]]; then
     echo "warning: engine monitor_graphics_generator.py not found at $ENGINE_GFX" >&2
     echo "         falling back to benchmark/graphics_generator.py"
     ENGINE_GFX="$SCRIPT_DIR/graphics_generator.py"
-fi
-
-# Expose logs.csv as the file name the engine generator expects.
-# It only reads the queue-stats columns from it (workers_q, indexer_q,
-# sessions, ...) so extra error-counter columns are ignored.
-if [[ -f "$LOGS_CSV" ]] && [[ ! -e "$MONITOR_DIR/invsync_queue_stats.csv" ]]; then
-    ln -sf "$(readlink -f "$LOGS_CSV")" "$MONITOR_DIR/invsync_queue_stats.csv"
 fi
 
 echo

@@ -915,6 +915,13 @@ def parse_args() -> argparse.Namespace:
         help="Output directory for multi-process mode. "
              "Defaults to ./result_<timestamp>.",
     )
+    p.add_argument(
+        "--log-path",
+        type=str,
+        default=WAZUH_LOG_PATH,
+        help="Manager log path used for final InventorySync log extraction "
+             f"(default: {WAZUH_LOG_PATH})",
+    )
     p.add_argument("-d", "--debug", action="store_true", help="Debug logging")
     return p.parse_args()
 
@@ -964,7 +971,7 @@ def main() -> None:
     monitor_multi(processes, output_dir, args.interval, disk_paths)
 
     # Post-processing: extract InventorySync stats from wazuh-manager.log
-    extract_invsync_logs(output_dir, start_time=monitor_start_time)
+    extract_invsync_logs(output_dir, log_path=args.log_path, start_time=monitor_start_time)
 
 
 # ---------------------------------------------------------------------------

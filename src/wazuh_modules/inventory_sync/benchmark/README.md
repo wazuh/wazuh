@@ -97,6 +97,23 @@ or you can build it explicitly:
 (cd tool_simulator && make benchmark_sender_go)
 ```
 
+## Monitor-Only Real-Agent Runs
+
+Use `run_monitor_only.sh` when the load comes from real agents or another
+external source instead of `tool_simulator/benchmark_sender`:
+
+```bash
+./run_monitor_only.sh --label real_agents_4 -t 600
+```
+
+The script starts `monitor.py`, writes the usual `results_<label>/` metadata,
+and generates charts after the monitor stops. By default it monitors all default
+Wazuh manager daemons known by `monitor.py`; pass `--process wazuh-manager-modulesd`
+only when you want a focused Inventory Sync capture. It does not run a live log
+parser; Inventory Sync log extraction is performed once by `monitor.py` during
+shutdown, so stop the run with Ctrl+C when the workload is done or let
+`--duration` expire.
+
 ## Orchestrator
 
 `run_benchmark.sh` is a pure pass-through for load definition: all load shape
