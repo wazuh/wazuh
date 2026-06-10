@@ -255,7 +255,7 @@ STATIC bool handle_all_paths_removed(void) {
     mdebug1("All monitored paths removed from configuration but database has data. Initiating DataClean process.");
 
     if (!syscheck.sync_handle) {
-        merror("Sync protocol not initialized, cannot send DataClean notification.");
+        minfo("Sync protocol not initialized, cannot send DataClean notification.");
         return false;
     }
 

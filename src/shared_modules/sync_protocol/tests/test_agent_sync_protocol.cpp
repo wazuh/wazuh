@@ -2539,7 +2539,7 @@ TEST_F(AgentSyncProtocolTest, RequiresFullSyncSendChecksumMessageFails)
     std::string loggedMessage;
     LoggerFunc testLogger = [&loggedMessage](modules_log_level_t level, const std::string & message)
     {
-        if (level == LOG_ERROR && message.find("Failed to send ChecksumModule message") != std::string::npos)
+        if (level == LOG_DEBUG && message.find("Failed to send ChecksumModule message") != std::string::npos)
         {
             loggedMessage = message;
         }

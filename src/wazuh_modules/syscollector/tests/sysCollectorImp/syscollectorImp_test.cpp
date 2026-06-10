@@ -4253,8 +4253,8 @@ TEST_F(SyscollectorImpTest, notifyDisableCollectorsDataCleanWithDisabledCollecto
     // This tests the error handling path
     EXPECT_FALSE(Syscollector::instance().notifyDisableCollectorsDataClean());
 
-    // Verify error log for missing sync protocol
-    EXPECT_TRUE(logCapture.contains(LOG_ERROR, "Sync protocol not initialized, cannot notify data clean"));
+    // Verify info log for missing sync protocol
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Sync protocol not initialized, cannot notify data clean"));
 
     Syscollector::instance().destroy();
 }
@@ -4411,8 +4411,8 @@ TEST_F(SyscollectorImpTest, allCollectorsDisabledWithData)
     // We can verify this by calling notifyDisableCollectorsDataClean (will fail without sync protocol)
     EXPECT_FALSE(Syscollector::instance().notifyDisableCollectorsDataClean());
 
-    // Verify error log for missing sync protocol
-    EXPECT_TRUE(logCapture.contains(LOG_ERROR, "Sync protocol not initialized, cannot notify data clean"));
+    // Verify info log for missing sync protocol
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Sync protocol not initialized, cannot notify data clean"));
 
     Syscollector::instance().destroy();
 }
@@ -4467,8 +4467,8 @@ TEST_F(SyscollectorImpTest, networkCollectorDisabledThreeIndices)
     // Verify by attempting notification (will fail without sync protocol but tests the detection)
     EXPECT_FALSE(Syscollector::instance().notifyDisableCollectorsDataClean());
 
-    // Verify error log for missing sync protocol
-    EXPECT_TRUE(logCapture.contains(LOG_ERROR, "Sync protocol not initialized, cannot notify data clean"));
+    // Verify info log for missing sync protocol
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Sync protocol not initialized, cannot notify data clean"));
 
     // Cleanup should work even without sync protocol
     EXPECT_NO_THROW(Syscollector::instance().deleteDisableCollectorsData());
