@@ -11,6 +11,7 @@ on:
         - "src/Makefile"
         - "tests/integration/conftest.py"
         - "tests/integration/test_msgraph/**"
+        - ".github/actions/reinstall_cmake/**"
   workflow_dispatch:
     inputs:
       base_branch:

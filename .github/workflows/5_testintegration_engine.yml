@@ -5,6 +5,8 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - 'src/engine/**'
+      - '.github/actions/reinstall_cmake/**'
+      - '.github/workflows/5_testintegration_engine.yml'
   workflow_dispatch:
 
 concurrency:

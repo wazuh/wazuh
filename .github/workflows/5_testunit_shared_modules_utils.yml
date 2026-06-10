@@ -6,6 +6,10 @@ on:
     paths:
       - ".github/workflows/5_testunit_shared_modules_utils.yml"
       - "src/shared_modules/utils/**"
+      - ".github/actions/build_external_deps/**"
+      - ".github/actions/build_target_cpp/**"
+      - ".github/actions/coverage_cpp/**"
+      - ".github/actions/test_cpp/**"
   workflow_dispatch:
 
 concurrency:

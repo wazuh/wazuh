@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/5_testunit_api.yml'
       - 'api/**'
+      - 'framework/requirements-dev.txt'
       - 'src/Makefile'
   workflow_dispatch:
     inputs:

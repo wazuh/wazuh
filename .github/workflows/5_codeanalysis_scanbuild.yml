@@ -6,6 +6,7 @@ on:
     paths:
       - "src/**"
       - ".github/workflows/5_codeanalysis_scanbuild.yml"
+      - ".github/actions/reinstall_cmake/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}

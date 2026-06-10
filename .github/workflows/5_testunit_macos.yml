@@ -6,6 +6,18 @@ on:
     paths:
       - "src/**"
       - ".github/workflows/5_testunit_macos.yml"
+      - "!src/engine/**"
+      - "!src/monitord/**"
+      - "!src/os_auth/**"
+      - "!src/remoted/**"
+      - "!src/util/**"
+      - "!src/wazuh_db/**"
+      - "!src/shared_modules/content_manager/**"
+      - "!src/shared_modules/indexer_connector/**"
+      - "!src/shared_modules/keystore/**"
+      - "!src/shared_modules/router/**"
+      - "!src/wazuh_modules/vulnerability_scanner/**"
+      - "!src/wazuh_modules/inventory_sync/**"
   workflow_dispatch:
 
 concurrency:
