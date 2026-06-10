@@ -57,7 +57,9 @@ jobs:
           COLUMNS: 200
         run: |
           set -o pipefail
-          python -m pytest wodles -vv --color=yes --tb=short --cov=wodles --cov-report=term --cov-report=html:${COVERAGE_REPORT_PATH} | tee ${TEST_REPORT_PATH}
+          printf '[run]\nomit =\n    wodles/tests/*\n    wodles/*/tests/*\n' > .coveragerc
+          python -m pytest wodles -vv --color=yes --tb=short --cov=wodles --cov-config=.coveragerc --cov-report=term --cov-report=html:${COVERAGE_REPORT_PATH} | tee ${TEST_REPORT_PATH}
+          rm -f .coveragerc
 
       - name: Upload coverage report
         if: always()

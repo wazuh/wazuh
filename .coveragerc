@@ -1,4 +1,0 @@
-[run]
-omit =
-    wodles/tests/*
-    wodles/*/tests/*
