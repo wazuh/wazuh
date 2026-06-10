@@ -15,6 +15,7 @@ jobs:
   build-sonoma:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: macos-15
+    timeout-minutes: 15
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3

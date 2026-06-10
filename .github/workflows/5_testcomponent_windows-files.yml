@@ -15,6 +15,7 @@ jobs:
   build:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v3
       - name: Install mingw
@@ -47,6 +48,7 @@ jobs:
           path: src/bin_files
   check_binaries_details:
     runs-on: windows-2025
+    timeout-minutes: 30
     needs: build
     steps:
       - name: Checkout Repo
