@@ -121,6 +121,12 @@ list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_ht
 
 list(APPEND client-agent_names "test_startup_gate")
 list(APPEND client-agent_flags "-Wl,--wrap,getsharedfiles ${DEBUG_OP_WRAPPERS}")
+
+list(APPEND client-agent_names "test_sendmsg")
+list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS} \
+                                -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
+                                -Wl,--wrap,CreateSecMSG \
+                                -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_CloseSocket")
 endif()
 
 list(LENGTH client-agent_names count)
