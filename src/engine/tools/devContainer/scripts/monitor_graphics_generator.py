@@ -763,12 +763,55 @@ def _generate_invsync_charts(
         if os.path.isfile(qpath):
             df = pd.read_csv(qpath)
             if len(df) > 0:
-                # Add a sequential elapsed index (rows are ~0.5s apart)
-                df["elapsed_s"] = [i * 0.5 for i in range(len(df))]
-                # Coerce numeric columns
+                # Compute elapsed_s from real wall-clock timestamps so that
+                # invsync queue charts align with the per-process monitor CSVs.
+                # invsync_queue_stats timestamps are "YYYY/MM/DD HH:MM:SS".
+                # Reference t=0 is the monitor start time, taken from the
+                # modulesd process CSV when available; without it we fall back
+                # to the first queue-stats log line as the local t=0.
+                # queue_stats timestamps are tz-naive ("%Y/%m/%d %H:%M:%S").
+                # modulesd timestamps are written as "…Z" → pandas parses
+                # them tz-aware UTC. Normalise the reference to tz-naive so
+                # the subtraction never mixes aware and naive datetimes.
+                queue_ts = pd.to_datetime(
+                    df["timestamp"], format="%Y/%m/%d %H:%M:%S", errors="coerce"
+                )
+                ref_t0 = queue_ts.dropna().min()  # fallback: first log line
+                if modulesd_dfs and label in modulesd_dfs:
+                    mdf = modulesd_dfs[label]
+                    if "timestamp" in mdf.columns:
+                        mdf_ts = mdf["timestamp"]
+                        if not pd.api.types.is_datetime64_any_dtype(mdf_ts):
+                            mdf_ts = pd.to_datetime(mdf_ts, errors="coerce")
+                        cand = mdf_ts.dropna().min()
+                        if pd.notna(cand):
+                            # Strip tz-info (UTC) so subtraction from the
+                            # tz-naive queue_ts Series doesn't raise TypeError.
+                            ref_t0 = cand.tz_localize(None) if cand.tzinfo is None else cand.tz_convert(None)
+                if pd.notna(ref_t0):
+                    df["elapsed_s"] = (
+                        queue_ts - ref_t0
+                    ).dt.total_seconds().clip(lower=0)
+                else:
+                    df["elapsed_s"] = [i * 0.5 for i in range(len(df))]
+                # Coerce numeric columns (including the freshly computed elapsed_s).
                 for c in df.columns:
                     if c not in ("timestamp",):
                         df[c] = pd.to_numeric(df[c], errors="coerce")
+                # Prepend a synthetic zero row at t=0 so gauge metrics show a
+                # clean rise from 0 rather than appearing already-high at the
+                # first logged data point.  Before the benchmark starts, all
+                # session/queue/quota counts are 0.
+                first_elapsed = float(df["elapsed_s"].iloc[0]) if len(df) > 0 else 0.0
+                if first_elapsed > 1.0:
+                    zero_row = {
+                        c: (0 if df[c].dtype.kind in ("i", "f") else "")
+                        for c in df.columns
+                    }
+                    zero_row["elapsed_s"] = 0.0
+                    df = pd.concat(
+                        [pd.DataFrame([zero_row]), df], ignore_index=True
+                    )
                 queue_dfs[label] = df
         if os.path.isfile(spath):
             df = pd.read_csv(spath)
@@ -1190,6 +1233,16 @@ def _plot_sessions_rss_rocksdb(
     ax3.grid(True, alpha=0.3)
     ax3.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 
+    # Clip X to the benchmark window.  After the elapsed-alignment fix,
+    # queue_df["elapsed_s"].iloc[0] is the monitor-relative time of the first
+    # queue-stats log line (i.e. when the benchmark started).  Show 30 s of
+    # RSS/RocksDB context before that so the rise from 0 is visible.
+    if not queue_df.empty and "elapsed_s" in queue_df.columns:
+        x_start = max(0.0, float(queue_df["elapsed_s"].iloc[0]) - 30.0)
+        if x_start > 0:
+            for _ax in (ax1, ax2, ax3):
+                _ax.set_xlim(left=x_start)
+
     fig.tight_layout()
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -1262,6 +1315,17 @@ def _plot_rss_vs_queues(
                    loc="upper left", fontsize=9)
     else:
         ax2.legend(loc="upper left", fontsize=9)
+
+    # Clip the shared X axis to start from the benchmark window: 30 s before
+    # the first non-NaN sessions value so the pre-benchmark dead zone (where
+    # the monitor was running but the benchmark hadn't started yet) is removed.
+    if sessions.notna().any():
+        first_valid_loc = sessions.first_valid_index()
+        if first_valid_loc is not None:
+            x_start = max(0.0, float(x.loc[first_valid_loc]) - 30.0)
+            if x_start > 0:
+                ax1.set_xlim(left=x_start)
+                ax2.set_xlim(left=x_start)
 
     fig.tight_layout()
     fig.savefig(out_path, dpi=150, bbox_inches="tight")

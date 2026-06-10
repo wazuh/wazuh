@@ -1149,7 +1149,12 @@ def extract_invsync_logs(output_dir: str,
             max(bucket_gauges.keys()) if bucket_gauges else 0,
         )
         logs_rows: list[dict] = []
-        carried_gauges: dict[str, int | float] = {}
+        # Initialise all gauge metrics to 0 so that every second from the
+        # monitor start has a real value: before the first queue-stats log
+        # line the benchmark hasn't started yet and all session/queue counts
+        # are 0.  This makes the chart show a clean rise from 0 rather than
+        # the sessions line appearing blank (NaN) for the pre-benchmark window.
+        carried_gauges: dict[str, int | float] = {name: 0 for name in _GAUGE_NAMES}
         for sec in range(0, max_sec + 1):
             # Update carried gauges if this second has a snapshot
             if sec in bucket_gauges:
