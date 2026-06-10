@@ -53,6 +53,10 @@ DEFAULT_EXECUTABLES = [
     "/var/wazuh-manager/bin/wazuh-manager-remoted",
 ]
 
+# wazuh-indexer is co-located only in all-in-one deployments. The monitor
+# probes for its executable at startup and silently skips it if absent.
+INDEXER_EXECUTABLE = "/usr/share/wazuh-indexer/jdk/bin/java"
+
 DEFAULT_DISK_PATHS = [
     "/var/wazuh-manager/queue/inventory_sync",
     "/var/wazuh-manager/queue/engine-output",
@@ -779,6 +783,13 @@ def analysisd_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
     logger.info("Analysisd API monitor finished. CSV written to %s", csv_path)
 
 
+# Friendly CSV filename overrides for processes whose basename is generic.
+# e.g. wazuh-indexer runs as "java" — we want wazuh-indexer.csv instead.
+_EXE_CSV_ALIAS: dict[str, str] = {
+    INDEXER_EXECUTABLE: "wazuh-indexer",
+}
+
+
 def monitor_multi(processes: dict[str, psutil.Process], output_dir: str,
                   interval: float, disk_paths: list[str]) -> None:
     """Spawn process, disk and remoted API monitoring threads."""
@@ -792,7 +803,7 @@ def monitor_multi(processes: dict[str, psutil.Process], output_dir: str,
 
     # Per-process resource threads
     for exe_path, proc in processes.items():
-        basename = os.path.basename(exe_path)
+        basename = _EXE_CSV_ALIAS.get(exe_path, os.path.basename(exe_path))
         csv_path = os.path.join(output_dir, f"{basename}.csv")
         t = threading.Thread(
             target=monitor_loop,
@@ -930,6 +941,18 @@ def main() -> None:
 
     # Multi-process mode (default)
     exe_list = args.exe if args.exe is not None else DEFAULT_EXECUTABLES
+
+    # Probe for wazuh-indexer (all-in-one only) — add it only when it is
+    # actually running so the monitor works unchanged on manager-only hosts.
+    if args.exe is None:
+        indexer_proc = find_process_by_exe(INDEXER_EXECUTABLE)
+        if indexer_proc is not None:
+            logger.info("wazuh-indexer detected (PID %d) — adding to monitored set",
+                        indexer_proc.pid)
+            exe_list = list(exe_list) + [INDEXER_EXECUTABLE]
+        else:
+            logger.info("wazuh-indexer not found — skipping (manager-only host)")
+
     processes = wait_for_processes(exe_list, timeout=args.timeout)
 
     output_dir = args.output_dir

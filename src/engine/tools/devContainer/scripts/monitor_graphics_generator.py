@@ -392,6 +392,9 @@ def generate_charts(
     analysisd_dfs: dict[str, pd.DataFrame] = {}
     logs: dict[str, pd.DataFrame] = {}
     modulesd_dfs: dict[str, pd.DataFrame] = {}
+    # wazuh-indexer process CSV (present only in all-in-one deployments).
+    # Kept separate so manager-only charts stay clean; combined charts add it back.
+    indexer_proc_dfs: dict[str, pd.DataFrame] = {}
 
     for path, label in result_dirs:
         bench_path = os.path.join(path, "bench.csv")
@@ -452,10 +455,14 @@ def generate_charts(
                 proc_name = fname.removesuffix(".csv")
                 key = f"{label}/{proc_name}" if len(result_dirs) > 1 else proc_name
                 df = load_monitor(fpath)
-                if len(df) > 0:
-                    monitors[key] = df
-                if "modulesd" in proc_name:
-                    modulesd_dfs[label] = df
+                if proc_name == "wazuh-indexer":
+                    if len(df) > 0:
+                        indexer_proc_dfs[label] = df
+                else:
+                    if len(df) > 0:
+                        monitors[key] = df
+                    if "modulesd" in proc_name:
+                        modulesd_dfs[label] = df
         elif os.path.isfile(monitor_path):
             monitors[label] = load_monitor(monitor_path)
             modulesd_dfs[label] = monitors[label]
@@ -472,10 +479,14 @@ def generate_charts(
                 proc_name = fname.removesuffix(".csv")
                 key = f"{label}/{proc_name}" if len(result_dirs) > 1 else proc_name
                 df = load_monitor(fpath)
-                if len(df) > 0:
-                    monitors[key] = df
-                if "modulesd" in proc_name:
-                    modulesd_dfs[label] = df
+                if proc_name == "wazuh-indexer":
+                    if len(df) > 0:
+                        indexer_proc_dfs[label] = df
+                else:
+                    if len(df) > 0:
+                        monitors[key] = df
+                    if "modulesd" in proc_name:
+                        modulesd_dfs[label] = df
 
     if not monitors and not benches and not disk_dfs and not remoted_dfs:
         print("No data files found — nothing to generate.")
@@ -487,6 +498,7 @@ def generate_charts(
     disk_dfs = {k: v for k, v in disk_dfs.items() if len(v) > 0}
     remoted_dfs = {k: v for k, v in remoted_dfs.items() if len(v) > 0}
     analysisd_dfs = {k: v for k, v in analysisd_dfs.items() if len(v) > 0}
+    indexer_proc_dfs = {k: v for k, v in indexer_proc_dfs.items() if len(v) > 0}
 
     if not monitors and not benches and not disk_dfs and not remoted_dfs:
         print("All CSV files are empty — nothing to generate.")
@@ -496,19 +508,38 @@ def generate_charts(
 
     # -- Monitor time-series: one chart per metric, overlaying all runs ------
     if monitors:
+        # For the simple per-metric charts, include wazuh-indexer as an extra
+        # line when available.  For multi-result-dir runs the key follows the
+        # same "{label}/{proc}" convention used by other processes.
+        monitors_with_indexer: dict[str, pd.DataFrame] = dict(monitors)
+        for lbl, idf in indexer_proc_dfs.items():
+            ikey = f"{lbl}/wazuh-indexer" if len(result_dirs) > 1 else "wazuh-indexer"
+            monitors_with_indexer[ikey] = idf
+
         for col, title_suffix, ylabel in MONITOR_METRICS:
             out = os.path.join(out_dir, f"monitor_{col}.{fmt}")
             plot_timeseries(
-                monitors, col,
+                monitors_with_indexer, col,
                 f"Wazuh Manager — {title_suffix}",
                 ylabel, out,
             )
 
-        # Combined CPU and RSS charts with per-process lines + total sum.
+        # manager-only: per-process lines + manager total (no indexer).
         _plot_with_total(monitors, "cpu_pct", "CPU Usage (per process + total)",
                          "CPU %", os.path.join(out_dir, f"monitor_cpu_total.{fmt}"))
         _plot_with_total(monitors, "rss_mb", "RSS Memory (per process + total)",
                          "MB", os.path.join(out_dir, f"monitor_rss_total.{fmt}"))
+
+        # combined: manager processes + wazuh-indexer line + single grand total.
+        if indexer_proc_dfs:
+            _plot_with_total_and_indexer(
+                monitors, indexer_proc_dfs, "cpu_pct",
+                "CPU Usage — Manager + Indexer", "CPU %",
+                os.path.join(out_dir, f"monitor_cpu_total_with_indexer.{fmt}"))
+            _plot_with_total_and_indexer(
+                monitors, indexer_proc_dfs, "rss_mb",
+                "RSS Memory — Manager + Indexer", "MB",
+                os.path.join(out_dir, f"monitor_rss_total_with_indexer.{fmt}"))
 
     # -- Disk-usage time series (from disk_usage.csv) ------------------------
     if disk_dfs:
@@ -1118,6 +1149,88 @@ def _plot_with_total(
         vs = [totals[t] for t in ts]
         ax.plot(ts, vs, label="Total", color="#333333",
                 linewidth=2.5, alpha=0.95, linestyle="--")
+
+    ax.set_title(title, fontsize=14, fontweight="bold")
+    ax.set_xlabel("Elapsed time (s)")
+    ax.set_ylabel(ylabel)
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1), fontsize=9)
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  -> {out_path}")
+
+
+def _plot_with_total_and_indexer(
+    manager_datasets: dict[str, pd.DataFrame],
+    indexer_datasets: dict[str, pd.DataFrame],
+    y_col: str,
+    title: str,
+    ylabel: str,
+    out_path: str,
+    figsize=(14, 7),
+):
+    """Per-process manager lines + wazuh-indexer line + single grand total.
+
+    For a single-result-dir run (keys have no "/") all manager processes are
+    summed into one total, the indexer is added on top, and a single "Total"
+    line is drawn.  For multi-result-dir runs each run gets its own total.
+    """
+    fig, ax = plt.subplots(figsize=figsize)
+
+    def _run_of(key: str) -> str:
+        """Return the run label part of a dataset key."""
+        return key.split("/")[0] if "/" in key else ""
+
+    # Accumulate per-run manager totals.
+    run_labels = list(dict.fromkeys(_run_of(k) for k in manager_datasets))
+    run_totals: dict[str, dict[int, float]] = {r: {} for r in run_labels}
+
+    for idx, (label, df) in enumerate(manager_datasets.items()):
+        if y_col not in df.columns:
+            continue
+        proc_name = label.split("/")[-1] if "/" in label else label
+        run_label = _run_of(label)
+        ax.plot(
+            df["elapsed_s"], df[y_col],
+            label=proc_name, color=run_color(idx),
+            linewidth=1.0, alpha=0.5,
+        )
+        mt = run_totals[run_label]
+        for t, v in zip(df["elapsed_s"], df[y_col]):
+            t_r = int(float(t))
+            mt[t_r] = mt.get(t_r, 0.0) + float(v)
+
+    # For each run: add indexer line and compute one grand total.
+    for run_label in run_labels:
+        mt = run_totals[run_label]
+        suffix = f" ({run_label})" if len(run_labels) > 1 and run_label else ""
+
+        # Locate indexer data: for single-dir (run_label=="") use first entry.
+        if run_label in indexer_datasets:
+            idf = indexer_datasets[run_label]
+        elif not run_label and indexer_datasets:
+            idf = next(iter(indexer_datasets.values()))
+        else:
+            idf = None
+
+        grand: dict[int, float] = dict(mt)
+        if idf is not None and y_col in idf.columns:
+            ax.plot(
+                idf["elapsed_s"], idf[y_col],
+                label=f"wazuh-indexer{suffix}",
+                color=COLORS[3], linewidth=2.0, alpha=0.9, linestyle="-",
+            )
+            for t, v in zip(idf["elapsed_s"], idf[y_col]):
+                t_r = int(float(t))
+                grand[t_r] = grand.get(t_r, 0.0) + float(v)
+
+        if grand:
+            gts = sorted(grand.keys())
+            gvs = [grand[t] for t in gts]
+            ax.plot(gts, gvs,
+                    label=f"Total{suffix}",
+                    color="#000000", linewidth=2.5, alpha=0.95, linestyle="--")
 
     ax.set_title(title, fontsize=14, fontweight="bold")
     ax.set_xlabel("Elapsed time (s)")
