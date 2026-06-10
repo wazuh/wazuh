@@ -8,6 +8,7 @@ on:
       - "framework/**"
       - "src/**"
       - ".github/workflows/5_builderpackage_manager-multiples.yml"
+      - ".github/workflows/5_builderpackage_manager.yml"
       - "packages/*/SPECS/wazuh-manager/**"
       - "packages/*"
       - "packages/*/utils/*"
@@ -19,6 +20,29 @@ on:
       - "tests/integration/conftest.py"
       - "tests/integration/test_api/**"
       - "tests/integration/test_wazuh_db/**"
+      - "tests/integration/test_remoted/**"
+      - "tests/integration/test_authd/**"
+      # Agent-only trees, never built for the manager target (src/CMakeLists.txt gating)
+      - "!src/rootcheck/**"
+      - "!src/addagent/**"
+      - "!src/os_execd/**"
+      - "!src/win32/**"
+      # Manager build forces USE_SELINUX=no (src/Makefile); only agent specs package it
+      - "!src/selinux/**"
+      # Test trees: UNIT_TEST/WAZUH_ENGINE_TEST-gated or excluded from the wheel (setup.py)
+      - "!src/unit_tests/**"
+      - "!src/**/tests/**"
+      - "!src/**/integrationTests/**"
+      # qa/ suites run in other workflows; inventory_sync/qa stays (its IT is
+      # dispatched from here) and indexer_connector/** is detect-changes-mapped
+      - "!src/data_provider/qa/**"
+      - "!src/shared_modules/keystore/qa/**"
+      - "!src/wazuh_modules/vulnerability_scanner/qa/**"
+      - "!src/engine/test/**"
+      - "!src/engine/docs/**"
+      - "!framework/**/tests/**"
+      - "!api/**/test/**"
+      - "!api/test/**"
   workflow_dispatch:
     inputs:
       targets:
