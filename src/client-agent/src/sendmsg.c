@@ -43,18 +43,19 @@ int send_msg(const char *msg, ssize_t msg_length)
         return -1;
     }
     retval = OS_SendSecureTCP(agt->sock, msg_size, crypt_msg);
+    /* OS_SendSecureTCP returns 0 on success or OS_SOCKTERR (-1) on any error,
+     * including partial writes — it never returns a positive partial count,
+     * so checking retval != 0 is sufficient to detect all failure modes. */
 #ifndef WIN32
     error = errno;
     if (retval != 0) {
-        bool socket_dead = false;
+        bool socket_dead = true;
         switch (error) {
         case EPIPE:
             mdebug2(TCP_EPIPE);
-            socket_dead = true;
             break;
         case ECONNRESET:
             mdebug2("Connection reset by manager.");
-            socket_dead = true;
             break;
         case ETIMEDOUT:
         case EAGAIN:
@@ -64,21 +65,19 @@ int send_msg(const char *msg, ssize_t msg_length)
             /* SO_SNDTIMEO expiry: kernel returns EAGAIN/EWOULDBLOCK on
              * blocking sockets, or ETIMEDOUT on retransmit exhaustion. */
             mwarn(SEND_ERROR, "server", strerror(error));
-            socket_dead = true;
             break;
         case ECONNREFUSED:
             /* The remote end refused the connection — socket is unusable. */
             mdebug2(CONN_REF);
-            socket_dead = true;
             break;
         case ENOTCONN:
             /* Kernel already tore down the connection (e.g. after keepalive
              * exhaustion or a previous hard error). */
             mdebug2("Socket not connected.");
-            socket_dead = true;
             break;
         default:
             mwarn(SEND_ERROR, "server", strerror(error));
+            socket_dead = false;
             break;
         }
         if (socket_dead && agt->sock >= 0) {
@@ -89,16 +88,15 @@ int send_msg(const char *msg, ssize_t msg_length)
 #endif
     w_mutex_unlock(&send_mutex);
 
-    if (!retval) {
+    if (retval == 0) {
         w_agentd_state_update(INCREMENT_MSG_SEND, NULL);
-    } else {
+    }
 #ifdef WIN32
+    else {
         error = WSAGetLastError();
         mwarn(SEND_ERROR, "server", win_strerror(error));
-#else
-        /* TCP send errors are handled inside send_mutex above. */
-#endif
     }
+#endif
 
     return retval;
 }
