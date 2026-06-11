@@ -232,6 +232,12 @@ sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address
 sudo firewall-cmd --reload
 ```
 
+Create the destination directory before starting rsyslog. On Debian/Ubuntu, rsyslog drops privileges to the unprivileged `syslog` user, which cannot create directories under `/var/log` on its own, so the per-host log directory must exist and be writable by that user before rsyslog can write the `%FROMHOST-IP%` files (on RHEL-based systems rsyslog runs as `root` and creates it automatically):
+
+```bash
+sudo install -d -o syslog -g adm /var/log/remote
+```
+
 Restart rsyslog to apply the changes:
 
 ```bash
