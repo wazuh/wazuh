@@ -67,10 +67,12 @@ jobs:
           python3 - <<'EOF'
           import re
           from collections import OrderedDict
+          ansi = re.compile(r'\x1b\[[0-9;]*m')
           counts = OrderedDict()
           # compact format: "wodles/path/test.py .....F..   [ 42%]"
           with open("${{ env.TEST_REPORT_PATH }}") as f:
-              for line in f:
+              for raw in f:
+                  line = ansi.sub('', raw)
                   m = re.match(r'(wodles/\S+\.py)\s+([.FEsxX ]+)\s*\[', line)
                   if m:
                       path, dots = m.group(1), m.group(2)
