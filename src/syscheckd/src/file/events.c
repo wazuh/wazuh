@@ -108,6 +108,11 @@ void fim_calculate_dbsync_difference(const directory_t *configuration,
              if (cJSON_IsString(aux)) {
                  cJSON_AddStringToObject(old_attributes, "inode", cJSON_GetStringValue(aux));
                  cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("file.inode"));
+             } else if (cJSON_IsNumber(aux)) {
+                 char inode_str[32];
+                 snprintf(inode_str, sizeof(inode_str), "%llu", (unsigned long long)cJSON_GetNumberValue(aux));
+                 cJSON_AddStringToObject(old_attributes, "inode", inode_str);
+                 cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("file.inode"));
              } else {
                  minfo(FIM_WARN_INODE_WRONG_TYPE);
              }
@@ -383,6 +388,10 @@ cJSON * fim_attributes_json(const cJSON *dbsync_event, const fim_file_data *data
             if ((aux = cJSON_GetObjectItem(dbsync_event, "inode")) != NULL) {
                 if (cJSON_IsString(aux)) {
                     cJSON_AddStringToObject(attributes, "inode", cJSON_GetStringValue(aux));
+                } else if (cJSON_IsNumber(aux)) {
+                    char inode_str[32];
+                    snprintf(inode_str, sizeof(inode_str), "%llu", (unsigned long long)cJSON_GetNumberValue(aux));
+                    cJSON_AddStringToObject(attributes, "inode", inode_str);
                 } else {
                     minfo(FIM_WARN_INODE_WRONG_TYPE);
                 }
