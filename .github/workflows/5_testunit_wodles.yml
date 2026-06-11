@@ -67,27 +67,45 @@ jobs:
           python3 - <<'EOF'
           import re
           from collections import OrderedDict
+
           ansi = re.compile(r'\x1b\[[0-9;]*m')
-          counts = OrderedDict()
-          # compact format: "wodles/path/test.py .....F..   [ 42%]"
+          section_hdr = re.compile(r'^=+ (.+?) =+\s*$')
+
           with open("${{ env.TEST_REPORT_PATH }}") as f:
-              for raw in f:
-                  line = ansi.sub('', raw)
-                  m = re.match(r'(wodles/\S+\.py)\s+([.FEsxX ]+)\s*\[', line)
-                  if m:
-                      path, dots = m.group(1), m.group(2)
-                      counts[path] = {
-                          'passed':  dots.count('.'),
-                          'failed':  dots.count('F'),
-                          'error':   dots.count('E'),
-                          'skipped': dots.count('s'),
-                      }
+              lines = [ansi.sub('', l.rstrip()) for l in f]
+
+          # Per-file summary
+          counts = OrderedDict()
+          for line in lines:
+              m = re.match(r'(wodles/\S+\.py)\s+([.FEsxX ]+)\s*\[', line)
+              if m:
+                  path, dots = m.group(1), m.group(2)
+                  counts[path] = {
+                      'passed':  dots.count('.'),
+                      'failed':  dots.count('F'),
+                      'error':   dots.count('E'),
+                      'skipped': dots.count('s'),
+                  }
+
           for path, c in counts.items():
               parts = [f"{c['passed']} passed"]
               if c['failed']:  parts.append(f"{c['failed']} failed")
               if c['error']:   parts.append(f"{c['error']} error")
               if c['skipped']: parts.append(f"{c['skipped']} skipped")
               print(f"{path}: {', '.join(parts)}")
+
+          # Show failure details when any test failed or errored
+          any_failures = any(c['failed'] or c['error'] for c in counts.values())
+          if any_failures:
+              print()
+              capture = False
+              for line in lines:
+                  m = section_hdr.match(line)
+                  if m:
+                      name = m.group(1).strip()
+                      capture = name in ('FAILURES', 'ERRORS', 'short test summary info')
+                  if capture:
+                      print(line)
           EOF
 
       - name: Upload coverage report
