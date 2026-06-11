@@ -71,7 +71,7 @@ This layer contains **all real logic**. It is **API-agnostic** and can be reused
 | `wazuh_queue.py` | Internal async messaging |
 | `wdb.py` | Async interface to Wazuh DB (length-prefixed Unix socket protocol) |
 | `wdb_http.py` | HTTP-based alternative WDB client (via `aiohttp`) |
-| `configuration.py` | Parse `ossec.conf` and related files |
+| `configuration.py` | Parse `wazuh-manager.conf` and related files |
 | `exception.py` | Custom exception hierarchy and error code catalog |
 | `wlogging.py` | Custom log rotation with gzip compression |
 | `pyDaemonModule.py` | UNIX daemonization (double-fork pattern) |
@@ -240,10 +240,10 @@ The framework communicates with Wazuh daemons via **Unix domain sockets** using 
 
 | Socket | Daemon | Purpose |
 |--------|--------|---------|
-| `wdb` | wazuh-db | Database queries |
-| `queue/sockets/queue` | analysisd | Event ingestion |
-| `queue/sockets/auth` | authd | Agent registration |
-| `queue/sockets/remote` | remoted | Agent communication |
+| `wdb` | wazuh-manager-db | Database queries |
+| `queue/sockets/queue` | wazuh-manager-analysisd | Event ingestion |
+| `queue/sockets/auth` | wazuh-manager-authd | Agent registration |
+| `queue/sockets/remote` | wazuh-manager-remoted | Agent communication |
 | `queue/sockets/request` | various | Internal requests |
 
 ---

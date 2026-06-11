@@ -141,10 +141,10 @@ result = send_control_command('restart')  # Returns: "ok "
 
 ## Related Modules
 
-- **wazuh-modulesd**: Host daemon for `wm_control` (both manager and agent Unix builds)
-- **wazuh-remoted**: Forwards control messages from manager to agents
+- **wazuh-manager-modulesd / wazuh-modulesd**: Host daemon for `wm_control` (manager and agent Unix builds, respectively)
+- **wazuh-manager-remoted**: Forwards control messages from manager to agents
 - **wazuh-agentd**: Routes incoming `"control"` requests — forwards to control socket (Unix) or calls `control_dispatch()` directly (Windows)
-- **wazuh-apid**: Calls control socket/framework for restart and reload API endpoints
+- **wazuh-manager-apid**: Calls control socket/framework for restart and reload API endpoints
 
 ## Architecture Changes
 

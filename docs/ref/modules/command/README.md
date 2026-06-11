@@ -2,9 +2,9 @@
 
 ## Introduction
 
-The Wazuh command module executes configured operating system commands at scheduled intervals and can forward their output for analysis. It runs inside `wazuh-modulesd` as the `<wodle name="command">` module.
+The Wazuh command module executes configured operating system commands at scheduled intervals and can forward their output for analysis. It runs as the `<wodle name="command">` module inside `wazuh-modulesd` on agents and inside `wazuh-manager-modulesd` on the manager.
 
-Use this module for periodic command-based telemetry when a native collector is not available. The module executes the configured command locally on the agent where the configuration is applied.
+Use this module for periodic command-based telemetry when a native collector is not available. The module executes the configured command locally on the host where the configuration is applied. On agents the configuration lives in `ossec.conf` (root tag `<ossec_config>`); on the manager it lives in `etc/wazuh-manager.conf` (root tag `<wazuh_config>`), and the log file is `/var/wazuh-manager/logs/wazuh-manager.log` instead of `/var/ossec/logs/ossec.log`.
 
 ## How it works
 

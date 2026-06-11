@@ -539,7 +539,7 @@ sudo sqlite3 /var/wazuh-manager/var/db/global.db "PRAGMA integrity_check"
 sudo netstat -tulpn | grep wazuh-manager
 
 # Check remoted process
-ps aux | grep wazuh-remoted
+ps aux | grep wazuh-manager-remoted
 
 # Review remoted logs
 sudo tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep remoted
@@ -559,7 +559,7 @@ ping <master_node_ip>
 telnet <master_node_ip> 1516
 
 # Check cluster daemon
-ps aux | grep wazuh-clusterd
+ps aux | grep wazuh-manager-clusterd
 
 # Review cluster logs
 sudo tail -100 /var/wazuh-manager/logs/cluster.log
@@ -668,5 +668,5 @@ Restart-Service -Name wazuh
 
 - [Back Up and Restore Guide](backup-restore.md)
 - [Installation Guide](getting-started/installation.md)
-- [Configuration Reference](configuration.md)
+- [Configuration Reference](configuration/README.md)
 - [Cluster Documentation](modules/cluster/README.md)
