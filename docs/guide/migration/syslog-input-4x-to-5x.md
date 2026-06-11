@@ -214,7 +214,7 @@ module(load="imudp")
 module(load="imtcp")
 
 template(name="RemoteHostLogs" type="string"
-         string="/var/log/remote/remote.log")
+         string="/var/log/remote/%FROMHOST-IP%.log")
 
 ruleset(name="remote_to_file") {
     action(type="omfile" dynaFile="RemoteHostLogs")
@@ -301,7 +301,7 @@ In the Wazuh dashboard, go to **Explore -> Discover** and filter by `location: /
 
 Existing Wazuh decoders and rules for network device syslog (for example, `cisco-asa`, `pf`, `juniper`) continue to work without modification under both options. The syslog message body forwarded by rsyslog is identical to what `remoted` previously received on port 514. No decoder updates are required as part of this migration.
 
-> **Note:** In Wazuh 4.x, the source IP of the remote device was available in `remoted`.
+> **Note:** In Wazuh 4.x, the source IP of the remote device was available because `remoted` received the connection directly. In Wazuh 5.x the agent reads from a local file or the journal, so the original source IP is only preserved if rsyslog records it — either in the file path (Option B uses `%FROMHOST-IP%` in the `dynaFile` template, so each device gets its own file) or as part of the message via a custom template property such as `%fromhost-ip%`.
 
 ---
 

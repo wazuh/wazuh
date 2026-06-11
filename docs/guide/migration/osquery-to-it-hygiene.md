@@ -1186,8 +1186,10 @@ alerts.
 
 Once you have verified that all data is flowing correctly through Syscollector,
 remove the `<wodle name="osquery">` block from the agent configuration.
-The OSquery wodle has been fully removed in Wazuh 5.0 — the configuration
-block is no longer recognized and must be deleted before upgrading agents:
+The OSquery wodle has been fully removed in Wazuh 5.0: a leftover block is
+ignored and the agent logs `INFO: The 'osquery' module is deprecated. Use the
+Syscollector module instead.` It does not prevent the agent from starting, but
+it no longer provides any functionality, so delete it:
 
 ```xml
 <!-- Remove this block entirely from ossec.conf -->

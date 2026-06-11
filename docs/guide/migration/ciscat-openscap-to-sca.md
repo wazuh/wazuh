@@ -4,7 +4,7 @@ In previous Wazuh versions (4.x), configuration and policy assessment could be p
 
 Starting with Wazuh 5.0, both wodles have been **removed**. The agent no longer ships the CIS-CAT or OpenSCAP integrations, and no module is registered under those names. Configuration assessment is now performed natively by the **Security Configuration Assessment (SCA)** module, which evaluates the system against YAML policies bundled with the agent — no Java runtime, no external CIS-CAT Assessor, and no `openscap-scanner` package are required.
 
-> **Note:** If a `<wodle name="cis-cat">` or `<wodle name="open-scap">` block is left in `ossec.conf` (or in a shared `agent.conf`) after upgrading to 5.0, the agent rejects the configuration and logs `ERROR: Unknown module 'cis-cat'` or `ERROR: Unknown module 'open-scap'`. You must remove these blocks as part of the migration.
+> **Note:** If a `<wodle name="cis-cat">` or `<wodle name="open-scap">` block is left in `ossec.conf` (or in a shared `agent.conf`) after upgrading to 5.0, the block is ignored and the agent logs an informational message: `INFO: The 'cis-cat' module is deprecated. Use the SCA module instead.` or `INFO: The 'open-scap' module is deprecated. Use the SCA module instead.` The configuration still loads and the agent starts, but the wodles no longer run, so remove these blocks as part of the migration.
 
 > **Note:** There is no automatic tool to convert XCCDF, SCAP, or OVAL content into SCA policies. The CIS benchmarks you previously assessed with CIS-CAT or OpenSCAP are, in most cases, already covered by the SCA policies bundled under `ruleset/sca`. Custom XCCDF content must be re-authored as SCA YAML policies, and OVAL/CVE content is handled by a different module — see the mapping below.
 
@@ -79,7 +79,7 @@ For each block, note the benchmark content and profile it referenced (the `<cont
 
 Delete the `<wodle name="cis-cat">` and `<wodle name="open-scap">` blocks. Edit the local `ossec.conf` directly on each agent, and edit any shared `agent.conf` on the manager (in the group's `etc/shared/<group>/` directory) — not on the agents, which receive that file from the manager.
 
-This step is mandatory. Wazuh 5.0 no longer registers a module under either name, so leaving the block in place causes the agent to reject the configuration.
+Wazuh 5.0 no longer registers a runnable module under either name: leftover blocks are ignored with an INFO deprecation message and provide no assessment, so remove them to keep the configuration clean.
 
 ## 3. Map your benchmarks to SCA policies
 
@@ -131,7 +131,7 @@ If the deprecated wodles were distributed through a shared `agent.conf`, push th
 
 Confirm that the migration succeeded on a representative agent:
 
-1. Check the agent log (`/var/ossec/logs/ossec.log`) and verify there are **no** `Unknown module 'cis-cat'` or `Unknown module 'open-scap'` errors.
+1. Check the agent log (`/var/ossec/logs/ossec.log`) and verify there are **no** `The 'cis-cat' module is deprecated` or `The 'open-scap' module is deprecated` messages, which would indicate a leftover wodle block.
 2. Confirm SCA runs. The log shows the scan boundaries:
 
    ```
