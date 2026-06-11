@@ -14,12 +14,9 @@ from botocore.exceptions import ClientError
 # qa-integration-framework imports
 from wazuh_testing.logger import logger
 from wazuh_testing.modules.aws.utils import (
-    create_bucket,
     upload_log_events,
     create_log_group,
     create_log_stream,
-    create_flow_log,
-    delete_vpc,
     delete_bucket,
     delete_log_group,
     delete_log_stream,
@@ -32,7 +29,7 @@ from wazuh_testing.modules.aws.utils import (
     set_sqs_policy,
     set_bucket_event_notification_configuration,
     delete_sqs_queue,
-    delete_bucket_files
+    delete_bucket_file
 )
 from wazuh_testing.utils.services import control_service
 from wazuh_testing.constants.aws import US_EAST_1_REGION
@@ -225,43 +222,23 @@ def sqs_manager(sqs_client):
 
 
 @pytest.fixture()
-def create_test_bucket(buckets_manager,
-                       metadata: dict):
-    """Create a bucket.
+def create_test_bucket(metadata: dict):
+    """Use a pre-existing S3 bucket for tests.
 
     Args:
-        buckets_manager (fixture): Set of buckets.
         metadata (dict): Bucket information.
     """
-    bucket_name = metadata["bucket_name"]
-    bucket_type = metadata["bucket_type"]
-
-    buckets, s3_client = buckets_manager
-    try:
-        # Create bucket
-        create_bucket(bucket_name=bucket_name, client=s3_client)
-        logger.debug(f"Created new bucket: type {bucket_name}")
-
-        # Append created bucket to resource set
-        buckets.add(bucket_name)
-
-    except ClientError as error:
-        logger.error({
-            "message": "Client error creating bucket",
-            "bucket_name": bucket_name,
-            "bucket_type": bucket_type,
-            "error": str(error)
-        })
-        raise
-
-    except Exception as error:
-        logger.error({
-            "message": "Broad error creating bucket",
-            "bucket_name": bucket_name,
-            "bucket_type": bucket_type,
-            "error": str(error)
-        })
-        raise
+    shared_bucket = os.environ.get('AWS_BUCKET_NAME')
+    if not shared_bucket:
+        raise EnvironmentError(
+            "AWS_BUCKET_NAME is not set. A pre-existing S3 bucket is required. "
+            "Set the IT_AWS_BUCKET_NAME GitHub secret."
+        )
+    # Preserve the original YAML bucket name so generate_file can resolve custom bucket types
+    # (kms, macie, trusted_advisor) via bucket_name.split('-')[1] inside get_data_generator.
+    metadata['original_bucket_name'] = metadata.get('bucket_name', shared_bucket)
+    # Override so all S3 operations and the Wazuh module CLI use the shared bucket.
+    metadata['bucket_name'] = shared_bucket
 
 
 @pytest.fixture
@@ -292,19 +269,42 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client):
     log_number = metadata.get("expected_results", 1) > 0
 
     # Generate files
+    # Use the original YAML bucket name for generate_file — the framework derives the
+    # custom type (kms/macie/trusted) from bucket_name.split('-')[1], which breaks with
+    # the shared bucket name. All actual S3 operations still use the shared bucket_name.
+    data_bucket_name = metadata.get('original_bucket_name', bucket_name)
+    uploaded_keys = []
     if log_number:
         files_to_upload = []
         metadata['uploaded_file'] = ''
+        flow_log_id = None
         try:
             if vpc_bucket:
-                # Create VPC resources
-                flow_log_id, vpc_id = create_flow_log(vpc_name=metadata['vpc_name'],
-                                                      bucket_name=bucket_name,
-                                                      client=ec2_client)
+                vpc_id = os.environ.get('AWS_VPC_ID')
+                if not vpc_id:
+                    raise EnvironmentError(
+                        "AWS_VPC_ID is not set. A pre-existing VPC ID is required "
+                        "for VPC flow log tests. Set the IT_AWS_VPC_ID GitHub secret."
+                    )
+                response = ec2_client.create_flow_logs(
+                    ResourceIds=[vpc_id],
+                    ResourceType='VPC',
+                    TrafficType='REJECT',
+                    LogDestinationType='s3',
+                    LogDestination=f'arn:aws:s3:::{bucket_name}'
+                )
+                unsuccessful = response.get('Unsuccessful', [])
+                if unsuccessful:
+                    err = unsuccessful[0]['Error']
+                    raise RuntimeError(
+                        f"Failed to create VPC flow log on {vpc_id}: "
+                        f"[{err['Code']}] {err['Message']}"
+                    )
+                flow_log_id = response['FlowLogIds'][0]
                 metadata['flow_log_id'] = flow_log_id
                 for region in regions:
                     data, key = generate_file(bucket_type=bucket_type,
-                                              bucket_name=bucket_name,
+                                              bucket_name=data_bucket_name,
                                               date=file_creation_date,
                                               region=region,
                                               prefix=prefix,
@@ -314,7 +314,7 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client):
             else:
                 for region in regions:
                     data, key = generate_file(bucket_type=bucket_type,
-                                              bucket_name=bucket_name,
+                                              bucket_name=data_bucket_name,
                                               region=region,
                                               prefix=prefix,
                                               suffix=suffix,
@@ -332,6 +332,7 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client):
 
                 # Set filename for test execution
                 metadata['uploaded_file'] += key
+                uploaded_keys.append(key)
 
         except ClientError as error:
             logger.error({
@@ -339,6 +340,11 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client):
                 "bucket_name": bucket_name,
                 "error": str(error)
             })
+            if flow_log_id is not None:
+                try:
+                    ec2_client.delete_flow_logs(FlowLogIds=[flow_log_id])
+                except Exception:
+                    pass
             raise error
 
         except Exception as error:
@@ -347,18 +353,29 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client):
                 "bucket_name": bucket_name,
                 "error": str(error)
             })
+            if flow_log_id is not None:
+                try:
+                    ec2_client.delete_flow_logs(FlowLogIds=[flow_log_id])
+                except Exception:
+                    pass
             raise error
 
     yield
 
     try:
         if log_number:
-            # Delete all bucket files
-            delete_bucket_files(bucket_name=bucket_name, client=s3_client)
+            # Delete only the files uploaded by this test; the shared bucket must not be emptied.
+            for key in uploaded_keys:
+                try:
+                    delete_bucket_file(filename=key, bucket_name=bucket_name, client=s3_client)
+                except ClientError:
+                    pass  # File may already be gone (remove_from_bucket tests delete it themselves)
+                except Exception:
+                    pass
 
-            if vpc_bucket:
-                # Delete VPC resources (VPC and Flow Log)
-                delete_vpc(vpc_id=vpc_id, flow_log_id=flow_log_id, client=ec2_client)
+            if vpc_bucket and flow_log_id is not None:
+                # Only delete the flow log; the VPC is pre-existing and must not be deleted.
+                ec2_client.delete_flow_logs(FlowLogIds=[flow_log_id])
 
     except ClientError as error:
         logger.error({
