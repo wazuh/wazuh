@@ -196,10 +196,26 @@ private:
             return true;
         }
 
+        if (context.spUpdaterBaseContext->spStopCondition->check())
+        {
+            logInfo(WM_CONTENTUPDATER,
+                    "IndexerDownloader: Stop requested before waiting for consumer '%s' to become idle.",
+                    consumerStatusId.c_str());
+            return false;
+        }
+
         IndexerConnectorSync syncConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
 
         while (true)
         {
+            if (context.spUpdaterBaseContext->spStopCondition->check())
+            {
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Stop requested while waiting for consumer '%s' to become idle.",
+                        consumerStatusId.c_str());
+                return false;
+            }
+
             try
             {
                 switch (readConsumerStatus(syncConnector, consumerStatusIndex, consumerStatusId))
