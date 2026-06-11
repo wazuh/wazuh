@@ -131,21 +131,21 @@ public:
     virtual bool isTestMode() const = 0;
 
     /**
-     * @brief Get the allowed fields object
+     * @brief Get the field write restrictions object
      *
      * @return const builder::IAllowedFields&
      */
     virtual const builder::IAllowedFields& allowedFields() const = 0;
 
     /**
-     * @brief Get the allowed fields pointer object
+     * @brief Get the field write restrictions pointer object
      *
      * @return std::shared_ptr<const builder::IAllowedFields>
      */
     virtual std::shared_ptr<const builder::IAllowedFields> allowedFieldsPtr() const = 0;
 
     /**
-     * @brief Set the Allowed Fields object
+     * @brief Set the field write restrictions object
      *
      * @param allowedFields
      */

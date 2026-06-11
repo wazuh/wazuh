@@ -1,27 +1,35 @@
 #include <gtest/gtest.h>
 
 #include <builder/allowedFields.hpp>
+#include <fmt/format.h>
 
 using namespace builder;
 
-TEST(AllowedFieldsTest, DefaultConstructor)
+namespace
 {
-    ASSERT_NO_THROW(AllowedFields {});
+json::Json makeDefinition(std::string_view fields)
+{
+    return json::Json {fmt::format(
+        R"({{
+            "name": "schema/allowed-fields/0",
+            "decoder_unmodifiable_fields": {}
+        }})",
+        fields)};
+}
+} // namespace
+
+TEST(AllowedFieldsTest, DefaultConstructorNoRestrictions)
+{
+    AllowedFields allowedFields {};
+
+    ASSERT_TRUE(allowedFields.check("decoder", "agent.name"));
+    ASSERT_TRUE(allowedFields.check("filter", "agent.name"));
+    ASSERT_TRUE(allowedFields.check("output", "agent.name"));
 }
 
 TEST(AllowedFieldsTest, Constructor)
 {
-    json::Json definition {
-        R"({
-        "name": "schema/allowed-fields/0",
-        "allowed_fields": {
-            "decoder": ["field1", "field2"],
-            "filter": ["field1", "field2"],
-            "output": ["field1", "field2"]
-        }
-        })"};
-
-    ASSERT_NO_THROW(AllowedFields {definition});
+    ASSERT_NO_THROW(AllowedFields {makeDefinition(R"(["agent.name", "event.original"])")});
 }
 
 TEST(AllowedFieldsTest, ConstructorNotObject)
@@ -33,185 +41,93 @@ TEST(AllowedFieldsTest, ConstructorNotObject)
 
 TEST(AllowedFieldsTest, ConstructorMissingName)
 {
+    json::Json definition {R"({"decoder_unmodifiable_fields": ["agent.name"]})"};
+
+    ASSERT_THROW(AllowedFields {definition}, std::runtime_error);
+}
+
+TEST(AllowedFieldsTest, ConstructorMissingUnmodifiableFields)
+{
+    json::Json definition {R"({"name": "schema/allowed-fields/0"})"};
+
+    ASSERT_THROW(AllowedFields {definition}, std::runtime_error);
+}
+
+TEST(AllowedFieldsTest, ConstructorUnmodifiableFieldsNotArray)
+{
     json::Json definition {
         R"({
-        "allowed_fields": {
-            "decoder": ["field1", "field2"],
-            "rule": ["field1", "field2"],
-            "filter": ["field1", "field2"],
-            "output": ["field1", "field2"]
-        }
+            "name": "schema/allowed-fields/0",
+            "decoder_unmodifiable_fields": "agent.name"
         })"};
 
     ASSERT_THROW(AllowedFields {definition}, std::runtime_error);
 }
 
-TEST(AllowedFieldsTest, ConstructorNotAllowedFieldsObject)
-{
-    json::Json definition1 {
-        R"({
-        "name": "schema/allowed-fields/0",
-        "allowed_fields": "decoder"
-        })"};
-    json::Json definition2 {
-        R"({
-        "name": "schema/allowed-fields/0"
-    })"};
-
-    ASSERT_THROW(AllowedFields {definition1}, std::runtime_error);
-    ASSERT_THROW(AllowedFields {definition2}, std::runtime_error);
-}
-
-TEST(AllowedFieldsTest, ConstructorNotFieldArray)
-{
-    json::Json definition1 {
-        R"({
-            "name": "schema/allowed-fields/0",
-            "allowed_fields": {
-                "decoder": "field1"
-            }
-        })"};
-    json::Json definition2 {
-        R"({
-            "name": "schema/allowed-fields/0",
-            "allowed_fields": {
-                "decoder": ["field1"],
-                "rule": "field1"
-            }
-        })"};
-
-    ASSERT_THROW(AllowedFields {definition1}, std::runtime_error);
-    ASSERT_THROW(AllowedFields {definition2}, std::runtime_error);
-}
-
-TEST(AllowedFieldsTest, ConstructorNotFieldString)
-{
-    json::Json definition1 {
-        R"({
-            "name": "schema/allowed-fields/0",
-            "allowed_fields": {
-                "decoder": [1]
-            }
-        })"};
-    json::Json definition2 {
-        R"({
-            "name": "schema/allowed-fields/0",
-            "allowed_fields": {
-                "decoder": ["field1"],
-                "rule": [1]
-            }
-        })"};
-
-    ASSERT_THROW(AllowedFields {definition1}, std::runtime_error);
-    ASSERT_THROW(AllowedFields {definition2}, std::runtime_error);
-}
-
-TEST(AllowedFieldsTest, ConstructorUnknownAsset)
-{
-    json::Json definition1 {
-        R"({
-            "name": "schema/allowed-fields/0",
-            "allowed_fields": {
-                "unknown": ["field1"]
-            }
-        })"};
-
-    json::Json definition2 {
-        R"({
-            "name": "schema/allowed-fields/0",
-            "allowed_fields": {
-                "decoder": ["field1"],
-                "unknown": ["field1"]
-            }
-        })"};
-
-    ASSERT_THROW(AllowedFields {definition1}, std::runtime_error);
-    ASSERT_THROW(AllowedFields {definition2}, std::runtime_error);
-}
-
-TEST(AllowedFieldsTest, Check)
+TEST(AllowedFieldsTest, ConstructorUnmodifiableFieldNotString)
 {
     json::Json definition {
         R"({
             "name": "schema/allowed-fields/0",
-            "allowed_fields": {
-                "decoder": ["field1", "field2"],
-                "filter": ["field1", "field2"],
-                "output": ["field1", "field2"]
-            }
+            "decoder_unmodifiable_fields": ["agent.name", 1]
         })"};
 
-    AllowedFields allowedFields {definition};
-
-    auto fields = std::vector<std::string> {"field1", "field2"};
-    for (const auto& field : fields)
-    {
-        ASSERT_TRUE(allowedFields.check("decoder", field));
-        ASSERT_TRUE(allowedFields.check("filter", field));
-        ASSERT_TRUE(allowedFields.check("output", field));
-    }
+    ASSERT_THROW(AllowedFields {definition}, std::runtime_error);
 }
 
-TEST(AllowedFieldsTest, CheckUnknownAsset)
+TEST(AllowedFieldsTest, DecoderBlockedExact)
 {
-    json::Json definition {
-        R"({
-            "name": "schema/allowed-fields/0",
-            "allowed_fields": {
-                "decoder": ["field1", "field2"],
-                "filter": ["field1", "field2"],
-                "output": ["field1", "field2"]
-            }
-        })"};
+    AllowedFields allowedFields {makeDefinition(R"(["agent.name", "event.original"])")};
 
-    AllowedFields allowedFields {definition};
-
-    ASSERT_TRUE(allowedFields.check("unknown", "field1"));
+    ASSERT_FALSE(allowedFields.check("decoder", "agent.name"));
+    ASSERT_FALSE(allowedFields.check("decoder", "event.original"));
 }
 
-TEST(AllowedFieldsTest, CheckNotAllowed)
+TEST(AllowedFieldsTest, DecoderBlockedByPrefix)
 {
-    json::Json definition {
-        R"({
-            "name": "schema/allowed-fields/0",
-            "allowed_fields": {
-                "decoder": ["field1", "field2"],
-                "filter": ["field1", "field2"],
-                "output": ["field1", "field2"]
-            }
-        })"};
+    AllowedFields allowedFields {makeDefinition(R"(["wazuh.integration"])")};
 
-    AllowedFields allowedFields {definition};
-
-    ASSERT_FALSE(allowedFields.check("decoder", "field3"));
-    ASSERT_FALSE(allowedFields.check("filter", "field3"));
-    ASSERT_FALSE(allowedFields.check("output", "field3"));
+    ASSERT_FALSE(allowedFields.check("decoder", "wazuh.integration.name"));
+    ASSERT_FALSE(allowedFields.check("decoder", "wazuh.integration.category"));
 }
 
-TEST(AllowedFieldsTest, CheckRootField)
+TEST(AllowedFieldsTest, PrefixDoesNotMatchPartialFieldName)
 {
+    AllowedFields allowedFields {makeDefinition(R"(["wazuh.integration"])")};
+
+    ASSERT_TRUE(allowedFields.check("decoder", "wazuh.integration_extra.name"));
+}
+
+TEST(AllowedFieldsTest, DecoderAllowedNonRestricted)
+{
+    AllowedFields allowedFields {makeDefinition(R"(["agent.name", "event.original"])")};
+
+    ASSERT_TRUE(allowedFields.check("decoder", "http.status"));
+}
+
+TEST(AllowedFieldsTest, NonDecoderAlwaysAllowed)
+{
+    AllowedFields allowedFields {makeDefinition(R"(["agent.name", "event.original"])")};
+
+    ASSERT_TRUE(allowedFields.check("filter", "agent.name"));
+    ASSERT_TRUE(allowedFields.check("output", "event.original"));
+    ASSERT_TRUE(allowedFields.check("unknown", "agent.name"));
+}
+
+TEST(AllowedFieldsTest, RootAlwaysAllowed)
+{
+    AllowedFields allowedFields {makeDefinition(R"(["agent.name", "event.original"])")};
     DotPath rootPath {"."};
-    json::Json definition {
-        R"({
-            "name": "schema/allowed-fields/0",
-            "allowed_fields": {
-                "decoder": ["field1", "field2"],
-                "filter": ["field1", "field2"],
-                "output": ["field1", "field2"]
-            }
-        })"};
-
-    AllowedFields allowedFields {definition};
 
     ASSERT_TRUE(allowedFields.check("decoder", rootPath));
     ASSERT_TRUE(allowedFields.check("filter", rootPath));
     ASSERT_TRUE(allowedFields.check("output", rootPath));
+}
 
-    ASSERT_TRUE(allowedFields.check("decoder", DotPath::append(rootPath, "field1")));
-    ASSERT_TRUE(allowedFields.check("filter", DotPath::append(rootPath, "field1")));
-    ASSERT_TRUE(allowedFields.check("output", DotPath::append(rootPath, "field1")));
+TEST(AllowedFieldsTest, EmptyListNoRestrictions)
+{
+    AllowedFields allowedFields {makeDefinition(R"([])")};
 
-    ASSERT_FALSE(allowedFields.check("decoder", DotPath::append(rootPath, "field3")));
-    ASSERT_FALSE(allowedFields.check("filter", DotPath::append(rootPath, "field3")));
-    ASSERT_FALSE(allowedFields.check("output", DotPath::append(rootPath, "field3")));
+    ASSERT_TRUE(allowedFields.check("decoder", "agent.name"));
+    ASSERT_TRUE(allowedFields.check("decoder", "event.original"));
 }

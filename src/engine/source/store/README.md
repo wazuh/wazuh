@@ -209,7 +209,7 @@ The store is instantiated once in `main.cpp` using `FileDriver` pointed at the c
 | Consumer Module | Usage |
 |-----------------|-------|
 | **router** (Orchestrator) | Persists and restores router/tester configuration snapshots |
-| **builder** | Reads engine schema, allowed fields, and log parser overrides |
+| **builder** | Reads engine schema, decoder unmodifiable fields, and log parser overrides |
 | **geo** | Stores MMDB database hashes for GeoIP update detection |
 | **iockvdb** | Persists IOC KVDB state |
 | **iocsync** | Stores IOC synchronization state |
@@ -222,7 +222,7 @@ The store is instantiated once in `main.cpp` using `FileDriver` pointed at the c
 | Path | Owner | Description |
 |------|-------|-------------|
 | `schema/engine-schema/0` | builder | Engine schema definition |
-| `schema/allowed-fields/0` | builder | Allowed fields restrictions |
+| `schema/allowed-fields/0` | builder | Fields that decoder assets cannot modify |
 | `schema/wazuh-logpar-overrides/0` | builder | Log parser overrides |
 | `router/router/0` | router | Router configuration snapshot |
 | `router/tester/0` | router | Tester configuration snapshot |
@@ -231,3 +231,21 @@ The store is instantiated once in `main.cpp` using `FileDriver` pointed at the c
 | `ioc/sync-state/0` | iocsync | IOC synchronization state |
 | `ioc/remote-status/0` | api/ioccrud | IOC sync status |
 | `confremote/*` | confremote | Remote configuration settings |
+
+### Decoder Unmodifiable Fields
+
+`schema/allowed-fields/0` protects system-owned fields from decoder writes. The active list is defined by the
+`decoder_unmodifiable_fields` array in `ruleset/schemas/allowed-fields.json`.
+
+The following broader candidate set is intentionally documented for future review and is not the active list unless it
+is added to `decoder_unmodifiable_fields`:
+
+- `wazuh.agent.*`
+- `wazuh.protocol.*`
+- `wazuh.space.*`
+- `wazuh.integration.*`
+- `event.original`
+- `agent.id`
+- `agent.name`
+- `agent.type`
+- `agent.version`

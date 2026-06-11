@@ -7,6 +7,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <variant>
+#include <vector>
 
 #include <base/json.hpp>
 #include <hlp/hlp.hpp>
@@ -484,6 +485,12 @@ private:
     }
 
 public:
+    struct BuildResult
+    {
+        hlp::parser::Parser parser;
+        std::vector<std::string> targetFields;
+    };
+
     /**
      * @brief Construct a new Logpar object
      *
@@ -514,10 +521,10 @@ public:
      * The parser returned will return a json object with the parsed fields if any
      *
      * @param logpar the logpar expression
-     * @return parsec::Parser<json::Json> the parser
+     * @return BuildResult The parser and target fields written by the expression.
      * @throws std::runtime_error if errors occur while building the parser
      */
-    Hlp build(std::string_view logpar) const;
+    BuildResult build(std::string_view logpar) const;
 };
 } // namespace logpar
 } // namespace hlp

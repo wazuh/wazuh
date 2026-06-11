@@ -47,7 +47,7 @@ Builder::Builder(const std::shared_ptr<cm::store::ICMStore>& cmStore,
 
     if (!m_allowedFields)
     {
-        throw std::runtime_error {"Allowed fields is null"};
+        throw std::runtime_error {"Allowed fields interface is null"};
     }
 
     // Registry

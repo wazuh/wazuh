@@ -1,7 +1,6 @@
 #ifndef BUILDER_ALLOWEDFIELDS_HPP
 #define BUILDER_ALLOWEDFIELDS_HPP
 
-#include <unordered_map>
 #include <unordered_set>
 
 #include <fmt/format.h>
@@ -15,12 +14,12 @@ namespace builder
 /**
  * @brief Concrete implementation of IAllowedFields.
  *
- * Reads allowed-field definitions from a JSON document and performs per-asset-type field checks.
+ * Reads decoder unmodifiable field definitions from a JSON document and checks whether an asset can write a field.
  */
 class AllowedFields final : public IAllowedFields
 {
 private:
-    std::unordered_map<base::Name, std::unordered_set<DotPath>> m_fields; ///< Map of asset types to allowed fields.
+    std::unordered_set<DotPath> m_decoderUnmodifiableFields; ///< Fields decoders cannot write.
 
 public:
     AllowedFields() = default;
@@ -29,7 +28,7 @@ public:
     /**
      * @brief Construct a new Allowed Fields object from a JSON definition.
      *
-     * @param definition JSON document mapping asset types to their allowed fields.
+     * @param definition JSON document containing decoder_unmodifiable_fields.
      */
     AllowedFields(const json::Json& definition);
 

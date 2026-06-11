@@ -1,7 +1,11 @@
 {
     "name": "schema/allowed-fields/0",
-    "allowed_fields": {
-        "filter": [],
-        "output": []
-    }
+    "decoder_unmodifiable_fields": [
+        "event.original",
+        "wazuh.agent",
+        "wazuh.integration",
+        "wazuh.protocol",
+        "wazuh.route",
+        "wazuh.space"
+    ]
 }

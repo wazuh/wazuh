@@ -52,7 +52,7 @@ private:
     std::shared_ptr<cm::store::ICMStore> m_cmStore;                  ///< CMStore interface
     std::shared_ptr<schemf::IValidator> m_schema;                    ///< Schema validator
     std::shared_ptr<defs::IDefinitionsBuilder> m_definitionsBuilder; ///< Definitions builder
-    std::shared_ptr<IAllowedFields> m_allowedFields; ///< Manages wich fields can be modified by different assets
+    std::shared_ptr<IAllowedFields> m_allowedFields;                 ///< Manages protected field writes by asset type.
 
     std::shared_ptr<Registry> m_registry; ///< builders registry
 

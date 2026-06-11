@@ -33,7 +33,7 @@ public:
      * @param definitionsBuilder Definitions builder.
      * @param registry Registry instance.
      * @param schema Schema validator instance.
-     * @param allowedFields Allowed fields instance.
+     * @param allowedFields Field write restrictions instance.
      * @param isTestMode Whether to build the policy in test mode.
      */
     Policy(const cm::store::NamespaceId& namespaceId,

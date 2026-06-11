@@ -17,9 +17,10 @@ namespace allowedfields
 {
 constexpr auto NAME_KEY = "name";                            ///< Key for the name of the document.
 const auto NAME_PATH = json::Json::formatJsonPath(NAME_KEY); ///< Path to the name field in a document.
-constexpr auto ALLOWED_FIELDS_KEY = "allowed_fields";        ///< Key for the allowed fields in a document.
-const auto ALLOWED_FIELDS_PATH =
-    json::Json::formatJsonPath(ALLOWED_FIELDS_KEY); ///< Path to the allowed fields in a document.
+constexpr auto DECODER_UNMODIFIABLE_FIELDS_KEY =
+    "decoder_unmodifiable_fields"; ///< Key for fields decoders cannot modify.
+const auto DECODER_UNMODIFIABLE_FIELDS_PATH =
+    json::Json::formatJsonPath(DECODER_UNMODIFIABLE_FIELDS_KEY); ///< Path to decoder unmodifiable fields.
 } // namespace allowedfields
 
 // Asset syntax

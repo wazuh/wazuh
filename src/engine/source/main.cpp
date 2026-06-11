@@ -510,14 +510,14 @@ int main(int argc, char* argv[])
             builderDeps.iConnector = indexerConnector;
             auto defs = std::make_shared<defs::DefinitionsBuilder>();
 
-            // Build allowed fields
+            // Build decoder unmodifiable fields
             std::shared_ptr<builder::IAllowedFields> allowedFields;
             auto allowedFieldsDoc = store->readDoc("schema/allowed-fields/0");
             if (std::holds_alternative<base::Error>(allowedFieldsDoc))
             {
                 LOG_DEBUG("Could not load 'schema/allowed-fields/0' document, {}",
                           std::get<base::Error>(allowedFieldsDoc).message);
-                LOG_WARNING("Allowed fields not found, assets will not have restrictions.");
+                LOG_WARNING("Decoder unmodifiable fields not found, decoder assets will not have write restrictions.");
 
                 allowedFields = std::make_shared<builder::AllowedFields>();
             }

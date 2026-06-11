@@ -14,8 +14,8 @@ namespace builder::builders
 class BuildCtx final : public IBuildCtx
 {
 private:
-    bool m_isTestMode {false};            ///< Policy-level immutable: true for test/tester, false for production.
-    Context m_context;                    ///< Context
+    bool m_isTestMode {false}; ///< Policy-level immutable: true for test/tester, false for production.
+    Context m_context;         ///< Context
 
     std::shared_ptr<const RegistryType> m_registry; ///< Builders registry
 
@@ -25,7 +25,7 @@ private:
 
     std::shared_ptr<const schemf::ISchema> m_schema; ///< Schema
 
-    std::shared_ptr<const builder::IAllowedFields> m_allowedFields; ///< Allowed fields
+    std::shared_ptr<const builder::IAllowedFields> m_allowedFields; ///< Field write restrictions
 
     std::shared_ptr<cm::store::ICMStoreNSReader> m_storeNSReader; ///< Store namespace reader
 
@@ -57,7 +57,7 @@ public:
      * @param registry Builders registry
      * @param definitions Definitions
      * @param schemaValidator Schema validator
-     * @param allowedFields Allowed fields
+     * @param allowedFields Field write restrictions
      */
     BuildCtx(bool isTestMode,
              const Context& context,
