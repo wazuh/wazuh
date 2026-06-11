@@ -339,6 +339,11 @@ int IDExist(const char *id, int discard_removed)
 /* Validate agent name */
 int OS_IsValidName(const char *u_name)
 {
+    /* Name must not be null */
+    if (!u_name) {
+        return (0);
+    }
+
     size_t i, uname_length = strlen(u_name);
 
     /* We must have something in the name */

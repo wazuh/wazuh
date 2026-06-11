@@ -471,9 +471,11 @@ static int w_enrollment_process_agent_key(char *buffer) {
     }
 
     *tmpstr = '\0';
-    char **entrys = OS_StrBreak(' ', keys, 4);
-    if (OS_IsValidID(entrys[ENTRY_ID]) && OS_IsValidName(entrys[ENTRY_NAME]) &&
-            OS_IsValidIP(entrys[ENTRY_IP], NULL) && OS_IsValidName(entrys[ENTRY_KEY])) {
+    char **entries = OS_StrBreak(' ', keys, 4);
+    if (entries && entries[ENTRY_ID] && entries[ENTRY_NAME] &&
+            entries[ENTRY_IP] && entries[ENTRY_KEY] &&
+            OS_IsValidID(entries[ENTRY_ID]) && OS_IsValidName(entries[ENTRY_NAME]) &&
+            OS_IsValidIP(entries[ENTRY_IP], NULL) && OS_IsValidName(entries[ENTRY_KEY])) {
         if( !w_enrollment_store_key_entry(keys) ) {
             // Key was stored
             minfo("Valid key received");
@@ -482,11 +484,13 @@ static int w_enrollment_process_agent_key(char *buffer) {
     } else {
         merror("One of the received key parameters does not have a valid format");
     }
-    int i;
-    for(i=0; i<4; i++){
-        os_free(entrys[i]);
+    if (entries) {
+        int i;
+        for(i=0; i<4; i++){
+            os_free(entries[i]);
+        }
+        os_free(entries);
     }
-    os_free(entrys);
     return ret;
 }
 
