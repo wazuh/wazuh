@@ -4123,7 +4123,7 @@ static void test_dbsync_attributes_json(void **state) {
  * (the column is INTEGER), it must be normalized to a string instead of
  * being dropped and logged. No __wrap__minfo expectation is set on purpose:
  * the buggy code path calls minfo(FIM_WARN_INODE_WRONG_TYPE) -> cmocka fails. */
-void test_fim_attributes_json_inode_number(void **state) {
+static void test_fim_attributes_json_inode_number(void **state) {
     (void) state;
     directory_t configuration = { .options = CHECK_INODE };
 
@@ -4145,7 +4145,7 @@ void test_fim_attributes_json_inode_number(void **state) {
 
 /* Same fix, "changed/old" path: numeric inode must become a string in
  * old_attributes and "file.inode" must be reported as a changed field. */
-void test_fim_calculate_dbsync_difference_inode_number(void **state) {
+static void test_fim_calculate_dbsync_difference_inode_number(void **state) {
     (void) state;
     directory_t configuration = { .options = CHECK_INODE };
 
