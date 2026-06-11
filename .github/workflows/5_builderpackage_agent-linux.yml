@@ -787,6 +787,10 @@ jobs:
     if: >
       needs.upload-deb-to-s3.result == 'success' &&
       needs.detect-changes.result == 'success'
+    # Required so that the reusable workflow can obtain an OIDC token for AWS authentication.
+    permissions:
+      id-token: write
+      contents: read
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}

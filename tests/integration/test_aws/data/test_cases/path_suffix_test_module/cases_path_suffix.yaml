@@ -44,12 +44,12 @@
   description: VPC path_suffix configurations
   configuration_parameters:
     BUCKET_TYPE: vpcflow
-    BUCKET_NAME: wazuh-vpcflow-integration-tests
+    BUCKET_NAME: xdrsiem-agent-its-966237403726-us-east-1-an
     PATH_SUFFIX: test_suffix
   metadata:
     resource_type: bucket
     bucket_type: vpcflow
-    bucket_name: wazuh-vpcflow-integration-tests
+    bucket_name: xdrsiem-agent-its-966237403726-us-east-1-an
     vpc_name: wazuh-vpc-integration-tests
     only_logs_after: 2022-NOV-20
     path_suffix: test_suffix
@@ -73,12 +73,12 @@
   description: VPC path_suffix configurations
   configuration_parameters:
     BUCKET_TYPE: vpcflow
-    BUCKET_NAME: wazuh-vpcflow-integration-tests
+    BUCKET_NAME: xdrsiem-agent-its-966237403726-us-east-1-an
     PATH_SUFFIX: empty_suffix
   metadata:
     resource_type: bucket
     bucket_type: vpcflow
-    bucket_name: wazuh-vpcflow-integration-tests
+    bucket_name: xdrsiem-agent-its-966237403726-us-east-1-an
     vpc_name: wazuh-vpc-integration-tests
     only_logs_after: 2022-NOV-20
     path_suffix: empty_suffix
@@ -102,12 +102,12 @@
   description: VPC path_suffix configurations
   configuration_parameters:
     BUCKET_TYPE: vpcflow
-    BUCKET_NAME: wazuh-vpcflow-integration-tests
+    BUCKET_NAME: xdrsiem-agent-its-966237403726-us-east-1-an
     PATH_SUFFIX: inexistent_suffix
   metadata:
     resource_type: bucket
     bucket_type: vpcflow
-    bucket_name: wazuh-vpcflow-integration-tests
+    bucket_name: xdrsiem-agent-its-966237403726-us-east-1-an
     vpc_name: wazuh-vpc-integration-tests
     only_logs_after: 2022-NOV-20
     path_suffix: inexistent_suffix

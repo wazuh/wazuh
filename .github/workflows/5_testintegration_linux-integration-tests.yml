@@ -75,7 +75,7 @@ on:
         required: false
         default: ''
       setup_aws_credentials:
-        description: 'Configure AWS credentials from IT_AWS_KEY_ID / IT_AWS_SECRET_ACCESS_KEY secrets'
+        description: 'Configure AWS credentials via OIDC for AWS integration tests'
         required: false
         default: 'false'
 
@@ -88,6 +88,9 @@ jobs:
     if: inputs.module_name != 'none'
     timeout-minutes: ${{ inputs.timeout_minutes || 120 }}
     name: Run integration tests
+    permissions:
+      id-token: write  # Required for OIDC token generation (aws-actions/configure-aws-credentials)
+      contents: read
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
@@ -165,17 +168,49 @@ jobs:
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
 
-      - name: Configure AWS credentials
+      - name: Configure AWS credentials via OIDC
         if: inputs.setup_aws_credentials == true || inputs.setup_aws_credentials == 'true'
-        env:
-          AWS_KEY_ID: ${{ secrets.IT_AWS_KEY_ID }}
-          AWS_SECRET: ${{ secrets.IT_AWS_SECRET_ACCESS_KEY }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.IT_AWS_OIDC_ROLE_ARN }}
+          aws-region: us-east-1
+          role-duration-seconds: 7200
+
+      - name: Write AWS named profiles for integration tests
+        if: inputs.setup_aws_credentials == true || inputs.setup_aws_credentials == 'true'
         run: |
-          sudo aws configure set aws_access_key_id "${AWS_KEY_ID}" --profile default
-          sudo aws configure set aws_secret_access_key "${AWS_SECRET}" --profile default
-          sudo aws configure set default.region us-east-1 --profile default
-          sudo aws configure set aws_access_key_id "${AWS_KEY_ID}" --profile inspector_tests
-          sudo aws configure set aws_secret_access_key "${AWS_SECRET}" --profile inspector_tests
+          # Write the 'default' profile (us-east-1) from the OIDC temporary credentials.
+          # AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_SESSION_TOKEN are injected as
+          # environment variables by the preceding 'Configure AWS credentials via OIDC' step.
+          sudo aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID" --profile default
+          sudo aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY" --profile default
+          sudo aws configure set aws_session_token "$AWS_SESSION_TOKEN" --profile default
+          sudo aws configure set region us-east-1 --profile default
+
+          # Assume the Inspector role via role chaining to build the 'inspector_tests' profile.
+          # Inspector tests run against the wazuh-dev account and require us-east-2.
+          STS_ERROR_FILE=$(mktemp)
+          STS_OUTPUT=$(aws sts assume-role \
+            --role-arn "${{ secrets.IT_AWS_INSPECTOR_ROLE_ARN }}" \
+            --role-session-name "github-actions-inspector-tests" \
+            --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" \
+            --output text 2>"$STS_ERROR_FILE") || {
+              echo "::error::Failed to assume Inspector role: $(cat $STS_ERROR_FILE)"
+              rm -f "$STS_ERROR_FILE"
+              exit 1
+            }
+          rm -f "$STS_ERROR_FILE"
+
+          read -r INSPECTOR_KEY INSPECTOR_SECRET INSPECTOR_TOKEN <<< "$STS_OUTPUT"
+
+          if [ -z "$INSPECTOR_KEY" ] || [ -z "$INSPECTOR_SECRET" ] || [ -z "$INSPECTOR_TOKEN" ]; then
+            echo "::error::Inspector role credentials are empty"
+            exit 1
+          fi
+
+          sudo aws configure set aws_access_key_id "$INSPECTOR_KEY" --profile inspector_tests
+          sudo aws configure set aws_secret_access_key "$INSPECTOR_SECRET" --profile inspector_tests
+          sudo aws configure set aws_session_token "$INSPECTOR_TOKEN" --profile inspector_tests
           sudo aws configure set region us-east-2 --profile inspector_tests
 
       - name: Run pre-install steps
@@ -183,10 +218,15 @@ jobs:
         run: ${{ inputs.pre_install }}
 
       - name: Run ${{ inputs.module_name }} integration tests (${{ inputs.shard_name }})
+        env:
+          AWS_VPC_ID: ${{ secrets.IT_AWS_VPC_ID }}
+          AWS_BUCKET_NAME: ${{ secrets.IT_AWS_BUCKET_NAME }}
         run: |
           cd tests/integration
           set +e
           sudo GITHUB_SHA="${{ github.sha }}" GITHUB_REF_NAME="${BRANCH_NAME}" \
+            AWS_VPC_ID="${AWS_VPC_ID}" \
+            AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" \
             python -m pytest ${{ inputs.pytest_extra_args }} ${{ inputs.pytest_tier_args }} ${{ inputs.pytest_target }} \
             --html=results.html --self-contained-html
           EXIT_CODE=$?
