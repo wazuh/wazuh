@@ -2804,7 +2804,7 @@ int Syscollector::executeFlushSync()
     {
         if (m_logFunction)
         {
-            m_logFunction(LOG_WARNING, "Syscollector sync protocol not initialized, flush skipped");
+            m_logFunction(LOG_INFO, "Syscollector sync protocol not initialized, flush skipped");
         }
 
         return 0; // Not an error - just nothing to flush
@@ -4098,7 +4098,7 @@ bool Syscollector::notifyDisableCollectorsDataClean()
     {
         if (m_logFunction)
         {
-            m_logFunction(LOG_ERROR, "Sync protocol not initialized, cannot notify data clean");
+            m_logFunction(LOG_INFO, "Sync protocol not initialized, cannot notify data clean");
         }
 
         return false;

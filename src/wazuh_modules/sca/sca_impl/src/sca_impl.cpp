@@ -756,7 +756,7 @@ int SecurityConfigurationAssessment::executeFlushSync()
 
     if (!m_spSyncProtocol)
     {
-        LoggingHelper::getInstance().log(LOG_WARNING, "SCA sync protocol not initialized, flush skipped");
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync protocol not initialized, flush skipped");
         return 0;  // Not an error - just nothing to flush
     }
 
@@ -1049,7 +1049,7 @@ bool SecurityConfigurationAssessment::checkIfRecoveryRequired(const std::string&
 {
     if (!m_spSyncProtocol)
     {
-        LoggingHelper::getInstance().log(LOG_ERROR, "Sync protocol not initialized, cannot check recovery status");
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Sync protocol not initialized, cannot check recovery status");
         return false;
     }
 
@@ -1096,7 +1096,7 @@ bool SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseV
 
         if (!m_spSyncProtocol)
         {
-            LoggingHelper::getInstance().log(LOG_ERROR, "Sync protocol not initialized, cannot synchronize SCA snapshot");
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Sync protocol not initialized, cannot synchronize SCA snapshot");
             return false;
         }
 
