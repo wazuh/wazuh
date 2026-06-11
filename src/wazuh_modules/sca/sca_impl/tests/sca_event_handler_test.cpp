@@ -2402,8 +2402,8 @@ TEST_F(SCAEventHandlerTest, ValidateAndHandleStatefulMessage_ValidationFailure)
         }
         else
         {
-            // No validator for this index, should return true
-            EXPECT_TRUE(result);
+            // No validator for this index: restrictive behaviour, should return false
+            EXPECT_FALSE(result);
         }
     }
     else

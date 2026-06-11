@@ -109,7 +109,7 @@ void fim_calculate_dbsync_difference(const directory_t *configuration,
                  cJSON_AddStringToObject(old_attributes, "inode", cJSON_GetStringValue(aux));
                  cJSON_AddItemToArray(changed_attributes, cJSON_CreateString("file.inode"));
              } else {
-                 mwarn(FIM_WARN_INODE_WRONG_TYPE);
+                 minfo(FIM_WARN_INODE_WRONG_TYPE);
              }
          }
      }
@@ -384,7 +384,7 @@ cJSON * fim_attributes_json(const cJSON *dbsync_event, const fim_file_data *data
                 if (cJSON_IsString(aux)) {
                     cJSON_AddStringToObject(attributes, "inode", cJSON_GetStringValue(aux));
                 } else {
-                    mwarn(FIM_WARN_INODE_WRONG_TYPE);
+                    minfo(FIM_WARN_INODE_WRONG_TYPE);
                 }
             }
         }

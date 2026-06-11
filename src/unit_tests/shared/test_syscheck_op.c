@@ -495,7 +495,7 @@ static void test_ag_send_syscheck_unable_to_connect(void **state) {
 
     errno = EADDRNOTAVAIL;
 
-    expect_string(__wrap__mwarn, formatted_msg, "dbsync: cannot connect to syscheck: Cannot assign requested address (99)");
+    expect_string(__wrap__minfo, formatted_msg, "dbsync: cannot connect to syscheck: Cannot assign requested address (99)");
 
     ag_send_syscheck(input, strlen(input));
 

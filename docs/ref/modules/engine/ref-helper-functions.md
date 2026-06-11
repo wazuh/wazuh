@@ -3623,7 +3623,7 @@ check:
 {}
 ```
 
-*The check was performed with errors*
+*The check was successful*
 
 ### Example 2
 

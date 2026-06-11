@@ -32,19 +32,34 @@ jobs:
     steps:
       - name: Generate dynamic matrix
         id: set-matrix
+        env:
+          INPUT_ARCHITECTURE: ${{ inputs.architecture }}
         run: |
           set -euo pipefail
           JSON_ARRAY=$(
-            echo "${{ inputs.architecture }}" | tr ',' '\n' | while read -r raw_arch; do
-              arch=$(echo "$raw_arch" | xargs)
-              case "$arch" in
-                arm64|aarch64) IMG_ARCH="arm64" ;;
-                amd64|x86_64) IMG_ARCH="amd64" ;;
-                "") continue ;;
-                *) echo "Unsupported architecture: $arch" >&2; exit 1 ;;
-              esac
-              jq -c -n --arg arch "$IMG_ARCH" '{architecture: $arch}'
-            done
+            echo "$INPUT_ARCHITECTURE" \
+            | tr ',' '\n' \
+            | while read -r raw_arch; do
+                arch=$(echo "$raw_arch" | xargs)
+
+                case "$arch" in
+                  arm64|aarch64)
+                    IMG_ARCH="arm64"
+                    ;;
+                  amd64|x86_64)
+                    IMG_ARCH="amd64"
+                    ;;
+                  "")
+                    continue
+                    ;;
+                  *)
+                    echo "Unsupported architecture: $arch" >&2
+                    exit 1
+                    ;;
+                esac
+
+                jq -c -n --arg arch "$IMG_ARCH" '{architecture: $arch}'
+              done
           )
           JSON_ARRAY=$(echo "$JSON_ARRAY" | jq -c -s 'unique | {include: .}')
           echo "matrix=$JSON_ARRAY" >> "$GITHUB_OUTPUT"
@@ -85,14 +100,14 @@ jobs:
 
       - name: Pull builder container image
         run: |
-          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor }} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh "${{ secrets.GITHUB_TOKEN }}" "${{ github.actor }}" "${{ env.CONTAINER_NAME }}" "${{ env.TAG }}"
 
       - name: Compile embedded Python
         working-directory: framework/cpython
         run: |
-          docker run --env ARCH="${{ env.PACKAGE_ARCH }}" \
+          docker run --env ARCH="$PACKAGE_ARCH" \
             -v $GITHUB_WORKSPACE:/wazuh_host -v /tmp:/output \
-            --entrypoint=bash ${{ env.CONTAINER_NAME }}:${{ env.TAG }} \
+            --entrypoint=bash "$CONTAINER_NAME:$TAG" \
             /wazuh_host/framework/cpython/compile.sh \
               ${{ inputs.build_cpython == true && '--build-cpython' || '' }} \
               ${{ inputs.build_deps == true && '--build-deps' || '' }}

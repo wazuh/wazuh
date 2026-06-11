@@ -2128,7 +2128,7 @@ static void test_fim_file_scan_symlink_warns_when_no_follow(void **state) {
     expect_string(__wrap_realpath, path, "/test/symdir");
     will_return(__wrap_realpath, strdup("/actual/dir"));
 
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__minfo, formatted_msg,
         "(6961): Configured path '/test/symdir' is a symbolic link to '/actual/dir'. "
         "Without 'follow_symbolic_link' enabled, only the symlink itself will be monitored, "
         "not the directory contents. Consider monitoring '/actual/dir' directly or enabling "

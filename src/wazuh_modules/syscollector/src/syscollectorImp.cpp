@@ -4599,13 +4599,15 @@ bool Syscollector::validateSchemaAndLog(const std::string& data, const std::stri
 
     if (!validator)
     {
-        // Validator not found for this index, log warning and allow message through
+        // No validator for this index: be restrictive and discard the message
+        // instead of queuing it unvalidated, since we cannot guarantee it matches
+        // the schema the indexer expects.
         if (m_logFunction)
         {
-            m_logFunction(LOG_WARNING, "No schema validator found for index: " + index + ". Queuing message without validation.");
+            m_logFunction(LOG_WARNING, "No schema validator found for index: " + index + ". Discarding message.");
         }
 
-        return true;
+        return false;
     }
 
     auto validationResult = validator->validate(data);

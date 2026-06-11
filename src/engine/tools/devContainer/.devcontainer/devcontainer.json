@@ -50,7 +50,9 @@
 				"eamodio.gitlens",
 				"pbkit.vscode-pbkit",
 				"eriklynd.json-tools",
-				"mads-hartmann.bash-ide-vscode"
+				"mads-hartmann.bash-ide-vscode",
+				"GitHub.copilot",
+				"anthropic.claude-vscode"
 			]
 		}
 	},

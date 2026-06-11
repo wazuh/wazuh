@@ -57,7 +57,7 @@ int send_msg(const char *msg, ssize_t msg_length)
             mdebug2(CONN_REF);
             break;
         default:
-            mwarn(SEND_ERROR, "server", strerror(error));
+            minfo(SEND_ERROR, "server", strerror(error));
             break;
         }
 

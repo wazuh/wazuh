@@ -210,6 +210,7 @@ void SyscollectorImpTest::SetUp()
     mockValidators["wazuh-states-inventory-hardware"] = m_mockValidator;
     mockValidators["wazuh-states-inventory-system"] = m_mockValidator;
     mockValidators["wazuh-states-inventory-interfaces"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-protocols"] = m_mockValidator;
     mockValidators["wazuh-states-inventory-networks"] = m_mockValidator;
     mockValidators["wazuh-states-inventory-ports"] = m_mockValidator;
     mockValidators["wazuh-states-inventory-packages"] = m_mockValidator;
@@ -5005,8 +5006,9 @@ TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
     EXPECT_TRUE(foundDeferredDeletion) << "Expected deferred deletion log not found";
 }
 
-// Test for missing validator: factory is initialized but no validator for the index
-TEST_F(SyscollectorImpTest, schemaValidationQueuesWhenValidatorNotFound)
+// Test for missing validator: factory is initialized but no validator for the index.
+// The message must be discarded (restrictive behaviour) and a warning logged.
+TEST_F(SyscollectorImpTest, schemaValidationDiscardsWhenValidatorNotFound)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
 
@@ -5043,8 +5045,8 @@ TEST_F(SyscollectorImpTest, schemaValidationQueuesWhenValidatorNotFound)
         }
     };
 
-    // Expect persist callback for hardware data (should be queued despite missing validator)
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(1);
+    // No persist callback expected: with no validator for the index the message is discarded
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(0);
 
     // Capture log messages to verify warning is logged
     // Use shared_ptr to prevent dangling references after test completes
