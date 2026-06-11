@@ -1656,7 +1656,7 @@ Decoders can parse date and timestamp fields in a wide range of formats and time
 schema fields (e.g., `@timestamp`, `event.start`) are applied automatically when those fields appear in a
 `parse|<field>` expression. Once parsed, the Engine normalizes all timestamps to UTC, ensuring consistency across
 event processing and indexing. For the full list of supported formats and parameters, see the
-[date parser documentation](ref-parser.html#date-parser).
+[date parser documentation](ref-parser.md#date-parser).
 
 #### Geolocation
 
