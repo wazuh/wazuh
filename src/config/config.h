@@ -21,7 +21,6 @@
 #define CCLIENT       0000000200
 #define CMAIL         0000000400
 #define CAR           0000001000
-#define CDBD          0000002000
 #define CSYSLOGD      0000004000
 #define CAGENT_CONFIG 0000010000
 #define CAGENTLESS    0000020000
@@ -44,7 +43,7 @@
                             (modules & CGLOBAL       ) | (modules & CRULES        ) | (modules & CSYSCHECK     ) |\
                             (modules & CROOTCHECK    ) | (modules & CALERTS       ) | (modules & CLOCALFILE    ) |\
                             (modules & CREMOTE       ) | (modules & CCLIENT       ) | (modules & CMAIL         ) |\
-                            (modules & CAR           ) | (modules & CDBD          ) | (modules & CSYSLOGD      ) |\
+                            (modules & CAR           ) | (modules & CSYSLOGD      ) |\
                             (modules & CAGENT_CONFIG ) | (modules & CAGENTLESS    ) | (modules & CREPORTS      ) |\
                             (modules & CINTEGRATORD  ) | (modules & CWMODULE      ) | (modules & CLABELS       ) |\
                             (modules & CAUTHD        ) | (modules & CBUFFER       ) | (modules & CCLUSTER      ) |\
@@ -73,7 +72,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *d1, void *d2, int modu
 int Read_Rootcheck(XML_NODE node, void *d1, void *d2);
 int Read_Alerts(XML_NODE node, void *d1, void *d2);
 int Read_EmailAlerts(XML_NODE node, void *d1, void *d2);
-int Read_DB(XML_NODE node, void *config1, void *config2);
 int Read_CSyslog(XML_NODE node, void *config1, void *config2);
 int Read_CAgentless(XML_NODE node, void *config1, void *config2);
 int Read_Localfile(XML_NODE node, void *d1, void *d2);
