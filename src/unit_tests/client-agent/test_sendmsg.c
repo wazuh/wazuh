@@ -139,7 +139,7 @@ static void test_send_msg_econnreset(void **state) {
     assert_int_equal(agt->sock, -1);
 }
 
-/* EAGAIN (SO_SNDTIMEO expiry) → socket invalidated, mwarn emitted */
+/* EAGAIN (SO_SNDTIMEO expiry) → socket invalidated, mdebug2 emitted */
 static void test_send_msg_eagain(void **state) {
     expect_create_sec_msg_ok();
     errno = EAGAIN;
@@ -149,14 +149,14 @@ static void test_send_msg_eagain(void **state) {
     will_return(__wrap_OS_SendSecureTCP, -1);
     expect_value(__wrap_OS_CloseSocket, sock, 5);
     will_return(__wrap_OS_CloseSocket, 0);
-    expect_any(__wrap__mwarn, formatted_msg);
+    expect_any(__wrap__mdebug2, formatted_msg);
 
     int ret = send_msg("hello", -1);
     assert_int_equal(ret, -1);
     assert_int_equal(agt->sock, -1);
 }
 
-/* ETIMEDOUT → socket invalidated, mwarn emitted */
+/* ETIMEDOUT → socket invalidated, mdebug2 emitted */
 static void test_send_msg_etimedout(void **state) {
     expect_create_sec_msg_ok();
     errno = ETIMEDOUT;
@@ -166,7 +166,7 @@ static void test_send_msg_etimedout(void **state) {
     will_return(__wrap_OS_SendSecureTCP, -1);
     expect_value(__wrap_OS_CloseSocket, sock, 5);
     will_return(__wrap_OS_CloseSocket, 0);
-    expect_any(__wrap__mwarn, formatted_msg);
+    expect_any(__wrap__mdebug2, formatted_msg);
 
     int ret = send_msg("hello", -1);
     assert_int_equal(ret, -1);

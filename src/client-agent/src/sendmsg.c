@@ -64,7 +64,7 @@ int send_msg(const char *msg, ssize_t msg_length)
 #endif
             /* SO_SNDTIMEO expiry: kernel returns EAGAIN/EWOULDBLOCK on
              * blocking sockets, or ETIMEDOUT on retransmit exhaustion. */
-            mwarn(SEND_ERROR, "server", strerror(error));
+            mdebug2(SEND_ERROR, "server", strerror(error));
             break;
         case ECONNREFUSED:
             /* The remote end refused the connection — socket is unusable. */

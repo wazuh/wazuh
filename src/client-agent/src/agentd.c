@@ -179,17 +179,18 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
         /* If run_notify() invalidated the socket, restart the loop to reconnect
          * before FD_SET(), which requires a valid descriptor. */
-        if (agt->sock < 0) {
+        const int sock = agt->sock;
+        if (sock < 0) {
             continue;
         }
 
-        if (agt->sock > maxfd - 1) {
-            maxfd = agt->sock + 1;
+        if (sock > maxfd - 1) {
+            maxfd = sock + 1;
         }
 
         /* Monitor all available sockets from here */
         FD_ZERO(&fdset);
-        FD_SET(agt->sock, &fdset);
+        FD_SET(sock, &fdset);
         FD_SET(agt->m_queue, &fdset);
 
         fdtimeout.tv_sec = 1;
@@ -265,7 +266,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         }
 
         /* For the receiver */
-        if (FD_ISSET(agt->sock, &fdset)) {
+        if (FD_ISSET(sock, &fdset)) {
             if (receive_msg() < 0) {
                 w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
                 merror(LOST_ERROR);
