@@ -1842,6 +1842,7 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
     int i;
     char *file_cpy;
     int result;
+    int retval = 0;
 
     w_logcollector_state_update_file(file, size);
 
@@ -1859,11 +1860,12 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
 
             if (result < 0) {
                 w_logcollector_state_update_target(file,targets[i].log_socket->name, true);
+                retval = -1;
             }
         }
     }
 
-    return 0;
+    return retval;
 }
 
 int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsigned long size, logtarget * log_target, char queue_mq) {

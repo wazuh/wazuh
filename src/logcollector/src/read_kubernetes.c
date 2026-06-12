@@ -41,6 +41,8 @@
 #define K8S_STATE_FILE       "/var/ossec/queue/k8s-logs/state.json"
 #define K8S_STATE_DIR        "/var/ossec/queue/k8s-logs"
 #define K8S_FLUSH_INTERVAL   10  /* seconds between state persists */
+#define K8S_PARTIAL_MAX      (48 * 1024) /* reassembled-line cap: stays well under the
+                                          * OS_MAXSTR queue payload limit incl. metadata */
 
 /* One entry per (pod_uid, container_name) currently tracked. */
 typedef struct k8s_tracked_container {
@@ -57,6 +59,7 @@ typedef struct k8s_tracked_container {
     off_t  offset;           /* last persisted byte offset; updated after each drain */
     char  *partial_buf;      /* accumulator for CRI 'P' (partial) lines until next 'F' */
     size_t partial_len;
+    int    partial_truncated; /* reassembly hit K8S_PARTIAL_MAX: emit with marker */
     int    open_from_start;  /* container appeared after the initial scan: its log file
                               * is seconds old, so reading from byte 0 captures the
                               * startup lines without replaying history */
@@ -475,7 +478,15 @@ static void k8s_scan_once(logreader *lf, k8s_runtime_t *rt)
     const char *pods_dir = K8S_PODS_DIR_DEFAULT;
     DIR *d = opendir(pods_dir);
     if (!d) {
-        mtdebug2(K8S_LOG_TAG, "Cannot open %s: %s", pods_dir, strerror(errno));
+        /* Deployment error (missing hostPath mount, not running as root):
+         * collection is silently dead without a loud, rate-limited warning. */
+        static time_t last_warn = 0;
+        const time_t warn_now = time(NULL);
+        if (warn_now - last_warn >= 60) {
+            last_warn = warn_now;
+            mtwarn(K8S_LOG_TAG, "Cannot open %s: %s — container log collection is not running.",
+                   pods_dir, strerror(errno));
+        }
         return;
     }
 
@@ -793,14 +804,17 @@ static int k8s_parse_cri_line(char *line,
     return 1;
 }
 
-/* Build the K8s log event JSON and push it to the manager queue. */
-static void k8s_emit_line(const k8s_tracked_t *t, const char *ts, const char *stream,
-                          const char *text, const char *target_first, logreader *lf)
+/* Build the K8s log event JSON and push it to the manager queue.
+ * Returns 0 when the line no longer needs to be retried (sent, empty, or
+ * unbuildable) and -1 only on queue backpressure, so the caller can rewind
+ * the file position instead of silently losing the line. */
+static int k8s_emit_line(const k8s_tracked_t *t, const char *ts, const char *stream,
+                         const char *text, int truncated, logreader *lf)
 {
-    if (!t || !text || !*text) return;
+    if (!t || !text || !*text) return 0;
 
     cJSON *root = cJSON_CreateObject();
-    if (!root) return;
+    if (!root) return 0;
     cJSON_AddStringToObject(root, "collector", "logcollector");
     cJSON_AddStringToObject(root, "module",    "kubernetes");
 
@@ -816,30 +830,60 @@ static void k8s_emit_line(const k8s_tracked_t *t, const char *ts, const char *st
     if (t->container_name) cJSON_AddStringToObject(k8s, "container_name", t->container_name);
     if (t->container_id)   cJSON_AddStringToObject(k8s, "container_id",   t->container_id);
     if (t->image)          cJSON_AddStringToObject(k8s, "image",          t->image);
+    if (truncated)         cJSON_AddTrueToObject(data, "truncated");
 
     char *json_str = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
-    if (!json_str) return;
+    if (!json_str) return 0;
 
     /* Use the container_name as the source label so analysisd correlation
      * can attribute the line to the right container. lf->log_target carries
      * the configured targets (typically "agent"). */
     const char *source = t->container_name ? t->container_name : "kubernetes";
-    (void)target_first;
     mtdebug2(K8S_LOG_TAG, "Emitting K8s log event: %s", json_str);
-    w_msg_hash_queues_push(json_str, (char *)source, strlen(json_str) + 1,
-                           lf->log_target, LOCALFILE_MQ);
+    const int rc = w_msg_hash_queues_push(json_str, (char *)source, strlen(json_str) + 1,
+                                          lf->log_target, LOCALFILE_MQ);
     free(json_str);
+    return rc;
+}
+
+/* Append a P/F fragment to the reassembly buffer, bounded by
+ * K8S_PARTIAL_MAX: fragments beyond the cap are dropped and the joined
+ * message is flagged truncated, so a newline-less container can never grow
+ * agent memory (or exceed the queue payload limit) without bound. */
+static void k8s_partial_append(k8s_tracked_t *t, const char *text)
+{
+    size_t add = strlen(text);
+    if (t->partial_len >= K8S_PARTIAL_MAX) {
+        t->partial_truncated = 1;
+        return;
+    }
+    if (t->partial_len + add > K8S_PARTIAL_MAX) {
+        add = K8S_PARTIAL_MAX - t->partial_len;
+        t->partial_truncated = 1;
+    }
+    os_realloc(t->partial_buf, t->partial_len + add + 1, t->partial_buf);
+    memcpy(t->partial_buf + t->partial_len, text, add);
+    t->partial_len += add;
+    t->partial_buf[t->partial_len] = '\0';
 }
 
 /* Drain available bytes from t->fp, emitting each complete CRI line. Honours
  * the partial ('P') / full ('F') flag — partials accumulate in t->partial_buf
- * until a final 'F' arrives, then the joined message is emitted. */
+ * until a final 'F' arrives, then the joined message is emitted.
+ *
+ * The file offset is an acknowledgement pointer: it only moves past a line
+ * once its event was accepted by the queue. On backpressure the position is
+ * rewound (to the start of the whole P-chain when reassembling) and the
+ * drain stops; the next pass retries from there. */
 static void k8s_drain_one(k8s_tracked_t *t, logreader *lf)
 {
     if (!t || !t->fp) return;
 
     char line[OS_MAXSTR];
+    long line_start  = ftell(t->fp);
+    long chain_start = -1;   /* file position of the first 'P' of the open chain */
+
     while (fgets(line, sizeof(line), t->fp)) {
         const char *ts = NULL, *stream = NULL, *text = NULL;
         char flag = 0;
@@ -847,36 +891,48 @@ static void k8s_drain_one(k8s_tracked_t *t, logreader *lf)
             /* Malformed line — emit raw for forensic visibility. */
             char *nl = strchr(line, '\n');
             if (nl) *nl = '\0';
-            k8s_emit_line(t, NULL, NULL, line, NULL, lf);
+            if (k8s_emit_line(t, NULL, NULL, line, 0, lf) != 0) {
+                fseek(t->fp, line_start, SEEK_SET);
+                break;
+            }
+            line_start = ftell(t->fp);
             continue;
         }
 
         if (flag == 'P') {
-            size_t add = strlen(text);
-            os_realloc(t->partial_buf, t->partial_len + add + 1, t->partial_buf);
-            memcpy(t->partial_buf + t->partial_len, text, add);
-            t->partial_len += add;
-            t->partial_buf[t->partial_len] = '\0';
+            if (chain_start < 0) chain_start = line_start;
+            k8s_partial_append(t, text);
+            line_start = ftell(t->fp);
             continue;
         }
 
         /* flag == 'F' — flush the partial buffer if any, then emit. */
         if (t->partial_len > 0) {
-            size_t add = strlen(text);
-            os_realloc(t->partial_buf, t->partial_len + add + 1, t->partial_buf);
-            memcpy(t->partial_buf + t->partial_len, text, add);
-            t->partial_len += add;
-            t->partial_buf[t->partial_len] = '\0';
-            k8s_emit_line(t, ts, stream, t->partial_buf, NULL, lf);
+            k8s_partial_append(t, text);
+            const int rc = k8s_emit_line(t, ts, stream, t->partial_buf,
+                                         t->partial_truncated, lf);
             os_free(t->partial_buf);
             t->partial_len = 0;
+            t->partial_truncated = 0;
+            if (rc != 0) {
+                /* Re-read the whole chain next pass. */
+                fseek(t->fp, chain_start >= 0 ? chain_start : line_start, SEEK_SET);
+                chain_start = -1;
+                break;
+            }
+            chain_start = -1;
         } else {
-            k8s_emit_line(t, ts, stream, text, NULL, lf);
+            if (k8s_emit_line(t, ts, stream, text, 0, lf) != 0) {
+                fseek(t->fp, line_start, SEEK_SET);
+                break;
+            }
         }
+        line_start = ftell(t->fp);
     }
 
     /* Update the persisted offset to reflect the bytes we have already
-     * consumed from this stream. The next k8s_save_state() will persist it. */
+     * consumed (and successfully queued) from this stream. The next
+     * k8s_save_state() will persist it. */
     long pos = ftell(t->fp);
     if (pos >= 0) t->offset = (off_t)pos;
 
