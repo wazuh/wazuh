@@ -103,6 +103,7 @@ def test_remove_from_bucket(
     """
     bucket_name = metadata['bucket_name']
     path = metadata.get('path')
+    only_logs_after = metadata.get('only_logs_after')
     parameters = [
         'wodles/aws/aws-s3',
         '--bucket', bucket_name,
@@ -114,6 +115,9 @@ def test_remove_from_bucket(
     if path is not None:
         parameters.insert(4, path)
         parameters.insert(4, '--trail_prefix')
+
+    if only_logs_after is not None:
+        parameters.extend(['--only_logs_after', only_logs_after])
 
     # Check AWS module started
     log_monitor.start(

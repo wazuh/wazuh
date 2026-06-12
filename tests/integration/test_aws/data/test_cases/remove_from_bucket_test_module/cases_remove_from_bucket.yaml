@@ -3,29 +3,34 @@
   configuration_parameters:
     BUCKET_TYPE: cloudtrail
     BUCKET_NAME: wazuh-cloudtrail-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-22
     PATH: ''
   metadata:
     resource_type: bucket
     bucket_type: cloudtrail
     bucket_name: wazuh-cloudtrail-integration-tests
+    only_logs_after: 2022-NOV-22
 
 - name: vpc_remove_from_bucket
   description: VPC remove from bucket configurations
   configuration_parameters:
     BUCKET_TYPE: vpcflow
     BUCKET_NAME: xdrsiem-agent-its-966237403726-us-east-1-an
+    ONLY_LOGS_AFTER: 2022-NOV-22
     PATH: ''
   metadata:
     resource_type: bucket
     vpc_name: wazuh-vpc-integration-tests
     bucket_type: vpcflow
     bucket_name: xdrsiem-agent-its-966237403726-us-east-1-an
+    only_logs_after: 2022-NOV-22
 
 - name: config_remove_from_bucket
   description: Config remove from bucket configurations
   configuration_parameters:
     BUCKET_TYPE: config
     BUCKET_NAME: wazuh-config-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
     PATH: ''
   metadata:
     resource_type: bucket
@@ -37,6 +42,7 @@
   configuration_parameters:
     BUCKET_TYPE: alb
     BUCKET_NAME: wazuh-alb-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
     PATH: ''
   metadata:
     resource_type: bucket
@@ -48,6 +54,7 @@
   configuration_parameters:
     BUCKET_TYPE: clb
     BUCKET_NAME: wazuh-clb-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
     PATH: ''
   metadata:
     resource_type: bucket
@@ -59,6 +66,7 @@
   configuration_parameters:
     BUCKET_TYPE: nlb
     BUCKET_NAME: wazuh-nlb-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
     PATH: ''
   metadata:
     resource_type: bucket
@@ -70,6 +78,7 @@
   configuration_parameters:
     BUCKET_TYPE: custom
     BUCKET_NAME: wazuh-kms-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
     PATH: ''
   metadata:
     resource_type: bucket
@@ -81,6 +90,7 @@
   configuration_parameters:
     BUCKET_TYPE: custom
     BUCKET_NAME: wazuh-macie-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
     PATH: ''
   metadata:
     resource_type: bucket
@@ -92,6 +102,7 @@
   configuration_parameters:
     BUCKET_TYPE: custom
     BUCKET_NAME: wazuh-trusted-advisor-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
     PATH: ''
   metadata:
     resource_type: bucket
@@ -103,6 +114,7 @@
   configuration_parameters:
     BUCKET_TYPE: guardduty
     BUCKET_NAME: wazuh-guardduty-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
     PATH: ''
   metadata:
     resource_type: bucket
@@ -114,6 +126,7 @@
   configuration_parameters:
     BUCKET_TYPE: guardduty
     BUCKET_NAME: wazuh-native-guardduty-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
     PATH: ''
   metadata:
     resource_type: bucket
@@ -125,6 +138,7 @@
   configuration_parameters:
     BUCKET_TYPE: waf
     BUCKET_NAME: wazuh-waf-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
     PATH: ''
   metadata:
     resource_type: bucket
@@ -136,6 +150,7 @@
   configuration_parameters:
     BUCKET_TYPE: server_access
     BUCKET_NAME: wazuh-server-access-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
     PATH: ''
   metadata:
     resource_type: bucket
@@ -147,6 +162,7 @@
   configuration_parameters:
     BUCKET_TYPE: cisco_umbrella
     BUCKET_NAME: wazuh-umbrella-integration-tests
+    ONLY_LOGS_AFTER: 2022-NOV-20
     PATH: dnslogs
   metadata:
     resource_type: bucket

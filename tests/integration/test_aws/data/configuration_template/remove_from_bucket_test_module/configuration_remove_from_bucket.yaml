@@ -11,6 +11,8 @@
             elements:
               - name:
                   value: BUCKET_NAME
+              - only_logs_after:
+                  value: ONLY_LOGS_AFTER
               - remove_from_bucket:
                   value: 'yes'
               - path:
