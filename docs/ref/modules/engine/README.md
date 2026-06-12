@@ -1846,7 +1846,7 @@ kanban
 
 - **Outputs**: The delivery stage. Defines how the event is sent to its destination. Each entry can be a direct
   output operation (e.g., `wazuh-indexer:`, `file:`) or a `first_of` block with conditional branching. Cannot
-  modify the event. See the [Outputs stage](#stages-1) for syntax details.
+  modify the event. See the [Outputs stage](#output) for syntax details.
 
 ### Filters
 

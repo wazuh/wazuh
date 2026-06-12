@@ -1,14 +1,13 @@
 # Glossary
 
-> Draft — definitions derived from the 5.0 documentation and source tree; pending team review.
-
 **Active Response (AR)** — Automated action executed on an agent in reaction to a
 detection. In 5.0, ARs are defined in the Dashboard and dispatched by the manager
 through `wazuh-manager-remoted`; executions are recorded in the
 `wazuh-active-responses` data stream.
 
 **Agent** — Endpoint component that collects logs, inventory, and security data
-and sends them to the manager over an encrypted TCP connection (port 1514).
+and sends them to the manager over an encrypted connection (port 1514, TCP by
+default).
 
 **Agent group** — Named set of agents that receive a shared configuration
 (`agent.conf`) from the manager. In 5.0 the group is declared by the agent during
@@ -35,8 +34,10 @@ rules pipeline.
 (`wazuh-manager-authd`, port 1515), obtains its key, and declares its agent
 group.
 
-**Event** — Normalized record produced by the Engine from raw input. Events that
-do not match any detection are indexed under `wazuh-events-v5-*`.
+**Event** — Normalized record produced by the Engine from raw input. Decoded
+events are indexed under `wazuh-events-v5-<category>` (or
+`wazuh-events-v5-unclassified` when only the root decoder accepted them),
+regardless of whether they also produce findings.
 
 **Finding** — Detection result produced by the Engine when a rule matches; the
 5.0 replacement for 4.x alerts. Indexed under `wazuh-findings-v5-*` with rule
