@@ -1,0 +1,55 @@
+# Sequenced log generator. Parameterized via envsubst by run-scenario.sh:
+#   $SEQGEN_NAME $SEQGEN_REPLICAS $SEQGEN_RATE $SEQGEN_PAD
+# Each pod emits: "SEQ <pod-name> <counter> <epoch.millis> <padding>"
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${SEQGEN_NAME}
+  namespace: loadtest
+spec:
+  replicas: ${SEQGEN_REPLICAS}
+  selector:
+    matchLabels:
+      app: ${SEQGEN_NAME}
+  template:
+    metadata:
+      labels:
+        app: ${SEQGEN_NAME}
+        role: seqgen
+    spec:
+      terminationGracePeriodSeconds: 1
+      containers:
+        - name: gen
+          image: python:3.12-alpine
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: RATE
+              value: "${SEQGEN_RATE}"
+            - name: PAD
+              value: "${SEQGEN_PAD}"
+          command: ["python3", "-u", "-c"]
+          args:
+            - |
+              import os, time
+              rate = float(os.environ.get("RATE", "5"))
+              pad = int(os.environ.get("PAD", "0"))
+              pod = os.environ.get("POD_NAME", "unknown")
+              padding = "x" * pad
+              i = 0
+              interval = 1.0 / rate
+              next_t = time.monotonic()
+              while True:
+                  print(f"SEQ {pod} {i} {time.time():.3f} {padding}", flush=True)
+                  i += 1
+                  next_t += interval
+                  delay = next_t - time.monotonic()
+                  if delay > 0:
+                      time.sleep(delay)
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi

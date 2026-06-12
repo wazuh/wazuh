@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: wazuh-agent
+  namespace: wazuh
+---
+# Node-scoped pod listing still requires a cluster-scope list permission;
+# the fieldSelector=spec.nodeName=$NODE narrows the result server-side.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: wazuh-agent-pods-read
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: wazuh-agent-pods-read
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: wazuh-agent-pods-read
+subjects:
+  - kind: ServiceAccount
+    name: wazuh-agent
+    namespace: wazuh

@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wazuh-agent-config
+  namespace: wazuh
+data:
+  # __MANAGER_IP__ and __NODE_NAME__ are substituted by entrypoint.sh.
+  # <client_buffer><disabled>yes</disabled> is mandatory for the spike's
+  # no-loss verification: the default agent buffer enforces an EPS cap and
+  # drops events under load, which would be indistinguishable from tailer loss.
+  ossec.conf.template: |
+    <ossec_config>
+      <client>
+        <server>
+          <address>__MANAGER_IP__</address>
+          <port>1514</port>
+          <protocol>tcp</protocol>
+        </server>
+        <crypto_method>aes</crypto_method>
+        <notify_time>10</notify_time>
+        <time-reconnect>60</time-reconnect>
+        <enrollment>
+          <enabled>yes</enabled>
+          <agent_name>k8s-__NODE_NAME__</agent_name>
+        </enrollment>
+      </client>
+
+      <client_buffer>
+        <disabled>yes</disabled>
+      </client_buffer>
+
+      <syscheck>
+        <disabled>yes</disabled>
+      </syscheck>
+
+      <sca>
+        <enabled>no</enabled>
+      </sca>
+
+      <container_connector>
+        <kubernetes>
+          <enabled>yes</enabled>
+        </kubernetes>
+      </container_connector>
+
+      <localfile>
+        <log_format>container</log_format>
+        <location>kubernetes</location>
+        <filter field="namespace">loadtest</filter>
+      </localfile>
+    </ossec_config>
