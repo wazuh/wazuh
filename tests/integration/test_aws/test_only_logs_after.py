@@ -766,6 +766,7 @@ def test_bucket_multiple_calls(
 
     bucket_type = metadata['bucket_type']
     bucket_name = metadata['bucket_name']
+    data_bucket_name = metadata.get('original_bucket_name', bucket_name)
     expected_results = metadata['expected_results']
     path = metadata.get('path')
     region = US_EAST_1_REGION
@@ -863,7 +864,7 @@ def test_bucket_multiple_calls(
                                   flow_log_id=metadata['flow_log_id'])
     else:
         data, key = generate_file(bucket_type=bucket_type,
-                                  bucket_name=bucket_name,
+                                  bucket_name=data_bucket_name,
                                   region=region,
                                   prefix='',
                                   suffix='',
