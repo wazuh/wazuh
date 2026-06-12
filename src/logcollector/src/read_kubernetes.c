@@ -571,6 +571,22 @@ typedef struct {
 static k8s_state_entry_t *g_pending_state = NULL;
 static size_t             g_pending_n     = 0;
 
+/* Shutdown persistence: the logcollector exits through exit() (signal handler
+ * included), so an atexit hook is the reliable flush point — mirrors the
+ * w_save_file_status() registration in logcollector.c. Single-runtime only:
+ * multiple kubernetes <localfile> blocks are not supported by the prototype
+ * (see the config warning emitted at init). */
+static k8s_runtime_t *g_atexit_runtime = NULL;
+
+static void k8s_save_state(const k8s_runtime_t *rt);
+
+static void k8s_atexit_save(void)
+{
+    if (g_atexit_runtime) {
+        k8s_save_state(g_atexit_runtime);
+    }
+}
+
 static void k8s_state_free_pending(void)
 {
     for (size_t i = 0; i < g_pending_n; i++) {
@@ -956,6 +972,14 @@ void *read_kubernetes(logreader *lf, int *rc, int drop_it)
         mtinfo(K8S_LOG_TAG, "Kubernetes logreader initialised (location=%s%s).",
                lf->k8s_log->container_path ? "kubernetes:" : "kubernetes",
                lf->k8s_log->container_path ? lf->k8s_log->container_path : "");
+        if (g_atexit_runtime) {
+            mtwarn(K8S_LOG_TAG, "Multiple kubernetes <localfile> blocks are not supported "
+                   "by this prototype; checkpoint state is kept for the last block only.");
+        } else if (atexit(k8s_atexit_save)) {
+            mtwarn(K8S_LOG_TAG, "Could not register shutdown handler; the checkpoint "
+                   "will only be persisted by the periodic flush.");
+        }
+        g_atexit_runtime = rt;
     }
     k8s_runtime_t *rt = (k8s_runtime_t *)lf->k8s_log->runtime;
 
@@ -971,7 +995,14 @@ void *read_kubernetes(logreader *lf, int *rc, int drop_it)
     const time_t now = time(NULL);
     if (now - rt->last_scan >= K8S_RESCAN_INTERVAL) {
         rt->last_scan = now;
+        const size_t tracked_before = rt->tracked_n;
         k8s_scan_once(lf, rt);
+        if (rt->tracked_n != tracked_before) {
+            /* The tracked set changed: persist immediately so recovery
+             * decisions after a crash never run on a stale identity set. */
+            k8s_save_state(rt);
+            rt->last_flush = now;
+        }
     }
 
     /* Tail every tracked container's log file. open_or_reopen handles
@@ -991,6 +1022,10 @@ void k8s_logreader_destroy_runtime(logreader *lf)
 {
     if (!lf || !lf->k8s_log || !lf->k8s_log->runtime) return;
     k8s_runtime_t *rt = (k8s_runtime_t *)lf->k8s_log->runtime;
+    k8s_save_state(rt);
+    if (g_atexit_runtime == rt) {
+        g_atexit_runtime = NULL;
+    }
     for (size_t i = 0; i < rt->tracked_n; i++) {
         k8s_tracked_free(rt->tracked[i]);
     }
