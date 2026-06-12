@@ -436,14 +436,16 @@ static inline bool bpf_link_is_error(const struct bpf_link *link) {
 /*
  * Decide which programs in the loaded object should autoload.
  *
- * On systems where BPF LSM is active in /sys/kernel/security/lsm we
- * prefer the lsm/* programs (cleaner semantics, fewer kernel-version
- * pitfalls). Otherwise the lsm/* programs would attach but never fire,
- * so we disable them and rely on the kprobe/* fallbacks instead.
+ * Three knobs:
+ *   - use_lsm:       true  -> keep lsm/* programs, drop the create/delete kprobes
+ *                    false -> keep kprobes, drop lsm/*
+ *   - prefer_dpath:  among the lsm/* variants, true keeps *_dpath and drops
+ *                    *_walk; false keeps *_walk and drops *_dpath.
  *
- * security_inode_setattr is always enabled regardless of LSM state.
+ * security_inode_setattr is always enabled (it works regardless of the
+ * active LSM list and is independent of bpf_d_path).
  */
-static void select_programs(bpf_object* obj, bool use_lsm) {
+static void select_programs(bpf_object* obj, bool use_lsm, bool prefer_dpath) {
     bpf_program* prog;
     bpf_object__for_each_program(bpf_helpers, prog, obj) {
         const char* sec  = bpf_helpers->bpf_program_section_name(prog);
@@ -457,12 +459,22 @@ static void select_programs(bpf_object* obj, bool use_lsm) {
             (strncmp(sec, "kprobe/", 7) == 0) &&
             (strstr(sec, "vfs_open") != nullptr ||
              strstr(sec, "vfs_unlink") != nullptr);
+        const bool is_dpath_variant = name && strstr(name, "_dpath") != nullptr;
+        const bool is_walk_variant  = name && strstr(name, "_walk")  != nullptr;
 
         bool keep = true;
-        if (use_lsm && is_create_or_unlink_kprobe) {
-            keep = false;
-        } else if (!use_lsm && is_lsm) {
-            keep = false;
+        if (use_lsm) {
+            if (is_create_or_unlink_kprobe) {
+                keep = false;
+            } else if (is_lsm && is_dpath_variant && !prefer_dpath) {
+                keep = false;
+            } else if (is_lsm && is_walk_variant  &&  prefer_dpath) {
+                keep = false;
+            }
+        } else {
+            if (is_lsm) {
+                keep = false;
+            }
         }
 
         bpf_helpers->bpf_program_set_autoload(prog, keep);
@@ -487,28 +499,53 @@ int init_bpfobj() {
     }
     abspathFn(BPF_OBJ_INSTALL_PATH, bpfobj_path, sizeof(bpfobj_path));
 
-    bpf_object* obj = bpf_helpers->bpf_object_open_file(bpfobj_path, nullptr);
-    if (!obj) {
-        char error_message[4200];
-        snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_OBJ_OPEN, bpfobj_path, strerror(errno));
-        logFn(LOG_ERROR, error_message);
-        return 1;
-    }
-    global_obj = obj;
-
-    /* Decide LSM vs kprobe set BEFORE loading so the verifier only sees
-     * the programs we actually intend to attach. */
     g_bpf_lsm_active = is_bpf_lsm_active();
     logFn(LOG_INFO, g_bpf_lsm_active ? FIM_EBPF_LSM_ACTIVE : FIM_EBPF_LSM_INACTIVE);
-    select_programs(obj, g_bpf_lsm_active);
 
-    int err = bpf_helpers->bpf_object_load(obj);
-    if (err) {
-        logFn(LOG_ERROR, FIM_ERROR_EBPF_OBJ_LOAD);
+    /*
+     * Prefer the bpf_d_path-based LSM variants (they give namespace-aware
+     * paths). If load fails — typically because bpf_d_path is not allowed
+     * for the target LSM hook on this kernel (e.g. Amazon Linux 2 / 2023
+     * reject it for bpf_lsm_path_unlink) — close, reopen, and retry with
+     * the manual-walker variants. We only fall back once.
+     */
+    bpf_object* obj = nullptr;
+    bool prefer_dpath = g_bpf_lsm_active;  /* only meaningful when LSM is active */
+    bool fallback_attempted = false;
+    int err = 0;
+
+    while (true) {
+        obj = bpf_helpers->bpf_object_open_file(bpfobj_path, nullptr);
+        if (!obj) {
+            char error_message[4200];
+            snprintf(error_message, sizeof(error_message),
+                     FIM_ERROR_EBPF_OBJ_OPEN, bpfobj_path, strerror(errno));
+            logFn(LOG_ERROR, error_message);
+            return 1;
+        }
+
+        select_programs(obj, g_bpf_lsm_active, prefer_dpath);
+
+        err = bpf_helpers->bpf_object_load(obj);
+        if (!err) {
+            break;
+        }
+
         bpf_helpers->bpf_object_close(obj);
-        global_obj = nullptr;
+        obj = nullptr;
+
+        if (g_bpf_lsm_active && prefer_dpath && !fallback_attempted) {
+            logFn(LOG_INFO, FIM_EBPF_LSM_DPATH_FALLBACK);
+            prefer_dpath = false;
+            fallback_attempted = true;
+            continue;
+        }
+
+        logFn(LOG_ERROR, FIM_ERROR_EBPF_OBJ_LOAD);
         return 1;
     }
+
+    global_obj = obj;
 
     bpf_program* prog;
     bpf_object__for_each_program(bpf_helpers, prog, obj) {
