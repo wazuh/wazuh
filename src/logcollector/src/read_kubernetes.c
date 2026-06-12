@@ -412,8 +412,9 @@ static void k8s_consider_container(logreader *lf, k8s_runtime_t *rt,
                    pod, container_name, existing->log_path, latest);
             os_free(existing->log_path);
             existing->log_path = latest;
-            existing->inode = 0;  /* force reopen on next k8s_open_or_reopen */
+            existing->inode = 0;  /* force reopen: open_or_reopen drains the old fp first */
             existing->offset = 0; /* new file, no offset to resume from */
+            existing->open_from_start = 1; /* new incarnation: never skip its head */
             latest = NULL;
         }
         os_free(latest);
@@ -617,12 +618,10 @@ static int k8s_state_consume(const char *pod_uid, const char *container_name,
         if (!e->pod_uid || !e->container_name) continue;
         if (strcmp(e->pod_uid, pod_uid) != 0) continue;
         if (strcmp(e->container_name, container_name) != 0) continue;
-        /* Same logical container. Honour the offset only if the on-disk
-         * file still has the same inode AND log_path — kubelet rotation
-         * invalidates the offset. */
-        if (e->log_path && log_path && strcmp(e->log_path, log_path) != 0) {
-            return 0;
-        }
+        /* Same logical container. The entry is returned even when log_path
+         * changed (restart-count bump while the agent was down): the caller
+         * anchors recovery on the inode, not the path. */
+        (void)log_path;
         *out_inode  = e->inode;
         *out_offset = e->offset;
         /* Remove from pending so we don't reuse it. */
@@ -888,25 +887,186 @@ static void k8s_drain_one(k8s_tracked_t *t, logreader *lf)
     clearerr(t->fp);
 }
 
+/* ------------------------------------------------------------------
+ * Rotated-file recovery (across agent restarts)
+ *
+ * kubelet rotation: "<N>.log" is renamed to "<N>.log.<timestamp>" and a
+ * fresh "<N>.log" is created; older rotated files are gzipped and finally
+ * deleted (containerLogMaxFiles). N itself bumps on container restart.
+ * Plain rotated files keep their inode, which lets us anchor the saved
+ * checkpoint to the renamed file and finish reading it.
+ * ------------------------------------------------------------------ */
+
+typedef struct {
+    char *path;
+    ino_t inode;
+    long  n;        /* "<N>" restart-count prefix */
+    char *suffix;   /* rotation timestamp suffix, NULL for the live "<N>.log" */
+} k8s_logfile_t;
+
+/* Chronological order: ascending N; within one N, rotated files in suffix
+ * (timestamp) order, then the live "<N>.log" last. */
+static int k8s_logfile_cmp(const void *va, const void *vb)
+{
+    const k8s_logfile_t *a = va, *b = vb;
+    if (a->n != b->n) return (a->n < b->n) ? -1 : 1;
+    if (!a->suffix && !b->suffix) return 0;
+    if (!a->suffix) return 1;   /* live file is newest of its N */
+    if (!b->suffix) return -1;
+    return strcmp(a->suffix, b->suffix);
+}
+
+/* Enumerate plain (non-gz) "<N>.log[.<suffix>]" files in dir, sorted
+ * chronologically. Caller frees with k8s_logfiles_free(). */
+static k8s_logfile_t *k8s_list_log_files(const char *dir, size_t *out_n)
+{
+    *out_n = 0;
+    DIR *d = opendir(dir);
+    if (!d) return NULL;
+
+    k8s_logfile_t *files = NULL;
+    size_t n = 0;
+    struct dirent *e;
+    while ((e = readdir(d))) {
+        if (e->d_name[0] == '.') continue;
+        const char *dotlog = strstr(e->d_name, ".log");
+        if (!dotlog) continue;
+        size_t name_len = strlen(e->d_name);
+        if (name_len > 3 && strcmp(e->d_name + name_len - 3, ".gz") == 0) continue;
+
+        char *endp = NULL;
+        long file_n = strtol(e->d_name, &endp, 10);
+        if (endp == e->d_name || strncmp(endp, ".log", 4) != 0) continue;
+
+        char path[PATH_MAX];
+        snprintf(path, sizeof(path), "%s/%s", dir, e->d_name);
+        struct stat st;
+        if (stat(path, &st) != 0 || !S_ISREG(st.st_mode)) continue;
+
+        os_realloc(files, (n + 1) * sizeof(k8s_logfile_t), files);
+        memset(&files[n], 0, sizeof(k8s_logfile_t));
+        os_strdup(path, files[n].path);
+        files[n].inode = st.st_ino;
+        files[n].n     = file_n;
+        if (endp[4] == '.') {
+            os_strdup(endp + 5, files[n].suffix);
+        }
+        n++;
+    }
+    closedir(d);
+
+    if (files) qsort(files, n, sizeof(k8s_logfile_t), k8s_logfile_cmp);
+    *out_n = n;
+    return files;
+}
+
+static void k8s_logfiles_free(k8s_logfile_t *files, size_t n)
+{
+    for (size_t i = 0; i < n; i++) {
+        os_free(files[i].path);
+        os_free(files[i].suffix);
+    }
+    os_free(files);
+}
+
+/* Drain one on-disk file [start_offset, EOF) through the normal emit path,
+ * using a temporary fp on the tracked entry. */
+static void k8s_drain_file(k8s_tracked_t *t, logreader *lf, const char *path, off_t start_offset)
+{
+    FILE *prev = t->fp;
+    t->fp = fopen(path, "r");
+    if (!t->fp) {
+        mtwarn(K8S_LOG_TAG, "Recovery: cannot open '%s': %s", path, strerror(errno));
+        t->fp = prev;
+        return;
+    }
+    if (start_offset > 0 && fseek(t->fp, start_offset, SEEK_SET) != 0) {
+        fseek(t->fp, 0, SEEK_SET);
+    }
+    k8s_drain_one(t, lf);
+    fclose(t->fp);
+    t->fp = prev;
+}
+
+/* The checkpointed inode is not the live file: it was rotated (renamed) or
+ * the restart count bumped while the agent was down. Finish the checkpointed
+ * file from the saved offset, then drain every newer plain file, in order.
+ * The caller then opens the live file from byte 0.
+ *
+ * If the inode is gone (rotated away to gzip or GC'd), everything still on
+ * disk is newer than the checkpoint except pre-checkpoint content of plain
+ * files that never rotated — we accept bounded duplicates over loss and
+ * drain all plain siblings from 0 (the gzip tier is specified in the spike's
+ * checkpoint doc and intentionally not implemented in this prototype). */
+static void k8s_recover_rotated(k8s_tracked_t *t, logreader *lf,
+                                ino_t want_inode, off_t want_offset)
+{
+    char dir[PATH_MAX];
+    snprintf(dir, sizeof(dir), "%s", t->log_path);
+    char *slash = strrchr(dir, '/');
+    if (!slash) return;
+    *slash = '\0';
+
+    size_t n = 0;
+    k8s_logfile_t *files = k8s_list_log_files(dir, &n);
+    if (!files) return;
+
+    ssize_t anchor = -1;
+    for (size_t i = 0; i < n; i++) {
+        if (files[i].inode == want_inode) { anchor = (ssize_t)i; break; }
+    }
+
+    if (anchor < 0) {
+        mtwarn(K8S_LOG_TAG,
+               "Recovery: checkpointed file for pod=%s container=%s no longer on disk "
+               "(rotation window exceeded); collecting the retained plain files — "
+               "lines rotated to gzip or deleted during the downtime are lost.",
+               t->pod_name, t->container_name);
+    }
+
+    for (size_t i = (anchor < 0) ? 0 : (size_t)anchor; i < n; i++) {
+        if (strcmp(files[i].path, t->log_path) == 0) continue;  /* live file: caller's job */
+        off_t start = ((ssize_t)i == anchor) ? want_offset : 0;
+        mtinfo(K8S_LOG_TAG, "Recovery: draining rotated file '%s' from offset %lld "
+               "(pod=%s container=%s).",
+               files[i].path, (long long)start, t->pod_name, t->container_name);
+        k8s_drain_file(t, lf, files[i].path, start);
+    }
+
+    k8s_logfiles_free(files, n);
+}
+
 /* Open (or re-open after rotation) the log file for a tracked container.
  *
  * Open strategy (in order of preference):
- *   1. If we already have a fp and its inode still matches: nothing to do.
- *   2. If the checkpoint state has a record for (pod_uid, container_name)
- *      AND the inode of the on-disk file matches the recorded one:
- *      fseek(offset) — resume cleanly from where we left off.
- *   3. Otherwise (cold start, rotation, brand-new container): SEEK_END so
- *      we do not replay history.
+ *   1. fp open and inode unchanged: nothing to do.
+ *   2. fp open and inode changed (in-run rotation / restart bump): drain the
+ *      old fp to EOF first — it still reads the renamed file — then continue
+ *      on the new file from byte 0.
+ *   3. First open with a checkpoint entry: same inode -> exact resume at the
+ *      saved offset; different inode -> rotated-file recovery ladder, then
+ *      the live file from byte 0.
+ *   4. No checkpoint: byte 0 for containers born after the initial scan,
+ *      SEEK_END for cold-start containers (no history replay).
  */
-static int k8s_open_or_reopen(k8s_tracked_t *t)
+static int k8s_open_or_reopen(k8s_tracked_t *t, logreader *lf)
 {
     struct stat st;
+    int rotated_while_open = 0;
+
     if (t->fp) {
         if (stat(t->log_path, &st) == 0 && st.st_ino == t->inode) {
             return 0;  /* still the same file */
         }
+        /* The open fp still points at the renamed (or previous-incarnation)
+         * file: drain whatever was appended after our last read. */
+        k8s_drain_one(t, lf);
         fclose(t->fp);
         t->fp = NULL;
+        rotated_while_open = 1;
+        /* If the new file cannot be opened right away (rename/create race),
+         * make sure the eventual open starts from byte 0. */
+        t->open_from_start = 1;
     }
 
     t->fp = fopen(t->log_path, "r");
@@ -918,10 +1078,16 @@ static int k8s_open_or_reopen(k8s_tracked_t *t)
         t->inode = st.st_ino;
     }
 
-    /* Try to resume from checkpoint. The state file may have an entry for
-     * this (pod_uid, container_name); honour it only if the recorded inode
-     * matches the current on-disk inode (otherwise kubelet rotated the file
-     * and the offset is invalid). */
+    if (rotated_while_open) {
+        fseek(t->fp, 0, SEEK_SET);
+        t->offset = 0;
+        mtinfo(K8S_LOG_TAG,
+               "Rotation: drained previous file, continuing on '%s' from start "
+               "(pod=%s container=%s).", t->log_path, t->pod_name, t->container_name);
+        return 0;
+    }
+
+    /* First open after a (re)start: try to resume from the checkpoint. */
     ino_t recovered_inode = 0;
     off_t recovered_offset = 0;
     int resumed = 0;
@@ -937,8 +1103,13 @@ static int k8s_open_or_reopen(k8s_tracked_t *t)
             }
         } else {
             mtinfo(K8S_LOG_TAG,
-                   "Checkpoint inode mismatch (rotation between restarts): pod=%s container=%s file=%s; tailing from end.",
+                   "Checkpoint inode mismatch (rotation while stopped): pod=%s container=%s "
+                   "file=%s; recovering rotated files.",
                    t->pod_name, t->container_name, t->log_path);
+            k8s_recover_rotated(t, lf, recovered_inode, recovered_offset);
+            fseek(t->fp, 0, SEEK_SET);
+            t->offset = 0;
+            resumed = 1;
         }
     }
 
@@ -967,7 +1138,7 @@ static void k8s_tail_all(k8s_runtime_t *rt, logreader *lf)
     for (size_t i = 0; i < rt->tracked_n; i++) {
         k8s_tracked_t *t = rt->tracked[i];
         if (!t || !t->log_path) continue;
-        if (k8s_open_or_reopen(t) != 0) continue;
+        if (k8s_open_or_reopen(t, lf) != 0) continue;
         k8s_drain_one(t, lf);
     }
 }
