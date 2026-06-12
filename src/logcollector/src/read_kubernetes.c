@@ -378,18 +378,24 @@ static void k8s_tracked_remove_at(k8s_runtime_t *rt, size_t idx)
  * Scan + reconcile
  * ============================================================ */
 
-/* Pick the latest <N>.log file under a container directory (kubelet rotates,
- * leaving 0.log .. N.log). Returns a heap-allocated path or NULL. */
+/* Pick the live log file with the highest restart count under a container
+ * directory. Matches ONLY names of the exact form "<N>.log": rotated
+ * siblings ("<N>.log.<ts>", "<N>.log.<ts>.gz") must never qualify — a
+ * substring match would let readdir() order decide between "0.log" and
+ * "0.log.<ts>" (both atoi() to 0), flip-flopping the tracked path under
+ * rotation and re-reading rotated files from scratch.
+ * Returns a heap-allocated path or NULL. */
 static char *k8s_latest_log_file(const char *container_dir)
 {
     DIR *d = opendir(container_dir);
     if (!d) return NULL;
-    int    best_n = -1;
+    long   best_n = -1;
     char  *best   = NULL;
     struct dirent *e;
     while ((e = readdir(d))) {
-        if (strstr(e->d_name, ".log") == NULL) continue;
-        int n = atoi(e->d_name);
+        char *endp = NULL;
+        long n = strtol(e->d_name, &endp, 10);
+        if (endp == e->d_name || strcmp(endp, ".log") != 0) continue;
         if (n > best_n) {
             best_n = n;
             os_free(best);
@@ -1041,7 +1047,11 @@ static void k8s_logfiles_free(k8s_logfile_t *files, size_t n)
 }
 
 /* Drain one on-disk file [start_offset, EOF) through the normal emit path,
- * using a temporary fp on the tracked entry. */
+ * using a temporary fp on the tracked entry.
+ * Prototype caveat (documented in the spike's failure-modes table): a drain
+ * cut short by queue backpressure is not resumed for recovery files — the
+ * implementation should fold recovery into the per-pass state machine so
+ * backpressure pauses rather than truncates the catch-up. */
 static void k8s_drain_file(k8s_tracked_t *t, logreader *lf, const char *path, off_t start_offset)
 {
     FILE *prev = t->fp;
@@ -1136,6 +1146,14 @@ static int k8s_open_or_reopen(k8s_tracked_t *t, logreader *lf)
         /* The open fp still points at the renamed (or previous-incarnation)
          * file: drain whatever was appended after our last read. */
         k8s_drain_one(t, lf);
+        /* Only switch once the old file is fully consumed — a drain cut short
+         * by queue backpressure must not lose the renamed file's tail. The
+         * file is frozen after the rename, so its EOF is stable and the next
+         * pass finishes it. */
+        struct stat ost;
+        if (fstat(fileno(t->fp), &ost) == 0 && (off_t)ftell(t->fp) < ost.st_size) {
+            return 0;
+        }
         fclose(t->fp);
         t->fp = NULL;
         rotated_while_open = 1;
