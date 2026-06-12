@@ -300,3 +300,94 @@ def test_aws_vpc_flow_bucket_mark_complete_handles_exceptions_on_query_error(moc
                            log_file={'Key': TEST_LOG_KEY}, flow_log_id=TEST_FLOW_LOG_ID)
 
     mock_debug.assert_any_call(f"+++ Error marking log {TEST_LOG_KEY} as completed: ", 2)
+
+
+def test_vpcflow_import_error_exits_4():
+    """Test that importing vpcflow without boto3 prints an error and exits with code 4."""
+    import importlib
+    import builtins
+    real_import = builtins.__import__
+
+    def mock_import(name, *args, **kwargs):
+        if name == 'boto3':
+            raise ImportError
+        return real_import(name, *args, **kwargs)
+
+    with patch('builtins.__import__', side_effect=mock_import), \
+            patch('builtins.print') as mock_print, \
+            pytest.raises(SystemExit) as e:
+        import vpcflow as _vf
+        importlib.reload(_vf)
+
+    assert e.value.code == 4
+    mock_print.assert_any_call('ERROR: boto3 module is required.')
+
+
+@patch('vpcflow.AWSVPCFlowBucket.get_ec2_client')
+def test_aws_vpc_flow_bucket_get_flow_logs_ids_returns_empty_on_value_error(mock_get_ec2_client):
+    """Test get_flow_logs_ids returns [] and logs debug messages when ValueError is raised (invalid region)."""
+    instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
+    mock_get_ec2_client.side_effect = ValueError("invalid region")
+
+    with patch('aws_tools.debug') as mock_debug:
+        result = instance.get_flow_logs_ids('invalid-region', utils.TEST_ACCOUNT_ID)
+
+    assert result == []
+    mock_debug.assert_any_call(
+        instance.empty_bucket_message_template_without_log_id.format(
+            aws_account_id=utils.TEST_ACCOUNT_ID, aws_region='invalid-region'),
+        msg_level=1
+    )
+    mock_debug.assert_any_call(
+        "+++ WARNING: Check the provided region: 'invalid-region'. It's an invalid one.", msg_level=1
+    )
+
+
+@patch('aws_bucket.AWSLogsBucket.iter_files_in_bucket')
+@patch('vpcflow.AWSVPCFlowBucket.db_maintenance')
+@patch('vpcflow.AWSVPCFlowBucket.get_flow_logs_ids', return_value=['Id1'])
+@patch('aws_bucket.AWSBucket.find_account_ids', return_value=[utils.TEST_ACCOUNT_ID])
+@patch('aws_bucket.AWSBucket.find_regions', return_value=[])
+def test_aws_vpc_flow_bucket_iter_regions_and_accounts_skips_account_when_no_regions(
+        mock_find_regions, mock_accounts, mock_get_flow_logs_ids, mock_maintenance, mock_iter_files):
+    """Test iter_regions_and_accounts skips an account when find_regions returns empty list."""
+    instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
+
+    instance.iter_regions_and_accounts(None, None)
+
+    mock_iter_files.assert_not_called()
+    mock_maintenance.assert_not_called()
+
+
+def test_aws_vpc_flow_bucket_db_maintenance_logs_error_on_exception():
+    """Test db_maintenance logs an error when an exception is raised during DB cleanup."""
+    instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
+
+    with patch.object(instance, 'db_count_region', side_effect=Exception("db error")), \
+            patch('aws_tools.error') as mock_error:
+        instance.db_maintenance(
+            aws_account_id=utils.TEST_ACCOUNT_ID,
+            aws_region=utils.TEST_REGION,
+            flow_log_id=TEST_FLOW_LOG_ID
+        )
+
+    mock_error.assert_called_once_with(
+        f"Failed to execute DB cleanup - AWS Account ID: {utils.TEST_ACCOUNT_ID}  "
+        f"Region: {utils.TEST_REGION}: db error"
+    )
+
+
+def test_aws_vpc_flow_bucket_filter_bucket_files_yields_matching_flow_log_id():
+    """Test _filter_bucket_files yields only files whose Key contains the flow_log_id."""
+    instance = utils.get_mocked_bucket(class_=vpcflow.AWSVPCFlowBucket)
+
+    bucket_files = [
+        {'Key': 'AWSLogs/123/vpcflowlogs/us-east-1/2019/04/15/123_vpcflowlogs_us-east-1_fl-1234_file.log.gz'},
+        {'Key': 'AWSLogs/123/vpcflowlogs/us-east-1/2019/04/15/123_vpcflowlogs_us-east-1_fl-9999_file.log.gz'},
+        {'Key': 'AWSLogs/123/vpcflowlogs/us-east-1/2019/04/15/'},  # folder — filtered by super()
+    ]
+
+    result = list(instance._filter_bucket_files(bucket_files, flow_log_id=TEST_FLOW_LOG_ID))
+
+    assert len(result) == 1
+    assert TEST_FLOW_LOG_ID in result[0]['Key']

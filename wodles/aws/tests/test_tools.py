@@ -222,3 +222,130 @@ def test_get_script_arguments_iam_role_duration_but_no_iam_role_arn_raises_excep
     args = ['main', '--subscriber', 'security_lake', '--iam_role_duration', '3600']
     with patch("sys.argv", args), pytest.raises(argparse.ArgumentTypeError) as exception:
         aws_tools.get_script_arguments()
+
+
+# ---------------------------------------------------------------------------
+# handler
+# ---------------------------------------------------------------------------
+
+def test_handler_exits_with_code_2():
+    """handler() prints an error message and exits with code 2 on SIGINT."""
+    with patch('builtins.print') as mock_print, pytest.raises(SystemExit) as exc_info:
+        aws_tools.handler(None, None)
+    assert exc_info.value.code == 2
+    mock_print.assert_called_once_with("ERROR: SIGINT received.")
+
+
+# ---------------------------------------------------------------------------
+# set_profile_dict_config
+# ---------------------------------------------------------------------------
+
+def test_set_profile_dict_config_sets_s3_config_when_profile_has_s3_section():
+    """set_profile_dict_config sets boto_config['config'].s3 when the profile has an s3 section."""
+    from botocore.config import Config
+    boto_config = {'config': Config()}
+    profile = 'myprofile'
+    profile_config = {
+        f'{profile}.s3.max_concurrent_requests': '5',
+        f'{profile}.s3.max_queue_size': '8',
+        f'{profile}.s3.multipart_threshold': '16MB',
+        f'{profile}.s3.multipart_chunksize': '16MB',
+        f'{profile}.s3.max_bandwidth': None,
+        f'{profile}.s3.use_accelerate_endpoint': 'true',
+        f'{profile}.s3.addressing_style': 'path',
+    }
+
+    mock_config = MagicMock()
+    mock_config.__contains__ = lambda self, key: key in str(profile_config)
+
+    def mock_get(key, default=None):
+        return profile_config.get(key, default)
+
+    mock_config.get = mock_get
+    mock_config.__str__ = lambda self: str(profile_config)
+
+    aws_tools.set_profile_dict_config(boto_config, profile, mock_config)
+
+    s3 = boto_config['config'].s3
+    assert s3['max_concurrent_requests'] == 5
+    assert s3['max_queue_size'] == 8
+    assert s3['multipart_threshold'] == '16MB'
+    assert s3['use_accelerate_endpoint'] is True
+    assert s3['addressing_style'] == 'path'
+
+
+def test_set_profile_dict_config_sets_proxy_config_when_profile_has_proxy_section():
+    """set_profile_dict_config sets proxies and proxies_config when the profile has a proxy section."""
+    from botocore.config import Config
+    boto_config = {'config': Config()}
+    profile = 'myprofile'
+    profile_config = {
+        f'{profile}.proxy.host': 'proxy.example.com',
+        f'{profile}.proxy.port': '8080',
+        f'{profile}.proxy.username': 'user',
+        f'{profile}.proxy.password': 'pass',
+        f'{profile}.proxy.ca_bundle': '/etc/ssl/ca.pem',
+        f'{profile}.proxy.client_cert': '/etc/ssl/client.pem',
+        f'{profile}.proxy.use_forwarding_for_https': 'true',
+    }
+
+    mock_config = MagicMock()
+    mock_config.__str__ = lambda self: str(profile_config)
+
+    def mock_get(key, default=None):
+        return profile_config.get(key, default)
+
+    mock_config.get = mock_get
+
+    aws_tools.set_profile_dict_config(boto_config, profile, mock_config)
+
+    proxies = boto_config['config'].proxies
+    assert proxies['host'] == 'proxy.example.com'
+    assert proxies['port'] == 8080
+    assert proxies['username'] == 'user'
+
+    proxies_config = boto_config['config'].proxies_config
+    assert proxies_config['ca_bundle'] == '/etc/ssl/ca.pem'
+    assert proxies_config['use_forwarding_for_https'] is True
+
+
+def test_set_profile_dict_config_strips_profile_prefix():
+    """set_profile_dict_config strips the 'profile ' prefix from the profile name before lookups."""
+    from botocore.config import Config
+    boto_config = {'config': Config()}
+    # Profile name with 'profile ' prefix as it appears in some AWS config files
+    profile_with_prefix = 'profile myprofile'
+    stripped = 'myprofile'
+    profile_config_data = {
+        f'{stripped}.s3.max_concurrent_requests': '3',
+        f'{stripped}.s3.max_queue_size': '3',
+        f'{stripped}.s3.use_accelerate_endpoint': 'false',
+        f'{stripped}.s3.addressing_style': 'auto',
+    }
+
+    mock_config = MagicMock()
+    mock_config.__str__ = lambda self: str(profile_config_data)
+
+    def mock_get(key, default=None):
+        return profile_config_data.get(key, default)
+
+    mock_config.get = mock_get
+
+    aws_tools.set_profile_dict_config(boto_config, profile_with_prefix, mock_config)
+
+    assert boto_config['config'].s3['addressing_style'] == 'auto'
+
+
+def test_set_profile_dict_config_does_not_set_s3_or_proxy_when_absent():
+    """set_profile_dict_config leaves boto_config unchanged when neither s3 nor proxy sections exist."""
+    from botocore.config import Config
+    cfg = Config()
+    boto_config = {'config': cfg}
+
+    mock_config = MagicMock()
+    mock_config.__str__ = lambda self: '{}'
+
+    aws_tools.set_profile_dict_config(boto_config, 'myprofile', mock_config)
+
+    assert boto_config['config'].s3 is None
+    assert boto_config['config'].proxies is None
