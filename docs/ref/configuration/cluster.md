@@ -41,7 +41,7 @@ The current cluster implementation allows only one master node.
 
 Defines the key used to encrypt the communication between the nodes. This key must be 32 characters long.
 
-- **Default value**: `fd3350b86d239654e34866ab3c4988a8` (well-known placeholder — **must always be replaced**)
+- **Default value**: Value randomly produced during node installation.
 - **Allowed values**: Letters, digits, and underscores (32 characters)
 
 This key must be the same for all of the cluster nodes.
@@ -49,6 +49,16 @@ This key must be the same for all of the cluster nodes.
 **Key generation example**:
 ```bash
 openssl rand -hex 16
+```
+
+To modify the key manually for all workers, do this in master node:
+
+```bash
+grep '<key>' /var/wazuh-manager/etc/wazuh-manager.conf
+
+# Once copied, copy it in each worker node and then restart the manager:
+sudo sed -i 's|<key>.*</key>|<key>PASTE_MASTER_KEY_HERE</key>|' /var/wazuh-manager/etc/wazuh-manager.conf
+sudo systemctl restart wazuh-manager
 ```
 
 ### port
