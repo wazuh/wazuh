@@ -57,6 +57,9 @@ typedef struct k8s_tracked_container {
     off_t  offset;           /* last persisted byte offset; updated after each drain */
     char  *partial_buf;      /* accumulator for CRI 'P' (partial) lines until next 'F' */
     size_t partial_len;
+    int    open_from_start;  /* container appeared after the initial scan: its log file
+                              * is seconds old, so reading from byte 0 captures the
+                              * startup lines without replaying history */
 } k8s_tracked_t;
 
 typedef struct k8s_runtime {
@@ -65,6 +68,9 @@ typedef struct k8s_runtime {
     time_t          last_scan;
     time_t          last_flush;  /* last time we persisted state.json */
     int             state_loaded; /* 1 once we tried loading state at startup */
+    int             initial_scan_done; /* containers seen on the very first scan are
+                                        * cold-start (tail from end unless checkpointed);
+                                        * containers seen later are new (read from 0) */
 } k8s_runtime_t;
 
 /* ============================================================
@@ -442,6 +448,7 @@ static void k8s_consider_container(logreader *lf, k8s_runtime_t *rt,
     /* Matched — start tracking. */
     k8s_tracked_t *t = NULL;
     os_calloc(1, sizeof(k8s_tracked_t), t);
+    t->open_from_start = rt->initial_scan_done;
     os_strdup(uid,             t->pod_uid);
     os_strdup(ns,              t->namespace_);
     os_strdup(pod,             t->pod_name);
@@ -936,10 +943,21 @@ static int k8s_open_or_reopen(k8s_tracked_t *t)
     }
 
     if (!resumed) {
-        fseek(t->fp, 0, SEEK_END);
-        t->offset = ftell(t->fp);
-        mtinfo(K8S_LOG_TAG, "Opened log for tail (from end): pod=%s container=%s file=%s",
-               t->pod_name, t->container_name, t->log_path);
+        if (t->open_from_start) {
+            /* Container born after our initial scan: read its log from byte 0
+             * so startup lines (often the only lines a crash-looping container
+             * ever writes) are collected. The file is at most a few scan
+             * intervals old, so there is no history-replay risk. */
+            fseek(t->fp, 0, SEEK_SET);
+            t->offset = 0;
+            mtinfo(K8S_LOG_TAG, "Opened log for tail (from start): pod=%s container=%s file=%s",
+                   t->pod_name, t->container_name, t->log_path);
+        } else {
+            fseek(t->fp, 0, SEEK_END);
+            t->offset = ftell(t->fp);
+            mtinfo(K8S_LOG_TAG, "Opened log for tail (from end): pod=%s container=%s file=%s",
+                   t->pod_name, t->container_name, t->log_path);
+        }
     }
     return 0;
 }
@@ -997,6 +1015,7 @@ void *read_kubernetes(logreader *lf, int *rc, int drop_it)
         rt->last_scan = now;
         const size_t tracked_before = rt->tracked_n;
         k8s_scan_once(lf, rt);
+        rt->initial_scan_done = 1;
         if (rt->tracked_n != tracked_before) {
             /* The tracked set changed: persist immediately so recovery
              * decisions after a crash never run on a stale identity set. */
