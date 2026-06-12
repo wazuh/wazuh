@@ -751,6 +751,7 @@ def test_bucket_multiple_calls(
 
     bucket_type = metadata['bucket_type']
     bucket_name = metadata['bucket_name']
+    data_bucket_name = metadata.get('original_bucket_name', bucket_name)
     expected_results = metadata['expected_results']
     path = metadata.get('path')
     region = US_EAST_1_REGION
@@ -845,7 +846,7 @@ def test_bucket_multiple_calls(
 
     # Upload a log file for the day of the test execution and call the module without only_logs_after and check that
     # only the uploaded logs were processed and the last marker is specified in the DB.
-    last_marker_key = get_last_file_key(bucket_type, data_bucket_name, datetime.utcnow(), region, s3_client)
+    last_marker_key = get_last_file_key(bucket_type, bucket_name, datetime.utcnow(), region, s3_client)
     if bucket_type == VPC_FLOW_TYPE:
         data, key = generate_file(bucket_type=bucket_type,
                                   bucket_name=data_bucket_name,
