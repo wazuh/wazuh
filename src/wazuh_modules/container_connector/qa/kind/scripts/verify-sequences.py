@@ -88,6 +88,8 @@ def main():
     ap.add_argument("--expect-pods", type=int, default=0, help="minimum distinct pods expected")
     ap.add_argument("--require-zero-start", action="store_true",
                     help="every pod's min sequence in window must be 0 (S4)")
+    ap.add_argument("--zero-start-prefix", default=None,
+                    help="only pods whose name starts with this prefix must start at 0")
     ap.add_argument("--require-enrichment", action="store_true",
                     help="fail if k8s metadata fields are missing on k8s events")
     args = ap.parse_args()
@@ -139,6 +141,8 @@ def main():
         if missing:
             print(f"    missing: {compact_ranges(missing)}")
         if args.require_zero_start and lo != 0:
+            failures.append(f"{pod} starts at {lo}, expected 0")
+        if args.zero_start_prefix and pod.startswith(args.zero_start_prefix) and lo != 0:
             failures.append(f"{pod} starts at {lo}, expected 0")
 
     if lags:

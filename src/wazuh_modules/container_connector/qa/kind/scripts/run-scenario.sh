@@ -132,10 +132,15 @@ case "$SCENARIO" in
     agent_exec /var/ossec/bin/wazuh-control stop
     WORKER=$(kind get nodes --name wazuh-spike | grep worker | head -1)
     BEFORE=$(docker exec "$WORKER" bash -c 'ls /var/log/pods/loadtest_floodgen*/gen/ 2>/dev/null | wc -l')
-    echo "--- waiting for >=2 rotations (files now: $BEFORE)"
+    # Wait for exactly ONE rotation during the downtime: kubelet keeps only the
+    # newest rotated file uncompressed, so after a second rotation the
+    # checkpointed file is gzipped and recovery enters the (documented,
+    # unimplemented-in-prototype) gzip tier. One rotation = the plain-file
+    # recovery path the acceptance criterion exercises.
+    echo "--- waiting for 1 rotation (files now: $BEFORE)"
     for _ in $(seq 1 60); do
         NOW_FILES=$(docker exec "$WORKER" bash -c 'ls /var/log/pods/loadtest_floodgen*/gen/ 2>/dev/null | wc -l')
-        [ "$NOW_FILES" -ge $((BEFORE + 2)) ] && break
+        [ "$NOW_FILES" -ge $((BEFORE + 1)) ] && break
         sleep 5
     done
     docker exec "$WORKER" bash -c 'ls -la /var/log/pods/loadtest_floodgen*/gen/' || true
@@ -164,7 +169,7 @@ case "$SCENARIO" in
     snapshot_state end; collect
     echo "--- checking only the late pod (zero start)"
     python3 "$QA_DIR/scripts/verify-sequences.py" "$RUN_DIR/events.ndjson" \
-        --since "$T0" --until "$T1" --require-zero-start --expect-pods 4 \
+        --since "$T0" --until "$T1" --zero-start-prefix seqgen-late --expect-pods 4 \
         | tee "$RUN_DIR/verify.txt"
     RC=${PIPESTATUS[0]}
     kubectl -n loadtest delete deploy/seqgen-late --ignore-not-found
