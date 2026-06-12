@@ -74,6 +74,10 @@ typedef struct k8s_runtime {
     int             initial_scan_done; /* containers seen on the very first scan are
                                         * cold-start (tail from end unless checkpointed);
                                         * containers seen later are new (read from 0) */
+    int             had_checkpoint;    /* a checkpoint file was loaded at startup: this is
+                                        * a restart, not a first-ever run — containers
+                                        * without an entry were born during the downtime
+                                        * and must be read from byte 0 */
 } k8s_runtime_t;
 
 /* ============================================================
@@ -452,7 +456,7 @@ static void k8s_consider_container(logreader *lf, k8s_runtime_t *rt,
     /* Matched — start tracking. */
     k8s_tracked_t *t = NULL;
     os_calloc(1, sizeof(k8s_tracked_t), t);
-    t->open_from_start = rt->initial_scan_done;
+    t->open_from_start = rt->initial_scan_done || rt->had_checkpoint;
     os_strdup(uid,             t->pod_uid);
     os_strdup(ns,              t->namespace_);
     os_strdup(pod,             t->pod_name);
@@ -647,40 +651,42 @@ static int k8s_state_consume(const char *pod_uid, const char *container_name,
     return 0;
 }
 
-static void k8s_load_state(void)
+/* Returns 1 when a parseable checkpoint file existed (restart case), 0 on a
+ * true first-ever run (or a corrupt file, which degrades to cold start). */
+static int k8s_load_state(void)
 {
     k8s_state_free_pending();
 
     FILE *f = fopen(K8S_STATE_FILE, "r");
     if (!f) {
         /* No state file is the common cold-start case; do not warn. */
-        return;
+        return 0;
     }
     fseek(f, 0, SEEK_END);
     long sz = ftell(f);
     fseek(f, 0, SEEK_SET);
     if (sz <= 0 || sz > 16 * 1024 * 1024) {  /* 16 MiB sanity cap */
         fclose(f);
-        return;
+        return 0;
     }
     char *buf = NULL;
     os_calloc((size_t)sz + 1, 1, buf);
     size_t n = fread(buf, 1, (size_t)sz, f);
     fclose(f);
-    if (n != (size_t)sz) { os_free(buf); return; }
+    if (n != (size_t)sz) { os_free(buf); return 0; }
 
     cJSON *root = cJSON_Parse(buf);
     os_free(buf);
     if (!root) {
         mtwarn(K8S_LOG_TAG, "Malformed %s; starting cold (all containers will tail from end).",
                K8S_STATE_FILE);
-        return;
+        return 0;
     }
 
     cJSON *arr = cJSON_GetObjectItem(root, "containers");
     if (!arr || !cJSON_IsArray(arr)) {
         cJSON_Delete(root);
-        return;
+        return 1;
     }
 
     const int count = cJSON_GetArraySize(arr);
@@ -707,6 +713,7 @@ static void k8s_load_state(void)
     }
     cJSON_Delete(root);
     mtinfo(K8S_LOG_TAG, "Loaded checkpoint state with %zu container entries.", g_pending_n);
+    return 1;
 }
 
 static void k8s_save_state(const k8s_runtime_t *rt)
@@ -1089,7 +1096,11 @@ static void k8s_recover_rotated(k8s_tracked_t *t, logreader *lf,
     }
 
     for (size_t i = (anchor < 0) ? 0 : (size_t)anchor; i < n; i++) {
-        if (strcmp(files[i].path, t->log_path) == 0) continue;  /* live file: caller's job */
+        /* Skip the file the caller already holds open — compare by inode, not
+         * path: under flood rates the live file can be renamed between the
+         * caller's fopen() and this listing, and a path comparison would then
+         * drain it here AND via the caller's fseek(0), duplicating its head. */
+        if (files[i].inode == t->inode) continue;
         off_t start = ((ssize_t)i == anchor) ? want_offset : 0;
         mtinfo(K8S_LOG_TAG, "Recovery: draining rotated file '%s' from offset %lld "
                "(pod=%s container=%s).",
@@ -1239,7 +1250,7 @@ void *read_kubernetes(logreader *lf, int *rc, int drop_it)
     /* Load checkpoint state on first ever read. Subsequent calls see
      * state_loaded=1 and skip the disk read. */
     if (!rt->state_loaded) {
-        k8s_load_state();
+        rt->had_checkpoint = k8s_load_state();
         rt->state_loaded = 1;
     }
 

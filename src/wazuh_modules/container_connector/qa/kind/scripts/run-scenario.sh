@@ -131,17 +131,19 @@ case "$SCENARIO" in
     echo "--- stopping agent @ $(now)"
     agent_exec /var/ossec/bin/wazuh-control stop
     WORKER=$(kind get nodes --name wazuh-spike | grep worker | head -1)
-    BEFORE=$(docker exec "$WORKER" bash -c 'ls /var/log/pods/loadtest_floodgen*/gen/ 2>/dev/null | wc -l')
-    # Wait for exactly ONE rotation during the downtime: kubelet keeps only the
-    # newest rotated file uncompressed, so after a second rotation the
-    # checkpointed file is gzipped and recovery enters the (documented,
-    # unimplemented-in-prototype) gzip tier. One rotation = the plain-file
-    # recovery path the acceptance criterion exercises.
-    echo "--- waiting for 1 rotation (files now: $BEFORE)"
-    for _ in $(seq 1 60); do
-        NOW_FILES=$(docker exec "$WORKER" bash -c 'ls /var/log/pods/loadtest_floodgen*/gen/ 2>/dev/null | wc -l')
-        [ "$NOW_FILES" -ge $((BEFORE + 1)) ] && break
-        sleep 5
+    # Wait for exactly ONE rotation during the downtime, detected by the live
+    # file's inode changing. A file-COUNT check is wrong here: under continuous
+    # rotation kubelet deletes as fast as it creates (containerLogMaxFiles), so
+    # the count plateaus and the wait would run to its timeout — the downtime
+    # then exceeds the retention window and the run lands in the gzip/GC tier
+    # instead of the plain-rotated recovery the acceptance criterion exercises.
+    TARGET_DIR=$(docker exec "$WORKER" bash -c 'ls -d /var/log/pods/loadtest_floodgen*/gen 2>/dev/null | head -1')
+    INODE0=$(docker exec "$WORKER" stat -c %i "$TARGET_DIR/0.log" 2>/dev/null)
+    echo "--- waiting for one rotation of $TARGET_DIR/0.log (inode $INODE0)"
+    for _ in $(seq 1 30); do
+        INODE1=$(docker exec "$WORKER" stat -c %i "$TARGET_DIR/0.log" 2>/dev/null)
+        [ -n "$INODE1" ] && [ "$INODE1" != "$INODE0" ] && break
+        sleep 3
     done
     docker exec "$WORKER" bash -c 'ls -la /var/log/pods/loadtest_floodgen*/gen/' || true
     echo "--- starting agent @ $(now)"
