@@ -32,9 +32,11 @@ deploy_gen() { # name replicas rate pad
     kubectl -n loadtest rollout status "deploy/$1" --timeout=120s
 }
 
-collect() { # -> $RUN_DIR/events.ndjson (all channel files, gz included)
-    mgr "find $CHANNEL_DIR -name '*.json' -exec cat {} + ; \
-         find $CHANNEL_DIR -name '*.json.gz' -exec zcat {} +" > "$RUN_DIR/events.ndjson" 2>/dev/null
+collect() { # -> $RUN_DIR/events.ndjson (dated channel files only: the top-level
+            #    <channel>.json is a HARD LINK to the active dated file — reading
+            #    both would double every event)
+    mgr "find $CHANNEL_DIR -mindepth 2 -name '*.json' -exec cat {} + ; \
+         find $CHANNEL_DIR -mindepth 2 -name '*.json.gz' -exec zcat {} +" > "$RUN_DIR/events.ndjson" 2>/dev/null
     wc -l "$RUN_DIR/events.ndjson"
 }
 
@@ -60,7 +62,7 @@ wait_agent_ready() {
     echo "!! logcollector did not come up"; return 1
 }
 
-now() { date +%s.%3N; }
+now() { python3 -c 'import time; print(f"{time.time():.3f}")'; }  # BSD date lacks %N
 
 echo "=== scenario $SCENARIO -> $RUN_DIR"
 RC=1
