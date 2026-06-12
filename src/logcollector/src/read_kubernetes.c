@@ -885,6 +885,14 @@ static void k8s_drain_one(k8s_tracked_t *t, logreader *lf)
     long chain_start = -1;   /* file position of the first 'P' of the open chain */
 
     while (fgets(line, sizeof(line), t->fp)) {
+        if (!strchr(line, '\n') && strlen(line) + 1 < sizeof(line)) {
+            /* Incomplete line at EOF: we caught kubelet mid-append. Defer it
+             * to the next pass instead of emitting a torn fragment whose
+             * remainder would then parse as a malformed line. (A line larger
+             * than the buffer still falls through chunked, pre-existing.) */
+            fseek(t->fp, line_start, SEEK_SET);
+            break;
+        }
         const char *ts = NULL, *stream = NULL, *text = NULL;
         char flag = 0;
         if (!k8s_parse_cri_line(line, &ts, &stream, &flag, &text)) {
