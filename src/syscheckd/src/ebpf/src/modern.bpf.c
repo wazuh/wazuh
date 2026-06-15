@@ -546,6 +546,110 @@ int kprobe__vfs_unlink(struct pt_regs *ctx)
 }
 
 /*
+* Intercepts vfs_rename calls to detect file move/rename operations.
+*
+* This program is always compiled in. The user-space loader decides
+* whether to autoload it based on whether BPF LSM hooks are active
+* on the running system (see ebpf_whodata.cpp).
+*
+* vfs_rename signature evolved across kernels:
+*   pre-5.12 :  vfs_rename(struct inode *old_dir,
+*                          struct dentry *old_dentry,        -> PARM2
+*                          struct inode *new_dir,
+*                          struct dentry *new_dentry,        -> PARM4
+*                          struct inode **delegated_inode,
+*                          unsigned int flags)
+*
+*   5.12+    :  vfs_rename(struct renamedata *rd)            -> PARM1
+*                          rd->old_dentry, rd->new_dentry
+*
+* Both old and new paths are submitted so FIM can detect:
+*   - Files moved INTO a monitored folder  (new path -> "added")
+*   - Files moved OUT OF a monitored folder (old path -> "deleted")
+*   - Files renamed WITHIN a monitored folder (both)
+*/
+SEC("kprobe/vfs_rename")
+int kprobe__vfs_rename(struct pt_regs *ctx)
+{
+    struct dentry *old_dentry;
+    struct dentry *new_dentry;
+
+    if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 12, 0)) {
+        old_dentry = (struct dentry *)PT_REGS_PARM2_CORE(ctx);
+        new_dentry = (struct dentry *)PT_REGS_PARM4_CORE(ctx);
+    } else {
+        struct renamedata *rd = (struct renamedata *)PT_REGS_PARM1_CORE(ctx);
+        if (!rd)
+            return 0;
+        old_dentry = BPF_CORE_READ(rd, old_dentry);
+        new_dentry = BPF_CORE_READ(rd, new_dentry);
+    }
+
+    if (!old_dentry)
+        return 0;
+
+    /* Validate source inode: must be a regular file (S_IFREG = 0100000) */
+    struct inode *d_inode = NULL;
+    bpf_probe_read_kernel(&d_inode, sizeof(d_inode), &old_dentry->d_inode);
+    if (!d_inode)
+        return 0;
+
+    __u32 mode = 0;
+    bpf_probe_read_kernel(&mode, sizeof(mode), &d_inode->i_mode);
+    if ((mode & 00170000) != 0100000)
+        return 0;
+
+    /* Extract inode and device from the source file */
+    __u64 inode = 0, dev = 0;
+    get_inode_dev(d_inode, &inode, &dev);
+
+    /* Get filesystem mount info (same approach as vfs_unlink) */
+    struct super_block *sb = NULL;
+    bpf_probe_read_kernel(&sb, sizeof(sb), &d_inode->i_sb);
+    if (!sb)
+        return 0;
+
+    struct mount *mnt_ptr = NULL;
+    bpf_probe_read_kernel(&mnt_ptr, sizeof(mnt_ptr), &sb->s_fs_info);
+    if (!mnt_ptr)
+        return 0;
+
+    struct vfsmount *mnt = NULL;
+    bpf_probe_read_kernel(&mnt, sizeof(mnt), &mnt_ptr->mnt);
+    if (!mnt)
+        return 0;
+
+    struct buffer *string_buf = bpf_map_lookup_elem(&heaps_map, &(u32){0});
+    if (!string_buf)
+        return 0;
+
+    u8 *full_path = NULL;
+
+    /* Submit event for OLD path (source: detects moves OUT of monitored dirs) */
+    struct path old_path = {
+        .dentry = old_dentry,
+        .mnt    = mnt
+    };
+
+    if (get_path_str_from_path(&full_path, &old_path, string_buf) >= 0)
+        submit_event((const char *)full_path, inode, dev);
+
+    /* Submit event for NEW path (destination: detects moves INTO monitored dirs) */
+    if (new_dentry) {
+        struct path new_path = {
+            .dentry = new_dentry,
+            .mnt    = mnt
+        };
+
+        full_path = NULL;
+        if (get_path_str_from_path(&full_path, &new_path, string_buf) >= 0)
+            submit_event((const char *)full_path, inode, dev);
+    }
+
+    return 0;
+}
+
+/*
 * LSM hook for file open. Reports newly-created or write-opened regular
 * files. Only invoked when "bpf" is part of the active LSM list
 * (CONFIG_LSM= or kernel cmdline lsm=...,bpf). The user-space loader
@@ -646,6 +750,80 @@ int BPF_PROG(path_unlink, struct path *path, struct dentry *dentry)
     get_inode_dev(d_inode, &inode, &dev);
 
     submit_event((const char *)full_path, inode, dev);
+    return 0;
+}
+
+/*
+* LSM hook for path-based rename. Same activation rules as lsm/path_unlink.
+* Only invoked when "bpf" is part of the active LSM list.
+* Requires CONFIG_SECURITY_PATH=y in the running kernel.
+*
+* security_path_rename signature:
+*   (struct path *old_dir, struct dentry *old_dentry,
+*    struct path *new_dir, struct dentry *new_dentry,
+*    unsigned int flags)
+*
+* Both old and new paths are submitted so FIM can detect:
+*   - Files moved INTO a monitored folder  (new path -> "added")
+*   - Files moved OUT OF a monitored folder (old path -> "deleted")
+*   - Files renamed WITHIN a monitored folder (both)
+*/
+SEC("lsm/path_rename")
+int BPF_PROG(path_rename, struct path *old_dir, struct dentry *old_dentry,
+             struct path *new_dir, struct dentry *new_dentry, unsigned int flags)
+{
+    /* Validate source inode: must be a regular file */
+    struct inode *d_inode = NULL;
+    bpf_probe_read_kernel(&d_inode, sizeof(d_inode), &old_dentry->d_inode);
+    if (!d_inode)
+        return 0;
+
+    __u32 mode = 0;
+    bpf_probe_read_kernel(&mode, sizeof(mode), &d_inode->i_mode);
+    if ((mode & 00170000) != 0100000)
+        return 0;
+
+    __u64 inode = 0, dev = 0;
+    get_inode_dev(d_inode, &inode, &dev);
+
+    struct buffer *string_buf = bpf_map_lookup_elem(&heaps_map, &(u32){0});
+    if (!string_buf)
+        return 0;
+
+    char *dir_path = bpf_map_lookup_elem(&full_path_map, &(u32){0});
+    if (!dir_path)
+        return 0;
+
+    u8 *full_path = NULL;
+    const char *file_name_ptr;
+    int ret;
+
+    /* Submit event for OLD path (source: detects moves OUT of monitored dirs) */
+    ret = bpf_d_path(old_dir, dir_path, MAX_PATH_LEN);
+    if (ret >= 0) {
+        bpf_probe_read_kernel(&file_name_ptr, sizeof(file_name_ptr),
+                              &old_dentry->d_name.name);
+        if (file_name_ptr) {
+            full_path = NULL;
+            ret = concat_strings_bpf(&full_path, dir_path, file_name_ptr, string_buf);
+            if (ret >= 0)
+                submit_event((const char *)full_path, inode, dev);
+        }
+    }
+
+    /* Submit event for NEW path (destination: detects moves INTO monitored dirs) */
+    ret = bpf_d_path(new_dir, dir_path, MAX_PATH_LEN);
+    if (ret >= 0) {
+        bpf_probe_read_kernel(&file_name_ptr, sizeof(file_name_ptr),
+                              &new_dentry->d_name.name);
+        if (file_name_ptr) {
+            full_path = NULL;
+            ret = concat_strings_bpf(&full_path, dir_path, file_name_ptr, string_buf);
+            if (ret >= 0)
+                submit_event((const char *)full_path, inode, dev);
+        }
+    }
+
     return 0;
 }
 
